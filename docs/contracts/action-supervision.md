@@ -20,6 +20,8 @@ The smallest independent responsibility that remains is therefore **Action Super
 
 > retain actions issued through the supervision boundary and deterministically process them when explicit monotonic runtime events or decision epochs arrive.
 
+A future runtime driver also should not need to inspect Action Lifecycle event storage to discover when supervision next requires deadline processing. The supervisor therefore owns a derived next-deadline query for its retained open actions; this does not make the supervisor a clock or scheduler.
+
 ## Boundary
 
 For actions managed by this boundary:
@@ -66,6 +68,31 @@ Rules:
 - a failed operation does not advance supervisor time.
 
 The timestamp is an explicit runtime ordering input. The supervisor does not read wall-clock time.
+
+## Next deadline scheduling seam
+
+`next_deadline_ns` exposes the earliest outstanding issuance deadline among the supervisor's currently open `ISSUED` actions.
+
+The value is derived on read from current supervised state. It is not stored as a second mutable scheduling truth.
+
+Rules:
+
+```text
+if open supervised actions exist:
+  next_deadline_ns = minimum issuance deadline among open actions
+else:
+  next_deadline_ns = None
+```
+
+Consequences:
+
+- terminal retained lifecycles do not contribute to the value;
+- action identifier ordering does not affect the result;
+- closing or timing out the earliest action exposes the next remaining open deadline;
+- reading the property does not advance supervisor time or mutate any lifecycle;
+- the value may be less than or equal to `last_at_ns` when other runtime events advanced supervisor processing time without a timeout epoch; an overdue obligation is reported unchanged rather than clamped away.
+
+This seam tells a future event-driven runtime **when Action Supervision next requires time-based attention**. It does not decide how a host clock, timer, event source, or scheduler delivers that future epoch.
 
 ## Outcome and unknown closure
 
@@ -147,19 +174,24 @@ ActionIssued(a)
   -> eventually Outcome(a) | Timeout(a) | Unknown(a)
 ```
 
-This contract implements a deterministic part of that obligation for supervised actions:
+This contract implements deterministic parts of that obligation for supervised actions:
 
-> if the runtime supplies an `advance` epoch at or after an open action's deadline, that action cannot remain supervised and overdue after the epoch succeeds.
+- it exposes the earliest outstanding supervised deadline without requiring callers to inspect lifecycle event internals;
+- if the runtime supplies an `advance` epoch at or after an open action's deadline, that action cannot remain supervised and overdue after the epoch succeeds.
 
-It does **not** prove that a deployed runtime will eventually call `advance`, that a host clock will continue running, or that an event loop will remain live. A future runtime driver or scheduler responsibility must provide those decision epochs.
+It does **not** prove that a deployed runtime will eventually call `advance`, that a host clock will continue running, or that an event loop will remain live. A future runtime driver or scheduler responsibility must consume the scheduling seam and provide those decision epochs.
 
-Therefore the current evidence supports **decision-epoch closure**, not autonomous wall-clock liveness.
+Therefore the current evidence supports **deadline discovery plus decision-epoch closure**, not autonomous wall-clock liveness.
 
 ## Deterministic verification obligations
 
 Canonical pytest coverage must demonstrate at least:
 
 - supervised issuance retains the issued lifecycle in the same successful operation;
+- `next_deadline_ns` is `None` with no open action and otherwise equals the minimum open issuance deadline;
+- terminal actions do not contribute to `next_deadline_ns`, and closure recomputes the value from remaining open state;
+- reading `next_deadline_ns` does not mutate lifecycle or supervisor time;
+- an overdue open deadline remains visible rather than being clamped to supervisor processing time;
 - an epoch before a deadline leaves the action open;
 - an epoch at or after a deadline closes due actions as `TIMEOUT`;
 - one epoch closes only the actions that are due;
@@ -177,8 +209,8 @@ These are deterministic invariant facts only. They are not simulation results an
 
 This contract intentionally does not define:
 
-- a general Scheduler;
-- wall-clock reads, timer threads, async loops, background workers, or autonomous epoch delivery;
+- a general Scheduler or Runtime Driver;
+- wall-clock reads, timer threads, async loops, background workers, polling cadence, or autonomous epoch delivery;
 - durable persistence or recovery after process restart;
 - concurrent or multi-threaded mutation semantics;
 - environment adapters, action transport, or command acknowledgement protocols;

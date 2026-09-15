@@ -42,6 +42,11 @@ class ActionSupervisor:
             if self._lifecycles[action_id].state is ActionState.ISSUED
         )
 
+    @property
+    def next_deadline_ns(self) -> int | None:
+        deadlines = tuple(_issued_deadline_ns(lifecycle) for lifecycle in self.open_actions)
+        return min(deadlines, default=None)
+
     def get(self, action_id: str) -> ActionLifecycle:
         _require_action_id(action_id)
         try:
@@ -113,11 +118,7 @@ class ActionSupervisor:
 
         replacements: list[tuple[str, ActionLifecycle]] = []
         for lifecycle in self.open_actions:
-            deadline_ns = lifecycle.events[-1].deadline_ns
-            if deadline_ns is None:
-                raise ActionSupervisionError(
-                    f"supervised issued action has no deadline: {lifecycle.action_id}"
-                )
+            deadline_ns = _issued_deadline_ns(lifecycle)
             if deadline_ns <= at_ns:
                 replacements.append(
                     (
@@ -138,6 +139,15 @@ class ActionSupervisor:
             )
         if self._last_at_ns is not None and at_ns < self._last_at_ns:
             raise InvalidSupervisorTime("supervisor time must be monotonic")
+
+
+def _issued_deadline_ns(lifecycle: ActionLifecycle) -> int:
+    deadline_ns = lifecycle.events[-1].deadline_ns
+    if deadline_ns is None:
+        raise ActionSupervisionError(
+            f"supervised issued action has no deadline: {lifecycle.action_id}"
+        )
+    return deadline_ns
 
 
 def _require_action_id(value: object) -> None:
