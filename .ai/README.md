@@ -17,7 +17,7 @@ Before making architectural or behavioral changes, read:
 9. relevant executable contracts under `docs/contracts/` for the boundary being changed
 10. `docs/migration-from-relaylm.md`
 
-The first current executable contract is `docs/contracts/action-lifecycle.md`; load it for Action Lifecycle / Authority Boundary work.
+The current executable action contracts are `docs/contracts/action-lifecycle.md` and `docs/contracts/action-supervision.md`. Load the lifecycle contract for transition legality and both contracts for in-flight action supervision work.
 
 Migration notes explain origin and continuity, but current ontology, architecture, runtime, development, evaluation, CI, Issue-governance, and executable-contract documents take precedence.
 

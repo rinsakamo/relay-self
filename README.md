@@ -34,14 +34,15 @@ The Environment is external to RelaySelf and connects through explicit contracts
 - [`docs/ci.md`](docs/ci.md) — meaning and scope of continuous-integration guarantees.
 - [`docs/issues.md`](docs/issues.md) — Issue scope, freshness, and completion reconciliation rules.
 - [`docs/contracts/action-lifecycle.md`](docs/contracts/action-lifecycle.md) — executable Action Lifecycle / Authority Boundary transition contract.
+- [`docs/contracts/action-supervision.md`](docs/contracts/action-supervision.md) — deterministic in-flight Action Supervision contract for explicit decision epochs.
 - [`docs/migration-from-relaylm.md`](docs/migration-from-relaylm.md) — conceptual migration map from the former RelayLM architecture.
 - [`.ai/README.md`](.ai/README.md) — authority and read-order guidance for AI-assisted development.
 
 ## Status
 
-RelaySelf is in early executable bootstrap. The Action Lifecycle / Authority Boundary is the first concrete executable contract; most broader runtime behavior remains architectural design rather than implementation fact.
+RelaySelf is in early executable bootstrap. The Action Lifecycle / Authority Boundary is the first concrete executable contract, and Action Supervision now adds deterministic retention and deadline processing for supervised in-flight actions at explicit runtime decision epochs.
 
-The current Python bootstrap exists to implement and verify that bounded contract. It does not yet declare a supported package-distribution boundary, minimum Python version, dependency floor, complete scheduler, environment adapter, or general authority-policy engine.
+The current Python bootstrap implements only those bounded contracts. It does not yet declare a supported package-distribution boundary, minimum Python version, dependency floor, autonomous runtime driver, general scheduler, environment adapter, or general authority-policy engine. In particular, Action Supervision does not prove that a deployed clock or event loop will eventually deliver future decision epochs.
 
 Hypotheses, simulation results, and implementation facts must remain distinguishable.
 
