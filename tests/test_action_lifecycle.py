@@ -185,3 +185,19 @@ def test_action_event_requires_declared_state() -> None:
             at_ns=10,
             provenance=provenance("proposal-1"),
         )
+
+
+def test_action_lifecycle_rejects_mutable_event_history() -> None:
+    event = ActionEvent(
+        state=ActionState.PROPOSED,
+        at_ns=10,
+        provenance=provenance("proposal-1"),
+    )
+
+    with pytest.raises(InvalidActionData, match="history must be an immutable tuple"):
+        ActionLifecycle("action-1", [event])  # type: ignore[arg-type]
+
+
+def test_action_lifecycle_rejects_non_event_history_values() -> None:
+    with pytest.raises(InvalidActionData, match="only ActionEvent values"):
+        ActionLifecycle("action-1", ("proposed",))  # type: ignore[arg-type]
