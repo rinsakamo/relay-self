@@ -31,6 +31,8 @@ The Environment is external to RelaySelf and connects through explicit contracts
 - [`docs/runtime-principles.md`](docs/runtime-principles.md) — normative runtime and agency principles.
 - [`docs/development-principles.md`](docs/development-principles.md) — change, authority, review, and convergence discipline.
 - [`docs/evaluation.md`](docs/evaluation.md) — deterministic, simulation, model-quality, and qualification evidence discipline.
+- [`docs/ci.md`](docs/ci.md) — meaning and scope of continuous-integration guarantees.
+- [`docs/issues.md`](docs/issues.md) — Issue scope, freshness, and completion reconciliation rules.
 - [`docs/migration-from-relaylm.md`](docs/migration-from-relaylm.md) — conceptual migration map from the former RelayLM architecture.
 - [`.ai/README.md`](.ai/README.md) — authority and read-order guidance for AI-assisted development.
 
