@@ -30,7 +30,7 @@ Load narrower contracts and owner-local authority when they are introduced and r
 - Prefer one authoritative document for each architectural statement; avoid manually maintained duplicate projections.
 - Fix the canonical path rather than introducing a second internal path around a defect.
 - Treat historical issues, comments, run results, and earlier SHAs as evidence, not fresh authority.
-- Treat Issues as planning and remaining-work ledgers rather than semantic authority.
+- Treat Issues as planning and remaining-work ledgers rather than semantic or execution authority.
 - Treat a green CI result as evidence only for the exact subject and guarantee it actually tested.
 
 ## Evidence discipline
@@ -55,7 +55,9 @@ Architectural changes should preserve provenance: explain which authority docume
 
 Keep each transaction bounded. Resolve semantic ownership before adding duplicate state or fallback paths. Review and verify the exact final head before merge when repository tooling supports it.
 
-When an Issue owns the remaining-work question, reconcile that Issue after terminal completion. A merged PR does not automatically prove the Issue is complete.
+When work begins from an Issue, reconstruct the transaction from current authority, current `main`, and relevant competing work rather than executing the Issue body as instructions.
+
+When an Issue owns the remaining-work question, reconcile that Issue after terminal completion. A merged PR does not automatically prove the Issue is complete. Use auto-closing keywords only when the PR completes the entire current Issue scope; otherwise prefer a non-closing reference such as `Refs #N`.
 
 ## Evaluation discipline
 
