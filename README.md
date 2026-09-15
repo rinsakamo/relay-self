@@ -33,14 +33,17 @@ The Environment is external to RelaySelf and connects through explicit contracts
 - [`docs/evaluation.md`](docs/evaluation.md) — deterministic, simulation, model-quality, and qualification evidence discipline.
 - [`docs/ci.md`](docs/ci.md) — meaning and scope of continuous-integration guarantees.
 - [`docs/issues.md`](docs/issues.md) — Issue scope, freshness, and completion reconciliation rules.
+- [`docs/contracts/action-lifecycle.md`](docs/contracts/action-lifecycle.md) — executable Action Lifecycle / Authority Boundary transition contract.
 - [`docs/migration-from-relaylm.md`](docs/migration-from-relaylm.md) — conceptual migration map from the former RelayLM architecture.
 - [`.ai/README.md`](.ai/README.md) — authority and read-order guidance for AI-assisted development.
 
 ## Status
 
-RelaySelf is in early architectural bootstrap. Concepts, principles, and contracts are being separated before implementation is expanded.
+RelaySelf is in early executable bootstrap. The Action Lifecycle / Authority Boundary is the first concrete executable contract; most broader runtime behavior remains architectural design rather than implementation fact.
 
-Design documents describe intended architecture unless they explicitly identify an implementation fact. Hypotheses, simulation results, and implementation facts must remain distinguishable.
+The current Python bootstrap exists to implement and verify that bounded contract. It does not yet declare a supported package-distribution boundary, minimum Python version, dependency floor, complete scheduler, environment adapter, or general authority-policy engine.
+
+Hypotheses, simulation results, and implementation facts must remain distinguishable.
 
 ## License
 
