@@ -17,7 +17,7 @@ Before making architectural or behavioral changes, read:
 9. relevant executable contracts under `docs/contracts/` for the boundary being changed
 10. `docs/migration-from-relaylm.md`
 
-The current executable action contracts are `docs/contracts/action-lifecycle.md` and `docs/contracts/action-supervision.md`. Load the lifecycle contract for transition legality and both contracts for in-flight action supervision work.
+The current executable contracts are `docs/contracts/action-lifecycle.md`, `docs/contracts/action-supervision.md`, and `docs/contracts/intent-commitment.md`. Load the lifecycle contract for Action transition legality, both Action contracts for in-flight supervision work, and the Intent Commitment contract for Current Intent / Reconsideration changes.
 
 Migration notes explain origin and continuity, but current ontology, architecture, runtime, development, evaluation, CI, Issue-governance, and executable-contract documents take precedence.
 
@@ -46,7 +46,7 @@ Always distinguish:
 
 Do not invent empirical results, measurements, completed experiments, or implementation status.
 
-A normative design document does not by itself prove that the runtime implements the design.
+A normative design document does not by itself prove that the runtime implements the described behavior.
 
 ## Research provenance
 
