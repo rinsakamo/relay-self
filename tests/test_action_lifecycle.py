@@ -1,6 +1,7 @@
 import pytest
 
 from relay_self.action import (
+    ActionEvent,
     ActionLifecycle,
     ActionState,
     InvalidActionData,
@@ -160,4 +161,27 @@ def test_authorization_requires_explicit_authority() -> None:
             at_ns=20,
             provenance=provenance("authorization-1"),
             authority="",
+        )
+
+
+def test_provenance_rejects_non_string_fields_with_contract_error() -> None:
+    with pytest.raises(InvalidActionData, match="provenance source"):
+        Provenance(source=1, reference="proposal-1")  # type: ignore[arg-type]
+
+
+def test_action_event_requires_provenance_object() -> None:
+    with pytest.raises(InvalidActionData, match="provenance must be Provenance"):
+        ActionEvent(
+            state=ActionState.PROPOSED,
+            at_ns=10,
+            provenance=None,  # type: ignore[arg-type]
+        )
+
+
+def test_action_event_requires_declared_state() -> None:
+    with pytest.raises(InvalidActionData, match="state must be an ActionState"):
+        ActionEvent(
+            state="proposed",  # type: ignore[arg-type]
+            at_ns=10,
+            provenance=provenance("proposal-1"),
         )
