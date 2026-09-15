@@ -10,6 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_PATHS = [
     "README.md",
     "LICENSE",
+    "SECURITY.md",
+    ".editorconfig",
+    ".gitattributes",
     ".ai/README.md",
     "docs/ontology.md",
     "docs/architecture.md",
@@ -19,6 +22,7 @@ REQUIRED_PATHS = [
     "docs/ci.md",
     "docs/issues.md",
     "docs/migration-from-relaylm.md",
+    ".github/PULL_REQUEST_TEMPLATE.md",
     ".github/workflows/ci.yml",
     ".github/ISSUE_TEMPLATE/work.yml",
     ".github/ISSUE_TEMPLATE/config.yml",
