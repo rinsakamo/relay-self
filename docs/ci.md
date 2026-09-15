@@ -26,31 +26,64 @@ CI enforcement   the repository host currently requires that result before merge
 
 Source files can prove the first. Workflow-run evidence can prove the second. The third is a live GitHub repository setting and must be checked as such.
 
-## Current merge baseline
+## Current source-defined deterministic jobs
 
-RelaySelf currently has one deterministic repository gate:
+RelaySelf currently defines three deterministic CI jobs.
 
 ### `CI / repository-contracts`
 
 Guarantee:
 
-> The exact checked-out source head satisfies the repository's current structural documentation contract.
+> The exact checked-out source head satisfies the repository's current structural documentation and bootstrap-file contract.
 
 The check currently verifies that:
 
-- required authority and governance files exist;
+- required authority, governance, first-contract, and bootstrap files exist;
 - local Markdown links resolve to repository paths;
 - tracked text surfaces do not contain unresolved merge-conflict markers.
 
-It does **not** prove:
+It does **not** prove runtime semantics merely because the corresponding files exist.
 
-- that future runtime contracts are implemented;
-- language-model quality;
-- simulation performance;
-- physical or external-system qualification;
-- security, type-safety, packaging, or multi-platform compatibility unless separate gates are introduced for those guarantees.
+### `CI / pytest`
 
-The baseline should grow only when the repository contains a concrete deterministic contract worth enforcing.
+Guarantee:
+
+> The exact checked-out source head passes the current deterministic Python unit and executable-contract test suite under the CI Python runtime.
+
+The current suite includes direct verification of the Action Lifecycle transition contract, including authorization-before-issuance, terminal closure classes, timeout boundary behavior, monotonic event time, and invalid-transition failure.
+
+A green result does **not** prove:
+
+- that a scheduler eventually revisits every issued action in a deployed runtime;
+- that an external authority identity is legitimate merely because it was recorded;
+- model quality, simulation behavior, environment correctness, or physical execution;
+- package installation or minimum-supported Python/dependency floors.
+
+The workflow pins the pytest tool version used by this gate. That pin is CI tooling, not a supported runtime dependency floor.
+
+### `CI / lint`
+
+Guarantee:
+
+> The exact checked-out `src/` and `tests/` Python surface satisfies the configured Ruff mechanical checks.
+
+The configured rule set is intentionally narrow: syntax/pycodestyle error classes, Pyflakes correctness checks, and import ordering.
+
+A green result does **not** prove architectural correctness, type safety, runtime behavior, formatting uniformity outside the configured rules, or lint cleanliness of unrelated repository tooling.
+
+The workflow pins the Ruff tool version used by this gate. That pin is CI tooling, not a supported runtime dependency floor.
+
+## Live merge enforcement
+
+Workflow existence does not prove that a job is required by the repository host.
+
+Required status checks must be inspected in the live GitHub ruleset before a merge claim relies on enforcement. This document intentionally does not turn volatile repository-host configuration into a source-file assertion.
+
+## Invariant-gate decision
+
+The first executable invariant is verified inside `CI / pytest` rather than by a separate `CI / invariants` job.
+
+At the current repository scale, a separate invariants job would execute the same deterministic test surface and would not own a distinct guarantee. Revisit that decision only when a stable invariant surface has a materially different execution contract from ordinary pytest coverage.
 
 ## Deterministic CI versus evaluation
 

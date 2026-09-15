@@ -14,9 +14,12 @@ Before making architectural or behavioral changes, read:
 6. `docs/evaluation.md`
 7. `docs/ci.md`
 8. `docs/issues.md`
-9. `docs/migration-from-relaylm.md`
+9. relevant executable contracts under `docs/contracts/` for the boundary being changed
+10. `docs/migration-from-relaylm.md`
 
-Migration notes explain origin and continuity, but current ontology, architecture, runtime, development, evaluation, CI, and Issue-governance documents take precedence.
+The first current executable contract is `docs/contracts/action-lifecycle.md`; load it for Action Lifecycle / Authority Boundary work.
+
+Migration notes explain origin and continuity, but current ontology, architecture, runtime, development, evaluation, CI, Issue-governance, and executable-contract documents take precedence.
 
 Load narrower contracts and owner-local authority when they are introduced and relevant to the change. Do not create speculative authority files merely to anticipate future components.
 
