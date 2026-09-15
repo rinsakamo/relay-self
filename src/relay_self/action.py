@@ -87,6 +87,10 @@ class ActionLifecycle:
 
     def __post_init__(self) -> None:
         _require_text("action_id", self.action_id)
+        if not isinstance(self._events, tuple):
+            raise InvalidActionData("action event history must be an immutable tuple")
+        if not all(isinstance(event, ActionEvent) for event in self._events):
+            raise InvalidActionData("action event history must contain only ActionEvent values")
         self._validate_history()
 
     @classmethod
