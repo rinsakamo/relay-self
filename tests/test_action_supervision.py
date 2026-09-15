@@ -46,6 +46,76 @@ def issue(
     )
 
 
+def test_next_deadline_is_none_without_open_actions() -> None:
+    supervisor = ActionSupervisor()
+
+    assert supervisor.next_deadline_ns is None
+    assert supervisor.last_at_ns is None
+
+
+def test_next_deadline_reports_one_open_action_without_mutation() -> None:
+    supervisor = ActionSupervisor()
+    issued = issue(supervisor)
+
+    before_events = issued.events
+
+    assert supervisor.next_deadline_ns == 50
+    assert supervisor.get("action-1") is issued
+    assert supervisor.get("action-1").events is before_events
+    assert supervisor.last_at_ns == 30
+
+
+def test_next_deadline_is_minimum_independent_of_action_id_order() -> None:
+    supervisor = ActionSupervisor()
+    issue(supervisor, "action-a", at_ns=30, deadline_ns=90)
+    issue(supervisor, "action-z", at_ns=40, deadline_ns=60)
+    issue(supervisor, "action-m", at_ns=50, deadline_ns=80)
+
+    assert supervisor.next_deadline_ns == 60
+
+
+@pytest.mark.parametrize("closure", ["outcome", "unknown"])
+def test_terminal_closure_removes_earliest_action_from_next_deadline(closure: str) -> None:
+    supervisor = ActionSupervisor()
+    issue(supervisor, "action-1", at_ns=30, deadline_ns=50)
+    issue(supervisor, "action-2", at_ns=40, deadline_ns=80)
+
+    if closure == "outcome":
+        supervisor.record_outcome(
+            "action-1",
+            at_ns=45,
+            provenance=provenance("outcome-1"),
+        )
+    else:
+        supervisor.mark_unknown(
+            "action-1",
+            at_ns=45,
+            provenance=provenance("unknown-1"),
+        )
+
+    assert supervisor.next_deadline_ns == 80
+
+
+def test_timeout_epoch_recomputes_next_deadline_from_remaining_open_actions() -> None:
+    supervisor = ActionSupervisor()
+    issue(supervisor, "action-1", at_ns=30, deadline_ns=50)
+    issue(supervisor, "action-2", at_ns=40, deadline_ns=80)
+
+    supervisor.advance(at_ns=50, provenance=provenance("epoch-50"))
+
+    assert supervisor.get("action-1").state is ActionState.TIMEOUT
+    assert supervisor.next_deadline_ns == 80
+
+
+def test_next_deadline_preserves_overdue_obligation() -> None:
+    supervisor = ActionSupervisor()
+    issue(supervisor, "action-1", at_ns=30, deadline_ns=50)
+    issue(supervisor, "action-2", at_ns=60, deadline_ns=90)
+
+    assert supervisor.last_at_ns == 60
+    assert supervisor.next_deadline_ns == 50
+
+
 def test_supervised_issue_is_retained_atomically() -> None:
     supervisor = ActionSupervisor()
 
