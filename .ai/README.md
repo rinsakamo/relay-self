@@ -45,6 +45,21 @@ Do not invent empirical results, measurements, completed experiments, or impleme
 
 A normative design document does not by itself prove that the runtime implements the design.
 
+## Research provenance
+
+When external literature materially informs RelaySelf architecture, runtime principles, evaluation design, or falsification work, update the current dedicated research-literature ledger: **Issue #9, `Research literature ledger: papers informing RelaySelf architecture`**.
+
+For each materially used reference, preserve:
+
+- a stable citation or primary link;
+- the paper's relevant result or idea;
+- the RelaySelf-specific takeaway;
+- an important limitation or non-claim when needed to prevent overgeneralization.
+
+Do not add papers merely because they are adjacent to the topic. The ledger is research evidence and navigation, not semantic authority. If literature leads to an accepted RelaySelf invariant or contract change, promote that conclusion into the responsible current authority surface in the same bounded transaction.
+
+If Issue #9 is superseded by a more appropriate durable evidence/index surface, update this pointer rather than maintaining two parallel literature ledgers.
+
 ## Change discipline
 
 For semantic changes, follow the repository development sequence:
