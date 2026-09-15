@@ -4,9 +4,11 @@
 
 This document owns the executable transition semantics for RelaySelf's first Action Lifecycle boundary.
 
-It refines the architectural distinction already owned by `docs/architecture.md` and the action-closure principle owned by `docs/runtime-principles.md`. It does not redefine Goal, Intent, Skill, Environment, or general authority policy.
+It refines the architectural distinction already owned by `docs/architecture.md` and the action-closure principle owned by `docs/runtime-principles.md`. It does not redefine Goal, Intent, Skill, Environment, general authority policy, or in-flight runtime supervision.
 
 The executable owner is `src/relay_self/action.py`; deterministic verification lives in `tests/test_action_lifecycle.py`.
+
+Deterministic in-flight retention and decision-epoch timeout processing are owned separately by [`action-supervision.md`](action-supervision.md).
 
 ## Contract boundary
 
@@ -99,14 +101,14 @@ This is causal trace for this boundary only. It is not yet a repository-wide eve
 
 Time values in this contract are caller-supplied non-negative integer values in one monotonic nanosecond domain.
 
-The lifecycle does not read wall-clock time and does not own a scheduler.
+The lifecycle does not read wall-clock time and does not own a scheduler or runtime supervisor.
 
 Rules:
 
 - event time must never move backward within one lifecycle;
 - issuance requires an explicit `deadline_ns` strictly later than issue time;
 - `TIMEOUT` is invalid before that deadline;
-- `OUTCOME` may close an issued action before the deadline when consequence evidence is available;
+- `OUTCOME` may close an issued action whenever acceptable consequence evidence is processed before another terminal transition wins;
 - `UNKNOWN` may close an issued action when acceptable consequence resolution is unavailable and uncertainty must be represented explicitly.
 
 The runtime-level liveness obligation remains:
@@ -116,7 +118,9 @@ ActionIssued(a)
   -> eventually Outcome(a) | Timeout(a) | Unknown(a)
 ```
 
-This pure state machine cannot make time advance by itself. The future scheduler/execution boundary must revisit issued actions and provide one of the terminal closure events. Requiring a finite deadline makes the timeout boundary explicit; it does not by itself prove that an external scheduler performed the revisit.
+This pure state machine cannot make time advance by itself. The current [`Action Supervision`](action-supervision.md) contract adds deterministic retention and explicit decision-epoch timeout processing for actions issued through that boundary. It still does not make future epochs happen autonomously; a future runtime driver or scheduler must supply those epochs.
+
+Requiring a finite deadline therefore makes timeout eligibility explicit, while Action Supervision proves what happens when a qualifying epoch is actually processed. Neither fact alone proves deployed wall-clock liveness.
 
 ## Invalid data and invalid transitions
 
@@ -147,7 +151,7 @@ The canonical pytest coverage must demonstrate at least:
 - issue deadlines are strictly later than issue time;
 - authorization requires explicit authority input.
 
-These tests are deterministic invariant evidence. They are not simulation results and do not qualify a device, environment, model, scheduler, or external authority system.
+These tests are deterministic invariant evidence. They are not simulation results and do not qualify a device, environment, model, runtime supervisor, scheduler, or external authority system.
 
 ## Non-goals
 
@@ -157,7 +161,8 @@ This contract intentionally does not define:
 - general capability or authority policy resolution;
 - Current Intent or arbitration;
 - Skill lifecycle or interruption semantics;
-- automatic scheduling or background timeout execution;
+- in-flight action retention or decision-epoch processing, which are owned by `action-supervision.md`;
+- autonomous wall-clock scheduling or background timeout execution;
 - environment truth or consequence interpretation beyond explicit closure provenance;
 - package distribution, supported Python-version floors, or external dependency floors;
 - model, simulator, GPU, device, or physical qualification.
