@@ -1,4 +1,5 @@
 from relay_self.action import (
+    TERMINAL_STATES,
     ActionEvent,
     ActionLifecycle,
     ActionLifecycleError,
@@ -6,7 +7,6 @@ from relay_self.action import (
     InvalidActionData,
     InvalidTransition,
     Provenance,
-    TERMINAL_STATES,
 )
 
 __all__ = [
