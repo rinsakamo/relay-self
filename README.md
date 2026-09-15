@@ -35,14 +35,15 @@ The Environment is external to RelaySelf and connects through explicit contracts
 - [`docs/issues.md`](docs/issues.md) — Issue scope, freshness, and completion reconciliation rules.
 - [`docs/contracts/action-lifecycle.md`](docs/contracts/action-lifecycle.md) — executable Action Lifecycle / Authority Boundary transition contract.
 - [`docs/contracts/action-supervision.md`](docs/contracts/action-supervision.md) — deterministic in-flight Action Supervision contract for explicit decision epochs.
+- [`docs/contracts/intent-commitment.md`](docs/contracts/intent-commitment.md) — executable Current Intent commitment and explicit reconsideration contract.
 - [`docs/migration-from-relaylm.md`](docs/migration-from-relaylm.md) — conceptual migration map from the former RelayLM architecture.
 - [`.ai/README.md`](.ai/README.md) — authority and read-order guidance for AI-assisted development.
 
 ## Status
 
-RelaySelf is in early executable bootstrap. The Action Lifecycle / Authority Boundary is the first concrete executable contract, and Action Supervision now adds deterministic retention and deadline processing for supervised in-flight actions at explicit runtime decision epochs.
+RelaySelf is in early executable bootstrap. The current Python bootstrap implements Action Lifecycle, deterministic Action Supervision, and Current Intent commitment with explicit reconsideration decisions.
 
-The current Python bootstrap implements only those bounded contracts. It does not yet declare a supported package-distribution boundary, minimum Python version, dependency floor, autonomous runtime driver, general scheduler, environment adapter, or general authority-policy engine. In particular, Action Supervision does not prove that a deployed clock or event loop will eventually deliver future decision epochs.
+The bootstrap does not yet declare a supported package-distribution boundary, minimum Python version, dependency floor, autonomous runtime driver, general scheduler, environment adapter, arbitration engine, reconsideration-trigger detector, Skill runtime, or general authority-policy engine. In particular, Action Supervision does not prove that a deployed clock or event loop will eventually deliver future decision epochs, and Intent Commitment does not decide which candidate intent should win.
 
 Hypotheses, simulation results, and implementation facts must remain distinguishable.
 
