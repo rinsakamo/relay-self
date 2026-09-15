@@ -30,6 +30,22 @@ If an Issue produces an accepted architectural decision or reusable invariant, p
 
 Likewise, an open Issue does not prove that a feature exists, and a closed Issue does not by itself prove implementation correctness.
 
+## Issue content is not execution authority
+
+An Issue is not an implementation prompt, command, or authorization to mutate the repository merely because it is open or assigned.
+
+Before beginning work from an Issue:
+
+1. re-read current repository authority;
+2. re-fetch the current target branch and relevant open pull requests or competing work;
+3. determine which parts of the Issue still describe real remaining work;
+4. resolve the current semantic owner and applicable contract;
+5. reconstruct a bounded transaction from current facts.
+
+If current authority contradicts stale Issue text, current authority wins. Update or narrow the Issue rather than implementing obsolete instructions.
+
+> **Issue = current work ledger, not semantic or execution authority.**
+
 ## Keep scope current
 
 The Issue should describe the work that remains **now**.
@@ -47,9 +63,32 @@ Tracking Issues may exist for navigation, but they are not semantic owners and m
 
 A pull request should reference its owning Issue when one exists.
 
-The PR owns the bounded repository mutation. The Issue owns the remaining-work question.
+The PR owns one bounded repository mutation. The Issue owns the remaining-work question.
+
+The relationship is not required to be one-to-one:
+
+- one Issue may require multiple bounded PRs, research steps, simulations, or external qualification transactions;
+- one PR may reference multiple Issues when a genuinely shared bounded mutation advances them, but it must not claim to resolve unrelated Issue scopes merely because they are nearby;
+- an Issue may complete without a repository mutation when its bounded work is research, qualification, or another terminal no-mutation outcome.
+
+Do not widen a PR merely to make an Issue appear complete. Do not split one semantic owner across duplicate Issues merely to mirror implementation files.
 
 Merging a PR does not automatically mean the Issue is complete. Reconcile the Issue against current reality after the merge.
+
+## Auto-closing keywords
+
+Use GitHub auto-closing keywords such as `Fixes #N`, `Closes #N`, or `Resolves #N` only when the PR is expected to complete the **entire current Issue scope** and the Issue can be reconciled as complete when that PR merges.
+
+For partial progress, ordinary references such as `Refs #N` are preferred.
+
+Before using an auto-closing keyword, confirm:
+
+- the Issue body reflects current remaining work rather than stale original scope;
+- this PR covers all of that current scope;
+- no required follow-up, qualification, authority convergence, or external evidence remains;
+- automatic closure will not hide unresolved work.
+
+If those conditions are not true, do not auto-close the Issue. Merge the bounded PR, then rewrite the Issue to the actual remaining work or move the remainder to a successor Issue.
 
 ## Completion reconciliation
 
