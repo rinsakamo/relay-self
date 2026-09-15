@@ -66,6 +66,17 @@ class ActionEvent:
     authority: str | None = None
     deadline_ns: int | None = None
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.state, ActionState):
+            raise InvalidActionData("action event state must be an ActionState")
+        if not isinstance(self.provenance, Provenance):
+            raise InvalidActionData("action event provenance must be Provenance")
+        _require_at_ns(self.at_ns)
+        if self.authority is not None:
+            _require_text("authorization authority", self.authority)
+        if self.deadline_ns is not None:
+            _require_at_ns(self.deadline_ns)
+
 
 @dataclass(frozen=True, slots=True)
 class ActionLifecycle:
@@ -246,11 +257,11 @@ class ActionLifecycle:
             previous = event
 
 
-def _require_text(name: str, value: str | None) -> None:
-    if value is None or not value.strip():
+def _require_text(name: str, value: object) -> None:
+    if not isinstance(value, str) or not value.strip():
         raise InvalidActionData(f"{name} must be a non-empty string")
 
 
-def _require_at_ns(value: int | None) -> None:
+def _require_at_ns(value: object) -> None:
     if not isinstance(value, int) or isinstance(value, bool) or value < 0:
         raise InvalidActionData("monotonic time values must be non-negative integers")
