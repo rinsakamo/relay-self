@@ -24,16 +24,21 @@ The Environment is external to RelaySelf and connects through explicit contracts
 - Self and environment are distinct.
 - Model output is not authority by itself.
 
-## Architecture documents
+## Architecture and engineering documents
 
 - [`docs/ontology.md`](docs/ontology.md) — canonical general vocabulary.
 - [`docs/architecture.md`](docs/architecture.md) — architectural boundaries and state flow.
+- [`docs/runtime-principles.md`](docs/runtime-principles.md) — normative runtime and agency principles.
+- [`docs/development-principles.md`](docs/development-principles.md) — change, authority, review, and convergence discipline.
+- [`docs/evaluation.md`](docs/evaluation.md) — deterministic, simulation, model-quality, and qualification evidence discipline.
 - [`docs/migration-from-relaylm.md`](docs/migration-from-relaylm.md) — conceptual migration map from the former RelayLM architecture.
 - [`.ai/README.md`](.ai/README.md) — authority and read-order guidance for AI-assisted development.
 
 ## Status
 
-RelaySelf is in early architectural bootstrap. Concepts and contracts are being separated before implementation is expanded.
+RelaySelf is in early architectural bootstrap. Concepts, principles, and contracts are being separated before implementation is expanded.
+
+Design documents describe intended architecture unless they explicitly identify an implementation fact. Hypotheses, simulation results, and implementation facts must remain distinguishable.
 
 ## License
 
