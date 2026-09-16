@@ -54,13 +54,14 @@ The current suite includes direct verification of:
 
 - the Action Lifecycle transition contract, including authorization-before-issuance, terminal closure classes, timeout boundary behavior, monotonic event time, and invalid-transition failure;
 - the Action Supervision contract, including supervised issuance retention, next-deadline discovery, explicit decision-epoch timeout processing, monotonic supervisor time, identity handling, terminal ordering, and fail-closed multi-action epoch behavior;
-- the Current Intent Commitment contract, including single-active-intent retention, rejection of silent replacement, explicit reconsideration continue/release decisions, terminal release, identity handling, monotonic time, and fail-closed invalid operations.
+- the Current Intent Commitment contract, including single-active-intent retention, rejection of silent replacement, explicit reconsideration request-before-decision ordering, separate trigger/decision provenance, continue/release decisions, terminal release, identity handling, monotonic time, and fail-closed invalid operations.
 
 A green result does **not** prove:
 
 - that a deployed runtime driver eventually supplies future Action Supervision decision epochs;
 - autonomous wall-clock scheduling or general Scheduler behavior;
 - that an intent candidate was correctly generated, ranked, or selected merely because commitment transitions are legal;
+- that a reconsideration trigger was correctly detected, sufficiently important, or admitted by a valid runtime policy merely because a request was recorded;
 - that a reconsideration trigger policy detects every meaningful runtime change;
 - that an external authority identity is legitimate merely because it was recorded;
 - model quality, simulation behavior, environment correctness, or physical execution;

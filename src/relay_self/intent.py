@@ -28,6 +28,7 @@ class InvalidIntentTime(IntentCommitmentError):
 
 class IntentEventKind(str, Enum):
     COMMITTED = "committed"
+    RECONSIDERATION_REQUESTED = "reconsideration_requested"
     RECONSIDERED_CONTINUE = "reconsidered_continue"
     RECONSIDERED_RELEASE = "reconsidered_release"
     COMPLETED = "completed"
@@ -121,6 +122,15 @@ class IntentCommitment:
                 )
         raise IntentCommitmentError("active intent history has no commit event")
 
+    @property
+    def pending_reconsideration(self) -> IntentEvent | None:
+        if self.current_intent is None or not self._events:
+            return None
+        event = self._events[-1]
+        if event.kind is IntentEventKind.RECONSIDERATION_REQUESTED:
+            return event
+        return None
+
     def commit(
         self,
         intent_id: str,
@@ -155,6 +165,33 @@ class IntentCommitment:
         assert current is not None
         return current
 
+    def request_reconsideration(
+        self,
+        intent_id: str,
+        *,
+        reason: str,
+        at_ns: int,
+        provenance: Provenance,
+    ) -> IntentEvent:
+        self._require_time(at_ns)
+        current = self._require_current(intent_id)
+        _require_text("reconsideration trigger reason", reason)
+        _require_provenance(provenance)
+        if self.pending_reconsideration is not None:
+            raise InvalidIntentTransition(
+                f"reconsideration is already pending for {current.intent_id}"
+            )
+
+        event = IntentEvent(
+            kind=IntentEventKind.RECONSIDERATION_REQUESTED,
+            intent_id=current.intent_id,
+            at_ns=at_ns,
+            provenance=provenance,
+            reason=reason,
+        )
+        self._append(event)
+        return event
+
     def reconsider(
         self,
         intent_id: str,
@@ -172,6 +209,8 @@ class IntentCommitment:
             )
         _require_text("reconsideration reason", reason)
         _require_provenance(provenance)
+        if self.pending_reconsideration is None:
+            raise InvalidIntentTransition("reconsideration requires a pending request")
 
         kind = (
             IntentEventKind.RECONSIDERED_CONTINUE

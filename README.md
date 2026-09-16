@@ -41,9 +41,9 @@ The Environment is external to RelaySelf and connects through explicit contracts
 
 ## Status
 
-RelaySelf is in early executable bootstrap. The current Python bootstrap implements Action Lifecycle, deterministic Action Supervision, and Current Intent commitment with explicit reconsideration decisions.
+RelaySelf is in early executable bootstrap. The current Python bootstrap implements Action Lifecycle, deterministic Action Supervision, and Current Intent commitment with explicit reconsideration requests and decisions.
 
-The bootstrap does not yet declare a supported package-distribution boundary, minimum Python version, dependency floor, autonomous runtime driver, general scheduler, environment adapter, arbitration engine, reconsideration-trigger detector, Skill runtime, or general authority-policy engine. In particular, Action Supervision does not prove that a deployed clock or event loop will eventually deliver future decision epochs, and Intent Commitment does not decide which candidate intent should win.
+The bootstrap does not yet declare a supported package-distribution boundary, minimum Python version, dependency floor, autonomous runtime driver, general scheduler, environment adapter, arbitration engine, reconsideration-trigger detector, Skill runtime, or general authority-policy engine. In particular, Action Supervision does not prove that a deployed clock or event loop will eventually deliver future decision epochs, and Intent Commitment does not decide which runtime changes should request reconsideration or which candidate intent should win.
 
 Hypotheses, simulation results, and implementation facts must remain distinguishable.
 
