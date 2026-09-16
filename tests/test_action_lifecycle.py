@@ -8,10 +8,38 @@ from relay_self.action import (
     InvalidTransition,
     Provenance,
 )
+from relay_self.action_supervision import ActionSupervisor
+from relay_self.intent import IntentCommitment
+from relay_self.skill import SkillExecution, SkillState
 
 
 def provenance(reference: str) -> Provenance:
     return Provenance(source="test-boundary", reference=reference)
+
+
+def committed_intent_owner(intent_id: str = "intent-1") -> IntentCommitment:
+    owner = IntentCommitment()
+    owner.commit(
+        intent_id,
+        objective="test objective",
+        at_ns=1,
+        provenance=provenance(f"commit-{intent_id}"),
+    )
+    return owner
+
+
+def started_skill(
+    owner: IntentCommitment,
+    *,
+    execution_id: str = "skill-exec-1",
+) -> SkillExecution:
+    return SkillExecution.start(
+        execution_id,
+        skill_id="test-skill",
+        intent_commitment=owner,
+        at_ns=2,
+        provenance=provenance(f"start-{execution_id}"),
+    )
 
 
 def authorized_action() -> ActionLifecycle:
@@ -201,3 +229,173 @@ def test_action_lifecycle_rejects_mutable_event_history() -> None:
 def test_action_lifecycle_rejects_non_event_history_values() -> None:
     with pytest.raises(InvalidActionData, match="only ActionEvent values"):
         ActionLifecycle("action-1", ("proposed",))  # type: ignore[arg-type]
+
+
+def test_action_proposal_derives_active_skill_and_current_intent_association() -> None:
+    owner = committed_intent_owner()
+    skill = started_skill(owner)
+    intent_history = owner.events
+    skill_history = skill.events
+
+    lifecycle = ActionLifecycle.propose(
+        "action-skill-1",
+        skill_execution=skill,
+        intent_commitment=owner,
+        at_ns=3,
+        provenance=provenance("proposal-skill-1"),
+    )
+
+    assert lifecycle.state is ActionState.PROPOSED
+    assert lifecycle.skill_execution_id == skill.execution_id
+    assert lifecycle.intent_id == "intent-1"
+    assert owner.events == intent_history
+    assert skill.events == skill_history
+
+
+@pytest.mark.parametrize("terminal_method", ["succeed", "fail", "cancel"])
+def test_terminal_skill_cannot_produce_new_action_proposal(terminal_method: str) -> None:
+    owner = committed_intent_owner()
+    skill = started_skill(owner)
+    terminal_skill = getattr(skill, terminal_method)(
+        reason="terminal",
+        at_ns=3,
+        provenance=provenance(f"skill-{terminal_method}"),
+    )
+
+    with pytest.raises(InvalidTransition, match="skill execution must be started"):
+        ActionLifecycle.propose(
+            "action-after-terminal-skill",
+            skill_execution=terminal_skill,
+            intent_commitment=owner,
+            at_ns=4,
+            provenance=provenance("proposal-after-terminal-skill"),
+        )
+
+
+def test_started_skill_cannot_propose_after_current_intent_closes() -> None:
+    owner = committed_intent_owner()
+    skill = started_skill(owner)
+    owner.complete(
+        "intent-1",
+        reason="done",
+        at_ns=3,
+        provenance=provenance("intent-complete"),
+    )
+    skill_history = skill.events
+    intent_history = owner.events
+
+    assert skill.state is SkillState.STARTED
+    with pytest.raises(InvalidTransition, match="current intent"):
+        ActionLifecycle.propose(
+            "action-after-intent-close",
+            skill_execution=skill,
+            intent_commitment=owner,
+            at_ns=4,
+            provenance=provenance("proposal-after-intent-close"),
+        )
+
+    assert skill.events == skill_history
+    assert owner.events == intent_history
+
+
+def test_stale_skill_cannot_propose_for_replacement_current_intent() -> None:
+    owner = committed_intent_owner()
+    stale_skill = started_skill(owner)
+    owner.complete(
+        "intent-1",
+        reason="done",
+        at_ns=3,
+        provenance=provenance("intent-1-complete"),
+    )
+    owner.commit(
+        "intent-2",
+        objective="replacement objective",
+        at_ns=4,
+        provenance=provenance("commit-intent-2"),
+    )
+
+    with pytest.raises(InvalidTransition, match="does not match current intent"):
+        ActionLifecycle.propose(
+            "action-stale-skill",
+            skill_execution=stale_skill,
+            intent_commitment=owner,
+            at_ns=5,
+            provenance=provenance("proposal-stale-skill"),
+        )
+
+
+def test_pending_reconsideration_does_not_block_action_proposal() -> None:
+    owner = committed_intent_owner()
+    skill = started_skill(owner)
+    owner.request_reconsideration(
+        "intent-1",
+        reason="new evidence",
+        at_ns=3,
+        provenance=provenance("reconsideration-request"),
+    )
+
+    lifecycle = ActionLifecycle.propose(
+        "action-pending-reconsideration",
+        skill_execution=skill,
+        intent_commitment=owner,
+        at_ns=4,
+        provenance=provenance("proposal-pending-reconsideration"),
+    )
+
+    assert lifecycle.skill_execution_id == skill.execution_id
+    assert lifecycle.intent_id == "intent-1"
+    assert owner.current_intent is not None
+    assert owner.current_intent.intent_id == "intent-1"
+
+
+def test_action_proposal_requires_real_skill_execution() -> None:
+    owner = committed_intent_owner()
+
+    with pytest.raises(InvalidActionData, match="skill execution"):
+        ActionLifecycle.propose(
+            "action-invalid-skill",
+            skill_execution=object(),  # type: ignore[arg-type]
+            intent_commitment=owner,
+            at_ns=3,
+            provenance=provenance("proposal-invalid-skill"),
+        )
+
+
+def test_action_proposal_requires_real_intent_commitment() -> None:
+    owner = committed_intent_owner()
+    skill = started_skill(owner)
+
+    with pytest.raises(InvalidActionData, match="intent commitment"):
+        ActionLifecycle.propose(
+            "action-invalid-intent-owner",
+            skill_execution=skill,
+            intent_commitment=object(),  # type: ignore[arg-type]
+            at_ns=3,
+            provenance=provenance("proposal-invalid-intent-owner"),
+        )
+
+
+def test_action_supervision_preserves_skill_and_intent_association() -> None:
+    owner = committed_intent_owner()
+    skill = started_skill(owner)
+    lifecycle = ActionLifecycle.propose(
+        "action-supervised-skill",
+        skill_execution=skill,
+        intent_commitment=owner,
+        at_ns=3,
+        provenance=provenance("proposal-supervised-skill"),
+    ).authorize(
+        at_ns=4,
+        provenance=provenance("authorization-supervised-skill"),
+        authority="test-policy",
+    )
+
+    issued = ActionSupervisor().issue(
+        lifecycle,
+        at_ns=5,
+        deadline_ns=10,
+        provenance=provenance("issue-supervised-skill"),
+    )
+
+    assert issued.skill_execution_id == skill.execution_id
+    assert issued.intent_id == "intent-1"
