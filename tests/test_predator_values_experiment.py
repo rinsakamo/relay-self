@@ -80,6 +80,26 @@ def test_policy_state_co_located_predator_has_maximum_proximity() -> None:
     assert state[3] == config.predator_sensor_range + 1
 
 
+def test_food_sensor_range_defaults_to_reduced_predator_range() -> None:
+    config = SimulationConfig()
+    assert config.food_sensor_range == 10
+    assert config.food_sensor_range == config.predator_sensor_range
+
+
+def test_policy_state_sees_food_direction_only_within_food_sensor_range() -> None:
+    config = small_config(food_sensor_range=4)
+    counts = Counter({5: 1})
+
+    assert observe_state(5, {7}, counts, [], config)[0] == 1
+    assert observe_state(5, {3}, counts, [], config)[0] == -1
+    assert observe_state(5, {10}, counts, [], config)[0] == 0
+
+
+def test_policy_state_has_neutral_food_direction_when_food_is_absent() -> None:
+    config = small_config(food_sensor_range=4)
+    assert observe_state(5, set(), Counter({5: 1}), [], config)[0] == 0
+
+
 def test_conspecific_sensor_uses_other_prey() -> None:
     config = small_config(conspecific_sensor_range=4)
     direction, signal = conspecific_sensor(5, Counter({5: 1, 3: 1}), config)
