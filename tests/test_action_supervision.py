@@ -13,18 +13,40 @@ from relay_self.action_supervision import (
     InvalidSupervisorTime,
     UnknownSupervisedAction,
 )
+from relay_self.intent import IntentCommitment
+from relay_self.skill import SkillExecution
 
 
 def provenance(reference: str) -> Provenance:
     return Provenance(source="test-runtime", reference=reference)
 
 
-def authorized_action(action_id: str = "action-1", *, at_ns: int = 20) -> ActionLifecycle:
+def proposed_action(action_id: str = "action-1") -> ActionLifecycle:
+    owner = IntentCommitment()
+    owner.commit(
+        "intent-1",
+        objective="test objective",
+        at_ns=1,
+        provenance=provenance(f"commit-{action_id}"),
+    )
+    skill = SkillExecution.start(
+        f"skill-exec-{action_id}",
+        skill_id="test-skill",
+        intent_commitment=owner,
+        at_ns=2,
+        provenance=provenance(f"skill-start-{action_id}"),
+    )
     return ActionLifecycle.propose(
         action_id,
+        skill_execution=skill,
+        intent_commitment=owner,
         at_ns=10,
         provenance=provenance(f"proposal-{action_id}"),
-    ).authorize(
+    )
+
+
+def authorized_action(action_id: str = "action-1", *, at_ns: int = 20) -> ActionLifecycle:
+    return proposed_action(action_id).authorize(
         at_ns=at_ns,
         provenance=provenance(f"authorization-{action_id}"),
         authority="test-policy",
@@ -309,11 +331,7 @@ def test_supervised_issue_requires_lifecycle_object() -> None:
 
 def test_supervised_issue_delegates_authorization_legality() -> None:
     supervisor = ActionSupervisor()
-    proposed = ActionLifecycle.propose(
-        "action-1",
-        at_ns=10,
-        provenance=provenance("proposal-1"),
-    )
+    proposed = proposed_action()
 
     with pytest.raises(InvalidTransition, match="proposed to issued"):
         supervisor.issue(
