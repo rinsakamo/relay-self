@@ -383,9 +383,6 @@ def run_simulation(
     foods = set(
         rng.sample(range(config.world_size), min(config.initial_food, config.world_size))
     )
-    predators = [
-        rng.randrange(config.world_size) for _ in range(config.initial_predators)
-    ]
     next_agent_id = config.initial_population
     population = [
         Agent(
@@ -401,6 +398,9 @@ def run_simulation(
             ),
         )
         for agent_id in range(config.initial_population)
+    ]
+    predators = [
+        rng.randrange(config.world_size) for _ in range(config.initial_predators)
     ]
 
     births = 0
