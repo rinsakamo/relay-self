@@ -9,6 +9,7 @@ from experiments.predator_values import (
     conspecific_sensor,
     intrinsic_reward,
     move_predators,
+    observe_state,
     predator_sensor,
     resolve_predation,
     run_simulation,
@@ -45,6 +46,38 @@ def test_predator_sensor_is_bounded_and_local() -> None:
     direction, signal = predator_sensor(5, [12], config)
     assert direction == 0
     assert signal == 0.0
+
+
+def test_policy_state_preserves_predator_proximity_on_same_side() -> None:
+    config = small_config(predator_sensor_range=4)
+    counts = Counter({5: 1})
+
+    near = observe_state(5, set(), counts, [6], config)
+    far = observe_state(5, set(), counts, [9], config)
+
+    assert near[:3] == far[:3]
+    assert near[2] == 1
+    assert near[3] == 4
+    assert far[3] == 1
+
+
+def test_policy_state_uses_zero_proximity_when_predator_is_not_sensed() -> None:
+    config = small_config(predator_sensor_range=4)
+    counts = Counter({5: 1})
+
+    absent = observe_state(5, set(), counts, [], config)
+    out_of_range = observe_state(5, set(), counts, [12], config)
+
+    assert absent[2:] == (0, 0)
+    assert out_of_range[2:] == (0, 0)
+
+
+def test_policy_state_co_located_predator_has_maximum_proximity() -> None:
+    config = small_config(predator_sensor_range=4)
+    state = observe_state(5, set(), Counter({5: 1}), [5], config)
+
+    assert state[2] == 0
+    assert state[3] == config.predator_sensor_range + 1
 
 
 def test_conspecific_sensor_uses_other_prey() -> None:
