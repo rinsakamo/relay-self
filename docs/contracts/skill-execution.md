@@ -4,7 +4,7 @@
 
 This document owns the executable runtime lifecycle for one Skill execution instance.
 
-It refines the ontology definition of Skill as a temporally extended feedback controller or embodied capability and the architectural flow `Current Intent -> Skill -> Action`. It owns the Skill execution's immutable association to the Current Intent that was actually committed when the supported start seam ran. It does **not** define the persistent capability library, a closed-loop control policy, primitive Action generation, general Skill scheduling, or policy for what happens when the associated Current Intent changes later.
+It refines the ontology definition of Skill as a temporally extended feedback controller or embodied capability and the architectural flow `Current Intent -> Skill -> Action`. It owns the Skill execution's immutable association to the Current Intent that was actually committed when the supported start seam ran, and it distinguishes Skill success, Skill failure, and explicit lifecycle cancellation. It does **not** define the persistent capability library, a closed-loop control policy, primitive Action generation, general Skill scheduling, or automatic policy for what happens when the associated Current Intent changes later.
 
 The executable owner is `src/relay_self/skill.py`; deterministic verification lives in `tests/test_skill_execution.py`.
 
@@ -12,7 +12,7 @@ The executable owner is `src/relay_self/skill.py`; deterministic verification li
 
 Skill Execution is not reducible to Current Intent.
 
-Current Intent is the currently committed executable objective. A Skill execution is one runtime path used to pursue that objective. The Current Intent may remain unchanged while a particular Skill execution succeeds, fails, or is later replaced by another execution path.
+Current Intent is the currently committed executable objective. A Skill execution is one runtime path used to pursue that objective. The Current Intent may remain unchanged while a particular Skill execution succeeds, fails, is explicitly cancelled, or is later replaced by another execution path.
 
 Skill Execution is also not reducible to primitive Action Lifecycle.
 
@@ -32,9 +32,9 @@ A separate Skill Execution owner is justified.
 
 The first Skill Execution bootstrap accepted a caller-supplied `intent_id`. That preserved an association field but did not establish that the referenced intent was actually current. Once both Current Intent Commitment and Skill Execution existed as executable owners, leaving that validation entirely to a future orchestrator was no longer the smallest sufficient boundary: the supported Skill start seam itself could still create a contradictory started execution for an arbitrary, stale, or nonexistent intent.
 
-A new Intent-Skill coupling owner is not justified for this relation. No independent state machine, persistence, scheduler, or policy remains after the start association is validated. The responsibility is lifecycle-local to Skill start because Skill Execution already owns the immutable `intent_id` association and `STARTED` event.
+A new Intent-Skill coupling owner was not justified for this relation. No independent state machine, persistence, scheduler, or policy remained after the start association was validated. The responsibility is lifecycle-local to Skill start because Skill Execution already owns the immutable `intent_id` association and `STARTED` event.
 
-The smallest current rule is therefore:
+The start rule is therefore:
 
 > `SkillExecution.start(...)` reads an `IntentCommitment`, requires that it currently owns a Current Intent, and derives the new execution's `intent_id` from that owner rather than accepting the identity from the caller.
 
@@ -42,7 +42,34 @@ Current Intent Commitment remains the sole owner of whether an intent is current
 
 A pending reconsideration request does not by itself release the Current Intent. Therefore a Skill may still start for the same current intent while reconsideration is pending. Whether a runtime *should* choose to start another Skill in that situation is future orchestration/policy, not part of this lifecycle invariant.
 
-This start-time validation also does not define what happens to an already-started Skill if its associated Current Intent is later completed, failed, invalidated, or released. That later coupling remains deferred.
+### Cancellation classification strengthening
+
+After start association was grounded, one smaller lifecycle gap remained.
+
+The initial lifecycle exposed only:
+
+```text
+STARTED -> SUCCEEDED | FAILED
+```
+
+That is insufficient when an execution is stopped for an upstream or external reason. Reusing `FAILED` would claim that the Skill execution path itself failed. Leaving the execution `STARTED` would lose explicit causal closure.
+
+The independent information is the terminal class:
+
+```text
+Skill FAILED
+  != Skill CANCELLED
+```
+
+`FAILED` means the execution path terminated unsuccessfully according to accepted Skill-level reason/evidence.
+
+`CANCELLED` means the caller explicitly closed this execution lifecycle because it should no longer continue for an upstream or external reason, without asserting Skill success or Skill failure.
+
+This distinction stays inside the existing Skill Execution owner because that owner already owns terminal classification for one execution instance. No new supervisor or Intent-Skill coupling owner is required.
+
+Automatic Current-Intent-to-Skill cancellation is **not** justified by this distinction. Current authority does not yet define interruptibility classes, yield points, closed-loop controller supervision, child Actions, or a cross-owner time contract. A later Current Intent release therefore remains separate from the explicit Skill cancellation operation.
+
+A generic `INTERRUPTED` state is also not introduced. Interruption may imply resumability, yield semantics, or controller-level behavior that the current runtime does not implement. `CANCELLED` is terminal for this execution identity.
 
 A full Skill controller is still not justified here. Current authority names initiation conditions, feedback policy, termination, yield points, interruptibility, duration/resource implications, success/failure evidence, side effects, and required authority as useful possible contract dimensions. Most of those need concrete environment/runtime semantics that do not yet exist.
 
@@ -56,11 +83,14 @@ STARTED
 
 STARTED
   -> FAILED
+
+STARTED
+  -> CANCELLED
 ```
 
-`SUCCEEDED` and `FAILED` are terminal.
+`SUCCEEDED`, `FAILED`, and `CANCELLED` are terminal.
 
-This contract deliberately has no pause, resume, yield, interrupt, retry, or child-Action state.
+This contract deliberately has no pause, resume, yield, resumable interruption, preemption, retry, or child-Action state.
 
 ## Execution identity and association
 
@@ -126,11 +156,11 @@ If reconsideration is pending but the intent remains current, start remains stru
 
 If the intent has already been completed, failed, invalidated, or released, there is no Current Intent and start fails closed.
 
-## Success and failure
+## Terminal transitions
 
-A started execution may close exactly once as either `SUCCEEDED` or `FAILED`.
+A started execution may close exactly once as `SUCCEEDED`, `FAILED`, or `CANCELLED`.
 
-Both terminal transitions require:
+All terminal transitions require:
 
 - a non-empty reason;
 - caller-supplied monotonic time;
@@ -152,14 +182,32 @@ Failure does not automatically fail or release the associated Current Intent. Cu
 
 The existing Current Intent Commitment `request_reconsideration(...)` seam can receive such a decision in a future coupling transaction. This contract does not call it automatically.
 
+### `CANCELLED`
+
+`CANCELLED` means the caller has explicitly closed this execution lifecycle because it should no longer continue for an upstream or external reason, without classifying the Skill path as successful or failed.
+
+Cancellation is terminal for this `execution_id`. A later retry or restart is another execution instance rather than reopening the cancelled history.
+
+Cancellation does **not** by itself prove that:
+
+- the associated Current Intent was completed, failed, invalidated, or released;
+- an external controller or physical process has already stopped;
+- any issued or in-flight primitive Action was cancelled;
+- cancellation was safe under an interruptibility or yield policy;
+- another Skill or Current Intent should be selected;
+- the associated Current Intent should be failed, released, or reconsidered.
+
+Those are separate responsibilities.
+
 ## Terminality
 
 A terminal Skill execution cannot be reopened or transitioned again.
 
 Consequences include:
 
-- success cannot later become failure;
-- failure cannot later become success;
+- success cannot later become failure or cancellation;
+- failure cannot later become success or cancellation;
+- cancellation cannot later become success or failure;
 - terminal events are append-only causal history rather than mutable result fields;
 - a retry, alternate Skill, or replacement execution must be represented by another execution instance rather than rewriting the completed history.
 
@@ -178,7 +226,7 @@ Rules:
 
 Equal timestamps permit a Skill to start and terminate in one runtime decision epoch without inventing sub-tick wall-clock ordering.
 
-This transaction does not introduce a general cross-owner clock contract between Intent Commitment and Skill Execution. The association validation is based on the Current Intent state observed when `start(...)` runs. A future runtime/time owner may define stronger ordering across owner-local event traces when needed.
+This contract does not introduce a general cross-owner clock contract between Intent Commitment and Skill Execution. Start association and later explicit cancellation use their respective owner state as supplied at the operation boundary. A future runtime/time owner may define stronger ordering across owner-local event traces when needed.
 
 ## Provenance
 
@@ -186,7 +234,7 @@ Skill events reuse the repository's current immutable `Provenance` value type.
 
 This does not make Action Lifecycle the semantic owner of Skill Execution. It reuses one existing provenance representation rather than introducing a duplicate type solely for this boundary.
 
-Provenance records where the start or terminal event came from. It does not by itself establish that the source was legitimate authority for Skill selection, initiation, or termination.
+Provenance records where the start or terminal event came from. It does not by itself establish that the source was legitimate authority for Skill selection, initiation, success, failure, or cancellation.
 
 The Current Intent association is grounded structurally by reading `IntentCommitment.current_intent`; that does not turn the Skill start provenance into intent-selection authority.
 
@@ -202,7 +250,7 @@ The minimum causal chain is therefore:
 Current Intent owner state at start
   -> execution_id + skill_id + derived intent_id
   -> STARTED provenance
-  -> SUCCEEDED | FAILED provenance + reason
+  -> SUCCEEDED | FAILED | CANCELLED provenance + reason
 ```
 
 This is owner-local in-memory causal trace. It is not durable persistence, a repository-wide event store, or a restart-recovery contract.
@@ -226,17 +274,24 @@ Skill FAILED
   != Current Intent FAILED
   != automatic reconsideration request
 
+Skill CANCELLED
+  != Current Intent FAILED
+  != Current Intent RELEASED
+  != automatic reconsideration request
+
 later Current Intent release
-  != automatic Skill termination
+  != automatic Skill cancellation
 ```
 
-The last relation is an explicit non-claim. This contract does not supervise the Current Intent after Skill start and does not automatically rewrite or terminate existing Skill history when the intent owner later changes.
+The final relation is intentional. This contract does not supervise the Current Intent after Skill start and does not automatically rewrite or terminate existing Skill history when the intent owner later changes.
+
+A future runtime/orchestrator may explicitly call `cancel(...)` after an upstream policy decides the execution should end. The existence of this seam does not define that policy.
 
 ## Relationship to primitive Action
 
 This contract does not own primitive Action semantics.
 
-It does not currently record child Action identities, generate Action proposals, authorize Actions, inspect Action outcomes, or infer Skill success/failure from Action closure.
+It does not currently record child Action identities, generate Action proposals, authorize Actions, inspect Action outcomes, cancel Actions, or infer Skill success/failure/cancellation from Action closure.
 
 The existing Action Lifecycle and Action Supervision owners remain the sole executable owners for their current primitive-Action responsibilities.
 
@@ -260,7 +315,7 @@ Examples include:
 
 The mechanism does not silently invent an intent association, repair, reopen, retry, or reinterpret invalid execution history.
 
-Start validation never mutates the supplied Intent Commitment owner, whether validation succeeds or fails.
+Start validation never mutates the supplied Intent Commitment owner, whether validation succeeds or fails. Skill terminal transitions, including cancellation, also do not mutate a separately held Intent Commitment owner.
 
 ## Deterministic verification obligations
 
@@ -275,14 +330,17 @@ Canonical pytest coverage must demonstrate at least:
 - successful and failed start validation do not mutate Intent Commitment history/state;
 - success is an explicit terminal transition with reason and provenance;
 - failure is an explicit terminal transition with reason and provenance;
-- terminal execution cannot reopen or change terminal class;
-- event time is monotonic inside the Skill execution;
+- cancellation is an explicit terminal transition with reason and provenance and is distinct from failure;
+- cancelled execution cannot reopen or change terminal class;
+- event time is monotonic inside the Skill execution, including cancellation;
 - malformed local identity/commitment/provenance/reason/time fails closed;
 - event history is exposed as an immutable tuple;
 - Skill terminal state does not automatically mutate or release a separately held Current Intent;
+- later Current Intent completion/failure/invalidation/release does not automatically mutate an already-started Skill;
+- an explicitly cancelled Skill can close after such an upstream change without reclassifying the Skill as failed;
 - Skill failure does not automatically create a Current Intent reconsideration request.
 
-These tests are deterministic invariant evidence only. They do not prove useful Skill selection, capability existence, valid preconditions, closed-loop control quality, continued intent validity during Skill execution, environment correctness, successful primitive Actions, or physical execution.
+These tests are deterministic invariant evidence only. They do not prove useful Skill selection, capability existence, valid preconditions, closed-loop control quality, continued intent validity during Skill execution, safe interruption, physical/controller cancellation, child-Action cancellation, environment correctness, successful primitive Actions, or physical execution.
 
 ## Non-goals
 
@@ -294,9 +352,9 @@ This contract intentionally does not define:
 - closed-loop feedback/control policy;
 - Skill-start authorization policy;
 - automatic cancellation/termination when the associated Current Intent later changes;
-- primitive Action generation, Action Lifecycle coupling, or Action Supervision coupling;
+- primitive Action generation, Action Lifecycle coupling, Action Supervision coupling, or child-Action cancellation;
 - automatic Skill-failure-to-reconsideration policy;
-- yield points, pause/resume, interruption classes, cancellation, preemption, or retry policy;
+- interruptibility classes, yield points, pause/resume, resumable interruption, preemption, or retry policy;
 - expected duration, resource-cost, side-effect, or performance models;
 - Skill-specific authority policy;
 - a cross-owner clock/scheduler contract;
