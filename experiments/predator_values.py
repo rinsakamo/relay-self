@@ -54,6 +54,7 @@ class SimulationConfig:
     sensor_reward_scale: float = 0.25
     predator_move_probability: float = 0.20
     predator_kill_probability: float = 0.30
+    predator_eat_interval: int = 10
     sample_interval: int = 100
 
     def __post_init__(self) -> None:
@@ -89,6 +90,8 @@ class SimulationConfig:
             raise ValueError("predator_move_probability must be within [0, 1]")
         if not 0.0 <= self.predator_kill_probability <= 1.0:
             raise ValueError("predator_kill_probability must be within [0, 1]")
+        if self.predator_eat_interval < 0:
+            raise ValueError("predator_eat_interval must be non-negative")
         if self.sample_interval < 1:
             raise ValueError("sample_interval must be positive")
 
@@ -313,27 +316,34 @@ def move_predators(
 def resolve_predation(
     population: list[Agent],
     predators: list[int],
+    predator_eat_timers: list[int],
     rng: random.Random,
     config: SimulationConfig,
-) -> tuple[list[Agent], set[int]]:
+) -> tuple[list[Agent], set[int], list[int]]:
+    if len(predators) != len(predator_eat_timers):
+        raise ValueError("predator positions and eat timers must have equal length")
+
     prey_by_position: dict[int, list[Agent]] = {}
     for agent in population:
         prey_by_position.setdefault(agent.position, []).append(agent)
 
     killed: set[int] = set()
-    for predator_position in predators:
-        candidates = [
-            agent
-            for agent in prey_by_position.get(predator_position, [])
-            if agent.agent_id not in killed
-        ]
-        if not candidates:
-            continue
-        if rng.random() < config.predator_kill_probability:
-            killed.add(rng.choice(candidates).agent_id)
+    next_timers: list[int] = []
+    for predator_position, timer in zip(predators, predator_eat_timers, strict=True):
+        ate = False
+        if timer <= 0:
+            candidates = [
+                agent
+                for agent in prey_by_position.get(predator_position, [])
+                if agent.agent_id not in killed
+            ]
+            if candidates and rng.random() < config.predator_kill_probability:
+                killed.add(rng.choice(candidates).agent_id)
+                ate = True
+        next_timers.append(config.predator_eat_interval if ate else timer - 1)
 
     survivors = [agent for agent in population if agent.agent_id not in killed]
-    return survivors, killed
+    return survivors, killed, next_timers
 
 
 def make_child(
@@ -408,6 +418,7 @@ def run_simulation(
     predators = [
         rng.randrange(config.world_size) for _ in range(config.initial_predators)
     ]
+    predator_eat_timers = [0 for _ in predators]
 
     births = 0
     deaths = 0
@@ -450,8 +461,12 @@ def run_simulation(
         deaths += natural_deaths
 
         predators = move_predators(predators, physically_alive, rng, config)
-        survivors, killed_ids = resolve_predation(
-            physically_alive, predators, rng, config
+        survivors, killed_ids, predator_eat_timers = resolve_predation(
+            physically_alive,
+            predators,
+            predator_eat_timers,
+            rng,
+            config,
         )
         predation_deaths += len(killed_ids)
         deaths += len(killed_ids)

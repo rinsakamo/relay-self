@@ -83,16 +83,21 @@ def test_predation_is_world_consequence_not_intrinsic_reward() -> None:
         energy=10.0,
         genes=RewardGenes(0.0, 0.0, 0.0, 100.0),
     )
-    survivors, killed = resolve_predation([agent], [4], random.Random(0), config)
+    survivors, killed, timers = resolve_predation(
+        [agent], [4], [0], random.Random(0), config
+    )
     assert survivors == []
     assert killed == {1}
+    assert timers == [config.predator_eat_interval]
 
 
 def test_one_predator_kills_at_most_one_prey_from_group() -> None:
     config = small_config(predator_kill_probability=1.0)
     population = [prey(1), prey(2), prey(3)]
 
-    survivors, killed = resolve_predation(population, [4], random.Random(0), config)
+    survivors, killed, _ = resolve_predation(
+        population, [4], [0], random.Random(0), config
+    )
 
     assert len(killed) == 1
     assert len(survivors) == 2
@@ -102,7 +107,9 @@ def test_two_predators_kill_at_most_two_distinct_prey() -> None:
     config = small_config(predator_kill_probability=1.0)
     population = [prey(1), prey(2), prey(3)]
 
-    survivors, killed = resolve_predation(population, [4, 4], random.Random(0), config)
+    survivors, killed, _ = resolve_predation(
+        population, [4, 4], [0, 0], random.Random(0), config
+    )
 
     assert len(killed) == 2
     assert len(survivors) == 1
@@ -112,20 +119,80 @@ def test_two_predators_kill_at_most_two_distinct_prey() -> None:
 def test_predators_cannot_kill_same_prey_twice() -> None:
     config = small_config(predator_kill_probability=1.0)
 
-    survivors, killed = resolve_predation([prey(1)], [4, 4], random.Random(0), config)
+    survivors, killed, _ = resolve_predation(
+        [prey(1)], [4, 4], [0, 0], random.Random(0), config
+    )
 
     assert survivors == []
     assert killed == {1}
 
 
-def test_zero_predator_kill_probability_kills_none() -> None:
+def test_zero_predator_kill_probability_kills_none_and_does_not_reset_timer() -> None:
     config = small_config(predator_kill_probability=0.0)
     population = [prey(1), prey(2), prey(3)]
 
-    survivors, killed = resolve_predation(population, [4, 4], random.Random(0), config)
+    survivors, killed, timers = resolve_predation(
+        population, [4, 4], [0, 0], random.Random(0), config
+    )
 
     assert survivors == population
     assert killed == set()
+    assert timers == [-1, -1]
+
+
+def test_successful_predation_resets_only_that_predators_timer() -> None:
+    config = small_config(predator_kill_probability=1.0, predator_eat_interval=10)
+    population = [prey(1, 4), prey(2, 8)]
+
+    _, killed, timers = resolve_predation(
+        population, [4, 8], [0, 5], random.Random(0), config
+    )
+
+    assert killed == {1}
+    assert timers == [10, 4]
+
+
+def test_positive_eat_timer_blocks_predation_and_decrements() -> None:
+    config = small_config(predator_kill_probability=1.0)
+    population = [prey(1)]
+
+    survivors, killed, timers = resolve_predation(
+        population, [4], [2], random.Random(0), config
+    )
+
+    assert survivors == population
+    assert killed == set()
+    assert timers == [1]
+
+
+def test_timer_reaching_zero_is_eligible_on_following_step() -> None:
+    config = small_config(predator_kill_probability=1.0)
+    population = [prey(1)]
+
+    survivors, killed, timers = resolve_predation(
+        population, [4], [1], random.Random(0), config
+    )
+    assert survivors == population
+    assert killed == set()
+    assert timers == [0]
+
+    survivors, killed, timers = resolve_predation(
+        population, [4], timers, random.Random(0), config
+    )
+    assert survivors == []
+    assert killed == {1}
+    assert timers == [config.predator_eat_interval]
+
+
+def test_predator_positions_and_timers_must_align() -> None:
+    config = small_config()
+
+    try:
+        resolve_predation([prey(1)], [4, 4], [0], random.Random(0), config)
+    except ValueError as error:
+        assert str(error) == "predator positions and eat timers must have equal length"
+    else:
+        raise AssertionError("expected mismatched predator state to fail closed")
 
 
 def test_seeded_simulation_is_reproducible_and_control_has_no_predation() -> None:
