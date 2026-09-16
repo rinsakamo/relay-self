@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from relay_self.action import Provenance
+from relay_self.intent import IntentCommitment
 
 
 class SkillExecutionError(ValueError):
@@ -78,7 +79,7 @@ class SkillExecution:
         execution_id: str,
         *,
         skill_id: str,
-        intent_id: str,
+        intent_commitment: IntentCommitment,
         at_ns: int,
         provenance: Provenance,
     ) -> SkillExecution:
@@ -87,10 +88,16 @@ class SkillExecution:
             at_ns=at_ns,
             provenance=provenance,
         )
+        _require_intent_commitment(intent_commitment)
+        current_intent = intent_commitment.current_intent
+        if current_intent is None:
+            raise InvalidSkillTransition(
+                "cannot start a Skill execution without a current intent"
+            )
         return cls(
             execution_id=execution_id,
             skill_id=skill_id,
-            intent_id=intent_id,
+            intent_id=current_intent.intent_id,
             _events=(event,),
         )
 
@@ -185,3 +192,8 @@ def _require_at_ns(value: object) -> None:
 def _require_provenance(value: object) -> None:
     if not isinstance(value, Provenance):
         raise InvalidSkillData("skill event provenance must be Provenance")
+
+
+def _require_intent_commitment(value: object) -> None:
+    if not isinstance(value, IntentCommitment):
+        raise InvalidSkillData("intent commitment must be IntentCommitment")
