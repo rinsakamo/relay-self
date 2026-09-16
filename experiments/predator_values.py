@@ -9,7 +9,7 @@ from statistics import fmean
 from typing import Iterable
 
 ACTIONS = (-1, 0, 1)
-State = tuple[int, int, int]
+State = tuple[int, int, int, int]
 
 
 @dataclass(frozen=True)
@@ -241,8 +241,18 @@ def observe_state(
 ) -> State:
     food_direction = nearest_direction(position, foods, config.world_size)
     conspecific_direction, _ = conspecific_sensor(position, counts, config)
-    predator_direction, _ = predator_sensor(position, predators, config)
-    return food_direction, conspecific_direction, predator_direction
+    predator_direction, predator_signal_value = predator_sensor(
+        position, predators, config
+    )
+    predator_proximity = round(
+        predator_signal_value * (config.predator_sensor_range + 1)
+    )
+    return (
+        food_direction,
+        conspecific_direction,
+        predator_direction,
+        predator_proximity,
+    )
 
 
 def apply_body_dynamics(
