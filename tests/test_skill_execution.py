@@ -1,3 +1,5 @@
+import inspect
+
 import pytest
 
 from relay_self.action import Provenance
@@ -15,11 +17,22 @@ def provenance(reference: str) -> Provenance:
     return Provenance(source="test-runtime", reference=reference)
 
 
+def committed(intent_id: str = "intent-1") -> IntentCommitment:
+    intent = IntentCommitment()
+    intent.commit(
+        intent_id,
+        objective="reach the charging station",
+        at_ns=1,
+        provenance=provenance("intent-commit"),
+    )
+    return intent
+
+
 def started() -> SkillExecution:
     return SkillExecution.start(
         "skill-exec-1",
         skill_id="navigate-corridor",
-        intent_id="intent-1",
+        intent_commitment=committed(),
         at_ns=10,
         provenance=provenance("skill-start"),
     )
@@ -35,6 +48,95 @@ def test_start_establishes_skill_execution_identity_and_state() -> None:
     assert execution.is_terminal is False
     assert execution.events[0].provenance.reference == "skill-start"
     assert execution.events[0].reason is None
+
+
+def test_start_derives_current_intent_association_without_mutating_commitment() -> None:
+    intent = committed("intent-current")
+    history = intent.events
+
+    execution = SkillExecution.start(
+        "skill-exec-1",
+        skill_id="navigate-corridor",
+        intent_commitment=intent,
+        at_ns=10,
+        provenance=provenance("skill-start"),
+    )
+
+    assert execution.intent_id == "intent-current"
+    assert intent.events == history
+    assert intent.current_intent is not None
+    assert intent.current_intent.intent_id == "intent-current"
+
+
+def test_start_does_not_accept_caller_supplied_intent_id() -> None:
+    parameters = inspect.signature(SkillExecution.start).parameters
+
+    assert "intent_commitment" in parameters
+    assert "intent_id" not in parameters
+
+
+def test_start_requires_a_current_intent() -> None:
+    intent = IntentCommitment()
+    history = intent.events
+
+    with pytest.raises(InvalidSkillTransition, match="current intent"):
+        SkillExecution.start(
+            "skill-exec-1",
+            skill_id="navigate-corridor",
+            intent_commitment=intent,
+            at_ns=10,
+            provenance=provenance("skill-start"),
+        )
+
+    assert intent.events == history
+    assert intent.current_intent is None
+
+
+def test_start_rejects_released_intent_without_mutating_commitment() -> None:
+    intent = committed()
+    intent.complete(
+        "intent-1",
+        reason="objective already completed",
+        at_ns=2,
+        provenance=provenance("intent-complete"),
+    )
+    history = intent.events
+
+    with pytest.raises(InvalidSkillTransition, match="current intent"):
+        SkillExecution.start(
+            "skill-exec-1",
+            skill_id="navigate-corridor",
+            intent_commitment=intent,
+            at_ns=10,
+            provenance=provenance("skill-start"),
+        )
+
+    assert intent.events == history
+    assert intent.current_intent is None
+
+
+def test_pending_reconsideration_does_not_release_current_intent_for_skill_start() -> None:
+    intent = committed()
+    intent.request_reconsideration(
+        "intent-1",
+        reason="route changed materially",
+        at_ns=2,
+        provenance=provenance("reconsideration-request"),
+    )
+    history = intent.events
+
+    execution = SkillExecution.start(
+        "skill-exec-1",
+        skill_id="navigate-corridor",
+        intent_commitment=intent,
+        at_ns=10,
+        provenance=provenance("skill-start"),
+    )
+
+    assert execution.intent_id == "intent-1"
+    assert intent.events == history
+    assert intent.current_intent is not None
+    assert intent.pending_reconsideration is not None
 
 
 def test_success_is_explicit_terminal_transition() -> None:
@@ -108,7 +210,7 @@ def test_start_rejects_malformed_time(at_ns: object) -> None:
         SkillExecution.start(
             "skill-exec-1",
             skill_id="navigate-corridor",
-            intent_id="intent-1",
+            intent_commitment=committed(),
             at_ns=at_ns,  # type: ignore[arg-type]
             provenance=provenance("bad-time"),
         )
@@ -118,7 +220,7 @@ def test_equal_time_terminal_transition_is_allowed() -> None:
     execution = SkillExecution.start(
         "skill-exec-1",
         skill_id="instant-check",
-        intent_id="intent-1",
+        intent_commitment=committed(),
         at_ns=10,
         provenance=provenance("start"),
     ).succeed(
@@ -135,14 +237,12 @@ def test_equal_time_terminal_transition_is_allowed() -> None:
     [
         ("execution_id", ""),
         ("skill_id", "   "),
-        ("intent_id", ""),
     ],
 )
-def test_start_requires_non_empty_identity_fields(field: str, value: str) -> None:
+def test_start_requires_non_empty_local_identity_fields(field: str, value: str) -> None:
     kwargs = {
         "execution_id": "skill-exec-1",
         "skill_id": "navigate-corridor",
-        "intent_id": "intent-1",
     }
     kwargs[field] = value
 
@@ -150,9 +250,20 @@ def test_start_requires_non_empty_identity_fields(field: str, value: str) -> Non
         SkillExecution.start(
             kwargs["execution_id"],
             skill_id=kwargs["skill_id"],
-            intent_id=kwargs["intent_id"],
+            intent_commitment=committed(),
             at_ns=10,
             provenance=provenance("bad-id"),
+        )
+
+
+def test_start_requires_valid_intent_commitment() -> None:
+    with pytest.raises(InvalidSkillData, match="intent commitment"):
+        SkillExecution.start(
+            "skill-exec-1",
+            skill_id="navigate-corridor",
+            intent_commitment=None,  # type: ignore[arg-type]
+            at_ns=10,
+            provenance=provenance("bad-intent-owner"),
         )
 
 
@@ -161,7 +272,7 @@ def test_start_requires_valid_provenance() -> None:
         SkillExecution.start(
             "skill-exec-1",
             skill_id="navigate-corridor",
-            intent_id="intent-1",
+            intent_commitment=committed(),
             at_ns=10,
             provenance=None,  # type: ignore[arg-type]
         )
@@ -207,18 +318,13 @@ def test_skill_terminal_state_does_not_automatically_mutate_current_intent(
     method: str,
     expected_state: SkillState,
 ) -> None:
-    intent = IntentCommitment()
-    intent.commit(
-        "intent-1",
-        objective="reach the charging station",
-        at_ns=1,
-        provenance=provenance("intent-commit"),
-    )
+    intent = committed()
+    history = intent.events
 
     execution = SkillExecution.start(
         "skill-exec-1",
         skill_id="navigate-corridor",
-        intent_id="intent-1",
+        intent_commitment=intent,
         at_ns=10,
         provenance=provenance("skill-start"),
     )
@@ -229,6 +335,7 @@ def test_skill_terminal_state_does_not_automatically_mutate_current_intent(
     )
 
     assert execution.state is expected_state
+    assert intent.events == history
     assert intent.current_intent is not None
     assert intent.current_intent.intent_id == "intent-1"
     assert intent.pending_reconsideration is None
