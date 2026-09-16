@@ -23,14 +23,20 @@ class SkillState(str, Enum):
     STARTED = "started"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
-SKILL_TERMINAL_STATES = frozenset({SkillState.SUCCEEDED, SkillState.FAILED})
+SKILL_TERMINAL_STATES = frozenset(
+    {SkillState.SUCCEEDED, SkillState.FAILED, SkillState.CANCELLED}
+)
 
 _ALLOWED_TRANSITIONS = {
-    SkillState.STARTED: frozenset({SkillState.SUCCEEDED, SkillState.FAILED}),
+    SkillState.STARTED: frozenset(
+        {SkillState.SUCCEEDED, SkillState.FAILED, SkillState.CANCELLED}
+    ),
     SkillState.SUCCEEDED: frozenset(),
     SkillState.FAILED: frozenset(),
+    SkillState.CANCELLED: frozenset(),
 }
 
 
@@ -139,6 +145,22 @@ class SkillExecution:
         return self._transition(
             SkillEvent(
                 state=SkillState.FAILED,
+                at_ns=at_ns,
+                provenance=provenance,
+                reason=reason,
+            )
+        )
+
+    def cancel(
+        self,
+        *,
+        reason: str,
+        at_ns: int,
+        provenance: Provenance,
+    ) -> SkillExecution:
+        return self._transition(
+            SkillEvent(
+                state=SkillState.CANCELLED,
                 at_ns=at_ns,
                 provenance=provenance,
                 reason=reason,
