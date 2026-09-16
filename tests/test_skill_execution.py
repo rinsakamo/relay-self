@@ -3,7 +3,7 @@ import inspect
 import pytest
 
 from relay_self.action import Provenance
-from relay_self.intent import IntentCommitment
+from relay_self.intent import IntentCommitment, ReconsiderationDecision
 from relay_self.skill import (
     SKILL_TERMINAL_STATES,
     InvalidSkillData,
@@ -166,7 +166,24 @@ def test_failure_is_explicit_terminal_transition() -> None:
     assert execution.events[-1].provenance.reference == "skill-failure"
 
 
-@pytest.mark.parametrize("terminal_state", [SkillState.SUCCEEDED, SkillState.FAILED])
+def test_cancellation_is_explicit_terminal_transition_distinct_from_failure() -> None:
+    execution = started().cancel(
+        reason="associated intent is no longer pursued",
+        at_ns=20,
+        provenance=provenance("skill-cancel"),
+    )
+
+    assert execution.state is SkillState.CANCELLED
+    assert execution.state is not SkillState.FAILED
+    assert execution.is_terminal is True
+    assert execution.events[-1].reason == "associated intent is no longer pursued"
+    assert execution.events[-1].provenance.reference == "skill-cancel"
+
+
+@pytest.mark.parametrize(
+    "terminal_state",
+    [SkillState.SUCCEEDED, SkillState.FAILED, SkillState.CANCELLED],
+)
 def test_terminal_execution_cannot_reopen(terminal_state: SkillState) -> None:
     execution = started()
     if terminal_state is SkillState.SUCCEEDED:
@@ -175,11 +192,17 @@ def test_terminal_execution_cannot_reopen(terminal_state: SkillState) -> None:
             at_ns=20,
             provenance=provenance("success"),
         )
-    else:
+    elif terminal_state is SkillState.FAILED:
         execution = execution.fail(
             reason="failed",
             at_ns=20,
             provenance=provenance("failure"),
+        )
+    else:
+        execution = execution.cancel(
+            reason="cancelled upstream",
+            at_ns=20,
+            provenance=provenance("cancel"),
         )
 
     with pytest.raises(InvalidSkillTransition, match="cannot transition"):
@@ -198,6 +221,20 @@ def test_skill_event_time_is_monotonic() -> None:
             reason="stale completion",
             at_ns=9,
             provenance=provenance("backward"),
+        )
+
+    assert execution.state is SkillState.STARTED
+    assert len(execution.events) == 1
+
+
+def test_cancellation_time_is_monotonic() -> None:
+    execution = started()
+
+    with pytest.raises(InvalidSkillData, match="must be monotonic"):
+        execution.cancel(
+            reason="stale cancellation",
+            at_ns=9,
+            provenance=provenance("backward-cancel"),
         )
 
     assert execution.state is SkillState.STARTED
@@ -299,12 +336,34 @@ def test_terminal_transition_requires_reason_and_provenance() -> None:
     assert len(execution.events) == 1
 
 
+def test_cancellation_requires_reason_and_provenance() -> None:
+    execution = started()
+
+    with pytest.raises(InvalidSkillData, match="terminal reason"):
+        execution.cancel(
+            reason="",
+            at_ns=20,
+            provenance=provenance("empty-cancel-reason"),
+        )
+
+    with pytest.raises(InvalidSkillData, match="provenance must be Provenance"):
+        execution.cancel(
+            reason="cancelled",
+            at_ns=20,
+            provenance=None,  # type: ignore[arg-type]
+        )
+
+    assert execution.state is SkillState.STARTED
+    assert len(execution.events) == 1
+
+
 def test_event_history_is_immutable_tuple() -> None:
     execution = started()
 
     assert isinstance(execution.events, tuple)
     assert SkillState.SUCCEEDED in SKILL_TERMINAL_STATES
     assert SkillState.FAILED in SKILL_TERMINAL_STATES
+    assert SkillState.CANCELLED in SKILL_TERMINAL_STATES
 
 
 @pytest.mark.parametrize(
@@ -312,6 +371,7 @@ def test_event_history_is_immutable_tuple() -> None:
     [
         ("succeed", SkillState.SUCCEEDED),
         ("fail", SkillState.FAILED),
+        ("cancel", SkillState.CANCELLED),
     ],
 )
 def test_skill_terminal_state_does_not_automatically_mutate_current_intent(
@@ -339,3 +399,55 @@ def test_skill_terminal_state_does_not_automatically_mutate_current_intent(
     assert intent.current_intent is not None
     assert intent.current_intent.intent_id == "intent-1"
     assert intent.pending_reconsideration is None
+
+
+@pytest.mark.parametrize("release_kind", ["complete", "fail", "invalidate", "reconsider"])
+def test_later_intent_release_does_not_automatically_cancel_started_skill(
+    release_kind: str,
+) -> None:
+    intent = committed()
+    execution = SkillExecution.start(
+        "skill-exec-1",
+        skill_id="navigate-corridor",
+        intent_commitment=intent,
+        at_ns=10,
+        provenance=provenance("skill-start"),
+    )
+
+    if release_kind == "reconsider":
+        intent.request_reconsideration(
+            "intent-1",
+            reason="route is no longer worth pursuing",
+            at_ns=11,
+            provenance=provenance("reconsider-request"),
+        )
+        intent.reconsider(
+            "intent-1",
+            decision=ReconsiderationDecision.RELEASE,
+            reason="choose another objective",
+            at_ns=12,
+            provenance=provenance("reconsider-release"),
+        )
+    else:
+        getattr(intent, release_kind)(
+            "intent-1",
+            reason=f"intent {release_kind}",
+            at_ns=11,
+            provenance=provenance(f"intent-{release_kind}"),
+        )
+
+    intent_history = intent.events
+
+    assert intent.current_intent is None
+    assert execution.state is SkillState.STARTED
+    assert execution.is_terminal is False
+
+    cancelled = execution.cancel(
+        reason="associated intent is no longer current",
+        at_ns=20,
+        provenance=provenance("explicit-skill-cancel"),
+    )
+
+    assert cancelled.state is SkillState.CANCELLED
+    assert cancelled.events[-1].reason == "associated intent is no longer current"
+    assert intent.events == intent_history
