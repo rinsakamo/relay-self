@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from relay_self.intent import IntentCommitment
+    from relay_self.skill import SkillExecution
 
 
 class ActionState(str, Enum):
@@ -83,10 +88,14 @@ class ActionLifecycle:
     """Immutable, provenance-bearing state machine for one action."""
 
     action_id: str
+    skill_execution_id: str
+    intent_id: str
     _events: tuple[ActionEvent, ...] = field(repr=False)
 
     def __post_init__(self) -> None:
         _require_text("action_id", self.action_id)
+        _require_text("skill_execution_id", self.skill_execution_id)
+        _require_text("intent_id", self.intent_id)
         if not isinstance(self._events, tuple):
             raise InvalidActionData("action event history must be an immutable tuple")
         if not all(isinstance(event, ActionEvent) for event in self._events):
@@ -98,6 +107,8 @@ class ActionLifecycle:
         cls,
         action_id: str,
         *,
+        skill_execution: SkillExecution,
+        intent_commitment: IntentCommitment,
         at_ns: int,
         provenance: Provenance,
     ) -> ActionLifecycle:
@@ -106,7 +117,28 @@ class ActionLifecycle:
             at_ns=at_ns,
             provenance=provenance,
         )
-        return cls(action_id=action_id, _events=(event,))
+        skill_execution = _require_skill_execution(skill_execution)
+        intent_commitment = _require_intent_commitment(intent_commitment)
+
+        from relay_self.skill import SkillState
+
+        if skill_execution.state is not SkillState.STARTED:
+            raise InvalidTransition("action proposal skill execution must be started")
+
+        current_intent = intent_commitment.current_intent
+        if current_intent is None:
+            raise InvalidTransition("action proposal requires a current intent")
+        if skill_execution.intent_id != current_intent.intent_id:
+            raise InvalidTransition(
+                "action proposal skill intent does not match current intent"
+            )
+
+        return cls(
+            action_id=action_id,
+            skill_execution_id=skill_execution.execution_id,
+            intent_id=current_intent.intent_id,
+            _events=(event,),
+        )
 
     @property
     def state(self) -> ActionState:
@@ -216,7 +248,12 @@ class ActionLifecycle:
         allowed = _ALLOWED_TRANSITIONS[self.state]
         if event.state not in allowed:
             raise InvalidTransition(f"cannot transition from {self.state.value} to {event.state.value}")
-        return ActionLifecycle(action_id=self.action_id, _events=(*self._events, event))
+        return ActionLifecycle(
+            action_id=self.action_id,
+            skill_execution_id=self.skill_execution_id,
+            intent_id=self.intent_id,
+            _events=(*self._events, event),
+        )
 
     def _validate_history(self) -> None:
         if not self._events:
@@ -269,3 +306,19 @@ def _require_text(name: str, value: object) -> None:
 def _require_at_ns(value: object) -> None:
     if not isinstance(value, int) or isinstance(value, bool) or value < 0:
         raise InvalidActionData("monotonic time values must be non-negative integers")
+
+
+def _require_skill_execution(value: object) -> SkillExecution:
+    from relay_self.skill import SkillExecution
+
+    if not isinstance(value, SkillExecution):
+        raise InvalidActionData("action proposal skill execution must be SkillExecution")
+    return value
+
+
+def _require_intent_commitment(value: object) -> IntentCommitment:
+    from relay_self.intent import IntentCommitment
+
+    if not isinstance(value, IntentCommitment):
+        raise InvalidActionData("action proposal intent commitment must be IntentCommitment")
+    return value
