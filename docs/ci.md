@@ -55,7 +55,7 @@ The current suite includes direct verification of:
 - the Action Lifecycle transition contract, including authorization-before-issuance, terminal closure classes, timeout boundary behavior, monotonic event time, and invalid-transition failure;
 - the Action Supervision contract, including supervised issuance retention, next-deadline discovery, explicit decision-epoch timeout processing, monotonic supervisor time, identity handling, terminal ordering, and fail-closed multi-action epoch behavior;
 - the Current Intent Commitment contract, including single-active-intent retention, rejection of silent replacement, explicit reconsideration request-before-decision ordering, separate trigger/decision provenance, continue/release decisions, terminal release, identity handling, monotonic time, and fail-closed invalid operations;
-- the Skill Execution contract, including immutable execution/skill/intent association, derivation of `intent_id` from the actual Current Intent at the supported start seam, rejection of start when no Current Intent exists, preservation of Current Intent state/history during association validation, start-to-success/failure terminality, monotonic Skill event time, provenance/reason validation, and the boundary that Skill terminal state does not automatically release or reconsider Current Intent.
+- the Skill Execution contract, including immutable execution/skill/intent association, derivation of `intent_id` from the actual Current Intent at the supported start seam, rejection of start when no Current Intent exists, preservation of Current Intent state/history during association validation, explicit success/failure/cancellation terminal classes, cancellation distinct from Skill failure, monotonic Skill event time, provenance/reason validation, no automatic later-Intent-release-to-Skill-cancellation mutation, and the boundary that Skill terminal state does not automatically release or reconsider Current Intent.
 
 A green result does **not** prove:
 
@@ -66,6 +66,7 @@ A green result does **not** prove:
 - that a reconsideration trigger policy detects every meaningful runtime change;
 - that a Skill capability was correctly selected, exists in a validated capability library, satisfies initiation preconditions, or implements a useful closed-loop controller merely because its execution lifecycle is valid;
 - that a Skill remaining active means its associated Current Intent is still current after start, or that later Current Intent release automatically terminates the Skill;
+- that `SkillState.CANCELLED` proves a physical/controller process or issued/in-flight child Action was actually stopped, or that cancellation was safe under an interruptibility policy;
 - that Skill success proves primitive Action success or external-world success;
 - that Skill failure should always trigger Current Intent reconsideration;
 - that an external authority identity is legitimate merely because it was recorded;
