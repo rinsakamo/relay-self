@@ -10,17 +10,20 @@ RelaySelf is organized around five architectural bases:
 
 1. **Persistent Cognition** — cognitive state that persists across moments and sessions.
 2. **Present Projection** — the currently active projection produced from persistent cognition and the current situation.
-3. **Embodied Boundary** — perception, internal regulation, arbitration, skills, actions, and consequence processing.
-4. **Environment** — world state and dynamics outside the self.
+3. **Embodied Boundary** — the causal coupling surface through which the Self receives environment/body observations, regulates and interprets its embodied state, and hands authorized effect commands to external execution.
+4. **Environment** — world state and dynamics outside the self, including any authoritative external body/world state and physical or simulated execution owned by the environment implementation.
 5. **Authority / Provenance** — the rules and evidence that determine what may be believed, changed, authorized, or persisted.
 
 The Environment is external to RelaySelf and connects through explicit contracts. Authority / Provenance is cross-cutting rather than a peer runtime subsystem.
+
+RelaySelf may maintain a self-model, working self, capability model, body/resource estimate, belief, and appraisal about its embodiment. Those Self-side representations are not authoritative external body or world truth merely because they describe the Self's body or situation.
 
 ## Core invariants
 
 - Persistent state is not present state.
 - Observation and evidence are not belief.
-- Proposal, authorization, execution, and consequence are distinct.
+- Self-side body/resource representation is not authoritative external body truth.
+- Proposal, authorization, issuance/external execution, and consequence are distinct.
 - Self and environment are distinct.
 - Model output is not authority by itself.
 
@@ -44,7 +47,7 @@ The Environment is external to RelaySelf and connects through explicit contracts
 
 RelaySelf is in early executable bootstrap. The current Python bootstrap implements Action Lifecycle, deterministic Action Supervision, Current Intent commitment with explicit reconsideration requests and decisions, and an independent Skill Execution lifecycle with explicit success, failure, and cancellation terminal classes. The supported Skill start seam derives its immutable `intent_id` association from the actual Current Intent owned by `IntentCommitment` instead of accepting an arbitrary caller-supplied intent identity.
 
-The bootstrap does not yet declare a supported package-distribution boundary, minimum Python version, dependency floor, autonomous runtime driver, general scheduler, environment adapter, arbitration engine, reconsideration-trigger detector, closed-loop Skill controller, Skill-to-Action coupling, or general authority-policy engine. In particular, Action Supervision does not prove that a deployed clock or event loop will eventually deliver future decision epochs; Intent Commitment does not decide which runtime changes should request reconsideration or which candidate intent should win; and Skill Execution does not validate Skill capability existence or preconditions, generate primitive Actions, automatically cancel when its associated Current Intent later changes, or make local cancellation proof that a physical/controller process or child Action has stopped.
+The bootstrap does not yet declare a supported package-distribution boundary, minimum Python version, dependency floor, autonomous runtime driver, general scheduler, environment adapter, arbitration engine, reconsideration-trigger detector, closed-loop Skill controller, Skill-to-Action coupling, external body/execution runtime, or general authority-policy engine. In particular, Action Supervision does not prove that a deployed clock or event loop will eventually deliver future decision epochs; Intent Commitment does not decide which runtime changes should request reconsideration or which candidate intent should win; and Skill Execution does not validate Skill capability existence or preconditions, generate primitive Actions, automatically cancel when its associated Current Intent later changes, or make local cancellation proof that a physical/controller process or child Action has stopped.
 
 Hypotheses, simulation results, and implementation facts must remain distinguishable.
 

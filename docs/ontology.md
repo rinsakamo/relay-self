@@ -54,12 +54,14 @@ These are not automatically durable. A persistent object may remain unchanged wh
 
 ## Embodied Boundary
 
+The Embodied Boundary is the causal coupling surface between Self-side cognition/control and external environment/body execution. The terms below describe Self-side state and processing around that seam; they do not make external body or world truth part of RelaySelf.
+
 | Term | Meaning |
 | --- | --- |
-| Perception | Observation of the external environment. |
-| Interoception | Observation of internal, body, resource, or operational state. |
-| Body State | Current regulated internal state relevant to continued agency. |
-| Homeostasis | Regulation toward preferred operating ranges. |
+| Perception | Observation available to the Self about the external environment. |
+| Interoception | Observation available to the Self about body, resource, or operational state. Its provenance/authority remains distinct from the Self's later estimate or appraisal. |
+| Body State | Self-side regulated state or estimate relevant to continued agency, derived from available body/resource evidence and runtime state. It is not automatically authoritative external body truth. |
+| Homeostasis | Self-side regulation toward preferred operating ranges. |
 | Need | Regulatory pressure caused by deviation from a preferred range. |
 | Viability Constraint | Constraint protecting continued agency or preventing unacceptable state. |
 | Event Admission | Decision that an incoming event should enter active processing. |
@@ -67,28 +69,43 @@ These are not automatically durable. A persistent object may remain unchanged wh
 | Arbitration | Selection among eligible motivations or candidate intents. |
 | Skill | Temporally extended feedback controller or embodied capability. |
 | Action | Primitive effect command directed toward the environment. |
-| Action Authorization | Gate determining whether a proposed action may execute. |
+| Action Authorization | Gate determining whether a proposed action may be issued toward external execution. |
 | Consequence Observation | Observation of what actually followed an action. |
 | State Update | Update caused by newly observed consequences or evidence. |
 | Scheduler | Runtime coordination across different timescales and priorities. |
 | Time Model | Representation of runtime, world, subjective, or branch time. |
 | Trace / Provenance | Causal record of why state, decisions, and actions changed. |
 
+An informal **Self Image** can be useful when explaining the Self's current relation to an external body or world, but it is not currently a separate canonical ontology object. The needed information can presently be expressed by composing existing owners such as `Self-Model`, `Working Self`, `Situation Model`, `Capability Model`, `Body State`, `Belief`, and `Current Appraisal`.
+
+This keeps the representational and material sides distinct:
+
+```text
+Self-side body representation / Body State
+  != external body or resource truth
+
+Action issued toward an execution boundary
+  != external physical or simulated execution
+```
+
+If future implementation demonstrates independent state, authority, or lifecycle that cannot be represented by these existing concepts, that responsibility must earn a new owner through the normal Grand Null process.
+
 ## Environment
 
 | Term | Meaning |
 | --- | --- |
-| World State | Environment state external to the self. |
+| World State | Environment state external to the self, including authoritative external body state when an environment provides one. |
 | World Dynamics | Rules or processes by which the environment changes. |
 | Observation | Information available to the self about world state. |
 | Affordance | Action possibility available under current world and boundary state. |
 | Consequence | Actual environment result following an action or external event. |
 | External Intervention | Change introduced from outside the self's ordinary action loop. |
 
-Core distinction:
+Core distinctions:
 
 ```text
 World State != Observation != Belief != Appraisal
+External body state != Self-side Body State / estimate
 ```
 
 ## Authority / Provenance
