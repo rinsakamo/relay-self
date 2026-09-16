@@ -102,6 +102,34 @@ def test_skill_event_time_is_monotonic() -> None:
     assert len(execution.events) == 1
 
 
+@pytest.mark.parametrize("at_ns", [-1, True, 1.5])
+def test_start_rejects_malformed_time(at_ns: object) -> None:
+    with pytest.raises(InvalidSkillData, match="non-negative integer"):
+        SkillExecution.start(
+            "skill-exec-1",
+            skill_id="navigate-corridor",
+            intent_id="intent-1",
+            at_ns=at_ns,  # type: ignore[arg-type]
+            provenance=provenance("bad-time"),
+        )
+
+
+def test_equal_time_terminal_transition_is_allowed() -> None:
+    execution = SkillExecution.start(
+        "skill-exec-1",
+        skill_id="instant-check",
+        intent_id="intent-1",
+        at_ns=10,
+        provenance=provenance("start"),
+    ).succeed(
+        reason="completed in one decision epoch",
+        at_ns=10,
+        provenance=provenance("success"),
+    )
+
+    assert execution.state is SkillState.SUCCEEDED
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [
@@ -168,7 +196,17 @@ def test_event_history_is_immutable_tuple() -> None:
     assert SkillState.FAILED in SKILL_TERMINAL_STATES
 
 
-def test_skill_failure_does_not_automatically_release_current_intent() -> None:
+@pytest.mark.parametrize(
+    ("method", "expected_state"),
+    [
+        ("succeed", SkillState.SUCCEEDED),
+        ("fail", SkillState.FAILED),
+    ],
+)
+def test_skill_terminal_state_does_not_automatically_mutate_current_intent(
+    method: str,
+    expected_state: SkillState,
+) -> None:
     intent = IntentCommitment()
     intent.commit(
         "intent-1",
@@ -183,13 +221,14 @@ def test_skill_failure_does_not_automatically_release_current_intent() -> None:
         intent_id="intent-1",
         at_ns=10,
         provenance=provenance("skill-start"),
-    ).fail(
-        reason="corridor blocked",
+    )
+    execution = getattr(execution, method)(
+        reason=f"skill {method}",
         at_ns=20,
-        provenance=provenance("skill-failure"),
+        provenance=provenance(f"skill-{method}"),
     )
 
-    assert execution.state is SkillState.FAILED
+    assert execution.state is expected_state
     assert intent.current_intent is not None
     assert intent.current_intent.intent_id == "intent-1"
     assert intent.pending_reconsideration is None
