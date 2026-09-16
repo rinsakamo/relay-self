@@ -35,6 +35,7 @@ class SimulationConfig:
     initial_food: int = 24
     max_food: int = 40
     food_spawn_probability: float = 0.75
+    food_sensor_range: int = 10
     food_energy: float = 10.0
     basal_cost: float = 0.05
     movement_cost: float = 0.08
@@ -68,6 +69,8 @@ class SimulationConfig:
             raise ValueError("max_food must be >= initial_food")
         if not 0.0 <= self.food_spawn_probability <= 1.0:
             raise ValueError("food_spawn_probability must be within [0, 1]")
+        if self.food_sensor_range < 0:
+            raise ValueError("food_sensor_range must be non-negative")
         if self.initial_energy <= 0.0 or self.reproduction_transfer <= 0.0:
             raise ValueError("energy values must be positive")
         if self.reproduction_threshold <= self.reproduction_transfer:
@@ -239,7 +242,13 @@ def observe_state(
     predators: list[int],
     config: SimulationConfig,
 ) -> State:
-    food_direction = nearest_direction(position, foods, config.world_size)
+    visible_foods = {
+        food
+        for food in foods
+        if abs(signed_distance(position, food, config.world_size))
+        <= config.food_sensor_range
+    }
+    food_direction = nearest_direction(position, visible_foods, config.world_size)
     conspecific_direction, _ = conspecific_sensor(position, counts, config)
     predator_direction, predator_signal_value = predator_sensor(
         position, predators, config
