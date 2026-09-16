@@ -28,6 +28,15 @@ from relay_self.intent import (
     InvalidIntentTransition,
     ReconsiderationDecision,
 )
+from relay_self.skill import (
+    SKILL_TERMINAL_STATES,
+    InvalidSkillData,
+    InvalidSkillTransition,
+    SkillEvent,
+    SkillExecution,
+    SkillExecutionError,
+    SkillState,
+)
 
 __all__ = [
     "ActionEvent",
@@ -47,11 +56,18 @@ __all__ = [
     "InvalidIntentData",
     "InvalidIntentTime",
     "InvalidIntentTransition",
+    "InvalidSkillData",
+    "InvalidSkillTransition",
     "InvalidSupervisionData",
     "InvalidSupervisorTime",
     "InvalidTransition",
     "Provenance",
     "ReconsiderationDecision",
+    "SKILL_TERMINAL_STATES",
+    "SkillEvent",
+    "SkillExecution",
+    "SkillExecutionError",
+    "SkillState",
     "TERMINAL_STATES",
     "UnknownSupervisedAction",
 ]
