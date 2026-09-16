@@ -316,17 +316,23 @@ def resolve_predation(
     rng: random.Random,
     config: SimulationConfig,
 ) -> tuple[list[Agent], set[int]]:
-    predator_positions = set(predators)
-    survivors: list[Agent] = []
-    killed: set[int] = set()
+    prey_by_position: dict[int, list[Agent]] = {}
     for agent in population:
-        if (
-            agent.position in predator_positions
-            and rng.random() < config.predator_kill_probability
-        ):
-            killed.add(agent.agent_id)
-        else:
-            survivors.append(agent)
+        prey_by_position.setdefault(agent.position, []).append(agent)
+
+    killed: set[int] = set()
+    for predator_position in predators:
+        candidates = [
+            agent
+            for agent in prey_by_position.get(predator_position, [])
+            if agent.agent_id not in killed
+        ]
+        if not candidates:
+            continue
+        if rng.random() < config.predator_kill_probability:
+            killed.add(rng.choice(candidates).agent_id)
+
+    survivors = [agent for agent in population if agent.agent_id not in killed]
     return survivors, killed
 
 
