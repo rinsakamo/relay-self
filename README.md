@@ -36,14 +36,15 @@ The Environment is external to RelaySelf and connects through explicit contracts
 - [`docs/contracts/action-lifecycle.md`](docs/contracts/action-lifecycle.md) — executable Action Lifecycle / Authority Boundary transition contract.
 - [`docs/contracts/action-supervision.md`](docs/contracts/action-supervision.md) — deterministic in-flight Action Supervision contract for explicit decision epochs.
 - [`docs/contracts/intent-commitment.md`](docs/contracts/intent-commitment.md) — executable Current Intent commitment and explicit reconsideration contract.
+- [`docs/contracts/skill-execution.md`](docs/contracts/skill-execution.md) — executable lifecycle for one Skill execution instance associated with a Current Intent.
 - [`docs/migration-from-relaylm.md`](docs/migration-from-relaylm.md) — conceptual migration map from the former RelayLM architecture.
 - [`.ai/README.md`](.ai/README.md) — authority and read-order guidance for AI-assisted development.
 
 ## Status
 
-RelaySelf is in early executable bootstrap. The current Python bootstrap implements Action Lifecycle, deterministic Action Supervision, and Current Intent commitment with explicit reconsideration requests and decisions.
+RelaySelf is in early executable bootstrap. The current Python bootstrap implements Action Lifecycle, deterministic Action Supervision, Current Intent commitment with explicit reconsideration requests and decisions, and the first independent Skill Execution start-to-success/failure lifecycle.
 
-The bootstrap does not yet declare a supported package-distribution boundary, minimum Python version, dependency floor, autonomous runtime driver, general scheduler, environment adapter, arbitration engine, reconsideration-trigger detector, Skill runtime, or general authority-policy engine. In particular, Action Supervision does not prove that a deployed clock or event loop will eventually deliver future decision epochs, and Intent Commitment does not decide which runtime changes should request reconsideration or which candidate intent should win.
+The bootstrap does not yet declare a supported package-distribution boundary, minimum Python version, dependency floor, autonomous runtime driver, general scheduler, environment adapter, arbitration engine, reconsideration-trigger detector, closed-loop Skill controller, Skill-to-Action coupling, or general authority-policy engine. In particular, Action Supervision does not prove that a deployed clock or event loop will eventually deliver future decision epochs; Intent Commitment does not decide which runtime changes should request reconsideration or which candidate intent should win; and Skill Execution does not validate Skill preconditions, generate primitive Actions, or automatically reinterpret Skill failure as Intent failure or reconsideration.
 
 Hypotheses, simulation results, and implementation facts must remain distinguishable.
 
