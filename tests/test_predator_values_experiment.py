@@ -101,3 +101,34 @@ def test_seeded_simulation_is_reproducible_and_control_has_no_predation() -> Non
     assert first == second
     assert first.predation_deaths == 0
     assert first.samples
+
+
+def test_predator_treatment_does_not_change_initial_prey_genes() -> None:
+    base = replace(
+        SimulationConfig(),
+        initial_population=20,
+        max_population=60,
+        food_spawn_probability=0.0,
+        reproduction_threshold=1_000.0,
+        predator_move_probability=0.0,
+        predator_kill_probability=0.0,
+        sample_interval=1,
+    )
+    active = run_simulation(
+        seed=11,
+        steps=1,
+        config=replace(base, initial_predators=2),
+    )
+    control = run_simulation(
+        seed=11,
+        steps=1,
+        config=replace(base, initial_predators=0),
+    )
+
+    active_sample = active.samples[0]
+    control_sample = control.samples[0]
+    assert active_sample.population == control_sample.population
+    assert active_sample.mean_food_reward == control_sample.mean_food_reward
+    assert active_sample.mean_movement_reward == control_sample.mean_movement_reward
+    assert active_sample.mean_conspecific_reward == control_sample.mean_conspecific_reward
+    assert active_sample.mean_predator_reward == control_sample.mean_predator_reward
