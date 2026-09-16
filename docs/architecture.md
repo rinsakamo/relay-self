@@ -30,28 +30,36 @@ Present Projection should be recomputable where practical. It may be traced, but
 
 ### 3. Embodied Boundary
 
-The causal boundary between cognition and environment.
+The causal coupling surface between Self-side cognition/control and external environment/body execution.
 
-It includes perception, interoception, body or resource state, homeostatic regulation, viability constraints, reconsideration, arbitration, skills, action authorization, action execution, consequence observation, scheduling, time, and trace.
+RelaySelf owns the Self-side processing around that surface, including perception and interoception intake, body/resource state estimates, homeostatic regulation, viability constraints, reconsideration, arbitration, skills, action proposal/authorization/issuance/supervision, consequence observation and integration, scheduling, time, and trace.
 
-The boundary must preserve the distinction:
+RelaySelf does **not** own authoritative external body/world state or physical/simulated execution merely because those states are represented or acted upon by the Self.
+
+The boundary therefore preserves both representational and causal distinctions:
 
 ```text
+Self-side body state / estimate
+  != authoritative external body state
+
 Action Proposal
   != Action Authorization
-  != Action Execution
+  != Action Issuance
+  != External Execution
   != Consequence
 ```
+
+The current Action Lifecycle's `ISSUED` state is the Self-side handoff to an execution boundary. It is not proof that external execution occurred or succeeded.
 
 Language or model output cannot by itself establish that an external action occurred.
 
 ### 4. Environment
 
-State and dynamics outside the self.
+State and dynamics outside the self, including authoritative external body state and external physical/simulated execution when a concrete environment provides them.
 
-RelaySelf does not own environment truth. It owns observations, estimates, beliefs, and appraisals derived from interaction with the environment.
+RelaySelf does not own environment truth. It owns observations, estimates, beliefs, appraisals, commitments, and control decisions derived from interaction with the environment.
 
-Environment implementations may live in separate systems such as RelayWorld, simulators, desktop environments, or physical robotics stacks.
+Environment implementations may live in separate systems such as RelayWorld, simulators, desktop environments, or physical robotics stacks. They may model an external actor/player/avatar role and body substrate separately; RelaySelf does not need to own those environment-side identities in order to issue actions or interpret feedback.
 
 ### 5. Authority / Provenance
 
@@ -68,29 +76,56 @@ The architecture preserves these distinctions:
 ```text
 Persistent != Present
 Observation/Evidence != Belief
-Proposal != Authorization != Consequence
+Self-side representation != external body/world truth
+Proposal != Authorization != Issuance != External Execution != Consequence
 Self != Environment
 ```
 
 These are architectural boundaries, not merely naming conventions.
+
+## Boundary-facing self representation
+
+The useful explanatory idea of a current "Self Image" does not currently require another architectural basis or executable owner.
+
+RelaySelf can represent what it currently understands about itself-in-a-body/world through existing concepts:
+
+```text
+Self-Model
+  + Working Self
+  + Situation Model
+  + Capability Model
+  + Body State / body-resource estimate
+  + Belief / Appraisal
+```
+
+This composition can change when external observations indicate a body swap, morphology change, capability change, resource change, or other embodiment change. Such changes do not make the external body's authoritative state part of RelaySelf.
+
+Introduce a separate Self Image owner only if future implementation demonstrates independent state, authority, or lifecycle that cannot be represented by these existing owners.
 
 ## State flow
 
 A representative closed loop is:
 
 ```text
-Environment
+External Environment / Execution
   -> Observation / Interoception
-  -> Boundary State
+  -> Self-side Boundary State
   -> Present Projection
   -> Reconsideration / Arbitration
   -> Current Intent
   -> Skill
-  -> Authorized Action
+  -> Action Proposal
+  -> Authorization
+  -> ISSUED
+  ---- Embodied Boundary ---->
+  -> External Execution
   -> Environment Consequence
   -> Observation / Evidence
-  -> Belief / Memory / State Update
+  <---- Embodied Boundary ----
+  -> Belief / Appraisal / Body State / Memory / State Update
 ```
+
+The exact external execution implementation is not owned by RelaySelf. A cognition system may be coupled to a simulator avatar, game actor, desktop executor, robot body, or another environment implementation while preserving the same Self-side distinction between issuance and observed consequence.
 
 Not every event requires deliberative model inference. Deterministic regulation, admission, viability checks, scheduling, and skill control should remain outside the language model where possible.
 
@@ -100,7 +135,9 @@ When deciding where a concept belongs, ask:
 
 > Would this concept still make sense without a body, an environment, and an autonomous clock?
 
-If yes, it is a candidate for Persistent Cognition. If no, it is more likely part of Present Projection, the Embodied Boundary, or their coupling.
+If yes, it is a candidate for Persistent Cognition. If no, it is more likely part of Present Projection, the Self-side processing around the Embodied Boundary, the external Environment, or their coupling.
+
+Do not infer ownership merely from causal proximity. A body fact can matter deeply to the Self while remaining external truth; an action can originate from Self-side intent while its physical execution remains external.
 
 ## Design principle
 
