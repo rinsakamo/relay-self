@@ -26,6 +26,16 @@ def small_config(**changes: object) -> SimulationConfig:
     )
 
 
+def prey(agent_id: int, position: int = 4) -> Agent:
+    return Agent(
+        agent_id=agent_id,
+        parent_id=None,
+        position=position,
+        energy=10.0,
+        genes=RewardGenes(0.0, 0.0, 0.0, 0.0),
+    )
+
+
 def test_predator_sensor_is_bounded_and_local() -> None:
     config = small_config(predator_sensor_range=4)
     direction, signal = predator_sensor(5, [7], config)
@@ -61,16 +71,7 @@ def test_sensor_reward_is_separate_from_physical_viability() -> None:
 
 def test_predator_chases_nearest_prey() -> None:
     config = small_config(predator_move_probability=1.0)
-    prey = [
-        Agent(
-            agent_id=1,
-            parent_id=None,
-            position=8,
-            energy=10.0,
-            genes=RewardGenes(0.0, 0.0, 0.0, 0.0),
-        )
-    ]
-    assert move_predators([5], prey, random.Random(0), config) == [6]
+    assert move_predators([5], [prey(1, position=8)], random.Random(0), config) == [6]
 
 
 def test_predation_is_world_consequence_not_intrinsic_reward() -> None:
@@ -85,6 +86,46 @@ def test_predation_is_world_consequence_not_intrinsic_reward() -> None:
     survivors, killed = resolve_predation([agent], [4], random.Random(0), config)
     assert survivors == []
     assert killed == {1}
+
+
+def test_one_predator_kills_at_most_one_prey_from_group() -> None:
+    config = small_config(predator_kill_probability=1.0)
+    population = [prey(1), prey(2), prey(3)]
+
+    survivors, killed = resolve_predation(population, [4], random.Random(0), config)
+
+    assert len(killed) == 1
+    assert len(survivors) == 2
+
+
+def test_two_predators_kill_at_most_two_distinct_prey() -> None:
+    config = small_config(predator_kill_probability=1.0)
+    population = [prey(1), prey(2), prey(3)]
+
+    survivors, killed = resolve_predation(population, [4, 4], random.Random(0), config)
+
+    assert len(killed) == 2
+    assert len(survivors) == 1
+    assert len(set(killed)) == len(killed)
+
+
+def test_predators_cannot_kill_same_prey_twice() -> None:
+    config = small_config(predator_kill_probability=1.0)
+
+    survivors, killed = resolve_predation([prey(1)], [4, 4], random.Random(0), config)
+
+    assert survivors == []
+    assert killed == {1}
+
+
+def test_zero_predator_kill_probability_kills_none() -> None:
+    config = small_config(predator_kill_probability=0.0)
+    population = [prey(1), prey(2), prey(3)]
+
+    survivors, killed = resolve_predation(population, [4, 4], random.Random(0), config)
+
+    assert survivors == population
+    assert killed == set()
 
 
 def test_seeded_simulation_is_reproducible_and_control_has_no_predation() -> None:
