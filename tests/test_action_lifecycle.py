@@ -42,12 +42,24 @@ def started_skill(
     )
 
 
-def authorized_action() -> ActionLifecycle:
+def proposed_action(
+    action_id: str = "action-1",
+    *,
+    at_ns: int = 10,
+) -> ActionLifecycle:
+    owner = committed_intent_owner()
+    skill = started_skill(owner, execution_id=f"skill-exec-{action_id}")
     return ActionLifecycle.propose(
-        "action-1",
-        at_ns=10,
-        provenance=provenance("proposal-1"),
-    ).authorize(
+        action_id,
+        skill_execution=skill,
+        intent_commitment=owner,
+        at_ns=at_ns,
+        provenance=provenance(f"proposal-{action_id}"),
+    )
+
+
+def authorized_action() -> ActionLifecycle:
+    return proposed_action().authorize(
         at_ns=20,
         provenance=provenance("authorization-1"),
         authority="test-policy",
@@ -82,11 +94,7 @@ def test_authorized_action_closes_with_outcome_and_keeps_causal_history() -> Non
 
 
 def test_proposal_cannot_be_issued_without_authorization() -> None:
-    lifecycle = ActionLifecycle.propose(
-        "action-1",
-        at_ns=10,
-        provenance=provenance("proposal-1"),
-    )
+    lifecycle = proposed_action()
 
     with pytest.raises(InvalidTransition, match="proposed to issued"):
         lifecycle.issue(
@@ -97,11 +105,7 @@ def test_proposal_cannot_be_issued_without_authorization() -> None:
 
 
 def test_denied_proposal_is_terminal_and_cannot_be_issued() -> None:
-    lifecycle = ActionLifecycle.propose(
-        "action-1",
-        at_ns=10,
-        provenance=provenance("proposal-1"),
-    ).deny(
+    lifecycle = proposed_action().deny(
         at_ns=20,
         provenance=provenance("denial-1"),
         authority="test-policy",
@@ -178,11 +182,7 @@ def test_issue_deadline_must_be_after_issue_time() -> None:
 
 
 def test_authorization_requires_explicit_authority() -> None:
-    lifecycle = ActionLifecycle.propose(
-        "action-1",
-        at_ns=10,
-        provenance=provenance("proposal-1"),
-    )
+    lifecycle = proposed_action()
 
     with pytest.raises(InvalidActionData, match="authorization authority"):
         lifecycle.authorize(
@@ -223,12 +223,22 @@ def test_action_lifecycle_rejects_mutable_event_history() -> None:
     )
 
     with pytest.raises(InvalidActionData, match="history must be an immutable tuple"):
-        ActionLifecycle("action-1", [event])  # type: ignore[arg-type]
+        ActionLifecycle(
+            action_id="action-1",
+            skill_execution_id="skill-exec-1",
+            intent_id="intent-1",
+            _events=[event],  # type: ignore[arg-type]
+        )
 
 
 def test_action_lifecycle_rejects_non_event_history_values() -> None:
     with pytest.raises(InvalidActionData, match="only ActionEvent values"):
-        ActionLifecycle("action-1", ("proposed",))  # type: ignore[arg-type]
+        ActionLifecycle(
+            action_id="action-1",
+            skill_execution_id="skill-exec-1",
+            intent_id="intent-1",
+            _events=("proposed",),  # type: ignore[arg-type]
+        )
 
 
 def test_action_proposal_derives_active_skill_and_current_intent_association() -> None:
