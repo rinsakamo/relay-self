@@ -17,7 +17,7 @@ Before making architectural or behavioral changes, read:
 9. relevant executable contracts under `docs/contracts/` for the boundary being changed
 10. `docs/migration-from-relaylm.md`
 
-The current executable contracts are `docs/contracts/action-lifecycle.md`, `docs/contracts/action-supervision.md`, and `docs/contracts/intent-commitment.md`. Load the lifecycle contract for Action transition legality, both Action contracts for in-flight supervision work, and the Intent Commitment contract for Current Intent / Reconsideration changes.
+The current executable contracts are `docs/contracts/action-lifecycle.md`, `docs/contracts/action-supervision.md`, `docs/contracts/intent-commitment.md`, and `docs/contracts/skill-execution.md`. Load the lifecycle contract for Action transition legality, both Action contracts for in-flight supervision work, the Intent Commitment contract for Current Intent / Reconsideration changes, and the Skill Execution contract for Skill execution lifecycle work or future coupling at the Intent/Skill/Action seams.
 
 Migration notes explain origin and continuity, but current ontology, architecture, runtime, development, evaluation, CI, Issue-governance, and executable-contract documents take precedence.
 
