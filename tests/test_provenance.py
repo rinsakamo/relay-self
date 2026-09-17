@@ -1,7 +1,8 @@
 import pytest
 
 import relay_self
-from relay_self.action import ActionLifecycle, Provenance as ActionProvenance
+from relay_self.action import ActionLifecycle
+from relay_self.action import Provenance as ActionProvenance
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import InvalidProvenanceData, Provenance
 from relay_self.skill import SkillExecution
