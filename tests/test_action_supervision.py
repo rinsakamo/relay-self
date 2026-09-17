@@ -312,6 +312,32 @@ def test_failed_multi_action_advance_does_not_partially_commit() -> None:
 
     assert supervisor.get("action-1") is first
     assert supervisor.get("action-2") is second
+    assert first.is_current_snapshot
+    assert second.is_current_snapshot
+    assert supervisor.last_at_ns == 40
+
+
+def test_stale_due_action_does_not_consume_other_prepared_lineage() -> None:
+    supervisor = ActionSupervisor()
+    first = issue(supervisor, "action-1", at_ns=30, deadline_ns=50)
+    second = issue(supervisor, "action-2", at_ns=40, deadline_ns=50)
+
+    second.record_outcome(
+        at_ns=45,
+        provenance=provenance("external-outcome-2"),
+    )
+    assert not second.is_current_snapshot
+
+    with pytest.raises(InvalidTransition, match="stale Action lifecycle snapshot"):
+        supervisor.advance(
+            at_ns=50,
+            provenance=provenance("epoch-with-stale-action"),
+        )
+
+    assert supervisor.get("action-1") is first
+    assert supervisor.get("action-2") is second
+    assert first.is_current_snapshot
+    assert not second.is_current_snapshot
     assert supervisor.last_at_ns == 40
 
 
