@@ -10,7 +10,7 @@ import experiments.mineflayer_cognition_ab as cognition
 import experiments.mineflayer_cognition_llama_cpp_transaction as tx
 
 
-def _valid_runtime(artifact: Path):
+def _valid_runtime(artifact: Path, *, model_ftype: str = "Q4_K - Medium"):
     revision = "a" * 40
     return {
         "health": {"status": "ok"},
@@ -19,7 +19,7 @@ def _valid_runtime(artifact: Path):
             "build_info": f"llama.cpp {revision} build 10874",
             "model_alias": "model-x",
             "model_path": str(artifact),
-            "model_ftype": "Q4_K_M",
+            "model_ftype": model_ftype,
             "chat_template": "{{ messages }}",
             "total_slots": 1,
             "default_generation_settings": {"n_ctx": 8192},
@@ -69,7 +69,7 @@ def test_attestation_rejects_context_or_slot_mismatch(tmp_path):
         )
 
 
-def test_attestation_accepts_matching_v1_condition(tmp_path):
+def test_attestation_accepts_v1_equivalent_runtime_ftype(tmp_path):
     artifact = (tmp_path / "model.gguf").resolve()
     artifact.write_bytes(b"x")
     data = _valid_runtime(artifact)
@@ -83,9 +83,44 @@ def test_attestation_accepts_matching_v1_condition(tmp_path):
         llama_identity=data["llama_identity"],
     )
     assert result["requestModel"] == "model-x"
+    assert result["modelFtype"] == "Q4_K - Medium"
+    assert result["targetQuantization"] == "Q4_K_M"
     assert result["context"] == 8192
     assert result["slots"] == 1
     assert result["contextShiftEnabled"] is False
+
+
+def test_attestation_accepts_exact_target_quantization_label(tmp_path):
+    artifact = (tmp_path / "model.gguf").resolve()
+    artifact.write_bytes(b"x")
+    data = _valid_runtime(artifact, model_ftype="Q4_K_M")
+    result = tx.attest_runtime(
+        health=data["health"],
+        models=data["models"],
+        props=data["props"],
+        slots=data["slots"],
+        artifact_path=artifact,
+        artifact_sha256="0" * 64,
+        llama_identity=data["llama_identity"],
+    )
+    assert result["modelFtype"] == "Q4_K_M"
+    assert result["targetQuantization"] == "Q4_K_M"
+
+
+def test_attestation_rejects_unrelated_ftype_label(tmp_path):
+    artifact = (tmp_path / "model.gguf").resolve()
+    artifact.write_bytes(b"x")
+    data = _valid_runtime(artifact, model_ftype="Q5_K - Medium")
+    with pytest.raises(tx.PhysicalTransactionError, match="target quantization"):
+        tx.attest_runtime(
+            health=data["health"],
+            models=data["models"],
+            props=data["props"],
+            slots=data["slots"],
+            artifact_path=artifact,
+            artifact_sha256="0" * 64,
+            llama_identity=data["llama_identity"],
+        )
 
 
 def test_execute_cognition_does_not_retry_transport_failure():
