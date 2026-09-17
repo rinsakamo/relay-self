@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from relay_self.action import ActionLifecycle, ActionState, Provenance
+from relay_self.action import ActionLifecycle, ActionState
+from relay_self.provenance import Provenance
 
 
 class ActionSupervisionError(ValueError):

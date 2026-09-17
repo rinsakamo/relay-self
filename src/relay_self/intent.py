@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from relay_self.action import Provenance
+from relay_self.provenance import Provenance
 
 
 class IntentCommitmentError(ValueError):

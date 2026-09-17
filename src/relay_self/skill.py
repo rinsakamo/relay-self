@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
-from relay_self.action import Provenance
 from relay_self.intent import IntentCommitment
+from relay_self.provenance import Provenance
 
 
 class SkillExecutionError(ValueError):

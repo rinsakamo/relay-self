@@ -6,10 +6,10 @@ from relay_self.action import (
     ActionState,
     InvalidActionData,
     InvalidTransition,
-    Provenance,
 )
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.intent import IntentCommitment
+from relay_self.provenance import InvalidProvenanceData, Provenance
 from relay_self.skill import SkillExecution, SkillState
 
 
@@ -192,8 +192,8 @@ def test_authorization_requires_explicit_authority() -> None:
         )
 
 
-def test_provenance_rejects_non_string_fields_with_contract_error() -> None:
-    with pytest.raises(InvalidActionData, match="provenance source"):
+def test_provenance_rejects_non_string_fields_with_shared_error() -> None:
+    with pytest.raises(InvalidProvenanceData, match="provenance source"):
         Provenance(source=1, reference="proposal-1")  # type: ignore[arg-type]
 
 
