@@ -74,6 +74,10 @@ Avoid by default:
 
 Permanent adapters are valid at genuine external boundaries when they translate the current RelaySelf contract. An adapter must not become a second internal owner.
 
+Do not extract a generic cross-target boundary protocol from one adapter's native lifecycle, identifiers, feedback, acknowledgement, or transport machinery. Keep those details target-local unless materially different adapters repeatedly demonstrate the same non-reducible RelaySelf-side semantic responsibility; shared syntax or implementation convenience alone is not evidence of a shared semantic contract.
+
+Specification-grounded adapter probes may justify deferring such extraction, but they do not by themselves prove that a concrete adapter has an independently versionable, operable, or qualified product boundary.
+
 ## 5. Authority is part of the implementation
 
 A behavior change is incomplete if code and tests are current but the owning authority document still describes an older contract.
