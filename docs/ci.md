@@ -52,24 +52,31 @@ Guarantee:
 
 The current suite includes direct verification of:
 
-- the Action Lifecycle transition contract, including grounded proposal admission from a supplied `STARTED` `SkillExecution` and the actual Current Intent, derivation and retention of immutable Skill-execution / intent association, rejection of supplied terminal Skills, absent Current Intent, and intent mismatch, preservation of pending-reconsideration semantics, authorization-before-issuance, terminal closure classes, timeout boundary behavior, monotonic Action event time, and invalid-transition failure;
+- the Action Lifecycle transition contract, including grounded proposal admission from the **current** snapshot of a `STARTED` `SkillExecution` and the actual Current Intent, derivation and retention of immutable Skill-execution / intent association, rejection of stale or terminal Skill snapshots, absent Current Intent, and intent mismatch, preservation of pending-reconsideration semantics, authorization-before-issuance, terminal closure classes, timeout boundary behavior, monotonic Action event time, same-root stale Action snapshot rejection, and invalid-transition failure;
 - the Action Supervision contract, including supervised issuance retention, preservation of the Action lifecycle's immutable causal association, next-deadline discovery, explicit decision-epoch timeout processing, monotonic supervisor time, identity handling, terminal ordering, and fail-closed multi-action epoch behavior;
 - the Current Intent Commitment contract, including single-active-intent retention, rejection of silent replacement, explicit reconsideration request-before-decision ordering, separate trigger/decision provenance, continue/release decisions, terminal release, identity handling, monotonic time, and fail-closed invalid operations;
-- the Skill Execution contract, including immutable execution/skill/intent association, derivation of `intent_id` from the actual Current Intent at the supported start seam, rejection of start when no Current Intent exists, preservation of Current Intent state/history during association validation, explicit success/failure/cancellation terminal classes, cancellation distinct from Skill failure, monotonic Skill event time, provenance/reason validation, no automatic later-Intent-release-to-Skill-cancellation mutation, and the boundary that Skill terminal state does not automatically release or reconsider Current Intent.
+- the Skill Execution contract, including immutable execution/skill/intent association, derivation of `intent_id` from the actual Current Intent at the supported start seam, rejection of start when no Current Intent exists, preservation of Current Intent state/history during association validation, explicit success/failure/cancellation terminal classes, cancellation distinct from Skill failure, monotonic Skill event time, provenance/reason validation, same-root stale snapshot rejection, no automatic later-Intent-release-to-Skill-cancellation mutation, and the boundary that Skill terminal state does not automatically release or reconsider Current Intent;
+- the bounded lifecycle-linearity regressions, including that a successful Skill or Action transition advances only its same-root lineage after the next snapshot validates, predecessor snapshots cannot create sibling branches, a stale `STARTED` Skill snapshot cannot seed a supported Action proposal, failed transition validation does not consume the current snapshot, and independently created roots with the same textual identity are deliberately not claimed to be globally canonicalized.
 
-The Skill-to-Action proposal tests establish only the supported proposal-admission relation:
+The Skill-to-Action proposal tests establish the supported proposal-admission relation:
 
 ```text
 ActionLifecycle PROPOSED
+  -> supplied SkillExecution was current in its supported lineage
   -> supplied SkillExecution was STARTED at proposal admission
   -> supplied Skill intent matched the actual Current Intent at proposal admission
 ```
 
-They also verify that successful and failed proposal validation do not mutate the supplied Skill execution value or Intent Commitment history.
+They also verify that proposal validation does not mutate Skill event history or Intent Commitment history.
+
+The lifecycle-linearity tests establish only **same-root ephemeral currentness**. They do not turn the private lineage revision into a global runtime registry.
 
 A green result does **not** prove:
 
-- that a repository-wide Skill owner or supervisor established that the supplied immutable `SkillExecution` value is the latest branch/version for its execution identity;
+- that a repository-wide Skill owner or registry establishes global uniqueness or selects the globally latest execution root for a textual `execution_id` across independently created roots;
+- that a repository-wide Action owner establishes global uniqueness or selects one globally canonical proposal root for a textual `action_id` across independently created roots;
+- durable lifecycle-lineage retention across serialization, process restart, or distributed execution;
+- thread-safe or linearizable concurrent lifecycle mutation;
 - that the Skill generated the Action payload or that a useful closed-loop Skill controller exists;
 - that Action outcome should imply Skill success/failure/cancellation, or that Skill cancellation should cancel an issued/in-flight Action;
 - that a deployed runtime driver eventually supplies future Action Supervision decision epochs;
