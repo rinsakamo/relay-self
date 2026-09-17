@@ -182,6 +182,31 @@ Metacontrol itself consumes resources. Do not add an adaptive allocation mechani
 
 These are cross-cutting runtime constraints, not a requirement for a new `CognitiveFrontier`, `ThinkingLevel`, brain-region layer, or other top-level owner.
 
+Deliberate cognition is likewise a runtime mechanism rather than another architectural basis. When the current projection is insufficient, the runtime may retrieve already-owned cognition, perform bounded reasoning or simulation over available cognition, or pursue new information through existing capabilities.
+
+**Retrieval** reactivates cognition already owned by Persistent Cognition and makes it available to current processing. Retrieval preserves the retrieved object's semantic type and provenance: recalling a Belief does not turn it into Evidence, and recalling a Memory does not make it authoritative external truth.
+
+**Inquiry** is information-seeking behavior used to obtain information that is not already available as owned current or persistent cognition. The source may be a sensor, person, file, manual, database, API, source tree, Web source, or another external or not-yet-integrated information source. Physical locality is not the semantic boundary; cognition ownership and integration are.
+
+Inquiry should reuse ordinary agency and authority paths when it requires action or external access:
+
+```text
+Active Question / present insufficiency
+  -> Current Intent when investigation deserves commitment
+  -> information-seeking Skill / Action
+  -> source result / Observation
+  -> provenance-bearing Evidence or candidate material
+  -> Assessment / Belief / Present update
+  -> optional governed Experience Integration
+  -> Memory / other Persistent Cognition
+```
+
+Information acquisition does not grant authority by itself. A model-generated simulation remains a prediction or candidate assessment unless an authorized observation, source, or consequence path supplies stronger grounding. Likewise, a procedure named `verify` does not create truth merely by its name.
+
+Choose among Retrieval, Inquiry sources, and other deliberate mechanisms using the same bounded selection rule above. Freshness, source reliability, expected information value, latency, monetary or compute cost, risk, and deadline may change the preferred path. Do not hard-code a universal ladder such as memory -> local file -> network, and do not create a universal `Knowledge` store merely because information can be accessed externally.
+
+`Thinking Mode`, `Retrieval`, and `Inquiry` are therefore useful descriptive mechanism names, not new top-level semantic owners unless future implementation demonstrates independent state, authority, or lifecycle that cannot be reduced to current owners.
+
 Prefer event-driven decision epochs over a single monolithic tick loop.
 
 ## 12. Time is explicit
