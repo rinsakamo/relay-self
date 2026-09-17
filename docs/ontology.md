@@ -67,7 +67,7 @@ The Embodied Boundary is the causal coupling surface between Self-side cognition
 | Event Admission | Decision that an incoming event should enter active processing. |
 | Reconsideration | Decision whether to continue the current intent or deliberate again. |
 | Arbitration | Selection among eligible motivations or candidate intents. |
-| Skill | Temporally extended feedback controller or embodied capability. |
+| Skill | Reusable temporally extended feedback controller or embodied capability; one Skill is distinct from any particular Skill execution instance. |
 | Action | Primitive effect command directed toward the environment. |
 | Action Authorization | Gate determining whether a proposed action may be issued toward external execution. |
 | Consequence Observation | Observation of what actually followed an action. |
@@ -75,6 +75,19 @@ The Embodied Boundary is the causal coupling surface between Self-side cognition
 | Scheduler | Runtime coordination across different timescales and priorities. |
 | Time Model | Representation of runtime, world, subjective, or branch time. |
 | Trace / Provenance | Causal record of why state, decisions, and actions changed. |
+
+A Skill may be projected into the current Present as a candidate and may then be selected to structure local cognition/control. Candidate status, selection, and parameter binding are currently transient relations/processes rather than separate canonical ontology owners:
+
+```text
+reusable Skill
+  != currently considered Skill candidate
+  != selected Skill
+  != started Skill execution instance
+```
+
+A Skill candidate means that the reusable Skill appears relevant/applicable enough to consider under the current situation and Current Intent. Selection chooses a Skill as the current local execution/cognition path; it does not by itself start an execution, authorize a primitive Action, or establish world truth. Parameter requirements and bound values likewise remain separate from external-state authority, and binding may be resolved before execution or progressively by a future closed-loop controller where the Skill semantics require it.
+
+The executable `SkillExecution` owner begins only when the supported runtime start seam records one execution instance. It owns that instance's lifecycle, not the reusable Skill definition, candidate set, selection decision, general parameter-binding policy, or controller implementation.
 
 An informal **Self Image** can be useful when explaining the Self's current relation to an external body or world, but it is not currently a separate canonical ontology object. The needed information can presently be expressed by composing existing owners such as `Self-Model`, `Working Self`, `Situation Model`, `Capability Model`, `Body State`, `Belief`, and `Current Appraisal`.
 
