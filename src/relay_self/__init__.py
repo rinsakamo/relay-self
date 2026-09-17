@@ -6,7 +6,6 @@ from relay_self.action import (
     ActionState,
     InvalidActionData,
     InvalidTransition,
-    Provenance,
 )
 from relay_self.action_supervision import (
     ActionSupervisionError,
@@ -28,6 +27,7 @@ from relay_self.intent import (
     InvalidIntentTransition,
     ReconsiderationDecision,
 )
+from relay_self.provenance import InvalidProvenanceData, Provenance
 from relay_self.skill import (
     SKILL_TERMINAL_STATES,
     InvalidSkillData,
@@ -56,6 +56,7 @@ __all__ = [
     "InvalidIntentData",
     "InvalidIntentTime",
     "InvalidIntentTransition",
+    "InvalidProvenanceData",
     "InvalidSkillData",
     "InvalidSkillTransition",
     "InvalidSupervisionData",
