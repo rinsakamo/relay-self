@@ -6,7 +6,9 @@ This document owns the executable runtime lifecycle for one Skill execution inst
 
 It refines the ontology definition of Skill as a temporally extended feedback controller or embodied capability and the architectural flow `Current Intent -> Skill -> Action`. It owns the Skill execution's immutable association to the Current Intent that was actually committed when the supported start seam ran, distinguishes Skill success, failure, and explicit cancellation, and now owns same-root snapshot-lineage currentness for that execution.
 
-It does **not** define the persistent capability library, a closed-loop control policy, primitive Action generation, general Skill scheduling, or automatic policy for what happens when the associated Current Intent changes later.
+It does **not** define the persistent capability library, transient Skill-candidate projection, Skill selection, general parameter requirements or binding policy, a closed-loop control policy, primitive Action generation, general Skill scheduling, or automatic policy for what happens when the associated Current Intent changes later.
+
+The reusable Skill definition/capability exists conceptually upstream of this owner. Candidate admission, selection, and general parameter binding are likewise upstream/transient responsibilities unless future implementation demonstrates independent state, authority, or lifecycle. This contract begins only when the supported start seam records one concrete Skill execution instance.
 
 The executable owner is `src/relay_self/skill.py`; deterministic verification lives in `tests/test_skill_execution.py` and the cross-lifecycle stale-snapshot regressions in `tests/test_lifecycle_linearity.py`.
 
@@ -149,7 +151,11 @@ associated intent remains current for the whole Skill execution
 Starting a Skill also does **not** prove that:
 
 - `skill_id` exists in a validated capability library;
+- the Skill was admitted as a candidate by a supported candidate-generation path;
+- the Skill was selected by a supported selector;
 - Skill initiation preconditions are satisfied;
+- required Skill parameters were completely or correctly bound;
+- any bound prediction, retrieved value, or heuristic is authoritative external state;
 - the Skill is authorized for execution;
 - the Skill was a good or optimal execution choice for the Current Intent;
 - any primitive Action has been proposed, authorized, issued, or completed.
@@ -396,7 +402,9 @@ These tests are deterministic invariant evidence only. They do not prove useful 
 This contract intentionally does not define:
 
 - a Skill capability library, persistent capability model, or Skill discovery;
+- transient Skill-candidate projection/admission;
 - Skill selection, arbitration, ranking, or matching policy beyond the start association invariant;
+- general Skill parameter schema, candidate generation, or parameter-binding policy;
 - initiation/precondition evaluation;
 - closed-loop feedback/control policy or primitive Action generation;
 - repository-wide global uniqueness/latest-root selection for `execution_id`;
