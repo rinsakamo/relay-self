@@ -90,3 +90,39 @@ python experiments/adaptive_mechanisms.py --seeds 20 --selector-cost 10
 Machine-readable output is available with `--json`; add `--trace` to include per-episode decision records.
 
 Simulation results from this harness are evidence only for the recorded configuration and seeds. Do not promote a favorable comparison into RelaySelf semantic authority without the normal evaluation and Grand Null process.
+
+## Mineflayer viability-relay fixture
+
+`mineflayer_viability_relay.py` is a deterministic, simulation-only fixture for #46. It is grounded in `PrismarineJS/mineflayer` revision `91204b2a034f0663b39814771e236bcb7c8f26c8` but does not import Mineflayer or require a Minecraft server.
+
+The fixture preserves Mineflayer-like body facts and events separately from a minimal signed health gradient:
+
+```text
+Mineflayer observation / event
+  != health-gradient sample
+  != belief / appraisal
+  != action
+```
+
+The first gradient is intentionally only:
+
+```text
+current bot.health - previous bot.health
+```
+
+No extra penalty is attached to `death`, and `respawn` remains an independent observation event. As a result, the built-in death/respawn trace deliberately produces a positive health delta after respawn, which keeps Minecraft recovery semantics available for later cognition experiments instead of hard-coding human death aversion.
+
+Emit both A/B payloads:
+
+```bash
+python experiments/mineflayer_viability_relay.py --condition both
+```
+
+Or emit one condition:
+
+```bash
+python experiments/mineflayer_viability_relay.py --condition observations
+python experiments/mineflayer_viability_relay.py --condition gradient
+```
+
+This fixture does not demonstrate useful Minecraft cognition by itself. Its output is a bounded input surface for a later controlled cognitive-consumer comparison.
