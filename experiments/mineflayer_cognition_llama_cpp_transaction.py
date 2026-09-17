@@ -28,7 +28,10 @@ DEFAULT_REQUEST_TIMEOUT = 600.0
 READY_TIMEOUT_SECONDS = 120.0
 READY_POLL_SECONDS = 0.5
 EXPECTED_GGUF_SHA256 = "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed"
-EXPECTED_MODEL_FTYPE = "Q4_K_M"
+EXPECTED_TARGET_QUANTIZATION = "Q4_K_M"
+_MODEL_FTYPE_TARGET_QUANTIZATION_EQUIVALENCE = {
+    "Q4_K - Medium": "Q4_K_M",
+}
 
 
 class PhysicalTransactionError(RuntimeError):
@@ -210,6 +213,19 @@ def _model_ids(payload: object) -> list[str]:
     return result
 
 
+def _model_ftype_matches_target_quantization(
+    *, model_ftype: object, target_quantization: str
+) -> bool:
+    if model_ftype == target_quantization:
+        return True
+    if not isinstance(model_ftype, str):
+        return False
+    return (
+        _MODEL_FTYPE_TARGET_QUANTIZATION_EQUIVALENCE.get(model_ftype)
+        == target_quantization
+    )
+
+
 def attest_runtime(
     *,
     health: object,
@@ -259,8 +275,13 @@ def attest_runtime(
     if slot.get("id") != 0:
         raise PhysicalTransactionError("single /slots entry must have id 0")
     model_ftype = props.get("model_ftype")
-    if model_ftype != EXPECTED_MODEL_FTYPE:
-        raise PhysicalTransactionError("props.model_ftype does not match Q4_K_M")
+    if not _model_ftype_matches_target_quantization(
+        model_ftype=model_ftype,
+        target_quantization=EXPECTED_TARGET_QUANTIZATION,
+    ):
+        raise PhysicalTransactionError(
+            "props.model_ftype does not match target quantization Q4_K_M"
+        )
     chat_template = props.get("chat_template")
     if not isinstance(chat_template, str) or not chat_template:
         raise PhysicalTransactionError("props.chat_template must be a non-empty string")
@@ -271,6 +292,7 @@ def attest_runtime(
         "modelAlias": model_alias,
         "modelPath": str(artifact_path),
         "modelFtype": model_ftype,
+        "targetQuantization": EXPECTED_TARGET_QUANTIZATION,
         "artifactSha256": artifact_sha256,
         "chatTemplateSha256": _sha256_bytes(chat_template.encode("utf-8")),
         "context": DEFAULT_CONTEXT,
