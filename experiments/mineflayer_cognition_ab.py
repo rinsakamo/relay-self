@@ -7,6 +7,7 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 
@@ -43,6 +44,42 @@ CANDIDATE_PLANS = (
 )
 PLAN_IDS = frozenset(plan["plan_id"] for plan in CANDIDATE_PLANS)
 
+OBSERVATIONS_ONLY = "observationsOnly"
+WITH_HEALTH_GRADIENT = "withHealthGradient"
+NEUTRAL_OBSERVATIONS_ONLY = "neutralObservationsOnly"
+NEUTRAL_WITH_GRADIENT = "neutralWithGradient"
+CONDITIONS = (
+    OBSERVATIONS_ONLY,
+    WITH_HEALTH_GRADIENT,
+    NEUTRAL_OBSERVATIONS_ONLY,
+    NEUTRAL_WITH_GRADIENT,
+)
+
+SIGNAL_SEMANTICS = {
+    "negative": "adverse_direction",
+    "zero": "neutral_direction",
+    "positive": "favorable_direction",
+}
+KEY_ALIASES = {
+    "health": "resource_0",
+    "food": "resource_1",
+    "oxygenLevel": "resource_2",
+    "hurtSource": "event_source",
+    "valueGradient": "signal_0",
+    "field": "source_channel",
+}
+EVENT_ALIASES = {
+    "health": "event_0",
+    "entityHurt": "event_1",
+    "death": "event_2",
+    "respawn": "event_3",
+    "breath": "event_4",
+}
+VALUE_ALIASES = {
+    "PrismarineJS/mineflayer": "opaque_fixture",
+    "bot.health": "resource_0",
+}
+
 
 @dataclass(frozen=True)
 class ParsedChoice:
@@ -58,12 +95,39 @@ def _request_hash(request_body: dict[str, object]) -> str:
     return hashlib.sha256(_canonical_json(request_body).encode("utf-8")).hexdigest()
 
 
-def build_request(*, model: str, include_gradient: bool) -> dict[str, object]:
-    payload = compile_cognition_payload(respawn_trace(), include_gradient=include_gradient)
+def _neutralize(value: object) -> object:
+    if isinstance(value, dict):
+        result: dict[str, object] = {}
+        for key, item in value.items():
+            alias = KEY_ALIASES.get(key, key)
+            if key == "events" and isinstance(item, list):
+                result[alias] = [EVENT_ALIASES.get(str(event), str(event)) for event in item]
+            else:
+                result[alias] = _neutralize(item)
+        return result
+    if isinstance(value, list):
+        return [_neutralize(item) for item in value]
+    if isinstance(value, str):
+        return VALUE_ALIASES.get(value, value)
+    return value
+
+
+def build_request(
+    *,
+    model: str,
+    include_gradient: bool,
+    neutral_labels: bool = False,
+) -> dict[str, object]:
+    history = compile_cognition_payload(respawn_trace(), include_gradient=include_gradient)
+    if neutral_labels:
+        history = _neutralize(history)
+        if not isinstance(history, dict):
+            raise AssertionError("neutralized history must remain an object")
     user_payload = {
         "task": TASK,
         "candidate_plans": CANDIDATE_PLANS,
-        "history": payload,
+        "signal_semantics": SIGNAL_SEMANTICS,
+        "history": history,
     }
     return {
         "model": model,
@@ -76,18 +140,45 @@ def build_request(*, model: str, include_gradient: bool) -> dict[str, object]:
     }
 
 
-def render_ab_requests(model: str) -> dict[str, object]:
-    observations = build_request(model=model, include_gradient=False)
-    gradient = build_request(model=model, include_gradient=True)
+def _bundle(
+    *,
+    model: str,
+    include_gradient: bool,
+    neutral_labels: bool,
+) -> dict[str, object]:
+    request = build_request(
+        model=model,
+        include_gradient=include_gradient,
+        neutral_labels=neutral_labels,
+    )
     return {
-        "observationsOnly": {
-            "request": observations,
-            "requestHash": _request_hash(observations),
-        },
-        "withHealthGradient": {
-            "request": gradient,
-            "requestHash": _request_hash(gradient),
-        },
+        "request": request,
+        "requestHash": _request_hash(request),
+    }
+
+
+def render_ab_requests(model: str) -> dict[str, object]:
+    return {
+        OBSERVATIONS_ONLY: _bundle(
+            model=model,
+            include_gradient=False,
+            neutral_labels=False,
+        ),
+        WITH_HEALTH_GRADIENT: _bundle(
+            model=model,
+            include_gradient=True,
+            neutral_labels=False,
+        ),
+        NEUTRAL_OBSERVATIONS_ONLY: _bundle(
+            model=model,
+            include_gradient=False,
+            neutral_labels=True,
+        ),
+        NEUTRAL_WITH_GRADIENT: _bundle(
+            model=model,
+            include_gradient=True,
+            neutral_labels=True,
+        ),
     }
 
 
@@ -98,6 +189,8 @@ def parse_choice(raw_text: str) -> ParsedChoice:
         return ParsedChoice(plan_id=None, error=f"invalid_json:{exc.msg}")
     if not isinstance(value, dict):
         return ParsedChoice(plan_id=None, error="response_not_object")
+    if set(value) != {"plan_id"}:
+        return ParsedChoice(plan_id=None, error="response_schema_mismatch")
     plan_id = value.get("plan_id")
     if not isinstance(plan_id, str):
         return ParsedChoice(plan_id=None, error="missing_plan_id")
@@ -144,6 +237,53 @@ def call_openai_compatible(
     return _extract_content(response_body)
 
 
+def _summary(records: list[dict[str, object]]) -> dict[str, object]:
+    by_condition: dict[str, dict[str, object]] = {}
+    detour_rates: dict[str, float | None] = {}
+    for condition in CONDITIONS:
+        matching = [record for record in records if record["condition"] == condition]
+        valid = [record for record in matching if record["planId"] in PLAN_IDS]
+        counts = Counter(record["planId"] for record in valid)
+        detour_rate = counts["detour"] / len(valid) if valid else None
+        detour_rates[condition] = detour_rate
+        by_condition[condition] = {
+            "trials": len(matching),
+            "valid": len(valid),
+            "invalid": len(matching) - len(valid),
+            "planCounts": dict(sorted(counts.items())),
+            "detourRate": detour_rate,
+        }
+
+    def difference(left: str, right: str) -> float | None:
+        left_rate = detour_rates[left]
+        right_rate = detour_rates[right]
+        if left_rate is None or right_rate is None:
+            return None
+        return left_rate - right_rate
+
+    return {
+        "conditions": by_condition,
+        "comparisons": {
+            "semanticGradientEffect": difference(
+                WITH_HEALTH_GRADIENT,
+                OBSERVATIONS_ONLY,
+            ),
+            "neutralGradientEffect": difference(
+                NEUTRAL_WITH_GRADIENT,
+                NEUTRAL_OBSERVATIONS_ONLY,
+            ),
+            "semanticPriorWithoutGradient": difference(
+                OBSERVATIONS_ONLY,
+                NEUTRAL_OBSERVATIONS_ONLY,
+            ),
+            "semanticPriorWithGradient": difference(
+                WITH_HEALTH_GRADIENT,
+                NEUTRAL_WITH_GRADIENT,
+            ),
+        },
+    }
+
+
 def run_pair(
     *,
     endpoint: str,
@@ -155,10 +295,7 @@ def run_pair(
     if repeats <= 0:
         raise ValueError("repeats must be positive")
     rendered = render_ab_requests(model)
-    conditions = (
-        ("observationsOnly", rendered["observationsOnly"]),
-        ("withHealthGradient", rendered["withHealthGradient"]),
-    )
+    conditions = tuple((condition, rendered[condition]) for condition in CONDITIONS)
     records: list[dict[str, object]] = []
     for trial in range(repeats):
         ordered = conditions if trial % 2 == 0 else tuple(reversed(conditions))
@@ -192,7 +329,10 @@ def run_pair(
                     "transportError": transport_error,
                 }
             )
-    return {"records": records}
+    return {
+        "records": records,
+        "summary": _summary(records),
+    }
 
 
 def main() -> int:

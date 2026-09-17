@@ -129,7 +129,16 @@ This fixture does not demonstrate useful Minecraft cognition by itself. Its outp
 
 ## Mineflayer cognition A/B probe
 
-`mineflayer_cognition_ab.py` turns the merged viability fixture into a matched cognition request pair. Both conditions use the same task, candidate plans, observation history, model id, temperature, and output instruction. The model-visible difference is only whether the history rows contain the already-derived `valueGradient` field.
+`mineflayer_cognition_ab.py` turns the merged viability fixture into four matched cognition conditions. The original semantic A/B pair preserves Mineflayer field/event names; a second A/B pair deterministically aliases those names so the value signal can be tested with less pretrained Minecraft/human semantic leakage.
+
+```text
+observationsOnly
+withHealthGradient
+neutralObservationsOnly
+neutralWithGradient
+```
+
+All four conditions use the same task, candidate plans, observation values, model id, temperature, output instruction, and generic signed-signal semantics. Within each semantic-label pair, the model-visible treatment difference is only whether the history rows contain the derived gradient/signal values.
 
 The task asks the model to reach one target efficiently and choose one of three geometry-only plan ids:
 
@@ -141,13 +150,15 @@ observe
 
 The candidate descriptions contain coordinates only; they are not labeled with affective or safety semantics. The primary output is therefore a behavior choice (`plan_id`), not an emotion word.
 
-Render deterministic A/B requests without network access:
+The neutral history uses fixed experiment-local aliases such as `resource_0`, `event_1`, and `signal_0`. It removes Mineflayer/Minecraft and health/death/hurt labels from the history while preserving values, event/source association, and timing. This is an evaluation control only; it is not an adapter or runtime schema proposal.
+
+Render deterministic requests without network access:
 
 ```bash
 python experiments/mineflayer_cognition_ab.py --model MODEL_ID
 ```
 
-Run repeated paired calls against an OpenAI-compatible endpoint:
+Run repeated calls against an OpenAI-compatible endpoint:
 
 ```bash
 python experiments/mineflayer_cognition_ab.py \
@@ -157,6 +168,6 @@ python experiments/mineflayer_cognition_ab.py \
   --run
 ```
 
-If the endpoint requires a key, the script reads `OPENAI_API_KEY` by default; `--api-key-env` can name another environment variable. A/B order alternates across trials, request hashes are recorded, and malformed or out-of-set model outputs are preserved as failures rather than silently repaired.
+If the endpoint requires a key, the script reads `OPENAI_API_KEY` by default; `--api-key-env` can name another environment variable. Condition order reverses across trials, request hashes are recorded, malformed or out-of-set model outputs are preserved as failures rather than silently repaired, and run output reports per-condition plan counts plus separate semantic-gradient, neutral-gradient, and semantic-prior detour-rate differences.
 
-Model-run results are model/system-quality evidence only. A difference in selected plan ids does not establish an Emotion/Fear owner, and a null result does not justify strengthening the gradient merely to force an effect.
+The gradient remains mathematically derivable from the original health observations. A measured effect therefore demonstrates representational/evaluative salience, not additional World information. Model-run results are model/system-quality evidence only; they do not establish a Value/Emotion/Fear owner, and a null result does not justify strengthening the gradient merely to force an effect.
