@@ -171,3 +171,25 @@ python experiments/mineflayer_cognition_ab.py \
 If the endpoint requires a key, the script reads `OPENAI_API_KEY` by default; `--api-key-env` can name another environment variable. Condition order reverses across trials, request hashes are recorded, malformed or out-of-set model outputs are preserved as failures rather than silently repaired, and run output reports per-condition plan counts plus separate semantic-gradient, neutral-gradient, and semantic-prior detour-rate differences.
 
 The gradient remains mathematically derivable from the original health observations. A measured effect therefore demonstrates representational/evaluative salience, not additional World information. Model-run results are model/system-quality evidence only; they do not establish a Value/Emotion/Fear owner, and a null result does not justify strengthening the gradient merely to force an effect.
+
+
+## Mineflayer cognition physical qualification
+
+The canonical local physical entrypoint for the pinned #46 llama.cpp qualification is the no-bytecode launcher:
+
+```bash
+EVIDENCE=/tmp/relay-self-mineflayer-$(date -u +%Y%m%dT%H%M%SZ)
+
+bash experiments/run_mineflayer_cognition_llama_cpp_transaction.sh \
+  --evidence-root "$EVIDENCE"
+```
+
+The launcher executes the existing transaction as:
+
+```text
+python3 -B -m experiments.mineflayer_cognition_llama_cpp_transaction
+```
+
+The `-B` flag is part of the physical launcher contract. It prevents Python import bytecode from creating checkout-local `__pycache__` / `.pyc` files before the transaction's clean-check precondition runs. The clean-check itself is intentionally not weakened, generated files are not hidden through `.gitignore`, and the launcher does not delete or reset operator files.
+
+For physical qualification, direct `python -m experiments.mineflayer_cognition_llama_cpp_transaction` invocation is non-canonical because ordinary Python bytecode caching can dirty a fresh checkout before preflight. The launcher changes no llama.cpp, GGUF, attestation, request, condition, repeat, retry, or evidence semantics; it only supplies the import environment required by the existing clean-check contract.
