@@ -164,13 +164,23 @@ Wait, rest, sleep, recover, observe, reflect, conserve resources, wait for an op
 
 Evaluation should distinguish justified inactivity from pathological or unexplained idle behavior.
 
-## 11. Runtime layers operate at different time scales
+## 11. Runtime layers operate at different time scales and costs
 
 Do not require language-model inference on every simulation or control tick.
 
 Fast deterministic layers should handle regulation, event admission, viability checks, basic scheduling, skill control, and immediate safety response where practical.
 
 Slower cognition should be invoked when interpretation, deliberation, novel planning, reappraisal, or persistent-state integration is actually needed.
+
+When multiple available mechanisms can adequately serve the same current objective, selection should respect the current deadline, expected reliability or applicability, and relevant resource cost. Prefer a cheaper or faster mechanism when it meets the required result quality and constraints; escalate when cheaper control is no longer adequate and the remaining budget permits more expensive cognition.
+
+This comparison need not collapse latency, compute, energy, uncertainty, risk, or information value into one universal scalar. A mechanism may be dominated in one situation and useful in another.
+
+Experience may make an expensive computation reusable through Memory, a learned policy, a Skill, a cached procedure, or another justified mechanism. Such amortization does not make the shortcut permanently authoritative: contradictory consequence evidence, changed applicability, novelty, or distribution shift should be able to invalidate the cheap path and trigger renewed processing where useful.
+
+Metacontrol itself consumes resources. Do not add an adaptive allocation mechanism when a fixed rule is sufficient, and do not hide unrestricted deliberation inside the mechanism that decides whether to deliberate.
+
+These are cross-cutting runtime constraints, not a requirement for a new `CognitiveFrontier`, `ThinkingLevel`, brain-region layer, or other top-level owner.
 
 Prefer event-driven decision epochs over a single monolithic tick loop.
 
