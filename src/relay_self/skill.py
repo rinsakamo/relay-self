@@ -60,14 +60,25 @@ class SkillEvent:
             _require_text("skill terminal reason", self.reason)
 
 
+@dataclass(slots=True)
+class _SkillLineage:
+    current_revision: int = 0
+
+
 @dataclass(frozen=True, slots=True)
 class SkillExecution:
-    """Immutable lifecycle for one runtime execution of one Skill capability."""
+    """Immutable snapshot of one runtime Skill execution lifecycle."""
 
     execution_id: str
     skill_id: str
     intent_id: str
     _events: tuple[SkillEvent, ...] = field(repr=False)
+    _lineage: _SkillLineage = field(
+        default_factory=_SkillLineage,
+        repr=False,
+        compare=False,
+    )
+    _revision: int = field(default=0, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         _require_text("execution_id", self.execution_id)
@@ -77,6 +88,16 @@ class SkillExecution:
             raise InvalidSkillData("skill event history must be an immutable tuple")
         if not all(isinstance(event, SkillEvent) for event in self._events):
             raise InvalidSkillData("skill event history must contain only SkillEvent values")
+        if not isinstance(self._lineage, _SkillLineage):
+            raise InvalidSkillData("skill lineage must be internal Skill lineage state")
+        if (
+            not isinstance(self._revision, int)
+            or isinstance(self._revision, bool)
+            or self._revision < 0
+        ):
+            raise InvalidSkillData("skill revision must be a non-negative integer")
+        if self._revision != len(self._events) - 1:
+            raise InvalidSkillData("skill revision must match event history")
         self._validate_history()
 
     @classmethod
@@ -118,6 +139,10 @@ class SkillExecution:
     @property
     def is_terminal(self) -> bool:
         return self.state in SKILL_TERMINAL_STATES
+
+    @property
+    def is_current_snapshot(self) -> bool:
+        return self._revision == self._lineage.current_revision
 
     def succeed(
         self,
@@ -168,16 +193,25 @@ class SkillExecution:
         )
 
     def _transition(self, event: SkillEvent) -> SkillExecution:
+        if not self.is_current_snapshot:
+            raise InvalidSkillTransition(
+                "cannot transition a stale Skill execution snapshot"
+            )
         if event.state not in _ALLOWED_TRANSITIONS[self.state]:
             raise InvalidSkillTransition(
                 f"cannot transition from {self.state.value} to {event.state.value}"
             )
-        return SkillExecution(
+
+        next_execution = SkillExecution(
             execution_id=self.execution_id,
             skill_id=self.skill_id,
             intent_id=self.intent_id,
             _events=(*self._events, event),
+            _lineage=self._lineage,
+            _revision=self._revision + 1,
         )
+        self._lineage.current_revision = next_execution._revision
+        return next_execution
 
     def _validate_history(self) -> None:
         if not self._events:

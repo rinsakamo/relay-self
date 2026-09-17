@@ -116,16 +116,26 @@ class ActionSupervisor:
         self._require_time(at_ns)
         _require_provenance(provenance)
 
-        replacements: list[tuple[str, ActionLifecycle]] = []
+        prepared: list[tuple[str, ActionLifecycle, ActionLifecycle]] = []
         for lifecycle in self.open_actions:
             deadline_ns = _issued_deadline_ns(lifecycle)
             if deadline_ns <= at_ns:
-                replacements.append(
+                prepared.append(
                     (
                         lifecycle.action_id,
-                        lifecycle.timeout(at_ns=at_ns, provenance=provenance),
+                        lifecycle,
+                        lifecycle._prepare_timeout(
+                            at_ns=at_ns,
+                            provenance=provenance,
+                        ),
                     )
                 )
+
+        replacements: list[tuple[str, ActionLifecycle]] = []
+        for action_id, current, replacement in prepared:
+            replacements.append(
+                (action_id, current._commit_prepared(replacement))
+            )
 
         for action_id, lifecycle in replacements:
             self._lifecycles[action_id] = lifecycle

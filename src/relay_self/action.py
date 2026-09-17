@@ -83,14 +83,25 @@ class ActionEvent:
             _require_at_ns(self.deadline_ns)
 
 
+@dataclass(slots=True)
+class _ActionLineage:
+    current_revision: int = 0
+
+
 @dataclass(frozen=True, slots=True)
 class ActionLifecycle:
-    """Immutable, provenance-bearing state machine for one action."""
+    """Immutable snapshot of one provenance-bearing Action lifecycle."""
 
     action_id: str
     skill_execution_id: str
     intent_id: str
     _events: tuple[ActionEvent, ...] = field(repr=False)
+    _lineage: _ActionLineage = field(
+        default_factory=_ActionLineage,
+        repr=False,
+        compare=False,
+    )
+    _revision: int = field(default=0, repr=False, compare=False)
 
     def __post_init__(self) -> None:
         _require_text("action_id", self.action_id)
@@ -100,6 +111,16 @@ class ActionLifecycle:
             raise InvalidActionData("action event history must be an immutable tuple")
         if not all(isinstance(event, ActionEvent) for event in self._events):
             raise InvalidActionData("action event history must contain only ActionEvent values")
+        if not isinstance(self._lineage, _ActionLineage):
+            raise InvalidActionData("action lineage must be internal Action lineage state")
+        if (
+            not isinstance(self._revision, int)
+            or isinstance(self._revision, bool)
+            or self._revision < 0
+        ):
+            raise InvalidActionData("action revision must be a non-negative integer")
+        if self._revision != len(self._events) - 1:
+            raise InvalidActionData("action revision must match event history")
         self._validate_history()
 
     @classmethod
@@ -122,6 +143,10 @@ class ActionLifecycle:
 
         from relay_self.skill import SkillState
 
+        if not skill_execution.is_current_snapshot:
+            raise InvalidTransition(
+                "action proposal requires the current Skill execution snapshot"
+            )
         if skill_execution.state is not SkillState.STARTED:
             raise InvalidTransition("action proposal skill execution must be started")
 
@@ -151,6 +176,10 @@ class ActionLifecycle:
     @property
     def is_terminal(self) -> bool:
         return self.state in TERMINAL_STATES
+
+    @property
+    def is_current_snapshot(self) -> bool:
+        return self._revision == self._lineage.current_revision
 
     def authorize(
         self,
@@ -244,16 +273,55 @@ class ActionLifecycle:
             )
         )
 
+    def _prepare_timeout(
+        self,
+        *,
+        at_ns: int,
+        provenance: Provenance,
+    ) -> ActionLifecycle:
+        """Prepare a timeout snapshot without advancing lineage currentness."""
+        return self._prepare_transition(
+            ActionEvent(
+                state=ActionState.TIMEOUT,
+                at_ns=at_ns,
+                provenance=provenance,
+            )
+        )
+
     def _transition(self, event: ActionEvent) -> ActionLifecycle:
+        next_lifecycle = self._prepare_transition(event)
+        return self._commit_prepared(next_lifecycle)
+
+    def _prepare_transition(self, event: ActionEvent) -> ActionLifecycle:
+        if not self.is_current_snapshot:
+            raise InvalidTransition("cannot transition a stale Action lifecycle snapshot")
         allowed = _ALLOWED_TRANSITIONS[self.state]
         if event.state not in allowed:
-            raise InvalidTransition(f"cannot transition from {self.state.value} to {event.state.value}")
+            raise InvalidTransition(
+                f"cannot transition from {self.state.value} to {event.state.value}"
+            )
+
         return ActionLifecycle(
             action_id=self.action_id,
             skill_execution_id=self.skill_execution_id,
             intent_id=self.intent_id,
             _events=(*self._events, event),
+            _lineage=self._lineage,
+            _revision=self._revision + 1,
         )
+
+    def _commit_prepared(self, next_lifecycle: ActionLifecycle) -> ActionLifecycle:
+        if not self.is_current_snapshot:
+            raise InvalidTransition("cannot transition a stale Action lifecycle snapshot")
+        if next_lifecycle._lineage is not self._lineage:
+            raise InvalidActionData("prepared Action snapshot has a different lineage")
+        if next_lifecycle._revision != self._revision + 1:
+            raise InvalidActionData("prepared Action snapshot has an invalid revision")
+        if next_lifecycle._events[:-1] != self._events:
+            raise InvalidActionData("prepared Action snapshot does not extend current history")
+
+        self._lineage.current_revision = next_lifecycle._revision
+        return next_lifecycle
 
     def _validate_history(self) -> None:
         if not self._events:
@@ -293,7 +361,9 @@ class ActionLifecycle:
                 if issued_deadline_ns is None:
                     raise InvalidActionData("timeout requires a prior issued deadline")
                 if event.at_ns < issued_deadline_ns:
-                    raise InvalidTransition("cannot timeout an issued action before its deadline")
+                    raise InvalidTransition(
+                        "cannot timeout an issued action before its deadline"
+                    )
 
             previous = event
 
