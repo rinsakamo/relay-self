@@ -118,6 +118,10 @@ Useful authority classes include:
 - **Attested State Authority** — observations or source-of-record state supplied by a boundary adapter or external system.
 - **Predictive Estimate** — learned, heuristic, or model-derived estimate that does not become specification authority merely because it is confident.
 
+The current Python bootstrap's shared `Provenance` value is only the minimal immutable `source` / `reference` evidence pointer carried by owner-local events. It is one representation used inside the broader Trace / Provenance concern above; it is not equivalent to the whole causal record.
+
+In particular, that value alone does not prove that its named source is legitimate authority, reconstruct every derivation or dependency, or establish compatibility with a generic provenance model such as W3C PROV. Existing owner-local histories, associations, authority fields, and future justified trace mechanisms may carry additional causal information without creating a new semantic owner merely because they contribute to provenance.
+
 ## Arbitration without ontology collapse
 
 Needs, questions, goals, relationship concerns, tasks, and opportunities should not be represented as one universal motivational object merely to make scheduling easier.

@@ -69,6 +69,10 @@ Examples include specification authority, attested state, predictive estimates, 
 
 Authority is not equivalent to infallibility. A source can be authoritative for a state field while still carrying uncertainty, freshness, or sensor error.
 
+The architectural notion of provenance is broader than the current Python bootstrap value named `Provenance`. The current `relay_self.provenance.Provenance` value is deliberately only an immutable `source` / `reference` evidence pointer shared across runtime owners. It can ground an owner-local event, while causal reconstruction may additionally depend on that owner's event history, structural associations, explicit authority fields, and other trace information.
+
+That minimal value is therefore not by itself a complete derivation graph, proof that the named source is legitimate authority, repository-wide causal trace, or claim of compatibility with an external provenance standard such as W3C PROV. Richer provenance structure should be introduced only when a concrete owner or consumer demonstrates information that cannot be reconstructed from current contracts.
+
 ## Core invariants
 
 The architecture preserves these distinctions:

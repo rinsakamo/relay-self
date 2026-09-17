@@ -152,13 +152,13 @@ Allowing equal timestamps permits a request and decision, or an explicit release
 
 ## Provenance
 
-Intent events use the repository's existing immutable `Provenance` value type.
+Intent events use the repository's existing immutable `Provenance` value type, canonically defined in `relay_self.provenance` and shared across runtime owners.
 
-This contract intentionally does not duplicate another provenance representation. The current Python bootstrap type is still defined in `relay_self.action`; reusing that value type does not make Action Lifecycle the semantic owner of Current Intent or Reconsideration.
+This contract intentionally does not duplicate another provenance representation. The shared value is only a minimal immutable `source` / `reference` evidence pointer; reusing it does not make the neutral module, Action Lifecycle, or another consumer the semantic owner of Current Intent or Reconsideration.
 
 A reconsideration request and its decision deliberately carry separate provenance. The request provenance grounds what caused reconsideration to become pending; the decision provenance grounds the later continue/release decision.
 
-A provenance record does not by itself prove that a model, user, policy, or external source was authorized to select or reconsider an intent. General intent-selection and trigger-admission authority are not defined by this contract.
+A `Provenance` value does not by itself prove that a model, user, policy, or external source was authorized to select or reconsider an intent, and it is not a complete causal or derivation model. General intent-selection and trigger-admission authority are not defined by this contract.
 
 ## Fail-closed behavior
 
