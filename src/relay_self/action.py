@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from relay_self.provenance import Provenance
+
 if TYPE_CHECKING:
     from relay_self.intent import IntentCommitment
     from relay_self.skill import SkillExecution
@@ -51,16 +53,6 @@ class InvalidActionData(ActionLifecycleError):
 
 class InvalidTransition(ActionLifecycleError):
     """Raised when a requested lifecycle transition is not allowed."""
-
-
-@dataclass(frozen=True, slots=True)
-class Provenance:
-    source: str
-    reference: str
-
-    def __post_init__(self) -> None:
-        _require_text("provenance source", self.source)
-        _require_text("provenance reference", self.reference)
 
 
 @dataclass(frozen=True, slots=True)
