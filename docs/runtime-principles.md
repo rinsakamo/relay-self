@@ -69,13 +69,33 @@ A useful Skill contract may include:
 
 Primitive Action is the smaller world-effect command beneath a Skill.
 
+Treat the Skill itself as the reusable capability/control definition, not as one execution instance. A future runtime should preserve the minimum semantic chain:
+
 ```text
-Goal / concern
-  -> Current Intent
-  -> Skill
-  -> Action
+Current Intent + Present + current capability information
+  -> currently relevant/applicable Skill candidates
+  -> selected Skill
+  -> Skill-local cognitive narrowing / parameter binding as needed
+  -> Skill execution instance
+  -> primitive Action(s)
   -> Consequence
 ```
+
+These stages are intentionally distinct:
+
+```text
+Skill candidate
+  != selected Skill
+  != started Skill execution
+```
+
+Candidate admission is a transient judgment that a Skill is worth considering now; it is not proof of success, external-state truth, or Action authorization. Selection chooses a Skill to structure the current local problem but does not itself start an execution or complete/replace Current Intent.
+
+Skill selection may narrow Focus, Attention, Retrieval, admissible local actions, and parameter space without becoming the semantic owner of those mechanisms. Skill-local narrowing must remain penetrable by global viability, authority, reconsideration, and consequence evidence.
+
+Parameter binding is likewise not a new owner by default. A simple Skill may require concrete values before execution begins, while a later closed-loop controller may bind or revise some values progressively. A prediction, retrieval result, or heuristic value used for binding does not become attested world state merely because the Skill consumes it.
+
+The current executable `SkillExecution` contract owns the lifecycle of one started execution instance. It does not by itself prove that the Skill was a valid candidate, selected by a supported selector, correctly parameterized, or authorized to issue any primitive Action.
 
 ## 5. Action completion requires consequence evidence
 
