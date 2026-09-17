@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+import shutil
+import subprocess
 import urllib.error
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -194,3 +197,62 @@ def test_cleanup_targets_only_supplied_owned_process():
     process.terminate.assert_called_once_with()
     process.wait.assert_called_once_with(timeout=15.0)
     process.kill.assert_not_called()
+
+
+def test_no_bytecode_launcher_preserves_clean_checkout_before_preflight(tmp_path):
+    launcher = Path("experiments/run_mineflayer_cognition_llama_cpp_transaction.sh")
+    launcher_text = launcher.read_text(encoding="utf-8")
+    assert (
+        'exec python3 -B -m experiments.mineflayer_cognition_llama_cpp_transaction "$@"'
+        in launcher_text
+    )
+
+    repo = tmp_path / "repo"
+    experiments = repo / "experiments"
+    experiments.mkdir(parents=True)
+    for name in (
+        "__init__.py",
+        "mineflayer_viability_relay.py",
+        "mineflayer_cognition_ab.py",
+        "mineflayer_cognition_llama_cpp_transaction.py",
+        launcher.name,
+    ):
+        shutil.copy2(Path("experiments") / name, experiments / name)
+
+    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.email", "relay-self-test@example.invalid"], cwd=repo, check=True)
+    subprocess.run(["git", "config", "user.name", "RelaySelf Test"], cwd=repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=repo, check=True)
+    subprocess.run(["git", "commit", "-qm", "fixture"], cwd=repo, check=True)
+
+    evidence = tmp_path / "evidence"
+    completed = subprocess.run(
+        [
+            "bash",
+            str(experiments / launcher.name),
+            "--repo-root",
+            str(repo),
+            "--port",
+            "9999",
+            "--evidence-root",
+            str(evidence),
+        ],
+        cwd=repo,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert completed.returncode == 3
+    summary = json.loads((evidence / "transaction-summary.json").read_text(encoding="utf-8"))
+    assert "current physical condition requires port 1234" in summary["error"]
+    status = subprocess.run(
+        ["git", "status", "--porcelain"],
+        cwd=repo,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout
+    assert status == ""
+    assert not list(repo.rglob("__pycache__"))
+    assert not list(repo.rglob("*.pyc"))
