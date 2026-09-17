@@ -105,6 +105,47 @@ Distinguish justified wait, rest, observation, recovery, and opportunity-waiting
 
 When model inference is part of the system, record cognition calls, latency, resource use, and avoidable deliberation. Calling cognition is itself a runtime decision and should be evaluated as such.
 
+For a claim that a Skill, routing rule, cached procedure, learned policy, or other crystallized mechanism **narrows cognition**, use an outcome-preserving matched comparison where practical:
+
+```text
+less-structured baseline cognition path
+vs
+narrowed / crystallized path
+```
+
+A narrowing claim is supported only when the structured path preserves the task-specific useful outcome and required architectural invariants while materially reducing one or more relevant cognition costs without hiding unacceptable regressions elsewhere.
+
+Do not reduce cognition cost to one repository-wide scalar by default. Report relevant dimensions separately, such as:
+
+- context or input tokens;
+- generated or output tokens;
+- number of model calls;
+- latency;
+- retrieval calls or candidate-set size;
+- Inquiry / external lookup calls;
+- compute or accelerator time;
+- memory or energy proxy where relevant;
+- escalation frequency and the cost of successful escalation.
+
+Outcome quality should likewise remain explicit: task/decision correctness or utility, consequence quality, invalid-output or failure rate, calibration where relevant, behavior under novelty/distribution shift, and successful escalation when the bounded path is insufficient.
+
+Lower cost does not compensate for an authority or viability regression. Likewise, a Skill should not receive credit for compression merely because it was given less factual information than the baseline and therefore solved an easier problem.
+
+Keep **cognitive narrowing** distinct from **experience-dependent crystallization**:
+
+```text
+cognitive narrowing
+  = reusable structure / routing makes the current problem smaller
+
+crystallization
+  = prior computation or experience produces reusable structure
+    that makes future cognition cheaper
+```
+
+A pretrained Skill or fixed routing rule can demonstrate narrowing without demonstrating individual experience-dependent crystallization. Conversely, a crystallization claim needs evidence about how the reusable structure was obtained, not only that the final fast path is cheap.
+
+A bounded path that handles common cases cheaply and escalates uncertain, novel, or contradictory cases to more expensive cognition may still be high quality. Report escalation behavior rather than counting every escalation as automatic failure.
+
 ## Distributional reporting
 
 For stochastic simulations, do not report only a mean.
