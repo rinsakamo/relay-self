@@ -1,7 +1,7 @@
 import pytest
 
 import relay_self
-from relay_self.action import Provenance as ActionProvenance
+from relay_self.action import ActionLifecycle, Provenance as ActionProvenance
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import InvalidProvenanceData, Provenance
 from relay_self.skill import SkillExecution
@@ -36,6 +36,14 @@ def test_same_provenance_value_crosses_intent_skill_and_action_seams() -> None:
         at_ns=2,
         provenance=provenance,
     )
+    action = ActionLifecycle.propose(
+        "action-1",
+        skill_execution=skill,
+        intent_commitment=intent,
+        at_ns=3,
+        provenance=provenance,
+    )
 
     assert intent.events[0].provenance is provenance
     assert skill.events[0].provenance is provenance
+    assert action.events[0].provenance is provenance
