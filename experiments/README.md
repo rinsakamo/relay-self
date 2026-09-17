@@ -126,3 +126,37 @@ python experiments/mineflayer_viability_relay.py --condition gradient
 ```
 
 This fixture does not demonstrate useful Minecraft cognition by itself. Its output is a bounded input surface for a later controlled cognitive-consumer comparison.
+
+## Mineflayer cognition A/B probe
+
+`mineflayer_cognition_ab.py` turns the merged viability fixture into a matched cognition request pair. Both conditions use the same task, candidate plans, observation history, model id, temperature, and output instruction. The model-visible difference is only whether the history rows contain the already-derived `valueGradient` field.
+
+The task asks the model to reach one target efficiently and choose one of three geometry-only plan ids:
+
+```text
+direct
+detour
+observe
+```
+
+The candidate descriptions contain coordinates only; they are not labeled with affective or safety semantics. The primary output is therefore a behavior choice (`plan_id`), not an emotion word.
+
+Render deterministic A/B requests without network access:
+
+```bash
+python experiments/mineflayer_cognition_ab.py --model MODEL_ID
+```
+
+Run repeated paired calls against an OpenAI-compatible endpoint:
+
+```bash
+python experiments/mineflayer_cognition_ab.py \
+  --model MODEL_ID \
+  --endpoint http://127.0.0.1:1234/v1/chat/completions \
+  --repeats 10 \
+  --run
+```
+
+If the endpoint requires a key, the script reads `OPENAI_API_KEY` by default; `--api-key-env` can name another environment variable. A/B order alternates across trials, request hashes are recorded, and malformed or out-of-set model outputs are preserved as failures rather than silently repaired.
+
+Model-run results are model/system-quality evidence only. A difference in selected plan ids does not establish an Emotion/Fear owner, and a null result does not justify strengthening the gradient merely to force an effect.
