@@ -6,7 +6,7 @@ This document owns the executable transition semantics for RelaySelf's primitive
 
 It refines the architectural distinction already owned by `docs/architecture.md` and the action-closure principle owned by `docs/runtime-principles.md`. It owns one primitive Action from grounded proposal admission through authorization and issuance to terminal closure. It does not own Current Intent commitment, Skill execution lifecycle, Skill selection/control policy, environment execution, or general authority policy.
 
-The executable owner is `src/relay_self/action.py`; deterministic verification lives in `tests/test_action_lifecycle.py`.
+The executable owner is `src/relay_self/action.py`; deterministic verification lives in `tests/test_action_lifecycle.py` and the cross-lifecycle stale-snapshot regressions in `tests/test_lifecycle_linearity.py`.
 
 Deterministic in-flight retention and decision-epoch timeout processing are owned separately by [`action-supervision.md`](action-supervision.md).
 
@@ -28,7 +28,7 @@ The states mean:
 
 | State | Meaning |
 | --- | --- |
-| `PROPOSED` | An action has been admitted as a primitive effect proposal from a supplied started Skill execution whose associated intent matched the actual Current Intent at proposal admission. No execution authority is implied. |
+| `PROPOSED` | An action has been admitted as a primitive effect proposal from the current snapshot of a started Skill execution whose associated intent matched the actual Current Intent at proposal admission. No execution authority is implied. |
 | `AUTHORIZED` | An explicit authorization decision permits this action to proceed to issuance. This is still not execution. |
 | `DENIED` | An explicit authorization decision rejects the proposal. Terminal before issuance. |
 | `ISSUED` | The authorized command has been handed to the execution boundary. Issuance is not success and is not consequence evidence. |
@@ -44,8 +44,9 @@ The supported `ActionLifecycle.propose(...)` seam grounds the Action's causal or
 
 Proposal admission requires:
 
-- a real `SkillExecution` value;
-- the supplied Skill execution is currently represented by that value in `STARTED` state;
+- a real `SkillExecution` snapshot;
+- that snapshot is the current snapshot in the lineage created by its supported Skill start root;
+- the supplied current Skill snapshot is in `STARTED` state;
 - a real `IntentCommitment` owner with a Current Intent;
 - `skill_execution.intent_id == intent_commitment.current_intent.intent_id`;
 - a non-empty Action identity;
@@ -63,25 +64,83 @@ The deterministic relation is:
 
 ```text
 ActionLifecycle PROPOSED
+  -> supplied SkillExecution was current in its supported lineage
   -> supplied SkillExecution was STARTED at proposal admission
   -> supplied Skill intent matched the actual Current Intent at proposal admission
 ```
 
-Current Intent Commitment remains the sole owner of which intent is current. Skill Execution remains the owner of one execution lifecycle value and its immutable Intent association. Action Lifecycle reads those facts at proposal admission and does not mutate either upstream object.
+Current Intent Commitment remains the sole owner of which intent is current. Skill Execution remains the owner of one execution lifecycle and its immutable Intent association. Action Lifecycle reads those facts at proposal admission and does not mutate the Skill event history or Intent Commitment history.
 
-A pending reconsideration request does not by itself release Current Intent. Therefore a proposal from a supplied `STARTED` Skill remains structurally valid while the same Intent is still current. Whether a runtime should emit more Actions while reconsideration is pending is orchestration/policy, not this lifecycle invariant.
+A pending reconsideration request does not by itself release Current Intent. Therefore a proposal from a current `STARTED` Skill snapshot remains structurally valid while the same Intent is still current. Whether a runtime should emit more Actions while reconsideration is pending is orchestration/policy, not this lifecycle invariant.
 
-If Current Intent has already completed, failed, invalidated, or been released, proposal admission fails closed. If another Intent has since become current, a Skill associated with the earlier Intent also fails proposal admission even when the supplied immutable Skill value still says `STARTED`.
+If Current Intent has already completed, failed, invalidated, or been released, proposal admission fails closed. If another Intent has since become current, a Skill associated with the earlier Intent also fails proposal admission.
 
-Likewise, a supplied Skill value already in `SUCCEEDED`, `FAILED`, or `CANCELLED` state cannot produce a new Action proposal through the supported seam.
+Likewise, a current Skill snapshot already in `SUCCEEDED`, `FAILED`, or `CANCELLED` state cannot produce a new Action proposal.
 
-### Latest-execution non-claim
+A predecessor Skill snapshot that still locally displays `STARTED` after a later snapshot in the same lineage has transitioned is **stale** and also cannot produce a new Action proposal.
 
-`SkillExecution` is currently an immutable lifecycle value. RelaySelf does not yet have a repository-wide Skill supervisor/current-execution registry that proves a supplied `SkillExecution` value is the latest branch/version for its `execution_id`.
+### Lineage-local currentness versus global latest identity
 
-Therefore this contract deliberately claims only what it validates from the supplied value and Current Intent owner. It does not claim global latest-Skill retention or eliminate the need for future runtime orchestration if concrete execution later requires such ownership.
+RelaySelf now distinguishes two claims that were previously easy to conflate.
 
-Direct construction of the immutable `ActionLifecycle` representation is not the supported runtime proposal operation. The executable proposal-admission invariant is owned by `ActionLifecycle.propose(...)`, analogous to the distinction between an immutable representation and the transition that establishes valid runtime state.
+For snapshots derived from one supported `SkillExecution.start(...)` root:
+
+```text
+one lineage
+  -> one current snapshot revision
+  -> a successful transition makes predecessor snapshots stale
+```
+
+`ActionLifecycle.propose(...)` verifies this lineage-local currentness before consuming a Skill snapshot.
+
+This is not a repository-wide Skill registry. RelaySelf still does **not** prove that:
+
+- independently created Skill roots cannot reuse the same textual `execution_id`;
+- one global owner has selected the unique latest root for that identity;
+- lineage currentness survives process restart or serialization;
+- transitions are thread-safe or linearizable under concurrent mutation.
+
+Those stronger responsibilities remain non-claims until independently justified.
+
+Direct construction of an immutable lifecycle representation is not the supported runtime proposal operation and does not establish repository-wide identity authority.
+
+## Action snapshot lineage
+
+`ActionLifecycle` values remain immutable snapshots. Immutability of one snapshot alone is insufficient to make a runtime lifecycle linear, because an older snapshot could otherwise be advanced after a newer sibling had already been created.
+
+For snapshots derived from one supported Action proposal root, the Action owner therefore retains a private, ephemeral lineage revision shared across those snapshots.
+
+The rule is:
+
+```text
+only the current snapshot in one Action lineage may transition
+```
+
+A successful transition:
+
+1. validates the requested event and complete next immutable history;
+2. creates the next snapshot;
+3. advances lineage currentness only after that next snapshot is valid.
+
+The predecessor remains inspectable as historical data but becomes stale for further supported transitions.
+
+This prevents same-root forks such as:
+
+```text
+PROPOSED -> AUTHORIZED
+then stale PROPOSED -> DENIED
+```
+
+or:
+
+```text
+AUTHORIZED -> ISSUED
+then stale AUTHORIZED -> ISSUED again through Action Supervision
+```
+
+A failed transition does not consume or advance lineage currentness.
+
+This lineage mechanism is owner-local ephemeral runtime state. It does not create a fifth executable owner, a generic lifecycle registry, durable persistence, or global `action_id` uniqueness. Two independently created proposal roots using the same textual `action_id` are not globally canonicalized by this contract.
 
 ## Allowed transitions
 
@@ -96,21 +155,22 @@ ISSUED     -> TIMEOUT
 ISSUED     -> UNKNOWN
 ```
 
-All other transitions fail closed with an explicit lifecycle error.
+All other transitions, and all attempts to transition a stale snapshot, fail closed with an explicit lifecycle error.
 
 Important consequences include:
 
 - a proposal cannot become issued without an explicit authorization event;
-- denial cannot be bypassed;
+- denial cannot be bypassed within the supported lineage;
 - authorization is not issuance;
 - issuance is not external execution or outcome;
 - an issued action cannot close as an undeclared success state;
-- a terminal lifecycle cannot be reopened or rewritten by another transition;
-- the immutable `skill_execution_id` and `intent_id` association is retained across every Action transition.
+- a terminal current snapshot cannot be reopened or rewritten;
+- a predecessor snapshot cannot be used to create an alternate branch after its lineage advances;
+- the immutable `skill_execution_id` and `intent_id` association is retained across every Action snapshot.
 
 ## Authority ownership
 
-This contract owns **proposal admission, lifecycle transition legality, and the recorded authorization seam**, not the policy engines that select Skills, decide which Actions to generate, or determine which real-world principal is authorized for which action.
+This contract owns **proposal admission, lifecycle transition legality, same-root snapshot lineage currentness, and the recorded authorization seam**, not the policy engines that select Skills, decide which Actions to generate, or determine which real-world principal is authorized for which action.
 
 An authorization decision therefore requires:
 
@@ -132,7 +192,7 @@ Every lifecycle event records:
 
 Authorization decisions additionally record `authority`.
 
-The lifecycle history is immutable. Current state is derived from the last event rather than maintained as a second mutable truth.
+Each snapshot exposes an immutable event-history tuple. State for that snapshot is derived from the last event rather than maintained as a second mutable state field. The private lineage head does not rewrite historical events; it only determines whether a snapshot may still be advanced.
 
 The Action lifecycle also retains the immutable Skill-execution and Intent identities established by the supported proposal seam. Those structural associations are not substitutes for event provenance; they answer different causal questions.
 
@@ -140,7 +200,7 @@ The minimum causal chain is therefore reconstructable as:
 
 ```text
 actual Current Intent at proposal admission
-  + supplied STARTED SkillExecution associated with that Intent
+  + current STARTED SkillExecution associated with that Intent
   -> action_id + derived skill_execution_id + intent_id
   -> proposal provenance
   -> authorization provenance + authority
@@ -148,7 +208,7 @@ actual Current Intent at proposal admission
   -> terminal closure provenance
 ```
 
-This is causal trace for this boundary only. It is not yet a repository-wide event store or a Skill child-Action collection.
+This is causal trace for this boundary only. It is not a repository-wide event store or a Skill child-Action collection.
 
 ## Time and timeout semantics
 
@@ -158,13 +218,13 @@ The lifecycle does not read wall-clock time and does not own a scheduler or runt
 
 Rules:
 
-- Action event time must never move backward within one lifecycle;
+- Action event time must never move backward within one lifecycle lineage;
 - issuance requires an explicit `deadline_ns` strictly later than issue time;
 - `TIMEOUT` is invalid before that deadline;
 - `OUTCOME` may close an issued action whenever acceptable consequence evidence is processed before another terminal transition wins;
 - `UNKNOWN` may close an issued action when acceptable consequence resolution is unavailable and uncertainty must be represented explicitly.
 
-Proposal admission does not introduce a cross-owner clock contract between Intent, Skill, and Action histories. The seam validates the supplied owner/value states at the operation boundary; it does not compare their independent monotonic timestamps.
+Proposal admission does not introduce a cross-owner clock contract between Intent, Skill, and Action histories. The seam validates the supplied owner/snapshot states at the operation boundary; it does not compare their independent monotonic timestamps.
 
 The runtime-level liveness obligation remains:
 
@@ -173,21 +233,22 @@ ActionIssued(a)
   -> eventually Outcome(a) | Timeout(a) | Unknown(a)
 ```
 
-This pure state machine cannot make time advance by itself. The current [`Action Supervision`](action-supervision.md) contract adds deterministic retention and explicit decision-epoch timeout processing for actions issued through that boundary. It still does not make future epochs happen autonomously; a future runtime driver or scheduler must supply those epochs.
-
-Requiring a finite deadline therefore makes timeout eligibility explicit, while Action Supervision proves what happens when a qualifying epoch is actually processed. Neither fact alone proves deployed wall-clock liveness.
+This lifecycle cannot make time advance by itself. The current [`Action Supervision`](action-supervision.md) contract adds deterministic retention and explicit decision-epoch timeout processing for actions issued through that boundary. It still does not make future epochs happen autonomously; a future runtime driver or scheduler must supply those epochs.
 
 ## Relationship to Skill Execution
 
 Skill Execution owns one Skill execution lifecycle and its immutable `execution_id`, `skill_id`, and `intent_id` association. Action Lifecycle does not take over that lifecycle.
 
-The proposal seam reads a supplied Skill execution only to establish one Action's causal association and admission validity at that moment.
+The proposal seam reads a supplied Skill snapshot only to establish one Action's causal association and admission validity at that moment.
 
 Therefore:
 
 ```text
-Skill STARTED + matching Current Intent
+current Skill STARTED + matching Current Intent
   -> Action proposal may be admitted
+
+stale predecessor Skill STARTED
+  -> Action proposal is rejected
 
 Action PROPOSED
   != Skill generated a correct command
@@ -212,9 +273,11 @@ Malformed lifecycle data fails closed. Examples include:
 - empty action, Skill-execution, or Intent identifiers;
 - empty provenance source or reference;
 - malformed Skill Execution or Intent Commitment inputs at proposal admission;
-- supplied Skill execution not in `STARTED` state;
+- a stale Skill snapshot at proposal admission;
+- supplied current Skill execution not in `STARTED` state;
 - no Current Intent at proposal admission;
 - supplied Skill's associated Intent not matching the actual Current Intent;
+- a stale Action lifecycle snapshot used for another transition;
 - missing authorization authority;
 - negative or non-integer monotonic Action time;
 - backward Action event time;
@@ -222,21 +285,26 @@ Malformed lifecycle data fails closed. Examples include:
 - timeout before the issued deadline;
 - a recorded event history containing an undeclared transition.
 
-The implementation raises explicit `InvalidActionData` or `InvalidTransition` errors rather than silently repairing or skipping invalid data or transitions.
+The implementation raises explicit `InvalidActionData` or `InvalidTransition` errors rather than silently repairing, branching, or skipping invalid data or transitions.
 
-Proposal validation is read-only with respect to the supplied Skill execution and Intent Commitment. Successful or failed validation does not mutate their histories/state.
+A failed transition does not advance lineage currentness. Proposal validation is read-only with respect to Skill event history and Intent Commitment history.
 
 ## Deterministic verification obligations
 
 Canonical pytest coverage must demonstrate at least:
 
-- supported proposal derives `skill_execution_id` from a supplied `STARTED` Skill execution;
+- supported proposal derives `skill_execution_id` from a supplied current `STARTED` Skill snapshot;
 - supported proposal derives `intent_id` from the actual Current Intent and requires it to match the Skill association;
-- supplied `SUCCEEDED`, `FAILED`, and `CANCELLED` Skill executions cannot produce new proposals;
+- stale predecessor Skill snapshots cannot produce new proposals after their lineage has advanced;
+- supplied current `SUCCEEDED`, `FAILED`, and `CANCELLED` Skill snapshots cannot produce new proposals;
 - no-current-intent proposal fails closed;
 - a supplied Skill associated with a replaced/released Intent cannot propose under a different Current Intent;
 - pending reconsideration does not by itself block proposal while the same Intent remains current;
-- successful and failed proposal admission do not mutate Skill or Intent state/history;
+- successful and failed proposal admission do not mutate Skill event history or Intent history;
+- one Action proposal snapshot cannot later fork into both authorization and denial after one branch advances;
+- a stale authorized Action snapshot cannot be issued after a newer snapshot in the same lineage exists;
+- failed Action transition validation does not consume the current snapshot;
+- separately created Action roots with the same textual `action_id` are not claimed to be globally canonicalized;
 - Action transitions and Action Supervision preserve the immutable Skill/Intent association;
 - authorized issuance can close with an outcome while preserving causal history;
 - proposal-to-issued bypass is rejected;
@@ -248,7 +316,7 @@ Canonical pytest coverage must demonstrate at least:
 - issue deadlines are strictly later than issue time;
 - authorization requires explicit authority input.
 
-These tests are deterministic invariant evidence. They are not simulation results and do not prove latest-Skill retention, useful Skill selection/control, environment correctness, physical execution, or model quality.
+These tests are deterministic invariant evidence. They are not simulation results and do not prove repository-wide global identity uniqueness, durable latest/current retention, concurrent linearizability, useful Skill selection/control, environment correctness, physical execution, or model quality.
 
 ## Non-goals
 
@@ -256,13 +324,14 @@ This contract intentionally does not define:
 
 - Action payload schemas or environment-specific commands;
 - Skill selection, capability truth, precondition evaluation, or a closed-loop Skill controller;
-- repository-wide latest/current Skill-execution retention;
+- repository-wide global uniqueness/latest-root selection for `execution_id` or `action_id`;
+- durable lifecycle lineage persistence or restart recovery;
+- thread-safe/concurrent lifecycle mutation semantics;
 - child-Action collections inside Skill Execution;
 - automatic Action-outcome-to-Skill terminal inference;
 - automatic Skill cancellation or cancellation of issued/in-flight Actions;
 - general capability or authority policy resolution;
 - Current Intent lifecycle or arbitration beyond reading Current Intent for proposal admission;
-- Skill lifecycle semantics beyond reading the supplied Skill state/association for proposal admission;
 - in-flight action retention or decision-epoch processing, which are owned by `action-supervision.md`;
 - autonomous wall-clock scheduling or background timeout execution;
 - environment truth or consequence interpretation beyond explicit closure provenance;
