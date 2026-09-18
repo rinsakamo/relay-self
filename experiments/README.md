@@ -114,9 +114,9 @@ status; the fixture treats the omission as missing information, returns `ESCALAT
 to the source projection, and then recovers the bounded decision.
 
 The same module includes an experiment-local event matrix showing that ambient/quiet events are
-ignored, route/supervision events may require a deterministic decision epoch, and local uncertainty
-or consequence mismatch may require RelayEngine cognition. These labels are not a runtime API or a
-general Scheduler contract.
+ignored, route/supervision events and consequence mismatch can first reopen a deterministic decision
+epoch, and unresolved local uncertainty may require RelayEngine cognition. These labels are not a
+runtime API or a general Scheduler contract.
 
 Run:
 
