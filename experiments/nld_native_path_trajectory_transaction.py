@@ -137,6 +137,152 @@ def _complete_stage(
 
 
 
+
+def run_transaction(
+    *,
+    repo_root: Path,
+    evidence_root: Path,
+    model_id: str,
+    timeout_seconds: float,
+) -> int:
+    if timeout_seconds <= 0:
+        raise PhysicalTransactionError(
+            "timeout_seconds must be positive"
+        )
+
+    evidence_root = _prepare_evidence_root(evidence_root)
+    summary_path = evidence_root / "summary.json"
+    summary = _initial_summary(
+        repo_root=repo_root,
+        evidence_root=evidence_root,
+        model_id=model_id,
+    )
+    _write_json(summary_path, summary)
+
+    try:
+        stage = "repo_preflight"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        head, tree, branch_name = _require_clean_repo(repo_root)
+        summary["git"] = {
+            "head": head,
+            "tree": tree,
+            "branch": branch_name,
+        }
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
+
+        stage = "gpu_preflight"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        summary["gpu"] = _collect_gpu_identity()
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
+
+        stage = "python_preflight"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        summary["python_environment"] = _collect_python_environment()
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
+
+        stage = "analysis_dry_run"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        dry_output = evidence_root / "trajectory-plan.json"
+        dry_command = build_analysis_command(
+            input_path=None,
+            output_path=dry_output,
+        )
+        summary["analysis_dry_run_command"] = dry_command
+        returncode = _run_probe_command(
+            dry_command,
+            repo_root=repo_root,
+            stdout_path=evidence_root / "trajectory-plan.stdout.txt",
+            stderr_path=evidence_root / "trajectory-plan.stderr.txt",
+            timeout_seconds=timeout_seconds,
+        )
+        if returncode != 0:
+            raise PhysicalTransactionError(
+                f"trajectory dry run exited with code {returncode}"
+            )
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
+
+        stage = "actual_model"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        raw_output = evidence_root / "actual-model.json"
+        actual_command = build_budget_command(
+            model_id=model_id,
+            output_path=raw_output,
+            run=True,
+        )
+        summary["actual_model_command"] = actual_command
+        returncode = _run_probe_command(
+            actual_command,
+            repo_root=repo_root,
+            stdout_path=evidence_root / "actual-model.stdout.txt",
+            stderr_path=evidence_root / "actual-model.stderr.txt",
+            timeout_seconds=timeout_seconds,
+        )
+        summary["actual_model_returncode"] = returncode
+        if returncode != 0:
+            raise PhysicalTransactionError(
+                f"actual model run exited with code {returncode}"
+            )
+        raw_payload = _load_json(raw_output)
+        summary["source_observation"] = validate_budget_payload(
+            raw_payload,
+            model_id=model_id,
+        )
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
+
+        stage = "trajectory_analysis"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        analysis_output = evidence_root / "trajectory-analysis.json"
+        analysis_command = build_analysis_command(
+            input_path=raw_output,
+            output_path=analysis_output,
+        )
+        summary["trajectory_analysis_command"] = analysis_command
+        returncode = _run_probe_command(
+            analysis_command,
+            repo_root=repo_root,
+            stdout_path=evidence_root / "trajectory-analysis.stdout.txt",
+            stderr_path=evidence_root / "trajectory-analysis.stderr.txt",
+            timeout_seconds=timeout_seconds,
+        )
+        if returncode != 0:
+            raise PhysicalTransactionError(
+                f"trajectory analysis exited with code {returncode}"
+            )
+        analysis_payload = _load_json(analysis_output)
+        summary["trajectory"] = validate_analysis(analysis_payload)
+        _complete_stage(summary, stage)
+
+        summary["status"] = "NATIVE_OUTPUT_TRAJECTORY_PASS"
+        summary["non_claims"] = [
+            "PASS means fresh native output-token trajectory evidence was recorded.",
+            "The analysis does not expose hidden states or prove a causal mechanism.",
+            "The full 72-call source trace remains the physical evidence surface.",
+            "Model output is not World truth or Action authorization.",
+        ]
+        _write_json(summary_path, summary)
+        return 0
+
+    except PhysicalTransactionError as exc:
+        summary["status"] = "FAIL_NOT_QUALIFIED"
+        summary["failure_stage"] = summary.get("current_stage")
+        summary["failure_reason"] = str(exc)
+        summary["current_stage"] = None
+        _write_json(summary_path, summary)
+        return 2
+
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--evidence-root", type=Path, required=True)
