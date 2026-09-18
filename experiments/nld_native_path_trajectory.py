@@ -172,6 +172,29 @@ def token_diagnostic(
 
 
 
+
+def decision_events(
+    tokenizer: object,
+    token_ids: list[int],
+) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for index in range(1, len(token_ids) + 1):
+        decoded = tokenizer.decode(
+            token_ids[:index],
+            skip_special_tokens=True,
+        )
+        parsed = parse_decision(decoded)
+        rows.append(
+            {
+                "index": index,
+                "label": parsed.label,
+                "source": parsed.source,
+            }
+        )
+    return rows
+
+
+
 def sequence_sha256(token_ids: list[int]) -> str:
     payload = ",".join(str(value) for value in token_ids)
     return hashlib.sha256(payload.encode("ascii")).hexdigest()
