@@ -46,7 +46,8 @@ def test_validate_probe_result_accepts_one_step_actual_model_observation() -> No
                 "canvas_length": 256,
                 "elapsed_seconds": 1.25,
                 "cuda_peak_bytes": 123,
-                "tokens_per_forward": [1.0],
+                "generated_token_count": 256,
+                "tokens_per_forward": [256.0],
                 "final_candidate_correct": True,
                 "final_candidate_readout": {
                     "winner": "A",
@@ -68,6 +69,7 @@ def test_validate_probe_result_accepts_one_step_actual_model_observation() -> No
     assert observed["candidate_correct"] is True
     assert observed["actual_denoising_steps"] == 1
     assert observed["canvas_length"] == 256
+    assert observed["generated_token_count"] == 256
 
 
 @pytest.mark.parametrize(
