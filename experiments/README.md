@@ -129,6 +129,68 @@ This fixture does not establish a generic Present schema, Focus owner, Skill reg
 or RelayEngine implementation. It is deterministic evidence about one bounded decomposition only.
 
 
+
+## NLD-3B tri-mode bounded-decision probe
+
+`nld_tri_mode.py` is the first actual-model harness for #112 and the current first-choice
+physical substrate under #101.
+
+It uses the official direct Python model surface from NVIDIA:
+
+```text
+AR                -> model.ar_generate(...)
+dLM / diffusion   -> model.generate(...)
+Linear Self-Spec  -> model.linear_spec_generate(...)
+```
+
+The same loaded `nvidia/Nemotron-Labs-Diffusion-3B` checkpoint receives the same bounded
+FLEE-domain prompt in all three modes. The first probe keeps LoRA, serving frameworks,
+quantization, and adaptive mode-selection out of scope.
+
+The experiment mirrors the current public NVIDIA simple evaluator defaults:
+
+```text
+AR          block_length=1
+dLM         block_length=8,  threshold=0.9
+Linear-SS   block_length=32
+```
+
+Render the deterministic plan without importing Torch or Transformers:
+
+```bash
+python experiments/nld_tri_mode.py
+```
+
+Actual execution requires the current official-style direct runtime:
+
+```text
+PyTorch + CUDA
+Transformers >= 5.0
+AutoModel / AutoTokenizer
+trust_remote_code=True
+```
+
+and can be started explicitly with:
+
+```bash
+python experiments/nld_tri_mode.py \
+  --run \
+  --output /tmp/nld-tri-mode.json
+```
+
+The default actual probe uses BF16 and 32 requested new tokens. It records model-load time,
+GPU allocation, method availability, per-mode generation latency, returned NFE,
+tokens-per-forward, generated text/token count, parsed A/B/C decision, and the bounded expected
+label.
+
+A successful run establishes only that the three native model paths are physically available
+and observable on the tested system. It does not establish that AR, diffusion, or
+Self-Speculation should own any RelaySelf semantic role or that an adaptive mode selector is
+justified.
+
+Internal AR verification inside Linear Self-Speculation remains distinct from World consequence
+verification under #104.
+
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
