@@ -211,12 +211,10 @@ def classify_event(event: FixtureEvent) -> EpochDisposition:
     if event in {
         FixtureEvent.ROUTE_OBSERVATION,
         FixtureEvent.SUPERVISION_DEADLINE,
-    }:
-        return EpochDisposition.DECISION_EPOCH_NO_MODEL
-    if event in {
-        FixtureEvent.SKILL_LOCAL_UNCERTAINTY,
         FixtureEvent.CONSEQUENCE_MISMATCH,
     }:
+        return EpochDisposition.DECISION_EPOCH_NO_MODEL
+    if event is FixtureEvent.SKILL_LOCAL_UNCERTAINTY:
         return EpochDisposition.DECISION_EPOCH_WITH_RELAYENGINE
     raise ValueError(f"unsupported fixture event: {event}")
 
