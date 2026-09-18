@@ -49,6 +49,34 @@ Reconsideration is itself a decision. Triggers may include:
 - deadline or slack collapse;
 - material environment change.
 
+These are trigger sources, not automatic reconsideration requests. A local Skill/path failure,
+World mismatch, or newly available alternative should first remain under the same Current Intent
+when local Skill/parameter recovery is still grounded and adequate. Admit an Intent-level
+reconsideration request only when the grounded change materially challenges the commitment itself,
+such as its validity, feasibility, priority, meaning, authority, or viability.
+
+In particular:
+
+```text
+local execution-path failure
+  != Current Intent failure
+
+new affordance
+  != automatic commitment break
+
+World mismatch
+  != automatic Intent replacement
+
+admitted reconsideration request
+  != later CONTINUE / RELEASE decision
+```
+
+The condition that justifies admission should preserve its provenance into the request. The later
+reconsideration decision carries its own provenance and remains a separate transition. Prefer local
+trigger logic at concrete existing responsibilities until materially different trigger sources
+repeatedly demonstrate the same non-reducible shared contract; do not infer a global
+`ReconsiderationDetector` or universal trigger score merely from this boundary.
+
 Ordinary alternatives should not cause constant oscillation around near-equal scores.
 
 ## 4. Skills are closed-loop capabilities
