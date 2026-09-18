@@ -134,9 +134,11 @@ or RelayEngine implementation. It is deterministic evidence about one bounded de
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
 of the bounded FLEE domain established by `present_skill_epoch.py`.
 
-The probe does **not** assume that one logical decision token implies one-token physical compute.
-The released DiffusionGemma generation path denoises a fixed model canvas, so the experiment records
-the runtime `model.config.canvas_length` alongside the requested logical output length.
+The probe reads **one diagnostic decision slot**, but it does not claim one-token physical
+generation. In the current upstream generation loop, `max_new_tokens=1` makes
+`ceil(1 / canvas_length) = 1` canvas run; that canvas is still denoised and appended at the model's
+fixed `model.config.canvas_length`. The experiment therefore records both the requested
+`max_new_tokens` value and the actual generated canvas-token count.
 
 The model-facing question is:
 
@@ -186,6 +188,49 @@ Torch/Transformers versions, quantization mode, denoising-step trace, wall-clock
 Candidate probabilities are normalized only across the bounded A/B/C candidate-token set. They are
 diagnostic model evidence, not calibrated World probabilities, Action authorization, or proof that
 the selected decision is true.
+
+
+### DiffusionGemma local physical transaction
+
+`diffusiongemma_bounded_decision_transaction.py` wraps the smallest #101 physical run in a
+fresh-evidence transaction. It requires a clean RelaySelf checkout, records the exact Git head/tree
+and attached branch, fresh GPU identity/free memory, Python/package versions, a dry-run plan, and the
+actual-model stdout/stderr/result under a new or empty evidence directory.
+
+The default physical subject is intentionally tiny:
+
+```text
+case = easy_separable
+fixed denoising steps = 1
+decision slots observed = 1
+canvas runs = 1 (via max_new_tokens=1)
+quantization = bnb4
+```
+
+The default `bnb4` path is **local-feasibility evidence**, not an unquantized baseline. Use
+`--quantization none` only when the host has enough memory for the released unquantized model path.
+The transaction installs nothing automatically. Missing packages, missing GPU visibility, model
+access/download problems, OOM, timeout, or model/runtime incompatibility are preserved as
+`FAIL_NOT_QUALIFIED` with the failing stage in `summary.json`.
+
+Canonical local invocation:
+
+```bash
+EVIDENCE=/tmp/relay-self-diffusiongemma-$(date -u +%Y%m%dT%H%M%SZ)
+
+bash experiments/run_diffusiongemma_bounded_decision_transaction.sh \
+  --evidence-root "$EVIDENCE"
+```
+
+Inspect:
+
+```bash
+cat "$EVIDENCE/summary.json"
+```
+
+A `PASS` proves only that this exact checkout/runtime completed the requested one-case,
+one-decision-slot physical probe and produced a structurally valid actual-model observation. It does not establish adaptive
+cognition quality, Action authority, World truth, FreeToken viability, or the full #101 hypothesis.
 
 ## Mineflayer viability-relay fixture
 

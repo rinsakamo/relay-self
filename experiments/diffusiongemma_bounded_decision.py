@@ -410,7 +410,8 @@ def _run_generation_trace(
         "candidate_token_ids": token_ids_by_label,
         "candidate_token_texts": token_text_by_label,
         "prompt_tokens": prompt_tokens,
-        "logical_new_tokens_requested": 1,
+        "requested_max_new_tokens": 1,
+        "decision_slots_observed": 1,
         "canvas_length": int(model.config.canvas_length),
         "configured_max_denoising_steps": steps,
         "adaptive_stopping_enabled": adaptive,
@@ -418,6 +419,7 @@ def _run_generation_trace(
         "elapsed_seconds": elapsed_seconds,
         "cuda_peak_bytes": _cuda_peak_bytes(torch),
         "tokens_per_forward": tokens_per_forward,
+        "generated_token_count": len(generated_token_ids),
         "generated_token_ids": generated_token_ids,
         "candidate_trace": list(records),
         "checkpoints": checkpoint_records(records),
@@ -493,7 +495,8 @@ def run_model_probe(
         "notes": [
             "Candidate probabilities are normalized only across the bounded candidate token set.",
             "The recorder observes raw candidate logits before DiffusionGemma's temperature processor and does not modify them.",
-            "Logical output length is one token, but the released model still performs decoder work over model.config.canvas_length positions per denoising forward.",
+            "max_new_tokens=1 selects one canvas here; current DiffusionGemma generation still appends the full model.config.canvas_length canvas before autoregressive stopping.",
+            "The bounded decision reads one diagnostic canvas slot; it is not a one-token physical generation path.",
             "Candidate readout quality is model-quality evidence, not Action authorization or World truth.",
         ],
     }
@@ -528,7 +531,7 @@ def dry_run_payload(
         "non_claims": [
             "dry-run output is not a model result",
             "bnb4 compatibility/performance is not established by this plan",
-            "one logical decision token does not imply one-token physical decoder compute",
+            "one observed decision slot does not imply one-token physical generation",
         ],
     }
 
