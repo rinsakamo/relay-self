@@ -16,14 +16,13 @@ from experiments.present_skill_epoch import (
     start_flee_execution,
 )
 from experiments.reconsideration_admission import (
-    ReconsiderationAdmissionKind,
     admit_reach_safety_reconsideration,
     reach_safety_facts,
 )
-from relay_self.action import ActionLifecycle, ActionState
+from relay_self.action import ActionLifecycle
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
-from relay_self.skill import SkillExecution, SkillState
+from relay_self.skill import SkillExecution
 
 
 class ConsequenceComparisonKind(str, Enum):
