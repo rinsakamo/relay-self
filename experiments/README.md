@@ -128,6 +128,65 @@ python experiments/present_skill_epoch.py --json
 This fixture does not establish a generic Present schema, Focus owner, Skill registry, RuntimeDriver,
 or RelayEngine implementation. It is deterministic evidence about one bounded decomposition only.
 
+
+## DiffusionGemma bounded-decision probe
+
+`diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
+of the bounded FLEE domain established by `present_skill_epoch.py`.
+
+The probe does **not** assume that one logical decision token implies one-token physical compute.
+The released DiffusionGemma generation path denoises a fixed model canvas, so the experiment records
+the runtime `model.config.canvas_length` alongside the requested logical output length.
+
+The model-facing question is:
+
+```text
+same bounded candidates
+  -> observe raw candidate logits at canvas slot 0
+  -> record candidate-only readout after denoise ordinal 1 / 2 / 4 / 8
+  -> optionally compare with the checkpoint's adaptive stop
+```
+
+The custom logits processor is observational: it records the candidate logits before
+DiffusionGemma's built-in temperature processor and returns the original logits unchanged. It does
+not force A/B/C into the canvas or modify model weights.
+
+Three initial cases are included:
+
+```text
+easy_separable       one route open, one blocked
+coupled_constraints  both open, but only one satisfies an energy constraint
+incomplete_focus     decisive route evidence is unknown; DEFER is expected
+```
+
+Render the deterministic experiment plan without importing model dependencies:
+
+```bash
+python experiments/diffusiongemma_bounded_decision.py
+```
+
+Run the released checkpoint when an environment with the required model stack is available:
+
+```bash
+python experiments/diffusiongemma_bounded_decision.py \
+  --run \
+  --steps 8 \
+  --output /tmp/diffusiongemma-bounded-decision.json
+```
+
+Add `--adaptive` to perform a second pass using the checkpoint's adaptive stopping
+configuration. `--quantization bnb4` is an experiment-only loading option for constrained
+hardware; its compatibility, quality, and performance are not established by deterministic CI.
+
+The repository intentionally does not declare Torch, Transformers, Accelerate, or bitsandbytes as
+supported package dependencies merely for this probe. Actual-model execution records the observed
+Torch/Transformers versions, quantization mode, denoising-step trace, wall-clock latency,
+`tokens_per_forward` when available, and CUDA peak allocation when CUDA is present.
+
+Candidate probabilities are normalized only across the bounded A/B/C candidate-token set. They are
+diagnostic model evidence, not calibrated World probabilities, Action authorization, or proof that
+the selected decision is true.
+
 ## Mineflayer viability-relay fixture
 
 `mineflayer_viability_relay.py` is a deterministic, simulation-only fixture for #46. It is grounded in `PrismarineJS/mineflayer` revision `91204b2a034f0663b39814771e236bcb7c8f26c8` but does not import Mineflayer or require a Minecraft server.
