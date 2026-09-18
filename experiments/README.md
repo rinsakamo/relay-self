@@ -168,6 +168,55 @@ RuntimeDriver, or model-controlled preemption path. It is deterministic invarian
 bounded Current Intent / FLEE context only.
 
 
+## Multi-owner decision-epoch trace
+
+`multi_owner_decision_epoch.py` is the deterministic #106 follow-up that moves beyond the earlier
+event classification table and services current executable owners in one bounded trace.
+
+The fixture establishes one Current Intent, starts the existing FLEE SkillExecution path, proposes
+and authorizes one Action, and places that Action under the existing ActionSupervisor. It then
+records:
+
+```text
+irrelevant observation
+  -> IGNORE
+
+material route observation
+  -> reproject Present
+  -> no model call
+
+Action Supervision deadline
+  -> deterministic timeout through ActionSupervisor
+  -> same Current Intent / Skill continue
+
+Skill-local control step
+  -> deterministic epoch
+  -> no high-level reselection
+
+consequence mismatch
+  -> reopen/reproject Present
+  -> #107 local recovery first
+  -> no automatic Intent reconsideration
+
+Skill-local uncertainty
+  -> cognition request / RelayEngine boundary
+
+quiet interval
+  -> IGNORE
+```
+
+Run:
+
+```bash
+python experiments/multi_owner_decision_epoch.py
+python experiments/multi_owner_decision_epoch.py --json
+```
+
+The fixture does not implement a RuntimeDriver, Scheduler, event bus, model, or autonomous clock.
+It is deterministic evidence that existing owner-local lifecycles can be coordinated at explicit
+decision epochs without making every event a model call.
+
+
 ## NLD-3B tri-mode bounded-decision probe
 
 `nld_tri_mode.py` is the first actual-model harness for #112 and the current first-choice
