@@ -91,12 +91,47 @@ Decision label:""",
     )
 
 
-def build_budget_schedule() -> list[dict[str, object]]:
+def select_budget_cases(
+    case_ids: tuple[str, ...] | None = None,
+) -> tuple[BudgetCase, ...]:
+    cases = build_budget_cases()
+    if case_ids is None:
+        return cases
+    known = {case.case_id: case for case in cases}
+    unknown = sorted(set(case_ids) - set(known))
+    if unknown:
+        raise ValueError(
+            "unknown budget case ids: " + ", ".join(unknown)
+        )
+    return tuple(known[case_id] for case_id in case_ids)
+
+
+def select_token_budgets(
+    token_budgets: tuple[int, ...] | None = None,
+) -> tuple[int, ...]:
+    if token_budgets is None:
+        return TOKEN_BUDGETS
+    if not token_budgets:
+        raise ValueError("at least one token budget is required")
+    unknown = sorted(set(token_budgets) - set(TOKEN_BUDGETS))
+    if unknown:
+        raise ValueError(
+            "unsupported token budgets: "
+            + ", ".join(str(value) for value in unknown)
+        )
+    return token_budgets
+
+
+def build_budget_schedule(
+    *,
+    case_ids: tuple[str, ...] | None = None,
+    token_budgets: tuple[int, ...] | None = None,
+) -> list[dict[str, object]]:
     schedule: list[dict[str, object]] = []
     observation_index = 0
 
-    for case in build_budget_cases():
-        for max_new_tokens in TOKEN_BUDGETS:
+    for case in select_budget_cases(case_ids):
+        for max_new_tokens in select_token_budgets(token_budgets):
             for permutation_index, order in enumerate(MODE_PERMUTATIONS):
                 for ordinal_position, mode in enumerate(order, start=1):
                     schedule.append(
