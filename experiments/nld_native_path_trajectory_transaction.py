@@ -99,6 +99,44 @@ def validate_analysis(payload: object) -> dict[str, object]:
     }
 
 
+
+def _initial_summary(
+    *,
+    repo_root: Path,
+    evidence_root: Path,
+    model_id: str,
+) -> dict[str, object]:
+    return {
+        "format_version": FORMAT_VERSION,
+        "status": "STARTED",
+        "current_stage": None,
+        "completed_stages": [],
+        "repo_root": str(repo_root),
+        "evidence_root": str(evidence_root),
+        "model_id": model_id,
+        "qualification_scope": "nld_native_output_token_trajectory",
+        "physical_subject": {
+            "source_apparatus": "reversed_mapping_token_budget",
+            "measured_call_count": 72,
+            "focus_case_id": "reversed_ridge_open",
+            "focus_max_new_tokens": 32,
+            "focus_observation_count": 18,
+        },
+    }
+
+
+def _complete_stage(
+    summary: dict[str, object],
+    stage: str,
+) -> None:
+    completed = summary.get("completed_stages")
+    if not isinstance(completed, list):
+        raise AssertionError("completed_stages must be a list")
+    completed.append(stage)
+    summary["current_stage"] = None
+
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--evidence-root", type=Path, required=True)
