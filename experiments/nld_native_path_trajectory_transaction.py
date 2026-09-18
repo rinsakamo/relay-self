@@ -284,9 +284,41 @@ def run_transaction(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--evidence-root", type=Path, required=True)
-    parser.parse_args()
+    default_repo_root = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run the NLD native output-token trajectory transaction."
+        )
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=default_repo_root,
+    )
+    parser.add_argument(
+        "--evidence-root",
+        type=Path,
+        required=True,
+    )
+    parser.add_argument("--model", default=DEFAULT_MODEL_ID)
+    parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        default=DEFAULT_TIMEOUT_SECONDS,
+    )
+    args = parser.parse_args()
+
+    try:
+        result = run_transaction(
+            repo_root=args.repo_root.resolve(),
+            evidence_root=args.evidence_root,
+            model_id=args.model,
+            timeout_seconds=args.timeout_seconds,
+        )
+    except PhysicalTransactionError as exc:
+        parser.error(str(exc))
+
+    raise SystemExit(result)
 
 
 if __name__ == "__main__":
