@@ -171,6 +171,12 @@ def token_diagnostic(
     }
 
 
+
+def sequence_sha256(token_ids: list[int]) -> str:
+    payload = ",".join(str(value) for value in token_ids)
+    return hashlib.sha256(payload.encode("ascii")).hexdigest()
+
+
 def dry_run_payload() -> dict[str, object]:
     schedule = build_schedule()
     return {
