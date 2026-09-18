@@ -219,6 +219,47 @@ A `TRI_MODE_PASS` means only that the same loaded NLD-3B checkpoint completed th
 AR, dLM, and Linear Self-Speculation calls and produced structurally valid evidence. It does not
 select a permanent RelayEngine mode.
 
+
+### NLD-3B tri-mode repeatability transaction
+
+`nld_tri_mode_repeatability.py` and
+`nld_tri_mode_repeatability_transaction.py` implement the next bounded gate under #115.
+They keep the same NLD-3B checkpoint, BF16 runtime, seed, prompt, and native mode defaults
+from #112 while strengthening only the measurement protocol.
+
+The model is loaded once. Each mode receives one warm-up call that is excluded from latency
+summaries. The measured schedule then executes all six AR/dLM/Linear-Spec order permutations
+twice:
+
+```text
+6 permutations
+x 2 repeats
+x 3 calls per permutation
+= 36 measured calls
+= 12 observations per mode
+= 4 observations per mode at each ordinal position
+```
+
+Every measured latency uses explicit CUDA synchronization around the monotonic timer. The trace
+retains per-call output, NFE, token count, tokens-per-forward, parsed A/B/C label, correctness,
+and CUDA peak allocation. Per-mode summaries report min/median/nearest-rank-p95/max latency and
+latency grouped by ordinal position.
+
+Canonical local invocation:
+
+```bash
+EVIDENCE=/tmp/relay-self-nld-repeatability-$(date -u +%Y%m%dT%H%M%SZ)
+
+bash experiments/run_nld_tri_mode_repeatability_transaction.sh \
+  --evidence-root "$EVIDENCE"
+
+cat "$EVIDENCE/summary.json"
+```
+
+A `REPEATABILITY_PASS` is a structural evidence result. It does not require all labels to be
+correct and does not promote a decoding-mode ranking or adaptive RelayEngine policy. Wrong,
+invalid, slow, noisy, or order-sensitive outputs remain valid measurements for #115.
+
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
