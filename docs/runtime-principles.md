@@ -91,6 +91,30 @@ Skill candidate
 
 Candidate admission is a transient judgment that a Skill is worth considering now; it is not proof of success, external-state truth, or Action authorization. Selection chooses a Skill to structure the current local problem but does not itself start an execution or complete/replace Current Intent.
 
+By default, candidate generation and selection are **decision-epoch computations**, not independently stateful owners. Their outputs are scoped to the Current Intent, Present, capability information, and evidence from which they were produced. If those inputs materially change before execution starts, recompute rather than silently treating the old selection as still current.
+
+A bounded selection step must not require a winner. Its conceptual outcomes may include:
+
+```text
+START(skill, ...)
+ESCALATE
+DEFER / NO_SELECTION
+```
+
+`START` means enough structure exists to attempt the supported Skill execution start path. `ESCALATE` means bounded selection is insufficient and slower or more open-ended cognition is warranted. `DEFER / NO_SELECTION` preserves healthy inactivity or waiting when no Skill should start now. These are conceptual outcomes, not current executable value types, and none of them implies primitive Action authorization.
+
+The current persistence boundary for a chosen execution path is the supported Skill execution start:
+
+```text
+transient candidate / selection
+  -> SkillExecution STARTED
+  -> execution-path lifecycle persistence
+```
+
+Do not introduce a second selected-Skill commitment lifecycle merely to carry a choice between Current Intent and SkillExecution. If pre-start work is small, keep it inside the current decision epoch. If it becomes temporally extended or requires external information, represent that work through existing cognition/agency concepts where they fit, or require concrete evidence before introducing another owner.
+
+Once a SkillExecution has started, a later selector result cannot silently replace that active execution path. Switching paths requires explicit upstream policy and the existing Skill terminal/cancellation boundaries where applicable.
+
 Skill selection may narrow Focus, Attention, Retrieval, admissible local actions, and parameter space without becoming the semantic owner of those mechanisms. Skill-local narrowing must remain penetrable by global viability, authority, reconsideration, and consequence evidence.
 
 Parameter binding is likewise not a new owner by default. A simple Skill may require concrete values before execution begins, while a later closed-loop controller may bind or revise some values progressively. A prediction, retrieval result, or heuristic value used for binding does not become attested world state merely because the Skill consumes it.
