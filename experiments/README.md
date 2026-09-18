@@ -129,6 +129,44 @@ This fixture does not establish a generic Present schema, Focus owner, Skill reg
 or RelayEngine implementation. It is deterministic evidence about one bounded decomposition only.
 
 
+## Reconsideration-admission fixture
+
+`reconsideration_admission.py` is the deterministic, experiment-local #107 follow-up to the
+Present/FLEE fixture. It keeps the same committed `reach safety` objective and tests only the
+upstream admission boundary before the existing
+`IntentCommitment.request_reconsideration(...)` seam.
+
+The reference sequence demonstrates:
+
+```text
+local route blocked + alternate route available
+  -> local recovery
+  -> no reconsideration request
+
+all grounded local routes unavailable
+  -> request reconsideration
+  -> later explicit CONTINUE decision with separate provenance
+
+new safe route appears
+  -> local recovery
+  -> no automatic commitment break
+
+viability becomes unacceptable
+  -> request reconsideration
+  -> later explicit RELEASE decision with separate provenance
+```
+
+Run:
+
+```bash
+python experiments/reconsideration_admission.py
+python experiments/reconsideration_admission.py --json
+```
+
+This fixture does not create a generic trigger detector, trigger taxonomy, utility threshold,
+RuntimeDriver, or model-controlled preemption path. It is deterministic invariant evidence for one
+bounded Current Intent / FLEE context only.
+
 
 ## NLD-3B tri-mode bounded-decision probe
 
