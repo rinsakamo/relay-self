@@ -38,6 +38,18 @@ class PhysicalTransactionError(RuntimeError):
     """The bounded llama.cpp cognition transaction cannot proceed truthfully."""
 
 
+def _begin_stage(summary: dict[str, object], stage: str) -> None:
+    summary["currentStage"] = stage
+
+
+def _complete_stage(summary: dict[str, object], stage: str) -> None:
+    completed = summary.get("completedStages")
+    if not isinstance(completed, list):
+        raise AssertionError("completedStages must be a list")
+    completed.append(stage)
+    summary["currentStage"] = None
+
+
 def _canonical_json(value: object) -> str:
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
@@ -62,13 +74,18 @@ def _write_json(path: Path, payload: object) -> None:
 
 
 def _run_text(command: list[str], *, cwd: Path | None = None) -> str:
-    completed = subprocess.run(
-        command,
-        cwd=cwd,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=cwd,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except OSError as exc:
+        raise PhysicalTransactionError(
+            f"command could not start: {shlex.join(command)}: {type(exc).__name__}: {exc}"
+        ) from exc
     if completed.returncode != 0:
         detail = completed.stderr.strip() or completed.stdout.strip()
         raise PhysicalTransactionError(
@@ -99,19 +116,26 @@ def _port_is_free(host: str, port: int) -> bool:
         sock.close()
 
 
-def _collect_llama_identity(llama_cpp_root: Path, server_binary: Path) -> dict[str, object]:
+def _require_llama_cpp_paths(llama_cpp_root: Path, server_binary: Path) -> None:
     if not server_binary.is_file() or not os.access(server_binary, os.X_OK):
         raise PhysicalTransactionError(f"llama-server is not executable: {server_binary}")
     if not (llama_cpp_root / ".git").exists():
         raise PhysicalTransactionError(f"llama.cpp root is not a git checkout: {llama_cpp_root}")
+
+
+def _collect_llama_revision(llama_cpp_root: Path) -> str:
     revision = _run_text(["git", "rev-parse", "HEAD"], cwd=llama_cpp_root).strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise PhysicalTransactionError("llama.cpp revision is not a lowercase 40-hex commit")
+    return revision
+
+
+def _collect_server_version(server_binary: Path) -> dict[str, object]:
     version = _run_text([str(server_binary), "--version"]).strip()
     match = re.search(r"\bbuild\s+(\d+)\b", version)
     if match is None:
         raise PhysicalTransactionError("could not parse llama-server build number from --version")
-    if not re.fullmatch(r"[0-9a-f]{40}", revision):
-        raise PhysicalTransactionError("llama.cpp revision is not a lowercase 40-hex commit")
-    return {"revision": revision, "version": version, "buildNumber": int(match.group(1))}
+    return {"version": version, "buildNumber": int(match.group(1))}
 
 
 def _verify_artifact(artifact_path: Path) -> str:
@@ -453,6 +477,8 @@ def main(argv: list[str] | None = None) -> int:
         "fallbackCount": 0,
         "repositoryMutationCount": 0,
         "evidenceRoot": str(evidence_root),
+        "currentStage": "initialization",
+        "completedStages": [],
     }
     process: subprocess.Popen[str] | None = None
     log_path = evidence_root / "llama-server.log"
@@ -462,17 +488,38 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.repeats <= 0:
             raise PhysicalTransactionError("repeats must be positive")
+
+        _begin_stage(summary, "clean_repo")
         head, tree = _require_clean_repo(repo_root)
         summary["relaySelf"] = {"head": head, "tree": tree}
+        _complete_stage(summary, "clean_repo")
+
+        _begin_stage(summary, "port_free")
         if args.port != DEFAULT_PORT:
             raise PhysicalTransactionError("current physical condition requires port 1234")
         if not _port_is_free(DEFAULT_HOST, args.port):
             raise PhysicalTransactionError("127.0.0.1:1234 is already occupied")
+        _complete_stage(summary, "port_free")
 
         server_binary = llama_cpp_root / "build" / "bin" / "llama-server"
-        llama_identity = _collect_llama_identity(llama_cpp_root, server_binary)
+        _require_llama_cpp_paths(llama_cpp_root, server_binary)
+
+        _begin_stage(summary, "llama_cpp_revision")
+        revision = _collect_llama_revision(llama_cpp_root)
+        _complete_stage(summary, "llama_cpp_revision")
+
+        _begin_stage(summary, "llama_server_version")
+        version_identity = _collect_server_version(server_binary)
+        _complete_stage(summary, "llama_server_version")
+        llama_identity = {"revision": revision, **version_identity}
+
+        _begin_stage(summary, "gguf_verify")
         artifact_sha256 = _verify_artifact(artifact_path)
+        _complete_stage(summary, "gguf_verify")
+
+        _begin_stage(summary, "gpu_identity")
         gpu_identity = _collect_gpu_identity()
+        _complete_stage(summary, "gpu_identity")
 
         command = _server_command(
             server_binary=server_binary,
@@ -491,14 +538,24 @@ def main(argv: list[str] | None = None) -> int:
             "slots": DEFAULT_SLOTS,
             "contextShiftEnabled": False,
         }
-        _write_json(evidence_root / "binding.json", binding)
 
+        _begin_stage(summary, "binding_write")
+        _write_json(evidence_root / "binding.json", binding)
+        _complete_stage(summary, "binding_write")
+
+        _begin_stage(summary, "server_launch")
         process = _start_server(command)
         cleanup["ownedProcess"] = True
         summary["serverLaunchCount"] = 1
         summary["serverPid"] = process.pid
+        _complete_stage(summary, "server_launch")
+
         origin = f"http://{DEFAULT_HOST}:{args.port}"
+        _begin_stage(summary, "readiness")
         _wait_until_ready(process, origin)
+        _complete_stage(summary, "readiness")
+
+        _begin_stage(summary, "runtime_attestation")
         runtime = _probe_and_attest(
             origin=origin,
             artifact_path=artifact_path,
@@ -506,24 +563,34 @@ def main(argv: list[str] | None = None) -> int:
             llama_identity=llama_identity,
         )
         _write_json(evidence_root / "runtime-attestation.json", runtime)
+        _complete_stage(summary, "runtime_attestation")
+
         attested = runtime["attested"]
         assert isinstance(attested, dict)
         model = attested["requestModel"]
         assert isinstance(model, str)
 
+        _begin_stage(summary, "request_ledger")
         ledger = planned_request_ledger(model, args.repeats)
         _write_json(evidence_root / "request-ledger.json", ledger)
         summary["plannedModelCallCount"] = len(ledger)
+        _complete_stage(summary, "request_ledger")
+
+        _begin_stage(summary, "model_generation")
         result = execute_cognition(
             endpoint=f"{origin}/v1/chat/completions",
             model=model,
             repeats=args.repeats,
             timeout=args.timeout,
         )
+        _complete_stage(summary, "model_generation")
+
+        _begin_stage(summary, "result_write")
         _write_json(evidence_root / "cognition-result.json", result)
         summary["modelCallCount"] = len(result["records"])
         summary["resultSummary"] = result["summary"]
         summary["disposition"] = "COMPLETED"
+        _complete_stage(summary, "result_write")
         exit_code = 0
         return exit_code
     except PhysicalTransactionError as exc:
@@ -543,6 +610,9 @@ def main(argv: list[str] | None = None) -> int:
         if log_path.is_file():
             cleanup["logSha256"] = _sha256_file(log_path)
         _write_json(evidence_root / "cleanup.json", cleanup)
+        completed = summary.get("completedStages")
+        if isinstance(completed, list):
+            completed.append("cleanup")
         summary["transactionExitCode"] = exit_code
         summary["cleanup"] = cleanup
         _write_json(evidence_root / "transaction-summary.json", summary)
