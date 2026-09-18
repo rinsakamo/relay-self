@@ -172,6 +172,57 @@ ActionIssued(a)
 
 Action Proposal, Authorization, Execution, and Consequence remain distinct stages.
 
+### Cognition convergence does not establish World truth
+
+A cognition path may settle enough to select a Skill or parameter without establishing that its
+assumptions are true in the external World. Preserve:
+
+```text
+cognition convergence
+  != World truth
+
+expected consequence
+  != observed consequence
+
+observed mismatch
+  != automatic Intent replacement
+  != automatic training label
+```
+
+When a concrete Skill or Action path has a local expected-evidence condition, compare it with
+provenance-bearing consequence evidence after execution. Keep that expectation local unless
+materially different Skills repeatedly demonstrate a shared non-reducible contract.
+
+Before execution starts, unresolved cognition should not be forced into an execution path merely
+because a bounded computation ended. It may broaden, retrieve, inquire, escalate, or defer.
+
+After execution, contradictory consequence evidence is an external correction signal. It should be
+able to invalidate the applicability of the current narrow path, make stale Present views unusable,
+and reopen or reproject cognition from the new evidence. Reopening cognition does not by itself
+fail or replace the Current Intent; local Skill or parameter recovery remains valid where the
+objective is still grounded and feasible.
+
+Keep causal classes distinct where the evidence permits. For example:
+
+```text
+bad or stale estimate
+  != World changed after the decision
+  != controller / Skill execution failure
+  != consequence unknown
+```
+
+A controller failure must not silently rewrite attested World state. A changed World must not
+automatically become evidence that an earlier mapping was unreasonable. An unknown consequence must
+remain unknown rather than being converted into success, failure, or training truth.
+
+Validated success may justify cheaper future cognition through the existing reuse/crystallization
+rules, but any such shortcut remains penetrable by contradictory consequence evidence, changed
+applicability, novelty, viability pressure, or authority change.
+
+Do not introduce merely for this recovery seam a global prediction owner, mismatch registry,
+surprise scalar, universal Skill expectation schema, automatic failure-to-training conversion, or
+automatic Intent replacement.
+
 ## 6. Facts, beliefs, appraisals, and presentation are different
 
 A body or environment observation is not automatically a belief, and a belief is not automatically an appraisal or expression.
