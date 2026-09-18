@@ -127,11 +127,11 @@ def test_event_fixture_does_not_turn_every_event_into_a_model_call() -> None:
         is EpochDisposition.DECISION_EPOCH_NO_MODEL
     )
     assert (
-        classify_event(FixtureEvent.SKILL_LOCAL_UNCERTAINTY)
-        is EpochDisposition.DECISION_EPOCH_WITH_RELAYENGINE
+        classify_event(FixtureEvent.CONSEQUENCE_MISMATCH)
+        is EpochDisposition.DECISION_EPOCH_NO_MODEL
     )
     assert (
-        classify_event(FixtureEvent.CONSEQUENCE_MISMATCH)
+        classify_event(FixtureEvent.SKILL_LOCAL_UNCERTAINTY)
         is EpochDisposition.DECISION_EPOCH_WITH_RELAYENGINE
     )
 
