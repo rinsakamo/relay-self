@@ -22,6 +22,11 @@ MODE_DEFAULTS: dict[str, dict[str, float | int | None]] = {
 }
 
 _LABEL_RE = re.compile(r"(?<![A-Z0-9_])([ABC])(?![A-Z0-9_])")
+_EXPLICIT_LABEL_RE = re.compile(
+    r"\b(?:decision\s+label|feasible\s+decision|decision|answer)"
+    r"\s*(?:is\s*)?(?:[:=]\s*)?\*{0,2}\s*([ABC])\b",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +65,10 @@ def round_to_block(max_new_tokens: int, block_length: int) -> int:
 
 
 def parse_decision_label(text: str) -> str | None:
+    explicit_match = _EXPLICIT_LABEL_RE.search(text)
+    if explicit_match is not None:
+        return explicit_match.group(1).upper()
+
     matches = _LABEL_RE.findall(text.upper())
     if not matches:
         return None

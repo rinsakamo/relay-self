@@ -74,12 +74,14 @@ def test_round_to_block_rejects_invalid_values() -> None:
     [
         ("A", "A"),
         ("Decision: B", "B"),
+        ("The decision label is **B**. Reasoning considered A.", "B"),
+        ("The feasible decision is **C = DEFER**; B is blocked.", "C"),
         ("I considered A, then choose C.", "C"),
         ("CAB", None),
         ("no bounded label", None),
     ],
 )
-def test_parse_decision_label_uses_last_standalone_candidate(
+def test_parse_decision_label_prefers_explicit_decision_statement(
     text: str,
     expected: str | None,
 ) -> None:
