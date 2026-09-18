@@ -438,6 +438,51 @@ physical trace was recorded. Wrong or invalid decisions remain evidence. Diagnos
 by themselves prove a causal mechanism, and this gate does not vary candidate display order,
 thinking depth, long-form generation, multimodal input, or adaptive routing.
 
+### NLD-3B reversed-mapping token-budget isolation
+
+`nld_reversed_mapping_token_budget.py` and
+`nld_reversed_mapping_token_budget_transaction.py` implement #125.
+
+This gate keeps only the two reversed-mapping cells from #123:
+
+```text
+A = FLEE(destination=ridge)
+B = FLEE(destination=cave)
+C = DEFER
+
+cave open / ridge blocked -> expected B
+cave blocked / ridge open -> expected A
+```
+
+Each cell is crossed with `max_new_tokens=32` and `64`, while AR, dLM, and Linear
+Self-Speculation otherwise keep the qualified runtime defaults. Every `(mode, token-budget)` path
+receives one excluded warm-up, then each `(case, token-budget)` subject runs all six native-mode
+order permutations once:
+
+```text
+2 cases × 2 token budgets × 6 permutations × 3 mode calls
+= 72 measured calls
+```
+
+In addition to the current bounded label, the trace records whether parsing came from an explicit
+decision statement, the fallback candidate-label rule, or no candidate label; explicit and fallback
+labels; EOS occurrence; generated-token count; and a token-cap proxy indicating whether generated
+tokens reached or exceeded the effective requested maximum.
+
+Canonical local invocation:
+
+```bash
+EVIDENCE=/tmp/relay-self-nld-token-budget-$(date -u +%Y%m%dT%H%M%SZ)
+
+bash experiments/run_nld_reversed_mapping_token_budget_transaction.sh \
+  --evidence-root "$EVIDENCE"
+
+cat "$EVIDENCE/summary.json"
+```
+
+A `TOKEN_BUDGET_ISOLATION_PASS` means only that a structurally valid physical trace was
+recorded. `max_new_tokens` is an output-generation control, not a qualified semantic
+cognition-depth measure. Wrong or fallback decisions remain evidence.
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
