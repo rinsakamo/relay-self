@@ -134,9 +134,11 @@ or RelayEngine implementation. It is deterministic evidence about one bounded de
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
 of the bounded FLEE domain established by `present_skill_epoch.py`.
 
-The probe does **not** assume that one logical decision token implies one-token physical compute.
-The released DiffusionGemma generation path denoises a fixed model canvas, so the experiment records
-the runtime `model.config.canvas_length` alongside the requested logical output length.
+The probe reads **one diagnostic decision slot**, but it does not claim one-token physical
+generation. In the current upstream generation loop, `max_new_tokens=1` makes
+`ceil(1 / canvas_length) = 1` canvas run; that canvas is still denoised and appended at the model's
+fixed `model.config.canvas_length`. The experiment therefore records both the requested
+`max_new_tokens` value and the actual generated canvas-token count.
 
 The model-facing question is:
 
@@ -200,7 +202,7 @@ The default physical subject is intentionally tiny:
 ```text
 case = easy_separable
 fixed denoising steps = 1
-logical output = 1 token
+decision slots observed = 1\ncanvas runs = 1 (via max_new_tokens=1)
 quantization = bnb4
 ```
 
@@ -225,8 +227,8 @@ Inspect:
 cat "$EVIDENCE/summary.json"
 ```
 
-A `PASS` proves only that this exact checkout/runtime completed the requested one-case physical
-probe and produced a structurally valid actual-model observation. It does not establish adaptive
+A `PASS` proves only that this exact checkout/runtime completed the requested one-case,
+one-decision-slot physical probe and produced a structurally valid actual-model observation. It does not establish adaptive
 cognition quality, Action authority, World truth, FreeToken viability, or the full #101 hypothesis.
 
 ## Mineflayer viability-relay fixture
