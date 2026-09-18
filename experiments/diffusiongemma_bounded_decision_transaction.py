@@ -309,6 +309,7 @@ def validate_probe_result(
         "canvas_length": canvas_length,
         "elapsed_seconds": result.get("elapsed_seconds"),
         "cuda_peak_bytes": result.get("cuda_peak_bytes"),
+        "generated_token_count": result.get("generated_token_count"),
         "tokens_per_forward": result.get("tokens_per_forward"),
         "transformers_version": payload.get("transformers_version"),
         "torch_version": payload.get("torch_version"),
@@ -497,7 +498,7 @@ def run_transaction(
         summary["non_claims"] = [
             "PASS does not make model output Action authorization or World truth.",
             "bnb4 PASS is local-feasibility evidence, not the unquantized baseline.",
-            "one logical decision token does not imply one-token physical decoder compute.",
+            "one observed decision slot does not imply one-token physical generation.",
             "this one-case one-step transaction does not establish adaptive cognition quality.",
         ]
         _write_json(summary_path, summary)
