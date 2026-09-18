@@ -187,6 +187,48 @@ Candidate probabilities are normalized only across the bounded A/B/C candidate-t
 diagnostic model evidence, not calibrated World probabilities, Action authorization, or proof that
 the selected decision is true.
 
+
+### DiffusionGemma local physical transaction
+
+`diffusiongemma_bounded_decision_transaction.py` wraps the smallest #101 physical run in a
+fresh-evidence transaction. It requires a clean RelaySelf checkout, records the exact Git head/tree
+and attached branch, fresh GPU identity/free memory, Python/package versions, a dry-run plan, and the
+actual-model stdout/stderr/result under a new or empty evidence directory.
+
+The default physical subject is intentionally tiny:
+
+```text
+case = easy_separable
+fixed denoising steps = 1
+logical output = 1 token
+quantization = bnb4
+```
+
+The default `bnb4` path is **local-feasibility evidence**, not an unquantized baseline. Use
+`--quantization none` only when the host has enough memory for the released unquantized model path.
+The transaction installs nothing automatically. Missing packages, missing GPU visibility, model
+access/download problems, OOM, timeout, or model/runtime incompatibility are preserved as
+`FAIL_NOT_QUALIFIED` with the failing stage in `summary.json`.
+
+Canonical local invocation:
+
+```bash
+EVIDENCE=/tmp/relay-self-diffusiongemma-$(date -u +%Y%m%dT%H%M%SZ)
+
+bash experiments/run_diffusiongemma_bounded_decision_transaction.sh \
+  --evidence-root "$EVIDENCE"
+```
+
+Inspect:
+
+```bash
+cat "$EVIDENCE/summary.json"
+```
+
+A `PASS` proves only that this exact checkout/runtime completed the requested one-case physical
+probe and produced a structurally valid actual-model observation. It does not establish adaptive
+cognition quality, Action authority, World truth, FreeToken viability, or the full #101 hypothesis.
+
 ## Mineflayer viability-relay fixture
 
 `mineflayer_viability_relay.py` is a deterministic, simulation-only fixture for #46. It is grounded in `PrismarineJS/mineflayer` revision `91204b2a034f0663b39814771e236bcb7c8f26c8` but does not import Mineflayer or require a Minecraft server.
