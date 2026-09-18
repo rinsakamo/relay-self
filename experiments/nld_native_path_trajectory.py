@@ -200,6 +200,68 @@ def sequence_sha256(token_ids: list[int]) -> str:
     return hashlib.sha256(payload.encode("ascii")).hexdigest()
 
 
+
+def run_native_observation(
+    *,
+    torch,
+    model: object,
+    tokenizer: object,
+    prompt_ids,
+    mode: str,
+    seed: int,
+) -> dict[str, object]:
+    _reset_seed(torch, seed)
+    torch.cuda.reset_peak_memory_stats()
+    torch.cuda.synchronize()
+    started = time.perf_counter()
+    with torch.inference_mode():
+        out_ids, nfe = dispatch_generation(
+            model,
+            tokenizer,
+            prompt_ids,
+            mode=mode,
+            max_new_tokens=DEFAULT_MAX_NEW_TOKENS,
+            max_thinking_tokens=DEFAULT_MAX_THINKING_TOKENS,
+        )
+    torch.cuda.synchronize()
+    elapsed = time.perf_counter() - started
+
+    generated = out_ids[0, prompt_ids.shape[1] :]
+    token_ids = [
+        int(value) for value in generated.detach().cpu().tolist()
+    ]
+    decoded = tokenizer.decode(
+        token_ids,
+        skip_special_tokens=True,
+    )
+    parsed = parse_decision(decoded)
+    return {
+        "mode": mode,
+        "elapsed_seconds": elapsed,
+        "nfe": _nfe_value(nfe),
+        "generated_token_count": len(token_ids),
+        "generated_token_ids": token_ids,
+        "sequence_sha256": sequence_sha256(token_ids),
+        "generated_text": decoded,
+        "parsed_label": parsed.label,
+        "parse_source": parsed.source,
+        "parsed_destination": {
+            "A": "ridge",
+            "B": "cave",
+            "C": "DEFER",
+        }.get(parsed.label, "INVALID"),
+        "decision_correct": parsed.label == "A",
+        "decision_events": decision_events(
+            tokenizer,
+            token_ids,
+        ),
+        "cuda_peak_allocated_bytes": int(
+            torch.cuda.max_memory_allocated()
+        ),
+    }
+
+
+
 def dry_run_payload() -> dict[str, object]:
     schedule = build_schedule()
     return {
