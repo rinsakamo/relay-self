@@ -502,9 +502,8 @@ def main(argv: list[str] | None = None) -> int:
         _complete_stage(summary, "port_free")
 
         server_binary = llama_cpp_root / "build" / "bin" / "llama-server"
-        _require_llama_cpp_paths(llama_cpp_root, server_binary)
-
         _begin_stage(summary, "llama_cpp_revision")
+        _require_llama_cpp_paths(llama_cpp_root, server_binary)
         revision = _collect_llama_revision(llama_cpp_root)
         _complete_stage(summary, "llama_cpp_revision")
 
