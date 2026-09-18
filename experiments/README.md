@@ -217,6 +217,57 @@ It is deterministic evidence that existing owner-local lifecycles can be coordin
 decision epochs without making every event a model call.
 
 
+## Cognition / consequence closed-loop fixture
+
+`cognition_consequence_loop.py` is the deterministic #104 fixture that connects bounded cognition
+to the existing Skill, Action, Present, and reconsideration boundaries without running a model or
+creating a new prediction/mismatch owner.
+
+It keeps local expected evidence experiment-scoped and separates six causal cases:
+
+```text
+A. unresolved bounded cognition
+   -> ESCALATE
+   -> no SkillExecution / Action
+
+B. expected consequence observed
+   -> Action OUTCOME
+   -> Skill SUCCEEDED
+
+C. stale / misleading Present assumption contradicted by World evidence
+   -> Action OUTCOME
+   -> Skill FAILED
+   -> old Present stale
+   -> reproject
+   -> local recovery under same Current Intent
+
+D. consequence unavailable
+   -> Action UNKNOWN
+   -> no invented Skill success/failure
+
+E. World changes after a previously grounded decision
+   -> mismatch
+   -> reproject from new World evidence
+   -> local recovery without rewriting the earlier evidence
+
+F. controller reports no progress while route evidence remains open
+   -> Skill FAILED
+   -> World route truth unchanged
+   -> Current Intent retained
+```
+
+Run:
+
+```bash
+python experiments/cognition_consequence_loop.py
+python experiments/cognition_consequence_loop.py --json
+```
+
+The fixture deliberately creates no automatic training labels. It does not establish a universal
+mismatch taxonomy, prediction schema, adapter invalidation policy, model-quality result, or physical
+World qualification.
+
+
 ## NLD-3B tri-mode bounded-decision probe
 
 `nld_tri_mode.py` is the first actual-model harness for #112 and the current first-choice
