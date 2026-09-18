@@ -260,6 +260,58 @@ A `REPEATABILITY_PASS` is a structural evidence result. It does not require all 
 correct and does not promote a decoding-mode ranking or adaptive RelayEngine policy. Wrong,
 invalid, slow, noisy, or order-sensitive outputs remain valid measurements for #115.
 
+
+### NLD-3B bounded problem-structure × native-mode matrix
+
+`nld_bounded_difficulty_matrix.py` and
+`nld_bounded_difficulty_matrix_transaction.py` implement #117.
+
+The matrix keeps the already-qualified NLD-3B BF16 runtime and native generation calls while
+changing only the bounded problem structure:
+
+```text
+easy_separable       expected A
+coupled_constraints  expected B
+incomplete_focus     expected C = DEFER
+```
+
+These case semantics align with the existing DiffusionGemma bounded probe so a later
+cross-substrate comparison can reuse the same decision surface.
+
+For each case, the experiment executes all six AR/dLM/Linear-Spec order permutations once:
+
+```text
+18 measured observations per case
+6 observations per case × mode cell
+54 measured calls total
+2 observations per cell at each ordinal position
+```
+
+The model is loaded once and each mode receives one excluded warm-up call. Measured calls use
+explicit CUDA synchronization around the full native generation call, preserve generated text and
+A/B/C parsing, and record NFE, generated-token count, tokens-per-forward, latency, correctness,
+and CUDA peak allocation.
+
+Canonical local invocation:
+
+```bash
+EVIDENCE=/tmp/relay-self-nld-matrix-$(date -u +%Y%m%dT%H%M%SZ)
+
+bash experiments/run_nld_bounded_difficulty_matrix_transaction.sh \
+  --evidence-root "$EVIDENCE"
+
+cat "$EVIDENCE/summary.json"
+```
+
+A `BOUNDED_MATRIX_PASS` means only that a structurally valid 3-case × 3-mode physical trace
+was recorded. It does not require every model response to be correct. Wrong or invalid outputs
+remain evidence and must not be tuned away.
+
+The current `max_thinking_tokens` call argument is preserved from the qualified native surface,
+but this matrix does not claim that it is an independently validated cognition-depth budget. The
+matrix also does not test long-form generation throughput, learned mode routing, multimodal input,
+or World consequence correction.
+
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
