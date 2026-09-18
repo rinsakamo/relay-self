@@ -191,6 +191,34 @@ justified.
 Internal AR verification inside Linear Self-Speculation remains distinct from World consequence
 verification under #104.
 
+
+### NLD-3B local physical transaction
+
+`nld_tri_mode_transaction.py` wraps the first #112 local qualification in a fresh-evidence
+transaction. It requires a clean RelaySelf checkout, records exact Git identity, fresh GPU
+identity/free memory, Python/Torch/Transformers versions, a deterministic dry-run plan, and the
+actual tri-mode result under a new or empty evidence directory.
+
+Canonical invocation:
+
+```bash
+EVIDENCE=/tmp/relay-self-nld-$(date -u +%Y%m%dT%H%M%SZ)
+
+bash experiments/run_nld_tri_mode_transaction.sh \
+  --evidence-root "$EVIDENCE"
+
+cat "$EVIDENCE/summary.json"
+```
+
+The canonical first gate uses the official direct PyTorch/Transformers runtime, BF16, no LoRA,
+no quantization, and no serving framework. Missing packages, model/custom-code loading errors,
+CUDA/BF16 failures, OOM, timeout, or malformed model output terminate as
+`FAIL_NOT_QUALIFIED` with the failing stage and preserved stdout/stderr.
+
+A `TRI_MODE_PASS` means only that the same loaded NLD-3B checkpoint completed the bounded
+AR, dLM, and Linear Self-Speculation calls and produced structurally valid evidence. It does not
+select a permanent RelayEngine mode.
+
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
