@@ -91,6 +91,43 @@ Machine-readable output is available with `--json`; add `--trace` to include per
 
 Simulation results from this harness are evidence only for the recorded configuration and seeds. Do not promote a favorable comparison into RelaySelf semantic authority without the normal evaluation and Grand Null process.
 
+
+## Present / FLEE / decision-epoch fixture
+
+`present_skill_epoch.py` is a deterministic, experiment-local probe for the first concrete
+Skill-narrowing path across #87, #105, and #106.
+
+It uses one committed objective and one local `FLEE` representation to demonstrate:
+
+```text
+broad Present
+  -> admit FLEE candidate
+  -> FLEE-local narrowing
+  -> bind one destination from explicit route evidence
+  -> existing SkillExecution STARTED boundary
+```
+
+The broad fixture carries unrelated hunger and conversational facts alongside threat, body,
+destination, and route evidence. FLEE-local narrowing removes the unrelated facts while preserving
+the original provenance of retained facts. A deliberately misleading narrow projection omits route
+status; the fixture treats the omission as missing information, returns `ESCALATE`, broadens back
+to the source projection, and then recovers the bounded decision.
+
+The same module includes an experiment-local event matrix showing that ambient/quiet events are
+ignored, route/supervision events and consequence mismatch can first reopen a deterministic decision
+epoch, and unresolved local uncertainty may require RelayEngine cognition. These labels are not a
+runtime API or a general Scheduler contract.
+
+Run:
+
+```bash
+python experiments/present_skill_epoch.py
+python experiments/present_skill_epoch.py --json
+```
+
+This fixture does not establish a generic Present schema, Focus owner, Skill registry, RuntimeDriver,
+or RelayEngine implementation. It is deterministic evidence about one bounded decomposition only.
+
 ## Mineflayer viability-relay fixture
 
 `mineflayer_viability_relay.py` is a deterministic, simulation-only fixture for #46. It is grounded in `PrismarineJS/mineflayer` revision `91204b2a034f0663b39814771e236bcb7c8f26c8` but does not import Mineflayer or require a Minecraft server.
