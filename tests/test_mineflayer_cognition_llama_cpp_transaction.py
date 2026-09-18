@@ -149,10 +149,12 @@ def test_wrong_gguf_blocks_before_server_launch(tmp_path):
     with (
         patch.object(tx, "_require_clean_repo", return_value=("a" * 40, "b" * 40)),
         patch.object(tx, "_port_is_free", return_value=True),
+        patch.object(tx, "_require_llama_cpp_paths"),
+        patch.object(tx, "_collect_llama_revision", return_value="c" * 40),
         patch.object(
             tx,
-            "_collect_llama_identity",
-            return_value={"revision": "c" * 40, "version": "build 1", "buildNumber": 1},
+            "_collect_server_version",
+            return_value={"version": "build 1", "buildNumber": 1},
         ),
         patch.object(tx, "_collect_gpu_identity", return_value="GPU") as gpu,
         patch.object(tx, "_start_server") as start,
@@ -179,7 +181,7 @@ def test_occupied_port_blocks_before_identity_or_launch(tmp_path):
     with (
         patch.object(tx, "_require_clean_repo", return_value=("a" * 40, "b" * 40)),
         patch.object(tx, "_port_is_free", return_value=False),
-        patch.object(tx, "_collect_llama_identity") as identity,
+        patch.object(tx, "_collect_llama_revision") as identity,
         patch.object(tx, "_start_server") as start,
     ):
         code = tx.main(["--repo-root", str(tmp_path), "--evidence-root", str(evidence)])
@@ -256,3 +258,66 @@ def test_no_bytecode_launcher_preserves_clean_checkout_before_preflight(tmp_path
     assert status == ""
     assert not list(repo.rglob("__pycache__"))
     assert not list(repo.rglob("*.pyc"))
+
+
+
+def test_run_text_wraps_spawn_oserror_with_exact_command():
+    error = PermissionError(1, "Operation not permitted")
+    with patch.object(subprocess, "run", side_effect=error):
+        with pytest.raises(
+            tx.PhysicalTransactionError,
+            match=r"command could not start: git rev-parse HEAD: PermissionError: .*Operation not permitted",
+        ):
+            tx._run_text(["git", "rev-parse", "HEAD"])
+
+
+def test_preflight_trace_records_exact_failing_stage(tmp_path):
+    evidence = tmp_path / "evidence"
+    artifact = tmp_path / "model.gguf"
+    artifact.write_bytes(b"x")
+
+    with (
+        patch.object(tx, "_require_clean_repo", return_value=("a" * 40, "b" * 40)),
+        patch.object(tx, "_port_is_free", return_value=True),
+        patch.object(tx, "_require_llama_cpp_paths"),
+        patch.object(tx, "_collect_llama_revision", return_value="c" * 40),
+        patch.object(
+            tx,
+            "_collect_server_version",
+            return_value={"version": "llama-server build 10874", "buildNumber": 10874},
+        ),
+        patch.object(
+            tx,
+            "_verify_artifact",
+            side_effect=PermissionError(1, "Operation not permitted"),
+        ),
+        patch.object(tx, "_collect_gpu_identity") as gpu,
+        patch.object(tx, "_start_server") as start,
+    ):
+        code = tx.main(
+            [
+                "--repo-root",
+                str(tmp_path),
+                "--llama-cpp-root",
+                str(tmp_path),
+                "--artifact-path",
+                str(artifact),
+                "--evidence-root",
+                str(evidence),
+            ]
+        )
+
+    assert code == 2
+    summary = json.loads((evidence / "transaction-summary.json").read_text(encoding="utf-8"))
+    assert summary["disposition"] == "HARNESS_INVALID"
+    assert summary["currentStage"] == "gguf_verify"
+    assert summary["completedStages"][:4] == [
+        "clean_repo",
+        "port_free",
+        "llama_cpp_revision",
+        "llama_server_version",
+    ]
+    assert summary["completedStages"][-1] == "cleanup"
+    assert "PermissionError" in summary["error"]
+    gpu.assert_not_called()
+    start.assert_not_called()
