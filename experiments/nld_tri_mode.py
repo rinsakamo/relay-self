@@ -30,6 +30,14 @@ _EXPLICIT_LABEL_RE = re.compile(
 
 
 @dataclass(frozen=True, slots=True)
+class DecisionParse:
+    label: str | None
+    source: str
+    explicit_label: str | None
+    fallback_label: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class ProbeCase:
     case_id: str
     prompt: str
@@ -64,15 +72,41 @@ def round_to_block(max_new_tokens: int, block_length: int) -> int:
     return max(block_length, (max_new_tokens // block_length) * block_length)
 
 
-def parse_decision_label(text: str) -> str | None:
+def parse_decision(text: str) -> DecisionParse:
     explicit_match = _EXPLICIT_LABEL_RE.search(text)
-    if explicit_match is not None:
-        return explicit_match.group(1).upper()
+    explicit_label = (
+        explicit_match.group(1).upper()
+        if explicit_match is not None
+        else None
+    )
 
     matches = _LABEL_RE.findall(text.upper())
-    if not matches:
-        return None
-    return matches[-1]
+    fallback_label = matches[-1] if matches else None
+
+    if explicit_label is not None:
+        return DecisionParse(
+            label=explicit_label,
+            source="explicit",
+            explicit_label=explicit_label,
+            fallback_label=fallback_label,
+        )
+    if fallback_label is not None:
+        return DecisionParse(
+            label=fallback_label,
+            source="fallback",
+            explicit_label=None,
+            fallback_label=fallback_label,
+        )
+    return DecisionParse(
+        label=None,
+        source="none",
+        explicit_label=None,
+        fallback_label=None,
+    )
+
+
+def parse_decision_label(text: str) -> str | None:
+    return parse_decision(text).label
 
 
 def resolve_modes(raw: Iterable[str] | None) -> tuple[str, ...]:
