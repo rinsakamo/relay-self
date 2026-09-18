@@ -399,6 +399,45 @@ but this matrix does not claim that it is an independently validated cognition-d
 matrix also does not test long-form generation throughput, learned mode routing, multimodal input,
 or World consequence correction.
 
+
+### NLD-3B easy-case permutation isolation
+
+`nld_easy_permutation_isolation.py` and
+`nld_easy_permutation_isolation_transaction.py` implement #123.
+
+This gate isolates the stable #117 `easy_separable` counterexample without changing the
+qualified model/runtime surface. It crosses two candidate mappings with two grounded route states:
+
+```text
+                                      A=cave/B=ridge    A=ridge/B=cave
+cave open, ridge blocked                   A                  B
+cave blocked, ridge open                   B                  A
+```
+
+Candidate display order remains fixed as A, B, C. Each cell runs all six native-mode order
+permutations once, giving 72 measured calls total and 6 observations per cell/mode. The model is
+loaded once and each native mode receives one excluded warm-up call.
+
+Measured traces preserve both the parsed A/B/C label and the semantic destination obtained by
+mapping that label through the cell's explicit candidate mapping. This keeps literal-label behavior
+separate from cave/ridge selection behavior.
+
+Canonical local invocation:
+
+```bash
+EVIDENCE=/tmp/relay-self-nld-easy-isolation-$(date -u +%Y%m%dT%H%M%SZ)
+
+bash experiments/run_nld_easy_permutation_isolation_transaction.sh \
+  --evidence-root "$EVIDENCE"
+
+cat "$EVIDENCE/summary.json"
+```
+
+A `PERMUTATION_ISOLATION_PASS` means only that a structurally valid four-cell × three-mode
+physical trace was recorded. Wrong or invalid decisions remain evidence. Diagnostic patterns do not
+by themselves prove a causal mechanism, and this gate does not vary candidate display order,
+thinking depth, long-form generation, multimodal input, or adaptive routing.
+
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
