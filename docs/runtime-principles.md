@@ -119,6 +119,14 @@ Skill selection may narrow Focus, Attention, Retrieval, admissible local actions
 
 Parameter binding is likewise not a new owner by default. A simple Skill may require concrete values before execution begins, while a later closed-loop controller may bind or revise some values progressively. A prediction, retrieval result, or heuristic value used for binding does not become attested world state merely because the Skill consumes it.
 
+Do not infer a repository-wide `SkillDefinition` schema or persistent Skill registry merely from these semantic responsibilities. The only cross-Skill representation already required by the current executable boundary is `skill_id`, which identifies the reusable Skill associated with one `SkillExecution`.
+
+Applicability, cognitive narrowing, retrieval hints, parameter requirements, controller/execution binding, termination evidence, cost, or interruptibility may be necessary for a particular Skill without each becoming a mandatory generic field. For the first concrete strongly narrowing Skills, prefer local typed representations that expose only the information their actual consumers need.
+
+Extract a shared cross-Skill field or interface only when materially different Skills repeatedly demonstrate the same non-reducible semantic responsibility at the same boundary. Shared syntax or implementation convenience alone is not evidence for a shared schema. For example, food choices, escape destinations, and conversational context may all be called "parameters" without requiring one universal parameter-schema language.
+
+Keep the reusable Skill implementation distinct from the persistent `Capability Model`: the Capability Model is the Self's estimate of what it can do. It may later estimate availability, reliability, competence, expected cost, or other properties of a Skill without thereby becoming the owner of that Skill's implementation or definition.
+
 The current executable `SkillExecution` contract owns the lifecycle of one started execution instance. It does not by itself prove that the Skill was a valid candidate, selected by a supported selector, correctly parameterized, or authorized to issue any primitive Action.
 
 ## 5. Action completion requires consequence evidence
