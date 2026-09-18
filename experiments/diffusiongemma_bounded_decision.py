@@ -528,7 +528,7 @@ def dry_run_payload(
         "non_claims": [
             "dry-run output is not a model result",
             "bnb4 compatibility/performance is not established by this plan",
-            "one logical decision token does not imply one-token physical decoder compute",
+            "one observed decision slot does not imply one-token physical generation",
         ],
     }
 
