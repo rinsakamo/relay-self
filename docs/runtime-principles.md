@@ -359,6 +359,28 @@ Choose among Retrieval, Inquiry sources, and other deliberate mechanisms using t
 
 Prefer event-driven decision epochs over a single monolithic tick loop.
 
+Keep the runtime distinctions explicit:
+
+```text
+raw/external event
+  != admitted material change
+  != decision epoch
+  != cognition request
+  != RelayEngine call
+```
+
+A decision epoch may only service an existing owner-local lifecycle or deadline and then return. A
+material source change may require Present recomputation without requiring model inference; an
+Action Supervision deadline may require deterministic lifecycle work without Skill reselection or
+Intent reconsideration. Conversely, unresolved local uncertainty may justify a cognition request.
+No event, deadline, or unresolved need may also mean no epoch at all.
+
+Coordination does not transfer ownership: an Action deadline remains Action Supervision state, a
+Current Intent remains owned by Intent Commitment, and a Skill execution remains its own lifecycle.
+When several events are coalesced for efficiency, preserve enough causal provenance to reconstruct
+which source change or deadline caused material work. Do not introduce a monolithic RuntimeDriver,
+generic event bus, or mandatory model-call cadence merely to connect these decision epochs.
+
 ## 12. Time is explicit
 
 The runtime should not rely on one ambiguous timestamp for all semantics.
