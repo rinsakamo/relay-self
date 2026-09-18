@@ -8,7 +8,19 @@ It refines the ontology definition of Skill as a temporally extended feedback co
 
 It does **not** define the persistent capability library, transient Skill-candidate projection, Skill selection, general parameter requirements or binding policy, a closed-loop control policy, primitive Action generation, general Skill scheduling, or automatic policy for what happens when the associated Current Intent changes later.
 
-The reusable Skill definition/capability exists conceptually upstream of this owner. Candidate admission, selection, and general parameter binding are likewise upstream/transient responsibilities unless future implementation demonstrates independent state, authority, or lifecycle. This contract begins only when the supported start seam records one concrete Skill execution instance.
+The reusable Skill definition/capability exists conceptually upstream of this owner. Candidate admission, selection, and general parameter binding are likewise upstream/transient responsibilities unless future implementation demonstrates independent state, authority, or lifecycle. By default they are scoped to the decision epoch and source state/evidence from which they were computed rather than persisted as a second commitment lifecycle.
+
+This contract begins only when the supported start seam records one concrete Skill execution instance. That start is the current persistence boundary for the chosen execution path:
+
+```text
+transient candidate / selection
+  -> SkillExecution STARTED
+  -> execution-path lifecycle persistence
+```
+
+A selector may conceptually decide to attempt a start, escalate to slower cognition, or defer/select nothing. This contract defines none of those selection value types or policies. It only owns the execution lifecycle after a supported start succeeds.
+
+Tracing or explaining a pre-start selection does not by itself create durable semantic state or justify a separate selector owner. If future implementation needs non-reconstructible selection state to survive across decision epochs before start, that concrete information must justify the smallest new owner through the normal Grand Null process.
 
 The executable owner is `src/relay_self/skill.py`; deterministic verification lives in `tests/test_skill_execution.py` and the cross-lifecycle stale-snapshot regressions in `tests/test_lifecycle_linearity.py`.
 
@@ -45,6 +57,8 @@ The start rule is therefore:
 Current Intent Commitment remains the sole owner of whether an intent is current. Skill Execution reads that state but does not mutate it.
 
 A pending reconsideration request does not by itself release the Current Intent. A Skill may therefore still start for the same current intent while reconsideration is pending. Whether a runtime *should* start another Skill then is orchestration/policy, not this lifecycle invariant.
+
+Likewise, once a SkillExecution is already active, later candidate or selector output has no authority in this contract to overwrite or silently replace it. A change of execution path requires explicit upstream policy and an allowed terminal/cancellation transition for the existing execution where applicable; this contract does not define the policy that decides to switch.
 
 ### Cancellation classification strengthening
 
