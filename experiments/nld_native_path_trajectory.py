@@ -116,6 +116,49 @@ def source_metadata(model: object) -> dict[str, object]:
     }
 
 
+
+def candidate_scores(
+    logits,
+    forms: dict[str, list[dict[str, object]]],
+) -> dict[str, list[float]]:
+    scores: dict[str, list[float]] = {}
+    for label in ("A", "B", "C"):
+        token_ids = [
+            int(item["token_id"]) for item in forms[label]
+        ]
+        selected = logits[..., token_ids].max(dim=-1).values
+        scores[label] = [
+            float(value)
+            for value in selected[0].detach().float().cpu().tolist()
+        ]
+    return scores
+
+
+def token_diagnostic(
+    *,
+    tokenizer: object,
+    logits,
+    forms: dict[str, list[dict[str, object]]],
+) -> dict[str, object]:
+    scores = candidate_scores(logits, forms)
+    argmax_ids = [
+        int(value)
+        for value in logits.argmax(dim=-1)[0].detach().cpu().tolist()
+    ]
+    winners = [
+        max(
+            ("A", "B", "C"),
+            key=lambda label: scores[label][position],
+        )
+        for position in range(len(argmax_ids))
+    ]
+    return {
+        "argmax_token_ids": argmax_ids,
+        "candidate_scores": scores,
+        "candidate_winners": winners,
+    }
+
+
 def dry_run_payload() -> dict[str, object]:
     schedule = build_schedule()
     return {
