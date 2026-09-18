@@ -309,6 +309,31 @@ def dry_run_payload(
     }
 
 
+
+def decision_prefix_events(
+    tokenizer: object,
+    token_ids: list[int],
+) -> list[dict[str, object]]:
+    events: list[dict[str, object]] = []
+    for index in range(1, len(token_ids) + 1):
+        text = tokenizer.decode(
+            token_ids[:index],
+            skip_special_tokens=True,
+        )
+        parsed = parse_decision(text)
+        events.append(
+            {
+                "token_index_1based": index,
+                "parsed_label": parsed.label,
+                "parse_source": parsed.source,
+                "explicit_label": parsed.explicit_label,
+                "fallback_label": parsed.fallback_label,
+            }
+        )
+    return events
+
+
+
 def _run_observation(
     *,
     torch,
