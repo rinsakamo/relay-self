@@ -202,7 +202,8 @@ The default physical subject is intentionally tiny:
 ```text
 case = easy_separable
 fixed denoising steps = 1
-decision slots observed = 1\ncanvas runs = 1 (via max_new_tokens=1)
+decision slots observed = 1
+canvas runs = 1 (via max_new_tokens=1)
 quantization = bnb4
 ```
 
