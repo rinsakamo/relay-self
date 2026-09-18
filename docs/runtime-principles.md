@@ -230,6 +230,76 @@ This comparison need not collapse latency, compute, energy, uncertainty, risk, o
 
 Experience may make an expensive computation reusable through Memory, a learned policy, a Skill, a cached procedure, or another justified mechanism. Such amortization does not make the shortcut permanently authoritative: contradictory consequence evidence, changed applicability, novelty, or distribution shift should be able to invalidate the cheap path and trigger renewed processing where useful.
 
+### Offline consolidation and compiled cognition remain derived
+
+Offline consolidation may reorganize prior cognition into cheaper reusable mechanisms, but it does not create a new source of truth or semantic owner merely because computation moved out of the interactive path.
+
+A minimal governed shape is:
+
+```text
+provenance-bearing consequence / trace
+  -> eligible consolidation material
+  -> derived candidate representation
+  -> validation
+  -> governed integration into an existing owner
+     or a replaceable execution artifact
+```
+
+No arrow above is automatic. Preserve at least:
+
+```text
+Consequence / trace
+  != durable Memory
+  != training truth
+
+derived training example
+  != Evidence
+  != authoritative fact
+
+candidate reusable structure
+  != accepted Skill / policy / procedure
+
+compiled weights / adapter
+  != Identity Specification
+  != other Persistent Cognition
+
+offline / sleep interval
+  != learning authority
+```
+
+Persistent Cognition remains the source representation. It may influence current cognition through Present projection, Retrieval, or another existing governed path. Compiling repeated structure into a learned policy, cached procedure, model adapter, or other execution artifact does not transfer authority from the source cognition into that artifact. A product-specific label or projection of durable identity does not gain a second authority merely because it can also be compiled into model parameters.
+
+Likewise, consequence or trace material does not become persistent merely because it is useful for learning. Retention and durable update remain governed by the existing Evidence, Memory, and Experience Integration boundaries. Candidate training material is a derived dataset: filtering, causal interpretation, deduplication or balancing, and held-out separation may all change what is eligible for training, and provenance back to the source material should remain available where practical. Generated self-claims, outcomes with unknown causal relation, and stale or retracted cognition must not become training truth merely because they appear in a local trace. Lower training loss alone is not evidence that a compiled artifact should be trusted or activated.
+
+Sleep, rest, idle time, or another quiet interval may provide a useful scheduling condition for internal work by reallocating cognition away from external interaction. The scheduling condition does not own Memory, learning, consolidation, or weight mutation. The same internal work may run under another justified offline condition; biological sleep semantics are not required.
+
+A candidate Skill, learned policy, cached procedure, or model-side adapter remains a candidate until the evidence appropriate to its claim validates it. Validation may be experiment-local and does not by itself justify a repository-wide registry or lifecycle owner. Activating a compiled artifact grants no new semantic authority: its output remains subject to the same authority, viability, provenance, and consequence boundaries as the uncompiled cognition path.
+
+Crystallization must remain reversible. A compiled shortcut should be bypassable or replaceable when it is absent, stale, incompatible, contradicted, outside its demonstrated applicability, or followed by mismatching consequences:
+
+```text
+cheap compiled path
+  -> mismatch / novelty / uncertainty / authority change
+  -> bypass or disable shortcut
+  -> broaden cognition / retrieve / inquire
+  -> revalidate before reuse
+```
+
+The underlying Persistent Cognition must remain available when a compiled artifact is disabled or rejected. Deleting or replacing an execution artifact must not delete or redefine its source cognition.
+
+Do not introduce merely for offline consolidation:
+
+- a global `ConsolidationState`;
+- a new semantic `Learning` owner;
+- a permanent `SleepManager`;
+- a repository-wide adapter registry;
+- automatic persistence of generated interpretations;
+- automatic failure-to-training or success-to-training conversion;
+- automatic periodic fine-tuning;
+- a generic Skill schema.
+
+Extract a shared owner or lifecycle only when materially different concrete consumers repeatedly require the same non-reducible state, authority, or lifecycle.
+
 Metacontrol itself consumes resources. Do not add an adaptive allocation mechanism when a fixed rule is sufficient, and do not hide unrestricted deliberation inside the mechanism that decides whether to deliberate.
 
 These are cross-cutting runtime constraints, not a requirement for a new `CognitiveFrontier`, `ThinkingLevel`, brain-region layer, or other top-level owner.
