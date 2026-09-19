@@ -589,3 +589,96 @@ def run_transaction(
         )
         _complete_stage(summary, stage)
         _write_json(summary_path, summary)
+
+
+        stage = "gemma_server"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        command = _server_command(
+            server_binary=server_binary,
+            artifact_path=artifact_path,
+            port=DEFAULT_PORT,
+            log_path=log_path,
+        )
+        summary["gemma_server_command"] = command
+        origin = f"http://{DEFAULT_HOST}:{DEFAULT_PORT}"
+        ready_started = time.perf_counter()
+        process = _start_server(command)
+        _wait_until_ready(process, origin)
+        ready_elapsed_seconds = time.perf_counter() - ready_started
+        llama_identity = {
+            **version_identity,
+            "revision": revision,
+        }
+        attestation = _probe_and_attest(
+            origin=origin,
+            artifact_path=artifact_path,
+            artifact_sha256=artifact_sha256,
+            llama_identity=llama_identity,
+        )
+        attested = attestation.get("attested")
+        if not isinstance(attested, dict):
+            raise PhysicalTransactionError(
+                "llama.cpp attestation is missing"
+            )
+        request_model = attested.get("requestModel")
+        if not isinstance(request_model, str) or not request_model:
+            raise PhysicalTransactionError(
+                "attested request model is missing"
+            )
+        summary["gemma_server"] = {
+            "ready_elapsed_seconds": ready_elapsed_seconds,
+            "gpu_memory_used_mib_ready": _gpu_memory_used_mib(),
+            "attestation": attestation,
+        }
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
+
+        stage = "gemma_actual"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        gemma_payload = run_gemma_calls(
+            endpoint=f"{origin}/v1/chat/completions",
+            model=request_model,
+            timeout=timeout_seconds,
+        )
+        gemma_payload["gpu_memory_used_mib_after_calls"] = (
+            _gpu_memory_used_mib()
+        )
+        gemma_output = evidence_root / "gemma-actual.json"
+        _write_json(gemma_output, gemma_payload)
+        summary["gemma"] = validate_gemma_payload(gemma_payload)
+        _complete_stage(summary, stage)
+
+        nld_summary = summary["nld"]["summary"]
+        gemma_summary = summary["gemma"]["summary"]
+        summary["cost_comparison_eligible"] = (
+            _fully_adequate(nld_summary)
+            and _fully_adequate(gemma_summary)
+        )
+        summary["status"] = "CROSS_SUBSTRATE_MATCHED_PASS"
+        summary["non_claims"] = [
+            "PASS means both physical traces were structurally valid.",
+            "Cost comparison requires matched fresh adequacy.",
+            "NLD NFE is not equated with llama.cpp internal counters.",
+            "No weighted score or permanent substrate selector is defined.",
+        ]
+        _write_json(summary_path, summary)
+        return 0
+
+    except PhysicalTransactionError as exc:
+        summary["status"] = "FAIL_NOT_QUALIFIED"
+        summary["failure_stage"] = summary.get("current_stage")
+        summary["failure_reason"] = str(exc)
+        summary["current_stage"] = None
+        _write_json(summary_path, summary)
+        return 2
+
+    finally:
+        if process is not None:
+            exit_code = _terminate_owned_process(process)
+            summary["gemma_server_cleanup"] = {
+                "terminated": True,
+                "exit_code": exit_code,
+            }
+            _write_json(summary_path, summary)
