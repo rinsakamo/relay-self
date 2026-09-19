@@ -45,6 +45,7 @@ def _experiment_command(
     output_path: Path,
     artifact_output_path: Path | None,
     run: bool,
+    protocol_failure_output_path: Path | None = None,
 ) -> list[str]:
     command = [
         sys.executable,
@@ -71,6 +72,13 @@ def _experiment_command(
             [
                 "--artifact-output",
                 str(artifact_output_path),
+            ]
+        )
+    if protocol_failure_output_path is not None:
+        command.extend(
+            [
+                "--protocol-failure-output",
+                str(protocol_failure_output_path),
             ]
         )
     return command
@@ -422,6 +430,9 @@ def run_transaction(
         learned_artifact_output = (
             evidence_root / "crystallization-artifact.json"
         )
+        protocol_failure_output = (
+            evidence_root / "actual-model-protocol-failure.json"
+        )
         actual_command = _experiment_command(
             endpoint=f"{origin}/v1/chat/completions",
             model=request_model,
@@ -429,6 +440,7 @@ def run_transaction(
             output_path=actual_output,
             artifact_output_path=learned_artifact_output,
             run=True,
+            protocol_failure_output_path=protocol_failure_output,
         )
         summary["actual_command"] = actual_command
         returncode = _run_probe_command(
@@ -439,6 +451,11 @@ def run_transaction(
             timeout_seconds=timeout_seconds,
         )
         summary["actual_returncode"] = returncode
+        if protocol_failure_output.exists():
+            summary["protocol_failure_evidence"] = str(
+                protocol_failure_output
+            )
+            _write_json(summary_path, summary)
         if returncode != 0:
             raise PhysicalTransactionError(
                 f"actual model run exited with code {returncode}"
