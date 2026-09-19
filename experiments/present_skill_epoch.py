@@ -93,12 +93,15 @@ def narrow_for_flee(
     present: PresentProjection,
     *,
     include_route_status: bool = True,
+    include_shelter_status: bool = True,
 ) -> PresentProjection:
     selected: list[PresentFact] = []
     for fact in present.facts:
         if fact.key in FLEE_REQUIRED_KEYS:
             selected.append(fact)
         elif include_route_status and fact.key.startswith("route_open:"):
+            selected.append(fact)
+        elif include_shelter_status and fact.key.startswith("shelter:"):
             selected.append(fact)
 
     return PresentProjection(
@@ -175,7 +178,11 @@ def broaden_flee(local: PresentProjection, broad: PresentProjection) -> PresentP
         raise ValueError("cannot broaden across different Current Intents")
     if local.source_revision != broad.source_revision:
         raise ValueError("cannot broaden from a stale or different source revision")
-    return narrow_for_flee(broad, include_route_status=True)
+    return narrow_for_flee(
+        broad,
+        include_route_status=True,
+        include_shelter_status=True,
+    )
 
 
 def projection_is_current(
