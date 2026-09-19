@@ -313,6 +313,30 @@ The Self may later learn how much cognition to allocate from Present, Skill, cap
 
 Experience may make an expensive computation reusable through Memory, a learned policy, a Skill, a cached procedure, or another justified mechanism. Such amortization does not make the shortcut permanently authoritative: contradictory consequence evidence, changed applicability, novelty, or distribution shift should be able to invalidate the cheap path and trigger renewed processing where useful.
 
+A reusable cognition shortcut is qualified relative to the **cognition interface on which it was validated**, not merely to its semantic label, Skill identity, or retained input-key list. A material interface change that is observable to the mechanism may invalidate reuse even when the underlying task meaning appears unchanged. Depending on the local mechanism, such changes may include choice/control-id mapping, choice ordering, request or rendering shape, context-presence semantics, provider/model representation, or another demonstrated representation dependency. This is a local compatibility obligation, not a requirement for a repository-wide interface fingerprint or universal applicability schema.
+
+Therefore prefer the conservative path:
+
+```text
+validated shortcut
+  + materially compatible cognition interface
+  -> shortcut may be used
+
+compatibility unknown / materially changed
+  -> do not assume shortcut validity
+  -> broaden / reproject / use ordinary cognition
+  -> requalify only when reuse value justifies it
+```
+
+Narrowing also must not change the meaning of missing information. In particular:
+
+```text
+omitted / not projected
+  != known false
+```
+
+unless a local validated invariant explicitly establishes that reduction. If a shortcut cannot preserve uncertainty or distinguish omitted information from a decisive negative fact on its current interface, treat that as an applicability boundary rather than silently forcing a decision.
+
 ### Offline consolidation and compiled cognition remain derived
 
 Offline consolidation may reorganize prior cognition into cheaper reusable mechanisms, but it does not create a new source of truth or semantic owner merely because computation moved out of the interactive path.
