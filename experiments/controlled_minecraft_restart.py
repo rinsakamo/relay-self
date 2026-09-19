@@ -8,7 +8,6 @@ from typing import Callable
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from experiments.controlled_minecraft_vertical import (
     ControlledScenario,
-    ControlledScenarioError,
     ControlledSkill,
     ScenarioDecision,
     SkillRunResult,
