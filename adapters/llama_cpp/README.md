@@ -24,7 +24,7 @@ The adapter uses:
 - temperature = 0;
 - reasoning_effort = none;
 - cache_prompt = false;
-- response_format = json_object;
+- native strict response_format = json_schema;
 - max_tokens = 48 for BOUNDED;
 - max_tokens = 256 for THINK.
 
@@ -54,7 +54,7 @@ A valid model response may explicitly return cognitive UNRESOLVED, which allows
 the core RelayEngine to escalate from BOUNDED to THINK when the caller permits
 it.
 
-The llama.cpp request asks for JSON output. RelaySelf still parses only bare JSON from the OpenAI-compatible message content and does not add a Markdown-fence fallback.
+The llama.cpp request carries a mode-specific strict JSON schema. The schema constrains the declared keys and types and limits choice_id to the request's finite choices. RelaySelf still validates the returned decision semantics and parses only bare JSON from the OpenAI-compatible message content; it does not add a Markdown-fence fallback.
 
 Malformed model content, schema-invalid output, non-stop completion, transport
 failure, invalid HTTP response envelopes, and unavailable llama.cpp are
