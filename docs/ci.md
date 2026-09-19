@@ -61,6 +61,7 @@ The current suite includes direct verification of:
 - the minimal admitted decision-epoch coordinator, including Action Supervision before caller-owned decision work, deterministic no-cognition completion, exactly-once invocation of a supplied RelayEngine seam for an opaque unresolved request, explicit failure when cognition is requested without an engine, preservation of already-committed supervision outcomes across later cognition failure, and return of the next owner-local Action deadline without creating a clock owner.
 - the minimum bounded RelayEngine contract, including finite unique choice admission, provenance-bearing transient context, bounded-provider resolution without escalation, exactly one explicit THINK attempt after unresolved or inadmissible bounded output, fail-closed UNRESOLVED behavior after an unresolved/inadmissible THINK result, no retries beyond those two declared modes, and integration through the canonical decision-epoch coordinator without mutating Current Intent, SkillExecution, Action state, or Persistent Cognition.
 - the target-local llama.cpp RelayEngine provider and qualification logic under mocked HTTP/provider evidence, including deterministic BOUNDED/THINK request rendering, preservation of finite choices and provenance in model-facing JSON, strict bounded/THINK response schemas, explicit THINK escalation after malformed bounded model content, transport/envelope failure remaining operational provider errors rather than cognitive UNRESOLVED, clean-checkout HEAD/tree binding, runtime identity inspection, expected-choice qualification, and preservation of Current Intent / SkillExecution / empty Action supervision during model-facing cognition.
+- the read-only human activity-summary projection, including deterministic Mineflayer movement compaction, preservation of first/last movement provenance, retention of non-movement body/session/effect events, direct projection of existing Intent/Skill/Action histories without a new lifecycle owner, append-only Persistent Cognition Memory delta reporting with source/integration provenance, explicit distinction between unsupplied source surfaces and observed absence, and Markdown rendering that performs no source-state mutation.
 - the adapter-local Mineflayer Python protocol surface, including exact-version startup validation, target-local session/sequence continuity, provenance references, strict survival observation/effect-result schemas, closed locomotion and food-effect encoding, bounded time/inventory/entity fact decoding, and rejection of injected appraisal labels or unsupported adapter fields.
 - the concrete Mineflayer runtime-admission seam, including suppression of high-frequency ordinary move events from automatic high-level epochs, admission of bounded material body/session/survival observations including time, inventory, and entity fact changes, Action OUTCOME closure from target-native applied/rejected effect results before later decision work, canonical decision-epoch coordination, deterministic zero-model completion, and exactly-once use of a supplied cognition seam when caller-owned work remains unresolved.
 - the target-local Mineflayer process-session seam, including one-child launch argument construction, mandatory startup attestation consumption, reuse of the strict stream decoder, explicit primitive-effect writes, explicit EOF failure, no hidden retry/relaunch, and bounded clean-shutdown behavior with termination fallback.
@@ -103,6 +104,7 @@ A green result does **not** prove:
 - that an external authority identity is legitimate merely because it was recorded;
 - model quality, simulation behavior, environment correctness, or physical execution;
 - actual localhost llama.cpp connectivity, a successful model/system qualification, or general model-backed RelayEngine quality merely because the bounded RelayEngine / mocked llama.cpp provider tests are green;
+- that a human activity summary is Evidence, Belief, Memory, fresh World truth, or a complete cross-owner universal timeline merely because the reducer and renderer tests are green;
 - live Mineflayer/Minecraft connectivity or a successful external qualification merely because the survival protocol, admission, process-session, or qualification-transaction logic tests are green;
 - package installation or minimum-supported Python/dependency floors.
 
@@ -112,7 +114,7 @@ The workflow pins the pytest tool version used by this gate. That pin is CI tool
 
 Guarantee:
 
-> The exact checked-out `src/`, `tests/`, `experiments/`, and adapter-local Python surface satisfies the configured Ruff mechanical checks.
+> The exact checked-out `src/`, `tests/`, `experiments/`, adapter-local Python, and `observability/` surfaces satisfy the configured Ruff mechanical checks.
 
 The configured rule set is intentionally narrow: syntax/pycodestyle error classes, Pyflakes correctness checks, and import ordering.
 
