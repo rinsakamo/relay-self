@@ -2,6 +2,59 @@
 
 This directory is an experimental simulation surface, not a supported `relay_self` package API or semantic authority.
 
+## Controlled Minecraft MVP vertical harness
+
+`controlled_minecraft_vertical.py` is the scenario-local integration harness for
+#158. It deliberately composes current owners instead of introducing a generic
+RuntimeDriver or Skill registry.
+
+The current bounded decision surface is:
+
+~~~text
+current Mineflayer observation
+  -> configured nearby hazard? -> FLEE
+  -> else low food + configured edible inventory? -> EAT
+  -> else -> WAIT
+~~~
+
+Hazard interpretation is scenario-local. The Mineflayer adapter still exposes
+only target-native entity facts.
+
+When FLEE has one configured destination, selection is deterministic. With
+multiple destinations, the harness creates one provenance-bearing finite
+`BoundedChoiceRequest` for the existing RelayEngine. Retained `Memory` may be
+included as prior experience, while current Mineflayer evidence remains a
+separate context datum; Memory is not promoted to fresh World truth.
+
+Execution uses the existing lifecycles and adapter primitives:
+
+~~~text
+EAT
+  -> SkillExecution
+  -> supervised equip_item Action
+  -> supervised consume_held Action
+  -> later observation must show food increase
+  -> Skill SUCCEEDED / FAILED
+
+FLEE
+  -> SkillExecution
+  -> supervised look Action
+  -> supervised forward Action
+  -> later observation must reduce distance to selected destination
+  -> supervised clear_controls Action
+  -> Skill SUCCEEDED / FAILED
+
+WAIT
+  -> no SkillExecution
+  -> no Action
+~~~
+
+An applied primitive effect is therefore not enough to establish Skill success.
+
+The harness is deterministic/fake-session testable and is intended to become
+part of the final #141 external transaction after restart/Memory integration is
+added. It is not by itself Minecraft external qualification.
+
 ## Evolved-value experiments
 
 The evolved-value experiments preserve the causal separation relevant to RelaySelf:
