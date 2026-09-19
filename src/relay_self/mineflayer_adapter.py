@@ -115,7 +115,7 @@ class MineflayerAdapterStarted(MineflayerMessage):
     config: MineflayerLaunchConfig
 
     def __post_init__(self) -> None:
-        super().__post_init__()
+        MineflayerMessage.__post_init__(self)
         _require_text("mineflayer_version", self.mineflayer_version)
         if self.mineflayer_version != MINEFLAYER_VERSION:
             raise MineflayerAdapterProtocolError(
@@ -134,7 +134,7 @@ class MineflayerObservation(MineflayerMessage):
     snapshot: MineflayerSnapshot
 
     def __post_init__(self) -> None:
-        super().__post_init__()
+        MineflayerMessage.__post_init__(self)
         if self.kind not in _OBSERVATION_KINDS:
             raise MineflayerAdapterProtocolError(
                 f"unsupported observation kind: {self.kind}"
@@ -153,7 +153,7 @@ class MineflayerEffectResult(MineflayerMessage):
     error: str | None
 
     def __post_init__(self) -> None:
-        super().__post_init__()
+        MineflayerMessage.__post_init__(self)
         _require_text("action_id", self.action_id)
         if self.effect not in _EFFECTS:
             raise MineflayerAdapterProtocolError(
@@ -180,7 +180,7 @@ class MineflayerConnectionEnd(MineflayerMessage):
     reason: str
 
     def __post_init__(self) -> None:
-        super().__post_init__()
+        MineflayerMessage.__post_init__(self)
         _require_text("connection end reason", self.reason)
 
 
@@ -189,7 +189,7 @@ class MineflayerAdapterErrorMessage(MineflayerMessage):
     message: str
 
     def __post_init__(self) -> None:
-        super().__post_init__()
+        MineflayerMessage.__post_init__(self)
         _require_text("adapter error message", self.message)
 
 
@@ -198,7 +198,7 @@ class MineflayerCommandError(MineflayerMessage):
     message: str
 
     def __post_init__(self) -> None:
-        super().__post_init__()
+        MineflayerMessage.__post_init__(self)
         _require_text("command error message", self.message)
 
 
