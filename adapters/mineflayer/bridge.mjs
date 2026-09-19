@@ -35,6 +35,8 @@ let seq = 0
 let spawned = false
 let closing = false
 let inputReader = null
+let lastObservedDay = null
+let lastObservedIsDay = null
 const seenActionIds = new Set()
 
 function emit (type, payload = {}) {
@@ -89,7 +91,20 @@ bot.on('health', () => {
 })
 
 bot.on('time', () => {
-  if (spawned) emitObservation('time')
+  if (!spawned) return
+  if (
+    !bot.time ||
+    !Number.isFinite(bot.time.day) ||
+    typeof bot.time.isDay !== 'boolean'
+  ) return
+
+  const dayChanged = bot.time.day !== lastObservedDay
+  const phaseChanged = bot.time.isDay !== lastObservedIsDay
+  if (!dayChanged && !phaseChanged) return
+
+  lastObservedDay = bot.time.day
+  lastObservedIsDay = bot.time.isDay
+  emitObservation('time')
 })
 
 bot.inventory.on('updateSlot', () => {
