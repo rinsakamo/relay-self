@@ -85,14 +85,14 @@ def test_reconstructed_trial_14_surface_after_first_13_acceptances() -> None:
     )
 
     assert tuple(datum.key for datum in filtered.context) == (
+        "threat_nearby",
         "route_open:ridge",
-        "saturation",
         "shelter:cave",
         "shelter:ridge",
-        "storage_free_slots",
-        "threat_nearby",
+        "saturation",
         "tool:pickaxe_durability",
         "xp_level",
+        "storage_free_slots",
     )
 
 
