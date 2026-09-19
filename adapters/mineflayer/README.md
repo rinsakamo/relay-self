@@ -141,6 +141,56 @@ The package manifest pins Mineflayer exactly. A later live qualification should
 record the actual Node version and npm-resolved dependency tree used for that
 run.
 
+
+## Live qualification transaction
+
+The repository includes a reusable external-qualification harness that uses the
+same process session, adapter protocol, Action lifecycle, ActionSupervisor, and
+Mineflayer runtime-admission path as the MVP.
+
+It requires a real local/offline Minecraft server and does not run in CI.
+
+Prepare the adapter dependency from the repository root:
+
+    cd adapters/mineflayer
+    npm install --omit=dev
+    cd ../..
+
+Start an offline/local Minecraft server with a spawn area where the bot can move
+forward safely, then run:
+
+    python -m adapters.mineflayer.qualify_live \
+      --host 127.0.0.1 \
+      --port 25565 \
+      --username RelaySelf
+
+Add `--version <minecraft-version>` when the server protocol should be pinned.
+
+The transaction qualifies only when all of the following are observed in one
+actual session:
+
+    spawn observation with body/resource facts
+      -> supervised forward Action ISSUED
+      -> set_control(forward=true)
+      -> Mineflayer effect_result(applied)
+      -> Action OUTCOME
+      -> actual position delta >= 0.05 blocks
+      -> separately supervised clear_controls Action
+      -> Mineflayer effect_result(applied)
+      -> second Action OUTCOME
+
+The harness prints one JSON report only after these conditions hold. An
+`applied` control acknowledgement without observed movement is not a pass.
+
+The report is external/physical qualification evidence for the exact recorded
+repository revision, Node/Mineflayer install, server version/configuration, and
+host conditions. It is not automatically portable evidence for later revisions
+or different Minecraft servers.
+
+The qualification transaction deliberately does not mark the associated Skill
+successful, release Current Intent, infer threat, choose food, or write durable
+Memory.
+
 ## Run against a local/offline server
 
 Example:
