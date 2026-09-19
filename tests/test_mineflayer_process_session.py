@@ -11,8 +11,8 @@ from adapters.mineflayer.process_session import (
 )
 from adapters.mineflayer.python_protocol import (
     MINEFLAYER_VERSION,
-    MineflayerObservation,
     MineflayerLaunchConfig,
+    MineflayerObservation,
 )
 
 
