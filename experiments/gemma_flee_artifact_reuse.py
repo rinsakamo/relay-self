@@ -192,18 +192,20 @@ def decode_destination(
 def build_schedule() -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     observation_index = 0
+    cell_index = 0
     for state_index, state in enumerate(STATES):
         for mapping_index in range(len(MAPPINGS)):
             for order_index, order in enumerate(CHOICE_ORDERS):
                 condition_order = (
                     CONDITIONS
-                    if observation_index % 2 == 0
+                    if cell_index % 2 == 0
                     else tuple(reversed(CONDITIONS))
                 )
                 for condition in condition_order:
                     rows.append(
                         {
                             "observation_index": observation_index,
+                            "cell_index": cell_index,
                             "state_id": state.state_id,
                             "family": state.family,
                             "state_index": state_index,
@@ -221,6 +223,7 @@ def build_schedule() -> list[dict[str, object]]:
                         }
                     )
                     observation_index += 1
+                cell_index += 1
     return rows
 
 
