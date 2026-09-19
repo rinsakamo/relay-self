@@ -34,6 +34,7 @@ class PresentRelayQualificationReport:
     choice_id: str | None
     expected_choice_id: str
     broadened: bool
+    reprojected: bool
     escalated: bool
     attempts: tuple[dict[str, object], ...]
     provider_call_count: int
@@ -56,9 +57,9 @@ def qualify_present_relay_seam(
 ) -> PresentRelayQualificationReport:
     epoch = run_reference_epoch(engine)
 
-    if epoch.broadened:
+    if epoch.broadened or epoch.reprojected:
         raise LlamaCppQualificationError(
-            "sufficient reference projection unexpectedly required broadening"
+            "sufficient reference projection unexpectedly required recovery"
         )
     if epoch.cognition.status is not DecisionStatus.RESOLVED:
         raise LlamaCppQualificationError(
@@ -105,6 +106,7 @@ def qualify_present_relay_seam(
         choice_id=epoch.cognition.choice_id,
         expected_choice_id="cave",
         broadened=epoch.broadened,
+        reprojected=epoch.reprojected,
         escalated=epoch.cognition.escalated,
         attempts=tuple(
             {
