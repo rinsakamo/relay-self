@@ -3,7 +3,7 @@ import { EventEmitter } from 'node:events'
 import test from 'node:test'
 
 import {
-  attachBodySynchronizedSpawnListeners,
+  attachHealthSynchronizedSpawnListeners,
   attachInventoryUpdateListenerAfterInjection
 } from './bridge_hooks.mjs'
 
@@ -52,11 +52,11 @@ test('inventory hook validates its narrow bridge inputs', () => {
   )
 })
 
-test('spawn observation waits for Mineflayer health and oxygen initialization', () => {
+test('spawn observation waits for Mineflayer health initialization only', () => {
   const bot = new EventEmitter()
   const observed = []
 
-  attachBodySynchronizedSpawnListeners(
+  attachHealthSynchronizedSpawnListeners(
     bot,
     () => {
       observed.push({
@@ -82,19 +82,19 @@ test('spawn observation waits for Mineflayer health and oxygen initialization', 
   bot.health = 20
   bot.food = 20
   bot.emit('health')
-  assert.deepEqual(observed, [])
-
-  bot.oxygenLevel = 20
-  bot.emit('breath')
 
   assert.deepEqual(observed, [
     {
       kind: 'spawn',
       health: 20,
       food: 20,
-      oxygenLevel: 20
+      oxygenLevel: undefined
     }
   ])
+
+  bot.oxygenLevel = 20
+  bot.emit('breath')
+  assert.equal(observed.length, 1)
 
   bot.health = 18
   bot.emit('health')
@@ -104,7 +104,7 @@ test('spawn observation waits for Mineflayer health and oxygen initialization', 
       kind: 'spawn',
       health: 20,
       food: 20,
-      oxygenLevel: 20
+      oxygenLevel: undefined
     },
     {
       kind: 'health',
@@ -115,55 +115,11 @@ test('spawn observation waits for Mineflayer health and oxygen initialization', 
   ])
 })
 
-test('spawn readiness tolerates oxygen arriving before health', () => {
-  const bot = new EventEmitter()
-  const observed = []
-
-  attachBodySynchronizedSpawnListeners(
-    bot,
-    () => observed.push('spawn'),
-    () => observed.push('health')
-  )
-
-  bot.emit('spawn')
-
-  bot.oxygenLevel = 20
-  bot.emit('breath')
-  assert.deepEqual(observed, [])
-
-  bot.health = 20
-  bot.food = 20
-  bot.emit('health')
-  assert.deepEqual(observed, ['spawn'])
-})
-
-test('spawn readiness accepts oxygen already synchronized before spawn', () => {
-  const bot = new EventEmitter()
-  const observed = []
-
-  attachBodySynchronizedSpawnListeners(
-    bot,
-    () => observed.push('spawn'),
-    () => observed.push('health')
-  )
-
-  bot.oxygenLevel = 20
-  bot.emit('breath')
-  bot.emit('spawn')
-  assert.deepEqual(observed, [])
-
-  bot.health = 20
-  bot.food = 20
-  bot.emit('health')
-
-  assert.deepEqual(observed, ['spawn'])
-})
-
 test('health before spawn remains an ordinary health event', () => {
   const bot = new EventEmitter()
   const observed = []
 
-  attachBodySynchronizedSpawnListeners(
+  attachHealthSynchronizedSpawnListeners(
     bot,
     () => observed.push('spawn'),
     () => observed.push('health')
@@ -173,19 +129,19 @@ test('health before spawn remains an ordinary health event', () => {
   assert.deepEqual(observed, ['health'])
 })
 
-test('body-synchronized spawn hook validates listeners', () => {
+test('health-synchronized spawn hook validates listeners', () => {
   assert.throws(
-    () => attachBodySynchronizedSpawnListeners({}, () => {}, () => {}),
+    () => attachHealthSynchronizedSpawnListeners({}, () => {}, () => {}),
     /bot must expose on/
   )
 
   const bot = new EventEmitter()
   assert.throws(
-    () => attachBodySynchronizedSpawnListeners(bot, null, () => {}),
+    () => attachHealthSynchronizedSpawnListeners(bot, null, () => {}),
     /spawn listener must be a function/
   )
   assert.throws(
-    () => attachBodySynchronizedSpawnListeners(bot, () => {}, null),
+    () => attachHealthSynchronizedSpawnListeners(bot, () => {}, null),
     /health listener must be a function/
   )
 })
