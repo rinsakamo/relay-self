@@ -168,3 +168,138 @@ def _completion_tokens(
         return None
     value = usage.get("completion_tokens")
     return value if isinstance(value, int) else None
+
+
+def _gemma_request_body(
+    *,
+    model: str,
+    prompt: str,
+) -> dict[str, object]:
+    return {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": GEMMA_TEMPERATURE,
+        "max_tokens": GEMMA_MAX_TOKENS,
+        "seed": GEMMA_SEED,
+        "reasoning_effort": "none",
+        "cache_prompt": False,
+        "stream": False,
+    }
+
+
+def _run_gemma_observation(
+    *,
+    endpoint: str,
+    model: str,
+    case,
+    timeout: float,
+) -> dict[str, object]:
+    request_body = _gemma_request_body(
+        model=model,
+        prompt=case.prompt,
+    )
+    started = time.perf_counter()
+    response = _post_json(
+        endpoint,
+        request_body,
+        timeout=timeout,
+    )
+    elapsed_seconds = time.perf_counter() - started
+    generated_text = _response_content(response)
+    parsed = parse_decision(generated_text)
+    return {
+        "case_id": case.case_id,
+        "expected_label": case.expected_label,
+        "feasible_destination": case.feasible_destination,
+        "label_to_destination": case.label_to_destination,
+        "elapsed_seconds": elapsed_seconds,
+        "generated_text": generated_text,
+        "completion_token_count": _completion_tokens(response),
+        "parsed_label": parsed.label,
+        "parse_source": parsed.source,
+        "parsed_destination": parsed_destination(case, parsed.label),
+        "decision_correct": parsed.label == case.expected_label,
+        "request_hash": _sha256_json(request_body),
+        "response_hash": _sha256_json(response),
+        "usage": response.get("usage"),
+        "timings": response.get("timings"),
+        "finish_reason": (
+            response["choices"][0].get("finish_reason")
+            if isinstance(response.get("choices"), list)
+            and response["choices"]
+            and isinstance(response["choices"][0], dict)
+            else None
+        ),
+    }
+
+
+def _summarize_rows(
+    rows: list[dict[str, object]],
+    *,
+    token_key: str,
+) -> dict[str, object]:
+    parse_sources: dict[str, int] = {}
+    for row in rows:
+        source = str(row.get("parse_source"))
+        parse_sources[source] = parse_sources.get(source, 0) + 1
+    return {
+        "count": len(rows),
+        "correct_count": sum(
+            row.get("decision_correct") is True for row in rows
+        ),
+        "invalid_output_count": sum(
+            row.get("parsed_label") is None for row in rows
+        ),
+        "parse_sources": dict(sorted(parse_sources.items())),
+        "latency_seconds": _numeric_summary(
+            row["elapsed_seconds"]
+            for row in rows
+            if isinstance(row.get("elapsed_seconds"), (int, float))
+        ),
+        "completion_token_count": _numeric_summary(
+            row[token_key]
+            for row in rows
+            if isinstance(row.get(token_key), (int, float))
+        ),
+    }
+
+
+def run_gemma_calls(
+    *,
+    endpoint: str,
+    model: str,
+    timeout: float,
+) -> dict[str, object]:
+    cases = {case.case_id: case for case in build_cost_cases()}
+    first_case = next(iter(cases.values()))
+    warmup = _run_gemma_observation(
+        endpoint=endpoint,
+        model=model,
+        case=first_case,
+        timeout=timeout,
+    )
+    warmup["warmup"] = True
+
+    rows: list[dict[str, object]] = []
+    for schedule_row in build_schedule():
+        case = cases[str(schedule_row["case_id"])]
+        row = _run_gemma_observation(
+            endpoint=endpoint,
+            model=model,
+            case=case,
+            timeout=timeout,
+        )
+        row.update(schedule_row)
+        row["warmup"] = False
+        rows.append(row)
+
+    return {
+        "evidence_class": "actual-model gemma llama-cpp matched comparison",
+        "model": model,
+        "warmup": warmup,
+        "observations": rows,
+        "summary": _summarize_rows(
+            rows,
+            token_key="completion_token_count",
+        ),
+    }
