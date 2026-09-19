@@ -86,10 +86,12 @@ def _provenance(reference: str) -> Provenance:
     )
 
 
-def _position_distance(a: MineflayerPosition, b: MineflayerPosition) -> float:
+def _horizontal_position_distance(
+    a: MineflayerPosition,
+    b: MineflayerPosition,
+) -> float:
     return math.sqrt(
         (a.x - b.x) ** 2
-        + (a.y - b.y) ** 2
         + (a.z - b.z) ** 2
     )
 
@@ -222,8 +224,9 @@ async def qualify_mineflayer_session(
         if isinstance(message, MineflayerObservation):
             observed_kinds.append(message.kind)
             if (
-                message.kind == "move"
-                and _position_distance(
+                forward_applied
+                and message.kind == "move"
+                and _horizontal_position_distance(
                     spawn.snapshot.position,
                     message.snapshot.position,
                 )
@@ -313,7 +316,7 @@ async def qualify_mineflayer_session(
         )
 
     assert moved_position is not None
-    distance = _position_distance(
+    distance = _horizontal_position_distance(
         spawn.snapshot.position,
         moved_position,
     )
