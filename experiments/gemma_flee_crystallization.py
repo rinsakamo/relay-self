@@ -7,6 +7,7 @@ from pathlib import Path
 
 from experiments.gemma_skill_narrowing import (
     CASES,
+    ObservedLlamaCppProtocolFailure,
     ObservedLlamaCppProvider,
     _condition_summary,
     _sum_numeric,
@@ -619,6 +620,29 @@ def write_payload(
         )
 
 
+def write_protocol_failure(
+    record: dict[str, object],
+    output: str | None,
+) -> None:
+    if output is None:
+        return
+    path = Path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "evidence_class": "llama.cpp provider protocol failure",
+                "record": record,
+            },
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\\n",
+        encoding="utf-8",
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
@@ -635,6 +659,7 @@ def main() -> None:
     parser.add_argument("--timeout", type=float, default=600.0)
     parser.add_argument("--output")
     parser.add_argument("--artifact-output")
+    parser.add_argument("--protocol-failure-output")
     args = parser.parse_args()
 
     if args.timeout <= 0:
@@ -655,6 +680,12 @@ def main() -> None:
             args.output,
             args.artifact_output,
         )
+    except ObservedLlamaCppProtocolFailure as exc:
+        write_protocol_failure(
+            exc.record,
+            args.protocol_failure_output,
+        )
+        parser.error(str(exc))
     except (RuntimeError, ValueError) as exc:
         parser.error(str(exc))
 
