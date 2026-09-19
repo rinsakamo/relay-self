@@ -57,6 +57,7 @@ The current suite includes direct verification of:
 - the Current Intent Commitment contract, including single-active-intent retention, rejection of silent replacement, explicit reconsideration request-before-decision ordering, separate trigger/decision provenance, continue/release decisions, terminal release, identity handling, monotonic time, and fail-closed invalid operations;
 - the Skill Execution contract, including immutable execution/skill/intent association, derivation of `intent_id` from the actual Current Intent at the supported start seam, rejection of start when no Current Intent exists, preservation of Current Intent state/history during association validation, explicit success/failure/cancellation terminal classes, cancellation distinct from Skill failure, monotonic Skill event time, provenance/reason validation, same-root stale snapshot rejection, no automatic later-Intent-release-to-Skill-cancellation mutation, and the boundary that Skill terminal state does not automatically release or reconsider Current Intent;
 - the bounded lifecycle-linearity regressions, including that a successful Skill or Action transition advances only its same-root lineage after the next snapshot validates, predecessor snapshots cannot create sibling branches, a stale `STARTED` Skill snapshot cannot seed a supported Action proposal, failed transition validation does not consume the current snapshot, and independently created roots with the same textual identity are deliberately not claimed to be globally canonicalized.
+- the minimum Persistent Cognition restart slice, including validated `IdentitySpecification` and `Memory` values, separate source/integration provenance on retained Memory, immutable explicit retention, duplicate-memory rejection, versioned JSON save/load round-trip, and fail-closed handling of unsupported versions, unknown fields, missing files, and corrupt JSON.
 
 The Skill-to-Action proposal tests establish the supported proposal-admission relation:
 
@@ -76,6 +77,8 @@ A green result does **not** prove:
 - that a repository-wide Skill owner or registry establishes global uniqueness or selects the globally latest execution root for a textual `execution_id` across independently created roots;
 - that a repository-wide Action owner establishes global uniqueness or selects one globally canonical proposal root for a textual `action_id` across independently created roots;
 - durable lifecycle-lineage retention across serialization, process restart, or distributed execution;
+- automatic promotion of Action outcomes, consequence traces, model output, or loaded Memory into current World truth or newly accepted durable Memory;
+- persistence/restart of active Current Intent, SkillExecution, Action lifecycle, supervision state, Present Projection, or external environment state merely because the minimal Persistent Cognition snapshot can restart;
 - thread-safe or linearizable concurrent lifecycle mutation;
 - that the Skill generated the Action payload or that a useful closed-loop Skill controller exists;
 - that Action outcome should imply Skill success/failure/cancellation, or that Skill cancellation should cancel an issued/in-flight Action;
