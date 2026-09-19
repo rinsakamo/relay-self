@@ -152,3 +152,45 @@ def test_provider_keeps_valid_think_semantics(monkeypatch) -> None:
     assert decision.reason == "route fact is missing"
     assert len(provider.records) == 1
     assert "protocol_error" not in provider.records[0]
+
+
+def test_provider_preserves_missing_content_envelope(monkeypatch) -> None:
+    body = {
+        "choices": [
+            {
+                "message": {"reasoning_content": "only-side-channel"},
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {
+            "prompt_tokens": 101,
+            "completion_tokens": 17,
+            "total_tokens": 118,
+        },
+    }
+    body_text = json.dumps(body, separators=(",", ":"))
+
+    def fake_post_json(endpoint, payload, *, timeout):
+        del endpoint, payload, timeout
+        return body, 200, body_text
+
+    monkeypatch.setattr(narrowing, "_post_json", fake_post_json)
+    provider = ObservedLlamaCppProvider(
+        endpoint="http://127.0.0.1:1234/v1/chat/completions",
+        model="gemma-local",
+        timeout=60.0,
+    )
+
+    with pytest.raises(
+        ObservedLlamaCppProtocolFailure,
+        match="llama.cpp response content must be text",
+    ) as captured:
+        provider(
+            build_request(CASES[0], condition="narrow"),
+            mode=CognitionMode.THINK,
+        )
+
+    record = captured.value.record
+    assert record["raw_text"] is None
+    assert record["reasoning_content"] == "only-side-channel"
+    assert record["response_body_text"] == body_text
