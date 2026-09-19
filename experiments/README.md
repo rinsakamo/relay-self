@@ -592,6 +592,34 @@ cat "$EVIDENCE/summary.json"
 `LEXICAL_GENERALIZATION_PASS` means only that a structurally valid physical trace was recorded.
 Wrong decisions remain evidence. The gate tests one checkpoint's lexical generalization and does
 not establish a product ranking, hidden causal mechanism, or cross-model generalization.
+
+### NLD-3B matched-adequacy cost surface
+
+`nld_adequate_cost_surface.py` and its transaction implement #133.
+
+The gate uses only the four `color` family cells from #131, where AR, dLM, and Linear
+Self-Speculation were all 24/24 correct. It re-runs those subjects fresh and compares cost
+dimensions only if matched adequacy is reproduced.
+
+Measured dimensions remain separate: full-call latency, NFE, generated-token count, tokens per
+forward, CUDA peak allocation, parse-source explicitness, first label/explicit-decision token
+index, and tokens emitted after the first explicit decision. No weighted total score is defined.
+
+Canonical invocation:
+
+```bash
+EVIDENCE=/tmp/relay-self-nld-cost-$(date -u +%Y%m%dT%H%M%SZ)
+
+bash experiments/run_nld_adequate_cost_surface_transaction.sh \
+  --evidence-root "$EVIDENCE"
+
+cat "$EVIDENCE/summary.json"
+```
+
+`ADEQUATE_COST_SURFACE_PASS` means only that a structurally valid physical trace was recorded.
+`cost_comparison_eligible=true` additionally requires every mode to remain 24/24 correct with no
+invalid outputs on the fresh matched subject. The experiment does not establish a permanent mode
+selector, weighted cognition score, World truth, or Action authorization.
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
