@@ -27,6 +27,7 @@ from relay_self.persistent_cognition import Memory
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     CognitionMode,
+    DecisionStatus,
     ProviderDecision,
     RelayEngine,
 )
