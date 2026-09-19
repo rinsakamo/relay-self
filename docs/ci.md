@@ -58,6 +58,7 @@ The current suite includes direct verification of:
 - the Skill Execution contract, including immutable execution/skill/intent association, derivation of `intent_id` from the actual Current Intent at the supported start seam, rejection of start when no Current Intent exists, preservation of Current Intent state/history during association validation, explicit success/failure/cancellation terminal classes, cancellation distinct from Skill failure, monotonic Skill event time, provenance/reason validation, same-root stale snapshot rejection, no automatic later-Intent-release-to-Skill-cancellation mutation, and the boundary that Skill terminal state does not automatically release or reconsider Current Intent;
 - the bounded lifecycle-linearity regressions, including that a successful Skill or Action transition advances only its same-root lineage after the next snapshot validates, predecessor snapshots cannot create sibling branches, a stale `STARTED` Skill snapshot cannot seed a supported Action proposal, failed transition validation does not consume the current snapshot, and independently created roots with the same textual identity are deliberately not claimed to be globally canonicalized.
 - the minimum Persistent Cognition restart slice, including validated `IdentitySpecification` and `Memory` values, separate source/integration provenance on retained Memory, immutable explicit retention, duplicate-memory rejection, versioned JSON save/load round-trip, and fail-closed handling of unsupported versions, unknown fields, missing files, and corrupt JSON.
+- the minimal admitted decision-epoch coordinator, including Action Supervision before caller-owned decision work, deterministic no-cognition completion, exactly-once invocation of a supplied RelayEngine seam for an opaque unresolved request, explicit failure when cognition is requested without an engine, preservation of already-committed supervision outcomes across later cognition failure, and return of the next owner-local Action deadline without creating a clock owner.
 
 The Skill-to-Action proposal tests establish the supported proposal-admission relation:
 
@@ -84,6 +85,7 @@ A green result does **not** prove:
 - that Action outcome should imply Skill success/failure/cancellation, or that Skill cancellation should cancel an issued/in-flight Action;
 - that a deployed runtime driver eventually supplies future Action Supervision decision epochs;
 - autonomous wall-clock scheduling or general Scheduler behavior;
+- raw adapter-event admission/classification, Present reprojection policy, Skill selection, or proof that any deployed external loop will call the admitted decision-epoch coordinator at the right times;
 - that an intent candidate was correctly generated, ranked, or selected merely because commitment transitions are legal;
 - that a reconsideration trigger was correctly detected, sufficiently important, or admitted by a valid runtime policy merely because a request was recorded;
 - that a reconsideration trigger policy detects every meaningful runtime change;
