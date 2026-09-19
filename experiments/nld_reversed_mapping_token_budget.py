@@ -409,6 +409,17 @@ def _run_observation(
         "generated_token_count": generated_token_count,
         "generated_text": generated_text,
         "generated_token_ids": generated_token_ids,
+        "generated_token_texts": [
+            tokenizer.decode(
+                [token_id],
+                skip_special_tokens=False,
+            )
+            for token_id in generated_token_ids
+        ],
+        "decision_prefix_events": decision_prefix_events(
+            tokenizer,
+            generated_token_ids,
+        ),
         "parsed_label": parsed.label,
         "parse_source": parsed.source,
         "explicit_label": parsed.explicit_label,
