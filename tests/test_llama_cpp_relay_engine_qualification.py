@@ -109,6 +109,7 @@ def test_qualification_rejects_wrong_resolved_choice() -> None:
         qualify_relay_engine(
             RelayEngine(provider),
             runtime(),
+            repository(),
         )
 
 
