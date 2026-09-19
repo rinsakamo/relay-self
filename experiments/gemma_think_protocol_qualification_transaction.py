@@ -1,0 +1,471 @@
+from __future__ import annotations
+
+import argparse
+import sys
+import time
+from pathlib import Path
+
+from experiments.mineflayer_cognition_llama_cpp_transaction import (
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+    EXPECTED_GGUF_SHA256,
+    PhysicalTransactionError,
+    _collect_gpu_identity,
+    _collect_llama_revision,
+    _collect_server_version,
+    _port_is_free,
+    _probe_and_attest,
+    _require_clean_repo,
+    _require_llama_cpp_paths,
+    _server_command,
+    _start_server,
+    _terminate_owned_process,
+    _verify_artifact,
+    _wait_until_ready,
+)
+from experiments.nld_gemma_cross_substrate_transaction import (
+    _gpu_memory_used_mib,
+)
+from experiments.nld_tri_mode_transaction import (
+    DEFAULT_TIMEOUT_SECONDS,
+    _load_json,
+    _prepare_evidence_root,
+    _run_probe_command,
+    _write_json,
+)
+
+FORMAT_VERSION = 1
+
+
+def _experiment_command(
+    *,
+    endpoint: str,
+    model: str,
+    timeout: float,
+    output_path: Path,
+    run: bool,
+) -> list[str]:
+    command = [
+        sys.executable,
+        "-B",
+        "-m",
+        "experiments.gemma_think_protocol_qualification",
+    ]
+    if run:
+        command.append("--run")
+    command.extend(
+        [
+            "--endpoint",
+            endpoint,
+            "--model",
+            model,
+            "--timeout",
+            str(timeout),
+            "--output",
+            str(output_path),
+        ]
+    )
+    return command
+
+
+def validate_payload(payload: object) -> dict[str, object]:
+    if not isinstance(payload, dict):
+        raise PhysicalTransactionError(
+            "THINK protocol evidence must be a JSON object"
+        )
+    if payload.get("evidence_class") != (
+        "actual-model gemma think protocol qualification"
+    ):
+        raise PhysicalTransactionError(
+            "THINK protocol evidence class is incorrect"
+        )
+    if payload.get("model_generation_calls") != 1:
+        raise PhysicalTransactionError(
+            "THINK protocol qualification must use exactly one generation call"
+        )
+
+    qualification = payload.get("qualification")
+    if qualification not in {"VALID_PROTOCOL", "INVALID_PROTOCOL"}:
+        raise PhysicalTransactionError(
+            "THINK protocol qualification result is invalid"
+        )
+
+    surface = payload.get("surface")
+    if not isinstance(surface, dict):
+        raise PhysicalTransactionError(
+            "THINK protocol qualification surface is missing"
+        )
+    if surface.get("case_id") != "cave_only":
+        raise PhysicalTransactionError(
+            "THINK protocol qualification case is incorrect"
+        )
+    if surface.get("candidate_key") != "route_open:cave":
+        raise PhysicalTransactionError(
+            "THINK protocol candidate key is incorrect"
+        )
+
+    provider_call = payload.get("provider_call")
+    if not isinstance(provider_call, dict):
+        raise PhysicalTransactionError(
+            "THINK protocol provider call is missing"
+        )
+    if provider_call.get("mode") != "think":
+        raise PhysicalTransactionError(
+            "THINK protocol provider call mode is incorrect"
+        )
+    if not isinstance(provider_call.get("prompt_tokens"), int):
+        raise PhysicalTransactionError(
+            "THINK protocol provider call is missing prompt_tokens"
+        )
+    if not isinstance(provider_call.get("completion_tokens"), int):
+        raise PhysicalTransactionError(
+            "THINK protocol provider call is missing completion_tokens"
+        )
+    if not isinstance(provider_call.get("http_status"), int):
+        raise PhysicalTransactionError(
+            "THINK protocol provider call is missing HTTP status"
+        )
+
+    if qualification == "INVALID_PROTOCOL":
+        if not isinstance(provider_call.get("response_body_text"), str):
+            raise PhysicalTransactionError(
+                "invalid protocol evidence must preserve response_body_text"
+            )
+        if not isinstance(provider_call.get("protocol_error"), str):
+            raise PhysicalTransactionError(
+                "invalid protocol evidence must preserve protocol_error"
+            )
+
+    return {
+        "qualification": qualification,
+        "model_generation_calls": 1,
+        "provider_status": provider_call.get("provider_status"),
+        "provider_choice_id": provider_call.get("provider_choice_id"),
+        "prompt_tokens": provider_call.get("prompt_tokens"),
+        "completion_tokens": provider_call.get("completion_tokens"),
+        "finish_reason": provider_call.get("finish_reason"),
+        "request_hash": provider_call.get("request_hash"),
+        "response_hash": provider_call.get("response_hash"),
+        "response_body_sha256": provider_call.get(
+            "response_body_sha256"
+        ),
+        "protocol_error": provider_call.get("protocol_error"),
+    }
+
+
+def _initial_summary(
+    *,
+    repo_root: Path,
+    evidence_root: Path,
+    llama_cpp_root: Path,
+    artifact_path: Path,
+) -> dict[str, object]:
+    return {
+        "format_version": FORMAT_VERSION,
+        "status": "STARTED",
+        "current_stage": None,
+        "completed_stages": [],
+        "repo_root": str(repo_root),
+        "evidence_root": str(evidence_root),
+        "llama_cpp_root": str(llama_cpp_root),
+        "artifact_path": str(artifact_path),
+        "qualification_scope": "gemma_think_protocol",
+        "canonical_runtime": {
+            "case_id": "cave_only",
+            "candidate_key": "route_open:cave",
+            "model_generation_calls": 1,
+            "mode": "think",
+            "context": 8192,
+            "slots": 1,
+            "quantization": "Q4_K_M",
+            "cache_prompt": False,
+            "reasoning_effort": "none",
+        },
+        "scientific_rerun": False,
+    }
+
+
+def _complete_stage(
+    summary: dict[str, object],
+    stage: str,
+) -> None:
+    completed = summary.get("completed_stages")
+    if not isinstance(completed, list):
+        raise AssertionError("completed_stages must be a list")
+    completed.append(stage)
+    summary["current_stage"] = None
+
+
+def run_transaction(
+    *,
+    repo_root: Path,
+    evidence_root: Path,
+    llama_cpp_root: Path,
+    artifact_path: Path,
+    timeout_seconds: float,
+) -> int:
+    if timeout_seconds <= 0:
+        raise PhysicalTransactionError(
+            "timeout_seconds must be positive"
+        )
+
+    evidence_root = _prepare_evidence_root(evidence_root)
+    summary_path = evidence_root / "summary.json"
+    summary = _initial_summary(
+        repo_root=repo_root,
+        evidence_root=evidence_root,
+        llama_cpp_root=llama_cpp_root,
+        artifact_path=artifact_path,
+    )
+    _write_json(summary_path, summary)
+
+    process = None
+    log_path = evidence_root / "llama-server.log"
+
+    try:
+        stage = "repo_preflight"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        head, tree = _require_clean_repo(repo_root)
+        summary["git"] = {"head": head, "tree": tree}
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
+
+        stage = "llama_preflight"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        server_binary = llama_cpp_root / "build" / "bin" / "llama-server"
+        _require_llama_cpp_paths(llama_cpp_root, server_binary)
+        if not _port_is_free(DEFAULT_HOST, DEFAULT_PORT):
+            raise PhysicalTransactionError(
+                "127.0.0.1:1234 is already occupied"
+            )
+        revision = _collect_llama_revision(llama_cpp_root)
+        version_identity = _collect_server_version(server_binary)
+        artifact_sha256 = _verify_artifact(artifact_path)
+        summary["gpu_identity"] = _collect_gpu_identity()
+        summary["llama_cpp"] = {
+            **version_identity,
+            "revision": revision,
+            "artifact_sha256": artifact_sha256,
+            "expected_artifact_sha256": EXPECTED_GGUF_SHA256,
+        }
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
+
+        stage = "dry_run"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        dry_output = evidence_root / "dry-run.json"
+        dry_command = _experiment_command(
+            endpoint=(
+                f"http://{DEFAULT_HOST}:{DEFAULT_PORT}/v1/chat/completions"
+            ),
+            model="dry-run",
+            timeout=timeout_seconds,
+            output_path=dry_output,
+            run=False,
+        )
+        returncode = _run_probe_command(
+            dry_command,
+            repo_root=repo_root,
+            stdout_path=evidence_root / "dry-run.stdout.txt",
+            stderr_path=evidence_root / "dry-run.stderr.txt",
+            timeout_seconds=timeout_seconds,
+        )
+        if returncode != 0:
+            raise PhysicalTransactionError(
+                f"dry run exited with code {returncode}"
+            )
+        dry_payload = _load_json(dry_output)
+        if (
+            not isinstance(dry_payload, dict)
+            or dry_payload.get("model_generation_calls") != 1
+            or dry_payload.get("mode") != "think"
+        ):
+            raise PhysicalTransactionError(
+                "dry-run THINK protocol plan is invalid"
+            )
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
+
+        stage = "server"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        command = _server_command(
+            server_binary=server_binary,
+            artifact_path=artifact_path,
+            port=DEFAULT_PORT,
+            log_path=log_path,
+        )
+        summary["server_command"] = command
+        origin = f"http://{DEFAULT_HOST}:{DEFAULT_PORT}"
+        ready_started = time.perf_counter()
+        process = _start_server(command)
+        _wait_until_ready(process, origin)
+        ready_elapsed_seconds = time.perf_counter() - ready_started
+        attestation = _probe_and_attest(
+            origin=origin,
+            artifact_path=artifact_path,
+            artifact_sha256=artifact_sha256,
+            llama_identity={
+                **version_identity,
+                "revision": revision,
+            },
+        )
+        attested = attestation.get("attested")
+        if not isinstance(attested, dict):
+            raise PhysicalTransactionError(
+                "llama.cpp attestation is missing"
+            )
+        request_model = attested.get("requestModel")
+        if not isinstance(request_model, str) or not request_model:
+            raise PhysicalTransactionError(
+                "attested request model is missing"
+            )
+        summary["server"] = {
+            "ready_elapsed_seconds": ready_elapsed_seconds,
+            "gpu_memory_used_mib_ready": _gpu_memory_used_mib(),
+            "attestation": attestation,
+        }
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
+
+        stage = "actual_model"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        actual_output = evidence_root / "actual-model.json"
+        actual_command = _experiment_command(
+            endpoint=f"{origin}/v1/chat/completions",
+            model=request_model,
+            timeout=timeout_seconds,
+            output_path=actual_output,
+            run=True,
+        )
+        summary["actual_command"] = actual_command
+        returncode = _run_probe_command(
+            actual_command,
+            repo_root=repo_root,
+            stdout_path=evidence_root / "actual-model.stdout.txt",
+            stderr_path=evidence_root / "actual-model.stderr.txt",
+            timeout_seconds=timeout_seconds,
+        )
+        summary["actual_returncode"] = returncode
+        if returncode not in {0, 2}:
+            raise PhysicalTransactionError(
+                f"actual model probe exited with code {returncode}"
+            )
+        if not actual_output.exists():
+            raise PhysicalTransactionError(
+                "actual model probe produced no classification evidence"
+            )
+
+        payload = _load_json(actual_output)
+        observation = validate_payload(payload)
+        summary["observation"] = observation
+        summary["server"]["gpu_memory_used_mib_after_calls"] = (
+            _gpu_memory_used_mib()
+        )
+        _complete_stage(summary, stage)
+
+        qualification = observation.get("qualification")
+        if qualification == "INVALID_PROTOCOL":
+            if returncode != 2:
+                raise PhysicalTransactionError(
+                    "invalid protocol classification must exit with code 2"
+                )
+            summary["status"] = "GEMMA_THINK_PROTOCOL_NOT_QUALIFIED"
+            summary["non_claims"] = [
+                "This is apparatus qualification, not a scientific null.",
+                "No #164 artifact induction or holdout was executed.",
+                "No retry or alternate model/runtime was used.",
+            ]
+            _write_json(summary_path, summary)
+            return 2
+
+        if returncode != 0:
+            raise PhysicalTransactionError(
+                "valid protocol classification must exit with code 0"
+            )
+        summary["status"] = "GEMMA_THINK_PROTOCOL_QUALIFIED"
+        summary["non_claims"] = [
+            "This qualifies only the one reconstructed THINK wire surface.",
+            "No #164 artifact induction or holdout was executed.",
+            "One valid response does not establish model quality.",
+        ]
+        _write_json(summary_path, summary)
+        return 0
+
+    except PhysicalTransactionError as exc:
+        summary["status"] = "FAIL_NOT_QUALIFIED"
+        summary["failure_stage"] = summary.get("current_stage")
+        summary["failure_reason"] = str(exc)
+        summary["current_stage"] = None
+        _write_json(summary_path, summary)
+        return 2
+
+    finally:
+        if process is not None:
+            exit_code = _terminate_owned_process(process)
+            summary["server_cleanup"] = {
+                "terminated": True,
+                "exit_code": exit_code,
+            }
+            _write_json(summary_path, summary)
+
+
+def main() -> None:
+    default_repo_root = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser(
+        description=(
+            "Run the one-call Gemma THINK protocol qualification transaction."
+        )
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=default_repo_root,
+    )
+    parser.add_argument(
+        "--llama-cpp-root",
+        type=Path,
+        default=Path.home() / "src" / "llama.cpp",
+    )
+    parser.add_argument(
+        "--artifact-path",
+        type=Path,
+        default=(
+            Path.home()
+            / "models"
+            / "gguf"
+            / "gemma-4-12B-it-Q4_K_M.gguf"
+        ),
+    )
+    parser.add_argument(
+        "--evidence-root",
+        type=Path,
+        required=True,
+    )
+    parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        default=DEFAULT_TIMEOUT_SECONDS,
+    )
+    args = parser.parse_args()
+
+    try:
+        result = run_transaction(
+            repo_root=args.repo_root.resolve(),
+            evidence_root=args.evidence_root.expanduser().resolve(),
+            llama_cpp_root=args.llama_cpp_root.expanduser().resolve(),
+            artifact_path=args.artifact_path.expanduser().resolve(),
+            timeout_seconds=args.timeout_seconds,
+        )
+    except PhysicalTransactionError as exc:
+        parser.error(str(exc))
+
+    raise SystemExit(result)
+
+
+if __name__ == "__main__":
+    main()
