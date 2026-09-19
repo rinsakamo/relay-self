@@ -638,7 +638,7 @@ def write_protocol_failure(
             indent=2,
             sort_keys=True,
         )
-        + "\\n",
+        + "\n",
         encoding="utf-8",
     )
 
