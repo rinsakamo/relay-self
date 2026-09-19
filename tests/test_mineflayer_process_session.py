@@ -49,6 +49,15 @@ def observation_line() -> bytes:
                     "food": 7,
                     "oxygen_level": 20,
                     "position": {"x": 1, "y": 64, "z": 2},
+                    "time": {
+                        "time_of_day": 13000,
+                        "day": 2,
+                        "is_day": False,
+                    },
+                    "inventory": [
+                        {"name": "bread", "count": 3, "slot": 10},
+                    ],
+                    "nearby_entities": [],
                 },
             }
         )
@@ -150,6 +159,11 @@ def test_send_effects_use_existing_target_local_protocol(monkeypatch, tmp_path: 
             state=True,
         )
         await session.send_clear_controls("action-stop")
+        await session.send_equip_item(
+            "action-equip",
+            item_name="bread",
+        )
+        await session.send_consume_held("action-consume")
 
         assert [json.loads(value) for value in process.stdin.writes] == [
             {
@@ -164,8 +178,19 @@ def test_send_effects_use_existing_target_local_protocol(monkeypatch, tmp_path: 
                 "action_id": "action-stop",
                 "effect": "clear_controls",
             },
+            {
+                "type": "effect",
+                "action_id": "action-equip",
+                "effect": "equip_item",
+                "item_name": "bread",
+            },
+            {
+                "type": "effect",
+                "action_id": "action-consume",
+                "effect": "consume_held",
+            },
         ]
-        assert process.stdin.drain_count == 2
+        assert process.stdin.drain_count == 4
 
     asyncio.run(scenario())
 
@@ -250,6 +275,9 @@ def test_invalid_first_message_terminates_child_without_retry(
                     "food": 7,
                     "oxygen_level": 20,
                     "position": {"x": 1, "y": 64, "z": 2},
+                    "time": None,
+                    "inventory": [],
+                    "nearby_entities": [],
                 },
             }
         )
