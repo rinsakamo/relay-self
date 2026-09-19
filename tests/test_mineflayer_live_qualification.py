@@ -169,6 +169,52 @@ def test_applied_control_without_observed_movement_does_not_qualify() -> None:
         )
 
 
+def test_pre_ack_or_vertical_only_movement_does_not_qualify() -> None:
+    session = FakeLiveSession(
+        [
+            observation(1, "spawn", 0.0),
+            observation(2, "move", 0.2),
+            effect_result(
+                3,
+                action_id="action-live-forward",
+                effect="set_control",
+            ),
+            MineflayerObservation(
+                session_id="session-live",
+                seq=4,
+                kind="move",
+                snapshot=MineflayerSnapshot(
+                    health=20,
+                    food=18,
+                    oxygen_level=20,
+                    position=MineflayerPosition(x=0, y=63.0, z=0),
+                    time=None,
+                    inventory=(),
+                    nearby_entities=(),
+                ),
+            ),
+            MineflayerConnectionEnd(
+                session_id="session-live",
+                seq=5,
+                reason="fixture stop",
+            ),
+        ]
+    )
+
+    with pytest.raises(
+        MineflayerQualificationError,
+        match="connection ended",
+    ):
+        asyncio.run(
+            qualify_mineflayer_session(
+                session,
+                evidence_timeout_s=1.0,
+                action_timeout_s=1.0,
+                minimum_movement_distance=0.05,
+            )
+        )
+
+
 def test_rejected_forward_effect_does_not_qualify() -> None:
     session = FakeLiveSession(
         [
