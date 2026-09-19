@@ -6,6 +6,7 @@ import {
   makeEnvelope,
   parseArgs,
   parseCommand,
+  shouldEmitTimeObservation,
   snapshotFromBot
 } from './protocol.mjs'
 
@@ -98,9 +99,11 @@ bot.on('time', () => {
     typeof bot.time.isDay !== 'boolean'
   ) return
 
-  const dayChanged = bot.time.day !== lastObservedDay
-  const phaseChanged = bot.time.isDay !== lastObservedIsDay
-  if (!dayChanged && !phaseChanged) return
+  if (!shouldEmitTimeObservation(
+    lastObservedDay,
+    lastObservedIsDay,
+    bot.time
+  )) return
 
   lastObservedDay = bot.time.day
   lastObservedIsDay = bot.time.isDay
