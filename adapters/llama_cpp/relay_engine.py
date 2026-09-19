@@ -177,6 +177,7 @@ def parse_llama_cpp_decision(
         f"{mode.value} model response status/choice combination is invalid"
     )
 
+
 class LlamaCppRelayProvider:
     """Target-local llama.cpp realization of the RelayEngine provider seam."""
 
@@ -338,6 +339,7 @@ def _usage_int(
             f"llama.cpp usage.{key} must be a non-negative integer"
         )
     return value
+
 
 def _validate_endpoint(endpoint: object) -> str:
     _require_text("endpoint", endpoint)
