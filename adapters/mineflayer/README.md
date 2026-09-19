@@ -170,12 +170,17 @@ Prepare the adapter dependency from the repository root:
     cd ../..
 
 Start an offline/local Minecraft server with a spawn area where the bot can move
-forward safely, then run:
+forward safely, then run the source-checkout launcher:
 
-    python -m adapters.mineflayer.qualify_live \
+    bash adapters/mineflayer/run_live_qualification.sh \
       --host 127.0.0.1 \
       --port 25565 \
       --username RelaySelf
+
+The launcher derives the repository root from its own path, owns the `src/`
+Python import path, changes to the repository root for the top-level
+`adapters` namespace, and then executes the canonical Python module with
+bytecode disabled. No operator-side `PYTHONPATH` setup is required.
 
 Add `--version <minecraft-version>` when the server protocol should be pinned.
 
