@@ -60,6 +60,7 @@ The current suite includes direct verification of:
 - the minimum Persistent Cognition restart slice, including validated `IdentitySpecification` and `Memory` values, separate source/integration provenance on retained Memory, immutable explicit retention, duplicate-memory rejection, versioned JSON save/load round-trip, and fail-closed handling of unsupported versions, unknown fields, missing files, and corrupt JSON.
 - the minimal admitted decision-epoch coordinator, including Action Supervision before caller-owned decision work, deterministic no-cognition completion, exactly-once invocation of a supplied RelayEngine seam for an opaque unresolved request, explicit failure when cognition is requested without an engine, preservation of already-committed supervision outcomes across later cognition failure, and return of the next owner-local Action deadline without creating a clock owner.
 - the first adapter-local Mineflayer Python protocol surface, including exact-version startup validation, target-local session/sequence continuity, provenance references, strict observation/effect-result schemas, closed locomotion command encoding, and rejection of injected or unsupported adapter fields.
+- the first concrete Mineflayer runtime-admission seam, including suppression of high-frequency ordinary move events from automatic high-level epochs, admission of bounded material body/session observations, Action OUTCOME closure from target-native applied/rejected effect results before later decision work, canonical decision-epoch coordination, deterministic zero-model completion, and exactly-once use of a supplied cognition seam when caller-owned work remains unresolved.
 
 The Skill-to-Action proposal tests establish the supported proposal-admission relation:
 
@@ -86,7 +87,7 @@ A green result does **not** prove:
 - that Action outcome should imply Skill success/failure/cancellation, or that Skill cancellation should cancel an issued/in-flight Action;
 - that a deployed runtime driver eventually supplies future Action Supervision decision epochs;
 - autonomous wall-clock scheduling or general Scheduler behavior;
-- raw adapter-event admission/classification, Present reprojection policy, Skill selection, or proof that any deployed external loop will call the admitted decision-epoch coordinator at the right times;
+- generic adapter-event admission/classification beyond the first Mineflayer-local policy, Present reprojection policy, Skill selection, or proof that any deployed external loop will call the admitted decision-epoch coordinator at the right times;
 - that an intent candidate was correctly generated, ranked, or selected merely because commitment transitions are legal;
 - that a reconsideration trigger was correctly detected, sufficiently important, or admitted by a valid runtime policy merely because a request was recorded;
 - that a reconsideration trigger policy detects every meaningful runtime change;

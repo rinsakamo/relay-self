@@ -64,6 +64,34 @@ The first message must be adapter_started with seq 0. Sequence gaps, session
 changes, unknown fields, unsupported message types, and version mismatch fail
 closed.
 
+
+## Decision-epoch admission
+
+The adapter-local Python runtime seam admits only the first message classes that
+have a concrete reason to wake high-level Self coordination:
+
+- effect_result: always material because it closes one supervised primitive Action
+- spawn / health / forcedMove / death / respawn: material body/session observations
+- move: not automatically admitted because it is a high-frequency controller signal
+
+An admitted message enters the existing RelaySelf decision-epoch coordinator;
+the adapter does not implement a second runtime loop.
+
+For an effect_result, the matching Action is first closed as OUTCOME using the
+message provenance. Both applied and rejected are known target results:
+
+    effect_result(applied | rejected)
+      -> Action OUTCOME
+      != Skill success/failure
+
+Caller-owned deterministic or Present/reprojection work runs after ordinary
+Action supervision. Only an unresolved result from that work may request the
+supplied RelayEngine seam.
+
+Adapter-startup messages and ordinary move events remain outside this high-level
+decision path by default. Future concrete Skill controllers may consume movement
+feedback locally without turning every movement update into model cognition.
+
 ## Install
 
 From this directory:
