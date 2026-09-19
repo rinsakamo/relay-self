@@ -41,6 +41,8 @@ class ObservedLlamaCppProtocolFailure(RuntimeError):
     ) -> None:
         super().__init__(message)
         self.record = dict(record)
+
+
 ORDER_SCHEDULE = (
     ("broad", "narrow"),
     ("narrow", "broad"),
