@@ -59,7 +59,7 @@ The current suite includes direct verification of:
 - the bounded lifecycle-linearity regressions, including that a successful Skill or Action transition advances only its same-root lineage after the next snapshot validates, predecessor snapshots cannot create sibling branches, a stale `STARTED` Skill snapshot cannot seed a supported Action proposal, failed transition validation does not consume the current snapshot, and independently created roots with the same textual identity are deliberately not claimed to be globally canonicalized.
 - the minimum Persistent Cognition restart slice, including validated `IdentitySpecification` and `Memory` values, separate source/integration provenance on retained Memory, immutable explicit retention, duplicate-memory rejection, versioned JSON save/load round-trip, and fail-closed handling of unsupported versions, unknown fields, missing files, and corrupt JSON.
 - the minimal admitted decision-epoch coordinator, including Action Supervision before caller-owned decision work, deterministic no-cognition completion, exactly-once invocation of a supplied RelayEngine seam for an opaque unresolved request, explicit failure when cognition is requested without an engine, preservation of already-committed supervision outcomes across later cognition failure, and return of the next owner-local Action deadline without creating a clock owner.
-- the first Mineflayer product-adapter decoder surface, including exact-version startup validation, target-local session/sequence continuity, provenance references, strict observation/effect-result schemas, closed locomotion command encoding, and rejection of injected or unsupported adapter fields.
+- the first adapter-local Mineflayer Python protocol surface, including exact-version startup validation, target-local session/sequence continuity, provenance references, strict observation/effect-result schemas, closed locomotion command encoding, and rejection of injected or unsupported adapter fields.
 
 The Skill-to-Action proposal tests establish the supported proposal-admission relation:
 
@@ -106,7 +106,7 @@ The workflow pins the pytest tool version used by this gate. That pin is CI tool
 
 Guarantee:
 
-> The exact checked-out `src/` and `tests/` Python surface satisfies the configured Ruff mechanical checks.
+> The exact checked-out `src/`, `tests/`, `experiments/`, and adapter-local Python surface satisfies the configured Ruff mechanical checks.
 
 The configured rule set is intentionally narrow: syntax/pycodestyle error classes, Pyflakes correctness checks, and import ordering.
 
