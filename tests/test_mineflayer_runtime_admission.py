@@ -4,10 +4,13 @@ from adapters.mineflayer.python_protocol import (
     MINEFLAYER_VERSION,
     MineflayerAdapterStarted,
     MineflayerEffectResult,
+    MineflayerEntityFact,
+    MineflayerInventoryItem,
     MineflayerLaunchConfig,
     MineflayerObservation,
     MineflayerPosition,
     MineflayerSnapshot,
+    MineflayerTime,
 )
 from adapters.mineflayer.runtime_admission import (
     MineflayerEpochResult,
@@ -77,6 +80,19 @@ def observation(
             food=7,
             oxygen_level=20,
             position=MineflayerPosition(x=1, y=64, z=2),
+            time=MineflayerTime(time_of_day=13000, day=2, is_day=False),
+            inventory=(
+                MineflayerInventoryItem(name="bread", count=3, slot=10),
+            ),
+            nearby_entities=(
+                MineflayerEntityFact(
+                    entity_id=2,
+                    name="zombie",
+                    entity_type="mob",
+                    distance=3,
+                    position=MineflayerPosition(x=4, y=64, z=2),
+                ),
+            ),
         ),
     )
 
@@ -132,7 +148,19 @@ def test_adapter_started_is_not_a_cognitive_epoch() -> None:
     assert supervisor.last_at_ns == 5
 
 
-@pytest.mark.parametrize("kind", ["spawn", "health", "forcedMove", "death", "respawn"])
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "spawn",
+        "health",
+        "time",
+        "inventory",
+        "entities",
+        "forcedMove",
+        "death",
+        "respawn",
+    ],
+)
 def test_material_observation_reaches_canonical_coordinator_without_model(
     kind: str,
 ) -> None:
