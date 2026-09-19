@@ -70,6 +70,8 @@ class ControlledScenario:
     flee_min_progress: float = 0.25
     evidence_timeout_s: float = 5.0
     max_evidence_messages: int = 32
+    cognition_soft_wall_time_budget_s: float | None = None
+    cognition_think_allowed: bool = True
 
     def __post_init__(self) -> None:
         if not isinstance(self.hazard_entity_names, frozenset):
@@ -119,6 +121,15 @@ class ControlledScenario:
         ):
             raise ControlledScenarioError(
                 "max_evidence_messages must be a positive integer"
+            )
+        if self.cognition_soft_wall_time_budget_s is not None:
+            _require_positive_number(
+                "cognition_soft_wall_time_budget_s",
+                self.cognition_soft_wall_time_budget_s,
+            )
+        if not isinstance(self.cognition_think_allowed, bool):
+            raise ControlledScenarioError(
+                "cognition_think_allowed must be bool"
             )
 
 
@@ -435,6 +446,8 @@ def build_flee_destination_request(
             for destination in scenario.destinations
         ),
         context=tuple(context),
+        soft_wall_time_budget_s=scenario.cognition_soft_wall_time_budget_s,
+        think_allowed=scenario.cognition_think_allowed,
     )
 
 

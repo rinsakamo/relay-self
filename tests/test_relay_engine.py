@@ -1,4 +1,5 @@
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -12,6 +13,7 @@ from relay_self.relay_engine import (
     CognitionMode,
     DecisionStatus,
     InvalidRelayEngineData,
+    ProviderCallFacts,
     ProviderDecision,
     RelayEngine,
 )
@@ -254,3 +256,109 @@ def test_context_rejects_invalid_json_without_interpreting_it() -> None:
             value_json="{not-json}",
             provenance=provenance("bad"),
         )
+
+
+def test_soft_wall_time_budget_is_observational_and_preserves_resolution(
+    monkeypatch,
+) -> None:
+    provider = RecordingProvider(
+        [ProviderDecision.resolved("cave", reason="bounded sufficient")]
+    )
+    timed_request = replace(
+        request(),
+        soft_wall_time_budget_s=0.5,
+    )
+    clock = iter((1_000_000_000, 1_700_000_000))
+    monkeypatch.setattr(
+        "relay_self.relay_engine.time.perf_counter_ns",
+        lambda: next(clock),
+    )
+
+    result = RelayEngine(provider)(timed_request)
+
+    assert result.status is DecisionStatus.RESOLVED
+    assert result.choice_id == "cave"
+    assert result.provider_call_count == 1
+    assert result.elapsed_ns == 700_000_000
+    assert result.elapsed_s == pytest.approx(0.7)
+    assert result.soft_wall_time_budget_s == 0.5
+    assert result.soft_wall_time_budget_exceeded is True
+
+
+def test_soft_budget_overrun_does_not_prevent_explicit_think(
+    monkeypatch,
+) -> None:
+    provider = RecordingProvider(
+        [
+            ProviderDecision.unresolved(reason="bounded uncertainty"),
+            ProviderDecision.resolved("ridge", reason="think resolved"),
+        ]
+    )
+    timed_request = replace(
+        request(),
+        soft_wall_time_budget_s=0.5,
+    )
+    clock = iter(
+        (
+            1_000_000_000,
+            1_400_000_000,
+            1_500_000_000,
+            2_100_000_000,
+        )
+    )
+    monkeypatch.setattr(
+        "relay_self.relay_engine.time.perf_counter_ns",
+        lambda: next(clock),
+    )
+
+    result = RelayEngine(provider)(timed_request)
+
+    assert result.status is DecisionStatus.RESOLVED
+    assert result.choice_id == "ridge"
+    assert result.escalated is True
+    assert result.elapsed_ns == 1_000_000_000
+    assert result.soft_wall_time_budget_exceeded is True
+
+
+def test_caller_can_disallow_think_without_relabelling_unresolved() -> None:
+    provider = RecordingProvider(
+        [ProviderDecision.unresolved(reason="bounded uncertainty")]
+    )
+
+    result = RelayEngine(provider)(
+        replace(request(), think_allowed=False)
+    )
+
+    assert result.status is DecisionStatus.UNRESOLVED
+    assert result.escalated is False
+    assert result.think_allowed is False
+    assert result.provider_call_count == 1
+    assert [mode for _, mode in provider.calls] == [CognitionMode.BOUNDED]
+
+
+def test_provider_call_facts_are_preserved_without_becoming_semantics() -> None:
+    facts = ProviderCallFacts(
+        requested_max_output_tokens=48,
+        prompt_tokens=120,
+        completion_tokens=5,
+        total_tokens=125,
+        finish_reason="stop",
+    )
+    provider = RecordingProvider(
+        [ProviderDecision.resolved("cave", call_facts=facts)]
+    )
+
+    result = RelayEngine(provider)(request())
+
+    assert result.status is DecisionStatus.RESOLVED
+    assert result.attempts[0].call_facts == facts
+    assert result.observed_prompt_tokens == 120
+    assert result.observed_completion_tokens == 5
+
+
+def test_request_rejects_invalid_soft_wall_time_budget() -> None:
+    with pytest.raises(
+        InvalidRelayEngineData,
+        match="soft_wall_time_budget_s",
+    ):
+        replace(request(), soft_wall_time_budget_s=0)

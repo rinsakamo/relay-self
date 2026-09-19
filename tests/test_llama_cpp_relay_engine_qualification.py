@@ -65,6 +65,13 @@ def test_qualification_accepts_expected_real_decision_semantics() -> None:
     assert report.choice_id == "cave"
     assert report.expected_choice_id == "cave"
     assert report.escalated is False
+    assert report.provider_call_count == 1
+    assert report.elapsed_ns >= 0
+    assert report.elapsed_seconds >= 0
+    assert report.soft_wall_time_budget_s is None
+    assert report.soft_wall_time_budget_exceeded is False
+    assert report.observed_prompt_tokens is None
+    assert report.observed_completion_tokens is None
     assert report.intent_id == "intent-reach-safety"
     assert report.skill_state == "started"
     assert report.open_action_count == 0

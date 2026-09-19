@@ -27,6 +27,7 @@ from relay_self.persistent_cognition import Memory
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     CognitionMode,
+    DecisionStatus,
     ProviderDecision,
     RelayEngine,
 )
@@ -57,6 +58,8 @@ def scenario(
     *,
     destinations: tuple[ControlledDestination, ...] | None = None,
     max_evidence_messages: int = 8,
+    cognition_soft_wall_time_budget_s: float | None = None,
+    cognition_think_allowed: bool = True,
 ) -> ControlledScenario:
     return ControlledScenario(
         hazard_entity_names=frozenset({"zombie"}),
@@ -70,6 +73,10 @@ def scenario(
         flee_min_progress=0.25,
         evidence_timeout_s=1.0,
         max_evidence_messages=max_evidence_messages,
+        cognition_soft_wall_time_budget_s=(
+            cognition_soft_wall_time_budget_s
+        ),
+        cognition_think_allowed=cognition_think_allowed,
     )
 
 
@@ -592,3 +599,31 @@ def test_wait_execution_creates_no_skill_or_action() -> None:
 
     assert result is None
     assert session.sent == []
+
+
+def test_controlled_flee_passes_caller_owned_cognition_envelope() -> None:
+    obs = observation(entities=(zombie(),))
+    provider = RecordingProvider(
+        [ProviderDecision.unresolved(reason="bounded uncertainty")]
+    )
+
+    decision = decide_skill(
+        obs,
+        scenario(
+            destinations=(
+                destination("cave", 10, 0),
+                destination("ridge", 0, -10),
+            ),
+            cognition_soft_wall_time_budget_s=0.75,
+            cognition_think_allowed=False,
+        ),
+        intent_id="intent-survive",
+        relay_engine=RelayEngine(provider),
+    )
+
+    assert decision.cognition_result is not None
+    assert decision.cognition_result.status is DecisionStatus.UNRESOLVED
+    request = provider.requests[0]
+    assert request.soft_wall_time_budget_s == 0.75
+    assert request.think_allowed is False
+    assert provider.modes == [CognitionMode.BOUNDED]

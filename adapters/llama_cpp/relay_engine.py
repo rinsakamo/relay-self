@@ -10,6 +10,7 @@ from relay_self.relay_engine import (
     BoundedChoiceRequest,
     CognitionMode,
     DecisionStatus,
+    ProviderCallFacts,
     ProviderDecision,
 )
 
@@ -42,6 +43,10 @@ _THINK_SYSTEM = (
 
 class LlamaCppProviderError(RuntimeError):
     """Raised when the local llama.cpp provider path fails operationally."""
+
+
+class LlamaCppProviderProtocolError(LlamaCppProviderError):
+    """Raised when provider/model output violates the declared wire contract."""
 
 
 def render_llama_cpp_request(
@@ -119,18 +124,18 @@ def parse_llama_cpp_decision(
     mode: CognitionMode,
 ) -> ProviderDecision:
     if not isinstance(raw_text, str):
-        return ProviderDecision.unresolved(
-            reason=f"{mode.value}_parse_error:content_not_text"
+        raise LlamaCppProviderProtocolError(
+            f"{mode.value} model content must be text"
         )
     try:
         value = json.loads(raw_text)
     except json.JSONDecodeError as exc:
-        return ProviderDecision.unresolved(
-            reason=f"{mode.value}_parse_error:invalid_json:{exc.msg}"
-        )
+        raise LlamaCppProviderProtocolError(
+            f"{mode.value} model content is not valid JSON: {exc.msg}"
+        ) from exc
     if not isinstance(value, dict):
-        return ProviderDecision.unresolved(
-            reason=f"{mode.value}_parse_error:response_not_object"
+        raise LlamaCppProviderProtocolError(
+            f"{mode.value} model response must be a JSON object"
         )
 
     expected = (
@@ -139,8 +144,8 @@ def parse_llama_cpp_decision(
         else {"status", "choice_id", "rationale"}
     )
     if set(value) != expected:
-        return ProviderDecision.unresolved(
-            reason=f"{mode.value}_parse_error:schema_mismatch"
+        raise LlamaCppProviderProtocolError(
+            f"{mode.value} model response schema mismatch"
         )
 
     status = value.get("status")
@@ -149,8 +154,8 @@ def parse_llama_cpp_decision(
     if mode is CognitionMode.THINK:
         rationale = value.get("rationale")
         if not isinstance(rationale, str) or not rationale.strip():
-            return ProviderDecision.unresolved(
-                reason="think_parse_error:rationale_missing"
+            raise LlamaCppProviderProtocolError(
+                "think model response requires non-empty rationale"
             )
         reason = rationale
     else:
@@ -158,21 +163,18 @@ def parse_llama_cpp_decision(
 
     if status == DecisionStatus.RESOLVED.value:
         if not isinstance(choice_id, str) or not choice_id.strip():
-            return ProviderDecision.unresolved(
-                reason=f"{mode.value}_parse_error:resolved_choice_missing"
+            raise LlamaCppProviderProtocolError(
+                f"{mode.value} resolved response requires choice_id"
             )
-        return ProviderDecision.resolved(
-            choice_id,
-            reason=reason,
-        )
+        return ProviderDecision.resolved(choice_id, reason=reason)
 
     if status == DecisionStatus.UNRESOLVED.value and choice_id is None:
         return ProviderDecision.unresolved(
             reason=reason or f"{mode.value}_model_unresolved"
         )
 
-    return ProviderDecision.unresolved(
-        reason=f"{mode.value}_parse_error:status_or_choice_invalid"
+    raise LlamaCppProviderProtocolError(
+        f"{mode.value} model response status/choice combination is invalid"
     )
 
 
@@ -216,10 +218,20 @@ class LlamaCppRelayProvider:
             mode=mode,
             model=self._model,
         )
-        raw_text = self._call(request_body)
-        return parse_llama_cpp_decision(raw_text, mode=mode)
+        body = self._call(request_body)
+        raw_text, call_facts = _extract_completion(
+            body,
+            request_body=request_body,
+        )
+        decision = parse_llama_cpp_decision(raw_text, mode=mode)
+        return ProviderDecision(
+            status=decision.status,
+            choice_id=decision.choice_id,
+            reason=decision.reason,
+            call_facts=call_facts,
+        )
 
-    def _call(self, request_body: dict[str, object]) -> str:
+    def _call(self, request_body: dict[str, object]) -> dict[str, Any]:
         request = urllib.request.Request(
             self._endpoint,
             data=json.dumps(
@@ -251,24 +263,82 @@ class LlamaCppRelayProvider:
             ) from exc
 
         if not isinstance(body, dict):
-            raise LlamaCppProviderError(
+            raise LlamaCppProviderProtocolError(
                 "llama.cpp response body must be a JSON object"
             )
-        return _extract_content(body)
+        return body
 
 
-def _extract_content(body: dict[str, Any]) -> str:
+def _extract_completion(
+    body: dict[str, Any],
+    *,
+    request_body: dict[str, object],
+) -> tuple[str, ProviderCallFacts]:
     try:
-        content = body["choices"][0]["message"]["content"]
+        choice = body["choices"][0]
+        content = choice["message"]["content"]
     except (KeyError, IndexError, TypeError) as exc:
-        raise LlamaCppProviderError(
+        raise LlamaCppProviderProtocolError(
             "llama.cpp response missing choices[0].message.content"
         ) from exc
+    if not isinstance(choice, dict):
+        raise LlamaCppProviderProtocolError(
+            "llama.cpp choices[0] must be a JSON object"
+        )
     if not isinstance(content, str):
-        raise LlamaCppProviderError(
+        raise LlamaCppProviderProtocolError(
             "llama.cpp message content must be text"
         )
-    return content
+
+    finish_reason = choice.get("finish_reason")
+    if finish_reason is not None:
+        if not isinstance(finish_reason, str) or not finish_reason.strip():
+            raise LlamaCppProviderProtocolError(
+                "llama.cpp finish_reason must be non-empty text when present"
+            )
+        if finish_reason != "stop":
+            raise LlamaCppProviderProtocolError(
+                "llama.cpp completion did not finish with stop: "
+                f"{finish_reason}"
+            )
+
+    usage = body.get("usage")
+    if usage is not None and not isinstance(usage, dict):
+        raise LlamaCppProviderProtocolError(
+            "llama.cpp usage must be a JSON object when present"
+        )
+
+    requested_max_output_tokens = request_body.get("max_tokens")
+    if (
+        isinstance(requested_max_output_tokens, bool)
+        or not isinstance(requested_max_output_tokens, int)
+        or requested_max_output_tokens <= 0
+    ):
+        raise LlamaCppProviderProtocolError(
+            "serialized request max_tokens must be a positive integer"
+        )
+
+    return content, ProviderCallFacts(
+        requested_max_output_tokens=requested_max_output_tokens,
+        prompt_tokens=_usage_int(usage, "prompt_tokens"),
+        completion_tokens=_usage_int(usage, "completion_tokens"),
+        total_tokens=_usage_int(usage, "total_tokens"),
+        finish_reason=finish_reason,
+    )
+
+
+def _usage_int(
+    usage: dict[str, Any] | None,
+    key: str,
+) -> int | None:
+    if usage is None or key not in usage:
+        return None
+    value = usage[key]
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise LlamaCppProviderProtocolError(
+            f"llama.cpp usage.{key} must be a non-negative integer"
+        )
+    return value
 
 
 def _validate_endpoint(endpoint: object) -> str:

@@ -307,6 +307,10 @@ When multiple available mechanisms can adequately serve the same current objecti
 
 This comparison need not collapse latency, compute, energy, uncertainty, risk, or information value into one universal scalar. A mechanism may be dominated in one situation and useful in another.
 
+When cognition receives an explicit finite resource envelope, keep the **requested allocation** separate from the **observed cognitive work**. A caller may supply a soft wall-time allocation, token/output bounds, call-count limits, or permission to escalate, while execution records the wall time, calls, token usage, finish facts, and result actually observed. A soft wall-time allocation is an evaluation/control input, not a claim that provider execution was cancelled at that instant. Exceeding it does not silently relabel a resolved result as unresolved or make elapsed host time equal to World or subjective time.
+
+The Self may later learn how much cognition to allocate from Present, Skill, capability estimates, viability pressure, and available World slack. Until such a learning mechanism is independently justified, recording cognition-work evidence must not create a new persistent owner, automatically update the Capability Model, or turn a successful consequence into proof that the preceding budget was causally optimal.
+
 Experience may make an expensive computation reusable through Memory, a learned policy, a Skill, a cached procedure, or another justified mechanism. Such amortization does not make the shortcut permanently authoritative: contradictory consequence evidence, changed applicability, novelty, or distribution shift should be able to invalidate the cheap path and trigger renewed processing where useful.
 
 ### Offline consolidation and compiled cognition remain derived

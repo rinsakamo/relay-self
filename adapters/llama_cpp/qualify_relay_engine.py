@@ -59,6 +59,13 @@ class RelayEngineQualificationReport:
     expected_choice_id: str
     escalated: bool
     attempts: tuple[dict[str, object], ...]
+    provider_call_count: int
+    elapsed_ns: int
+    elapsed_seconds: float
+    soft_wall_time_budget_s: float | None
+    soft_wall_time_budget_exceeded: bool
+    observed_prompt_tokens: int | None
+    observed_completion_tokens: int | None
     intent_id: str
     skill_state: str
     open_action_count: int
@@ -208,9 +215,27 @@ def qualify_relay_engine(
                 "status": attempt.status.value,
                 "choice_id": attempt.choice_id,
                 "reason": attempt.reason,
+                "elapsed_ns": attempt.elapsed_ns,
+                "elapsed_seconds": attempt.elapsed_s,
+                "requested_max_output_tokens": (
+                    attempt.call_facts.requested_max_output_tokens
+                ),
+                "prompt_tokens": attempt.call_facts.prompt_tokens,
+                "completion_tokens": attempt.call_facts.completion_tokens,
+                "total_tokens": attempt.call_facts.total_tokens,
+                "finish_reason": attempt.call_facts.finish_reason,
             }
             for attempt in result.attempts
         ),
+        provider_call_count=result.provider_call_count,
+        elapsed_ns=result.elapsed_ns,
+        elapsed_seconds=result.elapsed_s,
+        soft_wall_time_budget_s=result.soft_wall_time_budget_s,
+        soft_wall_time_budget_exceeded=(
+            result.soft_wall_time_budget_exceeded
+        ),
+        observed_prompt_tokens=result.observed_prompt_tokens,
+        observed_completion_tokens=result.observed_completion_tokens,
         intent_id=commitment.current_intent.intent_id,
         skill_state=skill.state.value,
         open_action_count=len(supervisor.open_actions),
