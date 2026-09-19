@@ -69,6 +69,13 @@ and higher-level policy are deliberately not encoded in the adapter.
 The bridge uses offline Minecraft authentication only for this controlled MVP
 slice. Microsoft-account authentication is deferred.
 
+Mineflayer creates `bot.inventory` during its internal plugin-injection phase,
+not synchronously at the initial `createBot()` return boundary. The adapter
+therefore attaches its inventory `updateSlot` listener only after Mineflayer's
+`inject_allowed` event. This is startup ordering only; inventory observations
+still come from Mineflayer's player inventory surface and are emitted only after
+the bot has spawned.
+
 ## Transport
 
 The adapter reserves stdout for one JSON object per line. Diagnostics go to
