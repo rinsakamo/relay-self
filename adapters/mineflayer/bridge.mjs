@@ -3,7 +3,7 @@ import { createRequire } from 'node:module'
 import readline from 'node:readline'
 
 import {
-  attachHealthSynchronizedSpawnListeners,
+  attachBodySynchronizedSpawnListeners,
   attachInventoryUpdateListenerAfterInjection
 } from './bridge_hooks.mjs'
 import {
@@ -86,7 +86,7 @@ emit('adapter_started', {
 
 const bot = mineflayer.createBot(options)
 
-attachHealthSynchronizedSpawnListeners(
+attachBodySynchronizedSpawnListeners(
   bot,
   () => {
     spawned = true

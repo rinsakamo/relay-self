@@ -78,11 +78,14 @@ the bot has spawned.
 
 Mineflayer 4.39.0 also emits its first `spawn` event from the initial
 `update_health` packet before the same packet's ordinary health listener assigns
-`bot.health` and `bot.food`. Because RelaySelf's survival snapshot remains
-strict about finite body/resource values, the bridge records spawn as pending
-and emits the first `spawn` observation only on the immediately following
-Mineflayer `health` event, after those fields are initialized. Later health
-events remain ordinary `health` observations.
+`bot.health` and `bot.food`. On Minecraft 26.1, `bot.oxygenLevel` arrives
+separately from player entity metadata and Mineflayer emits `breath` after
+assigning it. Because RelaySelf's survival snapshot remains strict about finite
+body/resource values, the bridge records spawn as pending and emits the first
+`spawn` observation only after both the post-spawn `health` and `breath`
+synchronization events have occurred. Later health events remain ordinary
+`health` observations; `breath` is used here only to establish first-snapshot
+readiness and does not create a new observation kind.
 
 ## Transport
 
