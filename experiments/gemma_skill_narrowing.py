@@ -28,6 +28,21 @@ from relay_self.relay_engine import (
 
 SOURCE = "gemma-skill-narrowing"
 CONDITIONS = ("broad", "narrow")
+
+
+class ObservedLlamaCppProtocolFailure(RuntimeError):
+    """Carries lossless experiment evidence for one invalid model response."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        record: dict[str, object],
+    ) -> None:
+        super().__init__(message)
+        self.record = dict(record)
+
+
 ORDER_SCHEDULE = (
     ("broad", "narrow"),
     ("narrow", "broad"),
@@ -217,7 +232,7 @@ def _post_json(
     payload: dict[str, object],
     *,
     timeout: float,
-) -> dict[str, object]:
+) -> tuple[dict[str, object], int, str]:
     request = urllib.request.Request(
         endpoint,
         data=_canonical_json(payload).encode("utf-8"),
@@ -232,7 +247,10 @@ def _post_json(
             request,
             timeout=timeout,
         ) as response:
-            body = json.loads(response.read().decode("utf-8"))
+            raw_body = response.read()
+            http_status = response.status
+            body_text = raw_body.decode("utf-8")
+            body = json.loads(body_text)
     except (
         urllib.error.URLError,
         TimeoutError,
@@ -244,7 +262,7 @@ def _post_json(
         ) from exc
     if not isinstance(body, dict):
         raise RuntimeError("llama.cpp response must be a JSON object")
-    return body
+    return body, http_status, body_text
 
 
 def _response_content(body: dict[str, object]) -> str:
@@ -261,6 +279,19 @@ def _response_content(body: dict[str, object]) -> str:
     if not isinstance(content, str):
         raise RuntimeError("llama.cpp response content must be text")
     return content
+
+
+def _response_reasoning_content(body: dict[str, object]) -> object:
+    choices = body.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return None
+    choice = choices[0]
+    if not isinstance(choice, dict):
+        return None
+    message = choice.get("message")
+    if not isinstance(message, dict):
+        return None
+    return message.get("reasoning_content")
 
 
 def _usage_int(
@@ -303,17 +334,13 @@ class ObservedLlamaCppProvider:
         )
         encoded = _canonical_json(request_body).encode("utf-8")
         started = time.perf_counter()
-        response_body = _post_json(
+        response_body, http_status, response_body_text = _post_json(
             self.endpoint,
             request_body,
             timeout=self.timeout,
         )
         elapsed_seconds = time.perf_counter() - started
         raw_text = _response_content(response_body)
-        decision = parse_llama_cpp_decision(
-            raw_text,
-            mode=mode,
-        )
         choices = response_body.get("choices")
         finish_reason = None
         if (
@@ -323,30 +350,58 @@ class ObservedLlamaCppProvider:
         ):
             finish_reason = choices[0].get("finish_reason")
 
-        self.records.append(
+        record: dict[str, object] = {
+            "mode": mode.value,
+            "elapsed_seconds": elapsed_seconds,
+            "request_json_bytes": len(encoded),
+            "request_hash": _sha256_json(request_body),
+            "http_status": http_status,
+            "response_hash": _sha256_json(response_body),
+            "response_body_sha256": hashlib.sha256(
+                response_body_text.encode("utf-8")
+            ).hexdigest(),
+            "prompt_tokens": _usage_int(
+                response_body,
+                "prompt_tokens",
+            ),
+            "completion_tokens": _usage_int(
+                response_body,
+                "completion_tokens",
+            ),
+            "raw_text": raw_text,
+            "reasoning_content": _response_reasoning_content(response_body),
+            "finish_reason": finish_reason,
+            "usage": response_body.get("usage"),
+            "timings": response_body.get("timings"),
+        }
+        try:
+            decision = parse_llama_cpp_decision(
+                raw_text,
+                mode=mode,
+            )
+        except RuntimeError as exc:
+            failure_record = {
+                **record,
+                "provider_status": None,
+                "provider_choice_id": None,
+                "provider_reason": None,
+                "protocol_error": f"{type(exc).__name__}: {exc}",
+                "response_body_text": response_body_text,
+            }
+            self.records.append(failure_record)
+            raise ObservedLlamaCppProtocolFailure(
+                str(exc),
+                record=failure_record,
+            ) from exc
+
+        record.update(
             {
-                "mode": mode.value,
-                "elapsed_seconds": elapsed_seconds,
-                "request_json_bytes": len(encoded),
-                "request_hash": _sha256_json(request_body),
-                "response_hash": _sha256_json(response_body),
-                "prompt_tokens": _usage_int(
-                    response_body,
-                    "prompt_tokens",
-                ),
-                "completion_tokens": _usage_int(
-                    response_body,
-                    "completion_tokens",
-                ),
-                "raw_text": raw_text,
                 "provider_status": decision.status.value,
                 "provider_choice_id": decision.choice_id,
                 "provider_reason": decision.reason,
-                "finish_reason": finish_reason,
-                "usage": response_body.get("usage"),
-                "timings": response_body.get("timings"),
             }
         )
+        self.records.append(record)
         return decision
 
 

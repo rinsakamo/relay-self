@@ -1,9 +1,12 @@
+import json
+
 from experiments.gemma_flee_crystallization import (
     ARTIFACT_ALGORITHM,
     build_holdout_broad_request,
     build_holdout_schedule,
     dry_run_payload,
     filter_request,
+    write_protocol_failure,
 )
 from experiments.gemma_skill_narrowing import CASES, build_request
 
@@ -68,3 +71,44 @@ def test_holdout_changes_experience_surface_without_changing_choices() -> None:
         left.value_json != right.value_json
         for left, right in zip(training.context, holdout.context)
     )
+
+
+def test_reconstructed_trial_14_surface_after_first_13_acceptances() -> None:
+    candidate_keys = dry_run_payload()["candidate_keys"]
+    assert isinstance(candidate_keys, list)
+    assert candidate_keys[13] == "route_open:cave"
+
+    broad = build_request(CASES[0], condition="broad")
+    filtered = filter_request(
+        broad,
+        retained_keys=tuple(candidate_keys[14:]),
+    )
+
+    assert tuple(datum.key for datum in filtered.context) == (
+        "threat_nearby",
+        "route_open:ridge",
+        "shelter:cave",
+        "shelter:ridge",
+        "saturation",
+        "tool:pickaxe_durability",
+        "xp_level",
+        "storage_free_slots",
+    )
+
+
+def test_protocol_failure_writer_preserves_record(tmp_path) -> None:
+    output = tmp_path / "protocol-failure.json"
+    record = {
+        "mode": "think",
+        "raw_text": "",
+        "reasoning_content": "side-channel",
+        "protocol_error": "invalid JSON",
+    }
+
+    write_protocol_failure(record, str(output))
+
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["evidence_class"] == (
+        "llama.cpp provider protocol failure"
+    )
+    assert payload["record"] == record
