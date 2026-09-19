@@ -34,6 +34,7 @@ const sessionId = randomUUID()
 let seq = 0
 let spawned = false
 let closing = false
+let inputReader = null
 const seenActionIds = new Set()
 
 function emit (type, payload = {}) {
@@ -97,6 +98,7 @@ bot.on('forcedMove', () => {
 
 bot.on('death', () => {
   if (spawned) emitObservation('death')
+  spawned = false
 })
 
 bot.on('respawn', () => {
@@ -111,11 +113,8 @@ bot.on('error', (error) => {
 bot.on('end', (reason) => {
   spawned = false
   emit('connection_end', { reason: String(reason || 'connection ended') })
-  if (closing) {
-    process.exitCode = 0
-  } else {
-    process.exitCode = 3
-  }
+  if (inputReader !== null) inputReader.close()
+  process.exitCode = closing ? 0 : 3
 })
 
 function emitEffectResult (command, result, error = null) {
@@ -168,7 +167,7 @@ function handleShutdown () {
     bot.clearControlStates()
   }
   emit('shutdown_ack')
-  rl.close()
+  if (inputReader !== null) inputReader.close()
   bot.quit('RelaySelf adapter shutdown')
 }
 
@@ -201,15 +200,16 @@ async function handleLine (line) {
   }
 }
 
-const rl = readline.createInterface({
+inputReader = readline.createInterface({
   input: process.stdin,
   crlfDelay: Infinity
 })
 
 let commandQueue = Promise.resolve()
-rl.on('line', (line) => {
-  commandQueue = commandQueue.then(() => handleLine(line))
-  commandQueue.catch((error) => {
-    emitAdapterError(error)
-  })
+inputReader.on('line', (line) => {
+  commandQueue = commandQueue
+    .then(() => handleLine(line))
+    .catch((error) => {
+      emitAdapterError(error)
+    })
 })
