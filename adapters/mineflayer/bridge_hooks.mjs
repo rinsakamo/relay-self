@@ -19,7 +19,7 @@ export function attachInventoryUpdateListenerAfterInjection (
   })
 }
 
-export function attachHealthSynchronizedSpawnListeners (
+export function attachBodySynchronizedSpawnListeners (
   bot,
   spawnListener,
   healthListener
@@ -34,18 +34,42 @@ export function attachHealthSynchronizedSpawnListeners (
     throw new TypeError('health listener must be a function')
   }
 
-  let spawnPendingHealth = false
+  let spawnPendingBody = false
+  let healthSynchronized = false
+  let oxygenSynchronized = false
+
+  function completeSpawnIfReady () {
+    if (
+      !spawnPendingBody ||
+      !healthSynchronized ||
+      !oxygenSynchronized
+    ) return false
+
+    spawnPendingBody = false
+    healthSynchronized = false
+    oxygenSynchronized = false
+    spawnListener()
+    return true
+  }
 
   bot.on('spawn', () => {
-    spawnPendingHealth = true
+    spawnPendingBody = true
+    healthSynchronized = false
+    oxygenSynchronized = false
   })
 
   bot.on('health', () => {
-    if (spawnPendingHealth) {
-      spawnPendingHealth = false
-      spawnListener()
+    if (spawnPendingBody) {
+      healthSynchronized = true
+      completeSpawnIfReady()
       return
     }
     healthListener()
+  })
+
+  bot.on('breath', () => {
+    if (!spawnPendingBody) return
+    oxygenSynchronized = true
+    completeSpawnIfReady()
   })
 }
