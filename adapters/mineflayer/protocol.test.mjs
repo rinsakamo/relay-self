@@ -255,6 +255,30 @@ test('snapshot exposes survival facts without appraisal labels', () => {
   assert.equal(serialized.includes('hostile'), false)
 })
 
+test('snapshot still fails closed when health is not initialized', () => {
+  assert.throws(
+    () => snapshotFromBot({
+      health: undefined,
+      food: 20,
+      oxygenLevel: 20,
+      time: {
+        timeOfDay: null,
+        day: null,
+        isDay: null
+      },
+      entity: {
+        id: 1,
+        position: { x: 0, y: 64, z: 0 }
+      },
+      inventory: {
+        items: () => []
+      },
+      entities: {}
+    }),
+    /bot\.health must be a finite number/
+  )
+})
+
 test('snapshot allows time to remain null before first time update', () => {
   const snapshot = snapshotFromBot({
     health: 20,

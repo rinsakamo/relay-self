@@ -3,6 +3,7 @@ import { createRequire } from 'node:module'
 import readline from 'node:readline'
 
 import {
+  attachHealthSynchronizedSpawnListeners,
   attachInventoryUpdateListenerAfterInjection
 } from './bridge_hooks.mjs'
 import {
@@ -85,14 +86,16 @@ emit('adapter_started', {
 
 const bot = mineflayer.createBot(options)
 
-bot.on('spawn', () => {
-  spawned = true
-  emitObservation('spawn')
-})
-
-bot.on('health', () => {
-  if (spawned) emitObservation('health')
-})
+attachHealthSynchronizedSpawnListeners(
+  bot,
+  () => {
+    spawned = true
+    emitObservation('spawn')
+  },
+  () => {
+    if (spawned) emitObservation('health')
+  }
+)
 
 bot.on('time', () => {
   if (!spawned) return
