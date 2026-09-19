@@ -626,6 +626,17 @@ selector, weighted cognition score, World truth, or Action authorization.
 
 The transaction runs the substrates sequentially so they do not share GPU residency. Each receives one excluded warm-up and 24 measured calls.
 
+Run:
+
+```bash
+EVIDENCE=/tmp/relay-self-nld-gemma-$(date -u +%Y%m%dT%H%M%SZ)
+bash experiments/run_nld_gemma_cross_substrate_transaction.sh \
+  --evidence-root "$EVIDENCE"
+cat "$EVIDENCE/summary.json"
+```
+
+`CROSS_SUBSTRATE_MATCHED_PASS` means both physical traces are structurally valid. Cost comparison is eligible only when both substrates are 24/24 correct with zero invalid outputs. The gate defines no weighted score or permanent substrate selector.
+
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
