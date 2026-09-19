@@ -782,6 +782,26 @@ cat "$EVIDENCE/summary.json"
 
 The canonical shell launcher derives the repository root from its own path and prepends `<repo>/src` to `PYTHONPATH` so child experiment subprocesses can import the source-layout `relay_self` package without operator-side environment setup.
 
+### Gemma THINK protocol qualification
+
+#173 owns the apparatus-only follow-up to the #164 unresolved-THINK JSON failure. It reconstructs the first case of ablation trial 14 after the first 13 accepted removals and sends exactly one THINK generation request.
+
+The reconstructed context surface is the `cave_only` request with `route_open:cave` trial-removed. The transaction preserves the exact provider response evidence needed to distinguish a valid THINK JSON response from a protocol-invalid response.
+
+Run:
+
+```bash
+EVIDENCE=/tmp/relay-self-gemma-think-protocol-$(date -u +%Y%m%dT%H%M%SZ)
+bash experiments/run_gemma_think_protocol_qualification_transaction.sh \
+  --evidence-root "$EVIDENCE"
+STATUS=$?
+cat "$EVIDENCE/summary.json"
+cat "$EVIDENCE/actual-model.json"
+exit "$STATUS"
+```
+
+The transaction performs one model generation call after server attestation. It does not run #164 training, ablation search, artifact induction, or holdout. `GEMMA_THINK_PROTOCOL_QUALIFIED` means only that the reconstructed THINK surface returned a valid provider wire contract. `GEMMA_THINK_PROTOCOL_NOT_QUALIFIED` preserves the invalid raw response as apparatus evidence; it is not a scientific null.
+
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
