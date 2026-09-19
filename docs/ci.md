@@ -62,6 +62,7 @@ The current suite includes direct verification of:
 - the adapter-local Mineflayer Python protocol surface, including exact-version startup validation, target-local session/sequence continuity, provenance references, strict survival observation/effect-result schemas, closed locomotion and food-effect encoding, bounded time/inventory/entity fact decoding, and rejection of injected appraisal labels or unsupported adapter fields.
 - the concrete Mineflayer runtime-admission seam, including suppression of high-frequency ordinary move events from automatic high-level epochs, admission of bounded material body/session/survival observations including time, inventory, and entity fact changes, Action OUTCOME closure from target-native applied/rejected effect results before later decision work, canonical decision-epoch coordination, deterministic zero-model completion, and exactly-once use of a supplied cognition seam when caller-owned work remains unresolved.
 - the target-local Mineflayer process-session seam, including one-child launch argument construction, mandatory startup attestation consumption, reuse of the strict stream decoder, explicit primitive-effect writes, explicit EOF failure, no hidden retry/relaunch, and bounded clean-shutdown behavior with termination fallback.
+- the reusable Mineflayer live-qualification transaction logic under fake-session evidence, including canonical Current Intent / Skill / Action setup, supervised forward and stop Actions, rejection of a control acknowledgement without observed movement, rejection of target-native effect rejection, preservation of Skill/Intent state, and report emission only after an actual position delta condition is satisfied.
 
 The Skill-to-Action proposal tests establish the supported proposal-admission relation:
 
@@ -99,7 +100,7 @@ A green result does **not** prove:
 - that Skill failure should always trigger Current Intent reconsideration;
 - that an external authority identity is legitimate merely because it was recorded;
 - model quality, simulation behavior, environment correctness, or physical execution;
-- live Mineflayer/Minecraft connectivity merely because the survival protocol, admission, or process-session tests are green;
+- live Mineflayer/Minecraft connectivity or a successful external qualification merely because the survival protocol, admission, process-session, or qualification-transaction logic tests are green;
 - package installation or minimum-supported Python/dependency floors.
 
 The workflow pins the pytest tool version used by this gate. That pin is CI tooling, not a supported runtime dependency floor.
@@ -134,7 +135,7 @@ A green result does **not** prove:
 - that a Minecraft server connection succeeds;
 - that a control-state acknowledgement means movement or Skill success;
 - correctness of Self-side threat appraisal, food choice, EAT/FLEE Skill success, reconnect, or authenticated-account support;
-- live external qualification of the adapter.
+- live external qualification of the adapter; the reusable live-qualification harness must still be run against an actual Minecraft server and its result recorded as external evidence.
 
 This job intentionally does not install Mineflayer or contact a Minecraft server; those are external qualification concerns for the concrete adapter.
 
