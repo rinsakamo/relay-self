@@ -754,6 +754,32 @@ cat "$EVIDENCE/summary.json"
 
 `GEMMA_SKILL_NARROWING_PASS` means a structurally valid physical trace was recorded. Cost interpretation is eligible only when BROAD and NARROW both preserve the required useful outcomes. The probe does not by itself establish experience-dependent crystallization, a generic Focus owner, World truth, or Action authorization.
 
+### Gemma experience-dependent FLEE crystallization probe
+
+#164 extends #155 from hand-specified narrowing to an experience-dependent artifact.
+
+The experiment starts from all 22 BROAD context keys, records four validated BROAD training decisions, then performs deterministic greedy lexicographic key ablation. A key is removed only when all four training cases still resolve correctly in one BOUNDED call with no THINK escalation. The resulting key whitelist is frozen as `crystallization-artifact.json`.
+
+A separate holdout surface then compares:
+
+```text
+BEFORE = full BROAD holdout context
+AFTER  = the same holdout context filtered only by the frozen artifact
+```
+
+The holdout contains 48 measured RelayEngine episodes. Artifact acquisition cost is recorded separately from future-use cost.
+
+Run:
+
+```bash
+EVIDENCE=/tmp/relay-self-gemma-crystallization-$(date -u +%Y%m%dT%H%M%SZ)
+bash experiments/run_gemma_flee_crystallization_transaction.sh \
+  --evidence-root "$EVIDENCE"
+cat "$EVIDENCE/summary.json"
+```
+
+`GEMMA_CRYSTALLIZATION_PASS` means a structurally valid training/induction/holdout trace was recorded. The result does not create a production Skill registry or prove neural-weight learning, universal crystallization, World truth, or Action authorization.
+
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
