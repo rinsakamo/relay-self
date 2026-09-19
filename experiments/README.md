@@ -97,6 +97,38 @@ The transaction also emits the existing read-only human activity summary over
 the first run and before/after Persistent Cognition delta. The rendered summary
 is presentation only and is not used as the Memory source.
 
+## Terminal #141 composition runner
+
+`minecraft_terminal_qualification.py` and
+`run_minecraft_terminal_qualification.sh` are the bounded experiment-local
+composition apparatus for the final live gate. They call the existing
+Mineflayer process session, controlled WAIT/EAT/FLEE harness, Action
+Supervisor, Present/reconsideration seams, llama.cpp `RelayEngine`, and
+Persistent Cognition owners. They do not add a RuntimeDriver, Scheduler,
+generic World API, Skill registry, or second Memory/lifecycle owner.
+
+The launcher prepares a fresh controlled vanilla server, verifies the exact
+runtime identities without making a model call, and then invokes the two Self
+phases exactly once: the first process performs the live scenario and writes
+governed Memory; the second process loads that file, opens a new Mineflayer
+session, and makes a later model-backed decision from retained Memory beside
+fresh observation. Server commands are recorded as environment interventions,
+separate from Self Actions. The launcher must be run from a fresh clean
+qualification checkout and its resulting evidence remains external/live
+qualification evidence for that exact checkout and runtime.
+
+The apparatus itself is not terminal qualification evidence until one complete
+invocation has emitted `terminal-report.json` with `TERMINAL PASS / LIVE
+QUALIFIED`.
+
+Prepare Mineflayer dependencies in the fresh checkout with
+`npm install --omit=dev` under `adapters/mineflayer`; the launcher keeps
+`node_modules` as a gitignored runtime artifact and relocates the generated
+`package-lock.json` into the external evidence root. Use a new evidence root
+for each attempted invocation. The launcher captures current GitHub authority
+again immediately before preflight and refuses to start the terminal phases if
+the checkout no longer equals remote `main`.
+
 ## Evolved-value experiments
 
 The evolved-value experiments preserve the causal separation relevant to RelaySelf:
