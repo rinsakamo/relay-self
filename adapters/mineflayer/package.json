@@ -8,8 +8,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test protocol.test.mjs",
-    "check": "node --check protocol.mjs && node --check bridge.mjs && node --test protocol.test.mjs"
+    "test": "node --test protocol.test.mjs bridge_hooks.test.mjs",
+    "check": "node --check protocol.mjs && node --check bridge_hooks.mjs && node --check bridge.mjs && node --test protocol.test.mjs bridge_hooks.test.mjs"
   },
   "dependencies": {
     "mineflayer": "4.39.0"
