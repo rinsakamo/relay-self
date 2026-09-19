@@ -48,6 +48,7 @@ class PresentRelayEpoch:
     decision: FleeDecision
     execution: SkillExecution | None
     broadened: bool
+    reprojected: bool
 
 
 def model_reference_facts(
@@ -268,13 +269,21 @@ def run_flee_present_relay_epoch(
 
     effective = local
     broadened = False
+    reprojected = False
+    if not projection_is_current(
+        local,
+        current_source_revision=current_source_revision,
+    ):
+        effective = narrow_for_flee(broad)
+        reprojected = True
+
     try:
         request = build_flee_relay_request(
             effective,
             current_source_revision=current_source_revision,
         )
     except MissingPresentFactError:
-        effective = broaden_flee(local, broad)
+        effective = broaden_flee(effective, broad)
         broadened = True
         request = build_flee_relay_request(
             effective,
@@ -305,6 +314,7 @@ def run_flee_present_relay_epoch(
         decision=decision,
         execution=execution,
         broadened=broadened,
+        reprojected=reprojected,
     )
 
 
