@@ -137,6 +137,28 @@ test('spawn readiness tolerates oxygen arriving before health', () => {
   assert.deepEqual(observed, ['spawn'])
 })
 
+test('spawn readiness accepts oxygen already synchronized before spawn', () => {
+  const bot = new EventEmitter()
+  const observed = []
+
+  attachBodySynchronizedSpawnListeners(
+    bot,
+    () => observed.push('spawn'),
+    () => observed.push('health')
+  )
+
+  bot.oxygenLevel = 20
+  bot.emit('breath')
+  bot.emit('spawn')
+  assert.deepEqual(observed, [])
+
+  bot.health = 20
+  bot.food = 20
+  bot.emit('health')
+
+  assert.deepEqual(observed, ['spawn'])
+})
+
 test('health before spawn remains an ordinary health event', () => {
   const bot = new EventEmitter()
   const observed = []
