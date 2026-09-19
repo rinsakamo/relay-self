@@ -473,3 +473,119 @@ def _complete_stage(
         raise AssertionError("completed_stages must be a list")
     completed.append(stage)
     summary["current_stage"] = None
+
+
+def run_transaction(
+    *,
+    repo_root: Path,
+    evidence_root: Path,
+    llama_cpp_root: Path,
+    artifact_path: Path,
+    timeout_seconds: float,
+) -> int:
+    if timeout_seconds <= 0:
+        raise PhysicalTransactionError(
+            "timeout_seconds must be positive"
+        )
+
+    evidence_root = _prepare_evidence_root(evidence_root)
+    summary_path = evidence_root / "summary.json"
+    summary = _initial_summary(
+        repo_root=repo_root,
+        evidence_root=evidence_root,
+        llama_cpp_root=llama_cpp_root,
+        artifact_path=artifact_path,
+    )
+    _write_json(summary_path, summary)
+
+    process: subprocess.Popen[str] | None = None
+    log_path = evidence_root / "llama-server.log"
+
+    try:
+        stage = "repo_preflight"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        head, tree = _require_clean_repo(repo_root)
+        summary["git"] = {"head": head, "tree": tree}
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
+
+        stage = "llama_preflight"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        server_binary = llama_cpp_root / "build" / "bin" / "llama-server"
+        _require_llama_cpp_paths(llama_cpp_root, server_binary)
+        if not _port_is_free(DEFAULT_HOST, DEFAULT_PORT):
+            raise PhysicalTransactionError(
+                "127.0.0.1:1234 is already occupied"
+            )
+        revision = _collect_llama_revision(llama_cpp_root)
+        version_identity = _collect_server_version(server_binary)
+        artifact_sha256 = _verify_artifact(artifact_path)
+        summary["llama_cpp"] = {
+            **version_identity,
+            "revision": revision,
+            "artifact_sha256": artifact_sha256,
+            "expected_artifact_sha256": EXPECTED_GGUF_SHA256,
+        }
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
+
+        stage = "nld_dry_run"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        nld_dry_path = evidence_root / "nld-dry-run.json"
+        dry_command = _nld_command(
+            output_path=nld_dry_path,
+            run=False,
+        )
+        returncode = _run_probe_command(
+            dry_command,
+            repo_root=repo_root,
+            stdout_path=evidence_root / "nld-dry-run.stdout.txt",
+            stderr_path=evidence_root / "nld-dry-run.stderr.txt",
+            timeout_seconds=timeout_seconds,
+        )
+        if returncode != 0:
+            raise PhysicalTransactionError(
+                f"NLD dry run exited with code {returncode}"
+            )
+        dry_payload = _load_json(nld_dry_path)
+        if (
+            not isinstance(dry_payload, dict)
+            or dry_payload.get("measured_observation_count") != 24
+        ):
+            raise PhysicalTransactionError(
+                "NLD dry-run schedule is invalid"
+            )
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
+
+        stage = "nld_actual"
+        summary["current_stage"] = stage
+        _write_json(summary_path, summary)
+        nld_output = evidence_root / "nld-actual.json"
+        nld_command = _nld_command(
+            output_path=nld_output,
+            run=True,
+        )
+        summary["nld_command"] = nld_command
+        returncode = _run_probe_command(
+            nld_command,
+            repo_root=repo_root,
+            stdout_path=evidence_root / "nld-actual.stdout.txt",
+            stderr_path=evidence_root / "nld-actual.stderr.txt",
+            timeout_seconds=timeout_seconds,
+        )
+        summary["nld_returncode"] = returncode
+        if returncode != 0:
+            raise PhysicalTransactionError(
+                f"NLD actual run exited with code {returncode}"
+            )
+        nld_payload = _load_json(nld_output)
+        summary["nld"] = validate_nld_payload(nld_payload)
+        summary["gpu_memory_used_mib_after_nld_exit"] = (
+            _gpu_memory_used_mib()
+        )
+        _complete_stage(summary, stage)
+        _write_json(summary_path, summary)
