@@ -780,6 +780,8 @@ cat "$EVIDENCE/summary.json"
 
 `GEMMA_CRYSTALLIZATION_PASS` means a structurally valid training/induction/holdout trace was recorded. The result does not create a production Skill registry or prove neural-weight learning, universal crystallization, World truth, or Action authorization.
 
+The canonical shell launcher derives the repository root from its own path and prepends `<repo>/src` to `PYTHONPATH` so child experiment subprocesses can import the source-layout `relay_self` package without operator-side environment setup.
+
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top

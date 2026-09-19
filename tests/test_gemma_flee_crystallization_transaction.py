@@ -24,3 +24,20 @@ def test_experiment_command_uses_no_bytecode_and_artifact_output() -> None:
     assert command[command.index("--artifact-output") + 1] == (
         "/tmp/artifact.json"
     )
+
+
+def test_canonical_launcher_owns_source_layout_import_path() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    launcher = (
+        repo_root
+        / "experiments"
+        / "run_gemma_flee_crystallization_transaction.sh"
+    ).read_text(encoding="utf-8")
+
+    assert 'SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"' in launcher
+    assert 'REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"' in launcher
+    assert 'export PYTHONPATH="$REPO_ROOT/src${PYTHONPATH:+:$PYTHONPATH}"' in launcher
+    assert (
+        'exec python3 -B -m '
+        'experiments.gemma_flee_crystallization_transaction "$@"'
+    ) in launcher
