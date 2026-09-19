@@ -52,10 +52,16 @@ Current outbound primitive effects:
 - clear_controls
 - equip_item
 - consume_held
+- look
 
 Item selection and consumption are separate primitive effects. The adapter does
 not choose which food is desirable, combine the pair into EAT success, or infer
 Skill completion.
+
+`look(yaw, pitch)` is only a target-local heading primitive, using Mineflayer's
+documented radian convention. An applied look result means Mineflayer completed
+the orientation request. It does not mean movement occurred, a destination was
+reached, or FLEE succeeded.
 
 Duration, destination choice, Skill success, threat appraisal, pathfinding,
 and higher-level policy are deliberately not encoded in the adapter.
@@ -122,7 +128,7 @@ The process session:
 - launches bridge.mjs with explicit host/port/username/version arguments;
 - inherits stderr for diagnostics while reserving stdout for JSONL;
 - requires adapter_started as the first decoded message;
-- exposes explicit set_control / clear_controls / equip_item / consume_held send operations;
+- exposes explicit set_control / clear_controls / equip_item / consume_held / look send operations;
 - decodes one stdout message at a time through the same strict stream decoder;
 - treats unexpected stdout EOF as an explicit process error;
 - performs no automatic reconnect, retry, replay, or replacement launch;
@@ -212,6 +218,10 @@ Enable forward control:
 Clear all movement controls:
 
     {"type":"effect","action_id":"action-stop","effect":"clear_controls"}
+
+Change heading without destination semantics:
+
+    {"type":"effect","action_id":"action-look","effect":"look","yaw":1.5707963267948966,"pitch":0}
 
 Shutdown:
 
