@@ -307,3 +307,257 @@ def dry_run_payload(
             "cost dimensions remain separate; no weighted score is defined",
         ],
     }
+
+
+def _run_observation(
+    *,
+    torch,
+    model: object,
+    tokenizer: object,
+    prompt_ids: object,
+    case: LexicalCase,
+    mode: str,
+    seed: int,
+) -> dict[str, object]:
+    _reset_seed(torch, seed)
+    torch.cuda.reset_peak_memory_stats()
+    torch.cuda.synchronize()
+
+    started = time.perf_counter()
+    with torch.inference_mode():
+        out_ids, nfe = dispatch_generation(
+            model,
+            tokenizer,
+            prompt_ids,
+            mode=mode,
+            max_new_tokens=DEFAULT_MAX_NEW_TOKENS,
+            max_thinking_tokens=DEFAULT_MAX_THINKING_TOKENS,
+        )
+    torch.cuda.synchronize()
+    elapsed_seconds = time.perf_counter() - started
+
+    new_ids = out_ids[0, prompt_ids.shape[1] :]
+    token_ids = [
+        int(token_id)
+        for token_id in new_ids.detach().cpu().tolist()
+    ]
+    generated_text = tokenizer.decode(
+        token_ids,
+        skip_special_tokens=True,
+    )
+    parsed = parse_decision(generated_text)
+    events = decision_prefix_events(tokenizer, token_ids)
+    first_label = first_event_index(
+        events,
+        require_label=True,
+    )
+    first_explicit = first_event_index(
+        events,
+        source="explicit",
+    )
+    post_explicit_tail = (
+        len(token_ids) - first_explicit
+        if first_explicit is not None
+        else None
+    )
+
+    nfe_value = _nfe_value(nfe)
+    tokens_per_forward = None
+    if isinstance(nfe_value, (int, float)) and nfe_value > 0:
+        tokens_per_forward = len(token_ids) / float(nfe_value)
+
+    return {
+        "case_id": case.case_id,
+        "expected_label": case.expected_label,
+        "feasible_destination": case.feasible_destination,
+        "label_to_destination": case.label_to_destination,
+        "mode": mode,
+        "arguments": mode_arguments(
+            mode,
+            max_new_tokens=DEFAULT_MAX_NEW_TOKENS,
+            max_thinking_tokens=DEFAULT_MAX_THINKING_TOKENS,
+        ),
+        "elapsed_seconds": elapsed_seconds,
+        "nfe": nfe_value,
+        "generated_token_count": len(token_ids),
+        "generated_token_ids": token_ids,
+        "generated_text": generated_text,
+        "tokens_per_forward": tokens_per_forward,
+        "parsed_label": parsed.label,
+        "parse_source": parsed.source,
+        "parsed_destination": parsed_destination(case, parsed.label),
+        "decision_correct": parsed.label == case.expected_label,
+        "first_label_token_index": first_label,
+        "first_explicit_token_index": first_explicit,
+        "post_explicit_tail_tokens": post_explicit_tail,
+        "cuda_peak_allocated_bytes": int(
+            torch.cuda.max_memory_allocated()
+        ),
+    }
+
+
+def run_actual(
+    *,
+    model_id: str,
+    seed: int,
+    dtype: str,
+) -> dict[str, object]:
+    torch, transformers, AutoModel, AutoTokenizer = _import_runtime()
+    if not torch.cuda.is_available():
+        raise RuntimeError(
+            "CUDA is required for NLD adequate cost surface"
+        )
+
+    before_load = _cuda_memory_snapshot(torch)
+    load_started = time.perf_counter()
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_id,
+        trust_remote_code=True,
+    )
+    model = AutoModel.from_pretrained(
+        model_id,
+        trust_remote_code=True,
+    ).to("cuda").to(_torch_dtype(torch, dtype))
+    model.eval()
+    torch.cuda.synchronize()
+    load_elapsed_seconds = time.perf_counter() - load_started
+    after_load = _cuda_memory_snapshot(torch)
+
+    required_methods = {
+        "ar": "ar_generate",
+        "dlm": "generate",
+        "linear_spec": "linear_spec_generate",
+    }
+    availability = {
+        mode: callable(getattr(model, method_name, None))
+        for mode, method_name in required_methods.items()
+    }
+    missing = [
+        mode
+        for mode, available in availability.items()
+        if not available
+    ]
+    if missing:
+        raise RuntimeError(
+            "loaded model is missing native methods: "
+            + ", ".join(missing)
+        )
+
+    cases = {
+        case.case_id: case for case in build_cost_cases()
+    }
+    prepared = {
+        case_id: _prepare_prompt(tokenizer, model, case)
+        for case_id, case in cases.items()
+    }
+
+    warmup = []
+    warmup_case = next(iter(cases.values()))
+    _, warmup_ids = prepared[warmup_case.case_id]
+    for mode in DEFAULT_MODES:
+        row = _run_observation(
+            torch=torch,
+            model=model,
+            tokenizer=tokenizer,
+            prompt_ids=warmup_ids,
+            case=warmup_case,
+            mode=mode,
+            seed=seed,
+        )
+        row["warmup"] = True
+        warmup.append(row)
+
+    observations = []
+    for schedule_entry in build_schedule():
+        case = cases[str(schedule_entry["case_id"])]
+        _, prompt_ids = prepared[case.case_id]
+        row = _run_observation(
+            torch=torch,
+            model=model,
+            tokenizer=tokenizer,
+            prompt_ids=prompt_ids,
+            case=case,
+            mode=str(schedule_entry["mode"]),
+            seed=seed,
+        )
+        row.update(schedule_entry)
+        row["warmup"] = False
+        observations.append(row)
+
+    return {
+        "evidence_class": "actual-model adequate cost surface",
+        "model_id": model_id,
+        "cases": [asdict(case) for case in cases.values()],
+        "seed": seed,
+        "dtype": dtype,
+        "device": "cuda",
+        "torch_version": torch.__version__,
+        "transformers_version": transformers.__version__,
+        "gpu_name": torch.cuda.get_device_name(0),
+        "method_availability": availability,
+        "load_elapsed_seconds": load_elapsed_seconds,
+        "cuda_before_load": before_load,
+        "cuda_after_load": after_load,
+        "warmup": warmup,
+        "observations": observations,
+        "summary": summarize(observations),
+        "non_claims": [
+            "cost comparison is conditional on fresh matched adequacy",
+            "no weighted total cognition score is defined",
+            "explicit textual decisions are not World truth or Action authorization",
+            "this does not establish a permanent mode selector",
+        ],
+    }
+
+
+def write_payload(
+    payload: dict[str, object],
+    output: str | None,
+) -> None:
+    serialized = json.dumps(payload, indent=2, sort_keys=True)
+    if output is None:
+        print(serialized)
+        return
+    path = Path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(serialized + "\n", encoding="utf-8")
+    print(path)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Measure NLD cost surface under matched adequacy."
+    )
+    parser.add_argument("--run", action="store_true")
+    parser.add_argument("--model", default=DEFAULT_MODEL_ID)
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    parser.add_argument(
+        "--dtype",
+        choices=("bf16", "fp16", "fp32"),
+        default=DEFAULT_DTYPE,
+    )
+    parser.add_argument("--output")
+    args = parser.parse_args()
+
+    try:
+        payload = (
+            run_actual(
+                model_id=args.model,
+                seed=args.seed,
+                dtype=args.dtype,
+            )
+            if args.run
+            else dry_run_payload(
+                model_id=args.model,
+                seed=args.seed,
+                dtype=args.dtype,
+            )
+        )
+    except (RuntimeError, ValueError) as exc:
+        parser.error(str(exc))
+
+    write_payload(payload, args.output)
+
+
+if __name__ == "__main__":
+    main()
