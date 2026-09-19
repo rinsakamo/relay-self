@@ -73,13 +73,18 @@ The transaction requires exactly one served model.
 
 With the local server already running:
 
-    python -m adapters.llama_cpp.qualify_relay_engine \
+    python -B -m adapters.llama_cpp.qualify_relay_engine \
+      --repo-root . \
       --origin http://127.0.0.1:1234
+
+The qualification requires a clean RelaySelf checkout and records the exact
+Git HEAD/tree in the report. Use `-B` so the qualification process does not
+create bytecode inside the checkout.
 
 The qualification:
 
-1. records the current llama.cpp runtime identity available from those
-   endpoints;
+1. records the exact RelaySelf HEAD/tree and current llama.cpp runtime identity
+   available from those endpoints;
 2. creates a real Current Intent and active FLEE SkillExecution;
 3. constructs one provenance-bearing bounded FLEE destination request;
 4. sends it through the canonical decision-epoch coordinator and RelayEngine;
