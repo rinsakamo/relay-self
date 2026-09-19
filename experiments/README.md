@@ -534,6 +534,32 @@ cat "$EVIDENCE/summary.json"
 A `TOKEN_BUDGET_ISOLATION_PASS` means only that a structurally valid physical trace was
 recorded. `max_new_tokens` is an output-generation control, not a qualified semantic
 cognition-depth measure. Wrong or fallback decisions remain evidence.
+
+### NLD-3B native output-token trajectory
+
+`nld_native_path_trajectory.py` and its transaction implement #127.
+
+The transaction reuses the qualified #125 physical runner and records the full 72-call source trace.
+It adds per-token decoded output and parser-state observations, then analyzes the 18 observations for
+`reversed_ridge_open` at `max_new_tokens=32` across AR, dLM, and Linear Self-Speculation.
+
+The analysis reports stable sequence fingerprints, first label-bearing and explicit-decision prefixes,
+and pairwise first output-token divergence. It observes native outputs only; it does not expose hidden
+states or establish a causal internal mechanism.
+
+Canonical invocation:
+
+```bash
+EVIDENCE=/tmp/relay-self-nld-trajectory-$(date -u +%Y%m%dT%H%M%SZ)
+
+bash experiments/run_nld_native_path_trajectory_transaction.sh \
+  --evidence-root "$EVIDENCE"
+
+cat "$EVIDENCE/summary.json"
+cat "$EVIDENCE/trajectory-analysis.json"
+```
+
+`NATIVE_OUTPUT_TRAJECTORY_PASS` is a structural evidence result. Wrong decisions remain evidence.
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
