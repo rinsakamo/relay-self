@@ -18,3 +18,34 @@ export function attachInventoryUpdateListenerAfterInjection (
     bot.inventory.on('updateSlot', listener)
   })
 }
+
+export function attachHealthSynchronizedSpawnListeners (
+  bot,
+  spawnListener,
+  healthListener
+) {
+  if (!bot || typeof bot.on !== 'function') {
+    throw new TypeError('bot must expose on(event, listener)')
+  }
+  if (typeof spawnListener !== 'function') {
+    throw new TypeError('spawn listener must be a function')
+  }
+  if (typeof healthListener !== 'function') {
+    throw new TypeError('health listener must be a function')
+  }
+
+  let spawnPendingHealth = false
+
+  bot.on('spawn', () => {
+    spawnPendingHealth = true
+  })
+
+  bot.on('health', () => {
+    if (spawnPendingHealth) {
+      spawnPendingHealth = false
+      spawnListener()
+      return
+    }
+    healthListener()
+  })
+}
