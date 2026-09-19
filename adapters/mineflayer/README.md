@@ -92,6 +92,26 @@ Adapter-startup messages and ordinary move events remain outside this high-level
 decision path by default. Future concrete Skill controllers may consume movement
 feedback locally without turning every movement update into model cognition.
 
+
+## Process ownership
+
+The Python side can now own exactly one Node bridge process through an
+adapter-local asynchronous process session.
+
+The process session:
+
+- launches bridge.mjs with explicit host/port/username/version arguments;
+- inherits stderr for diagnostics while reserving stdout for JSONL;
+- requires adapter_started as the first decoded message;
+- exposes explicit set_control / clear_controls send operations;
+- decodes one stdout message at a time through the same strict stream decoder;
+- treats unexpected stdout EOF as an explicit process error;
+- performs no automatic reconnect, retry, replay, or replacement launch;
+- supports one clean shutdown request with a bounded terminate fallback.
+
+This is process lifecycle only. It does not create a runtime Scheduler, classify
+Minecraft meaning, authorize Actions, or decide when a Skill has succeeded.
+
 ## Install
 
 From this directory:
