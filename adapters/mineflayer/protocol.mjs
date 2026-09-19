@@ -8,7 +8,15 @@ const CONTROLS = new Set([
   'sneak'
 ])
 
-const EFFECTS = new Set(['set_control', 'clear_controls'])
+const EFFECTS = new Set([
+  'set_control',
+  'clear_controls',
+  'equip_item',
+  'consume_held'
+])
+
+const MAX_NEARBY_ENTITY_DISTANCE = 16
+const MAX_NEARBY_ENTITIES = 16
 
 function requireObject (name, value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
@@ -38,6 +46,13 @@ function requireText (name, value) {
 function requireFiniteNumber (name, value) {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new Error(name + ' must be a finite number')
+  }
+  return value
+}
+
+function requireNonNegativeInteger (name, value) {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(name + ' must be a non-negative integer')
   }
   return value
 }
@@ -113,8 +128,22 @@ export function parseCommand (raw) {
       })
     }
 
+    if (value.effect === 'equip_item') {
+      requireExactKeys(
+        'equip_item command',
+        value,
+        ['type', 'action_id', 'effect', 'item_name']
+      )
+      return Object.freeze({
+        type: 'effect',
+        action_id: value.action_id,
+        effect: value.effect,
+        item_name: requireText('item_name', value.item_name)
+      })
+    }
+
     requireExactKeys(
-      'clear_controls command',
+      value.effect + ' command',
       value,
       ['type', 'action_id', 'effect']
     )
@@ -133,6 +162,79 @@ export function parseCommand (raw) {
   throw new Error('unsupported command type: ' + value.type)
 }
 
+function timeSnapshot (bot) {
+  if (
+    !bot.time ||
+    !Number.isFinite(bot.time.timeOfDay) ||
+    !Number.isFinite(bot.time.day) ||
+    typeof bot.time.isDay !== 'boolean'
+  ) {
+    return null
+  }
+  return {
+    time_of_day: requireNonNegativeInteger(
+      'bot.time.timeOfDay',
+      bot.time.timeOfDay
+    ),
+    day: requireNonNegativeInteger('bot.time.day', bot.time.day),
+    is_day: bot.time.isDay
+  }
+}
+
+function inventorySnapshot (bot) {
+  if (!bot.inventory || typeof bot.inventory.items !== 'function') {
+    throw new Error('bot inventory is unavailable')
+  }
+  return bot.inventory.items()
+    .map((item) => ({
+      name: requireText('inventory item name', item.name),
+      count: requireNonNegativeInteger('inventory item count', item.count),
+      slot: requireNonNegativeInteger('inventory item slot', item.slot)
+    }))
+    .sort((a, b) => a.slot - b.slot || a.name.localeCompare(b.name))
+}
+
+function distance (a, b) {
+  const dx = a.x - b.x
+  const dy = a.y - b.y
+  const dz = a.z - b.z
+  return Math.sqrt(dx * dx + dy * dy + dz * dz)
+}
+
+function nearbyEntitySnapshot (bot) {
+  const origin = bot.entity.position
+  const entities = Object.values(bot.entities || {})
+    .filter((entity) => (
+      entity &&
+      entity.id !== bot.entity.id &&
+      entity.position &&
+      Number.isInteger(entity.id)
+    ))
+    .map((entity) => {
+      const entityDistance = distance(origin, entity.position)
+      return {
+        id: entity.id,
+        name: typeof entity.name === 'string' && entity.name.trim() !== ''
+          ? entity.name
+          : null,
+        type: typeof entity.type === 'string' && entity.type.trim() !== ''
+          ? entity.type
+          : null,
+        distance: requireFiniteNumber('entity distance', entityDistance),
+        position: {
+          x: requireFiniteNumber('entity.position.x', entity.position.x),
+          y: requireFiniteNumber('entity.position.y', entity.position.y),
+          z: requireFiniteNumber('entity.position.z', entity.position.z)
+        }
+      }
+    })
+    .filter((entity) => entity.distance <= MAX_NEARBY_ENTITY_DISTANCE)
+    .sort((a, b) => a.distance - b.distance || a.id - b.id)
+    .slice(0, MAX_NEARBY_ENTITIES)
+
+  return entities
+}
+
 export function snapshotFromBot (bot) {
   if (!bot || !bot.entity || !bot.entity.position) {
     throw new Error('bot position is unavailable before spawn')
@@ -146,7 +248,10 @@ export function snapshotFromBot (bot) {
       x: requireFiniteNumber('position.x', bot.entity.position.x),
       y: requireFiniteNumber('position.y', bot.entity.position.y),
       z: requireFiniteNumber('position.z', bot.entity.position.z)
-    }
+    },
+    time: timeSnapshot(bot),
+    inventory: inventorySnapshot(bot),
+    nearby_entities: nearbyEntitySnapshot(bot)
   }
 }
 
