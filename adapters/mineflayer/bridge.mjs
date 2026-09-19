@@ -88,6 +88,22 @@ bot.on('health', () => {
   if (spawned) emitObservation('health')
 })
 
+bot.on('time', () => {
+  if (spawned) emitObservation('time')
+})
+
+bot.inventory.on('updateSlot', () => {
+  if (spawned) emitObservation('inventory')
+})
+
+bot.on('entitySpawn', (entity) => {
+  if (spawned && entity.id !== bot.entity.id) emitObservation('entities')
+})
+
+bot.on('entityGone', (entity) => {
+  if (spawned && entity.id !== bot.entity.id) emitObservation('entities')
+})
+
 bot.on('move', () => {
   if (spawned) emitObservation('move')
 })
@@ -126,7 +142,7 @@ function emitEffectResult (command, result, error = null) {
   })
 }
 
-function handleEffect (command) {
+async function handleEffect (command) {
   if (seenActionIds.has(command.action_id)) {
     emitEffectResult(command, 'rejected', 'duplicate_action_id')
     return
@@ -147,6 +163,29 @@ function handleEffect (command) {
 
     if (command.effect === 'clear_controls') {
       bot.clearControlStates()
+      emitEffectResult(command, 'applied')
+      return
+    }
+
+    if (command.effect === 'equip_item') {
+      const item = bot.inventory.items().find(
+        (candidate) => candidate.name === command.item_name
+      )
+      if (!item) {
+        emitEffectResult(command, 'rejected', 'item_not_found')
+        return
+      }
+      await bot.equip(item, 'hand')
+      emitEffectResult(command, 'applied')
+      return
+    }
+
+    if (command.effect === 'consume_held') {
+      if (!bot.heldItem) {
+        emitEffectResult(command, 'rejected', 'no_held_item')
+        return
+      }
+      await bot.consume()
       emitEffectResult(command, 'applied')
       return
     }
@@ -191,7 +230,7 @@ async function handleLine (line) {
   }
 
   if (command.type === 'effect') {
-    handleEffect(command)
+    await handleEffect(command)
     return
   }
 
