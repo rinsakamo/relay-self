@@ -637,6 +637,28 @@ cat "$EVIDENCE/summary.json"
 
 `CROSS_SUBSTRATE_MATCHED_PASS` means both physical traces are structurally valid. Cost comparison is eligible only when both substrates are 24/24 correct with zero invalid outputs. The gate defines no weighted score or permanent substrate selector.
 
+### Gemma Skill-local narrowing cost probe
+
+#155 compares the same Gemma 4 12B Q4_K_M RelayEngine decision under two context surfaces:
+
+```text
+BROAD  = FLEE-relevant context + unrelated broad-Present facts
+NARROW = the same FLEE-relevant facts with identical values/provenance
+```
+
+The canonical transaction owns one llama.cpp server and runs 48 measured RelayEngine episodes across four FLEE cases. Explicit THINK escalation remains part of cognition cost rather than being hidden.
+
+Run:
+
+```bash
+EVIDENCE=/tmp/relay-self-gemma-narrowing-$(date -u +%Y%m%dT%H%M%SZ)
+bash experiments/run_gemma_skill_narrowing_transaction.sh \
+  --evidence-root "$EVIDENCE"
+cat "$EVIDENCE/summary.json"
+```
+
+`GEMMA_SKILL_NARROWING_PASS` means a structurally valid physical trace was recorded. Cost interpretation is eligible only when BROAD and NARROW both preserve the required useful outcomes. The probe does not by itself establish experience-dependent crystallization, a generic Focus owner, World truth, or Action authorization.
+
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
