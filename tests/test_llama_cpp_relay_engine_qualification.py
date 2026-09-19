@@ -5,7 +5,9 @@ import pytest
 from adapters.llama_cpp.qualify_relay_engine import (
     LlamaCppQualificationError,
     LlamaCppRuntimeIdentity,
+    RepositoryIdentity,
     inspect_llama_cpp_runtime,
+    inspect_repository,
     qualify_relay_engine,
 )
 from relay_self.relay_engine import (
@@ -39,6 +41,13 @@ def runtime() -> LlamaCppRuntimeIdentity:
     )
 
 
+def repository() -> RepositoryIdentity:
+    return RepositoryIdentity(
+        head="a" * 40,
+        tree="b" * 40,
+    )
+
+
 def test_qualification_accepts_expected_real_decision_semantics() -> None:
     provider = RecordingProvider(
         [ProviderDecision.resolved("cave")]
@@ -47,6 +56,7 @@ def test_qualification_accepts_expected_real_decision_semantics() -> None:
     report = qualify_relay_engine(
         RelayEngine(provider),
         runtime(),
+        repository(),
     )
 
     assert report.qualified is True
@@ -75,6 +85,7 @@ def test_qualification_records_explicit_think_when_bounded_is_unresolved() -> No
     report = qualify_relay_engine(
         RelayEngine(provider),
         runtime(),
+        repository(),
     )
 
     assert report.qualified is True
@@ -117,6 +128,31 @@ def test_qualification_rejects_final_unresolved_result() -> None:
             RelayEngine(provider),
             runtime(),
         )
+
+
+def test_repository_inspection_requires_clean_checkout(tmp_path) -> None:
+    (tmp_path / ".git").mkdir()
+    with patch(
+        "adapters.llama_cpp.qualify_relay_engine._run_git",
+        side_effect=["", "a" * 40 + "\n", "b" * 40 + "\n"],
+    ):
+        identity = inspect_repository(tmp_path)
+
+    assert identity.head == "a" * 40
+    assert identity.tree == "b" * 40
+
+
+def test_repository_inspection_rejects_dirty_checkout(tmp_path) -> None:
+    (tmp_path / ".git").mkdir()
+    with patch(
+        "adapters.llama_cpp.qualify_relay_engine._run_git",
+        return_value="?? __pycache__/\n",
+    ):
+        with pytest.raises(
+            LlamaCppQualificationError,
+            match="clean RelaySelf checkout",
+        ):
+            inspect_repository(tmp_path)
 
 
 def test_runtime_inspection_requires_one_healthy_served_model() -> None:
