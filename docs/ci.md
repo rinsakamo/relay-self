@@ -126,7 +126,7 @@ The job:
 
 - checks JavaScript syntax for the adapter protocol and bridge entry point;
 - verifies the package manifest pins Mineflayer 4.39.0 and declares Node >=22;
-- runs pure Node protocol tests for local connection arguments, bounded control/food commands, body/time/inventory/nearby-entity snapshot projection, appraisal-label exclusion, and session/sequence envelope fields.
+- runs pure Node protocol tests for local connection arguments, bounded control/food commands, body/time/inventory/nearby-entity snapshot projection, suppression of ordinary within-phase time progression from repeated time admission, appraisal-label exclusion, and session/sequence envelope fields.
 
 A green result does **not** prove:
 
