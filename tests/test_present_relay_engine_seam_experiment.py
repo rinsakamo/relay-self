@@ -117,6 +117,7 @@ def test_missing_shelter_is_missing_not_false_and_broadens_before_model() -> Non
     )
 
     assert epoch.broadened is True
+    assert epoch.reprojected is False
     assert len(provider.requests) == 1
     sent_keys = {
         datum.key for datum in provider.requests[0].context
@@ -127,7 +128,7 @@ def test_missing_shelter_is_missing_not_false_and_broadens_before_model() -> Non
     assert epoch.effective.fact("shelter:ridge").value is False
 
 
-def test_broadening_rejects_different_source_revision() -> None:
+def test_stale_local_projection_is_reprojected_before_model() -> None:
     commitment = _commit()
     broad = build_model_reference_present(
         intent_commitment=commitment,
@@ -137,24 +138,27 @@ def test_broadening_rejects_different_source_revision() -> None:
         intent_commitment=commitment,
         source_revision=1,
     )
-    misleading = narrow_for_flee(
-        old,
-        include_shelter_status=False,
-    )
+    stale_local = narrow_for_flee(old)
     provider = RecordingProvider(
         [ProviderDecision.resolved("cave")]
     )
 
-    with pytest.raises(ValueError, match="source revision"):
-        run_flee_present_relay_epoch(
-            engine=RelayEngine(provider),
-            broad=broad,
-            local=misleading,
-            current_source_revision=2,
-            intent_commitment=commitment,
-        )
+    epoch = run_flee_present_relay_epoch(
+        engine=RelayEngine(provider),
+        broad=broad,
+        local=stale_local,
+        current_source_revision=2,
+        intent_commitment=commitment,
+    )
 
-    assert provider.requests == []
+    assert epoch.reprojected is True
+    assert epoch.broadened is False
+    assert len(provider.requests) == 1
+    assert all(
+        ":2:" in datum.provenance.reference
+        or datum.provenance.source == "fixture.memory"
+        for datum in provider.requests[0].context
+    )
 
 
 def test_resolved_model_binding_starts_existing_skill_execution() -> None:
@@ -170,6 +174,7 @@ def test_resolved_model_binding_starts_existing_skill_execution() -> None:
     assert epoch.execution.intent_id == "intent-reach-safety"
     assert epoch.execution.state is SkillState.STARTED
     assert epoch.broadened is False
+    assert epoch.reprojected is False
     assert provider.modes == [CognitionMode.BOUNDED]
 
 
