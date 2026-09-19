@@ -620,6 +620,23 @@ cat "$EVIDENCE/summary.json"
 `cost_comparison_eligible=true` additionally requires every mode to remain 24/24 correct with no
 invalid outputs on the fresh matched subject. The experiment does not establish a permanent mode
 selector, weighted cognition score, World truth, or Action authorization.
+### NLD Linear-SS vs Gemma Q4 matched comparison
+
+#143 compares the four matched #133 color cases across NLD Linear Self-Speculation and the pinned local Gemma 4 12B Q4_K_M llama.cpp substrate.
+
+The transaction runs the substrates sequentially so they do not share GPU residency. Each receives one excluded warm-up and 24 measured calls.
+
+Run:
+
+```bash
+EVIDENCE=/tmp/relay-self-nld-gemma-$(date -u +%Y%m%dT%H%M%SZ)
+bash experiments/run_nld_gemma_cross_substrate_transaction.sh \
+  --evidence-root "$EVIDENCE"
+cat "$EVIDENCE/summary.json"
+```
+
+`CROSS_SUBSTRATE_MATCHED_PASS` means both physical traces are structurally valid. Cost comparison is eligible only when both substrates are 24/24 correct with zero invalid outputs. The gate defines no weighted score or permanent substrate selector.
+
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
