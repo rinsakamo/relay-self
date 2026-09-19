@@ -49,6 +49,53 @@ class LlamaCppProviderProtocolError(LlamaCppProviderError):
     """Raised when provider/model output violates the declared wire contract."""
 
 
+def _decision_response_format(
+    request: BoundedChoiceRequest,
+    *,
+    mode: CognitionMode,
+) -> dict[str, object]:
+    choice_ids = [choice.choice_id for choice in request.choices]
+    properties: dict[str, object] = {
+        "status": {
+            "type": "string",
+            "enum": [
+                DecisionStatus.RESOLVED.value,
+                DecisionStatus.UNRESOLVED.value,
+            ],
+        },
+        "choice_id": {
+            "anyOf": [
+                {"type": "string", "enum": choice_ids},
+                {"type": "null"},
+            ]
+        },
+    }
+    required = ["status", "choice_id"]
+    schema_name = "relay_self_bounded_decision"
+
+    if mode is CognitionMode.THINK:
+        properties["rationale"] = {
+            "type": "string",
+            "minLength": 1,
+        }
+        required.append("rationale")
+        schema_name = "relay_self_think_decision"
+
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": schema_name,
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": properties,
+                "required": required,
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
 def render_llama_cpp_request(
     request: BoundedChoiceRequest,
     *,
@@ -103,7 +150,7 @@ def render_llama_cpp_request(
         "max_tokens": max_tokens,
         "reasoning_effort": "none",
         "cache_prompt": False,
-        "response_format": {"type": "json_object"},
+        "response_format": _decision_response_format(request, mode=mode),
         "messages": [
             {"role": "system", "content": system},
             {
