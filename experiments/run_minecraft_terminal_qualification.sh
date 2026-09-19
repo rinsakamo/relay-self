@@ -121,9 +121,9 @@ capture_authority() {
         >"$target/issue-$issue_number.json"; then
       return 1
     fi
-    if ! gh api --paginate --slurp \
+    if ! gh api --paginate --jq '.[]' \
         "repos/rinsakamo/relay-self/issues/$issue_number/comments" \
-        >"$target/issue-$issue_number-comments.json"; then
+        >"$target/issue-$issue_number-comments.jsonl"; then
       return 1
     fi
   done
@@ -146,6 +146,14 @@ combined_path = Path(sys.argv[7])
 
 def load(name):
     return json.loads((target / name).read_text(encoding="utf-8"))
+
+def load_comments(number):
+    path = target / f"issue-{number}-comments.jsonl"
+    return [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
 
 tracked = subprocess.run(
     ["git", "-C", str(repo), "ls-files", ".ai/README.md", "docs"],
@@ -176,7 +184,7 @@ authority = {
     "issues": {
         str(number): {
             "issue": load(f"issue-{number}.json"),
-            "comments": load(f"issue-{number}-comments.json"),
+            "comments": load_comments(number),
         }
         for number in (136, 138, 140, 141)
     },
