@@ -560,6 +560,38 @@ cat "$EVIDENCE/trajectory-analysis.json"
 ```
 
 `NATIVE_OUTPUT_TRAJECTORY_PASS` is a structural evidence result. Wrong decisions remain evidence.
+
+### NLD-3B lexical remapping generalization
+
+`nld_lexical_remapping_generalization.py` and its transaction implement #131.
+
+The gate keeps the same bounded `FLEE(destination=...)` / route-open logic while replacing only
+the destination-name family:
+
+```text
+route: cave / ridge
+color: amber / cobalt
+code: item-17 / item-42
+```
+
+Each family uses the same 2x2 mapping/feasibility surface. Across 12 cases, all six native-mode
+order permutations are measured once, yielding 216 measured calls and six observations per
+case/mode cell.
+
+Canonical invocation:
+
+```bash
+EVIDENCE=/tmp/relay-self-nld-lexical-$(date -u +%Y%m%dT%H%M%SZ)
+
+bash experiments/run_nld_lexical_remapping_generalization_transaction.sh \
+  --evidence-root "$EVIDENCE"
+
+cat "$EVIDENCE/summary.json"
+```
+
+`LEXICAL_GENERALIZATION_PASS` means only that a structurally valid physical trace was recorded.
+Wrong decisions remain evidence. The gate tests one checkpoint's lexical generalization and does
+not establish a product ranking, hidden causal mechanism, or cross-model generalization.
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
