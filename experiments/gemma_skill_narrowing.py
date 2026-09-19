@@ -175,3 +175,176 @@ def build_request(
         ),
         context=context,
     )
+
+
+def build_schedule() -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    observation_index = 0
+    for case in CASES:
+        for permutation_index, order in enumerate(ORDER_SCHEDULE):
+            for order_index, condition in enumerate(order):
+                rows.append(
+                    {
+                        "observation_index": observation_index,
+                        "case_id": case.case_id,
+                        "expected_choice_id": case.expected_choice_id,
+                        "permutation_index": permutation_index,
+                        "order_index": order_index,
+                        "condition": condition,
+                    }
+                )
+                observation_index += 1
+    return rows
+
+
+def _canonical_json(value: object) -> str:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _sha256_json(value: object) -> str:
+    return hashlib.sha256(
+        _canonical_json(value).encode("utf-8")
+    ).hexdigest()
+
+
+def _post_json(
+    endpoint: str,
+    payload: dict[str, object],
+    *,
+    timeout: float,
+) -> dict[str, object]:
+    request = urllib.request.Request(
+        endpoint,
+        data=_canonical_json(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(
+            request,
+            timeout=timeout,
+        ) as response:
+            body = json.loads(response.read().decode("utf-8"))
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise RuntimeError(
+            f"llama.cpp request failed: {type(exc).__name__}: {exc}"
+        ) from exc
+    if not isinstance(body, dict):
+        raise RuntimeError("llama.cpp response must be a JSON object")
+    return body
+
+
+def _response_content(body: dict[str, object]) -> str:
+    choices = body.get("choices")
+    if not isinstance(choices, list) or len(choices) != 1:
+        raise RuntimeError("llama.cpp response requires exactly one choice")
+    choice = choices[0]
+    if not isinstance(choice, dict):
+        raise RuntimeError("llama.cpp choice must be an object")
+    message = choice.get("message")
+    if not isinstance(message, dict):
+        raise RuntimeError("llama.cpp choice message is missing")
+    content = message.get("content")
+    if not isinstance(content, str):
+        raise RuntimeError("llama.cpp response content must be text")
+    return content
+
+
+def _usage_int(
+    body: dict[str, object],
+    key: str,
+) -> int | None:
+    usage = body.get("usage")
+    if not isinstance(usage, dict):
+        return None
+    value = usage.get(key)
+    return value if isinstance(value, int) else None
+
+
+class ObservedLlamaCppProvider:
+    def __init__(
+        self,
+        *,
+        endpoint: str,
+        model: str,
+        timeout: float,
+    ) -> None:
+        self.endpoint = endpoint
+        self.model = model
+        self.timeout = timeout
+        self.records: list[dict[str, object]] = []
+
+    def clear_records(self) -> None:
+        self.records.clear()
+
+    def __call__(
+        self,
+        request: BoundedChoiceRequest,
+        *,
+        mode: CognitionMode,
+    ) -> ProviderDecision:
+        request_body = render_llama_cpp_request(
+            request,
+            mode=mode,
+            model=self.model,
+        )
+        encoded = _canonical_json(request_body).encode("utf-8")
+        started = time.perf_counter()
+        response_body = _post_json(
+            self.endpoint,
+            request_body,
+            timeout=self.timeout,
+        )
+        elapsed_seconds = time.perf_counter() - started
+        raw_text = _response_content(response_body)
+        decision = parse_llama_cpp_decision(
+            raw_text,
+            mode=mode,
+        )
+        choices = response_body.get("choices")
+        finish_reason = None
+        if (
+            isinstance(choices, list)
+            and choices
+            and isinstance(choices[0], dict)
+        ):
+            finish_reason = choices[0].get("finish_reason")
+
+        self.records.append(
+            {
+                "mode": mode.value,
+                "elapsed_seconds": elapsed_seconds,
+                "request_json_bytes": len(encoded),
+                "request_hash": _sha256_json(request_body),
+                "response_hash": _sha256_json(response_body),
+                "prompt_tokens": _usage_int(
+                    response_body,
+                    "prompt_tokens",
+                ),
+                "completion_tokens": _usage_int(
+                    response_body,
+                    "completion_tokens",
+                ),
+                "raw_text": raw_text,
+                "provider_status": decision.status.value,
+                "provider_choice_id": decision.choice_id,
+                "provider_reason": decision.reason,
+                "finish_reason": finish_reason,
+                "usage": response_body.get("usage"),
+                "timings": response_body.get("timings"),
+            }
+        )
+        return decision
