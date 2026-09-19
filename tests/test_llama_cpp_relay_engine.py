@@ -98,7 +98,19 @@ def test_bounded_request_preserves_finite_choices_and_provenance() -> None:
     assert payload["max_tokens"] == 48
     assert payload["reasoning_effort"] == "none"
     assert payload["cache_prompt"] is False
-    assert payload["response_format"] == {"type": "json_object"}
+    response_format = payload["response_format"]
+    assert response_format["type"] == "json_schema"
+    structured = response_format["json_schema"]
+    assert structured["name"] == "relay_self_bounded_decision"
+    assert structured["strict"] is True
+    schema = structured["schema"]
+    assert schema["additionalProperties"] is False
+    assert schema["required"] == ["status", "choice_id"]
+    assert schema["properties"]["status"]["enum"] == ["resolved", "unresolved"]
+    assert schema["properties"]["choice_id"]["anyOf"] == [
+        {"type": "string", "enum": ["cave", "ridge"]},
+        {"type": "null"},
+    ]
 
     user = json.loads(payload["messages"][1]["content"])
     assert user["request_id"] == "flee-destination"
@@ -127,7 +139,22 @@ def test_think_request_is_explicit_and_has_larger_budget() -> None:
 
     assert payload["max_tokens"] == 256
     assert payload["reasoning_effort"] == "none"
-    assert payload["response_format"] == {"type": "json_object"}
+    response_format = payload["response_format"]
+    assert response_format["type"] == "json_schema"
+    structured = response_format["json_schema"]
+    assert structured["name"] == "relay_self_think_decision"
+    assert structured["strict"] is True
+    schema = structured["schema"]
+    assert schema["additionalProperties"] is False
+    assert schema["required"] == ["status", "choice_id", "rationale"]
+    assert schema["properties"]["choice_id"]["anyOf"] == [
+        {"type": "string", "enum": ["cave", "ridge"]},
+        {"type": "null"},
+    ]
+    assert schema["properties"]["rationale"] == {
+        "type": "string",
+        "minLength": 1,
+    }
     assert "explicit THINK escalation" in payload["messages"][0]["content"]
     assert "rationale" in payload["messages"][0]["content"]
 
