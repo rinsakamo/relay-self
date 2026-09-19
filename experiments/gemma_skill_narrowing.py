@@ -551,7 +551,150 @@ def summarize(
         and by_condition[condition].get("final_unresolved_count") == 0
         for condition in CONDITIONS
     )
+    by_case_condition = {
+        case.case_id: {
+            condition: _condition_summary(
+                [
+                    row
+                    for row in observations
+                    if row.get("case_id") == case.case_id
+                    and row.get("condition") == condition
+                ]
+            )
+            for condition in CONDITIONS
+        }
+        for case in CASES
+    }
     return {
         "by_condition": by_condition,
+        "by_case_condition": by_case_condition,
         "cost_comparison_eligible": eligible,
     }
+
+
+def dry_run_payload() -> dict[str, object]:
+    return {
+        "evidence_class": "gemma skill narrowing plan only",
+        "conditions": list(CONDITIONS),
+        "cases": [
+            {
+                "case_id": case.case_id,
+                "expected_choice_id": case.expected_choice_id,
+            }
+            for case in CASES
+        ],
+        "schedule": build_schedule(),
+        "measured_episode_count": 48,
+        "observations_per_case_condition": 6,
+        "excluded_warmups": [
+            CognitionMode.BOUNDED.value,
+            CognitionMode.THINK.value,
+        ],
+        "broad_distractor_count": len(BROAD_DISTRACTORS),
+        "non_claims": [
+            "narrowing evidence is not experience-dependent crystallization",
+            "lower cognition cost does not authorize an Action",
+        ],
+    }
+
+
+def run_actual(
+    *,
+    endpoint: str,
+    model: str,
+    timeout: float,
+) -> dict[str, object]:
+    provider = ObservedLlamaCppProvider(
+        endpoint=endpoint,
+        model=model,
+        timeout=timeout,
+    )
+    warmup_request = build_request(CASES[0], condition="narrow")
+    warmups: list[dict[str, object]] = []
+    for mode in (CognitionMode.BOUNDED, CognitionMode.THINK):
+        provider.clear_records()
+        provider(warmup_request, mode=mode)
+        warmups.extend(
+            {
+                **record,
+                "warmup": True,
+            }
+            for record in provider.records
+        )
+
+    cases = {case.case_id: case for case in CASES}
+    observations: list[dict[str, object]] = []
+    for schedule_row in build_schedule():
+        case = cases[str(schedule_row["case_id"])]
+        episode = run_episode(
+            provider=provider,
+            case=case,
+            condition=str(schedule_row["condition"]),
+        )
+        episode.update(schedule_row)
+        observations.append(episode)
+
+    return {
+        "evidence_class": "actual-model gemma skill narrowing",
+        "endpoint": endpoint,
+        "model": model,
+        "warmups": warmups,
+        "observations": observations,
+        "summary": summarize(observations),
+    }
+
+
+def write_payload(
+    payload: dict[str, object],
+    output: str | None,
+) -> None:
+    serialized = json.dumps(
+        payload,
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    )
+    if output is None:
+        print(serialized)
+        return
+    path = Path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(serialized + "\n", encoding="utf-8")
+    print(path)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Measure Gemma cognition cost under FLEE context narrowing."
+    )
+    parser.add_argument("--run", action="store_true")
+    parser.add_argument(
+        "--endpoint",
+        default="http://127.0.0.1:1234/v1/chat/completions",
+    )
+    parser.add_argument("--model", default="gemma-local")
+    parser.add_argument("--timeout", type=float, default=600.0)
+    parser.add_argument("--output")
+    args = parser.parse_args()
+
+    if args.timeout <= 0:
+        parser.error("--timeout must be positive")
+
+    try:
+        payload = (
+            run_actual(
+                endpoint=args.endpoint,
+                model=args.model,
+                timeout=args.timeout,
+            )
+            if args.run
+            else dry_run_payload()
+        )
+    except (RuntimeError, ValueError) as exc:
+        parser.error(str(exc))
+
+    write_payload(payload, args.output)
+
+
+if __name__ == "__main__":
+    main()
