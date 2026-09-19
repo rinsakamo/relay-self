@@ -103,6 +103,7 @@ def render_llama_cpp_request(
         "max_tokens": max_tokens,
         "reasoning_effort": "none",
         "cache_prompt": False,
+        "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": system},
             {

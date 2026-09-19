@@ -98,6 +98,7 @@ def test_bounded_request_preserves_finite_choices_and_provenance() -> None:
     assert payload["max_tokens"] == 48
     assert payload["reasoning_effort"] == "none"
     assert payload["cache_prompt"] is False
+    assert payload["response_format"] == {"type": "json_object"}
 
     user = json.loads(payload["messages"][1]["content"])
     assert user["request_id"] == "flee-destination"
@@ -126,6 +127,7 @@ def test_think_request_is_explicit_and_has_larger_budget() -> None:
 
     assert payload["max_tokens"] == 256
     assert payload["reasoning_effort"] == "none"
+    assert payload["response_format"] == {"type": "json_object"}
     assert "explicit THINK escalation" in payload["messages"][0]["content"]
     assert "rationale" in payload["messages"][0]["content"]
 
@@ -151,6 +153,19 @@ def test_bounded_parser_accepts_only_exact_schema() -> None:
     ):
         parse_llama_cpp_decision(
             '{"status":"resolved","choice_id":"cave","extra":1}',
+            mode=CognitionMode.BOUNDED,
+        )
+
+
+def test_parser_still_rejects_markdown_fenced_json() -> None:
+    with pytest.raises(
+        LlamaCppProviderProtocolError,
+        match="not valid JSON",
+    ):
+        parse_llama_cpp_decision(
+            "```json\n"
+            '{"status":"resolved","choice_id":"cave"}'
+            "\n```",
             mode=CognitionMode.BOUNDED,
         )
 
