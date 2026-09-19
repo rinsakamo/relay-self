@@ -3,6 +3,9 @@ import { createRequire } from 'node:module'
 import readline from 'node:readline'
 
 import {
+  attachInventoryUpdateListenerAfterInjection
+} from './bridge_hooks.mjs'
+import {
   makeEnvelope,
   parseArgs,
   parseCommand,
@@ -110,7 +113,7 @@ bot.on('time', () => {
   emitObservation('time')
 })
 
-bot.inventory.on('updateSlot', () => {
+attachInventoryUpdateListenerAfterInjection(bot, () => {
   if (spawned) emitObservation('inventory')
 })
 
