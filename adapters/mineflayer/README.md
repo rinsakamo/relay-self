@@ -174,7 +174,7 @@ actual session:
       -> set_control(forward=true)
       -> Mineflayer effect_result(applied)
       -> Action OUTCOME
-      -> actual position delta >= 0.05 blocks
+      -> post-ack horizontal position delta >= 0.05 blocks
       -> separately supervised clear_controls Action
       -> Mineflayer effect_result(applied)
       -> second Action OUTCOME
