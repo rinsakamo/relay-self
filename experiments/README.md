@@ -620,6 +620,12 @@ cat "$EVIDENCE/summary.json"
 `cost_comparison_eligible=true` additionally requires every mode to remain 24/24 correct with no
 invalid outputs on the fresh matched subject. The experiment does not establish a permanent mode
 selector, weighted cognition score, World truth, or Action authorization.
+### NLD Linear-SS vs Gemma Q4 matched comparison
+
+#143 compares the four matched #133 color cases across NLD Linear Self-Speculation and the pinned local Gemma 4 12B Q4_K_M llama.cpp substrate.
+
+The transaction runs the substrates sequentially so they do not share GPU residency. Each receives one excluded warm-up and 24 measured calls.
+
 ## DiffusionGemma bounded-decision probe
 
 `diffusiongemma_bounded_decision.py` is the first actual-model probe for #101, built on top
