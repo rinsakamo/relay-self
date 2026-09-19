@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from relay_self.mineflayer_adapter import (
+from adapters.mineflayer.python_protocol import (
     MINEFLAYER_PROVENANCE_SOURCE,
     MINEFLAYER_VERSION,
     MineflayerAdapterProtocolError,
