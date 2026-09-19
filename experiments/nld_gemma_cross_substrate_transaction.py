@@ -403,3 +403,31 @@ def _fully_adequate(summary: object) -> bool:
         and summary.get("correct_count") == 24
         and summary.get("invalid_output_count") == 0
     )
+
+
+def _nld_command(
+    *,
+    output_path: Path,
+    run: bool,
+) -> list[str]:
+    command = [
+        sys.executable,
+        "-B",
+        "-m",
+        "experiments.nld_linear_spec_matched",
+    ]
+    if run:
+        command.append("--run")
+    command.extend(
+        [
+            "--model",
+            DEFAULT_MODEL_ID,
+            "--dtype",
+            "bf16",
+            "--seed",
+            "1",
+            "--output",
+            str(output_path),
+        ]
+    )
+    return command
