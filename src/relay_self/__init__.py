@@ -41,6 +41,12 @@ from relay_self.persistent_cognition import (
     save_persistent_cognition,
 )
 from relay_self.provenance import InvalidProvenanceData, Provenance
+from relay_self.runtime_coordination import (
+    CognitionUnavailable,
+    DecisionEpochResult,
+    RuntimeCoordinationError,
+    coordinate_decision_epoch,
+)
 from relay_self.skill import (
     SKILL_TERMINAL_STATES,
     InvalidSkillData,
@@ -59,6 +65,8 @@ __all__ = [
     "ActionSupervisionError",
     "ActionSupervisor",
     "CurrentIntent",
+    "CognitionUnavailable",
+    "DecisionEpochResult",
     "DuplicateIntentIdentity",
     "DuplicateMemoryIdentity",
     "DuplicateSupervisedAction",
@@ -85,6 +93,7 @@ __all__ = [
     "PersistentCognitionWriteError",
     "Provenance",
     "ReconsiderationDecision",
+    "RuntimeCoordinationError",
     "SKILL_TERMINAL_STATES",
     "SkillEvent",
     "SkillExecution",
@@ -95,4 +104,5 @@ __all__ = [
     "UnsupportedPersistentCognitionVersion",
     "load_persistent_cognition",
     "save_persistent_cognition",
+    "coordinate_decision_epoch",
 ]
