@@ -24,6 +24,7 @@ from relay_self.relay_engine import (
 
 SOURCE = "gemma-flee-crystallization"
 ARTIFACT_ALGORITHM = "greedy_lexicographic_ablation_v1"
+METADATA_BLINDING = "opaque_case_metadata_v1"
 CONDITIONS = ("before", "after")
 ORDER_SCHEDULE = (
     ("before", "after"),
@@ -38,6 +39,54 @@ class CrystallizationArtifact:
     retained_context_keys: tuple[str, ...]
     removed_context_keys: tuple[str, ...]
     training_request_hashes: tuple[str, ...]
+
+
+def _opaque_request(
+    base: BoundedChoiceRequest,
+    *,
+    phase: str,
+    case_index: int,
+    values: tuple[object, ...] | None = None,
+) -> BoundedChoiceRequest:
+    if values is not None and len(values) != len(base.context):
+        raise ValueError("opaque request values must match context length")
+    context = tuple(
+        CognitionDatum.from_value(
+            datum.key,
+            (
+                values[datum_index]
+                if values is not None
+                else json.loads(datum.value_json)
+            ),
+            Provenance(
+                source=SOURCE,
+                reference=(
+                    f"{phase}:{case_index:02d}:datum:{datum_index:02d}"
+                ),
+            ),
+        )
+        for datum_index, datum in enumerate(base.context)
+    )
+    return BoundedChoiceRequest(
+        request_id=f"crystallization:{phase}:{case_index:02d}",
+        instruction=base.instruction,
+        intent_id=base.intent_id,
+        focus=base.focus,
+        choices=base.choices,
+        context=context,
+    )
+
+
+def build_training_broad_request(
+    case,
+    *,
+    case_index: int,
+) -> BoundedChoiceRequest:
+    return _opaque_request(
+        build_request(case, condition="broad"),
+        phase="train",
+        case_index=case_index,
+    )
 
 
 def _holdout_value(
@@ -71,28 +120,19 @@ def _holdout_value(
 
 def build_holdout_broad_request(case, *, case_index: int) -> BoundedChoiceRequest:
     base = build_request(case, condition="broad")
-    context = tuple(
-        CognitionDatum.from_value(
+    values = tuple(
+        _holdout_value(
             datum.key,
-            _holdout_value(
-                datum.key,
-                json.loads(datum.value_json),
-                case_index=case_index,
-            ),
-            Provenance(
-                source=SOURCE,
-                reference=f"holdout:{case.case_id}:{datum.key}",
-            ),
+            json.loads(datum.value_json),
+            case_index=case_index,
         )
         for datum in base.context
     )
-    return BoundedChoiceRequest(
-        request_id=f"crystallization:holdout:{case.case_id}",
-        instruction=base.instruction,
-        intent_id=base.intent_id,
-        focus=base.focus,
-        choices=base.choices,
-        context=context,
+    return _opaque_request(
+        base,
+        phase="eval",
+        case_index=case_index,
+        values=values,
     )
 
 
@@ -261,8 +301,11 @@ def induce_artifact(
     provider: ObservedLlamaCppProvider,
 ) -> dict[str, object]:
     training_requests = {
-        case.case_id: build_request(case, condition="broad")
-        for case in CASES
+        case.case_id: build_training_broad_request(
+            case,
+            case_index=case_index,
+        )
+        for case_index, case in enumerate(CASES)
     }
     expected_key_sets = {
         tuple(sorted(datum.key for datum in request.context))
@@ -478,13 +521,18 @@ def run_holdout(
 
 
 def dry_run_payload() -> dict[str, object]:
-    training_request = build_request(CASES[0], condition="broad")
+    training_request = build_training_broad_request(
+        CASES[0],
+        case_index=0,
+    )
     candidate_keys = tuple(
         sorted(datum.key for datum in training_request.context)
     )
     return {
         "evidence_class": "gemma flee crystallization plan only",
         "artifact_algorithm": ARTIFACT_ALGORITHM,
+        "metadata_blinding": METADATA_BLINDING,
+        "provider_visible_semantic_case_ids": False,
         "candidate_keys": list(candidate_keys),
         "candidate_key_count": len(candidate_keys),
         "training_case_count": len(CASES),
@@ -518,7 +566,10 @@ def run_actual(
         model=model,
         timeout=timeout,
     )
-    warmup_request = build_request(CASES[0], condition="broad")
+    warmup_request = build_training_broad_request(
+        CASES[0],
+        case_index=0,
+    )
     warmups: list[dict[str, object]] = []
     for mode in (CognitionMode.BOUNDED, CognitionMode.THINK):
         provider.clear_records()
@@ -560,6 +611,8 @@ def run_actual(
         "evidence_class": "actual-model gemma flee crystallization",
         "endpoint": endpoint,
         "model": model,
+        "metadata_blinding": METADATA_BLINDING,
+        "provider_visible_semantic_case_ids": False,
         "warmups": warmups,
         "induction": induction,
         "holdout": holdout,
