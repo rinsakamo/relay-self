@@ -114,7 +114,7 @@ The workflow pins the pytest tool version used by this gate. That pin is CI tool
 
 Guarantee:
 
-> The exact checked-out `src/`, `tests/`, `experiments/`, and adapter-local Python surface satisfies the configured Ruff mechanical checks.
+> The exact checked-out `src/`, `tests/`, `experiments/`, adapter-local Python, and `observability/` surfaces satisfy the configured Ruff mechanical checks.
 
 The configured rule set is intentionally narrow: syntax/pycodestyle error classes, Pyflakes correctness checks, and import ordering.
 
