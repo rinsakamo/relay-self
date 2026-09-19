@@ -127,6 +127,7 @@ def test_think_request_is_explicit_and_has_larger_budget() -> None:
 
     assert payload["max_tokens"] == 256
     assert payload["reasoning_effort"] == "none"
+    assert payload["response_format"] == {"type": "json_object"}
     assert "explicit THINK escalation" in payload["messages"][0]["content"]
     assert "rationale" in payload["messages"][0]["content"]
 
@@ -162,7 +163,9 @@ def test_parser_still_rejects_markdown_fenced_json() -> None:
         match="not valid JSON",
     ):
         parse_llama_cpp_decision(
-            '~~~json\n{"status":"resolved","choice_id":"cave"}\n~~~'.replace("~", "`"),
+            "```json\n"
+            '{"status":"resolved","choice_id":"cave"}'
+            "\n```",
             mode=CognitionMode.BOUNDED,
         )
 
