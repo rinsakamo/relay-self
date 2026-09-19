@@ -372,3 +372,292 @@ def induce_artifact(
             ),
         },
     }
+
+
+def build_holdout_schedule() -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    observation_index = 0
+    for case in CASES:
+        for permutation_index, order in enumerate(ORDER_SCHEDULE):
+            for order_index, condition in enumerate(order):
+                rows.append(
+                    {
+                        "observation_index": observation_index,
+                        "case_id": case.case_id,
+                        "expected_choice_id": case.expected_choice_id,
+                        "permutation_index": permutation_index,
+                        "order_index": order_index,
+                        "condition": condition,
+                    }
+                )
+                observation_index += 1
+    return rows
+
+
+def run_holdout(
+    *,
+    provider: ObservedLlamaCppProvider,
+    retained_keys: tuple[str, ...],
+) -> dict[str, object]:
+    case_index = {
+        case.case_id: index
+        for index, case in enumerate(CASES)
+    }
+    broad_requests = {
+        case.case_id: build_holdout_broad_request(
+            case,
+            case_index=case_index[case.case_id],
+        )
+        for case in CASES
+    }
+    cases = {case.case_id: case for case in CASES}
+
+    observations: list[dict[str, object]] = []
+    for schedule_row in build_holdout_schedule():
+        case = cases[str(schedule_row["case_id"])]
+        condition = str(schedule_row["condition"])
+        broad = broad_requests[case.case_id]
+        request = (
+            broad
+            if condition == "before"
+            else filter_request(
+                broad,
+                retained_keys=retained_keys,
+            )
+        )
+        row = run_request_episode(
+            provider=provider,
+            request=request,
+            expected_choice_id=case.expected_choice_id,
+            case_id=case.case_id,
+            phase=f"holdout:{condition}",
+        )
+        row["condition"] = condition
+        row.update(schedule_row)
+        observations.append(row)
+
+    by_condition = {
+        condition: _condition_summary(
+            [
+                row
+                for row in observations
+                if row.get("condition") == condition
+            ]
+        )
+        for condition in CONDITIONS
+    }
+    by_case_condition = {
+        case.case_id: {
+            condition: _condition_summary(
+                [
+                    row
+                    for row in observations
+                    if row.get("case_id") == case.case_id
+                    and row.get("condition") == condition
+                ]
+            )
+            for condition in CONDITIONS
+        }
+        for case in CASES
+    }
+    eligible = all(
+        by_condition[condition].get("count") == 24
+        and by_condition[condition].get("correct_count") == 24
+        and by_condition[condition].get("final_unresolved_count") == 0
+        for condition in CONDITIONS
+    )
+    return {
+        "observations": observations,
+        "summary": {
+            "by_condition": by_condition,
+            "by_case_condition": by_case_condition,
+            "future_cost_comparison_eligible": eligible,
+        },
+    }
+
+
+def dry_run_payload() -> dict[str, object]:
+    training_request = build_request(CASES[0], condition="broad")
+    candidate_keys = tuple(
+        sorted(datum.key for datum in training_request.context)
+    )
+    return {
+        "evidence_class": "gemma flee crystallization plan only",
+        "artifact_algorithm": ARTIFACT_ALGORITHM,
+        "candidate_keys": list(candidate_keys),
+        "candidate_key_count": len(candidate_keys),
+        "training_case_count": len(CASES),
+        "ordinary_training_episode_count": len(CASES),
+        "maximum_ablation_episode_count": (
+            len(candidate_keys) * len(CASES)
+        ),
+        "holdout_schedule": build_holdout_schedule(),
+        "holdout_measured_episode_count": 48,
+        "holdout_observations_per_case_condition": 6,
+        "excluded_warmups": [
+            CognitionMode.BOUNDED.value,
+            CognitionMode.THINK.value,
+        ],
+        "non_claims": [
+            "artifact induction is experiment-local, not a production Skill registry",
+            "experience-dependent artifact induction is not neural weight learning",
+            "model output is not World truth or Action authorization",
+        ],
+    }
+
+
+def run_actual(
+    *,
+    endpoint: str,
+    model: str,
+    timeout: float,
+) -> dict[str, object]:
+    provider = ObservedLlamaCppProvider(
+        endpoint=endpoint,
+        model=model,
+        timeout=timeout,
+    )
+    warmup_request = build_request(CASES[0], condition="broad")
+    warmups: list[dict[str, object]] = []
+    for mode in (CognitionMode.BOUNDED, CognitionMode.THINK):
+        provider.clear_records()
+        provider(warmup_request, mode=mode)
+        warmups.extend(
+            {
+                **record,
+                "warmup": True,
+            }
+            for record in provider.records
+        )
+
+    induction = induce_artifact(provider=provider)
+    artifact = induction["artifact"]
+    if not isinstance(artifact, dict):
+        raise RuntimeError("artifact induction did not return an artifact")
+    retained_raw = artifact.get("retained_context_keys")
+    if not isinstance(retained_raw, list) or not all(
+        isinstance(key, str) for key in retained_raw
+    ):
+        raise RuntimeError(
+            "artifact retained_context_keys is invalid"
+        )
+    retained_keys = tuple(retained_raw)
+    holdout = run_holdout(
+        provider=provider,
+        retained_keys=retained_keys,
+    )
+
+    removed_raw = artifact.get("removed_context_keys")
+    removed_count = (
+        len(removed_raw) if isinstance(removed_raw, list) else 0
+    )
+    holdout_summary = holdout["summary"]
+    if not isinstance(holdout_summary, dict):
+        raise RuntimeError("holdout summary is invalid")
+
+    return {
+        "evidence_class": "actual-model gemma flee crystallization",
+        "endpoint": endpoint,
+        "model": model,
+        "warmups": warmups,
+        "induction": induction,
+        "holdout": holdout,
+        "summary": {
+            "artifact_induction_qualified": induction.get(
+                "baseline_qualified"
+            ),
+            "retained_context_key_count": len(retained_keys),
+            "removed_context_key_count": removed_count,
+            "future_cost_comparison_eligible": holdout_summary.get(
+                "future_cost_comparison_eligible"
+            ),
+        },
+    }
+
+
+def write_payload(
+    payload: dict[str, object],
+    output: str | None,
+    artifact_output: str | None,
+) -> None:
+    serialized = json.dumps(
+        payload,
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    )
+    if output is None:
+        print(serialized)
+    else:
+        path = Path(output)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(serialized + "\n", encoding="utf-8")
+        print(path)
+
+    if artifact_output is not None:
+        induction = payload.get("induction")
+        artifact = (
+            induction.get("artifact")
+            if isinstance(induction, dict)
+            else None
+        )
+        if not isinstance(artifact, dict):
+            raise RuntimeError(
+                "artifact output requested but no artifact exists"
+            )
+        artifact_path = Path(artifact_output)
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_text(
+            json.dumps(
+                artifact,
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Induce and evaluate one experience-dependent FLEE "
+            "context crystallization artifact."
+        )
+    )
+    parser.add_argument("--run", action="store_true")
+    parser.add_argument(
+        "--endpoint",
+        default="http://127.0.0.1:1234/v1/chat/completions",
+    )
+    parser.add_argument("--model", default="gemma-local")
+    parser.add_argument("--timeout", type=float, default=600.0)
+    parser.add_argument("--output")
+    parser.add_argument("--artifact-output")
+    args = parser.parse_args()
+
+    if args.timeout <= 0:
+        parser.error("--timeout must be positive")
+
+    try:
+        payload = (
+            run_actual(
+                endpoint=args.endpoint,
+                model=args.model,
+                timeout=args.timeout,
+            )
+            if args.run
+            else dry_run_payload()
+        )
+        write_payload(
+            payload,
+            args.output,
+            args.artifact_output,
+        )
+    except (RuntimeError, ValueError) as exc:
+        parser.error(str(exc))
+
+
+if __name__ == "__main__":
+    main()
