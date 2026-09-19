@@ -55,7 +55,7 @@ export function attachBodySynchronizedSpawnListeners (
   bot.on('spawn', () => {
     spawnPendingBody = true
     healthSynchronized = false
-    oxygenSynchronized = false
+    oxygenSynchronized = Number.isFinite(bot.oxygenLevel)
   })
 
   bot.on('health', () => {
