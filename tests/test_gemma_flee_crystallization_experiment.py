@@ -1,3 +1,5 @@
+import json
+
 from experiments.gemma_flee_crystallization import (
     ARTIFACT_ALGORITHM,
     build_holdout_broad_request,
@@ -105,7 +107,7 @@ def test_protocol_failure_writer_preserves_record(tmp_path) -> None:
 
     write_protocol_failure(record, str(output))
 
-    payload = __import__("json").loads(output.read_text(encoding="utf-8"))
+    payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["evidence_class"] == (
         "llama.cpp provider protocol failure"
     )
