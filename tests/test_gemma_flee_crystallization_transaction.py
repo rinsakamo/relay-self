@@ -41,3 +41,18 @@ def test_canonical_launcher_owns_source_layout_import_path() -> None:
         'exec python3 -B -m '
         'experiments.gemma_flee_crystallization_transaction "$@"'
     ) in launcher
+
+
+def test_experiment_command_writes_protocol_failure_artifact() -> None:
+    command = _experiment_command(
+        endpoint="http://127.0.0.1:1234/v1/chat/completions",
+        model="gemma-local",
+        timeout=60.0,
+        output_path=Path("/tmp/result.json"),
+        artifact_output_path=Path("/tmp/artifact.json"),
+        run=True,
+        protocol_failure_output_path=Path("/tmp/protocol-failure.json"),
+    )
+
+    flag_index = command.index("--protocol-failure-output")
+    assert command[flag_index + 1] == "/tmp/protocol-failure.json"
