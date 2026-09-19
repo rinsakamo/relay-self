@@ -138,7 +138,7 @@ The job:
 
 - checks JavaScript syntax for the adapter protocol and bridge entry point;
 - verifies the package manifest pins Mineflayer 4.39.0 and declares Node >=22;
-- runs pure Node protocol/runtime-hook tests for local connection arguments, bounded control/heading/food commands, body/time/inventory/nearby-entity snapshot projection, suppression of ordinary within-phase time progression from repeated time admission, appraisal-label exclusion, session/sequence envelope fields, deferred inventory-listener attachment after Mineflayer internal plugin injection, and first-spawn observation deferral until Mineflayer has initialized health/food and oxygen while preserving fail-closed snapshot validation.
+- runs pure Node protocol/runtime-hook tests for local connection arguments, bounded control/heading/food commands, body/time/inventory/nearby-entity snapshot projection, suppression of ordinary within-phase time progression from repeated time admission, appraisal-label exclusion, session/sequence envelope fields, deferred inventory-listener attachment after Mineflayer internal plugin injection, first-spawn observation deferral until Mineflayer has initialized health/food, explicit null representation for oxygen not yet reported by Mineflayer, and fail-closed rejection of malformed non-null oxygen values.
 
 A green result does **not** prove:
 

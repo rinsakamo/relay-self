@@ -279,12 +279,35 @@ test('snapshot still fails closed when health is not initialized', () => {
   )
 })
 
-test('snapshot still fails closed when oxygen is not initialized', () => {
+test('snapshot represents unobserved oxygen as null', () => {
+  const snapshot = snapshotFromBot({
+    health: 20,
+    food: 20,
+    oxygenLevel: undefined,
+    time: {
+      timeOfDay: null,
+      day: null,
+      isDay: null
+    },
+    entity: {
+      id: 1,
+      position: { x: 0, y: 64, z: 0 }
+    },
+    inventory: {
+      items: () => []
+    },
+    entities: {}
+  })
+
+  assert.equal(snapshot.oxygen_level, null)
+})
+
+test('snapshot still fails closed for malformed observed oxygen', () => {
   assert.throws(
     () => snapshotFromBot({
       health: 20,
       food: 20,
-      oxygenLevel: undefined,
+      oxygenLevel: Number.NaN,
       time: {
         timeOfDay: null,
         day: null,

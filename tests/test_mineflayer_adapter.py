@@ -49,6 +49,7 @@ def observation_line(
     seq: int = 1,
     kind: str = "health",
     time: object = ...,
+    oxygen_level: object = 20,
 ) -> str:
     time_value = (
         {"time_of_day": 13000, "day": 2, "is_day": False}
@@ -64,7 +65,7 @@ def observation_line(
             "snapshot": {
                 "health": 12,
                 "food": 7,
-                "oxygen_level": 20,
+                "oxygen_level": oxygen_level,
                 "position": {"x": 1.5, "y": 64, "z": -2.25},
                 "time": time_value,
                 "inventory": [
@@ -136,6 +137,23 @@ def test_snapshot_allows_time_to_be_null_before_server_time_sync() -> None:
 
     assert isinstance(observation, MineflayerObservation)
     assert observation.snapshot.time is None
+
+
+def test_snapshot_allows_unobserved_oxygen_to_be_null() -> None:
+    observation = parse_mineflayer_line(observation_line(oxygen_level=None))
+
+    assert isinstance(observation, MineflayerObservation)
+    assert observation.snapshot.oxygen_level is None
+
+
+def test_snapshot_rejects_malformed_non_null_oxygen() -> None:
+    with pytest.raises(
+        MineflayerAdapterProtocolError,
+        match="oxygen_level must be a finite number",
+    ):
+        parse_mineflayer_line(observation_line(oxygen_level="unknown"))
+
+
 
 
 def test_stream_rejects_non_started_first_message_without_consuming_sequence() -> None:

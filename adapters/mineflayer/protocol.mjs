@@ -51,6 +51,12 @@ function requireFiniteNumber (name, value) {
   return value
 }
 
+function optionalFiniteNumber (name, value) {
+  if (value === undefined || value === null) return null
+  return requireFiniteNumber(name, value)
+}
+
+
 function requireNonNegativeInteger (name, value) {
   if (!Number.isInteger(value) || value < 0) {
     throw new Error(name + ' must be a non-negative integer')
@@ -273,7 +279,7 @@ export function snapshotFromBot (bot) {
   return {
     health: requireFiniteNumber('bot.health', bot.health),
     food: requireFiniteNumber('bot.food', bot.food),
-    oxygen_level: requireFiniteNumber('bot.oxygenLevel', bot.oxygenLevel),
+    oxygen_level: optionalFiniteNumber('bot.oxygenLevel', bot.oxygenLevel),
     position: {
       x: requireFiniteNumber('position.x', bot.entity.position.x),
       y: requireFiniteNumber('position.y', bot.entity.position.y),

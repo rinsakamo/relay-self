@@ -136,7 +136,7 @@ class MineflayerEntityFact:
 class MineflayerSnapshot:
     health: float
     food: float
-    oxygen_level: float
+    oxygen_level: float | None
     position: MineflayerPosition
     time: MineflayerTime | None
     inventory: tuple[MineflayerInventoryItem, ...]
@@ -145,7 +145,8 @@ class MineflayerSnapshot:
     def __post_init__(self) -> None:
         _require_non_negative_number("health", self.health)
         _require_non_negative_number("food", self.food)
-        _require_non_negative_number("oxygen_level", self.oxygen_level)
+        if self.oxygen_level is not None:
+            _require_non_negative_number("oxygen_level", self.oxygen_level)
         if not isinstance(self.position, MineflayerPosition):
             raise MineflayerAdapterProtocolError(
                 "snapshot position must be MineflayerPosition"
@@ -611,9 +612,13 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
     return MineflayerSnapshot(
         health=_decoded_non_negative_number("health", payload["health"]),
         food=_decoded_non_negative_number("food", payload["food"]),
-        oxygen_level=_decoded_non_negative_number(
-            "oxygen_level",
-            payload["oxygen_level"],
+        oxygen_level=(
+            None
+            if payload["oxygen_level"] is None
+            else _decoded_non_negative_number(
+                "oxygen_level",
+                payload["oxygen_level"],
+            )
         ),
         position=position,
         time=time,
