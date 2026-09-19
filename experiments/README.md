@@ -55,6 +55,48 @@ The harness is deterministic/fake-session testable and is intended to become
 part of the final #141 external transaction after restart/Memory integration is
 added. It is not by itself Minecraft external qualification.
 
+## Controlled Minecraft restart / Memory transaction
+
+`controlled_minecraft_restart.py` is Stage C of #158. It adds no automatic
+learning path.
+
+A completed controlled FLEE Skill remains transient until a caller explicitly
+invokes the integration function:
+
+~~~text
+observed FLEE progress
+  -> SkillExecution SUCCEEDED
+  != Memory
+
+explicit retain_successful_flee_memory(...)
+  -> Memory(
+       source_provenance = successful consequence observation,
+       integration_provenance = explicit integration event
+     )
+~~~
+
+The transaction then reuses the existing Persistent Cognition file boundary:
+
+~~~text
+Persistent Cognition before
+  -> explicit Memory retention
+  -> save_persistent_cognition(...)
+  -> load_persistent_cognition(...)
+  -> same IdentitySpecification + retained Memory
+  -> later fresh Mineflayer observation
+     + retained Memory as prior experience
+  -> controlled FLEE destination cognition
+~~~
+
+The retained Memory payload identifies itself as `Memory` and preserves the
+original Mineflayer source provenance. Current Mineflayer evidence is supplied
+through separate cognition data with the later session provenance, so restart
+does not promote remembered experience into fresh World truth.
+
+The transaction also emits the existing read-only human activity summary over
+the first run and before/after Persistent Cognition delta. The rendered summary
+is presentation only and is not used as the Memory source.
+
 ## Evolved-value experiments
 
 The evolved-value experiments preserve the causal separation relevant to RelaySelf:
