@@ -24,6 +24,9 @@ Current inbound observations:
 
 - spawn
 - health
+- time
+- inventory
+- entities
 - move
 - forcedMove
 - death
@@ -31,13 +34,28 @@ Current inbound observations:
 - connection end
 - adapter/command errors
 
-Each ordinary observation carries the current Mineflayer health, food,
-oxygenLevel, and bot position.
+Each ordinary observation carries a bounded survival snapshot:
+
+- health, food, oxygen level, and position;
+- time-of-day/day/is-day when Mineflayer has received server time;
+- inventory item name/count/slot facts;
+- up to 16 nearest entity facts within 16 blocks: id, name, Mineflayer type,
+  distance, and position.
+
+Entity facts deliberately contain no `hostile`, `danger`, `fear`, or
+equivalent appraisal label. Those are Self-side interpretations, not target
+facts.
 
 Current outbound primitive effects:
 
 - set_control
 - clear_controls
+- equip_item
+- consume_held
+
+Item selection and consumption are separate primitive effects. The adapter does
+not choose which food is desirable, combine the pair into EAT success, or infer
+Skill completion.
 
 Duration, destination choice, Skill success, threat appraisal, pathfinding,
 and higher-level policy are deliberately not encoded in the adapter.
@@ -71,7 +89,8 @@ The adapter-local Python runtime seam admits only the first message classes that
 have a concrete reason to wake high-level Self coordination:
 
 - effect_result: always material because it closes one supervised primitive Action
-- spawn / health / forcedMove / death / respawn: material body/session observations
+- spawn / health / time / inventory / entities / forcedMove / death / respawn:
+  material body/session/survival observations
 - move: not automatically admitted because it is a high-frequency controller signal
 
 An admitted message enters the existing RelaySelf decision-epoch coordinator;
@@ -103,7 +122,7 @@ The process session:
 - launches bridge.mjs with explicit host/port/username/version arguments;
 - inherits stderr for diagnostics while reserving stdout for JSONL;
 - requires adapter_started as the first decoded message;
-- exposes explicit set_control / clear_controls send operations;
+- exposes explicit set_control / clear_controls / equip_item / consume_held send operations;
 - decodes one stdout message at a time through the same strict stream decoder;
 - treats unexpected stdout EOF as an explicit process error;
 - performs no automatic reconnect, retry, replay, or replacement launch;
