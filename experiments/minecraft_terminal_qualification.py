@@ -296,7 +296,7 @@ def parse_properties(path: Path) -> dict[str, str]:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, value = line.split("=", 1)
-        result[key] = value
+        result[key] = value.replace("\\:", ":")
     return result
 
 
