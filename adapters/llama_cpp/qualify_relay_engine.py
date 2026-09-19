@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 from adapters.llama_cpp.relay_engine import LlamaCppRelayProvider
 from relay_self.action_supervision import ActionSupervisor
@@ -30,6 +32,12 @@ class LlamaCppQualificationError(RuntimeError):
 
 
 @dataclass(frozen=True, slots=True)
+class RepositoryIdentity:
+    head: str
+    tree: str
+
+
+@dataclass(frozen=True, slots=True)
 class LlamaCppRuntimeIdentity:
     origin: str
     health_status: str
@@ -43,6 +51,7 @@ class LlamaCppRuntimeIdentity:
 @dataclass(frozen=True, slots=True)
 class RelayEngineQualificationReport:
     evidence_class: str
+    repository: RepositoryIdentity
     runtime: LlamaCppRuntimeIdentity
     request_id: str
     final_status: str
@@ -127,6 +136,7 @@ def build_reference_request() -> BoundedChoiceRequest:
 def qualify_relay_engine(
     engine: RelayEngine,
     runtime: LlamaCppRuntimeIdentity,
+    repository: RepositoryIdentity,
 ) -> RelayEngineQualificationReport:
     """Run one model-facing FLEE parameter decision through canonical owners."""
 
@@ -185,6 +195,7 @@ def qualify_relay_engine(
 
     return RelayEngineQualificationReport(
         evidence_class="model_or_system_quality",
+        repository=repository,
         runtime=runtime,
         request_id=request.request_id,
         final_status=result.status.value,
@@ -205,6 +216,42 @@ def qualify_relay_engine(
         open_action_count=len(supervisor.open_actions),
         qualified=True,
     )
+
+
+def inspect_repository(repo_root: str | Path) -> RepositoryIdentity:
+    root = Path(repo_root).expanduser().resolve()
+    if not (root / ".git").exists():
+        raise LlamaCppQualificationError(
+            f"repo_root is not a git checkout: {root}"
+        )
+    status = _run_git(root, "status", "--porcelain")
+    if status.strip():
+        raise LlamaCppQualificationError(
+            "live model qualification requires a clean RelaySelf checkout"
+        )
+    head = _run_git(root, "rev-parse", "HEAD").strip()
+    tree = _run_git(root, "rev-parse", "HEAD^{tree}").strip()
+    return RepositoryIdentity(head=head, tree=tree)
+
+
+def _run_git(root: Path, *args: str) -> str:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(root), *args],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except OSError as exc:
+        raise LlamaCppQualificationError(
+            f"git command could not start: {type(exc).__name__}: {exc}"
+        ) from exc
+    if completed.returncode != 0:
+        detail = completed.stderr.strip() or completed.stdout.strip()
+        raise LlamaCppQualificationError(
+            f"git command failed ({completed.returncode}): {detail}"
+        )
+    return completed.stdout
 
 
 def inspect_llama_cpp_runtime(
@@ -261,7 +308,9 @@ def run_live_qualification(
     *,
     origin: str = "http://127.0.0.1:1234",
     timeout: float = 60.0,
+    repo_root: str | Path = ".",
 ) -> RelayEngineQualificationReport:
+    repository = inspect_repository(repo_root)
     runtime = inspect_llama_cpp_runtime(
         origin=origin,
         timeout=timeout,
@@ -274,6 +323,7 @@ def run_live_qualification(
     return qualify_relay_engine(
         RelayEngine(provider),
         runtime,
+        repository,
     )
 
 
@@ -338,6 +388,7 @@ def _parser() -> argparse.ArgumentParser:
         default="http://127.0.0.1:1234",
     )
     parser.add_argument("--timeout", type=float, default=60.0)
+    parser.add_argument("--repo-root", default=".")
     return parser
 
 
@@ -346,6 +397,7 @@ def main() -> int:
     report = run_live_qualification(
         origin=args.origin,
         timeout=args.timeout,
+        repo_root=args.repo_root,
     )
     print(
         json.dumps(
