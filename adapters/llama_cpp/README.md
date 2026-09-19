@@ -49,12 +49,14 @@ or:
 
     {"status":"unresolved","choice_id":null,"rationale":"..."}
 
-Malformed model content is canonicalized to cognitive UNRESOLVED so the core
-RelayEngine can explicitly escalate from BOUNDED to THINK.
+A valid model response may explicitly return cognitive UNRESOLVED, which allows
+the core RelayEngine to escalate from BOUNDED to THINK when the caller permits
+it.
 
-Transport failure, invalid HTTP response envelopes, and unavailable llama.cpp
-are operational provider failures. They are not relabelled as cognitive
-uncertainty and are not retried automatically.
+Malformed model content, schema-invalid output, non-stop completion, transport
+failure, invalid HTTP response envelopes, and unavailable llama.cpp are
+operational/provider-protocol failures. They are not relabelled as cognitive
+uncertainty and do not trigger automatic THINK or retry.
 
 A resolved choice still does not authorize an Action, mutate Current Intent or
 SkillExecution, establish World truth, or become durable cognition.
@@ -71,15 +73,19 @@ requires a running llama.cpp server that exposes:
 
 The transaction requires exactly one served model.
 
-With the local server already running:
+With the local server already running, use the source-checkout launcher:
 
-    python -B -m adapters.llama_cpp.qualify_relay_engine \
+    bash adapters/llama_cpp/run_relay_engine_qualification.sh \
       --repo-root . \
       --origin http://127.0.0.1:1234
 
+The launcher derives the repository root from its own path, owns the `src/`
+Python import path, changes to the repository root for the top-level
+`adapters` namespace, and executes the canonical module with bytecode
+disabled. No operator-side `PYTHONPATH` setup is required.
+
 The qualification requires a clean RelaySelf checkout and records the exact
-Git HEAD/tree in the report. Use `-B` so the qualification process does not
-create bytecode inside the checkout.
+Git HEAD/tree in the report.
 
 The qualification:
 
