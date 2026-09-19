@@ -25,7 +25,7 @@ _OBSERVATION_KINDS = frozenset(
     }
 )
 _EFFECTS = frozenset(
-    {"set_control", "clear_controls", "equip_item", "consume_held"}
+    {"set_control", "clear_controls", "equip_item", "consume_held", "look"}
 )
 _EFFECT_RESULTS = frozenset({"applied", "rejected"})
 _CONTROLS = frozenset(
@@ -524,6 +524,26 @@ def encode_consume_held(action_id: str) -> str:
             "type": "effect",
             "action_id": action_id,
             "effect": "consume_held",
+        }
+    )
+
+
+def encode_look(
+    action_id: str,
+    *,
+    yaw: float,
+    pitch: float,
+) -> str:
+    _require_text("action_id", action_id)
+    _require_number("yaw", yaw)
+    _require_number("pitch", pitch)
+    return _encode_command(
+        {
+            "type": "effect",
+            "action_id": action_id,
+            "effect": "look",
+            "yaw": yaw,
+            "pitch": pitch,
         }
     )
 
