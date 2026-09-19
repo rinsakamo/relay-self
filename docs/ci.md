@@ -28,7 +28,7 @@ Source files can prove the first. Workflow-run evidence can prove the second. Th
 
 ## Current source-defined deterministic jobs
 
-RelaySelf currently defines three deterministic CI jobs.
+RelaySelf currently defines four deterministic CI jobs.
 
 ### `CI / repository-contracts`
 
@@ -59,6 +59,7 @@ The current suite includes direct verification of:
 - the bounded lifecycle-linearity regressions, including that a successful Skill or Action transition advances only its same-root lineage after the next snapshot validates, predecessor snapshots cannot create sibling branches, a stale `STARTED` Skill snapshot cannot seed a supported Action proposal, failed transition validation does not consume the current snapshot, and independently created roots with the same textual identity are deliberately not claimed to be globally canonicalized.
 - the minimum Persistent Cognition restart slice, including validated `IdentitySpecification` and `Memory` values, separate source/integration provenance on retained Memory, immutable explicit retention, duplicate-memory rejection, versioned JSON save/load round-trip, and fail-closed handling of unsupported versions, unknown fields, missing files, and corrupt JSON.
 - the minimal admitted decision-epoch coordinator, including Action Supervision before caller-owned decision work, deterministic no-cognition completion, exactly-once invocation of a supplied RelayEngine seam for an opaque unresolved request, explicit failure when cognition is requested without an engine, preservation of already-committed supervision outcomes across later cognition failure, and return of the next owner-local Action deadline without creating a clock owner.
+- the first Mineflayer product-adapter decoder surface, including exact-version startup validation, target-local session/sequence continuity, provenance references, strict observation/effect-result schemas, closed locomotion command encoding, and rejection of injected or unsupported adapter fields.
 
 The Skill-to-Action proposal tests establish the supported proposal-admission relation:
 
@@ -96,6 +97,7 @@ A green result does **not** prove:
 - that Skill failure should always trigger Current Intent reconsideration;
 - that an external authority identity is legitimate merely because it was recorded;
 - model quality, simulation behavior, environment correctness, or physical execution;
+- live Mineflayer/Minecraft connectivity merely because the Python decoder or Node protocol tests are green;
 - package installation or minimum-supported Python/dependency floors.
 
 The workflow pins the pytest tool version used by this gate. That pin is CI tooling, not a supported runtime dependency floor.
@@ -111,6 +113,28 @@ The configured rule set is intentionally narrow: syntax/pycodestyle error classe
 A green result does **not** prove architectural correctness, type safety, runtime behavior, formatting uniformity outside the configured rules, or lint cleanliness of unrelated repository tooling.
 
 The workflow pins the Ruff tool version used by this gate. That pin is CI tooling, not a supported runtime dependency floor.
+
+### `CI / mineflayer-adapter`
+
+Guarantee:
+
+> The exact checked-out source head passes the first target-local Mineflayer adapter syntax and pure protocol tests under Node 22.
+
+The job:
+
+- checks JavaScript syntax for the adapter protocol and bridge entry point;
+- verifies the package manifest pins Mineflayer 4.39.0 and declares Node >=22;
+- runs pure Node protocol tests for local connection arguments, bounded control commands, body/position snapshot projection, and session/sequence envelope fields.
+
+A green result does **not** prove:
+
+- that the Mineflayer npm dependency can be installed in the target deployment;
+- that a Minecraft server connection succeeds;
+- that a control-state acknowledgement means movement or Skill success;
+- inventory, eating, entity-threat, day/night, reconnect, or authenticated-account support;
+- live external qualification of the adapter.
+
+This job intentionally does not install Mineflayer or contact a Minecraft server; those are external qualification concerns for the concrete adapter.
 
 ## Live merge enforcement
 
