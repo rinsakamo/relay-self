@@ -303,3 +303,103 @@ def run_gemma_calls(
             token_key="completion_token_count",
         ),
     }
+
+
+def _validate_rows(
+    rows: object,
+    *,
+    subject: str,
+) -> list[dict[str, object]]:
+    if not isinstance(rows, list) or len(rows) != 24:
+        count = len(rows) if isinstance(rows, list) else "non-list"
+        raise PhysicalTransactionError(
+            f"{subject} expected 24 observations; found {count}"
+        )
+    case_ids = {case.case_id for case in build_cost_cases()}
+    counts: dict[str, int] = {case_id: 0 for case_id in case_ids}
+    for item in rows:
+        if not isinstance(item, dict):
+            raise PhysicalTransactionError(
+                f"{subject} observation must be an object"
+            )
+        case_id = item.get("case_id")
+        if case_id not in case_ids:
+            raise PhysicalTransactionError(
+                f"{subject} has unexpected case {case_id!r}"
+            )
+        counts[str(case_id)] += 1
+        if not isinstance(item.get("elapsed_seconds"), (int, float)):
+            raise PhysicalTransactionError(
+                f"{subject} observation has no latency"
+            )
+    if any(count != 6 for count in counts.values()):
+        raise PhysicalTransactionError(
+            f"{subject} does not contain six observations per case"
+        )
+    return rows
+
+
+def validate_nld_payload(payload: object) -> dict[str, object]:
+    if not isinstance(payload, dict):
+        raise PhysicalTransactionError(
+            "NLD evidence must be a JSON object"
+        )
+    if payload.get("evidence_class") != (
+        "actual-model nld linear-spec matched comparison"
+    ):
+        raise PhysicalTransactionError(
+            "NLD evidence class is incorrect"
+        )
+    if payload.get("mode") != "linear_spec":
+        raise PhysicalTransactionError(
+            "NLD comparison must use Linear Self-Speculation"
+        )
+    rows = _validate_rows(
+        payload.get("observations"),
+        subject="NLD",
+    )
+    summary = payload.get("summary")
+    if not isinstance(summary, dict):
+        raise PhysicalTransactionError("NLD summary is missing")
+    return {
+        "model_id": payload.get("model_id"),
+        "load_elapsed_seconds": payload.get("load_elapsed_seconds"),
+        "cuda_before_load": payload.get("cuda_before_load"),
+        "cuda_after_load": payload.get("cuda_after_load"),
+        "measured_observation_count": len(rows),
+        "summary": summary,
+    }
+
+
+def validate_gemma_payload(payload: object) -> dict[str, object]:
+    if not isinstance(payload, dict):
+        raise PhysicalTransactionError(
+            "Gemma evidence must be a JSON object"
+        )
+    if payload.get("evidence_class") != (
+        "actual-model gemma llama-cpp matched comparison"
+    ):
+        raise PhysicalTransactionError(
+            "Gemma evidence class is incorrect"
+        )
+    rows = _validate_rows(
+        payload.get("observations"),
+        subject="Gemma",
+    )
+    summary = payload.get("summary")
+    if not isinstance(summary, dict):
+        raise PhysicalTransactionError("Gemma summary is missing")
+    return {
+        "model": payload.get("model"),
+        "measured_observation_count": len(rows),
+        "summary": summary,
+    }
+
+
+def _fully_adequate(summary: object) -> bool:
+    return (
+        isinstance(summary, dict)
+        and summary.get("count") == 24
+        and summary.get("correct_count") == 24
+        and summary.get("invalid_output_count") == 0
+    )
