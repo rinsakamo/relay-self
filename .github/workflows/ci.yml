@@ -90,4 +90,27 @@ jobs:
         run: python -m pip install --disable-pip-version-check "ruff==0.16.7"
 
       - name: Run lint
-        run: ruff check src tests experiments
+        run: ruff check src tests experiments adapters
+
+  mineflayer-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out exact transaction head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact head
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      - name: Verify Mineflayer adapter protocol
+        run: npm run check --prefix adapters/mineflayer
