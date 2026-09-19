@@ -76,6 +76,14 @@ therefore attaches its inventory `updateSlot` listener only after Mineflayer's
 still come from Mineflayer's player inventory surface and are emitted only after
 the bot has spawned.
 
+Mineflayer 4.39.0 also emits its first `spawn` event from the initial
+`update_health` packet before the same packet's ordinary health listener assigns
+`bot.health` and `bot.food`. Because RelaySelf's survival snapshot remains
+strict about finite body/resource values, the bridge records spawn as pending
+and emits the first `spawn` observation only on the immediately following
+Mineflayer `health` event, after those fields are initialized. Later health
+events remain ordinary `health` observations.
+
 ## Transport
 
 The adapter reserves stdout for one JSON object per line. Diagnostics go to
