@@ -1,8 +1,8 @@
 from experiments.nld_gemma_cross_substrate_transaction import (
     GEMMA_MAX_TOKENS,
     GEMMA_SEED,
-    _gemma_request_body,
     _fully_adequate,
+    _gemma_request_body,
 )
 
 
