@@ -12,7 +12,8 @@ const EFFECTS = new Set([
   'set_control',
   'clear_controls',
   'equip_item',
-  'consume_held'
+  'consume_held',
+  'look'
 ])
 
 const MAX_NEARBY_ENTITY_DISTANCE = 16
@@ -139,6 +140,21 @@ export function parseCommand (raw) {
         action_id: value.action_id,
         effect: value.effect,
         item_name: requireText('item_name', value.item_name)
+      })
+    }
+
+    if (value.effect === 'look') {
+      requireExactKeys(
+        'look command',
+        value,
+        ['type', 'action_id', 'effect', 'yaw', 'pitch']
+      )
+      return Object.freeze({
+        type: 'effect',
+        action_id: value.action_id,
+        effect: value.effect,
+        yaw: requireFiniteNumber('yaw', value.yaw),
+        pitch: requireFiniteNumber('pitch', value.pitch)
       })
     }
 
