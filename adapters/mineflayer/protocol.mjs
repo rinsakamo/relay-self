@@ -162,6 +162,20 @@ export function parseCommand (raw) {
   throw new Error('unsupported command type: ' + value.type)
 }
 
+export function shouldEmitTimeObservation (
+  previousDay,
+  previousIsDay,
+  time
+) {
+  if (
+    !time ||
+    !Number.isFinite(time.day) ||
+    typeof time.isDay !== 'boolean'
+  ) return false
+
+  return time.day !== previousDay || time.isDay !== previousIsDay
+}
+
 function timeSnapshot (bot) {
   if (
     !bot.time ||
