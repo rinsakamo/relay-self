@@ -340,7 +340,6 @@ class ObservedLlamaCppProvider:
             timeout=self.timeout,
         )
         elapsed_seconds = time.perf_counter() - started
-        raw_text = _response_content(response_body)
         choices = response_body.get("choices")
         finish_reason = None
         if (
@@ -368,13 +367,14 @@ class ObservedLlamaCppProvider:
                 response_body,
                 "completion_tokens",
             ),
-            "raw_text": raw_text,
             "reasoning_content": _response_reasoning_content(response_body),
             "finish_reason": finish_reason,
             "usage": response_body.get("usage"),
             "timings": response_body.get("timings"),
         }
         try:
+            raw_text = _response_content(response_body)
+            record["raw_text"] = raw_text
             decision = parse_llama_cpp_decision(
                 raw_text,
                 mode=mode,
@@ -382,6 +382,7 @@ class ObservedLlamaCppProvider:
         except RuntimeError as exc:
             failure_record = {
                 **record,
+                "raw_text": record.get("raw_text"),
                 "provider_status": None,
                 "provider_choice_id": None,
                 "provider_reason": None,
