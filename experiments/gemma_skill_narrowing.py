@@ -14,6 +14,7 @@ from adapters.llama_cpp.relay_engine import (
     parse_llama_cpp_decision,
     render_llama_cpp_request,
 )
+from experiments.nld_tri_mode_repeatability import _numeric_summary
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     BoundedChoice,
@@ -24,7 +25,6 @@ from relay_self.relay_engine import (
     ProviderDecision,
     RelayEngine,
 )
-from experiments.nld_tri_mode_repeatability import _numeric_summary
 
 SOURCE = "gemma-skill-narrowing"
 CONDITIONS = ("broad", "narrow")
