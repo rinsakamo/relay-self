@@ -160,7 +160,7 @@ def build_request(
         else relevant_context(case)
     )
     return BoundedChoiceRequest(
-        request_id=f"skill-narrowing:{case.case_id}:{condition}",
+        request_id=f"skill-narrowing:{case.case_id}",
         instruction=(
             "Choose the safer currently reachable destination for the active "
             "FLEE skill. A destination is admissible only when route_open is "
@@ -348,3 +348,210 @@ class ObservedLlamaCppProvider:
             }
         )
         return decision
+
+
+def _sum_numeric(
+    records: list[dict[str, object]],
+    key: str,
+) -> int | float | None:
+    values = [
+        record[key]
+        for record in records
+        if isinstance(record.get(key), (int, float))
+    ]
+    if len(values) != len(records):
+        return None
+    return sum(values)
+
+
+def run_episode(
+    *,
+    provider: ObservedLlamaCppProvider,
+    case: NarrowingCase,
+    condition: str,
+) -> dict[str, object]:
+    request = build_request(case, condition=condition)
+    provider.clear_records()
+    result = RelayEngine(provider)(request)
+    records = [dict(record) for record in provider.records]
+    correct = (
+        result.status is DecisionStatus.RESOLVED
+        and result.choice_id == case.expected_choice_id
+    )
+    inadmissible = any(
+        "inadmissible" in attempt.reason
+        for attempt in result.attempts
+    )
+    bounded_record = next(
+        (
+            record
+            for record in records
+            if record.get("mode") == CognitionMode.BOUNDED.value
+        ),
+        None,
+    )
+    think_record = next(
+        (
+            record
+            for record in records
+            if record.get("mode") == CognitionMode.THINK.value
+        ),
+        None,
+    )
+    return {
+        "case_id": case.case_id,
+        "condition": condition,
+        "expected_choice_id": case.expected_choice_id,
+        "context_datum_count": len(request.context),
+        "final_status": result.status.value,
+        "final_choice_id": result.choice_id,
+        "decision_correct": correct,
+        "escalated": result.escalated,
+        "inadmissible_attempt": inadmissible,
+        "model_call_count": len(records),
+        "total_model_latency_seconds": _sum_numeric(
+            records,
+            "elapsed_seconds",
+        ),
+        "total_prompt_tokens": _sum_numeric(
+            records,
+            "prompt_tokens",
+        ),
+        "total_completion_tokens": _sum_numeric(
+            records,
+            "completion_tokens",
+        ),
+        "total_request_json_bytes": _sum_numeric(
+            records,
+            "request_json_bytes",
+        ),
+        "bounded_latency_seconds": (
+            bounded_record.get("elapsed_seconds")
+            if isinstance(bounded_record, dict)
+            else None
+        ),
+        "think_latency_seconds": (
+            think_record.get("elapsed_seconds")
+            if isinstance(think_record, dict)
+            else None
+        ),
+        "attempts": [
+            {
+                "mode": attempt.mode.value,
+                "status": attempt.status.value,
+                "choice_id": attempt.choice_id,
+                "reason": attempt.reason,
+            }
+            for attempt in result.attempts
+        ],
+        "provider_calls": records,
+    }
+
+
+def _condition_summary(
+    rows: list[dict[str, object]],
+) -> dict[str, object]:
+    final_choices = collections.Counter(
+        str(row.get("final_choice_id"))
+        if row.get("final_choice_id") is not None
+        else "UNRESOLVED"
+        for row in rows
+    )
+    return {
+        "count": len(rows),
+        "correct_count": sum(
+            row.get("decision_correct") is True for row in rows
+        ),
+        "final_unresolved_count": sum(
+            row.get("final_status") == DecisionStatus.UNRESOLVED.value
+            for row in rows
+        ),
+        "inadmissible_attempt_count": sum(
+            row.get("inadmissible_attempt") is True
+            for row in rows
+        ),
+        "bounded_resolution_count": sum(
+            row.get("model_call_count") == 1
+            and row.get("final_status") == DecisionStatus.RESOLVED.value
+            for row in rows
+        ),
+        "think_escalation_count": sum(
+            row.get("escalated") is True for row in rows
+        ),
+        "final_choice_distribution": dict(sorted(final_choices.items())),
+        "context_datum_count": _numeric_summary(
+            row["context_datum_count"]
+            for row in rows
+            if isinstance(row.get("context_datum_count"), (int, float))
+        ),
+        "model_call_count": _numeric_summary(
+            row["model_call_count"]
+            for row in rows
+            if isinstance(row.get("model_call_count"), (int, float))
+        ),
+        "total_model_latency_seconds": _numeric_summary(
+            row["total_model_latency_seconds"]
+            for row in rows
+            if isinstance(
+                row.get("total_model_latency_seconds"),
+                (int, float),
+            )
+        ),
+        "bounded_latency_seconds": _numeric_summary(
+            row["bounded_latency_seconds"]
+            for row in rows
+            if isinstance(row.get("bounded_latency_seconds"), (int, float))
+        ),
+        "think_latency_seconds": _numeric_summary(
+            row["think_latency_seconds"]
+            for row in rows
+            if isinstance(row.get("think_latency_seconds"), (int, float))
+        ),
+        "total_prompt_tokens": _numeric_summary(
+            row["total_prompt_tokens"]
+            for row in rows
+            if isinstance(row.get("total_prompt_tokens"), (int, float))
+        ),
+        "total_completion_tokens": _numeric_summary(
+            row["total_completion_tokens"]
+            for row in rows
+            if isinstance(
+                row.get("total_completion_tokens"),
+                (int, float),
+            )
+        ),
+        "total_request_json_bytes": _numeric_summary(
+            row["total_request_json_bytes"]
+            for row in rows
+            if isinstance(
+                row.get("total_request_json_bytes"),
+                (int, float),
+            )
+        ),
+    }
+
+
+def summarize(
+    observations: list[dict[str, object]],
+) -> dict[str, object]:
+    by_condition = {
+        condition: _condition_summary(
+            [
+                row
+                for row in observations
+                if row.get("condition") == condition
+            ]
+        )
+        for condition in CONDITIONS
+    }
+    eligible = all(
+        isinstance(by_condition[condition], dict)
+        and by_condition[condition].get("count") == 24
+        and by_condition[condition].get("correct_count") == 24
+        and by_condition[condition].get("final_unresolved_count") == 0
+        for condition in CONDITIONS
+    )
+    return {
+        "by_condition": by_condition,
+        "cost_comparison_eligible": eligible,
+    }
