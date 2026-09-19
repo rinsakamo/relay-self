@@ -2,10 +2,6 @@ import asyncio
 
 import pytest
 
-from adapters.mineflayer.qualify_live import (
-    MineflayerQualificationError,
-    qualify_mineflayer_session,
-)
 from adapters.mineflayer.python_protocol import (
     MINEFLAYER_VERSION,
     MineflayerAdapterStarted,
@@ -15,6 +11,10 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
     MineflayerPosition,
     MineflayerSnapshot,
+)
+from adapters.mineflayer.qualify_live import (
+    MineflayerQualificationError,
+    qualify_mineflayer_session,
 )
 
 
