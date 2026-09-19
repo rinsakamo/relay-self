@@ -431,3 +431,45 @@ def _nld_command(
         ]
     )
     return command
+
+
+def _initial_summary(
+    *,
+    repo_root: Path,
+    evidence_root: Path,
+    llama_cpp_root: Path,
+    artifact_path: Path,
+) -> dict[str, object]:
+    return {
+        "format_version": FORMAT_VERSION,
+        "status": "STARTED",
+        "current_stage": None,
+        "completed_stages": [],
+        "repo_root": str(repo_root),
+        "evidence_root": str(evidence_root),
+        "qualification_scope": "nld_gemma_cross_substrate_matched",
+        "nld_model": DEFAULT_MODEL_ID,
+        "gemma_artifact": str(artifact_path),
+        "llama_cpp_root": str(llama_cpp_root),
+        "canonical_runtime": {
+            "nld_mode": "linear_spec",
+            "nld_dtype": "bf16",
+            "gemma_quantization": "Q4_K_M",
+            "gemma_context": 8192,
+            "gemma_slots": 1,
+            "max_output_tokens": 32,
+            "measured_calls_per_substrate": 24,
+            "total_measured_model_calls": 48,
+        },
+    }
+
+
+def _complete_stage(
+    summary: dict[str, object],
+    stage: str,
+) -> None:
+    completed = summary.get("completed_stages")
+    if not isinstance(completed, list):
+        raise AssertionError("completed_stages must be a list")
+    completed.append(stage)
+    summary["current_stage"] = None
