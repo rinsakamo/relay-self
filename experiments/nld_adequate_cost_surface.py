@@ -113,3 +113,197 @@ def _count_values(
         value = row.get(key)
         counts[str(value) if value is not None else "INVALID"] += 1
     return dict(sorted(counts.items()))
+
+
+def summarize(
+    observations: list[dict[str, object]],
+) -> dict[str, object]:
+    by_case: dict[str, object] = {}
+    for case in build_cost_cases():
+        case_rows = [
+            row for row in observations if row.get("case_id") == case.case_id
+        ]
+        modes: dict[str, object] = {}
+        for mode in DEFAULT_MODES:
+            rows = [row for row in case_rows if row.get("mode") == mode]
+            by_position: dict[str, object] = {}
+            for position in (1, 2, 3):
+                position_rows = [
+                    row
+                    for row in rows
+                    if row.get("ordinal_position") == position
+                ]
+                by_position[str(position)] = {
+                    "count": len(position_rows),
+                    "latency_seconds": _numeric_summary(
+                        row["elapsed_seconds"]
+                        for row in position_rows
+                        if isinstance(row.get("elapsed_seconds"), (int, float))
+                    ),
+                }
+            modes[mode] = {
+                "count": len(rows),
+                "correct_count": sum(
+                    row.get("decision_correct") is True for row in rows
+                ),
+                "invalid_output_count": sum(
+                    row.get("parsed_label") is None for row in rows
+                ),
+                "parse_sources": _count_values(rows, "parse_source"),
+                "latency_seconds": _numeric_summary(
+                    row["elapsed_seconds"]
+                    for row in rows
+                    if isinstance(row.get("elapsed_seconds"), (int, float))
+                ),
+                "nfe": _numeric_summary(
+                    row["nfe"]
+                    for row in rows
+                    if isinstance(row.get("nfe"), (int, float))
+                ),
+                "generated_token_count": _numeric_summary(
+                    row["generated_token_count"]
+                    for row in rows
+                    if isinstance(
+                        row.get("generated_token_count"),
+                        (int, float),
+                    )
+                ),
+                "tokens_per_forward": _numeric_summary(
+                    row["tokens_per_forward"]
+                    for row in rows
+                    if isinstance(row.get("tokens_per_forward"), (int, float))
+                ),
+                "first_label_token_index": _numeric_summary(
+                    row["first_label_token_index"]
+                    for row in rows
+                    if isinstance(
+                        row.get("first_label_token_index"),
+                        (int, float),
+                    )
+                ),
+                "first_explicit_token_index": _numeric_summary(
+                    row["first_explicit_token_index"]
+                    for row in rows
+                    if isinstance(
+                        row.get("first_explicit_token_index"),
+                        (int, float),
+                    )
+                ),
+                "post_explicit_tail_tokens": _numeric_summary(
+                    row["post_explicit_tail_tokens"]
+                    for row in rows
+                    if isinstance(
+                        row.get("post_explicit_tail_tokens"),
+                        (int, float),
+                    )
+                ),
+                "cuda_peak_allocated_bytes": _numeric_summary(
+                    row["cuda_peak_allocated_bytes"]
+                    for row in rows
+                    if isinstance(
+                        row.get("cuda_peak_allocated_bytes"),
+                        (int, float),
+                    )
+                ),
+                "latency_by_ordinal_position": by_position,
+            }
+        by_case[case.case_id] = {
+            "expected_label": case.expected_label,
+            "feasible_destination": case.feasible_destination,
+            "observation_count": len(case_rows),
+            "modes": modes,
+        }
+
+    overall: dict[str, object] = {}
+    for mode in DEFAULT_MODES:
+        rows = [row for row in observations if row.get("mode") == mode]
+        overall[mode] = {
+            "count": len(rows),
+            "correct_count": sum(
+                row.get("decision_correct") is True for row in rows
+            ),
+            "invalid_output_count": sum(
+                row.get("parsed_label") is None for row in rows
+            ),
+            "parse_sources": _count_values(rows, "parse_source"),
+            "latency_seconds": _numeric_summary(
+                row["elapsed_seconds"]
+                for row in rows
+                if isinstance(row.get("elapsed_seconds"), (int, float))
+            ),
+            "nfe": _numeric_summary(
+                row["nfe"]
+                for row in rows
+                if isinstance(row.get("nfe"), (int, float))
+            ),
+            "generated_token_count": _numeric_summary(
+                row["generated_token_count"]
+                for row in rows
+                if isinstance(row.get("generated_token_count"), (int, float))
+            ),
+            "tokens_per_forward": _numeric_summary(
+                row["tokens_per_forward"]
+                for row in rows
+                if isinstance(row.get("tokens_per_forward"), (int, float))
+            ),
+            "first_label_token_index": _numeric_summary(
+                row["first_label_token_index"]
+                for row in rows
+                if isinstance(row.get("first_label_token_index"), (int, float))
+            ),
+            "first_explicit_token_index": _numeric_summary(
+                row["first_explicit_token_index"]
+                for row in rows
+                if isinstance(
+                    row.get("first_explicit_token_index"),
+                    (int, float),
+                )
+            ),
+            "post_explicit_tail_tokens": _numeric_summary(
+                row["post_explicit_tail_tokens"]
+                for row in rows
+                if isinstance(
+                    row.get("post_explicit_tail_tokens"),
+                    (int, float),
+                )
+            ),
+        }
+
+    adequate = all(
+        isinstance(overall.get(mode), dict)
+        and overall[mode].get("count") == 24
+        and overall[mode].get("correct_count") == 24
+        and overall[mode].get("invalid_output_count") == 0
+        for mode in DEFAULT_MODES
+    )
+    return {
+        "by_case": by_case,
+        "overall_by_mode": overall,
+        "cost_comparison_eligible": adequate,
+    }
+
+
+def dry_run_payload(
+    *,
+    model_id: str,
+    seed: int,
+    dtype: str,
+) -> dict[str, object]:
+    schedule = build_schedule()
+    return {
+        "evidence_class": "adequate cost surface plan only",
+        "model_id": model_id,
+        "cases": [asdict(case) for case in build_cost_cases()],
+        "seed": seed,
+        "dtype": dtype,
+        "max_new_tokens": DEFAULT_MAX_NEW_TOKENS,
+        "max_thinking_tokens": DEFAULT_MAX_THINKING_TOKENS,
+        "warmup_modes": list(DEFAULT_MODES),
+        "measured_schedule": schedule,
+        "measured_observation_count": len(schedule),
+        "observations_per_case_mode_cell": len(MODE_PERMUTATIONS),
+        "non_claims": [
+            "cost comparison is conditional on fresh matched adequacy",
+            "cost dimensions remain separate; no weighted score is defined",
+        ],
+    }
