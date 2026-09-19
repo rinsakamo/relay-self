@@ -24,7 +24,7 @@ Current inbound observations:
 
 - spawn
 - health
-- time
+- time, emitted only on first valid sync, day-number change, or day/night phase change
 - inventory
 - entities
 - move
@@ -89,7 +89,7 @@ The adapter-local Python runtime seam admits only the first message classes that
 have a concrete reason to wake high-level Self coordination:
 
 - effect_result: always material because it closes one supervised primitive Action
-- spawn / health / time / inventory / entities / forcedMove / death / respawn:
+- spawn / health / filtered time transition / inventory / entities / forcedMove / death / respawn:
   material body/session/survival observations
 - move: not automatically admitted because it is a high-frequency controller signal
 
