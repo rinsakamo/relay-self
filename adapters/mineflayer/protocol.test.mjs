@@ -6,6 +6,7 @@ import {
   makeEnvelope,
   parseArgs,
   parseCommand,
+  shouldEmitTimeObservation,
   snapshotFromBot
 } from './protocol.mjs'
 
@@ -236,6 +237,29 @@ test('snapshot allows time to remain null before first time update', () => {
   assert.equal(snapshot.time, null)
   assert.deepEqual(snapshot.inventory, [])
   assert.deepEqual(snapshot.nearby_entities, [])
+})
+
+test('time admission ignores ordinary clock progression within one phase', () => {
+  assert.equal(
+    shouldEmitTimeObservation(null, null, { day: 2, isDay: true }),
+    true
+  )
+  assert.equal(
+    shouldEmitTimeObservation(2, true, { day: 2, isDay: true }),
+    false
+  )
+  assert.equal(
+    shouldEmitTimeObservation(2, true, { day: 2, isDay: false }),
+    true
+  )
+  assert.equal(
+    shouldEmitTimeObservation(2, false, { day: 3, isDay: true }),
+    true
+  )
+  assert.equal(
+    shouldEmitTimeObservation(2, false, { day: null, isDay: null }),
+    false
+  )
 })
 
 test('envelope preserves target-local session and monotonic sequence fields', () => {
