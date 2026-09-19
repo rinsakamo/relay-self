@@ -6,6 +6,7 @@ import {
   makeEnvelope,
   parseArgs,
   parseCommand,
+  shouldEmitTimeObservation,
   snapshotFromBot
 } from './protocol.mjs'
 
@@ -103,13 +104,83 @@ test('clear_controls remains a primitive effect without hidden duration', () => 
   )
 })
 
-test('snapshot exposes body resources and position without appraisal labels', () => {
+test('equip_item and consume_held remain separate primitive effects', () => {
+  assert.deepEqual(
+    parseCommand({
+      type: 'effect',
+      action_id: 'action-equip',
+      effect: 'equip_item',
+      item_name: 'bread'
+    }),
+    {
+      type: 'effect',
+      action_id: 'action-equip',
+      effect: 'equip_item',
+      item_name: 'bread'
+    }
+  )
+  assert.deepEqual(
+    parseCommand({
+      type: 'effect',
+      action_id: 'action-consume',
+      effect: 'consume_held'
+    }),
+    {
+      type: 'effect',
+      action_id: 'action-consume',
+      effect: 'consume_held'
+    }
+  )
+  assert.throws(
+    () => parseCommand({
+      type: 'effect',
+      action_id: 'action-eat',
+      effect: 'consume_held',
+      item_name: 'bread'
+    }),
+    /fields are invalid/
+  )
+})
+
+test('snapshot exposes survival facts without appraisal labels', () => {
   const snapshot = snapshotFromBot({
     health: 12,
     food: 7,
     oxygenLevel: 20,
+    time: {
+      timeOfDay: 13000,
+      day: 2,
+      isDay: false
+    },
     entity: {
+      id: 1,
       position: { x: 1.5, y: 64, z: -2.25 }
+    },
+    inventory: {
+      items: () => [
+        { name: 'bread', count: 3, slot: 10 },
+        { name: 'oak_log', count: 5, slot: 9 }
+      ]
+    },
+    entities: {
+      1: {
+        id: 1,
+        name: 'player',
+        type: 'player',
+        position: { x: 1.5, y: 64, z: -2.25 }
+      },
+      2: {
+        id: 2,
+        name: 'zombie',
+        type: 'mob',
+        position: { x: 4.5, y: 64, z: -2.25 }
+      },
+      3: {
+        id: 3,
+        name: 'cow',
+        type: 'mob',
+        position: { x: 100, y: 64, z: 100 }
+      }
     }
   })
 
@@ -117,10 +188,78 @@ test('snapshot exposes body resources and position without appraisal labels', ()
     health: 12,
     food: 7,
     oxygen_level: 20,
-    position: { x: 1.5, y: 64, z: -2.25 }
+    position: { x: 1.5, y: 64, z: -2.25 },
+    time: {
+      time_of_day: 13000,
+      day: 2,
+      is_day: false
+    },
+    inventory: [
+      { name: 'oak_log', count: 5, slot: 9 },
+      { name: 'bread', count: 3, slot: 10 }
+    ],
+    nearby_entities: [
+      {
+        id: 2,
+        name: 'zombie',
+        type: 'mob',
+        distance: 3,
+        position: { x: 4.5, y: 64, z: -2.25 }
+      }
+    ]
   })
-  assert.equal(JSON.stringify(snapshot).includes('danger'), false)
-  assert.equal(JSON.stringify(snapshot).includes('fear'), false)
+  const serialized = JSON.stringify(snapshot)
+  assert.equal(serialized.includes('danger'), false)
+  assert.equal(serialized.includes('fear'), false)
+  assert.equal(serialized.includes('hostile'), false)
+})
+
+test('snapshot allows time to remain null before first time update', () => {
+  const snapshot = snapshotFromBot({
+    health: 20,
+    food: 20,
+    oxygenLevel: 20,
+    time: {
+      timeOfDay: null,
+      day: null,
+      isDay: null
+    },
+    entity: {
+      id: 1,
+      position: { x: 0, y: 64, z: 0 }
+    },
+    inventory: {
+      items: () => []
+    },
+    entities: {}
+  })
+
+  assert.equal(snapshot.time, null)
+  assert.deepEqual(snapshot.inventory, [])
+  assert.deepEqual(snapshot.nearby_entities, [])
+})
+
+test('time admission ignores ordinary clock progression within one phase', () => {
+  assert.equal(
+    shouldEmitTimeObservation(null, null, { day: 2, isDay: true }),
+    true
+  )
+  assert.equal(
+    shouldEmitTimeObservation(2, true, { day: 2, isDay: true }),
+    false
+  )
+  assert.equal(
+    shouldEmitTimeObservation(2, true, { day: 2, isDay: false }),
+    true
+  )
+  assert.equal(
+    shouldEmitTimeObservation(2, false, { day: 3, isDay: true }),
+    true
+  )
+  assert.equal(
+    shouldEmitTimeObservation(2, false, { day: null, isDay: null }),
+    false
+  )
 })
 
 test('envelope preserves target-local session and monotonic sequence fields', () => {

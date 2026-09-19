@@ -9,6 +9,8 @@ from adapters.mineflayer.python_protocol import (
     MineflayerLaunchConfig,
     MineflayerStreamDecoder,
     encode_clear_controls,
+    encode_consume_held,
+    encode_equip_item,
     encode_set_control,
     encode_shutdown,
 )
@@ -147,6 +149,22 @@ class MineflayerProcessSession:
 
     async def send_clear_controls(self, action_id: str) -> None:
         await self._send(encode_clear_controls(action_id))
+
+    async def send_equip_item(
+        self,
+        action_id: str,
+        *,
+        item_name: str,
+    ) -> None:
+        await self._send(
+            encode_equip_item(
+                action_id,
+                item_name=item_name,
+            )
+        )
+
+    async def send_consume_held(self, action_id: str) -> None:
+        await self._send(encode_consume_held(action_id))
 
     async def shutdown(self, *, timeout_s: float = 5.0) -> int:
         """Request one clean bridge shutdown, with bounded termination fallback."""

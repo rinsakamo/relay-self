@@ -59,8 +59,8 @@ The current suite includes direct verification of:
 - the bounded lifecycle-linearity regressions, including that a successful Skill or Action transition advances only its same-root lineage after the next snapshot validates, predecessor snapshots cannot create sibling branches, a stale `STARTED` Skill snapshot cannot seed a supported Action proposal, failed transition validation does not consume the current snapshot, and independently created roots with the same textual identity are deliberately not claimed to be globally canonicalized.
 - the minimum Persistent Cognition restart slice, including validated `IdentitySpecification` and `Memory` values, separate source/integration provenance on retained Memory, immutable explicit retention, duplicate-memory rejection, versioned JSON save/load round-trip, and fail-closed handling of unsupported versions, unknown fields, missing files, and corrupt JSON.
 - the minimal admitted decision-epoch coordinator, including Action Supervision before caller-owned decision work, deterministic no-cognition completion, exactly-once invocation of a supplied RelayEngine seam for an opaque unresolved request, explicit failure when cognition is requested without an engine, preservation of already-committed supervision outcomes across later cognition failure, and return of the next owner-local Action deadline without creating a clock owner.
-- the first adapter-local Mineflayer Python protocol surface, including exact-version startup validation, target-local session/sequence continuity, provenance references, strict observation/effect-result schemas, closed locomotion command encoding, and rejection of injected or unsupported adapter fields.
-- the first concrete Mineflayer runtime-admission seam, including suppression of high-frequency ordinary move events from automatic high-level epochs, admission of bounded material body/session observations, Action OUTCOME closure from target-native applied/rejected effect results before later decision work, canonical decision-epoch coordination, deterministic zero-model completion, and exactly-once use of a supplied cognition seam when caller-owned work remains unresolved.
+- the adapter-local Mineflayer Python protocol surface, including exact-version startup validation, target-local session/sequence continuity, provenance references, strict survival observation/effect-result schemas, closed locomotion and food-effect encoding, bounded time/inventory/entity fact decoding, and rejection of injected appraisal labels or unsupported adapter fields.
+- the concrete Mineflayer runtime-admission seam, including suppression of high-frequency ordinary move events from automatic high-level epochs, admission of bounded material body/session/survival observations including time, inventory, and entity fact changes, Action OUTCOME closure from target-native applied/rejected effect results before later decision work, canonical decision-epoch coordination, deterministic zero-model completion, and exactly-once use of a supplied cognition seam when caller-owned work remains unresolved.
 - the target-local Mineflayer process-session seam, including one-child launch argument construction, mandatory startup attestation consumption, reuse of the strict stream decoder, explicit primitive-effect writes, explicit EOF failure, no hidden retry/relaunch, and bounded clean-shutdown behavior with termination fallback.
 
 The Skill-to-Action proposal tests establish the supported proposal-admission relation:
@@ -99,7 +99,7 @@ A green result does **not** prove:
 - that Skill failure should always trigger Current Intent reconsideration;
 - that an external authority identity is legitimate merely because it was recorded;
 - model quality, simulation behavior, environment correctness, or physical execution;
-- live Mineflayer/Minecraft connectivity merely because the protocol, admission, or process-session tests are green;
+- live Mineflayer/Minecraft connectivity merely because the survival protocol, admission, or process-session tests are green;
 - package installation or minimum-supported Python/dependency floors.
 
 The workflow pins the pytest tool version used by this gate. That pin is CI tooling, not a supported runtime dependency floor.
@@ -126,14 +126,14 @@ The job:
 
 - checks JavaScript syntax for the adapter protocol and bridge entry point;
 - verifies the package manifest pins Mineflayer 4.39.0 and declares Node >=22;
-- runs pure Node protocol tests for local connection arguments, bounded control commands, body/position snapshot projection, and session/sequence envelope fields.
+- runs pure Node protocol tests for local connection arguments, bounded control/food commands, body/time/inventory/nearby-entity snapshot projection, suppression of ordinary within-phase time progression from repeated time admission, appraisal-label exclusion, and session/sequence envelope fields.
 
 A green result does **not** prove:
 
 - that the Mineflayer npm dependency can be installed in the target deployment;
 - that a Minecraft server connection succeeds;
 - that a control-state acknowledgement means movement or Skill success;
-- inventory, eating, entity-threat, day/night, reconnect, or authenticated-account support;
+- correctness of Self-side threat appraisal, food choice, EAT/FLEE Skill success, reconnect, or authenticated-account support;
 - live external qualification of the adapter.
 
 This job intentionally does not install Mineflayer or contact a Minecraft server; those are external qualification concerns for the concrete adapter.

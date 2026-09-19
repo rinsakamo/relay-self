@@ -19,7 +19,16 @@ RequestT = TypeVar("RequestT")
 ResponseT = TypeVar("ResponseT")
 
 _MATERIAL_OBSERVATION_KINDS = frozenset(
-    {"spawn", "health", "forcedMove", "death", "respawn"}
+    {
+        "spawn",
+        "health",
+        "time",
+        "inventory",
+        "entities",
+        "forcedMove",
+        "death",
+        "respawn",
+    }
 )
 
 
