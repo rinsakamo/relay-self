@@ -15,6 +15,7 @@ from experiments.minecraft_terminal_qualification import (
     EXPECTED_MODEL_SHA256,
     make_recovery_present,
     memory_destination_id_from_content,
+    parse_properties,
     server_properties_text,
 )
 from experiments.reconsideration_admission import (
@@ -123,6 +124,13 @@ def test_runtime_identity_constants_are_pinned_for_preflight() -> None:
     assert len(EXPECTED_MINECRAFT_SHA256) == 64
     assert len(EXPECTED_MODEL_SHA256) == 64
     assert EXPECTED_MINECRAFT_SHA256 != EXPECTED_MODEL_SHA256
+
+
+def test_server_properties_accept_minecraft_java_property_escape(tmp_path) -> None:
+    properties = tmp_path / "server.properties"
+    properties.write_text("level-type=minecraft\\:flat\n", encoding="utf-8")
+
+    assert parse_properties(properties)["level-type"] == "minecraft:flat"
 
 
 @pytest.mark.parametrize("port", [0, 65536, -1])
