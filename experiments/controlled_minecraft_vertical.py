@@ -26,7 +26,7 @@ from relay_self.relay_engine import (
     DecisionStatus,
     RelayEngineResult,
 )
-from relay_self.skill import SkillExecution, SkillState
+from relay_self.skill import SkillExecution
 
 
 class ControlledScenarioError(RuntimeError):
