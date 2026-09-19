@@ -1,0 +1,17 @@
+{
+  "name": "@relayself/mineflayer-adapter",
+  "version": "0.0.0-mvp",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test protocol.test.mjs",
+    "check": "node --check protocol.mjs && node --check bridge.mjs && node --test protocol.test.mjs"
+  },
+  "dependencies": {
+    "mineflayer": "4.39.0"
+  }
+}
