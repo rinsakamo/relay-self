@@ -12,9 +12,21 @@ MINEFLAYER_VERSION = "4.39.0"
 MINEFLAYER_PROVENANCE_SOURCE = "mineflayer"
 
 _OBSERVATION_KINDS = frozenset(
-    {"spawn", "health", "move", "forcedMove", "death", "respawn"}
+    {
+        "spawn",
+        "health",
+        "time",
+        "inventory",
+        "entities",
+        "move",
+        "forcedMove",
+        "death",
+        "respawn",
+    }
 )
-_EFFECTS = frozenset({"set_control", "clear_controls"})
+_EFFECTS = frozenset(
+    {"set_control", "clear_controls", "equip_item", "consume_held"}
+)
 _EFFECT_RESULTS = frozenset({"applied", "rejected"})
 _CONTROLS = frozenset(
     {"forward", "back", "left", "right", "jump", "sprint", "sneak"}
@@ -76,11 +88,59 @@ class MineflayerPosition:
 
 
 @dataclass(frozen=True, slots=True)
+class MineflayerTime:
+    time_of_day: int
+    day: int
+    is_day: bool
+
+    def __post_init__(self) -> None:
+        _require_non_negative_int("time_of_day", self.time_of_day)
+        _require_non_negative_int("day", self.day)
+        _require_bool("is_day", self.is_day)
+
+
+@dataclass(frozen=True, slots=True)
+class MineflayerInventoryItem:
+    name: str
+    count: int
+    slot: int
+
+    def __post_init__(self) -> None:
+        _require_text("inventory item name", self.name)
+        _require_non_negative_int("inventory item count", self.count)
+        _require_non_negative_int("inventory item slot", self.slot)
+
+
+@dataclass(frozen=True, slots=True)
+class MineflayerEntityFact:
+    entity_id: int
+    name: str | None
+    entity_type: str | None
+    distance: float
+    position: MineflayerPosition
+
+    def __post_init__(self) -> None:
+        _require_non_negative_int("entity id", self.entity_id)
+        if self.name is not None:
+            _require_text("entity name", self.name)
+        if self.entity_type is not None:
+            _require_text("entity type", self.entity_type)
+        _require_non_negative_number("entity distance", self.distance)
+        if not isinstance(self.position, MineflayerPosition):
+            raise MineflayerAdapterProtocolError(
+                "entity position must be MineflayerPosition"
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class MineflayerSnapshot:
     health: float
     food: float
     oxygen_level: float
     position: MineflayerPosition
+    time: MineflayerTime | None
+    inventory: tuple[MineflayerInventoryItem, ...]
+    nearby_entities: tuple[MineflayerEntityFact, ...]
 
     def __post_init__(self) -> None:
         _require_non_negative_number("health", self.health)
@@ -89,6 +149,23 @@ class MineflayerSnapshot:
         if not isinstance(self.position, MineflayerPosition):
             raise MineflayerAdapterProtocolError(
                 "snapshot position must be MineflayerPosition"
+            )
+        if self.time is not None and not isinstance(self.time, MineflayerTime):
+            raise MineflayerAdapterProtocolError(
+                "snapshot time must be MineflayerTime or None"
+            )
+        if not isinstance(self.inventory, tuple) or not all(
+            isinstance(item, MineflayerInventoryItem) for item in self.inventory
+        ):
+            raise MineflayerAdapterProtocolError(
+                "snapshot inventory must be MineflayerInventoryItem tuple"
+            )
+        if not isinstance(self.nearby_entities, tuple) or not all(
+            isinstance(entity, MineflayerEntityFact)
+            for entity in self.nearby_entities
+        ):
+            raise MineflayerAdapterProtocolError(
+                "snapshot nearby_entities must be MineflayerEntityFact tuple"
             )
 
 
@@ -427,6 +504,30 @@ def encode_clear_controls(action_id: str) -> str:
     )
 
 
+def encode_equip_item(action_id: str, *, item_name: str) -> str:
+    _require_text("action_id", action_id)
+    _require_text("item_name", item_name)
+    return _encode_command(
+        {
+            "type": "effect",
+            "action_id": action_id,
+            "effect": "equip_item",
+            "item_name": item_name,
+        }
+    )
+
+
+def encode_consume_held(action_id: str) -> str:
+    _require_text("action_id", action_id)
+    return _encode_command(
+        {
+            "type": "effect",
+            "action_id": action_id,
+            "effect": "consume_held",
+        }
+    )
+
+
 def encode_shutdown() -> str:
     return _encode_command({"type": "shutdown"})
 
@@ -463,10 +564,30 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
     _require_exact_keys(
         "snapshot",
         payload,
-        {"health", "food", "oxygen_level", "position"},
+        {
+            "health",
+            "food",
+            "oxygen_level",
+            "position",
+            "time",
+            "inventory",
+            "nearby_entities",
+        },
     )
-    position = _require_mapping("position", payload["position"])
-    _require_exact_keys("position", position, {"x", "y", "z"})
+    position = _decode_position("position", payload["position"])
+    time_value = payload["time"]
+    time = None if time_value is None else _decode_time(time_value)
+    inventory = tuple(
+        _decode_inventory_item(item)
+        for item in _require_list("inventory", payload["inventory"])
+    )
+    nearby_entities = tuple(
+        _decode_entity_fact(entity)
+        for entity in _require_list(
+            "nearby_entities",
+            payload["nearby_entities"],
+        )
+    )
     return MineflayerSnapshot(
         health=_decoded_non_negative_number("health", payload["health"]),
         food=_decoded_non_negative_number("food", payload["food"]),
@@ -474,17 +595,91 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
             "oxygen_level",
             payload["oxygen_level"],
         ),
-        position=MineflayerPosition(
-            x=_decoded_number("position.x", position["x"]),
-            y=_decoded_number("position.y", position["y"]),
-            z=_decoded_number("position.z", position["z"]),
+        position=position,
+        time=time,
+        inventory=inventory,
+        nearby_entities=nearby_entities,
+    )
+
+
+def _decode_position(name: str, value: object) -> MineflayerPosition:
+    payload = _require_mapping(name, value)
+    _require_exact_keys(name, payload, {"x", "y", "z"})
+    return MineflayerPosition(
+        x=_decoded_number(f"{name}.x", payload["x"]),
+        y=_decoded_number(f"{name}.y", payload["y"]),
+        z=_decoded_number(f"{name}.z", payload["z"]),
+    )
+
+
+def _decode_time(value: object) -> MineflayerTime:
+    payload = _require_mapping("time", value)
+    _require_exact_keys(
+        "time",
+        payload,
+        {"time_of_day", "day", "is_day"},
+    )
+    return MineflayerTime(
+        time_of_day=_decoded_non_negative_int(
+            "time_of_day",
+            payload["time_of_day"],
         ),
+        day=_decoded_non_negative_int("day", payload["day"]),
+        is_day=_decoded_bool("is_day", payload["is_day"]),
+    )
+
+
+def _decode_inventory_item(value: object) -> MineflayerInventoryItem:
+    payload = _require_mapping("inventory item", value)
+    _require_exact_keys(
+        "inventory item",
+        payload,
+        {"name", "count", "slot"},
+    )
+    return MineflayerInventoryItem(
+        name=_decoded_text("inventory item name", payload["name"]),
+        count=_decoded_non_negative_int(
+            "inventory item count",
+            payload["count"],
+        ),
+        slot=_decoded_non_negative_int("inventory item slot", payload["slot"]),
+    )
+
+
+def _decode_entity_fact(value: object) -> MineflayerEntityFact:
+    payload = _require_mapping("nearby entity", value)
+    _require_exact_keys(
+        "nearby entity",
+        payload,
+        {"id", "name", "type", "distance", "position"},
+    )
+    name = payload["name"]
+    if name is not None:
+        name = _decoded_text("entity name", name)
+    entity_type = payload["type"]
+    if entity_type is not None:
+        entity_type = _decoded_text("entity type", entity_type)
+    return MineflayerEntityFact(
+        entity_id=_decoded_non_negative_int("entity id", payload["id"]),
+        name=name,
+        entity_type=entity_type,
+        distance=_decoded_non_negative_number(
+            "entity distance",
+            payload["distance"],
+        ),
+        position=_decode_position("entity position", payload["position"]),
     )
 
 
 def _require_mapping(name: str, value: object) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise MineflayerAdapterProtocolError(f"{name} must be an object")
+    return value
+
+
+def _require_list(name: str, value: object) -> list[Any]:
+    if not isinstance(value, list):
+        raise MineflayerAdapterProtocolError(f"{name} must be an array")
     return value
 
 
@@ -540,6 +735,28 @@ def _require_port(value: object) -> None:
 
 def _decoded_port(value: object) -> int:
     _require_port(value)
+    return value
+
+
+def _require_bool(name: str, value: object) -> None:
+    if not isinstance(value, bool):
+        raise MineflayerAdapterProtocolError(f"{name} must be boolean")
+
+
+def _decoded_bool(name: str, value: object) -> bool:
+    _require_bool(name, value)
+    return value
+
+
+def _require_non_negative_int(name: str, value: object) -> None:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise MineflayerAdapterProtocolError(
+            f"{name} must be a non-negative integer"
+        )
+
+
+def _decoded_non_negative_int(name: str, value: object) -> int:
+    _require_non_negative_int(name, value)
     return value
 
 
