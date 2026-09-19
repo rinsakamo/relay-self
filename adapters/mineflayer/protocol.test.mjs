@@ -104,6 +104,47 @@ test('clear_controls remains a primitive effect without hidden duration', () => 
   )
 })
 
+test('look accepts only explicit finite yaw and pitch', () => {
+  assert.deepEqual(
+    parseCommand({
+      type: 'effect',
+      action_id: 'action-look',
+      effect: 'look',
+      yaw: Math.PI / 2,
+      pitch: 0
+    }),
+    {
+      type: 'effect',
+      action_id: 'action-look',
+      effect: 'look',
+      yaw: Math.PI / 2,
+      pitch: 0
+    }
+  )
+
+  assert.throws(
+    () => parseCommand({
+      type: 'effect',
+      action_id: 'action-look-bad',
+      effect: 'look',
+      yaw: Infinity,
+      pitch: 0
+    }),
+    /finite number/
+  )
+  assert.throws(
+    () => parseCommand({
+      type: 'effect',
+      action_id: 'action-look-extra',
+      effect: 'look',
+      yaw: 0,
+      pitch: 0,
+      destination: 'cave'
+    }),
+    /fields are invalid/
+  )
+})
+
 test('equip_item and consume_held remain separate primitive effects', () => {
   assert.deepEqual(
     parseCommand({

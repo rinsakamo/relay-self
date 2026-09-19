@@ -164,6 +164,11 @@ def test_send_effects_use_existing_target_local_protocol(monkeypatch, tmp_path: 
             item_name="bread",
         )
         await session.send_consume_held("action-consume")
+        await session.send_look(
+            "action-look",
+            yaw=1.5,
+            pitch=0.0,
+        )
 
         assert [json.loads(value) for value in process.stdin.writes] == [
             {
@@ -189,8 +194,15 @@ def test_send_effects_use_existing_target_local_protocol(monkeypatch, tmp_path: 
                 "action_id": "action-consume",
                 "effect": "consume_held",
             },
+            {
+                "type": "effect",
+                "action_id": "action-look",
+                "effect": "look",
+                "yaw": 1.5,
+                "pitch": 0.0,
+            },
         ]
-        assert process.stdin.drain_count == 4
+        assert process.stdin.drain_count == 5
 
     asyncio.run(scenario())
 

@@ -208,6 +208,12 @@ async function handleEffect (command) {
       return
     }
 
+    if (command.effect === 'look') {
+      await bot.look(command.yaw, command.pitch)
+      emitEffectResult(command, 'applied')
+      return
+    }
+
     emitEffectResult(command, 'rejected', 'unsupported_effect')
   } catch (error) {
     emitEffectResult(
