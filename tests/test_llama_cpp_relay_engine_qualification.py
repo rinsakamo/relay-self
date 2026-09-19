@@ -128,6 +128,7 @@ def test_qualification_rejects_final_unresolved_result() -> None:
         qualify_relay_engine(
             RelayEngine(provider),
             runtime(),
+            repository(),
         )
 
 
