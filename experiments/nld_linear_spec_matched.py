@@ -198,3 +198,54 @@ def run_actual(
         "observations": observations,
         "summary": summarize(observations),
     }
+
+
+def write_payload(
+    payload: dict[str, object],
+    output: str | None,
+) -> None:
+    serialized = json.dumps(payload, indent=2, sort_keys=True)
+    if output is None:
+        print(serialized)
+        return
+    path = Path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(serialized + "\n", encoding="utf-8")
+    print(path)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--run", action="store_true")
+    parser.add_argument("--model", default=DEFAULT_MODEL_ID)
+    parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
+    parser.add_argument(
+        "--dtype",
+        choices=("bf16", "fp16", "fp32"),
+        default=DEFAULT_DTYPE,
+    )
+    parser.add_argument("--output")
+    args = parser.parse_args()
+
+    try:
+        payload = (
+            run_actual(
+                model_id=args.model,
+                seed=args.seed,
+                dtype=args.dtype,
+            )
+            if args.run
+            else dry_run_payload(
+                model_id=args.model,
+                seed=args.seed,
+                dtype=args.dtype,
+            )
+        )
+    except (RuntimeError, ValueError) as exc:
+        parser.error(str(exc))
+
+    write_payload(payload, args.output)
+
+
+if __name__ == "__main__":
+    main()
