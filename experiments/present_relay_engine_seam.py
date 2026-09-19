@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from experiments.present_skill_epoch import (
-    DecisionKind,
     FLEE_SKILL_ID,
+    DecisionKind,
     FleeDecision,
     PresentFact,
     PresentProjection,
