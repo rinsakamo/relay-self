@@ -14,6 +14,7 @@ from adapters.mineflayer.python_protocol import (
     encode_clear_controls,
     encode_consume_held,
     encode_equip_item,
+    encode_look,
     encode_set_control,
     encode_shutdown,
     parse_mineflayer_line,
@@ -263,6 +264,29 @@ def test_food_commands_keep_item_selection_and_consumption_separate() -> None:
         "action_id": "action-consume",
         "effect": "consume_held",
     }
+
+
+def test_look_command_is_only_a_finite_heading_primitive() -> None:
+    assert json.loads(
+        encode_look(
+            "action-look",
+            yaw=1.5,
+            pitch=-0.25,
+        )
+    ) == {
+        "type": "effect",
+        "action_id": "action-look",
+        "effect": "look",
+        "yaw": 1.5,
+        "pitch": -0.25,
+    }
+
+    with pytest.raises(MineflayerAdapterProtocolError, match="finite number"):
+        encode_look(
+            "action-look-bad",
+            yaw=float("inf"),
+            pitch=0,
+        )
 
 
 def test_clear_and_shutdown_commands_are_minimal_jsonl() -> None:
