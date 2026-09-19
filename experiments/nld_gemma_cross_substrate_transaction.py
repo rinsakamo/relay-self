@@ -682,3 +682,61 @@ def run_transaction(
                 "exit_code": exit_code,
             }
             _write_json(summary_path, summary)
+
+
+def main() -> None:
+    default_repo_root = Path(__file__).resolve().parents[1]
+    parser = argparse.ArgumentParser(
+        description=(
+            "Compare NLD Linear-SS and Gemma 4 12B Q4 "
+            "on one matched bounded surface."
+        )
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=default_repo_root,
+    )
+    parser.add_argument(
+        "--llama-cpp-root",
+        type=Path,
+        default=Path.home() / "src" / "llama.cpp",
+    )
+    parser.add_argument(
+        "--artifact-path",
+        type=Path,
+        default=(
+            Path.home()
+            / "models"
+            / "gguf"
+            / "gemma-4-12B-it-Q4_K_M.gguf"
+        ),
+    )
+    parser.add_argument(
+        "--evidence-root",
+        type=Path,
+        required=True,
+    )
+    parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        default=DEFAULT_TIMEOUT_SECONDS,
+    )
+    args = parser.parse_args()
+
+    try:
+        result = run_transaction(
+            repo_root=args.repo_root.resolve(),
+            evidence_root=args.evidence_root.expanduser().resolve(),
+            llama_cpp_root=args.llama_cpp_root.expanduser().resolve(),
+            artifact_path=args.artifact_path.expanduser().resolve(),
+            timeout_seconds=args.timeout_seconds,
+        )
+    except PhysicalTransactionError as exc:
+        parser.error(str(exc))
+
+    raise SystemExit(result)
+
+
+if __name__ == "__main__":
+    main()
