@@ -5,6 +5,7 @@ import sys
 import time
 from pathlib import Path
 
+from experiments.gemma_flee_crystallization import METADATA_BLINDING
 from experiments.mineflayer_cognition_llama_cpp_transaction import (
     DEFAULT_HOST,
     DEFAULT_PORT,
@@ -94,6 +95,14 @@ def validate_payload(payload: object) -> dict[str, object]:
     ):
         raise PhysicalTransactionError(
             "crystallization evidence class is incorrect"
+        )
+
+    if (
+        payload.get("metadata_blinding") != METADATA_BLINDING
+        or payload.get("provider_visible_semantic_case_ids") is not False
+    ):
+        raise PhysicalTransactionError(
+            "crystallization evidence is not bound to blinded case metadata"
         )
 
     induction = payload.get("induction")
@@ -274,6 +283,8 @@ def _initial_summary(
             "quantization": "Q4_K_M",
             "cache_prompt": False,
             "reasoning_effort": "none",
+            "metadata_blinding": METADATA_BLINDING,
+            "provider_visible_semantic_case_ids": False,
         },
     }
 
@@ -374,9 +385,11 @@ def run_transaction(
             not isinstance(dry_payload, dict)
             or dry_payload.get("candidate_key_count") != 22
             or dry_payload.get("holdout_measured_episode_count") != 48
+            or dry_payload.get("metadata_blinding") != METADATA_BLINDING
+            or dry_payload.get("provider_visible_semantic_case_ids") is not False
         ):
             raise PhysicalTransactionError(
-                "dry-run crystallization plan is invalid"
+                "dry-run crystallization plan is invalid or not blinded"
             )
         _complete_stage(summary, stage)
         _write_json(summary_path, summary)
