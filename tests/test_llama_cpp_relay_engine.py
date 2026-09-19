@@ -6,6 +6,7 @@ import pytest
 
 from adapters.llama_cpp.relay_engine import (
     LlamaCppProviderError,
+    LlamaCppProviderProtocolError,
     LlamaCppRelayProvider,
     parse_llama_cpp_decision,
     render_llama_cpp_request,
@@ -64,16 +65,25 @@ class FakeResponse:
         return self._payload
 
 
-def chat_response(content: str) -> dict[str, object]:
-    return {
+def chat_response(
+    content: str,
+    *,
+    usage: dict[str, int] | None = None,
+    finish_reason: str | None = "stop",
+) -> dict[str, object]:
+    body: dict[str, object] = {
         "choices": [
             {
                 "message": {
                     "content": content,
-                }
+                },
+                "finish_reason": finish_reason,
             }
         ]
     }
+    if usage is not None:
+        body["usage"] = usage
+    return body
 
 
 def test_bounded_request_preserves_finite_choices_and_provenance() -> None:
@@ -135,12 +145,14 @@ def test_bounded_parser_accepts_only_exact_schema() -> None:
     assert unresolved.status is DecisionStatus.UNRESOLVED
     assert unresolved.choice_id is None
 
-    malformed = parse_llama_cpp_decision(
-        '{"status":"resolved","choice_id":"cave","extra":1}',
-        mode=CognitionMode.BOUNDED,
-    )
-    assert malformed.status is DecisionStatus.UNRESOLVED
-    assert "schema" in malformed.reason
+    with pytest.raises(
+        LlamaCppProviderProtocolError,
+        match="schema mismatch",
+    ):
+        parse_llama_cpp_decision(
+            '{"status":"resolved","choice_id":"cave","extra":1}',
+            mode=CognitionMode.BOUNDED,
+        )
 
 
 def test_think_parser_requires_explicit_rationale_field() -> None:
@@ -152,47 +164,33 @@ def test_think_parser_requires_explicit_rationale_field() -> None:
     assert resolved.choice_id == "cave"
     assert resolved.reason == "night shelter"
 
-    malformed = parse_llama_cpp_decision(
-        '{"status":"resolved","choice_id":"cave"}',
-        mode=CognitionMode.THINK,
-    )
-    assert malformed.status is DecisionStatus.UNRESOLVED
-    assert "schema" in malformed.reason
+    with pytest.raises(
+        LlamaCppProviderProtocolError,
+        match="schema mismatch",
+    ):
+        parse_llama_cpp_decision(
+            '{"status":"resolved","choice_id":"cave"}',
+            mode=CognitionMode.THINK,
+        )
 
 
-def test_malformed_bounded_model_output_explicitly_escalates_to_think() -> None:
-    responses = iter(
-        [
-            FakeResponse(chat_response("not-json")),
-            FakeResponse(
-                chat_response(
-                    '{"status":"resolved","choice_id":"cave",'
-                    '"rationale":"reconsidered carefully"}'
-                )
-            ),
-        ]
-    )
-
+def test_malformed_bounded_model_output_is_protocol_failure_not_think() -> None:
     with patch(
         "urllib.request.urlopen",
-        side_effect=lambda *_args, **_kwargs: next(responses),
+        return_value=FakeResponse(chat_response("not-json")),
     ) as call:
         provider = LlamaCppRelayProvider(
             endpoint="http://127.0.0.1:1234/v1/chat/completions",
             model="gemma-local",
             timeout=1.0,
         )
-        result = RelayEngine(provider)(bounded_request())
+        with pytest.raises(
+            LlamaCppProviderProtocolError,
+            match="not valid JSON",
+        ):
+            RelayEngine(provider)(bounded_request())
 
-    assert result.status is DecisionStatus.RESOLVED
-    assert result.choice_id == "cave"
-    assert result.escalated is True
-    assert [attempt.mode for attempt in result.attempts] == [
-        CognitionMode.BOUNDED,
-        CognitionMode.THINK,
-    ]
-    assert call.call_count == 2
-
+    assert call.call_count == 1
 
 def test_transport_failure_is_not_relabelled_as_cognitive_unresolved() -> None:
     with patch(
@@ -238,3 +236,57 @@ def test_provider_validates_endpoint_and_positive_timeout() -> None:
             model="x",
             timeout=0,
         )
+
+
+def test_provider_preserves_usage_finish_reason_and_requested_limit() -> None:
+    body = chat_response(
+        '{"status":"resolved","choice_id":"cave"}',
+        usage={
+            "prompt_tokens": 123,
+            "completion_tokens": 5,
+            "total_tokens": 128,
+        },
+    )
+    with patch(
+        "urllib.request.urlopen",
+        return_value=FakeResponse(body),
+    ):
+        result = RelayEngine(
+            LlamaCppRelayProvider(
+                endpoint="http://127.0.0.1:1234/v1/chat/completions",
+                model="gemma-local",
+                timeout=1.0,
+            )
+        )(bounded_request())
+
+    facts = result.attempts[0].call_facts
+    assert facts.requested_max_output_tokens == 48
+    assert facts.prompt_tokens == 123
+    assert facts.completion_tokens == 5
+    assert facts.total_tokens == 128
+    assert facts.finish_reason == "stop"
+    assert result.observed_prompt_tokens == 123
+    assert result.observed_completion_tokens == 5
+
+
+def test_non_stop_finish_reason_is_protocol_failure() -> None:
+    body = chat_response(
+        '{"status":"resolved","choice_id":"cave"}',
+        finish_reason="length",
+    )
+    with patch(
+        "urllib.request.urlopen",
+        return_value=FakeResponse(body),
+    ) as call:
+        provider = LlamaCppRelayProvider(
+            endpoint="http://127.0.0.1:1234/v1/chat/completions",
+            model="gemma-local",
+            timeout=1.0,
+        )
+        with pytest.raises(
+            LlamaCppProviderProtocolError,
+            match="did not finish with stop",
+        ):
+            RelayEngine(provider)(bounded_request())
+
+    assert call.call_count == 1
