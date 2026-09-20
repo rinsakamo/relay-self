@@ -198,6 +198,7 @@ def test_pre_ack_or_vertical_only_movement_does_not_qualify() -> None:
                 snapshot=MineflayerSnapshot(
                     health=20,
                     food=18,
+                    food_saturation=5,
                     oxygen_level=20,
                     position=MineflayerPosition(x=0, y=63.0, z=0),
                     time=None,
