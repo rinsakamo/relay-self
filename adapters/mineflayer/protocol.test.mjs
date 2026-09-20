@@ -380,6 +380,7 @@ test('snapshot still fails closed when health is not initialized', () => {
     () => snapshotFromBot({
       health: undefined,
       food: 20,
+      foodSaturation: 5,
       oxygenLevel: 20,
       time: {
         timeOfDay: null,
@@ -428,6 +429,7 @@ test('snapshot still fails closed for malformed observed oxygen', () => {
     () => snapshotFromBot({
       health: 20,
       food: 20,
+      foodSaturation: 5,
       oxygenLevel: Number.NaN,
       time: {
         timeOfDay: null,
