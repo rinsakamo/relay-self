@@ -926,15 +926,96 @@ def _choice_vector(
 
 def _signature_vector(
     records: list[InvocationResult],
+    key: str,
 ) -> dict[str, list[str]]:
     result = {condition: [] for condition in CONDITION_PRIORS}
     for item in records:
         signature = json.dumps(
-            item.report.get("initial_cognition_signature"),
+            item.report.get(key),
             sort_keys=True,
             separators=(",", ":"),
         )
         result[item.condition_id].append(signature)
+    return result
+
+
+def _behavior_vector(
+    records: list[InvocationResult],
+    *,
+    stage: str,
+) -> dict[str, list[str]]:
+    if stage not in {"first", "later"}:
+        raise IdentityPriorTransactionError(
+            f"unsupported behavioral outcome stage: {stage}"
+        )
+
+    destination_key = (
+        "first_bound_destination"
+        if stage == "first"
+        else "later_bound_destination"
+    )
+    skill_run_key = "first_skill_run" if stage == "first" else "later_skill_run"
+    result = {condition: [] for condition in CONDITION_PRIORS}
+
+    for item in records:
+        status = item.report.get("status")
+        destination = item.report.get(destination_key)
+        skill_run = item.report.get(skill_run_key)
+
+        if stage == "first":
+            if status == "completed_unresolved_before_action":
+                if destination is not None or skill_run is not None:
+                    raise IdentityPriorTransactionError(
+                        "unresolved first decision must not contain an embodied Action"
+                    )
+                outcome = "unresolved_no_action"
+            elif status in {
+                "completed_later_unresolved",
+                "completed_grounded_trajectory",
+            }:
+                if (
+                    not isinstance(destination, str)
+                    or not destination
+                    or skill_run is None
+                ):
+                    raise IdentityPriorTransactionError(
+                        "resolved first decision must contain a grounded Action outcome"
+                    )
+                outcome = f"grounded_action:{destination}"
+            else:
+                raise IdentityPriorTransactionError(
+                    f"unsupported invocation status for classification: {status!r}"
+                )
+        else:
+            if status == "completed_unresolved_before_action":
+                if destination is not None or skill_run is not None:
+                    raise IdentityPriorTransactionError(
+                        "unreached later stage must not contain an embodied Action"
+                    )
+                outcome = "not_reached_after_initial_unresolved"
+            elif status == "completed_later_unresolved":
+                if destination is not None or skill_run is not None:
+                    raise IdentityPriorTransactionError(
+                        "unresolved later decision must not contain an embodied Action"
+                    )
+                outcome = "unresolved_no_action"
+            elif status == "completed_grounded_trajectory":
+                if (
+                    not isinstance(destination, str)
+                    or not destination
+                    or skill_run is None
+                ):
+                    raise IdentityPriorTransactionError(
+                        "resolved later decision must contain a grounded Action outcome"
+                    )
+                outcome = f"grounded_action:{destination}"
+            else:
+                raise IdentityPriorTransactionError(
+                    f"unsupported invocation status for classification: {status!r}"
+                )
+
+        result[item.condition_id].append(outcome)
+
     return result
 
 
@@ -957,45 +1038,108 @@ def _stable_by_condition(
     return stable, all_stable
 
 
+def _validate_classifier_records(records: list[InvocationResult]) -> None:
+    expected = tuple(
+        (block_index, ordinal, condition_id)
+        for block_index, block in enumerate(PLANNED_CONDITION_ORDER)
+        for ordinal, condition_id in enumerate(block)
+    )
+    actual = tuple(
+        (item.block_index, item.ordinal, item.condition_id)
+        for item in records
+    )
+    if actual != expected:
+        raise IdentityPriorTransactionError(
+            "classifier records do not match the predeclared block/order schedule"
+        )
+
+
 def classify(records: list[InvocationResult]) -> dict[str, object]:
     if len(records) != len(condition_sequence()):
         raise IdentityPriorTransactionError(
             "cannot classify an incomplete matched transaction"
         )
+    _validate_classifier_records(records)
 
     first = _choice_vector(records, "first_bound_destination")
     later = _choice_vector(records, "later_bound_destination")
-    signatures = _signature_vector(records)
+    first_behavior = _behavior_vector(records, stage="first")
+    later_behavior = _behavior_vector(records, stage="later")
+    initial_signatures = _signature_vector(
+        records,
+        "initial_cognition_signature",
+    )
+    later_signatures = _signature_vector(
+        records,
+        "later_cognition_signature",
+    )
 
     stable_first, first_all_stable = _stable_by_condition(first)
     stable_later, later_all_stable = _stable_by_condition(later)
-    stable_signatures, signatures_all_stable = _stable_by_condition(
-        signatures
+    stable_first_behavior, first_behavior_all_stable = _stable_by_condition(
+        first_behavior
+    )
+    stable_later_behavior, later_behavior_all_stable = _stable_by_condition(
+        later_behavior
+    )
+    stable_initial_signatures, initial_signatures_all_stable = (
+        _stable_by_condition(initial_signatures)
+    )
+    stable_later_signatures, later_signatures_all_stable = (
+        _stable_by_condition(later_signatures)
     )
 
-    first_unique = set(stable_first.values()) if first_all_stable else set()
-    later_unique = set(stable_later.values()) if later_all_stable else set()
-    signature_unique = (
-        set(stable_signatures.values())
-        if signatures_all_stable
+    first_behavior_unique = (
+        set(stable_first_behavior.values())
+        if first_behavior_all_stable
+        else set()
+    )
+    later_behavior_unique = (
+        set(stable_later_behavior.values())
+        if later_behavior_all_stable
+        else set()
+    )
+    initial_signature_unique = (
+        set(stable_initial_signatures.values())
+        if initial_signatures_all_stable
+        else set()
+    )
+    later_signature_unique = (
+        set(stable_later_signatures.values())
+        if later_signatures_all_stable
         else set()
     )
 
-    first_embodied_divergence = first_all_stable and len(first_unique) >= 2
-    later_embodied_divergence = later_all_stable and len(later_unique) >= 2
+    first_embodied_divergence = (
+        first_behavior_all_stable and len(first_behavior_unique) >= 2
+    )
+    later_embodied_divergence = (
+        later_behavior_all_stable and len(later_behavior_unique) >= 2
+    )
     embodied_divergence = (
         first_embodied_divergence or later_embodied_divergence
     )
+
+    behaviorally_indistinguishable = (
+        first_behavior_all_stable
+        and len(first_behavior_unique) == 1
+        and later_behavior_all_stable
+        and len(later_behavior_unique) == 1
+    )
+    cognition_divergence = (
+        (
+            initial_signatures_all_stable
+            and len(initial_signature_unique) >= 2
+        )
+        or (
+            later_signatures_all_stable
+            and len(later_signature_unique) >= 2
+        )
+    )
     cognition_only_divergence = (
         not embodied_divergence
-        and signatures_all_stable
-        and len(signature_unique) >= 2
-        and first_all_stable
-        and len(first_unique) <= 1
-        and (
-            not later_all_stable
-            or len(later_unique) <= 1
-        )
+        and behaviorally_indistinguishable
+        and cognition_divergence
     )
 
     grounded_trajectories = all(
@@ -1007,26 +1151,28 @@ def classify(records: list[InvocationResult]) -> dict[str, object]:
         interpretation = "A"
         label = "embodied prior effect"
         rationale = (
-            "At least one embodied decision stage produced a reproducible "
+            "At least one behavioral decision stage produced a reproducible "
             "condition-linked difference across all three predeclared "
-            "repetitions. Every resolved Action represented in that stage was "
-            "required by the runner to close from grounded consequence evidence."
+            "repetitions. Unresolved/no-Action outcomes remain distinct from "
+            "grounded Action outcomes without being treated as destinations."
         )
     elif cognition_only_divergence:
         interpretation = "B"
         label = "transient cognition-only effect"
         rationale = (
             "Cognition-path signatures differed reproducibly by condition "
-            "while the observed embodied destination outcomes did not."
+            "while both first and later behavioral outcomes were stable and "
+            "identical across conditions."
         )
     else:
         interpretation = "E"
         label = "no reproducible discriminating effect"
         rationale = (
             "The transaction did not establish a reproducible condition-linked "
-            "difference on the embodied destination or cognition-path surfaces. "
-            "Any within-condition variability remains recorded as variability "
-            "rather than being promoted to an Identity-prior effect."
+            "embodied effect or a reproducible cognition-only effect under "
+            "stable indistinguishable behavior. Within-condition behavioral or "
+            "cognition variability remains variability rather than being "
+            "promoted to an Identity-prior effect."
         )
 
     return {
@@ -1035,16 +1181,26 @@ def classify(records: list[InvocationResult]) -> dict[str, object]:
         "rationale": rationale,
         "first_destination_by_condition": first,
         "later_destination_by_condition": later,
-        "initial_cognition_signature_by_condition": signatures,
+        "first_behavioral_outcome_by_condition": first_behavior,
+        "later_behavioral_outcome_by_condition": later_behavior,
+        "initial_cognition_signature_by_condition": initial_signatures,
+        "later_cognition_signature_by_condition": later_signatures,
         "stable_first_destination_by_condition": stable_first,
         "stable_later_destination_by_condition": stable_later,
-        "stable_cognition_signature_by_condition": stable_signatures,
+        "stable_first_behavioral_outcome_by_condition": stable_first_behavior,
+        "stable_later_behavioral_outcome_by_condition": stable_later_behavior,
+        "stable_initial_cognition_signature_by_condition": (
+            stable_initial_signatures
+        ),
+        "stable_later_cognition_signature_by_condition": stable_later_signatures,
         "first_embodied_divergence": first_embodied_divergence,
         "later_embodied_divergence": later_embodied_divergence,
+        "behaviorally_indistinguishable": behaviorally_indistinguishable,
         "presentation_only_class_c_observable": False,
         "policy_leakage_class_d": False,
         "all_grounded_trajectories": grounded_trajectories,
     }
+
 
 def transaction_plan() -> dict[str, object]:
     preparation = build_preparation()
