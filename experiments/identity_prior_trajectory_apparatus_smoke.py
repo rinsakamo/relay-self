@@ -7,7 +7,6 @@ import subprocess
 from pathlib import Path
 
 from experiments.identity_prior_trajectory_transaction import (
-    IdentityPriorTransactionError,
     _receive_spawn,
     reset_live_world,
 )
