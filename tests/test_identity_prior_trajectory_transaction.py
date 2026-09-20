@@ -112,6 +112,25 @@ def _zombie(*, entity_id: int, distance: float) -> MineflayerEntityFact:
     )
 
 
+def _passive_entity(
+    *,
+    entity_id: int,
+    distance: float,
+) -> MineflayerEntityFact:
+    anchor = _reset_anchor()
+    return MineflayerEntityFact(
+        entity_id=entity_id,
+        name="cow",
+        entity_type="animal",
+        distance=distance,
+        position=MineflayerPosition(
+            x=anchor.x,
+            y=anchor.y,
+            z=anchor.z + distance,
+        ),
+    )
+
+
 def _reset_observation(
     *,
     seq: int,
@@ -289,7 +308,7 @@ def test_reset_ignores_queued_zero_without_causal_watermark(
         )
 
     assert len(commands) == 8
-    assert "execute unless entity" in str(commands[-1]["command"])
+    assert "type=!minecraft:player" in str(commands[-1]["command"])
     assert not any("summon" in str(command["command"]) for command in commands)
 
 
@@ -348,6 +367,62 @@ def test_reset_ignores_pre_watermark_one_zombie_observation(
 
     assert result.summon_processed_watermark.seq == 5
     assert result.matched_observation.seq == 6
+
+
+def test_reset_unexpected_passive_entity_does_not_qualify(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    controlled = _zombie(entity_id=161, distance=4.0)
+    passive = _passive_entity(entity_id=170, distance=3.0)
+    session = _ResetSession(
+        (
+            _reset_observation(seq=1, kind="spawn", entities=()),
+            _reset_observation(
+                seq=2,
+                kind="forcedMove",
+                entities=(),
+                position=_cleanup_sentinel(),
+            ),
+            _reset_observation(
+                seq=3,
+                kind="forcedMove",
+                entities=(),
+                position=_reset_anchor(),
+            ),
+            _reset_observation(
+                seq=4,
+                kind="forcedMove",
+                entities=(controlled,),
+                position=_summon_sentinel(),
+            ),
+            _reset_observation(
+                seq=5,
+                kind="forcedMove",
+                entities=(controlled, passive),
+                position=_reset_anchor(),
+            ),
+        ),
+        repeat_last=True,
+    )
+
+    commands: list[dict[str, object]] = []
+
+    async def record_command(**kwargs: object) -> None:
+        commands.append(kwargs)
+
+    monkeypatch.setattr(transaction, "write_server_command", record_command)
+    with pytest.raises(IdentityPriorTransactionError, match="one-zombie"):
+        asyncio.run(
+            transaction.reset_live_world(
+                session,
+                args=_reset_args(timeout_s=0.005),
+                anchor=_reset_anchor(),
+                evidence_path=tmp_path / "server-commands.jsonl",
+            )
+        )
+
+    assert sum("summon" in str(item["command"]) for item in commands) == 1
 
 
 def test_reset_duplicate_after_summon_does_not_succeed(
