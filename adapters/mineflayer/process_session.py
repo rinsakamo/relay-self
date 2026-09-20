@@ -12,6 +12,7 @@ from adapters.mineflayer.python_protocol import (
     encode_consume_held,
     encode_equip_item,
     encode_look,
+    encode_observe,
     encode_set_control,
     encode_shutdown,
 )
@@ -181,6 +182,9 @@ class MineflayerProcessSession:
                 pitch=pitch,
             )
         )
+
+    async def send_observe(self) -> None:
+        await self._send(encode_observe())
 
     async def shutdown(self, *, timeout_s: float = 5.0) -> int:
         """Request one clean bridge shutdown, with bounded termination fallback."""
