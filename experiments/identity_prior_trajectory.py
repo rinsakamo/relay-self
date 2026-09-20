@@ -152,6 +152,7 @@ def build_candidate_world() -> tuple[MineflayerObservation, ControlledScenario]:
         snapshot=MineflayerSnapshot(
             health=20,
             food=20,
+            food_saturation=20,
             oxygen_level=20,
             position=MineflayerPosition(x=0, y=64, z=0),
             time=None,
