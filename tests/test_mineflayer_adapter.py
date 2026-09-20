@@ -3,6 +3,9 @@ import json
 import pytest
 
 from adapters.mineflayer.python_protocol import (
+    MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+    MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+    MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
     MINEFLAYER_PROVENANCE_SOURCE,
     MINEFLAYER_VERSION,
     MineflayerAdapterProtocolError,
@@ -10,6 +13,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerLaunchConfig,
     MineflayerObservation,
+    MineflayerPosition,
     MineflayerStreamDecoder,
     encode_clear_controls,
     encode_consume_held,
@@ -17,6 +21,7 @@ from adapters.mineflayer.python_protocol import (
     encode_look,
     encode_set_control,
     encode_shutdown,
+    mineflayer_yaw_to_target,
     parse_mineflayer_line,
 )
 
@@ -80,6 +85,13 @@ def observation_line(
                         "position": {"x": 4.5, "y": 64, "z": -2.25},
                     }
                 ],
+                "nearby_entities_coverage": {
+                    "source_scope": MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+                    "max_distance": MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+                    "max_entities": MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+                    "candidate_count": 1,
+                    "truncated": False,
+                },
             },
         }
     )
@@ -126,6 +138,13 @@ def test_stream_requires_started_seq_zero_then_preserves_survival_facts() -> Non
     assert observation.snapshot.nearby_entities[0].name == "zombie"
     assert observation.snapshot.nearby_entities[0].entity_type == "mob"
     assert observation.snapshot.nearby_entities[0].distance == 3.0
+    assert observation.snapshot.nearby_entities_coverage.source_scope == (
+        MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE
+    )
+    assert observation.snapshot.nearby_entities_coverage.max_distance == 16
+    assert observation.snapshot.nearby_entities_coverage.max_entities == 16
+    assert observation.snapshot.nearby_entities_coverage.candidate_count == 1
+    assert observation.snapshot.nearby_entities_coverage.truncated is False
     assert not hasattr(observation.snapshot.nearby_entities[0], "hostile")
     assert observation.provenance.source == MINEFLAYER_PROVENANCE_SOURCE
     assert observation.provenance.reference == "session-1:1"
@@ -154,6 +173,81 @@ def test_snapshot_rejects_malformed_non_null_oxygen() -> None:
         parse_mineflayer_line(observation_line(oxygen_level="unknown"))
 
 
+
+
+def test_snapshot_rejects_inconsistent_non_truncated_coverage() -> None:
+    payload = json.loads(observation_line())
+    payload["snapshot"]["nearby_entities_coverage"]["candidate_count"] = 2
+
+    with pytest.raises(
+        MineflayerAdapterProtocolError,
+        match="non-truncated nearby entity coverage",
+    ):
+        parse_mineflayer_line(json.dumps(payload))
+
+
+def test_snapshot_rejects_inconsistent_truncated_coverage() -> None:
+    payload = json.loads(observation_line())
+    payload["snapshot"]["nearby_entities_coverage"].update(
+        {
+            "candidate_count": 17,
+            "truncated": True,
+        }
+    )
+
+    with pytest.raises(
+        MineflayerAdapterProtocolError,
+        match="truncated nearby entity coverage",
+    ):
+        parse_mineflayer_line(json.dumps(payload))
+
+
+@pytest.mark.parametrize(
+    ("target", "expected"),
+    [
+        (MineflayerPosition(x=0, y=64, z=-10), 0.0),
+        (MineflayerPosition(x=-10, y=64, z=0), pytest.approx(3.141592653589793 / 2)),
+        (MineflayerPosition(x=0, y=64, z=10), pytest.approx(3.141592653589793)),
+        (MineflayerPosition(x=10, y=64, z=0), pytest.approx(-3.141592653589793 / 2)),
+    ],
+)
+def test_target_position_maps_to_mineflayer_yaw_in_adapter(
+    target: MineflayerPosition,
+    expected: object,
+) -> None:
+    actual = mineflayer_yaw_to_target(
+        MineflayerPosition(x=0, y=64, z=0),
+        target,
+    )
+    assert actual == expected
+
+
+def test_mineflayer_yaw_matches_recovery_ridge_vector() -> None:
+    actual = mineflayer_yaw_to_target(
+        MineflayerPosition(
+            x=29.49999999999898,
+            y=-60.0,
+            z=-3.794300097396616,
+        ),
+        MineflayerPosition(
+            x=29.49999999999898,
+            y=-60.0,
+            z=-13.794300097396615,
+        ),
+    )
+
+    assert actual == pytest.approx(0.0)
+
+
+def test_mineflayer_yaw_rejects_same_horizontal_position() -> None:
+    with pytest.raises(
+        MineflayerAdapterProtocolError,
+        match="current horizontal position",
+    ):
+        mineflayer_yaw_to_target(
+            MineflayerPosition(x=0, y=64, z=0),
+            MineflayerPosition(x=0, y=70, z=0),
+        )
 
 
 def test_stream_rejects_non_started_first_message_without_consuming_sequence() -> None:
