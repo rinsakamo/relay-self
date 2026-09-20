@@ -261,6 +261,59 @@ def _relative_position(
     }
 
 
+def _memory_content_in_local_frame(
+    memory: Memory,
+    anchor: MineflayerPosition,
+) -> str:
+    try:
+        payload = json.loads(memory.content)
+    except json.JSONDecodeError as exc:
+        raise IdentityPriorTransactionError(
+            "retained FLEE Memory content is not valid JSON"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise IdentityPriorTransactionError(
+            "retained FLEE Memory content must be an object"
+        )
+    if payload.get("kind") != "controlled_flee_destination_outcome":
+        raise IdentityPriorTransactionError(
+            "retained Memory is not the declared controlled FLEE outcome"
+        )
+
+    raw_position = payload.get("destination_position")
+    if not isinstance(raw_position, dict) or set(raw_position) != {
+        "x",
+        "y",
+        "z",
+    }:
+        raise IdentityPriorTransactionError(
+            "retained FLEE Memory is missing its destination position"
+        )
+    try:
+        absolute_position = MineflayerPosition(
+            x=float(raw_position["x"]),
+            y=float(raw_position["y"]),
+            z=float(raw_position["z"]),
+        )
+    except (TypeError, ValueError) as exc:
+        raise IdentityPriorTransactionError(
+            "retained FLEE Memory destination position is invalid"
+        ) from exc
+
+    projected = dict(payload)
+    projected["destination_position"] = _relative_position(
+        absolute_position,
+        anchor,
+    )
+    projected["coordinate_frame"] = "matched-local"
+    return json.dumps(
+        projected,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
 def build_later_request(
     *,
     identity_request: BoundedChoiceRequest,
@@ -355,16 +408,16 @@ def build_later_request(
                 "memory:first-grounded-flee",
                 {
                     "semantic_type": "Memory",
-                    "content": memory.content,
+                    "content": _memory_content_in_local_frame(
+                        memory,
+                        anchor,
+                    ),
                     "source_provenance": {
-                        "source": "mineflayer",
-                        "reference": "first-grounded-consequence",
+                        "source": memory.source_provenance.source,
+                        "reference": memory.source_provenance.reference,
                     },
                 },
-                Provenance(
-                    source=TRANSACTION_NAME,
-                    reference="explicit-memory-integration:first-grounded-flee",
-                ),
+                memory.integration_provenance,
             )
         )
 

@@ -331,6 +331,12 @@ embodied result:
   anchor;
 - the explicitly retained Memory of the first successful FLEE destination.
 
+The durable Memory remains stored with its original live-world destination
+coordinates and provenance. Only its transient provider projection is converted
+into the same matched-local coordinate frame as the later Present and route
+catalog; the projection preserves the Memory's actual source and integration
+provenance rather than inventing replacement provenance.
+
 Those later differences are intended trajectory evidence, not treatment
 leakage.
 
