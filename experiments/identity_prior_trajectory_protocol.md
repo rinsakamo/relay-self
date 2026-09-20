@@ -215,15 +215,17 @@ spawning and disables generated structures before the fresh flat World is
 created. This keeps uncontrolled entities/structures from becoming an
 order-dependent physical nuisance variable.
 
-1. **Cleanup phase:** issue the existing zombie removal, effect/inventory
-   clearing, anchor/orientation, health/food, and common-time commands. Then
-   issue a server-side conditional `say` marker that can execute only if the
-   server currently has zero non-player entities. The marker must be observed
-   in the server log *after* the command's captured log offset. This proves
-   server-side cleanup ordering and the entity-isolation condition without
-   depending on a Mineflayer movement event. After that server marker, request
-   an explicit target-local Mineflayer `observe` probe and require a current
-   `probe` snapshot showing the common anchor/body state and no nearby entity.
+1. **Cleanup phase:** remove every non-player entity exactly once, then
+   clear effects/inventory and restore anchor/orientation, health/food, and
+   common time. After cleanup, issue two ordered server commands: first a
+   conditional `DIRTY` marker that emits only if any non-player entity still
+   exists, then an unconditional `BARRIER` marker. The transaction accepts
+   server-side zero only when the post-offset server log reaches the BARRIER
+   without containing DIRTY. This positively acknowledges command ordering while
+   using the conditional marker only as fail evidence. After that server
+   barrier, request an explicit target-local Mineflayer `observe` probe and
+   require a current `probe` snapshot showing the common anchor/body state
+   and no nearby entity.
 2. **Fixture phase:** only after that two-source cleanup barrier is grounded,
    remove the temporary saturation effect and issue one summon command for
    exactly one static `NoAI`, persistent, silent, invulnerable zombie. Then
@@ -236,11 +238,15 @@ Ordinary Mineflayer `forcedMove` remains a valid target observation, but it is
 not reset-qualification evidence. The reset no longer assumes that a specific
 teleport must emit that event.
 
-Fixed command settle intervals are execution aids only. Server markers use the
-fresh Mineflayer session id and are matched only after a captured log offset, so
-old log lines cannot satisfy a new barrier. Queued ordinary Mineflayer events
-also cannot satisfy the client barrier: only observations explicitly emitted in
-response to post-marker `observe` probes qualify. Bounded repeated probes may
+Fixed command settle intervals are execution aids only. DIRTY/BARRIER
+markers use the fresh Mineflayer session id and are matched only after a captured
+log offset, so old log lines cannot satisfy a new barrier. Because the BARRIER
+is unconditional, its absence is an acknowledgment failure rather than an
+ambiguous statement about World state; a preceding DIRTY marker is explicit
+server-side evidence that cleanup did not establish zero entities. Queued
+ordinary Mineflayer events also cannot satisfy the client barrier: only
+observations explicitly emitted in response to post-marker `observe` probes
+qualify. Bounded repeated probes may
 wait for client projection convergence, but the owner never repeats cleanup,
 summon, a scientific condition, or a provider call.
 
