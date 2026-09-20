@@ -48,6 +48,7 @@ def observation() -> MineflayerObservation:
         snapshot=MineflayerSnapshot(
             health=20,
             food=18,
+            food_saturation=5,
             oxygen_level=20,
             position=MineflayerPosition(x=4.5, y=4.0, z=-3.5),
             time=None,
