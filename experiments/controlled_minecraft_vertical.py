@@ -886,11 +886,27 @@ async def _await_effect_result(
     *,
     scenario: ControlledScenario,
 ) -> MineflayerEffectResult:
-    for _ in range(scenario.max_evidence_messages):
-        message = await _receive(
-            session,
-            timeout_s=scenario.evidence_timeout_s,
-        )
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + scenario.evidence_timeout_s
+
+    while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            raise ControlledScenarioError(
+                "timed out waiting for effect result for supervised action: "
+                f"{action_id}"
+            )
+        try:
+            message = await asyncio.wait_for(
+                session.receive(),
+                timeout=remaining,
+            )
+        except TimeoutError as exc:
+            raise ControlledScenarioError(
+                "timed out waiting for effect result for supervised action: "
+                f"{action_id}"
+            ) from exc
+
         messages.append(message)
         if (
             isinstance(message, MineflayerEffectResult)
@@ -918,10 +934,6 @@ async def _await_effect_result(
                     "effect result did not close Action as OUTCOME"
                 )
             return message
-
-    raise ControlledScenarioError(
-        f"no effect result observed for supervised action: {action_id}"
-    )
 
 
 def _coordinate_if_material(
