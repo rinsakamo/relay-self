@@ -58,6 +58,13 @@ def observation_line() -> bytes:
                         {"name": "bread", "count": 3, "slot": 10},
                     ],
                     "nearby_entities": [],
+                    "nearby_entities_coverage": {
+                        "source_scope": "mineflayer_entity_registry",
+                        "max_distance": 16,
+                        "max_entities": 16,
+                        "candidate_count": 0,
+                        "truncated": False,
+                    },
                 },
             }
         )
@@ -290,6 +297,13 @@ def test_invalid_first_message_terminates_child_without_retry(
                     "time": None,
                     "inventory": [],
                     "nearby_entities": [],
+                    "nearby_entities_coverage": {
+                        "source_scope": "mineflayer_entity_registry",
+                        "max_distance": 16,
+                        "max_entities": 16,
+                        "candidate_count": 0,
+                        "truncated": False,
+                    },
                 },
             }
         )
