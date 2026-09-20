@@ -334,6 +334,7 @@ def run_live_qualification(
     origin: str = "http://127.0.0.1:1234",
     timeout: float = 60.0,
     repo_root: str | Path = ".",
+    use_systemone: bool = False,
 ) -> RelayEngineQualificationReport:
     repository = inspect_repository(repo_root)
     runtime = inspect_llama_cpp_runtime(
@@ -342,6 +343,11 @@ def run_live_qualification(
     )
     provider = LlamaCppRelayProvider(
         endpoint=f"{runtime.origin}/v1/chat/completions",
+        systemone_endpoint=(
+            f"{runtime.origin}/v1/systemone"
+            if use_systemone
+            else None
+        ),
         model=runtime.model,
         timeout=timeout,
     )
@@ -414,6 +420,14 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--timeout", type=float, default=60.0)
     parser.add_argument("--repo-root", default=".")
+    parser.add_argument(
+        "--use-systemone",
+        action="store_true",
+        help=(
+            "Use the explicit /v1/systemone Jev fast path for BOUNDED. "
+            "THINK remains on /v1/chat/completions; there is no fallback."
+        ),
+    )
     return parser
 
 
@@ -423,6 +437,7 @@ def main() -> int:
         origin=args.origin,
         timeout=args.timeout,
         repo_root=args.repo_root,
+        use_systemone=args.use_systemone,
     )
     print(
         json.dumps(
