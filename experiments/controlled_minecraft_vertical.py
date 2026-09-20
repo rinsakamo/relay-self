@@ -187,6 +187,8 @@ class MineflayerScenarioSession(Protocol):
 
     async def send_clear_controls(self, action_id: str) -> None: ...
 
+    async def send_observe(self) -> None: ...
+
 
 RelayEngineCallable = Callable[[BoundedChoiceRequest], RelayEngineResult]
 
@@ -774,6 +776,19 @@ async def _execute_flee(
         scenario=scenario,
     )
 
+    terminal_evidence: MineflayerObservation | None = None
+    if (
+        forward_result.result == "applied"
+        and stop_result.result == "applied"
+        and progress_evidence is not None
+    ):
+        terminal_evidence = await _await_post_action_probe(
+            session,
+            supervisor,
+            messages,
+            scenario=scenario,
+        )
+
     if forward_result.result != "applied":
         skill = skill.fail(
             reason=f"forward control rejected: {forward_result.error}",
@@ -795,15 +810,35 @@ async def _execute_flee(
             at_ns=_next_owner_time(skill.events[-1].at_ns),
             provenance=forward_result.provenance,
         )
-    else:
-        skill = skill.succeed(
-            reason=(
-                "later Mineflayer observation showed horizontal progress "
-                "toward the selected destination"
-            ),
+    elif terminal_evidence is None:
+        skill = skill.fail(
+            reason="post-stop Mineflayer consequence probe was unavailable",
             at_ns=_next_owner_time(skill.events[-1].at_ns),
-            provenance=progress_evidence.provenance,
+            provenance=stop_result.provenance,
         )
+    else:
+        terminal_distance = _horizontal_distance(
+            terminal_evidence.snapshot.position,
+            destination.position,
+        )
+        if start_distance - terminal_distance < scenario.flee_min_progress:
+            skill = skill.fail(
+                reason=(
+                    "post-stop Mineflayer probe did not preserve grounded "
+                    "progress toward the selected destination"
+                ),
+                at_ns=_next_owner_time(skill.events[-1].at_ns),
+                provenance=terminal_evidence.provenance,
+            )
+        else:
+            skill = skill.succeed(
+                reason=(
+                    "post-stop Mineflayer probe showed grounded horizontal "
+                    "progress toward the selected destination"
+                ),
+                at_ns=_next_owner_time(skill.events[-1].at_ns),
+                provenance=terminal_evidence.provenance,
+            )
 
     return _run_result(
         decision,
@@ -938,6 +973,40 @@ def _coordinate_if_material(
         supervisor,
         at_ns=_monotonic_ns(),
     )
+
+
+async def _await_post_action_probe(
+    session: MineflayerScenarioSession,
+    supervisor: ActionSupervisor,
+    messages: list[MineflayerDecodedMessage],
+    *,
+    scenario: ControlledScenario,
+) -> MineflayerObservation:
+    await session.send_observe()
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + scenario.evidence_timeout_s
+    while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            raise ControlledScenarioError(
+                "timed out waiting for post-stop Mineflayer consequence probe"
+            )
+        try:
+            message = await asyncio.wait_for(
+                session.receive(),
+                timeout=remaining,
+            )
+        except TimeoutError as exc:
+            raise ControlledScenarioError(
+                "timed out waiting for post-stop Mineflayer consequence probe"
+            ) from exc
+        messages.append(message)
+        _coordinate_if_material(message, supervisor)
+        if (
+            isinstance(message, MineflayerObservation)
+            and message.kind == "probe"
+        ):
+            return message
 
 
 async def _receive(
