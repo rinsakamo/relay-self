@@ -58,6 +58,7 @@ def scenario(
     *,
     destinations: tuple[ControlledDestination, ...] | None = None,
     max_evidence_messages: int = 8,
+    evidence_timeout_s: float = 1.0,
     cognition_soft_wall_time_budget_s: float | None = None,
     cognition_think_allowed: bool = True,
 ) -> ControlledScenario:
@@ -71,7 +72,7 @@ def scenario(
             else destinations
         ),
         flee_min_progress=0.25,
-        evidence_timeout_s=1.0,
+        evidence_timeout_s=evidence_timeout_s,
         max_evidence_messages=max_evidence_messages,
         cognition_soft_wall_time_budget_s=(
             cognition_soft_wall_time_budget_s
@@ -188,6 +189,24 @@ class FakeSession:
 
     async def send_clear_controls(self, action_id):
         self.sent.append(("clear_controls", action_id))
+
+
+class SidewaysOnlySession(FakeSession):
+    async def receive(self):
+        if self.messages:
+            return self.messages.pop(0)
+        await asyncio.sleep(3600)
+        raise AssertionError("unreachable")
+
+    async def send_clear_controls(self, action_id):
+        await super().send_clear_controls(action_id)
+        self.messages.append(
+            effect_result(
+                5,
+                action_id,
+                "clear_controls",
+            )
+        )
 
 
 def test_wait_is_healthy_inactivity_without_skill_start() -> None:
@@ -512,6 +531,72 @@ def test_effect_result_wait_ignores_raw_message_count_until_deadline() -> None:
     assert len(result.messages) >= 44
 
 
+def test_flee_progress_wait_ignores_raw_message_count_until_deadline() -> None:
+    obs = observation(entities=(zombie(),))
+    decision = decide_skill(
+        obs,
+        scenario(max_evidence_messages=1),
+        intent_id="intent-survive",
+    )
+    prefix = "skill:flee:session-1:1"
+    noisy_messages = [
+        MineflayerObservation(
+            session_id="session-1",
+            seq=seq,
+            kind="move",
+            snapshot=observation(
+                seq=seq,
+                x=0.0,
+                z=0.0,
+                entities=(zombie(distance=2),),
+            ).snapshot,
+        )
+        for seq in range(4, 64)
+    ]
+    session = FakeSession(
+        [
+            effect_result(
+                2,
+                f"{prefix}:look",
+                "look",
+            ),
+            effect_result(
+                3,
+                f"{prefix}:forward",
+                "set_control",
+            ),
+        ]
+        + noisy_messages
+        + [
+            observation(
+                seq=64,
+                x=1.0,
+                entities=(zombie(distance=2),),
+            ),
+            effect_result(
+                65,
+                f"{prefix}:stop",
+                "clear_controls",
+            ),
+        ]
+    )
+
+    result = asyncio.run(
+        execute_decision(
+            session,
+            obs,
+            scenario(max_evidence_messages=1),
+            decision,
+            intent_commitment=current_intent(),
+            supervisor=ActionSupervisor(),
+        )
+    )
+
+    assert result is not None
+    assert result.skill_execution.state is SkillState.SUCCEEDED
+    assert len(result.messages) >= 64
+
+
 def test_flee_skill_looks_moves_and_requires_progress_toward_destination() -> None:
     obs = observation(entities=(zombie(),))
     decision = decide_skill(
@@ -591,7 +676,7 @@ def test_flee_sideways_motion_does_not_count_as_destination_progress() -> None:
         intent_id="intent-survive",
     )
     prefix = "skill:flee:session-1:1"
-    session = FakeSession(
+    session = SidewaysOnlySession(
         [
             effect_result(
                 2,
@@ -609,11 +694,6 @@ def test_flee_sideways_motion_does_not_count_as_destination_progress() -> None:
                 z=1,
                 entities=(zombie(),),
             ),
-            effect_result(
-                5,
-                f"{prefix}:stop",
-                "clear_controls",
-            ),
         ]
     )
 
@@ -621,7 +701,10 @@ def test_flee_sideways_motion_does_not_count_as_destination_progress() -> None:
         execute_decision(
             session,
             obs,
-            scenario(max_evidence_messages=1),
+            scenario(
+                max_evidence_messages=1,
+                evidence_timeout_s=0.01,
+            ),
             decision,
             intent_commitment=current_intent(),
             supervisor=ActionSupervisor(),
