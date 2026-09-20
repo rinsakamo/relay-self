@@ -468,6 +468,7 @@ capture_authority final || {
 python3 -m experiments.identity_prior_trajectory_transaction \
   --phase run --repo-root "$REPO_ROOT" --evidence-root "$EVIDENCE_ROOT" \
   --minecraft-version "$MINECRAFT_VERSION" --minecraft-port "$MINECRAFT_PORT" \
+  --minecraft-pid "$MINECRAFT_PID" \
   --username "$USERNAME" --node "$NODE" --llama-origin "$LLAMA_ORIGIN" \
   --llama-port "$LLAMA_PORT" --model "$MODEL" --served-model "$MODEL" \
   --server-control "$SERVER_CONTROL" --server-log "$SERVER_LOG" --self-id "$SELF_ID"
