@@ -210,27 +210,34 @@ Each fresh condition session first waits for its Mineflayer `spawn` observation
 so the existing controlled-world command owner does not issue player-targeted
 commands before the player is ready. It then performs exactly one reset sequence:
 
+The controlled server itself disables natural monster, animal, and NPC
+spawning and disables generated structures before the fresh flat World is
+created. This keeps uncontrolled entities/structures from becoming an
+order-dependent physical nuisance variable.
+
 1. **Cleanup phase:** issue the existing zombie removal, effect/inventory
    clearing, anchor/orientation, health/food, and common-time commands. Then
    issue a server-side conditional sentinel teleport that can execute only if
-   the server currently has zero zombies. A matching Mineflayer
+   the server currently has zero non-player entities. A matching Mineflayer
    `forcedMove` is the causal watermark proving that the preceding cleanup
-   commands were processed and the server-side zero-zombie condition held.
-   Only observations at or after that watermark may qualify the zero-zombie
-   client projection, and the player is then returned to the common anchor.
-2. **Fixture phase:** only after the causal zero-zombie barrier is grounded,
+   commands were processed and the server-side entity-isolation condition held.
+   Only observations at or after that watermark may qualify an empty nearby
+   entity projection, and the player is then returned to the common anchor.
+2. **Fixture phase:** only after the causal entity-isolation barrier is grounded,
    issue one summon command for exactly one static `NoAI`, persistent, silent
    zombie. A second sentinel teleport is issued after the summon; its matching
    Mineflayer `forcedMove` is the causal watermark proving command ordering.
    The temporary saturation effect is cleared before a final return-to-anchor
    teleport. Only the final anchor watermark or later observations may qualify
-   the exactly-one-zombie matched state.
+   a matched state whose nearby-entity projection contains exactly the one
+   controlled zombie and no other entity.
 
 The fixed command settle interval is only an execution aid; it is not reset
 qualification evidence. A queued observation emitted before a causal watermark
 cannot satisfy the corresponding barrier. A cleanup watermark timeout,
-post-watermark zero-client-projection timeout, or post-summon zero/multiple
-zombie observation is `NOT QUALIFIED` and stops the invocation. The owner does
+post-watermark non-empty client projection, or post-summon projection with
+anything other than the one controlled zombie is `NOT QUALIFIED` and stops
+the invocation. The owner does
 not issue another kill or summon, and no provider call occurs inside reset
 qualification. Command evidence records cleanup, sentinel, summon, and
 return-to-anchor commands; the transaction report records both causal
