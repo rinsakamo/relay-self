@@ -688,7 +688,7 @@ async def reset_live_world(
 
     summon_command = (
         f"execute at {args.username} run summon minecraft:zombie "
-        "~4 ~ ~ {NoAI:1b,PersistenceRequired:1b,Silent:1b}"
+        "~4 ~ ~ {NoAI:1b,PersistenceRequired:1b,Silent:1b,Invulnerable:1b}"
     )
     await write_server_command(
         control_path=Path(args.server_control),
