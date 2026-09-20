@@ -175,9 +175,13 @@ class MineflayerNearbyEntitiesCoverage:
             )
         _require_non_negative_number("nearby entity max_distance", self.max_distance)
         _require_non_negative_int("nearby entity max_entities", self.max_entities)
-        if self.max_entities == 0:
+        if self.max_distance != MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE:
             raise MineflayerAdapterProtocolError(
-                "nearby entity max_entities must be positive"
+                "nearby entity max_distance changed from the adapter contract"
+            )
+        if self.max_entities != MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES:
+            raise MineflayerAdapterProtocolError(
+                "nearby entity max_entities changed from the adapter contract"
             )
         _require_non_negative_int(
             "nearby entity candidate_count",
@@ -190,6 +194,7 @@ class MineflayerNearbyEntitiesCoverage:
 class MineflayerSnapshot:
     health: float
     food: float
+    food_saturation: float
     oxygen_level: float | None
     position: MineflayerPosition
     time: MineflayerTime | None
@@ -200,6 +205,7 @@ class MineflayerSnapshot:
     def __post_init__(self) -> None:
         _require_non_negative_number("health", self.health)
         _require_non_negative_number("food", self.food)
+        _require_non_negative_number("food_saturation", self.food_saturation)
         if self.oxygen_level is not None:
             _require_non_negative_number("oxygen_level", self.oxygen_level)
         if not isinstance(self.position, MineflayerPosition):
@@ -677,6 +683,7 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
         {
             "health",
             "food",
+            "food_saturation",
             "oxygen_level",
             "position",
             "time",
@@ -705,6 +712,10 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
     return MineflayerSnapshot(
         health=_decoded_non_negative_number("health", payload["health"]),
         food=_decoded_non_negative_number("food", payload["food"]),
+        food_saturation=_decoded_non_negative_number(
+            "food_saturation",
+            payload["food_saturation"],
+        ),
         oxygen_level=(
             None
             if payload["oxygen_level"] is None
