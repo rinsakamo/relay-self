@@ -584,6 +584,9 @@ class RecordedMineflayerSession:
     async def send_look(self, action_id: str, *, yaw: float, pitch: float) -> None:
         await self._session.send_look(action_id, yaw=yaw, pitch=pitch)
 
+    async def send_observe(self) -> None:
+        await self._session.send_observe()
+
     async def wait_forward_intervention(self) -> None:
         if self._intervention_task is not None:
             await self._intervention_task
