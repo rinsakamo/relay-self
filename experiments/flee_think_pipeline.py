@@ -8,8 +8,8 @@ from experiments.flee_memory_retrieval import (
     retrieve_flee_memories,
 )
 from experiments.focus_attention_epoch import (
-    FleeAttentionResult,
     VIABILITY_INTERRUPT_KEY,
+    FleeAttentionResult,
     attend_flee,
 )
 from experiments.present_relay_engine_seam import (
