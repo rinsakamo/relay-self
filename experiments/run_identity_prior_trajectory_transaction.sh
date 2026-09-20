@@ -155,6 +155,11 @@ relevant = []
 for comment in comments:
     body = comment.get("body")
     comment_id = comment.get("id")
+    user = comment.get("user")
+    login = user.get("login") if isinstance(user, dict) else None
+    association = comment.get("author_association")
+    if login != "rinsakamo" or association != "OWNER":
+        continue
     if not isinstance(body, str) or not isinstance(comment_id, int):
         continue
     matches = pattern.findall(body)
@@ -162,15 +167,20 @@ for comment in comments:
         relevant.append((comment_id, matches[0], body))
 
 if not relevant:
-    raise SystemExit("no machine-readable #220 execution qualification found")
+    raise SystemExit(
+        "no trusted-owner machine-readable #220 execution qualification found"
+    )
 
 _, state, body = max(relevant, key=lambda item: item[0])
 if state != "QUALIFIED_FOR_NEW_TRANSACTION_SUBJECT":
-    raise SystemExit(f"latest #220 execution qualification is {state}")
-if f"subject_head: {expected_head}" not in body:
-    raise SystemExit("qualified #220 comment does not bind current HEAD")
-if f"subject_tree: {expected_tree}" not in body:
-    raise SystemExit("qualified #220 comment does not bind current tree")
+    raise SystemExit(f"latest trusted #220 execution qualification is {state}")
+
+head_matches = re.findall(r"(?m)^subject_head: ([0-9a-f]{40})\s*$", body)
+tree_matches = re.findall(r"(?m)^subject_tree: ([0-9a-f]{40})\s*$", body)
+if head_matches != [expected_head]:
+    raise SystemExit("qualified #220 comment does not uniquely bind current HEAD")
+if tree_matches != [expected_tree]:
+    raise SystemExit("qualified #220 comment does not uniquely bind current tree")
 
 print(state)
 PY
