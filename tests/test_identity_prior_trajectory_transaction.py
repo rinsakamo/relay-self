@@ -499,8 +499,9 @@ def test_later_request_projects_memory_into_same_local_frame() -> None:
     assert projected_memory["coordinate_frame"] == "matched-local"
     assert wrapper["source_provenance"] == {
         "source": memory.source_provenance.source,
-        "reference": memory.source_provenance.reference,
+        "reference": "matched-first-grounded-consequence",
     }
+    assert memory.source_provenance.reference not in memory_datum.value_json
     assert memory_datum.provenance == memory.integration_provenance
     assert memory.content == durable_before
     assert json.loads(memory.content)["destination_position"]["y"] == anchor.y
