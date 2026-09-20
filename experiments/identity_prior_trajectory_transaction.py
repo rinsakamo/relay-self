@@ -1025,8 +1025,9 @@ async def run_invocation(
             "later_cognition_signature": [],
             "later_bound_destination": None,
             "later_skill_run": None,
-            "status": "completed",
+            "status": "in_progress_after_initial_cognition",
         }
+        write_json(invocation_root / "report.json", report)
 
         if not first_decision.resolved:
             report["status"] = "completed_unresolved_before_action"
@@ -1095,25 +1096,6 @@ async def run_invocation(
             relay_engine=engine,
         )
 
-        later_run: SkillRunResult | None = None
-        if later_decision.resolved:
-            later_run = await execute_decision(
-                session,
-                consequence,
-                later_scenario,
-                later_decision,
-                intent_commitment=commitment,
-                supervisor=_new_supervisor(),
-                authorization=TRANSACTION_NAME,
-            )
-            if (
-                later_run is None
-                or later_run.skill_execution.state is not SkillState.SUCCEEDED
-            ):
-                raise IdentityPriorTransactionError(
-                    "later resolved FLEE did not close from grounded progress"
-                )
-
         report.update(
             {
                 "first_skill_run": skill_run_json(first_run),
@@ -1135,6 +1117,32 @@ async def run_invocation(
                     if later_decision.destination is not None
                     else None
                 ),
+                "status": "in_progress_after_later_cognition",
+            }
+        )
+        write_json(invocation_root / "report.json", report)
+
+        later_run: SkillRunResult | None = None
+        if later_decision.resolved:
+            later_run = await execute_decision(
+                session,
+                consequence,
+                later_scenario,
+                later_decision,
+                intent_commitment=commitment,
+                supervisor=_new_supervisor(),
+                authorization=TRANSACTION_NAME,
+            )
+            if (
+                later_run is None
+                or later_run.skill_execution.state is not SkillState.SUCCEEDED
+            ):
+                raise IdentityPriorTransactionError(
+                    "later resolved FLEE did not close from grounded progress"
+                )
+
+        report.update(
+            {
                 "later_skill_run": (
                     skill_run_json(later_run)
                     if later_run is not None
@@ -1203,6 +1211,16 @@ def _signature_vector(
     return result
 
 
+def _skill_run_is_grounded_success(value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    execution = value.get("skill_execution")
+    return (
+        isinstance(execution, dict)
+        and execution.get("state") == SkillState.SUCCEEDED.value
+    )
+
+
 def _behavior_vector(
     records: list[InvocationResult],
     *,
@@ -1240,10 +1258,10 @@ def _behavior_vector(
                 if (
                     not isinstance(destination, str)
                     or not destination
-                    or skill_run is None
+                    or not _skill_run_is_grounded_success(skill_run)
                 ):
                     raise IdentityPriorTransactionError(
-                        "resolved first decision must contain a grounded Action outcome"
+                        "resolved first decision must contain a grounded successful Action outcome"
                     )
                 outcome = f"grounded_action:{destination}"
             else:
@@ -1267,10 +1285,10 @@ def _behavior_vector(
                 if (
                     not isinstance(destination, str)
                     or not destination
-                    or skill_run is None
+                    or not _skill_run_is_grounded_success(skill_run)
                 ):
                     raise IdentityPriorTransactionError(
-                        "resolved later decision must contain a grounded Action outcome"
+                        "resolved later decision must contain a grounded successful Action outcome"
                     )
                 outcome = f"grounded_action:{destination}"
             else:
@@ -1686,6 +1704,39 @@ def _provider_call_count(value: object) -> int:
     return count if isinstance(count, int) else 0
 
 
+def _partial_scientific_spend(evidence_root: Path) -> dict[str, object]:
+    recorded_calls = 0
+    checkpointed_reports = 0
+    for path in sorted(evidence_root.glob("invocations/*/report.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        checkpointed_reports += 1
+        recorded_calls += _provider_call_count(payload.get("initial_cognition"))
+        recorded_calls += _provider_call_count(payload.get("later_cognition"))
+
+    condition_session_files = sorted(
+        path.name
+        for path in evidence_root.glob("mineflayer-block-*.jsonl")
+    )
+    anchor_session_files = sorted(
+        path.name
+        for path in evidence_root.glob("mineflayer-anchor.jsonl")
+    )
+    return {
+        "minimum_recorded_model_provider_calls": recorded_calls,
+        "provider_call_count_is_lower_bound": True,
+        "minecraft_condition_sessions_started": len(condition_session_files),
+        "condition_session_evidence_files": condition_session_files,
+        "anchor_sessions_started": len(anchor_session_files),
+        "anchor_session_evidence_files": anchor_session_files,
+        "checkpointed_invocation_reports": checkpointed_reports,
+    }
+
+
 def read_json_required(path: Path, key: str) -> object:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -1806,6 +1857,9 @@ async def async_main(args: argparse.Namespace) -> int:
             "error_type": type(exc).__name__,
             "error": str(exc),
             "timestamp": utc_now(),
+            "scientific_spend": _partial_scientific_spend(
+                Path(args.evidence_root)
+            ),
             "retry_count": 0,
             "replay_count": 0,
             "same_run_fixture_tuning": False,
