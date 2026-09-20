@@ -10,6 +10,7 @@ from relay_self.provenance import Provenance
 
 MINEFLAYER_VERSION = "4.39.0"
 MINEFLAYER_PROVENANCE_SOURCE = "mineflayer"
+MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE = "mineflayer_entity_registry"
 
 _OBSERVATION_KINDS = frozenset(
     {
@@ -87,6 +88,29 @@ class MineflayerPosition:
         _require_number("position.z", self.z)
 
 
+def mineflayer_yaw_to_target(
+    current: MineflayerPosition,
+    target: MineflayerPosition,
+) -> float:
+    """Map a target position into Mineflayer's target-native yaw convention."""
+
+    if not isinstance(current, MineflayerPosition):
+        raise MineflayerAdapterProtocolError(
+            "current position must be MineflayerPosition"
+        )
+    if not isinstance(target, MineflayerPosition):
+        raise MineflayerAdapterProtocolError(
+            "target position must be MineflayerPosition"
+        )
+    dx = target.x - current.x
+    dz = target.z - current.z
+    if dx == 0 and dz == 0:
+        raise MineflayerAdapterProtocolError(
+            "cannot compute Mineflayer yaw for the current horizontal position"
+        )
+    return math.atan2(-dx, -dz)
+
+
 @dataclass(frozen=True, slots=True)
 class MineflayerTime:
     time_of_day: int
@@ -133,6 +157,33 @@ class MineflayerEntityFact:
 
 
 @dataclass(frozen=True, slots=True)
+class MineflayerNearbyEntitiesCoverage:
+    source_scope: str
+    max_distance: float
+    max_entities: int
+    candidate_count: int
+    truncated: bool
+
+    def __post_init__(self) -> None:
+        _require_text("nearby entity source_scope", self.source_scope)
+        if self.source_scope != MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE:
+            raise MineflayerAdapterProtocolError(
+                "nearby entity source_scope must identify Mineflayer's entity registry"
+            )
+        _require_non_negative_number("nearby entity max_distance", self.max_distance)
+        _require_non_negative_int("nearby entity max_entities", self.max_entities)
+        if self.max_entities == 0:
+            raise MineflayerAdapterProtocolError(
+                "nearby entity max_entities must be positive"
+            )
+        _require_non_negative_int(
+            "nearby entity candidate_count",
+            self.candidate_count,
+        )
+        _require_bool("nearby entity truncated", self.truncated)
+
+
+@dataclass(frozen=True, slots=True)
 class MineflayerSnapshot:
     health: float
     food: float
@@ -141,6 +192,7 @@ class MineflayerSnapshot:
     time: MineflayerTime | None
     inventory: tuple[MineflayerInventoryItem, ...]
     nearby_entities: tuple[MineflayerEntityFact, ...]
+    nearby_entities_coverage: MineflayerNearbyEntitiesCoverage
 
     def __post_init__(self) -> None:
         _require_non_negative_number("health", self.health)
@@ -167,6 +219,36 @@ class MineflayerSnapshot:
         ):
             raise MineflayerAdapterProtocolError(
                 "snapshot nearby_entities must be MineflayerEntityFact tuple"
+            )
+        if not isinstance(
+            self.nearby_entities_coverage,
+            MineflayerNearbyEntitiesCoverage,
+        ):
+            raise MineflayerAdapterProtocolError(
+                "snapshot nearby_entities_coverage must be "
+                "MineflayerNearbyEntitiesCoverage"
+            )
+        coverage = self.nearby_entities_coverage
+        observed_count = len(self.nearby_entities)
+        if observed_count > coverage.max_entities:
+            raise MineflayerAdapterProtocolError(
+                "snapshot nearby_entities exceeds declared max_entities"
+            )
+        if coverage.candidate_count < observed_count:
+            raise MineflayerAdapterProtocolError(
+                "nearby entity candidate_count cannot be smaller than observed count"
+            )
+        if coverage.truncated:
+            if (
+                coverage.candidate_count <= coverage.max_entities
+                or observed_count != coverage.max_entities
+            ):
+                raise MineflayerAdapterProtocolError(
+                    "truncated nearby entity coverage is inconsistent with counts"
+                )
+        elif coverage.candidate_count != observed_count:
+            raise MineflayerAdapterProtocolError(
+                "non-truncated nearby entity coverage must include every candidate"
             )
 
 
@@ -593,6 +675,7 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
             "time",
             "inventory",
             "nearby_entities",
+            "nearby_entities_coverage",
         },
     )
     position = _decode_position("position", payload["position"])
@@ -609,6 +692,9 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
             payload["nearby_entities"],
         )
     )
+    nearby_entities_coverage = _decode_nearby_entities_coverage(
+        payload["nearby_entities_coverage"]
+    )
     return MineflayerSnapshot(
         health=_decoded_non_negative_number("health", payload["health"]),
         food=_decoded_non_negative_number("food", payload["food"]),
@@ -624,6 +710,7 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
         time=time,
         inventory=inventory,
         nearby_entities=nearby_entities,
+        nearby_entities_coverage=nearby_entities_coverage,
     )
 
 
@@ -668,6 +755,45 @@ def _decode_inventory_item(value: object) -> MineflayerInventoryItem:
             payload["count"],
         ),
         slot=_decoded_non_negative_int("inventory item slot", payload["slot"]),
+    )
+
+
+def _decode_nearby_entities_coverage(
+    value: object,
+) -> MineflayerNearbyEntitiesCoverage:
+    payload = _require_mapping("nearby_entities_coverage", value)
+    _require_exact_keys(
+        "nearby_entities_coverage",
+        payload,
+        {
+            "source_scope",
+            "max_distance",
+            "max_entities",
+            "candidate_count",
+            "truncated",
+        },
+    )
+    return MineflayerNearbyEntitiesCoverage(
+        source_scope=_decoded_text(
+            "nearby entity source_scope",
+            payload["source_scope"],
+        ),
+        max_distance=_decoded_non_negative_number(
+            "nearby entity max_distance",
+            payload["max_distance"],
+        ),
+        max_entities=_decoded_non_negative_int(
+            "nearby entity max_entities",
+            payload["max_entities"],
+        ),
+        candidate_count=_decoded_non_negative_int(
+            "nearby entity candidate_count",
+            payload["candidate_count"],
+        ),
+        truncated=_decoded_bool(
+            "nearby entity truncated",
+            payload["truncated"],
+        ),
     )
 
 
