@@ -634,9 +634,16 @@ async def receive_until(
     *,
     timeout_s: float,
 ) -> MineflayerObservation:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_s
     while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            raise TerminalQualificationError(
+                "timed out waiting for required Mineflayer observation"
+            )
         try:
-            message = await asyncio.wait_for(session.receive(), timeout=timeout_s)
+            message = await asyncio.wait_for(session.receive(), timeout=remaining)
         except TimeoutError as exc:
             raise TerminalQualificationError(
                 "timed out waiting for required Mineflayer observation"
@@ -987,8 +994,11 @@ async def run_first_phase(args: argparse.Namespace, tracker: StageTracker) -> di
         await write_server_command(
             control_path=Path(args.server_control),
             evidence_path=commands_path,
-            command=f"data modify entity {args.username} foodLevel set value 7",
-            reason="controlled resource intervention: low food",
+            command=f"effect give {args.username} minecraft:hunger 30 255 true",
+            reason=(
+                "controlled resource intervention: drain food through "
+                "vanilla Hunger mechanics"
+            ),
         )
         resource_observation = await receive_until(
             session,
@@ -997,6 +1007,15 @@ async def run_first_phase(args: argparse.Namespace, tracker: StageTracker) -> di
                 and observation_has_item(observation, "bread")
             ),
             timeout_s=args.evidence_timeout_s,
+        )
+        await write_server_command(
+            control_path=Path(args.server_control),
+            evidence_path=commands_path,
+            command=f"effect clear {args.username} minecraft:hunger",
+            reason=(
+                "controlled resource intervention cleanup after fresh "
+                "low-food evidence"
+            ),
         )
         resource_scenario = scenario(
             hazard_names=frozenset({"zombie"}),
