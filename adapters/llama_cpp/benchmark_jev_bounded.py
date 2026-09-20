@@ -9,6 +9,7 @@ import subprocess
 import time
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
+from typing import Any, Callable
 
 from adapters.llama_cpp.qualify_relay_engine import (
     LlamaCppRuntimeIdentity,
@@ -59,6 +60,12 @@ class GpuIdentity:
 
 
 @dataclass(frozen=True, slots=True)
+class JevAnswerObservation:
+    probabilities: dict[str, float] | None
+    confidence: float | None
+
+
+@dataclass(frozen=True, slots=True)
 class BenchmarkObservation:
     arm: str
     ordinal: int
@@ -75,6 +82,8 @@ class BenchmarkObservation:
     completion_tokens: int | None
     total_tokens: int | None
     finish_reason: str | None
+    jev_probabilities: dict[str, float] | None
+    jev_confidence: float | None
     error_type: str | None
     error_message: str | None
 
@@ -140,6 +149,7 @@ def run_matched_benchmark(
     request: BoundedChoiceRequest,
     warmup_calls_per_arm: int,
     measured_calls_per_arm: int,
+    jev_observation_getter: Callable[[], JevAnswerObservation | None] | None = None,
 ) -> tuple[
     BenchmarkArmReport,
     BenchmarkArmReport,
@@ -168,6 +178,7 @@ def run_matched_benchmark(
                 ordinal=warmup_index,
                 pair_index=warmup_index,
                 position_in_pair=_pair_order(warmup_index).index(arm),
+                jev_observation_getter=jev_observation_getter,
             )
             if not observation.correct:
                 detail = (
@@ -198,6 +209,7 @@ def run_matched_benchmark(
                 ordinal=arm_ordinals[arm],
                 pair_index=pair_index,
                 position_in_pair=position_in_pair,
+                jev_observation_getter=jev_observation_getter,
             )
             arm_ordinals[arm] += 1
             measured[arm].append(observation)
@@ -369,14 +381,13 @@ def run_live_benchmark(
             timeout=timeout,
         )
     )
-    jev_engine = RelayEngine(
-        LlamaCppRelayProvider(
-            endpoint=f"{runtime.origin}/v1/chat/completions",
-            systemone_endpoint=f"{runtime.origin}/v1/systemone",
-            model=runtime.model,
-            timeout=timeout,
-        )
+    jev_provider = _BenchmarkJevProvider(
+        endpoint=f"{runtime.origin}/v1/chat/completions",
+        systemone_endpoint=f"{runtime.origin}/v1/systemone",
+        model=runtime.model,
+        timeout=timeout,
     )
+    jev_engine = RelayEngine(jev_provider)
 
     generated, jev, order = run_matched_benchmark(
         generated_engine=generated_engine,
@@ -384,6 +395,7 @@ def run_live_benchmark(
         request=request,
         warmup_calls_per_arm=warmup_calls_per_arm,
         measured_calls_per_arm=measured_calls_per_arm,
+        jev_observation_getter=jev_provider.take_jev_answer_observation,
     )
     return build_report(
         repository=repository,
@@ -400,6 +412,75 @@ def run_live_benchmark(
     )
 
 
+class _BenchmarkJevProvider(LlamaCppRelayProvider):
+    """Capture Jev calibration fields for evaluation without routing on them."""
+
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self._last_jev_answer: JevAnswerObservation | None = None
+
+    def _call(
+        self,
+        request_body: dict[str, object],
+        *,
+        endpoint: str | None = None,
+    ) -> dict[str, Any]:
+        body = super()._call(request_body, endpoint=endpoint)
+        if (
+            endpoint is not None
+            and self.systemone_endpoint is not None
+            and endpoint == self.systemone_endpoint
+        ):
+            self._last_jev_answer = _observe_jev_answer(body)
+        return body
+
+    def take_jev_answer_observation(self) -> JevAnswerObservation | None:
+        observed = self._last_jev_answer
+        self._last_jev_answer = None
+        return observed
+
+
+def _observe_jev_answer(body: dict[str, Any]) -> JevAnswerObservation:
+    answer: object = None
+    answers = body.get("answers")
+    if isinstance(answers, dict):
+        answer = answers.get("decision")
+
+    probabilities: dict[str, float] | None = None
+    confidence: float | None = None
+    if isinstance(answer, dict):
+        raw_probabilities = answer.get("probabilities")
+        if isinstance(raw_probabilities, dict):
+            normalized: dict[str, float] = {}
+            valid = True
+            for key, value in raw_probabilities.items():
+                if (
+                    not isinstance(key, str)
+                    or not key
+                    or isinstance(value, bool)
+                    or not isinstance(value, (int, float))
+                    or not math.isfinite(value)
+                ):
+                    valid = False
+                    break
+                normalized[key] = float(value)
+            if valid:
+                probabilities = normalized
+
+        raw_confidence = answer.get("confidence")
+        if (
+            not isinstance(raw_confidence, bool)
+            and isinstance(raw_confidence, (int, float))
+            and math.isfinite(raw_confidence)
+        ):
+            confidence = float(raw_confidence)
+
+    return JevAnswerObservation(
+        probabilities=probabilities,
+        confidence=confidence,
+    )
+
+
 def _run_observation(
     *,
     engine: RelayEngine,
@@ -408,12 +489,25 @@ def _run_observation(
     ordinal: int,
     pair_index: int,
     position_in_pair: int,
+    jev_observation_getter: Callable[[], JevAnswerObservation | None] | None,
 ) -> BenchmarkObservation:
+    if arm == JEV_ARM and jev_observation_getter is not None:
+        stale = jev_observation_getter()
+        if stale is not None:
+            raise JevBenchmarkError(
+                "Jev observation capture contained stale response metadata"
+            )
+
     started_ns = time.perf_counter_ns()
     try:
         result = engine(request)
     except LlamaCppProviderError as exc:
         wall_elapsed_ns = time.perf_counter_ns() - started_ns
+        jev_answer = (
+            jev_observation_getter()
+            if arm == JEV_ARM and jev_observation_getter is not None
+            else None
+        )
         return BenchmarkObservation(
             arm=arm,
             ordinal=ordinal,
@@ -430,6 +524,12 @@ def _run_observation(
             completion_tokens=None,
             total_tokens=None,
             finish_reason=None,
+            jev_probabilities=(
+                None if jev_answer is None else jev_answer.probabilities
+            ),
+            jev_confidence=(
+                None if jev_answer is None else jev_answer.confidence
+            ),
             error_type=type(exc).__name__,
             error_message=str(exc),
         )
@@ -437,6 +537,11 @@ def _run_observation(
     wall_elapsed_ns = time.perf_counter_ns() - started_ns
     _validate_bounded_result(result)
     attempt = result.attempts[0]
+    jev_answer = (
+        jev_observation_getter()
+        if arm == JEV_ARM and jev_observation_getter is not None
+        else None
+    )
     return BenchmarkObservation(
         arm=arm,
         ordinal=ordinal,
@@ -456,6 +561,12 @@ def _run_observation(
         completion_tokens=attempt.call_facts.completion_tokens,
         total_tokens=attempt.call_facts.total_tokens,
         finish_reason=attempt.call_facts.finish_reason,
+        jev_probabilities=(
+            None if jev_answer is None else jev_answer.probabilities
+        ),
+        jev_confidence=(
+            None if jev_answer is None else jev_answer.confidence
+        ),
         error_type=None,
         error_message=None,
     )
