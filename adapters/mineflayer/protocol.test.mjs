@@ -198,6 +198,7 @@ test('snapshot exposes survival facts without appraisal labels', () => {
   const snapshot = snapshotFromBot({
     health: 12,
     food: 7,
+    foodSaturation: 5,
     oxygenLevel: 20,
     time: {
       timeOfDay: 13000,
@@ -239,6 +240,7 @@ test('snapshot exposes survival facts without appraisal labels', () => {
   assert.deepEqual(snapshot, {
     health: 12,
     food: 7,
+    food_saturation: 5,
     oxygen_level: 20,
     position: { x: 1.5, y: 64, z: -2.25 },
     time: {
@@ -294,6 +296,7 @@ test('bounded entity snapshot declares truncation coverage', () => {
   const snapshot = snapshotFromBot({
     health: 20,
     food: 20,
+    foodSaturation: 5,
     oxygenLevel: 20,
     time: {
       timeOfDay: null,
@@ -350,6 +353,7 @@ test('bounded entity snapshot marks in-radius candidates truncated at cap', () =
   const snapshot = snapshotFromBot({
     health: 20,
     food: 20,
+    foodSaturation: 5,
     oxygenLevel: 20,
     time: {
       timeOfDay: null,
@@ -399,6 +403,7 @@ test('snapshot represents unobserved oxygen as null', () => {
   const snapshot = snapshotFromBot({
     health: 20,
     food: 20,
+    foodSaturation: 5,
     oxygenLevel: undefined,
     time: {
       timeOfDay: null,
@@ -446,6 +451,7 @@ test('snapshot allows time to remain null before first time update', () => {
   const snapshot = snapshotFromBot({
     health: 20,
     food: 20,
+    foodSaturation: 5,
     oxygenLevel: 20,
     time: {
       timeOfDay: null,
