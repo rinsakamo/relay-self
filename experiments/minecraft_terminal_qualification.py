@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import errno
 import hashlib
 import json
 import math
@@ -472,7 +473,13 @@ async def write_server_command(
     command: str,
     reason: str,
     settle_s: float = 0.25,
+    delivery_timeout_s: float = 2.0,
+    process_pid: int | None = None,
 ) -> None:
+    if delivery_timeout_s <= 0:
+        raise TerminalQualificationError(
+            "server command delivery timeout must be positive"
+        )
     record = {
         "timestamp": utc_now(),
         "command": command,
@@ -482,19 +489,41 @@ async def write_server_command(
     }
     with evidence_path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
-    try:
-        await asyncio.to_thread(_write_fifo, control_path, command)
-    except OSError as exc:
-        raise TerminalQualificationError(
-            f"could not deliver server command {command!r}: {exc}"
-        ) from exc
+
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + delivery_timeout_s
+    while True:
+        if process_pid is not None:
+            assert_process_alive(process_pid, "Minecraft")
+        try:
+            _write_fifo_nonblocking(control_path, command)
+            break
+        except OSError as exc:
+            retryable = exc.errno in {
+                errno.ENXIO,
+                errno.EAGAIN,
+                errno.EWOULDBLOCK,
+            }
+            if not retryable or loop.time() >= deadline:
+                raise TerminalQualificationError(
+                    f"could not deliver server command {command!r}: {exc}"
+                ) from exc
+            await asyncio.sleep(min(0.05, max(0.0, deadline - loop.time())))
     await asyncio.sleep(settle_s)
 
 
-def _write_fifo(path: Path, command: str) -> None:
-    with path.open("w", encoding="utf-8") as handle:
-        handle.write(command + "\n")
-        handle.flush()
+def _write_fifo_nonblocking(path: Path, command: str) -> None:
+    payload = (command + "\n").encode("utf-8")
+    fd = os.open(path, os.O_WRONLY | os.O_NONBLOCK)
+    try:
+        written = os.write(fd, payload)
+    finally:
+        os.close(fd)
+    if written != len(payload):
+        raise OSError(
+            errno.EIO,
+            f"partial FIFO write: {written}/{len(payload)} bytes",
+        )
 
 
 class RecordedMineflayerSession:
