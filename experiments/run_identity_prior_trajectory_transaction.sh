@@ -270,28 +270,29 @@ PY
 
 MINEFLAYER_DIR="$REPO_ROOT/adapters/mineflayer"
 PACKAGE_LOCK="$MINEFLAYER_DIR/package-lock.json"
-PREEXISTING_PACKAGE_LOCK="$EVIDENCE_ROOT/preexisting-mineflayer-package-lock.json"
-RESOLVED_PACKAGE_LOCK="$EVIDENCE_ROOT/mineflayer-package-lock.json"
+EVIDENCE_PACKAGE_LOCK="$EVIDENCE_ROOT/mineflayer-package-lock.json"
 DEPENDENCY_TREE="$EVIDENCE_ROOT/mineflayer-dependency-tree.json"
-NPM_INSTALL_LOG="$EVIDENCE_ROOT/mineflayer-npm-install.log"
+NPM_INSTALL_LOG="$EVIDENCE_ROOT/mineflayer-npm-ci.log"
 
-if git -C "$REPO_ROOT" ls-files --error-unmatch adapters/mineflayer/package-lock.json >/dev/null 2>&1; then
-  printf '%s\n' 'package-lock.json is tracked unexpectedly' >&2
+if ! git -C "$REPO_ROOT" ls-files --error-unmatch adapters/mineflayer/package-lock.json >/dev/null 2>&1; then
+  printf '%s\n' 'tracked Mineflayer package-lock.json is required' >&2
   exit 2
 fi
-if [[ -f "$PACKAGE_LOCK" ]]; then
-  mv "$PACKAGE_LOCK" "$PREEXISTING_PACKAGE_LOCK"
+if [[ ! -f "$PACKAGE_LOCK" ]]; then
+  printf '%s\n' 'tracked Mineflayer package-lock.json is missing' >&2
+  exit 2
 fi
+cp "$PACKAGE_LOCK" "$EVIDENCE_PACKAGE_LOCK"
 
 if ! (
   cd "$MINEFLAYER_DIR"
-  "$NPM" install --omit=dev --no-audit --no-fund
+  "$NPM" ci --omit=dev --no-audit --no-fund
 ) >"$NPM_INSTALL_LOG" 2>&1; then
-  printf '%s\n' 'Mineflayer dependency preparation failed; transaction not started' >&2
+  printf '%s\n' 'Mineflayer npm ci failed; transaction not started' >&2
   exit 1
 fi
-if [[ ! -f "$PACKAGE_LOCK" ]]; then
-  printf '%s\n' 'Mineflayer dependency preparation did not generate package-lock.json' >&2
+if ! cmp -s "$PACKAGE_LOCK" "$EVIDENCE_PACKAGE_LOCK"; then
+  printf '%s\n' 'Mineflayer package-lock.json changed during npm ci' >&2
   exit 1
 fi
 if ! (
@@ -311,16 +312,14 @@ package_path = Path(sys.argv[1])
 package = json.loads(package_path.read_text(encoding="utf-8"))
 if package.get("version") != "4.39.0":
     raise SystemExit(
-        f"unexpected Mineflayer version after preparation: {package.get('version')!r}"
+        f"unexpected Mineflayer version after npm ci: {package.get('version')!r}"
     )
 PY
 
-mv "$PACKAGE_LOCK" "$RESOLVED_PACKAGE_LOCK"
-
 python3 - \
   "$RUNTIME_ARTIFACTS_JSON" "$MINEFLAYER_DIR" \
-  "$RESOLVED_PACKAGE_LOCK" "$DEPENDENCY_TREE" \
-  "$PREEXISTING_PACKAGE_LOCK" "$NPM_INSTALL_LOG" <<'PY'
+  "$PACKAGE_LOCK" "$EVIDENCE_PACKAGE_LOCK" "$DEPENDENCY_TREE" \
+  "$NPM_INSTALL_LOG" <<'PY'
 import hashlib
 import json
 import sys
@@ -328,15 +327,20 @@ from pathlib import Path
 
 output = Path(sys.argv[1])
 mineflayer_dir = Path(sys.argv[2])
-resolved_lock = Path(sys.argv[3])
-dependency_tree = Path(sys.argv[4])
-preexisting_lock = Path(sys.argv[5])
+source_lock = Path(sys.argv[3])
+evidence_lock = Path(sys.argv[4])
+dependency_tree = Path(sys.argv[5])
 install_log = Path(sys.argv[6])
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     digest.update(path.read_bytes())
     return digest.hexdigest()
+
+source_lock_sha256 = sha256(source_lock)
+evidence_lock_sha256 = sha256(evidence_lock)
+if source_lock_sha256 != evidence_lock_sha256:
+    raise SystemExit("evidence package lock does not match tracked source lock")
 
 output.write_text(
     json.dumps(
@@ -349,10 +353,17 @@ output.write_text(
                     "gitignored": True,
                 },
                 {
-                    "kind": "resolved_package_lock",
-                    "path": str(resolved_lock),
-                    "sha256": sha256(resolved_lock),
-                    "tracked_source": False,
+                    "kind": "tracked_package_lock",
+                    "path": str(source_lock),
+                    "sha256": source_lock_sha256,
+                    "tracked_source": True,
+                    "used_for_resolution": True,
+                },
+                {
+                    "kind": "evidence_package_lock",
+                    "path": str(evidence_lock),
+                    "sha256": evidence_lock_sha256,
+                    "matches_tracked_source": True,
                 },
                 {
                     "kind": "resolved_dependency_tree",
@@ -361,15 +372,9 @@ output.write_text(
                     "tracked_source": False,
                 },
                 {
-                    "kind": "npm_install_log",
+                    "kind": "npm_ci_log",
                     "path": str(install_log),
                     "tracked_source": False,
-                },
-                {
-                    "kind": "preexisting_package_lock",
-                    "path": str(preexisting_lock),
-                    "present": preexisting_lock.is_file(),
-                    "used_for_resolution": False,
                 },
             ]
         },
