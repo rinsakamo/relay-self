@@ -428,9 +428,11 @@ following remain true on the exact execution subject:
 - #141 is closed;
 - #201 is closed / completed;
 - #220 remains open;
-- the **latest** machine-readable #220 execution qualification is
-  `QUALIFIED_FOR_NEW_TRANSACTION_SUBJECT`;
-- that qualification binds the exact current local/remote HEAD and tree;
+- the **latest trusted-owner** machine-readable #220 execution
+  qualification is `QUALIFIED_FOR_NEW_TRANSACTION_SUBJECT`; comments from
+  other GitHub users or non-`OWNER` associations are not execution authority;
+- that qualification contains exactly one `subject_head` and one
+  `subject_tree` line and binds the exact current local/remote HEAD and tree;
 - a later `NOT_REQUALIFIED`, missing marker, or stale subject binding fails
   closed even if an older `NO MATERIAL CONFLICT` comment exists;
 - the launcher prepares the pinned Mineflayer dependency from the current
