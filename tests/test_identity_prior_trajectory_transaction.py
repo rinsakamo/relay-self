@@ -15,6 +15,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
     MineflayerPosition,
     MineflayerSnapshot,
+    MineflayerTime,
 )
 from experiments import identity_prior_trajectory_transaction as transaction
 from experiments.controlled_minecraft_vertical import ControlledSkill
@@ -151,7 +152,11 @@ def _reset_observation(
             food=20,
             oxygen_level=None,
             position=position or _reset_anchor(),
-            time=None,
+            time=MineflayerTime(
+                time_of_day=transaction.RESET_TIME_OF_DAY,
+                day=transaction.RESET_DAY,
+                is_day=True,
+            ),
             inventory=(),
             nearby_entities=entities,
             nearby_entities_coverage=MineflayerNearbyEntitiesCoverage(
@@ -433,11 +438,11 @@ def test_reset_stops_when_positive_server_barrier_is_absent(
             )
         )
 
-    assert len(commands) == 12
+    assert len(commands) == 13
     assert [command["command"] for command in commands[:4]] == [
-        "gamerule doMobSpawning false",
-        "gamerule doMobLoot false",
-        "gamerule doEntityDrops false",
+        "gamerule minecraft:spawn_mobs false",
+        "gamerule minecraft:mob_drops false",
+        "gamerule minecraft:entity_drops false",
         "kill @e[type=!minecraft:player]",
     ]
     assert "execute if entity @e[type=!minecraft:player]" in str(
@@ -461,10 +466,61 @@ def test_reset_suppresses_cleanup_generated_entity_drops_before_kill(
 
     issued = [str(command["command"]) for command in commands]
     kill_index = issued.index("kill @e[type=!minecraft:player]")
-    assert issued.index("gamerule doMobSpawning false") < kill_index
-    assert issued.index("gamerule doMobLoot false") < kill_index
-    assert issued.index("gamerule doEntityDrops false") < kill_index
+    assert issued.index("gamerule minecraft:spawn_mobs false") < kill_index
+    assert issued.index("gamerule minecraft:mob_drops false") < kill_index
+    assert issued.index("gamerule minecraft:entity_drops false") < kill_index
     assert issued.count("kill @e[type=!minecraft:player]") == 1
+
+
+def test_reset_uses_exact_minecraft_26_1_clock_commands(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    session = _ResetSession(_successful_reset_messages())
+
+    _, commands, _ = _run_reset(monkeypatch, tmp_path, session)
+
+    issued = [str(command["command"]) for command in commands]
+    assert "time set noon" not in issued
+    set_index = issued.index("time of minecraft:overworld set 6000")
+    pause_index = issued.index("time of minecraft:overworld pause")
+    assert set_index < pause_index
+    assert pause_index < issued.index(
+        "execute if entity @e[type=!minecraft:player] run "
+        f"say RELAYSELF220_DIRTY_{session.started.session_id.replace('-', '')}"
+    )
+
+
+def test_reset_probe_rejects_wrong_absolute_clock() -> None:
+    observation = _reset_observation(
+        seq=2,
+        kind="probe",
+        entities=(),
+    )
+    wrong_time = MineflayerObservation(
+        session_id=observation.session_id,
+        seq=observation.seq,
+        kind=observation.kind,
+        snapshot=MineflayerSnapshot(
+            health=observation.snapshot.health,
+            food=observation.snapshot.food,
+            oxygen_level=observation.snapshot.oxygen_level,
+            position=observation.snapshot.position,
+            time=MineflayerTime(
+                time_of_day=transaction.RESET_TIME_OF_DAY,
+                day=transaction.RESET_DAY + 1,
+                is_day=True,
+            ),
+            inventory=observation.snapshot.inventory,
+            nearby_entities=observation.snapshot.nearby_entities,
+            nearby_entities_coverage=observation.snapshot.nearby_entities_coverage,
+        ),
+    )
+
+    assert transaction._cleanup_zero_observation_matches(
+        wrong_time,
+        _reset_anchor(),
+    ) is False
 
 
 def test_reset_requires_positive_server_barriers_and_explicit_probes(
@@ -496,7 +552,7 @@ def test_reset_requires_positive_server_barriers_and_explicit_probes(
         result.cleanup_server_dirty_marker,
     )
     assert barriers[1] == (result.summon_processed_marker, None)
-    assert len(commands) == 15
+    assert len(commands) == 16
     assert session.observe_count == 2
 
 
@@ -649,7 +705,7 @@ def test_reset_duplicate_after_summon_does_not_succeed(
         if "summon" in str(command["command"])
     ]
     assert len(summon_commands) == 1
-    assert len(commands) == 15
+    assert len(commands) == 16
     assert len(barriers) == 2
 
 
