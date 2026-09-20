@@ -688,7 +688,7 @@ async def reset_live_world(
 
     summon_command = (
         f"execute at {args.username} run summon minecraft:zombie "
-        "~4 ~ ~ {NoAI:1b,PersistenceRequired:1b,Silent:1b}"
+        "~4 ~ ~ {NoAI:1b,PersistenceRequired:1b,Silent:1b,Invulnerable:1b}"
     )
     await write_server_command(
         control_path=Path(args.server_control),
@@ -1488,6 +1488,11 @@ def transaction_plan() -> dict[str, object]:
             )
             for item in preparation.conditions
         },
+        "route_description_grounding": (
+            "route-17/route-42 descriptions are fixed experiment-authored "
+            "semantic cognition inputs; current Mineflayer evidence does not "
+            "observe or establish the described corridor, bend, or coal facts"
+        ),
         "execution_boundary": (
             "Nine predeclared condition invocations. Each begins from a "
             "matched live reset and zero Memory. A resolved first FLEE must "
@@ -1515,10 +1520,13 @@ def run_preflight(args: argparse.Namespace) -> dict[str, object]:
     base["scenario"] = {
         "world_reset": (
             "same anchor, full health/food, empty inventory, noon, one "
-            "NoAI persistent zombie at approximately four blocks"
+            "NoAI persistent silent invulnerable zombie at approximately "
+            "four blocks, qualified through causal reset watermarks"
         ),
         "first_decision": (
-            "frozen provider-visible local-frame route-17/route-42 request"
+            "frozen provider-visible local-frame route-17/route-42 semantic "
+            "request; route descriptions are experiment-authored inputs, "
+            "not live Mineflayer block observations"
         ),
         "embodiment": (
             "selected route is mapped to live geometry and executed through "
