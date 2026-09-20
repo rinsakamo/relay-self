@@ -114,6 +114,7 @@ def observation(
         snapshot=MineflayerSnapshot(
             health=20,
             food=20,
+            food_saturation=5,
             oxygen_level=20,
             position=MineflayerPosition(x=x, y=64, z=z),
             time=None,
