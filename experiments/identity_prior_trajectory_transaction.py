@@ -577,7 +577,7 @@ async def _wait_for_server_log_marker(
             raise IdentityPriorTransactionError(
                 f"could not read Minecraft server log: {exc}"
             ) from exc
-        await asyncio.sleep(min(0.05, remaining))
+        await asyncio.sleep(min(0.01, remaining))
 
 
 async def _receive_probe(
