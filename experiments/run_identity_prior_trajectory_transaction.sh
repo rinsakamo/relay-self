@@ -179,18 +179,118 @@ PY
     "$label" "$local_head" "$local_tree" "$remote_main" >"$AUTHORITY_JSON"
 }
 
-PACKAGE_LOCK="$REPO_ROOT/adapters/mineflayer/package-lock.json"
-if [[ -f "$PACKAGE_LOCK" ]]; then
-  if git -C "$REPO_ROOT" ls-files --error-unmatch adapters/mineflayer/package-lock.json >/dev/null 2>&1; then
-    printf '%s\n' 'package-lock.json is tracked unexpectedly' >&2
-    exit 2
-  fi
-  mv "$PACKAGE_LOCK" "$EVIDENCE_ROOT/mineflayer-package-lock.json"
+MINEFLAYER_DIR="$REPO_ROOT/adapters/mineflayer"
+PACKAGE_LOCK="$MINEFLAYER_DIR/package-lock.json"
+PREEXISTING_PACKAGE_LOCK="$EVIDENCE_ROOT/preexisting-mineflayer-package-lock.json"
+RESOLVED_PACKAGE_LOCK="$EVIDENCE_ROOT/mineflayer-package-lock.json"
+DEPENDENCY_TREE="$EVIDENCE_ROOT/mineflayer-dependency-tree.json"
+NPM_INSTALL_LOG="$EVIDENCE_ROOT/mineflayer-npm-install.log"
+
+if git -C "$REPO_ROOT" ls-files --error-unmatch adapters/mineflayer/package-lock.json >/dev/null 2>&1; then
+  printf '%s\n' 'package-lock.json is tracked unexpectedly' >&2
+  exit 2
 fi
-printf '{"node_modules":"%s","package_lock_relocated":%s}\n' \
-  "$REPO_ROOT/adapters/mineflayer/node_modules" \
-  "$(test -f "$EVIDENCE_ROOT/mineflayer-package-lock.json" && echo true || echo false)" \
-  >"$RUNTIME_ARTIFACTS_JSON"
+if [[ -f "$PACKAGE_LOCK" ]]; then
+  mv "$PACKAGE_LOCK" "$PREEXISTING_PACKAGE_LOCK"
+fi
+
+if ! (
+  cd "$MINEFLAYER_DIR"
+  "$NPM" install --omit=dev --no-audit --no-fund
+) >"$NPM_INSTALL_LOG" 2>&1; then
+  printf '%s\n' 'Mineflayer dependency preparation failed; transaction not started' >&2
+  exit 1
+fi
+if [[ ! -f "$PACKAGE_LOCK" ]]; then
+  printf '%s\n' 'Mineflayer dependency preparation did not generate package-lock.json' >&2
+  exit 1
+fi
+if ! (
+  cd "$MINEFLAYER_DIR"
+  "$NPM" ls --omit=dev --json
+) >"$DEPENDENCY_TREE" 2>>"$NPM_INSTALL_LOG"; then
+  printf '%s\n' 'Mineflayer dependency tree capture failed; transaction not started' >&2
+  exit 1
+fi
+
+python3 - "$MINEFLAYER_DIR/node_modules/mineflayer/package.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+package_path = Path(sys.argv[1])
+package = json.loads(package_path.read_text(encoding="utf-8"))
+if package.get("version") != "4.39.0":
+    raise SystemExit(
+        f"unexpected Mineflayer version after preparation: {package.get('version')!r}"
+    )
+PY
+
+mv "$PACKAGE_LOCK" "$RESOLVED_PACKAGE_LOCK"
+
+python3 - \
+  "$RUNTIME_ARTIFACTS_JSON" "$MINEFLAYER_DIR" \
+  "$RESOLVED_PACKAGE_LOCK" "$DEPENDENCY_TREE" \
+  "$PREEXISTING_PACKAGE_LOCK" "$NPM_INSTALL_LOG" <<'PY'
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+output = Path(sys.argv[1])
+mineflayer_dir = Path(sys.argv[2])
+resolved_lock = Path(sys.argv[3])
+dependency_tree = Path(sys.argv[4])
+preexisting_lock = Path(sys.argv[5])
+install_log = Path(sys.argv[6])
+
+def sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+output.write_text(
+    json.dumps(
+        {
+            "artifacts": [
+                {
+                    "kind": "node_modules",
+                    "path": str(mineflayer_dir / "node_modules"),
+                    "tracked_source": False,
+                    "gitignored": True,
+                },
+                {
+                    "kind": "resolved_package_lock",
+                    "path": str(resolved_lock),
+                    "sha256": sha256(resolved_lock),
+                    "tracked_source": False,
+                },
+                {
+                    "kind": "resolved_dependency_tree",
+                    "path": str(dependency_tree),
+                    "sha256": sha256(dependency_tree),
+                    "tracked_source": False,
+                },
+                {
+                    "kind": "npm_install_log",
+                    "path": str(install_log),
+                    "tracked_source": False,
+                },
+                {
+                    "kind": "preexisting_package_lock",
+                    "path": str(preexisting_lock),
+                    "present": preexisting_lock.is_file(),
+                    "used_for_resolution": False,
+                },
+            ]
+        },
+        indent=2,
+        sort_keys=True,
+    )
+    + "\n",
+    encoding="utf-8",
+)
+PY
 
 python3 -m experiments.identity_prior_trajectory_transaction \
   --phase plan --repo-root "$REPO_ROOT" --evidence-root "$EVIDENCE_ROOT" \

@@ -903,13 +903,22 @@ def test_canonical_launcher_is_one_shot_and_blocks_before_run() -> None:
     assert 'gh api --paginate "repos/rinsakamo/relay-self/issues/$issue_number/comments"' in launcher
     assert "json.JSONDecoder()" in launcher
     assert "decoder.raw_decode(raw, offset)" in launcher
+    assert '"$NPM" install --omit=dev --no-audit --no-fund' in launcher
+    assert '"$NPM" ls --omit=dev --json' in launcher
+    assert "mineflayer-package-lock.json" in launcher
+    assert "mineflayer-dependency-tree.json" in launcher
+    assert "preexisting-mineflayer-package-lock.json" in launcher
+    assert '"used_for_resolution": False' in launcher
     assert "--phase first" not in launcher
     assert "--phase restart" not in launcher
     assert "same-run fixture tuning" not in launcher
 
+    install_index = launcher.index('"$NPM" install --omit=dev --no-audit --no-fund')
+    initial_gate_index = launcher.index("capture_authority initial")
     preflight_index = launcher.index("--phase preflight")
     final_gate_index = launcher.index("capture_authority final")
     run_index = launcher.index("--phase run")
+    assert install_index < initial_gate_index < preflight_index
     assert preflight_index < final_gate_index < run_index
 
     syntax = subprocess.run(
