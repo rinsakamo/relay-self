@@ -294,6 +294,10 @@ export function snapshotFromBot (bot) {
   return {
     health: requireFiniteNumber('bot.health', bot.health),
     food: requireFiniteNumber('bot.food', bot.food),
+    food_saturation: requireFiniteNumber(
+      'bot.foodSaturation',
+      bot.foodSaturation
+    ),
     oxygen_level: optionalFiniteNumber('bot.oxygenLevel', bot.oxygenLevel),
     position: {
       x: requireFiniteNumber('position.x', bot.entity.position.x),

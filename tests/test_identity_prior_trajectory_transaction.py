@@ -167,6 +167,7 @@ def _reset_observation(
         snapshot=MineflayerSnapshot(
             health=20,
             food=20,
+            food_saturation=transaction.RESET_FOOD_SATURATION,
             oxygen_level=None,
             position=position or _reset_anchor(),
             time=MineflayerTime(
@@ -457,7 +458,7 @@ def test_reset_stops_when_positive_server_barrier_is_absent(
             )
         )
 
-    assert len(commands) == 13
+    assert len(commands) == 11
     assert [command["command"] for command in commands[:4]] == [
         "gamerule minecraft:spawn_mobs false",
         "gamerule minecraft:mob_drops false",
@@ -523,6 +524,7 @@ def test_reset_probe_rejects_wrong_absolute_clock() -> None:
         snapshot=MineflayerSnapshot(
             health=observation.snapshot.health,
             food=observation.snapshot.food,
+            food_saturation=observation.snapshot.food_saturation,
             oxygen_level=observation.snapshot.oxygen_level,
             position=observation.snapshot.position,
             time=MineflayerTime(
@@ -538,6 +540,35 @@ def test_reset_probe_rejects_wrong_absolute_clock() -> None:
 
     assert transaction._cleanup_zero_observation_matches(
         wrong_time,
+        _reset_anchor(),
+    ) is False
+
+
+def test_reset_probe_rejects_wrong_food_saturation() -> None:
+    observation = _reset_observation(
+        seq=2,
+        kind="probe",
+        entities=(),
+    )
+    wrong_saturation = MineflayerObservation(
+        session_id=observation.session_id,
+        seq=observation.seq,
+        kind=observation.kind,
+        snapshot=MineflayerSnapshot(
+            health=observation.snapshot.health,
+            food=observation.snapshot.food,
+            food_saturation=transaction.RESET_FOOD_SATURATION + 1,
+            oxygen_level=observation.snapshot.oxygen_level,
+            position=observation.snapshot.position,
+            time=observation.snapshot.time,
+            inventory=observation.snapshot.inventory,
+            nearby_entities=observation.snapshot.nearby_entities,
+            nearby_entities_coverage=observation.snapshot.nearby_entities_coverage,
+        ),
+    )
+
+    assert transaction._cleanup_zero_observation_matches(
+        wrong_saturation,
         _reset_anchor(),
     ) is False
 
@@ -571,7 +602,7 @@ def test_reset_requires_positive_server_barriers_and_explicit_probes(
         result.cleanup_server_dirty_marker,
     )
     assert barriers[1] == (result.summon_processed_marker, None)
-    assert len(commands) == 16
+    assert len(commands) == 13
     assert session.observe_count == 2
 
 
@@ -726,7 +757,7 @@ def test_reset_duplicate_after_summon_does_not_succeed(
         if "summon" in str(command["command"])
     ]
     assert len(summon_commands) == 1
-    assert len(commands) == 16
+    assert len(commands) == 13
     assert len(barriers) == 2
 
 

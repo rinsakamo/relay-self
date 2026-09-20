@@ -78,6 +78,7 @@ REPORT_SCHEMA_VERSION = 1
 RESET_POSITION_TOLERANCE = 0.08
 RESET_ZOMBIE_DISTANCE_MIN = 3.5
 RESET_ZOMBIE_DISTANCE_MAX = 4.5
+RESET_FOOD_SATURATION = 5.0
 RESET_TIME_OF_DAY = 6000
 RESET_DAY = 0
 FIRST_REQUEST_ID = "identity-prior:first-decision"
@@ -498,6 +499,7 @@ def _common_reset_observation_matches(
     return (
         snapshot.health == 20
         and snapshot.food == 20
+        and snapshot.food_saturation == RESET_FOOD_SATURATION
         and snapshot.time is not None
         and snapshot.time.time_of_day == RESET_TIME_OF_DAY
         and snapshot.time.day == RESET_DAY
@@ -691,14 +693,6 @@ async def reset_live_world(
             "matched reset phase 1 cleanup: restore anchor position and orientation",
         ),
         (
-            f"effect give {username} minecraft:instant_health 1 255 true",
-            "matched reset phase 1 cleanup: restore full health",
-        ),
-        (
-            f"effect give {username} minecraft:saturation 2 255 true",
-            "matched reset phase 1 cleanup: restore sufficient food",
-        ),
-        (
             "time of minecraft:overworld set 6000",
             "matched reset phase 1 control: set exact overworld clock tick",
         ),
@@ -765,17 +759,6 @@ async def reset_live_world(
         timeout_message=(
             "timed out waiting for post-marker zero-entity Mineflayer probe"
         ),
-    )
-
-    await write_server_command(
-        control_path=Path(args.server_control),
-        evidence_path=evidence_path,
-        command=f"effect clear {username} minecraft:saturation",
-        reason=(
-            "matched reset phase 1 post-barrier: remove temporary "
-            "saturation effect"
-        ),
-        settle_s=0.05,
     )
 
     summon_command = (

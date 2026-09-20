@@ -47,6 +47,7 @@ def observation_line() -> bytes:
                 "snapshot": {
                     "health": 12,
                     "food": 7,
+                    "food_saturation": 5,
                     "oxygen_level": 20,
                     "position": {"x": 1, "y": 64, "z": 2},
                     "time": {
@@ -294,6 +295,7 @@ def test_invalid_first_message_terminates_child_without_retry(
                 "snapshot": {
                     "health": 12,
                     "food": 7,
+                    "food_saturation": 5,
                     "oxygen_level": 20,
                     "position": {"x": 1, "y": 64, "z": 2},
                     "time": None,
