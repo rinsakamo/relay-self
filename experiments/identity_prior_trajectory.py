@@ -10,7 +10,11 @@ from adapters.llama_cpp.relay_engine import (
     render_llama_cpp_request,
 )
 from adapters.mineflayer.python_protocol import (
+    MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+    MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+    MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
     MineflayerEntityFact,
+    MineflayerNearbyEntitiesCoverage,
     MineflayerObservation,
     MineflayerPosition,
     MineflayerSnapshot,
@@ -160,6 +164,13 @@ def build_candidate_world() -> tuple[MineflayerObservation, ControlledScenario]:
                     distance=4.0,
                     position=MineflayerPosition(x=4, y=64, z=0),
                 ),
+            ),
+            nearby_entities_coverage=MineflayerNearbyEntitiesCoverage(
+                source_scope=MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+                max_distance=MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+                max_entities=MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+                candidate_count=1,
+                truncated=False,
             ),
         ),
     )
