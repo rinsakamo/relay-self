@@ -1160,6 +1160,14 @@ def test_canonical_launcher_is_one_shot_and_blocks_before_run() -> None:
     assert "subject_tree:" in launcher
     assert 'login != "rinsakamo"' in launcher
     assert 'association != "OWNER"' in launcher
+    assert 'ruleset.get("id") != 23442682' in launcher
+    assert 'ruleset.get("bypass_actors") != []' in launcher
+    assert 'ruleset.get("current_user_can_bypass") != "never"' in launcher
+    assert 'ref_name.get("include") != ["~DEFAULT_BRANCH"]' in launcher
+    assert '"required_linear_history"' in launcher
+    assert 'pull_request.get("allowed_merge_methods") != ["squash"]' in launcher
+    assert 'pull_request.get("required_review_thread_resolution") is not True' in launcher
+    assert 'expected_checks = {"repository-contracts", "pytest", "lint"}' in launcher
     assert "trusted-owner machine-readable #220 execution qualification" in launcher
     assert "does not uniquely bind current HEAD" in launcher
     assert "does not uniquely bind current tree" in launcher
