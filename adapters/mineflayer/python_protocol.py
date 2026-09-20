@@ -23,6 +23,7 @@ _OBSERVATION_KINDS = frozenset(
         "entities",
         "move",
         "forcedMove",
+        "probe",
         "death",
         "respawn",
     }
@@ -631,6 +632,10 @@ def encode_look(
             "pitch": pitch,
         }
     )
+
+
+def encode_observe() -> str:
+    return _encode_command({"type": "observe"})
 
 
 def encode_shutdown() -> str:
