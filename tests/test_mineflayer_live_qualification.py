@@ -3,11 +3,15 @@ import asyncio
 import pytest
 
 from adapters.mineflayer.python_protocol import (
+    MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+    MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+    MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
     MINEFLAYER_VERSION,
     MineflayerAdapterStarted,
     MineflayerConnectionEnd,
     MineflayerEffectResult,
     MineflayerLaunchConfig,
+    MineflayerNearbyEntitiesCoverage,
     MineflayerObservation,
     MineflayerPosition,
     MineflayerSnapshot,
@@ -27,6 +31,13 @@ def snapshot(x: float) -> MineflayerSnapshot:
         time=None,
         inventory=(),
         nearby_entities=(),
+        nearby_entities_coverage=MineflayerNearbyEntitiesCoverage(
+            source_scope=MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+            max_distance=MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+            max_entities=MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+            candidate_count=0,
+            truncated=False,
+        ),
     )
 
 
@@ -191,6 +202,13 @@ def test_pre_ack_or_vertical_only_movement_does_not_qualify() -> None:
                     time=None,
                     inventory=(),
                     nearby_entities=(),
+                    nearby_entities_coverage=MineflayerNearbyEntitiesCoverage(
+                        source_scope=MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+                        max_distance=MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+                        max_entities=MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+                        candidate_count=0,
+                        truncated=False,
+                    ),
                 ),
             ),
             MineflayerConnectionEnd(
