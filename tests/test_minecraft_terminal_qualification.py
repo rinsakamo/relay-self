@@ -23,6 +23,7 @@ from experiments.minecraft_terminal_qualification import (
     make_recovery_present,
     memory_destination_id_from_content,
     parse_properties,
+    prepare_server_root,
     receive_until,
     resource_hunger_commands,
     server_properties_text,
@@ -71,6 +72,37 @@ def observation() -> MineflayerObservation:
             ),
         ),
     )
+
+
+def test_prepare_server_root_ignores_external_runtime_directories(
+    tmp_path: Path,
+) -> None:
+    source_root = tmp_path / "mutable-source"
+    (source_root / "libraries").mkdir(parents=True)
+    (source_root / "versions").mkdir()
+    (source_root / "libraries" / "mutable.txt").write_text(
+        "must not be imported",
+        encoding="utf-8",
+    )
+    (source_root / "versions" / "mutable.txt").write_text(
+        "must not be imported",
+        encoding="utf-8",
+    )
+    minecraft_jar = tmp_path / "server.jar"
+    minecraft_jar.write_bytes(b"pinned-official-server-jar")
+    server_root = tmp_path / "fresh-server"
+
+    evidence = prepare_server_root(
+        server_root=server_root,
+        minecraft_jar=minecraft_jar,
+        source_root=source_root,
+        port=25565,
+    )
+
+    assert (server_root / "server.jar").read_bytes() == minecraft_jar.read_bytes()
+    assert not (server_root / "libraries").exists()
+    assert not (server_root / "versions").exists()
+    assert evidence["copied_runtime_directories"] == []
 
 
 def test_server_properties_keep_controlled_world_contract() -> None:
