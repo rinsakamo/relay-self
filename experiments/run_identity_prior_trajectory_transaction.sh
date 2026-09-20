@@ -7,7 +7,6 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 EVIDENCE_ROOT=""
 JAVA="/tmp/relay-self-138-java25/jdk-25.0.4.1+1/bin/java"
 MINECRAFT_JAR="/tmp/relay-self-minecraft-138/server.jar"
-MINECRAFT_SOURCE_ROOT="/tmp/relay-self-minecraft-138"
 NODE="/home/rinsa/.nvm/versions/node/v22.22.2/bin/node"
 NPM="/home/rinsa/.nvm/versions/node/v22.22.2/bin/npm"
 LLAMA="/home/rinsa/src/llama.cpp/build/bin/llama-server"
@@ -25,7 +24,6 @@ while (($# > 0)); do
     --evidence-root) EVIDENCE_ROOT="$2"; shift 2 ;;
     --java) JAVA="$2"; shift 2 ;;
     --minecraft-jar) MINECRAFT_JAR="$2"; shift 2 ;;
-    --minecraft-source-root) MINECRAFT_SOURCE_ROOT="$2"; shift 2 ;;
     --minecraft-port) MINECRAFT_PORT="$2"; shift 2 ;;
     --llama-port) LLAMA_PORT="$2"; shift 2 ;;
     --minecraft-version) MINECRAFT_VERSION="$2"; shift 2 ;;
@@ -397,7 +395,7 @@ capture_authority initial || {
 
 python3 -m experiments.minecraft_terminal_qualification \
   --phase prepare --repo-root "$REPO_ROOT" --evidence-root "$EVIDENCE_ROOT" \
-  --server-root "$SERVER_ROOT" --server-source-root "$MINECRAFT_SOURCE_ROOT" \
+  --server-root "$SERVER_ROOT" \
   --minecraft-jar "$MINECRAFT_JAR" --minecraft-version "$MINECRAFT_VERSION" \
   --minecraft-port "$MINECRAFT_PORT" --model "$MODEL"
 
