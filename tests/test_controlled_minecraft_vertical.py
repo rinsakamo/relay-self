@@ -670,7 +670,7 @@ def test_flee_skill_looks_moves_and_requires_progress_toward_destination() -> No
         "look",
         f"{prefix}:look",
     )
-    assert session.sent[0][2] == pytest.approx(0.0)
+    assert session.sent[0][2] == pytest.approx(-math.pi / 2)
     assert session.sent[0][3] == 0.0
     assert session.sent[1] == (
         "set_control",
