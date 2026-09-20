@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from adapters.llama_cpp.benchmark_jev_bounded import (
     GENERATED_ARM,
     JEV_ARM,
+    _observe_jev_answer,
     benchmark_request,
     run_matched_benchmark,
 )
@@ -205,3 +206,29 @@ def test_matched_benchmark_records_provider_protocol_failure() -> None:
         "LlamaCppProviderProtocolError"
     )
     assert jev_report.provider_failure_count == 0
+
+
+def test_jev_probabilities_and_confidence_are_observation_only_facts() -> None:
+    observed = _observe_jev_answer(
+        {
+            "answers": {
+                "decision": {
+                    "type": "choice",
+                    "choice": "cave",
+                    "probabilities": {
+                        "cave": 0.75,
+                        "ridge": 0.15,
+                        "__relay_self_unresolved__": 0.10,
+                    },
+                    "confidence": 0.42,
+                }
+            }
+        }
+    )
+
+    assert observed.probabilities == {
+        "cave": 0.75,
+        "ridge": 0.15,
+        "__relay_self_unresolved__": 0.10,
+    }
+    assert observed.confidence == 0.42
