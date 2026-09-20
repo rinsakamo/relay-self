@@ -37,7 +37,7 @@ Current inbound observations:
 
 Each ordinary observation carries a bounded survival snapshot:
 
-- health, food, oxygen level, and position;
+- health, food, food saturation, oxygen level, and position;
 - time-of-day/day/is-day when Mineflayer has received server time;
 - inventory item name/count/slot facts;
 - up to 16 nearest entity facts within 16 blocks: id, name, Mineflayer type,
