@@ -1144,6 +1144,21 @@ def test_classifier_rejects_records_outside_predeclared_schedule() -> None:
         classify(records)
 
 
+def test_mineflayer_lock_pins_declared_adapter_dependency() -> None:
+    package = json.loads(
+        Path("adapters/mineflayer/package.json").read_text(encoding="utf-8")
+    )
+    lock = json.loads(
+        Path("adapters/mineflayer/package-lock.json").read_text(encoding="utf-8")
+    )
+
+    assert package["dependencies"]["mineflayer"] == "4.39.0"
+    assert lock["lockfileVersion"] == 3
+    assert lock["packages"][""]["dependencies"]["mineflayer"] == "4.39.0"
+    assert lock["packages"]["node_modules/mineflayer"]["version"] == "4.39.0"
+    assert lock["packages"]["node_modules/mineflayer"]["integrity"]
+
+
 def test_canonical_launcher_is_one_shot_and_blocks_before_run() -> None:
     launcher = Path(
         "experiments/run_identity_prior_trajectory_transaction.sh"
@@ -1176,17 +1191,22 @@ def test_canonical_launcher_is_one_shot_and_blocks_before_run() -> None:
     assert 'gh api --paginate "repos/rinsakamo/relay-self/issues/$issue_number/comments"' in launcher
     assert "json.JSONDecoder()" in launcher
     assert "decoder.raw_decode(raw, offset)" in launcher
-    assert '"$NPM" install --omit=dev --no-audit --no-fund' in launcher
+    assert '"$NPM" ci --omit=dev --no-audit --no-fund' in launcher
+    assert '"$NPM" install --omit=dev --no-audit --no-fund' not in launcher
     assert '"$NPM" ls --omit=dev --json' in launcher
     assert "mineflayer-package-lock.json" in launcher
     assert "mineflayer-dependency-tree.json" in launcher
-    assert "preexisting-mineflayer-package-lock.json" in launcher
-    assert '"used_for_resolution": False' in launcher
+    assert "preexisting-mineflayer-package-lock.json" not in launcher
+    assert '"kind": "tracked_package_lock"' in launcher
+    assert '"tracked_source": True' in launcher
+    assert '"used_for_resolution": True' in launcher
+    assert 'git -C "$REPO_ROOT" ls-files --error-unmatch adapters/mineflayer/package-lock.json' in launcher
+    assert 'cmp -s "$PACKAGE_LOCK" "$EVIDENCE_PACKAGE_LOCK"' in launcher
     assert "--phase first" not in launcher
     assert "--phase restart" not in launcher
     assert "same-run fixture tuning" not in launcher
 
-    install_index = launcher.index('"$NPM" install --omit=dev --no-audit --no-fund')
+    install_index = launcher.index('"$NPM" ci --omit=dev --no-audit --no-fund')
     initial_gate_index = launcher.index("capture_authority initial")
     preflight_index = launcher.index("--phase preflight")
     final_gate_index = launcher.index("capture_authority final")
