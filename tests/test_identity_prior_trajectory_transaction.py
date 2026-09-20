@@ -433,8 +433,13 @@ def test_reset_stops_when_positive_server_barrier_is_absent(
             )
         )
 
-    assert len(commands) == 9
-    assert commands[0]["command"] == "kill @e[type=!minecraft:player]"
+    assert len(commands) == 12
+    assert [command["command"] for command in commands[:4]] == [
+        "gamerule doMobSpawning false",
+        "gamerule doMobLoot false",
+        "gamerule doEntityDrops false",
+        "kill @e[type=!minecraft:player]",
+    ]
     assert "execute if entity @e[type=!minecraft:player]" in str(
         commands[-2]["command"]
     )
@@ -444,6 +449,22 @@ def test_reset_stops_when_positive_server_barrier_is_absent(
     )
     assert not any("summon" in str(command["command"]) for command in commands)
     assert session.observe_count == 0
+
+
+def test_reset_suppresses_cleanup_generated_entity_drops_before_kill(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    session = _ResetSession(_successful_reset_messages())
+
+    _, commands, _ = _run_reset(monkeypatch, tmp_path, session)
+
+    issued = [str(command["command"]) for command in commands]
+    kill_index = issued.index("kill @e[type=!minecraft:player]")
+    assert issued.index("gamerule doMobSpawning false") < kill_index
+    assert issued.index("gamerule doMobLoot false") < kill_index
+    assert issued.index("gamerule doEntityDrops false") < kill_index
+    assert issued.count("kill @e[type=!minecraft:player]") == 1
 
 
 def test_reset_requires_positive_server_barriers_and_explicit_probes(
@@ -475,7 +496,7 @@ def test_reset_requires_positive_server_barriers_and_explicit_probes(
         result.cleanup_server_dirty_marker,
     )
     assert barriers[1] == (result.summon_processed_marker, None)
-    assert len(commands) == 12
+    assert len(commands) == 15
     assert session.observe_count == 2
 
 
@@ -628,7 +649,7 @@ def test_reset_duplicate_after_summon_does_not_succeed(
         if "summon" in str(command["command"])
     ]
     assert len(summon_commands) == 1
-    assert len(commands) == 12
+    assert len(commands) == 15
     assert len(barriers) == 2
 
 

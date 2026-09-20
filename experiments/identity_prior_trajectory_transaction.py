@@ -656,6 +656,18 @@ async def reset_live_world(
 
     cleanup_commands = (
         (
+            "gamerule doMobSpawning false",
+            "matched reset phase 1 control: suppress natural mob spawning",
+        ),
+        (
+            "gamerule doMobLoot false",
+            "matched reset phase 1 control: suppress mob death item/XP drops",
+        ),
+        (
+            "gamerule doEntityDrops false",
+            "matched reset phase 1 control: suppress non-mob entity drops",
+        ),
+        (
             "kill @e[type=!minecraft:player]",
             "matched reset phase 1 cleanup: remove every non-player entity",
         ),
