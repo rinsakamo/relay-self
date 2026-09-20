@@ -457,9 +457,10 @@ def yaw_to_destination(
 ) -> float:
     """Return Mineflayer yaw radians from current horizontal position.
 
-    Mineflayer documents yaw 0 as due east and counter-clockwise positive.
-    Minecraft +Z is south, therefore atan2(-dz, dx) maps the horizontal
-    displacement to that convention.
+    Match Mineflayer 4.39.0 bot.lookAt() exactly. For horizontal
+    displacement (dx, dz), Mineflayer computes atan2(-dx, -dz). Its Vec3
+    convention documents x as south and z as west, while yaw 0 is due east
+    and increases counter-clockwise.
     """
 
     dx = destination.x - current.x
@@ -468,7 +469,7 @@ def yaw_to_destination(
         raise ControlledScenarioError(
             "cannot compute heading to the current horizontal position"
         )
-    return math.atan2(-dz, dx)
+    return math.atan2(-dx, -dz)
 
 
 async def execute_decision(
