@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from experiments import minecraft_terminal_qualification as terminal
 from adapters.mineflayer.python_protocol import (
     MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
     MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
@@ -18,6 +17,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerPosition,
     MineflayerSnapshot,
 )
+from experiments import minecraft_terminal_qualification as terminal
 from experiments.minecraft_terminal_qualification import (
     EXPECTED_MINECRAFT_SHA256,
     EXPECTED_MODEL_SHA256,
