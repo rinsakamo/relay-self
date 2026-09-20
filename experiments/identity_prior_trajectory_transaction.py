@@ -97,8 +97,10 @@ class InvocationResult:
 @dataclass(frozen=True, slots=True)
 class ResetEvidence:
     cleanup_commands: tuple[str, ...]
-    cleanup_server_zero_barrier_command: str
-    cleanup_server_zero_marker: str
+    cleanup_server_dirty_command: str
+    cleanup_server_barrier_command: str
+    cleanup_server_dirty_marker: str
+    cleanup_server_barrier_marker: str
     cleanup_zero_observation: MineflayerObservation
     summon_command: str
     summon_processed_barrier_command: str
@@ -552,31 +554,43 @@ def _server_log_size(path: Path) -> int:
         ) from exc
 
 
-async def _wait_for_server_log_marker(
+async def _wait_for_server_log_barrier(
     path: Path,
     *,
-    marker: str,
+    barrier_marker: str,
     start_offset: int,
     timeout_s: float,
+    forbidden_marker: str | None = None,
 ) -> None:
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout_s
-    encoded = marker.encode("utf-8")
+    barrier_encoded = barrier_marker.encode("utf-8")
+    forbidden_encoded = (
+        forbidden_marker.encode("utf-8")
+        if forbidden_marker is not None
+        else None
+    )
     while True:
         remaining = deadline - loop.time()
         if remaining <= 0:
             raise IdentityPriorTransactionError(
-                f"timed out waiting for server log causal marker: {marker}"
+                f"timed out waiting for server log causal barrier: {barrier_marker}"
             )
         try:
             with path.open("rb") as handle:
                 handle.seek(start_offset)
-                if encoded in handle.read():
-                    return
+                payload = handle.read()
         except OSError as exc:
             raise IdentityPriorTransactionError(
                 f"could not read Minecraft server log: {exc}"
             ) from exc
+
+        if forbidden_encoded is not None and forbidden_encoded in payload:
+            raise IdentityPriorTransactionError(
+                f"server-side cleanup remained dirty before barrier: {forbidden_marker}"
+            )
+        if barrier_encoded in payload:
+            return
         await asyncio.sleep(min(0.01, remaining))
 
 
@@ -642,8 +656,8 @@ async def reset_live_world(
 
     cleanup_commands = (
         (
-            "kill @e[type=minecraft:zombie]",
-            "matched reset phase 1 cleanup: remove prior controlled zombies",
+            "kill @e[type=!minecraft:player]",
+            "matched reset phase 1 cleanup: remove every non-player entity",
         ),
         (
             f"effect clear {args.username}",
@@ -680,26 +694,43 @@ async def reset_live_world(
         )
 
     session_token = session.started.session_id.replace("-", "")
-    cleanup_server_zero_marker = f"RELAYSELF220_ZERO_{session_token}"
-    cleanup_server_zero_barrier_command = (
-        "execute unless entity @e[type=!minecraft:player] run "
-        f"say {cleanup_server_zero_marker}"
+    cleanup_server_dirty_marker = f"RELAYSELF220_DIRTY_{session_token}"
+    cleanup_server_barrier_marker = (
+        f"RELAYSELF220_ZERO_BARRIER_{session_token}"
+    )
+    cleanup_server_dirty_command = (
+        "execute if entity @e[type=!minecraft:player] run "
+        f"say {cleanup_server_dirty_marker}"
+    )
+    cleanup_server_barrier_command = (
+        f"say {cleanup_server_barrier_marker}"
     )
     server_log = Path(args.server_log)
     cleanup_log_offset = _server_log_size(server_log)
     await write_server_command(
         control_path=Path(args.server_control),
         evidence_path=evidence_path,
-        command=cleanup_server_zero_barrier_command,
+        command=cleanup_server_dirty_command,
         reason=(
-            "matched reset phase 1 causal barrier: emit server marker only "
-            "after zero non-player-entity state"
+            "matched reset phase 1 server check: emit DIRTY only if a "
+            "non-player entity remains after cleanup"
         ),
         settle_s=0.0,
     )
-    await _wait_for_server_log_marker(
+    await write_server_command(
+        control_path=Path(args.server_control),
+        evidence_path=evidence_path,
+        command=cleanup_server_barrier_command,
+        reason=(
+            "matched reset phase 1 positive causal barrier after cleanup "
+            "and DIRTY check"
+        ),
+        settle_s=0.0,
+    )
+    await _wait_for_server_log_barrier(
         server_log,
-        marker=cleanup_server_zero_marker,
+        barrier_marker=cleanup_server_barrier_marker,
+        forbidden_marker=cleanup_server_dirty_marker,
         start_offset=cleanup_log_offset,
         timeout_s=args.evidence_timeout_s,
     )
@@ -752,9 +783,9 @@ async def reset_live_world(
         ),
         settle_s=0.0,
     )
-    await _wait_for_server_log_marker(
+    await _wait_for_server_log_barrier(
         server_log,
-        marker=summon_processed_marker,
+        barrier_marker=summon_processed_marker,
         start_offset=summon_log_offset,
         timeout_s=args.evidence_timeout_s,
     )
@@ -770,10 +801,10 @@ async def reset_live_world(
 
     return ResetEvidence(
         cleanup_commands=tuple(command for command, _ in cleanup_commands),
-        cleanup_server_zero_barrier_command=(
-            cleanup_server_zero_barrier_command
-        ),
-        cleanup_server_zero_marker=cleanup_server_zero_marker,
+        cleanup_server_dirty_command=cleanup_server_dirty_command,
+        cleanup_server_barrier_command=cleanup_server_barrier_command,
+        cleanup_server_dirty_marker=cleanup_server_dirty_marker,
+        cleanup_server_barrier_marker=cleanup_server_barrier_marker,
         cleanup_zero_observation=cleanup_zero_observation,
         summon_command=summon_command,
         summon_processed_barrier_command=summon_processed_barrier_command,
@@ -897,11 +928,17 @@ async def run_invocation(
                 "phase_1_cleanup_commands_issued": list(
                     reset_evidence.cleanup_commands
                 ),
-                "phase_1_server_zero_barrier_command": (
-                    reset_evidence.cleanup_server_zero_barrier_command
+                "phase_1_server_dirty_check_command": (
+                    reset_evidence.cleanup_server_dirty_command
                 ),
-                "phase_1_server_zero_causal_marker": (
-                    reset_evidence.cleanup_server_zero_marker
+                "phase_1_server_positive_barrier_command": (
+                    reset_evidence.cleanup_server_barrier_command
+                ),
+                "phase_1_server_dirty_marker": (
+                    reset_evidence.cleanup_server_dirty_marker
+                ),
+                "phase_1_server_positive_barrier_marker": (
+                    reset_evidence.cleanup_server_barrier_marker
                 ),
                 "phase_1_cleanup_zero_probe_grounded": message_json(
                     reset_evidence.cleanup_zero_observation
