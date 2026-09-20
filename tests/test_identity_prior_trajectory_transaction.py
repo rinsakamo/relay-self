@@ -632,13 +632,13 @@ def _records(
                         "status": status,
                         "first_bound_destination": first_destination,
                         "first_skill_run": (
-                            {"skill_execution": {"state": "SUCCEEDED"}}
+                            {"skill_execution": {"state": "succeeded"}}
                             if first_destination is not None
                             else None
                         ),
                         "later_bound_destination": later_destination,
                         "later_skill_run": (
-                            {"skill_execution": {"state": "SUCCEEDED"}}
+                            {"skill_execution": {"state": "succeeded"}}
                             if later_destination is not None
                             else None
                         ),
