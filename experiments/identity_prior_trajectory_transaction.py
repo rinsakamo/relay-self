@@ -78,6 +78,8 @@ REPORT_SCHEMA_VERSION = 1
 RESET_POSITION_TOLERANCE = 0.08
 RESET_ZOMBIE_DISTANCE_MIN = 3.5
 RESET_ZOMBIE_DISTANCE_MAX = 4.5
+RESET_CLEANUP_SENTINEL_OFFSET_X = 0.75
+RESET_SUMMON_SENTINEL_OFFSET_Z = 0.75
 FIRST_REQUEST_ID = "identity-prior:first-decision"
 LATER_REQUEST_ID = "identity-prior:later-decision"
 
@@ -97,8 +99,12 @@ class InvocationResult:
 @dataclass(frozen=True, slots=True)
 class ResetEvidence:
     cleanup_commands: tuple[str, ...]
+    cleanup_server_zero_barrier_command: str
+    cleanup_server_zero_watermark: MineflayerObservation
     cleanup_zero_observation: MineflayerObservation
     summon_command: str
+    summon_processed_barrier_command: str
+    summon_processed_watermark: MineflayerObservation
     matched_observation: MineflayerObservation
 
 
@@ -421,6 +427,19 @@ def _position_matches(
     )
 
 
+def _offset_position(
+    anchor: MineflayerPosition,
+    *,
+    dx: float = 0.0,
+    dz: float = 0.0,
+) -> MineflayerPosition:
+    return MineflayerPosition(
+        x=anchor.x + dx,
+        y=anchor.y,
+        z=anchor.z + dz,
+    )
+
+
 def _zombies(observation: MineflayerObservation):
     return [
         entity
@@ -431,36 +450,66 @@ def _zombies(observation: MineflayerObservation):
 
 def _common_reset_observation_matches(
     observation: MineflayerObservation,
-    anchor: MineflayerPosition,
+    expected_position: MineflayerPosition,
 ) -> bool:
     return (
         observation.snapshot.health == 20
         and observation.snapshot.food == 20
-        and _position_matches(observation.snapshot.position, anchor)
+        and _position_matches(
+            observation.snapshot.position,
+            expected_position,
+        )
         and observation.snapshot.inventory == ()
     )
 
 
 def _cleanup_zero_observation_matches(
     observation: MineflayerObservation,
-    anchor: MineflayerPosition,
+    expected_position: MineflayerPosition,
 ) -> bool:
-    return _common_reset_observation_matches(observation, anchor) and not _zombies(
-        observation
-    )
+    return _common_reset_observation_matches(
+        observation,
+        expected_position,
+    ) and not _zombies(observation)
 
 
 def _reset_observation_matches(
     observation: MineflayerObservation,
-    anchor: MineflayerPosition,
+    expected_position: MineflayerPosition,
 ) -> bool:
     zombies = _zombies(observation)
     return (
-        _common_reset_observation_matches(observation, anchor)
+        _common_reset_observation_matches(
+            observation,
+            expected_position,
+        )
         and len(zombies) == 1
         and RESET_ZOMBIE_DISTANCE_MIN
         <= zombies[0].distance
         <= RESET_ZOMBIE_DISTANCE_MAX
+    )
+
+
+def _forced_move_position_matches(
+    observation: MineflayerObservation,
+    expected_position: MineflayerPosition,
+) -> bool:
+    return (
+        observation.kind == "forcedMove"
+        and _position_matches(
+            observation.snapshot.position,
+            expected_position,
+        )
+    )
+
+
+def _tp_command(
+    username: str,
+    position: MineflayerPosition,
+) -> str:
+    return (
+        f"tp {username} "
+        f"{position.x:.6f} {position.y:.6f} {position.z:.6f} 0 0"
     )
 
 
@@ -471,9 +520,7 @@ async def reset_live_world(
     anchor: MineflayerPosition,
     evidence_path: Path,
 ) -> ResetEvidence:
-    # The bridge can report startup before the Minecraft player is ready to
-    # receive player-targeted commands. Ground the one cleanup phase in a
-    # fresh spawn observation before issuing any reset command.
+    # Wait for a fresh player spawn before any player-targeted reset command.
     await _receive_spawn(session, timeout_s=args.evidence_timeout_s)
 
     cleanup_commands = (
@@ -490,7 +537,7 @@ async def reset_live_world(
             "matched reset phase 1 cleanup: clear inventory",
         ),
         (
-            f"tp {args.username} {anchor.x:.6f} {anchor.y:.6f} {anchor.z:.6f} 0 0",
+            _tp_command(args.username, anchor),
             "matched reset phase 1 cleanup: restore anchor position and orientation",
         ),
         (
@@ -515,11 +562,76 @@ async def reset_live_world(
             settle_s=0.1,
         )
 
-    cleanup_zero_observation = await _receive_until_cleanup_zero(
-        session,
-        anchor=anchor,
-        timeout_s=args.evidence_timeout_s,
+    cleanup_sentinel = _offset_position(
+        anchor,
+        dx=RESET_CLEANUP_SENTINEL_OFFSET_X,
     )
+    cleanup_server_zero_barrier_command = (
+        "execute unless entity @e[type=minecraft:zombie] run "
+        + _tp_command(args.username, cleanup_sentinel)
+    )
+    await write_server_command(
+        control_path=Path(args.server_control),
+        evidence_path=evidence_path,
+        command=cleanup_server_zero_barrier_command,
+        reason=(
+            "matched reset phase 1 causal barrier: teleport only after "
+            "server-side zero-zombie state"
+        ),
+        settle_s=0.05,
+    )
+    cleanup_server_zero_watermark = await _receive_until_forced_move(
+        session,
+        expected_position=cleanup_sentinel,
+        timeout_s=args.evidence_timeout_s,
+        timeout_message=(
+            "timed out waiting for server-grounded zero-zombie causal watermark"
+        ),
+    )
+
+    if _cleanup_zero_observation_matches(
+        cleanup_server_zero_watermark,
+        cleanup_sentinel,
+    ):
+        cleanup_sentinel_zero = cleanup_server_zero_watermark
+    else:
+        cleanup_sentinel_zero = await _receive_until_cleanup_zero(
+            session,
+            expected_position=cleanup_sentinel,
+            timeout_s=args.evidence_timeout_s,
+        )
+
+    await write_server_command(
+        control_path=Path(args.server_control),
+        evidence_path=evidence_path,
+        command=_tp_command(args.username, anchor),
+        reason="matched reset phase 1 causal barrier: return to common anchor",
+        settle_s=0.05,
+    )
+    cleanup_anchor_watermark = await _receive_until_forced_move(
+        session,
+        expected_position=anchor,
+        timeout_s=args.evidence_timeout_s,
+        timeout_message=(
+            "timed out waiting for post-cleanup return-to-anchor watermark"
+        ),
+    )
+    if _cleanup_zero_observation_matches(
+        cleanup_anchor_watermark,
+        anchor,
+    ):
+        cleanup_zero_observation = cleanup_anchor_watermark
+    else:
+        cleanup_zero_observation = await _receive_until_cleanup_zero(
+            session,
+            expected_position=anchor,
+            timeout_s=args.evidence_timeout_s,
+        )
+
+    if cleanup_sentinel_zero.seq < cleanup_server_zero_watermark.seq:
+        raise IdentityPriorTransactionError(
+            "cleanup zero observation preceded its causal watermark"
+        )
 
     summon_command = (
         f"execute at {args.username} run summon minecraft:zombie "
@@ -533,24 +645,90 @@ async def reset_live_world(
             "matched reset phase 2 fixture: summon exactly one static "
             "NoAI persistent silent zombie"
         ),
-        settle_s=0.1,
+        settle_s=0.05,
     )
-    matched_observation = await _receive_until_matched_one(
-        session,
-        anchor=anchor,
-        timeout_s=args.evidence_timeout_s,
+
+    summon_sentinel = _offset_position(
+        anchor,
+        dz=RESET_SUMMON_SENTINEL_OFFSET_Z,
+    )
+    summon_processed_barrier_command = _tp_command(
+        args.username,
+        summon_sentinel,
     )
     await write_server_command(
         control_path=Path(args.server_control),
         evidence_path=evidence_path,
-        command=f"effect clear {args.username} minecraft:saturation",
-        reason="matched reset phase 2 post-barrier: remove temporary saturation effect",
+        command=summon_processed_barrier_command,
+        reason=(
+            "matched reset phase 2 causal barrier: post-summon "
+            "Mineflayer forcedMove watermark"
+        ),
         settle_s=0.05,
     )
+    summon_processed_watermark = await _receive_until_forced_move(
+        session,
+        expected_position=summon_sentinel,
+        timeout_s=args.evidence_timeout_s,
+        timeout_message=(
+            "timed out waiting for post-summon causal watermark"
+        ),
+    )
+
+    await write_server_command(
+        control_path=Path(args.server_control),
+        evidence_path=evidence_path,
+        command=f"effect clear {args.username} minecraft:saturation",
+        reason=(
+            "matched reset phase 2 post-barrier: remove temporary "
+            "saturation effect"
+        ),
+        settle_s=0.05,
+    )
+    await write_server_command(
+        control_path=Path(args.server_control),
+        evidence_path=evidence_path,
+        command=_tp_command(args.username, anchor),
+        reason=(
+            "matched reset phase 2 causal barrier: restore final common anchor"
+        ),
+        settle_s=0.05,
+    )
+    final_anchor_watermark = await _receive_until_forced_move(
+        session,
+        expected_position=anchor,
+        timeout_s=args.evidence_timeout_s,
+        timeout_message=(
+            "timed out waiting for post-summon final-anchor watermark"
+        ),
+    )
+    if _reset_observation_matches(
+        final_anchor_watermark,
+        anchor,
+    ):
+        matched_observation = final_anchor_watermark
+    else:
+        matched_observation = await _receive_until_matched_one(
+            session,
+            expected_position=anchor,
+            timeout_s=args.evidence_timeout_s,
+        )
+
+    if matched_observation.seq < summon_processed_watermark.seq:
+        raise IdentityPriorTransactionError(
+            "matched one-zombie observation preceded its summon watermark"
+        )
+
     return ResetEvidence(
         cleanup_commands=tuple(command for command, _ in cleanup_commands),
+        cleanup_server_zero_barrier_command=(
+            cleanup_server_zero_barrier_command
+        ),
+        cleanup_server_zero_watermark=cleanup_server_zero_watermark,
         cleanup_zero_observation=cleanup_zero_observation,
         summon_command=summon_command,
+        summon_processed_barrier_command=summon_processed_barrier_command,
+        summon_processed_watermark=summon_processed_watermark,
         matched_observation=matched_observation,
     )
 
@@ -558,7 +736,7 @@ async def reset_live_world(
 async def _receive_until_observation_match(
     session: RecordedMineflayerSession,
     *,
-    anchor: MineflayerPosition,
+    expected_position: MineflayerPosition,
     timeout_s: float,
     predicate: Callable[[MineflayerObservation, MineflayerPosition], bool],
     timeout_message: str,
@@ -577,19 +755,35 @@ async def _receive_until_observation_match(
         except TimeoutError as exc:
             raise IdentityPriorTransactionError(timeout_message) from exc
         if isinstance(message, MineflayerObservation):
-            if predicate(message, anchor):
+            if predicate(message, expected_position):
                 return message
+
+
+async def _receive_until_forced_move(
+    session: RecordedMineflayerSession,
+    *,
+    expected_position: MineflayerPosition,
+    timeout_s: float,
+    timeout_message: str,
+) -> MineflayerObservation:
+    return await _receive_until_observation_match(
+        session,
+        expected_position=expected_position,
+        timeout_s=timeout_s,
+        predicate=_forced_move_position_matches,
+        timeout_message=timeout_message,
+    )
 
 
 async def _receive_until_cleanup_zero(
     session: RecordedMineflayerSession,
     *,
-    anchor: MineflayerPosition,
+    expected_position: MineflayerPosition,
     timeout_s: float,
 ) -> MineflayerObservation:
     return await _receive_until_observation_match(
         session,
-        anchor=anchor,
+        expected_position=expected_position,
         timeout_s=timeout_s,
         predicate=_cleanup_zero_observation_matches,
         timeout_message=(
@@ -601,12 +795,12 @@ async def _receive_until_cleanup_zero(
 async def _receive_until_matched_one(
     session: RecordedMineflayerSession,
     *,
-    anchor: MineflayerPosition,
+    expected_position: MineflayerPosition,
     timeout_s: float,
 ) -> MineflayerObservation:
     return await _receive_until_observation_match(
         session,
-        anchor=anchor,
+        expected_position=expected_position,
         timeout_s=timeout_s,
         predicate=_reset_observation_matches,
         timeout_message=(
@@ -730,10 +924,22 @@ async def run_invocation(
                 "phase_1_cleanup_commands_issued": list(
                     reset_evidence.cleanup_commands
                 ),
+                "phase_1_server_zero_barrier_command": (
+                    reset_evidence.cleanup_server_zero_barrier_command
+                ),
+                "phase_1_server_zero_causal_watermark": message_json(
+                    reset_evidence.cleanup_server_zero_watermark
+                ),
                 "phase_1_cleanup_zero_observation_grounded": message_json(
                     reset_evidence.cleanup_zero_observation
                 ),
                 "phase_2_controlled_summon_issued": reset_evidence.summon_command,
+                "phase_2_summon_barrier_command": (
+                    reset_evidence.summon_processed_barrier_command
+                ),
+                "phase_2_summon_causal_watermark": message_json(
+                    reset_evidence.summon_processed_watermark
+                ),
                 "phase_2_matched_one_zombie_observation_grounded": message_json(
                     reset_evidence.matched_observation
                 ),

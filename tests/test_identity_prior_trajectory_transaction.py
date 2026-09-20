@@ -107,6 +107,7 @@ def _reset_observation(
     seq: int,
     kind: str,
     entities: tuple[MineflayerEntityFact, ...],
+    position: MineflayerPosition | None = None,
 ) -> MineflayerObservation:
     return MineflayerObservation(
         session_id="reset-session",
@@ -116,12 +117,82 @@ def _reset_observation(
             health=20,
             food=20,
             oxygen_level=None,
-            position=_reset_anchor(),
+            position=position or _reset_anchor(),
             time=None,
             inventory=(),
             nearby_entities=entities,
         ),
     )
+
+
+def _cleanup_sentinel() -> MineflayerPosition:
+    anchor = _reset_anchor()
+    return MineflayerPosition(
+        x=anchor.x + transaction.RESET_CLEANUP_SENTINEL_OFFSET_X,
+        y=anchor.y,
+        z=anchor.z,
+    )
+
+
+def _summon_sentinel() -> MineflayerPosition:
+    anchor = _reset_anchor()
+    return MineflayerPosition(
+        x=anchor.x,
+        y=anchor.y,
+        z=anchor.z + transaction.RESET_SUMMON_SENTINEL_OFFSET_Z,
+    )
+
+
+def _successful_reset_messages(
+    *,
+    queued_pre_summon_one: bool = False,
+) -> tuple[MineflayerObservation, ...]:
+    old = _zombie(entity_id=81, distance=4.0)
+    controlled = _zombie(entity_id=161, distance=4.0)
+    messages = [
+        _reset_observation(seq=1, kind="spawn", entities=(old,)),
+        _reset_observation(
+            seq=2,
+            kind="forcedMove",
+            entities=(),
+            position=_cleanup_sentinel(),
+        ),
+        _reset_observation(
+            seq=3,
+            kind="forcedMove",
+            entities=(),
+            position=_reset_anchor(),
+        ),
+    ]
+    if queued_pre_summon_one:
+        messages.append(
+            _reset_observation(
+                seq=4,
+                kind="entities",
+                entities=(controlled,),
+                position=_reset_anchor(),
+            )
+        )
+        next_seq = 5
+    else:
+        next_seq = 4
+    messages.extend(
+        (
+            _reset_observation(
+                seq=next_seq,
+                kind="forcedMove",
+                entities=(controlled,),
+                position=_summon_sentinel(),
+            ),
+            _reset_observation(
+                seq=next_seq + 1,
+                kind="forcedMove",
+                entities=(controlled,),
+                position=_reset_anchor(),
+            ),
+        )
+    )
+    return tuple(messages)
 
 
 class _ResetSession:
@@ -177,12 +248,16 @@ def _run_reset(
     return result, commands
 
 
-def test_reset_stale_zombie_never_summons(monkeypatch, tmp_path: Path) -> None:
+def test_reset_ignores_queued_zero_without_causal_watermark(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
     stale = _zombie(entity_id=81, distance=4.0)
     session = _ResetSession(
         (
             _reset_observation(seq=1, kind="spawn", entities=(stale,)),
-            _reset_observation(seq=2, kind="entities", entities=(stale,)),
+            _reset_observation(seq=2, kind="entities", entities=()),
+            _reset_observation(seq=3, kind="entities", entities=(stale,)),
         ),
         repeat_last=True,
     )
@@ -193,7 +268,7 @@ def test_reset_stale_zombie_never_summons(monkeypatch, tmp_path: Path) -> None:
 
     monkeypatch.setattr(transaction, "write_server_command", record_command)
 
-    with pytest.raises(IdentityPriorTransactionError, match="zero-zombie"):
+    with pytest.raises(IdentityPriorTransactionError, match="causal watermark"):
         asyncio.run(
             transaction.reset_live_world(
                 session,
@@ -203,47 +278,43 @@ def test_reset_stale_zombie_never_summons(monkeypatch, tmp_path: Path) -> None:
             )
         )
 
-    assert len(commands) == 7
+    assert len(commands) == 8
+    assert "execute unless entity" in str(commands[-1]["command"])
     assert not any("summon" in str(command["command"]) for command in commands)
 
 
-def test_reset_requires_zero_barrier_before_one_summon(
+def test_reset_requires_causal_zero_then_single_summon(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    old = _zombie(entity_id=81, distance=4.0)
-    controlled = _zombie(entity_id=161, distance=4.0)
-    session = _ResetSession(
-        (
-            _reset_observation(seq=1, kind="spawn", entities=(old,)),
-            _reset_observation(seq=2, kind="entities", entities=()),
-            _reset_observation(seq=3, kind="entities", entities=(controlled,)),
-        )
-    )
+    session = _ResetSession(_successful_reset_messages())
 
     result, commands = _run_reset(monkeypatch, tmp_path, session)
 
+    assert result.cleanup_server_zero_watermark.kind == "forcedMove"
+    assert result.cleanup_server_zero_watermark.snapshot.position == (
+        _cleanup_sentinel()
+    )
     assert result.cleanup_zero_observation.snapshot.nearby_entities == ()
-    assert result.matched_observation.snapshot.nearby_entities == (controlled,)
+    assert result.summon_processed_watermark.kind == "forcedMove"
+    assert result.summon_processed_watermark.snapshot.position == (
+        _summon_sentinel()
+    )
+    assert len(result.matched_observation.snapshot.nearby_entities) == 1
+    assert result.matched_observation.snapshot.position == _reset_anchor()
+    assert result.matched_observation.seq > result.summon_processed_watermark.seq
     assert [command["command"] for command in commands].count(
         result.summon_command
     ) == 1
-    assert "phase 1 cleanup" in str(commands[0]["reason"])
-    assert "phase 2 fixture" in str(commands[7]["reason"])
+    assert "execute unless entity" in result.cleanup_server_zero_barrier_command
+    assert len(commands) == 13
 
 
 def test_reset_qualification_does_not_construct_provider(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    controlled = _zombie(entity_id=161, distance=4.0)
-    session = _ResetSession(
-        (
-            _reset_observation(seq=1, kind="spawn", entities=()),
-            _reset_observation(seq=2, kind="entities", entities=()),
-            _reset_observation(seq=3, kind="entities", entities=(controlled,)),
-        )
-    )
+    session = _ResetSession(_successful_reset_messages())
 
     def unexpected_provider(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("reset qualification must not construct a provider")
@@ -251,7 +322,21 @@ def test_reset_qualification_does_not_construct_provider(
     monkeypatch.setattr(transaction, "provider_engine", unexpected_provider)
     result, _ = _run_reset(monkeypatch, tmp_path, session)
 
-    assert result.matched_observation.snapshot.nearby_entities == (controlled,)
+    assert len(result.matched_observation.snapshot.nearby_entities) == 1
+
+
+def test_reset_ignores_pre_watermark_one_zombie_observation(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    session = _ResetSession(
+        _successful_reset_messages(queued_pre_summon_one=True)
+    )
+
+    result, _ = _run_reset(monkeypatch, tmp_path, session)
+
+    assert result.summon_processed_watermark.seq == 5
+    assert result.matched_observation.seq == 6
 
 
 def test_reset_duplicate_after_summon_does_not_succeed(
@@ -266,8 +351,30 @@ def test_reset_duplicate_after_summon_does_not_succeed(
     session = _ResetSession(
         (
             _reset_observation(seq=1, kind="spawn", entities=()),
-            _reset_observation(seq=2, kind="entities", entities=()),
-            _reset_observation(seq=3, kind="entities", entities=duplicate),
+            _reset_observation(
+                seq=2,
+                kind="forcedMove",
+                entities=(),
+                position=_cleanup_sentinel(),
+            ),
+            _reset_observation(
+                seq=3,
+                kind="forcedMove",
+                entities=(),
+                position=_reset_anchor(),
+            ),
+            _reset_observation(
+                seq=4,
+                kind="forcedMove",
+                entities=duplicate,
+                position=_summon_sentinel(),
+            ),
+            _reset_observation(
+                seq=5,
+                kind="forcedMove",
+                entities=duplicate,
+                position=_reset_anchor(),
+            ),
         ),
         repeat_last=True,
     )
@@ -294,7 +401,7 @@ def test_reset_duplicate_after_summon_does_not_succeed(
         if "summon" in str(command["command"])
     ]
     assert len(summon_commands) == 1
-    assert len(commands) == 8
+    assert len(commands) == 13
 
 
 def test_live_scenario_maps_neutral_route_ids_to_live_geometry() -> None:

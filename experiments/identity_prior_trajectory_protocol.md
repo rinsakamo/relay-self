@@ -207,21 +207,30 @@ so the existing controlled-world command owner does not issue player-targeted
 commands before the player is ready. It then performs exactly one reset sequence:
 
 1. **Cleanup phase:** issue the existing zombie removal, effect/inventory
-   clearing, anchor/orientation, health/food, and common-time commands. Wait for
-   a fresh Mineflayer observation proving the expected health and food, empty
-   inventory, anchor position within the existing tolerance, and zero nearby
-   zombies.
-2. **Fixture phase:** only after that zero-zombie barrier is grounded, issue one
-   summon command for exactly one static `NoAI`, persistent, silent zombie at the
-   common anchor. Wait for a fresh observation proving the common state and
-   exactly one nearby zombie within the existing frozen distance bounds.
+   clearing, anchor/orientation, health/food, and common-time commands. Then
+   issue a server-side conditional sentinel teleport that can execute only if
+   the server currently has zero zombies. A matching Mineflayer
+   `forcedMove` is the causal watermark proving that the preceding cleanup
+   commands were processed and the server-side zero-zombie condition held.
+   Only observations at or after that watermark may qualify the zero-zombie
+   client projection, and the player is then returned to the common anchor.
+2. **Fixture phase:** only after the causal zero-zombie barrier is grounded,
+   issue one summon command for exactly one static `NoAI`, persistent, silent
+   zombie. A second sentinel teleport is issued after the summon; its matching
+   Mineflayer `forcedMove` is the causal watermark proving command ordering.
+   The temporary saturation effect is cleared before a final return-to-anchor
+   teleport. Only the final anchor watermark or later observations may qualify
+   the exactly-one-zombie matched state.
 
 The fixed command settle interval is only an execution aid; it is not reset
-qualification evidence. A cleanup-zero timeout or a post-summon observation
-with zero or multiple zombies is `NOT QUALIFIED` and stops the invocation. The
-owner does not issue another kill or summon, and no provider call occurs inside
-reset qualification. Command evidence records the cleanup commands and summon;
-the transaction report records both grounded reset barriers.
+qualification evidence. A queued observation emitted before a causal watermark
+cannot satisfy the corresponding barrier. A cleanup watermark timeout,
+post-watermark zero-client-projection timeout, or post-summon zero/multiple
+zombie observation is `NOT QUALIFIED` and stops the invocation. The owner does
+not issue another kill or summon, and no provider call occurs inside reset
+qualification. Command evidence records cleanup, sentinel, summon, and
+return-to-anchor commands; the transaction report records both causal
+watermarks and final grounded reset observations.
 
 The live World-reset implementation must be bound to the then-current
 #141-derived Minecraft apparatus after #201 review. This preparation document
