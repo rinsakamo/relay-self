@@ -253,9 +253,14 @@ Ordinary Mineflayer `forcedMove` remains a valid target observation, but it is
 not reset-qualification evidence. The reset no longer assumes that a specific
 teleport must emit that event.
 
-Fixed command settle intervals are execution aids only. DIRTY/BARRIER
-markers use the fresh Mineflayer session id and are matched only after a captured
-log offset, so old log lines cannot satisfy a new barrier. Because the BARRIER
+Fixed command settle intervals are execution aids only. Server-command delivery
+itself is fail-closed and bounded: the FIFO is opened non-blocking, retryable
+reader/backpressure errors are retried only until a fixed delivery deadline,
+and each #220 reset command first verifies the owned Minecraft PID is still
+alive. A dead server, missing FIFO reader, partial write, or delivery timeout
+stops the transaction instead of blocking indefinitely. DIRTY/BARRIER markers
+use the fresh Mineflayer session id and are matched only after a captured log
+offset, so old log lines cannot satisfy a new barrier. Because the BARRIER
 is unconditional, its absence is an acknowledgment failure rather than an
 ambiguous statement about World state; a preceding DIRTY marker is explicit
 server-side evidence that cleanup did not establish zero entities. Queued
