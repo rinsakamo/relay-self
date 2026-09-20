@@ -219,12 +219,14 @@ def server_properties_text(port: int) -> str:
         ("allow-flight", "true"),
         ("difficulty", "normal"),
         ("gamemode", "survival"),
+        ("generate-structures", "false"),
         ("level-name", "world"),
         ("level-type", "minecraft:flat"),
         ("motd", "RelaySelf #141 controlled terminal"),
         ("online-mode", "false"),
         ("pvp", "false"),
         ("server-port", str(port)),
+        ("spawn-animals", "false"),
         ("spawn-monsters", "false"),
         ("spawn-npcs", "false"),
         ("spawn-protection", "0"),
@@ -281,6 +283,8 @@ def prepare_server_root(
             "difficulty": "normal",
             "gamemode": "survival",
             "pvp": "false",
+            "generate-structures": "false",
+            "spawn-animals": "false",
             "spawn-monsters": "false",
         },
     }
@@ -376,6 +380,10 @@ def run_preflight(args: argparse.Namespace) -> dict[str, object]:
         "online-mode": "false",
         "level-type": "minecraft:flat",
         "spawn-protection": "0",
+        "generate-structures": "false",
+        "spawn-animals": "false",
+        "spawn-monsters": "false",
+        "spawn-npcs": "false",
     }
     if any(properties.get(key) != value for key, value in expected_properties.items()):
         raise TerminalQualificationError(
