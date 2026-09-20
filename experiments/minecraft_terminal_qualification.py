@@ -252,14 +252,11 @@ def prepare_server_root(
     if not minecraft_jar.is_file():
         raise TerminalQualificationError(f"Minecraft jar does not exist: {minecraft_jar}")
     shutil.copy2(minecraft_jar, server_root / "server.jar")
+    # The official pinned server.jar is the complete runtime subject for this
+    # apparatus. Do not import mutable launcher/runtime directories from an
+    # external installation into the fresh server root.
+    _ = source_root
     copied: list[str] = []
-    if source_root is not None:
-        for name in ("libraries", "versions"):
-            source = source_root / name
-            target = server_root / name
-            if source.is_dir():
-                shutil.copytree(source, target)
-                copied.append(name)
     (server_root / "eula.txt").write_text(
         "# EULA accepted by the operator for the controlled qualification runtime.\n"
         "eula=true\n",
