@@ -75,7 +75,10 @@ def test_server_properties_keep_controlled_world_contract() -> None:
     assert values["spawn-protection"] == "0"
     assert values["gamemode"] == "survival"
     assert values["pvp"] == "false"
+    assert values["generate-structures"] == "false"
+    assert values["spawn-animals"] == "false"
     assert values["spawn-monsters"] == "false"
+    assert values["spawn-npcs"] == "false"
 
 
 def test_recovery_projection_preserves_current_intent_and_admits_local_recovery() -> None:
