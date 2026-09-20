@@ -424,7 +424,14 @@ def test_open_cognition_uses_same_owned_provider_exactly_once_without_think(
 ) -> None:
     provider = RecordingMixedProvider()
     engine = RelayEngine(provider)
-    clock = iter((1_000_000_000, 1_250_000_000))
+    clock = iter(
+        (
+            1_000_000_000,
+            1_050_000_000,
+            2_000_000_000,
+            2_250_000_000,
+        )
+    )
     monkeypatch.setattr(
         "relay_self.relay_engine.time.perf_counter_ns",
         lambda: next(clock),
