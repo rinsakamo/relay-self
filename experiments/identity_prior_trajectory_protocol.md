@@ -183,12 +183,16 @@ The planned matched protocol is frozen before results:
   - build `10874`;
   - GGUF SHA256
     `c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed`;
-- preserve current adapter generation semantics:
+- preserve current adapter generation semantics for this experiment:
   - temperature `0`;
   - `reasoning_effort=none`;
   - `cache_prompt=false`;
   - BOUNDED max output 48 tokens;
   - THINK max output 256 tokens;
+  - the optional Jev/System One BOUNDED endpoint added after apparatus
+    preparation is **not configured by #220**; this transaction remains on the
+    generated BOUNDED baseline unless a separately predeclared matched study
+    changes that execution surface;
 - do not add a provider seed field that the qualified adapter does not
   currently send; any backend variation is observed rather than silently
   controlled through a new request semantic;
@@ -424,6 +428,39 @@ about Identity changing behavior from live terrain/resource perception requires
 a later apparatus that constructs and observes those facts through the
 environment boundary.
 
+### Provider-free live apparatus smoke
+
+Before an owner may publish a new
+`QUALIFIED_FOR_NEW_TRANSACTION_SUBJECT` marker, the exact candidate HEAD/tree
+must first pass the canonical provider-free smoke:
+
+```bash
+bash experiments/run_identity_prior_trajectory_apparatus_smoke.sh \
+  --repo-root <fresh-exact-main-checkout> \
+  --evidence-root <new-empty-evidence-root>
+```
+
+The smoke launches a fresh ephemeral Minecraft 26.1 server from the pinned
+official `server.jar`, installs Mineflayer only from the tracked lock, and uses
+two opaque non-scientific player identities: one anchor session and one reset
+session. It does **not** start llama.cpp, load a GGUF, construct a provider, run
+A/B/C, create Memory, or invoke the classifier.
+
+PASS requires the real current reset implementation to reach, exactly once:
+
+1. fresh anchor spawn;
+2. server-side cleanup DIRTY/BARRIER proof;
+3. explicit empty bounded Mineflayer probe with matched body/time state;
+4. exactly one controlled zombie summon;
+5. post-summon server barrier;
+6. explicit exactly-one-zombie bounded Mineflayer probe;
+7. no recognized Minecraft command-parser error in the reset log segment.
+
+The smoke report records the local HEAD/tree and zero scientific/model spend.
+A smoke result on a different HEAD/tree is stale. A failed smoke is apparatus
+evidence only and must not be retried as though it were a scientific condition;
+repair requires a new repository subject and a fresh smoke transaction.
+
 ### Qualification and stopping rule
 
 The canonical launcher must fail before scientific spend unless all of the
@@ -440,6 +477,9 @@ following remain true on the exact execution subject:
 - #141 is closed;
 - #201 is closed / completed;
 - #220 remains open;
+- the exact HEAD/tree has a fresh provider-free
+  `APPARATUS_SMOKE_PASS` read-back from the canonical smoke above before the
+  trusted owner publishes a new qualification marker;
 - the **latest trusted-owner** machine-readable #220 execution
   qualification is `QUALIFIED_FOR_NEW_TRANSACTION_SUBJECT`; comments from
   other GitHub users or non-`OWNER` associations are not execution authority;
