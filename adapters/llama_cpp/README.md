@@ -19,10 +19,12 @@ The core RelayEngine owns two transient request families under the same provider
     OPEN
       -> one transient expression
 
-By default this adapter realizes each provider attempt through a llama.cpp
-OpenAI-compatible chat-completions request. An explicit optional Jev/System One
-endpoint may instead realize BOUNDED through one finite-choice logits readout.
-THINK and OPEN remain chat-completions requests.
+For an explicitly configured Jev-capable llama.cpp runtime, the preferred
+`BOUNDED` realization is the Jev/System One finite-choice logits readout.
+`THINK` and `OPEN` remain OpenAI-compatible chat-completions requests. When no
+`systemone_endpoint` is configured, `BOUNDED` continues to use the supported
+generated chat-completions baseline. RelaySelf does not probe for System One or
+silently switch mechanisms after a provider failure.
 
 The generated baseline uses:
 
@@ -40,7 +42,7 @@ generation budget and an explicit rationale field. It does not rely on hidden
 provider-owned reasoning mode. OPEN is separately explicit and exactly once; it
 does not implicitly enter THINK.
 
-### Optional Jev/System One bounded path
+### Preferred Jev/System One bounded path on Jev-capable runtimes
 
 When `LlamaCppRelayProvider(systemone_endpoint=...)` is configured, only
 `CognitionMode.BOUNDED` uses that endpoint. The adapter sends the same
@@ -54,8 +56,19 @@ threshold, automatic fallback, second model, provider router, or new semantic
 owner. A missing/malformed Jev endpoint is an operational/provider-protocol
 failure. It is not silently retried through generated BOUNDED cognition.
 
-The generated BOUNDED path remains available as an explicit baseline until
-matched physical evidence justifies canonicalizing the Jev path.
+Matched physical evidence from #257 earned this Jev path as the preferred
+`BOUNDED` realization on the tested local Jev-capable runtime class: both Jev
+and generated BOUNDED selected the expected `cave` choice on 24/24 measured
+calls with zero provider failures or wrong choices, while Jev reduced median
+provider latency by about 48.47% and generated zero output tokens. This is a
+bounded mechanism result, not a universal latency, quality, or calibration
+claim.
+
+The generated BOUNDED path remains a supported explicit baseline and
+compatibility path when System One is not configured. Jev probabilities and
+confidence remain observational only. Prompt/KV reuse is not qualified here;
+`Jev -> THINK` cache reuse remains deferred to #259 after the independent
+RelayLM cache-correctness work.
 
 ## Output contract
 
