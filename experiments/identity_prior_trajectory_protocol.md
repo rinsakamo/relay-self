@@ -332,8 +332,10 @@ model-visible context without overstating terrain grounding.
 
 For every scientific condition invocation:
 
-1. one live Mineflayer session is started;
-2. the player is restored to a shared anchor position/orientation;
+1. one live Mineflayer session is started with a fresh opaque Minecraft player
+   identity derived only from the predeclared absolute invocation ordinal, never
+   from A/B/C or any semantic condition label;
+2. that fresh player is restored to the shared anchor position/orientation;
 3. health and food are restored, inventory/effects are cleared, server time is
    reset, and prior controlled zombies are removed;
 4. one persistent, silent, `NoAI`, invulnerable zombie is summoned about four
@@ -358,10 +360,14 @@ For every scientific condition invocation:
     coordinate frame for the predeclared later decision.
 
 An additional anchor-acquisition Mineflayer session occurs before the nine
-condition invocations. It makes **zero provider calls**, establishes only the
-shared live coordinate origin, is recorded separately, and is not assigned to
-A/B/C. It is part of physical transaction setup and must be counted separately
-from the nine matched condition sessions.
+condition invocations under its own distinct opaque Minecraft player identity.
+It makes **zero provider calls**, establishes only the shared live coordinate
+origin, is recorded separately, and is not assigned to A/B/C. Each of the nine
+scientific invocations then uses a different player identity so server-side
+player persistence cannot carry condition-to-condition state. These target
+usernames remain evidence-only and are not projected into provider-visible
+cognition. The anchor session is part of physical transaction setup and must be
+counted separately from the nine matched condition sessions.
 
 ### Provider-visible blinding
 
