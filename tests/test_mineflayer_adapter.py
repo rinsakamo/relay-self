@@ -71,6 +71,7 @@ def observation_line(
             "snapshot": {
                 "health": 12,
                 "food": 7,
+                "food_saturation": 5,
                 "oxygen_level": oxygen_level,
                 "position": {"x": 1.5, "y": 64, "z": -2.25},
                 "time": time_value,
@@ -130,6 +131,7 @@ def test_stream_requires_started_seq_zero_then_preserves_survival_facts() -> Non
     assert isinstance(observation, MineflayerObservation)
     assert started.mineflayer_version == MINEFLAYER_VERSION
     assert observation.snapshot.health == 12.0
+    assert observation.snapshot.food_saturation == 5.0
     assert observation.snapshot.position.z == -2.25
     assert observation.snapshot.time is not None
     assert observation.snapshot.time.time_of_day == 13000
@@ -174,6 +176,27 @@ def test_snapshot_rejects_malformed_non_null_oxygen() -> None:
         parse_mineflayer_line(observation_line(oxygen_level="unknown"))
 
 
+
+
+def test_snapshot_rejects_changed_nearby_entity_bounds() -> None:
+    payload = json.loads(observation_line())
+    payload["snapshot"]["nearby_entities_coverage"]["max_distance"] = 8
+
+    with pytest.raises(
+        MineflayerAdapterProtocolError,
+        match="max_distance changed from the adapter contract",
+    ):
+        parse_mineflayer_line(json.dumps(payload))
+
+    payload = json.loads(observation_line())
+    payload["snapshot"]["nearby_entities_coverage"]["max_entities"] = 8
+    payload["snapshot"]["nearby_entities_coverage"]["candidate_count"] = 1
+
+    with pytest.raises(
+        MineflayerAdapterProtocolError,
+        match="max_entities changed from the adapter contract",
+    ):
+        parse_mineflayer_line(json.dumps(payload))
 
 
 def test_snapshot_rejects_inconsistent_non_truncated_coverage() -> None:
