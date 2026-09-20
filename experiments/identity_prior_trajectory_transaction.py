@@ -78,6 +78,9 @@ REPORT_SCHEMA_VERSION = 1
 RESET_POSITION_TOLERANCE = 0.08
 RESET_ZOMBIE_DISTANCE_MIN = 3.5
 RESET_ZOMBIE_DISTANCE_MAX = 4.5
+RESET_FOOD_SATURATION = 5.0
+RESET_TIME_OF_DAY = 6000
+RESET_DAY = 0
 FIRST_REQUEST_ID = "identity-prior:first-decision"
 LATER_REQUEST_ID = "identity-prior:later-decision"
 
@@ -492,14 +495,19 @@ def _common_reset_observation_matches(
     observation: MineflayerObservation,
     expected_position: MineflayerPosition,
 ) -> bool:
+    snapshot = observation.snapshot
     return (
-        observation.snapshot.health == 20
-        and observation.snapshot.food == 20
+        snapshot.health == 20
+        and snapshot.food == 20
+        and snapshot.food_saturation == RESET_FOOD_SATURATION
+        and snapshot.time is not None
+        and snapshot.time.time_of_day == RESET_TIME_OF_DAY
+        and snapshot.time.day == RESET_DAY
         and _position_matches(
-            observation.snapshot.position,
+            snapshot.position,
             expected_position,
         )
-        and observation.snapshot.inventory == ()
+        and snapshot.inventory == ()
     )
 
 
@@ -648,6 +656,7 @@ async def reset_live_world(
     session: RecordedMineflayerSession,
     *,
     args: argparse.Namespace,
+    username: str,
     anchor: MineflayerPosition,
     evidence_path: Path,
 ) -> ResetEvidence:
@@ -656,44 +665,40 @@ async def reset_live_world(
 
     cleanup_commands = (
         (
-            "gamerule doMobSpawning false",
+            "gamerule minecraft:spawn_mobs false",
             "matched reset phase 1 control: suppress natural mob spawning",
         ),
         (
-            "gamerule doMobLoot false",
+            "gamerule minecraft:mob_drops false",
             "matched reset phase 1 control: suppress mob death item/XP drops",
         ),
         (
-            "gamerule doEntityDrops false",
+            "gamerule minecraft:entity_drops false",
             "matched reset phase 1 control: suppress non-mob entity drops",
+        ),
+        (
+            "time of minecraft:overworld set 6000",
+            "matched reset phase 1 control: set exact overworld clock tick",
+        ),
+        (
+            "time of minecraft:overworld pause",
+            "matched reset phase 1 control: pause overworld clock",
         ),
         (
             "kill @e[type=!minecraft:player]",
             "matched reset phase 1 cleanup: remove every non-player entity",
         ),
         (
-            f"effect clear {args.username}",
-            "matched reset phase 1 cleanup: clear prior effects",
+            f"effect clear {username}",
+            "matched reset phase 1 cleanup: clear effects",
         ),
         (
-            f"clear {args.username}",
+            f"clear {username}",
             "matched reset phase 1 cleanup: clear inventory",
         ),
         (
-            _tp_command(args.username, anchor),
+            _tp_command(username, anchor),
             "matched reset phase 1 cleanup: restore anchor position and orientation",
-        ),
-        (
-            f"effect give {args.username} minecraft:instant_health 1 255 true",
-            "matched reset phase 1 cleanup: restore full health",
-        ),
-        (
-            f"effect give {args.username} minecraft:saturation 2 255 true",
-            "matched reset phase 1 cleanup: restore sufficient food",
-        ),
-        (
-            "time set noon",
-            "matched reset phase 1 cleanup: common server time",
         ),
     )
     for command, reason in cleanup_commands:
@@ -756,19 +761,8 @@ async def reset_live_world(
         ),
     )
 
-    await write_server_command(
-        control_path=Path(args.server_control),
-        evidence_path=evidence_path,
-        command=f"effect clear {args.username} minecraft:saturation",
-        reason=(
-            "matched reset phase 1 post-barrier: remove temporary "
-            "saturation effect"
-        ),
-        settle_s=0.05,
-    )
-
     summon_command = (
-        f"execute at {args.username} run summon minecraft:zombie "
+        f"execute at {username} run summon minecraft:zombie "
         "~4 ~ ~ {NoAI:1b,PersistenceRequired:1b,Silent:1b,Invulnerable:1b}"
     )
     await write_server_command(
@@ -847,6 +841,14 @@ def _identity_cognition_for_condition(condition_id: str) -> PersistentCognition:
     return condition.cognition
 
 
+def _scientific_player_username(
+    block_index: int,
+    ordinal: int,
+) -> str:
+    absolute_ordinal = block_index * len(PLANNED_CONDITION_ORDER[0]) + ordinal
+    return f"RS220P{absolute_ordinal + 1:02d}"
+
+
 def _provider_request_record(
     request: BoundedChoiceRequest,
 ) -> dict[str, object]:
@@ -902,13 +904,19 @@ async def run_invocation(
 
     session: RecordedMineflayerSession | None = None
     try:
+        target_username = _scientific_player_username(
+            block_index,
+            ordinal,
+        )
         session = await launch_recorded_session(
             args,
             phase=invocation_name,
+            username=target_username,
         )
         reset_evidence = await reset_live_world(
             session,
             args=args,
+            username=target_username,
             anchor=anchor,
             evidence_path=commands_path,
         )
@@ -930,6 +938,7 @@ async def run_invocation(
             "block_index": block_index,
             "ordinal_in_block": ordinal,
             "invocation_name": invocation_name,
+            "target_username": target_username,
             "identity_specification": {
                 "self_id": cognition.identity.self_id,
                 "directives": list(cognition.identity.directives),
@@ -1556,6 +1565,7 @@ async def run_transaction(
                     anchor_session = await launch_recorded_session(
                         args,
                         phase="anchor",
+                        username="RS220Anchor",
                     )
                     anchor_observation = await _receive_spawn(
                         anchor_session,
