@@ -1159,6 +1159,91 @@ def test_mineflayer_lock_pins_declared_adapter_dependency() -> None:
     assert lock["packages"]["node_modules/mineflayer"]["integrity"]
 
 
+def test_run_requires_positive_owned_minecraft_pid(tmp_path: Path) -> None:
+    missing = transaction.parser().parse_args(
+        [
+            "--phase",
+            "run",
+            "--evidence-root",
+            str(tmp_path / "missing"),
+            "--model",
+            "model.gguf",
+            "--server-control",
+            "server.stdin",
+            "--server-log",
+            "server.log",
+            "--served-model",
+            "model.gguf",
+        ]
+    )
+    with pytest.raises(
+        IdentityPriorTransactionError,
+        match="run requires --minecraft-pid",
+    ):
+        transaction.validate_args(missing)
+
+    invalid = transaction.parser().parse_args(
+        [
+            "--phase",
+            "run",
+            "--evidence-root",
+            str(tmp_path / "invalid"),
+            "--model",
+            "model.gguf",
+            "--server-control",
+            "server.stdin",
+            "--server-log",
+            "server.log",
+            "--served-model",
+            "model.gguf",
+            "--minecraft-pid",
+            "-1",
+        ]
+    )
+    with pytest.raises(
+        IdentityPriorTransactionError,
+        match="positive process id",
+    ):
+        transaction.validate_args(invalid)
+
+
+def test_run_checks_owned_minecraft_process_before_transaction(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    args = transaction.parser().parse_args(
+        [
+            "--phase",
+            "run",
+            "--evidence-root",
+            str(tmp_path),
+            "--model",
+            "model.gguf",
+            "--server-control",
+            "server.stdin",
+            "--server-log",
+            "server.log",
+            "--served-model",
+            "model.gguf",
+            "--minecraft-pid",
+            "4242",
+        ]
+    )
+    checks: list[tuple[int, str]] = []
+
+    def record_process(pid: int, name: str) -> None:
+        checks.append((pid, name))
+
+    async def fake_run_transaction(_args, _tracker):
+        return {"status": "fixture-complete"}
+
+    monkeypatch.setattr(transaction, "assert_process_alive", record_process)
+    monkeypatch.setattr(transaction, "run_transaction", fake_run_transaction)
+
+    assert asyncio.run(transaction.async_main(args)) == 0
+    assert checks == [(4242, "Minecraft")]
+
+
 def test_canonical_launcher_is_one_shot_and_blocks_before_run() -> None:
     launcher = Path(
         "experiments/run_identity_prior_trajectory_transaction.sh"
@@ -1207,6 +1292,7 @@ def test_canonical_launcher_is_one_shot_and_blocks_before_run() -> None:
     assert "same-run fixture tuning" not in launcher
     assert "--minecraft-source-root" not in launcher
     assert "MINECRAFT_SOURCE_ROOT" not in launcher
+    assert '--minecraft-pid "$MINECRAFT_PID"' in launcher
 
     install_index = launcher.index('"$NPM" ci --omit=dev --no-audit --no-fund')
     initial_gate_index = launcher.index("capture_authority initial")

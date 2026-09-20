@@ -41,6 +41,7 @@ from experiments.identity_prior_trajectory import (
 from experiments.minecraft_terminal_qualification import (
     RecordedMineflayerSession,
     StageTracker,
+    assert_process_alive,
     cognition_result_json,
     jsonable,
     launch_recorded_session,
@@ -1796,10 +1797,15 @@ def validate_args(args: argparse.Namespace) -> None:
                 raise IdentityPriorTransactionError(
                     f"preflight requires --{name.replace('_', '-')}"
                 )
+    if args.minecraft_pid is not None and args.minecraft_pid <= 0:
+        raise IdentityPriorTransactionError(
+            "--minecraft-pid must be a positive process id"
+        )
     if args.phase == "run":
         required = (
             "server_control",
             "server_log",
+            "minecraft_pid",
             "served_model",
         )
         for name in required:
@@ -1821,6 +1827,7 @@ async def async_main(args: argparse.Namespace) -> int:
         print(json.dumps(preflight, ensure_ascii=False, sort_keys=True))
         return 0
 
+    assert_process_alive(args.minecraft_pid, "Minecraft")
     tracker = StageTracker("run")
     args.transaction_started_at = utc_now()
     try:

@@ -450,7 +450,10 @@ following remain true on the exact execution subject:
   experiment configuration only, and does not import mutable external
   `libraries/` or `versions/` runtime directories;
 - after runtime preflight, the launcher reacquires this authority immediately
-  before `--phase run`.
+  before `--phase run`;
+- the run phase receives the exact PID of the Minecraft server started by the
+  canonical launcher and verifies that positive PID is still alive immediately
+  before the scientific transaction begins.
 
 The canonical transaction is one-shot. Any operational, protocol, reset, or
 grounding failure stops at the first concrete failure and preserves all prior
