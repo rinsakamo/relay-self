@@ -38,12 +38,20 @@ def _provenance(reference: str) -> Provenance:
 
 
 def _memory(destination_id: str = "route-42") -> Memory:
+    anchor = _reset_anchor()
+    destination_z = anchor.z + (10 if destination_id == "route-42" else -10)
     return Memory(
         memory_id="first-grounded",
         content=json.dumps(
             {
                 "kind": "controlled_flee_destination_outcome",
                 "destination_id": destination_id,
+                "destination_position": {
+                    "x": anchor.x,
+                    "y": anchor.y,
+                    "z": destination_z,
+                },
+                "observed_outcome": "progress_toward_destination",
                 "semantic_type": "Memory",
             },
             sort_keys=True,
@@ -443,17 +451,30 @@ def test_frozen_request_resolves_then_binds_to_live_destination() -> None:
     assert decision.cognition_result.provider_call_count == 1
 
 
-def test_later_request_uses_consequence_and_memory_without_condition_label() -> None:
+def test_later_request_projects_memory_into_same_local_frame() -> None:
     from experiments.identity_prior_trajectory_transaction import (
         _initial_request_for_condition,
     )
 
-    observation, _ = build_candidate_world()
+    anchor = _reset_anchor()
+    observation = _reset_observation(
+        seq=99,
+        kind="move",
+        entities=(),
+        position=MineflayerPosition(
+            x=anchor.x,
+            y=anchor.y,
+            z=anchor.z + 1,
+        ),
+    )
+    memory = _memory()
+    durable_before = memory.content
+
     request = build_later_request(
         identity_request=_initial_request_for_condition("C"),
         observation=observation,
-        anchor=observation.snapshot.position,
-        memory=_memory(),
+        anchor=anchor,
+        memory=memory,
     )
 
     assert request.request_id == LATER_REQUEST_ID
@@ -461,6 +482,25 @@ def test_later_request_uses_consequence_and_memory_without_condition_label() -> 
     by_key = {datum.key: datum for datum in request.context}
     assert "identity_specification" in by_key
     assert "memory:first-grounded-flee" in by_key
+
+    memory_datum = by_key["memory:first-grounded-flee"]
+    wrapper = json.loads(memory_datum.value_json)
+    projected_memory = json.loads(wrapper["content"])
+
+    assert projected_memory["destination_id"] == "route-42"
+    assert projected_memory["destination_position"] == {
+        "x": 0.0,
+        "y": 64.0,
+        "z": 10.0,
+    }
+    assert projected_memory["coordinate_frame"] == "matched-local"
+    assert wrapper["source_provenance"] == {
+        "source": memory.source_provenance.source,
+        "reference": memory.source_provenance.reference,
+    }
+    assert memory_datum.provenance == memory.integration_provenance
+    assert memory.content == durable_before
+    assert json.loads(memory.content)["destination_position"]["y"] == anchor.y
 
     rendered = json.dumps(
         {
