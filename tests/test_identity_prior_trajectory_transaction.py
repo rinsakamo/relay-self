@@ -149,6 +149,7 @@ def _reset_observation(
         snapshot=MineflayerSnapshot(
             health=20,
             food=20,
+            food_saturation=20,
             oxygen_level=None,
             position=position or _reset_anchor(),
             time=None,
