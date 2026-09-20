@@ -100,7 +100,52 @@ capture_authority() {
   [[ "$local_head" == "$remote_main" ]] || return 1
 
   gh api repos/rinsakamo/relay-self/rulesets/23442682 >"$target/ruleset.json"
-  [[ "$(gh api repos/rinsakamo/relay-self/rulesets/23442682 --jq .enforcement)" == "active" ]] || return 1
+  python3 - "$target/ruleset.json" <<'PY' || return 1
+import json
+import sys
+from pathlib import Path
+
+ruleset = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if ruleset.get("enforcement") != "active":
+    raise SystemExit("main ruleset is not active")
+if ruleset.get("bypass_actors") not in ([], None):
+    raise SystemExit("main ruleset unexpectedly has bypass actors")
+
+rules = ruleset.get("rules")
+if not isinstance(rules, list):
+    raise SystemExit("main ruleset rules payload is invalid")
+
+by_type = {}
+for rule in rules:
+    if isinstance(rule, dict) and isinstance(rule.get("type"), str):
+        by_type[rule["type"]] = rule
+
+for required in ("deletion", "non_fast_forward", "required_linear_history"):
+    if required not in by_type:
+        raise SystemExit(f"main ruleset missing required protection: {required}")
+
+pull_request = by_type.get("pull_request", {}).get("parameters")
+if not isinstance(pull_request, dict):
+    raise SystemExit("main ruleset missing pull_request parameters")
+if pull_request.get("allowed_merge_methods") != ["squash"]:
+    raise SystemExit("main ruleset must remain squash-only")
+if pull_request.get("required_review_thread_resolution") is not True:
+    raise SystemExit("main ruleset must require review-thread resolution")
+
+checks = by_type.get("required_status_checks", {}).get("parameters")
+if not isinstance(checks, dict):
+    raise SystemExit("main ruleset missing required status checks")
+actual_checks = {
+    item.get("context")
+    for item in checks.get("required_status_checks", [])
+    if isinstance(item, dict)
+}
+expected_checks = {"repository-contracts", "pytest", "lint"}
+if actual_checks != expected_checks:
+    raise SystemExit(
+        f"main ruleset required checks changed: {sorted(actual_checks)}"
+    )
+PY
   gh pr list --repo rinsakamo/relay-self --state open --base main --limit 100 \
     --json number,title,headRefName,baseRefName,updatedAt,url >"$target/open-prs.json"
   [[ "$(gh pr list --repo rinsakamo/relay-self --state open --base main --limit 100 --json number --jq length)" == "0" ]] || return 1
@@ -155,6 +200,11 @@ relevant = []
 for comment in comments:
     body = comment.get("body")
     comment_id = comment.get("id")
+    user = comment.get("user")
+    login = user.get("login") if isinstance(user, dict) else None
+    association = comment.get("author_association")
+    if login != "rinsakamo" or association != "OWNER":
+        continue
     if not isinstance(body, str) or not isinstance(comment_id, int):
         continue
     matches = pattern.findall(body)
@@ -162,15 +212,20 @@ for comment in comments:
         relevant.append((comment_id, matches[0], body))
 
 if not relevant:
-    raise SystemExit("no machine-readable #220 execution qualification found")
+    raise SystemExit(
+        "no trusted-owner machine-readable #220 execution qualification found"
+    )
 
 _, state, body = max(relevant, key=lambda item: item[0])
 if state != "QUALIFIED_FOR_NEW_TRANSACTION_SUBJECT":
-    raise SystemExit(f"latest #220 execution qualification is {state}")
-if f"subject_head: {expected_head}" not in body:
-    raise SystemExit("qualified #220 comment does not bind current HEAD")
-if f"subject_tree: {expected_tree}" not in body:
-    raise SystemExit("qualified #220 comment does not bind current tree")
+    raise SystemExit(f"latest trusted #220 execution qualification is {state}")
+
+head_matches = re.findall(r"(?m)^subject_head: ([0-9a-f]{40})\s*$", body)
+tree_matches = re.findall(r"(?m)^subject_tree: ([0-9a-f]{40})\s*$", body)
+if head_matches != [expected_head]:
+    raise SystemExit("qualified #220 comment does not uniquely bind current HEAD")
+if tree_matches != [expected_tree]:
+    raise SystemExit("qualified #220 comment does not uniquely bind current tree")
 
 print(state)
 PY
