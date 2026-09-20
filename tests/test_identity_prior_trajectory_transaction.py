@@ -451,6 +451,7 @@ def test_reset_stops_when_positive_server_barrier_is_absent(
             transaction.reset_live_world(
                 session,
                 args=_reset_args(tmp_path),
+                username="RS220P01",
                 anchor=_reset_anchor(),
                 evidence_path=tmp_path / "server-commands.jsonl",
             )
