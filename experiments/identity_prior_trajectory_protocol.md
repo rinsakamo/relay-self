@@ -217,31 +217,38 @@ order-dependent physical nuisance variable.
 
 1. **Cleanup phase:** issue the existing zombie removal, effect/inventory
    clearing, anchor/orientation, health/food, and common-time commands. Then
-   issue a server-side conditional sentinel teleport that can execute only if
-   the server currently has zero non-player entities. A matching Mineflayer
-   `forcedMove` is the causal watermark proving that the preceding cleanup
-   commands were processed and the server-side entity-isolation condition held.
-   Only observations at or after that watermark may qualify an empty nearby
-   entity projection, and the player is then returned to the common anchor.
-2. **Fixture phase:** only after the causal entity-isolation barrier is grounded,
-   issue one summon command for exactly one static `NoAI`, persistent, silent
-   zombie. A second sentinel teleport is issued after the summon; its matching
-   Mineflayer `forcedMove` is the causal watermark proving command ordering.
-   The temporary saturation effect is cleared before a final return-to-anchor
-   teleport. Only the final anchor watermark or later observations may qualify
-   a matched state whose nearby-entity projection contains exactly the one
-   controlled zombie and no other entity.
+   issue a server-side conditional `say` marker that can execute only if the
+   server currently has zero non-player entities. The marker must be observed
+   in the server log *after* the command's captured log offset. This proves
+   server-side cleanup ordering and the entity-isolation condition without
+   depending on a Mineflayer movement event. After that server marker, request
+   an explicit target-local Mineflayer `observe` probe and require a current
+   `probe` snapshot showing the common anchor/body state and no nearby entity.
+2. **Fixture phase:** only after that two-source cleanup barrier is grounded,
+   remove the temporary saturation effect and issue one summon command for
+   exactly one static `NoAI`, persistent, silent, invulnerable zombie. Then
+   issue a unique server-log marker after the summon command. Once that marker
+   is observed after its captured log offset, request explicit Mineflayer
+   probes until the bounded client projection shows exactly the one controlled
+   zombie and no other nearby entity.
 
-The fixed command settle interval is only an execution aid; it is not reset
-qualification evidence. A queued observation emitted before a causal watermark
-cannot satisfy the corresponding barrier. A cleanup watermark timeout,
-post-watermark non-empty client projection, or post-summon projection with
-anything other than the one controlled zombie is `NOT QUALIFIED` and stops
-the invocation. The owner does
-not issue another kill or summon, and no provider call occurs inside reset
-qualification. Command evidence records cleanup, sentinel, summon, and
-return-to-anchor commands; the transaction report records both causal
-watermarks and final grounded reset observations.
+Ordinary Mineflayer `forcedMove` remains a valid target observation, but it is
+not reset-qualification evidence. The reset no longer assumes that a specific
+teleport must emit that event.
+
+Fixed command settle intervals are execution aids only. Server markers use the
+fresh Mineflayer session id and are matched only after a captured log offset, so
+old log lines cannot satisfy a new barrier. Queued ordinary Mineflayer events
+also cannot satisfy the client barrier: only observations explicitly emitted in
+response to post-marker `observe` probes qualify. Bounded repeated probes may
+wait for client projection convergence, but the owner never repeats cleanup,
+summon, a scientific condition, or a provider call.
+
+A missing server marker, a post-marker probe that never reaches the declared
+cleanup state, or a post-summon probe that never contains exactly the one
+controlled zombie is `NOT QUALIFIED` and stops the invocation. Command
+evidence records cleanup, marker, and summon commands; the transaction report
+records the unique causal markers and grounded probe snapshots.
 
 The live World-reset implementation must be bound to the then-current
 #141-derived Minecraft apparatus after #201 review. This preparation document

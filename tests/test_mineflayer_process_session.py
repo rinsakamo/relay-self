@@ -176,6 +176,7 @@ def test_send_effects_use_existing_target_local_protocol(monkeypatch, tmp_path: 
             yaw=1.5,
             pitch=0.0,
         )
+        await session.send_observe()
 
         assert [json.loads(value) for value in process.stdin.writes] == [
             {
@@ -208,8 +209,9 @@ def test_send_effects_use_existing_target_local_protocol(monkeypatch, tmp_path: 
                 "yaw": 1.5,
                 "pitch": 0.0,
             },
+            {"type": "observe"},
         ]
-        assert process.stdin.drain_count == 5
+        assert process.stdin.drain_count == 6
 
     asyncio.run(scenario())
 

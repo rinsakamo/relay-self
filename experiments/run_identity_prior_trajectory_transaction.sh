@@ -378,7 +378,7 @@ python3 -m experiments.identity_prior_trajectory_transaction \
   --minecraft-version "$MINECRAFT_VERSION" --minecraft-port "$MINECRAFT_PORT" \
   --username "$USERNAME" --node "$NODE" --llama-origin "$LLAMA_ORIGIN" \
   --llama-port "$LLAMA_PORT" --model "$MODEL" --served-model "$MODEL" \
-  --server-control "$SERVER_CONTROL" --self-id "$SELF_ID"
+  --server-control "$SERVER_CONTROL" --server-log "$SERVER_LOG" --self-id "$SELF_ID"
 
 python3 -m json.tool "$EVIDENCE_ROOT/scientific-report.json" \
   >"$EVIDENCE_ROOT/scientific-report.pretty.json"

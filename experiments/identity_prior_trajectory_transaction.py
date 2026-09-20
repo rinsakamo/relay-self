@@ -78,8 +78,6 @@ REPORT_SCHEMA_VERSION = 1
 RESET_POSITION_TOLERANCE = 0.08
 RESET_ZOMBIE_DISTANCE_MIN = 3.5
 RESET_ZOMBIE_DISTANCE_MAX = 4.5
-RESET_CLEANUP_SENTINEL_OFFSET_X = 0.75
-RESET_SUMMON_SENTINEL_OFFSET_Z = 0.75
 FIRST_REQUEST_ID = "identity-prior:first-decision"
 LATER_REQUEST_ID = "identity-prior:later-decision"
 
@@ -100,11 +98,11 @@ class InvocationResult:
 class ResetEvidence:
     cleanup_commands: tuple[str, ...]
     cleanup_server_zero_barrier_command: str
-    cleanup_server_zero_watermark: MineflayerObservation
+    cleanup_server_zero_marker: str
     cleanup_zero_observation: MineflayerObservation
     summon_command: str
     summon_processed_barrier_command: str
-    summon_processed_watermark: MineflayerObservation
+    summon_processed_marker: str
     matched_observation: MineflayerObservation
 
 
@@ -480,19 +478,6 @@ def _position_matches(
     )
 
 
-def _offset_position(
-    anchor: MineflayerPosition,
-    *,
-    dx: float = 0.0,
-    dz: float = 0.0,
-) -> MineflayerPosition:
-    return MineflayerPosition(
-        x=anchor.x + dx,
-        y=anchor.y,
-        z=anchor.z + dz,
-    )
-
-
 def _zombies(observation: MineflayerObservation):
     return [
         entity
@@ -548,19 +533,6 @@ def _reset_observation_matches(
     )
 
 
-def _forced_move_position_matches(
-    observation: MineflayerObservation,
-    expected_position: MineflayerPosition,
-) -> bool:
-    return (
-        observation.kind == "forcedMove"
-        and _position_matches(
-            observation.snapshot.position,
-            expected_position,
-        )
-    )
-
-
 def _tp_command(
     username: str,
     position: MineflayerPosition,
@@ -569,6 +541,93 @@ def _tp_command(
         f"tp {username} "
         f"{position.x:.6f} {position.y:.6f} {position.z:.6f} 0 0"
     )
+
+
+def _server_log_size(path: Path) -> int:
+    try:
+        return path.stat().st_size
+    except OSError as exc:
+        raise IdentityPriorTransactionError(
+            f"could not inspect Minecraft server log: {exc}"
+        ) from exc
+
+
+async def _wait_for_server_log_marker(
+    path: Path,
+    *,
+    marker: str,
+    start_offset: int,
+    timeout_s: float,
+) -> None:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_s
+    encoded = marker.encode("utf-8")
+    while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            raise IdentityPriorTransactionError(
+                f"timed out waiting for server log causal marker: {marker}"
+            )
+        try:
+            with path.open("rb") as handle:
+                handle.seek(start_offset)
+                if encoded in handle.read():
+                    return
+        except OSError as exc:
+            raise IdentityPriorTransactionError(
+                f"could not read Minecraft server log: {exc}"
+            ) from exc
+        await asyncio.sleep(min(0.01, remaining))
+
+
+async def _receive_probe(
+    session: RecordedMineflayerSession,
+    *,
+    timeout_s: float,
+) -> MineflayerObservation:
+    await session.send_observe()
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_s
+    while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            raise IdentityPriorTransactionError(
+                "timed out waiting for explicit Mineflayer probe"
+            )
+        try:
+            message = await asyncio.wait_for(
+                session.receive(),
+                timeout=remaining,
+            )
+        except TimeoutError as exc:
+            raise IdentityPriorTransactionError(
+                "timed out waiting for explicit Mineflayer probe"
+            ) from exc
+        if isinstance(message, MineflayerObservation) and message.kind == "probe":
+            return message
+
+
+async def _probe_until_observation_match(
+    session: RecordedMineflayerSession,
+    *,
+    expected_position: MineflayerPosition,
+    timeout_s: float,
+    predicate: Callable[[MineflayerObservation, MineflayerPosition], bool],
+    timeout_message: str,
+) -> MineflayerObservation:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_s
+    while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            raise IdentityPriorTransactionError(timeout_message)
+        probe = await _receive_probe(
+            session,
+            timeout_s=remaining,
+        )
+        if predicate(probe, expected_position):
+            return probe
+        await asyncio.sleep(min(0.05, max(0.0, deadline - loop.time())))
 
 
 async def reset_live_world(
@@ -620,76 +679,50 @@ async def reset_live_world(
             settle_s=0.1,
         )
 
-    cleanup_sentinel = _offset_position(
-        anchor,
-        dx=RESET_CLEANUP_SENTINEL_OFFSET_X,
-    )
+    session_token = session.started.session_id.replace("-", "")
+    cleanup_server_zero_marker = f"RELAYSELF220_ZERO_{session_token}"
     cleanup_server_zero_barrier_command = (
         "execute unless entity @e[type=!minecraft:player] run "
-        + _tp_command(args.username, cleanup_sentinel)
+        f"say {cleanup_server_zero_marker}"
     )
+    server_log = Path(args.server_log)
+    cleanup_log_offset = _server_log_size(server_log)
     await write_server_command(
         control_path=Path(args.server_control),
         evidence_path=evidence_path,
         command=cleanup_server_zero_barrier_command,
         reason=(
-            "matched reset phase 1 causal barrier: teleport only after "
-            "server-side zero non-player-entity state"
+            "matched reset phase 1 causal barrier: emit server marker only "
+            "after zero non-player-entity state"
         ),
-        settle_s=0.05,
+        settle_s=0.0,
     )
-    cleanup_server_zero_watermark = await _receive_until_forced_move(
-        session,
-        expected_position=cleanup_sentinel,
+    await _wait_for_server_log_marker(
+        server_log,
+        marker=cleanup_server_zero_marker,
+        start_offset=cleanup_log_offset,
         timeout_s=args.evidence_timeout_s,
+    )
+    cleanup_zero_observation = await _probe_until_observation_match(
+        session,
+        expected_position=anchor,
+        timeout_s=args.evidence_timeout_s,
+        predicate=_cleanup_zero_observation_matches,
         timeout_message=(
-            "timed out waiting for server-grounded zero-zombie causal watermark"
+            "timed out waiting for post-marker zero-entity Mineflayer probe"
         ),
     )
-
-    if _cleanup_zero_observation_matches(
-        cleanup_server_zero_watermark,
-        cleanup_sentinel,
-    ):
-        cleanup_sentinel_zero = cleanup_server_zero_watermark
-    else:
-        cleanup_sentinel_zero = await _receive_until_cleanup_zero(
-            session,
-            expected_position=cleanup_sentinel,
-            timeout_s=args.evidence_timeout_s,
-        )
 
     await write_server_command(
         control_path=Path(args.server_control),
         evidence_path=evidence_path,
-        command=_tp_command(args.username, anchor),
-        reason="matched reset phase 1 causal barrier: return to common anchor",
+        command=f"effect clear {args.username} minecraft:saturation",
+        reason=(
+            "matched reset phase 1 post-barrier: remove temporary "
+            "saturation effect"
+        ),
         settle_s=0.05,
     )
-    cleanup_anchor_watermark = await _receive_until_forced_move(
-        session,
-        expected_position=anchor,
-        timeout_s=args.evidence_timeout_s,
-        timeout_message=(
-            "timed out waiting for post-cleanup return-to-anchor watermark"
-        ),
-    )
-    if _cleanup_zero_observation_matches(
-        cleanup_anchor_watermark,
-        anchor,
-    ):
-        cleanup_zero_observation = cleanup_anchor_watermark
-    else:
-        cleanup_zero_observation = await _receive_until_cleanup_zero(
-            session,
-            expected_position=anchor,
-            timeout_s=args.evidence_timeout_s,
-        )
-
-    if cleanup_sentinel_zero.seq < cleanup_server_zero_watermark.seq:
-        raise IdentityPriorTransactionError(
-            "cleanup zero observation preceded its causal watermark"
-        )
 
     summon_command = (
         f"execute at {args.username} run summon minecraft:zombie "
@@ -703,167 +736,49 @@ async def reset_live_world(
             "matched reset phase 2 fixture: summon exactly one static "
             "NoAI persistent silent zombie"
         ),
-        settle_s=0.05,
+        settle_s=0.0,
     )
 
-    summon_sentinel = _offset_position(
-        anchor,
-        dz=RESET_SUMMON_SENTINEL_OFFSET_Z,
-    )
-    summon_processed_barrier_command = _tp_command(
-        args.username,
-        summon_sentinel,
-    )
+    summon_processed_marker = f"RELAYSELF220_SUMMON_{session_token}"
+    summon_processed_barrier_command = f"say {summon_processed_marker}"
+    summon_log_offset = _server_log_size(server_log)
     await write_server_command(
         control_path=Path(args.server_control),
         evidence_path=evidence_path,
         command=summon_processed_barrier_command,
         reason=(
-            "matched reset phase 2 causal barrier: post-summon "
-            "Mineflayer forcedMove watermark"
+            "matched reset phase 2 causal barrier: server-log marker after "
+            "summon command processing"
         ),
-        settle_s=0.05,
+        settle_s=0.0,
     )
-    summon_processed_watermark = await _receive_until_forced_move(
-        session,
-        expected_position=summon_sentinel,
+    await _wait_for_server_log_marker(
+        server_log,
+        marker=summon_processed_marker,
+        start_offset=summon_log_offset,
         timeout_s=args.evidence_timeout_s,
-        timeout_message=(
-            "timed out waiting for post-summon causal watermark"
-        ),
     )
-
-    await write_server_command(
-        control_path=Path(args.server_control),
-        evidence_path=evidence_path,
-        command=f"effect clear {args.username} minecraft:saturation",
-        reason=(
-            "matched reset phase 2 post-barrier: remove temporary "
-            "saturation effect"
-        ),
-        settle_s=0.05,
-    )
-    await write_server_command(
-        control_path=Path(args.server_control),
-        evidence_path=evidence_path,
-        command=_tp_command(args.username, anchor),
-        reason=(
-            "matched reset phase 2 causal barrier: restore final common anchor"
-        ),
-        settle_s=0.05,
-    )
-    final_anchor_watermark = await _receive_until_forced_move(
+    matched_observation = await _probe_until_observation_match(
         session,
         expected_position=anchor,
         timeout_s=args.evidence_timeout_s,
+        predicate=_reset_observation_matches,
         timeout_message=(
-            "timed out waiting for post-summon final-anchor watermark"
+            "timed out waiting for post-marker matched one-zombie Mineflayer probe"
         ),
     )
-    if _reset_observation_matches(
-        final_anchor_watermark,
-        anchor,
-    ):
-        matched_observation = final_anchor_watermark
-    else:
-        matched_observation = await _receive_until_matched_one(
-            session,
-            expected_position=anchor,
-            timeout_s=args.evidence_timeout_s,
-        )
-
-    if matched_observation.seq < summon_processed_watermark.seq:
-        raise IdentityPriorTransactionError(
-            "matched one-zombie observation preceded its summon watermark"
-        )
 
     return ResetEvidence(
         cleanup_commands=tuple(command for command, _ in cleanup_commands),
         cleanup_server_zero_barrier_command=(
             cleanup_server_zero_barrier_command
         ),
-        cleanup_server_zero_watermark=cleanup_server_zero_watermark,
+        cleanup_server_zero_marker=cleanup_server_zero_marker,
         cleanup_zero_observation=cleanup_zero_observation,
         summon_command=summon_command,
         summon_processed_barrier_command=summon_processed_barrier_command,
-        summon_processed_watermark=summon_processed_watermark,
+        summon_processed_marker=summon_processed_marker,
         matched_observation=matched_observation,
-    )
-
-
-async def _receive_until_observation_match(
-    session: RecordedMineflayerSession,
-    *,
-    expected_position: MineflayerPosition,
-    timeout_s: float,
-    predicate: Callable[[MineflayerObservation, MineflayerPosition], bool],
-    timeout_message: str,
-) -> MineflayerObservation:
-    loop = asyncio.get_running_loop()
-    deadline = loop.time() + timeout_s
-    while True:
-        remaining = deadline - loop.time()
-        if remaining <= 0:
-            raise IdentityPriorTransactionError(timeout_message)
-        try:
-            message = await asyncio.wait_for(
-                session.receive(),
-                timeout=remaining,
-            )
-        except TimeoutError as exc:
-            raise IdentityPriorTransactionError(timeout_message) from exc
-        if isinstance(message, MineflayerObservation):
-            if predicate(message, expected_position):
-                return message
-
-
-async def _receive_until_forced_move(
-    session: RecordedMineflayerSession,
-    *,
-    expected_position: MineflayerPosition,
-    timeout_s: float,
-    timeout_message: str,
-) -> MineflayerObservation:
-    return await _receive_until_observation_match(
-        session,
-        expected_position=expected_position,
-        timeout_s=timeout_s,
-        predicate=_forced_move_position_matches,
-        timeout_message=timeout_message,
-    )
-
-
-async def _receive_until_cleanup_zero(
-    session: RecordedMineflayerSession,
-    *,
-    expected_position: MineflayerPosition,
-    timeout_s: float,
-) -> MineflayerObservation:
-    return await _receive_until_observation_match(
-        session,
-        expected_position=expected_position,
-        timeout_s=timeout_s,
-        predicate=_cleanup_zero_observation_matches,
-        timeout_message=(
-            "timed out waiting for grounded zero-zombie cleanup observation"
-        ),
-    )
-
-
-async def _receive_until_matched_one(
-    session: RecordedMineflayerSession,
-    *,
-    expected_position: MineflayerPosition,
-    timeout_s: float,
-) -> MineflayerObservation:
-    return await _receive_until_observation_match(
-        session,
-        expected_position=expected_position,
-        timeout_s=timeout_s,
-        predicate=_reset_observation_matches,
-        timeout_message=(
-            "timed out waiting for grounded matched one-zombie reset observation"
-        ),
     )
 
 
@@ -985,20 +900,20 @@ async def run_invocation(
                 "phase_1_server_zero_barrier_command": (
                     reset_evidence.cleanup_server_zero_barrier_command
                 ),
-                "phase_1_server_zero_causal_watermark": message_json(
-                    reset_evidence.cleanup_server_zero_watermark
+                "phase_1_server_zero_causal_marker": (
+                    reset_evidence.cleanup_server_zero_marker
                 ),
-                "phase_1_cleanup_zero_observation_grounded": message_json(
+                "phase_1_cleanup_zero_probe_grounded": message_json(
                     reset_evidence.cleanup_zero_observation
                 ),
                 "phase_2_controlled_summon_issued": reset_evidence.summon_command,
                 "phase_2_summon_barrier_command": (
                     reset_evidence.summon_processed_barrier_command
                 ),
-                "phase_2_summon_causal_watermark": message_json(
-                    reset_evidence.summon_processed_watermark
+                "phase_2_summon_causal_marker": (
+                    reset_evidence.summon_processed_marker
                 ),
-                "phase_2_matched_one_zombie_observation_grounded": message_json(
+                "phase_2_matched_one_zombie_probe_grounded": message_json(
                     reset_evidence.matched_observation
                 ),
             },
@@ -1823,6 +1738,7 @@ def validate_args(args: argparse.Namespace) -> None:
     if args.phase == "run":
         required = (
             "server_control",
+            "server_log",
             "served_model",
         )
         for name in required:

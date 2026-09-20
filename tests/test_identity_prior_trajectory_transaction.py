@@ -165,71 +165,48 @@ def _reset_observation(
     )
 
 
-def _cleanup_sentinel() -> MineflayerPosition:
-    anchor = _reset_anchor()
-    return MineflayerPosition(
-        x=anchor.x + transaction.RESET_CLEANUP_SENTINEL_OFFSET_X,
-        y=anchor.y,
-        z=anchor.z,
-    )
-
-
-def _summon_sentinel() -> MineflayerPosition:
-    anchor = _reset_anchor()
-    return MineflayerPosition(
-        x=anchor.x,
-        y=anchor.y,
-        z=anchor.z + transaction.RESET_SUMMON_SENTINEL_OFFSET_Z,
-    )
-
-
 def _successful_reset_messages(
     *,
-    queued_pre_summon_one: bool = False,
+    queued_before_zero_probe: bool = False,
+    queued_before_one_probe: bool = False,
 ) -> tuple[MineflayerObservation, ...]:
     old = _zombie(entity_id=81, distance=4.0)
     controlled = _zombie(entity_id=161, distance=4.0)
     messages = [
         _reset_observation(seq=1, kind="spawn", entities=(old,)),
-        _reset_observation(
-            seq=2,
-            kind="forcedMove",
-            entities=(),
-            position=_cleanup_sentinel(),
-        ),
-        _reset_observation(
-            seq=3,
-            kind="forcedMove",
-            entities=(),
-            position=_reset_anchor(),
-        ),
     ]
-    if queued_pre_summon_one:
+    next_seq = 2
+    if queued_before_zero_probe:
         messages.append(
             _reset_observation(
-                seq=4,
+                seq=next_seq,
                 kind="entities",
-                entities=(controlled,),
-                position=_reset_anchor(),
+                entities=(),
             )
         )
-        next_seq = 5
-    else:
-        next_seq = 4
-    messages.extend(
-        (
+        next_seq += 1
+    messages.append(
+        _reset_observation(
+            seq=next_seq,
+            kind="probe",
+            entities=(),
+        )
+    )
+    next_seq += 1
+    if queued_before_one_probe:
+        messages.append(
             _reset_observation(
                 seq=next_seq,
-                kind="forcedMove",
+                kind="entities",
                 entities=(controlled,),
-                position=_summon_sentinel(),
-            ),
-            _reset_observation(
-                seq=next_seq + 1,
-                kind="forcedMove",
-                entities=(controlled,),
-                position=_reset_anchor(),
-            ),
+            )
+        )
+        next_seq += 1
+    messages.append(
+        _reset_observation(
+            seq=next_seq,
+            kind="probe",
+            entities=(controlled,),
         )
     )
     return tuple(messages)
@@ -245,6 +222,8 @@ class _ResetSession:
         self._messages = messages
         self._repeat_last = repeat_last
         self._index = 0
+        self.observe_count = 0
+        self.started = SimpleNamespace(session_id="reset-session")
 
     async def receive(self) -> MineflayerObservation:
         if self._index < len(self._messages):
@@ -257,11 +236,22 @@ class _ResetSession:
         await asyncio.sleep(0)
         return message
 
+    async def send_observe(self) -> None:
+        self.observe_count += 1
+        await asyncio.sleep(0)
 
-def _reset_args(*, timeout_s: float = 0.02) -> SimpleNamespace:
+
+def _reset_args(
+    tmp_path: Path,
+    *,
+    timeout_s: float = 0.02,
+) -> SimpleNamespace:
+    server_log = tmp_path / "minecraft-server.log"
+    server_log.write_text("", encoding="utf-8")
     return SimpleNamespace(
         evidence_timeout_s=timeout_s,
         server_control="unused-server-control",
+        server_log=str(server_log),
         username="RelaySelf",
     )
 
@@ -270,34 +260,105 @@ def _run_reset(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     session: _ResetSession,
-) -> tuple[ResetEvidence, list[dict[str, object]]]:
+) -> tuple[
+    ResetEvidence,
+    list[dict[str, object]],
+    list[str],
+]:
     commands: list[dict[str, object]] = []
+    markers: list[str] = []
 
     async def record_command(**kwargs: object) -> None:
         commands.append(kwargs)
 
+    async def accept_marker(
+        _path: Path,
+        *,
+        marker: str,
+        start_offset: int,
+        timeout_s: float,
+    ) -> None:
+        assert start_offset >= 0
+        assert timeout_s > 0
+        markers.append(marker)
+
     monkeypatch.setattr(transaction, "write_server_command", record_command)
+    monkeypatch.setattr(
+        transaction,
+        "_wait_for_server_log_marker",
+        accept_marker,
+    )
     result = asyncio.run(
         transaction.reset_live_world(
             session,
-            args=_reset_args(),
+            args=_reset_args(tmp_path),
             anchor=_reset_anchor(),
             evidence_path=tmp_path / "server-commands.jsonl",
         )
     )
-    return result, commands
+    return result, commands, markers
 
 
-def test_reset_ignores_queued_zero_without_causal_watermark(
+def test_server_log_marker_ignores_preexisting_marker(
+    tmp_path: Path,
+) -> None:
+    async def exercise() -> None:
+        path = tmp_path / "server.log"
+        marker = "RELAYSELF220_TEST"
+        path.write_text(marker + "\n", encoding="utf-8")
+        start_offset = path.stat().st_size
+
+        with pytest.raises(
+            IdentityPriorTransactionError,
+            match="server log causal marker",
+        ):
+            await transaction._wait_for_server_log_marker(
+                path,
+                marker=marker,
+                start_offset=start_offset,
+                timeout_s=0.005,
+            )
+
+    asyncio.run(exercise())
+
+
+def test_server_log_marker_accepts_only_post_offset_append(
+    tmp_path: Path,
+) -> None:
+    async def exercise() -> None:
+        path = tmp_path / "server.log"
+        path.write_text("before\n", encoding="utf-8")
+        start_offset = path.stat().st_size
+        marker = "RELAYSELF220_TEST"
+
+        async def append_marker() -> None:
+            await asyncio.sleep(0)
+            with path.open("a", encoding="utf-8") as handle:
+                handle.write(marker + "\n")
+
+        task = asyncio.create_task(append_marker())
+        await transaction._wait_for_server_log_marker(
+            path,
+            marker=marker,
+            start_offset=start_offset,
+            timeout_s=0.1,
+        )
+        await task
+
+    asyncio.run(exercise())
+
+
+def test_reset_stops_when_server_zero_marker_is_absent(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    stale = _zombie(entity_id=81, distance=4.0)
     session = _ResetSession(
         (
-            _reset_observation(seq=1, kind="spawn", entities=(stale,)),
-            _reset_observation(seq=2, kind="entities", entities=()),
-            _reset_observation(seq=3, kind="entities", entities=(stale,)),
+            _reset_observation(
+                seq=1,
+                kind="spawn",
+                entities=(_zombie(entity_id=81, distance=4.0),),
+            ),
         ),
         repeat_last=True,
     )
@@ -306,13 +367,32 @@ def test_reset_ignores_queued_zero_without_causal_watermark(
     async def record_command(**kwargs: object) -> None:
         commands.append(kwargs)
 
-    monkeypatch.setattr(transaction, "write_server_command", record_command)
+    async def reject_marker(
+        _path: Path,
+        *,
+        marker: str,
+        start_offset: int,
+        timeout_s: float,
+    ) -> None:
+        raise IdentityPriorTransactionError(
+            f"timed out waiting for server log causal marker: {marker}"
+        )
 
-    with pytest.raises(IdentityPriorTransactionError, match="causal watermark"):
+    monkeypatch.setattr(transaction, "write_server_command", record_command)
+    monkeypatch.setattr(
+        transaction,
+        "_wait_for_server_log_marker",
+        reject_marker,
+    )
+
+    with pytest.raises(
+        IdentityPriorTransactionError,
+        match="server log causal marker",
+    ):
         asyncio.run(
             transaction.reset_live_world(
                 session,
-                args=_reset_args(timeout_s=0.005),
+                args=_reset_args(tmp_path),
                 anchor=_reset_anchor(),
                 evidence_path=tmp_path / "server-commands.jsonl",
             )
@@ -320,35 +400,39 @@ def test_reset_ignores_queued_zero_without_causal_watermark(
 
     assert len(commands) == 8
     assert "type=!minecraft:player" in str(commands[-1]["command"])
+    assert " say RELAYSELF220_ZERO_" in str(commands[-1]["command"])
     assert not any("summon" in str(command["command"]) for command in commands)
+    assert session.observe_count == 0
 
 
-def test_reset_requires_causal_zero_then_single_summon(
+def test_reset_requires_server_markers_and_explicit_probes(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
     session = _ResetSession(_successful_reset_messages())
 
-    result, commands = _run_reset(monkeypatch, tmp_path, session)
+    result, commands, markers = _run_reset(monkeypatch, tmp_path, session)
 
-    assert result.cleanup_server_zero_watermark.kind == "forcedMove"
-    assert result.cleanup_server_zero_watermark.snapshot.position == (
-        _cleanup_sentinel()
-    )
+    assert result.cleanup_zero_observation.kind == "probe"
+    assert result.cleanup_zero_observation.snapshot.position == _reset_anchor()
     assert result.cleanup_zero_observation.snapshot.nearby_entities == ()
-    assert result.summon_processed_watermark.kind == "forcedMove"
-    assert result.summon_processed_watermark.snapshot.position == (
-        _summon_sentinel()
-    )
+    assert result.matched_observation.kind == "probe"
     assert len(result.matched_observation.snapshot.nearby_entities) == 1
     assert result.matched_observation.snapshot.position == _reset_anchor()
-    assert result.matched_observation.seq > result.summon_processed_watermark.seq
     assert [command["command"] for command in commands].count(
         result.summon_command
     ) == 1
     assert "Invulnerable:1b" in result.summon_command
-    assert "execute unless entity" in result.cleanup_server_zero_barrier_command
-    assert len(commands) == 13
+    assert result.cleanup_server_zero_marker in markers
+    assert result.summon_processed_marker in markers
+    assert result.cleanup_server_zero_marker.startswith(
+        "RELAYSELF220_ZERO_resetsession"
+    )
+    assert result.summon_processed_marker.startswith(
+        "RELAYSELF220_SUMMON_resetsession"
+    )
+    assert len(commands) == 11
+    assert session.observe_count == 2
 
 
 def test_reset_qualification_does_not_construct_provider(
@@ -361,23 +445,27 @@ def test_reset_qualification_does_not_construct_provider(
         raise AssertionError("reset qualification must not construct a provider")
 
     monkeypatch.setattr(transaction, "provider_engine", unexpected_provider)
-    result, _ = _run_reset(monkeypatch, tmp_path, session)
+    result, _, _ = _run_reset(monkeypatch, tmp_path, session)
 
     assert len(result.matched_observation.snapshot.nearby_entities) == 1
 
 
-def test_reset_ignores_pre_watermark_one_zombie_observation(
+def test_reset_ignores_queued_event_before_requested_probe(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
     session = _ResetSession(
-        _successful_reset_messages(queued_pre_summon_one=True)
+        _successful_reset_messages(
+            queued_before_zero_probe=True,
+            queued_before_one_probe=True,
+        )
     )
 
-    result, _ = _run_reset(monkeypatch, tmp_path, session)
+    result, _, _ = _run_reset(monkeypatch, tmp_path, session)
 
-    assert result.summon_processed_watermark.seq == 5
-    assert result.matched_observation.seq == 6
+    assert result.cleanup_zero_observation.kind == "probe"
+    assert result.matched_observation.kind == "probe"
+    assert session.observe_count == 2
 
 
 def test_reset_unexpected_passive_entity_does_not_qualify(
@@ -389,104 +477,100 @@ def test_reset_unexpected_passive_entity_does_not_qualify(
     session = _ResetSession(
         (
             _reset_observation(seq=1, kind="spawn", entities=()),
-            _reset_observation(
-                seq=2,
-                kind="forcedMove",
-                entities=(),
-                position=_cleanup_sentinel(),
-            ),
+            _reset_observation(seq=2, kind="probe", entities=()),
             _reset_observation(
                 seq=3,
-                kind="forcedMove",
-                entities=(),
-                position=_reset_anchor(),
-            ),
-            _reset_observation(
-                seq=4,
-                kind="forcedMove",
-                entities=(controlled,),
-                position=_summon_sentinel(),
-            ),
-            _reset_observation(
-                seq=5,
-                kind="forcedMove",
+                kind="probe",
                 entities=(controlled, passive),
-                position=_reset_anchor(),
             ),
         ),
         repeat_last=True,
     )
 
     commands: list[dict[str, object]] = []
+    markers: list[str] = []
 
     async def record_command(**kwargs: object) -> None:
         commands.append(kwargs)
 
+    async def accept_marker(
+        _path: Path,
+        *,
+        marker: str,
+        start_offset: int,
+        timeout_s: float,
+    ) -> None:
+        markers.append(marker)
+
     monkeypatch.setattr(transaction, "write_server_command", record_command)
-    with pytest.raises(IdentityPriorTransactionError, match="one-zombie"):
+    monkeypatch.setattr(
+        transaction,
+        "_wait_for_server_log_marker",
+        accept_marker,
+    )
+    with pytest.raises(
+        IdentityPriorTransactionError,
+        match="one-zombie Mineflayer probe",
+    ):
         asyncio.run(
             transaction.reset_live_world(
                 session,
-                args=_reset_args(timeout_s=0.005),
+                args=_reset_args(tmp_path, timeout_s=0.005),
                 anchor=_reset_anchor(),
                 evidence_path=tmp_path / "server-commands.jsonl",
             )
         )
 
     assert sum("summon" in str(item["command"]) for item in commands) == 1
+    assert len(markers) == 2
 
 
 def test_reset_duplicate_after_summon_does_not_succeed(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    first = _zombie(entity_id=161, distance=4.0)
     duplicate = (
-        first,
+        _zombie(entity_id=161, distance=4.0),
         _zombie(entity_id=162, distance=4.05),
     )
     session = _ResetSession(
         (
             _reset_observation(seq=1, kind="spawn", entities=()),
-            _reset_observation(
-                seq=2,
-                kind="forcedMove",
-                entities=(),
-                position=_cleanup_sentinel(),
-            ),
-            _reset_observation(
-                seq=3,
-                kind="forcedMove",
-                entities=(),
-                position=_reset_anchor(),
-            ),
-            _reset_observation(
-                seq=4,
-                kind="forcedMove",
-                entities=duplicate,
-                position=_summon_sentinel(),
-            ),
-            _reset_observation(
-                seq=5,
-                kind="forcedMove",
-                entities=duplicate,
-                position=_reset_anchor(),
-            ),
+            _reset_observation(seq=2, kind="probe", entities=()),
+            _reset_observation(seq=3, kind="probe", entities=duplicate),
         ),
         repeat_last=True,
     )
 
     commands: list[dict[str, object]] = []
+    markers: list[str] = []
 
     async def record_command(**kwargs: object) -> None:
         commands.append(kwargs)
 
+    async def accept_marker(
+        _path: Path,
+        *,
+        marker: str,
+        start_offset: int,
+        timeout_s: float,
+    ) -> None:
+        markers.append(marker)
+
     monkeypatch.setattr(transaction, "write_server_command", record_command)
-    with pytest.raises(IdentityPriorTransactionError, match="one-zombie"):
+    monkeypatch.setattr(
+        transaction,
+        "_wait_for_server_log_marker",
+        accept_marker,
+    )
+    with pytest.raises(
+        IdentityPriorTransactionError,
+        match="one-zombie Mineflayer probe",
+    ):
         asyncio.run(
             transaction.reset_live_world(
                 session,
-                args=_reset_args(timeout_s=0.005),
+                args=_reset_args(tmp_path, timeout_s=0.005),
                 anchor=_reset_anchor(),
                 evidence_path=tmp_path / "server-commands.jsonl",
             )
@@ -498,7 +582,8 @@ def test_reset_duplicate_after_summon_does_not_succeed(
         if "summon" in str(command["command"])
     ]
     assert len(summon_commands) == 1
-    assert len(commands) == 13
+    assert len(commands) == 11
+    assert len(markers) == 2
 
 
 def test_live_scenario_maps_neutral_route_ids_to_live_geometry() -> None:

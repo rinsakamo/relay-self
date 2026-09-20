@@ -19,6 +19,7 @@ from adapters.mineflayer.python_protocol import (
     encode_consume_held,
     encode_equip_item,
     encode_look,
+    encode_observe,
     encode_set_control,
     encode_shutdown,
     mineflayer_yaw_to_target,
@@ -338,6 +339,17 @@ def test_effect_result_rejected_requires_error_and_applied_forbids_error() -> No
         )
 
 
+def test_observe_command_is_not_an_action_effect() -> None:
+    assert json.loads(encode_observe()) == {"type": "observe"}
+
+
+def test_probe_observation_kind_is_explicit_target_evidence() -> None:
+    message = parse_mineflayer_line(observation_line(kind="probe"))
+
+    assert isinstance(message, MineflayerObservation)
+    assert message.kind == "probe"
+
+
 def test_control_commands_are_closed_and_duration_is_not_part_of_adapter_effect() -> None:
     encoded = json.loads(
         encode_set_control(
@@ -430,6 +442,7 @@ def test_protocol_rejects_unqualified_mineflayer_version() -> None:
         "entities",
         "move",
         "forcedMove",
+        "probe",
         "death",
         "respawn",
     ],

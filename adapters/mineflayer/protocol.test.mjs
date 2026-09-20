@@ -89,6 +89,17 @@ test('set_control accepts only exact bounded control commands', () => {
   )
 })
 
+test('observe is a target-local snapshot probe, not an effect', () => {
+  assert.deepEqual(
+    parseCommand({ type: 'observe' }),
+    { type: 'observe' }
+  )
+  assert.throws(
+    () => parseCommand({ type: 'observe', action_id: 'not-an-action' }),
+    /fields are invalid/
+  )
+})
+
 test('clear_controls remains a primitive effect without hidden duration', () => {
   assert.deepEqual(
     parseCommand({

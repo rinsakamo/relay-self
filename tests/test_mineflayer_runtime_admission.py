@@ -141,6 +141,24 @@ def test_high_frequency_move_observation_is_not_automatically_admitted() -> None
     assert supervisor.last_at_ns == 5
 
 
+def test_explicit_probe_observation_is_not_automatically_admitted() -> None:
+    _, _, supervisor = running_path()
+    model_calls: list[object] = []
+
+    result = coordinate_mineflayer_message(
+        observation("probe"),
+        supervisor,
+        at_ns=20,
+        decision_step=lambda _message, _closure: {"need": "cognition"},
+        relay_engine=lambda request: model_calls.append(request),
+    )
+
+    assert result is None
+    assert model_calls == []
+    assert supervisor.get("action-1").state is ActionState.ISSUED
+    assert supervisor.last_at_ns == 5
+
+
 def test_adapter_started_is_not_a_cognitive_epoch() -> None:
     _, _, supervisor = running_path()
 
