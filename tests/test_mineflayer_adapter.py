@@ -178,6 +178,26 @@ def test_snapshot_rejects_malformed_non_null_oxygen() -> None:
 
 
 
+def test_snapshot_rejects_changed_nearby_entity_bounds() -> None:
+    payload = json.loads(observation_line())
+    payload["snapshot"]["nearby_entities_coverage"]["max_distance"] = 8
+
+    with pytest.raises(
+        MineflayerAdapterProtocolError,
+        match="max_distance changed from the adapter contract",
+    ):
+        parse_mineflayer_line(json.dumps(payload))
+
+    payload = json.loads(observation_line())
+    payload["snapshot"]["nearby_entities_coverage"]["max_entities"] = 8
+
+    with pytest.raises(
+        MineflayerAdapterProtocolError,
+        match="max_entities changed from the adapter contract",
+    ):
+        parse_mineflayer_line(json.dumps(payload))
+
+
 def test_snapshot_rejects_inconsistent_non_truncated_coverage() -> None:
     payload = json.loads(observation_line())
     payload["snapshot"]["nearby_entities_coverage"]["candidate_count"] = 2
