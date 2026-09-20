@@ -1803,6 +1803,7 @@ def validate_args(args: argparse.Namespace) -> None:
         required = (
             "server_control",
             "server_log",
+            "minecraft_pid",
             "served_model",
         )
         for name in required:
