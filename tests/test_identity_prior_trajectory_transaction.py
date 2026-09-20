@@ -372,16 +372,31 @@ def _records(
     first_by_condition: dict[str, object],
     signature_by_condition: dict[str, object] | None = None,
     *,
-    status: str = "completed_grounded_trajectory",
+    later_by_condition: dict[str, object] | None = None,
+    later_signature_by_condition: dict[str, object] | None = None,
 ) -> list[InvocationResult]:
-    signatures = signature_by_condition or {
+    initial_signatures = signature_by_condition or {
         "A": [{"mode": "bounded", "status": "resolved"}],
         "B": [{"mode": "bounded", "status": "resolved"}],
         "C": [{"mode": "bounded", "status": "resolved"}],
     }
+    later_destinations = later_by_condition or first_by_condition
+    later_signatures = later_signature_by_condition or initial_signatures
     result = []
-    for block_index, block in enumerate((("A", "B", "C"), ("B", "C", "A"), ("C", "A", "B"))):
+    for block_index, block in enumerate(
+        (("A", "B", "C"), ("B", "C", "A"), ("C", "A", "B"))
+    ):
         for ordinal, condition_id in enumerate(block):
+            first_destination = first_by_condition[condition_id]
+            later_destination = later_destinations[condition_id]
+            if first_destination is None:
+                status = "completed_unresolved_before_action"
+                later_destination = None
+            elif later_destination is None:
+                status = "completed_later_unresolved"
+            else:
+                status = "completed_grounded_trajectory"
+
             result.append(
                 InvocationResult(
                     condition_id=condition_id,
@@ -389,13 +404,22 @@ def _records(
                     ordinal=ordinal,
                     report={
                         "status": status,
-                        "first_bound_destination": first_by_condition[
+                        "first_bound_destination": first_destination,
+                        "first_skill_run": (
+                            {"state": "SUCCEEDED"}
+                            if first_destination is not None
+                            else None
+                        ),
+                        "later_bound_destination": later_destination,
+                        "later_skill_run": (
+                            {"state": "SUCCEEDED"}
+                            if later_destination is not None
+                            else None
+                        ),
+                        "initial_cognition_signature": initial_signatures[
                             condition_id
                         ],
-                        "later_bound_destination": first_by_condition[
-                            condition_id
-                        ],
-                        "initial_cognition_signature": signatures[
+                        "later_cognition_signature": later_signatures[
                             condition_id
                         ],
                     },
@@ -434,7 +458,7 @@ def test_classifier_keeps_grand_null_when_conditions_match() -> None:
     assert result["label"] == "no reproducible discriminating effect"
 
 
-def test_classifier_does_not_count_unresolved_as_embodied_destination() -> None:
+def test_classifier_treats_unresolved_vs_grounded_as_behavioral_divergence() -> None:
     result = classify(
         _records(
             {
@@ -445,9 +469,12 @@ def test_classifier_does_not_count_unresolved_as_embodied_destination() -> None:
         )
     )
 
-    assert result["class"] == "E"
-    assert result["first_embodied_divergence"] is False
-    assert result["later_embodied_divergence"] is False
+    assert result["class"] == "A"
+    assert result["first_embodied_divergence"] is True
+    assert result["first_destination_by_condition"]["A"] == [None, None, None]
+    assert result["stable_first_behavioral_outcome_by_condition"]["A"] == (
+        "unresolved_no_action"
+    )
 
 
 def test_classifier_does_not_promote_within_condition_variability() -> None:
@@ -473,7 +500,7 @@ def test_classifier_does_not_promote_within_condition_variability() -> None:
     assert "variability" in result["rationale"].lower()
 
 
-def test_classifier_reports_cognition_only_when_signatures_differ() -> None:
+def test_classifier_reports_initial_cognition_only_when_behavior_matches() -> None:
     result = classify(
         _records(
             {
@@ -493,6 +520,75 @@ def test_classifier_reports_cognition_only_when_signatures_differ() -> None:
     )
 
     assert result["class"] == "B"
+    assert result["behaviorally_indistinguishable"] is True
+
+
+def test_classifier_does_not_call_unstable_later_behavior_cognition_only() -> None:
+    records = _records(
+        {
+            "A": "route-17",
+            "B": "route-17",
+            "C": "route-17",
+        },
+        {
+            "A": [{"mode": "bounded", "status": "resolved"}],
+            "B": [
+                {"mode": "bounded", "status": "unresolved"},
+                {"mode": "think", "status": "resolved"},
+            ],
+            "C": [{"mode": "bounded", "status": "resolved"}],
+        },
+    )
+    changed = False
+    for item in records:
+        if item.condition_id == "B" and not changed:
+            item.report["later_bound_destination"] = "route-42"
+            changed = True
+
+    result = classify(records)
+
+    assert result["class"] == "E"
+    assert result["behaviorally_indistinguishable"] is False
+
+
+def test_classifier_reports_later_cognition_only_when_behavior_matches() -> None:
+    result = classify(
+        _records(
+            {
+                "A": "route-17",
+                "B": "route-17",
+                "C": "route-17",
+            },
+            later_signature_by_condition={
+                "A": [{"mode": "bounded", "status": "resolved"}],
+                "B": [
+                    {"mode": "bounded", "status": "unresolved"},
+                    {"mode": "think", "status": "resolved"},
+                ],
+                "C": [{"mode": "bounded", "status": "resolved"}],
+            },
+        )
+    )
+
+    assert result["class"] == "B"
+    assert result["behaviorally_indistinguishable"] is True
+
+
+def test_classifier_rejects_records_outside_predeclared_schedule() -> None:
+    records = _records(
+        {
+            "A": "route-17",
+            "B": "route-17",
+            "C": "route-17",
+        }
+    )
+    records[0], records[1] = records[1], records[0]
+
+    with pytest.raises(
+        IdentityPriorTransactionError,
+        match="predeclared block/order schedule",
+    ):
+        classify(records)
 
 
 def test_canonical_launcher_is_one_shot_and_blocks_before_run() -> None:
