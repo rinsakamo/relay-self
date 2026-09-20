@@ -401,8 +401,20 @@ grounding failure stops at the first concrete failure and preserves all prior
 evidence. There is no hidden retry, replay, condition substitution, or same-run
 fixture tuning.
 
-The transaction report counts the anchor session, matched condition sessions,
-and actual provider calls separately.
+Scientific evidence is checkpointed after each completed cognition result,
+before any subsequent grounded Action can fail. A terminal failure report
+reconstructs a conservative lower bound for already-recorded provider calls and
+started Mineflayer sessions from those durable checkpoints/evidence files.
+Because an external provider call could fail after spend but before a usable
+result is returned and checkpointed, the recorded provider-call count is
+explicitly a lower bound rather than an exact total in failure cases.
+
+The classifier accepts a resolved embodied outcome only when the recorded Skill
+execution is explicitly `SUCCEEDED`; a non-null or malformed Skill-run payload
+is not sufficient grounding evidence.
+
+The completed transaction report counts the anchor session, matched condition
+sessions, and actual provider calls separately.
 
 
 ### Pre-spend interpretation audit
