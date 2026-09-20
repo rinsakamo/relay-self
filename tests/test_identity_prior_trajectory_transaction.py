@@ -1158,6 +1158,11 @@ def test_canonical_launcher_is_one_shot_and_blocks_before_run() -> None:
     assert "NOT_REQUALIFIED" in launcher
     assert "subject_head:" in launcher
     assert "subject_tree:" in launcher
+    assert 'login != "rinsakamo"' in launcher
+    assert 'association != "OWNER"' in launcher
+    assert "trusted-owner machine-readable #220 execution qualification" in launcher
+    assert "does not uniquely bind current HEAD" in launcher
+    assert "does not uniquely bind current tree" in launcher
     assert "grep -q 'NO MATERIAL CONFLICT'" not in launcher
     assert "--slurp" not in launcher
     assert 'gh api --paginate "repos/rinsakamo/relay-self/issues/$issue_number/comments"' in launcher
