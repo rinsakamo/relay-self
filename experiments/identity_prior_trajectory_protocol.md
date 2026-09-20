@@ -238,7 +238,10 @@ order-dependent physical nuisance variable.
    using the conditional marker only as fail evidence. After that server
    barrier, request an explicit target-local Mineflayer `observe` probe and
    require a current `probe` snapshot showing the common anchor/body state
-   and no nearby entity. Reset qualification also requires the explicit
+   and no nearby entity within the adapter's fixed 16-block / 16-entity
+   projection. The boundary rejects changed coverage bounds, so condition runs
+   cannot silently narrow or widen the entity sensor scope. Reset qualification
+   also requires the explicit
    Mineflayer probe to report `time_of_day=6000` and `day=0`, so command
    delivery alone cannot qualify the clock state.
 2. **Fixture phase:** only after that two-source cleanup barrier is grounded,

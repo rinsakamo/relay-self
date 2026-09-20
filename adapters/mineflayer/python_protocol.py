@@ -175,9 +175,13 @@ class MineflayerNearbyEntitiesCoverage:
             )
         _require_non_negative_number("nearby entity max_distance", self.max_distance)
         _require_non_negative_int("nearby entity max_entities", self.max_entities)
-        if self.max_entities == 0:
+        if self.max_distance != MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE:
             raise MineflayerAdapterProtocolError(
-                "nearby entity max_entities must be positive"
+                "nearby entity max_distance changed from the adapter contract"
+            )
+        if self.max_entities != MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES:
+            raise MineflayerAdapterProtocolError(
+                "nearby entity max_entities changed from the adapter contract"
             )
         _require_non_negative_int(
             "nearby entity candidate_count",
