@@ -94,6 +94,14 @@ class InvocationResult:
     report: dict[str, object]
 
 
+@dataclass(frozen=True, slots=True)
+class ResetEvidence:
+    cleanup_commands: tuple[str, ...]
+    cleanup_zero_observation: MineflayerObservation
+    summon_command: str
+    matched_observation: MineflayerObservation
+
+
 RelayEngineCallable = Callable[[BoundedChoiceRequest], RelayEngineResult]
 
 
@@ -413,19 +421,42 @@ def _position_matches(
     )
 
 
-def _reset_observation_matches(
-    observation: MineflayerObservation,
-    anchor: MineflayerPosition,
-) -> bool:
-    zombies = [
+def _zombies(observation: MineflayerObservation):
+    return [
         entity
         for entity in observation.snapshot.nearby_entities
         if entity.name == "zombie"
     ]
+
+
+def _common_reset_observation_matches(
+    observation: MineflayerObservation,
+    anchor: MineflayerPosition,
+) -> bool:
     return (
         observation.snapshot.health == 20
         and observation.snapshot.food == 20
         and _position_matches(observation.snapshot.position, anchor)
+        and observation.snapshot.inventory == ()
+    )
+
+
+def _cleanup_zero_observation_matches(
+    observation: MineflayerObservation,
+    anchor: MineflayerPosition,
+) -> bool:
+    return _common_reset_observation_matches(observation, anchor) and not _zombies(
+        observation
+    )
+
+
+def _reset_observation_matches(
+    observation: MineflayerObservation,
+    anchor: MineflayerPosition,
+) -> bool:
+    zombies = _zombies(observation)
+    return (
+        _common_reset_observation_matches(observation, anchor)
         and len(zombies) == 1
         and RESET_ZOMBIE_DISTANCE_MIN
         <= zombies[0].distance
@@ -439,45 +470,43 @@ async def reset_live_world(
     args: argparse.Namespace,
     anchor: MineflayerPosition,
     evidence_path: Path,
-) -> MineflayerObservation:
-    commands = (
+) -> ResetEvidence:
+    # The bridge can report startup before the Minecraft player is ready to
+    # receive player-targeted commands. Ground the one cleanup phase in a
+    # fresh spawn observation before issuing any reset command.
+    await _receive_spawn(session, timeout_s=args.evidence_timeout_s)
+
+    cleanup_commands = (
         (
             "kill @e[type=minecraft:zombie]",
-            "matched reset: remove prior controlled threat",
+            "matched reset phase 1 cleanup: remove prior controlled zombies",
         ),
         (
             f"effect clear {args.username}",
-            "matched reset: clear prior effects",
+            "matched reset phase 1 cleanup: clear prior effects",
         ),
         (
             f"clear {args.username}",
-            "matched reset: clear inventory",
+            "matched reset phase 1 cleanup: clear inventory",
         ),
         (
             f"tp {args.username} {anchor.x:.6f} {anchor.y:.6f} {anchor.z:.6f} 0 0",
-            "matched reset: restore anchor position and orientation",
+            "matched reset phase 1 cleanup: restore anchor position and orientation",
         ),
         (
             f"effect give {args.username} minecraft:instant_health 1 255 true",
-            "matched reset: restore full health",
+            "matched reset phase 1 cleanup: restore full health",
         ),
         (
             f"effect give {args.username} minecraft:saturation 2 255 true",
-            "matched reset: restore sufficient food",
+            "matched reset phase 1 cleanup: restore sufficient food",
         ),
         (
             "time set noon",
-            "matched reset: common server time",
-        ),
-        (
-            (
-                f"execute at {args.username} run summon minecraft:zombie "
-                "~4 ~ ~ {NoAI:1b,PersistenceRequired:1b,Silent:1b}"
-            ),
-            "matched reset: non-terminal static uncertainty/threat fixture",
+            "matched reset phase 1 cleanup: common server time",
         ),
     )
-    for command, reason in commands:
+    for command, reason in cleanup_commands:
         await write_server_command(
             control_path=Path(args.server_control),
             evidence_path=evidence_path,
@@ -486,7 +515,27 @@ async def reset_live_world(
             settle_s=0.1,
         )
 
-    observation = await _receive_until_reset(
+    cleanup_zero_observation = await _receive_until_cleanup_zero(
+        session,
+        anchor=anchor,
+        timeout_s=args.evidence_timeout_s,
+    )
+
+    summon_command = (
+        f"execute at {args.username} run summon minecraft:zombie "
+        "~4 ~ ~ {NoAI:1b,PersistenceRequired:1b,Silent:1b}"
+    )
+    await write_server_command(
+        control_path=Path(args.server_control),
+        evidence_path=evidence_path,
+        command=summon_command,
+        reason=(
+            "matched reset phase 2 fixture: summon exactly one static "
+            "NoAI persistent silent zombie"
+        ),
+        settle_s=0.1,
+    )
+    matched_observation = await _receive_until_matched_one(
         session,
         anchor=anchor,
         timeout_s=args.evidence_timeout_s,
@@ -495,38 +544,75 @@ async def reset_live_world(
         control_path=Path(args.server_control),
         evidence_path=evidence_path,
         command=f"effect clear {args.username} minecraft:saturation",
-        reason="matched reset: remove temporary saturation effect",
+        reason="matched reset phase 2 post-barrier: remove temporary saturation effect",
         settle_s=0.05,
     )
-    return observation
+    return ResetEvidence(
+        cleanup_commands=tuple(command for command, _ in cleanup_commands),
+        cleanup_zero_observation=cleanup_zero_observation,
+        summon_command=summon_command,
+        matched_observation=matched_observation,
+    )
 
 
-async def _receive_until_reset(
+async def _receive_until_observation_match(
     session: RecordedMineflayerSession,
     *,
     anchor: MineflayerPosition,
     timeout_s: float,
+    predicate: Callable[[MineflayerObservation, MineflayerPosition], bool],
+    timeout_message: str,
 ) -> MineflayerObservation:
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout_s
     while True:
         remaining = deadline - loop.time()
         if remaining <= 0:
-            raise IdentityPriorTransactionError(
-                "timed out waiting for matched reset observation"
-            )
+            raise IdentityPriorTransactionError(timeout_message)
         try:
             message = await asyncio.wait_for(
                 session.receive(),
                 timeout=remaining,
             )
         except TimeoutError as exc:
-            raise IdentityPriorTransactionError(
-                "timed out waiting for matched reset observation"
-            ) from exc
+            raise IdentityPriorTransactionError(timeout_message) from exc
         if isinstance(message, MineflayerObservation):
-            if _reset_observation_matches(message, anchor):
+            if predicate(message, anchor):
                 return message
+
+
+async def _receive_until_cleanup_zero(
+    session: RecordedMineflayerSession,
+    *,
+    anchor: MineflayerPosition,
+    timeout_s: float,
+) -> MineflayerObservation:
+    return await _receive_until_observation_match(
+        session,
+        anchor=anchor,
+        timeout_s=timeout_s,
+        predicate=_cleanup_zero_observation_matches,
+        timeout_message=(
+            "timed out waiting for grounded zero-zombie cleanup observation"
+        ),
+    )
+
+
+async def _receive_until_matched_one(
+    session: RecordedMineflayerSession,
+    *,
+    anchor: MineflayerPosition,
+    timeout_s: float,
+) -> MineflayerObservation:
+    return await _receive_until_observation_match(
+        session,
+        anchor=anchor,
+        timeout_s=timeout_s,
+        predicate=_reset_observation_matches,
+        timeout_message=(
+            "timed out waiting for grounded matched one-zombie reset observation"
+        ),
+    )
 
 
 def _initial_request_for_condition(condition_id: str) -> BoundedChoiceRequest:
@@ -610,12 +696,13 @@ async def run_invocation(
             args,
             phase=invocation_name,
         )
-        reset_observation = await reset_live_world(
+        reset_evidence = await reset_live_world(
             session,
             args=args,
             anchor=anchor,
             evidence_path=commands_path,
         )
+        reset_observation = reset_evidence.matched_observation
         common_scenario = live_scenario(
             reset_observation,
             evidence_timeout_s=args.evidence_timeout_s,
@@ -639,6 +726,18 @@ async def run_invocation(
                 "provenance": provenance_json(cognition.identity.provenance),
             },
             "initial_present": message_json(reset_observation),
+            "reset_evidence": {
+                "phase_1_cleanup_commands_issued": list(
+                    reset_evidence.cleanup_commands
+                ),
+                "phase_1_cleanup_zero_observation_grounded": message_json(
+                    reset_evidence.cleanup_zero_observation
+                ),
+                "phase_2_controlled_summon_issued": reset_evidence.summon_command,
+                "phase_2_matched_one_zombie_observation_grounded": message_json(
+                    reset_evidence.matched_observation
+                ),
+            },
             "initial_provider_request": _provider_request_record(first_request),
             "initial_cognition": cognition_result_json(
                 first_decision.cognition_result

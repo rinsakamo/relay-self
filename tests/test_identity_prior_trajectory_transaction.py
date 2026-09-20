@@ -1,13 +1,26 @@
+import asyncio
 import json
 import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
+import pytest
+
+from adapters.mineflayer.python_protocol import (
+    MineflayerEntityFact,
+    MineflayerObservation,
+    MineflayerPosition,
+    MineflayerSnapshot,
+)
+from experiments import identity_prior_trajectory_transaction as transaction
 from experiments.controlled_minecraft_vertical import ControlledSkill
 from experiments.identity_prior_trajectory import build_candidate_world
 from experiments.identity_prior_trajectory_transaction import (
     FIRST_REQUEST_ID,
     LATER_REQUEST_ID,
+    IdentityPriorTransactionError,
     InvocationResult,
+    ResetEvidence,
     build_later_request,
     classify,
     condition_sequence,
@@ -60,6 +73,228 @@ def test_transaction_plan_preserves_predeclared_order_and_zero_spend() -> None:
     )
     assert plan["condition_order"] == list(condition_sequence())
     assert plan["repetitions_per_condition"] == 3
+
+
+def test_frozen_initial_provider_request_hashes_remain_unchanged() -> None:
+    assert transaction_plan()["initial_request_sha256"] == {
+        "A": "896f93292909ee3e7ef9f2287ad3605497bffefa292131b10ef11be05aac7676",
+        "B": "b5125d2970b2bf8e0a4f32f4f7877d5d04813097f91a957d283e0dffaad3905a",
+        "C": "8391ba19d214b3185412b38402f08385a768af1873202b787eaba5d42a82a8f9",
+    }
+
+
+def _reset_anchor() -> MineflayerPosition:
+    return MineflayerPosition(x=10.5, y=-60.0, z=-0.5)
+
+
+def _zombie(*, entity_id: int, distance: float) -> MineflayerEntityFact:
+    anchor = _reset_anchor()
+    return MineflayerEntityFact(
+        entity_id=entity_id,
+        name="zombie",
+        entity_type="hostile",
+        distance=distance,
+        position=MineflayerPosition(
+            x=anchor.x + distance,
+            y=anchor.y,
+            z=anchor.z,
+        ),
+    )
+
+
+def _reset_observation(
+    *,
+    seq: int,
+    kind: str,
+    entities: tuple[MineflayerEntityFact, ...],
+) -> MineflayerObservation:
+    return MineflayerObservation(
+        session_id="reset-session",
+        seq=seq,
+        kind=kind,
+        snapshot=MineflayerSnapshot(
+            health=20,
+            food=20,
+            oxygen_level=None,
+            position=_reset_anchor(),
+            time=None,
+            inventory=(),
+            nearby_entities=entities,
+        ),
+    )
+
+
+class _ResetSession:
+    def __init__(
+        self,
+        messages: tuple[MineflayerObservation, ...],
+        *,
+        repeat_last: bool = False,
+    ) -> None:
+        self._messages = messages
+        self._repeat_last = repeat_last
+        self._index = 0
+
+    async def receive(self) -> MineflayerObservation:
+        if self._index < len(self._messages):
+            message = self._messages[self._index]
+            self._index += 1
+        elif self._repeat_last:
+            message = self._messages[-1]
+        else:
+            raise AssertionError("reset consumed more observations than declared")
+        await asyncio.sleep(0)
+        return message
+
+
+def _reset_args(*, timeout_s: float = 0.02) -> SimpleNamespace:
+    return SimpleNamespace(
+        evidence_timeout_s=timeout_s,
+        server_control="unused-server-control",
+        username="RelaySelf",
+    )
+
+
+def _run_reset(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    session: _ResetSession,
+) -> tuple[ResetEvidence, list[dict[str, object]]]:
+    commands: list[dict[str, object]] = []
+
+    async def record_command(**kwargs: object) -> None:
+        commands.append(kwargs)
+
+    monkeypatch.setattr(transaction, "write_server_command", record_command)
+    result = asyncio.run(
+        transaction.reset_live_world(
+            session,
+            args=_reset_args(),
+            anchor=_reset_anchor(),
+            evidence_path=tmp_path / "server-commands.jsonl",
+        )
+    )
+    return result, commands
+
+
+def test_reset_stale_zombie_never_summons(monkeypatch, tmp_path: Path) -> None:
+    stale = _zombie(entity_id=81, distance=4.0)
+    session = _ResetSession(
+        (
+            _reset_observation(seq=1, kind="spawn", entities=(stale,)),
+            _reset_observation(seq=2, kind="entities", entities=(stale,)),
+        ),
+        repeat_last=True,
+    )
+    commands: list[dict[str, object]] = []
+
+    async def record_command(**kwargs: object) -> None:
+        commands.append(kwargs)
+
+    monkeypatch.setattr(transaction, "write_server_command", record_command)
+
+    with pytest.raises(IdentityPriorTransactionError, match="zero-zombie"):
+        asyncio.run(
+            transaction.reset_live_world(
+                session,
+                args=_reset_args(timeout_s=0.005),
+                anchor=_reset_anchor(),
+                evidence_path=tmp_path / "server-commands.jsonl",
+            )
+        )
+
+    assert len(commands) == 7
+    assert not any("summon" in str(command["command"]) for command in commands)
+
+
+def test_reset_requires_zero_barrier_before_one_summon(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    old = _zombie(entity_id=81, distance=4.0)
+    controlled = _zombie(entity_id=161, distance=4.0)
+    session = _ResetSession(
+        (
+            _reset_observation(seq=1, kind="spawn", entities=(old,)),
+            _reset_observation(seq=2, kind="entities", entities=()),
+            _reset_observation(seq=3, kind="entities", entities=(controlled,)),
+        )
+    )
+
+    result, commands = _run_reset(monkeypatch, tmp_path, session)
+
+    assert result.cleanup_zero_observation.snapshot.nearby_entities == ()
+    assert result.matched_observation.snapshot.nearby_entities == (controlled,)
+    assert [command["command"] for command in commands].count(
+        result.summon_command
+    ) == 1
+    assert "phase 1 cleanup" in str(commands[0]["reason"])
+    assert "phase 2 fixture" in str(commands[7]["reason"])
+
+
+def test_reset_qualification_does_not_construct_provider(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    controlled = _zombie(entity_id=161, distance=4.0)
+    session = _ResetSession(
+        (
+            _reset_observation(seq=1, kind="spawn", entities=()),
+            _reset_observation(seq=2, kind="entities", entities=()),
+            _reset_observation(seq=3, kind="entities", entities=(controlled,)),
+        )
+    )
+
+    def unexpected_provider(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("reset qualification must not construct a provider")
+
+    monkeypatch.setattr(transaction, "provider_engine", unexpected_provider)
+    result, _ = _run_reset(monkeypatch, tmp_path, session)
+
+    assert result.matched_observation.snapshot.nearby_entities == (controlled,)
+
+
+def test_reset_duplicate_after_summon_does_not_succeed(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    first = _zombie(entity_id=161, distance=4.0)
+    duplicate = (
+        first,
+        _zombie(entity_id=162, distance=4.05),
+    )
+    session = _ResetSession(
+        (
+            _reset_observation(seq=1, kind="spawn", entities=()),
+            _reset_observation(seq=2, kind="entities", entities=()),
+            _reset_observation(seq=3, kind="entities", entities=duplicate),
+        ),
+        repeat_last=True,
+    )
+
+    commands: list[dict[str, object]] = []
+
+    async def record_command(**kwargs: object) -> None:
+        commands.append(kwargs)
+
+    monkeypatch.setattr(transaction, "write_server_command", record_command)
+    with pytest.raises(IdentityPriorTransactionError, match="one-zombie"):
+        asyncio.run(
+            transaction.reset_live_world(
+                session,
+                args=_reset_args(timeout_s=0.005),
+                anchor=_reset_anchor(),
+                evidence_path=tmp_path / "server-commands.jsonl",
+            )
+        )
+
+    summon_commands = [
+        command
+        for command in commands
+        if "summon" in str(command["command"])
+    ]
+    assert len(summon_commands) == 1
+    assert len(commands) == 8
 
 
 def test_live_scenario_maps_neutral_route_ids_to_live_geometry() -> None:
