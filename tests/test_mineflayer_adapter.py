@@ -71,6 +71,7 @@ def observation_line(
             "snapshot": {
                 "health": 12,
                 "food": 7,
+                "food_saturation": 5,
                 "oxygen_level": oxygen_level,
                 "position": {"x": 1.5, "y": 64, "z": -2.25},
                 "time": time_value,
@@ -130,6 +131,7 @@ def test_stream_requires_started_seq_zero_then_preserves_survival_facts() -> Non
     assert isinstance(observation, MineflayerObservation)
     assert started.mineflayer_version == MINEFLAYER_VERSION
     assert observation.snapshot.health == 12.0
+    assert observation.snapshot.food_saturation == 5.0
     assert observation.snapshot.position.z == -2.25
     assert observation.snapshot.time is not None
     assert observation.snapshot.time.time_of_day == 13000
