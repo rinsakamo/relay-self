@@ -87,9 +87,13 @@ The common controlled scenario exposes two equal-distance FLEE destinations.
 - terrain beyond a bend is outside current observation;
 - an exposed coal ore block is visible before the bend.
 
-These are factual descriptions, not labels such as safe/explore/cautious or an
-expected answer. Both remain admissible destination choices under the
-experiment-local FLEE surface.
+These are experiment-authored semantic route descriptions, not labels such as
+safe/explore/cautious or an expected answer. The current Mineflayer boundary
+does not observe corridor geometry, bends, or coal blocks, and the live reset
+does not construct those terrain facts. Both descriptions remain matched
+provider-visible inputs and both route ids remain admissible under the
+experiment-local FLEE surface, but they must not be reported as live Minecraft
+terrain observations.
 
 ## Deterministic preparation invariants
 
@@ -285,9 +289,14 @@ semantics, or interpretation classes.
 ### Live-to-frozen World binding
 
 The first provider-visible decision request remains the exact frozen local-frame
-fixture prepared before spend. Live Minecraft is used to validate and realize
-that fixture, rather than injecting per-run session identifiers or raw
-provenance references into model-visible context.
+semantic fixture prepared before spend. Live Minecraft validates only the
+embodied reset/threat state that the current boundary can actually observe
+(player state, controlled zombie presence/distance, and route movement
+realization). It does **not** validate the experiment-authored corridor/bend/coal
+route descriptions. Those descriptions remain fixed matched cognition inputs,
+while the selected route id is realized as live north/south movement. This
+avoids injecting per-run session identifiers or raw provenance references into
+model-visible context without overstating terrain grounding.
 
 For every scientific condition invocation:
 
@@ -295,9 +304,10 @@ For every scientific condition invocation:
 2. the player is restored to a shared anchor position/orientation;
 3. health and food are restored, inventory/effects are cleared, server time is
    reset, and prior controlled zombies are removed;
-4. one persistent `NoAI` zombie is summoned about four blocks away, keeping
-   the ambiguity non-terminal and preventing combat damage from becoming an
-   uncontrolled treatment;
+4. one persistent, silent, `NoAI`, invulnerable zombie is summoned about four
+   blocks away, keeping the ambiguity non-terminal, preventing combat damage,
+   and preventing daylight burn/death from becoming an uncontrolled
+   time-dependent treatment;
 5. fresh Mineflayer evidence must confirm the matched reset before a provider
    call is permitted;
 6. the frozen local-frame request is sent through the existing
@@ -340,6 +350,19 @@ provenance rather than inventing replacement provenance.
 Those later differences are intended trajectory evidence, not treatment
 leakage.
 
+### Claim boundary
+
+A positive result on this apparatus supports only the bounded claim that an
+Identity prior changed cognition and/or embodied route behavior **given the
+fixed semantic route descriptions supplied by the experiment**, with the chosen
+route realized through grounded Minecraft Action/consequence.
+
+It does not by itself establish that RelaySelf perceived corridor visibility,
+terrain beyond a bend, coal ore, or other block-level Minecraft facts. A claim
+about Identity changing behavior from live terrain/resource perception requires
+a later apparatus that constructs and observes those facts through the
+environment boundary.
+
 ### Qualification and stopping rule
 
 The canonical launcher must fail before scientific spend unless all of the
@@ -352,9 +375,15 @@ following remain true on the exact execution subject:
 - #141 is closed;
 - #201 is closed / completed;
 - #220 remains open;
-- #220 contains the post-#201 `NO MATERIAL CONFLICT` review;
+- the **latest** machine-readable #220 execution qualification is
+  `QUALIFIED_FOR_NEW_TRANSACTION_SUBJECT`;
+- that qualification binds the exact current local/remote HEAD and tree;
+- a later `NOT_REQUALIFIED`, missing marker, or stale subject binding fails
+  closed even if an older `NO MATERIAL CONFLICT` comment exists;
 - the pinned Minecraft, Mineflayer, Java, llama.cpp, and GGUF identities pass
-  the existing #141 mechanical runtime preflight.
+  the existing #141 mechanical runtime preflight;
+- after runtime preflight, the launcher reacquires this authority immediately
+  before `--phase run`.
 
 The canonical transaction is one-shot. Any operational, protocol, reset, or
 grounding failure stops at the first concrete failure and preserves all prior
