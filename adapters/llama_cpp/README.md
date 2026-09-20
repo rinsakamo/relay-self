@@ -153,5 +153,32 @@ revision and served llama.cpp/model condition. It is not Minecraft external
 qualification, World truth, general model quality, or proof that all bounded
 decisions are correct.
 
+## Matched Jev BOUNDED benchmark
+
+Issue #257 owns a separate model/system-quality measurement of generated
+`BOUNDED` versus Jev `BOUNDED` on one already-running Jev-capable llama.cpp
+server. The benchmark keeps THINK disabled so the direct comparison contains
+exactly one bounded provider call per observation.
+
+Use:
+
+    bash adapters/llama_cpp/run_jev_bounded_benchmark.sh \
+      --repo-root . \
+      --llama-cpp-root /path/to/kishida-llama.cpp \
+      --model-artifact /path/to/model.gguf \
+      --origin http://127.0.0.1:1234
+
+The benchmark requires clean RelaySelf and llama.cpp source checkouts, binds the
+served runtime build to the selected llama.cpp source HEAD, hashes the exact
+GGUF, records the single visible NVIDIA GPU/driver, performs explicit warm-up
+calls, then alternates arm order across matched measured pairs. It reports raw
+per-call provider/wall latency, prompt/output-token observations, protocol
+failures, wrong-choice counts, and median/p95/max latency separately by arm.
+
+The benchmark does **not** qualify prompt/KV cache reuse. RelaySelf currently
+uses the Jev fork without a RelaySelf-local cache patch; cross-request
+`Jev -> THINK` cache reuse is deferred to #259 after the RelayLM 1.0 cache
+correctness repair has independently earned a safe runtime fix.
+
 Deterministic CI tests only the request/parser/provider and qualification logic
 with mocked HTTP/provider behavior. CI does not contact localhost llama.cpp.
