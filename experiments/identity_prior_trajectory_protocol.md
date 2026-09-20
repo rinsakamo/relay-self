@@ -439,10 +439,11 @@ following remain true on the exact execution subject:
   `subject_tree` line and binds the exact current local/remote HEAD and tree;
 - a later `NOT_REQUALIFIED`, missing marker, or stale subject binding fails
   closed even if an older `NO MATERIAL CONFLICT` comment exists;
-- the launcher prepares the pinned Mineflayer dependency from the current
-  adapter manifest before authority capture, records the generated package lock
-  and resolved dependency tree as evidence, and does not use any pre-existing
-  untracked package lock as resolution input;
+- the adapter's tracked `package-lock.json` is part of the exact execution
+  subject and pins the Mineflayer transitive dependency graph; the launcher
+  requires that tracked lock, installs only with `npm ci`, verifies the lock
+  was not changed by installation, and records both its hash/copy and the
+  resolved dependency tree as evidence;
 - the pinned Minecraft, Mineflayer, Java, llama.cpp, and GGUF identities pass
   the existing #141 mechanical runtime preflight;
 - after runtime preflight, the launcher reacquires this authority immediately
