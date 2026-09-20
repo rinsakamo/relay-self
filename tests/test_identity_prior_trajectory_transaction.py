@@ -1205,6 +1205,8 @@ def test_canonical_launcher_is_one_shot_and_blocks_before_run() -> None:
     assert "--phase first" not in launcher
     assert "--phase restart" not in launcher
     assert "same-run fixture tuning" not in launcher
+    assert "--minecraft-source-root" not in launcher
+    assert "MINECRAFT_SOURCE_ROOT" not in launcher
 
     install_index = launcher.index('"$NPM" ci --omit=dev --no-audit --no-fund')
     initial_gate_index = launcher.index("capture_authority initial")
