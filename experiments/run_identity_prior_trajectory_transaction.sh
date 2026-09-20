@@ -358,7 +358,7 @@ capture_authority initial || {
 
 python3 -m experiments.minecraft_terminal_qualification \
   --phase prepare --repo-root "$REPO_ROOT" --evidence-root "$EVIDENCE_ROOT" \
-  --server-root "$SERVER_ROOT" --server-source-root "$MINECRAFT_SOURCE_ROOT" \
+  --server-root "$SERVER_ROOT" \
   --minecraft-jar "$MINECRAFT_JAR" --minecraft-version "$MINECRAFT_VERSION" \
   --minecraft-port "$MINECRAFT_PORT" --model "$MODEL"
 
