@@ -664,6 +664,21 @@ async def reset_live_world(
     # Wait for a fresh player spawn before any player-targeted reset command.
     await _receive_spawn(session, timeout_s=args.evidence_timeout_s)
 
+    async def write_reset_command(
+        command: str,
+        reason: str,
+        *,
+        settle_s: float,
+    ) -> None:
+        await write_server_command(
+            control_path=Path(args.server_control),
+            evidence_path=evidence_path,
+            command=command,
+            reason=reason,
+            settle_s=settle_s,
+            process_pid=args.minecraft_pid,
+        )
+
     cleanup_commands = (
         (
             "gamerule minecraft:spawn_mobs false",
@@ -703,11 +718,9 @@ async def reset_live_world(
         ),
     )
     for command, reason in cleanup_commands:
-        await write_server_command(
-            control_path=Path(args.server_control),
-            evidence_path=evidence_path,
-            command=command,
-            reason=reason,
+        await write_reset_command(
+            command,
+            reason,
             settle_s=0.1,
         )
 
@@ -725,21 +738,17 @@ async def reset_live_world(
     )
     server_log = Path(args.server_log)
     cleanup_log_offset = _server_log_size(server_log)
-    await write_server_command(
-        control_path=Path(args.server_control),
-        evidence_path=evidence_path,
-        command=cleanup_server_dirty_command,
-        reason=(
+    await write_reset_command(
+        cleanup_server_dirty_command,
+        (
             "matched reset phase 1 server check: emit DIRTY only if a "
             "non-player entity remains after cleanup"
         ),
         settle_s=0.0,
     )
-    await write_server_command(
-        control_path=Path(args.server_control),
-        evidence_path=evidence_path,
-        command=cleanup_server_barrier_command,
-        reason=(
+    await write_reset_command(
+        cleanup_server_barrier_command,
+        (
             "matched reset phase 1 positive causal barrier after cleanup "
             "and DIRTY check"
         ),
@@ -766,11 +775,9 @@ async def reset_live_world(
         f"execute at {username} run summon minecraft:zombie "
         "~4 ~ ~ {NoAI:1b,PersistenceRequired:1b,Silent:1b,Invulnerable:1b}"
     )
-    await write_server_command(
-        control_path=Path(args.server_control),
-        evidence_path=evidence_path,
-        command=summon_command,
-        reason=(
+    await write_reset_command(
+        summon_command,
+        (
             "matched reset phase 2 fixture: summon exactly one static "
             "NoAI persistent silent zombie"
         ),
@@ -780,11 +787,9 @@ async def reset_live_world(
     summon_processed_marker = f"RELAYSELF220_SUMMON_{session_token}"
     summon_processed_barrier_command = f"say {summon_processed_marker}"
     summon_log_offset = _server_log_size(server_log)
-    await write_server_command(
-        control_path=Path(args.server_control),
-        evidence_path=evidence_path,
-        command=summon_processed_barrier_command,
-        reason=(
+    await write_reset_command(
+        summon_processed_barrier_command,
+        (
             "matched reset phase 2 causal barrier: server-log marker after "
             "summon command processing"
         ),
