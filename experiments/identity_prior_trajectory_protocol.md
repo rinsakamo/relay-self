@@ -237,3 +237,91 @@ Before any model-backed or Minecraft-backed A/B/C transaction:
 7. only then authorize the matched physical/model transaction.
 
 No model or Minecraft scientific result is claimed by this apparatus PR.
+
+
+## Post-#201 execution binding
+
+The post-#201 materiality review recorded on Issue #220 classified the current
+shared-core change as `NO MATERIAL CONFLICT`. The matched scientific
+transaction may therefore proceed only through the canonical transaction
+apparatus added after that review.
+
+The execution apparatus adds no new semantic owner and does not change the
+predeclared A/B/C priors, block ordering, repetitions, provider generation
+semantics, or interpretation classes.
+
+### Live-to-frozen World binding
+
+The first provider-visible decision request remains the exact frozen local-frame
+fixture prepared before spend. Live Minecraft is used to validate and realize
+that fixture, rather than injecting per-run session identifiers or raw
+provenance references into model-visible context.
+
+For every scientific condition invocation:
+
+1. one live Mineflayer session is started;
+2. the player is restored to a shared anchor position/orientation;
+3. health and food are restored, inventory/effects are cleared, server time is
+   reset, and prior controlled zombies are removed;
+4. one persistent `NoAI` zombie is summoned about four blocks away, keeping
+   the ambiguity non-terminal and preventing combat damage from becoming an
+   uncontrolled treatment;
+5. fresh Mineflayer evidence must confirm the matched reset before a provider
+   call is permitted;
+6. the frozen local-frame request is sent through the existing
+   `RelayEngine`;
+7. the resolved route id, if any, is mapped to the corresponding live
+   north/south destination and executed through the existing supervised FLEE
+   Action path;
+8. only observed successful progress may be explicitly integrated as Memory;
+9. the Memory is save/load round-tripped through existing Persistent Cognition;
+10. the grounded consequence is projected into the same local coordinate frame
+    for the predeclared later decision.
+
+An additional anchor-acquisition Mineflayer session occurs before the nine
+condition invocations. It makes **zero provider calls**, establishes only the
+shared live coordinate origin, is recorded separately, and is not assigned to
+A/B/C. It is part of physical transaction setup and must be counted separately
+from the nine matched condition sessions.
+
+### Provider-visible blinding
+
+The live transaction deliberately does not expose condition bookkeeping,
+Mineflayer session ids, entity ids, raw run-specific request ids, or
+expected-result labels to the first model decision. The local-frame request
+preserves the predeclared semantic World content while raw live evidence and
+its original provenance remain in the evidence report.
+
+The later request may differ through two causal descendants of the first
+embodied result:
+
+- the grounded live position/consequence projected relative to the shared
+  anchor;
+- the explicitly retained Memory of the first successful FLEE destination.
+
+Those later differences are intended trajectory evidence, not treatment
+leakage.
+
+### Qualification and stopping rule
+
+The canonical launcher must fail before scientific spend unless all of the
+following remain true on the exact execution subject:
+
+- tracked checkout is clean;
+- local HEAD equals current remote `main`;
+- open PRs targeting `main` are zero;
+- ruleset 23442682 remains active;
+- #141 is closed;
+- #201 is closed / completed;
+- #220 remains open;
+- #220 contains the post-#201 `NO MATERIAL CONFLICT` review;
+- the pinned Minecraft, Mineflayer, Java, llama.cpp, and GGUF identities pass
+  the existing #141 mechanical runtime preflight.
+
+The canonical transaction is one-shot. Any operational, protocol, reset, or
+grounding failure stops at the first concrete failure and preserves all prior
+evidence. There is no hidden retry, replay, condition substitution, or same-run
+fixture tuning.
+
+The transaction report counts the anchor session, matched condition sessions,
+and actual provider calls separately.
