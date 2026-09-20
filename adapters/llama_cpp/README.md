@@ -19,10 +19,12 @@ The core RelayEngine owns two transient request families under the same provider
     OPEN
       -> one transient expression
 
-This adapter realizes each provider attempt through a llama.cpp
-OpenAI-compatible chat-completions request.
+By default this adapter realizes each provider attempt through a llama.cpp
+OpenAI-compatible chat-completions request. An explicit optional Jev/System One
+endpoint may instead realize BOUNDED through one finite-choice logits readout.
+THINK and OPEN remain chat-completions requests.
 
-The adapter uses:
+The generated baseline uses:
 
 - temperature = 0;
 - reasoning_effort = none;
@@ -37,6 +39,23 @@ The THINK path is therefore an explicit second RelaySelf request with a larger
 generation budget and an explicit rationale field. It does not rely on hidden
 provider-owned reasoning mode. OPEN is separately explicit and exactly once; it
 does not implicitly enter THINK.
+
+### Optional Jev/System One bounded path
+
+When `LlamaCppRelayProvider(systemone_endpoint=...)` is configured, only
+`CognitionMode.BOUNDED` uses that endpoint. The adapter sends the same
+provenance-bearing transient state plus finite choices to `/v1/systemone`.
+RelaySelf adds one reserved finite option representing cognitive insufficiency.
+A normal choice becomes `RESOLVED`; that reserved choice becomes
+`UNRESOLVED` and may enter the existing explicit THINK escalation.
+
+This path generates no model output tokens. It does not introduce a confidence
+threshold, automatic fallback, second model, provider router, or new semantic
+owner. A missing/malformed Jev endpoint is an operational/provider-protocol
+failure. It is not silently retried through generated BOUNDED cognition.
+
+The generated BOUNDED path remains available as an explicit baseline until
+matched physical evidence justifies canonicalizing the Jev path.
 
 ## Output contract
 
@@ -90,6 +109,7 @@ requires a running llama.cpp server that exposes:
 - /v1/models
 - /props
 - /v1/chat/completions
+- /v1/systemone when the optional Jev bounded path is being qualified
 
 The transaction requires exactly one served model.
 
@@ -98,6 +118,11 @@ With the local server already running, use the source-checkout launcher:
     bash adapters/llama_cpp/run_relay_engine_qualification.sh \
       --repo-root . \
       --origin http://127.0.0.1:1234
+
+To qualify the explicit Jev bounded path against a Jev-capable llama.cpp
+runtime, add:
+
+    --use-systemone
 
 The launcher derives the repository root from its own path, owns the `src/`
 Python import path, changes to the repository root for the top-level
