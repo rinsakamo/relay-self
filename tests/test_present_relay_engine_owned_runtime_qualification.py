@@ -57,13 +57,16 @@ def test_owned_runtime_wrapper_records_runtime_attestation() -> None:
 def test_owned_runtime_wrapper_invokes_canonical_launcher_once() -> None:
     text = _script().read_text(encoding="utf-8")
 
+    assert 'if [[ ! -f "$CANONICAL_LAUNCHER" ]]; then' in text
+    assert '-x "$CANONICAL_LAUNCHER"' not in text
     invocation = (
-        '"$CANONICAL_LAUNCHER" \\\n'
+        'bash "$CANONICAL_LAUNCHER" \\\n'
         '  --repo-root "$REPO_ROOT" \\\n'
         '  --origin "$ORIGIN" \\\n'
         '  --timeout "$TIMEOUT"'
     )
     assert text.count(invocation) == 1
+    assert text.count('bash "$CANONICAL_LAUNCHER"') == 1
     assert "canonical-launcher-invocations.txt" in text
 
 

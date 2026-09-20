@@ -62,8 +62,9 @@ if [[ ! -f "$MODEL" ]]; then
   printf 'model does not exist: %s\n' "$MODEL" >&2
   exit 2
 fi
-if [[ ! -x "$CANONICAL_LAUNCHER" ]]; then
-  printf 'canonical qualification launcher is not executable: %s\n' "$CANONICAL_LAUNCHER" >&2
+if [[ ! -f "$CANONICAL_LAUNCHER" ]]; then
+  printf 'canonical qualification launcher does not exist: %s\n' \
+    "$CANONICAL_LAUNCHER" >&2
   exit 2
 fi
 
@@ -155,7 +156,7 @@ PY
 
 printf '%s\n' '1' >"$EVIDENCE_ROOT/canonical-launcher-invocations.txt"
 set +e
-"$CANONICAL_LAUNCHER" \
+bash "$CANONICAL_LAUNCHER" \
   --repo-root "$REPO_ROOT" \
   --origin "$ORIGIN" \
   --timeout "$TIMEOUT" \
