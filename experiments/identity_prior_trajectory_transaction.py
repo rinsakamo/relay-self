@@ -45,14 +45,16 @@ from experiments.minecraft_terminal_qualification import (
     jsonable,
     launch_recorded_session,
     message_json,
-    provider_engine,
     provenance_json,
-    run_preflight as run_minecraft_runtime_preflight,
+    provider_engine,
     sha256_file,
     skill_run_json,
     utc_now,
     write_json,
     write_server_command,
+)
+from experiments.minecraft_terminal_qualification import (
+    run_preflight as run_minecraft_runtime_preflight,
 )
 from relay_self.intent import IntentCommitment
 from relay_self.persistent_cognition import (
