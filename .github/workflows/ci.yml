@@ -112,5 +112,8 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Install locked Mineflayer dependency graph
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+
       - name: Verify Mineflayer adapter protocol
         run: npm run check --prefix adapters/mineflayer
