@@ -355,12 +355,16 @@ and actual provider calls separately.
 Before the first scientific invocation, the automatic classifier is deliberately
 conservative about repetition noise.
 
-- class A requires a condition-linked embodied decision difference that is
-  stable within each condition across the three predeclared repetitions at at
-  least one measured decision stage;
+- class A requires a condition-linked behavioral difference that is stable
+  within each condition across the three predeclared repetitions at at least
+  one measured decision stage; an unresolved/no-Action outcome may differ from
+  a grounded Action outcome, but it is never treated as a destination;
 - class B is used only when cognition-path signatures differ reproducibly while
-  embodied destination outcomes do not;
-- within-condition destination variability is retained as variability and does
+  both first and later behavioral outcomes are themselves stable and identical
+  across conditions;
+- initial and later cognition signatures are evaluated separately so a later
+  cognition-only effect is not silently collapsed into the Grand Null;
+- within-condition behavioral variability is retained as variability and does
   not become class A or B merely because two raw condition vectors differ;
 - class E therefore means **no reproducible discriminating effect** on this
   bounded surface, not that every raw invocation must be byte-for-byte
