@@ -13,8 +13,10 @@ from relay_self.relay_engine import (
     CognitionMode,
     DecisionStatus,
     InvalidRelayEngineData,
+    OpenCognitionRequest,
     ProviderCallFacts,
     ProviderDecision,
+    ProviderExpression,
     RelayEngine,
 )
 from relay_self.runtime_coordination import coordinate_decision_epoch
@@ -362,3 +364,112 @@ def test_request_rejects_invalid_soft_wall_time_budget() -> None:
         match="soft_wall_time_budget_s",
     ):
         replace(request(), soft_wall_time_budget_s=0)
+
+
+
+def open_request() -> OpenCognitionRequest:
+    return OpenCognitionRequest(
+        request_id="talk-open-1",
+        instruction="Respond to the interlocutor from the supplied context.",
+        intent_id="intent-talk",
+        focus="TALK",
+        context=(
+            CognitionDatum.from_value(
+                "latest_utterance",
+                "Are you there?",
+                provenance("utterance"),
+            ),
+        ),
+    )
+
+
+class RecordingMixedProvider:
+    def __init__(self) -> None:
+        self.calls: list[
+            tuple[BoundedChoiceRequest | OpenCognitionRequest, CognitionMode]
+        ] = []
+
+    def __call__(
+        self,
+        received: BoundedChoiceRequest | OpenCognitionRequest,
+        *,
+        mode: CognitionMode,
+    ) -> ProviderDecision | ProviderExpression:
+        self.calls.append((received, mode))
+        if mode is CognitionMode.OPEN:
+            return ProviderExpression(
+                text="I am here.",
+                provenance=provenance("open-expression"),
+                call_facts=ProviderCallFacts(
+                    requested_max_output_tokens=256,
+                    prompt_tokens=20,
+                    completion_tokens=4,
+                    total_tokens=24,
+                    finish_reason="stop",
+                ),
+            )
+        return ProviderDecision.resolved("cave")
+
+
+def test_open_request_has_no_finite_choice_or_think_surface() -> None:
+    opened = open_request()
+
+    assert not hasattr(opened, "choices")
+    assert not hasattr(opened, "think_allowed")
+    assert opened.context[0].provenance.reference == "utterance"
+
+
+def test_open_cognition_uses_same_owned_provider_exactly_once_without_think(
+    monkeypatch,
+) -> None:
+    provider = RecordingMixedProvider()
+    engine = RelayEngine(provider)
+    clock = iter((1_000_000_000, 1_250_000_000))
+    monkeypatch.setattr(
+        "relay_self.relay_engine.time.perf_counter_ns",
+        lambda: next(clock),
+    )
+
+    bounded = engine(request())
+    opened = engine.open(open_request())
+
+    assert bounded.status is DecisionStatus.RESOLVED
+    assert opened.request_id == "talk-open-1"
+    assert opened.text == "I am here."
+    assert opened.provenance.reference == "open-expression"
+    assert opened.provider_call_count == 1
+    assert opened.elapsed_ns == 250_000_000
+    assert opened.observed_prompt_tokens == 20
+    assert opened.observed_completion_tokens == 4
+    assert [mode for _, mode in provider.calls] == [
+        CognitionMode.BOUNDED,
+        CognitionMode.OPEN,
+    ]
+
+
+def test_open_provider_wrong_result_type_fails_closed_without_retry() -> None:
+    calls: list[CognitionMode] = []
+
+    def bad_provider(
+        _request: BoundedChoiceRequest | OpenCognitionRequest,
+        *,
+        mode: CognitionMode,
+    ) -> ProviderDecision:
+        calls.append(mode)
+        return ProviderDecision.unresolved(reason="wrong result family")
+
+    with pytest.raises(
+        InvalidRelayEngineData,
+        match="open provider must return ProviderExpression",
+    ):
+        RelayEngine(bad_provider).open(open_request())
+
+    assert calls == [CognitionMode.OPEN]
+
+
+def test_open_provider_expression_requires_non_empty_text() -> None:
+    with pytest.raises(InvalidRelayEngineData, match="expression text"):
+        ProviderExpression(
+            text="   ",
+            provenance=provenance("empty"),
+        )
