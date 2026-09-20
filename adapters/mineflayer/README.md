@@ -43,9 +43,10 @@ Each ordinary observation carries a bounded survival snapshot:
 - up to 16 nearest entity facts within 16 blocks: id, name, Mineflayer type,
   distance, and position;
 - explicit bounded-sensor coverage for that entity projection:
-  `source_scope=mineflayer_entity_registry`, `max_distance=16`,
-  `max_entities=16`, the number of in-radius candidates before the cap, and
-  whether the returned list was truncated.
+  `source_scope=mineflayer_entity_registry`, fixed `max_distance=16`,
+  fixed `max_entities=16`, the number of in-radius candidates before the cap,
+  and whether the returned list was truncated. The Python boundary rejects
+  changed distance/entity bounds instead of accepting a per-run sensor scope.
 
 An empty or short `nearby_entities` list therefore does not silently imply
 unbounded World coverage. The coverage metadata says what Mineflayer source
