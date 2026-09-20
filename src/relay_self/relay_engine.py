@@ -15,12 +15,13 @@ class RelayEngineError(ValueError):
 
 
 class InvalidRelayEngineData(RelayEngineError):
-    """Raised when bounded cognition data violates the current contract."""
+    """Raised when cognition data violates the current contract."""
 
 
 class CognitionMode(str, Enum):
     BOUNDED = "bounded"
     THINK = "think"
+    OPEN = "open"
 
 
 class DecisionStatus(str, Enum):
@@ -162,6 +163,32 @@ class BoundedChoiceRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class OpenCognitionRequest:
+    """Transient open-ended cognition request for one generated expression."""
+
+    request_id: str
+    instruction: str
+    intent_id: str | None
+    focus: str | None
+    context: tuple[CognitionDatum, ...]
+
+    def __post_init__(self) -> None:
+        _require_text("request_id", self.request_id)
+        _require_text("instruction", self.instruction)
+        if self.intent_id is not None:
+            _require_text("intent_id", self.intent_id)
+        if self.focus is not None:
+            _require_text("focus", self.focus)
+        if not isinstance(self.context, tuple) or not all(
+            isinstance(datum, CognitionDatum)
+            for datum in self.context
+        ):
+            raise InvalidRelayEngineData(
+                "context must be a tuple of CognitionDatum values"
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class ProviderDecision:
     """Canonical provider result before RelayEngine admissibility checking."""
 
@@ -224,13 +251,33 @@ class ProviderDecision:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class ProviderExpression:
+    """Canonical provider output for one open generated expression."""
+
+    text: str
+    provenance: Provenance
+    call_facts: ProviderCallFacts = field(default_factory=ProviderCallFacts)
+
+    def __post_init__(self) -> None:
+        _require_text("provider expression text", self.text)
+        if not isinstance(self.provenance, Provenance):
+            raise InvalidRelayEngineData(
+                "provider expression provenance must be Provenance"
+            )
+        if not isinstance(self.call_facts, ProviderCallFacts):
+            raise InvalidRelayEngineData(
+                "provider expression call_facts must be ProviderCallFacts"
+            )
+
+
 class CognitionProvider(Protocol):
     def __call__(
         self,
-        request: BoundedChoiceRequest,
+        request: BoundedChoiceRequest | OpenCognitionRequest,
         *,
         mode: CognitionMode,
-    ) -> ProviderDecision: ...
+    ) -> ProviderDecision | ProviderExpression: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -346,14 +393,65 @@ class RelayEngineResult:
         return sum(value for value in values if value is not None)
 
 
+@dataclass(frozen=True, slots=True)
+class OpenCognitionResult:
+    """Transient result of exactly one open cognition provider call."""
+
+    request_id: str
+    text: str
+    provenance: Provenance
+    elapsed_ns: int = 0
+    call_facts: ProviderCallFacts = field(default_factory=ProviderCallFacts)
+
+    def __post_init__(self) -> None:
+        _require_text("open cognition request_id", self.request_id)
+        _require_text("open cognition text", self.text)
+        if not isinstance(self.provenance, Provenance):
+            raise InvalidRelayEngineData(
+                "open cognition provenance must be Provenance"
+            )
+        if (
+            isinstance(self.elapsed_ns, bool)
+            or not isinstance(self.elapsed_ns, int)
+            or self.elapsed_ns < 0
+        ):
+            raise InvalidRelayEngineData(
+                "open cognition elapsed_ns must be a non-negative integer"
+            )
+        if not isinstance(self.call_facts, ProviderCallFacts):
+            raise InvalidRelayEngineData(
+                "open cognition call_facts must be ProviderCallFacts"
+            )
+
+    @property
+    def provider_call_count(self) -> int:
+        return 1
+
+    @property
+    def elapsed_s(self) -> float:
+        return self.elapsed_ns / 1_000_000_000
+
+    @property
+    def observed_prompt_tokens(self) -> int | None:
+        return self.call_facts.prompt_tokens
+
+    @property
+    def observed_completion_tokens(self) -> int | None:
+        return self.call_facts.completion_tokens
+
+
 class RelayEngine:
-    """Allocate one bounded cognition call and at most one explicit THINK call.
+    """Own bounded decisions and one-call open transient cognition.
 
     The engine owns no Persistent Cognition, Present Projection, Current Intent,
-    Skill, Action, external truth, or model state. The supplied provider is a
-    replaceable execution mechanism. Provider output is checked only against the
-    finite admissible choice surface; a resolved cognition result is still not
-    Action authorization or World truth.
+    Skill, Action, external truth, conversation state, or model state. The
+    supplied provider is one replaceable execution mechanism shared by bounded
+    and open requests.
+
+    Bounded requests preserve the existing BOUNDED -> optional THINK allocation
+    rule. Open requests make exactly one explicit OPEN provider call and do not
+    acquire hidden THINK escalation, Action authority, World truth, persistence,
+    or proof of external delivery.
     """
 
     def __init__(self, provider: CognitionProvider) -> None:
@@ -390,6 +488,34 @@ class RelayEngine:
             attempts=(bounded, think),
             soft_wall_time_budget_s=request.soft_wall_time_budget_s,
             think_allowed=request.think_allowed,
+        )
+
+    def open(self, request: OpenCognitionRequest) -> OpenCognitionResult:
+        """Generate one transient expression through the owned provider."""
+
+        if not isinstance(request, OpenCognitionRequest):
+            raise InvalidRelayEngineData(
+                "RelayEngine.open requires OpenCognitionRequest"
+            )
+
+        started_ns = time.perf_counter_ns()
+        expression = self._provider(
+            request,
+            mode=CognitionMode.OPEN,
+        )
+        elapsed_ns = time.perf_counter_ns() - started_ns
+
+        if not isinstance(expression, ProviderExpression):
+            raise InvalidRelayEngineData(
+                "open provider must return ProviderExpression"
+            )
+
+        return OpenCognitionResult(
+            request_id=request.request_id,
+            text=expression.text,
+            provenance=expression.provenance,
+            elapsed_ns=elapsed_ns,
+            call_facts=expression.call_facts,
         )
 
     def _attempt(
