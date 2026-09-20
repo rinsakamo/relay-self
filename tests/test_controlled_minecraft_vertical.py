@@ -6,7 +6,11 @@ import pytest
 from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerEntityFact,
+    MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+    MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+    MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
     MineflayerInventoryItem,
+    MineflayerNearbyEntitiesCoverage,
     MineflayerObservation,
     MineflayerPosition,
     MineflayerSnapshot,
@@ -18,7 +22,6 @@ from experiments.controlled_minecraft_vertical import (
     ControlledSkill,
     decide_skill,
     execute_decision,
-    yaw_to_destination,
 )
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
@@ -102,6 +105,13 @@ def observation(
             time=None,
             inventory=inventory,
             nearby_entities=entities,
+            nearby_entities_coverage=MineflayerNearbyEntitiesCoverage(
+                source_scope=MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+                max_distance=MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+                max_entities=MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+                candidate_count=len(entities),
+                truncated=False,
+            ),
         ),
     )
 
@@ -336,51 +346,6 @@ def test_unresolved_flee_cognition_does_not_start_execution_path() -> None:
     assert decision.destination is None
     assert decision.resolved is False
     assert decision.cognition_result.escalated is True
-
-
-@pytest.mark.parametrize(
-    ("target", "expected"),
-    [
-        (MineflayerPosition(x=0, y=64, z=-10), 0.0),
-        (MineflayerPosition(x=-10, y=64, z=0), math.pi / 2),
-        (MineflayerPosition(x=0, y=64, z=10), math.pi),
-        (MineflayerPosition(x=10, y=64, z=0), -math.pi / 2),
-    ],
-)
-def test_yaw_uses_mineflayer_due_east_counter_clockwise_convention(
-    target: MineflayerPosition,
-    expected: float,
-) -> None:
-    actual = yaw_to_destination(
-        MineflayerPosition(x=0, y=64, z=0),
-        target,
-    )
-    assert actual == pytest.approx(expected)
-
-
-def test_yaw_matches_failed_recovery_ridge_vector() -> None:
-    actual = yaw_to_destination(
-        MineflayerPosition(
-            x=29.49999999999898,
-            y=-60.0,
-            z=-3.794300097396616,
-        ),
-        MineflayerPosition(
-            x=29.49999999999898,
-            y=-60.0,
-            z=-13.794300097396615,
-        ),
-    )
-
-    assert actual == pytest.approx(0.0)
-
-
-def test_yaw_rejects_same_horizontal_position() -> None:
-    with pytest.raises(ControlledScenarioError, match="current horizontal"):
-        yaw_to_destination(
-            MineflayerPosition(x=0, y=64, z=0),
-            MineflayerPosition(x=0, y=70, z=0),
-        )
 
 
 def test_eat_skill_requires_later_food_increase_not_only_effect_acks() -> None:
