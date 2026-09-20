@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 
 from experiments.controlled_minecraft_vertical import ControlledSkill
@@ -180,7 +181,7 @@ def test_classifier_requires_repeated_grounded_divergence_for_class_a() -> None:
     )
 
     assert result["class"] == "A"
-    assert result["strict_grounded_trajectory_complete"] is True
+    assert result["all_grounded_trajectories"] is True
 
 
 def test_classifier_keeps_grand_null_when_conditions_match() -> None:
@@ -195,7 +196,30 @@ def test_classifier_keeps_grand_null_when_conditions_match() -> None:
     )
 
     assert result["class"] == "E"
-    assert result["label"] == "no discriminating effect"
+    assert result["label"] == "no reproducible discriminating effect"
+
+
+def test_classifier_does_not_promote_within_condition_variability() -> None:
+    records = _records(
+        {
+            "A": "route-17",
+            "B": "route-42",
+            "C": "route-17",
+        }
+    )
+    changed = False
+    for item in records:
+        if item.condition_id == "B" and not changed:
+            item.report["first_bound_destination"] = "route-17"
+            item.report["later_bound_destination"] = "route-17"
+            changed = True
+
+    result = classify(records)
+
+    assert result["class"] == "E"
+    assert result["first_embodied_divergence"] is False
+    assert result["later_embodied_divergence"] is False
+    assert "variability" in result["rationale"].lower()
 
 
 def test_classifier_reports_cognition_only_when_signatures_differ() -> None:
@@ -234,3 +258,15 @@ def test_canonical_launcher_is_one_shot_and_blocks_before_run() -> None:
     assert "--phase first" not in launcher
     assert "--phase restart" not in launcher
     assert "same-run fixture tuning" not in launcher
+
+    syntax = subprocess.run(
+        [
+            "bash",
+            "-n",
+            "experiments/run_identity_prior_trajectory_transaction.sh",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert syntax.returncode == 0, syntax.stderr
