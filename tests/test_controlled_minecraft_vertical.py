@@ -89,13 +89,14 @@ def observation(
     x: float = 0,
     z: float = 0,
     food: float = 20,
+    kind: str = "health",
     inventory: tuple[MineflayerInventoryItem, ...] = (),
     entities: tuple[MineflayerEntityFact, ...] = (),
 ) -> MineflayerObservation:
     return MineflayerObservation(
         session_id="session-1",
         seq=seq,
-        kind="health",
+        kind=kind,
         snapshot=MineflayerSnapshot(
             health=20,
             food=food,
@@ -198,6 +199,9 @@ class FakeSession:
 
     async def send_clear_controls(self, action_id):
         self.sent.append(("clear_controls", action_id))
+
+    async def send_observe(self):
+        self.sent.append(("observe",))
 
 
 class SidewaysOnlySession(FakeSession):
@@ -493,6 +497,12 @@ def test_effect_result_wait_ignores_raw_message_count_until_deadline() -> None:
                 f"{prefix}:stop",
                 "clear_controls",
             ),
+            observation(
+                seq=46,
+                kind="probe",
+                x=1.0,
+                entities=(zombie(distance=2),),
+            ),
         ]
     )
 
@@ -559,6 +569,12 @@ def test_flee_progress_wait_ignores_raw_message_count_until_deadline() -> None:
                 f"{prefix}:stop",
                 "clear_controls",
             ),
+            observation(
+                seq=66,
+                kind="probe",
+                x=1.0,
+                entities=(zombie(distance=2),),
+            ),
         ]
     )
 
@@ -608,6 +624,12 @@ def test_flee_skill_looks_moves_and_requires_progress_toward_destination() -> No
                 f"{prefix}:stop",
                 "clear_controls",
             ),
+            observation(
+                seq=6,
+                kind="probe",
+                x=1.0,
+                entities=(zombie(distance=2),),
+            ),
         ]
     )
     supervisor = ActionSupervisor()
@@ -646,6 +668,9 @@ def test_flee_skill_looks_moves_and_requires_progress_toward_destination() -> No
         "clear_controls",
         f"{prefix}:stop",
     )
+    assert session.sent[3] == ("observe",)
+    assert result.messages[-1].kind == "probe"
+    assert result.messages[-1].snapshot.position.x == 1.0
     assert supervisor.open_actions == ()
 
 
