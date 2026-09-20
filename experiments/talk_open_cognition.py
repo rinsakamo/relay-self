@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Protocol
 
 from experiments.operator_talk_boundary import (
     build_operator_present,
@@ -20,68 +19,13 @@ from relay_self.persistent_cognition import (
     PersistentCognition,
 )
 from relay_self.provenance import Provenance
-from relay_self.relay_engine import CognitionDatum
+from relay_self.relay_engine import (
+    CognitionDatum,
+    OpenCognitionRequest,
+    OpenCognitionResult,
+    RelayEngine,
+)
 from relay_self.skill import SkillExecution
-
-
-class InvalidTalkOpenCognition(ValueError):
-    """Raised when the experiment-local open TALK seam is malformed."""
-
-
-@dataclass(frozen=True, slots=True)
-class TalkOpenRequest:
-    """Experiment-local open cognition request with no finite choice surface."""
-
-    request_id: str
-    instruction: str
-    intent_id: str
-    focus: str
-    context: tuple[CognitionDatum, ...]
-
-    def __post_init__(self) -> None:
-        for name, value in (
-            ("request_id", self.request_id),
-            ("instruction", self.instruction),
-            ("intent_id", self.intent_id),
-            ("focus", self.focus),
-        ):
-            if not isinstance(value, str) or not value.strip():
-                raise InvalidTalkOpenCognition(
-                    f"{name} must be a non-empty string"
-                )
-        if self.focus != TALK_SKILL_ID:
-            raise InvalidTalkOpenCognition(
-                "open TALK request requires TALK focus"
-            )
-        if not isinstance(self.context, tuple) or not all(
-            isinstance(datum, CognitionDatum)
-            for datum in self.context
-        ):
-            raise InvalidTalkOpenCognition(
-                "open TALK context must contain CognitionDatum values"
-            )
-
-
-@dataclass(frozen=True, slots=True)
-class TalkOpenResult:
-    """Transient generated expression; not World, Intent, Memory, or Action authority."""
-
-    text: str
-    provenance: Provenance
-
-    def __post_init__(self) -> None:
-        if not isinstance(self.text, str) or not self.text.strip():
-            raise InvalidTalkOpenCognition(
-                "open TALK result text must be non-empty"
-            )
-        if not isinstance(self.provenance, Provenance):
-            raise InvalidTalkOpenCognition(
-                "open TALK result provenance must be Provenance"
-            )
-
-
-class TalkOpenProvider(Protocol):
-    def __call__(self, request: TalkOpenRequest) -> TalkOpenResult: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,14 +34,14 @@ class ReferenceOpenTalk:
     cognition: PersistentCognition
     surface: TalkSurface
     execution: SkillExecution
-    request: TalkOpenRequest
+    request: OpenCognitionRequest
 
 
 def build_talk_open_request(
     surface: TalkSurface,
     *,
     request_id: str = "talk-open:00",
-) -> TalkOpenRequest:
+) -> OpenCognitionRequest:
     """Render TALK-local Present and existing Memory as transient cognition data."""
 
     present_context = tuple(
@@ -119,7 +63,7 @@ def build_talk_open_request(
         )
         for memory in surface.memories
     )
-    return TalkOpenRequest(
+    return OpenCognitionRequest(
         request_id=request_id,
         instruction=(
             "Respond to the external interlocutor using only the supplied "
@@ -133,20 +77,13 @@ def build_talk_open_request(
 
 
 def run_talk_open_cognition(
-    request: TalkOpenRequest,
+    request: OpenCognitionRequest,
     *,
-    provider: TalkOpenProvider,
-) -> TalkOpenResult:
-    """Call one fake/replaceable provider without acquiring semantic authority."""
+    engine: RelayEngine,
+) -> OpenCognitionResult:
+    """Use the canonical RelayEngine-owned open cognition seam."""
 
-    if not callable(provider):
-        raise InvalidTalkOpenCognition("open TALK provider must be callable")
-    result = provider(request)
-    if not isinstance(result, TalkOpenResult):
-        raise InvalidTalkOpenCognition(
-            "open TALK provider must return TalkOpenResult"
-        )
-    return result
+    return engine.open(request)
 
 
 def build_reference_open_talk() -> ReferenceOpenTalk:

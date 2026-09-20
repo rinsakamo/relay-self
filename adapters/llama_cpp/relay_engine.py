@@ -6,16 +6,20 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
+from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     BoundedChoiceRequest,
     CognitionMode,
     DecisionStatus,
+    OpenCognitionRequest,
     ProviderCallFacts,
     ProviderDecision,
+    ProviderExpression,
 )
 
 BOUNDED_MAX_TOKENS = 48
 THINK_MAX_TOKENS = 256
+OPEN_MAX_TOKENS = 256
 
 _BOUNDED_SYSTEM = (
     "You are the bounded cognition provider for RelaySelf. "
@@ -40,6 +44,15 @@ _THINK_SYSTEM = (
     "Do not add prose, markdown, or other keys."
 )
 
+_OPEN_SYSTEM = (
+    "You are the open cognition provider for RelaySelf. "
+    "Use only the supplied transient context to generate one expression. "
+    "Return expression text only. The generated text is transient cognition: "
+    "it does not itself establish World truth, mutate Current Intent, persist "
+    "Memory, authorize an Action, or prove external delivery. "
+    "Do not add a hidden decision or THINK escalation."
+)
+
 
 class LlamaCppProviderError(RuntimeError):
     """Raised when the local llama.cpp provider path fails operationally."""
@@ -54,6 +67,8 @@ def _decision_response_format(
     *,
     mode: CognitionMode,
 ) -> dict[str, object]:
+    if mode not in {CognitionMode.BOUNDED, CognitionMode.THINK}:
+        raise TypeError("decision response format requires BOUNDED or THINK")
     choice_ids = [choice.choice_id for choice in request.choices]
     properties: dict[str, object] = {
         "status": {
@@ -107,6 +122,8 @@ def render_llama_cpp_request(
     _require_text("model", model)
     if not isinstance(mode, CognitionMode):
         raise TypeError("mode must be CognitionMode")
+    if mode not in {CognitionMode.BOUNDED, CognitionMode.THINK}:
+        raise TypeError("bounded request mode must be BOUNDED or THINK")
 
     context = [
         {
@@ -166,11 +183,61 @@ def render_llama_cpp_request(
     }
 
 
+def render_llama_cpp_open_request(
+    request: OpenCognitionRequest,
+    *,
+    model: str,
+) -> dict[str, object]:
+    if not isinstance(request, OpenCognitionRequest):
+        raise TypeError("request must be OpenCognitionRequest")
+    _require_text("model", model)
+
+    context = [
+        {
+            "key": datum.key,
+            "value": json.loads(datum.value_json),
+            "provenance": {
+                "source": datum.provenance.source,
+                "reference": datum.provenance.reference,
+            },
+        }
+        for datum in request.context
+    ]
+    payload = {
+        "request_id": request.request_id,
+        "instruction": request.instruction,
+        "intent_id": request.intent_id,
+        "focus": request.focus,
+        "context": context,
+    }
+    return {
+        "model": model,
+        "temperature": 0,
+        "max_tokens": OPEN_MAX_TOKENS,
+        "reasoning_effort": "none",
+        "cache_prompt": False,
+        "messages": [
+            {"role": "system", "content": _OPEN_SYSTEM},
+            {
+                "role": "user",
+                "content": json.dumps(
+                    payload,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ),
+            },
+        ],
+    }
+
+
 def parse_llama_cpp_decision(
     raw_text: str,
     *,
     mode: CognitionMode,
 ) -> ProviderDecision:
+    if mode not in {CognitionMode.BOUNDED, CognitionMode.THINK}:
+        raise TypeError("decision parser requires BOUNDED or THINK")
     if not isinstance(raw_text, str):
         raise LlamaCppProviderProtocolError(
             f"{mode.value} model content must be text"
@@ -257,10 +324,39 @@ class LlamaCppRelayProvider:
 
     def __call__(
         self,
-        request: BoundedChoiceRequest,
+        request: BoundedChoiceRequest | OpenCognitionRequest,
         *,
         mode: CognitionMode,
-    ) -> ProviderDecision:
+    ) -> ProviderDecision | ProviderExpression:
+        if mode is CognitionMode.OPEN:
+            if not isinstance(request, OpenCognitionRequest):
+                raise TypeError("OPEN mode requires OpenCognitionRequest")
+            request_body = render_llama_cpp_open_request(
+                request,
+                model=self._model,
+            )
+            body = self._call(request_body)
+            raw_text, call_facts = _extract_completion(
+                body,
+                request_body=request_body,
+            )
+            if not raw_text.strip():
+                raise LlamaCppProviderProtocolError(
+                    "open model content must be non-empty text"
+                )
+            return ProviderExpression(
+                text=raw_text,
+                provenance=Provenance(
+                    source="llama.cpp",
+                    reference=(
+                        f"request:{request.request_id}:model:{self._model}"
+                    ),
+                ),
+                call_facts=call_facts,
+            )
+
+        if not isinstance(request, BoundedChoiceRequest):
+            raise TypeError("BOUNDED/THINK mode requires BoundedChoiceRequest")
         request_body = render_llama_cpp_request(
             request,
             mode=mode,

@@ -1,22 +1,32 @@
 import json
 
 from experiments.talk_open_cognition import (
-    TalkOpenRequest,
-    TalkOpenResult,
     build_reference_open_talk,
     run_talk_open_cognition,
 )
 from relay_self.provenance import Provenance
+from relay_self.relay_engine import (
+    CognitionMode,
+    OpenCognitionRequest,
+    ProviderCallFacts,
+    ProviderExpression,
+    RelayEngine,
+)
 from relay_self.skill import SkillState
 
 
 class RecordingOpenProvider:
     def __init__(self) -> None:
-        self.requests: list[TalkOpenRequest] = []
+        self.calls: list[tuple[OpenCognitionRequest, CognitionMode]] = []
 
-    def __call__(self, request: TalkOpenRequest) -> TalkOpenResult:
-        self.requests.append(request)
-        return TalkOpenResult(
+    def __call__(
+        self,
+        request: OpenCognitionRequest,
+        *,
+        mode: CognitionMode,
+    ) -> ProviderExpression:
+        self.calls.append((request, mode))
+        return ProviderExpression(
             text=(
                 "I remember the cave sheltered us before, but the operator's "
                 "message alone does not establish that the ridge is safe."
@@ -24,6 +34,13 @@ class RecordingOpenProvider:
             provenance=Provenance(
                 source="fixture.fake-provider",
                 reference="generation:talk-open-1",
+            ),
+            call_facts=ProviderCallFacts(
+                requested_max_output_tokens=256,
+                prompt_tokens=30,
+                completion_tokens=16,
+                total_tokens=46,
+                finish_reason="stop",
             ),
         )
 
@@ -60,13 +77,17 @@ def test_fake_provider_returns_one_transient_expression() -> None:
 
     result = run_talk_open_cognition(
         fixture.request,
-        provider=provider,
+        engine=RelayEngine(provider),
     )
 
-    assert provider.requests == [fixture.request]
+    assert provider.calls == [(fixture.request, CognitionMode.OPEN)]
+    assert result.request_id == fixture.request.request_id
     assert result.text.startswith("I remember the cave")
     assert result.provenance.source == "fixture.fake-provider"
     assert result.provenance.reference == "generation:talk-open-1"
+    assert result.provider_call_count == 1
+    assert result.observed_prompt_tokens == 30
+    assert result.observed_completion_tokens == 16
 
 
 def test_open_generation_does_not_mutate_existing_semantic_owners() -> None:
@@ -80,7 +101,7 @@ def test_open_generation_does_not_mutate_existing_semantic_owners() -> None:
 
     result = run_talk_open_cognition(
         fixture.request,
-        provider=provider,
+        engine=RelayEngine(provider),
     )
 
     assert fixture.intent_commitment.events is events_before
@@ -98,7 +119,7 @@ def test_generated_text_does_not_reinterpret_operator_claim_as_attested_fact() -
 
     result = run_talk_open_cognition(
         fixture.request,
-        provider=provider,
+        engine=RelayEngine(provider),
     )
 
     context_keys = {datum.key for datum in fixture.request.context}

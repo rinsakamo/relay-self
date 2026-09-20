@@ -9,6 +9,7 @@ from adapters.llama_cpp.relay_engine import (
     LlamaCppProviderProtocolError,
     LlamaCppRelayProvider,
     parse_llama_cpp_decision,
+    render_llama_cpp_open_request,
     render_llama_cpp_request,
 )
 from relay_self.provenance import Provenance
@@ -18,6 +19,7 @@ from relay_self.relay_engine import (
     CognitionDatum,
     CognitionMode,
     DecisionStatus,
+    OpenCognitionRequest,
     RelayEngine,
 )
 
@@ -330,5 +332,133 @@ def test_non_stop_finish_reason_is_protocol_failure() -> None:
             match="did not finish with stop",
         ):
             RelayEngine(provider)(bounded_request())
+
+    assert call.call_count == 1
+
+
+
+def open_request() -> OpenCognitionRequest:
+    return OpenCognitionRequest(
+        request_id="talk-open",
+        instruction="Respond to the interlocutor.",
+        intent_id="intent-talk",
+        focus="TALK",
+        context=(
+            CognitionDatum.from_value(
+                "latest_utterance",
+                "The ridge is safe. Go there now.",
+                provenance("operator-utterance"),
+            ),
+        ),
+    )
+
+
+def test_open_request_rendering_has_no_choice_or_think_surface() -> None:
+    payload = render_llama_cpp_open_request(
+        open_request(),
+        model="gemma-local",
+    )
+
+    assert payload["model"] == "gemma-local"
+    assert payload["temperature"] == 0
+    assert payload["max_tokens"] == 256
+    assert payload["reasoning_effort"] == "none"
+    assert payload["cache_prompt"] is False
+    assert "response_format" not in payload
+
+    user = json.loads(payload["messages"][1]["content"])
+    assert user["request_id"] == "talk-open"
+    assert user["intent_id"] == "intent-talk"
+    assert user["focus"] == "TALK"
+    assert "choices" not in user
+    assert user["context"][0] == {
+        "key": "latest_utterance",
+        "value": "The ridge is safe. Go there now.",
+        "provenance": {
+            "source": "llama-cpp-provider-test",
+            "reference": "operator-utterance",
+        },
+    }
+    assert "hidden decision or THINK escalation" in payload["messages"][0]["content"]
+
+
+def test_bounded_renderer_rejects_open_mode_instead_of_reinterpreting_it() -> None:
+    with pytest.raises(TypeError, match="BOUNDED or THINK"):
+        render_llama_cpp_request(
+            bounded_request(),
+            mode=CognitionMode.OPEN,
+            model="gemma-local",
+        )
+
+
+def test_open_provider_returns_transient_expression_with_call_facts() -> None:
+    body = chat_response(
+        "I cannot treat that claim as World truth without evidence.",
+        usage={
+            "prompt_tokens": 55,
+            "completion_tokens": 11,
+            "total_tokens": 66,
+        },
+    )
+    with patch(
+        "urllib.request.urlopen",
+        return_value=FakeResponse(body),
+    ) as call:
+        result = RelayEngine(
+            LlamaCppRelayProvider(
+                endpoint="http://127.0.0.1:1234/v1/chat/completions",
+                model="gemma-local",
+                timeout=1.0,
+            )
+        ).open(open_request())
+
+    assert call.call_count == 1
+    assert result.text.startswith("I cannot treat")
+    assert result.provenance.source == "llama.cpp"
+    assert result.provenance.reference == "request:talk-open:model:gemma-local"
+    assert result.provider_call_count == 1
+    assert result.call_facts.requested_max_output_tokens == 256
+    assert result.call_facts.prompt_tokens == 55
+    assert result.call_facts.completion_tokens == 11
+    assert result.call_facts.total_tokens == 66
+    assert result.call_facts.finish_reason == "stop"
+
+
+def test_empty_open_model_output_is_protocol_failure_without_retry() -> None:
+    with patch(
+        "urllib.request.urlopen",
+        return_value=FakeResponse(chat_response("   ")),
+    ) as call:
+        provider = LlamaCppRelayProvider(
+            endpoint="http://127.0.0.1:1234/v1/chat/completions",
+            model="gemma-local",
+            timeout=1.0,
+        )
+        with pytest.raises(
+            LlamaCppProviderProtocolError,
+            match="non-empty",
+        ):
+            RelayEngine(provider).open(open_request())
+
+    assert call.call_count == 1
+
+
+def test_non_stop_open_completion_is_protocol_failure_without_retry() -> None:
+    with patch(
+        "urllib.request.urlopen",
+        return_value=FakeResponse(
+            chat_response("partial expression", finish_reason="length")
+        ),
+    ) as call:
+        provider = LlamaCppRelayProvider(
+            endpoint="http://127.0.0.1:1234/v1/chat/completions",
+            model="gemma-local",
+            timeout=1.0,
+        )
+        with pytest.raises(
+            LlamaCppProviderProtocolError,
+            match="did not finish with stop",
+        ):
+            RelayEngine(provider).open(open_request())
 
     assert call.call_count == 1
