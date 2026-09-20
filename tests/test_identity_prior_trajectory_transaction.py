@@ -899,6 +899,10 @@ def test_canonical_launcher_is_one_shot_and_blocks_before_run() -> None:
     assert "subject_head:" in launcher
     assert "subject_tree:" in launcher
     assert "grep -q 'NO MATERIAL CONFLICT'" not in launcher
+    assert "--slurp" not in launcher
+    assert 'gh api --paginate "repos/rinsakamo/relay-self/issues/$issue_number/comments"' in launcher
+    assert "json.JSONDecoder()" in launcher
+    assert "decoder.raw_decode(raw, offset)" in launcher
     assert "--phase first" not in launcher
     assert "--phase restart" not in launcher
     assert "same-run fixture tuning" not in launcher

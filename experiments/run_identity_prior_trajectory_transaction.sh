@@ -107,7 +107,7 @@ capture_authority() {
 
   for issue_number in 88 141 201 220; do
     gh api "repos/rinsakamo/relay-self/issues/$issue_number" >"$target/issue-$issue_number.json"
-    gh api --paginate --slurp "repos/rinsakamo/relay-self/issues/$issue_number/comments" \
+    gh api --paginate "repos/rinsakamo/relay-self/issues/$issue_number/comments" \
       >"$target/issue-$issue_number-comments.json"
   done
 
@@ -127,7 +127,20 @@ from pathlib import Path
 comments_path = Path(sys.argv[1])
 expected_head = sys.argv[2]
 expected_tree = sys.argv[3]
-pages = json.loads(comments_path.read_text(encoding="utf-8"))
+raw = comments_path.read_text(encoding="utf-8")
+decoder = json.JSONDecoder()
+pages = []
+offset = 0
+while True:
+    while offset < len(raw) and raw[offset].isspace():
+        offset += 1
+    if offset >= len(raw):
+        break
+    page, offset = decoder.raw_decode(raw, offset)
+    if not isinstance(page, list):
+        raise SystemExit("paginated #220 comments payload is not a JSON array")
+    pages.append(page)
+
 comments = [
     comment
     for page in pages
