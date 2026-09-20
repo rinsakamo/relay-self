@@ -1,20 +1,23 @@
 # RelaySelf llama.cpp RelayEngine adapter
 
 This directory contains the first actual-model realization of the RelaySelf
-bounded RelayEngine provider seam.
+RelayEngine provider seam.
 
 It is deliberately target-local and small. It is not a provider registry and
 does not make llama.cpp a semantic owner.
 
 ## Runtime boundary
 
-The core RelayEngine owns only the cognition allocation rule:
+The core RelayEngine owns two transient request families under the same provider:
 
     BOUNDED
       -> RESOLVED
       or
       -> explicit THINK
            -> RESOLVED | UNRESOLVED
+
+    OPEN
+      -> one transient expression
 
 This adapter realizes each provider attempt through a llama.cpp
 OpenAI-compatible chat-completions request.
@@ -24,13 +27,16 @@ The adapter uses:
 - temperature = 0;
 - reasoning_effort = none;
 - cache_prompt = false;
-- native strict response_format = json_schema;
+- native strict response_format = json_schema for BOUNDED / THINK;
+- no decision response schema for OPEN expression text;
 - max_tokens = 48 for BOUNDED;
-- max_tokens = 256 for THINK.
+- max_tokens = 256 for THINK;
+- max_tokens = 256 for OPEN.
 
 The THINK path is therefore an explicit second RelaySelf request with a larger
 generation budget and an explicit rationale field. It does not rely on hidden
-provider-owned reasoning mode.
+provider-owned reasoning mode. OPEN is separately explicit and exactly once; it
+does not implicitly enter THINK.
 
 ## Output contract
 
@@ -50,19 +56,30 @@ or:
 
     {"status":"unresolved","choice_id":null,"rationale":"..."}
 
-A valid model response may explicitly return cognitive UNRESOLVED, which allows
-the core RelayEngine to escalate from BOUNDED to THINK when the caller permits
-it.
+A valid bounded model response may explicitly return cognitive UNRESOLVED, which
+allows the core RelayEngine to escalate from BOUNDED to THINK when the caller
+permits it.
 
-The llama.cpp request carries a mode-specific strict JSON schema. The schema constrains the declared keys and types and limits choice_id to the request's finite choices. RelaySelf still validates the returned decision semantics and parses only bare JSON from the OpenAI-compatible message content; it does not add a Markdown-fence fallback.
+The bounded/THINK llama.cpp request carries a mode-specific strict JSON schema.
+The schema constrains the declared keys and types and limits choice_id to the
+request's finite choices. RelaySelf still validates the returned decision
+semantics and parses only bare JSON from the OpenAI-compatible message content;
+it does not add a Markdown-fence fallback.
 
-Malformed model content, schema-invalid output, non-stop completion, transport
-failure, invalid HTTP response envelopes, and unavailable llama.cpp are
-operational/provider-protocol failures. They are not relabelled as cognitive
-uncertainty and do not trigger automatic THINK or retry.
+OPEN carries request identity, instruction, optional intent/focus, and
+provenance-bearing context without any finite choice surface. The adapter
+accepts exactly one non-empty stop-finished text expression and attaches
+provider provenance plus the same content-free usage/finish facts used for
+evaluation. It does not synthesize RESOLVED/UNRESOLVED, a choice_id, or THINK.
 
-A resolved choice still does not authorize an Action, mutate Current Intent or
-SkillExecution, establish World truth, or become durable cognition.
+Malformed model content, schema-invalid bounded output, empty OPEN output,
+non-stop completion, transport failure, invalid HTTP response envelopes, and
+unavailable llama.cpp are operational/provider-protocol failures. They are not
+relabelled as cognitive uncertainty and do not trigger automatic THINK or retry.
+
+Neither a resolved choice nor an OPEN expression authorizes an Action, mutates
+Current Intent or SkillExecution, establishes World truth, becomes durable
+cognition, or proves external delivery.
 
 ## Live model qualification
 
