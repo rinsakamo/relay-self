@@ -26,6 +26,7 @@ def snapshot(x: float) -> MineflayerSnapshot:
     return MineflayerSnapshot(
         health=20,
         food=18,
+        food_saturation=5,
         oxygen_level=20,
         position=MineflayerPosition(x=x, y=64, z=0),
         time=None,
