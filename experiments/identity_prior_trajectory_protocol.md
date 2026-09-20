@@ -347,10 +347,15 @@ For every scientific condition invocation:
 7. the resolved route id, if any, is mapped to the corresponding live
    north/south destination and executed through the existing supervised FLEE
    Action path;
-8. only observed successful progress may be explicitly integrated as Memory;
-9. the Memory is save/load round-tripped through existing Persistent Cognition;
-10. the grounded consequence is projected into the same local coordinate frame
-    for the predeclared later decision.
+8. after forward progress is observed, controls are cleared and an explicit
+   Mineflayer `probe` is required after the stop acknowledgment; only that
+   post-stop probe may ground FLEE success and the terminal consequence;
+9. only the post-stop grounded consequence may be explicitly integrated as
+   Memory;
+10. the Memory is save/load round-tripped through existing Persistent
+    Cognition;
+11. the grounded post-stop consequence is projected into the same local
+    coordinate frame for the predeclared later decision.
 
 An additional anchor-acquisition Mineflayer session occurs before the nine
 condition invocations. It makes **zero provider calls**, establishes only the
