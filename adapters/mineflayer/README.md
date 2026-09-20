@@ -40,7 +40,17 @@ Each ordinary observation carries a bounded survival snapshot:
 - time-of-day/day/is-day when Mineflayer has received server time;
 - inventory item name/count/slot facts;
 - up to 16 nearest entity facts within 16 blocks: id, name, Mineflayer type,
-  distance, and position.
+  distance, and position;
+- explicit bounded-sensor coverage for that entity projection:
+  `source_scope=mineflayer_entity_registry`, `max_distance=16`,
+  `max_entities=16`, the number of in-radius candidates before the cap, and
+  whether the returned list was truncated.
+
+An empty or short `nearby_entities` list therefore does not silently imply
+unbounded World coverage. The coverage metadata says what Mineflayer source
+surface and bounds were actually projected. A consumer must preserve the
+difference between “no entity in this bounded projection” and “no entity exists
+in the World.”
 
 Entity facts deliberately contain no `hostile`, `danger`, `fear`, or
 equivalent appraisal label. Those are Self-side interpretations, not target
@@ -59,9 +69,22 @@ not choose which food is desirable, combine the pair into EAT success, or infer
 Skill completion.
 
 `look(yaw, pitch)` is only a target-local heading primitive, using Mineflayer's
-documented radian convention. An applied look result means Mineflayer completed
-the orientation request. It does not mean movement occurred, a destination was
-reached, or FLEE succeeded.
+documented radian convention. The mechanical mapping from a target position to
+that Mineflayer yaw is likewise adapter-owned
+(`mineflayer_yaw_to_target` on the Python adapter surface); Skill/controller
+code must not encode Mineflayer's x/z axis or yaw convention itself. An applied
+look result means Mineflayer completed the orientation request. It does not
+mean movement occurred, a destination was reached, or FLEE succeeded.
+
+Current controlled experiments still pass target-native `MineflayerObservation`
+objects directly through their Minecraft-specific vertical slice. That is an
+experiment-local dependency, not the intended production Self boundary. Before
+production integration, Minecraft evidence should cross a
+**Mineflayer-specific Present projection** that translates target-native
+observation/coverage facts into the existing RelaySelf Present/Situation
+surface. Do not infer a generic cross-World Observation API from this one
+adapter; #231 owns the cross-World substitution test for any later shared
+extraction.
 
 Duration, destination choice, Skill success, threat appraisal, pathfinding,
 and higher-level policy are deliberately not encoded in the adapter.
