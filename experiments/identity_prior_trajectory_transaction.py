@@ -1488,6 +1488,11 @@ def transaction_plan() -> dict[str, object]:
             )
             for item in preparation.conditions
         },
+        "route_description_grounding": (
+            "route-17/route-42 descriptions are fixed experiment-authored "
+            "semantic cognition inputs; current Mineflayer evidence does not "
+            "observe or establish the described corridor, bend, or coal facts"
+        ),
         "execution_boundary": (
             "Nine predeclared condition invocations. Each begins from a "
             "matched live reset and zero Memory. A resolved first FLEE must "
@@ -1515,10 +1520,13 @@ def run_preflight(args: argparse.Namespace) -> dict[str, object]:
     base["scenario"] = {
         "world_reset": (
             "same anchor, full health/food, empty inventory, noon, one "
-            "NoAI persistent zombie at approximately four blocks"
+            "NoAI persistent silent invulnerable zombie at approximately "
+            "four blocks, qualified through causal reset watermarks"
         ),
         "first_decision": (
-            "frozen provider-visible local-frame route-17/route-42 request"
+            "frozen provider-visible local-frame route-17/route-42 semantic "
+            "request; route descriptions are experiment-authored inputs, "
+            "not live Mineflayer block observations"
         ),
         "embodiment": (
             "selected route is mapped to live geometry and executed through "
