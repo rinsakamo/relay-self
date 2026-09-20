@@ -112,5 +112,18 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Bootstrap deterministic Mineflayer lock
+        run: |
+          npm install --package-lock-only --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          python - <<'PY'
+          import base64
+          import gzip
+          from pathlib import Path
+          raw = Path("adapters/mineflayer/package-lock.json").read_bytes()
+          print("RELAYSELF_LOCK_B64_BEGIN")
+          print(base64.b64encode(gzip.compress(raw, mtime=0)).decode("ascii"))
+          print("RELAYSELF_LOCK_B64_END")
+          PY
+
       - name: Verify Mineflayer adapter protocol
         run: npm run check --prefix adapters/mineflayer
