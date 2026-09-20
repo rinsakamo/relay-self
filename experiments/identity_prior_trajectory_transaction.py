@@ -839,6 +839,25 @@ def _signature_vector(
     return result
 
 
+def _stable_by_condition(
+    values: dict[str, list[object]],
+) -> tuple[dict[str, object | None], bool]:
+    stable: dict[str, object | None] = {}
+    all_stable = True
+    for condition_id, observations in values.items():
+        if not observations:
+            stable[condition_id] = None
+            all_stable = False
+            continue
+        unique = set(observations)
+        if len(unique) == 1:
+            stable[condition_id] = observations[0]
+        else:
+            stable[condition_id] = None
+            all_stable = False
+    return stable, all_stable
+
+
 def classify(records: list[InvocationResult]) -> dict[str, object]:
     if len(records) != len(condition_sequence()):
         raise IdentityPriorTransactionError(
@@ -849,61 +868,67 @@ def classify(records: list[InvocationResult]) -> dict[str, object]:
     later = _choice_vector(records, "later_bound_destination")
     signatures = _signature_vector(records)
 
-    stable_first: dict[str, object | None] = {}
-    for condition_id, choices in first.items():
-        unique = set(choices)
-        stable_first[condition_id] = (
-            choices[0]
-            if len(unique) == 1 and choices[0] is not None
-            else None
-        )
+    stable_first, first_all_stable = _stable_by_condition(first)
+    stable_later, later_all_stable = _stable_by_condition(later)
+    stable_signatures, signatures_all_stable = _stable_by_condition(
+        signatures
+    )
 
-    grounded = all(
+    first_unique = set(stable_first.values()) if first_all_stable else set()
+    later_unique = set(stable_later.values()) if later_all_stable else set()
+    signature_unique = (
+        set(stable_signatures.values())
+        if signatures_all_stable
+        else set()
+    )
+
+    first_embodied_divergence = first_all_stable and len(first_unique) >= 2
+    later_embodied_divergence = later_all_stable and len(later_unique) >= 2
+    embodied_divergence = (
+        first_embodied_divergence or later_embodied_divergence
+    )
+    cognition_only_divergence = (
+        not embodied_divergence
+        and signatures_all_stable
+        and len(signature_unique) >= 2
+        and first_all_stable
+        and len(first_unique) <= 1
+        and (
+            not later_all_stable
+            or len(later_unique) <= 1
+        )
+    )
+
+    grounded_trajectories = all(
         item.report.get("status") == "completed_grounded_trajectory"
         for item in records
     )
-    stable_non_null = {
-        choice
-        for choice in stable_first.values()
-        if choice is not None
-    }
-    if grounded and len(stable_non_null) >= 2:
+
+    if embodied_divergence:
         interpretation = "A"
         label = "embodied prior effect"
         rationale = (
-            "At least two conditions produced different within-condition "
-            "stable first embodied destinations across all predeclared "
-            "repetitions, with grounded Action consequences and later "
-            "trajectory evidence."
+            "At least one embodied decision stage produced a reproducible "
+            "condition-linked difference across all three predeclared "
+            "repetitions. Every resolved Action represented in that stage was "
+            "required by the runner to close from grounded consequence evidence."
+        )
+    elif cognition_only_divergence:
+        interpretation = "B"
+        label = "transient cognition-only effect"
+        rationale = (
+            "Cognition-path signatures differed reproducibly by condition "
+            "while the observed embodied destination outcomes did not."
         )
     else:
-        first_vectors = {
-            condition: tuple(choices)
-            for condition, choices in first.items()
-        }
-        signature_vectors = {
-            condition: tuple(values)
-            for condition, values in signatures.items()
-        }
-        if (
-            len(set(first_vectors.values())) > 1
-            or len(set(signature_vectors.values())) > 1
-        ):
-            interpretation = "B"
-            label = "transient cognition-only effect"
-            rationale = (
-                "The matched cognition outcomes differ across conditions, "
-                "but the strict reproducible grounded-trajectory criterion "
-                "for class A was not met."
-            )
-        else:
-            interpretation = "E"
-            label = "no discriminating effect"
-            rationale = (
-                "The predeclared matched conditions were indistinguishable "
-                "on the bounded cognition/first-destination surface under "
-                "this transaction."
-            )
+        interpretation = "E"
+        label = "no reproducible discriminating effect"
+        rationale = (
+            "The transaction did not establish a reproducible condition-linked "
+            "difference on the embodied destination or cognition-path surfaces. "
+            "Any within-condition variability remains recorded as variability "
+            "rather than being promoted to an Identity-prior effect."
+        )
 
     return {
         "class": interpretation,
@@ -912,11 +937,15 @@ def classify(records: list[InvocationResult]) -> dict[str, object]:
         "first_destination_by_condition": first,
         "later_destination_by_condition": later,
         "initial_cognition_signature_by_condition": signatures,
+        "stable_first_destination_by_condition": stable_first,
+        "stable_later_destination_by_condition": stable_later,
+        "stable_cognition_signature_by_condition": stable_signatures,
+        "first_embodied_divergence": first_embodied_divergence,
+        "later_embodied_divergence": later_embodied_divergence,
         "presentation_only_class_c_observable": False,
         "policy_leakage_class_d": False,
-        "strict_grounded_trajectory_complete": grounded,
+        "all_grounded_trajectories": grounded_trajectories,
     }
-
 
 def transaction_plan() -> dict[str, object]:
     preparation = build_preparation()

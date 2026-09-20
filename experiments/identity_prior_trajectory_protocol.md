@@ -325,3 +325,30 @@ fixture tuning.
 
 The transaction report counts the anchor session, matched condition sessions,
 and actual provider calls separately.
+
+
+### Pre-spend interpretation audit
+
+Before the first scientific invocation, the automatic classifier is deliberately
+conservative about repetition noise.
+
+- class A requires a condition-linked embodied decision difference that is
+  stable within each condition across the three predeclared repetitions at at
+  least one measured decision stage;
+- class B is used only when cognition-path signatures differ reproducibly while
+  embodied destination outcomes do not;
+- within-condition destination variability is retained as variability and does
+  not become class A or B merely because two raw condition vectors differ;
+- class E therefore means **no reproducible discriminating effect** on this
+  bounded surface, not that every raw invocation must be byte-for-byte
+  identical;
+- class C is not directly observable on this bounded non-presentational FLEE
+  gate and is reported as such rather than inferred from internal rationale
+  text;
+- class D is a pre-spend invalidation class for policy/label leakage. The
+  canonical transaction fails closed before scientific execution if its
+  deterministic anti-leakage requirements do not hold, rather than counting a
+  leaked run as SOUL evidence.
+
+The canonical launcher is syntax-checked by deterministic pytest using
+`bash -n`.
