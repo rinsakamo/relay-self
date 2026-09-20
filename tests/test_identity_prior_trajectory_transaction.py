@@ -453,6 +453,7 @@ def test_reset_stops_when_positive_server_barrier_is_absent(
             transaction.reset_live_world(
                 session,
                 args=_reset_args(tmp_path),
+                username="RS220P01",
                 anchor=_reset_anchor(),
                 evidence_path=tmp_path / "server-commands.jsonl",
             )
@@ -611,6 +612,7 @@ def test_reset_unexpected_passive_entity_does_not_qualify(
             transaction.reset_live_world(
                 session,
                 args=_reset_args(tmp_path, timeout_s=0.005),
+                username="RS220P01",
                 anchor=_reset_anchor(),
                 evidence_path=tmp_path / "server-commands.jsonl",
             )
@@ -667,6 +669,7 @@ def test_reset_duplicate_after_summon_does_not_succeed(
             transaction.reset_live_world(
                 session,
                 args=_reset_args(tmp_path, timeout_s=0.005),
+                username="RS220P01",
                 anchor=_reset_anchor(),
                 evidence_path=tmp_path / "server-commands.jsonl",
             )
