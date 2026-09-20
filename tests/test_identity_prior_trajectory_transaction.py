@@ -632,13 +632,13 @@ def _records(
                         "status": status,
                         "first_bound_destination": first_destination,
                         "first_skill_run": (
-                            {"state": "SUCCEEDED"}
+                            {"skill_execution": {"state": "SUCCEEDED"}}
                             if first_destination is not None
                             else None
                         ),
                         "later_bound_destination": later_destination,
                         "later_skill_run": (
-                            {"state": "SUCCEEDED"}
+                            {"skill_execution": {"state": "SUCCEEDED"}}
                             if later_destination is not None
                             else None
                         ),
@@ -667,6 +667,62 @@ def test_classifier_requires_repeated_grounded_divergence_for_class_a() -> None:
 
     assert result["class"] == "A"
     assert result["all_grounded_trajectories"] is True
+
+
+def test_classifier_rejects_non_grounded_skill_run_payload() -> None:
+    records = _records(
+        {
+            "A": "route-17",
+            "B": "route-42",
+            "C": "route-17",
+        }
+    )
+    records[0].report["first_skill_run"] = {
+        "skill_execution": {"state": "FAILED"}
+    }
+
+    with pytest.raises(
+        IdentityPriorTransactionError,
+        match="grounded successful Action outcome",
+    ):
+        classify(records)
+
+
+def test_partial_scientific_spend_is_conservative_lower_bound(
+    tmp_path: Path,
+) -> None:
+    evidence_root = tmp_path
+    invocation_root = (
+        evidence_root
+        / "invocations"
+        / "block-01-01-A"
+    )
+    invocation_root.mkdir(parents=True)
+    (invocation_root / "report.json").write_text(
+        json.dumps(
+            {
+                "initial_cognition": {"provider_call_count": 2},
+                "later_cognition": {"provider_call_count": 1},
+            }
+        ),
+        encoding="utf-8",
+    )
+    (evidence_root / "mineflayer-anchor.jsonl").write_text(
+        "{}\n",
+        encoding="utf-8",
+    )
+    (evidence_root / "mineflayer-block-01-01-A.jsonl").write_text(
+        "{}\n",
+        encoding="utf-8",
+    )
+
+    spend = transaction._partial_scientific_spend(evidence_root)
+
+    assert spend["minimum_recorded_model_provider_calls"] == 3
+    assert spend["provider_call_count_is_lower_bound"] is True
+    assert spend["minecraft_condition_sessions_started"] == 1
+    assert spend["anchor_sessions_started"] == 1
+    assert spend["checkpointed_invocation_reports"] == 1
 
 
 def test_classifier_keeps_grand_null_when_conditions_match() -> None:
