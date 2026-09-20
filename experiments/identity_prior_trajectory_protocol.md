@@ -200,6 +200,29 @@ The planned matched protocol is frozen before results:
 - no hidden retry, replay, alternate runtime, alternate condition, or same-run
   fixture tuning.
 
+### Grounded two-phase World reset
+
+Each fresh condition session first waits for its Mineflayer `spawn` observation
+so the existing controlled-world command owner does not issue player-targeted
+commands before the player is ready. It then performs exactly one reset sequence:
+
+1. **Cleanup phase:** issue the existing zombie removal, effect/inventory
+   clearing, anchor/orientation, health/food, and common-time commands. Wait for
+   a fresh Mineflayer observation proving the expected health and food, empty
+   inventory, anchor position within the existing tolerance, and zero nearby
+   zombies.
+2. **Fixture phase:** only after that zero-zombie barrier is grounded, issue one
+   summon command for exactly one static `NoAI`, persistent, silent zombie at the
+   common anchor. Wait for a fresh observation proving the common state and
+   exactly one nearby zombie within the existing frozen distance bounds.
+
+The fixed command settle interval is only an execution aid; it is not reset
+qualification evidence. A cleanup-zero timeout or a post-summon observation
+with zero or multiple zombies is `NOT QUALIFIED` and stops the invocation. The
+owner does not issue another kill or summon, and no provider call occurs inside
+reset qualification. Command evidence records the cleanup commands and summon;
+the transaction report records both grounded reset barriers.
+
 The live World-reset implementation must be bound to the then-current
 #141-derived Minecraft apparatus after #201 review. This preparation document
 does not authorize or perform that live transaction.
