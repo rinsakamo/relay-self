@@ -29,6 +29,7 @@ Current inbound observations:
 - entities
 - move
 - forcedMove
+- explicit `probe` snapshots requested by the target-local `observe` command
 - death
 - respawn
 - connection end
@@ -63,6 +64,12 @@ Current outbound primitive effects:
 - equip_item
 - consume_held
 - look
+
+The adapter also accepts the non-Action target-local command `observe`, which
+emits one current `probe` observation. It exists for explicit evidence
+sampling/qualification and does not issue a World effect, authorize an Action,
+or imply a decision epoch. Probe observations remain outside automatic
+high-level epoch admission.
 
 Item selection and consumption are separate primitive effects. The adapter does
 not choose which food is desirable, combine the pair into EAT success, or infer
@@ -172,7 +179,7 @@ The process session:
 - launches bridge.mjs with explicit host/port/username/version arguments;
 - inherits stderr for diagnostics while reserving stdout for JSONL;
 - requires adapter_started as the first decoded message;
-- exposes explicit set_control / clear_controls / equip_item / consume_held / look send operations;
+- exposes explicit set_control / clear_controls / equip_item / consume_held / look send operations plus a non-Action observe probe;
 - decodes one stdout message at a time through the same strict stream decoder;
 - treats unexpected stdout EOF as an explicit process error;
 - performs no automatic reconnect, retry, replay, or replacement launch;
