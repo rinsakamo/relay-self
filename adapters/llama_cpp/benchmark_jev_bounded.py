@@ -95,7 +95,7 @@ class BenchmarkArmReport:
     arm: str
     measured_call_count: int
     successful_call_count: int
-    protocol_failure_count: int
+    provider_failure_count: int
     incorrect_outcome_count: int
     provider_latency: LatencySummary | None
     wall_latency: LatencySummary
@@ -223,8 +223,8 @@ def build_report(
     measured_calls_per_arm: int,
 ) -> JevBoundedBenchmarkReport:
     qualified = (
-        generated.protocol_failure_count == 0
-        and jev.protocol_failure_count == 0
+        generated.provider_failure_count == 0
+        and jev.provider_failure_count == 0
         and generated.incorrect_outcome_count == 0
         and jev.incorrect_outcome_count == 0
         and generated.successful_call_count == measured_calls_per_arm
@@ -499,7 +499,7 @@ def _summarize_arm(
         arm=arm,
         measured_call_count=len(observations),
         successful_call_count=len(successful),
-        protocol_failure_count=failures,
+        provider_failure_count=failures,
         incorrect_outcome_count=incorrect,
         provider_latency=(
             _latency_summary(provider_latencies)
