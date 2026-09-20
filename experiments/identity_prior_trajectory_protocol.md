@@ -216,10 +216,14 @@ created. This keeps uncontrolled entities/structures from becoming an
 order-dependent physical nuisance variable.
 
 1. **Cleanup phase:** first freeze cleanup-side World generation/drop
-   behavior with `doMobSpawning=false`, `doMobLoot=false`, and
-   `doEntityDrops=false`. Then remove every non-player entity exactly once,
-   clear effects/inventory and restore anchor/orientation, health/food, and
-   common time. The drop rules are set before the kill so cleanup itself cannot
+   behavior with Minecraft 26.1's namespaced rules
+   `minecraft:spawn_mobs=false`, `minecraft:mob_drops=false`, and
+   `minecraft:entity_drops=false`. Then remove every non-player entity
+   exactly once, clear effects/inventory and restore anchor/orientation and
+   health/food. The overworld clock is set to the exact total tick `6000` and
+   paused with `time of minecraft:overworld pause`; recurring time markers
+   such as `noon` are not used because 26.1 advances them to their next
+   occurrence. The drop rules are set before the kill so cleanup itself cannot
    create item/experience replacement entities from normal death/drop handling.
    After cleanup, issue two ordered server commands: first a
    conditional `DIRTY` marker that emits only if any non-player entity still
@@ -229,7 +233,9 @@ order-dependent physical nuisance variable.
    using the conditional marker only as fail evidence. After that server
    barrier, request an explicit target-local Mineflayer `observe` probe and
    require a current `probe` snapshot showing the common anchor/body state
-   and no nearby entity.
+   and no nearby entity. Reset qualification also requires the explicit
+   Mineflayer probe to report `time_of_day=6000` and `day=0`, so command
+   delivery alone cannot qualify the clock state.
 2. **Fixture phase:** only after that two-source cleanup barrier is grounded,
    remove the temporary saturation effect and issue one summon command for
    exactly one static `NoAI`, persistent, silent, invulnerable zombie. Then

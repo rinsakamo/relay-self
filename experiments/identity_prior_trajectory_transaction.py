@@ -78,6 +78,8 @@ REPORT_SCHEMA_VERSION = 1
 RESET_POSITION_TOLERANCE = 0.08
 RESET_ZOMBIE_DISTANCE_MIN = 3.5
 RESET_ZOMBIE_DISTANCE_MAX = 4.5
+RESET_TIME_OF_DAY = 6000
+RESET_DAY = 0
 FIRST_REQUEST_ID = "identity-prior:first-decision"
 LATER_REQUEST_ID = "identity-prior:later-decision"
 
@@ -492,14 +494,18 @@ def _common_reset_observation_matches(
     observation: MineflayerObservation,
     expected_position: MineflayerPosition,
 ) -> bool:
+    snapshot = observation.snapshot
     return (
-        observation.snapshot.health == 20
-        and observation.snapshot.food == 20
+        snapshot.health == 20
+        and snapshot.food == 20
+        and snapshot.time is not None
+        and snapshot.time.time_of_day == RESET_TIME_OF_DAY
+        and snapshot.time.day == RESET_DAY
         and _position_matches(
-            observation.snapshot.position,
+            snapshot.position,
             expected_position,
         )
-        and observation.snapshot.inventory == ()
+        and snapshot.inventory == ()
     )
 
 
@@ -656,15 +662,15 @@ async def reset_live_world(
 
     cleanup_commands = (
         (
-            "gamerule doMobSpawning false",
+            "gamerule minecraft:spawn_mobs false",
             "matched reset phase 1 control: suppress natural mob spawning",
         ),
         (
-            "gamerule doMobLoot false",
+            "gamerule minecraft:mob_drops false",
             "matched reset phase 1 control: suppress mob death item/XP drops",
         ),
         (
-            "gamerule doEntityDrops false",
+            "gamerule minecraft:entity_drops false",
             "matched reset phase 1 control: suppress non-mob entity drops",
         ),
         (
@@ -692,8 +698,12 @@ async def reset_live_world(
             "matched reset phase 1 cleanup: restore sufficient food",
         ),
         (
-            "time set noon",
-            "matched reset phase 1 cleanup: common server time",
+            "time of minecraft:overworld set 6000",
+            "matched reset phase 1 control: set exact overworld clock tick",
+        ),
+        (
+            "time of minecraft:overworld pause",
+            "matched reset phase 1 control: pause exact overworld clock",
         ),
     )
     for command, reason in cleanup_commands:
