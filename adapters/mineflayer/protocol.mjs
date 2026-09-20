@@ -177,6 +177,11 @@ export function parseCommand (raw) {
     })
   }
 
+  if (value.type === 'observe') {
+    requireExactKeys('observe command', value, ['type'])
+    return Object.freeze({ type: 'observe' })
+  }
+
   if (value.type === 'shutdown') {
     requireExactKeys('shutdown command', value, ['type'])
     return Object.freeze({ type: 'shutdown' })
