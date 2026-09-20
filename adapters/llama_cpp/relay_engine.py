@@ -21,6 +21,9 @@ BOUNDED_MAX_TOKENS = 48
 THINK_MAX_TOKENS = 256
 OPEN_MAX_TOKENS = 256
 
+_JEV_QUESTION_ID = "decision"
+_JEV_UNRESOLVED_CHOICE = "__relay_self_unresolved__"
+
 _BOUNDED_SYSTEM = (
     "You are the bounded cognition provider for RelaySelf. "
     "Use only the supplied transient context and finite choices. "
@@ -183,6 +186,69 @@ def render_llama_cpp_request(
     }
 
 
+def render_llama_cpp_jev_request(
+    request: BoundedChoiceRequest,
+    *,
+    model: str,
+) -> dict[str, object]:
+    """Render one explicit Jev/System One finite-choice request.
+
+    This is an execution optimization for the existing BOUNDED contract. It
+    does not add a new semantic owner or confidence policy. Cognitive
+    insufficiency remains one explicit finite choice so RelayEngine can retain
+    its existing BOUNDED -> THINK escalation semantics without a hidden
+    threshold or fallback.
+    """
+
+    if not isinstance(request, BoundedChoiceRequest):
+        raise TypeError("request must be BoundedChoiceRequest")
+    _require_text("model", model)
+
+    choice_ids = {choice.choice_id for choice in request.choices}
+    if _JEV_UNRESOLVED_CHOICE in choice_ids:
+        raise LlamaCppProviderProtocolError(
+            "bounded choice_id collides with reserved Jev unresolved choice"
+        )
+
+    context = [
+        {
+            "key": datum.key,
+            "value": json.loads(datum.value_json),
+            "provenance": {
+                "source": datum.provenance.source,
+                "reference": datum.provenance.reference,
+            },
+        }
+        for datum in request.context
+    ]
+    state = {
+        "request_id": request.request_id,
+        "intent_id": request.intent_id,
+        "focus": request.focus,
+        "context": context,
+    }
+    criteria = {
+        choice.choice_id: choice.description
+        for choice in request.choices
+    }
+    criteria[_JEV_UNRESOLVED_CHOICE] = (
+        "The supplied transient context is insufficient or contradictory for "
+        "choosing any admissible option."
+    )
+
+    return {
+        "model": model,
+        "state": state,
+        "questions": {
+            _JEV_QUESTION_ID: {
+                "type": "choice",
+                "instructions": request.instruction,
+                "criteria": criteria,
+            }
+        },
+    }
+
+
 def render_llama_cpp_open_request(
     request: OpenCognitionRequest,
     *,
@@ -293,6 +359,78 @@ def parse_llama_cpp_decision(
     )
 
 
+def parse_llama_cpp_jev_decision(
+    body: dict[str, Any],
+    *,
+    request: BoundedChoiceRequest,
+) -> ProviderDecision:
+    """Parse one Jev/System One answer into the existing ProviderDecision."""
+
+    if not isinstance(body, dict):
+        raise LlamaCppProviderProtocolError(
+            "Jev response body must be a JSON object"
+        )
+    answers = body.get("answers")
+    if not isinstance(answers, dict):
+        raise LlamaCppProviderProtocolError(
+            "Jev response missing answers object"
+        )
+    answer = answers.get(_JEV_QUESTION_ID)
+    if not isinstance(answer, dict):
+        raise LlamaCppProviderProtocolError(
+            "Jev response missing bounded decision answer"
+        )
+    if answer.get("type") != "choice":
+        raise LlamaCppProviderProtocolError(
+            "Jev bounded decision answer must have type=choice"
+        )
+    choice_id = answer.get("choice")
+    if not isinstance(choice_id, str) or not choice_id.strip():
+        raise LlamaCppProviderProtocolError(
+            "Jev bounded decision answer requires non-empty choice"
+        )
+
+    usage = body.get("usage")
+    if usage is not None and not isinstance(usage, dict):
+        raise LlamaCppProviderProtocolError(
+            "Jev usage must be a JSON object when present"
+        )
+    prompt_tokens = _jev_usage_int(usage, "input_tokens")
+    completion_tokens = _jev_usage_int(usage, "output_tokens")
+    if completion_tokens not in {None, 0}:
+        raise LlamaCppProviderProtocolError(
+            "Jev bounded decision must not generate output tokens"
+        )
+    total_tokens = (
+        None
+        if prompt_tokens is None or completion_tokens is None
+        else prompt_tokens + completion_tokens
+    )
+    call_facts = ProviderCallFacts(
+        requested_max_output_tokens=None,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+        finish_reason=None,
+    )
+
+    if choice_id == _JEV_UNRESOLVED_CHOICE:
+        return ProviderDecision.unresolved(
+            reason="jev_model_unresolved",
+            call_facts=call_facts,
+        )
+
+    allowed = {choice.choice_id for choice in request.choices}
+    if choice_id not in allowed:
+        raise LlamaCppProviderProtocolError(
+            f"Jev returned inadmissible choice_id: {choice_id}"
+        )
+    return ProviderDecision.resolved(
+        choice_id,
+        call_facts=call_facts,
+    )
+
+
 class LlamaCppRelayProvider:
     """Target-local llama.cpp realization of the RelayEngine provider seam."""
 
@@ -302,8 +440,14 @@ class LlamaCppRelayProvider:
         endpoint: str,
         model: str,
         timeout: float = 60.0,
+        systemone_endpoint: str | None = None,
     ) -> None:
         self._endpoint = _validate_endpoint(endpoint)
+        self._systemone_endpoint = (
+            None
+            if systemone_endpoint is None
+            else _validate_endpoint(systemone_endpoint)
+        )
         _require_text("model", model)
         if (
             not isinstance(timeout, (int, float))
@@ -322,12 +466,32 @@ class LlamaCppRelayProvider:
     def model(self) -> str:
         return self._model
 
+    @property
+    def systemone_endpoint(self) -> str | None:
+        return self._systemone_endpoint
+
     def __call__(
         self,
         request: BoundedChoiceRequest | OpenCognitionRequest,
         *,
         mode: CognitionMode,
     ) -> ProviderDecision | ProviderExpression:
+        if mode is CognitionMode.BOUNDED and self._systemone_endpoint is not None:
+            if not isinstance(request, BoundedChoiceRequest):
+                raise TypeError("BOUNDED mode requires BoundedChoiceRequest")
+            request_body = render_llama_cpp_jev_request(
+                request,
+                model=self._model,
+            )
+            body = self._call(
+                request_body,
+                endpoint=self._systemone_endpoint,
+            )
+            return parse_llama_cpp_jev_decision(
+                body,
+                request=request,
+            )
+
         if mode is CognitionMode.OPEN:
             if not isinstance(request, OpenCognitionRequest):
                 raise TypeError("OPEN mode requires OpenCognitionRequest")
@@ -375,9 +539,15 @@ class LlamaCppRelayProvider:
             call_facts=call_facts,
         )
 
-    def _call(self, request_body: dict[str, object]) -> dict[str, Any]:
+    def _call(
+        self,
+        request_body: dict[str, object],
+        *,
+        endpoint: str | None = None,
+    ) -> dict[str, Any]:
+        target_endpoint = self._endpoint if endpoint is None else endpoint
         request = urllib.request.Request(
-            self._endpoint,
+            target_endpoint,
             data=json.dumps(
                 request_body,
                 ensure_ascii=False,
@@ -481,6 +651,20 @@ def _usage_int(
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         raise LlamaCppProviderProtocolError(
             f"llama.cpp usage.{key} must be a non-negative integer"
+        )
+    return value
+
+
+def _jev_usage_int(
+    usage: dict[str, Any] | None,
+    key: str,
+) -> int | None:
+    if usage is None or key not in usage:
+        return None
+    value = usage[key]
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise LlamaCppProviderProtocolError(
+            f"Jev usage.{key} must be a non-negative integer"
         )
     return value
 
