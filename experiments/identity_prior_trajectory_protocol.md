@@ -68,6 +68,7 @@ Common initial facts:
 
 - health 20;
 - food 20;
+- food saturation 20 in the synthetic frozen preparation fixture;
 - oxygen 20;
 - position (0, 64, 0);
 - one nearby zombie at distance 4;
@@ -219,8 +220,12 @@ order-dependent physical nuisance variable.
    behavior with Minecraft 26.1's namespaced rules
    `minecraft:spawn_mobs=false`, `minecraft:mob_drops=false`, and
    `minecraft:entity_drops=false`. Then remove every non-player entity
-   exactly once, clear effects/inventory and restore anchor/orientation and
-   health/food. The overworld clock is set to the exact total tick `6000` and
+   exactly once, clear effects/inventory and restore anchor/orientation. Each
+   scientific invocation already uses a fresh opaque player identity, so the
+   apparatus does not manufacture body state with restorative effects; instead
+   the explicit reset probe must observe the fresh-player defaults
+   `health=20`, `food=20`, and `food_saturation=5`. The overworld clock is
+   set to the exact total tick `6000` and
    paused with `time of minecraft:overworld pause`; recurring time markers
    such as `noon` are not used because 26.1 advances them to their next
    occurrence. The drop rules are set before the kill so cleanup itself cannot
@@ -237,7 +242,7 @@ order-dependent physical nuisance variable.
    Mineflayer probe to report `time_of_day=6000` and `day=0`, so command
    delivery alone cannot qualify the clock state.
 2. **Fixture phase:** only after that two-source cleanup barrier is grounded,
-   remove the temporary saturation effect and issue one summon command for
+   issue one summon command for
    exactly one static `NoAI`, persistent, silent, invulnerable zombie. Then
    issue a unique server-log marker after the summon command. Once that marker
    is observed after its captured log offset, request explicit Mineflayer
@@ -336,8 +341,9 @@ For every scientific condition invocation:
    identity derived only from the predeclared absolute invocation ordinal, never
    from A/B/C or any semantic condition label;
 2. that fresh player is restored to the shared anchor position/orientation;
-3. health and food are restored, inventory/effects are cleared, server time is
-   reset, and prior controlled zombies are removed;
+3. the fresh player's health, food, and food saturation are observed at the
+   matched defaults while inventory/effects are cleared, the exact server clock
+   is fixed, and prior controlled entities are removed;
 4. one persistent, silent, `NoAI`, invulnerable zombie is summoned about four
    blocks away, keeping the ambiguity non-terminal, preventing combat damage,
    and preventing daylight burn/death from becoming an uncontrolled
