@@ -275,6 +275,7 @@ def _reset_args(
         evidence_timeout_s=timeout_s,
         server_control="unused-server-control",
         server_log=str(server_log),
+        minecraft_pid=4242,
         username="RelaySelf",
     )
 
@@ -603,6 +604,7 @@ def test_reset_requires_positive_server_barriers_and_explicit_probes(
     )
     assert barriers[1] == (result.summon_processed_marker, None)
     assert len(commands) == 13
+    assert all(command["process_pid"] == 4242 for command in commands)
     assert session.observe_count == 2
 
 

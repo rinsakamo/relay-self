@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import json
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerPosition,
     MineflayerSnapshot,
 )
+from experiments import minecraft_terminal_qualification as terminal
 from experiments.minecraft_terminal_qualification import (
     EXPECTED_MINECRAFT_SHA256,
     EXPECTED_MODEL_SHA256,
@@ -220,6 +222,76 @@ def test_receive_until_has_overall_deadline_despite_high_frequency_messages() ->
             )
 
     asyncio.run(exercise())
+
+
+def test_server_command_delivery_retries_nonblocking_fifo_and_checks_process(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    attempts = 0
+    process_checks: list[tuple[int, str]] = []
+
+    def fake_write(_path: Path, _command: str) -> None:
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            raise OSError(errno.ENXIO, "reader not ready")
+
+    def fake_process(pid: int, name: str) -> None:
+        process_checks.append((pid, name))
+
+    monkeypatch.setattr(terminal, "_write_fifo_nonblocking", fake_write)
+    monkeypatch.setattr(terminal, "assert_process_alive", fake_process)
+
+    asyncio.run(
+        terminal.write_server_command(
+            control_path=tmp_path / "server.stdin",
+            evidence_path=tmp_path / "commands.jsonl",
+            command="say bounded",
+            reason="fixture",
+            settle_s=0,
+            delivery_timeout_s=0.2,
+            process_pid=4242,
+        )
+    )
+
+    assert attempts == 3
+    assert process_checks == [(4242, "Minecraft")] * 3
+
+
+def test_server_command_delivery_fails_before_fifo_when_owned_process_is_dead(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    writes = 0
+
+    def fake_write(_path: Path, _command: str) -> None:
+        nonlocal writes
+        writes += 1
+
+    def dead_process(_pid: int, _name: str) -> None:
+        raise TerminalQualificationError("Minecraft process is not alive")
+
+    monkeypatch.setattr(terminal, "_write_fifo_nonblocking", fake_write)
+    monkeypatch.setattr(terminal, "assert_process_alive", dead_process)
+
+    with pytest.raises(
+        TerminalQualificationError,
+        match="not alive",
+    ):
+        asyncio.run(
+            terminal.write_server_command(
+                control_path=tmp_path / "server.stdin",
+                evidence_path=tmp_path / "commands.jsonl",
+                command="say never-delivered",
+                reason="fixture",
+                settle_s=0,
+                delivery_timeout_s=0.2,
+                process_pid=4242,
+            )
+        )
+
+    assert writes == 0
 
 
 def test_launcher_stops_after_first_phase_failure_before_restart() -> None:
