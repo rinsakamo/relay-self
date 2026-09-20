@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import inspect
+import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -212,3 +213,15 @@ def test_canonical_smoke_launcher_is_provider_free_and_one_shot() -> None:
     assert "MINECRAFT_SOURCE_ROOT" not in launcher
     assert "apparatus-smoke-report.json" in launcher
     assert "scientific-report.json" not in launcher
+
+    syntax = subprocess.run(
+        [
+            "bash",
+            "-n",
+            "experiments/run_identity_prior_trajectory_apparatus_smoke.sh",
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert syntax.returncode == 0, syntax.stderr
