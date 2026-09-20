@@ -107,15 +107,60 @@ capture_authority() {
 
   for issue_number in 88 141 201 220; do
     gh api "repos/rinsakamo/relay-self/issues/$issue_number" >"$target/issue-$issue_number.json"
-    gh api --paginate "repos/rinsakamo/relay-self/issues/$issue_number/comments" >"$target/issue-$issue_number-comments.json"
+    gh api --paginate --slurp "repos/rinsakamo/relay-self/issues/$issue_number/comments" \
+      >"$target/issue-$issue_number-comments.json"
   done
 
   [[ "$(gh api repos/rinsakamo/relay-self/issues/201 --jq .state)" == "closed" ]] || return 1
   [[ "$(gh api repos/rinsakamo/relay-self/issues/201 --jq .state_reason)" == "completed" ]] || return 1
   [[ "$(gh api repos/rinsakamo/relay-self/issues/141 --jq .state)" == "closed" ]] || return 1
   [[ "$(gh api repos/rinsakamo/relay-self/issues/220 --jq .state)" == "open" ]] || return 1
-  gh api --paginate repos/rinsakamo/relay-self/issues/220/comments --jq '.[].body' \
-    | grep -q 'NO MATERIAL CONFLICT' || return 1
+
+  python3 - \
+    "$target/issue-220-comments.json" "$local_head" "$local_tree" \
+    >"$target/execution-qualification.txt" <<'PY' || return 1
+import json
+import re
+import sys
+from pathlib import Path
+
+comments_path = Path(sys.argv[1])
+expected_head = sys.argv[2]
+expected_tree = sys.argv[3]
+pages = json.loads(comments_path.read_text(encoding="utf-8"))
+comments = [
+    comment
+    for page in pages
+    for comment in page
+    if isinstance(comment, dict)
+]
+pattern = re.compile(
+    r"(?m)^execution_qualification: "
+    r"(QUALIFIED_FOR_NEW_TRANSACTION_SUBJECT|NOT_REQUALIFIED)\s*$"
+)
+relevant = []
+for comment in comments:
+    body = comment.get("body")
+    comment_id = comment.get("id")
+    if not isinstance(body, str) or not isinstance(comment_id, int):
+        continue
+    matches = pattern.findall(body)
+    if len(matches) == 1:
+        relevant.append((comment_id, matches[0], body))
+
+if not relevant:
+    raise SystemExit("no machine-readable #220 execution qualification found")
+
+_, state, body = max(relevant, key=lambda item: item[0])
+if state != "QUALIFIED_FOR_NEW_TRANSACTION_SUBJECT":
+    raise SystemExit(f"latest #220 execution qualification is {state}")
+if f"subject_head: {expected_head}" not in body:
+    raise SystemExit("qualified #220 comment does not bind current HEAD")
+if f"subject_tree: {expected_tree}" not in body:
+    raise SystemExit("qualified #220 comment does not bind current tree")
+
+print(state)
+PY
 
   printf '{"label":"%s","local_head":"%s","local_tree":"%s","remote_main":"%s"}\n' \
     "$label" "$local_head" "$local_tree" "$remote_main" >"$AUTHORITY_JSON"
@@ -192,11 +237,6 @@ done
 curl --max-time 2 --silent --fail "$LLAMA_ORIGIN/health" \
   | grep -Eq '"status"[[:space:]]*:[[:space:]]*"ok"'
 
-capture_authority final || {
-  printf '%s\n' 'final pre-spend authority capture failed; transaction not started' >&2
-  exit 1
-}
-
 PREFLIGHT_ARGS=(
   --repo-root "$REPO_ROOT" --evidence-root "$EVIDENCE_ROOT"
   --server-root "$SERVER_ROOT" --server-log "$SERVER_LOG"
@@ -214,6 +254,11 @@ python3 -m experiments.identity_prior_trajectory_transaction \
 printf 'bash %q --repo-root %q --evidence-root %q --model %q\n' \
   "$SCRIPT_PATH" "$REPO_ROOT" "$EVIDENCE_ROOT" "$MODEL" \
   >"$EVIDENCE_ROOT/canonical-command.txt"
+
+capture_authority final || {
+  printf '%s\n' 'final spend-gate authority capture failed; transaction not started' >&2
+  exit 1
+}
 
 python3 -m experiments.identity_prior_trajectory_transaction \
   --phase run --repo-root "$REPO_ROOT" --evidence-root "$EVIDENCE_ROOT" \
