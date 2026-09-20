@@ -943,12 +943,13 @@ async def launch_recorded_session(
     args: argparse.Namespace,
     *,
     phase: str,
+    username: str | None = None,
 ) -> RecordedMineflayerSession:
     session = await MineflayerProcessSession.launch(
         MineflayerLaunchConfig(
             host=args.minecraft_host,
             port=args.minecraft_port,
-            username=args.username,
+            username=username if username is not None else args.username,
             version=args.minecraft_protocol_version,
         ),
         bridge_path=Path(args.repo_root) / "adapters" / "mineflayer" / "bridge.mjs",
