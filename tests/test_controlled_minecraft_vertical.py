@@ -341,10 +341,10 @@ def test_unresolved_flee_cognition_does_not_start_execution_path() -> None:
 @pytest.mark.parametrize(
     ("target", "expected"),
     [
-        (MineflayerPosition(x=10, y=64, z=0), 0.0),
-        (MineflayerPosition(x=0, y=64, z=-10), math.pi / 2),
-        (MineflayerPosition(x=-10, y=64, z=0), math.pi),
-        (MineflayerPosition(x=0, y=64, z=10), -math.pi / 2),
+        (MineflayerPosition(x=0, y=64, z=-10), 0.0),
+        (MineflayerPosition(x=-10, y=64, z=0), math.pi / 2),
+        (MineflayerPosition(x=0, y=64, z=10), math.pi),
+        (MineflayerPosition(x=10, y=64, z=0), -math.pi / 2),
     ],
 )
 def test_yaw_uses_mineflayer_due_east_counter_clockwise_convention(
@@ -356,6 +356,23 @@ def test_yaw_uses_mineflayer_due_east_counter_clockwise_convention(
         target,
     )
     assert actual == pytest.approx(expected)
+
+
+def test_yaw_matches_failed_recovery_ridge_vector() -> None:
+    actual = yaw_to_destination(
+        MineflayerPosition(
+            x=29.49999999999898,
+            y=-60.0,
+            z=-3.794300097396616,
+        ),
+        MineflayerPosition(
+            x=29.49999999999898,
+            y=-60.0,
+            z=-13.794300097396615,
+        ),
+    )
+
+    assert actual == pytest.approx(0.0)
 
 
 def test_yaw_rejects_same_horizontal_position() -> None:
