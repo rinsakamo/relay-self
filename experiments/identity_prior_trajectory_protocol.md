@@ -215,9 +215,13 @@ spawning and disables generated structures before the fresh flat World is
 created. This keeps uncontrolled entities/structures from becoming an
 order-dependent physical nuisance variable.
 
-1. **Cleanup phase:** remove every non-player entity exactly once, then
+1. **Cleanup phase:** first freeze cleanup-side World generation/drop
+   behavior with `doMobSpawning=false`, `doMobLoot=false`, and
+   `doEntityDrops=false`. Then remove every non-player entity exactly once,
    clear effects/inventory and restore anchor/orientation, health/food, and
-   common time. After cleanup, issue two ordered server commands: first a
+   common time. The drop rules are set before the kill so cleanup itself cannot
+   create item/experience replacement entities from normal death/drop handling.
+   After cleanup, issue two ordered server commands: first a
    conditional `DIRTY` marker that emits only if any non-player entity still
    exists, then an unconditional `BARRIER` marker. The transaction accepts
    server-side zero only when the post-offset server log reaches the BARRIER
@@ -250,11 +254,13 @@ qualify. Bounded repeated probes may
 wait for client projection convergence, but the owner never repeats cleanup,
 summon, a scientific condition, or a provider call.
 
-A missing server marker, a post-marker probe that never reaches the declared
-cleanup state, or a post-summon probe that never contains exactly the one
-controlled zombie is `NOT QUALIFIED` and stops the invocation. Command
-evidence records cleanup, marker, and summon commands; the transaction report
-records the unique causal markers and grounded probe snapshots.
+A missing server marker, a DIRTY marker after the fixed drop-suppressed
+cleanup, a post-marker probe that never reaches the declared cleanup state, or a
+post-summon probe that never contains exactly the one controlled zombie is
+`NOT QUALIFIED` and stops the invocation. The apparatus does not respond to
+DIRTY by issuing another kill. Command evidence records gamerules, cleanup,
+marker, and summon commands; the transaction report records the unique causal
+markers and grounded probe snapshots.
 
 The live World-reset implementation must be bound to the then-current
 #141-derived Minecraft apparatus after #201 review. This preparation document
