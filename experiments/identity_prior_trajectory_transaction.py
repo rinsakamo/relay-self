@@ -1524,9 +1524,11 @@ def run_preflight(args: argparse.Namespace) -> dict[str, object]:
     base["matched_protocol"] = transaction_plan()
     base["scenario"] = {
         "world_reset": (
-            "same anchor, full health/food, empty inventory, noon, one "
-            "NoAI persistent silent invulnerable zombie at approximately "
-            "four blocks, qualified through causal reset watermarks"
+            "fresh flat World with structures and natural animals/monsters/NPCs "
+            "disabled; same anchor, full health/food, empty inventory, noon, "
+            "no other nearby entity, and one NoAI persistent silent "
+            "invulnerable zombie at approximately four blocks, qualified "
+            "through causal reset watermarks"
         ),
         "first_decision": (
             "frozen provider-visible local-frame route-17/route-42 semantic "
