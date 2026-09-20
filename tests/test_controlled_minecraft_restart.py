@@ -105,12 +105,13 @@ def observation(
     *,
     x: float = 0,
     z: float = 0,
+    kind: str = "entities",
     entities: tuple[MineflayerEntityFact, ...] = (),
 ) -> MineflayerObservation:
     return MineflayerObservation(
         session_id=session_id,
         seq=seq,
-        kind="entities",
+        kind=kind,
         snapshot=MineflayerSnapshot(
             health=20,
             food=20,
@@ -192,6 +193,9 @@ class FakeSession:
     async def send_clear_controls(self, action_id):
         self.sent.append(("clear_controls", action_id))
 
+    async def send_observe(self):
+        self.sent.append(("observe",))
+
 
 class MemoryAwareProvider:
     def __init__(self) -> None:
@@ -228,6 +232,13 @@ def successful_flee_run():
                 entities=(zombie(),),
             ),
             effect(5, f"{prefix}:stop", "clear_controls"),
+            observation(
+                "session-1",
+                6,
+                x=1.0,
+                kind="probe",
+                entities=(zombie(),),
+            ),
         ]
     )
     result = asyncio.run(
@@ -262,7 +273,7 @@ def test_successful_skill_does_not_persist_until_explicit_integration() -> None:
     assert len(after.memories) == 1
     memory = after.memories[0]
     assert memory.source_provenance.source == "mineflayer"
-    assert memory.source_provenance.reference == "session-1:4"
+    assert memory.source_provenance.reference == "session-1:6"
     assert memory.integration_provenance.reference == "memory-accept"
     assert memory_destination_id(memory) == "cave"
 
