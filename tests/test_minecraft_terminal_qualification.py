@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import json
+from pathlib import Path
 
 import pytest
 
@@ -13,9 +15,12 @@ from adapters.mineflayer.python_protocol import (
 from experiments.minecraft_terminal_qualification import (
     EXPECTED_MINECRAFT_SHA256,
     EXPECTED_MODEL_SHA256,
+    TerminalQualificationError,
     make_recovery_present,
     memory_destination_id_from_content,
     parse_properties,
+    receive_until,
+    resource_hunger_commands,
     server_properties_text,
 )
 from experiments.reconsideration_admission import (
@@ -137,3 +142,47 @@ def test_server_properties_accept_minecraft_java_property_escape(tmp_path) -> No
 def test_server_properties_reject_invalid_ports(port: int) -> None:
     with pytest.raises(Exception):
         server_properties_text(port)
+
+def test_resource_intervention_uses_vanilla_hunger_not_player_nbt_mutation() -> None:
+    apply_command, clear_command = resource_hunger_commands("RelaySelf")
+
+    assert apply_command == "effect give RelaySelf minecraft:hunger 30 255 true"
+    assert clear_command == "effect clear RelaySelf minecraft:hunger"
+    assert "data modify" not in apply_command
+    assert "data modify" not in clear_command
+
+
+def test_receive_until_has_overall_deadline_despite_high_frequency_messages() -> None:
+    class BusySession:
+        async def receive(self):
+            await asyncio.sleep(0)
+            return observation()
+
+    async def exercise() -> None:
+        with pytest.raises(
+            TerminalQualificationError,
+            match="timed out waiting for required Mineflayer observation",
+        ):
+            await asyncio.wait_for(
+                receive_until(
+                    BusySession(),
+                    lambda _observation: False,
+                    timeout_s=0.01,
+                ),
+                timeout=0.2,
+            )
+
+    asyncio.run(exercise())
+
+
+def test_launcher_stops_after_first_phase_failure_before_restart() -> None:
+    launcher = Path("experiments/run_minecraft_terminal_qualification.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "set -euo pipefail" in launcher
+    first = launcher.index("--phase first")
+    restart = launcher.index("--phase restart")
+    assert first < restart
+    assert "||" not in launcher[first:restart]
+

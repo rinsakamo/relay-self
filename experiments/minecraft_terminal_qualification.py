@@ -634,9 +634,16 @@ async def receive_until(
     *,
     timeout_s: float,
 ) -> MineflayerObservation:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_s
     while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            raise TerminalQualificationError(
+                "timed out waiting for required Mineflayer observation"
+            )
         try:
-            message = await asyncio.wait_for(session.receive(), timeout=timeout_s)
+            message = await asyncio.wait_for(session.receive(), timeout=remaining)
         except TimeoutError as exc:
             raise TerminalQualificationError(
                 "timed out waiting for required Mineflayer observation"
@@ -648,6 +655,14 @@ async def receive_until(
 
 def observation_has_item(observation: MineflayerObservation, name: str) -> bool:
     return any(item.name == name and item.count > 0 for item in observation.snapshot.inventory)
+
+
+def resource_hunger_commands(username: str) -> tuple[str, str]:
+    username = require_text("Minecraft username", username)
+    return (
+        f"effect give {username} minecraft:hunger 30 255 true",
+        f"effect clear {username} minecraft:hunger",
+    )
 
 
 def nearby_entity_names(observation: MineflayerObservation) -> tuple[str, ...]:
@@ -984,11 +999,17 @@ async def run_first_phase(args: argparse.Namespace, tracker: StageTracker) -> di
             command=f"give {args.username} minecraft:bread 2",
             reason="controlled resource intervention: edible inventory",
         )
+        hunger_command, clear_hunger_command = resource_hunger_commands(
+            args.username
+        )
         await write_server_command(
             control_path=Path(args.server_control),
             evidence_path=commands_path,
-            command=f"data modify entity {args.username} foodLevel set value 7",
-            reason="controlled resource intervention: low food",
+            command=hunger_command,
+            reason=(
+                "controlled resource intervention: drain food through "
+                "vanilla Hunger mechanics"
+            ),
         )
         resource_observation = await receive_until(
             session,
@@ -997,6 +1018,15 @@ async def run_first_phase(args: argparse.Namespace, tracker: StageTracker) -> di
                 and observation_has_item(observation, "bread")
             ),
             timeout_s=args.evidence_timeout_s,
+        )
+        await write_server_command(
+            control_path=Path(args.server_control),
+            evidence_path=commands_path,
+            command=clear_hunger_command,
+            reason=(
+                "controlled resource intervention cleanup after fresh "
+                "low-food evidence"
+            ),
         )
         resource_scenario = scenario(
             hazard_names=frozenset({"zombie"}),
