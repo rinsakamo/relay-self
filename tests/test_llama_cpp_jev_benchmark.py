@@ -131,14 +131,14 @@ def test_matched_benchmark_alternates_order_and_reports_latency() -> None:
         GENERATED_ARM,
     )
 
-    assert generated_report.protocol_failure_count == 0
+    assert generated_report.provider_failure_count == 0
     assert generated_report.incorrect_outcome_count == 0
     assert generated_report.provider_latency is not None
     assert generated_report.provider_latency.median_ns == 125.0
     assert generated_report.provider_latency.p95_ns == 140
     assert generated_report.provider_latency.max_ns == 140
 
-    assert jev_report.protocol_failure_count == 0
+    assert jev_report.provider_failure_count == 0
     assert jev_report.incorrect_outcome_count == 0
     assert jev_report.provider_latency is not None
     assert jev_report.provider_latency.median_ns == 75.0
@@ -198,10 +198,10 @@ def test_matched_benchmark_records_provider_protocol_failure() -> None:
         measured_calls_per_arm=1,
     )
 
-    assert generated_report.protocol_failure_count == 1
+    assert generated_report.provider_failure_count == 1
     assert generated_report.successful_call_count == 0
     assert generated_report.provider_latency is None
     assert generated_report.observations[0].error_type == (
         "LlamaCppProviderProtocolError"
     )
-    assert jev_report.protocol_failure_count == 0
+    assert jev_report.provider_failure_count == 0
