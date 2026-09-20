@@ -453,6 +453,65 @@ def test_eat_ack_without_food_increase_fails_skill_not_action_outcome() -> None:
     )
 
 
+def test_effect_result_wait_ignores_raw_message_count_until_deadline() -> None:
+    obs = observation(entities=(zombie(),))
+    decision = decide_skill(
+        obs,
+        scenario(max_evidence_messages=1),
+        intent_id="intent-survive",
+    )
+    prefix = "skill:flee:session-1:1"
+    noisy_messages = [
+        MineflayerObservation(
+            session_id="session-1",
+            seq=seq,
+            kind="move",
+            snapshot=observation(seq=seq).snapshot,
+        )
+        for seq in range(2, 42)
+    ]
+    session = FakeSession(
+        noisy_messages
+        + [
+            effect_result(
+                42,
+                f"{prefix}:look",
+                "look",
+            ),
+            effect_result(
+                43,
+                f"{prefix}:forward",
+                "set_control",
+            ),
+            observation(
+                seq=44,
+                x=1.0,
+                entities=(zombie(distance=2),),
+            ),
+            effect_result(
+                45,
+                f"{prefix}:stop",
+                "clear_controls",
+            ),
+        ]
+    )
+
+    result = asyncio.run(
+        execute_decision(
+            session,
+            obs,
+            scenario(max_evidence_messages=1),
+            decision,
+            intent_commitment=current_intent(),
+            supervisor=ActionSupervisor(),
+        )
+    )
+
+    assert result is not None
+    assert result.skill_execution.state is SkillState.SUCCEEDED
+    assert len(result.messages) >= 44
+
+
 def test_flee_skill_looks_moves_and_requires_progress_toward_destination() -> None:
     obs = observation(entities=(zombie(),))
     decision = decide_skill(
