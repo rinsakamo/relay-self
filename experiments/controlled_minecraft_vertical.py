@@ -746,11 +746,19 @@ async def _execute_flee(
 
     progress_evidence: MineflayerObservation | None = None
     if forward_result.result == "applied":
-        for _ in range(scenario.max_evidence_messages):
-            message = await _receive(
-                session,
-                timeout_s=scenario.evidence_timeout_s,
-            )
+        loop = asyncio.get_running_loop()
+        progress_deadline = loop.time() + scenario.evidence_timeout_s
+        while True:
+            remaining = progress_deadline - loop.time()
+            if remaining <= 0:
+                break
+            try:
+                message = await asyncio.wait_for(
+                    session.receive(),
+                    timeout=remaining,
+                )
+            except TimeoutError:
+                break
             messages.append(message)
             _coordinate_if_material(message, supervisor)
             if not isinstance(message, MineflayerObservation):
