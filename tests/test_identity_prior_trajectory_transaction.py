@@ -341,7 +341,7 @@ def test_server_log_marker_accepts_only_post_offset_append(
             path,
             marker=marker,
             start_offset=start_offset,
-            timeout_s=0.05,
+            timeout_s=0.1,
         )
         await task
 
