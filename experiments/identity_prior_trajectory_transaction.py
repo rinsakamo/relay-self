@@ -709,12 +709,12 @@ async def reset_live_world(
             "matched reset phase 1 cleanup: restore anchor position and orientation",
         ),
         (
-            "time of minecraft:overworld set 6000",
-            "matched reset phase 1 control: set exact overworld clock tick",
+            "time of minecraft:overworld pause",
+            "matched reset phase 1 control: pause overworld clock before exact set",
         ),
         (
-            "time of minecraft:overworld pause",
-            "matched reset phase 1 control: pause exact overworld clock",
+            "time of minecraft:overworld set 6000",
+            "matched reset phase 1 control: set exact paused overworld clock tick",
         ),
     )
     for command, reason in cleanup_commands:

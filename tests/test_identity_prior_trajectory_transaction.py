@@ -506,8 +506,8 @@ def test_reset_uses_exact_minecraft_26_1_clock_commands(
     assert "time set noon" not in issued
     set_index = issued.index("time of minecraft:overworld set 6000")
     pause_index = issued.index("time of minecraft:overworld pause")
-    assert set_index < pause_index
-    assert pause_index < issued.index(
+    assert pause_index < set_index
+    assert set_index < issued.index(
         "execute if entity @e[type=!minecraft:player] run "
         f"say RELAYSELF220_DIRTY_{session.started.session_id.replace('-', '')}"
     )
