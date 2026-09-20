@@ -100,7 +100,86 @@ capture_authority() {
   [[ "$local_head" == "$remote_main" ]] || return 1
 
   gh api repos/rinsakamo/relay-self/rulesets/23442682 >"$target/ruleset.json"
-  [[ "$(gh api repos/rinsakamo/relay-self/rulesets/23442682 --jq .enforcement)" == "active" ]] || return 1
+  python3 - "$target/ruleset.json" <<'PY' || return 1
+import json
+import sys
+from pathlib import Path
+
+ruleset = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if ruleset.get("id") != 23442682:
+    raise SystemExit("unexpected main ruleset id")
+if ruleset.get("enforcement") != "active":
+    raise SystemExit("main ruleset is not active")
+if ruleset.get("bypass_actors") != []:
+    raise SystemExit("main ruleset unexpectedly has bypass actors")
+if ruleset.get("current_user_can_bypass") != "never":
+    raise SystemExit("current execution identity can unexpectedly bypass main ruleset")
+
+conditions = ruleset.get("conditions")
+if not isinstance(conditions, dict):
+    raise SystemExit("main ruleset conditions payload is invalid")
+ref_name = conditions.get("ref_name")
+if not isinstance(ref_name, dict):
+    raise SystemExit("main ruleset ref_name condition is missing")
+if ref_name.get("exclude") != [] or ref_name.get("include") != ["~DEFAULT_BRANCH"]:
+    raise SystemExit("main ruleset no longer targets exactly the default branch")
+
+rules = ruleset.get("rules")
+if not isinstance(rules, list):
+    raise SystemExit("main ruleset rules payload is invalid")
+
+by_type: dict[str, dict[str, object]] = {}
+for rule in rules:
+    if not isinstance(rule, dict):
+        raise SystemExit("main ruleset contains a malformed rule")
+    rule_type = rule.get("type")
+    if not isinstance(rule_type, str):
+        raise SystemExit("main ruleset contains a rule without a type")
+    if rule_type in by_type:
+        raise SystemExit(f"main ruleset repeats rule type: {rule_type}")
+    by_type[rule_type] = rule
+
+expected_types = {
+    "deletion",
+    "non_fast_forward",
+    "pull_request",
+    "required_linear_history",
+    "required_status_checks",
+}
+if set(by_type) != expected_types:
+    raise SystemExit(
+        "main ruleset rule types changed: "
+        + ",".join(sorted(by_type))
+    )
+
+pull_request = by_type["pull_request"].get("parameters")
+if not isinstance(pull_request, dict):
+    raise SystemExit("main ruleset pull_request parameters are invalid")
+if pull_request.get("allowed_merge_methods") != ["squash"]:
+    raise SystemExit("main ruleset must remain squash-only")
+if pull_request.get("required_review_thread_resolution") is not True:
+    raise SystemExit("main ruleset must require review-thread resolution")
+
+checks = by_type["required_status_checks"].get("parameters")
+if not isinstance(checks, dict):
+    raise SystemExit("main ruleset required_status_checks parameters are invalid")
+check_items = checks.get("required_status_checks")
+if not isinstance(check_items, list):
+    raise SystemExit("main ruleset required status check list is invalid")
+actual_checks = {
+    item.get("context")
+    for item in check_items
+    if isinstance(item, dict) and isinstance(item.get("context"), str)
+}
+if len(actual_checks) != len(check_items):
+    raise SystemExit("main ruleset contains malformed or duplicate status checks")
+expected_checks = {"repository-contracts", "pytest", "lint"}
+if actual_checks != expected_checks:
+    raise SystemExit(
+        "main ruleset required checks changed: "
+        + ",".join(sorted(actual_checks))
+    )
+PY
   gh pr list --repo rinsakamo/relay-self --state open --base main --limit 100 \
     --json number,title,headRefName,baseRefName,updatedAt,url >"$target/open-prs.json"
   [[ "$(gh pr list --repo rinsakamo/relay-self --state open --base main --limit 100 --json number --jq length)" == "0" ]] || return 1

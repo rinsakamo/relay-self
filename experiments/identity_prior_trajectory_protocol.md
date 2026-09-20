@@ -424,7 +424,11 @@ following remain true on the exact execution subject:
 - tracked checkout is clean;
 - local HEAD equals current remote `main`;
 - open PRs targeting `main` are zero;
-- ruleset 23442682 remains active;
+- ruleset 23442682 remains active and still targets exactly the default
+  branch with no bypass actor/current-user bypass, deletion and non-fast-forward
+  protection, required linear history, squash-only pull requests, required
+  review-thread resolution, and exactly the required status checks
+  `repository-contracts`, `pytest`, and `lint`;
 - #141 is closed;
 - #201 is closed / completed;
 - #220 remains open;
