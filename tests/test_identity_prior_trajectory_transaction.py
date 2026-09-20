@@ -90,6 +90,23 @@ def test_transaction_plan_preserves_predeclared_order_and_zero_spend() -> None:
     assert "Mineflayer" in plan["route_description_grounding"]
 
 
+def test_scientific_player_usernames_are_unique_opaque_and_condition_free() -> None:
+    names = [
+        transaction._scientific_player_username(block_index, ordinal)
+        for block_index, block in enumerate(transaction.PLANNED_CONDITION_ORDER)
+        for ordinal, _condition_id in enumerate(block)
+    ]
+
+    assert names == [f"RS220P{index:02d}" for index in range(1, 10)]
+    assert len(set(names)) == 9
+    assert all(len(name) <= 16 for name in names)
+    assert all(
+        token not in name.lower()
+        for name in names
+        for token in ("neutral", "explorer", "cautious")
+    )
+
+
 def test_frozen_initial_provider_request_hashes_remain_unchanged() -> None:
     assert transaction_plan()["initial_request_sha256"] == {
         "A": "896f93292909ee3e7ef9f2287ad3605497bffefa292131b10ef11be05aac7676",
@@ -298,6 +315,7 @@ def _run_reset(
         transaction.reset_live_world(
             session,
             args=_reset_args(tmp_path),
+            username="RS220P01",
             anchor=_reset_anchor(),
             evidence_path=tmp_path / "server-commands.jsonl",
         )
@@ -638,6 +656,7 @@ def test_reset_unexpected_passive_entity_does_not_qualify(
             transaction.reset_live_world(
                 session,
                 args=_reset_args(tmp_path, timeout_s=0.005),
+                username="RS220P01",
                 anchor=_reset_anchor(),
                 evidence_path=tmp_path / "server-commands.jsonl",
             )
@@ -694,6 +713,7 @@ def test_reset_duplicate_after_summon_does_not_succeed(
             transaction.reset_live_world(
                 session,
                 args=_reset_args(tmp_path, timeout_s=0.005),
+                username="RS220P01",
                 anchor=_reset_anchor(),
                 evidence_path=tmp_path / "server-commands.jsonl",
             )
