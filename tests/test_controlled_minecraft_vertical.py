@@ -4,11 +4,11 @@ import math
 import pytest
 
 from adapters.mineflayer.python_protocol import (
-    MineflayerEffectResult,
-    MineflayerEntityFact,
     MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
     MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
     MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+    MineflayerEffectResult,
+    MineflayerEntityFact,
     MineflayerInventoryItem,
     MineflayerNearbyEntitiesCoverage,
     MineflayerObservation,
@@ -18,7 +18,6 @@ from adapters.mineflayer.python_protocol import (
 from experiments.controlled_minecraft_vertical import (
     ControlledDestination,
     ControlledScenario,
-    ControlledScenarioError,
     ControlledSkill,
     decide_skill,
     execute_decision,
