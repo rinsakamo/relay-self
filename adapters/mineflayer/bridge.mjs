@@ -264,6 +264,15 @@ async function handleLine (line) {
     return
   }
 
+  if (command.type === 'observe') {
+    if (!spawned) {
+      emit('command_error', { message: 'observe_before_spawn' })
+      return
+    }
+    emitObservation('probe')
+    return
+  }
+
   if (command.type === 'shutdown') {
     handleShutdown()
   }
