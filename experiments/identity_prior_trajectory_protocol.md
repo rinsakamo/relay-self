@@ -233,8 +233,9 @@ order-dependent physical nuisance variable.
    total tick `6000` while paused. The pause must precede the numeric set so the
    World Clock cannot advance between the exact set and a later pause command.
    Recurring time markers such as `noon` are not used because 26.1 advances
-   them to their next occurrence. The drop rules are set before the kill so cleanup itself cannot
-   create item/experience replacement entities from normal death/drop handling.
+   them to their next occurrence. The drop rules are set before the kill so
+   cleanup itself cannot create item/experience replacement entities from normal
+   death/drop handling.
    After cleanup, issue two ordered server commands: first a
    conditional `DIRTY` marker that emits only if any non-player entity still
    exists, then an unconditional `BARRIER` marker. The transaction accepts
