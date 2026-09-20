@@ -973,16 +973,32 @@ def classify(records: list[InvocationResult]) -> dict[str, object]:
         signatures
     )
 
-    first_unique = set(stable_first.values()) if first_all_stable else set()
-    later_unique = set(stable_later.values()) if later_all_stable else set()
+    first_unique = (
+        {value for value in stable_first.values() if value is not None}
+        if first_all_stable
+        else set()
+    )
+    later_unique = (
+        {value for value in stable_later.values() if value is not None}
+        if later_all_stable
+        else set()
+    )
     signature_unique = (
         set(stable_signatures.values())
         if signatures_all_stable
         else set()
     )
 
-    first_embodied_divergence = first_all_stable and len(first_unique) >= 2
-    later_embodied_divergence = later_all_stable and len(later_unique) >= 2
+    first_embodied_divergence = (
+        first_all_stable
+        and all(value is not None for value in stable_first.values())
+        and len(first_unique) >= 2
+    )
+    later_embodied_divergence = (
+        later_all_stable
+        and all(value is not None for value in stable_later.values())
+        and len(later_unique) >= 2
+    )
     embodied_divergence = (
         first_embodied_divergence or later_embodied_divergence
     )

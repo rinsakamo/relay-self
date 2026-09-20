@@ -434,6 +434,22 @@ def test_classifier_keeps_grand_null_when_conditions_match() -> None:
     assert result["label"] == "no reproducible discriminating effect"
 
 
+def test_classifier_does_not_count_unresolved_as_embodied_destination() -> None:
+    result = classify(
+        _records(
+            {
+                "A": None,
+                "B": "route-17",
+                "C": "route-42",
+            }
+        )
+    )
+
+    assert result["class"] == "E"
+    assert result["first_embodied_divergence"] is False
+    assert result["later_embodied_divergence"] is False
+
+
 def test_classifier_does_not_promote_within_condition_variability() -> None:
     records = _records(
         {
