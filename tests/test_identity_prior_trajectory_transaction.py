@@ -15,6 +15,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
     MineflayerPosition,
     MineflayerSnapshot,
+    MineflayerTime,
 )
 from experiments import identity_prior_trajectory_transaction as transaction
 from experiments.controlled_minecraft_vertical import ControlledSkill
@@ -89,6 +90,24 @@ def test_transaction_plan_preserves_predeclared_order_and_zero_spend() -> None:
     assert "Mineflayer" in plan["route_description_grounding"]
 
 
+def test_scientific_player_usernames_are_unique_opaque_and_condition_free() -> None:
+    names = [
+        transaction._scientific_player_username(block_index, ordinal)
+        for block_index, block in enumerate(transaction.PLANNED_CONDITION_ORDER)
+        for ordinal, _condition_id in enumerate(block)
+    ]
+
+    assert len(names) == 9
+    assert len(set(names)) == 9
+    assert all(name.startswith("RS220P") for name in names)
+    assert all(len(name) <= 16 for name in names)
+    assert all(
+        token not in name
+        for name in names
+        for token in ("A", "B", "C", "neutral", "explorer", "cautious")
+    )
+
+
 def test_frozen_initial_provider_request_hashes_remain_unchanged() -> None:
     assert transaction_plan()["initial_request_sha256"] == {
         "A": "896f93292909ee3e7ef9f2287ad3605497bffefa292131b10ef11be05aac7676",
@@ -149,10 +168,14 @@ def _reset_observation(
         snapshot=MineflayerSnapshot(
             health=20,
             food=20,
-            food_saturation=20,
+            food_saturation=transaction.RESET_FOOD_SATURATION,
             oxygen_level=None,
             position=position or _reset_anchor(),
-            time=None,
+            time=MineflayerTime(
+                time_of_day=transaction.RESET_TIME_OF_DAY,
+                day=transaction.RESET_DAY,
+                is_day=True,
+            ),
             inventory=(),
             nearby_entities=entities,
             nearby_entities_coverage=MineflayerNearbyEntitiesCoverage(
@@ -294,6 +317,7 @@ def _run_reset(
         transaction.reset_live_world(
             session,
             args=_reset_args(tmp_path),
+            username="RS220P01",
             anchor=_reset_anchor(),
             evidence_path=tmp_path / "server-commands.jsonl",
         )
@@ -434,11 +458,13 @@ def test_reset_stops_when_positive_server_barrier_is_absent(
             )
         )
 
-    assert len(commands) == 12
-    assert [command["command"] for command in commands[:4]] == [
-        "gamerule doMobSpawning false",
-        "gamerule doMobLoot false",
-        "gamerule doEntityDrops false",
+    assert len(commands) == 11
+    assert [command["command"] for command in commands[:6]] == [
+        "gamerule minecraft:spawn_mobs false",
+        "gamerule minecraft:mob_drops false",
+        "gamerule minecraft:entity_drops false",
+        "time of minecraft:overworld set 6000",
+        "time of minecraft:overworld pause",
         "kill @e[type=!minecraft:player]",
     ]
     assert "execute if entity @e[type=!minecraft:player]" in str(
@@ -462,9 +488,11 @@ def test_reset_suppresses_cleanup_generated_entity_drops_before_kill(
 
     issued = [str(command["command"]) for command in commands]
     kill_index = issued.index("kill @e[type=!minecraft:player]")
-    assert issued.index("gamerule doMobSpawning false") < kill_index
-    assert issued.index("gamerule doMobLoot false") < kill_index
-    assert issued.index("gamerule doEntityDrops false") < kill_index
+    assert issued.index("gamerule minecraft:spawn_mobs false") < kill_index
+    assert issued.index("gamerule minecraft:mob_drops false") < kill_index
+    assert issued.index("gamerule minecraft:entity_drops false") < kill_index
+    assert issued.index("time of minecraft:overworld set 6000") < kill_index
+    assert issued.index("time of minecraft:overworld pause") < kill_index
     assert issued.count("kill @e[type=!minecraft:player]") == 1
 
 
@@ -497,7 +525,7 @@ def test_reset_requires_positive_server_barriers_and_explicit_probes(
         result.cleanup_server_dirty_marker,
     )
     assert barriers[1] == (result.summon_processed_marker, None)
-    assert len(commands) == 15
+    assert len(commands) == 13
     assert session.observe_count == 2
 
 
@@ -650,7 +678,7 @@ def test_reset_duplicate_after_summon_does_not_succeed(
         if "summon" in str(command["command"])
     ]
     assert len(summon_commands) == 1
-    assert len(commands) == 15
+    assert len(commands) == 13
     assert len(barriers) == 2
 
 
