@@ -263,30 +263,31 @@ def _run_reset(
 ) -> tuple[
     ResetEvidence,
     list[dict[str, object]],
-    list[str],
+    list[tuple[str, str | None]],
 ]:
     commands: list[dict[str, object]] = []
-    markers: list[str] = []
+    barriers: list[tuple[str, str | None]] = []
 
     async def record_command(**kwargs: object) -> None:
         commands.append(kwargs)
 
-    async def accept_marker(
+    async def accept_barrier(
         _path: Path,
         *,
-        marker: str,
+        barrier_marker: str,
         start_offset: int,
         timeout_s: float,
+        forbidden_marker: str | None = None,
     ) -> None:
         assert start_offset >= 0
         assert timeout_s > 0
-        markers.append(marker)
+        barriers.append((barrier_marker, forbidden_marker))
 
     monkeypatch.setattr(transaction, "write_server_command", record_command)
     monkeypatch.setattr(
         transaction,
-        "_wait_for_server_log_marker",
-        accept_marker,
+        "_wait_for_server_log_barrier",
+        accept_barrier,
     )
     result = asyncio.run(
         transaction.reset_live_world(
@@ -296,25 +297,25 @@ def _run_reset(
             evidence_path=tmp_path / "server-commands.jsonl",
         )
     )
-    return result, commands, markers
+    return result, commands, barriers
 
 
-def test_server_log_marker_ignores_preexisting_marker(
+def test_server_log_barrier_ignores_preexisting_marker(
     tmp_path: Path,
 ) -> None:
     async def exercise() -> None:
         path = tmp_path / "server.log"
-        marker = "RELAYSELF220_TEST"
+        marker = "RELAYSELF220_BARRIER"
         path.write_text(marker + "\n", encoding="utf-8")
         start_offset = path.stat().st_size
 
         with pytest.raises(
             IdentityPriorTransactionError,
-            match="server log causal marker",
+            match="server log causal barrier",
         ):
-            await transaction._wait_for_server_log_marker(
+            await transaction._wait_for_server_log_barrier(
                 path,
-                marker=marker,
+                barrier_marker=marker,
                 start_offset=start_offset,
                 timeout_s=0.005,
             )
@@ -322,14 +323,14 @@ def test_server_log_marker_ignores_preexisting_marker(
     asyncio.run(exercise())
 
 
-def test_server_log_marker_accepts_only_post_offset_append(
+def test_server_log_barrier_accepts_only_post_offset_append(
     tmp_path: Path,
 ) -> None:
     async def exercise() -> None:
         path = tmp_path / "server.log"
         path.write_text("before\n", encoding="utf-8")
         start_offset = path.stat().st_size
-        marker = "RELAYSELF220_TEST"
+        marker = "RELAYSELF220_BARRIER"
 
         async def append_marker() -> None:
             await asyncio.sleep(0)
@@ -337,9 +338,9 @@ def test_server_log_marker_accepts_only_post_offset_append(
                 handle.write(marker + "\n")
 
         task = asyncio.create_task(append_marker())
-        await transaction._wait_for_server_log_marker(
+        await transaction._wait_for_server_log_barrier(
             path,
-            marker=marker,
+            barrier_marker=marker,
             start_offset=start_offset,
             timeout_s=0.1,
         )
@@ -348,7 +349,40 @@ def test_server_log_marker_accepts_only_post_offset_append(
     asyncio.run(exercise())
 
 
-def test_reset_stops_when_server_zero_marker_is_absent(
+def test_server_log_barrier_rejects_dirty_marker_before_barrier(
+    tmp_path: Path,
+) -> None:
+    async def exercise() -> None:
+        path = tmp_path / "server.log"
+        path.write_text("before\n", encoding="utf-8")
+        start_offset = path.stat().st_size
+        dirty = "RELAYSELF220_DIRTY"
+        barrier = "RELAYSELF220_BARRIER"
+
+        async def append_markers() -> None:
+            await asyncio.sleep(0)
+            with path.open("a", encoding="utf-8") as handle:
+                handle.write(dirty + "\n")
+                handle.write(barrier + "\n")
+
+        task = asyncio.create_task(append_markers())
+        with pytest.raises(
+            IdentityPriorTransactionError,
+            match="cleanup remained dirty",
+        ):
+            await transaction._wait_for_server_log_barrier(
+                path,
+                barrier_marker=barrier,
+                forbidden_marker=dirty,
+                start_offset=start_offset,
+                timeout_s=0.1,
+            )
+        await task
+
+    asyncio.run(exercise())
+
+
+def test_reset_stops_when_positive_server_barrier_is_absent(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
@@ -367,27 +401,28 @@ def test_reset_stops_when_server_zero_marker_is_absent(
     async def record_command(**kwargs: object) -> None:
         commands.append(kwargs)
 
-    async def reject_marker(
+    async def reject_barrier(
         _path: Path,
         *,
-        marker: str,
+        barrier_marker: str,
         start_offset: int,
         timeout_s: float,
+        forbidden_marker: str | None = None,
     ) -> None:
         raise IdentityPriorTransactionError(
-            f"timed out waiting for server log causal marker: {marker}"
+            f"timed out waiting for server log causal barrier: {barrier_marker}"
         )
 
     monkeypatch.setattr(transaction, "write_server_command", record_command)
     monkeypatch.setattr(
         transaction,
-        "_wait_for_server_log_marker",
-        reject_marker,
+        "_wait_for_server_log_barrier",
+        reject_barrier,
     )
 
     with pytest.raises(
         IdentityPriorTransactionError,
-        match="server log causal marker",
+        match="server log causal barrier",
     ):
         asyncio.run(
             transaction.reset_live_world(
@@ -398,20 +433,26 @@ def test_reset_stops_when_server_zero_marker_is_absent(
             )
         )
 
-    assert len(commands) == 8
-    assert "type=!minecraft:player" in str(commands[-1]["command"])
-    assert " say RELAYSELF220_ZERO_" in str(commands[-1]["command"])
+    assert len(commands) == 9
+    assert commands[0]["command"] == "kill @e[type=!minecraft:player]"
+    assert "execute if entity @e[type=!minecraft:player]" in str(
+        commands[-2]["command"]
+    )
+    assert "RELAYSELF220_DIRTY_" in str(commands[-2]["command"])
+    assert str(commands[-1]["command"]).startswith(
+        "say RELAYSELF220_ZERO_BARRIER_"
+    )
     assert not any("summon" in str(command["command"]) for command in commands)
     assert session.observe_count == 0
 
 
-def test_reset_requires_server_markers_and_explicit_probes(
+def test_reset_requires_positive_server_barriers_and_explicit_probes(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
     session = _ResetSession(_successful_reset_messages())
 
-    result, commands, markers = _run_reset(monkeypatch, tmp_path, session)
+    result, commands, barriers = _run_reset(monkeypatch, tmp_path, session)
 
     assert result.cleanup_zero_observation.kind == "probe"
     assert result.cleanup_zero_observation.snapshot.position == _reset_anchor()
@@ -423,15 +464,18 @@ def test_reset_requires_server_markers_and_explicit_probes(
         result.summon_command
     ) == 1
     assert "Invulnerable:1b" in result.summon_command
-    assert result.cleanup_server_zero_marker in markers
-    assert result.summon_processed_marker in markers
-    assert result.cleanup_server_zero_marker.startswith(
-        "RELAYSELF220_ZERO_resetsession"
+    assert result.cleanup_server_barrier_marker.startswith(
+        "RELAYSELF220_ZERO_BARRIER_resetsession"
     )
-    assert result.summon_processed_marker.startswith(
-        "RELAYSELF220_SUMMON_resetsession"
+    assert result.cleanup_server_dirty_marker.startswith(
+        "RELAYSELF220_DIRTY_resetsession"
     )
-    assert len(commands) == 11
+    assert barriers[0] == (
+        result.cleanup_server_barrier_marker,
+        result.cleanup_server_dirty_marker,
+    )
+    assert barriers[1] == (result.summon_processed_marker, None)
+    assert len(commands) == 12
     assert session.observe_count == 2
 
 
@@ -488,25 +532,26 @@ def test_reset_unexpected_passive_entity_does_not_qualify(
     )
 
     commands: list[dict[str, object]] = []
-    markers: list[str] = []
+    barriers: list[tuple[str, str | None]] = []
 
     async def record_command(**kwargs: object) -> None:
         commands.append(kwargs)
 
-    async def accept_marker(
+    async def accept_barrier(
         _path: Path,
         *,
-        marker: str,
+        barrier_marker: str,
         start_offset: int,
         timeout_s: float,
+        forbidden_marker: str | None = None,
     ) -> None:
-        markers.append(marker)
+        barriers.append((barrier_marker, forbidden_marker))
 
     monkeypatch.setattr(transaction, "write_server_command", record_command)
     monkeypatch.setattr(
         transaction,
-        "_wait_for_server_log_marker",
-        accept_marker,
+        "_wait_for_server_log_barrier",
+        accept_barrier,
     )
     with pytest.raises(
         IdentityPriorTransactionError,
@@ -522,7 +567,7 @@ def test_reset_unexpected_passive_entity_does_not_qualify(
         )
 
     assert sum("summon" in str(item["command"]) for item in commands) == 1
-    assert len(markers) == 2
+    assert len(barriers) == 2
 
 
 def test_reset_duplicate_after_summon_does_not_succeed(
@@ -543,25 +588,26 @@ def test_reset_duplicate_after_summon_does_not_succeed(
     )
 
     commands: list[dict[str, object]] = []
-    markers: list[str] = []
+    barriers: list[tuple[str, str | None]] = []
 
     async def record_command(**kwargs: object) -> None:
         commands.append(kwargs)
 
-    async def accept_marker(
+    async def accept_barrier(
         _path: Path,
         *,
-        marker: str,
+        barrier_marker: str,
         start_offset: int,
         timeout_s: float,
+        forbidden_marker: str | None = None,
     ) -> None:
-        markers.append(marker)
+        barriers.append((barrier_marker, forbidden_marker))
 
     monkeypatch.setattr(transaction, "write_server_command", record_command)
     monkeypatch.setattr(
         transaction,
-        "_wait_for_server_log_marker",
-        accept_marker,
+        "_wait_for_server_log_barrier",
+        accept_barrier,
     )
     with pytest.raises(
         IdentityPriorTransactionError,
@@ -582,8 +628,8 @@ def test_reset_duplicate_after_summon_does_not_succeed(
         if "summon" in str(command["command"])
     ]
     assert len(summon_commands) == 1
-    assert len(commands) == 11
-    assert len(markers) == 2
+    assert len(commands) == 12
+    assert len(barriers) == 2
 
 
 def test_live_scenario_maps_neutral_route_ids_to_live_geometry() -> None:
