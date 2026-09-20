@@ -314,6 +314,7 @@ def test_reset_requires_causal_zero_then_single_summon(
     assert [command["command"] for command in commands].count(
         result.summon_command
     ) == 1
+    assert "Invulnerable:1b" in result.summon_command
     assert "execute unless entity" in result.cleanup_server_zero_barrier_command
     assert len(commands) == 13
 
