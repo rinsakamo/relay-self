@@ -1711,9 +1711,12 @@ def _partial_scientific_spend(evidence_root: Path) -> dict[str, object]:
     return {
         "minimum_recorded_model_provider_calls": recorded_calls,
         "provider_call_count_is_lower_bound": True,
-        "minecraft_condition_sessions_started": len(condition_session_files),
+        "minimum_recorded_minecraft_condition_sessions": len(
+            condition_session_files
+        ),
+        "minimum_recorded_anchor_sessions": len(anchor_session_files),
+        "session_counts_are_lower_bounds": True,
         "condition_session_evidence_files": condition_session_files,
-        "anchor_sessions_started": len(anchor_session_files),
         "anchor_session_evidence_files": anchor_session_files,
         "checkpointed_invocation_reports": checkpointed_reports,
     }

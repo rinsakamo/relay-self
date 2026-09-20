@@ -993,8 +993,9 @@ def test_partial_scientific_spend_is_conservative_lower_bound(
 
     assert spend["minimum_recorded_model_provider_calls"] == 3
     assert spend["provider_call_count_is_lower_bound"] is True
-    assert spend["minecraft_condition_sessions_started"] == 1
-    assert spend["anchor_sessions_started"] == 1
+    assert spend["minimum_recorded_minecraft_condition_sessions"] == 1
+    assert spend["minimum_recorded_anchor_sessions"] == 1
+    assert spend["session_counts_are_lower_bounds"] is True
     assert spend["checkpointed_invocation_reports"] == 1
 
 

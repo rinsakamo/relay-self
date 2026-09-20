@@ -467,11 +467,12 @@ fixture tuning.
 
 Scientific evidence is checkpointed after each completed cognition result,
 before any subsequent grounded Action can fail. A terminal failure report
-reconstructs a conservative lower bound for already-recorded provider calls and
-started Mineflayer sessions from those durable checkpoints/evidence files.
-Because an external provider call could fail after spend but before a usable
-result is returned and checkpointed, the recorded provider-call count is
-explicitly a lower bound rather than an exact total in failure cases.
+reconstructs conservative evidence-backed lower bounds for already-recorded
+provider calls and Mineflayer sessions from those durable checkpoints/evidence
+files. Both provider calls and session counts are explicitly labeled as lower
+bounds: an external provider or child process can consume/start before a usable
+result or recorded session file exists. Completed transactions continue to
+report exact counts from the completed records.
 
 The classifier accepts a resolved embodied outcome only when the recorded Skill
 execution is explicitly `SUCCEEDED`; a non-null or malformed Skill-run payload
