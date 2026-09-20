@@ -3,11 +3,15 @@ from __future__ import annotations
 import pytest
 
 from adapters.mineflayer.python_protocol import (
+    MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+    MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+    MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
     MINEFLAYER_VERSION,
     MineflayerAdapterStarted,
     MineflayerEffectResult,
     MineflayerEntityFact,
     MineflayerLaunchConfig,
+    MineflayerNearbyEntitiesCoverage,
     MineflayerObservation,
     MineflayerPosition,
     MineflayerSnapshot,
@@ -47,6 +51,13 @@ def snapshot(
         time=None,
         inventory=(),
         nearby_entities=entities,
+        nearby_entities_coverage=MineflayerNearbyEntitiesCoverage(
+            source_scope=MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+            max_distance=MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+            max_entities=MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+            candidate_count=len(entities),
+            truncated=False,
+        ),
     )
 
 

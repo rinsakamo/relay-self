@@ -7,7 +7,11 @@ from pathlib import Path
 import pytest
 
 from adapters.mineflayer.python_protocol import (
+    MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+    MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+    MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
     MineflayerEntityFact,
+    MineflayerNearbyEntitiesCoverage,
     MineflayerObservation,
     MineflayerPosition,
     MineflayerSnapshot,
@@ -56,6 +60,13 @@ def observation() -> MineflayerObservation:
                     distance=3.0,
                     position=MineflayerPosition(x=7.5, y=4.0, z=-3.5),
                 ),
+            ),
+            nearby_entities_coverage=MineflayerNearbyEntitiesCoverage(
+                source_scope=MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+                max_distance=MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+                max_entities=MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+                candidate_count=1,
+                truncated=False,
             ),
         ),
     )

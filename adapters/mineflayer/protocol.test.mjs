@@ -247,12 +247,117 @@ test('snapshot exposes survival facts without appraisal labels', () => {
         distance: 3,
         position: { x: 4.5, y: 64, z: -2.25 }
       }
-    ]
+    ],
+    nearby_entities_coverage: {
+      source_scope: 'mineflayer_entity_registry',
+      max_distance: 16,
+      max_entities: 16,
+      candidate_count: 1,
+      truncated: false
+    }
   })
   const serialized = JSON.stringify(snapshot)
   assert.equal(serialized.includes('danger'), false)
   assert.equal(serialized.includes('fear'), false)
   assert.equal(serialized.includes('hostile'), false)
+})
+
+test('bounded entity snapshot declares truncation coverage', () => {
+  const entities = {
+    1: {
+      id: 1,
+      name: 'player',
+      type: 'player',
+      position: { x: 0, y: 64, z: 0 }
+    }
+  }
+  for (let id = 2; id <= 18; id += 1) {
+    entities[id] = {
+      id,
+      name: 'zombie',
+      type: 'mob',
+      position: { x: id - 1, y: 64, z: 0 }
+    }
+  }
+
+  const snapshot = snapshotFromBot({
+    health: 20,
+    food: 20,
+    oxygenLevel: 20,
+    time: {
+      timeOfDay: null,
+      day: null,
+      isDay: null
+    },
+    entity: {
+      id: 1,
+      position: { x: 0, y: 64, z: 0 }
+    },
+    inventory: {
+      items: () => []
+    },
+    entities
+  })
+
+  assert.equal(snapshot.nearby_entities.length, 16)
+  assert.deepEqual(
+    snapshot.nearby_entities.map((entity) => entity.id),
+    Array.from({ length: 16 }, (_, index) => index + 2)
+  )
+  assert.deepEqual(snapshot.nearby_entities_coverage, {
+    source_scope: 'mineflayer_entity_registry',
+    max_distance: 16,
+    max_entities: 16,
+    candidate_count: 16,
+    truncated: false
+  })
+})
+
+test('bounded entity snapshot marks in-radius candidates truncated at cap', () => {
+  const entities = {
+    1: {
+      id: 1,
+      name: 'player',
+      type: 'player',
+      position: { x: 0, y: 64, z: 0 }
+    }
+  }
+  for (let id = 2; id <= 19; id += 1) {
+    const angle = (id - 2) * (Math.PI * 2 / 18)
+    entities[id] = {
+      id,
+      name: 'zombie',
+      type: 'mob',
+      position: {
+        x: Math.cos(angle) * 5,
+        y: 64,
+        z: Math.sin(angle) * 5
+      }
+    }
+  }
+
+  const snapshot = snapshotFromBot({
+    health: 20,
+    food: 20,
+    oxygenLevel: 20,
+    time: {
+      timeOfDay: null,
+      day: null,
+      isDay: null
+    },
+    entity: {
+      id: 1,
+      position: { x: 0, y: 64, z: 0 }
+    },
+    inventory: {
+      items: () => []
+    },
+    entities
+  })
+
+  assert.equal(snapshot.nearby_entities.length, 16)
+  assert.equal(snapshot.nearby_entities_coverage.candidate_count, 18)
+  assert.equal(snapshot.nearby_entities_coverage.truncated, true)
 })
 
 test('snapshot still fails closed when health is not initialized', () => {
@@ -349,6 +454,13 @@ test('snapshot allows time to remain null before first time update', () => {
   assert.equal(snapshot.time, null)
   assert.deepEqual(snapshot.inventory, [])
   assert.deepEqual(snapshot.nearby_entities, [])
+  assert.deepEqual(snapshot.nearby_entities_coverage, {
+    source_scope: 'mineflayer_entity_registry',
+    max_distance: 16,
+    max_entities: 16,
+    candidate_count: 0,
+    truncated: false
+  })
 })
 
 test('time admission ignores ordinary clock progression within one phase', () => {

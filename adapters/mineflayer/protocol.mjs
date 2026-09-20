@@ -18,6 +18,7 @@ const EFFECTS = new Set([
 
 const MAX_NEARBY_ENTITY_DISTANCE = 16
 const MAX_NEARBY_ENTITIES = 16
+const NEARBY_ENTITY_SOURCE_SCOPE = 'mineflayer_entity_registry'
 
 function requireObject (name, value) {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
@@ -237,9 +238,9 @@ function distance (a, b) {
   return Math.sqrt(dx * dx + dy * dy + dz * dz)
 }
 
-function nearbyEntitySnapshot (bot) {
+function nearbyEntityObservation (bot) {
   const origin = bot.entity.position
-  const entities = Object.values(bot.entities || {})
+  const candidates = Object.values(bot.entities || {})
     .filter((entity) => (
       entity &&
       entity.id !== bot.entity.id &&
@@ -266,9 +267,17 @@ function nearbyEntitySnapshot (bot) {
     })
     .filter((entity) => entity.distance <= MAX_NEARBY_ENTITY_DISTANCE)
     .sort((a, b) => a.distance - b.distance || a.id - b.id)
-    .slice(0, MAX_NEARBY_ENTITIES)
 
-  return entities
+  return {
+    entities: candidates.slice(0, MAX_NEARBY_ENTITIES),
+    coverage: {
+      source_scope: NEARBY_ENTITY_SOURCE_SCOPE,
+      max_distance: MAX_NEARBY_ENTITY_DISTANCE,
+      max_entities: MAX_NEARBY_ENTITIES,
+      candidate_count: candidates.length,
+      truncated: candidates.length > MAX_NEARBY_ENTITIES
+    }
+  }
 }
 
 export function snapshotFromBot (bot) {
@@ -276,6 +285,7 @@ export function snapshotFromBot (bot) {
     throw new Error('bot position is unavailable before spawn')
   }
 
+  const nearby = nearbyEntityObservation(bot)
   return {
     health: requireFiniteNumber('bot.health', bot.health),
     food: requireFiniteNumber('bot.food', bot.food),
@@ -287,7 +297,8 @@ export function snapshotFromBot (bot) {
     },
     time: timeSnapshot(bot),
     inventory: inventorySnapshot(bot),
-    nearby_entities: nearbyEntitySnapshot(bot)
+    nearby_entities: nearby.entities,
+    nearby_entities_coverage: nearby.coverage
   }
 }
 

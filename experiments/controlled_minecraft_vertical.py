@@ -12,6 +12,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerObservation,
     MineflayerPosition,
+    mineflayer_yaw_to_target,
 )
 from adapters.mineflayer.runtime_admission import coordinate_mineflayer_message
 from relay_self.action import ActionLifecycle, ActionState
@@ -451,27 +452,6 @@ def build_flee_destination_request(
     )
 
 
-def yaw_to_destination(
-    current: MineflayerPosition,
-    destination: MineflayerPosition,
-) -> float:
-    """Return Mineflayer yaw radians from current horizontal position.
-
-    Match Mineflayer 4.39.0 bot.lookAt() exactly. For horizontal
-    displacement (dx, dz), Mineflayer computes atan2(-dx, -dz). Its Vec3
-    convention documents x as south and z as west, while yaw 0 is due east
-    and increases counter-clockwise.
-    """
-
-    dx = destination.x - current.x
-    dz = destination.z - current.z
-    if dx == 0 and dz == 0:
-        raise ControlledScenarioError(
-            "cannot compute heading to the current horizontal position"
-        )
-    return math.atan2(-dx, -dz)
-
-
 async def execute_decision(
     session: MineflayerScenarioSession,
     observation: MineflayerObservation,
@@ -695,7 +675,7 @@ async def _execute_flee(
     action_ids.append(look_id)
     await session.send_look(
         look_id,
-        yaw=yaw_to_destination(
+        yaw=mineflayer_yaw_to_target(
             start_position,
             destination.position,
         ),
