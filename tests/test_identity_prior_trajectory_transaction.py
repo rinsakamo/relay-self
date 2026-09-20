@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 import subprocess
 from pathlib import Path
@@ -1245,6 +1246,14 @@ def test_run_checks_owned_minecraft_process_before_transaction(
 
     assert asyncio.run(transaction.async_main(args)) == 0
     assert checks == [(4242, "Minecraft")]
+
+
+def test_220_keeps_generated_bounded_baseline_after_optional_jev_addition() -> None:
+    source = inspect.getsource(transaction.provider_engine)
+
+    assert "LlamaCppRelayProvider" in source
+    assert "systemone_endpoint" not in source
+    assert "/v1/chat/completions" in source
 
 
 def test_canonical_launcher_is_one_shot_and_blocks_before_run() -> None:
