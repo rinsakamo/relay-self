@@ -342,10 +342,14 @@ embodied result:
 - the explicitly retained Memory of the first successful FLEE destination.
 
 The durable Memory remains stored with its original live-world destination
-coordinates and provenance. Only its transient provider projection is converted
-into the same matched-local coordinate frame as the later Present and route
-catalog; the projection preserves the Memory's actual source and integration
-provenance rather than inventing replacement provenance.
+coordinates and exact provenance. Only its transient provider projection is
+converted into the same matched-local coordinate frame as the later Present and
+route catalog. The model-visible wrapper preserves the source class and the
+fixed integration provenance while replacing the run-specific Mineflayer
+session/sequence reference with the constant semantic reference
+`matched-first-grounded-consequence`. Exact durable provenance remains in the
+evidence report and is not leaked into cognition as a treatment-irrelevant run
+identifier.
 
 Those later differences are intended trajectory evidence, not treatment
 leakage.
