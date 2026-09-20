@@ -81,6 +81,8 @@ def test_transaction_plan_preserves_predeclared_order_and_zero_spend() -> None:
     )
     assert plan["condition_order"] == list(condition_sequence())
     assert plan["repetitions_per_condition"] == 3
+    assert "experiment-authored" in plan["route_description_grounding"]
+    assert "Mineflayer" in plan["route_description_grounding"]
 
 
 def test_frozen_initial_provider_request_hashes_remain_unchanged() -> None:
