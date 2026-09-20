@@ -207,7 +207,7 @@ def test_canonical_smoke_launcher_is_provider_free_and_one_shot() -> None:
     assert "llama-server" not in launcher
     assert "--model" not in launcher
     assert "GGUF" not in launcher
-    assert "npm ci --omit=dev --no-audit --no-fund" in launcher
+    assert '"$NPM" ci --omit=dev --no-audit --no-fund' in launcher
     assert "package-lock.json" in launcher
     assert "server.jar" in launcher
     assert "MINECRAFT_SOURCE_ROOT" not in launcher
