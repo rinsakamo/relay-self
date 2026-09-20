@@ -657,6 +657,14 @@ def observation_has_item(observation: MineflayerObservation, name: str) -> bool:
     return any(item.name == name and item.count > 0 for item in observation.snapshot.inventory)
 
 
+def resource_hunger_commands(username: str) -> tuple[str, str]:
+    username = require_text("Minecraft username", username)
+    return (
+        f"effect give {username} minecraft:hunger 30 255 true",
+        f"effect clear {username} minecraft:hunger",
+    )
+
+
 def nearby_entity_names(observation: MineflayerObservation) -> tuple[str, ...]:
     return tuple(
         sorted(
@@ -991,10 +999,13 @@ async def run_first_phase(args: argparse.Namespace, tracker: StageTracker) -> di
             command=f"give {args.username} minecraft:bread 2",
             reason="controlled resource intervention: edible inventory",
         )
+        hunger_command, clear_hunger_command = resource_hunger_commands(
+            args.username
+        )
         await write_server_command(
             control_path=Path(args.server_control),
             evidence_path=commands_path,
-            command=f"effect give {args.username} minecraft:hunger 30 255 true",
+            command=hunger_command,
             reason=(
                 "controlled resource intervention: drain food through "
                 "vanilla Hunger mechanics"
@@ -1011,7 +1022,7 @@ async def run_first_phase(args: argparse.Namespace, tracker: StageTracker) -> di
         await write_server_command(
             control_path=Path(args.server_control),
             evidence_path=commands_path,
-            command=f"effect clear {args.username} minecraft:hunger",
+            command=clear_hunger_command,
             reason=(
                 "controlled resource intervention cleanup after fresh "
                 "low-food evidence"
