@@ -520,22 +520,27 @@ def _cleanup_zero_observation_matches(
     observation: MineflayerObservation,
     expected_position: MineflayerPosition,
 ) -> bool:
-    return _common_reset_observation_matches(
-        observation,
-        expected_position,
-    ) and not _zombies(observation)
+    return (
+        _common_reset_observation_matches(
+            observation,
+            expected_position,
+        )
+        and not observation.snapshot.nearby_entities
+    )
 
 
 def _reset_observation_matches(
     observation: MineflayerObservation,
     expected_position: MineflayerPosition,
 ) -> bool:
+    entities = observation.snapshot.nearby_entities
     zombies = _zombies(observation)
     return (
         _common_reset_observation_matches(
             observation,
             expected_position,
         )
+        and len(entities) == 1
         and len(zombies) == 1
         and RESET_ZOMBIE_DISTANCE_MIN
         <= zombies[0].distance
@@ -620,7 +625,7 @@ async def reset_live_world(
         dx=RESET_CLEANUP_SENTINEL_OFFSET_X,
     )
     cleanup_server_zero_barrier_command = (
-        "execute unless entity @e[type=minecraft:zombie] run "
+        "execute unless entity @e[type=!minecraft:player] run "
         + _tp_command(args.username, cleanup_sentinel)
     )
     await write_server_command(
@@ -629,7 +634,7 @@ async def reset_live_world(
         command=cleanup_server_zero_barrier_command,
         reason=(
             "matched reset phase 1 causal barrier: teleport only after "
-            "server-side zero-zombie state"
+            "server-side zero non-player-entity state"
         ),
         settle_s=0.05,
     )
