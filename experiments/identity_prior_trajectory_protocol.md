@@ -445,7 +445,10 @@ following remain true on the exact execution subject:
   was not changed by installation, and records both its hash/copy and the
   resolved dependency tree as evidence;
 - the pinned Minecraft, Mineflayer, Java, llama.cpp, and GGUF identities pass
-  the existing #141 mechanical runtime preflight;
+  the existing #141 mechanical runtime preflight; the fresh Minecraft server
+  root is constructed from the pinned official `server.jar` plus generated
+  experiment configuration only, and does not import mutable external
+  `libraries/` or `versions/` runtime directories;
 - after runtime preflight, the launcher reacquires this authority immediately
   before `--phase run`.
 
