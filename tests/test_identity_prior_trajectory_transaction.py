@@ -599,12 +599,21 @@ def test_canonical_launcher_is_one_shot_and_blocks_before_run() -> None:
     assert launcher.count("--phase run") == 1
     assert "--phase plan" in launcher
     assert "--phase preflight" in launcher
-    assert "capture_authority initial" in launcher
-    assert "capture_authority final" in launcher
-    assert "NO MATERIAL CONFLICT" in launcher
+    assert launcher.count("capture_authority initial") == 1
+    assert launcher.count("capture_authority final") == 1
+    assert "QUALIFIED_FOR_NEW_TRANSACTION_SUBJECT" in launcher
+    assert "NOT_REQUALIFIED" in launcher
+    assert "subject_head:" in launcher
+    assert "subject_tree:" in launcher
+    assert "grep -q 'NO MATERIAL CONFLICT'" not in launcher
     assert "--phase first" not in launcher
     assert "--phase restart" not in launcher
     assert "same-run fixture tuning" not in launcher
+
+    preflight_index = launcher.index("--phase preflight")
+    final_gate_index = launcher.index("capture_authority final")
+    run_index = launcher.index("--phase run")
+    assert preflight_index < final_gate_index < run_index
 
     syntax = subprocess.run(
         [
