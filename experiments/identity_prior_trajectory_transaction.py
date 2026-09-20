@@ -414,7 +414,7 @@ def build_later_request(
                     ),
                     "source_provenance": {
                         "source": memory.source_provenance.source,
-                        "reference": memory.source_provenance.reference,
+                        "reference": "matched-first-grounded-consequence",
                     },
                 },
                 memory.integration_provenance,
