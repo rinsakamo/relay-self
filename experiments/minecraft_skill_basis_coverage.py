@@ -32,8 +32,12 @@ CANDIDATE_STATUS: dict[str, CandidateStatus] = {
     "CONTEMPLATE": CandidateStatus.REDUCED,
 }
 
-# Experiment-local abstraction over target-native capabilities. This is not a
-# production Action ontology or adapter contract.
+# Historical #304 name retained for compatibility. These values are
+# target-native affordance leaves, not terminal Self-basis primitives.
+# #312 requires every occurrence to be accounted for by a World-neutral
+# semantic family or an existing World-neutral owner/control above the adapter.
+# This remains experiment-local and is not a production Action ontology or
+# adapter contract.
 TARGET_PRIMITIVES: frozenset[str] = frozenset(
     {
         "MOVE",
@@ -68,9 +72,15 @@ class BehaviorDecomposition:
     proposed_skills: tuple[str, ...]
     surviving_candidates: tuple[str, ...]
     open_candidates: tuple[str, ...]
+    # Historical field name: these are target-native affordance leaves.
+    # They must not be counted as World-neutral basis coverage by themselves.
     primitives: tuple[str, ...]
     owners: tuple[str, ...] = ()
     pressure: str = ""
+
+    @property
+    def native_affordances(self) -> tuple[str, ...]:
+        return self.primitives
 
     def missing_current_primitives(self) -> tuple[str, ...]:
         return tuple(
