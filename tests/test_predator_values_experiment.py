@@ -318,6 +318,7 @@ def test_optional_transition_trace_does_not_perturb_seeded_simulation() -> None:
     assert all(trace.step >= 1 for trace in traces)
     assert all(trace.reward_genes is not None for trace in traces)
     assert any(trace.intrinsic_reward is not None for trace in traces)
+    assert all(len(trace.action_values) == 3 for trace in traces)
     assert all(
         trace.survived_predation <= trace.survived_natural_filter
         for trace in traces
