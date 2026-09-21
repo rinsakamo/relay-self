@@ -394,6 +394,22 @@ cheap compiled path
 
 The underlying Persistent Cognition must remain available when a compiled artifact is disabled or rejected. Deleting or replacing an execution artifact must not delete or redefine its source cognition.
 
+A model-facing projection of `Identity Specification` follows the same authority rule. The
+durable specification remains the source; a canonical prompt/request representation is transient
+execution material. Provider placement may be optimized for stable-prefix reuse, but:
+
+```text
+stable rendered prefix
+  != cache correctness
+  != cache authorization
+  != new identity authority
+```
+
+Changing request-local Present, Memory, Intent, Focus, or choices need not change the identity
+projection itself. Changing the source identity or its provenance must change the effective
+projection. Any actual prompt/KV reuse remains disabled until the responsible mechanism is
+independently qualified.
+
 Do not introduce merely for offline consolidation:
 
 - a global `ConsolidationState`;

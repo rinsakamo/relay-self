@@ -26,6 +26,17 @@ For an explicitly configured Jev-capable llama.cpp runtime, the preferred
 generated chat-completions baseline. RelaySelf does not probe for System One or
 silently switch mechanisms after a provider failure.
 
+The generated request families may carry one explicit canonical projection of the durable
+`IdentitySpecification`. When present, generated BOUNDED / THINK / OPEN place the same
+mode-independent contract plus canonical identity block at the beginning of the system message;
+mode-specific instructions follow it. Dynamic request id, Present/Memory context, Intent, Focus,
+choices, and instructions remain outside that stable identity block. The projection is transient
+request input, not a second identity store or provider-held mutable state.
+
+Jev/System One carries the same identity datum explicitly in its `state`. That is semantic
+alignment only: Jev and chat-completions still use different endpoint/template machinery, so this
+adapter makes no token-prefix or KV-reuse claim across them.
+
 The generated baseline uses:
 
 - temperature = 0;

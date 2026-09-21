@@ -53,6 +53,7 @@ from relay_self.persistent_cognition import (
 )
 from relay_self.provenance import InvalidProvenanceData, Provenance
 from relay_self.relay_engine import (
+    IDENTITY_CONTEXT_KEY,
     BoundedChoice,
     BoundedChoiceRequest,
     CognitionDatum,
@@ -64,6 +65,7 @@ from relay_self.relay_engine import (
     RelayEngineAttempt,
     RelayEngineError,
     RelayEngineResult,
+    project_identity_context,
 )
 from relay_self.runtime_coordination import (
     CognitionUnavailable,
@@ -106,6 +108,7 @@ __all__ = [
     "DuplicateIntentIdentity",
     "DuplicateMemoryIdentity",
     "DuplicateSupervisedAction",
+    "IDENTITY_CONTEXT_KEY",
     "IdentitySpecification",
     "IntentCommitment",
     "IntentCommitmentError",
@@ -146,6 +149,7 @@ __all__ = [
     "UnknownSupervisedAction",
     "UnsupportedPersistentCognitionVersion",
     "load_persistent_cognition",
+    "project_identity_context",
     "project_entity_appraisal",
     "save_persistent_cognition",
     "coordinate_decision_epoch",

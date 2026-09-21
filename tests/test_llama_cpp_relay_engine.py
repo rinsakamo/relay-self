@@ -1,5 +1,6 @@
 import json
 import urllib.error
+from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
@@ -9,9 +10,11 @@ from adapters.llama_cpp.relay_engine import (
     LlamaCppProviderProtocolError,
     LlamaCppRelayProvider,
     parse_llama_cpp_decision,
+    render_llama_cpp_identity_prefix,
     render_llama_cpp_open_request,
     render_llama_cpp_request,
 )
+from relay_self.persistent_cognition import IdentitySpecification
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     BoundedChoice,
@@ -21,11 +24,24 @@ from relay_self.relay_engine import (
     DecisionStatus,
     OpenCognitionRequest,
     RelayEngine,
+    project_identity_context,
 )
 
 
 def provenance(reference: str) -> Provenance:
     return Provenance(source="llama-cpp-provider-test", reference=reference)
+
+
+def identity_context():
+    identity = IdentitySpecification(
+        self_id="self-rin-001",
+        directives=(
+            "Preserve continued agency.",
+            "Treat observation as evidence rather than World truth.",
+        ),
+        provenance=provenance("identity-v1"),
+    )
+    return project_identity_context(identity)
 
 
 def bounded_request() -> BoundedChoiceRequest:
@@ -159,6 +175,89 @@ def test_think_request_is_explicit_and_has_larger_budget() -> None:
     }
     assert "explicit THINK escalation" in payload["messages"][0]["content"]
     assert "rationale" in payload["messages"][0]["content"]
+
+
+def test_generated_modes_share_stable_identity_prefix_before_mode_rules() -> None:
+    identity = identity_context()
+    bounded = replace(bounded_request(), identity_context=identity)
+    open_cognition = replace(open_request(), identity_context=identity)
+
+    bounded_body = render_llama_cpp_request(
+        bounded,
+        mode=CognitionMode.BOUNDED,
+        model="gemma-local",
+    )
+    think_body = render_llama_cpp_request(
+        bounded,
+        mode=CognitionMode.THINK,
+        model="gemma-local",
+    )
+    open_body = render_llama_cpp_open_request(
+        open_cognition,
+        model="gemma-local",
+    )
+
+    expected_prefix = render_llama_cpp_identity_prefix(bounded)
+    assert render_llama_cpp_identity_prefix(open_cognition) == expected_prefix
+
+    bounded_system = bounded_body["messages"][0]["content"]
+    think_system = think_body["messages"][0]["content"]
+    open_system = open_body["messages"][0]["content"]
+
+    assert bounded_system.startswith(expected_prefix)
+    assert think_system.startswith(expected_prefix)
+    assert open_system.startswith(expected_prefix)
+    assert "identity_context" not in json.loads(
+        bounded_body["messages"][1]["content"]
+    )
+    assert "identity_context" not in json.loads(
+        think_body["messages"][1]["content"]
+    )
+    assert "identity_context" not in json.loads(
+        open_body["messages"][1]["content"]
+    )
+    assert "Mode: BOUNDED." in bounded_system[len(expected_prefix):]
+    assert "Mode: THINK." in think_system[len(expected_prefix):]
+    assert "Mode: OPEN." in open_system[len(expected_prefix):]
+    assert bounded_body["cache_prompt"] is False
+    assert think_body["cache_prompt"] is False
+    assert open_body["cache_prompt"] is False
+
+
+def test_identity_prefix_changes_only_when_identity_projection_changes() -> None:
+    original = replace(
+        bounded_request(),
+        identity_context=identity_context(),
+    )
+    dynamic_change = replace(
+        original,
+        request_id="other-request",
+        intent_id="other-intent",
+        focus="OTHER",
+        context=(),
+        choices=(
+            BoundedChoice("left", "Left"),
+            BoundedChoice("right", "Right"),
+        ),
+    )
+    changed_identity = IdentitySpecification(
+        self_id="self-rin-002",
+        directives=("Preserve continued agency.",),
+        provenance=provenance("identity-v2"),
+    )
+    identity_change = replace(
+        original,
+        identity_context=project_identity_context(changed_identity),
+    )
+
+    assert (
+        render_llama_cpp_identity_prefix(original)
+        == render_llama_cpp_identity_prefix(dynamic_change)
+    )
+    assert (
+        render_llama_cpp_identity_prefix(original)
+        != render_llama_cpp_identity_prefix(identity_change)
+    )
 
 
 def test_bounded_parser_accepts_only_exact_schema() -> None:

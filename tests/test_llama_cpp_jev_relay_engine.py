@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
@@ -12,6 +13,7 @@ from adapters.llama_cpp.relay_engine import (
     render_llama_cpp_jev_request,
     render_llama_cpp_systemtwo_request,
 )
+from relay_self.persistent_cognition import IdentitySpecification
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     BoundedChoice,
@@ -20,6 +22,7 @@ from relay_self.relay_engine import (
     CognitionMode,
     DecisionStatus,
     RelayEngine,
+    project_identity_context,
 )
 
 
@@ -60,6 +63,19 @@ def bounded_request(*, think_allowed: bool = True) -> BoundedChoiceRequest:
             ),
         ),
         think_allowed=think_allowed,
+    )
+
+
+def identity_context():
+    return project_identity_context(
+        IdentitySpecification(
+            self_id="self-rin-001",
+            directives=("Preserve continued agency.",),
+            provenance=Provenance(
+                source="fixture.identity",
+                reference="identity-v1",
+            ),
+        )
     )
 
 
@@ -150,6 +166,33 @@ def test_render_jev_request_preserves_bounded_state_and_explicit_unresolved() ->
     assert decision["criteria"]["cave"] == "Reachable cave shelter"
     assert decision["criteria"]["ridge"] == "Exposed ridge"
     assert "__relay_self_unresolved__" in decision["criteria"]
+
+
+def test_jev_state_carries_explicit_identity_semantics_without_cache_claim() -> None:
+    request = replace(
+        bounded_request(),
+        identity_context=identity_context(),
+    )
+
+    state = render_llama_cpp_bounded_state(request)
+    body = render_llama_cpp_jev_request(
+        request,
+        model="gemma-local",
+    )
+
+    assert state["identity_context"] == {
+        "key": "identity_specification",
+        "value": {
+            "self_id": "self-rin-001",
+            "directives": ["Preserve continued agency."],
+        },
+        "provenance": {
+            "source": "fixture.identity",
+            "reference": "identity-v1",
+        },
+    }
+    assert body["state"] == state
+    assert "cache_prompt" not in body
 
 
 def test_systemtwo_candidate_shares_state_and_preserves_closed_answer_space() -> None:

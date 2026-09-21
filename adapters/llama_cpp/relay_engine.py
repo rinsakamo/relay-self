@@ -24,7 +24,14 @@ OPEN_MAX_TOKENS = 256
 _JEV_QUESTION_ID = "decision"
 _JEV_UNRESOLVED_CHOICE = "__relay_self_unresolved__"
 
-_BOUNDED_SYSTEM = (
+_COMMON_SYSTEM_PREFIX = (
+    "You are a cognition provider for RelaySelf. "
+    "The Identity Specification block below is transient model-facing input "
+    "derived from durable Self authority. It does not establish World truth, "
+    "authorize an Action, mutate Current Intent, or persist generated claims."
+)
+
+_LEGACY_BOUNDED_SYSTEM = (
     "You are the bounded cognition provider for RelaySelf. "
     "Use only the supplied transient context and finite choices. "
     "If one admissible choice is sufficiently justified, return exactly one JSON "
@@ -35,7 +42,7 @@ _BOUNDED_SYSTEM = (
     "Do not add prose, markdown, or other keys."
 )
 
-_THINK_SYSTEM = (
+_LEGACY_THINK_SYSTEM = (
     "You are handling an explicit THINK escalation for RelaySelf after bounded "
     "cognition did not safely resolve. Reconsider interactions and constraints "
     "using only the supplied transient context and finite choices. "
@@ -47,13 +54,26 @@ _THINK_SYSTEM = (
     "Do not add prose, markdown, or other keys."
 )
 
-_OPEN_SYSTEM = (
+_LEGACY_OPEN_SYSTEM = (
     "You are the open cognition provider for RelaySelf. "
     "Use only the supplied transient context to generate one expression. "
     "Return expression text only. The generated text is transient cognition: "
     "it does not itself establish World truth, mutate Current Intent, persist "
     "Memory, authorize an Action, or prove external delivery. "
     "Do not add a hidden decision or THINK escalation."
+)
+
+_IDENTITY_BOUNDED_SUFFIX = "Mode: BOUNDED. " + _LEGACY_BOUNDED_SYSTEM.removeprefix(
+    "You are the bounded cognition provider for RelaySelf. "
+)
+_IDENTITY_THINK_SUFFIX = (
+    "Mode: THINK. "
+    + _LEGACY_THINK_SYSTEM.removeprefix(
+        "You are handling an explicit THINK escalation for RelaySelf after "
+    )
+)
+_IDENTITY_OPEN_SUFFIX = "Mode: OPEN. " + _LEGACY_OPEN_SYSTEM.removeprefix(
+    "You are the open cognition provider for RelaySelf. "
 )
 
 
@@ -63,6 +83,70 @@ class LlamaCppProviderError(RuntimeError):
 
 class LlamaCppProviderProtocolError(LlamaCppProviderError):
     """Raised when provider/model output violates the declared wire contract."""
+
+
+def _identity_payload(
+    request: BoundedChoiceRequest | OpenCognitionRequest,
+) -> dict[str, object] | None:
+    identity = request.identity_context
+    if identity is None:
+        return None
+    return {
+        "key": identity.key,
+        "value": json.loads(identity.value_json),
+        "provenance": {
+            "source": identity.provenance.source,
+            "reference": identity.provenance.reference,
+        },
+    }
+
+
+def render_llama_cpp_identity_prefix(
+    request: BoundedChoiceRequest | OpenCognitionRequest,
+) -> str:
+    """Render the mode-independent leading system prefix for one identity."""
+
+    if not isinstance(request, (BoundedChoiceRequest, OpenCognitionRequest)):
+        raise TypeError(
+            "request must be BoundedChoiceRequest or OpenCognitionRequest"
+        )
+    identity_text = json.dumps(
+        _identity_payload(request),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return (
+        _COMMON_SYSTEM_PREFIX
+        + "\nIdentity Specification:\n"
+        + identity_text
+        + "\n\n"
+    )
+
+
+def _system_message(
+    request: BoundedChoiceRequest | OpenCognitionRequest,
+    *,
+    mode: CognitionMode,
+) -> str:
+    if request.identity_context is None:
+        if mode is CognitionMode.BOUNDED:
+            return _LEGACY_BOUNDED_SYSTEM
+        if mode is CognitionMode.THINK:
+            return _LEGACY_THINK_SYSTEM
+        if mode is CognitionMode.OPEN:
+            return _LEGACY_OPEN_SYSTEM
+        raise TypeError("unsupported cognition mode")
+
+    if mode is CognitionMode.BOUNDED:
+        suffix = _IDENTITY_BOUNDED_SUFFIX
+    elif mode is CognitionMode.THINK:
+        suffix = _IDENTITY_THINK_SUFFIX
+    elif mode is CognitionMode.OPEN:
+        suffix = _IDENTITY_OPEN_SUFFIX
+    else:
+        raise TypeError("unsupported cognition mode")
+    return render_llama_cpp_identity_prefix(request) + suffix
 
 
 def _decision_response_format(
@@ -122,7 +206,7 @@ def render_llama_cpp_bounded_state(
     if not isinstance(request, BoundedChoiceRequest):
         raise TypeError("request must be BoundedChoiceRequest")
 
-    return {
+    state: dict[str, object] = {
         "request_id": request.request_id,
         "intent_id": request.intent_id,
         "focus": request.focus,
@@ -138,6 +222,10 @@ def render_llama_cpp_bounded_state(
             for datum in request.context
         ],
     }
+    identity = _identity_payload(request)
+    if identity is not None:
+        state["identity_context"] = identity
+    return state
 
 
 def render_llama_cpp_request(
@@ -155,8 +243,13 @@ def render_llama_cpp_request(
         raise TypeError("bounded request mode must be BOUNDED or THINK")
 
     state = render_llama_cpp_bounded_state(request)
+    dynamic_state = {
+        key: value
+        for key, value in state.items()
+        if key != "identity_context"
+    }
     payload = {
-        **state,
+        **dynamic_state,
         "instruction": request.instruction,
         "choices": [
             {
@@ -167,11 +260,7 @@ def render_llama_cpp_request(
         ],
     }
 
-    system = (
-        _BOUNDED_SYSTEM
-        if mode is CognitionMode.BOUNDED
-        else _THINK_SYSTEM
-    )
+    system = _system_message(request, mode=mode)
     max_tokens = (
         BOUNDED_MAX_TOKENS
         if mode is CognitionMode.BOUNDED
@@ -339,7 +428,10 @@ def render_llama_cpp_open_request(
         "reasoning_effort": "none",
         "cache_prompt": False,
         "messages": [
-            {"role": "system", "content": _OPEN_SYSTEM},
+            {
+                "role": "system",
+                "content": _system_message(request, mode=CognitionMode.OPEN),
+            },
             {
                 "role": "user",
                 "content": json.dumps(

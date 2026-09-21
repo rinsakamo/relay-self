@@ -44,6 +44,32 @@ The projection is Self-relative. A World or adapter may attest an entity species
 position, distance, motion, or body event; it does not thereby establish `enemy`, `ally`,
 `fear`, or an Action requirement.
 
+A distinct supported projection exists at the cognition-provider boundary for durable identity:
+
+```text
+Identity Specification             # Persistent Cognition authority
+  -> canonical CognitionDatum       # pure transient projection
+  -> request-carried identity input
+  -> provider rendering
+```
+
+The projection is not another identity store and is not part of dynamic Present/Memory context.
+Generated provider renderings may place the canonical identity block in a stable leading prefix
+before mode-specific cognition instructions. Jev/System One may carry the same identity semantics
+inside its explicit state representation. Semantic equivalence across provider surfaces does not
+establish token/KV-cache compatibility, and cache eligibility remains a separate mechanism /
+qualification question.
+
+Preserve:
+
+```text
+Identity Specification
+  != model-facing identity projection
+  != prompt prefix bytes/tokens
+  != KV cache
+  != compiled model artifact
+```
+
 ### 3. Embodied Boundary
 
 The causal coupling surface between Self-side cognition/control and external environment/body execution.

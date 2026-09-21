@@ -5,6 +5,7 @@ import pytest
 
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.intent import IntentCommitment
+from relay_self.persistent_cognition import IdentitySpecification
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     BoundedChoice,
@@ -18,6 +19,7 @@ from relay_self.relay_engine import (
     ProviderDecision,
     ProviderExpression,
     RelayEngine,
+    project_identity_context,
 )
 from relay_self.runtime_coordination import coordinate_decision_epoch
 from relay_self.skill import SkillExecution, SkillState
@@ -25,6 +27,25 @@ from relay_self.skill import SkillExecution, SkillState
 
 def provenance(reference: str) -> Provenance:
     return Provenance(source="relay-engine-test", reference=reference)
+
+
+def identity(
+    *,
+    self_id: str = "self-rin-001",
+    directives: tuple[str, ...] = (
+        "Preserve continued agency.",
+        "Treat observation as evidence rather than World truth.",
+    ),
+    reference: str = "identity-v1",
+) -> IdentitySpecification:
+    return IdentitySpecification(
+        self_id=self_id,
+        directives=directives,
+        provenance=Provenance(
+            source="relay-engine-test",
+            reference=reference,
+        ),
+    )
 
 
 def request() -> BoundedChoiceRequest:
@@ -55,6 +76,66 @@ def request() -> BoundedChoiceRequest:
             ),
         ),
     )
+
+
+def test_identity_projection_is_deterministic_and_source_sensitive() -> None:
+    original = identity()
+    same = identity()
+    changed_self = identity(self_id="self-rin-002")
+    changed_directives = identity(
+        directives=("Preserve continued agency.",)
+    )
+    changed_provenance = identity(reference="identity-v2")
+
+    projected = project_identity_context(original)
+
+    assert projected == project_identity_context(same)
+    assert projected != project_identity_context(changed_self)
+    assert projected != project_identity_context(changed_directives)
+    assert projected != project_identity_context(changed_provenance)
+    assert projected.key == "identity_specification"
+    assert json.loads(projected.value_json) == {
+        "self_id": "self-rin-001",
+        "directives": [
+            "Preserve continued agency.",
+            "Treat observation as evidence rather than World truth.",
+        ],
+    }
+    assert projected.provenance == original.provenance
+
+
+def test_identity_projection_is_independent_of_dynamic_request_state() -> None:
+    projected = project_identity_context(identity())
+    first = replace(request(), identity_context=projected)
+    second = replace(
+        request(),
+        request_id="other-request",
+        intent_id="other-intent",
+        focus="OTHER",
+        context=(),
+        choices=(
+            BoundedChoice("left", "Left"),
+            BoundedChoice("right", "Right"),
+        ),
+        identity_context=projected,
+    )
+
+    assert first.identity_context == second.identity_context == projected
+
+
+def test_identity_context_rejects_generic_context_datum() -> None:
+    with pytest.raises(
+        InvalidRelayEngineData,
+        match="identity_specification",
+    ):
+        replace(
+            request(),
+            identity_context=CognitionDatum.from_value(
+                "memory",
+                {"content": "not identity"},
+                provenance("memory"),
+            ),
+        )
 
 
 class RecordingProvider:
