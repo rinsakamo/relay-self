@@ -2,6 +2,9 @@ from experiments.minecraft_skill_basis_coverage import (
     BEHAVIOR_CORPUS,
     CANDIDATE_SKILL_BASIS,
     CANDIDATE_STATUS,
+    CANDIDATE_WORLD_NEUTRAL_BASIS,
+    MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS,
+    MINECRAFT_NATIVE_AFFORDANCES,
     CandidateStatus,
     corpus_by_id,
     open_basis_usage,
@@ -13,6 +16,37 @@ from experiments.minecraft_skill_basis_coverage import (
 
 def test_minecraft_skill_basis_coverage_corpus_is_internally_consistent() -> None:
     assert validate_corpus() == ()
+
+
+
+def test_minecraft_native_affordances_cannot_terminate_world_neutral_basis() -> None:
+    basis = set(CANDIDATE_WORLD_NEUTRAL_BASIS)
+
+    assert set(MINECRAFT_NATIVE_AFFORDANCES).isdisjoint(basis)
+    assert "LOCOMOTE" in basis
+    assert "USE" in basis
+
+    assert "LOCOMOTE" in MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS["MOVE"]
+    assert MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS["BREAK"] == ("USE",)
+    assert MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS["PLACE"] == ("USE",)
+    assert MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS["CRAFT"] == ("USE",)
+    assert MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS["TRANSFER"] == ("USE",)
+    assert MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS["CONSUME"] == ("EAT",)
+    assert MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS["ATTACK"] == ("FIGHT",)
+    assert MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS["CHAT_DELIVERY"] == (
+        "TALK",
+    )
+
+
+def test_every_native_affordance_used_by_the_corpus_has_portable_mapping_pressure() -> None:
+    used = {
+        primitive
+        for case in BEHAVIOR_CORPUS
+        for primitive in case.primitives
+    }
+
+    assert used <= set(MINECRAFT_NATIVE_AFFORDANCES)
+    assert used <= set(MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS)
 
 
 def test_candidate_vocabulary_is_separate_from_current_grand_null_status() -> None:
