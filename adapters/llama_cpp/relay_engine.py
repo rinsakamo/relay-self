@@ -31,8 +31,8 @@ _COMMON_SYSTEM_PREFIX = (
     "authorize an Action, mutate Current Intent, or persist generated claims."
 )
 
-_BOUNDED_SYSTEM = (
-    "Mode: BOUNDED. "
+_LEGACY_BOUNDED_SYSTEM = (
+    "You are the bounded cognition provider for RelaySelf. "
     "Use only the supplied transient context and finite choices. "
     "If one admissible choice is sufficiently justified, return exactly one JSON "
     "object with keys status and choice_id: "
@@ -42,9 +42,9 @@ _BOUNDED_SYSTEM = (
     "Do not add prose, markdown, or other keys."
 )
 
-_THINK_SYSTEM = (
-    "Mode: THINK. This is an explicit THINK escalation after bounded cognition "
-    "did not safely resolve. Reconsider interactions and constraints "
+_LEGACY_THINK_SYSTEM = (
+    "You are handling an explicit THINK escalation for RelaySelf after bounded "
+    "cognition did not safely resolve. Reconsider interactions and constraints "
     "using only the supplied transient context and finite choices. "
     "Return exactly one JSON object with keys status, choice_id, and rationale. "
     'For resolution use {"status":"resolved","choice_id":"<id>",'
@@ -54,13 +54,26 @@ _THINK_SYSTEM = (
     "Do not add prose, markdown, or other keys."
 )
 
-_OPEN_SYSTEM = (
-    "Mode: OPEN. "
+_LEGACY_OPEN_SYSTEM = (
+    "You are the open cognition provider for RelaySelf. "
     "Use only the supplied transient context to generate one expression. "
     "Return expression text only. The generated text is transient cognition: "
     "it does not itself establish World truth, mutate Current Intent, persist "
     "Memory, authorize an Action, or prove external delivery. "
     "Do not add a hidden decision or THINK escalation."
+)
+
+_IDENTITY_BOUNDED_SUFFIX = "Mode: BOUNDED. " + _LEGACY_BOUNDED_SYSTEM.removeprefix(
+    "You are the bounded cognition provider for RelaySelf. "
+)
+_IDENTITY_THINK_SUFFIX = (
+    "Mode: THINK. "
+    + _LEGACY_THINK_SYSTEM.removeprefix(
+        "You are handling an explicit THINK escalation for RelaySelf after "
+    )
+)
+_IDENTITY_OPEN_SUFFIX = "Mode: OPEN. " + _LEGACY_OPEN_SYSTEM.removeprefix(
+    "You are the open cognition provider for RelaySelf. "
 )
 
 
@@ -116,12 +129,21 @@ def _system_message(
     *,
     mode: CognitionMode,
 ) -> str:
+    if request.identity_context is None:
+        if mode is CognitionMode.BOUNDED:
+            return _LEGACY_BOUNDED_SYSTEM
+        if mode is CognitionMode.THINK:
+            return _LEGACY_THINK_SYSTEM
+        if mode is CognitionMode.OPEN:
+            return _LEGACY_OPEN_SYSTEM
+        raise TypeError("unsupported cognition mode")
+
     if mode is CognitionMode.BOUNDED:
-        suffix = _BOUNDED_SYSTEM
+        suffix = _IDENTITY_BOUNDED_SUFFIX
     elif mode is CognitionMode.THINK:
-        suffix = _THINK_SYSTEM
+        suffix = _IDENTITY_THINK_SUFFIX
     elif mode is CognitionMode.OPEN:
-        suffix = _OPEN_SYSTEM
+        suffix = _IDENTITY_OPEN_SUFFIX
     else:
         raise TypeError("unsupported cognition mode")
     return render_llama_cpp_identity_prefix(request) + suffix
