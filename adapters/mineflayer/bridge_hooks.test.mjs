@@ -176,24 +176,34 @@ test('attack target resolver fails closed on missing, self, or invalid ids', () 
 
 test('entityHurt payload preserves target and source identity', () => {
   assert.deepEqual(
-    entityHurtPayload({ id: 7 }, { id: 1 }),
+    entityHurtPayload({ id: 7 }, { id: 1 }, 1),
     {
       entity_id: 7,
-      source_entity_id: 1
+      source_entity_id: 1,
+      actor_entity_id: 1
     }
   )
 })
 
 test('entityHurt payload preserves missing source without inventing one', () => {
   assert.deepEqual(
-    entityHurtPayload({ id: 7 }, undefined),
+    entityHurtPayload({ id: 7 }, undefined, 1),
     {
       entity_id: 7,
-      source_entity_id: null
+      source_entity_id: null,
+      actor_entity_id: 1
     }
   )
   assert.throws(
-    () => entityHurtPayload({}, { id: 1 }),
+    () => entityHurtPayload({}, { id: 1 }, 1),
     /hurt entity must expose a non-negative integer id/
+  )
+})
+
+
+test('entityHurt payload rejects an invalid controlled actor id', () => {
+  assert.throws(
+    () => entityHurtPayload({ id: 7 }, { id: 1 }, -1),
+    /actorEntityId must be a non-negative integer/
   )
 })
