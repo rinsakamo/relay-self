@@ -114,6 +114,32 @@ def _decision_response_format(
     }
 
 
+def render_llama_cpp_bounded_state(
+    request: BoundedChoiceRequest,
+) -> dict[str, object]:
+    """Render the cognition state shared by bounded execution realizations."""
+
+    if not isinstance(request, BoundedChoiceRequest):
+        raise TypeError("request must be BoundedChoiceRequest")
+
+    return {
+        "request_id": request.request_id,
+        "intent_id": request.intent_id,
+        "focus": request.focus,
+        "context": [
+            {
+                "key": datum.key,
+                "value": json.loads(datum.value_json),
+                "provenance": {
+                    "source": datum.provenance.source,
+                    "reference": datum.provenance.reference,
+                },
+            }
+            for datum in request.context
+        ],
+    }
+
+
 def render_llama_cpp_request(
     request: BoundedChoiceRequest,
     *,
@@ -128,22 +154,10 @@ def render_llama_cpp_request(
     if mode not in {CognitionMode.BOUNDED, CognitionMode.THINK}:
         raise TypeError("bounded request mode must be BOUNDED or THINK")
 
-    context = [
-        {
-            "key": datum.key,
-            "value": json.loads(datum.value_json),
-            "provenance": {
-                "source": datum.provenance.source,
-                "reference": datum.provenance.reference,
-            },
-        }
-        for datum in request.context
-    ]
+    state = render_llama_cpp_bounded_state(request)
     payload = {
-        "request_id": request.request_id,
+        **state,
         "instruction": request.instruction,
-        "intent_id": request.intent_id,
-        "focus": request.focus,
         "choices": [
             {
                 "choice_id": choice.choice_id,
@@ -151,7 +165,6 @@ def render_llama_cpp_request(
             }
             for choice in request.choices
         ],
-        "context": context,
     }
 
     system = (
@@ -210,23 +223,7 @@ def render_llama_cpp_jev_request(
             "bounded choice_id collides with reserved Jev unresolved choice"
         )
 
-    context = [
-        {
-            "key": datum.key,
-            "value": json.loads(datum.value_json),
-            "provenance": {
-                "source": datum.provenance.source,
-                "reference": datum.provenance.reference,
-            },
-        }
-        for datum in request.context
-    ]
-    state = {
-        "request_id": request.request_id,
-        "intent_id": request.intent_id,
-        "focus": request.focus,
-        "context": context,
-    }
+    state = render_llama_cpp_bounded_state(request)
     criteria = {
         choice.choice_id: choice.description
         for choice in request.choices
@@ -246,6 +243,65 @@ def render_llama_cpp_jev_request(
                 "criteria": criteria,
             }
         },
+    }
+
+
+def render_llama_cpp_systemtwo_request(
+    request: BoundedChoiceRequest,
+    *,
+    model: str,
+) -> dict[str, object]:
+    """Render an additive System Two candidate over the same bounded state.
+
+    The active provider path does not use this renderer yet. It exists to freeze
+    the deterministic sibling shape before any endpoint switch or cache claim.
+    """
+
+    if not isinstance(request, BoundedChoiceRequest):
+        raise TypeError("request must be BoundedChoiceRequest")
+    _require_text("model", model)
+
+    state = render_llama_cpp_bounded_state(request)
+    state_text = json.dumps(
+        state,
+        ensure_ascii=False,
+        sort_keys=True,
+        indent=2,
+    )
+    options = "\n".join(
+        f"{choice.choice_id}: {choice.description}"
+        for choice in request.choices
+    )
+    user_message = (
+        "Context:\n"
+        + state_text
+        + "\n\n"
+        + "Perform deeper bounded cognition using only the supplied transient "
+        "context and admissible options. Resolve to one option only when "
+        "sufficiently justified; otherwise report unresolved. Include a brief "
+        "rationale in the structured response.\n"
+        + "Question: "
+        + request.instruction
+        + "\nOptions:\n"
+        + options
+    )
+
+    return {
+        "model": model,
+        "temperature": 0,
+        "max_tokens": THINK_MAX_TOKENS,
+        "reasoning_effort": "none",
+        "cache_prompt": False,
+        "response_format": _decision_response_format(
+            request,
+            mode=CognitionMode.THINK,
+        ),
+        "messages": [
+            {
+                "role": "user",
+                "content": user_message,
+            }
+        ],
     }
 
 

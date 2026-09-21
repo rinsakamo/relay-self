@@ -8,7 +8,9 @@ import pytest
 from adapters.llama_cpp.relay_engine import (
     LlamaCppProviderProtocolError,
     LlamaCppRelayProvider,
+    render_llama_cpp_bounded_state,
     render_llama_cpp_jev_request,
+    render_llama_cpp_systemtwo_request,
 )
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
@@ -150,6 +152,103 @@ def test_render_jev_request_preserves_bounded_state_and_explicit_unresolved() ->
     assert "__relay_self_unresolved__" in decision["criteria"]
 
 
+def test_systemtwo_candidate_shares_state_and_preserves_closed_answer_space() -> None:
+    request = bounded_request()
+    state = render_llama_cpp_bounded_state(request)
+    systemone = render_llama_cpp_jev_request(
+        request,
+        model="gemma-local",
+    )
+    systemtwo = render_llama_cpp_systemtwo_request(
+        request,
+        model="gemma-local",
+    )
+
+    assert systemone["state"] == state
+    assert systemtwo["model"] == "gemma-local"
+    assert systemtwo["temperature"] == 0
+    assert systemtwo["max_tokens"] == 256
+    assert systemtwo["reasoning_effort"] == "none"
+    assert systemtwo["cache_prompt"] is False
+
+    messages = systemtwo["messages"]
+    assert len(messages) == 1
+    assert messages[0]["role"] == "user"
+
+    state_prefix = (
+        "Context:\n"
+        + json.dumps(
+            state,
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=2,
+        )
+        + "\n\n"
+    )
+    user = messages[0]["content"]
+    assert user.startswith(state_prefix)
+    assert "Question: Choose the safer reachable destination." in user
+    assert "cave: Reachable cave shelter" in user
+    assert "ridge: Exposed ridge" in user
+    assert "__relay_self_unresolved__" not in user
+
+    schema = systemtwo["response_format"]["json_schema"]["schema"]
+    assert schema["required"] == ["status", "choice_id", "rationale"]
+    assert schema["properties"]["choice_id"]["anyOf"] == [
+        {"type": "string", "enum": ["cave", "ridge"]},
+        {"type": "null"},
+    ]
+
+
+def test_systemtwo_candidate_does_not_mutate_current_systemone_request_shape() -> None:
+    request = bounded_request()
+    body = render_llama_cpp_jev_request(
+        request,
+        model="gemma-local",
+    )
+
+    assert body == {
+        "model": "gemma-local",
+        "state": {
+            "request_id": "jev-flee-1",
+            "intent_id": "intent-reach-safety",
+            "focus": "FLEE",
+            "context": [
+                {
+                    "key": "threat_nearby",
+                    "value": True,
+                    "provenance": {
+                        "source": "fixture.world",
+                        "reference": "rev:1:threat",
+                    },
+                },
+                {
+                    "key": "route_open:cave",
+                    "value": True,
+                    "provenance": {
+                        "source": "fixture.world",
+                        "reference": "rev:1:route:cave",
+                    },
+                },
+            ],
+        },
+        "questions": {
+            "decision": {
+                "type": "choice",
+                "instructions": "Choose the safer reachable destination.",
+                "criteria": {
+                    "cave": "Reachable cave shelter",
+                    "ridge": "Exposed ridge",
+                    "__relay_self_unresolved__": (
+                        "The supplied transient context is insufficient or "
+                        "contradictory for choosing any admissible option."
+                    ),
+                },
+            }
+        },
+    }
+
+
 def test_jev_bounded_resolves_without_chat_generation() -> None:
     with patch(
         "urllib.request.urlopen",
@@ -202,6 +301,11 @@ def test_jev_unresolved_uses_existing_explicit_think_escalation() -> None:
     assert call.call_args_list[1].args[0].full_url == (
         "http://127.0.0.1:8080/v1/chat/completions"
     )
+    active_think_body = json.loads(
+        call.call_args_list[1].args[0].data.decode("utf-8")
+    )
+    assert active_think_body["messages"][0]["role"] == "system"
+    assert "explicit THINK escalation" in active_think_body["messages"][0]["content"]
     assert result.status is DecisionStatus.RESOLVED
     assert result.choice_id == "ridge"
     assert result.escalated is True
