@@ -1,9 +1,12 @@
 from experiments.minecraft_skill_basis_coverage import (
     BEHAVIOR_CORPUS,
-    CANDIDATE_ABLATION_WITNESSES,
     CANDIDATE_SKILL_BASIS,
-    basis_usage,
+    CANDIDATE_STATUS,
+    CandidateStatus,
     corpus_by_id,
+    open_basis_usage,
+    proposed_basis_usage,
+    surviving_basis_usage,
     validate_corpus,
 )
 
@@ -12,12 +15,52 @@ def test_minecraft_skill_basis_coverage_corpus_is_internally_consistent() -> Non
     assert validate_corpus() == ()
 
 
-def test_every_candidate_basis_skill_has_usage_and_ablation_pressure() -> None:
-    usage = basis_usage()
+def test_candidate_vocabulary_is_separate_from_current_grand_null_status() -> None:
+    proposed = proposed_basis_usage()
 
-    assert set(usage) == set(CANDIDATE_SKILL_BASIS)
-    assert set(CANDIDATE_ABLATION_WITNESSES) == set(CANDIDATE_SKILL_BASIS)
-    assert all(usage[skill] for skill in CANDIDATE_SKILL_BASIS)
+    assert set(proposed) == set(CANDIDATE_SKILL_BASIS)
+    assert all(proposed[skill] for skill in CANDIDATE_SKILL_BASIS)
+    assert CANDIDATE_STATUS["WAIT"] is CandidateStatus.REDUCED
+    assert CANDIDATE_STATUS["CONTEMPLATE"] is CandidateStatus.REDUCED
+    assert CANDIDATE_STATUS["SEEK"] is CandidateStatus.OPEN
+    assert CANDIDATE_STATUS["EAT"] is CandidateStatus.SURVIVES_CURRENT_ATTACK
+    assert CANDIDATE_STATUS["FIGHT"] is CandidateStatus.SURVIVES_CURRENT_ATTACK
+    assert CANDIDATE_STATUS["FLEE"] is CandidateStatus.SURVIVES_CURRENT_ATTACK
+    assert CANDIDATE_STATUS["TALK"] is CandidateStatus.SURVIVES_CURRENT_ATTACK
+
+
+def test_reduced_candidates_do_not_reappear_as_surviving_or_open_skills() -> None:
+    surviving = surviving_basis_usage()
+    open_ = open_basis_usage()
+
+    assert surviving["WAIT"] == ()
+    assert open_["WAIT"] == ()
+    assert surviving["CONTEMPLATE"] == ()
+    assert open_["CONTEMPLATE"] == ()
+
+
+def test_active_seek_pressure_is_open_but_known_navigation_does_not_require_seek() -> None:
+    cases = corpus_by_id()
+
+    remembered = cases["navigate_remembered_location"]
+    unknown = cases["search_unknown_resource"]
+
+    assert remembered.proposed_skills == ("SEEK",)
+    assert remembered.surviving_candidates == ()
+    assert remembered.open_candidates == ()
+
+    assert unknown.proposed_skills == ("SEEK",)
+    assert unknown.surviving_candidates == ()
+    assert unknown.open_candidates == ("SEEK",)
+
+
+def test_current_real_skill_surfaces_survive_without_claiming_irreducibility() -> None:
+    surviving = surviving_basis_usage()
+
+    assert "eat_available_food" in surviving["EAT"]
+    assert "direct_combat" in surviving["FIGHT"]
+    assert "escape_threat" in surviving["FLEE"]
+    assert "coordinate_two_agent_attack" in surviving["TALK"]
 
 
 def test_hard_counterexample_families_are_present() -> None:
@@ -67,9 +110,26 @@ def test_missing_adapter_primitives_are_kept_separate_from_skill_vocabulary() ->
 def test_not_every_meaningful_adaptation_is_forced_into_a_skill() -> None:
     learning = corpus_by_id()["learn_from_failed_route_or_fight"]
 
-    assert learning.skills == ()
+    assert learning.proposed_skills == ()
+    assert learning.surviving_candidates == ()
+    assert learning.open_candidates == ()
     assert learning.primitives == ()
     assert "Experience Integration" in learning.owners
+
+
+def test_internal_cognition_does_not_require_contemplate_by_label() -> None:
+    cases = corpus_by_id()
+
+    planning = cases["plan_multi_step_expedition"]
+    novel = cases["create_novel_structure"]
+
+    assert planning.proposed_skills == ("CONTEMPLATE",)
+    assert planning.surviving_candidates == ()
+    assert planning.open_candidates == ()
+
+    assert "CONTEMPLATE" in novel.proposed_skills
+    assert "CONTEMPLATE" not in novel.surviving_candidates
+    assert "CONTEMPLATE" not in novel.open_candidates
 
 
 def test_named_compounds_do_not_enter_the_candidate_basis() -> None:
@@ -91,6 +151,6 @@ def test_named_compounds_do_not_enter_the_candidate_basis() -> None:
 
     assert rejected_named_compounds.isdisjoint(CANDIDATE_SKILL_BASIS)
     assert all(
-        rejected_named_compounds.isdisjoint(case.skills)
+        rejected_named_compounds.isdisjoint(case.proposed_skills)
         for case in BEHAVIOR_CORPUS
     )

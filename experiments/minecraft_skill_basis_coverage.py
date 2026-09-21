@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 
 CANDIDATE_SKILL_BASIS: tuple[str, ...] = (
     "WAIT",
@@ -11,6 +12,25 @@ CANDIDATE_SKILL_BASIS: tuple[str, ...] = (
     "TALK",
     "CONTEMPLATE",
 )
+
+
+class CandidateStatus(str, Enum):
+    """Current experiment-local result of the Grand Null attack."""
+
+    REDUCED = "reduced"
+    OPEN = "open"
+    SURVIVES_CURRENT_ATTACK = "survives_current_attack"
+
+
+CANDIDATE_STATUS: dict[str, CandidateStatus] = {
+    "WAIT": CandidateStatus.REDUCED,
+    "EAT": CandidateStatus.SURVIVES_CURRENT_ATTACK,
+    "FIGHT": CandidateStatus.SURVIVES_CURRENT_ATTACK,
+    "FLEE": CandidateStatus.SURVIVES_CURRENT_ATTACK,
+    "SEEK": CandidateStatus.OPEN,
+    "TALK": CandidateStatus.SURVIVES_CURRENT_ATTACK,
+    "CONTEMPLATE": CandidateStatus.REDUCED,
+}
 
 # Experiment-local abstraction over target-native capabilities. This is not a
 # production Action ontology or adapter contract.
@@ -31,27 +51,23 @@ TARGET_PRIMITIVES: frozenset[str] = frozenset(
     }
 )
 
-# Snapshot of the abstract primitive families reachable through the current
-# Mineflayer effect surface at Issue #304 creation time. It is evidence for
-# coverage bookkeeping only; the adapter remains authoritative for its actual
-# protocol.
+# Snapshot of abstract primitive families reachable through the current
+# Mineflayer effect surface. The adapter remains authoritative for its protocol.
 CURRENT_ADAPTER_PRIMITIVE_FIXTURE: frozenset[str] = frozenset(
-    {
-        "MOVE",
-        "LOOK",
-        "EQUIP",
-        "CONSUME",
-        "ATTACK",
-    }
+    {"MOVE", "LOOK", "EQUIP", "CONSUME", "ATTACK"}
 )
 
 
 @dataclass(frozen=True, slots=True)
 class BehaviorDecomposition:
+    """One falsification record, not a declaration of required Skills."""
+
     behavior_id: str
     family: str
     summary: str
-    skills: tuple[str, ...]
+    proposed_skills: tuple[str, ...]
+    surviving_candidates: tuple[str, ...]
+    open_candidates: tuple[str, ...]
     primitives: tuple[str, ...]
     owners: tuple[str, ...] = ()
     pressure: str = ""
@@ -64,231 +80,291 @@ class BehaviorDecomposition:
         )
 
 
+def _case(
+    behavior_id: str,
+    family: str,
+    summary: str,
+    proposed: tuple[str, ...],
+    *,
+    surviving: tuple[str, ...] = (),
+    open_: tuple[str, ...] = (),
+    primitives: tuple[str, ...] = (),
+    owners: tuple[str, ...] = (),
+    pressure: str,
+) -> BehaviorDecomposition:
+    return BehaviorDecomposition(
+        behavior_id=behavior_id,
+        family=family,
+        summary=summary,
+        proposed_skills=proposed,
+        surviving_candidates=surviving,
+        open_candidates=open_,
+        primitives=primitives,
+        owners=owners,
+        pressure=pressure,
+    )
+
+
 BEHAVIOR_CORPUS: tuple[BehaviorDecomposition, ...] = (
-    BehaviorDecomposition(
+    _case(
         "hold_position",
         "inaction",
         "Remain in place without inventing an external intervention.",
         ("WAIT",),
-        (),
-        pressure="Does healthy inactivity need Skill semantics at all?",
+        owners=("Current Intent", "Scheduler/timing when needed"),
+        pressure="Healthy inactivity already requires no SkillExecution.",
     ),
-    BehaviorDecomposition(
+    _case(
         "eat_available_food",
         "body_maintenance",
-        "Consume an already available edible item.",
+        "Consume an available edible item and ground success in later body state.",
         ("EAT",),
-        ("EQUIP", "CONSUME"),
+        surviving=("EAT",),
+        primitives=("EQUIP", "CONSUME"),
         owners=("Body/resource state",),
-        pressure="Can EAT reduce to SEEK(body improvement) + CONSUME?",
+        pressure="EAT survives the current attack; final irreducibility is not claimed.",
     ),
-    BehaviorDecomposition(
+    _case(
         "direct_combat",
         "combat",
-        "Attack a grounded hostile/adverse target.",
+        "Attack a grounded adverse target and ground the local result.",
         ("FIGHT",),
-        ("LOOK", "ATTACK"),
+        surviving=("FIGHT",),
+        primitives=("LOOK", "ATTACK"),
         owners=("Current Appraisal",),
-        pressure="Can FIGHT reduce to SEEK(neutralized threat) + ATTACK?",
+        pressure="Target discovery is distinct from antagonistic intervention.",
     ),
-    BehaviorDecomposition(
+    _case(
         "escape_threat",
         "escape",
-        "Increase separation from a grounded threat.",
+        "Increase separation from a grounded threat and observe progress.",
         ("FLEE",),
-        ("LOOK", "MOVE"),
+        surviving=("FLEE",),
+        primitives=("LOOK", "MOVE"),
         owners=("Current Appraisal",),
-        pressure="Can FLEE reduce to SEEK(safety) + MOVE?",
+        pressure="Locating safety is distinct from closed-loop separation.",
     ),
-    BehaviorDecomposition(
+    _case(
         "navigate_remembered_location",
         "navigation",
         "Travel toward a location already represented by owned cognition.",
         ("SEEK",),
-        ("MOVE",),
-        owners=("Memory",),
-        pressure="Does navigation require a distinct reusable control Skill?",
+        primitives=("MOVE",),
+        owners=("Memory", "Current Intent"),
+        pressure=(
+            "Known target location removes target-absence uncertainty; SEEK must not "
+            "become a generic GO/GOAL operator."
+        ),
     ),
-    BehaviorDecomposition(
+    _case(
         "search_unknown_resource",
         "exploration",
-        "Reduce uncertainty until a desired resource is observed or remains unresolved.",
+        "Act to reduce uncertainty until a resource is observed or remains unresolved.",
         ("SEEK",),
-        ("MOVE", "LOOK"),
-        pressure="Can SEEK stay narrower than a generic GOAL/DO operator?",
+        open_=("SEEK",),
+        primitives=("MOVE", "LOOK"),
+        owners=("Current Intent", "Observation"),
+        pressure="Active time-spanning SEEK remains open after snapshot SEEK reduced.",
     ),
-    BehaviorDecomposition(
+    _case(
         "mine_and_craft_upgrade",
         "resource_processing",
-        "Locate material, acquire it, and construct upgraded equipment.",
+        "Locate missing material when needed, acquire it, and construct equipment.",
         ("SEEK", "CONTEMPLATE"),
-        ("MOVE", "LOOK", "EQUIP", "BREAK", "TAKE", "CRAFT"),
-        owners=("Memory", "Capability"),
-        pressure="Missing BREAK/TAKE/CRAFT must not be misclassified as missing Skills.",
+        open_=("SEEK",),
+        primitives=("MOVE", "LOOK", "EQUIP", "BREAK", "TAKE", "CRAFT"),
+        owners=("Memory", "Capability", "ordinary cognition"),
+        pressure="CONTEMPLATE reduces; BREAK/TAKE/CRAFT remain boundary gaps.",
     ),
-    BehaviorDecomposition(
+    _case(
         "build_shelter_before_night",
         "construction",
-        "Form a design, obtain material/site access, and create a shelter.",
+        "Use or form a design, obtain missing material/site information, and build.",
         ("CONTEMPLATE", "SEEK"),
-        ("MOVE", "LOOK", "PLACE"),
-        owners=("Time observation", "Inventory"),
-        pressure="World-state construction is a hard counterexample to SEEK-only semantics.",
+        open_=("SEEK",),
+        primitives=("MOVE", "LOOK", "PLACE"),
+        owners=("Time observation", "Inventory", "ordinary cognition"),
+        pressure="Design cognition does not require CONTEMPLATE; PLACE is a boundary gap.",
     ),
-    BehaviorDecomposition(
+    _case(
         "farm_renewable_food",
         "resource_processing",
-        "Establish, wait for, and harvest a renewable food process.",
+        "Establish, monitor, and harvest a renewable food process.",
         ("SEEK", "WAIT", "EAT"),
-        ("MOVE", "USE", "PLACE", "BREAK", "TAKE", "EQUIP", "CONSUME"),
-        owners=("Body/resource state",),
-        pressure="Tests long-horizon composition without inventing FARM.",
+        open_=("SEEK",),
+        primitives=("MOVE", "USE", "PLACE", "BREAK", "TAKE"),
+        owners=("Body/resource state", "Scheduler/timing"),
+        pressure="WAIT reduces to timing/no-action; EAT is not required to operate the farm.",
     ),
-    BehaviorDecomposition(
+    _case(
         "scout_and_report",
         "information_social",
-        "Explore for relevant information and report it to another Self.",
+        "Acquire missing environmental information and report it to another Self.",
         ("SEEK", "TALK"),
-        ("MOVE", "LOOK", "CHAT_DELIVERY"),
-        pressure="Tests SEEK -> TALK boundary crossing.",
+        surviving=("TALK",),
+        open_=("SEEK",),
+        primitives=("MOVE", "LOOK", "CHAT_DELIVERY"),
+        owners=("Observation",),
+        pressure="TALK carries language coupling; active SEEK remains open.",
     ),
-    BehaviorDecomposition(
+    _case(
         "coordinate_two_agent_attack",
         "social_combat",
-        "Exchange task-relevant language and converge on a shared combat target.",
+        "Exchange task-relevant language and converge on a combat intervention.",
         ("TALK", "SEEK", "FIGHT"),
-        ("CHAT_DELIVERY", "MOVE", "LOOK", "ATTACK"),
+        surviving=("TALK", "FIGHT"),
+        open_=("SEEK",),
+        primitives=("CHAT_DELIVERY", "MOVE", "LOOK", "ATTACK"),
         owners=("Other/Relationship cognition",),
-        pressure="Must not require a hard-coded COOPERATE or ROLE Skill by name alone.",
+        pressure="No hard-coded COOPERATE or ROLE Skill is required.",
     ),
-    BehaviorDecomposition(
+    _case(
         "share_scarce_food",
         "social_resource",
-        "Transfer a scarce body-maintenance resource to another Self.",
+        "Transfer a scarce resource to another Self.",
         ("TALK",),
-        ("CHAT_DELIVERY", "TRANSFER"),
-        owners=("Other/Relationship cognition", "Body/resource state"),
-        pressure="Tests whether GIVE is primitive transfer rather than a peer Skill.",
+        primitives=("TRANSFER",),
+        owners=("Other/Relationship cognition", "Body/resource state", "Current Intent"),
+        pressure="An already-decided transfer does not semantically require TALK.",
     ),
-    BehaviorDecomposition(
+    _case(
         "trade_resources",
         "social_resource",
-        "Negotiate/exchange resources without introducing a TRADE Skill by name.",
+        "Negotiate and exchange resources without introducing a TRADE Skill.",
         ("TALK", "SEEK"),
-        ("CHAT_DELIVERY", "TRANSFER"),
+        surviving=("TALK",),
+        open_=("SEEK",),
+        primitives=("CHAT_DELIVERY", "TRANSFER"),
         owners=("Other/Relationship cognition",),
-        pressure="Tests whether TALK + transfer/acquisition is sufficient.",
+        pressure="TALK carries negotiation; SEEK applies only to missing targets/information.",
     ),
-    BehaviorDecomposition(
+    _case(
         "ambush_player",
         "social_combat",
-        "Reach a useful position, wait, then attack another player.",
+        "Reach a position, withhold intervention until a condition, then attack.",
         ("SEEK", "WAIT", "FIGHT"),
-        ("MOVE", "LOOK", "ATTACK"),
-        pressure="Tests composition of timing, seeking, and antagonistic intervention.",
+        surviving=("FIGHT",),
+        open_=("SEEK",),
+        primitives=("MOVE", "LOOK", "ATTACK"),
+        owners=("Current Intent", "Scheduler/timing"),
+        pressure="WAIT reduces to timing/no-action; active target search remains open.",
     ),
-    BehaviorDecomposition(
+    _case(
         "retreat_and_regroup",
         "social_escape",
-        "Escape a threat while re-establishing proximity/contact with a companion.",
+        "Escape a threat while restoring contact/proximity with a companion.",
         ("FLEE", "SEEK", "TALK"),
-        ("MOVE", "LOOK", "CHAT_DELIVERY"),
+        surviving=("FLEE",),
+        open_=("SEEK",),
+        primitives=("MOVE", "LOOK", "CHAT_DELIVERY"),
         owners=("Other/Relationship cognition",),
-        pressure="Tests simultaneous escape and social target constraints.",
+        pressure="FLEE remains distinct; SEEK is conditional on missing target information.",
     ),
-    BehaviorDecomposition(
+    _case(
         "escort_companion",
         "social_navigation",
         "Maintain useful proximity to a companion and respond to threats.",
         ("SEEK", "FIGHT", "FLEE", "TALK"),
-        ("MOVE", "LOOK", "ATTACK", "CHAT_DELIVERY"),
+        surviving=("FIGHT", "FLEE"),
+        open_=("SEEK",),
+        primitives=("MOVE", "LOOK", "ATTACK", "CHAT_DELIVERY"),
         owners=("Other/Relationship cognition",),
-        pressure="Tests FOLLOW/GUARD as compositions rather than initial Skills.",
+        pressure="FOLLOW/GUARD are not forced; tracking/navigation remains future pressure.",
     ),
-    BehaviorDecomposition(
+    _case(
         "rescue_companion_under_attack",
         "social_combat",
-        "Locate a companion/threat and intervene under viability pressure.",
+        "Locate missing relevant entities when needed and intervene under threat.",
         ("SEEK", "FIGHT", "TALK"),
-        ("MOVE", "LOOK", "ATTACK", "CHAT_DELIVERY"),
+        surviving=("FIGHT",),
+        open_=("SEEK",),
+        primitives=("MOVE", "LOOK", "ATTACK", "CHAT_DELIVERY"),
         owners=("Other/Relationship cognition", "Current Appraisal"),
-        pressure="Tests RESCUE as composition rather than a named Skill.",
+        pressure="RESCUE remains composition rather than a named basis Skill.",
     ),
-    BehaviorDecomposition(
+    _case(
         "construct_operate_mechanism",
         "construction",
-        "Design, assemble, and operate a multi-part mechanism.",
+        "Use or form a design, assemble, and operate a multi-part mechanism.",
         ("CONTEMPLATE", "SEEK"),
-        ("MOVE", "LOOK", "PLACE", "USE"),
-        owners=("Memory", "Capability"),
-        pressure="Pressures CREATE/BUILD and target interaction boundaries.",
+        open_=("SEEK",),
+        primitives=("MOVE", "LOOK", "PLACE", "USE"),
+        owners=("Memory", "Capability", "ordinary cognition"),
+        pressure="CONTEMPLATE reduces; construction primitives remain boundary concerns.",
     ),
-    BehaviorDecomposition(
+    _case(
         "recover_after_respawn",
         "recovery",
-        "After environment-driven respawn, recover toward a remembered useful state.",
+        "After respawn, recover toward a remembered useful state.",
         ("SEEK",),
-        ("MOVE", "LOOK", "TAKE"),
-        owners=("Persistent Cognition", "World observation"),
-        pressure="Respawn is a World event; recovery must not become a special Skill by default.",
+        open_=("SEEK",),
+        primitives=("MOVE", "LOOK", "TAKE"),
+        owners=("Persistent Cognition", "World observation", "Current Intent"),
+        pressure="SEEK applies only when recovery targets must be rediscovered.",
     ),
-    BehaviorDecomposition(
+    _case(
         "learn_from_failed_route_or_fight",
         "learning",
         "Integrate grounded consequence so later reduction can differ.",
         (),
-        (),
         owners=("Experience Integration", "Memory", "Capability"),
-        pressure="Not every meaningful adaptive process should be forced into the Skill basis.",
+        pressure="Not every meaningful adaptive process belongs in the Skill basis.",
     ),
-    BehaviorDecomposition(
+    _case(
         "plan_multi_step_expedition",
         "internal_cognition",
         "Construct and compare a hypothetical multi-step expedition before acting.",
         ("CONTEMPLATE",),
-        (),
-        owners=("Memory", "Capability", "Current Intent"),
-        pressure="Can existing OPEN/THINK/ Retrieval make CONTEMPLATE redundant?",
+        owners=("Memory", "Capability", "Current Intent", "RelayEngine cognition"),
+        pressure="Existing Retrieval/BOUNDED/THINK/OPEN cover this without CONTEMPLATE.",
     ),
-    BehaviorDecomposition(
+    _case(
         "deceive_other_through_language",
         "social_cognition",
         "Generate an intentionally misleading expression for another agent.",
         ("CONTEMPLATE", "TALK"),
-        ("CHAT_DELIVERY",),
-        owners=("Other/Relationship cognition",),
-        pressure="Tests human-like composition without introducing DECEIVE.",
+        surviving=("TALK",),
+        primitives=("CHAT_DELIVERY",),
+        owners=("Other/Relationship cognition", "ordinary cognition"),
+        pressure="Internal reasoning does not require CONTEMPLATE; TALK retains coupling.",
     ),
-    BehaviorDecomposition(
+    _case(
         "create_novel_structure",
         "construction",
         "Generate a novel internal design and realize it through target primitives.",
         ("CONTEMPLATE", "SEEK"),
-        ("MOVE", "LOOK", "PLACE"),
-        pressure="Strong pressure on whether CONTEMPLATE is distinct from ordinary cognition.",
+        open_=("SEEK",),
+        primitives=("MOVE", "LOOK", "PLACE"),
+        owners=("ordinary cognition", "Current Intent"),
+        pressure="Novel cognition does not establish a CONTEMPLATE lifecycle.",
     ),
 )
-
-
-CANDIDATE_ABLATION_WITNESSES: dict[str, str] = {
-    "WAIT": "hold_position",
-    "EAT": "eat_available_food",
-    "FIGHT": "direct_combat",
-    "FLEE": "escape_threat",
-    "SEEK": "search_unknown_resource",
-    "TALK": "coordinate_two_agent_attack",
-    "CONTEMPLATE": "create_novel_structure",
-}
 
 
 def corpus_by_id() -> dict[str, BehaviorDecomposition]:
     return {case.behavior_id: case for case in BEHAVIOR_CORPUS}
 
 
-def basis_usage() -> dict[str, tuple[str, ...]]:
+def proposed_basis_usage() -> dict[str, tuple[str, ...]]:
     usage: dict[str, list[str]] = {skill: [] for skill in CANDIDATE_SKILL_BASIS}
     for case in BEHAVIOR_CORPUS:
-        for skill in case.skills:
+        for skill in case.proposed_skills:
+            usage[skill].append(case.behavior_id)
+    return {skill: tuple(ids) for skill, ids in usage.items()}
+
+
+def surviving_basis_usage() -> dict[str, tuple[str, ...]]:
+    usage: dict[str, list[str]] = {skill: [] for skill in CANDIDATE_SKILL_BASIS}
+    for case in BEHAVIOR_CORPUS:
+        for skill in case.surviving_candidates:
+            usage[skill].append(case.behavior_id)
+    return {skill: tuple(ids) for skill, ids in usage.items()}
+
+
+def open_basis_usage() -> dict[str, tuple[str, ...]]:
+    usage: dict[str, list[str]] = {skill: [] for skill in CANDIDATE_SKILL_BASIS}
+    for case in BEHAVIOR_CORPUS:
+        for skill in case.open_candidates:
             usage[skill].append(case.behavior_id)
     return {skill: tuple(ids) for skill, ids in usage.items()}
 
@@ -298,21 +374,43 @@ def validate_corpus() -> tuple[str, ...]:
     known_skills = set(CANDIDATE_SKILL_BASIS)
     ids: set[str] = set()
 
+    if set(CANDIDATE_STATUS) != known_skills:
+        errors.append("candidate status must classify every candidate exactly once")
+
     for case in BEHAVIOR_CORPUS:
         if case.behavior_id in ids:
             errors.append(f"duplicate behavior_id: {case.behavior_id}")
         ids.add(case.behavior_id)
 
-        unknown_skills = sorted(set(case.skills) - known_skills)
-        if unknown_skills:
-            errors.append(
-                f"{case.behavior_id}: unknown basis Skills={','.join(unknown_skills)}"
-            )
+        for field_name, values in (
+            ("proposed_skills", case.proposed_skills),
+            ("surviving_candidates", case.surviving_candidates),
+            ("open_candidates", case.open_candidates),
+        ):
+            unknown = sorted(set(values) - known_skills)
+            if unknown:
+                errors.append(
+                    f"{case.behavior_id}: unknown {field_name}={','.join(unknown)}"
+                )
 
         unknown_primitives = sorted(set(case.primitives) - TARGET_PRIMITIVES)
         if unknown_primitives:
             errors.append(
                 f"{case.behavior_id}: unknown primitives={','.join(unknown_primitives)}"
+            )
+
+        proposed = set(case.proposed_skills)
+        surviving = set(case.surviving_candidates)
+        open_ = set(case.open_candidates)
+        if not surviving <= proposed:
+            errors.append(
+                f"{case.behavior_id}: surviving candidates must come from proposal"
+            )
+        if not open_ <= proposed:
+            errors.append(f"{case.behavior_id}: open candidates must come from proposal")
+        if surviving & open_:
+            errors.append(
+                f"{case.behavior_id}: candidate cannot be both surviving and open"
             )
 
         if not case.family.strip():
@@ -321,24 +419,5 @@ def validate_corpus() -> tuple[str, ...]:
             errors.append(f"{case.behavior_id}: empty summary")
         if not case.pressure.strip():
             errors.append(f"{case.behavior_id}: missing falsification pressure")
-
-    for skill, witness_id in CANDIDATE_ABLATION_WITNESSES.items():
-        if skill not in known_skills:
-            errors.append(f"ablation witness for unknown Skill: {skill}")
-            continue
-        witness = corpus_by_id().get(witness_id)
-        if witness is None:
-            errors.append(f"{skill}: missing witness behavior {witness_id}")
-        elif skill not in witness.skills:
-            errors.append(
-                f"{skill}: witness {witness_id} does not use the candidate Skill"
-            )
-
-    missing_witnesses = known_skills - set(CANDIDATE_ABLATION_WITNESSES)
-    if missing_witnesses:
-        errors.append(
-            "basis Skills without candidate ablation witness: "
-            + ",".join(sorted(missing_witnesses))
-        )
 
     return tuple(errors)
