@@ -5,6 +5,7 @@ import readline from 'node:readline'
 import {
   attachHealthSynchronizedSpawnListeners,
   attachInventoryUpdateListenerAfterInjection,
+  entityHurtPayload,
   resolveAttackEntity
 } from './bridge_hooks.mjs'
 import {
@@ -127,6 +128,15 @@ bot.on('entitySpawn', (entity) => {
 
 bot.on('entityGone', (entity) => {
   if (spawned && entity.id !== bot.entity.id) emitObservation('entities')
+})
+
+bot.on('entityHurt', (entity, source) => {
+  if (!spawned) return
+  try {
+    emit('entity_hurt', entityHurtPayload(entity, source))
+  } catch (error) {
+    emitAdapterError(error)
+  }
 })
 
 bot.on('move', () => {
