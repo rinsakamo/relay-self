@@ -26,7 +26,7 @@ def test_candidate_vocabulary_is_separate_from_current_grand_null_status() -> No
     assert CANDIDATE_STATUS["EAT"] is CandidateStatus.SURVIVES_CURRENT_ATTACK
     assert CANDIDATE_STATUS["FIGHT"] is CandidateStatus.SURVIVES_CURRENT_ATTACK
     assert CANDIDATE_STATUS["FLEE"] is CandidateStatus.SURVIVES_CURRENT_ATTACK
-    assert CANDIDATE_STATUS["TALK"] is CandidateStatus.SURVIVES_CURRENT_ATTACK
+    assert CANDIDATE_STATUS["TALK"] is CandidateStatus.REDUCED
 
 
 def test_reduced_candidates_do_not_reappear_as_surviving_or_open_skills() -> None:
@@ -37,6 +37,8 @@ def test_reduced_candidates_do_not_reappear_as_surviving_or_open_skills() -> Non
     assert open_["WAIT"] == ()
     assert surviving["CONTEMPLATE"] == ()
     assert open_["CONTEMPLATE"] == ()
+    assert surviving["TALK"] == ()
+    assert open_["TALK"] == ()
 
 
 def test_active_seek_pressure_is_open_but_known_navigation_does_not_require_seek() -> None:
@@ -60,7 +62,6 @@ def test_current_real_skill_surfaces_survive_without_claiming_irreducibility() -
     assert "eat_available_food" in surviving["EAT"]
     assert "direct_combat" in surviving["FIGHT"]
     assert "escape_threat" in surviving["FLEE"]
-    assert "coordinate_two_agent_attack" in surviving["TALK"]
 
 
 def test_hard_counterexample_families_are_present() -> None:
