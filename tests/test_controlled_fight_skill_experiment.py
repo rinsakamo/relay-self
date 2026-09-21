@@ -259,13 +259,14 @@ def test_fight_attack_ack_without_self_sourced_hurt_fails_skill() -> None:
     )
     supervisor = ActionSupervisor()
 
+    owner = intent()
     result = asyncio.run(
         execute_decision(
             session,
             current,
             scenario(),
             fight_decision(),
-            intent_commitment=intent(),
+            intent_commitment=owner,
             supervisor=supervisor,
         )
     )
@@ -274,6 +275,8 @@ def test_fight_attack_ack_without_self_sourced_hurt_fails_skill() -> None:
     assert result.skill_execution.state is SkillState.FAILED
     assert [action.state for action in result.actions] == [ActionState.OUTCOME]
     assert supervisor.open_actions == ()
+    assert owner.current_intent is not None
+    assert owner.current_intent.intent_id == "intent-survive-fight"
 
 
 def test_fight_rejected_attack_fails_without_claiming_hurt() -> None:
