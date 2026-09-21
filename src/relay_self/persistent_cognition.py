@@ -4,9 +4,17 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
+from relay_self.appraisal import (
+    AppraisalAspect,
+    AppraisalBias,
+    AppraisalDisposition,
+    AppraisalTargetKind,
+    InvalidAppraisalData,
+)
 from relay_self.provenance import InvalidProvenanceData, Provenance
 
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
+LEGACY_SCHEMA_VERSION = 1
 
 
 class PersistentCognitionError(ValueError):
@@ -19,6 +27,10 @@ class InvalidPersistentCognitionData(PersistentCognitionError):
 
 class DuplicateMemoryIdentity(PersistentCognitionError):
     """Raised when one snapshot would contain two memories with the same identity."""
+
+
+class DuplicateAppraisalDisposition(PersistentCognitionError):
+    """Raised when one snapshot contains duplicate exact-scope appraisal state."""
 
 
 class UnsupportedPersistentCognitionVersion(PersistentCognitionError):
@@ -77,6 +89,7 @@ class PersistentCognition:
 
     identity: IdentitySpecification
     memories: tuple[Memory, ...] = ()
+    appraisal_dispositions: tuple[AppraisalDisposition, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.identity, IdentitySpecification):
@@ -98,6 +111,26 @@ class PersistentCognition:
                 )
             seen.add(memory.memory_id)
 
+        if not isinstance(self.appraisal_dispositions, tuple):
+            raise InvalidPersistentCognitionData(
+                "appraisal_dispositions must be a tuple"
+            )
+        appraisal_seen: set[
+            tuple[AppraisalTargetKind, str, AppraisalAspect]
+        ] = set()
+        for disposition in self.appraisal_dispositions:
+            if not isinstance(disposition, AppraisalDisposition):
+                raise InvalidPersistentCognitionData(
+                    "every appraisal_dispositions entry must be "
+                    "an AppraisalDisposition"
+                )
+            if disposition.key in appraisal_seen:
+                raise DuplicateAppraisalDisposition(
+                    "duplicate appraisal disposition key: "
+                    f"{disposition.key}"
+                )
+            appraisal_seen.add(disposition.key)
+
     def retain_memory(self, memory: Memory) -> "PersistentCognition":
         """Return a new snapshot after an already-governed Memory is accepted."""
 
@@ -108,6 +141,61 @@ class PersistentCognition:
                 f"duplicate memory identity: {memory.memory_id}"
             )
         return replace(self, memories=(*self.memories, memory))
+
+    def seed_appraisal_disposition(
+        self,
+        disposition: AppraisalDisposition,
+    ) -> "PersistentCognition":
+        """Add one initial tendency grounded in this Identity Specification."""
+
+        if not isinstance(disposition, AppraisalDisposition):
+            raise InvalidPersistentCognitionData(
+                "seeded appraisal value must be an AppraisalDisposition"
+            )
+        if disposition.source_provenance != self.identity.provenance:
+            raise InvalidPersistentCognitionData(
+                "seeded appraisal source provenance must match identity provenance"
+            )
+        if any(
+            existing.key == disposition.key
+            for existing in self.appraisal_dispositions
+        ):
+            raise DuplicateAppraisalDisposition(
+                f"duplicate appraisal disposition key: {disposition.key}"
+            )
+        return replace(
+            self,
+            appraisal_dispositions=(
+                *self.appraisal_dispositions,
+                disposition,
+            ),
+        )
+
+    def integrate_appraisal_disposition(
+        self,
+        disposition: AppraisalDisposition,
+    ) -> "PersistentCognition":
+        """Upsert one exact-scope tendency after governed experience integration.
+
+        This operation never generalizes an entity-instance disposition into an
+        entity-class disposition. The caller must explicitly choose the scope
+        justified by its evidence.
+        """
+
+        if not isinstance(disposition, AppraisalDisposition):
+            raise InvalidPersistentCognitionData(
+                "integrated appraisal value must be an AppraisalDisposition"
+            )
+
+        updated = list(self.appraisal_dispositions)
+        for index, existing in enumerate(updated):
+            if existing.key == disposition.key:
+                updated[index] = disposition
+                break
+        else:
+            updated.append(disposition)
+
+        return replace(self, appraisal_dispositions=tuple(updated))
 
 
 def save_persistent_cognition(
@@ -189,24 +277,32 @@ def _encode_persistent_cognition(cognition: PersistentCognition) -> dict[str, An
             }
             for memory in cognition.memories
         ],
+        "appraisal_dispositions": [
+            _encode_appraisal_disposition(disposition)
+            for disposition in cognition.appraisal_dispositions
+        ],
     }
 
 
 def _decode_persistent_cognition(value: object) -> PersistentCognition:
     payload = _require_mapping("persistent cognition snapshot", value)
-    _require_exact_keys(
-        "persistent cognition snapshot",
-        payload,
-        {"schema_version", "identity", "memories"},
-    )
 
-    version = payload["schema_version"]
+    version = payload.get("schema_version")
     if type(version) is not int:
         raise InvalidPersistentCognitionData("schema_version must be an integer")
-    if version != CURRENT_SCHEMA_VERSION:
+    if version not in {LEGACY_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION}:
         raise UnsupportedPersistentCognitionVersion(
             f"unsupported persistent cognition schema version: {version}"
         )
+
+    expected_keys = {"schema_version", "identity", "memories"}
+    if version == CURRENT_SCHEMA_VERSION:
+        expected_keys.add("appraisal_dispositions")
+    _require_exact_keys(
+        "persistent cognition snapshot",
+        payload,
+        expected_keys,
+    )
 
     identity = _decode_identity(payload["identity"])
     memories_value = payload["memories"]
@@ -217,8 +313,25 @@ def _decode_persistent_cognition(value: object) -> PersistentCognition:
         _decode_memory(memory, index)
         for index, memory in enumerate(memories_value)
     )
-    return PersistentCognition(identity=identity, memories=memories)
 
+    if version == LEGACY_SCHEMA_VERSION:
+        appraisal_dispositions: tuple[AppraisalDisposition, ...] = ()
+    else:
+        dispositions_value = payload["appraisal_dispositions"]
+        if not isinstance(dispositions_value, list):
+            raise InvalidPersistentCognitionData(
+                "appraisal_dispositions must be a JSON array"
+            )
+        appraisal_dispositions = tuple(
+            _decode_appraisal_disposition(disposition, index)
+            for index, disposition in enumerate(dispositions_value)
+        )
+
+    return PersistentCognition(
+        identity=identity,
+        memories=memories,
+        appraisal_dispositions=appraisal_dispositions,
+    )
 
 def _decode_identity(value: object) -> IdentitySpecification:
     payload = _require_mapping("identity", value)
@@ -270,6 +383,75 @@ def _decode_memory(value: object, index: int) -> Memory:
             payload["integration_provenance"],
         ),
     )
+
+
+def _encode_appraisal_disposition(
+    disposition: AppraisalDisposition,
+) -> dict[str, Any]:
+    return {
+        "target_kind": disposition.target_kind.value,
+        "target_key": disposition.target_key,
+        "aspect": disposition.aspect.value,
+        "bias": disposition.bias.value,
+        "source_provenance": _encode_provenance(
+            disposition.source_provenance
+        ),
+        "integration_provenance": _encode_provenance(
+            disposition.integration_provenance
+        ),
+    }
+
+
+def _decode_appraisal_disposition(
+    value: object,
+    index: int,
+) -> AppraisalDisposition:
+    name = f"appraisal disposition {index}"
+    payload = _require_mapping(name, value)
+    _require_exact_keys(
+        name,
+        payload,
+        {
+            "target_kind",
+            "target_key",
+            "aspect",
+            "bias",
+            "source_provenance",
+            "integration_provenance",
+        },
+    )
+
+    try:
+        target_kind = AppraisalTargetKind(
+            _decoded_text(f"{name} target_kind", payload["target_kind"])
+        )
+        aspect = AppraisalAspect(
+            _decoded_text(f"{name} aspect", payload["aspect"])
+        )
+        bias = AppraisalBias(
+            _decoded_text(f"{name} bias", payload["bias"])
+        )
+        return AppraisalDisposition(
+            target_kind=target_kind,
+            target_key=_decoded_text(
+                f"{name} target_key",
+                payload["target_key"],
+            ),
+            aspect=aspect,
+            bias=bias,
+            source_provenance=_decode_provenance(
+                f"{name} source provenance",
+                payload["source_provenance"],
+            ),
+            integration_provenance=_decode_provenance(
+                f"{name} integration provenance",
+                payload["integration_provenance"],
+            ),
+        )
+    except (InvalidAppraisalData, ValueError) as exc:
+        raise InvalidPersistentCognitionData(
+            f"{name} is invalid: {exc}"
+        ) from exc
 
 
 def _encode_provenance(provenance: Provenance) -> dict[str, str]:
