@@ -138,6 +138,7 @@ class PendingTransition:
     agent: Agent
     state: State
     action: int
+    action_values: tuple[float, float, float]
     food_eaten: int
     moved: int
     physical_energy_delta: float
@@ -151,6 +152,7 @@ class TransitionTrace:
     agent_id: int
     parent_id: int | None
     observed_state: State
+    action_values: tuple[float, float, float]
     action: int
     food_eaten: int
     moved: int
@@ -485,6 +487,7 @@ def run_simulation(
 
         for agent in population:
             state = observe_state(agent.position, foods, counts, predators, config)
+            action_values = tuple(agent.q(state, action) for action in ACTIONS)
             action = agent.choose_action(state, rng, config.epsilon)
             food_eaten, moved, physical_energy_delta = apply_body_dynamics(
                 agent,
@@ -497,6 +500,7 @@ def run_simulation(
                     agent=agent,
                     state=state,
                     action=action,
+                    action_values=action_values,
                     food_eaten=food_eaten,
                     moved=moved,
                     physical_energy_delta=physical_energy_delta,
@@ -573,6 +577,7 @@ def run_simulation(
                         agent_id=agent_id,
                         parent_id=transition.agent.parent_id,
                         observed_state=transition.state,
+                        action_values=transition.action_values,
                         action=transition.action,
                         food_eaten=transition.food_eaten,
                         moved=transition.moved,

@@ -32,6 +32,7 @@ def trace(
         agent_id=step,
         parent_id=None,
         observed_state=(0, 0, 0, 0),
+        action_values=(0.0, 0.0, 0.0),
         action=0,
         food_eaten=food_eaten,
         moved=moved,
