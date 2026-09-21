@@ -207,6 +207,15 @@ def test_generated_modes_share_stable_identity_prefix_before_mode_rules() -> Non
     assert bounded_system.startswith(expected_prefix)
     assert think_system.startswith(expected_prefix)
     assert open_system.startswith(expected_prefix)
+    assert "identity_context" not in json.loads(
+        bounded_body["messages"][1]["content"]
+    )
+    assert "identity_context" not in json.loads(
+        think_body["messages"][1]["content"]
+    )
+    assert "identity_context" not in json.loads(
+        open_body["messages"][1]["content"]
+    )
     assert "Mode: BOUNDED." in bounded_system[len(expected_prefix):]
     assert "Mode: THINK." in think_system[len(expected_prefix):]
     assert "Mode: OPEN." in open_system[len(expected_prefix):]
