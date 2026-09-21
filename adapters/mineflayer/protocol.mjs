@@ -13,7 +13,8 @@ const EFFECTS = new Set([
   'clear_controls',
   'equip_item',
   'consume_held',
-  'look'
+  'look',
+  'attack_entity'
 ])
 
 const MAX_NEARBY_ENTITY_DISTANCE = 16
@@ -162,6 +163,20 @@ export function parseCommand (raw) {
         effect: value.effect,
         yaw: requireFiniteNumber('yaw', value.yaw),
         pitch: requireFiniteNumber('pitch', value.pitch)
+      })
+    }
+
+    if (value.effect === 'attack_entity') {
+      requireExactKeys(
+        'attack_entity command',
+        value,
+        ['type', 'action_id', 'effect', 'entity_id']
+      )
+      return Object.freeze({
+        type: 'effect',
+        action_id: value.action_id,
+        effect: value.effect,
+        entity_id: requireNonNegativeInteger('entity_id', value.entity_id)
       })
     }
 
