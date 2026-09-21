@@ -4,7 +4,8 @@ import test from 'node:test'
 
 import {
   attachHealthSynchronizedSpawnListeners,
-  attachInventoryUpdateListenerAfterInjection
+  attachInventoryUpdateListenerAfterInjection,
+  resolveAttackEntity
 } from './bridge_hooks.mjs'
 
 test('inventory listener waits for Mineflayer plugin injection', () => {
@@ -144,4 +145,29 @@ test('health-synchronized spawn hook validates listeners', () => {
     () => attachHealthSynchronizedSpawnListeners(bot, () => {}, null),
     /health listener must be a function/
   )
+})
+
+
+test('attack target resolver returns only the exact current entity id', () => {
+  const zombie = { id: 7, name: 'zombie' }
+  const cow = { id: 8, name: 'cow' }
+  const bot = {
+    entity: { id: 1 },
+    entities: { 7: zombie, 8: cow }
+  }
+
+  assert.equal(resolveAttackEntity(bot, 7), zombie)
+  assert.equal(resolveAttackEntity(bot, 8), cow)
+})
+
+test('attack target resolver fails closed on missing, self, or invalid ids', () => {
+  const bot = {
+    entity: { id: 1 },
+    entities: { 7: { id: 7, name: 'zombie' } }
+  }
+
+  assert.throws(() => resolveAttackEntity(bot, 99), /entity_not_found/)
+  assert.throws(() => resolveAttackEntity(bot, 1), /self_target/)
+  assert.throws(() => resolveAttackEntity(bot, -1), /non-negative integer/)
+  assert.throws(() => resolveAttackEntity(bot, 7.5), /non-negative integer/)
 })
