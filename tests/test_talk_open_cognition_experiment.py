@@ -1,9 +1,19 @@
 import json
 
+from experiments.operator_talk_boundary import (
+    build_operator_present,
+    reference_operator_utterance,
+)
 from experiments.talk_open_cognition import (
     build_reference_open_talk,
+    build_talk_open_request,
     run_talk_open_cognition,
 )
+from experiments.talk_skill_epoch import (
+    project_for_talk,
+    reference_memories,
+)
+from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     CognitionMode,
@@ -126,3 +136,47 @@ def test_generated_text_does_not_reinterpret_operator_claim_as_attested_fact() -
     assert "route_open:ridge" not in context_keys
     assert "ridge_is_safe" not in context_keys
     assert "operator's message alone does not establish" in result.text
+
+
+def test_open_talk_cognition_does_not_require_started_skill_execution() -> None:
+    owner = IntentCommitment()
+    owner.commit(
+        "intent-open-talk",
+        objective="respond to companion",
+        at_ns=1,
+        provenance=Provenance(
+            source="fixture.intent",
+            reference="intent:open-talk",
+        ),
+    )
+    utterance = reference_operator_utterance()
+    broad = build_operator_present(
+        intent_commitment=owner,
+        source_revision=1,
+        utterance=utterance,
+    )
+    surface = project_for_talk(
+        broad,
+        selected_memories=(reference_memories()[1],),
+    )
+
+    request_without_execution = build_talk_open_request(surface)
+    reference_with_execution = build_reference_open_talk()
+
+    assert request_without_execution == reference_with_execution.request
+    assert owner.current_intent is not None
+    assert owner.current_intent.intent_id == "intent-open-talk"
+
+    provider = RecordingOpenProvider()
+    result = run_talk_open_cognition(
+        request_without_execution,
+        engine=RelayEngine(provider),
+    )
+
+    assert provider.calls == [
+        (request_without_execution, CognitionMode.OPEN)
+    ]
+    assert result.request_id == request_without_execution.request_id
+    assert result.text.startswith("I remember the cave")
+    assert owner.current_intent is not None
+    assert owner.current_intent.intent_id == "intent-open-talk"
