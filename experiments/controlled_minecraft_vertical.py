@@ -70,7 +70,7 @@ class ControlledScenario:
     food_threshold: float
     edible_item_names: tuple[str, ...]
     destinations: tuple[ControlledDestination, ...]
-    fight_max_distance: float = 3.0
+    fight_max_distance: float | None = None
     flee_min_progress: float = 0.25
     evidence_timeout_s: float = 5.0
     max_evidence_messages: int = 32
@@ -110,10 +110,11 @@ class ControlledScenario:
             raise ControlledScenarioError(
                 "destination ids must be unique"
             )
-        _require_positive_number(
-            "fight_max_distance",
-            self.fight_max_distance,
-        )
+        if self.fight_max_distance is not None:
+            _require_positive_number(
+                "fight_max_distance",
+                self.fight_max_distance,
+            )
         _require_positive_number(
             "flee_min_progress",
             self.flee_min_progress,
@@ -561,6 +562,10 @@ async def _execute_fight(
     if target.name not in scenario.hazard_entity_names:
         raise ControlledScenarioError(
             "FIGHT target is not a configured scenario hazard"
+        )
+    if scenario.fight_max_distance is None:
+        raise ControlledScenarioError(
+            "FIGHT requires an explicitly configured fight range"
         )
     if target.distance > scenario.fight_max_distance:
         raise ControlledScenarioError(
