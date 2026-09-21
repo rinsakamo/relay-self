@@ -11,6 +11,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerAdapterProtocolError,
     MineflayerAdapterStarted,
     MineflayerEffectResult,
+    MineflayerEntityHurt,
     MineflayerLaunchConfig,
     MineflayerObservation,
     MineflayerPosition,
@@ -316,6 +317,45 @@ def test_entity_fact_schema_rejects_hostile_appraisal_injection() -> None:
 
     with pytest.raises(MineflayerAdapterProtocolError, match="nearby entity fields"):
         parse_mineflayer_line(json.dumps(payload))
+
+
+def test_entity_hurt_preserves_target_and_source_identity_without_appraisal() -> None:
+    message = parse_mineflayer_line(
+        json.dumps(
+            {
+                "type": "entity_hurt",
+                "session_id": "session-1",
+                "seq": 2,
+                "entity_id": 7,
+                "source_entity_id": 1,
+            }
+        )
+    )
+
+    assert isinstance(message, MineflayerEntityHurt)
+    assert message.entity_id == 7
+    assert message.source_entity_id == 1
+    assert message.provenance.reference == "session-1:2"
+    assert not hasattr(message, "hostile")
+    assert not hasattr(message, "fight_success")
+
+
+def test_entity_hurt_allows_missing_source_without_inventing_identity() -> None:
+    message = parse_mineflayer_line(
+        json.dumps(
+            {
+                "type": "entity_hurt",
+                "session_id": "session-1",
+                "seq": 2,
+                "entity_id": 7,
+                "source_entity_id": None,
+            }
+        )
+    )
+
+    assert isinstance(message, MineflayerEntityHurt)
+    assert message.entity_id == 7
+    assert message.source_entity_id is None
 
 
 def test_effect_result_preserves_action_identity_without_implying_skill_success() -> None:

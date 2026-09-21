@@ -67,3 +67,19 @@ export function resolveAttackEntity (bot, entityId) {
   }
   return entity
 }
+
+
+export function entityHurtPayload (entity, source) {
+  if (!entity || !Number.isInteger(entity.id) || entity.id < 0) {
+    throw new TypeError('hurt entity must expose a non-negative integer id')
+  }
+  const sourceId = (
+    source && Number.isInteger(source.id) && source.id >= 0
+      ? source.id
+      : null
+  )
+  return {
+    entity_id: entity.id,
+    source_entity_id: sourceId
+  }
+}

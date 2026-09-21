@@ -5,6 +5,7 @@ import test from 'node:test'
 import {
   attachHealthSynchronizedSpawnListeners,
   attachInventoryUpdateListenerAfterInjection,
+  entityHurtPayload,
   resolveAttackEntity
 } from './bridge_hooks.mjs'
 
@@ -170,4 +171,29 @@ test('attack target resolver fails closed on missing, self, or invalid ids', () 
   assert.throws(() => resolveAttackEntity(bot, 1), /self_target/)
   assert.throws(() => resolveAttackEntity(bot, -1), /non-negative integer/)
   assert.throws(() => resolveAttackEntity(bot, 7.5), /non-negative integer/)
+})
+
+
+test('entityHurt payload preserves target and source identity', () => {
+  assert.deepEqual(
+    entityHurtPayload({ id: 7 }, { id: 1 }),
+    {
+      entity_id: 7,
+      source_entity_id: 1
+    }
+  )
+})
+
+test('entityHurt payload preserves missing source without inventing one', () => {
+  assert.deepEqual(
+    entityHurtPayload({ id: 7 }, undefined),
+    {
+      entity_id: 7,
+      source_entity_id: null
+    }
+  )
+  assert.throws(
+    () => entityHurtPayload({}, { id: 1 }),
+    /hurt entity must expose a non-negative integer id/
+  )
 })
