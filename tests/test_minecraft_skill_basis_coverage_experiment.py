@@ -5,6 +5,8 @@ from experiments.minecraft_skill_basis_coverage import (
     CANDIDATE_WORLD_NEUTRAL_BASIS,
     MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS,
     MINECRAFT_NATIVE_AFFORDANCES,
+    MOVEIT_OPERATION_TO_WORLD_NEUTRAL_BASIS,
+    MOVEIT_SPEC_TARGET_OPERATIONS,
     CandidateStatus,
     corpus_by_id,
     open_basis_usage,
@@ -23,10 +25,10 @@ def test_minecraft_native_affordances_cannot_terminate_world_neutral_basis() -> 
     basis = set(CANDIDATE_WORLD_NEUTRAL_BASIS)
 
     assert set(MINECRAFT_NATIVE_AFFORDANCES).isdisjoint(basis)
-    assert "LOCOMOTE" in basis
+    assert "MOTION" in basis
     assert "MANIPULATE" in basis
 
-    assert "LOCOMOTE" in MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS["MOVE"]
+    assert "MOTION" in MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS["MOVE"]
     assert MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS["BREAK"] == ("MANIPULATE",)
     assert MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS["PLACE"] == ("MANIPULATE",)
     assert MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS["CRAFT"] == ("MANIPULATE",)
@@ -47,6 +49,38 @@ def test_every_native_affordance_used_by_the_corpus_has_portable_mapping_pressur
 
     assert used <= set(MINECRAFT_NATIVE_AFFORDANCES)
     assert used <= set(MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS)
+
+
+def test_second_target_reuses_motion_and_manipulation_without_native_leak() -> None:
+    basis = set(CANDIDATE_WORLD_NEUTRAL_BASIS)
+    moveit = set(MOVEIT_SPEC_TARGET_OPERATIONS)
+
+    assert moveit.isdisjoint(basis)
+    assert "MOTION" in basis
+    assert "MANIPULATE" in basis
+
+    assert MOVEIT_OPERATION_TO_WORLD_NEUTRAL_BASIS["POSE_TARGET_MOTION"] == (
+        "MOTION",
+    )
+    assert MOVEIT_OPERATION_TO_WORLD_NEUTRAL_BASIS["MOVE_TO_STAGE"] == (
+        "MOTION",
+    )
+    assert MOVEIT_OPERATION_TO_WORLD_NEUTRAL_BASIS["MOVE_RELATIVE_STAGE"] == (
+        "MOTION",
+    )
+    assert MOVEIT_OPERATION_TO_WORLD_NEUTRAL_BASIS["ATTACH_OBJECT_STAGE"] == (
+        "MANIPULATE",
+    )
+    assert MOVEIT_OPERATION_TO_WORLD_NEUTRAL_BASIS[
+        "DETACH_OBJECT_OPERATION"
+    ] == ("MANIPULATE",)
+
+    used_candidates = {
+        candidate
+        for candidates in MOVEIT_OPERATION_TO_WORLD_NEUTRAL_BASIS.values()
+        for candidate in candidates
+    }
+    assert {"MOTION", "MANIPULATE"} <= used_candidates
 
 
 def test_candidate_vocabulary_is_separate_from_current_grand_null_status() -> None:
