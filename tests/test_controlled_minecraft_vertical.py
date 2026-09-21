@@ -24,8 +24,18 @@ from experiments.controlled_minecraft_vertical import (
 )
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
+from relay_self.appraisal import (
+    AppraisalAspect,
+    AppraisalBias,
+    AppraisalDisposition,
+    AppraisalTargetKind,
+)
 from relay_self.intent import IntentCommitment
-from relay_self.persistent_cognition import Memory
+from relay_self.persistent_cognition import (
+    IdentitySpecification,
+    Memory,
+    PersistentCognition,
+)
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     CognitionMode,
@@ -58,6 +68,7 @@ def destination(
 
 def scenario(
     *,
+    hazard_entity_names: frozenset[str] = frozenset({"zombie"}),
     destinations: tuple[ControlledDestination, ...] | None = None,
     max_evidence_messages: int = 8,
     evidence_timeout_s: float = 1.0,
@@ -65,7 +76,7 @@ def scenario(
     cognition_think_allowed: bool = True,
 ) -> ControlledScenario:
     return ControlledScenario(
-        hazard_entity_names=frozenset({"zombie"}),
+        hazard_entity_names=hazard_entity_names,
         food_threshold=10,
         edible_item_names=("bread", "cooked_beef"),
         destinations=(
@@ -117,14 +128,37 @@ def observation(
     )
 
 
-def zombie(*, distance: float = 3) -> MineflayerEntityFact:
+def zombie(
+    *,
+    distance: float = 3,
+    entity_id: int = 7,
+) -> MineflayerEntityFact:
     return MineflayerEntityFact(
-        entity_id=7,
+        entity_id=entity_id,
         name="zombie",
         entity_type="mob",
         distance=distance,
         position=MineflayerPosition(x=3, y=64, z=0),
     )
+
+
+def self_with_zombie_harm_prior() -> PersistentCognition:
+    identity = IdentitySpecification(
+        self_id="self-rin-001",
+        directives=("Preserve continued agency.",),
+        provenance=provenance("identity"),
+    )
+    prior = AppraisalDisposition(
+        target_kind=AppraisalTargetKind.ENTITY_CLASS,
+        target_key="zombie",
+        aspect=AppraisalAspect.HARM_LIKELIHOOD,
+        bias=AppraisalBias.UP,
+        source_provenance=identity.provenance,
+        integration_provenance=provenance("soul-seed"),
+    )
+    return PersistentCognition(
+        identity=identity
+    ).seed_appraisal_disposition(prior)
 
 
 def bread() -> MineflayerInventoryItem:
@@ -271,6 +305,59 @@ def test_configured_hazard_preempts_eat_without_adapter_threat_label() -> None:
     assert decision.skill is ControlledSkill.FLEE
     assert decision.destination.destination_id == "cave"
     assert decision.item_name is None
+
+
+def test_self_owned_appraisal_prior_can_narrow_without_scenario_hazard_truth() -> None:
+    obs = observation(
+        entities=(zombie(),),
+    )
+
+    decision = decide_skill(
+        obs,
+        scenario(hazard_entity_names=frozenset()),
+        intent_id="intent-survive",
+        persistent_cognition=self_with_zombie_harm_prior(),
+    )
+
+    assert decision.skill is ControlledSkill.FLEE
+    assert decision.destination.destination_id == "cave"
+    assert not hasattr(decision, "action")
+
+
+def test_individual_experience_overrides_class_prior_without_species_rewrite() -> None:
+    cognition = self_with_zombie_harm_prior()
+    individual = AppraisalDisposition(
+        target_kind=AppraisalTargetKind.ENTITY_INSTANCE,
+        target_key="session-1:entity-7",
+        aspect=AppraisalAspect.HARM_LIKELIHOOD,
+        bias=AppraisalBias.NEUTRAL,
+        source_provenance=provenance("entity-7-harmless-history"),
+        integration_provenance=provenance("experience-integration"),
+    )
+    cognition = cognition.integrate_appraisal_disposition(individual)
+    no_scenario_hazards = scenario(hazard_entity_names=frozenset())
+
+    experienced = decide_skill(
+        observation(entities=(zombie(entity_id=7),)),
+        no_scenario_hazards,
+        intent_id="intent-survive",
+        persistent_cognition=cognition,
+    )
+    novel = decide_skill(
+        observation(entities=(zombie(entity_id=8),)),
+        no_scenario_hazards,
+        intent_id="intent-survive",
+        persistent_cognition=cognition,
+    )
+
+    assert experienced.skill is ControlledSkill.WAIT
+    assert novel.skill is ControlledSkill.FLEE
+    class_prior = next(
+        disposition
+        for disposition in cognition.appraisal_dispositions
+        if disposition.target_kind is AppraisalTargetKind.ENTITY_CLASS
+    )
+    assert class_prior.bias is AppraisalBias.UP
 
 
 def test_multiple_flee_destinations_use_relay_engine_and_preserve_memory_type() -> None:
