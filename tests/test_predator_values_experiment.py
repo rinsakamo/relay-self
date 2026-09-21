@@ -6,6 +6,7 @@ from experiments.predator_values import (
     Agent,
     RewardGenes,
     SimulationConfig,
+    TransitionTrace,
     conspecific_sensor,
     intrinsic_reward,
     move_predators,
@@ -293,3 +294,65 @@ def test_predator_treatment_does_not_change_initial_prey_genes() -> None:
     assert active_sample.mean_movement_reward == control_sample.mean_movement_reward
     assert active_sample.mean_conspecific_reward == control_sample.mean_conspecific_reward
     assert active_sample.mean_predator_reward == control_sample.mean_predator_reward
+
+
+def test_optional_transition_trace_does_not_perturb_seeded_simulation() -> None:
+    config = replace(
+        small_config(),
+        initial_population=12,
+        max_population=40,
+        sample_interval=10,
+    )
+    baseline = run_simulation(seed=19, steps=40, config=config)
+
+    traces: list[TransitionTrace] = []
+    observed = run_simulation(
+        seed=19,
+        steps=40,
+        config=config,
+        trace_sink=traces.append,
+    )
+
+    assert observed == baseline
+    assert traces
+    assert all(trace.step >= 1 for trace in traces)
+    assert all(trace.reward_genes is not None for trace in traces)
+    assert any(trace.intrinsic_reward is not None for trace in traces)
+    assert all(
+        trace.survived_predation <= trace.survived_natural_filter
+        for trace in traces
+    )
+
+
+def test_trace_preserves_existing_physical_and_reward_quantities() -> None:
+    config = replace(
+        small_config(),
+        initial_population=8,
+        max_population=20,
+        initial_predators=0,
+        food_spawn_probability=0.0,
+        sample_interval=1,
+    )
+    traces: list[TransitionTrace] = []
+
+    run_simulation(
+        seed=23,
+        steps=1,
+        config=config,
+        trace_sink=traces.append,
+    )
+
+    assert len(traces) == config.initial_population
+    for trace in traces:
+        assert trace.age == 1
+        assert trace.survived_natural_filter
+        assert trace.survived_predation
+        assert trace.conspecific_signal is not None
+        assert trace.predator_signal == 0.0
+        assert trace.intrinsic_reward is not None
+        expected_physical = (
+            trace.food_eaten * config.food_energy
+            - config.basal_cost
+            - trace.moved * config.movement_cost
+        )
+        assert trace.physical_energy_delta == expected_physical

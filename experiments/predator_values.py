@@ -6,7 +6,7 @@ import random
 from collections import Counter
 from dataclasses import asdict, dataclass, field, replace
 from statistics import fmean
-from typing import Iterable
+from typing import Callable, Iterable
 
 ACTIONS = (-1, 0, 1)
 State = tuple[int, int, int, int]
@@ -140,6 +140,32 @@ class PendingTransition:
     action: int
     food_eaten: int
     moved: int
+    physical_energy_delta: float
+
+
+@dataclass(frozen=True)
+class TransitionTrace:
+    """Optional label-free observation of one already-computed transition."""
+
+    step: int
+    agent_id: int
+    parent_id: int | None
+    observed_state: State
+    action: int
+    food_eaten: int
+    moved: int
+    physical_energy_delta: float
+    reward_genes: RewardGenes
+    energy_after_body_dynamics: float
+    age: int
+    survived_natural_filter: bool
+    survived_predation: bool
+    conspecific_signal: float | None
+    predator_signal: float | None
+    intrinsic_reward: float | None
+
+
+TransitionTraceSink = Callable[[TransitionTrace], None]
 
 
 @dataclass(frozen=True)
@@ -409,6 +435,7 @@ def run_simulation(
     seed: int,
     steps: int,
     config: SimulationConfig | None = None,
+    trace_sink: TransitionTraceSink | None = None,
 ) -> SimulationResult:
     if steps < 1:
         raise ValueError("steps must be positive")
@@ -459,7 +486,12 @@ def run_simulation(
         for agent in population:
             state = observe_state(agent.position, foods, counts, predators, config)
             action = agent.choose_action(state, rng, config.epsilon)
-            food_eaten, moved, _ = apply_body_dynamics(agent, action, foods, config)
+            food_eaten, moved, physical_energy_delta = apply_body_dynamics(
+                agent,
+                action,
+                foods,
+                config,
+            )
             transitions.append(
                 PendingTransition(
                     agent=agent,
@@ -467,6 +499,7 @@ def run_simulation(
                     action=action,
                     food_eaten=food_eaten,
                     moved=moved,
+                    physical_energy_delta=physical_energy_delta,
                 )
             )
 
@@ -494,6 +527,7 @@ def run_simulation(
         transition_by_id = {
             transition.agent.agent_id: transition for transition in transitions
         }
+        evaluation_by_id: dict[int, tuple[float, float, float]] = {}
 
         for agent in survivors:
             transition = transition_by_id[agent.agent_id]
@@ -511,6 +545,11 @@ def run_simulation(
                 predator_signal_value=predator_signal_value,
                 config=config,
             )
+            evaluation_by_id[agent.agent_id] = (
+                conspecific_signal_value,
+                predator_signal_value,
+                reward,
+            )
             next_state = observe_state(
                 agent.position, foods, next_counts, predators, config
             )
@@ -521,6 +560,39 @@ def run_simulation(
                 next_state,
                 config,
             )
+
+        if trace_sink is not None:
+            physically_alive_ids = {agent.agent_id for agent in physically_alive}
+            survivor_ids = {agent.agent_id for agent in survivors}
+            for transition in transitions:
+                agent_id = transition.agent.agent_id
+                evaluation = evaluation_by_id.get(agent_id)
+                trace_sink(
+                    TransitionTrace(
+                        step=step,
+                        agent_id=agent_id,
+                        parent_id=transition.agent.parent_id,
+                        observed_state=transition.state,
+                        action=transition.action,
+                        food_eaten=transition.food_eaten,
+                        moved=transition.moved,
+                        physical_energy_delta=transition.physical_energy_delta,
+                        reward_genes=transition.agent.genes,
+                        energy_after_body_dynamics=transition.agent.energy,
+                        age=transition.agent.age,
+                        survived_natural_filter=agent_id in physically_alive_ids,
+                        survived_predation=agent_id in survivor_ids,
+                        conspecific_signal=(
+                            None if evaluation is None else evaluation[0]
+                        ),
+                        predator_signal=(
+                            None if evaluation is None else evaluation[1]
+                        ),
+                        intrinsic_reward=(
+                            None if evaluation is None else evaluation[2]
+                        ),
+                    )
+                )
 
         children: list[Agent] = []
         for agent in survivors:
