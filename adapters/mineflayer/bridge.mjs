@@ -4,7 +4,8 @@ import readline from 'node:readline'
 
 import {
   attachHealthSynchronizedSpawnListeners,
-  attachInventoryUpdateListenerAfterInjection
+  attachInventoryUpdateListenerAfterInjection,
+  resolveAttackEntity
 } from './bridge_hooks.mjs'
 import {
   makeEnvelope,
@@ -216,6 +217,13 @@ async function handleEffect (command) {
 
     if (command.effect === 'look') {
       await bot.look(command.yaw, command.pitch)
+      emitEffectResult(command, 'applied')
+      return
+    }
+
+    if (command.effect === 'attack_entity') {
+      const target = resolveAttackEntity(bot, command.entity_id)
+      await bot.attack(target)
       emitEffectResult(command, 'applied')
       return
     }
