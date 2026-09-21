@@ -325,6 +325,7 @@ class MineflayerObservation(MineflayerMessage):
 class MineflayerEntityHurt(MineflayerMessage):
     entity_id: int
     source_entity_id: int | None
+    actor_entity_id: int
 
     def __post_init__(self) -> None:
         MineflayerMessage.__post_init__(self)
@@ -334,6 +335,10 @@ class MineflayerEntityHurt(MineflayerMessage):
                 "hurt source_entity_id",
                 self.source_entity_id,
             )
+        _require_non_negative_int(
+            "hurt actor_entity_id",
+            self.actor_entity_id,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -517,6 +522,7 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
                 "seq",
                 "entity_id",
                 "source_entity_id",
+                "actor_entity_id",
             },
         )
         source_entity_id = payload["source_entity_id"]
@@ -533,6 +539,10 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
                 payload["entity_id"],
             ),
             source_entity_id=source_entity_id,
+            actor_entity_id=_decoded_non_negative_int(
+                "hurt actor_entity_id",
+                payload["actor_entity_id"],
+            ),
         )
 
     if message_type == "effect_result":
