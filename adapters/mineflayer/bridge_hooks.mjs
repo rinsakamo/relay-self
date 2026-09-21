@@ -49,3 +49,21 @@ export function attachHealthSynchronizedSpawnListeners (
     healthListener()
   })
 }
+
+
+export function resolveAttackEntity (bot, entityId) {
+  if (!bot || !bot.entity || !Number.isInteger(bot.entity.id)) {
+    throw new TypeError('bot must expose an integer entity id')
+  }
+  if (!Number.isInteger(entityId) || entityId < 0) {
+    throw new TypeError('entityId must be a non-negative integer')
+  }
+  if (entityId === bot.entity.id) {
+    throw new Error('self_target')
+  }
+  const entity = bot.entities && bot.entities[entityId]
+  if (!entity) {
+    throw new Error('entity_not_found')
+  }
+  return entity
+}
