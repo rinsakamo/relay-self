@@ -328,6 +328,7 @@ def test_entity_hurt_preserves_target_and_source_identity_without_appraisal() ->
                 "seq": 2,
                 "entity_id": 7,
                 "source_entity_id": 1,
+                "actor_entity_id": 1,
             }
         )
     )
@@ -335,6 +336,7 @@ def test_entity_hurt_preserves_target_and_source_identity_without_appraisal() ->
     assert isinstance(message, MineflayerEntityHurt)
     assert message.entity_id == 7
     assert message.source_entity_id == 1
+    assert message.actor_entity_id == 1
     assert message.provenance.reference == "session-1:2"
     assert not hasattr(message, "hostile")
     assert not hasattr(message, "fight_success")
@@ -349,6 +351,7 @@ def test_entity_hurt_allows_missing_source_without_inventing_identity() -> None:
                 "seq": 2,
                 "entity_id": 7,
                 "source_entity_id": None,
+                "actor_entity_id": 1,
             }
         )
     )
@@ -356,6 +359,7 @@ def test_entity_hurt_allows_missing_source_without_inventing_identity() -> None:
     assert isinstance(message, MineflayerEntityHurt)
     assert message.entity_id == 7
     assert message.source_entity_id is None
+    assert message.actor_entity_id == 1
 
 
 def test_effect_result_preserves_action_identity_without_implying_skill_success() -> None:
