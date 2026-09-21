@@ -15,6 +15,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
     MineflayerPosition,
     MineflayerStreamDecoder,
+    encode_attack_entity,
     encode_clear_controls,
     encode_consume_held,
     encode_equip_item,
@@ -410,6 +411,26 @@ def test_food_commands_keep_item_selection_and_consumption_separate() -> None:
         "action_id": "action-consume",
         "effect": "consume_held",
     }
+
+
+def test_attack_entity_command_keeps_target_identity_explicit() -> None:
+    assert json.loads(
+        encode_attack_entity(
+            "action-attack",
+            entity_id=7,
+        )
+    ) == {
+        "type": "effect",
+        "action_id": "action-attack",
+        "effect": "attack_entity",
+        "entity_id": 7,
+    }
+
+    with pytest.raises(
+        MineflayerAdapterProtocolError,
+        match="non-negative integer",
+    ):
+        encode_attack_entity("action-attack-bad", entity_id=-1)
 
 
 def test_look_command_is_only_a_finite_heading_primitive() -> None:
