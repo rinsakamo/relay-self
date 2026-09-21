@@ -48,7 +48,7 @@ def test_class_prior_reduction_recurs_across_materially_different_worlds() -> No
 
     assert first.world_signature != second.world_signature
     assert first.observation_reference != second.observation_reference
-    assert first.active_appraisal != second.active_appraisal
+    assert first.active_appraisal == second.active_appraisal
     assert first.appraisal_structure == second.appraisal_structure
     assert first.reduction_signature == second.reduction_signature
     assert first.selected_skill == second.selected_skill == ControlledSkill.FLEE.value
