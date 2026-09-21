@@ -18,8 +18,13 @@ from adapters.mineflayer.python_protocol import (
 from adapters.mineflayer.runtime_admission import coordinate_mineflayer_message
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
+from relay_self.appraisal import (
+    AppraisalAspect,
+    AppraisalBias,
+    project_entity_appraisal,
+)
 from relay_self.intent import IntentCommitment
-from relay_self.persistent_cognition import Memory
+from relay_self.persistent_cognition import Memory, PersistentCognition
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     BoundedChoice,
@@ -218,12 +223,14 @@ def decide_skill(
     intent_id: str,
     relay_engine: RelayEngineCallable | None = None,
     retained_memories: tuple[Memory, ...] = (),
+    persistent_cognition: PersistentCognition | None = None,
 ) -> ScenarioDecision:
-    """Choose only among the three Skill classes needed by the controlled MVP.
+    """Choose only among the Skill classes needed by the controlled MVP.
 
-    Hazard interpretation is explicitly scenario-local. The Mineflayer adapter
-    supplies entity facts only; this function compares target-native names
-    against the controlled-world specification.
+    The Mineflayer adapter supplies target-native entity facts only. Existing
+    controlled tests may use scenario-local hazard names as apparatus. When
+    Persistent Cognition is supplied, harm relevance is instead projected from
+    Self-owned Appraisal Disposition without adding World-side threat labels.
     """
 
     if not isinstance(observation, MineflayerObservation):
@@ -242,13 +249,31 @@ def decide_skill(
         raise ControlledScenarioError(
             "retained_memories must be a tuple of Memory values"
         )
+    if (
+        persistent_cognition is not None
+        and not isinstance(persistent_cognition, PersistentCognition)
+    ):
+        raise ControlledScenarioError(
+            "persistent_cognition must be PersistentCognition or None"
+        )
 
     snapshot = observation.snapshot
-    hazards = tuple(
-        entity
-        for entity in snapshot.nearby_entities
-        if entity.name in scenario.hazard_entity_names
-    )
+    if persistent_cognition is None:
+        hazards = tuple(
+            entity
+            for entity in snapshot.nearby_entities
+            if entity.name in scenario.hazard_entity_names
+        )
+    else:
+        hazards = tuple(
+            entity
+            for entity in snapshot.nearby_entities
+            if _entity_is_harm_biased(
+                observation,
+                entity,
+                persistent_cognition,
+            )
+        )
     if hazards:
         return _decide_flee(
             observation,
@@ -282,6 +307,29 @@ def decide_skill(
             "no configured nearby hazard requires FLEE and no configured "
             "food-maintenance action is currently required"
         ),
+    )
+
+
+def _entity_is_harm_biased(
+    observation: MineflayerObservation,
+    entity,
+    persistent_cognition: PersistentCognition,
+) -> bool:
+    entity_class = entity.name or entity.entity_type
+    if entity_class is None:
+        return False
+
+    current = project_entity_appraisal(
+        entity_class=entity_class,
+        entity_instance=(
+            f"{observation.session_id}:entity-{entity.entity_id}"
+        ),
+        observation_provenance=observation.provenance,
+        dispositions=persistent_cognition.appraisal_dispositions,
+    )
+    return (
+        current.bias_for(AppraisalAspect.HARM_LIKELIHOOD)
+        is AppraisalBias.UP
     )
 
 

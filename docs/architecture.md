@@ -12,7 +12,7 @@ The architecture is intentionally organized around a small basis before introduc
 
 State that remains meaningful across moments, sessions, and changes in the immediate environment.
 
-Typical contents include identity specifications, self-models, relationship models, goals, commitments, questions, beliefs, memories, and capability models.
+Typical contents include identity specifications, self-models, relationship models, goals, commitments, questions, beliefs, memories, appraisal dispositions, and capability models.
 
 ### 2. Present Projection
 
@@ -27,6 +27,22 @@ Present_t = Project(PersistentCognition_t, BoundaryState_t, Events_t, Time_t)
 ```
 
 Present Projection should be recomputable where practical. It may be traced, but it should not automatically become durable cognition.
+
+One supported ownership pattern for cold-start appraisal is:
+
+```text
+Identity Specification / governed initial condition
+  -> Appraisal Disposition          # Persistent Cognition
+
+target-native Observation
++ applicable Appraisal Disposition
++ later exact-scope lived evidence
+  -> Current Appraisal              # Present Projection
+```
+
+The projection is Self-relative. A World or adapter may attest an entity species/type/identifier,
+position, distance, motion, or body event; it does not thereby establish `enemy`, `ally`,
+`fear`, or an Action requirement.
 
 ### 3. Embodied Boundary
 

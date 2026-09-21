@@ -15,6 +15,16 @@ from relay_self.action_supervision import (
     InvalidSupervisorTime,
     UnknownSupervisedAction,
 )
+from relay_self.appraisal import (
+    AppraisalAspect,
+    AppraisalBias,
+    AppraisalDisposition,
+    AppraisalError,
+    AppraisalTargetKind,
+    CurrentAppraisal,
+    InvalidAppraisalData,
+    project_entity_appraisal,
+)
 from relay_self.intent import (
     CurrentIntent,
     DuplicateIntentIdentity,
@@ -28,6 +38,7 @@ from relay_self.intent import (
     ReconsiderationDecision,
 )
 from relay_self.persistent_cognition import (
+    DuplicateAppraisalDisposition,
     DuplicateMemoryIdentity,
     IdentitySpecification,
     InvalidPersistentCognitionData,
@@ -77,14 +88,21 @@ __all__ = [
     "ActionState",
     "ActionSupervisionError",
     "ActionSupervisor",
+    "AppraisalAspect",
+    "AppraisalBias",
+    "AppraisalDisposition",
+    "AppraisalError",
+    "AppraisalTargetKind",
     "BoundedChoice",
     "BoundedChoiceRequest",
     "CurrentIntent",
+    "CurrentAppraisal",
     "CognitionUnavailable",
     "CognitionDatum",
     "CognitionMode",
     "DecisionEpochResult",
     "DecisionStatus",
+    "DuplicateAppraisalDisposition",
     "DuplicateIntentIdentity",
     "DuplicateMemoryIdentity",
     "DuplicateSupervisedAction",
@@ -94,6 +112,7 @@ __all__ = [
     "IntentEvent",
     "IntentEventKind",
     "InvalidActionData",
+    "InvalidAppraisalData",
     "InvalidIntentData",
     "InvalidIntentTime",
     "InvalidIntentTransition",
@@ -127,6 +146,7 @@ __all__ = [
     "UnknownSupervisedAction",
     "UnsupportedPersistentCognitionVersion",
     "load_persistent_cognition",
+    "project_entity_appraisal",
     "save_persistent_cognition",
     "coordinate_decision_epoch",
 ]

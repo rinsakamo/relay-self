@@ -32,6 +32,25 @@ Belief != Memory
 Goal != Current Intent
 ```
 
+Initial appraisal does not create another SOUL or Emotion owner. An `Identity Specification`
+or other governed initial condition may seed an existing `Appraisal Disposition`, but the
+disposition remains separate Persistent Cognition with its own provenance and later integration
+history.
+
+For entity-facing appraisal, preserve:
+
+```text
+target-native species / type / instance fact
+  != Appraisal Disposition
+  != Current Appraisal
+  != enemy / ally / kinship truth
+```
+
+A class-scoped disposition may supply cold-start bias. Exact-instance lived evidence may later
+supply a more specific disposition for the same appraisal aspect without automatically rewriting
+the class-wide tendency. Any class-wide generalization from individual experience requires a
+separate governed integration decision rather than implicit propagation.
+
 ## Present Projection
 
 Present Projection is the transient cognitive state that matters now.

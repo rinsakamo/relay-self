@@ -514,6 +514,18 @@ Simulation-specific state integration may live in a simulator or environment eng
 
 RelaySelf may own observation, evidence, estimates, belief, appraisal, and action intent. It does not own external world truth merely because it has a model of that world.
 
+Target-native class/type/instance facts remain observations even when Persistent Cognition carries
+a matching appraisal disposition. Appraisal projection is a Self-side interpretation step:
+
+```text
+World / adapter fact
+  -> Self-owned Appraisal Disposition lookup
+  -> transient Current Appraisal
+```
+
+Neither a class prior nor a Current Appraisal is by itself Action authorization, and exact-instance
+experience must not be silently generalized into class-wide World truth.
+
 The boundary must remain valid across different environments, including simulators, virtual worlds, desktop systems, and physical devices.
 
 ## 16. Runtime mechanisms must remain subordinate to the basis
