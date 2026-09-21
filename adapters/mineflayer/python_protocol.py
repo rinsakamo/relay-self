@@ -29,7 +29,14 @@ _OBSERVATION_KINDS = frozenset(
     }
 )
 _EFFECTS = frozenset(
-    {"set_control", "clear_controls", "equip_item", "consume_held", "look"}
+    {
+        "set_control",
+        "clear_controls",
+        "equip_item",
+        "consume_held",
+        "look",
+        "attack_entity",
+    }
 )
 _EFFECT_RESULTS = frozenset({"applied", "rejected"})
 _CONTROLS = frozenset(
@@ -636,6 +643,19 @@ def encode_look(
             "effect": "look",
             "yaw": yaw,
             "pitch": pitch,
+        }
+    )
+
+
+def encode_attack_entity(action_id: str, *, entity_id: int) -> str:
+    _require_text("action_id", action_id)
+    _require_non_negative_int("entity_id", entity_id)
+    return _encode_command(
+        {
+            "type": "effect",
+            "action_id": action_id,
+            "effect": "attack_entity",
+            "entity_id": entity_id,
         }
     )
 
