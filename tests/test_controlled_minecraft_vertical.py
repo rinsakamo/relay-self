@@ -526,13 +526,14 @@ def test_eat_ack_without_food_increase_fails_skill_not_action_outcome() -> None:
         ]
     )
 
+    owner = current_intent()
     result = asyncio.run(
         execute_decision(
             session,
             obs,
             scenario(max_evidence_messages=1),
             decision,
-            intent_commitment=current_intent(),
+            intent_commitment=owner,
             supervisor=ActionSupervisor(),
         )
     )
@@ -543,6 +544,8 @@ def test_eat_ack_without_food_increase_fails_skill_not_action_outcome() -> None:
         action.state is ActionState.OUTCOME
         for action in result.actions
     )
+    assert owner.current_intent is not None
+    assert owner.current_intent.intent_id == "intent-survive"
 
 
 def test_effect_result_wait_ignores_raw_message_count_until_deadline() -> None:
@@ -791,6 +794,7 @@ def test_flee_sideways_motion_does_not_count_as_destination_progress() -> None:
         ]
     )
 
+    owner = current_intent()
     result = asyncio.run(
         execute_decision(
             session,
@@ -800,7 +804,7 @@ def test_flee_sideways_motion_does_not_count_as_destination_progress() -> None:
                 evidence_timeout_s=0.01,
             ),
             decision,
-            intent_commitment=current_intent(),
+            intent_commitment=owner,
             supervisor=ActionSupervisor(),
         )
     )
@@ -811,6 +815,8 @@ def test_flee_sideways_motion_does_not_count_as_destination_progress() -> None:
         action.state is ActionState.OUTCOME
         for action in result.actions
     )
+    assert owner.current_intent is not None
+    assert owner.current_intent.intent_id == "intent-survive"
 
 
 def test_wait_execution_creates_no_skill_or_action() -> None:
