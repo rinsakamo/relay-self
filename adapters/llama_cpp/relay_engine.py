@@ -221,8 +221,13 @@ def render_llama_cpp_request(
         raise TypeError("bounded request mode must be BOUNDED or THINK")
 
     state = render_llama_cpp_bounded_state(request)
+    dynamic_state = {
+        key: value
+        for key, value in state.items()
+        if key != "identity_context"
+    }
     payload = {
-        **state,
+        **dynamic_state,
         "instruction": request.instruction,
         "choices": [
             {
