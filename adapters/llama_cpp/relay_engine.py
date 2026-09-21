@@ -184,8 +184,7 @@ def render_llama_cpp_bounded_state(
     if not isinstance(request, BoundedChoiceRequest):
         raise TypeError("request must be BoundedChoiceRequest")
 
-    return {
-        "identity_context": _identity_payload(request),
+    state: dict[str, object] = {
         "request_id": request.request_id,
         "intent_id": request.intent_id,
         "focus": request.focus,
@@ -201,6 +200,10 @@ def render_llama_cpp_bounded_state(
             for datum in request.context
         ],
     }
+    identity = _identity_payload(request)
+    if identity is not None:
+        state["identity_context"] = identity
+    return state
 
 
 def render_llama_cpp_request(
