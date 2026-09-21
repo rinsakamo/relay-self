@@ -63,8 +63,8 @@ CURRENT_ADAPTER_PRIMITIVE_FIXTURE: frozenset[str] = frozenset(
 # CANDIDATE_STATUS above, which records whether the historical candidate names
 # currently need SkillExecution-level state on the demonstrated Minecraft path.
 #
-# LOCOMOTE and MANIPULATE are new pressure exposed by the cross-World correction:
-# - known-target locomotion must not be smuggled through target-native MOVE;
+# MOTION and MANIPULATE are new pressure exposed by the cross-World correction:
+# - known-target body/location change must not be smuggled through target-native MOVE;
 # - construction/crafting/manipulation must not be smuggled through target-native
 #   BREAK/PLACE/CRAFT/TRANSFER/USE.
 #
@@ -76,7 +76,7 @@ CANDIDATE_WORLD_NEUTRAL_BASIS: tuple[str, ...] = (
     "FIGHT",
     "FLEE",
     "SEEK",
-    "LOCOMOTE",
+    "MOTION",
     "MANIPULATE",
     "TALK",
     "CONTEMPLATE",
@@ -87,7 +87,7 @@ CANDIDATE_WORLD_NEUTRAL_BASIS: tuple[str, ...] = (
 # Self-side objectives in different contexts. The mapping is a falsification
 # ledger, not a target-independent wire protocol.
 MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS: dict[str, tuple[str, ...]] = {
-    "MOVE": ("LOCOMOTE", "SEEK", "FLEE"),
+    "MOVE": ("MOTION", "SEEK", "FLEE"),
     "LOOK": ("SEEK", "FIGHT", "FLEE"),
     "EQUIP": ("MANIPULATE", "EAT", "FIGHT"),
     "CONSUME": ("EAT",),
@@ -99,6 +99,36 @@ MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS: dict[str, tuple[str, ...]] = {
     "TRANSFER": ("MANIPULATE",),
     "CRAFT": ("MANIPULATE",),
     "CHAT_DELIVERY": ("TALK",),
+}
+
+
+# Specification-grounded second target for #312: current MoveIt 2 / MoveIt Task
+# Constructor motion/manipulation operations. These are experiment-local target
+# labels only; no ROS dependency or universal adapter protocol is introduced.
+#
+# Planning-scene attach/detach is target-native bookkeeping and is not treated as
+# proof of physical grasp/release success. It appears here only because it is a
+# concrete mechanic inside the documented pick/place manipulation surface.
+MOVEIT_SPEC_TARGET_OPERATIONS: frozenset[str] = frozenset(
+    {
+        "POSE_TARGET_MOTION",
+        "MOVE_TO_STAGE",
+        "MOVE_RELATIVE_STAGE",
+        "OPEN_HAND_STAGE",
+        "CLOSE_HAND_STAGE",
+        "ATTACH_OBJECT_STAGE",
+        "DETACH_OBJECT_OPERATION",
+    }
+)
+
+MOVEIT_OPERATION_TO_WORLD_NEUTRAL_BASIS: dict[str, tuple[str, ...]] = {
+    "POSE_TARGET_MOTION": ("MOTION",),
+    "MOVE_TO_STAGE": ("MOTION",),
+    "MOVE_RELATIVE_STAGE": ("MOTION",),
+    "OPEN_HAND_STAGE": ("MOTION",),
+    "CLOSE_HAND_STAGE": ("MOTION", "MANIPULATE"),
+    "ATTACH_OBJECT_STAGE": ("MANIPULATE",),
+    "DETACH_OBJECT_OPERATION": ("MANIPULATE",),
 }
 
 
@@ -506,6 +536,38 @@ def validate_corpus() -> tuple[str, ...]:
         if unknown_candidates:
             errors.append(
                 f"{primitive}: unknown World-neutral candidates="
+                + ",".join(unknown_candidates)
+            )
+
+    moveit_native = set(MOVEIT_SPEC_TARGET_OPERATIONS)
+    if moveit_native & basis:
+        errors.append(
+            "MoveIt target-operation labels must not be accepted directly "
+            "as the World-neutral basis"
+        )
+
+    missing_moveit_mappings = moveit_native - set(
+        MOVEIT_OPERATION_TO_WORLD_NEUTRAL_BASIS
+    )
+    if missing_moveit_mappings:
+        errors.append(
+            "MoveIt target operations without candidate World-neutral mapping: "
+            + ",".join(sorted(missing_moveit_mappings))
+        )
+
+    for operation, candidates in MOVEIT_OPERATION_TO_WORLD_NEUTRAL_BASIS.items():
+        if operation not in moveit_native:
+            errors.append(
+                f"mapping names unknown MoveIt target operation: {operation}"
+            )
+        if not candidates:
+            errors.append(
+                f"{operation}: World-neutral candidate mapping cannot be empty"
+            )
+        unknown_candidates = sorted(set(candidates) - basis)
+        if unknown_candidates:
+            errors.append(
+                f"{operation}: unknown World-neutral candidates="
                 + ",".join(unknown_candidates)
             )
 
