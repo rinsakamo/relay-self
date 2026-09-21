@@ -28,7 +28,6 @@ from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     BoundedChoiceRequest,
     CognitionMode,
-    DecisionStatus,
     ProviderDecision,
     RelayEngine,
 )
