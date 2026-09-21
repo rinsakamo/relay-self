@@ -8,6 +8,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerDecodedMessage,
     MineflayerLaunchConfig,
     MineflayerStreamDecoder,
+    encode_attack_entity,
     encode_clear_controls,
     encode_consume_held,
     encode_equip_item,
@@ -180,6 +181,19 @@ class MineflayerProcessSession:
                 action_id,
                 yaw=yaw,
                 pitch=pitch,
+            )
+        )
+
+    async def send_attack_entity(
+        self,
+        action_id: str,
+        *,
+        entity_id: int,
+    ) -> None:
+        await self._send(
+            encode_attack_entity(
+                action_id,
+                entity_id=entity_id,
             )
         )
 

@@ -194,6 +194,52 @@ test('equip_item and consume_held remain separate primitive effects', () => {
   )
 })
 
+test('attack_entity requires one explicit non-negative entity id', () => {
+  assert.deepEqual(
+    parseCommand({
+      type: 'effect',
+      action_id: 'action-attack',
+      effect: 'attack_entity',
+      entity_id: 7
+    }),
+    {
+      type: 'effect',
+      action_id: 'action-attack',
+      effect: 'attack_entity',
+      entity_id: 7
+    }
+  )
+
+  assert.throws(
+    () => parseCommand({
+      type: 'effect',
+      action_id: 'action-attack-negative',
+      effect: 'attack_entity',
+      entity_id: -1
+    }),
+    /non-negative integer/
+  )
+  assert.throws(
+    () => parseCommand({
+      type: 'effect',
+      action_id: 'action-attack-float',
+      effect: 'attack_entity',
+      entity_id: 7.5
+    }),
+    /non-negative integer/
+  )
+  assert.throws(
+    () => parseCommand({
+      type: 'effect',
+      action_id: 'action-attack-extra',
+      effect: 'attack_entity',
+      entity_id: 7,
+      repeat: true
+    }),
+    /fields are invalid/
+  )
+})
+
 test('snapshot exposes survival facts without appraisal labels', () => {
   const snapshot = snapshotFromBot({
     health: 12,
