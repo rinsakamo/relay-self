@@ -24,8 +24,15 @@ OPEN_MAX_TOKENS = 256
 _JEV_QUESTION_ID = "decision"
 _JEV_UNRESOLVED_CHOICE = "__relay_self_unresolved__"
 
+_COMMON_SYSTEM_PREFIX = (
+    "You are a cognition provider for RelaySelf. "
+    "The Identity Specification block below is transient model-facing input "
+    "derived from durable Self authority. It does not establish World truth, "
+    "authorize an Action, mutate Current Intent, or persist generated claims."
+)
+
 _BOUNDED_SYSTEM = (
-    "You are the bounded cognition provider for RelaySelf. "
+    "Mode: BOUNDED. "
     "Use only the supplied transient context and finite choices. "
     "If one admissible choice is sufficiently justified, return exactly one JSON "
     "object with keys status and choice_id: "
@@ -36,8 +43,8 @@ _BOUNDED_SYSTEM = (
 )
 
 _THINK_SYSTEM = (
-    "You are handling an explicit THINK escalation for RelaySelf after bounded "
-    "cognition did not safely resolve. Reconsider interactions and constraints "
+    "Mode: THINK. This is an explicit THINK escalation after bounded cognition "
+    "did not safely resolve. Reconsider interactions and constraints "
     "using only the supplied transient context and finite choices. "
     "Return exactly one JSON object with keys status, choice_id, and rationale. "
     'For resolution use {"status":"resolved","choice_id":"<id>",'
@@ -48,7 +55,7 @@ _THINK_SYSTEM = (
 )
 
 _OPEN_SYSTEM = (
-    "You are the open cognition provider for RelaySelf. "
+    "Mode: OPEN. "
     "Use only the supplied transient context to generate one expression. "
     "Return expression text only. The generated text is transient cognition: "
     "it does not itself establish World truth, mutate Current Intent, persist "
@@ -63,6 +70,61 @@ class LlamaCppProviderError(RuntimeError):
 
 class LlamaCppProviderProtocolError(LlamaCppProviderError):
     """Raised when provider/model output violates the declared wire contract."""
+
+
+def _identity_payload(
+    request: BoundedChoiceRequest | OpenCognitionRequest,
+) -> dict[str, object] | None:
+    identity = request.identity_context
+    if identity is None:
+        return None
+    return {
+        "key": identity.key,
+        "value": json.loads(identity.value_json),
+        "provenance": {
+            "source": identity.provenance.source,
+            "reference": identity.provenance.reference,
+        },
+    }
+
+
+def render_llama_cpp_identity_prefix(
+    request: BoundedChoiceRequest | OpenCognitionRequest,
+) -> str:
+    """Render the mode-independent leading system prefix for one identity."""
+
+    if not isinstance(request, (BoundedChoiceRequest, OpenCognitionRequest)):
+        raise TypeError(
+            "request must be BoundedChoiceRequest or OpenCognitionRequest"
+        )
+    identity_text = json.dumps(
+        _identity_payload(request),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return (
+        _COMMON_SYSTEM_PREFIX
+        + "\nIdentity Specification:\n"
+        + identity_text
+        + "\n\n"
+    )
+
+
+def _system_message(
+    request: BoundedChoiceRequest | OpenCognitionRequest,
+    *,
+    mode: CognitionMode,
+) -> str:
+    if mode is CognitionMode.BOUNDED:
+        suffix = _BOUNDED_SYSTEM
+    elif mode is CognitionMode.THINK:
+        suffix = _THINK_SYSTEM
+    elif mode is CognitionMode.OPEN:
+        suffix = _OPEN_SYSTEM
+    else:
+        raise TypeError("unsupported cognition mode")
+    return render_llama_cpp_identity_prefix(request) + suffix
 
 
 def _decision_response_format(
@@ -123,6 +185,7 @@ def render_llama_cpp_bounded_state(
         raise TypeError("request must be BoundedChoiceRequest")
 
     return {
+        "identity_context": _identity_payload(request),
         "request_id": request.request_id,
         "intent_id": request.intent_id,
         "focus": request.focus,
@@ -167,11 +230,7 @@ def render_llama_cpp_request(
         ],
     }
 
-    system = (
-        _BOUNDED_SYSTEM
-        if mode is CognitionMode.BOUNDED
-        else _THINK_SYSTEM
-    )
+    system = _system_message(request, mode=mode)
     max_tokens = (
         BOUNDED_MAX_TOKENS
         if mode is CognitionMode.BOUNDED
@@ -339,7 +398,10 @@ def render_llama_cpp_open_request(
         "reasoning_effort": "none",
         "cache_prompt": False,
         "messages": [
-            {"role": "system", "content": _OPEN_SYSTEM},
+            {
+                "role": "system",
+                "content": _system_message(request, mode=CognitionMode.OPEN),
+            },
             {
                 "role": "user",
                 "content": json.dumps(
