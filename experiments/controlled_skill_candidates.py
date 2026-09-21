@@ -48,10 +48,21 @@ def project_controlled_skill_candidates(
     snapshot = observation.snapshot
     candidates: list[ControlledSkill] = []
 
-    if any(
-        entity.name in scenario.hazard_entity_names
+    hazards = tuple(
+        entity
         for entity in snapshot.nearby_entities
+        if entity.name in scenario.hazard_entity_names
+    )
+    if (
+        scenario.fight_max_distance is not None
+        and any(
+            entity.distance <= scenario.fight_max_distance
+            for entity in hazards
+        )
     ):
+        candidates.append(ControlledSkill.FIGHT)
+
+    if hazards:
         candidates.append(ControlledSkill.FLEE)
 
     if snapshot.food <= scenario.food_threshold:

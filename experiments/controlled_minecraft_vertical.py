@@ -10,6 +10,7 @@ from typing import Callable, Protocol
 from adapters.mineflayer.python_protocol import (
     MineflayerDecodedMessage,
     MineflayerEffectResult,
+    MineflayerEntityHurt,
     MineflayerObservation,
     MineflayerPosition,
     mineflayer_yaw_to_target,
@@ -37,6 +38,7 @@ class ControlledScenarioError(RuntimeError):
 class ControlledSkill(str, Enum):
     WAIT = "WAIT"
     EAT = "EAT"
+    FIGHT = "FIGHT"
     FLEE = "FLEE"
 
 
@@ -68,6 +70,7 @@ class ControlledScenario:
     food_threshold: float
     edible_item_names: tuple[str, ...]
     destinations: tuple[ControlledDestination, ...]
+    fight_max_distance: float | None = None
     flee_min_progress: float = 0.25
     evidence_timeout_s: float = 5.0
     max_evidence_messages: int = 32
@@ -107,6 +110,11 @@ class ControlledScenario:
             raise ControlledScenarioError(
                 "destination ids must be unique"
             )
+        if self.fight_max_distance is not None:
+            _require_positive_number(
+                "fight_max_distance",
+                self.fight_max_distance,
+            )
         _require_positive_number(
             "flee_min_progress",
             self.flee_min_progress,
@@ -140,12 +148,15 @@ class ScenarioDecision:
     reason: str
     item_name: str | None = None
     destination: ControlledDestination | None = None
+    target_entity_id: int | None = None
     cognition_result: RelayEngineResult | None = None
 
     @property
     def resolved(self) -> bool:
         if self.skill is ControlledSkill.FLEE:
             return self.destination is not None
+        if self.skill is ControlledSkill.FIGHT:
+            return self.target_entity_id is not None
         return True
 
 
@@ -186,6 +197,13 @@ class MineflayerScenarioSession(Protocol):
     ) -> None: ...
 
     async def send_clear_controls(self, action_id: str) -> None: ...
+
+    async def send_attack_entity(
+        self,
+        action_id: str,
+        *,
+        entity_id: int,
+    ) -> None: ...
 
     async def send_observe(self) -> None: ...
 
@@ -464,7 +482,7 @@ async def execute_decision(
     supervisor: ActionSupervisor,
     authorization: str = "controlled-minecraft-mvp",
 ) -> SkillRunResult | None:
-    """Execute only EAT/FLEE; WAIT is healthy inactivity with no Skill start."""
+    """Execute EAT/FIGHT/FLEE; WAIT is healthy inactivity with no Skill start."""
 
     if decision.skill is ControlledSkill.WAIT:
         return None
@@ -488,6 +506,16 @@ async def execute_decision(
             supervisor=supervisor,
             authorization=authorization,
         )
+    if decision.skill is ControlledSkill.FIGHT:
+        return await _execute_fight(
+            session,
+            observation,
+            scenario,
+            decision,
+            intent_commitment=intent_commitment,
+            supervisor=supervisor,
+            authorization=authorization,
+        )
     if decision.skill is ControlledSkill.FLEE:
         return await _execute_flee(
             session,
@@ -500,6 +528,177 @@ async def execute_decision(
         )
     raise ControlledScenarioError(
         f"unsupported controlled Skill: {decision.skill}"
+    )
+
+
+async def _execute_fight(
+    session: MineflayerScenarioSession,
+    observation: MineflayerObservation,
+    scenario: ControlledScenario,
+    decision: ScenarioDecision,
+    *,
+    intent_commitment: IntentCommitment,
+    supervisor: ActionSupervisor,
+    authorization: str,
+) -> SkillRunResult:
+    target_entity_id = decision.target_entity_id
+    if target_entity_id is None:
+        raise ControlledScenarioError(
+            "FIGHT decision requires target_entity_id"
+        )
+
+    target = next(
+        (
+            entity
+            for entity in observation.snapshot.nearby_entities
+            if entity.entity_id == target_entity_id
+        ),
+        None,
+    )
+    if target is None:
+        raise ControlledScenarioError(
+            "FIGHT target is absent from the current observation"
+        )
+    if target.name not in scenario.hazard_entity_names:
+        raise ControlledScenarioError(
+            "FIGHT target is not a configured scenario hazard"
+        )
+    if scenario.fight_max_distance is None:
+        raise ControlledScenarioError(
+            "FIGHT requires an explicitly configured fight range"
+        )
+    if target.distance > scenario.fight_max_distance:
+        raise ControlledScenarioError(
+            "FIGHT target is outside the configured fight range"
+        )
+
+    messages: list[MineflayerDecodedMessage] = []
+    action_ids: list[str] = []
+    skill = _start_skill(
+        ControlledSkill.FIGHT,
+        observation,
+        intent_commitment,
+    )
+
+    attack_id = f"{skill.execution_id}:attack"
+    _issue_action(
+        attack_id,
+        skill,
+        intent_commitment,
+        supervisor,
+        authorization=authorization,
+        timeout_s=scenario.evidence_timeout_s,
+    )
+    action_ids.append(attack_id)
+    await session.send_attack_entity(
+        attack_id,
+        entity_id=target_entity_id,
+    )
+
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + scenario.evidence_timeout_s
+    attack_result: MineflayerEffectResult | None = None
+    hurt_evidence: MineflayerEntityHurt | None = None
+
+    while True:
+        if (
+            attack_result is not None
+            and attack_result.result == "applied"
+            and hurt_evidence is not None
+        ):
+            break
+
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            break
+        try:
+            message = await asyncio.wait_for(
+                session.receive(),
+                timeout=remaining,
+            )
+        except TimeoutError:
+            break
+
+        messages.append(message)
+
+        if (
+            isinstance(message, MineflayerEffectResult)
+            and message.action_id != attack_id
+        ):
+            raise ControlledScenarioError(
+                "controlled FIGHT received effect result for unexpected "
+                f"action: {message.action_id}"
+            )
+
+        coordination = coordinate_mineflayer_message(
+            message,
+            supervisor,
+            at_ns=_monotonic_ns(),
+        )
+        if (
+            isinstance(message, MineflayerEffectResult)
+            and message.action_id == attack_id
+        ):
+            if coordination is None or coordination.action_closure is None:
+                raise ControlledScenarioError(
+                    "FIGHT attack effect did not close supervised Action"
+                )
+            if coordination.action_closure.state is not ActionState.OUTCOME:
+                raise ControlledScenarioError(
+                    "FIGHT attack effect did not close Action as OUTCOME"
+                )
+            attack_result = message
+            if message.result != "applied":
+                skill = skill.fail(
+                    reason=f"attack_entity rejected: {message.error}",
+                    at_ns=_next_owner_time(skill.events[-1].at_ns),
+                    provenance=message.provenance,
+                )
+                return _run_result(
+                    decision,
+                    skill,
+                    supervisor,
+                    action_ids,
+                    messages,
+                )
+
+        if (
+            isinstance(message, MineflayerEntityHurt)
+            and message.entity_id == target_entity_id
+            and message.source_entity_id == message.actor_entity_id
+        ):
+            hurt_evidence = message
+
+    if attack_result is None:
+        raise ControlledScenarioError(
+            "timed out waiting for FIGHT attack effect result"
+        )
+
+    if hurt_evidence is None:
+        skill = skill.fail(
+            reason=(
+                "attack_entity was applied but no matching self-sourced "
+                "entity_hurt consequence was observed"
+            ),
+            at_ns=_next_owner_time(skill.events[-1].at_ns),
+            provenance=attack_result.provenance,
+        )
+    else:
+        skill = skill.succeed(
+            reason=(
+                "matching target entity_hurt was attributed to the "
+                "controlled Mineflayer actor"
+            ),
+            at_ns=_next_owner_time(skill.events[-1].at_ns),
+            provenance=hurt_evidence.provenance,
+        )
+
+    return _run_result(
+        decision,
+        skill,
+        supervisor,
+        action_ids,
+        messages,
     )
 
 
