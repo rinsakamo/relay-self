@@ -1,13 +1,3 @@
-from relay_self.appraisal import (
-    AppraisalAspect,
-    AppraisalBias,
-    AppraisalDisposition,
-    AppraisalError,
-    AppraisalTargetKind,
-    CurrentAppraisal,
-    InvalidAppraisalData,
-    project_entity_appraisal,
-)
 from relay_self.action import (
     TERMINAL_STATES,
     ActionEvent,
@@ -24,6 +14,16 @@ from relay_self.action_supervision import (
     InvalidSupervisionData,
     InvalidSupervisorTime,
     UnknownSupervisedAction,
+)
+from relay_self.appraisal import (
+    AppraisalAspect,
+    AppraisalBias,
+    AppraisalDisposition,
+    AppraisalError,
+    AppraisalTargetKind,
+    CurrentAppraisal,
+    InvalidAppraisalData,
+    project_entity_appraisal,
 )
 from relay_self.intent import (
     CurrentIntent,
