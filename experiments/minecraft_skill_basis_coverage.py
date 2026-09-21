@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 CANDIDATE_SKILL_BASIS: tuple[str, ...] = (
     "WAIT",
     "EAT",
