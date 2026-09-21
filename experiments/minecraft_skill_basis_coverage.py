@@ -63,10 +63,13 @@ CURRENT_ADAPTER_PRIMITIVE_FIXTURE: frozenset[str] = frozenset(
 # CANDIDATE_STATUS above, which records whether the historical candidate names
 # currently need SkillExecution-level state on the demonstrated Minecraft path.
 #
-# LOCOMOTE and USE are new pressure exposed by the cross-World correction:
+# LOCOMOTE and MANIPULATE are new pressure exposed by the cross-World correction:
 # - known-target locomotion must not be smuggled through target-native MOVE;
 # - construction/crafting/manipulation must not be smuggled through target-native
 #   BREAK/PLACE/CRAFT/TRANSFER/USE.
+#
+# MANIPULATE is intentionally named differently from the Minecraft-native USE
+# label so lexical identity cannot masquerade as cross-World abstraction.
 CANDIDATE_WORLD_NEUTRAL_BASIS: tuple[str, ...] = (
     "WAIT",
     "EAT",
@@ -74,7 +77,7 @@ CANDIDATE_WORLD_NEUTRAL_BASIS: tuple[str, ...] = (
     "FLEE",
     "SEEK",
     "LOCOMOTE",
-    "USE",
+    "MANIPULATE",
     "TALK",
     "CONTEMPLATE",
 )
@@ -86,15 +89,15 @@ CANDIDATE_WORLD_NEUTRAL_BASIS: tuple[str, ...] = (
 MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS: dict[str, tuple[str, ...]] = {
     "MOVE": ("LOCOMOTE", "SEEK", "FLEE"),
     "LOOK": ("SEEK", "FIGHT", "FLEE"),
-    "EQUIP": ("USE", "EAT", "FIGHT"),
+    "EQUIP": ("MANIPULATE", "EAT", "FIGHT"),
     "CONSUME": ("EAT",),
     "ATTACK": ("FIGHT",),
-    "BREAK": ("USE",),
-    "TAKE": ("USE",),
-    "PLACE": ("USE",),
-    "USE": ("USE",),
-    "TRANSFER": ("USE",),
-    "CRAFT": ("USE",),
+    "BREAK": ("MANIPULATE",),
+    "TAKE": ("MANIPULATE",),
+    "PLACE": ("MANIPULATE",),
+    "USE": ("MANIPULATE",),
+    "TRANSFER": ("MANIPULATE",),
+    "CRAFT": ("MANIPULATE",),
     "CHAT_DELIVERY": ("TALK",),
 }
 
