@@ -133,7 +133,10 @@ bot.on('entityGone', (entity) => {
 bot.on('entityHurt', (entity, source) => {
   if (!spawned) return
   try {
-    emit('entity_hurt', entityHurtPayload(entity, source))
+    emit(
+      'entity_hurt',
+      entityHurtPayload(entity, source, bot.entity.id)
+    )
   } catch (error) {
     emitAdapterError(error)
   }
