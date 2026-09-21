@@ -297,7 +297,8 @@ def test_predator_treatment_does_not_change_initial_prey_genes() -> None:
 
 
 def test_optional_transition_trace_does_not_perturb_seeded_simulation() -> None:
-    config = small_config(
+    config = replace(
+        small_config(),
         initial_population=12,
         max_population=40,
         sample_interval=10,
@@ -324,7 +325,8 @@ def test_optional_transition_trace_does_not_perturb_seeded_simulation() -> None:
 
 
 def test_trace_preserves_existing_physical_and_reward_quantities() -> None:
-    config = small_config(
+    config = replace(
+        small_config(),
         initial_population=8,
         max_population=20,
         initial_predators=0,
