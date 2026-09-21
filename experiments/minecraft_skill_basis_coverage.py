@@ -32,9 +32,9 @@ CANDIDATE_STATUS: dict[str, CandidateStatus] = {
     "CONTEMPLATE": CandidateStatus.REDUCED,
 }
 
-# Experiment-local abstraction over target-native capabilities. This is not a
-# production Action ontology or adapter contract.
-TARGET_PRIMITIVES: frozenset[str] = frozenset(
+# Minecraft-native affordance labels used only to describe the concrete target.
+# These are not accepted as the portable Self-side basis.
+MINECRAFT_NATIVE_AFFORDANCES: frozenset[str] = frozenset(
     {
         "MOVE",
         "LOOK",
@@ -56,6 +56,47 @@ TARGET_PRIMITIVES: frozenset[str] = frozenset(
 CURRENT_ADAPTER_PRIMITIVE_FIXTURE: frozenset[str] = frozenset(
     {"MOVE", "LOOK", "EQUIP", "CONSUME", "ATTACK"}
 )
+
+# A separate candidate axis for World-neutral generating semantics.
+#
+# This is deliberately not a production Skill registry and is orthogonal to
+# CANDIDATE_STATUS above, which records whether the historical candidate names
+# currently need SkillExecution-level state on the demonstrated Minecraft path.
+#
+# LOCOMOTE and USE are new pressure exposed by the cross-World correction:
+# - known-target locomotion must not be smuggled through target-native MOVE;
+# - construction/crafting/manipulation must not be smuggled through target-native
+#   BREAK/PLACE/CRAFT/TRANSFER/USE.
+CANDIDATE_WORLD_NEUTRAL_BASIS: tuple[str, ...] = (
+    "WAIT",
+    "EAT",
+    "FIGHT",
+    "FLEE",
+    "SEEK",
+    "LOCOMOTE",
+    "USE",
+    "TALK",
+    "CONTEMPLATE",
+)
+
+# Candidate semantic families that may justify each Minecraft-native affordance.
+# Multiple families are allowed because one native effect can realize different
+# Self-side objectives in different contexts. The mapping is a falsification
+# ledger, not a target-independent wire protocol.
+MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS: dict[str, tuple[str, ...]] = {
+    "MOVE": ("LOCOMOTE", "SEEK", "FLEE"),
+    "LOOK": ("SEEK", "FIGHT", "FLEE"),
+    "EQUIP": ("USE", "EAT", "FIGHT"),
+    "CONSUME": ("EAT",),
+    "ATTACK": ("FIGHT",),
+    "BREAK": ("USE",),
+    "TAKE": ("USE",),
+    "PLACE": ("USE",),
+    "USE": ("USE",),
+    "TRANSFER": ("USE",),
+    "CRAFT": ("USE",),
+    "CHAT_DELIVERY": ("TALK",),
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,7 +215,7 @@ BEHAVIOR_CORPUS: tuple[BehaviorDecomposition, ...] = (
         open_=("SEEK",),
         primitives=("MOVE", "LOOK", "EQUIP", "BREAK", "TAKE", "CRAFT"),
         owners=("Memory", "Capability", "ordinary cognition"),
-        pressure="CONTEMPLATE reduces; BREAK/TAKE/CRAFT remain boundary gaps.",
+        pressure="CONTEMPLATE reduces; BREAK/TAKE/CRAFT still require World-neutral affordance mapping.",
     ),
     _case(
         "build_shelter_before_night",
@@ -184,7 +225,7 @@ BEHAVIOR_CORPUS: tuple[BehaviorDecomposition, ...] = (
         open_=("SEEK",),
         primitives=("MOVE", "LOOK", "PLACE"),
         owners=("Time observation", "Inventory", "ordinary cognition"),
-        pressure="Design cognition does not require CONTEMPLATE; PLACE is a boundary gap.",
+        pressure="Design cognition does not require CONTEMPLATE; PLACE still requires World-neutral affordance mapping.",
     ),
     _case(
         "farm_renewable_food",
@@ -288,7 +329,7 @@ BEHAVIOR_CORPUS: tuple[BehaviorDecomposition, ...] = (
         open_=("SEEK",),
         primitives=("MOVE", "LOOK", "PLACE", "USE"),
         owners=("Memory", "Capability", "ordinary cognition"),
-        pressure="CONTEMPLATE reduces; construction primitives remain boundary concerns.",
+        pressure="CONTEMPLATE reduces; construction affordances must map through portable Self-side semantics.",
     ),
     _case(
         "recover_after_respawn",
@@ -390,10 +431,24 @@ def validate_corpus() -> tuple[str, ...]:
                     f"{case.behavior_id}: unknown {field_name}={','.join(unknown)}"
                 )
 
-        unknown_primitives = sorted(set(case.primitives) - TARGET_PRIMITIVES)
+        unknown_primitives = sorted(
+            set(case.primitives) - MINECRAFT_NATIVE_AFFORDANCES
+        )
         if unknown_primitives:
             errors.append(
-                f"{case.behavior_id}: unknown primitives={','.join(unknown_primitives)}"
+                f"{case.behavior_id}: unknown native affordances="
+                + ",".join(unknown_primitives)
+            )
+
+        unmapped_primitives = sorted(
+            primitive
+            for primitive in case.primitives
+            if primitive not in MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS
+        )
+        if unmapped_primitives:
+            errors.append(
+                f"{case.behavior_id}: native affordances without World-neutral mapping="
+                + ",".join(unmapped_primitives)
             )
 
         proposed = set(case.proposed_skills)
@@ -416,5 +471,39 @@ def validate_corpus() -> tuple[str, ...]:
             errors.append(f"{case.behavior_id}: empty summary")
         if not case.pressure.strip():
             errors.append(f"{case.behavior_id}: missing falsification pressure")
+
+    basis = set(CANDIDATE_WORLD_NEUTRAL_BASIS)
+    native = set(MINECRAFT_NATIVE_AFFORDANCES)
+
+    if native & basis:
+        errors.append(
+            "Minecraft-native affordance labels must not be accepted directly "
+            "as the World-neutral basis"
+        )
+
+    missing_native_mappings = native - set(
+        MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS
+    )
+    if missing_native_mappings:
+        errors.append(
+            "native affordances without candidate World-neutral mapping: "
+            + ",".join(sorted(missing_native_mappings))
+        )
+
+    for primitive, candidates in MINECRAFT_AFFORDANCE_TO_WORLD_NEUTRAL_BASIS.items():
+        if primitive not in native:
+            errors.append(
+                f"mapping names unknown Minecraft-native affordance: {primitive}"
+            )
+        if not candidates:
+            errors.append(
+                f"{primitive}: World-neutral candidate mapping cannot be empty"
+            )
+        unknown_candidates = sorted(set(candidates) - basis)
+        if unknown_candidates:
+            errors.append(
+                f"{primitive}: unknown World-neutral candidates="
+                + ",".join(unknown_candidates)
+            )
 
     return tuple(errors)
