@@ -1,3 +1,4 @@
+from experiments.present_skill_epoch import DecisionKind
 from experiments.skill_cognition_allocation import (
     AllocationPath,
     broaden_without_open_observation,
@@ -6,7 +7,6 @@ from experiments.skill_cognition_allocation import (
     direct_binding_observation,
     run_reference_fixture,
 )
-from experiments.present_skill_epoch import DecisionKind
 from relay_self.relay_engine import CognitionMode, DecisionStatus
 
 
