@@ -79,6 +79,7 @@ class ReductionEpisodeTrace:
     world_signature: WorldSignature
     raw_body_signature: tuple[float, float, float, float]
     active_appraisal: tuple[AppraisalDispositionTrace, ...]
+    scenario_hazard_names: tuple[str, ...]
     selected_skill: str
     parameter_topology: str
 
@@ -229,6 +230,7 @@ def capture_appraisal_reduction(
             )
             for disposition in appraisal.active_dispositions
         ),
+        scenario_hazard_names=tuple(sorted(scenario.hazard_entity_names)),
         selected_skill=decision.skill.value,
         parameter_topology=_parameter_topology(decision),
     )
