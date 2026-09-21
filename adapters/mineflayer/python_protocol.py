@@ -322,6 +322,21 @@ class MineflayerObservation(MineflayerMessage):
 
 
 @dataclass(frozen=True, slots=True)
+class MineflayerEntityHurt(MineflayerMessage):
+    entity_id: int
+    source_entity_id: int | None
+
+    def __post_init__(self) -> None:
+        MineflayerMessage.__post_init__(self)
+        _require_non_negative_int("hurt entity_id", self.entity_id)
+        if self.source_entity_id is not None:
+            _require_non_negative_int(
+                "hurt source_entity_id",
+                self.source_entity_id,
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class MineflayerEffectResult(MineflayerMessage):
     action_id: str
     effect: str
@@ -386,6 +401,7 @@ class MineflayerShutdownAck(MineflayerMessage):
 MineflayerDecodedMessage = Union[
     MineflayerAdapterStarted,
     MineflayerObservation,
+    MineflayerEntityHurt,
     MineflayerEffectResult,
     MineflayerConnectionEnd,
     MineflayerAdapterErrorMessage,
@@ -489,6 +505,34 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
             seq=seq,
             kind=_decoded_text("observation kind", payload["kind"]),
             snapshot=_decode_snapshot(payload["snapshot"]),
+        )
+
+    if message_type == "entity_hurt":
+        _require_exact_keys(
+            "entity_hurt",
+            payload,
+            {
+                "type",
+                "session_id",
+                "seq",
+                "entity_id",
+                "source_entity_id",
+            },
+        )
+        source_entity_id = payload["source_entity_id"]
+        if source_entity_id is not None:
+            source_entity_id = _decoded_non_negative_int(
+                "hurt source_entity_id",
+                source_entity_id,
+            )
+        return MineflayerEntityHurt(
+            session_id=session_id,
+            seq=seq,
+            entity_id=_decoded_non_negative_int(
+                "hurt entity_id",
+                payload["entity_id"],
+            ),
+            source_entity_id=source_entity_id,
         )
 
     if message_type == "effect_result":
