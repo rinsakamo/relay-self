@@ -7,7 +7,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Protocol
 
+from relay_self.persistent_cognition import IdentitySpecification
 from relay_self.provenance import Provenance
+
+IDENTITY_CONTEXT_KEY = "identity_specification"
 
 
 class RelayEngineError(ValueError):
@@ -112,6 +115,40 @@ class CognitionDatum:
         )
 
 
+def project_identity_context(
+    identity: IdentitySpecification,
+) -> CognitionDatum:
+    """Project durable Identity Specification into canonical model-facing input."""
+
+    if not isinstance(identity, IdentitySpecification):
+        raise InvalidRelayEngineData(
+            "identity must be IdentitySpecification"
+        )
+    return CognitionDatum.from_value(
+        IDENTITY_CONTEXT_KEY,
+        {
+            "self_id": identity.self_id,
+            "directives": list(identity.directives),
+        },
+        identity.provenance,
+    )
+
+
+def _validate_identity_context(
+    identity_context: CognitionDatum | None,
+) -> None:
+    if identity_context is None:
+        return
+    if not isinstance(identity_context, CognitionDatum):
+        raise InvalidRelayEngineData(
+            "identity_context must be CognitionDatum or None"
+        )
+    if identity_context.key != IDENTITY_CONTEXT_KEY:
+        raise InvalidRelayEngineData(
+            "identity_context must use identity_specification key"
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class BoundedChoiceRequest:
     """Transient finite-choice cognition request for one decision epoch."""
@@ -122,6 +159,7 @@ class BoundedChoiceRequest:
     focus: str | None
     choices: tuple[BoundedChoice, ...]
     context: tuple[CognitionDatum, ...]
+    identity_context: CognitionDatum | None = None
     soft_wall_time_budget_s: float | None = None
     think_allowed: bool = True
 
@@ -153,6 +191,7 @@ class BoundedChoiceRequest:
             raise InvalidRelayEngineData(
                 "context must be a tuple of CognitionDatum values"
             )
+        _validate_identity_context(self.identity_context)
         if self.soft_wall_time_budget_s is not None:
             _require_positive_finite_number(
                 "soft_wall_time_budget_s",
@@ -171,6 +210,7 @@ class OpenCognitionRequest:
     intent_id: str | None
     focus: str | None
     context: tuple[CognitionDatum, ...]
+    identity_context: CognitionDatum | None = None
 
     def __post_init__(self) -> None:
         _require_text("request_id", self.request_id)
@@ -186,6 +226,7 @@ class OpenCognitionRequest:
             raise InvalidRelayEngineData(
                 "context must be a tuple of CognitionDatum values"
             )
+        _validate_identity_context(self.identity_context)
 
 
 @dataclass(frozen=True, slots=True)
