@@ -182,9 +182,22 @@ def render_ab_requests(model: str) -> dict[str, object]:
     }
 
 
+def _normalize_choice_text(raw_text: str) -> str:
+    stripped = raw_text.strip()
+    lines = stripped.splitlines()
+    if (
+        len(lines) >= 3
+        and lines[0] == "```json"
+        and lines[-1] == "```"
+        and all("```" not in line for line in lines[1:-1])
+    ):
+        return "\n".join(lines[1:-1]).strip()
+    return stripped
+
+
 def parse_choice(raw_text: str) -> ParsedChoice:
     try:
-        value = json.loads(raw_text)
+        value = json.loads(_normalize_choice_text(raw_text))
     except json.JSONDecodeError as exc:
         return ParsedChoice(plan_id=None, error=f"invalid_json:{exc.msg}")
     if not isinstance(value, dict):

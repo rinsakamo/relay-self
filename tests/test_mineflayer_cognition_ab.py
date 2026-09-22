@@ -133,6 +133,55 @@ def test_parse_choice_accepts_only_exact_closed_plan_schema():
     assert ab.parse_choice("not-json").plan_id is None
 
 
+def test_parse_choice_accepts_single_full_response_json_fence():
+    for plan_id in ("direct", "detour", "observe"):
+        raw = f'```json\n{{"plan_id":"{plan_id}"}}\n```'
+        parsed = ab.parse_choice(raw)
+        assert parsed.plan_id == plan_id
+        assert parsed.error is None
+
+
+def test_parse_choice_accepts_whitespace_around_single_json_fence():
+    parsed = ab.parse_choice(
+        '  \n```json\n{"plan_id":"direct"}\n```\n  '
+    )
+    assert parsed.plan_id == "direct"
+    assert parsed.error is None
+
+
+def test_parse_choice_preserves_schema_checks_inside_json_fence():
+    extra = ab.parse_choice(
+        '```json\n{"plan_id":"direct","reason":"x"}\n```'
+    )
+    unknown = ab.parse_choice(
+        '```json\n{"plan_id":"fly"}\n```'
+    )
+    assert extra.error == "response_schema_mismatch"
+    assert unknown.error == "unknown_plan_id"
+
+
+def test_parse_choice_rejects_prose_around_json_fence():
+    before = ab.parse_choice(
+        'choice follows\n```json\n{"plan_id":"direct"}\n```'
+    )
+    after = ab.parse_choice(
+        '```json\n{"plan_id":"direct"}\n```\nchoice complete'
+    )
+    assert before.plan_id is None
+    assert before.error is not None and before.error.startswith("invalid_json:")
+    assert after.plan_id is None
+    assert after.error is not None and after.error.startswith("invalid_json:")
+
+
+def test_parse_choice_rejects_multiple_json_fences():
+    parsed = ab.parse_choice(
+        '```json\n{"plan_id":"direct"}\n```\n'
+        '```json\n{"plan_id":"detour"}\n```'
+    )
+    assert parsed.plan_id is None
+    assert parsed.error is not None and parsed.error.startswith("invalid_json:")
+
+
 def test_endpoint_metadata_strips_query_and_fragment():
     assert (
         ab.endpoint_metadata("http://localhost:1234/v1/chat/completions?token=secret#x")
