@@ -174,11 +174,12 @@ def render_opaque_requests(model: str) -> dict[str, dict[str, object]]:
 def _normalize_choice_text(raw_text: str) -> str:
     stripped = raw_text.strip()
     lines = stripped.splitlines()
+    fence = "`" * 3
     if (
         len(lines) >= 3
-        and lines[0] == "'''json".replace("'", "`")
-        and lines[-1] == "'''" .replace("'", "`")
-        and all("'''" .replace("'", "`") not in line for line in lines[1:-1])
+        and lines[0] == fence + "json"
+        and lines[-1] == fence
+        and all(fence not in line for line in lines[1:-1])
     ):
         return "\n".join(lines[1:-1]).strip()
     return stripped
