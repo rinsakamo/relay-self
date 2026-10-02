@@ -4,8 +4,8 @@ import argparse
 import json
 import shlex
 import tempfile
-import urllib.error
 from pathlib import Path
+from typing import Callable
 
 import experiments.mineflayer_cognition_ab as cognition
 import experiments.mineflayer_cognition_f46_successor as probe
@@ -66,32 +66,66 @@ def execute_successor(
     endpoint: str,
     model: str,
     timeout: float,
+    on_progress: Callable[
+        [list[dict[str, object]], int], None
+    ] | None = None,
 ) -> dict[str, object]:
     planned = planned_request_ledger(model)
     records: list[dict[str, object]] = []
+    attempts = 0
+
+    def append_record(
+        *,
+        item: dict[str, object],
+        raw_text: str = "",
+        plan_id: str | None = None,
+        parse_error: str | None = None,
+        transport_error: str | None = None,
+    ) -> None:
+        records.append(
+            _result_record(
+                item=item,
+                model=model,
+                endpoint=endpoint,
+                raw_text=raw_text,
+                plan_id=plan_id,
+                parse_error=parse_error,
+                transport_error=transport_error,
+            )
+        )
+        if on_progress is not None:
+            on_progress(records, attempts)
 
     for item in planned:
         request_body = item["request"]
         if not isinstance(request_body, dict):
-            raise physical.PhysicalTransactionError(
-                "planned request is not an object"
-            )
-
-        request_hash = probe._request_hash(request_body)
-        if request_hash != item["requestHash"]:
-            records.append(
-                _result_record(
-                    item=item,
-                    model=model,
-                    endpoint=endpoint,
-                    raw_text="",
-                    plan_id=None,
-                    parse_error="request_hash_mismatch",
-                    transport_error=None,
-                )
+            append_record(
+                item=item,
+                parse_error="planned_request_not_object",
             )
             break
 
+        try:
+            request_hash = probe._request_hash(request_body)
+        except Exception as exc:  # no generation yet; preserve first failure
+            append_record(
+                item=item,
+                parse_error=(
+                    "pre_send_contract_error:"
+                    f"{type(exc).__name__}:{exc}"
+                ),
+            )
+            break
+
+        if request_hash != item["requestHash"]:
+            append_record(
+                item=item,
+                parse_error="request_hash_mismatch",
+            )
+            break
+
+        # Exactly one attempt. Every exception terminates this transaction.
+        attempts += 1
         try:
             raw_text = cognition.call_openai_compatible(
                 endpoint=endpoint,
@@ -99,43 +133,43 @@ def execute_successor(
                 api_key=None,
                 timeout=timeout,
             )
-        except (
-            urllib.error.URLError,
-            TimeoutError,
-            ValueError,
-            json.JSONDecodeError,
-        ) as exc:
-            records.append(
-                _result_record(
-                    item=item,
-                    model=model,
-                    endpoint=endpoint,
-                    raw_text="",
-                    plan_id=None,
-                    parse_error="transport_or_response_error",
-                    transport_error=f"{type(exc).__name__}:{exc}",
-                )
+        except Exception as exc:  # includes unexpected provider failures
+            append_record(
+                item=item,
+                parse_error="transport_or_response_error",
+                transport_error=f"{type(exc).__name__}:{exc}",
             )
             break
 
-        parsed = probe.parse_choice(raw_text)
-        records.append(
-            _result_record(
+        try:
+            parsed = probe.parse_choice(raw_text)
+        except Exception as exc:  # preserve response if parser unexpectedly fails
+            append_record(
                 item=item,
-                model=model,
-                endpoint=endpoint,
                 raw_text=raw_text,
-                plan_id=parsed.plan_id,
-                parse_error=parsed.error,
-                transport_error=None,
+                parse_error=(
+                    "unexpected_parser_error:"
+                    f"{type(exc).__name__}:{exc}"
+                ),
             )
+            break
+
+        append_record(
+            item=item,
+            raw_text=raw_text,
+            plan_id=parsed.plan_id,
+            parse_error=parsed.error,
         )
         if parsed.error is not None:
             break
 
     return {
         "records": records,
-        "summary": probe.summarize_records(records),
+        "attemptedModelCallCount": attempts,
+        "summary": probe.summarize_records(
+            records,
+            planned=planned,
+        ),
     }
 
 
@@ -337,10 +371,27 @@ def main(argv: list[str] | None = None) -> int:
         physical._complete_stage(summary, "request_ledger")
 
         physical._begin_stage(summary, "model_generation")
+
+        def preserve_progress(
+            records: list[dict[str, object]],
+            attempts: int,
+        ) -> None:
+            summary["modelCallCount"] = attempts
+            summary["recordCount"] = len(records)
+            # Retain first-source partial rows after every attempted call.
+            physical._write_json(
+                evidence_root / "f46-successor-partial.json",
+                {
+                    "attemptedModelCallCount": attempts,
+                    "records": records,
+                },
+            )
+
         result = execute_successor(
             endpoint=f"{origin}/v1/chat/completions",
             model=model,
             timeout=args.timeout,
+            on_progress=preserve_progress,
         )
         physical._complete_stage(summary, "model_generation")
 
@@ -349,7 +400,8 @@ def main(argv: list[str] | None = None) -> int:
             evidence_root / "f46-successor-result.json",
             result,
         )
-        summary["modelCallCount"] = len(result["records"])
+        summary["modelCallCount"] = result["attemptedModelCallCount"]
+        summary["recordCount"] = len(result["records"])
         result_summary = result["summary"]
         if not isinstance(result_summary, dict):
             raise physical.PhysicalTransactionError(

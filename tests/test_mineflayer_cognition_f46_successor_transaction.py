@@ -189,3 +189,98 @@ def test_no_bytecode_launcher_preserves_clean_checkout_before_preflight(
     assert status == ""
     assert not list(repo.rglob("__pycache__"))
     assert not list(repo.rglob("*.pyc"))
+
+
+
+def test_pre_send_hash_mismatch_has_zero_generation_attempts():
+    planned = tx.planned_request_ledger("model-x")
+    planned[0]["requestHash"] = "0" * 64
+
+    with (
+        patch.object(tx, "planned_request_ledger", return_value=planned),
+        patch.object(cognition, "call_openai_compatible") as call,
+    ):
+        result = tx.execute_successor(
+            endpoint="http://127.0.0.1:1234/v1/chat/completions",
+            model="model-x",
+            timeout=1.0,
+        )
+
+    assert call.call_count == 0
+    assert result["attemptedModelCallCount"] == 0
+    assert len(result["records"]) == 1
+    assert result["records"][0]["parseError"] == "request_hash_mismatch"
+    assert result["summary"]["classification"] == probe.INVALID
+
+
+def test_unexpected_exception_after_three_calls_preserves_partial_rows(tmp_path):
+    attempts = 0
+    journal = tmp_path / "partial.json"
+
+    def unexpectedly_fail(*, request_body, **_kwargs):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 4:
+            raise RuntimeError("unexpected failure")
+        payload = json.loads(request_body["messages"][1]["content"])
+        return json.dumps(
+            {"plan_id": payload["candidate_plans"][0]["plan_id"]}
+        )
+
+    def preserve(records, count):
+        journal.write_text(
+            json.dumps({"attempts": count, "records": records}),
+            encoding="utf-8",
+        )
+
+    with patch.object(
+        cognition,
+        "call_openai_compatible",
+        side_effect=unexpectedly_fail,
+    ) as call:
+        result = tx.execute_successor(
+            endpoint="http://127.0.0.1:1234/v1/chat/completions",
+            model="model-x",
+            timeout=1.0,
+            on_progress=preserve,
+        )
+
+    assert call.call_count == 4
+    assert result["attemptedModelCallCount"] == 4
+    assert len(result["records"]) == 4
+    assert all(
+        row["parseError"] is None
+        for row in result["records"][:3]
+    )
+    assert result["records"][3]["transportError"].startswith("RuntimeError:")
+    assert result["summary"]["classification"] == probe.INVALID
+
+    preserved = json.loads(journal.read_text(encoding="utf-8"))
+    assert preserved["attempts"] == 4
+    assert len(preserved["records"]) == 4
+
+
+def test_ordinary_transport_and_parser_failures_count_one_attempt():
+    with patch.object(
+        cognition,
+        "call_openai_compatible",
+        side_effect=urllib.error.URLError("boom"),
+    ):
+        transport = tx.execute_successor(
+            endpoint="http://127.0.0.1:1234/v1/chat/completions",
+            model="model-x",
+            timeout=1.0,
+        )
+    assert transport["attemptedModelCallCount"] == 1
+
+    with patch.object(
+        cognition,
+        "call_openai_compatible",
+        return_value="not-json",
+    ):
+        parser = tx.execute_successor(
+            endpoint="http://127.0.0.1:1234/v1/chat/completions",
+            model="model-x",
+            timeout=1.0,
+        )
+    assert parser["attemptedModelCallCount"] == 1

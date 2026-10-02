@@ -306,61 +306,107 @@ def selected_position(
         return None
 
 
+def _invalid_block(reason: str) -> dict[str, object]:
+    return {"outcome": "BLOCK_INVALID", "reason": reason}
+
+
 def aggregate_block(
     block_rows: list[dict[str, object]],
+    *,
+    expected_rows: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
+    """Verify a complete frozen block before allowing any of its six votes."""
     if len(block_rows) != EXPECTED_CALLS_PER_BLOCK:
-        return {
-            "outcome": "BLOCK_INVALID",
-            "reason": "incomplete_block",
-        }
+        return _invalid_block("incomplete_block")
+    first_id = block_rows[0].get("blockId")
+    specs = {
+        block_id: (index, mapping, arm, rotation)
+        for index, (block_id, mapping, arm, rotation)
+        in enumerate(BLOCK_SCHEDULE)
+    }
+    if first_id not in specs:
+        return _invalid_block("unknown_block_id")
+    block_index, mapping, arm, rotation = specs[str(first_id)]
+    rotated = (
+        PERMUTATION_NAMES[rotation:] + PERMUTATION_NAMES[:rotation]
+    )
+    if expected_rows is not None and len(expected_rows) != 6:
+        return _invalid_block("expected_ledger_incomplete")
 
-    block_ids = {row.get("blockId") for row in block_rows}
-    mappings = {row.get("mapping") for row in block_rows}
-    arms = {row.get("arm") for row in block_rows}
-    permutations = {row.get("permutation") for row in block_rows}
+    plan_counts: Counter[str] = Counter()
+    geometry_counts: Counter[str] = Counter()
 
-    if len(block_ids) != 1 or len(mappings) != 1 or len(arms) != 1:
-        return {
-            "outcome": "BLOCK_INVALID",
-            "reason": "block_metadata_mismatch",
-        }
-    if permutations != set(PERMUTATION_NAMES):
-        return {
-            "outcome": "BLOCK_INVALID",
-            "reason": "permutation_set_mismatch",
-        }
+    for position, (row, permutation) in enumerate(
+        zip(block_rows, rotated, strict=True)
+    ):
+        plan_order = list(PERMUTATION_ORDERS[permutation])
+        plan_id = row.get("planId")
+        expected_index = block_index * EXPECTED_CALLS_PER_BLOCK + position
 
-    for row in block_rows:
-        if row.get("parseError") is not None:
-            return {
-                "outcome": "BLOCK_INVALID",
-                "reason": "parse_error",
-            }
+        if (
+            row.get("blockId") != first_id
+            or row.get("mapping") != mapping
+            or row.get("arm") != arm
+            or row.get("permutation") != permutation
+            or row.get("planOrder") != plan_order
+            or row.get("executionIndex") != expected_index
+            or row.get("blockCallIndex") != position
+            or row.get("gradientPresent") is not (
+                arm == C1_EXPLICIT_DERIVED_GRADIENT
+            )
+        ):
+            return _invalid_block("frozen_block_identity_mismatch")
+        if expected_rows is not None:
+            expected = expected_rows[position]
+            if any(
+                row.get(key) != expected[key]
+                for key in (
+                    "blockId",
+                    "mapping",
+                    "arm",
+                    "permutation",
+                    "planOrder",
+                    "executionIndex",
+                    "blockCallIndex",
+                    "gradientPresent",
+                    "requestHash",
+                )
+            ):
+                return _invalid_block("planned_request_identity_mismatch")
+            request = expected["request"]
+            if not isinstance(request, dict):
+                return _invalid_block("expected_request_missing")
+            if _request_hash(request) != expected["requestHash"]:
+                return _invalid_block("expected_request_hash_mismatch")
+            if row.get("model") != request["model"]:
+                return _invalid_block("model_identity_mismatch")
+
+        request_hash = row.get("requestHash")
+        if (
+            not isinstance(request_hash, str)
+            or len(request_hash) != 64
+            or any(char not in "0123456789abcdef" for char in request_hash)
+        ):
+            return _invalid_block("malformed_request_hash")
         if row.get("transportError") is not None:
-            return {
-                "outcome": "BLOCK_INVALID",
-                "reason": "transport_error",
-            }
-        if row.get("planId") not in OPAQUE_PLAN_IDS:
-            return {
-                "outcome": "BLOCK_INVALID",
-                "reason": "invalid_plan_id",
-            }
-        if row.get("selectedGeometry") not in GEOMETRIES:
-            return {
-                "outcome": "BLOCK_INVALID",
-                "reason": "invalid_selected_geometry",
-            }
-
-    plan_counts = Counter(
-        str(row["planId"])
-        for row in block_rows
-    )
-    geometry_counts = Counter(
-        str(row["selectedGeometry"])
-        for row in block_rows
-    )
+            return _invalid_block("transport_error")
+        if row.get("parseError") is not None:
+            return _invalid_block("parse_error")
+        if plan_id not in OPAQUE_PLAN_IDS:
+            return _invalid_block("invalid_plan_id")
+        if row.get("selectedPosition") != plan_order.index(plan_id):
+            return _invalid_block("selected_position_mismatch")
+        selected = GEOMETRY_BINDINGS[mapping][plan_id]
+        if row.get("selectedGeometry") != selected:
+            return _invalid_block("selected_geometry_mapping_mismatch")
+        raw_text = row.get("rawText")
+        if not isinstance(raw_text, str):
+            return _invalid_block("missing_raw_response")
+        parsed = parse_choice(raw_text)
+        if parsed.error is not None or parsed.plan_id != plan_id:
+            return _invalid_block("raw_response_mismatch")
+        plan_counts[plan_id] += 1
+        geometry_counts[selected] += 1
 
     winners = [
         geometry
@@ -368,36 +414,14 @@ def aggregate_block(
         if count >= STRICT_MAJORITY
     ]
     if len(winners) > 1:
-        return {
-            "outcome": "BLOCK_INVALID",
-            "reason": "multiple_strict_majorities",
-        }
-
-    block_id = str(next(iter(block_ids)))
-    mapping = str(next(iter(mappings)))
-    arm = str(next(iter(arms)))
-
-    if not winners:
-        return {
-            "blockId": block_id,
-            "mapping": mapping,
-            "arm": arm,
-            "outcome": "NO_MAJORITY",
-            "winnerGeometry": None,
-            "planVoteCounts": dict(sorted(plan_counts.items())),
-            "geometryVoteCounts": dict(
-                sorted(geometry_counts.items())
-            ),
-            "strictMajorityThreshold": STRICT_MAJORITY,
-            "voteCount": EXPECTED_CALLS_PER_BLOCK,
-        }
-
+        return _invalid_block("multiple_strict_majorities")
+    outcome = "WIN" if winners else "NO_MAJORITY"
     return {
-        "blockId": block_id,
+        "blockId": first_id,
         "mapping": mapping,
         "arm": arm,
-        "outcome": "WIN",
-        "winnerGeometry": winners[0],
+        "outcome": outcome,
+        "winnerGeometry": winners[0] if winners else None,
         "planVoteCounts": dict(sorted(plan_counts.items())),
         "geometryVoteCounts": dict(sorted(geometry_counts.items())),
         "strictMajorityThreshold": STRICT_MAJORITY,
@@ -407,57 +431,99 @@ def aggregate_block(
 
 def aggregate_blocks(
     records: list[dict[str, object]],
+    *,
+    planned: list[dict[str, object]] | None = None,
 ) -> list[dict[str, object]]:
+    if len(records) > EXPECTED_MODEL_CALLS:
+        return [_invalid_block("extra_records")]
+    if planned is not None:
+        if len(planned) != EXPECTED_MODEL_CALLS:
+            return [_invalid_block("expected_ledger_size_mismatch")]
+        for index, row in enumerate(records):
+            expected = planned[index]
+            if any(
+                row.get(key) != expected[key]
+                for key in (
+                    "blockId", "mapping", "arm", "permutation",
+                    "planOrder", "requestHash", "gradientPresent",
+                    "executionIndex", "blockCallIndex",
+                )
+            ):
+                return [_invalid_block("planned_ledger_record_mismatch")]
+
     grouped: dict[str, list[dict[str, object]]] = {
-        block_id: []
-        for block_id, _, _, _ in BLOCK_SCHEDULE
+        block_id: [] for block_id, _, _, _ in BLOCK_SCHEDULE
     }
     for row in records:
         block_id = row.get("blockId")
         if block_id not in grouped:
-            return [
-                {
-                    "outcome": "BLOCK_INVALID",
-                    "reason": "unknown_block_id",
-                }
-            ]
+            return [_invalid_block("unknown_block_id")]
         grouped[str(block_id)].append(row)
 
     return [
-        aggregate_block(grouped[block_id])
-        for block_id, _, _, _ in BLOCK_SCHEDULE
+        aggregate_block(
+            grouped[block_id],
+            expected_rows=(
+                planned[index * EXPECTED_CALLS_PER_BLOCK:
+                        (index + 1) * EXPECTED_CALLS_PER_BLOCK]
+                if planned is not None
+                else None
+            ),
+        )
+        for index, (block_id, _, _, _) in enumerate(BLOCK_SCHEDULE)
     ]
 
 
 def _outcome_key(block: dict[str, object]) -> str:
-    outcome = block.get("outcome")
-    if outcome == "WIN":
-        return f"WIN({block.get('winnerGeometry')})"
-    if outcome == "NO_MAJORITY":
-        return "NO_MAJORITY"
-    return "BLOCK_INVALID"
+    if block["outcome"] == "WIN":
+        return f"WIN({block['winnerGeometry']})"
+    return "NO_MAJORITY"
 
 
-def classify_blocks(
-    blocks: list[dict[str, object]],
-) -> str:
+def classify_blocks(blocks: list[dict[str, object]]) -> str:
     if len(blocks) != EXPECTED_BLOCKS:
-        return INVALID
-    if any(block.get("outcome") == "BLOCK_INVALID" for block in blocks):
         return INVALID
 
     by_pair: dict[str, dict[str, str]] = {
-        mapping: {}
-        for mapping in MAPPINGS
+        mapping: {} for mapping in MAPPINGS
     }
+    seen_blocks: set[str] = set()
+
     for block in blocks:
-        mapping = block.get("mapping")
-        arm = block.get("arm")
-        if mapping not in MAPPINGS or arm not in ARMS:
+        block_id = block.get("blockId")
+        expected = next(
+            (
+                (mapping, arm)
+                for frozen_id, mapping, arm, _ in BLOCK_SCHEDULE
+                if frozen_id == block_id
+            ),
+            None,
+        )
+        if (
+            expected is None
+            or block_id in seen_blocks
+            or (block.get("mapping"), block.get("arm")) != expected
+        ):
             return INVALID
-        if str(arm) in by_pair[str(mapping)]:
+        seen_blocks.add(str(block_id))
+
+        outcome = block.get("outcome")
+        winner = block.get("winnerGeometry")
+        if outcome == "BLOCK_INVALID":
             return INVALID
-        by_pair[str(mapping)][str(arm)] = _outcome_key(block)
+        if outcome == "WIN":
+            if winner not in GEOMETRIES:
+                return INVALID
+        elif outcome == "NO_MAJORITY":
+            if winner is not None:
+                return INVALID
+        else:
+            return INVALID
+
+        mapping, arm = expected
+        if arm in by_pair[mapping]:
+            return INVALID
+        by_pair[mapping][arm] = _outcome_key(block)
 
     if any(len(pair) != 2 for pair in by_pair.values()):
         return INVALID
@@ -466,7 +532,7 @@ def classify_blocks(
     if all(key == "NO_MAJORITY" for key in outcome_keys):
         return NON_DISCRIMINATING
 
-    if all(block.get("outcome") == "WIN" for block in blocks):
+    if all(block["outcome"] == "WIN" for block in blocks):
         if all(
             pair[C0_OBSERVATIONS_ONLY]
             == pair[C1_EXPLICIT_DERIVED_GRADIENT]
@@ -486,14 +552,15 @@ def classify_blocks(
         and transitions[0][0] != transitions[0][1]
     ):
         return EFFECT
-
     return MIXED
 
 
 def summarize_records(
     records: list[dict[str, object]],
+    *,
+    planned: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
-    blocks = aggregate_blocks(records)
+    blocks = aggregate_blocks(records, planned=planned)
     return {
         "plannedModelCallCount": EXPECTED_MODEL_CALLS,
         "recordCount": len(records),
