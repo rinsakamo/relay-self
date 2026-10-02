@@ -36,6 +36,7 @@ def _valid_record(row, plan_id):
         "requestHash": row["requestHash"],
         "gradientPresent": row["gradientPresent"],
         "executionIndex": row["executionIndex"],
+        "blockCallIndex": row["blockCallIndex"],
         "rawText": json.dumps({"plan_id": plan_id}),
         "planId": plan_id,
         "selectedGeometry": probe.selected_geometry(
