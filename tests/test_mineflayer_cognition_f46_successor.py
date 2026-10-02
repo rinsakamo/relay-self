@@ -37,6 +37,7 @@ def _valid_record(row, plan_id):
         "gradientPresent": row["gradientPresent"],
         "executionIndex": row["executionIndex"],
         "blockCallIndex": row["blockCallIndex"],
+        "model": "model-x",
         "rawText": json.dumps({"plan_id": plan_id}),
         "planId": plan_id,
         "selectedGeometry": probe.selected_geometry(
@@ -334,4 +335,118 @@ def test_taxonomy_invalid():
         for block_id, mapping, arm, _ in probe.BLOCK_SCHEDULE
     ]
     blocks[0] = {"outcome": "BLOCK_INVALID"}
+    assert probe.classify_blocks(blocks) == probe.INVALID
+
+
+
+def _strict_block_records():
+    ledger = probe.planned_ledger("model-x")
+    block = ledger[:6]
+    direct_id = next(
+        plan_id
+        for plan_id, geometry in probe.GEOMETRY_BINDINGS[probe.M0].items()
+        if geometry == "direct"
+    )
+    return block, [_valid_record(row, direct_id) for row in block]
+
+
+def test_fail_closed_on_selected_geometry_and_selected_position_mismatch():
+    block, records = _strict_block_records()
+    records[0]["selectedGeometry"] = "detour"  # valid name, false ID binding
+    assert probe.aggregate_block(records)["outcome"] == "BLOCK_INVALID"
+
+    block, records = _strict_block_records()
+    records[0]["selectedPosition"] = (
+        records[0]["selectedPosition"] + 1
+    ) % 3
+    assert probe.aggregate_block(records)["outcome"] == "BLOCK_INVALID"
+
+
+def test_fail_closed_on_wrong_block_mapping_arm_order_and_index():
+    for field, value in (
+        ("mapping", probe.M1),
+        ("arm", probe.C1_EXPLICIT_DERIVED_GRADIENT),
+        ("blockId", "B5"),
+        ("permutation", "ACB"),
+        ("executionIndex", 5),
+        ("blockCallIndex", 4),
+        ("gradientPresent", True),
+    ):
+        _, records = _strict_block_records()
+        records[0][field] = value
+        assert probe.aggregate_block(records)["outcome"] == "BLOCK_INVALID", field
+
+    _, records = _strict_block_records()
+    records[0]["planOrder"] = list(reversed(records[0]["planOrder"]))
+    assert probe.aggregate_block(records)["outcome"] == "BLOCK_INVALID"
+
+
+def test_fail_closed_on_wrong_request_hash_with_expected_exact_ledger():
+    block, records = _strict_block_records()
+    records[0]["requestHash"] = "0" * 64
+    result = probe.aggregate_block(records, expected_rows=block)
+    assert result["outcome"] == "BLOCK_INVALID"
+    assert result["reason"] == "planned_request_identity_mismatch"
+
+    ledger = probe.planned_ledger("model-x")
+    all_records = []
+    for row in ledger:
+        direct_id = next(
+            plan_id
+            for plan_id, geometry
+            in probe.GEOMETRY_BINDINGS[row["mapping"]].items()
+            if geometry == "direct"
+        )
+        all_records.append(_valid_record(row, direct_id))
+    assert probe.summarize_records(
+        all_records, planned=ledger
+    )["classification"] == probe.NO_EFFECT
+    all_records[0]["requestHash"] = "f" * 64
+    assert probe.summarize_records(
+        all_records, planned=ledger
+    )["classification"] == probe.INVALID
+
+
+def test_fail_closed_on_duplicate_extra_or_unparseable_vote_record():
+    _, records = _strict_block_records()
+    records[0]["rawText"] = '{"plan_id":"q_8p2m"}'
+    assert probe.aggregate_block(records)["outcome"] == "BLOCK_INVALID"
+
+    _, records = _strict_block_records()
+    records[1]["permutation"] = records[0]["permutation"]
+    assert probe.aggregate_block(records)["outcome"] == "BLOCK_INVALID"
+
+    _, records = _strict_block_records()
+    assert probe.aggregate_block(records + [records[0]])["outcome"] == "BLOCK_INVALID"
+
+
+def test_unknown_outcome_cannot_be_misclassified_as_effect():
+    blocks = [
+        _block(
+            block_id, mapping, arm,
+            "WIN" if arm == probe.C0_OBSERVATIONS_ONLY else "UNRECOGNIZED",
+            "direct" if arm == probe.C0_OBSERVATIONS_ONLY else None,
+        )
+        for block_id, mapping, arm, _ in probe.BLOCK_SCHEDULE
+    ]
+    assert probe.classify_blocks(blocks) == probe.INVALID
+
+
+def test_malformed_winner_and_block_identity_cannot_be_misclassified():
+    blocks = [
+        _block(block_id, mapping, arm, "WIN", "direct")
+        for block_id, mapping, arm, _ in probe.BLOCK_SCHEDULE
+    ]
+    blocks[1]["winnerGeometry"] = "unknown"
+    assert probe.classify_blocks(blocks) == probe.INVALID
+
+    blocks = [
+        _block(block_id, mapping, arm, "NO_MAJORITY")
+        for block_id, mapping, arm, _ in probe.BLOCK_SCHEDULE
+    ]
+    blocks[0]["winnerGeometry"] = "direct"
+    assert probe.classify_blocks(blocks) == probe.INVALID
+
+    blocks[0]["winnerGeometry"] = None
+    blocks[0]["blockId"] = "B4"
     assert probe.classify_blocks(blocks) == probe.INVALID
