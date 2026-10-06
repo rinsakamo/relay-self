@@ -150,6 +150,11 @@ from relay_self.execution_descriptor import (
     S11_HABIT_CAPABILITY_SPEC,
     S11_HABIT_CRITERION_DESCRIPTOR,
     S11_HABIT_OPERATOR_DESCRIPTOR,
+    S12_CAPABILITY_SPECS,
+    S12_DESCRIPTOR_SET,
+    S12_ROUTE_CAPABILITY_SPEC,
+    S12_ROUTE_CRITERION_DESCRIPTOR,
+    S12_ROUTE_OPERATOR_DESCRIPTOR,
     CapabilityDescriptorSet,
     CriterionDescriptor,
     CriterionKind,
@@ -168,6 +173,7 @@ from relay_self.execution_descriptor import (
     s9_capability_plan,
     s10_capability_plan,
     s11_capability_plan,
+    s12_capability_plan,
 )
 from relay_self.habit import (
     CueFeature,
@@ -292,6 +298,27 @@ from relay_self.relay_engine import (
     RelayEngineResult,
     project_identity_context,
 )
+from relay_self.route_adjudication import (
+    ControlCandidate,
+    InvalidRouteData,
+    RouteAdjudicationError,
+    RouteCandidate,
+    RouteConflictPolicy,
+    RouteCriterion,
+    RouteDecision,
+    RouteDecisionStatus,
+    RouteSource,
+    adjudicate_routes,
+    control_candidate_from_route_decision,
+    route_candidate_from_habit,
+    route_candidate_from_plan,
+)
+from relay_self.route_profile import (
+    S12_ROUTE_PROFILES,
+    RouteProfile,
+    RouteProfileId,
+    s12_route_profile,
+)
 from relay_self.runtime_coordination import (
     CognitionUnavailable,
     DecisionEpochResult,
@@ -309,6 +336,29 @@ from relay_self.skill import (
 )
 
 __all__ = [
+    "ControlCandidate",
+    "InvalidRouteData",
+    "RouteAdjudicationError",
+    "RouteCandidate",
+    "RouteConflictPolicy",
+    "RouteCriterion",
+    "RouteDecision",
+    "RouteDecisionStatus",
+    "RouteProfile",
+    "RouteProfileId",
+    "RouteSource",
+    "S12_CAPABILITY_SPECS",
+    "S12_DESCRIPTOR_SET",
+    "S12_ROUTE_CAPABILITY_SPEC",
+    "S12_ROUTE_CRITERION_DESCRIPTOR",
+    "S12_ROUTE_OPERATOR_DESCRIPTOR",
+    "S12_ROUTE_PROFILES",
+    "adjudicate_routes",
+    "control_candidate_from_route_decision",
+    "route_candidate_from_habit",
+    "route_candidate_from_plan",
+    "s12_capability_plan",
+    "s12_route_profile",
     "CueFeature",
     "HabitCue",
     "HabitError",
