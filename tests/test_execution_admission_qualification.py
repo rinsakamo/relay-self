@@ -7,6 +7,11 @@ import pytest
 import relay_self
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
+from relay_self.admission_profile import (
+    S13_ADMISSION_PROFILES,
+    AdmissionProfileId,
+    s13_admission_profile,
+)
 from relay_self.attention import (
     AttentionCandidate,
     AttentionCriterion,
@@ -105,11 +110,6 @@ from relay_self.route_adjudication import (
     RouteSource,
     adjudicate_routes,
     control_candidate_from_route_decision,
-)
-from relay_self.admission_profile import (
-    S13_ADMISSION_PROFILES,
-    AdmissionProfileId,
-    s13_admission_profile,
 )
 from relay_self.skill import SkillExecution, SkillState
 
