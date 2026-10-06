@@ -255,7 +255,6 @@ async def execute_mineflayer_command(
     command: MineflayerCommand,
     *,
     timeout_s: float = 2.0,
-    minimum_movement_distance: float = MOVE_BACKWARD_MINIMUM_DISTANCE,
     provenance: Provenance,
 ) -> WorldConsequence:
     """Execute one bounded MOVE_BACKWARD command with structured observation.
@@ -270,10 +269,6 @@ async def execute_mineflayer_command(
             "command must be MineflayerCommand"
         )
     _require_positive_number("timeout_s", timeout_s)
-    _require_positive_number(
-        "minimum_movement_distance",
-        minimum_movement_distance,
-    )
     _require_provenance("execution provenance", provenance)
     started = _require_adapter(adapter)
     session_id = started.session_id
@@ -283,6 +278,7 @@ async def execute_mineflayer_command(
     cleanup: MineflayerEffectResult | None = None
     after: MineflayerObservation | None = None
     cleanup_attempted = False
+    movement_command_attempted = False
     movement_distance: float | None = None
 
     try:
@@ -296,6 +292,7 @@ async def execute_mineflayer_command(
             ),
         )
 
+        movement_command_attempted = True
         await adapter.send_set_control(
             command.action_id,
             control=command.control,
@@ -353,7 +350,7 @@ async def execute_mineflayer_command(
 
         status = (
             WorldConsequenceStatus.EXECUTED
-            if movement_distance >= minimum_movement_distance
+            if movement_distance >= MOVE_BACKWARD_MINIMUM_DISTANCE
             else WorldConsequenceStatus.UNDETERMINED
         )
         return WorldConsequence(
@@ -372,7 +369,7 @@ async def execute_mineflayer_command(
             provenance=provenance,
         )
     except Exception as exc:
-        if dispatch is not None and dispatch.result == "applied" and cleanup is None:
+        if movement_command_attempted and cleanup is None:
             if not cleanup_attempted:
                 cleanup_attempted = True
             try:
