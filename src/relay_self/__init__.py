@@ -145,6 +145,11 @@ from relay_self.execution_descriptor import (
     S10_LRN_CAPABILITY_SPEC,
     S10_LRN_CRITERION_DESCRIPTOR,
     S10_LRN_PROPOSE_OPERATOR_DESCRIPTOR,
+    S11_CAPABILITY_SPECS,
+    S11_DESCRIPTOR_SET,
+    S11_HABIT_CAPABILITY_SPEC,
+    S11_HABIT_CRITERION_DESCRIPTOR,
+    S11_HABIT_OPERATOR_DESCRIPTOR,
     CapabilityDescriptorSet,
     CriterionDescriptor,
     CriterionKind,
@@ -162,6 +167,24 @@ from relay_self.execution_descriptor import (
     s8_capability_plan,
     s9_capability_plan,
     s10_capability_plan,
+    s11_capability_plan,
+)
+from relay_self.habit import (
+    CueFeature,
+    HabitCue,
+    HabitError,
+    HabitRepertoire,
+    HabitRule,
+    HabitSelection,
+    HabitSelectionStatus,
+    InvalidHabitData,
+    select_habit,
+)
+from relay_self.habit_profile import (
+    S11_HABIT_PROFILES,
+    HabitProfile,
+    HabitProfileId,
+    s11_habit_profile,
 )
 from relay_self.intent import (
     CurrentIntent,
@@ -286,6 +309,25 @@ from relay_self.skill import (
 )
 
 __all__ = [
+    "CueFeature",
+    "HabitCue",
+    "HabitError",
+    "HabitProfile",
+    "HabitProfileId",
+    "HabitRepertoire",
+    "HabitRule",
+    "HabitSelection",
+    "HabitSelectionStatus",
+    "InvalidHabitData",
+    "S11_CAPABILITY_SPECS",
+    "S11_DESCRIPTOR_SET",
+    "S11_HABIT_CAPABILITY_SPEC",
+    "S11_HABIT_CRITERION_DESCRIPTOR",
+    "S11_HABIT_OPERATOR_DESCRIPTOR",
+    "S11_HABIT_PROFILES",
+    "s11_capability_plan",
+    "s11_habit_profile",
+    "select_habit",
     "FeedbackDirection",
     "InvalidLearningAuthority",
     "InvalidLearningData",
