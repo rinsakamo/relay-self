@@ -5,7 +5,7 @@ from typing import Callable
 
 from relay_self.action import ActionLifecycle
 from relay_self.action_supervision import ActionSupervisor
-from relay_self.capability import CapabilityPlan
+from relay_self.capability import CapabilityPlan, UnknownCapability
 from relay_self.execution_descriptor import (
     CapabilityDescriptorSet,
     OperatorDescriptor,
@@ -125,6 +125,28 @@ class EpochPlan:
             raise InvalidEpochPlanData(
                 "one work item cannot be both scheduled and suppressed: "
                 + ", ".join(sorted(overlap))
+            )
+
+        if any(
+            step.effect is OperatorEffect.COORDINATION
+            for step in self.steps
+        ):
+            raise NestedCoordinationOperator(
+                "EpochPlan cannot contain an inner coordination operator"
+            )
+
+        cognition_positions = [
+            index
+            for index, step in enumerate(self.steps)
+            if step.effect is OperatorEffect.COGNITION_CALL
+        ]
+        if len(cognition_positions) > 1:
+            raise MultipleCognitionSteps(
+                "one epoch may contain at most one cognition-call step"
+            )
+        if cognition_positions and cognition_positions[0] != len(self.steps) - 1:
+            raise CognitionStepOrderingError(
+                "cognition-call step must be the final inner epoch step"
             )
 
     @property
@@ -268,7 +290,7 @@ def compile_epoch_plan(
 
         try:
             capability_plan.spec(descriptor.capability_id)
-        except Exception as exc:
+        except UnknownCapability as exc:
             raise UnknownEpochOperator(
                 f"operator capability is not declared in plan: "
                 f"{descriptor.capability_id}"
