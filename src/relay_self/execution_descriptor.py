@@ -408,3 +408,63 @@ def s2_capability_plan(
     )
     S2_DESCRIPTOR_SET.validate_plan(plan)
     return plan
+
+
+S5_ATT_CAPABILITY_SPEC = CapabilitySpec(
+    capability_id="ATT",
+    operator_ids=("att.select",),
+    criterion_ids=("att.explicit_orientation",),
+    port_ids=("attention.selection.out",),
+)
+
+S5_ATT_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="att.select",
+    capability_id="ATT",
+    implementation_ref="relay_self.attention.select_attention",
+    reads=("caller_owned.candidates", "attention.criterion"),
+    writes=("transient.attention_selection",),
+    effect=OperatorEffect.READ_ONLY,
+)
+
+S5_ATT_CRITERION_DESCRIPTOR = CriterionDescriptor(
+    criterion_id="att.explicit_orientation",
+    capability_id="ATT",
+    implementation_ref="relay_self.attention.select_attention",
+    reads=("caller_owned.candidates", "attention.criterion"),
+    kind=CriterionKind.COGNITIVE_ORIENTATION,
+    semantics=(
+        "Among otherwise valid caller-owned structured candidates, apply only "
+        "explicit focus, minimum-priority, descending-priority, and bounded "
+        "top-k orientation without mutating an owner."
+    ),
+)
+
+S5_CAPABILITY_SPECS = (
+    *S2_CAPABILITY_SPECS,
+    S5_ATT_CAPABILITY_SPEC,
+)
+
+S5_DESCRIPTOR_SET = CapabilityDescriptorSet(
+    operators=(
+        *S2_DESCRIPTOR_SET.operators,
+        S5_ATT_OPERATOR_DESCRIPTOR,
+    ),
+    criteria=(
+        *S2_DESCRIPTOR_SET.criteria,
+        S5_ATT_CRITERION_DESCRIPTOR,
+    ),
+)
+
+
+def s5_capability_plan(
+    *,
+    enabled_ids: frozenset[str] = frozenset(),
+) -> CapabilityPlan:
+    """Build the bounded S5 plan; no capability is enabled implicitly."""
+
+    plan = CapabilityPlan(
+        specs=S5_CAPABILITY_SPECS,
+        enabled_ids=enabled_ids,
+    )
+    S5_DESCRIPTOR_SET.validate_plan(plan)
+    return plan

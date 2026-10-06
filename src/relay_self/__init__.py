@@ -25,6 +25,22 @@ from relay_self.appraisal import (
     InvalidAppraisalData,
     project_entity_appraisal,
 )
+from relay_self.attention import (
+    AttentionCandidate,
+    AttentionCriterion,
+    AttentionError,
+    AttentionSelection,
+    AttentionSelectionUnavailable,
+    InvalidAttentionData,
+    require_attention_selection,
+    select_attention,
+)
+from relay_self.attention_profile import (
+    S5_ATTENTION_PROFILES,
+    AttentionProfile,
+    AttentionProfileId,
+    s5_attention_profile,
+)
 from relay_self.capability import (
     CapabilityCompositionError,
     CapabilityDependencyCycle,
@@ -62,6 +78,11 @@ from relay_self.epoch_plan import (
 from relay_self.execution_descriptor import (
     S2_CAPABILITY_SPECS,
     S2_DESCRIPTOR_SET,
+    S5_ATT_CAPABILITY_SPEC,
+    S5_ATT_CRITERION_DESCRIPTOR,
+    S5_ATT_OPERATOR_DESCRIPTOR,
+    S5_CAPABILITY_SPECS,
+    S5_DESCRIPTOR_SET,
     CapabilityDescriptorSet,
     CriterionDescriptor,
     CriterionKind,
@@ -73,6 +94,7 @@ from relay_self.execution_descriptor import (
     OperatorDescriptor,
     OperatorEffect,
     s2_capability_plan,
+    s5_capability_plan,
 )
 from relay_self.intent import (
     CurrentIntent,
@@ -133,6 +155,24 @@ from relay_self.skill import (
 )
 
 __all__ = [
+    "AttentionCandidate",
+    "AttentionCriterion",
+    "AttentionError",
+    "AttentionProfile",
+    "AttentionProfileId",
+    "AttentionSelection",
+    "AttentionSelectionUnavailable",
+    "InvalidAttentionData",
+    "S5_ATTENTION_PROFILES",
+    "S5_ATT_CAPABILITY_SPEC",
+    "S5_ATT_CRITERION_DESCRIPTOR",
+    "S5_ATT_OPERATOR_DESCRIPTOR",
+    "S5_CAPABILITY_SPECS",
+    "S5_DESCRIPTOR_SET",
+    "require_attention_selection",
+    "s5_attention_profile",
+    "s5_capability_plan",
+    "select_attention",
     "ActionEvent",
     "ActionLifecycle",
     "ActionLifecycleError",
