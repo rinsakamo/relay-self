@@ -836,3 +836,71 @@ def s11_capability_plan(
     )
     S11_DESCRIPTOR_SET.validate_plan(plan)
     return plan
+
+
+S12_ROUTE_CAPABILITY_SPEC = CapabilitySpec(
+    capability_id="ROUTE",
+    operator_ids=("route.adjudicate",),
+    criterion_ids=("route.explicit_arbitration_orientation",),
+    port_ids=("route.decision.out",),
+)
+
+S12_ROUTE_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="route.adjudicate",
+    capability_id="ROUTE",
+    implementation_ref="relay_self.route_adjudication.adjudicate_routes",
+    reads=(
+        "transient.plan_selection",
+        "transient.habit_selection",
+        "route.criterion",
+    ),
+    writes=("transient.route_decision",),
+    effect=OperatorEffect.READ_ONLY,
+)
+
+S12_ROUTE_CRITERION_DESCRIPTOR = CriterionDescriptor(
+    criterion_id="route.explicit_arbitration_orientation",
+    capability_id="ROUTE",
+    implementation_ref="relay_self.route_adjudication.adjudicate_routes",
+    reads=(
+        "transient.plan_selection",
+        "transient.habit_selection",
+        "route.criterion",
+    ),
+    kind=CriterionKind.COGNITIVE_ORIENTATION,
+    semantics=(
+        "Admit already-selected PLAN/HABIT candidate references only under "
+        "an explicit conflict policy and explicit single-source permission; "
+        "otherwise preserve disagreement or absence without execution authority."
+    ),
+)
+
+S12_CAPABILITY_SPECS = (
+    *S11_CAPABILITY_SPECS,
+    S12_ROUTE_CAPABILITY_SPEC,
+)
+
+S12_DESCRIPTOR_SET = CapabilityDescriptorSet(
+    operators=(
+        *S11_DESCRIPTOR_SET.operators,
+        S12_ROUTE_OPERATOR_DESCRIPTOR,
+    ),
+    criteria=(
+        *S11_DESCRIPTOR_SET.criteria,
+        S12_ROUTE_CRITERION_DESCRIPTOR,
+    ),
+)
+
+
+def s12_capability_plan(
+    *,
+    enabled_ids: frozenset[str] = frozenset(),
+) -> CapabilityPlan:
+    """Build the bounded S12 integration plan; nothing is enabled implicitly."""
+
+    plan = CapabilityPlan(
+        specs=S12_CAPABILITY_SPECS,
+        enabled_ids=enabled_ids,
+    )
+    S12_DESCRIPTOR_SET.validate_plan(plan)
+    return plan
