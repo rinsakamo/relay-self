@@ -77,7 +77,6 @@ from relay_self.planning import (
     PlanningCriterion,
     PlanningDirection,
     PlanSelection,
-    PlanSelectionStatus,
     select_plan,
 )
 from relay_self.prediction import (
