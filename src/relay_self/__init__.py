@@ -134,6 +134,11 @@ from relay_self.execution_descriptor import (
     S8_DESCRIPTOR_SET,
     S8_PRD_CAPABILITY_SPEC,
     S8_PRD_OPERATOR_DESCRIPTOR,
+    S9_CAPABILITY_SPECS,
+    S9_DESCRIPTOR_SET,
+    S9_PLAN_CAPABILITY_SPEC,
+    S9_PLAN_CRITERION_DESCRIPTOR,
+    S9_PLAN_OPERATOR_DESCRIPTOR,
     CapabilityDescriptorSet,
     CriterionDescriptor,
     CriterionKind,
@@ -149,6 +154,7 @@ from relay_self.execution_descriptor import (
     s6_capability_plan,
     s7_capability_plan,
     s8_capability_plan,
+    s9_capability_plan,
 )
 from relay_self.intent import (
     CurrentIntent,
@@ -175,6 +181,25 @@ from relay_self.persistent_cognition import (
     UnsupportedPersistentCognitionVersion,
     load_persistent_cognition,
     save_persistent_cognition,
+)
+from relay_self.planning import (
+    InvalidPlanningData,
+    PlanCandidate,
+    PlanFeature,
+    PlanningCriterion,
+    PlanningDirection,
+    PlanningError,
+    PlanSelection,
+    PlanSelectionStatus,
+    PlanSourceUnavailable,
+    plan_candidate_from_prediction,
+    select_plan,
+)
+from relay_self.planning_profile import (
+    S9_PLANNING_PROFILES,
+    PlanningProfile,
+    PlanningProfileId,
+    s9_planning_profile,
 )
 from relay_self.prediction import (
     InvalidPredictionData,
@@ -228,6 +253,27 @@ from relay_self.skill import (
 )
 
 __all__ = [
+    "InvalidPlanningData",
+    "PlanCandidate",
+    "PlanFeature",
+    "PlanSelection",
+    "PlanSelectionStatus",
+    "PlanSourceUnavailable",
+    "PlanningCriterion",
+    "PlanningDirection",
+    "PlanningError",
+    "PlanningProfile",
+    "PlanningProfileId",
+    "S9_CAPABILITY_SPECS",
+    "S9_DESCRIPTOR_SET",
+    "S9_PLANNING_PROFILES",
+    "S9_PLAN_CAPABILITY_SPEC",
+    "S9_PLAN_CRITERION_DESCRIPTOR",
+    "S9_PLAN_OPERATOR_DESCRIPTOR",
+    "plan_candidate_from_prediction",
+    "s9_capability_plan",
+    "s9_planning_profile",
+    "select_plan",
     "InvalidPredictionData",
     "PredictionError",
     "PredictionProfile",

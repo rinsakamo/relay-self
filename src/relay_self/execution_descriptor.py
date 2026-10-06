@@ -632,3 +632,63 @@ def s8_capability_plan(
     )
     S8_DESCRIPTOR_SET.validate_plan(plan)
     return plan
+
+
+S9_PLAN_CAPABILITY_SPEC = CapabilitySpec(
+    capability_id="PLAN",
+    operator_ids=("plan.select",),
+    criterion_ids=("plan.explicit_preference_orientation",),
+    port_ids=("plan.selection.out",),
+)
+
+S9_PLAN_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="plan.select",
+    capability_id="PLAN",
+    implementation_ref="relay_self.planning.select_plan",
+    reads=("qualified.plan_candidates", "planning.criterion"),
+    writes=("transient.plan_selection",),
+    effect=OperatorEffect.READ_ONLY,
+)
+
+S9_PLAN_CRITERION_DESCRIPTOR = CriterionDescriptor(
+    criterion_id="plan.explicit_preference_orientation",
+    capability_id="PLAN",
+    implementation_ref="relay_self.planning.select_plan",
+    reads=("qualified.plan_candidates", "planning.criterion"),
+    kind=CriterionKind.COGNITIVE_ORIENTATION,
+    semantics=(
+        "Among a finite valid candidate set, compare one explicit integer "
+        "outcome feature under an explicit MINIMIZE or MAXIMIZE direction, "
+        "returning a unique selection only when preference is determined."
+    ),
+)
+
+S9_CAPABILITY_SPECS = (
+    *S8_CAPABILITY_SPECS,
+    S9_PLAN_CAPABILITY_SPEC,
+)
+
+S9_DESCRIPTOR_SET = CapabilityDescriptorSet(
+    operators=(
+        *S8_DESCRIPTOR_SET.operators,
+        S9_PLAN_OPERATOR_DESCRIPTOR,
+    ),
+    criteria=(
+        *S8_DESCRIPTOR_SET.criteria,
+        S9_PLAN_CRITERION_DESCRIPTOR,
+    ),
+)
+
+
+def s9_capability_plan(
+    *,
+    enabled_ids: frozenset[str] = frozenset(),
+) -> CapabilityPlan:
+    """Build the bounded S9 plan; no capability is enabled implicitly."""
+
+    plan = CapabilityPlan(
+        specs=S9_CAPABILITY_SPECS,
+        enabled_ids=enabled_ids,
+    )
+    S9_DESCRIPTOR_SET.validate_plan(plan)
+    return plan
