@@ -15,6 +15,12 @@ from relay_self.action_supervision import (
     InvalidSupervisorTime,
     UnknownSupervisedAction,
 )
+from relay_self.admission_profile import (
+    S13_ADMISSION_PROFILES,
+    AdmissionProfile,
+    AdmissionProfileId,
+    s13_admission_profile,
+)
 from relay_self.appraisal import (
     AppraisalAspect,
     AppraisalBias,
@@ -112,6 +118,16 @@ from relay_self.epoch_plan import (
     compile_epoch_plan,
     coordinate_planned_epoch,
 )
+from relay_self.execution_admission import (
+    AdmissionDecision,
+    AdmissionDecisionStatus,
+    AdmissionPolicy,
+    AdmissionReason,
+    ExecutionAdmissionCriterion,
+    ExecutionAdmissionError,
+    InvalidExecutionAdmissionData,
+    admit_control_candidate,
+)
 from relay_self.execution_descriptor import (
     S2_CAPABILITY_SPECS,
     S2_DESCRIPTOR_SET,
@@ -155,6 +171,11 @@ from relay_self.execution_descriptor import (
     S12_ROUTE_CAPABILITY_SPEC,
     S12_ROUTE_CRITERION_DESCRIPTOR,
     S12_ROUTE_OPERATOR_DESCRIPTOR,
+    S13_ADMISSION_CAPABILITY_SPEC,
+    S13_ADMISSION_CRITERION_DESCRIPTOR,
+    S13_ADMISSION_OPERATOR_DESCRIPTOR,
+    S13_CAPABILITY_SPECS,
+    S13_DESCRIPTOR_SET,
     CapabilityDescriptorSet,
     CriterionDescriptor,
     CriterionKind,
@@ -174,6 +195,7 @@ from relay_self.execution_descriptor import (
     s10_capability_plan,
     s11_capability_plan,
     s12_capability_plan,
+    s13_capability_plan,
 )
 from relay_self.habit import (
     CueFeature,
@@ -336,6 +358,24 @@ from relay_self.skill import (
 )
 
 __all__ = [
+    "AdmissionDecision",
+    "AdmissionDecisionStatus",
+    "AdmissionPolicy",
+    "AdmissionProfile",
+    "AdmissionProfileId",
+    "AdmissionReason",
+    "ExecutionAdmissionCriterion",
+    "ExecutionAdmissionError",
+    "InvalidExecutionAdmissionData",
+    "S13_ADMISSION_CAPABILITY_SPEC",
+    "S13_ADMISSION_CRITERION_DESCRIPTOR",
+    "S13_ADMISSION_OPERATOR_DESCRIPTOR",
+    "S13_ADMISSION_PROFILES",
+    "S13_CAPABILITY_SPECS",
+    "S13_DESCRIPTOR_SET",
+    "admit_control_candidate",
+    "s13_admission_profile",
+    "s13_capability_plan",
     "ControlCandidate",
     "InvalidRouteData",
     "RouteAdjudicationError",

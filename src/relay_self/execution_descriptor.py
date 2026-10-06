@@ -904,3 +904,73 @@ def s12_capability_plan(
     )
     S12_DESCRIPTOR_SET.validate_plan(plan)
     return plan
+
+
+S13_ADMISSION_CAPABILITY_SPEC = CapabilitySpec(
+    capability_id="ADMISSION",
+    operator_ids=("execution.admit_candidate",),
+    criterion_ids=("admission.explicit_execution_guard",),
+    port_ids=("execution.admission_decision.out",),
+)
+
+S13_ADMISSION_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="execution.admit_candidate",
+    capability_id="ADMISSION",
+    implementation_ref="relay_self.execution_admission.admit_control_candidate",
+    reads=(
+        "transient.control_candidate",
+        "transient.route_decision",
+        "execution.intent",
+        "admission.criterion",
+    ),
+    writes=("transient.admission_decision",),
+    effect=OperatorEffect.READ_ONLY,
+)
+
+S13_ADMISSION_CRITERION_DESCRIPTOR = CriterionDescriptor(
+    criterion_id="admission.explicit_execution_guard",
+    capability_id="ADMISSION",
+    implementation_ref="relay_self.execution_admission.admit_control_candidate",
+    reads=(
+        "transient.control_candidate",
+        "transient.route_decision",
+        "execution.intent",
+        "admission.criterion",
+    ),
+    kind=CriterionKind.CONTRACT_GUARD,
+    semantics=(
+        "A ControlCandidate enters later execution-authority handling only when "
+        "it exactly matches its S12 RouteDecision, the required Current Intent "
+        "is actually current, and its candidate_ref is explicitly allow-listed."
+    ),
+)
+
+S13_CAPABILITY_SPECS = (
+    *S12_CAPABILITY_SPECS,
+    S13_ADMISSION_CAPABILITY_SPEC,
+)
+
+S13_DESCRIPTOR_SET = CapabilityDescriptorSet(
+    operators=(
+        *S12_DESCRIPTOR_SET.operators,
+        S13_ADMISSION_OPERATOR_DESCRIPTOR,
+    ),
+    criteria=(
+        *S12_DESCRIPTOR_SET.criteria,
+        S13_ADMISSION_CRITERION_DESCRIPTOR,
+    ),
+)
+
+
+def s13_capability_plan(
+    *,
+    enabled_ids: frozenset[str] = frozenset(),
+) -> CapabilityPlan:
+    """Build S13 authority-boundary metadata; nothing is enabled implicitly."""
+
+    plan = CapabilityPlan(
+        specs=S13_CAPABILITY_SPECS,
+        enabled_ids=enabled_ids,
+    )
+    S13_DESCRIPTOR_SET.validate_plan(plan)
+    return plan
