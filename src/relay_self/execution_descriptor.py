@@ -775,3 +775,64 @@ def s10_capability_plan(
     )
     S10_DESCRIPTOR_SET.validate_plan(plan)
     return plan
+
+
+S11_HABIT_CAPABILITY_SPEC = CapabilitySpec(
+    capability_id="HABIT",
+    state_scopes=("owner_local.habit_repertoire",),
+    operator_ids=("habit.select",),
+    criterion_ids=("habit.explicit_priority_orientation",),
+    port_ids=("habit.selection.out",),
+)
+
+S11_HABIT_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="habit.select",
+    capability_id="HABIT",
+    implementation_ref="relay_self.habit.select_habit",
+    reads=("owner_local.habit_repertoire", "habit.cue"),
+    writes=("transient.habit_selection",),
+    effect=OperatorEffect.READ_ONLY,
+)
+
+S11_HABIT_CRITERION_DESCRIPTOR = CriterionDescriptor(
+    criterion_id="habit.explicit_priority_orientation",
+    capability_id="HABIT",
+    implementation_ref="relay_self.habit.select_habit",
+    reads=("owner_local.habit_repertoire", "habit.cue"),
+    kind=CriterionKind.COGNITIVE_ORIENTATION,
+    semantics=(
+        "Among retained rules whose explicit cue requirements exactly match, "
+        "prefer one unique highest retained integer priority; equal top "
+        "priority remains an explicit tie."
+    ),
+)
+
+S11_CAPABILITY_SPECS = (
+    *S10_CAPABILITY_SPECS,
+    S11_HABIT_CAPABILITY_SPEC,
+)
+
+S11_DESCRIPTOR_SET = CapabilityDescriptorSet(
+    operators=(
+        *S10_DESCRIPTOR_SET.operators,
+        S11_HABIT_OPERATOR_DESCRIPTOR,
+    ),
+    criteria=(
+        *S10_DESCRIPTOR_SET.criteria,
+        S11_HABIT_CRITERION_DESCRIPTOR,
+    ),
+)
+
+
+def s11_capability_plan(
+    *,
+    enabled_ids: frozenset[str] = frozenset(),
+) -> CapabilityPlan:
+    """Build the bounded S11 plan; no capability is enabled implicitly."""
+
+    plan = CapabilityPlan(
+        specs=S11_CAPABILITY_SPECS,
+        enabled_ids=enabled_ids,
+    )
+    S11_DESCRIPTOR_SET.validate_plan(plan)
+    return plan
