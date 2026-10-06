@@ -1075,3 +1075,92 @@ def s14_capability_plan(
     )
     S14_DESCRIPTOR_SET.validate_plan(plan)
     return plan
+
+
+S15_WORLD_EXEC_CAPABILITY_SPEC = CapabilitySpec(
+    capability_id="WORLD_EXEC",
+    operator_ids=(
+        "world.build_mineflayer_command",
+        "world.execute_mineflayer_command",
+    ),
+    criterion_ids=("world.issued_action_binding_guard",),
+    port_ids=(
+        "world.mineflayer_command.out",
+        "world.consequence.out",
+    ),
+    dependencies=("EXEC_BIND",),
+)
+
+S15_WORLD_EXEC_COMMAND_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="world.build_mineflayer_command",
+    capability_id="WORLD_EXEC",
+    implementation_ref="adapters.mineflayer.execution.build_mineflayer_command",
+    reads=(
+        "execution.action",
+        "transient.execution_binding_result",
+    ),
+    writes=("transient.mineflayer_command",),
+    effect=OperatorEffect.READ_ONLY,
+)
+
+S15_WORLD_EXEC_EXECUTE_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="world.execute_mineflayer_command",
+    capability_id="WORLD_EXEC",
+    implementation_ref="adapters.mineflayer.execution.execute_mineflayer_command",
+    reads=(
+        "transient.mineflayer_command",
+        "environment.mineflayer_session",
+    ),
+    writes=(
+        "environment.mineflayer",
+        "transient.world_consequence",
+    ),
+    effect=OperatorEffect.COORDINATION,
+)
+
+S15_WORLD_EXEC_CRITERION_DESCRIPTOR = CriterionDescriptor(
+    criterion_id="world.issued_action_binding_guard",
+    capability_id="WORLD_EXEC",
+    implementation_ref="adapters.mineflayer.execution.build_mineflayer_command",
+    reads=(
+        "execution.action",
+        "transient.execution_binding_result",
+    ),
+    kind=CriterionKind.CONTRACT_GUARD,
+    semantics=(
+        "Physical Mineflayer eligibility requires one current ISSUED "
+        "ActionLifecycle and one exact matching ExecutionBindingResult across "
+        "action, Skill execution, Intent, and explicit closed action_ref."
+    ),
+)
+
+S15_CAPABILITY_SPECS = (
+    *S14_CAPABILITY_SPECS,
+    S15_WORLD_EXEC_CAPABILITY_SPEC,
+)
+
+S15_DESCRIPTOR_SET = CapabilityDescriptorSet(
+    operators=(
+        *S14_DESCRIPTOR_SET.operators,
+        S15_WORLD_EXEC_COMMAND_OPERATOR_DESCRIPTOR,
+        S15_WORLD_EXEC_EXECUTE_OPERATOR_DESCRIPTOR,
+    ),
+    criteria=(
+        *S14_DESCRIPTOR_SET.criteria,
+        S15_WORLD_EXEC_CRITERION_DESCRIPTOR,
+    ),
+)
+
+
+def s15_capability_plan(
+    *,
+    enabled_ids: frozenset[str] = frozenset(),
+) -> CapabilityPlan:
+    """Build S15 environment-integration metadata; nothing is enabled implicitly."""
+
+    plan = CapabilityPlan(
+        specs=S15_CAPABILITY_SPECS,
+        enabled_ids=enabled_ids,
+    )
+    S15_DESCRIPTOR_SET.validate_plan(plan)
+    return plan

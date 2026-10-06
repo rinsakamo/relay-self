@@ -197,6 +197,12 @@ from relay_self.execution_descriptor import (
     S14_EXEC_BIND_CRITERION_DESCRIPTOR,
     S14_EXEC_BIND_RESOLVE_OPERATOR_DESCRIPTOR,
     S14_EXEC_BIND_TRANSITION_OPERATOR_DESCRIPTOR,
+    S15_CAPABILITY_SPECS,
+    S15_DESCRIPTOR_SET,
+    S15_WORLD_EXEC_CAPABILITY_SPEC,
+    S15_WORLD_EXEC_COMMAND_OPERATOR_DESCRIPTOR,
+    S15_WORLD_EXEC_CRITERION_DESCRIPTOR,
+    S15_WORLD_EXEC_EXECUTE_OPERATOR_DESCRIPTOR,
     CapabilityDescriptorSet,
     CriterionDescriptor,
     CriterionKind,
@@ -218,6 +224,7 @@ from relay_self.execution_descriptor import (
     s12_capability_plan,
     s13_capability_plan,
     s14_capability_plan,
+    s15_capability_plan,
 )
 from relay_self.habit import (
     CueFeature,
@@ -380,6 +387,13 @@ from relay_self.skill import (
 )
 
 __all__ = [
+    "S15_CAPABILITY_SPECS",
+    "S15_DESCRIPTOR_SET",
+    "S15_WORLD_EXEC_CAPABILITY_SPEC",
+    "S15_WORLD_EXEC_COMMAND_OPERATOR_DESCRIPTOR",
+    "S15_WORLD_EXEC_CRITERION_DESCRIPTOR",
+    "S15_WORLD_EXEC_EXECUTE_OPERATOR_DESCRIPTOR",
+    "s15_capability_plan",
     "BoundExecutionCandidate",
     "ExecutionBinding",
     "ExecutionBindingError",
