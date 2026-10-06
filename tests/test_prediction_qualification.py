@@ -42,9 +42,9 @@ from relay_self.epoch_plan import (
 )
 from relay_self.execution_descriptor import (
     S7_DESCRIPTOR_SET,
+    S8_DESCRIPTOR_SET,
     S8_PRD_CAPABILITY_SPEC,
     S8_PRD_OPERATOR_DESCRIPTOR,
-    S8_DESCRIPTOR_SET,
     OperatorEffect,
     s8_capability_plan,
 )
