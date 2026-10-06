@@ -66,10 +66,10 @@ from relay_self.execution_binding import (
     start_and_propose_bound_execution,
 )
 from relay_self.execution_descriptor import (
-    S17_CAPABILITY_SPECS,
-    S17_DESCRIPTOR_SET,
     CriterionKind,
     OperatorEffect,
+    S17_CAPABILITY_SPECS,
+    S17_DESCRIPTOR_SET,
 )
 from relay_self.habit import (
     CueFeature,
