@@ -802,7 +802,6 @@ def test_world_exec_off_leaves_issued_authority_without_adapter_work() -> None:
 
 def test_action_supervisor_deadline_processing_precedes_world_exec_work() -> None:
     current = s14_chain()
-    owner = current[10]
     proposed = current[14]
     binding_result = current[15]
     assert proposed is not None
