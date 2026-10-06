@@ -196,3 +196,13 @@ scheduler/order selection
 ```
 
 S3 should bind only concrete, explicitly supplied callables or owner operations. It must not auto-import `implementation_ref` strings as executable code.
+
+
+## S3 continuation
+
+The admitted S3 implementation is documented in
+[`epoch-plans.md`](epoch-plans.md).
+
+S3 keeps descriptor strings non-executable and adds only explicit caller-supplied bindings,
+capability filtering, immutable due-work ordering, and execution through the existing
+deadline-first decision coordinator.
