@@ -8,7 +8,6 @@ import pytest
 import relay_self
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
-from relay_self.admission_profile import AdmissionProfileId, s13_admission_profile
 from relay_self.attention import (
     AttentionCandidate,
     AttentionCriterion,
