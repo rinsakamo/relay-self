@@ -25,7 +25,6 @@ from relay_self.belief import (
     assess_belief,
 )
 from relay_self.concept import (
-    ConceptCandidate,
     ConceptCriterion,
     ConceptFeature,
     ConceptKey,
@@ -60,11 +59,11 @@ from relay_self.planning import (
     InvalidPlanningData,
     PlanCandidate,
     PlanFeature,
+    PlanningCriterion,
+    PlanningDirection,
     PlanSelection,
     PlanSelectionStatus,
     PlanSourceUnavailable,
-    PlanningCriterion,
-    PlanningDirection,
     plan_candidate_from_prediction,
     select_plan,
 )
