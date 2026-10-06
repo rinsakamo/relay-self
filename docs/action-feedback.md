@@ -125,7 +125,8 @@ reason_code
 `LearningFeedbackInterpretation` separately preserves:
 
 - criterion provenance;
-- source outcome/world provenance;
+- exact S16 ActionOutcomeInterpretation provenance;
+- source WorldConsequence provenance;
 - S17 interpretation provenance.
 
 ## Same outcome, different explicit meaning
