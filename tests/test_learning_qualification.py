@@ -72,15 +72,15 @@ from relay_self.persistent_cognition import (
 from relay_self.planning import (
     PlanCandidate,
     PlanFeature,
-    PlanSelection,
-    PlanSelectionStatus,
     PlanningCriterion,
     PlanningDirection,
+    PlanSelection,
+    PlanSelectionStatus,
     select_plan,
 )
 from relay_self.prediction import (
-    PredictionStatus,
     PredictionState,
+    PredictionStatus,
     StateVariable,
     TransitionRule,
     predict_transition,
@@ -403,6 +403,20 @@ def test_deterministic_learning_proposal_semantics(
     assert first.status is status
     assert state.value == old
     assert state.revision == 0
+
+
+def test_learning_owner_and_proposal_are_immutable_snapshots() -> None:
+    state = preference(3)
+    proposal = propose_learning_update(
+        state,
+        feedback(FeedbackDirection.INCREASE),
+        rule(),
+    )
+
+    with pytest.raises(FrozenInstanceError):
+        state.value = 9  # type: ignore[misc]
+    with pytest.raises(FrozenInstanceError):
+        proposal.proposed_value = 9  # type: ignore[misc]
 
 
 def test_commit_requires_authority_and_exact_revision_then_returns_new_owner_snapshot() -> None:
