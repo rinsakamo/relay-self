@@ -6,6 +6,7 @@ from dataclasses import replace
 
 import pytest
 
+from adapters.mineflayer.action_outcome import interpret_world_consequence
 from adapters.mineflayer.execution import (
     MOVE_BACKWARD_ACTION_REF,
     MineflayerCommand,
@@ -13,7 +14,6 @@ from adapters.mineflayer.execution import (
     build_mineflayer_command,
     execute_mineflayer_command,
 )
-from adapters.mineflayer.action_outcome import interpret_world_consequence
 from adapters.mineflayer.python_protocol import (
     MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
     MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
