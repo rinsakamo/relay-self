@@ -63,7 +63,6 @@ from relay_self.habit import (
     HabitRepertoire,
     HabitRule,
     HabitSelection,
-    HabitSelectionStatus,
     select_habit,
 )
 from relay_self.intent import IntentCommitment
@@ -84,13 +83,11 @@ from relay_self.planning import (
     PlanningCriterion,
     PlanningDirection,
     PlanSelection,
-    PlanSelectionStatus,
     plan_candidate_from_prediction,
     select_plan,
 )
 from relay_self.prediction import (
     PredictionResult,
-    PredictionStatus,
     StateVariable,
     TransitionRule,
     predict_transition,
