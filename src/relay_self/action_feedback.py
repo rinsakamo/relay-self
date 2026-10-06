@@ -99,7 +99,8 @@ class LearningFeedbackInterpretation:
     feedback: LearningFeedback | None
     reason_code: str
     criterion_provenance: Provenance
-    outcome_provenance: Provenance | None
+    action_outcome_provenance: Provenance | None
+    world_provenance: Provenance | None
     provenance: Provenance
 
     def __post_init__(self) -> None:
@@ -132,10 +133,15 @@ class LearningFeedbackInterpretation:
             "criterion_provenance",
             self.criterion_provenance,
         )
-        if self.outcome_provenance is not None:
+        if self.action_outcome_provenance is not None:
             _require_provenance(
-                "outcome_provenance",
-                self.outcome_provenance,
+                "action_outcome_provenance",
+                self.action_outcome_provenance,
+            )
+        if self.world_provenance is not None:
+            _require_provenance(
+                "world_provenance",
+                self.world_provenance,
             )
         _require_provenance("interpretation provenance", self.provenance)
 
@@ -146,7 +152,8 @@ class LearningFeedbackInterpretation:
                 or self.action_ref is None
                 or self.outcome_ref is None
                 or self.outcome_reason is None
-                or self.outcome_provenance is None
+                or self.action_outcome_provenance is None
+                or self.world_provenance is None
             ):
                 raise InvalidActionFeedbackData(
                     "PRODUCED interpretation requires exact outcome and feedback"
@@ -262,7 +269,8 @@ def interpret_action_outcome_as_learning_feedback(
         feedback=feedback,
         reason_code="explicit_feedback_criterion_matched",
         criterion_provenance=criterion.provenance,
-        outcome_provenance=outcome.world_provenance,
+        action_outcome_provenance=outcome.provenance,
+        world_provenance=outcome.world_provenance,
         provenance=provenance,
     )
 
@@ -323,7 +331,8 @@ def _without_feedback(
         feedback=None,
         reason_code=reason_code,
         criterion_provenance=criterion.provenance,
-        outcome_provenance=None if outcome is None else outcome.world_provenance,
+        action_outcome_provenance=None if outcome is None else outcome.provenance,
+        world_provenance=None if outcome is None else outcome.world_provenance,
         provenance=provenance,
     )
 
