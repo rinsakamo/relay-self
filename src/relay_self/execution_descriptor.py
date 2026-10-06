@@ -468,3 +468,63 @@ def s5_capability_plan(
     )
     S5_DESCRIPTOR_SET.validate_plan(plan)
     return plan
+
+
+S6_BLF_CAPABILITY_SPEC = CapabilitySpec(
+    capability_id="BLF",
+    operator_ids=("blf.assess",),
+    criterion_ids=("blf.evidence_support_orientation",),
+    port_ids=("belief.assessment.out",),
+)
+
+S6_BLF_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="blf.assess",
+    capability_id="BLF",
+    implementation_ref="relay_self.belief.assess_belief",
+    reads=("qualified.belief_evidence", "belief.criterion"),
+    writes=("transient.belief_assessment",),
+    effect=OperatorEffect.READ_ONLY,
+)
+
+S6_BLF_CRITERION_DESCRIPTOR = CriterionDescriptor(
+    criterion_id="blf.evidence_support_orientation",
+    capability_id="BLF",
+    implementation_ref="relay_self.belief.assess_belief",
+    reads=("qualified.belief_evidence", "belief.criterion"),
+    kind=CriterionKind.COGNITIVE_ORIENTATION,
+    semantics=(
+        "For one explicit structured proposition, orient over admitted SUPPORT "
+        "and OPPOSE evidence to produce SUPPORTED, UNSUPPORTED, CONFLICTED, "
+        "or UNDETERMINED without claiming World truth."
+    ),
+)
+
+S6_CAPABILITY_SPECS = (
+    *S5_CAPABILITY_SPECS,
+    S6_BLF_CAPABILITY_SPEC,
+)
+
+S6_DESCRIPTOR_SET = CapabilityDescriptorSet(
+    operators=(
+        *S5_DESCRIPTOR_SET.operators,
+        S6_BLF_OPERATOR_DESCRIPTOR,
+    ),
+    criteria=(
+        *S5_DESCRIPTOR_SET.criteria,
+        S6_BLF_CRITERION_DESCRIPTOR,
+    ),
+)
+
+
+def s6_capability_plan(
+    *,
+    enabled_ids: frozenset[str] = frozenset(),
+) -> CapabilityPlan:
+    """Build the bounded S6 plan; no capability is enabled implicitly."""
+
+    plan = CapabilityPlan(
+        specs=S6_CAPABILITY_SPECS,
+        enabled_ids=enabled_ids,
+    )
+    S6_DESCRIPTOR_SET.validate_plan(plan)
+    return plan
