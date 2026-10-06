@@ -7,6 +7,14 @@ from relay_self.action import (
     InvalidActionData,
     InvalidTransition,
 )
+from relay_self.action_feedback import (
+    ActionFeedbackCriterion,
+    ActionFeedbackError,
+    InvalidActionFeedbackData,
+    LearningFeedbackInterpretation,
+    LearningFeedbackInterpretationStatus,
+    interpret_action_outcome_as_learning_feedback,
+)
 from relay_self.action_outcome import (
     ActionOutcomeDisposition,
     ActionOutcomeError,
@@ -216,6 +224,11 @@ from relay_self.execution_descriptor import (
     S16_ACTION_OUTCOME_TRANSLATE_OPERATOR_DESCRIPTOR,
     S16_CAPABILITY_SPECS,
     S16_DESCRIPTOR_SET,
+    S17_CAPABILITY_SPECS,
+    S17_DESCRIPTOR_SET,
+    S17_FEEDBACK_CAPABILITY_SPEC,
+    S17_FEEDBACK_CRITERION_DESCRIPTOR,
+    S17_FEEDBACK_OPERATOR_DESCRIPTOR,
     CapabilityDescriptorSet,
     CriterionDescriptor,
     CriterionKind,
@@ -239,6 +252,7 @@ from relay_self.execution_descriptor import (
     s14_capability_plan,
     s15_capability_plan,
     s16_capability_plan,
+    s17_capability_plan,
 )
 from relay_self.habit import (
     CueFeature,
@@ -401,6 +415,18 @@ from relay_self.skill import (
 )
 
 __all__ = [
+    "ActionFeedbackCriterion",
+    "ActionFeedbackError",
+    "InvalidActionFeedbackData",
+    "LearningFeedbackInterpretation",
+    "LearningFeedbackInterpretationStatus",
+    "S17_CAPABILITY_SPECS",
+    "S17_DESCRIPTOR_SET",
+    "S17_FEEDBACK_CAPABILITY_SPEC",
+    "S17_FEEDBACK_CRITERION_DESCRIPTOR",
+    "S17_FEEDBACK_OPERATOR_DESCRIPTOR",
+    "interpret_action_outcome_as_learning_feedback",
+    "s17_capability_plan",
     "ActionOutcomeDisposition",
     "ActionOutcomeError",
     "ActionOutcomeInterpretation",
