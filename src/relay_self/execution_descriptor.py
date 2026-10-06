@@ -1259,3 +1259,85 @@ def s16_capability_plan(
     )
     S16_DESCRIPTOR_SET.validate_plan(plan)
     return plan
+
+
+S17_FEEDBACK_CAPABILITY_SPEC = CapabilitySpec(
+    capability_id="FEEDBACK",
+    operator_ids=("learning.interpret_action_outcome_feedback",),
+    criterion_ids=("learning.explicit_outcome_feedback_orientation",),
+    port_ids=(
+        "learning.feedback_interpretation.out",
+        "learning.feedback",
+    ),
+    dependencies=("ACTION_OUTCOME",),
+)
+
+S17_FEEDBACK_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="learning.interpret_action_outcome_feedback",
+    capability_id="FEEDBACK",
+    implementation_ref=(
+        "relay_self.action_feedback."
+        "interpret_action_outcome_as_learning_feedback"
+    ),
+    reads=(
+        "execution.action",
+        "transient.action_outcome_interpretation",
+        "learning.feedback_criterion",
+    ),
+    writes=(
+        "transient.learning_feedback_interpretation",
+        "learning.feedback",
+    ),
+    effect=OperatorEffect.READ_ONLY,
+)
+
+S17_FEEDBACK_CRITERION_DESCRIPTOR = CriterionDescriptor(
+    criterion_id="learning.explicit_outcome_feedback_orientation",
+    capability_id="FEEDBACK",
+    implementation_ref=(
+        "relay_self.action_feedback."
+        "interpret_action_outcome_as_learning_feedback"
+    ),
+    reads=(
+        "execution.action",
+        "transient.action_outcome_interpretation",
+        "learning.feedback_criterion",
+    ),
+    kind=CriterionKind.COGNITIVE_ORIENTATION,
+    semantics=(
+        "For one exact already-closed Action result, explicitly orient one "
+        "named retained learning target toward INCREASE, DECREASE, or HOLD "
+        "only when exact Action/binding/action-ref/state/outcome-reason "
+        "constraints match; no commit authority is granted."
+    ),
+)
+
+S17_CAPABILITY_SPECS = (
+    *S16_CAPABILITY_SPECS,
+    S17_FEEDBACK_CAPABILITY_SPEC,
+)
+
+S17_DESCRIPTOR_SET = CapabilityDescriptorSet(
+    operators=(
+        *S16_DESCRIPTOR_SET.operators,
+        S17_FEEDBACK_OPERATOR_DESCRIPTOR,
+    ),
+    criteria=(
+        *S16_DESCRIPTOR_SET.criteria,
+        S17_FEEDBACK_CRITERION_DESCRIPTOR,
+    ),
+)
+
+
+def s17_capability_plan(
+    *,
+    enabled_ids: frozenset[str] = frozenset(),
+) -> CapabilityPlan:
+    """Build S17 feedback-integration metadata; nothing is enabled implicitly."""
+
+    plan = CapabilityPlan(
+        specs=S17_CAPABILITY_SPECS,
+        enabled_ids=enabled_ids,
+    )
+    S17_DESCRIPTOR_SET.validate_plan(plan)
+    return plan
