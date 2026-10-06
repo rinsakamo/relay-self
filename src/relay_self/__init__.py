@@ -41,6 +41,24 @@ from relay_self.attention_profile import (
     AttentionProfileId,
     s5_attention_profile,
 )
+from relay_self.belief import (
+    BeliefAssessment,
+    BeliefCriterion,
+    BeliefError,
+    BeliefEvidence,
+    BeliefPropositionMismatch,
+    BeliefStatus,
+    EvidenceRelation,
+    InvalidBeliefData,
+    PropositionKey,
+    assess_belief,
+)
+from relay_self.belief_profile import (
+    S6_BELIEF_PROFILES,
+    BeliefProfile,
+    BeliefProfileId,
+    s6_belief_profile,
+)
 from relay_self.capability import (
     CapabilityCompositionError,
     CapabilityDependencyCycle,
@@ -83,6 +101,11 @@ from relay_self.execution_descriptor import (
     S5_ATT_OPERATOR_DESCRIPTOR,
     S5_CAPABILITY_SPECS,
     S5_DESCRIPTOR_SET,
+    S6_BLF_CAPABILITY_SPEC,
+    S6_BLF_CRITERION_DESCRIPTOR,
+    S6_BLF_OPERATOR_DESCRIPTOR,
+    S6_CAPABILITY_SPECS,
+    S6_DESCRIPTOR_SET,
     CapabilityDescriptorSet,
     CriterionDescriptor,
     CriterionKind,
@@ -95,6 +118,7 @@ from relay_self.execution_descriptor import (
     OperatorEffect,
     s2_capability_plan,
     s5_capability_plan,
+    s6_capability_plan,
 )
 from relay_self.intent import (
     CurrentIntent,
@@ -155,6 +179,26 @@ from relay_self.skill import (
 )
 
 __all__ = [
+    "BeliefAssessment",
+    "BeliefCriterion",
+    "BeliefError",
+    "BeliefEvidence",
+    "BeliefProfile",
+    "BeliefProfileId",
+    "BeliefPropositionMismatch",
+    "BeliefStatus",
+    "EvidenceRelation",
+    "InvalidBeliefData",
+    "PropositionKey",
+    "S6_BELIEF_PROFILES",
+    "S6_BLF_CAPABILITY_SPEC",
+    "S6_BLF_CRITERION_DESCRIPTOR",
+    "S6_BLF_OPERATOR_DESCRIPTOR",
+    "S6_CAPABILITY_SPECS",
+    "S6_DESCRIPTOR_SET",
+    "assess_belief",
+    "s6_belief_profile",
+    "s6_capability_plan",
     "AttentionCandidate",
     "AttentionCriterion",
     "AttentionError",
