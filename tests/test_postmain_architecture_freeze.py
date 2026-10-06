@@ -66,10 +66,10 @@ from relay_self.execution_binding import (
     start_and_propose_bound_execution,
 )
 from relay_self.execution_descriptor import (
-    CriterionKind,
-    OperatorEffect,
     S17_CAPABILITY_SPECS,
     S17_DESCRIPTOR_SET,
+    CriterionKind,
+    OperatorEffect,
 )
 from relay_self.habit import (
     CueFeature,
@@ -108,7 +108,6 @@ from relay_self.route_adjudication import (
     control_candidate_from_route_decision,
 )
 from relay_self.skill import SkillState
-
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "docs" / "postmain-architecture.json"
