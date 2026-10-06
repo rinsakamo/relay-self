@@ -9,9 +9,8 @@ import pytest
 from adapters.mineflayer.execution import (
     MOVE_BACKWARD_ACTION_REF,
     MOVE_BACKWARD_CONTROL,
-    MineflayerCommand,
     InvalidMineflayerExecutionData,
-    WorldConsequence,
+    MineflayerCommand,
     WorldConsequenceStatus,
     build_mineflayer_command,
     execute_mineflayer_command,
@@ -64,7 +63,6 @@ from relay_self.execution_admission import (
 )
 from relay_self.execution_binding import (
     ExecutionBinding,
-    ExecutionBindingResult,
     InvalidExecutionBindingData,
     resolve_execution_binding,
     start_and_propose_bound_execution,
@@ -707,7 +705,9 @@ def test_dispatch_error_has_no_retry_and_best_effort_cleanup_is_bounded() -> Non
     assert adapter.sent.count(
         ("set_control", issued.action_id, "back", True)
     ) == 1
-    assert not any(call[0] == "clear_controls" for call in adapter.sent)
+    assert adapter.sent.count(
+        ("clear_controls", command.cleanup_action_id)
+    ) == 1
 
 
 def test_provider_text_cannot_grant_authority_build_command_or_consequence() -> None:
@@ -801,7 +801,19 @@ def test_world_exec_off_leaves_issued_authority_without_adapter_work() -> None:
 
 
 def test_action_supervisor_deadline_processing_precedes_world_exec_work() -> None:
-    *_, binding_result, _, supervisor, issued = issued_chain()[-4:]
+    current = s14_chain()
+    owner = current[10]
+    proposed = current[14]
+    binding_result = current[15]
+    assert proposed is not None
+    assert binding_result is not None
+    authorized = proposed.authorize(
+        at_ns=11,
+        provenance=provenance("current-authorization"),
+        authority="current-authority",
+    )
+    supervisor = ActionSupervisor()
+
     prior_owner = intent_owner()
     from relay_self.skill import SkillExecution
 
@@ -826,8 +838,14 @@ def test_action_supervisor_deadline_processing_precedes_world_exec_work() -> Non
     supervisor.issue(
         prior,
         at_ns=5,
-        deadline_ns=9,
+        deadline_ns=13,
         provenance=provenance("prior-issue"),
+    )
+    issued = supervisor.issue(
+        authorized,
+        at_ns=12,
+        deadline_ns=100,
+        provenance=provenance("current-issue"),
     )
 
     seen: list[ActionState] = []
@@ -863,7 +881,7 @@ def test_action_supervisor_deadline_processing_precedes_world_exec_work() -> Non
         supervisor,
         epoch,
         bindings=(binding_work,),
-        at_ns=10,
+        at_ns=13,
         provenance=provenance("supervision-first"),
     )
     assert seen == [ActionState.TIMEOUT]
@@ -1051,7 +1069,8 @@ def test_full_deterministic_evidence_to_issued_to_world_consequence_uses_no_mode
     assert concept is not None
     assert wait_prediction is not None
     assert move_prediction is not None
-    assert plan.selected_candidate_id == "MOVE_AWAY"
+    assert plan.selected is not None
+    assert plan.selected.candidate_id == "MOVE_AWAY"
     assert habit.selected_candidate_ref == "MOVE_AWAY"
     assert route.status is RouteDecisionStatus.AGREED
     assert control is not None
