@@ -579,16 +579,26 @@ def test_s12_conflict_cannot_reach_binding() -> None:
     assert control is None
     assert admission is None
 
+    (
+        _,
+        valid_route,
+        valid_control,
+        valid_criterion,
+        valid_admission,
+    ) = admitted_chain()
+    assert valid_control is not None
+    assert valid_admission is not None
+    assert valid_route.status is RouteDecisionStatus.AGREED
     with pytest.raises(
         InvalidExecutionBindingData,
         match="ControlCandidate",
     ):
         resolve_execution_binding(
-            AdmissionDecision,  # type: ignore[arg-type]
+            valid_admission,
             None,  # type: ignore[arg-type]
             route,
             owner,
-            criterion,
+            valid_criterion,
             execution_binding(),
             provenance=provenance("conflict-binding"),
         )
@@ -605,7 +615,7 @@ def test_fabricated_admission_lineage_cannot_start_or_propose() -> None:
         selected_source=admission.selected_source,
         route_criterion_id=admission.route_criterion_id,
         control_criterion_id=admission.control_criterion_id,
-        admission_criterion_id=admission.admission_criterion_id,
+        admission_criterion_id="fabricated-criterion",
         current_intent_id=admission.current_intent_id,
         reason=admission.reason,
         control_provenance=admission.control_provenance,
@@ -655,7 +665,7 @@ def test_malformed_binding_identifiers_fail_closed(
     kwargs[field] = value
     with pytest.raises(
         InvalidExecutionBindingData,
-        match="non-empty|string without whitespace",
+        match="non-empty|structured identifier",
     ):
         ExecutionBinding(**kwargs)  # type: ignore[arg-type]
 
@@ -815,7 +825,7 @@ def test_exec_bind_off_preserves_admission_without_skill_or_action() -> None:
         admission_work,
     )
     epoch = compile_epoch_plan(
-        s13_admission_profile(AdmissionProfileId.ROUTE_ADMISSION).plan(),
+        s14_capability_plan(enabled_ids=frozenset({"ROUTE", "ADMISSION"})),
         S14_DESCRIPTOR_SET,
         due_items=(
             EpochWorkItem(
