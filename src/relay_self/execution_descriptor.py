@@ -528,3 +528,63 @@ def s6_capability_plan(
     )
     S6_DESCRIPTOR_SET.validate_plan(plan)
     return plan
+
+
+S7_CNC_CAPABILITY_SPEC = CapabilitySpec(
+    capability_id="CNC",
+    operator_ids=("cnc.classify",),
+    criterion_ids=("cnc.explicit_membership_orientation",),
+    port_ids=("concept.representation.out",),
+)
+
+S7_CNC_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="cnc.classify",
+    capability_id="CNC",
+    implementation_ref="relay_self.concept.classify_concept",
+    reads=("qualified.concept_candidate", "concept.criterion"),
+    writes=("transient.concept_representation",),
+    effect=OperatorEffect.READ_ONLY,
+)
+
+S7_CNC_CRITERION_DESCRIPTOR = CriterionDescriptor(
+    criterion_id="cnc.explicit_membership_orientation",
+    capability_id="CNC",
+    implementation_ref="relay_self.concept.classify_concept",
+    reads=("qualified.concept_candidate", "concept.criterion"),
+    kind=CriterionKind.COGNITIVE_ORIENTATION,
+    semantics=(
+        "For one valid structured candidate and explicit concept membership "
+        "rule, distinguish exact membership, explicit mismatch, and missing "
+        "required features without claiming World truth."
+    ),
+)
+
+S7_CAPABILITY_SPECS = (
+    *S6_CAPABILITY_SPECS,
+    S7_CNC_CAPABILITY_SPEC,
+)
+
+S7_DESCRIPTOR_SET = CapabilityDescriptorSet(
+    operators=(
+        *S6_DESCRIPTOR_SET.operators,
+        S7_CNC_OPERATOR_DESCRIPTOR,
+    ),
+    criteria=(
+        *S6_DESCRIPTOR_SET.criteria,
+        S7_CNC_CRITERION_DESCRIPTOR,
+    ),
+)
+
+
+def s7_capability_plan(
+    *,
+    enabled_ids: frozenset[str] = frozenset(),
+) -> CapabilityPlan:
+    """Build the bounded S7 plan; no capability is enabled implicitly."""
+
+    plan = CapabilityPlan(
+        specs=S7_CAPABILITY_SPECS,
+        enabled_ids=enabled_ids,
+    )
+    S7_DESCRIPTOR_SET.validate_plan(plan)
+    return plan

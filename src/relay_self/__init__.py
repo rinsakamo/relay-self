@@ -74,6 +74,25 @@ from relay_self.capability_profile import (
     CapabilityProfileId,
     s4_capability_profile,
 )
+from relay_self.concept import (
+    ConceptCandidate,
+    ConceptCriterion,
+    ConceptError,
+    ConceptFeature,
+    ConceptKey,
+    ConceptRepresentation,
+    ConceptSourceUnavailable,
+    ConceptStatus,
+    InvalidConceptData,
+    classify_concept,
+    concept_candidate_from_belief,
+)
+from relay_self.concept_profile import (
+    S7_CONCEPT_PROFILES,
+    ConceptProfile,
+    ConceptProfileId,
+    s7_concept_profile,
+)
 from relay_self.epoch_plan import (
     CognitionInvocation,
     CognitionStepOrderingError,
@@ -106,6 +125,11 @@ from relay_self.execution_descriptor import (
     S6_BLF_OPERATOR_DESCRIPTOR,
     S6_CAPABILITY_SPECS,
     S6_DESCRIPTOR_SET,
+    S7_CAPABILITY_SPECS,
+    S7_CNC_CAPABILITY_SPEC,
+    S7_CNC_CRITERION_DESCRIPTOR,
+    S7_CNC_OPERATOR_DESCRIPTOR,
+    S7_DESCRIPTOR_SET,
     CapabilityDescriptorSet,
     CriterionDescriptor,
     CriterionKind,
@@ -119,6 +143,7 @@ from relay_self.execution_descriptor import (
     s2_capability_plan,
     s5_capability_plan,
     s6_capability_plan,
+    s7_capability_plan,
 )
 from relay_self.intent import (
     CurrentIntent,
@@ -179,6 +204,27 @@ from relay_self.skill import (
 )
 
 __all__ = [
+    "ConceptCandidate",
+    "ConceptCriterion",
+    "ConceptError",
+    "ConceptFeature",
+    "ConceptKey",
+    "ConceptProfile",
+    "ConceptProfileId",
+    "ConceptRepresentation",
+    "ConceptSourceUnavailable",
+    "ConceptStatus",
+    "InvalidConceptData",
+    "S7_CONCEPT_PROFILES",
+    "S7_CAPABILITY_SPECS",
+    "S7_CNC_CAPABILITY_SPEC",
+    "S7_CNC_CRITERION_DESCRIPTOR",
+    "S7_CNC_OPERATOR_DESCRIPTOR",
+    "S7_DESCRIPTOR_SET",
+    "classify_concept",
+    "concept_candidate_from_belief",
+    "s7_capability_plan",
+    "s7_concept_profile",
     "BeliefAssessment",
     "BeliefCriterion",
     "BeliefError",
