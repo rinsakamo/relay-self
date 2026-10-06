@@ -24,7 +24,6 @@ from relay_self.belief import (
     assess_belief,
 )
 from relay_self.concept import (
-    ConceptCandidate,
     ConceptCriterion,
     ConceptFeature,
     ConceptKey,
