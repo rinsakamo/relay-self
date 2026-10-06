@@ -128,6 +128,21 @@ from relay_self.execution_admission import (
     InvalidExecutionAdmissionData,
     admit_control_candidate,
 )
+from relay_self.execution_binding import (
+    BoundExecutionCandidate,
+    ExecutionBinding,
+    ExecutionBindingError,
+    ExecutionBindingResult,
+    InvalidExecutionBindingData,
+    resolve_execution_binding,
+    start_and_propose_bound_execution,
+)
+from relay_self.execution_binding_profile import (
+    S14_EXECUTION_BINDING_PROFILES,
+    ExecutionBindingProfile,
+    ExecutionBindingProfileId,
+    s14_execution_binding_profile,
+)
 from relay_self.execution_descriptor import (
     S2_CAPABILITY_SPECS,
     S2_DESCRIPTOR_SET,
@@ -176,6 +191,12 @@ from relay_self.execution_descriptor import (
     S13_ADMISSION_OPERATOR_DESCRIPTOR,
     S13_CAPABILITY_SPECS,
     S13_DESCRIPTOR_SET,
+    S14_CAPABILITY_SPECS,
+    S14_DESCRIPTOR_SET,
+    S14_EXEC_BIND_CAPABILITY_SPEC,
+    S14_EXEC_BIND_CRITERION_DESCRIPTOR,
+    S14_EXEC_BIND_RESOLVE_OPERATOR_DESCRIPTOR,
+    S14_EXEC_BIND_TRANSITION_OPERATOR_DESCRIPTOR,
     CapabilityDescriptorSet,
     CriterionDescriptor,
     CriterionKind,
@@ -196,6 +217,7 @@ from relay_self.execution_descriptor import (
     s11_capability_plan,
     s12_capability_plan,
     s13_capability_plan,
+    s14_capability_plan,
 )
 from relay_self.habit import (
     CueFeature,
@@ -358,6 +380,24 @@ from relay_self.skill import (
 )
 
 __all__ = [
+    "BoundExecutionCandidate",
+    "ExecutionBinding",
+    "ExecutionBindingError",
+    "ExecutionBindingProfile",
+    "ExecutionBindingProfileId",
+    "ExecutionBindingResult",
+    "InvalidExecutionBindingData",
+    "S14_CAPABILITY_SPECS",
+    "S14_DESCRIPTOR_SET",
+    "S14_EXEC_BIND_CAPABILITY_SPEC",
+    "S14_EXEC_BIND_CRITERION_DESCRIPTOR",
+    "S14_EXEC_BIND_RESOLVE_OPERATOR_DESCRIPTOR",
+    "S14_EXEC_BIND_TRANSITION_OPERATOR_DESCRIPTOR",
+    "S14_EXECUTION_BINDING_PROFILES",
+    "resolve_execution_binding",
+    "s14_capability_plan",
+    "s14_execution_binding_profile",
+    "start_and_propose_bound_execution",
     "AdmissionDecision",
     "AdmissionDecisionStatus",
     "AdmissionPolicy",
