@@ -114,6 +114,14 @@ registry key, hidden authority token, model output, or executable closure.
 
 There is no global candidate-to-Skill registry.
 
+The existing `ActionLifecycle` contract stores lifecycle identity
+(`action_id`), Skill execution identity, Intent identity, and lifecycle events;
+it does not currently have a separate action-kind/payload field. S14 therefore
+keeps the explicit `action_ref` in `ExecutionBinding` and
+`ExecutionBindingResult` for bounded lineage/audit, while the real proposed
+owner snapshot retains its existing `action_id` contract. S14 does not widen
+ActionLifecycle just to encode physical action payload semantics.
+
 ## Lineage validation
 
 `resolve_execution_binding(...)` is pure and performs all lineage checks
