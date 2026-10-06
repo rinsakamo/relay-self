@@ -34,6 +34,12 @@ from relay_self.capability import (
     UnknownCapability,
     UnsatisfiedCapabilityDependency,
 )
+from relay_self.capability_profile import (
+    S4_PROFILES,
+    CapabilityProfile,
+    CapabilityProfileId,
+    s4_capability_profile,
+)
 from relay_self.epoch_plan import (
     CognitionInvocation,
     CognitionStepOrderingError,
@@ -177,6 +183,10 @@ __all__ = [
     "UnknownEpochOperator",
     "compile_epoch_plan",
     "coordinate_planned_epoch",
+    "CapabilityProfile",
+    "CapabilityProfileId",
+    "S4_PROFILES",
+    "s4_capability_profile",
     "CurrentIntent",
     "CurrentAppraisal",
     "CognitionUnavailable",
