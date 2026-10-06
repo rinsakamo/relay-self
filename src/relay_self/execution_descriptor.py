@@ -974,3 +974,104 @@ def s13_capability_plan(
     )
     S13_DESCRIPTOR_SET.validate_plan(plan)
     return plan
+
+
+S14_EXEC_BIND_CAPABILITY_SPEC = CapabilitySpec(
+    capability_id="EXEC_BIND",
+    operator_ids=(
+        "execution.resolve_binding",
+        "execution.start_and_propose",
+    ),
+    criterion_ids=("execution.explicit_binding_guard",),
+    port_ids=(
+        "execution.bound_candidate.out",
+        "action.proposal",
+    ),
+    dependencies=("ADMISSION", "SKL"),
+)
+
+S14_EXEC_BIND_RESOLVE_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="execution.resolve_binding",
+    capability_id="EXEC_BIND",
+    implementation_ref="relay_self.execution_binding.resolve_execution_binding",
+    reads=(
+        "transient.admission_decision",
+        "transient.control_candidate",
+        "transient.route_decision",
+        "execution.intent",
+        "admission.criterion",
+        "execution.binding",
+    ),
+    writes=("transient.bound_execution_candidate",),
+    effect=OperatorEffect.READ_ONLY,
+)
+
+S14_EXEC_BIND_TRANSITION_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="execution.start_and_propose",
+    capability_id="EXEC_BIND",
+    implementation_ref=(
+        "relay_self.execution_binding.start_and_propose_bound_execution"
+    ),
+    reads=(
+        "transient.bound_execution_candidate",
+        "execution.intent",
+    ),
+    writes=(
+        "execution.skill",
+        "execution.action",
+        "transient.execution_binding_result",
+    ),
+    effect=OperatorEffect.OWNER_TRANSITION,
+)
+
+S14_EXEC_BIND_CRITERION_DESCRIPTOR = CriterionDescriptor(
+    criterion_id="execution.explicit_binding_guard",
+    capability_id="EXEC_BIND",
+    implementation_ref="relay_self.execution_binding.resolve_execution_binding",
+    reads=(
+        "transient.admission_decision",
+        "transient.control_candidate",
+        "transient.route_decision",
+        "execution.intent",
+        "admission.criterion",
+        "execution.binding",
+    ),
+    kind=CriterionKind.CONTRACT_GUARD,
+    semantics=(
+        "An ADMITTED candidate may bind to Skill/Action proposal only when "
+        "its S12/S13 lineage is exact, the actual Current Intent still "
+        "matches, and one explicit caller-owned ExecutionBinding exactly "
+        "names the candidate, Skill identity/reference, and Action identity/reference."
+    ),
+)
+
+S14_CAPABILITY_SPECS = (
+    *S13_CAPABILITY_SPECS,
+    S14_EXEC_BIND_CAPABILITY_SPEC,
+)
+
+S14_DESCRIPTOR_SET = CapabilityDescriptorSet(
+    operators=(
+        *S13_DESCRIPTOR_SET.operators,
+        S14_EXEC_BIND_RESOLVE_OPERATOR_DESCRIPTOR,
+        S14_EXEC_BIND_TRANSITION_OPERATOR_DESCRIPTOR,
+    ),
+    criteria=(
+        *S13_DESCRIPTOR_SET.criteria,
+        S14_EXEC_BIND_CRITERION_DESCRIPTOR,
+    ),
+)
+
+
+def s14_capability_plan(
+    *,
+    enabled_ids: frozenset[str] = frozenset(),
+) -> CapabilityPlan:
+    """Build S14 execution-binding metadata; nothing is enabled implicitly."""
+
+    plan = CapabilityPlan(
+        specs=S14_CAPABILITY_SPECS,
+        enabled_ids=enabled_ids,
+    )
+    S14_DESCRIPTOR_SET.validate_plan(plan)
+    return plan
