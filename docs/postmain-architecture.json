@@ -1,0 +1,662 @@
+{
+  "schema_version": "1.0",
+  "frozen_base_head": "64868337510a960c140e96d5d3d20949ad53fb8e",
+  "slice_range": "S1-S17",
+  "milestone": "S18",
+  "architecture_claim": "SINGLE_TRANSACTION_COGNITIVE_ACTION_LEARNING_ARCHITECTURE_QUALIFIED",
+  "terminal_interpretation": "S18_FROZEN_AS_SINGLE_TRANSACTION_COGNITIVE_ACTION_LEARNING_ARCHITECTURE_WITH_EXPLICIT_OWNERSHIP_AND_AUTHORITY_BOUNDARIES",
+  "subordinate_conclusions": [
+    "NO_PERSISTENT_CENTRAL_EXECUTIVE_INTRODUCED",
+    "NO_PERSISTENT_COGNITIVE_SCHEDULER_INTRODUCED",
+    "DETERMINISTIC_SINGLE_TRANSACTION_PROVIDER_MODEL_CALLS_0",
+    "AUTONOMOUS_REENTRY_NOT_IMPLEMENTED",
+    "LIVE_FIELD_BLOCKED_NOT_RUN"
+  ],
+  "capability_classes": {
+    "semantic_runtime_surfaces": [
+      "MEM",
+      "CTL",
+      "SKL",
+      "TALK"
+    ],
+    "cognitive_mechanisms": [
+      "ATT",
+      "BLF",
+      "CNC",
+      "PRD",
+      "PLAN",
+      "LRN",
+      "HABIT"
+    ],
+    "integration_only_metadata": [
+      "ROUTE",
+      "ADMISSION",
+      "EXEC_BIND",
+      "WORLD_EXEC",
+      "ACTION_OUTCOME",
+      "FEEDBACK"
+    ]
+  },
+  "capability_state_scopes": {
+    "MEM": [
+      "durable.memory"
+    ],
+    "CTL": [
+      "present",
+      "execution.intent",
+      "execution.action"
+    ],
+    "SKL": [
+      "execution.intent",
+      "execution.skill",
+      "execution.action"
+    ],
+    "TALK": [
+      "durable.identity",
+      "durable.memory",
+      "present"
+    ],
+    "ATT": [],
+    "BLF": [],
+    "CNC": [],
+    "PRD": [],
+    "PLAN": [],
+    "LRN": [
+      "owner_local.learning_preference"
+    ],
+    "HABIT": [
+      "owner_local.habit_repertoire"
+    ],
+    "ROUTE": [],
+    "ADMISSION": [],
+    "EXEC_BIND": [],
+    "WORLD_EXEC": [],
+    "ACTION_OUTCOME": [],
+    "FEEDBACK": []
+  },
+  "owners": [
+    {
+      "thing": "IdentitySpecification",
+      "owner": "PersistentCognition",
+      "persistence": "durable_snapshot",
+      "notes": "PersistentCognition stores durable identity."
+    },
+    {
+      "thing": "Memory",
+      "owner": "PersistentCognition",
+      "persistence": "durable_snapshot",
+      "notes": "Retained only through explicit governed retain_memory."
+    },
+    {
+      "thing": "AppraisalDisposition",
+      "owner": "PersistentCognition",
+      "persistence": "durable_snapshot",
+      "notes": "Exact-scope retained appraisal disposition."
+    },
+    {
+      "thing": "CurrentIntent and intent event history",
+      "owner": "IntentCommitment",
+      "persistence": "runtime_retained_owner",
+      "notes": "Commit/reconsider/release lifecycle remains separate from PLAN/ROUTE."
+    },
+    {
+      "thing": "Skill lifecycle",
+      "owner": "SkillExecution",
+      "persistence": "runtime_lifecycle_lineage",
+      "notes": "Immutable snapshots with internal current-lineage guard."
+    },
+    {
+      "thing": "Action lifecycle snapshot",
+      "owner": "ActionLifecycle",
+      "persistence": "runtime_lifecycle_lineage",
+      "notes": "PROPOSED/AUTHORIZED/ISSUED/terminal transition legality."
+    },
+    {
+      "thing": "Supervised issued Action retention/deadline/outcome",
+      "owner": "ActionSupervisor",
+      "persistence": "runtime_retained_owner",
+      "notes": "Owns supervised action map, monotonic processing time, timeout and outcome closure only."
+    },
+    {
+      "thing": "LearningPreferenceState",
+      "owner": "owner-local LRN state via LearningPreferenceState/commit_learning_update",
+      "persistence": "retained_owner_local_snapshot",
+      "notes": "Only explicit governed S10 commit returns a new retained snapshot."
+    },
+    {
+      "thing": "HabitRepertoire",
+      "owner": "owner-local HabitRepertoire snapshot",
+      "persistence": "retained_owner_local_snapshot",
+      "notes": "HABIT reads retained repertoire; S11/S17 do not mutate it."
+    },
+    {
+      "thing": "EpochPlan",
+      "owner": "none",
+      "persistence": "stateless_immutable_plan",
+      "notes": "Caller supplies due work and exact bindings; no domain-state ownership."
+    },
+    {
+      "thing": "CapabilitySpec/CapabilityDescriptorSet",
+      "owner": "none",
+      "persistence": "immutable_metadata",
+      "notes": "Metadata does not execute implementation_ref or own semantic state."
+    },
+    {
+      "thing": "ROUTE",
+      "owner": "none",
+      "persistence": "stateless_integration_metadata",
+      "notes": "No arbitration owner or retained route state."
+    },
+    {
+      "thing": "ADMISSION",
+      "owner": "none",
+      "persistence": "stateless_integration_metadata",
+      "notes": "No Intent/Skill/Action ownership transfer."
+    },
+    {
+      "thing": "EXEC_BIND",
+      "owner": "none",
+      "persistence": "integration_transition_metadata",
+      "notes": "Calls existing Skill/Action owners only after pure validation."
+    },
+    {
+      "thing": "WORLD_EXEC",
+      "owner": "Mineflayer environment adapter only for environment I/O",
+      "persistence": "bounded_environment_io",
+      "notes": "No cognition, Action authority, deadline, or scheduler ownership."
+    },
+    {
+      "thing": "ACTION_OUTCOME",
+      "owner": "none; ActionSupervisor remains terminal owner",
+      "persistence": "stateless_interpretation_plus_existing_owner_transition",
+      "notes": "No second outcome store."
+    },
+    {
+      "thing": "FEEDBACK",
+      "owner": "none",
+      "persistence": "stateless_feedback_interpretation",
+      "notes": "Does not own retained learning state or commit authority."
+    }
+  ],
+  "state_classes": [
+    {
+      "thing": "AttentionSelection",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "non_authoritative_cognitive_output",
+      "producer": "ATT",
+      "legal_consumers": [
+        "BLF/caller-selected evidence flow"
+      ],
+      "forbidden_implicit_effects": [
+        "Belief mutation",
+        "Memory write",
+        "Action authority"
+      ]
+    },
+    {
+      "thing": "BeliefAssessment",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "non_authoritative_cognitive_output",
+      "producer": "BLF",
+      "legal_consumers": [
+        "CNC/caller projection"
+      ],
+      "forbidden_implicit_effects": [
+        "Memory write",
+        "World-truth assertion",
+        "Action authority"
+      ]
+    },
+    {
+      "thing": "ConceptRepresentation",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "non_authoritative_cognitive_output",
+      "producer": "CNC",
+      "legal_consumers": [
+        "PRD",
+        "HABIT cue construction by caller"
+      ],
+      "forbidden_implicit_effects": [
+        "World-truth assertion",
+        "Intent mutation",
+        "Action authority"
+      ]
+    },
+    {
+      "thing": "PredictionResult",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "non_authoritative_cognitive_output",
+      "producer": "PRD",
+      "legal_consumers": [
+        "PLAN"
+      ],
+      "forbidden_implicit_effects": [
+        "Plan commitment",
+        "Intent mutation",
+        "Action proposal"
+      ]
+    },
+    {
+      "thing": "PlanSelection",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "candidate_selection_only",
+      "producer": "PLAN",
+      "legal_consumers": [
+        "ROUTE"
+      ],
+      "forbidden_implicit_effects": [
+        "Current Intent mutation",
+        "Skill start",
+        "Action proposal"
+      ]
+    },
+    {
+      "thing": "HabitSelection",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "candidate_selection_only",
+      "producer": "HABIT",
+      "legal_consumers": [
+        "ROUTE"
+      ],
+      "forbidden_implicit_effects": [
+        "Action execution",
+        "Habit reinforcement",
+        "LearningFeedback"
+      ]
+    },
+    {
+      "thing": "RouteDecision",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "route_adjudication_only",
+      "producer": "ROUTE",
+      "legal_consumers": [
+        "ControlCandidate projection",
+        "ADMISSION lineage"
+      ],
+      "forbidden_implicit_effects": [
+        "Intent mutation",
+        "Skill start",
+        "Action proposal"
+      ]
+    },
+    {
+      "thing": "ControlCandidate",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "non_authoritative_execution_candidate",
+      "producer": "ROUTE projection",
+      "legal_consumers": [
+        "ADMISSION"
+      ],
+      "forbidden_implicit_effects": [
+        "Intent commitment",
+        "Skill start",
+        "Action proposal"
+      ]
+    },
+    {
+      "thing": "AdmissionDecision",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "entry_guard_result_only",
+      "producer": "ADMISSION",
+      "legal_consumers": [
+        "EXEC_BIND"
+      ],
+      "forbidden_implicit_effects": [
+        "Intent mutation",
+        "Skill start",
+        "Action proposal",
+        "Authorization",
+        "Issue"
+      ]
+    },
+    {
+      "thing": "ExecutionBindingResult",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "binding_audit_result_only",
+      "producer": "EXEC_BIND",
+      "legal_consumers": [
+        "WORLD_EXEC exact identity join"
+      ],
+      "forbidden_implicit_effects": [
+        "Authorization",
+        "Issue",
+        "Physical execution alone"
+      ]
+    },
+    {
+      "thing": "MineflayerCommand",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "environment_command_after_exact_issued_join",
+      "producer": "WORLD_EXEC build",
+      "legal_consumers": [
+        "bounded Mineflayer adapter execution"
+      ],
+      "forbidden_implicit_effects": [
+        "Action authorization",
+        "Action issue",
+        "LearningFeedback"
+      ]
+    },
+    {
+      "thing": "WorldConsequence",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "structured_environment_observation",
+      "producer": "WORLD_EXEC",
+      "legal_consumers": [
+        "ACTION_OUTCOME interpretation"
+      ],
+      "forbidden_implicit_effects": [
+        "LearningFeedback",
+        "Memory write",
+        "Belief update",
+        "ActionLifecycle mutation by adapter"
+      ]
+    },
+    {
+      "thing": "ActionOutcomeInterpretation",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "outcome_interpretation_only",
+      "producer": "ACTION_OUTCOME",
+      "legal_consumers": [
+        "ActionSupervisor closure bridge",
+        "FEEDBACK"
+      ],
+      "forbidden_implicit_effects": [
+        "LearningFeedback without explicit criterion",
+        "Skill closure",
+        "Memory write"
+      ]
+    },
+    {
+      "thing": "LearningFeedback",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "learning_orientation_input_only",
+      "producer": "FEEDBACK",
+      "legal_consumers": [
+        "S10 propose_learning_update"
+      ],
+      "forbidden_implicit_effects": [
+        "Retained update without proposal/authority/commit",
+        "Habit reinforcement",
+        "PLAN mutation"
+      ]
+    },
+    {
+      "thing": "LearningUpdateProposal",
+      "class": "transient",
+      "mutability": "immutable",
+      "authority": "pure_update_proposal_only",
+      "producer": "S10 LRN proposal",
+      "legal_consumers": [
+        "S10 commit_learning_update with explicit authority"
+      ],
+      "forbidden_implicit_effects": [
+        "Retained mutation without LearningUpdateAuthority"
+      ]
+    },
+    {
+      "thing": "LearningPreferenceState",
+      "class": "retained_owner_local",
+      "mutability": "immutable_snapshot",
+      "authority": "retained_learning_owner_state",
+      "producer": "initial caller state / S10 governed commit",
+      "legal_consumers": [
+        "explicit later learning or future caller projection"
+      ],
+      "forbidden_implicit_effects": [
+        "Automatic next epoch",
+        "Automatic PLAN mutation",
+        "Habit reinforcement"
+      ]
+    },
+    {
+      "thing": "HabitRepertoire",
+      "class": "retained_owner_local",
+      "mutability": "immutable_snapshot",
+      "authority": "retained_habit_repertoire",
+      "producer": "explicit caller/owner construction",
+      "legal_consumers": [
+        "HABIT select_habit"
+      ],
+      "forbidden_implicit_effects": [
+        "Self-reinforcement",
+        "Action issue"
+      ]
+    },
+    {
+      "thing": "CurrentIntent",
+      "class": "runtime_retained_owner_state",
+      "mutability": "derived immutable current snapshot over mutable owner history",
+      "authority": "current_intent_authority",
+      "producer": "IntentCommitment",
+      "legal_consumers": [
+        "ADMISSION",
+        "SkillExecution.start",
+        "Action proposal guard"
+      ],
+      "forbidden_implicit_effects": [
+        "PLAN replacement",
+        "ROUTE replacement",
+        "Feedback replacement"
+      ]
+    },
+    {
+      "thing": "SkillExecution",
+      "class": "runtime_lifecycle_owner",
+      "mutability": "immutable_snapshot_with_internal_lineage",
+      "authority": "skill_lifecycle",
+      "producer": "SkillExecution.start / explicit terminal transitions",
+      "legal_consumers": [
+        "ActionLifecycle.propose",
+        "explicit Skill owner transitions"
+      ],
+      "forbidden_implicit_effects": [
+        "Action authorization",
+        "LearningFeedback"
+      ]
+    },
+    {
+      "thing": "ActionLifecycle",
+      "class": "runtime_lifecycle_owner",
+      "mutability": "immutable_snapshot_with_internal_lineage",
+      "authority": "action_lifecycle",
+      "producer": "ActionLifecycle/ActionSupervisor transitions",
+      "legal_consumers": [
+        "ActionSupervisor",
+        "WORLD_EXEC exact issued join",
+        "FEEDBACK after terminal interpretation"
+      ],
+      "forbidden_implicit_effects": [
+        "Physical action meaning inference from action_id",
+        "Automatic LearningFeedback"
+      ]
+    },
+    {
+      "thing": "PersistentCognition",
+      "class": "durable_retained_owner",
+      "mutability": "immutable_snapshot",
+      "authority": "identity_memory_appraisal_retention",
+      "producer": "explicit governed persistence operations",
+      "legal_consumers": [
+        "MEM/TALK/appraisal projection where explicitly wired"
+      ],
+      "forbidden_implicit_effects": [
+        "Automatic WorldConsequence retention",
+        "Automatic feedback logging"
+      ]
+    }
+  ],
+  "authority_ladder": [
+    "candidate_selected",
+    "route_adjudicated",
+    "admitted",
+    "bound",
+    "skill_started",
+    "action_proposed",
+    "action_authorized",
+    "action_issued",
+    "environment_execution",
+    "action_outcome_unknown_or_timeout",
+    "explicit_learning_feedback",
+    "learning_update_proposal",
+    "explicit_learning_update_authority",
+    "retained_learning_commit"
+  ],
+  "authority_invariants": [
+    "selection != admission",
+    "admission != commitment",
+    "binding != proposal",
+    "proposal != authorization",
+    "authorization != issue",
+    "issue != physical execution",
+    "physical execution != Action outcome",
+    "Action outcome != LearningFeedback",
+    "LearningFeedback != retained update"
+  ],
+  "integration_edges": [
+    "ATT -> BLF",
+    "BLF -> CNC",
+    "CNC -> PRD",
+    "CNC -> caller-constructed HABIT cue",
+    "PRD -> PLAN",
+    "PLAN + HABIT -> ROUTE",
+    "ROUTE -> ControlCandidate",
+    "ControlCandidate + CurrentIntent -> ADMISSION",
+    "ADMISSION + explicit ExecutionBinding -> EXEC_BIND",
+    "EXEC_BIND -> existing SkillExecution.start + ActionLifecycle.propose",
+    "ActionLifecycle.authorize -> ActionSupervisor.issue",
+    "ISSUED Action + exact ExecutionBindingResult -> WORLD_EXEC",
+    "WORLD_EXEC -> WorldConsequence",
+    "WorldConsequence -> ACTION_OUTCOME interpretation -> existing ActionSupervisor terminal closure",
+    "terminal Action + ActionOutcomeInterpretation + explicit ActionFeedbackCriterion -> FEEDBACK",
+    "LearningFeedback -> existing S10 LRN proposal + explicit authority + commit",
+    "retained LearningPreferenceState -> STOP"
+  ],
+  "forbidden_implicit_edges": [
+    "ATT -> belief mutation",
+    "BLF -> Memory write",
+    "CNC -> World truth",
+    "PRD -> plan commitment",
+    "PLAN -> Current Intent",
+    "PLAN -> Action proposal",
+    "HABIT -> Action execution",
+    "HABIT -> LearningFeedback",
+    "ROUTE -> Intent mutation",
+    "ADMISSION -> Skill start",
+    "EXEC_BIND -> authorization",
+    "WORLD_EXEC -> LearningFeedback",
+    "WorldConsequence -> Memory",
+    "WorldConsequence -> Belief",
+    "ACTION_OUTCOME -> LearningFeedback without explicit FEEDBACK criterion",
+    "FEEDBACK -> retained update without LRN authority",
+    "LRN -> automatic next epoch"
+  ],
+  "provider_model_requirements": {
+    "qualified_structured_single_transaction_calls": 0,
+    "claim_scope": "The qualified structured deterministic S5-S17 path through retained adaptation requires zero provider/model calls.",
+    "non_claims": [
+      "RelaySelf never needs an LLM",
+      "TALK/RelayEngine is unnecessary",
+      "all future cognition is deterministic"
+    ]
+  },
+  "scheduler_and_executive_audit": {
+    "persistent_central_executive": "not_introduced",
+    "persistent_cognitive_scheduler": "not_introduced",
+    "epoch_plan": "immutable stateless plan; caller/source owns why work is due and exact bindings",
+    "descriptor_dispatch": "implementation_ref strings are audit metadata and are never dynamically imported/executed",
+    "explicit_callback_seams": "EpochBinding.invoke and CognitionInvocation.runner are caller-owned explicit S3 runtime bindings, not hidden descriptor dispatch",
+    "action_supervisor": "typed in-flight Action owner only; retains supervised Action lifecycle/deadline/outcome state and is not a cognitive scheduler",
+    "mineflayer_receive_loop": "bounded by explicit timeout; no background retry/reconnect loop",
+    "newly_introduced_cross_domain_owner": "none"
+  },
+  "deterministic_trace": {
+    "trace_id": "S18_DETERMINISTIC_TEST_APPARATUS_TRACE_V1",
+    "evidence_class": "DETERMINISTIC_TEST_APPARATUS_TRACE",
+    "steps": [
+      "ATT selected zombie evidence",
+      "BLF nearby threat SUPPORTED",
+      "CNC spatial:nearby_threat MATCHED",
+      "PRD WAIT comparison_score=8",
+      "PRD MOVE_AWAY comparison_score=3",
+      "PLAN MOVE_AWAY",
+      "HABIT MOVE_AWAY",
+      "ROUTE AGREED(MOVE_AWAY)",
+      "ADMISSION ADMITTED under Current Intent escape-threat",
+      "EXEC_BIND skill=escape-movement action_ref=MOVE_BACKWARD",
+      "SkillExecution STARTED",
+      "ActionLifecycle PROPOSED",
+      "ActionLifecycle AUTHORIZED",
+      "ActionSupervisor ISSUED",
+      "WORLD_EXEC deterministic Mineflayer test apparatus -> WorldConsequence.EXECUTED",
+      "ACTION_OUTCOME -> ActionState.OUTCOME reason=observed_execution",
+      "FEEDBACK explicit criterion target=risk_weight direction=INCREASE",
+      "LRN risk_weight 3/rev0 -> proposal 4 -> explicit authority -> 4/rev1",
+      "STOP"
+    ],
+    "provider_model_calls": 0,
+    "autonomous_reentry": false
+  },
+  "live_field": {
+    "status": "BLOCKED_NOT_RUN",
+    "blocker": "genuine Minecraft endpoint unavailable",
+    "deterministic_test_evidence_is_not_live_field": true
+  },
+  "autonomous_reentry": {
+    "status": "NOT_IMPLEMENTED",
+    "continuous_multi_epoch_operation": "NOT_QUALIFIED",
+    "next_epoch_trigger": "caller-owned / not implemented by S1-S17"
+  },
+  "implementation_audit": {
+    "mutable_module_global_semantic_state_found": false,
+    "hidden_registry_found": false,
+    "dynamic_import_or_eval_found": false,
+    "background_thread_or_task_found": false,
+    "hidden_model_provider_call_found": false,
+    "automatic_cross_owner_mutation_found": false,
+    "notes": [
+      "ActionSupervisor intentionally owns a typed per-instance lifecycle dictionary and monotonic processing time.",
+      "SkillExecution and ActionLifecycle use internal lineage objects to reject stale immutable lifecycle snapshots.",
+      "Mineflayer execution uses a bounded receive-until loop with explicit timeout and callable interface checks only.",
+      "PersistentCognition supports explicit durable JSON persistence; it is not a generic runtime state store.",
+      "EpochBinding.invoke and CognitionInvocation.runner are explicit caller-owned callable seams already frozen by S3."
+    ]
+  },
+  "known_limitations": [
+    "genuine Minecraft field execution",
+    "continuous autonomous loop",
+    "next-epoch trigger policy",
+    "repeated action pacing",
+    "multi-step planning",
+    "multi-step prediction rollout",
+    "automatic Skill terminal closure",
+    "automatic Memory consolidation",
+    "automatic BLF update from WorldConsequence",
+    "habit acquisition/reinforcement/extinction",
+    "learned arbitration",
+    "learned admission policy",
+    "transition-model learning",
+    "concept learning",
+    "belief learning",
+    "RL/TD learning",
+    "global credit assignment",
+    "multi-action temporal credit assignment",
+    "model-driven reward interpretation",
+    "model-selected physical action",
+    "arbitrary Mineflayer command execution"
+  ]
+}
