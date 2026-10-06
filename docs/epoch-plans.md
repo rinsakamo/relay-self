@@ -156,3 +156,12 @@ S4 can now qualify concrete capability profiles over existing paths, especially:
 - MEM + TALK.
 
 Qualification should demonstrate that toggling capabilities changes admitted routes while preserving existing ownership, action authority, consequence observation, and cognition call-count guarantees.
+
+
+## S4 continuation
+
+S4 qualifies the existing-profile surface described in
+[`capability-profile-qualification.md`](capability-profile-qualification.md).
+
+It does not generalize the planner. It tests concrete current MEM / CTL / SKL / TALK
+bindings and verifies selective ON/OFF route effects while preserving authority boundaries.
