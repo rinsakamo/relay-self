@@ -7,6 +7,13 @@ from relay_self.action import (
     InvalidActionData,
     InvalidTransition,
 )
+from relay_self.action_outcome import (
+    ActionOutcomeDisposition,
+    ActionOutcomeError,
+    ActionOutcomeInterpretation,
+    InvalidActionOutcomeData,
+    record_interpreted_action_outcome,
+)
 from relay_self.action_supervision import (
     ActionSupervisionError,
     ActionSupervisor,
@@ -203,6 +210,12 @@ from relay_self.execution_descriptor import (
     S15_WORLD_EXEC_COMMAND_OPERATOR_DESCRIPTOR,
     S15_WORLD_EXEC_CRITERION_DESCRIPTOR,
     S15_WORLD_EXEC_EXECUTE_OPERATOR_DESCRIPTOR,
+    S16_ACTION_OUTCOME_CAPABILITY_SPEC,
+    S16_ACTION_OUTCOME_CRITERION_DESCRIPTOR,
+    S16_ACTION_OUTCOME_RECORD_OPERATOR_DESCRIPTOR,
+    S16_ACTION_OUTCOME_TRANSLATE_OPERATOR_DESCRIPTOR,
+    S16_CAPABILITY_SPECS,
+    S16_DESCRIPTOR_SET,
     CapabilityDescriptorSet,
     CriterionDescriptor,
     CriterionKind,
@@ -225,6 +238,7 @@ from relay_self.execution_descriptor import (
     s13_capability_plan,
     s14_capability_plan,
     s15_capability_plan,
+    s16_capability_plan,
 )
 from relay_self.habit import (
     CueFeature,
@@ -387,6 +401,18 @@ from relay_self.skill import (
 )
 
 __all__ = [
+    "ActionOutcomeDisposition",
+    "ActionOutcomeError",
+    "ActionOutcomeInterpretation",
+    "InvalidActionOutcomeData",
+    "S16_ACTION_OUTCOME_CAPABILITY_SPEC",
+    "S16_ACTION_OUTCOME_CRITERION_DESCRIPTOR",
+    "S16_ACTION_OUTCOME_RECORD_OPERATOR_DESCRIPTOR",
+    "S16_ACTION_OUTCOME_TRANSLATE_OPERATOR_DESCRIPTOR",
+    "S16_CAPABILITY_SPECS",
+    "S16_DESCRIPTOR_SET",
+    "record_interpreted_action_outcome",
+    "s16_capability_plan",
     "S15_CAPABILITY_SPECS",
     "S15_DESCRIPTOR_SET",
     "S15_WORLD_EXEC_CAPABILITY_SPEC",

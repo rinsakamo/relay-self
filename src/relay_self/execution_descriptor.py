@@ -1164,3 +1164,98 @@ def s15_capability_plan(
     )
     S15_DESCRIPTOR_SET.validate_plan(plan)
     return plan
+
+
+S16_ACTION_OUTCOME_CAPABILITY_SPEC = CapabilitySpec(
+    capability_id="ACTION_OUTCOME",
+    operator_ids=(
+        "action.interpret_world_consequence",
+        "action.record_interpreted_outcome",
+    ),
+    criterion_ids=("action.exact_outcome_lineage_guard",),
+    port_ids=(
+        "action.outcome_interpretation.out",
+        "action.outcome_closure",
+    ),
+    dependencies=("WORLD_EXEC",),
+)
+
+S16_ACTION_OUTCOME_TRANSLATE_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="action.interpret_world_consequence",
+    capability_id="ACTION_OUTCOME",
+    implementation_ref=(
+        "adapters.mineflayer.action_outcome.interpret_world_consequence"
+    ),
+    reads=(
+        "execution.action",
+        "transient.execution_binding_result",
+        "transient.world_consequence",
+    ),
+    writes=("transient.action_outcome_interpretation",),
+    effect=OperatorEffect.READ_ONLY,
+)
+
+S16_ACTION_OUTCOME_RECORD_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="action.record_interpreted_outcome",
+    capability_id="ACTION_OUTCOME",
+    implementation_ref=(
+        "relay_self.action_outcome.record_interpreted_action_outcome"
+    ),
+    reads=(
+        "transient.action_outcome_interpretation",
+        "execution.action_supervisor",
+    ),
+    writes=("execution.action",),
+    effect=OperatorEffect.OWNER_TRANSITION,
+)
+
+S16_ACTION_OUTCOME_CRITERION_DESCRIPTOR = CriterionDescriptor(
+    criterion_id="action.exact_outcome_lineage_guard",
+    capability_id="ACTION_OUTCOME",
+    implementation_ref=(
+        "adapters.mineflayer.action_outcome.interpret_world_consequence"
+    ),
+    reads=(
+        "execution.action",
+        "transient.execution_binding_result",
+        "transient.world_consequence",
+    ),
+    kind=CriterionKind.CONTRACT_GUARD,
+    semantics=(
+        "One S15 WorldConsequence may reach the existing ActionSupervisor "
+        "terminal owner only when the current ISSUED Action, exact S14 "
+        "ExecutionBindingResult, consequence identity, Mineflayer session "
+        "evidence, and closed physical action reference all match."
+    ),
+)
+
+S16_CAPABILITY_SPECS = (
+    *S15_CAPABILITY_SPECS,
+    S16_ACTION_OUTCOME_CAPABILITY_SPEC,
+)
+
+S16_DESCRIPTOR_SET = CapabilityDescriptorSet(
+    operators=(
+        *S15_DESCRIPTOR_SET.operators,
+        S16_ACTION_OUTCOME_TRANSLATE_OPERATOR_DESCRIPTOR,
+        S16_ACTION_OUTCOME_RECORD_OPERATOR_DESCRIPTOR,
+    ),
+    criteria=(
+        *S15_DESCRIPTOR_SET.criteria,
+        S16_ACTION_OUTCOME_CRITERION_DESCRIPTOR,
+    ),
+)
+
+
+def s16_capability_plan(
+    *,
+    enabled_ids: frozenset[str] = frozenset(),
+) -> CapabilityPlan:
+    """Build S16 Action-outcome integration metadata; nothing is enabled implicitly."""
+
+    plan = CapabilityPlan(
+        specs=S16_CAPABILITY_SPECS,
+        enabled_ids=enabled_ids,
+    )
+    S16_DESCRIPTOR_SET.validate_plan(plan)
+    return plan
