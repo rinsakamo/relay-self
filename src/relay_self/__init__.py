@@ -1,9 +1,3 @@
-from relay_self.admission_profile import (
-    S13_ADMISSION_PROFILES,
-    AdmissionProfile,
-    AdmissionProfileId,
-    s13_admission_profile,
-)
 from relay_self.action import (
     TERMINAL_STATES,
     ActionEvent,
@@ -20,6 +14,12 @@ from relay_self.action_supervision import (
     InvalidSupervisionData,
     InvalidSupervisorTime,
     UnknownSupervisedAction,
+)
+from relay_self.admission_profile import (
+    S13_ADMISSION_PROFILES,
+    AdmissionProfile,
+    AdmissionProfileId,
+    s13_admission_profile,
 )
 from relay_self.appraisal import (
     AppraisalAspect,
