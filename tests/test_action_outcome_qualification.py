@@ -8,8 +8,6 @@ import pytest
 
 from adapters.mineflayer.execution import (
     MOVE_BACKWARD_ACTION_REF,
-    MOVE_BACKWARD_CONTROL,
-    InvalidMineflayerExecutionData,
     MineflayerCommand,
     WorldConsequenceStatus,
     build_mineflayer_command,
@@ -29,15 +27,9 @@ from adapters.mineflayer.python_protocol import (
     MineflayerPosition,
     MineflayerSnapshot,
 )
-from relay_self.action import (
-    ActionLifecycle,
-    ActionState,
-    InvalidActionData,
-    InvalidTransition,
-)
+from relay_self.action import ActionState, InvalidTransition
 from relay_self.action_outcome import (
     ActionOutcomeDisposition,
-    ActionOutcomeInterpretation,
     InvalidActionOutcomeData,
     record_interpreted_action_outcome,
 )
@@ -78,7 +70,6 @@ from relay_self.execution_admission import (
 )
 from relay_self.execution_binding import (
     ExecutionBinding,
-    InvalidExecutionBindingData,
     resolve_execution_binding,
     start_and_propose_bound_execution,
 )
@@ -137,7 +128,7 @@ from relay_self.skill import SkillState
 
 def provenance(reference: str) -> Provenance:
     return Provenance(
-        source="s15-mineflayer-execution-qualification",
+        source="s16-action-outcome-qualification",
         reference=reference,
     )
 
