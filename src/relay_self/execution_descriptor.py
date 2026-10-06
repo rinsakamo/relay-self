@@ -588,3 +588,47 @@ def s7_capability_plan(
     )
     S7_DESCRIPTOR_SET.validate_plan(plan)
     return plan
+
+
+S8_PRD_CAPABILITY_SPEC = CapabilitySpec(
+    capability_id="PRD",
+    operator_ids=("prd.predict",),
+    criterion_ids=(),
+    port_ids=("prediction.result.out",),
+)
+
+S8_PRD_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="prd.predict",
+    capability_id="PRD",
+    implementation_ref="relay_self.prediction.predict_transition",
+    reads=("qualified.prediction_state", "prediction.transition_rule"),
+    writes=("transient.prediction_result",),
+    effect=OperatorEffect.READ_ONLY,
+)
+
+S8_CAPABILITY_SPECS = (
+    *S7_CAPABILITY_SPECS,
+    S8_PRD_CAPABILITY_SPEC,
+)
+
+S8_DESCRIPTOR_SET = CapabilityDescriptorSet(
+    operators=(
+        *S7_DESCRIPTOR_SET.operators,
+        S8_PRD_OPERATOR_DESCRIPTOR,
+    ),
+    criteria=S7_DESCRIPTOR_SET.criteria,
+)
+
+
+def s8_capability_plan(
+    *,
+    enabled_ids: frozenset[str] = frozenset(),
+) -> CapabilityPlan:
+    """Build the bounded S8 plan; no capability is enabled implicitly."""
+
+    plan = CapabilityPlan(
+        specs=S8_CAPABILITY_SPECS,
+        enabled_ids=enabled_ids,
+    )
+    S8_DESCRIPTOR_SET.validate_plan(plan)
+    return plan

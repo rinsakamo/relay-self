@@ -130,6 +130,10 @@ from relay_self.execution_descriptor import (
     S7_CNC_CRITERION_DESCRIPTOR,
     S7_CNC_OPERATOR_DESCRIPTOR,
     S7_DESCRIPTOR_SET,
+    S8_CAPABILITY_SPECS,
+    S8_DESCRIPTOR_SET,
+    S8_PRD_CAPABILITY_SPEC,
+    S8_PRD_OPERATOR_DESCRIPTOR,
     CapabilityDescriptorSet,
     CriterionDescriptor,
     CriterionKind,
@@ -144,6 +148,7 @@ from relay_self.execution_descriptor import (
     s5_capability_plan,
     s6_capability_plan,
     s7_capability_plan,
+    s8_capability_plan,
 )
 from relay_self.intent import (
     CurrentIntent,
@@ -170,6 +175,25 @@ from relay_self.persistent_cognition import (
     UnsupportedPersistentCognitionVersion,
     load_persistent_cognition,
     save_persistent_cognition,
+)
+from relay_self.prediction import (
+    InvalidPredictionData,
+    PredictionError,
+    PredictionResult,
+    PredictionSourceUnavailable,
+    PredictionState,
+    PredictionStatus,
+    StateVariable,
+    TransitionRule,
+    predict_transition,
+    prediction_state_from_belief,
+    prediction_state_from_concept,
+)
+from relay_self.prediction_profile import (
+    S8_PREDICTION_PROFILES,
+    PredictionProfile,
+    PredictionProfileId,
+    s8_prediction_profile,
 )
 from relay_self.provenance import InvalidProvenanceData, Provenance
 from relay_self.relay_engine import (
@@ -204,6 +228,26 @@ from relay_self.skill import (
 )
 
 __all__ = [
+    "InvalidPredictionData",
+    "PredictionError",
+    "PredictionProfile",
+    "PredictionProfileId",
+    "PredictionResult",
+    "PredictionSourceUnavailable",
+    "PredictionState",
+    "PredictionStatus",
+    "S8_CAPABILITY_SPECS",
+    "S8_DESCRIPTOR_SET",
+    "S8_PREDICTION_PROFILES",
+    "S8_PRD_CAPABILITY_SPEC",
+    "S8_PRD_OPERATOR_DESCRIPTOR",
+    "StateVariable",
+    "TransitionRule",
+    "predict_transition",
+    "prediction_state_from_belief",
+    "prediction_state_from_concept",
+    "s8_capability_plan",
+    "s8_prediction_profile",
     "ConceptCandidate",
     "ConceptCriterion",
     "ConceptError",
