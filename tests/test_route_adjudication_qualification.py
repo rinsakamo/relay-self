@@ -1068,7 +1068,7 @@ def test_route_adjudication_does_not_mutate_any_existing_authority_owner() -> No
         move_prediction,
         plan,
         habit,
-    ) = integrated_upstream()
+    ) = integrated_upstream(wait_score=1, move_score=5)
     before = (
         cognition,
         intent_owner.events,
@@ -1092,11 +1092,13 @@ def test_route_adjudication_does_not_mutate_any_existing_authority_owner() -> No
         plan,
         habit,
         fail_closed(),
-        provenance=provenance("route:authority-negative"),
+        provenance=provenance("route:authority-negative-conflict"),
     )
     control = control_candidate_from_route_decision(decision)
 
-    assert isinstance(control, ControlCandidate)
+    assert decision.status is RouteDecisionStatus.CONFLICT
+    assert decision.selected_candidate_ref is None
+    assert control is None
     assert cognition == before[0]
     assert intent_owner.events == before[1]
     assert intent_owner.current_intent == before[2]
@@ -1122,6 +1124,24 @@ def test_route_adjudication_does_not_mutate_any_existing_authority_owner() -> No
         propose_learning_update(
             learned,
             decision,  # type: ignore[arg-type]
+            LearningUpdateRule(
+                rule_id="bounded-step",
+                version=1,
+                step=1,
+            ),
+        )
+
+    agreed = adjudicate_routes(
+        plan_selection(),
+        habit_selection(),
+        fail_closed(),
+        provenance=provenance("route:agreement-not-feedback"),
+    )
+    assert agreed.status is RouteDecisionStatus.AGREED
+    with pytest.raises(InvalidLearningData, match="LearningFeedback"):
+        propose_learning_update(
+            learned,
+            agreed,  # type: ignore[arg-type]
             LearningUpdateRule(
                 rule_id="bounded-step",
                 version=1,
