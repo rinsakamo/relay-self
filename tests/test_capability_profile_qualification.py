@@ -460,8 +460,6 @@ def test_turning_mem_off_suppresses_only_memory_and_preserves_existing_memory() 
         memories=(existing,),
     )
     provider = RecordingProvider()
-    engine = RelayEngine(provider)
-    request = open_request()
 
     full = s4_capability_profile(CapabilityProfileId.MEM_TALK).plan()
     talk_only = full.with_enabled("MEM", enabled=False)
