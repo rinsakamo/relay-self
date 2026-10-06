@@ -134,3 +134,12 @@ This slice does not add:
 - any bypass around Intent, Skill, Action authorization, or consequence boundaries.
 
 A later runtime integration must preserve the repository rule that shared execution plumbing does not become a semantic owner merely because several mechanisms use it.
+
+
+## S2 continuation
+
+S1 only declares capability metadata and ON/OFF dependency structure.
+
+The bounded S2 continuation is documented in
+[`execution-descriptors.md`](execution-descriptors.md). It maps MEM / CTL / SKL / TALK
+identifiers onto already-existing RelaySelf seams without adding a dispatcher or runtime behavior.
