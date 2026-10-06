@@ -1,19 +1,3 @@
-from relay_self.attention import (
-    AttentionCandidate,
-    AttentionCriterion,
-    AttentionError,
-    AttentionSelection,
-    AttentionSelectionUnavailable,
-    InvalidAttentionData,
-    require_attention_selection,
-    select_attention,
-)
-from relay_self.attention_profile import (
-    S5_ATTENTION_PROFILES,
-    AttentionProfile,
-    AttentionProfileId,
-    s5_attention_profile,
-)
 from relay_self.action import (
     TERMINAL_STATES,
     ActionEvent,
@@ -40,6 +24,22 @@ from relay_self.appraisal import (
     CurrentAppraisal,
     InvalidAppraisalData,
     project_entity_appraisal,
+)
+from relay_self.attention import (
+    AttentionCandidate,
+    AttentionCriterion,
+    AttentionError,
+    AttentionSelection,
+    AttentionSelectionUnavailable,
+    InvalidAttentionData,
+    require_attention_selection,
+    select_attention,
+)
+from relay_self.attention_profile import (
+    S5_ATTENTION_PROFILES,
+    AttentionProfile,
+    AttentionProfileId,
+    s5_attention_profile,
 )
 from relay_self.capability import (
     CapabilityCompositionError,
