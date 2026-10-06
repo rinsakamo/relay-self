@@ -33,6 +33,7 @@ RelaySelf may maintain a self-model, working self, capability model, body/resour
 - [`docs/architecture.md`](docs/architecture.md) — architectural boundaries and state flow.
 - [`docs/runtime-principles.md`](docs/runtime-principles.md) — normative runtime and agency principles.
 - [`docs/capability-composition.md`](docs/capability-composition.md) — declarative capability ON/OFF composition without introducing a new cognitive state owner.
+- [`docs/execution-descriptors.md`](docs/execution-descriptors.md) — non-executing S2 mapping from declared capabilities to existing runtime seams and contract guards.
 - [`docs/development-principles.md`](docs/development-principles.md) — change, authority, review, and convergence discipline.
 - [`docs/evaluation.md`](docs/evaluation.md) — deterministic, simulation, model-quality, and qualification evidence discipline.
 - [`docs/ci.md`](docs/ci.md) — meaning and scope of continuous-integration guarantees.
