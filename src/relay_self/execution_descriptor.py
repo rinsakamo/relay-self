@@ -193,6 +193,33 @@ class CapabilityDescriptorSet:
             self.validate_spec(spec)
 
 
+def _unique_by_id(kind: str, values: tuple[str, ...]) -> None:
+    seen: set[str] = set()
+    for value in values:
+        if value in seen:
+            raise DuplicateExecutionDescriptor(
+                f"duplicate {kind} descriptor id: {value}"
+            )
+        seen.add(value)
+
+
+def _validate_text_tuple(name: str, values: object) -> None:
+    if not isinstance(values, tuple):
+        raise InvalidExecutionDescriptor(f"{name} must be a tuple")
+    seen: set[str] = set()
+    for index, value in enumerate(values):
+        _require_text(f"{name}[{index}]", value)
+        if value in seen:
+            raise InvalidExecutionDescriptor(
+                f"{name} must not contain duplicates: {value}"
+            )
+        seen.add(value)
+
+
+def _require_text(name: str, value: object) -> None:
+    if not isinstance(value, str) or not value.strip():
+        raise InvalidExecutionDescriptor(f"{name} must be a non-empty string")
+
 S2_CAPABILITY_SPECS = (
     CapabilitySpec(
         capability_id="MEM",
@@ -381,31 +408,3 @@ def s2_capability_plan(
     )
     S2_DESCRIPTOR_SET.validate_plan(plan)
     return plan
-
-
-def _unique_by_id(kind: str, values: tuple[str, ...]) -> None:
-    seen: set[str] = set()
-    for value in values:
-        if value in seen:
-            raise DuplicateExecutionDescriptor(
-                f"duplicate {kind} descriptor id: {value}"
-            )
-        seen.add(value)
-
-
-def _validate_text_tuple(name: str, values: object) -> None:
-    if not isinstance(values, tuple):
-        raise InvalidExecutionDescriptor(f"{name} must be a tuple")
-    seen: set[str] = set()
-    for index, value in enumerate(values):
-        _require_text(f"{name}[{index}]", value)
-        if value in seen:
-            raise InvalidExecutionDescriptor(
-                f"{name} must not contain duplicates: {value}"
-            )
-        seen.add(value)
-
-
-def _require_text(name: str, value: object) -> None:
-    if not isinstance(value, str) or not value.strip():
-        raise InvalidExecutionDescriptor(f"{name} must be a non-empty string")
