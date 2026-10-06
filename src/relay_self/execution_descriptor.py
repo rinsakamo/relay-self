@@ -692,3 +692,86 @@ def s9_capability_plan(
     )
     S9_DESCRIPTOR_SET.validate_plan(plan)
     return plan
+
+
+S10_LRN_CAPABILITY_SPEC = CapabilitySpec(
+    capability_id="LRN",
+    state_scopes=("owner_local.learning_preference",),
+    operator_ids=("lrn.propose_update", "lrn.apply_update"),
+    criterion_ids=("lrn.explicit_feedback_orientation",),
+    port_ids=("learning.update_proposal.out", "learning.retained_state.out"),
+)
+
+S10_LRN_PROPOSE_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="lrn.propose_update",
+    capability_id="LRN",
+    implementation_ref="relay_self.learning.propose_learning_update",
+    reads=(
+        "owner_local.learning_preference",
+        "learning.feedback",
+        "learning.update_rule",
+    ),
+    writes=("transient.learning_update_proposal",),
+    effect=OperatorEffect.READ_ONLY,
+)
+
+S10_LRN_APPLY_OPERATOR_DESCRIPTOR = OperatorDescriptor(
+    operator_id="lrn.apply_update",
+    capability_id="LRN",
+    implementation_ref="relay_self.learning.commit_learning_update",
+    reads=(
+        "owner_local.learning_preference",
+        "transient.learning_update_proposal",
+        "learning.update_authority",
+    ),
+    writes=("owner_local.learning_preference",),
+    effect=OperatorEffect.OWNER_TRANSITION,
+)
+
+S10_LRN_CRITERION_DESCRIPTOR = CriterionDescriptor(
+    criterion_id="lrn.explicit_feedback_orientation",
+    capability_id="LRN",
+    implementation_ref="relay_self.learning.propose_learning_update",
+    reads=(
+        "owner_local.learning_preference",
+        "learning.feedback",
+        "learning.update_rule",
+    ),
+    kind=CriterionKind.COGNITIVE_ORIENTATION,
+    semantics=(
+        "For one explicit retained target, orient a bounded deterministic "
+        "proposal according to structured INCREASE, DECREASE, or HOLD "
+        "feedback without granting commit authority."
+    ),
+)
+
+S10_CAPABILITY_SPECS = (
+    *S9_CAPABILITY_SPECS,
+    S10_LRN_CAPABILITY_SPEC,
+)
+
+S10_DESCRIPTOR_SET = CapabilityDescriptorSet(
+    operators=(
+        *S9_DESCRIPTOR_SET.operators,
+        S10_LRN_PROPOSE_OPERATOR_DESCRIPTOR,
+        S10_LRN_APPLY_OPERATOR_DESCRIPTOR,
+    ),
+    criteria=(
+        *S9_DESCRIPTOR_SET.criteria,
+        S10_LRN_CRITERION_DESCRIPTOR,
+    ),
+)
+
+
+def s10_capability_plan(
+    *,
+    enabled_ids: frozenset[str] = frozenset(),
+) -> CapabilityPlan:
+    """Build the bounded S10 plan; no capability is enabled implicitly."""
+
+    plan = CapabilityPlan(
+        specs=S10_CAPABILITY_SPECS,
+        enabled_ids=enabled_ids,
+    )
+    S10_DESCRIPTOR_SET.validate_plan(plan)
+    return plan
