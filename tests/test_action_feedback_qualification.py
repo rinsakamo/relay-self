@@ -95,6 +95,7 @@ from relay_self.intent import IntentCommitment
 from relay_self.learning import (
     FeedbackDirection,
     InvalidLearningAuthority,
+    InvalidLearningData,
     LearningPreferenceState,
     LearningTargetMismatch,
     LearningUpdateAuthority,
@@ -803,7 +804,8 @@ def test_exact_outcome_produces_existing_learning_feedback_without_mutation() ->
     )
     assert first.feedback.consequence_ref == first.outcome_ref
     assert first.criterion_provenance == criterion.provenance
-    assert first.outcome_provenance == outcome_interpretation.world_provenance
+    assert first.action_outcome_provenance == outcome_interpretation.provenance
+    assert first.world_provenance == outcome_interpretation.world_provenance
     assert state.value == 3
     assert state.revision == 0
 
@@ -848,6 +850,59 @@ def test_nonmatching_explicit_criterion_produces_no_feedback() -> None:
     assert result.status is LearningFeedbackInterpretationStatus.NOT_APPLICABLE
     assert result.feedback is None
     assert result.reason_code == "explicit_feedback_criterion_not_matched"
+
+
+@pytest.mark.parametrize(
+    ("criterion_kwargs", "expected_reason"),
+    [
+        ({"action_ref": "WAIT"}, "explicit_feedback_criterion_not_matched"),
+        ({"reason": "known_adapter_rejection"}, "explicit_feedback_criterion_not_matched"),
+    ],
+)
+def test_wrong_action_ref_or_outcome_reason_produces_no_feedback(
+    criterion_kwargs,
+    expected_reason: str,
+) -> None:
+    *_, outcome_interpretation, closed = executed_closed_chain()[-2:]
+    result = interpret_action_outcome_as_learning_feedback(
+        closed,
+        outcome_interpretation,
+        feedback_criterion(**criterion_kwargs),
+        provenance=provenance("criterion-mismatch"),
+    )
+    assert result.status is LearningFeedbackInterpretationStatus.NOT_APPLICABLE
+    assert result.feedback is None
+    assert result.reason_code == expected_reason
+
+
+def test_missing_outcome_and_nonterminal_action_do_not_produce_feedback() -> None:
+    *_, outcome_interpretation, closed = executed_closed_chain()[-2:]
+    missing = interpret_action_outcome_as_learning_feedback(
+        closed,
+        None,
+        feedback_criterion(),
+        provenance=provenance("missing-outcome"),
+    )
+    assert missing.status is LearningFeedbackInterpretationStatus.NOT_APPLICABLE
+    assert missing.feedback is None
+
+    *_, proposed, _ = s14_chain()[-3:]
+    assert proposed is not None
+    with pytest.raises(
+        InvalidActionFeedbackData,
+        match="terminal state",
+    ):
+        interpret_action_outcome_as_learning_feedback(
+            proposed,
+            outcome_interpretation,
+            feedback_criterion(),
+            provenance=provenance("nonterminal-action"),
+        )
+
+
+def test_malformed_learning_target_identifier_is_rejected() -> None:
+    with pytest.raises(InvalidActionFeedbackData, match="target_id"):
+        feedback_criterion(target_id="risk weight")
 
 
 def test_fabricated_outcome_lineage_fails_closed() -> None:
@@ -997,6 +1052,44 @@ def test_provider_text_cannot_become_outcome_criterion_or_feedback() -> None:
                 provenance=provenance("provider-direction"),
             ),  # type: ignore[arg-type]
             provenance=provenance("provider-not-criterion"),
+        )
+
+
+def test_provider_text_cannot_become_feedback_or_learning_authority() -> None:
+    state = learning_state()
+    provider_feedback = ProviderExpression(
+        text="Learn from this.",
+        provenance=provenance("provider-learn"),
+    )
+    with pytest.raises(InvalidLearningData, match="LearningFeedback"):
+        propose_learning_update(
+            state,
+            provider_feedback,  # type: ignore[arg-type]
+            learning_rule(),
+        )
+
+    *_, outcome_interpretation, closed = executed_closed_chain()[-2:]
+    interpretation = interpret_action_outcome_as_learning_feedback(
+        closed,
+        outcome_interpretation,
+        feedback_criterion(),
+        provenance=provenance("valid-feedback-for-provider-authority"),
+    )
+    assert interpretation.feedback is not None
+    proposal = propose_learning_update(
+        state,
+        interpretation.feedback,
+        learning_rule(),
+    )
+    with pytest.raises(InvalidLearningAuthority, match="LearningUpdateAuthority"):
+        commit_learning_update(
+            state,
+            proposal,
+            ProviderExpression(
+                text="Increase the risk weight.",
+                provenance=provenance("provider-authority"),
+            ),  # type: ignore[arg-type]
+            provenance=provenance("provider-cannot-authorize"),
         )
 
 
@@ -1222,6 +1315,24 @@ def test_full_deterministic_action_learning_loop_closes_once_without_reentry() -
 
     state = learning_state()
     criterion = feedback_criterion()
+    upstream_before = (
+        attention,
+        belief,
+        concept,
+        wait_prediction,
+        move_prediction,
+        plan,
+        repertoire,
+        habit,
+        route,
+        control,
+        owner.events,
+        admission,
+        skill,
+        proposed,
+        authorized,
+        closed,
+    )
     feedback_result = interpret_action_outcome_as_learning_feedback(
         closed,
         outcome_interpretation,
@@ -1266,6 +1377,26 @@ def test_full_deterministic_action_learning_loop_closes_once_without_reentry() -
     assert commit.previous_state.revision == 0
     assert commit.new_state.value == 4
     assert commit.new_state.revision == 1
+
+    upstream_after = (
+        attention,
+        belief,
+        concept,
+        wait_prediction,
+        move_prediction,
+        plan,
+        repertoire,
+        habit,
+        route,
+        control,
+        owner.events,
+        admission,
+        skill,
+        proposed,
+        authorized,
+        closed,
+    )
+    assert upstream_after == upstream_before
 
     assert owner.current_intent is not None
     assert owner.current_intent.intent_id == "escape-threat"
