@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "source": "MineflayerObservation/probe, snapshot.nearby_entities",
+  "session": "s23-recovery-session-3",
+  "parent": {
+    "action_id": "action-recovery-backward-3",
+    "binding_id": "binding-recovery-move-away-3",
+    "action_outcome": "OUTCOME",
+    "after_observation_seq": 4
+  },
+  "observation": {
+    "seq": 5,
+    "entity_id": 42,
+    "name": "zombie",
+    "type": "mob",
+    "source_scope": "mineflayer_entity_registry",
+    "max_distance_m": 16,
+    "max_entities": 16,
+    "coverage_truncated": false,
+    "candidate_count": 1
+  },
+  "near": {
+    "distance_m": 0.2,
+    "distance_cm": 20,
+    "candidate": "MOVE_AWAY"
+  },
+  "far": {
+    "distance_m": 1.8,
+    "distance_cm": 180,
+    "candidate": "WAIT"
+  },
+  "same_fixed_cognition": "S24 ATT→BLF→CNC→PRD→PLAN→ROUTE→ADMISSION, retained risk_weight 4/rev1",
+  "trust": "Protocol-origin-form typed fixture; no live Minecraft or cryptographic provenance",
+  "no_action_issued": true
+}
