@@ -1,0 +1,102 @@
+{
+  "schema_version": "1.0",
+  "evidence_class": "DETERMINISTIC_TEST_APPARATUS_CROSS_EPOCH_TRACE",
+  "authority_root": "8ea0365f48b5e58bdbca503a120ea8bf5818e2ec",
+  "first": {
+    "action_id": "action-move-backward-1",
+    "skill_execution_id": "skill-exec-escape-1",
+    "binding_id": "binding-move-away-1",
+    "world_session": "s18-session",
+    "action_state": "OUTCOME",
+    "outcome_reason": "observed_execution",
+    "feedback_id": "feedback:risk-from-observed-move:risk_weight:action-move-backward-1:binding-move-away-1:s18-session:observed_execution",
+    "world_consequence_provenance": {
+      "source": "s18-architecture-freeze",
+      "reference": "world-consequence"
+    }
+  },
+  "learning": {
+    "target_id": "risk_weight",
+    "rule_id": "bounded-risk-step",
+    "rule_version": 1,
+    "authority_id": "s18-learning-authority",
+    "feedback_provenance": {
+      "source": "s18-architecture-freeze",
+      "reference": "feedback"
+    },
+    "authority_provenance": {
+      "source": "s18-architecture-freeze",
+      "reference": "learning-authority"
+    },
+    "update_provenance": {
+      "source": "s18-architecture-freeze",
+      "reference": "learning-commit"
+    },
+    "previous": {
+      "revision": 0,
+      "value": 3
+    },
+    "committed": {
+      "revision": 1,
+      "value": 4
+    }
+  },
+  "second": {
+    "explicit_invocation": "S19 caller-owned compile_epoch_plan + coordinate_planned_epoch",
+    "prediction_refs": [
+      "concept:spatial:nearby_threat",
+      "concept-criterion:supported-nearby",
+      "concept-candidate:belief:zombie-nearby",
+      "learning-target:risk_weight",
+      "learning-revision:1",
+      "learning-feedback:feedback:risk-from-observed-move:risk_weight:action-move-backward-1:binding-move-away-1:s18-session:observed_execution",
+      "learning-rule:bounded-risk-step:v1",
+      "learning-authority:s18-learning-authority",
+      "learning-commit-revision:1"
+    ],
+    "selection": "MOVE_AWAY",
+    "fresh_admission": "ADMITTED",
+    "action_id": "action-move-backward-2",
+    "skill_execution_id": "skill-exec-escape-2",
+    "binding_id": "binding-move-away-2",
+    "action_ref": "MOVE_BACKWARD",
+    "skill_state": "STARTED",
+    "action_sequence": [
+      "PROPOSED",
+      "AUTHORIZED",
+      "ISSUED",
+      "OUTCOME"
+    ],
+    "authorization": "s20-explicit-Action2-authority",
+    "issue_at_ns": 33,
+    "deadline_ns": 100,
+    "closed_at_ns": 40,
+    "world_session": "s20-session-2",
+    "world_consequence_status": "EXECUTED",
+    "world_provenance": {
+      "source": "s20-two-transaction-qualification",
+      "reference": "world2-observed-consequence"
+    },
+    "outcome": "OUTCOME",
+    "outcome_reason": "observed_execution"
+  },
+  "verified_guards": [
+    "distinct Action/Skill/Binding IDs",
+    "exact current Action1",
+    "exact feedback and learning commit revision",
+    "retained source refs and provenance survive PLAN",
+    "fresh S13 admission",
+    "S14 binding resolves admitted candidate",
+    "S15 issued-only command binding",
+    "different bounded session",
+    "deadline-before-terminal check",
+    "S16 existing ActionSupervisor terminal closure",
+    "duplicate replay rejects",
+    "stale Skill/Action rejects"
+  ],
+  "no_implicit_learning_after_action_two": true,
+  "no_implicit_epoch_three": true,
+  "provider_model_calls": 0,
+  "physical_field_status": "NOT_RUN",
+  "authenticity_limit": "Trusted caller supplies current retained owner snapshot and exact session/time; guards do not cryptographically verify external physical event identity."
+}
