@@ -62,5 +62,7 @@
     "Caller supplies observed_at_ns and inspected_at_ns; wire does not provide trusted monotonic World timestamp",
     "No new physical Action, continuous scheduler, generic learning, skill terminal, Minecraft endpoint or Paper2 MAIN40 change",
     "Frozen S18-S28 test receipts remain unmodified; S29 changes shared protocol implementation only by compatible optional extension"
-  ]
+  ],
+  "request_id_echo_required": true,
+  "legacy_observe_preserved": true
 }
