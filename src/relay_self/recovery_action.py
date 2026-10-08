@@ -19,6 +19,7 @@ from relay_self.execution_binding import (
     ExecutionBindingResult,
     resolve_execution_binding,
 )
+from relay_self.provenance import Provenance
 from relay_self.route_adjudication import ControlCandidate, RouteDecision
 from relay_self.skill import SkillExecution, SkillState
 from relay_self.skill_exit_routing import (
@@ -27,7 +28,6 @@ from relay_self.skill_exit_routing import (
     SkillExitRoute,
     assess_skill_exit,
 )
-from relay_self.provenance import Provenance
 
 
 class InvalidRecoveryActionLineage(ValueError):
