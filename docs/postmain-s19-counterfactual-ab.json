@@ -3,7 +3,7 @@
   "milestone": "S19",
   "base_head": "b5eb5d3416a9c303b855250adea4323e7611f350",
   "evidence_class": "DETERMINISTIC_COUNTERFACTUAL_TEST_APPARATUS",
-  "classification": "PENDING_FINAL_EXACT_HEAD_CI",
+  "classification": "EXPLICIT_TWO_EPOCH_RETAINED_STATE_REUSE_QUALIFIED",
   "epoch_one": {
     "trace": "ATT -> BLF -> CNC -> PRD/PLAN/HABIT -> ROUTE -> ADMISSION -> EXEC_BIND -> Action PROPOSED/AUTHORIZED/ISSUED -> WorldConsequence.EXECUTED -> Action OUTCOME -> explicit FEEDBACK -> S10 proposal -> LearningUpdateAuthority -> commit -> STOP",
     "action_id": "action-move-backward-1",
@@ -102,5 +102,12 @@
     "No second Action is authorized or issued",
     "Two individually explicit epochs only; no continuous or autonomous operation",
     "Paper2 MAIN empirical results unchanged"
-  ]
+  ],
+  "qualified_evidence": {
+    "source": "tests/test_postmain_two_epoch_continuation.py::test_paired_counterfactual_ab_exact_external_controls_and_provenance",
+    "verified_ci_run": 37745257384,
+    "verified_ci_test_count": 1141,
+    "scope": "deterministic synthetic A/B only",
+    "final_exact_head_ci": "see PR checks"
+  }
 }
