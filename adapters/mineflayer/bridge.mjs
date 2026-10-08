@@ -9,6 +9,7 @@ import {
   resolveAttackEntity
 } from './bridge_hooks.mjs'
 import {
+  admitProbeRequestId,
   makeEnvelope,
   makeProbePayload,
   parseArgs,
@@ -295,11 +296,10 @@ async function handleLine (line) {
       return
     }
     if (command.request_id !== undefined) {
-      if (seenProbeRequestIds.has(command.request_id)) {
+      if (!admitProbeRequestId(seenProbeRequestIds, command.request_id)) {
         emit('command_error', { message: 'duplicate_probe_request_id' })
         return
       }
-      seenProbeRequestIds.add(command.request_id)
     }
     emitObservation('probe', command.request_id)
     return
