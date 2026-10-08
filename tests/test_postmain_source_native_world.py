@@ -13,12 +13,12 @@ from adapters.mineflayer.python_protocol import (
     MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
     MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
     MINEFLAYER_VERSION,
+    MineflayerAdapterProtocolError,
     MineflayerEntityFact,
     MineflayerNearbyEntitiesCoverage,
     MineflayerObservation,
     MineflayerPosition,
     MineflayerStreamDecoder,
-    MineflayerAdapterProtocolError,
 )
 from relay_self.action import ActionState
 from relay_self.postfailure_cognition import run_explicit_postfailure_epoch
