@@ -75,5 +75,6 @@
     "No new physical primitive, no verified physical alternative strategy, no global autonomous reentry",
     "No central executive, persistent global semantic state, automatic Skill/Intent/LRN transition, or Paper2 MAIN40 reclassification"
   ],
-  "new_physical_primitive": false
+  "new_physical_primitive": false,
+  "live_minecraft": "NOT_RUN"
 }
