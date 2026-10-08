@@ -103,8 +103,6 @@ from relay_self.learning import (
     propose_learning_update,
 )
 from relay_self.planning import (
-    PlanCandidate,
-    PlanFeature,
     PlanningCriterion,
     PlanningDirection,
     plan_candidate_from_prediction,
@@ -514,7 +512,12 @@ def _epoch_one():
 
 
 def _epoch_two(supervisor, intent, owner_snapshot, supplied_snapshot, *, expected_revision):
-    """Caller-owned, explicitly compiled epoch 2: PLAN -> ROUTE -> ADMISSION."""
+    """Separate caller invocation: ATT/BLF/CNC/PRD/PLAN/ROUTE/fresh ADMISSION.
+
+    A/B alternatives use identical deterministic policies and structured
+    external evidence. Only the explicitly supplied owner-local snapshot
+    changes; this apparatus does not install a learned utility policy.
+    """
     outputs = {}
     criterion = PlanningCriterion(
         criterion_id="s19-minimize-structured-comparison",
@@ -527,38 +530,147 @@ def _epoch_two(supervisor, intent, owner_snapshot, supplied_snapshot, *, expecte
         required_intent_id="escape-threat",
         allowed_candidate_refs=("WAIT", "MOVE_AWAY"),
     )
+    proposition = PropositionKey("entity", "zombie-1", "nearby")
+    evidence = BeliefEvidence(
+        "E1", proposition, EvidenceRelation.SUPPORT, provenance("evidence"),
+    )
+    attention_input = AttentionCandidate(
+        "E1", "belief-evidence:E1", provenance("attention"),
+        focus_keys=("zombie-1",),
+    )
+    attention_criterion = AttentionCriterion("focus-zombie", focus_key="zombie-1")
+    belief_criterion = BeliefCriterion("zombie-nearby", proposition)
+    concept_criterion = ConceptCriterion(
+        criterion_id="supported-nearby",
+        concept=ConceptKey("spatial", "nearby_threat"),
+        required_features=(
+            ConceptFeature("belief_status", "supported"),
+            ConceptFeature("proposition", proposition.canonical),
+        ),
+    )
+    wait_rule = TransitionRule(
+        rule_id="s19-wait",
+        preconditions=(StateVariable("concept", "spatial:nearby_threat"),),
+        assignments=(StateVariable("action_kind", "wait"),),
+        provenance=provenance("s19-wait-rule"),
+    )
+    move_rule = TransitionRule(
+        rule_id="s19-move",
+        preconditions=(StateVariable("concept", "spatial:nearby_threat"),),
+        assignments=(
+            StateVariable("action_kind", "move_away"),
+            StateVariable("comparison_score", 7),
+        ),
+        provenance=provenance("s19-move-rule"),
+    )
+    route_criterion = RouteCriterion("s19-plan-only", allow_single_source=True)
+    outputs["external"] = (
+        proposition, evidence, attention_input, attention_criterion,
+        belief_criterion, concept_criterion,
+    )
+    outputs["policies"] = (
+        wait_rule, move_rule, criterion, route_criterion, admission_guard,
+        "wait_score_is_twice_retained_risk_weight",
+    )
 
-    def plan_step():
+    def attention_step():
+        outputs["attention"] = select_attention(
+            (attention_input,), attention_criterion,
+        )
+        return None
+
+    def belief_step():
+        assert outputs["attention"].selected[0].candidate_id == evidence.evidence_id
+        outputs["belief"] = assess_belief((evidence,), belief_criterion)
+        return None
+
+    def concept_step():
+        outputs["concept"] = classify_concept(
+            concept_candidate_from_belief(
+                outputs["belief"],
+                candidate_id="belief:zombie-nearby",
+                payload_ref="transient:belief:zombie-nearby",
+                provenance=provenance("belief-to-concept"),
+            ),
+            concept_criterion,
+        )
+        return None
+
+    def predict_wait_step():
         read = read_retained_preference(
             owner_snapshot, supplied_snapshot,
             required_target_id="risk_weight",
             expected_revision=expected_revision,
             provenance=provenance("epoch-two-retained-read"),
         )
-        # Fixed caller-supplied comparison policy; neither planner nor model
-        # learns this mapping. Only risk_weight changes between the controls.
-        candidates = (
-            PlanCandidate(
-                candidate_id="WAIT",
-                outcome_features=(PlanFeature("comparison_score", 2 * read.snapshot.value),),
-                provenance=provenance("s19-wait"),
-                source_refs=(f"learning:risk_weight:rev:{read.revision}",),
-                source_provenance=(read.origin_provenance, read.read_provenance),
+        # The explicit caller comparison projection is fixed in both A/B
+        # branches. PRD itself remains the *existing* stateless predictor.
+        original = prediction_state_from_concept(
+            outputs["concept"],
+            state_id="s19-threat-zombie-1",
+            extra_variables=(
+                StateVariable("comparison_score", 2 * read.snapshot.value),
+                StateVariable("risk_weight", read.snapshot.value),
             ),
-            PlanCandidate(
-                candidate_id="MOVE_AWAY",
-                outcome_features=(PlanFeature("comparison_score", 7),),
-                provenance=provenance("s19-move"),
-            ),
+            provenance=provenance("s19-concept-retained-to-prediction"),
+        )
+        record = read.last_update
+        lineage_refs = (
+            f"learning-target:{read.snapshot.target_id}",
+            f"learning-revision:{read.revision}",
+        )
+        lineage_provenance = (read.origin_provenance, read.read_provenance)
+        if record is not None:
+            lineage_refs += (
+                f"learning-feedback:{record.feedback_id}",
+                f"learning-rule:{record.rule_id}:v{record.rule_version}",
+                f"learning-authority:{record.authority_id}",
+                f"learning-commit-revision:{record.committed_revision}",
+            )
+            lineage_provenance += (
+                record.feedback_provenance,
+                record.authority_provenance,
+                record.update_provenance,
+            )
+        state = replace(
+            original,
+            source_refs=(*original.source_refs, *lineage_refs),
+            source_provenance=(*original.source_provenance, *lineage_provenance),
         )
         outputs["read"] = read
-        outputs["plan"] = select_plan(candidates, criterion)
+        outputs["prediction_input"] = state
+        outputs["wait_prediction"] = predict_transition(state, wait_rule)
+        return None
+
+    def predict_move_step():
+        outputs["move_prediction"] = predict_transition(
+            outputs["prediction_input"], move_rule,
+        )
+        return None
+
+    def plan_step():
+        outputs["plan"] = select_plan(
+            (
+                plan_candidate_from_prediction(
+                    outputs["wait_prediction"],
+                    candidate_id="WAIT",
+                    feature_keys=("comparison_score",),
+                    provenance=provenance("s19-wait-plan"),
+                ),
+                plan_candidate_from_prediction(
+                    outputs["move_prediction"],
+                    candidate_id="MOVE_AWAY",
+                    feature_keys=("comparison_score",),
+                    provenance=provenance("s19-move-plan"),
+                ),
+            ),
+            criterion,
+        )
         return None
 
     def route_step():
         outputs["route"] = adjudicate_routes(
-            outputs["plan"], None,
-            RouteCriterion("s19-plan-only", allow_single_source=True),
+            outputs["plan"], None, route_criterion,
             provenance=provenance("s19-route"),
         )
         outputs["control"] = control_candidate_from_route_decision(outputs["route"])
@@ -572,6 +684,11 @@ def _epoch_two(supervisor, intent, owner_snapshot, supplied_snapshot, *, expecte
         return None
 
     work = (
+        ("s19-att", "att.select", attention_step),
+        ("s19-blf", "blf.assess", belief_step),
+        ("s19-cnc", "cnc.classify", concept_step),
+        ("s19-prd-wait", "prd.predict", predict_wait_step),
+        ("s19-prd-move", "prd.predict", predict_move_step),
         ("s19-plan", "plan.select", plan_step),
         ("s19-route", "route.adjudicate", route_step),
         ("s19-admit", "execution.admit_candidate", admit_step),
@@ -585,7 +702,11 @@ def _epoch_two(supervisor, intent, owner_snapshot, supplied_snapshot, *, expecte
         for w, o, fn in work
     )
     plan = compile_epoch_plan(
-        s17_capability_plan(enabled_ids=frozenset(("PLAN", "ROUTE", "ADMISSION"))),
+        s17_capability_plan(
+            enabled_ids=frozenset(
+                ("ATT", "BLF", "CNC", "PRD", "PLAN", "ROUTE", "ADMISSION")
+            )
+        ),
         S17_DESCRIPTOR_SET,
         due_items=items,
         bindings=bindings,
@@ -615,12 +736,31 @@ def test_two_epochs_with_governed_retention_and_fresh_admission():
     assert values["read"].last_update == commit.record
     assert values["read"].origin_provenance == commit.new_state.origin_provenance
     assert values["read"].read_provenance == provenance("epoch-two-retained-read")
+    assert values["prediction_input"].variable("risk_weight").value == 4
+    assert f"learning-feedback:{commit.record.feedback_id}" in (
+        values["prediction_input"].source_refs
+    )
+    assert f"learning-authority:{commit.record.authority_id}" in (
+        values["prediction_input"].source_refs
+    )
+    assert commit.record.feedback_provenance in (
+        values["prediction_input"].source_provenance
+    )
+    assert commit.record.authority_provenance in (
+        values["prediction_input"].source_provenance
+    )
+    assert commit.record.update_provenance in (
+        values["prediction_input"].source_provenance
+    )
     assert values["plan"].selected.candidate_id == "MOVE_AWAY"
     assert values["plan"].candidates[0].feature("comparison_score").value == 8
     assert values["route"].status is RouteDecisionStatus.SELECTED
     assert values["admission"].status is AdmissionDecisionStatus.ADMITTED
     assert values["admission"].current_intent_id == "escape-threat"
-    assert second.executed_work_ids == ("s19-plan", "s19-route", "s19-admit")
+    assert second.executed_work_ids == (
+        "s19-att", "s19-blf", "s19-cnc", "s19-prd-wait",
+        "s19-prd-move", "s19-plan", "s19-route", "s19-admit",
+    )
     assert second.cognition_requested is False
     assert first.cognition_requested is False
     assert supervisor.next_deadline_ns is None
