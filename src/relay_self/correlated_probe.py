@@ -64,6 +64,7 @@ class CorrelatedProbeReceipt:
     request_cursor_seq: int
     probe_seq: int
     received_count: int
+    next_cursor_seq: int
     inspected_at_ns: int
     source_receipt: SourceNativeThreatReceipt
 
@@ -81,6 +82,7 @@ async def request_correlated_post_action_probe(
     max_age_ns: int,
     timeout_s: float = 0.25,
     max_frames: int = 4,
+    previous_receipt: CorrelatedProbeReceipt | None = None,
 ) -> CorrelatedProbeReceipt:
     """Send exactly one correlated observe and require its echoed request_id.
 
@@ -119,12 +121,24 @@ async def request_correlated_post_action_probe(
     if not isinstance(started, MineflayerAdapterStarted) or started.seq != 0:
         raise InvalidCorrelatedProbe("adapter_started invalid")
     a = grant.authority
+    if previous_receipt is not None:
+        if (
+            not isinstance(previous_receipt, CorrelatedProbeReceipt)
+            or previous_receipt.source_receipt.source.session_id != consequence.session_id
+            or previous_receipt.source_receipt.source.request_id
+            != previous_receipt.request_id
+            or previous_receipt.request_id == grant.request_id
+        ):
+            raise InvalidCorrelatedProbe("invalid previous correlated probe receipt")
+        expected_cursor = previous_receipt.next_cursor_seq
+    else:
+        expected_cursor = parent.seq + 1
     if (
         a.parent_action_id != action.action_id
         or a.session_id != consequence.session_id
         or started.session_id != consequence.session_id
         or cursor.session_id != consequence.session_id
-        or cursor.next_seq != parent.seq + 1
+        or cursor.next_seq != expected_cursor
     ):
         raise InvalidCorrelatedProbe("wrong caller/adapter session or sequence")
     if any(
@@ -191,6 +205,7 @@ async def request_correlated_post_action_probe(
                 request_cursor_seq=sequence,
                 probe_seq=message.seq,
                 received_count=count,
+                next_cursor_seq=expected_seq,
                 inspected_at_ns=inspected_at_ns,
                 source_receipt=source,
             )
