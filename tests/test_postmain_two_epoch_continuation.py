@@ -127,6 +127,7 @@ from relay_self.route_adjudication import (
 from relay_self.runtime_coordination import coordinate_decision_epoch
 from relay_self.skill import SkillState
 
+
 def provenance(reference: str) -> Provenance:
     return Provenance(source="s18-architecture-freeze", reference=reference)
 
