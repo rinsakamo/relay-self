@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S30",
+  "base_head": "5424669a09a69eb364da559e38b9999fee7b6680",
+  "classification": "CORRELATED_REAL_NODE_BRIDGE_PROCESS_TEST_SHIM_QUALIFIED",
+  "qualification_gate": "REQUIRES_EXACT_HEAD_NODE22_PYTEST_AND_ADAPTER_CI_SUCCESS",
+  "real_node_process": true,
+  "node_bridge_script": "adapters/mineflayer/bridge.mjs (production S29 code unchanged)",
+  "python_process_interface": "adapters/mineflayer/process_session.py, actual asyncio subprocess stdin/stdout",
+  "mineflayer_implementation": "TEST_ONLY_SUBSTITUTION",
+  "test_injection": "Node --require adapters/mineflayer/s30_test_only_preload.cjs via test-scoped NODE_OPTIONS",
+  "live_minecraft": "NOT_RUN",
+  "actual_mineflayer_package_runtime": "INTERCEPTED_NOT_LOADED",
+  "physical_world_provenance_verified": false,
+  "run_mode": "REAL_OS_PROCESS_WITH_DETERMINISTIC_MOCK_BOT_NOT_REAL_MINECRAFT",
+  "positive": [
+    "real Node child emits adapter_started seq0, after health-synchronized spawn observation seq1",
+    "two distinct ID-bearing probes seq2,seq3 echo exact caller IDs across stdin/stdout Python parser",
+    "legacy untagged observe succeeds seq4 with request_id absent",
+    "Node bridge duplicate ID in same process rejected as command_error with no extra probe",
+    "independent 0.20m and 1.80m zombie registry snapshots are extracted by the real Node bridge serializer",
+    "malformed JSON and invalid/null request ID rejected by actual command parser",
+    "before-spawn observe refuses without synthesizing probe",
+    "shutdown ack and connection_end are observed before terminal EOF; forced SIGTERM stops with no implicit relaunch",
+    "a separate new OS child session has a distinct UUID and its own in-memory request ID ledger"
+  ],
+  "negative": [
+    "duplicate probe request ID within same Node session",
+    "malformed JSON and invalid ID",
+    "observe before bot spawn",
+    "forced process end / no observe permitted after termination",
+    "protocol decoder strict sequence in actual child stdout"
+  ],
+  "authority_limits": {
+    "request_id_echo": "application-protocol correlation qualified",
+    "bridge_script": "actual Node process executes unchanged S29 bridge logic",
+    "mineflayer_data": "deterministic test-only CommonJS module substitution",
+    "transport": "actual OS subprocess pipes",
+    "network": "NO MINECRAFT TCP SOCKET",
+    "live_minecraft": "NOT_RUN",
+    "hardware_sensor_attestation": false,
+    "global_restart_replay_protection": false,
+    "autonomous_epoch_reentry": false,
+    "new_learning_commit": false
+  },
+  "frozen": "S18–S29 artifacts, RelayTheory R6 and Paper2 MAIN40 preserved; S30 adds test shim/tests/receipt/CI only"
+}
