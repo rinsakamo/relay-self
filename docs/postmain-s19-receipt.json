@@ -3,7 +3,7 @@
   "milestone": "S19",
   "base_head": "b5eb5d3416a9c303b855250adea4323e7611f350",
   "evidence_class": "DETERMINISTIC_TEST_APPARATUS",
-  "qualification_status": "PENDING_CI",
+  "qualification_status": "DETERMINISTIC_TWO_EPOCH_TESTS_QUALIFIED",
   "epoch_count": 2,
   "invocation": "explicit_caller_owned",
   "epoch_one": [
@@ -60,5 +60,18 @@
     "No model or live-world execution",
     "Only bounded explicit scoring demonstration; no learned planning policy",
     "No Paper2 empirical change"
-  ]
+  ],
+  "verified_ci": {
+    "run_id": 37736864653,
+    "url": "https://github.com/rinsakamo/relay-self/actions/runs/37736864653",
+    "tested_head": "d3015be43eea7ee56e34320b30eb1c4f1f2f0295",
+    "conclusion": "success",
+    "pytest_passed": 1138,
+    "jobs": [
+      "repository-contracts",
+      "pytest",
+      "lint",
+      "mineflayer-adapter"
+    ]
+  }
 }
