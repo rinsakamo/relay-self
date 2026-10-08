@@ -162,7 +162,9 @@ def test_correlated_id_is_not_permitted_on_unsolicited_nonprobe_observation():
     _, _, _, args, _kwargs = _subject()
     with pytest.raises(MineflayerAdapterProtocolError):
         replace(args["observation"], kind="entities", request_id=REQUEST1)
-    payload = json.loads(_response_wire(args["observation"]))
+    payload = json.loads(
+        _response_wire(replace(args["observation"], request_id=REQUEST1))
+    )
     payload["kind"] = "entities"
     with pytest.raises(MineflayerAdapterProtocolError):
         parse_mineflayer_line(json.dumps(payload))
