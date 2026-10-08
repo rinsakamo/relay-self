@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 import {
+  admitProbeRequestId,
   makeEnvelope,
+  makeProbePayload,
   parseArgs,
   parseCommand,
   shouldEmitTimeObservation,
@@ -561,4 +563,47 @@ test('envelope preserves target-local session and monotonic sequence fields', ()
       kind: 'health'
     }
   )
+})
+
+test('S29 correlated observe preserves legacy while rejecting malformed request identifiers', () => {
+  assert.deepEqual(parseCommand({ type: 'observe' }), { type: 'observe' })
+  assert.deepEqual(
+    parseCommand({ type: 'observe', request_id: 'req-S29:one.1' }),
+    { type: 'observe', request_id: 'req-S29:one.1' }
+  )
+  for (const invalid of ['', 'space id', '日本語', '../illegal?', null, 9, 'a'.repeat(129)]) {
+    assert.throws(
+      () => parseCommand({ type: 'observe', request_id: invalid }),
+      /request_id/
+    )
+  }
+  assert.throws(
+    () => parseCommand({
+      type: 'observe', request_id: 'req-S29', action_id: 'unexpected'
+    }),
+    /fields are invalid/
+  )
+})
+
+test('S29 correlated probe response preserves exact request ID only for probes', () => {
+  const snapshot = { nearby_entities: [], nearby_entities_coverage: {} }
+  assert.deepEqual(makeProbePayload(snapshot), { kind: 'probe', snapshot })
+  assert.deepEqual(
+    makeProbePayload(snapshot, 'req-S29:one.1'),
+    { kind: 'probe', snapshot, request_id: 'req-S29:one.1' }
+  )
+  assert.deepEqual(makeEnvelope('session-1', 5, 'observation',
+    makeProbePayload(snapshot, 'req-S29:one.1')), {
+    type: 'observation', session_id: 'session-1', seq: 5,
+    kind: 'probe', snapshot, request_id: 'req-S29:one.1'
+  })
+})
+
+test('S29 duplicate correlated probe ID is rejected per Node bridge session', () => {
+  const seen = new Set()
+  assert.equal(admitProbeRequestId(seen, 'req-S29:one.1'), true)
+  assert.equal(admitProbeRequestId(seen, 'req-S29:one.1'), false)
+  assert.equal(admitProbeRequestId(seen, 'req-S29:two.2'), true)
+  assert.deepEqual([...seen], ['req-S29:one.1', 'req-S29:two.2'])
+  assert.throws(() => admitProbeRequestId(seen, ' space'), /request_id/)
 })
