@@ -111,7 +111,7 @@ def test_failed_skill_local_recovery_preserves_intent_without_automatic_action()
     assert data["supervisor"].get(s21.s20.ACTION2).state is s21.s20.ActionState.OUTCOME
     assert data["supervisor"].open_actions == ()
     assert data["commit"].new_state.revision == 1
-    assert not closed.is_terminal is False  # closed Skill stays terminal
+    assert closed.is_terminal  # closed Skill stays terminal
 
 
 def test_exhausted_local_path_and_material_intent_challenge_request_only():
