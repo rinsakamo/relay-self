@@ -340,6 +340,18 @@ export function snapshotFromBot (bot) {
   }
 }
 
+export function admitProbeRequestId (seen, requestId) {
+  if (!(seen instanceof Set)) {
+    throw new Error('probe request ledger must be a Set')
+  }
+  requireProbeRequestId(requestId)
+  if (seen.has(requestId)) {
+    return false
+  }
+  seen.add(requestId)
+  return true
+}
+
 export function makeProbePayload (snapshot, requestId = undefined) {
   requireObject('probe snapshot', snapshot)
   if (requestId === undefined) {
