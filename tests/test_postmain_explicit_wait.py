@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 import test_postmain_postfailure_cognition as s24
-from relay_self.action import ActionState
+from relay_self.action import ActionLifecycle, ActionState
 from relay_self.explicit_wait import (
     InvalidWaitGate,
     WaitAuthorityScope,
@@ -279,15 +279,26 @@ def test_changed_owners_reject_recheck(drift):
             reason="external terminal", at_ns=72, provenance=p("skill-terminal"),
         )
     elif drift == "open_action":
-        # A separate unauthorized issuance is never created here; the existing
-        # ActionSupervisor exposes no open Action in the bounded S24 subject.
-        # Model drift by tampering exact current Action3 ownership via direct
-        # existing-owner issue of a distinct authorized Action would require
-        # a new admitted Skill; no global state mutation is introduced in S25.
-        pytest.skip("requires independent Action4 admitted owner; excluded by S25 scope")
+        # Another caller explicitly issues a separate admitted Action while
+        # this WAIT receipt is held. S25 never creates this Action itself.
+        proposed = ActionLifecycle.propose(
+            "action-unexpected-fourth", skill_execution=inputs["recovery_skill"],
+            intent_commitment=data["intent"], at_ns=72, provenance=p("other-proposal"),
+        )
+        authorized = proposed.authorize(
+            at_ns=73, provenance=p("other-authorization"),
+            authority="other-explicit-authority",
+        )
+        data["supervisor"].issue(
+            authorized, at_ns=74, deadline_ns=120,
+            provenance=p("other-explicit-issue"),
+        )
+        assert len(data["supervisor"].open_actions) == 1
+    before = data["supervisor"].last_at_ns
     with pytest.raises(InvalidWaitGate):
         _recheck(gate, _new_observation(args))
-    assert data["supervisor"].open_actions == ()
+    assert data["supervisor"].last_at_ns == before
+    assert len(data["supervisor"].open_actions) == (1 if drift == "open_action" else 0)
 
 
 def test_s25_receipt_scope():
