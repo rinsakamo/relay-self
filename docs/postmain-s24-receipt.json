@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S24",
+  "base_head": "e519af52d2b7aa8a910f096df04d0a4802ccc823",
+  "classification": "EXPLICIT_POSTFAILURE_WORLD_EVIDENCE_RECOGNITION_QUALIFIED",
+  "qualification_gate": "REQUIRES_EXACT_FINAL_HEAD_CI_SUCCESS",
+  "evidence_class": "DETERMINISTIC_TEST_APPARATUS_ONLY",
+  "explicit_third_epoch": true,
+  "automatic_reentry": false,
+  "fresh_att_blf_cnc_prd_plan": true,
+  "stages": [
+    "ATT",
+    "BLF",
+    "CNC",
+    "PRD_WAIT",
+    "PRD_MOVE",
+    "PLAN",
+    "ROUTE",
+    "ADMISSION"
+  ],
+  "subject": {
+    "prior": "S23 Action3 OUTCOME, S21 Skill2 FAILED, S22 recovery Skill3 STARTED",
+    "parent_action_id": "action-recovery-backward-3",
+    "parent_world_session": "s23-recovery-session-3",
+    "current_intent": "escape-threat",
+    "retained_risk_weight": {
+      "revision": 1,
+      "value": 4
+    }
+  },
+  "counterfactual": {
+    "only_material_world_difference": "trusted caller observed threat_clearance_cm (plus evidence provenance)",
+    "fixed_projection": "WAIT cost = 2*risk_weight when clearance <=100cm, otherwise risk_weight; MOVE_AWAY cost=7",
+    "A": {
+      "clearance_cm": 20,
+      "wait_cost": 8,
+      "move_cost": 7,
+      "selection": "MOVE_AWAY"
+    },
+    "B": {
+      "clearance_cm": 180,
+      "wait_cost": 4,
+      "move_cost": 7,
+      "selection": "WAIT"
+    },
+    "actual_branch": "B",
+    "new_threat_clearance_measurement_is_caller_supplied": true
+  },
+  "scope": {
+    "new_admission": "ADMITTED after a new explicit third epoch",
+    "new_action_issue": false,
+    "new_physical_primitive": false,
+    "new_skill_terminal": false,
+    "new_learning_commit": false,
+    "provider_model_calls": 0,
+    "live_minecraft": "NOT_RUN"
+  },
+  "negative_gates": [
+    "missing/invalid World observation",
+    "wrong WorldConsequence or Action/session/binding ancestry",
+    "stale or impossible observation time and epoch time",
+    "owner-local retained rev0 is not accepted as qualified rev1",
+    "pending/released Current Intent",
+    "terminal/stale recovery Skill",
+    "Action3 must remain supervised exact OUTCOME",
+    "WorldConsequence must show EXECUTED evidence",
+    "separate provenance from terminal WorldConsequence required"
+  ],
+  "limitations": [
+    "World distance is a caller-supplied trusted observation, not independently authenticated Mineflayer nearby-entity measurement",
+    "Numerical comparison rule is a fixed explicit fixture projection, not learnt from environment",
+    "Counterfactual A/B uses separate deterministic worlds with all other relevant policy/retained parameters frozen",
+    "S24 third epoch is explicitly invoked, not scheduler-generated",
+    "WAIT is admitted as a decision but not issued as a physical Action",
+    "No new physical primitive, no verified physical alternative strategy, no global autonomous reentry",
+    "No central executive, persistent global semantic state, automatic Skill/Intent/LRN transition, or Paper2 MAIN40 reclassification"
+  ]
+}
