@@ -197,8 +197,9 @@ class MineflayerProcessSession:
             )
         )
 
-    async def send_observe(self) -> None:
-        await self._send(encode_observe())
+    async def send_observe(self, request_id: str | None = None) -> None:
+        """Legacy probe when absent; correlated observe on explicit request ID."""
+        await self._send(encode_observe(request_id))
 
     async def shutdown(self, *, timeout_s: float = 5.0) -> int:
         """Request one clean bridge shutdown, with bounded termination fallback."""
