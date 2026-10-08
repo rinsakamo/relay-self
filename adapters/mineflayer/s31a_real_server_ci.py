@@ -93,6 +93,9 @@ def _fetch_official_server(target: Path) -> dict[str, str | int]:
     version_info = _download_json(version_url)
     if version_info.get("id") != MINECRAFT_VERSION:
         raise S31ABlocked("Mojang version identity mismatch")
+    java_info = version_info.get("javaVersion")
+    if not isinstance(java_info, dict) or java_info.get("majorVersion") != 21:
+        raise S31ABlocked("Minecraft version does not require expected Java 21")
     entry = version_info.get("downloads", {}).get("server")
     if not isinstance(entry, dict):
         raise S31ABlocked("Mojang metadata has no vanilla server download")
@@ -122,6 +125,7 @@ def _fetch_official_server(target: Path) -> dict[str, str | int]:
         "minecraft_version": MINECRAFT_VERSION,
         "server_sha1": digest.hexdigest(),
         "server_size_bytes": total,
+        "java_major_version": 21,
         "download_host": urllib.parse.urlparse(url).hostname or "",
         "manifest_version_url_host": (
             urllib.parse.urlparse(version_url).hostname or ""
@@ -327,113 +331,117 @@ async def qualify(report_path: Path, server_log: Path) -> int:
     server: asyncio.subprocess.Process | None = None
     collector: asyncio.Task[None] | None = None
     session: MineflayerProcessSession | None = None
+    tempdir: tempfile.TemporaryDirectory[str] | None = None
+    exit_code = 2
     try:
         if os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("NODE_OPTIONS must be empty: no S30 test substitution")
         if os.environ.get("S31A_REAL_SERVER_CI") != "1":
             raise S31ABlocked("explicit S31A_REAL_SERVER_CI=1 gate not satisfied")
         report["stage"] = "OFFICIAL_DOWNLOAD"
-        with tempfile.TemporaryDirectory(prefix="relay-self-s31a-") as temp:
-            root = Path(temp)
-            jar = root / "minecraft-server.jar"
-            try:
-                metadata = await asyncio.to_thread(_fetch_official_server, jar)
-            except Exception as exc:
-                raise S31ABlocked(f"official server unavailable: {exc}") from exc
-            report.update(metadata)
-            _write_config(root)
-            report["stage"] = "SERVER_START"
-            try:
-                server, collector, _ready = await _ready_server(
-                    root, jar, server_log
-                )
-            except Exception as exc:
-                raise S31ABlocked(f"server start failed: {exc}") from exc
-            report["real_minecraft_server"] = True
-            report["stage"] = "MINEFLAYER_CONNECT"
-            try:
-                session = await MineflayerProcessSession.launch(
-                    MineflayerLaunchConfig(
-                        host=SERVER_HOST, port=SERVER_PORT,
-                        username=BOT_USERNAME, version=MINECRAFT_VERSION,
-                    ),
-                    startup_timeout_s=12,
-                )
-                spawned = await _await_spawn(session)
-            except Exception as exc:
-                raise S31ABlocked(f"unmodified Mineflayer could not spawn: {exc}") from exc
-            report["real_mineflayer_package"] = True
-            report["session_id"] = session.started.session_id
-            report["spawn_seq"] = spawned.seq
-            report["spawn_position"] = [
-                spawned.snapshot.position.x,
-                spawned.snapshot.position.y,
-                spawned.snapshot.position.z,
-            ]
-            report["stage"] = "INITIAL_PROBE"
-            initial = await _correlated_observe(session, ID_INITIAL)
-            report["initial_probe"] = {
-                "request_id": initial.request_id, "seq": initial.seq,
-                "position": [
-                    initial.snapshot.position.x,
-                    initial.snapshot.position.y,
-                    initial.snapshot.position.z,
-                ],
-            }
-            report["stage"] = "CONTROLLED_WORLD_ENTITY"
-            _command(server, "gamerule doMobSpawning false")
-            _command(server, "time set midnight")
-            _command(
-                server,
-                "execute at RelaySelf run summon minecraft:zombie ~2 ~ ~ "
-                "{NoAI:1b,Silent:1b,PersistenceRequired:1b}",
+        tempdir = tempfile.TemporaryDirectory(prefix="relay-self-s31a-")
+        if tempdir is None:
+            raise S31ABlocked("temporary server directory unavailable")
+        root = Path(tempdir.name)
+        jar = root / "minecraft-server.jar"
+        try:
+            metadata = await asyncio.to_thread(_fetch_official_server, jar)
+        except Exception as exc:
+            raise S31ABlocked(f"official server unavailable: {exc}") from exc
+        report.update(metadata)
+        _write_config(root)
+        report["stage"] = "SERVER_START"
+        try:
+            server, collector, _ready = await _ready_server(
+                root, jar, server_log
             )
-            assert server.stdin is not None
-            await server.stdin.drain()
-            target = None
-            for attempt in range(MAX_TARGET_ATTEMPTS):
-                await asyncio.sleep(2)
-                request_id = f"{ID_TARGET_PREFIX}{attempt:03d}"
-                observed = await _correlated_observe(session, request_id)
-                report["last_world_probe_id"] = request_id
-                candidate = _verified_target(observed)
-                if candidate is not None:
-                    target = candidate
-                    break
-            if target is None:
-                raise S31AQualificationError(
-                    "controlled zombie never appeared in native Mineflayer registry"
-                )
-            report["target"] = target
-            report["stage"] = "DUPLICATE_REQUEST_REJECTION"
-            await session.send_observe(target["request_id"])
-            rejected = None
-            for _ in range(80):
-                message = await _receive_bounded(session, timeout=20)
-                if isinstance(message, MineflayerCommandError):
-                    rejected = message
-                    break
-                _terminal_check(message)
-            if rejected is None or rejected.message != "duplicate_probe_request_id":
-                raise S31AQualificationError("duplicate request did not fail closed")
-            report["duplicate_rejected_seq"] = rejected.seq
-            report["stage"] = "SUCCESS"
-            report["status"] = "PASS"
-            report["classification"] = (
-                "REAL_MINEFLAYER_LOCAL_MINECRAFT_CORRELATED_WORLD_PROBE_QUALIFIED"
+        except Exception as exc:
+            raise S31ABlocked(f"server start failed: {exc}") from exc
+        report["real_minecraft_server"] = True
+        report["stage"] = "MINEFLAYER_CONNECT"
+        try:
+            session = await MineflayerProcessSession.launch(
+                MineflayerLaunchConfig(
+                    host=SERVER_HOST, port=SERVER_PORT,
+                    username=BOT_USERNAME, version=MINECRAFT_VERSION,
+                ),
+                startup_timeout_s=12,
             )
-            report["live_minecraft"] = "QUALIFIED_LOCAL_CI_SANDBOX"
-            return 0
+            spawned = await _await_spawn(session)
+        except Exception as exc:
+            raise S31ABlocked(f"unmodified Mineflayer could not spawn: {exc}") from exc
+        report["real_mineflayer_package"] = True
+        report["session_id"] = session.started.session_id
+        report["spawn_seq"] = spawned.seq
+        report["spawn_position"] = [
+            spawned.snapshot.position.x,
+            spawned.snapshot.position.y,
+            spawned.snapshot.position.z,
+        ]
+        report["stage"] = "INITIAL_PROBE"
+        initial = await _correlated_observe(session, ID_INITIAL)
+        report["initial_probe"] = {
+            "request_id": initial.request_id, "seq": initial.seq,
+            "position": [
+                initial.snapshot.position.x,
+                initial.snapshot.position.y,
+                initial.snapshot.position.z,
+            ],
+        }
+        report["stage"] = "CONTROLLED_WORLD_ENTITY"
+        _command(server, "gamerule doMobSpawning false")
+        _command(server, "time set midnight")
+        _command(
+            server,
+            "execute at RelaySelf run summon minecraft:zombie ~2 ~ ~ "
+            "{NoAI:1b,Silent:1b,PersistenceRequired:1b}",
+        )
+        assert server.stdin is not None
+        await server.stdin.drain()
+        target = None
+        for attempt in range(MAX_TARGET_ATTEMPTS):
+            await asyncio.sleep(2)
+            request_id = f"{ID_TARGET_PREFIX}{attempt:03d}"
+            observed = await _correlated_observe(session, request_id)
+            report["last_world_probe_id"] = request_id
+            candidate = _verified_target(observed)
+            if candidate is not None:
+                target = candidate
+                break
+        if target is None:
+            raise S31AQualificationError(
+                "controlled zombie never appeared in native Mineflayer registry"
+            )
+        report["target"] = target
+        report["stage"] = "DUPLICATE_REQUEST_REJECTION"
+        await session.send_observe(target["request_id"])
+        rejected = None
+        for _ in range(80):
+            message = await _receive_bounded(session, timeout=20)
+            if isinstance(message, MineflayerCommandError):
+                rejected = message
+                break
+            _terminal_check(message)
+        if rejected is None or rejected.message != "duplicate_probe_request_id":
+            raise S31AQualificationError("duplicate request did not fail closed")
+        report["duplicate_rejected_seq"] = rejected.seq
+        report["stage"] = "SUCCESS"
+        report["status"] = "PASS"
+        report["classification"] = (
+            "REAL_MINEFLAYER_LOCAL_MINECRAFT_CORRELATED_WORLD_PROBE_QUALIFIED"
+        )
+        report["live_minecraft"] = "QUALIFIED_LOCAL_CI_SANDBOX"
+        return 0
     except S31ABlocked as exc:
         report["status"] = "BLOCKED"
         report["error"] = str(exc)
         print(f"S31A BLOCKED: {exc}", file=sys.stderr)
-        return 2
+        exit_code = 2
     except Exception as exc:
         report["status"] = "FAIL"
         report["error"] = f"{type(exc).__name__}: {exc}"
         print(f"S31A FAIL at {report['stage']}: {exc}", file=sys.stderr)
-        return 1
+        exit_code = 1
     finally:
         if session is not None:
             try:
@@ -446,12 +454,24 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         await _shutdown_server(server, collector)
         if server is not None:
             report["server_exit_code"] = server.returncode
+        if tempdir is not None:
+            tempdir.cleanup()
+        if report["status"] == "PASS" and (
+            report.get("bridge_exit_code") != 0
+            or report.get("server_exit_code") != 0
+        ):
+            report["status"] = "FAIL"
+            report["classification"] = "TEARDOWN_FAILED_NOT_QUALIFIED"
+            report["stage"] = "CLEANUP"
+            report["error"] = "nonzero or missing clean process exit"
+            exit_code = 1
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(
             json.dumps(report, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
         print("S31A_REPORT=" + json.dumps(report, sort_keys=True))
+    return exit_code
 
 
 def main() -> int:
