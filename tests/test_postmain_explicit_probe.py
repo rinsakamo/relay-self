@@ -10,7 +10,6 @@ from pathlib import Path
 import pytest
 
 import test_postmain_source_native_world as s27
-from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.action import ActionState
 from relay_self.explicit_probe import (
     ExclusiveProbeCursor,
