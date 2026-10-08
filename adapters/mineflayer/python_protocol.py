@@ -308,6 +308,7 @@ class MineflayerAdapterStarted(MineflayerMessage):
 class MineflayerObservation(MineflayerMessage):
     kind: str
     snapshot: MineflayerSnapshot
+    request_id: str | None = None
 
     def __post_init__(self) -> None:
         MineflayerMessage.__post_init__(self)
@@ -319,6 +320,12 @@ class MineflayerObservation(MineflayerMessage):
             raise MineflayerAdapterProtocolError(
                 "observation snapshot must be MineflayerSnapshot"
             )
+        if self.request_id is not None:
+            _require_probe_request_id(self.request_id)
+            if self.kind != "probe":
+                raise MineflayerAdapterProtocolError(
+                    "request_id is only supported on probe observations"
+                )
 
 
 @dataclass(frozen=True, slots=True)
@@ -500,16 +507,16 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
         )
 
     if message_type == "observation":
-        _require_exact_keys(
-            "observation",
-            payload,
-            {"type", "session_id", "seq", "kind", "snapshot"},
-        )
+        keys = {"type", "session_id", "seq", "kind", "snapshot"}
+        if "request_id" in payload:
+            keys.add("request_id")
+        _require_exact_keys("observation", payload, keys)
         return MineflayerObservation(
             session_id=session_id,
             seq=seq,
             kind=_decoded_text("observation kind", payload["kind"]),
             snapshot=_decode_snapshot(payload["snapshot"]),
+            request_id=payload.get("request_id"),
         )
 
     if message_type == "entity_hurt":
@@ -714,8 +721,11 @@ def encode_attack_entity(action_id: str, *, entity_id: int) -> str:
     )
 
 
-def encode_observe() -> str:
-    return _encode_command({"type": "observe"})
+def encode_observe(request_id: str | None = None) -> str:
+    if request_id is None:
+        return _encode_command({"type": "observe"})
+    _require_probe_request_id(request_id)
+    return _encode_command({"type": "observe", "request_id": request_id})
 
 
 def encode_shutdown() -> str:
@@ -937,6 +947,24 @@ def _require_exact_keys(
             f"{name} fields are invalid; "
             f"missing={sorted(expected - actual)}, "
             f"unexpected={sorted(actual - expected)}"
+        )
+
+
+def _require_probe_request_id(value: object) -> None:
+    if (
+        not isinstance(value, str)
+        or not 1 <= len(value) <= 128
+        or not value[0].isascii()
+        or not value[0].isalnum()
+        or any(
+            not char.isascii() or (
+                not char.isalnum() and char not in "._:-"
+            )
+            for char in value
+        )
+    ):
+        raise MineflayerAdapterProtocolError(
+            "probe request_id must be 1..128 ASCII identifier characters"
         )
 
 
