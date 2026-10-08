@@ -94,11 +94,11 @@ from relay_self.intent import IntentCommitment
 from relay_self.learning import (
     FeedbackDirection,
     InvalidLearningAuthority,
-    LearningTargetMismatch,
-    MissingLearningAuthority,
     LearningPreferenceState,
+    LearningTargetMismatch,
     LearningUpdateAuthority,
     LearningUpdateRule,
+    MissingLearningAuthority,
     commit_learning_update,
     propose_learning_update,
 )
