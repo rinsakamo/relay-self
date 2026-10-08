@@ -140,6 +140,13 @@ def test_request_id_validation_matches_node_strict_ascii_surface(invalid):
         CorrelatedProbeGrant(kwargs["grant"].authority, invalid)
 
 
+def test_correlated_grant_requires_id_despite_legacy_optional_encoder():
+    _, _, _, _, kwargs = _subject()
+    assert json.loads(encode_observe(None)) == {"type": "observe"}
+    with pytest.raises(InvalidCorrelatedProbe):
+        CorrelatedProbeGrant(kwargs["grant"].authority, None)
+
+
 @pytest.mark.parametrize("invalid", [
     None, 8, True, "space id", "", "日本語", "a" * 129,
 ])
