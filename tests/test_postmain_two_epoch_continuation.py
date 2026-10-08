@@ -850,10 +850,14 @@ def test_paired_counterfactual_ab_exact_external_controls_and_provenance():
         assert required in refs
         assert required not in a["prediction_input"].source_refs
     for candidate in b["plan"].candidates:
-        assert f"learning-feedback:{commit.record.feedback_id}" in (
-            b["prediction_input"].source_refs
-        )
         assert candidate.prediction_ref is not None
+        assert commit.record.feedback_provenance in candidate.source_provenance
+        assert commit.record.authority_provenance in candidate.source_provenance
+        assert commit.record.update_provenance in candidate.source_provenance
+    assert b["plan"].selected is not None
+    assert commit.record.update_provenance in (
+        b["plan"].selected.source_provenance
+    )
     assert commit.record.feedback_provenance in (
         b["prediction_input"].source_provenance
     )
