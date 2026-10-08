@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S21",
+  "base_head": "b8d663527d58124fba6b2d00064750dfe30a8c88",
+  "classification": "EXPLICIT_SECOND_SKILL_TERMINAL_EVIDENCE_GATING_QUALIFIED",
+  "qualification_gate": "REQUIRES_EXACT_FINAL_HEAD_CI_SUCCESS",
+  "evidence_class": "DETERMINISTIC_TEST_APPARATUS_ONLY",
+  "subject": {
+    "skill_execution_id": "skill-exec-escape-2",
+    "action_id": "action-move-backward-2",
+    "binding_id": "binding-move-away-2",
+    "world_session": "s20-session-2",
+    "action_owner_terminal": "OUTCOME",
+    "skill_before": "STARTED"
+  },
+  "evidence_boundary": "Action terminal + independent typed SkillGoalEvidence matched to explicit SkillTerminalCriterion",
+  "positive": "SATISFIED plus granted matching authority -> existing SkillExecution.succeed",
+  "negative": "VIOLATED plus granted matching authority -> existing SkillExecution.fail",
+  "uncertain": "UNDETERMINED or UNKNOWN Action -> no Skill terminal transition",
+  "authority_owner": "SkillExecution (existing); explicit caller SkillTerminalAuthority as gate",
+  "action_outcome_alone_is_not_skill_success": true,
+  "automatic_skill_closure": false,
+  "automatic_epoch_three": false,
+  "no_second_learning_commit": true,
+  "no_intent_transition": true,
+  "retained_risk_weight": {
+    "value": 4,
+    "revision": 1
+  },
+  "provider_calls": 0,
+  "real_minecraft": "NOT_RUN",
+  "limitations": [
+    "Goal evidence, status, reference, time, and terminal authority are supplied by a trusted caller, not independently cryptographically authenticated",
+    "Different provenance refs are not proof of physical-world causal independence",
+    "One bounded second-epoch Skill only; no multi-Action controller evaluation",
+    "Action OUTCOME is not an assertion of success, and Skill success does not close Current Intent",
+    "No automatic event admission, Skill completion, learning, or Epoch 3",
+    "No new Skill/Action/World owner and no Paper2 MAIN40 reinterpretation"
+  ]
+}
