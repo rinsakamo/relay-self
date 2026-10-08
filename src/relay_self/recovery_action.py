@@ -102,7 +102,7 @@ def propose_explicit_recovery_action(
     fresh = assess_skill_exit(
         assessment.skill, assessment.intent, assessment.criterion, assessment.evidence,
     )
-    if fresh.route is not SkillExitRoute.LOCAL_RECOVERY_CANDIDATE:
+    if (\n        assessment.route is not fresh.route\n        or fresh.route is not SkillExitRoute.LOCAL_RECOVERY_CANDIDATE\n    ):
         raise InvalidRecoveryActionLineage("route is not an admitted local recovery")
     if not (
         route_authority.route is SkillExitRoute.LOCAL_RECOVERY_CANDIDATE
