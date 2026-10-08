@@ -196,6 +196,10 @@ async def _ready_server(
         if server.returncode is not None:
             raise S31ABlocked("server exited even though startup was signalled")
     except (TimeoutError, S31ABlocked) as exc:
+        if server.returncode is None:
+            server.kill()
+        await server.wait()
+        await task
         raise S31ABlocked("Minecraft server startup did not complete") from exc
     return server, task, ready
 
@@ -431,7 +435,7 @@ async def qualify(report_path: Path, server_log: Path) -> int:
             "REAL_MINEFLAYER_LOCAL_MINECRAFT_CORRELATED_WORLD_PROBE_QUALIFIED"
         )
         report["live_minecraft"] = "QUALIFIED_LOCAL_CI_SANDBOX"
-        return 0
+        exit_code = 0
     except S31ABlocked as exc:
         report["status"] = "BLOCKED"
         report["error"] = str(exc)
