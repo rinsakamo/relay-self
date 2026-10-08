@@ -777,6 +777,148 @@ def test_no_retained_change_leaves_decision_unchanged():
     assert old.value == 3 and old.revision == 0
 
 
+
+def test_paired_counterfactual_ab_exact_external_controls_and_provenance():
+    """One Epoch 1, two explicitly invoked alternative Epoch 2 branches.
+
+    Branch A passes its historical rev0 snapshot as the branch-local owner
+    (counterfactual isolation). A stale rev0 read against actual rev1 owner
+    is separately rejected, never silently permitted.
+    """
+    supervisor, commit, intent, action, feedback, _ = _epoch_one()
+    before_intent = intent.current_intent
+    before_update = commit.previous_state
+    after_update = commit.new_state
+    a, run_a = _epoch_two(
+        supervisor, intent, before_update, before_update, expected_revision=0,
+    )
+    b, run_b = _epoch_two(
+        supervisor, intent, after_update, after_update, expected_revision=1,
+    )
+    assert a["external"] == b["external"]
+    assert a["policies"] == b["policies"]
+    assert a["plan"].criterion == b["plan"].criterion
+    assert a["plan"].compared_candidate_ids == b["plan"].compared_candidate_ids
+    assert a["prediction_input"].variable("concept") == b["prediction_input"].variable(
+        "concept"
+    )
+    assert a["prediction_input"].variable("risk_weight").value == 3
+    assert b["prediction_input"].variable("risk_weight").value == 4
+    assert a["read"].origin_provenance == b["read"].origin_provenance
+    assert a["read"].read_provenance == b["read"].read_provenance
+    assert a["read"].last_update is None
+    assert b["read"].last_update == commit.record
+
+    a_scores = tuple(
+        c.feature("comparison_score").value for c in a["plan"].candidates
+    )
+    b_scores = tuple(
+        c.feature("comparison_score").value for c in b["plan"].candidates
+    )
+    assert a_scores == (6, 7)
+    assert b_scores == (8, 7)
+    assert a["plan"].selected.candidate_id == "WAIT"
+    assert b["plan"].selected.candidate_id == "MOVE_AWAY"
+    assert a["route"].selected_candidate_ref == "WAIT"
+    assert b["route"].selected_candidate_ref == "MOVE_AWAY"
+    assert a["admission"].status is AdmissionDecisionStatus.ADMITTED
+    assert b["admission"].status is AdmissionDecisionStatus.ADMITTED
+    assert a["admission"].current_intent_id == b["admission"].current_intent_id
+    assert a["admission"].admission_criterion_id == (
+        b["admission"].admission_criterion_id
+    )
+    assert run_a.executed_work_ids == run_b.executed_work_ids
+    assert not run_a.cognition_requested and not run_b.cognition_requested
+    assert intent.current_intent == before_intent
+    assert supervisor.next_deadline_ns is None
+    assert action.state is ActionState.OUTCOME
+    assert commit.new_state.revision == 1
+    assert commit.new_state.last_update is commit.record
+    assert feedback.feedback.feedback_id == commit.record.feedback_id
+    # Exact original Action -> feedback -> authority -> governed commit -> PRD.
+    assert commit.record.feedback_id == (
+        "feedback:risk-from-observed-move:risk_weight:action-move-backward-1:"
+        "binding-move-away-1:s18-session:observed_execution"
+    )
+    refs = b["prediction_input"].source_refs
+    for required in (
+        f"learning-feedback:{commit.record.feedback_id}",
+        f"learning-rule:{commit.record.rule_id}:v{commit.record.rule_version}",
+        f"learning-authority:{commit.record.authority_id}",
+        f"learning-commit-revision:{commit.record.committed_revision}",
+    ):
+        assert required in refs
+        assert required not in a["prediction_input"].source_refs
+    for candidate in b["plan"].candidates:
+        assert f"learning-feedback:{commit.record.feedback_id}" in (
+            b["prediction_input"].source_refs
+        )
+        assert candidate.prediction_ref is not None
+    assert commit.record.feedback_provenance in (
+        b["prediction_input"].source_provenance
+    )
+    assert commit.record.authority_provenance in (
+        b["prediction_input"].source_provenance
+    )
+    assert commit.record.update_provenance in (
+        b["prediction_input"].source_provenance
+    )
+
+    record = json.loads(
+        (
+            Path(__file__).resolve().parents[1]
+            / "docs/postmain-s19-counterfactual-ab.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert record["evidence_class"] == "DETERMINISTIC_COUNTERFACTUAL_TEST_APPARATUS"
+    assert record["comparison"]["controlled_external_inputs"] is True
+    assert record["comparison"]["identical_policies"] is True
+    assert record["branches"]["A"]["scores"] == list(a_scores)
+    assert record["branches"]["B"]["scores"] == list(b_scores)
+    assert record["branches"]["A"]["selected"] == a["plan"].selected.candidate_id
+    assert record["branches"]["B"]["selected"] == b["plan"].selected.candidate_id
+    assert record["epoch_one"]["feedback_id"] == commit.record.feedback_id
+    assert record["epoch_one"]["authority_id"] == commit.record.authority_id
+    assert record["epoch_one"]["update_provenance"] == {
+        "source": commit.record.update_provenance.source,
+        "reference": commit.record.update_provenance.reference,
+    }
+    assert record["epoch_two"]["updated_source_refs"] == [
+        x for x in b["prediction_input"].source_refs if x.startswith("learning-")
+    ]
+    assert record["epoch_two"]["work_ids"] == list(run_b.executed_work_ids)
+
+
+def test_stateless_second_epoch_never_changes_owner_or_issues_an_action():
+    supervisor, commit, intent, _, _, _ = _epoch_one()
+    before = (intent.current_intent, commit.new_state, supervisor.next_deadline_ns)
+    a, result = _epoch_two(
+        supervisor, intent, commit.new_state, commit.new_state,
+        expected_revision=1,
+    )
+    assert a["admission"].status is AdmissionDecisionStatus.ADMITTED
+    assert result.next_action_deadline_ns is None
+    assert (intent.current_intent, commit.new_state, supervisor.next_deadline_ns) == before
+    assert commit.new_state is before[1]
+
+
+def test_invalid_retained_read_types_fail_before_cognitive_selection():
+    supervisor, commit, intent, _, _, _ = _epoch_one()
+    for invalid_revision in (-1, True, "1"):
+        with pytest.raises(UnauthorizedRetainedRead):
+            _epoch_two(
+                supervisor, intent, commit.new_state, commit.new_state,
+                expected_revision=invalid_revision,
+            )
+    with pytest.raises(UnauthorizedRetainedRead):
+        read_retained_preference(
+            commit.new_state, commit.new_state,
+            required_target_id="risk_weight", expected_revision=1,
+            provenance="provider-text",
+        )
+
+
+
 def test_no_auto_reentry_after_governed_commit():
     supervisor, commit, intent, _, _, first = _epoch_one()
     assert first.cognition_requested is False
