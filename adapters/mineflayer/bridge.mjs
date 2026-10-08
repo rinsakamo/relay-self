@@ -10,6 +10,7 @@ import {
 } from './bridge_hooks.mjs'
 import {
   makeEnvelope,
+  makeProbePayload,
   parseArgs,
   parseCommand,
   shouldEmitTimeObservation,
@@ -45,6 +46,7 @@ let inputReader = null
 let lastObservedDay = null
 let lastObservedIsDay = null
 const seenActionIds = new Set()
+const seenProbeRequestIds = new Set()
 
 function emit (type, payload = {}) {
   const message = makeEnvelope(sessionId, seq, type, payload)
@@ -58,12 +60,14 @@ function emitAdapterError (error) {
   emit('adapter_error', { message })
 }
 
-function emitObservation (kind) {
+function emitObservation (kind, requestId = undefined) {
   try {
-    emit('observation', {
-      kind,
-      snapshot: snapshotFromBot(bot)
-    })
+    const snapshot = snapshotFromBot(bot)
+    if (kind === 'probe') {
+      emit('observation', makeProbePayload(snapshot, requestId))
+    } else {
+      emit('observation', { kind, snapshot })
+    }
   } catch (error) {
     emitAdapterError(error)
   }
@@ -290,7 +294,14 @@ async function handleLine (line) {
       emit('command_error', { message: 'observe_before_spawn' })
       return
     }
-    emitObservation('probe')
+    if (command.request_id !== undefined) {
+      if (seenProbeRequestIds.has(command.request_id)) {
+        emit('command_error', { message: 'duplicate_probe_request_id' })
+        return
+      }
+      seenProbeRequestIds.add(command.request_id)
+    }
+    emitObservation('probe', command.request_id)
     return
   }
 
