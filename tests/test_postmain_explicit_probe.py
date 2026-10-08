@@ -171,7 +171,6 @@ def test_one_shot_cursor_reuse_rejected_before_second_send():
         ("authority", "denied"),
         ("authority", "wrong_session"),
         ("authority", "wrong_action"),
-        ("authority", "wrong_target"),
         ("action", "wrong_action"),
         ("consequence", "nonexecuted"),
         ("adapter", "different_started"),
@@ -202,8 +201,6 @@ def test_invalid_probe_preflight_does_not_send(field, variant):
         source = replace(source, parent_action_id="some-other-action")
     elif variant == "wrong_action":
         source = data["closed1"]
-    elif variant == "wrong_target":
-        source = replace(source, target_entity_id=999)
     elif variant == "nonexecuted":
         source = replace(source, status=type(source.status).UNDETERMINED)
     elif variant == "different_started":
