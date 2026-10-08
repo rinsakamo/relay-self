@@ -273,10 +273,15 @@ def test_incomplete_or_inconsistent_entity_registry_is_not_safety_evidence(varia
             ),
         )
     elif variant == "wrong_coverage":
-        snapshot = replace(
-            snapshot,
-            nearby_entities_coverage=replace(coverage, candidate_count=2),
-        )
+        # Existing MineflayerSnapshot constructor already rejects an
+        # inconsistent non-truncated count before the S27 projector is called.
+        with pytest.raises(MineflayerAdapterProtocolError):
+            replace(
+                snapshot,
+                nearby_entities_coverage=replace(coverage, candidate_count=2),
+            )
+        assert data["supervisor"].open_actions == ()
+        return
     elif variant == "bad_distance":
         snapshot = replace(snapshot, nearby_entities=(replace(entity, distance=2.2),))
     elif variant == "bad_position":
