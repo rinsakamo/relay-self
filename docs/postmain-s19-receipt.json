@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S19",
+  "base_head": "b5eb5d3416a9c303b855250adea4323e7611f350",
+  "evidence_class": "DETERMINISTIC_TEST_APPARATUS",
+  "qualification_status": "PENDING_CI",
+  "epoch_count": 2,
+  "invocation": "explicit_caller_owned",
+  "epoch_one": [
+    "ATT",
+    "BLF",
+    "CNC",
+    "PRD",
+    "PLAN",
+    "HABIT",
+    "ROUTE",
+    "ADMISSION",
+    "EXEC_BIND",
+    "ACTION",
+    "WORLD_EXEC",
+    "ACTION_OUTCOME",
+    "FEEDBACK",
+    "LRN",
+    "STOP"
+  ],
+  "epoch_two": [
+    "EXPLICIT_INVOKE",
+    "PLAN",
+    "ROUTE",
+    "ADMISSION",
+    "STOP"
+  ],
+  "retained_handoff": {
+    "target_id": "risk_weight",
+    "before": {
+      "value": 3,
+      "revision": 0
+    },
+    "after": {
+      "value": 4,
+      "revision": 1
+    }
+  },
+  "score_projection": {
+    "policy": "caller_explicit_bounded_comparison",
+    "wait": "2 * risk_weight",
+    "move_away": 7,
+    "direction": "MINIMIZE"
+  },
+  "control_choice": "WAIT",
+  "updated_choice": "MOVE_AWAY",
+  "admission": "fresh_current_intent_allow_list",
+  "provider_model_calls": 0,
+  "autonomous_reentry": false,
+  "minecraft_live_field": "NOT_RUN",
+  "limitations": [
+    "No automatic epoch scheduling",
+    "Epoch 2 stops after admission; no second physical Action",
+    "Current owner snapshot truthfulness remains caller-owned",
+    "No model or live-world execution",
+    "Only bounded explicit scoring demonstration; no learned planning policy",
+    "No Paper2 empirical change"
+  ]
+}
