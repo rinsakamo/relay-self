@@ -2,8 +2,8 @@
   "schema_version": "1.0",
   "milestone": "S19",
   "base_head": "b5eb5d3416a9c303b855250adea4323e7611f350",
-  "evidence_class": "DETERMINISTIC_TEST_APPARATUS",
-  "qualification_status": "DETERMINISTIC_TWO_EPOCH_TESTS_QUALIFIED",
+  "evidence_class": "DETERMINISTIC_TWO_EPOCH_PAIRED_COUNTERFACTUAL_TEST_APPARATUS",
+  "qualification_status": "EXPLICIT_TWO_EPOCH_RETAINED_STATE_REUSE_QUALIFIED",
   "epoch_count": 2,
   "invocation": "explicit_caller_owned",
   "epoch_one": [
@@ -25,9 +25,14 @@
   ],
   "epoch_two": [
     "EXPLICIT_INVOKE",
+    "ATT",
+    "BLF",
+    "CNC",
+    "PRD_WAIT",
+    "PRD_MOVE_AWAY",
     "PLAN",
     "ROUTE",
-    "ADMISSION",
+    "FRESH_ADMISSION",
     "STOP"
   ],
   "retained_handoff": {
@@ -62,16 +67,45 @@
     "No Paper2 empirical change"
   ],
   "verified_ci": {
-    "run_id": 37736864653,
-    "url": "https://github.com/rinsakamo/relay-self/actions/runs/37736864653",
-    "tested_head": "d3015be43eea7ee56e34320b30eb1c4f1f2f0295",
+    "run_id": 37745257384,
+    "url": "https://github.com/rinsakamo/relay-self/actions/runs/37745257384",
+    "tested_head": "260e83d2932a050f5da5c95cb98d9ba6cc78ec56",
     "conclusion": "success",
-    "pytest_passed": 1138,
+    "pytest_passed": 1141,
     "jobs": [
       "repository-contracts",
       "pytest",
       "lint",
       "mineflayer-adapter"
-    ]
+    ],
+    "note": "Qualification trace run prior to final report and metadata updates. Final HEAD CI separately verified."
+  },
+  "counterfactual_ab_record": "docs/postmain-s19-counterfactual-ab.json",
+  "counterfactual_ab": {
+    "same_epoch_one": true,
+    "non_retained_inputs_identical": true,
+    "policies_identical": true,
+    "candidate_ids_identical": true,
+    "A": {
+      "retained_value": 3,
+      "retained_revision": 0,
+      "candidate_scores": {
+        "WAIT": 6,
+        "MOVE_AWAY": 7
+      },
+      "selected": "WAIT",
+      "admission": "ADMITTED"
+    },
+    "B": {
+      "retained_value": 4,
+      "retained_revision": 1,
+      "candidate_scores": {
+        "WAIT": 8,
+        "MOVE_AWAY": 7
+      },
+      "selected": "MOVE_AWAY",
+      "admission": "ADMITTED"
+    },
+    "causal_source": "LearningCommitRecord revision 0→1 and feedback/rule/authority/update provenance threaded through PRD into PLAN"
   }
 }
