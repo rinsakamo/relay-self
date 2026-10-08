@@ -510,6 +510,7 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
         keys = {"type", "session_id", "seq", "kind", "snapshot"}
         if "request_id" in payload:
             keys.add("request_id")
+            _require_probe_request_id(payload["request_id"])
         _require_exact_keys("observation", payload, keys)
         return MineflayerObservation(
             session_id=session_id,
