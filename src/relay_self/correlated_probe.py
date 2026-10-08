@@ -50,6 +50,8 @@ class CorrelatedProbeGrant:
     def __post_init__(self) -> None:
         if not isinstance(self.authority, ExplicitProbeAuthority):
             raise InvalidCorrelatedProbe("requires existing typed probe authority")
+        if self.request_id is None:
+            raise InvalidCorrelatedProbe("S29 requires a non-null request ID")
         try:
             encode_observe(self.request_id)
         except ValueError as exc:
