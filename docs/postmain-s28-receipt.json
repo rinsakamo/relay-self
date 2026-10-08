@@ -80,5 +80,7 @@
     "Caller supplies observed_at_ns and inspected_at_ns; adapter frames themselves have no authenticated wall-clock timestamps",
     "S27 coverage and target identity limits remain: target missing never implies safety",
     "No new Action/Skill owner, sensor listener, scheduler, automatic epoch, World actuation, learning or Paper2 MAIN40 reinterpretation"
-  ]
+  ],
+  "wire_request_id_available": false,
+  "causal_request_response_proven": false
 }
