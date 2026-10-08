@@ -32,14 +32,14 @@ def _prepared(clearance_cm=180):
     assert failed.state is SkillState.FAILED
     assert interpretation.world_provenance == consequence.provenance
     evidence = PostFailureWorldEvidence(
-        evidence_id="s24-threat-distance",
+        evidence_id=f"s24-threat-distance-{clearance_cm}",
         action_id=closed.action_id,
         binding_id=result.binding_id,
         session_id=consequence.session_id,
         consequence_provenance=consequence.provenance,
         threat_clearance_cm=clearance_cm,
         observed_at_ns=65,
-        provenance=s23.p("postfailure-distance-observation"),
+        provenance=s23.p(f"postfailure-distance-{clearance_cm}"),
     )
     args = {
         "supervisor": data["supervisor"],
@@ -83,6 +83,8 @@ def test_postfailure_new_evidence_changes_fresh_cognitive_selection():
     assert original["evidence"].provenance in a.source_provenance
     assert updated["evidence"].provenance in b.source_provenance
     assert a.world_evidence.threat_clearance_cm != b.world_evidence.threat_clearance_cm
+    assert a.world_evidence.evidence_id != b.world_evidence.evidence_id
+    assert a.world_evidence.provenance != b.world_evidence.provenance
 
     for data, failed, inputs in (
         (baseline_data, failed1, inputs1), (actual_data, failed2, inputs2)
