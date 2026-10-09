@@ -1,0 +1,17 @@
+{
+  "milestone": "S40",
+  "status": "PENDING_CI",
+  "classification": "NOT_QUALIFIED",
+  "base_pr": 376,
+  "base_head": "80a8178ee9bd4c95c2f668247ba3e7c2f097895b",
+  "s39_qualification": "ONE_EXACT_HEAD_FULL_GREEN_VERIFIED_SECOND_NOT_YET_CONFIRMED",
+  "proposed_classification": "REAL_INFLIGHT_NODE_SIGKILL_APPLIED_DISPATCH_UNKNOWN_NO_RETRY_QUALIFIED",
+  "qualification_requires": "S40_REPORT.status == PASS",
+  "minimum_exact_head_ci_runs": 2,
+  "physical_world": "OFFICIAL_MOJANG_JAVA_1.21.8_GENUINE_MINEFLAYER_4.39.0",
+  "fault": "ACTUAL_NODE_SIGKILL_AFTER_SET_CONTROL_APPLIED_BEFORE_CLEANUP_AND_AFTER_PROBE",
+  "required": "applied native effect receipt, real negative OS returncode and typed EOF, S15 incomplete FAILED, S16 UNKNOWN, zero reissue, physical final state UNDETERMINED",
+  "excluded": "NO CLAIM_PHYSICAL_MOVE_OR_NO_MOVE_NO_RETRY_DAEMON_NO_ACTION_RECOVERY_NO_EXACTLY_ONCE",
+  "frozen": "S18_TO_S39_RELAYTHEORY_R6_PAPER2_MAIN40_UNMODIFIED",
+  "s31b_wsl2_reproduction": "SKIPPED"
+}
