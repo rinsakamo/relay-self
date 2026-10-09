@@ -8,6 +8,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
+
 from adapters.mineflayer.action_outcome import interpret_world_consequence
 from adapters.mineflayer.execution import (
     WorldConsequence,
@@ -29,12 +31,67 @@ from relay_self.execution_binding import (
 )
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
-from relay_self.reactive_l0 import L0Step
-from relay_self.world_conditioned_choice import WorldChoiceKind
+from relay_self.reactive_l0 import (
+    L0Step,
+    ReactiveL0,
+    ReactiveL0Rejected,
+)
+from relay_self.world_conditioned_choice import (
+    WorldChoiceKind,
+    select_world_conditioned_choice,
+)
 
 
 class NormalActionRejected(ValueError):
     """A current authenticated independent Action authority was not proven."""
+
+
+
+
+class NormalWorldL0(ReactiveL0):
+    """S49 target-specific admission for one zombie amid other native entities.
+
+    Unlike S44's deliberately one-total-entity experiment, genuine Minecraft
+    can contain village cats, villagers, golems or other non-target entities.
+    The original untruncated native snapshots stay intact. This operator
+    selects exactly one *zombie* witness, never infers a safe empty World.
+    """
+
+    def _check(self, event, probe):
+        if (
+            not isinstance(event, MineflayerObservation)
+            or not isinstance(probe, MineflayerObservation)
+            or event.kind != "entities"
+            or event.request_id is not None
+            or probe.kind != "probe"
+            or not probe.request_id
+            or event.session_id != self.session_id
+            or probe.session_id != self.session_id
+            or event.seq <= self._last_seq
+            or probe.seq <= event.seq
+            or event.provenance.source != "mineflayer"
+            or probe.provenance.source != "mineflayer"
+            or event.snapshot.nearby_entities_coverage.truncated
+            or probe.snapshot.nearby_entities_coverage.truncated
+            or self.events >= self.max_events
+        ):
+            raise ReactiveL0Rejected("stale, foreign, incomplete native target source")
+        before = [e for e in event.snapshot.nearby_entities if e.name == "zombie"]
+        after = [e for e in probe.snapshot.nearby_entities if e.name == "zombie"]
+        if (
+            len(before) != 1
+            or len(after) != 1
+            or before[0].entity_id != after[0].entity_id
+            or before[0].entity_id in self._seen_entities
+        ):
+            raise ReactiveL0Rejected("no single current native zombie witness")
+        native = _native_threat(
+            probe, probe.request_id, expected_entity_id=after[0].entity_id,
+        )
+        return select_world_conditioned_choice(
+            native, self.retained,
+            expected_session_id=self.session_id, expected_entity_id=native.entity_id,
+        )
 
 
 class NormalActionStage(str, Enum):
@@ -132,8 +189,11 @@ class NormalSessionActionExecutor:
         p = project_mineflayer_present(probe)
         if (
             p.coverage_truncated
-            or len(p.observed_entities) != 1
-            or p.observed_entities[0].entity_id != step.choice.entity_id
+            or len([e for e in p.observed_entities if e.name == "zombie"]) != 1
+            or not any(
+                e.name == "zombie" and e.entity_id == step.choice.entity_id
+                for e in p.observed_entities
+            )
             or bound.candidate_ref != "MOVE_AWAY"
             or bound.binding.action_ref != "MOVE_BACKWARD"
             or bound.binding.action_id != step.action_request_id
