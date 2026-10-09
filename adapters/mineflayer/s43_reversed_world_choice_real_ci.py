@@ -68,12 +68,12 @@ from relay_self.native_event_cognition import (
     NativeEventCognitionCandidate,
     native_entity_event_to_cognition_candidate,
 )
-from relay_self.reversed_world_choice import verify_far_then_near
 from relay_self.post_unknown_continuation import (
     PostUnknownContinuationGate,
     PostUnknownReentryGrant,
     PostUnknownReentryRejected,
 )
+from relay_self.reversed_world_choice import verify_far_then_near
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
     select_world_conditioned_choice,
