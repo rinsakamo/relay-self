@@ -40,8 +40,8 @@ from adapters.mineflayer.s31a_real_server_ci import (
     _fetch_official_server,
     _ready_server,
     _shutdown_server,
-    _write_config,
     _verified_target,
+    _write_config,
 )
 from adapters.mineflayer.s34_native_world_cognition_ci import (
     _native_epoch_two,
@@ -65,19 +65,19 @@ from relay_self.fresh_source_action import (
 )
 from relay_self.inflight_node_loss import close_inflight_node_loss_unknown
 from relay_self.native_event_cognition import (
-    native_entity_event_to_cognition_candidate,
     EventCognitionTriggerGrant,
     NativeEventCognitionCandidate,
-)
-from relay_self.world_conditioned_choice import (
-    WorldChoiceKind,
-    select_world_conditioned_choice,
-    verify_world_contrast,
+    native_entity_event_to_cognition_candidate,
 )
 from relay_self.post_unknown_continuation import (
     PostUnknownContinuationGate,
     PostUnknownReentryGrant,
     PostUnknownReentryRejected,
+)
+from relay_self.world_conditioned_choice import (
+    WorldChoiceKind,
+    select_world_conditioned_choice,
+    verify_world_contrast,
 )
 
 
