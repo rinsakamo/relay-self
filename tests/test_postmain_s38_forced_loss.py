@@ -153,9 +153,10 @@ def test_invalid_new_session_or_denied_grant_does_not_clear_quarantine():
             process_returncode=-9,
         )
         h.begin_successor("node-b")
-        denied = lambda candidate: s37.replace(
-            s37._grant(candidate), granted=False,
-        )
+        def denied(candidate):
+            return s37.replace(
+                s37._grant(candidate), granted=False,
+            )
         from relay_self.native_event_cognition import EventCognitionNotAdmitted
         with pytest.raises(EventCognitionNotAdmitted):
             await h.revalidate_successor(
