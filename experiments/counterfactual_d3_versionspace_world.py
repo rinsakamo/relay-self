@@ -95,6 +95,16 @@ _MANIFEST: dict[str, object] = {
 }
 
 
+_ACTION_CONTRACT = {
+    "DIRECT": {"ticks": 2, "damagePerHazard": 8},
+    "DETOUR": {"ticks": 5, "damage": 0},
+    "SCOUT": {
+        "observe": "h1", "waitTicks": 1,
+        "followup": "if h1==0 DIRECT else DETOUR",
+    },
+}
+
+
 class D3ContractError(ValueError):
     """Frozen evidence, source, or World contract violation."""
 
@@ -237,14 +247,7 @@ def predictor_evidence(
             {"cues": item.cues, "observedHazards": item.observed}
             for item in episodes
         ],
-        "actionContract": {
-            "DIRECT": {"ticks": 2, "damagePerHazard": 8},
-            "DETOUR": {"ticks": 5, "damage": 0},
-            "SCOUT": {
-                "observe": "h1", "waitTicks": 1,
-                "followup": "if h1==0 DIRECT else DETOUR",
-            },
-        },
+        "actionContract": json.loads(_canonical(_ACTION_CONTRACT)),
         "terminalUtility": "20*reached - ticks - damage",
     }
 
@@ -284,7 +287,7 @@ def _parse_evidence(
             {"cues": former, "observedHazards": obs}
             for former, obs in parsed
         ],
-        "actionContract": predictor_evidence(all_cases()[0])["actionContract"],
+        "actionContract": _ACTION_CONTRACT,
         "terminalUtility": "20*reached - ticks - damage",
     }
     if _canonical(evidence) != _canonical(expectation):
