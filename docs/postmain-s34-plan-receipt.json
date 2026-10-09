@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S34",
+  "base_head": "9de005def9cb8727cd388e382da3b95d4fc8bbdf",
+  "status": "PENDING_CI",
+  "qualification_requires": "S34_REPORT.status == PASS",
+  "classification_if_pass": "THREE_REAL_ACTIONS_WITH_NATIVE_THREAT_AND_GOAL_EVIDENCE_QUALIFIED",
+  "real_server": "Minecraft Java 1.21.8 official Mojang SHA1 verified disposable localhost",
+  "real_mineflayer": "4.39.0 unmodified",
+  "actions": [
+    "action-move-backward-1",
+    "action-move-backward-2",
+    "action-recovery-backward-3"
+  ],
+  "first_cognition_input": "actual correlated native entity-registry zombie probe before Action1",
+  "second_cognition_input": "independent actual correlated native zombie probe after reconnect and before Action2",
+  "semantic_alias": "zombie-1 (S19 cognitive vocabulary only); entity ID and source session+seq read from actual World",
+  "source_provenance": "S19 first and second BeliefEvidence/AttentionCandidate directly own respective MineflayerObservation.provenance",
+  "threat_precondition": "single named zombie, complete bounded entity registry, exact session+request ID, geometric Euclidean distance < 4m",
+  "skill2_goal_criterion": "escape from nearest exact zombie to >=4.0m at fresh correlated post-Action2 probe; <4m VIOLATED, >=4m SATISFIED, absent/mismatched refused",
+  "skill2_goal_source": "Mineflayer native observation with session identical to real Action2 and seq newer than Action2 after-observation",
+  "physical_action1_feedback": "S15/S16 real Action1 → governed existing S19 retained risk3/rev0->4/rev1",
+  "third_action": "separately admitted S23 recovery only on native Skill2 VIOLATED",
+  "third_probe": "S27 actual native same exact tracked zombie post-Action3 → caller-explicit S24 WAIT/ADMITTED",
+  "false_certifications": [
+    "native Minecraft environment is a privileged/controlled test server, not cryptographic World attestation",
+    "server console summoned zombie before first cognition: not autonomous threat discovery in wild",
+    "4m goal is fixed prospective scalar criterion, not an adaptive new learned goal",
+    "proposition zombie-1 is stable semantic alias with exact native entity-ID mapping, not arbitrary name resolution",
+    "initial and second cognition caller-invoked with retained deterministic rules, not an autonomous scheduler/LLM",
+    "session UUID and sequence establish protocol correlation, not signed causal origin",
+    "no Action4, no autonomous Skill terminal/reentry, no WSL2 S31B, no Paper2 MAIN40 change"
+  ],
+  "live_ci_authority": "S34 dynamic JSON run artifact from exact HEAD CI, not static plan receipt"
+}
