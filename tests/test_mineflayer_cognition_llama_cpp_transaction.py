@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import shutil
+import socket
 import subprocess
 import urllib.error
+import urllib.request
+from contextlib import ExitStack
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -201,15 +204,41 @@ def test_cleanup_targets_only_supplied_owned_process():
     process.kill.assert_not_called()
 
 
-def test_no_bytecode_launcher_preserves_clean_checkout_before_preflight(tmp_path):
-    launcher = Path("experiments/run_mineflayer_cognition_llama_cpp_transaction.sh")
-    launcher_text = launcher.read_text(encoding="utf-8")
-    assert (
-        'exec python3 -B -m experiments.mineflayer_cognition_llama_cpp_transaction "$@"'
-        in launcher_text
-    )
+# #406 splits static shell identity, interpreter -B behavior, and preflight.
+# Shell exec/argv integration coverage is deferred to a separately authorized
+# test owner: neither the canonical launcher nor a copy is executed here.
+LAUNCHER = Path("experiments/run_mineflayer_cognition_llama_cpp_transaction.sh")
+LAUNCHER_TEXT = (
+    "#!/usr/bin/env bash\n"
+    "set -euo pipefail\n\n"
+    'exec python3 -B -m experiments.mineflayer_cognition_llama_cpp_transaction "$@"\n'
+)
 
-    repo = tmp_path / "repo"
+
+def _assert_launcher_identity(text):
+    # Exact bytes reject extra commands, preload/environment changes and flags.
+    assert text == LAUNCHER_TEXT
+
+
+def test_launcher_static_identity_without_execution():
+    _assert_launcher_identity(LAUNCHER.read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("mutation", [
+    lambda text: text.replace(" -B ", " "),
+    lambda text: text.replace(" -B ", " -b "),
+    lambda text: text + "echo unexpected\n",
+    lambda text: text.replace("exec python3", "PYTHONPATH=/tmp exec python3"),
+    lambda text: text.replace("python3", "python"),
+    lambda text: text.replace('"$@"', "$*"),
+])
+def test_launcher_identity_rejects_drift(mutation):
+    with pytest.raises(AssertionError):
+        _assert_launcher_identity(mutation(LAUNCHER_TEXT))
+
+
+def test_direct_B_import_preserves_clean_non_scientific_fixture(tmp_path):
+    repo = tmp_path / "import-fixture"
     experiments = repo / "experiments"
     experiments.mkdir(parents=True)
     for name in (
@@ -217,47 +246,124 @@ def test_no_bytecode_launcher_preserves_clean_checkout_before_preflight(tmp_path
         "mineflayer_viability_relay.py",
         "mineflayer_cognition_ab.py",
         "mineflayer_cognition_llama_cpp_transaction.py",
-        launcher.name,
     ):
         shutil.copy2(Path("experiments") / name, experiments / name)
-
-    subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
-    subprocess.run(["git", "config", "user.email", "relay-self-test@example.invalid"], cwd=repo, check=True)
-    subprocess.run(["git", "config", "user.name", "RelaySelf Test"], cwd=repo, check=True)
-    subprocess.run(["git", "add", "."], cwd=repo, check=True)
-    subprocess.run(["git", "commit", "-qm", "fixture"], cwd=repo, check=True)
-
-    evidence = tmp_path / "evidence"
-    completed = subprocess.run(
-        [
-            "bash",
-            str(experiments / launcher.name),
-            "--repo-root",
-            str(repo),
-            "--port",
-            "9999",
-            "--evidence-root",
-            str(evidence),
-        ],
-        cwd=repo,
-        text=True,
-        capture_output=True,
-        check=False,
+    # No shell scripts or experiment CLI invocations in this fixture.
+    assert not list(repo.rglob("*.sh"))
+    for args in (
+        ["init", "-q"],
+        ["config", "user.email", "relay-self-test@example.invalid"],
+        ["config", "user.name", "RelaySelf Test"],
+        ["add", "."],
+        ["commit", "-qm", "fixture"],
+    ):
+        subprocess.run(["git", *args], cwd=repo, check=True)
+    script = (
+        "import sys; assert sys.dont_write_bytecode; "
+        "import socket, subprocess, urllib.request; "
+        "from unittest.mock import patch; "
+        "from contextlib import ExitStack; "
+        f"sys.path.insert(0, {str(repo)!r}); "
+        "stack = ExitStack(); "
+        "[stack.enter_context(patch.object(obj, name, "
+        "side_effect=AssertionError('import attempted external operation'))) "
+        "for obj, name in [(socket, 'socket'), (subprocess, 'Popen'), "
+        "(urllib.request, 'urlopen')]]; "
+        "import experiments.mineflayer_cognition_llama_cpp_transaction; stack.close()"
     )
-
-    assert completed.returncode == 3
-    summary = json.loads((evidence / "transaction-summary.json").read_text(encoding="utf-8"))
-    assert "current physical condition requires port 1234" in summary["error"]
-    status = subprocess.run(
-        ["git", "status", "--porcelain"],
-        cwd=repo,
-        text=True,
-        capture_output=True,
-        check=True,
-    ).stdout
-    assert status == ""
+    # -I ignores inherited PYTHONPATH and PYTHONDONTWRITEBYTECODE. This proves
+    # the interpreter's -B effect, independently of the static launcher flag.
+    interpreter = shutil.which("python3")
+    assert interpreter is not None
+    result = subprocess.run(
+        [interpreter, "-I", "-B", "-c", script],
+        cwd=repo, text=True, capture_output=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    missing_B = subprocess.run(
+        [interpreter, "-I", "-c", script],
+        cwd=repo, text=True, capture_output=True, check=False,
+    )
+    # Fails before importing the fixture, even if the parent has bytecode off.
+    assert missing_B.returncode != 0
+    assert "AssertionError" in missing_B.stderr
     assert not list(repo.rglob("__pycache__"))
     assert not list(repo.rglob("*.pyc"))
+    status = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=repo,
+        text=True, capture_output=True, check=True,
+    ).stdout
+    assert status == ""
+
+
+def _guarded_port_preflight(tmp_path, *, drift=None):
+    # These are temporary synthetic unit artifacts, never scientific evidence.
+    artifacts = tmp_path / "synthetic-preflight"
+    forbidden = [
+        (tx, name) for name in (
+            "_port_is_free", "_require_llama_cpp_paths", "_collect_llama_revision",
+            "_collect_server_version", "_verify_artifact", "_collect_gpu_identity",
+            "_server_command", "_start_server", "_get_json", "_wait_until_ready",
+            "_probe_and_attest", "_terminate_owned_process",
+        )
+    ] + [
+        (subprocess, "run"), (subprocess, "Popen"), (socket, "socket"),
+        (urllib.request, "urlopen"), (cognition, "call_openai_compatible"),
+        (tx, "execute_cognition"),
+    ]
+    with ExitStack() as stack:
+        guards = {
+            name: stack.enter_context(patch.object(
+                obj, name, side_effect=AssertionError(f"forbidden operation: {name}"),
+            )) for obj, name in forbidden
+        }
+        clean = stack.enter_context(patch.object(
+            tx, "_require_clean_repo", return_value=("a" * 40, "b" * 40),
+        ))
+        if drift == "port":
+            stack.enter_context(patch.object(tx, "DEFAULT_PORT", 9999))
+        elif drift is not None:
+            clean.side_effect = lambda *_: guards[drift]()
+        code = tx.main([
+            "--repo-root", str(tmp_path), "--port", "9999",
+            "--evidence-root", str(artifacts),
+        ])
+        assert code == 3
+        summary = json.loads((artifacts / "transaction-summary.json").read_text())
+        assert summary["disposition"] == "BLOCKED_OR_INVALID"
+        assert summary["currentStage"] == "port_free"
+        assert summary["completedStages"] == ["clean_repo", "cleanup"]
+        assert summary["error"] == (
+            "PhysicalTransactionError: current physical condition requires port 1234"
+        )
+        assert summary["transactionExitCode"] == 3
+        for key in ("serverLaunchCount", "modelCallCount", "retryCount",
+                    "replayCount", "fallbackCount", "repositoryMutationCount"):
+            assert summary[key] == 0
+        assert summary["cleanup"] == {
+            "ownedProcess": False, "terminated": False, "exitCode": None,
+        }
+        assert sorted(p.name for p in artifacts.iterdir()) == [
+            "cleanup.json", "transaction-summary.json",
+        ]
+        clean.assert_called_once_with(tmp_path.resolve())
+        for guard in guards.values():
+            guard.assert_not_called()
+
+
+def test_in_process_port_9999_preflight_rejects_before_external_operations(tmp_path):
+    _guarded_port_preflight(tmp_path)
+
+
+@pytest.mark.parametrize("drift", [
+    "port", "_start_server", "_get_json", "call_openai_compatible",
+    "run", "Popen", "socket", "_verify_artifact", "execute_cognition",
+])
+def test_preflight_guard_rejects_port_or_execution_drift(tmp_path, drift):
+    # main catches the injected exception; exact stage/code plus guard accounting
+    # must still reject it, rather than accepting any generic failure as safe.
+    with pytest.raises(AssertionError):
+        _guarded_port_preflight(tmp_path, drift=drift)
 
 
 
