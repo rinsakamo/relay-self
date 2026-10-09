@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import test_postmain_s42_world_contrast as s42
-
 from relay_self.cognitive_allocation import (
     AllocationPath,
     CognitionBudget,
