@@ -1,0 +1,29 @@
+name: S59-B native stop ACK evidence contract (NO model/GPU execution)
+on:
+  push:
+    branches:
+      - self/postmain-feature-s59b-native-ack-receipt-contract-20261010
+  pull_request:
+    branches:
+      - self/postmain-feature-s59a-backend-stop-feasibility-20261009
+permissions:
+  contents: read
+jobs:
+  synthetic-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src:${{ github.workspace }}/tests
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install exact offline test dependencies
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+      - name: Reject false native ACK and false same-process slot reuse
+        run: python -m pytest -q tests/test_feature_s59b_stop_ack_contract.py
+      - name: Check instrument syntax and lint
+        run: |
+          python -m compileall -q adapters/mineflayer/s59b_stop_ack_contract.py
+          ruff check adapters/mineflayer/s59b_stop_ack_contract.py tests/test_feature_s59b_stop_ack_contract.py
