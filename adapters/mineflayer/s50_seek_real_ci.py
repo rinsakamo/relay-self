@@ -15,6 +15,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from adapters.mineflayer.python_protocol import MineflayerPosition
 from adapters.mineflayer.s31a_real_server_ci import (
     MINECRAFT_VERSION,
     MINEFLAYER_VERSION,
@@ -26,7 +27,6 @@ from adapters.mineflayer.s31a_real_server_ci import (
     _write_config,
 )
 from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
-from adapters.mineflayer.python_protocol import MineflayerPosition
 from adapters.mineflayer.seek_execution import (
     SeekConsequenceKind,
     SeekExecutionRejected,
