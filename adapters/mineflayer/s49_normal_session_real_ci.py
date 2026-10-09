@@ -24,6 +24,10 @@ from adapters.mineflayer.normal_action import (
     NormalSessionActionExecutor,
 )
 from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.python_protocol import (
+    MineflayerEntityHurt,
+    MineflayerObservation,
+)
 from adapters.mineflayer.s31a_real_server_ci import (
     MINECRAFT_VERSION,
     MINEFLAYER_VERSION,
@@ -54,6 +58,33 @@ from relay_self.world_conditioned_choice import WorldChoiceKind
 
 class S49PhysicalFailure(RuntimeError):
     """The real native World did not support the claimed autonomous behavior."""
+
+
+class NativeObservationOnly:
+    """Adapter-local native frame filter; never manufactures observations.
+
+    Mineflayer entity_hurt notifications may arrive unsolicited and do not
+    themselves request the S44 entity-geometry policy. Every other unexpected
+    protocol message remains fail-closed, with its exact type recorded.
+    """
+
+    def __init__(self, session: MineflayerProcessSession) -> None:
+        self.session = session
+        self.started = session.started
+        self.ignored_hurt_frames = 0
+
+    async def receive(self):
+        for _ in range(60):
+            frame = await self.session.receive()
+            if isinstance(frame, MineflayerObservation):
+                return frame
+            if isinstance(frame, MineflayerEntityHurt):
+                self.ignored_hurt_frames += 1
+                continue
+            raise S49PhysicalFailure(
+                f"unexpected native host frame {type(frame).__name__}: {frame!r}"
+            )
+        raise S49PhysicalFailure("non-observation native frame bound exhausted")
 
 
 def source(tag: str) -> Provenance:
@@ -205,13 +236,15 @@ async def qualify(report_path: Path, server_log: Path) -> int:
 
         report["stage"] = "UNATTENDED_NATIVE_EVENT_LOOP"
         staging = asyncio.create_task(stage_world())
+        observation_source = NativeObservationOnly(session)
         trace = await asyncio.wait_for(
             host.run_session(
-                session, probe=reprobe, grant=decide_grant,
+                observation_source, probe=reprobe, grant=decide_grant,
                 on_action_request=on_action, max_frames=320,
             ),
             timeout=95,
         )
+        report["ignored_hurt_frames"] = observation_source.ignored_hurt_frames
         report["decisions"] = [{
             "event_seq": s.event_seq,
             "entity_id": s.choice.entity_id,
