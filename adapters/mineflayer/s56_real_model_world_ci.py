@@ -10,9 +10,9 @@ import argparse
 import asyncio
 import json
 import os
+import socket
 import sys
 import tempfile
-import socket
 import urllib.parse
 from pathlib import Path
 from typing import Any
