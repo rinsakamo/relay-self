@@ -56,11 +56,11 @@ from relay_self.fresh_source_action import (
     FreshSourceActionGrant,
     FreshSourceActionRejected,
 )
+from relay_self.inflight_node_loss import close_inflight_node_loss_unknown
 from relay_self.native_event_cognition import (
     EventCognitionTriggerGrant,
     NativeEventCognitionCandidate,
 )
-from relay_self.inflight_node_loss import close_inflight_node_loss_unknown
 
 
 class S40EvidenceFailure(RuntimeError):
