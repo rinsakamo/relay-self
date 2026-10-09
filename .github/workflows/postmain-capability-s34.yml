@@ -1,4 +1,4 @@
-name: Post-MAIN S34 three genuine Minecraft Actions and learning
+name: Post-MAIN S34 native threat and Skill2 goal evidence
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - self/postmain-s34-native-threat-skill-goal-20261009
   pull_request:
     branches:
-      - self/postmain-s32-real-action-world-lineage-20261009
+      - self/postmain-s33-three-real-actions-learning-20261009
 
 permissions:
   contents: read
