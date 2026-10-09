@@ -87,8 +87,11 @@ def _native_threat(
         raise S34EvidenceFailure("zombie absent, threat proposition unsupported")
     if expected_entity_id is not None and target["entity_id"] != expected_entity_id:
         raise S34EvidenceFailure("zombie identity changed across sessions")
-    if not 0 < target["distance_m"] < MAX_GOAL_DISTANCE_M:
-        raise S34EvidenceFailure("outside preregistered nearby threat bound")
+    coverage = observation.snapshot.nearby_entities_coverage
+    if coverage.source_scope != "mineflayer_entity_registry" or coverage.max_distance != 16:
+        raise S34EvidenceFailure("incomplete or unqualified native registry scope")
+    if not 0 < target["distance_m"] <= 16:
+        raise S34EvidenceFailure("out of native sensing range")
     return NativeThreat(
         observation=observation, entity_id=target["entity_id"],
         distance_m=target["distance_m"], request_id=request_id,
@@ -98,6 +101,8 @@ def _native_threat(
 async def _real_epoch_one(supervisor, adapter, native: NativeThreat):
     if native.observation.session_id != adapter.started.session_id:
         raise S34EvidenceFailure("initial World evidence session mismatch")
+    if native.distance_m >= MAX_GOAL_DISTANCE_M:
+        raise S34EvidenceFailure("not a real nearby threat: no SUPPORT assertion")
     p = s19.PropositionKey("entity", "zombie-1", "nearby")
     evidence = s19.BeliefEvidence(
         "E1",
@@ -374,6 +379,8 @@ async def _real_epoch_one(supervisor, adapter, native: NativeThreat):
 
 
 def _native_epoch_two(supervisor, intent, owner_snapshot, supplied_snapshot, *, expected_revision, native: NativeThreat):
+    if native.distance_m >= MAX_GOAL_DISTANCE_M:
+        raise S34EvidenceFailure("no nearby second-epoch threat evidence")
     """Separate caller invocation: ATT/BLF/CNC/PRD/PLAN/ROUTE/fresh ADMISSION.
 
     A/B alternatives use identical deterministic policies and structured
@@ -652,7 +659,18 @@ def _prepare_second_real(supervisor, commit, intent, closed1, feedback, native: 
 
 
 
-def _real_skill2_evidence(data, closed2, outcome, status=s21.SkillGoalStatus.VIOLATED):
+def _real_skill2_evidence(data, closed2, outcome, goal: NativeThreat, after_seq: int):
+    if (
+        goal.observation.session_id != outcome.session_id
+        or goal.observation.seq <= after_seq
+        or goal.observation.provenance == outcome.world_provenance
+    ):
+        raise S34EvidenceFailure("Skill2 goal probe not independent/fresh after Action2")
+    status = (
+        s21.SkillGoalStatus.VIOLATED
+        if goal.distance_m < MAX_GOAL_DISTANCE_M
+        else s21.SkillGoalStatus.SATISFIED
+    )
     skill = data["skill2"]
     criterion = s21.SkillTerminalCriterion(
         criterion_id="s21-escape-distance",
@@ -670,7 +688,7 @@ def _real_skill2_evidence(data, closed2, outcome, status=s21.SkillGoalStatus.VIO
         goal_ref=criterion.goal_ref,
         status=status,
         observed_at_ns=41,
-        provenance=s20.p("independent-goal-evaluation"),
+        provenance=goal.observation.provenance,
     )
     authority = s21.SkillTerminalAuthority(
         authority_id="s21-skill-closure-authority",
@@ -684,11 +702,15 @@ def _real_skill2_evidence(data, closed2, outcome, status=s21.SkillGoalStatus.VIO
 
 
 
-def _real_skill2_exit(data, action, outcome):
+def _real_skill2_exit(data, action, outcome, goal: NativeThreat, after_seq: int):
     data, action, outcome, criterion21, evidence21, authority21 = _real_skill2_evidence(
-        data, action, outcome, s21.SkillGoalStatus.VIOLATED,
+        data, action, outcome, goal, after_seq,
     )
-    terminal = s22.SkillState.FAILED
+    terminal = (
+        s22.SkillState.FAILED
+        if evidence21.status is s21.SkillGoalStatus.VIOLATED
+        else s22.SkillState.SUCCEEDED
+    )
     local = s22.LocalPathStatus.AVAILABLE
     impact = s22.IntentImpact.NOT_CHALLENGED
     if terminal is s22.SkillState.CANCELLED:
@@ -742,9 +764,9 @@ def _real_skill2_exit(data, action, outcome):
 
 
 
-def _real_recovery_prep(data, closed2, outcome2):
+def _real_recovery_prep(data, closed2, outcome2, goal: NativeThreat, after_seq: int):
     data, failed, exit_criterion, evidence, route_authority = _real_skill2_exit(
-        data, closed2, outcome2,
+        data, closed2, outcome2, goal, after_seq,
     )
     assert failed.state is s23.SkillState.FAILED
     assessment = s23.assess_skill_exit(
@@ -796,6 +818,29 @@ def _real_recovery_prep(data, closed2, outcome2):
     }
     return data, failed, inputs
 
+
+
+async def _observe_native_threat(
+    session: MineflayerProcessSession,
+    *,
+    request_prefix: str,
+    expected_entity_id: int | None = None,
+    after_seq: int | None = None,
+) -> NativeThreat:
+    for attempt in range(5):
+        await asyncio.sleep(2)
+        request_id = f"{request_prefix}:{attempt:03d}"
+        observation = await _correlated_observe(session, request_id)
+        if (
+            after_seq is not None
+            and observation.seq <= after_seq
+        ):
+            raise S34EvidenceFailure("probe is not newer than source Action")
+        native = _native_threat(
+            observation, request_id, expected_entity_id=expected_entity_id,
+        )
+        return native
+    raise S34EvidenceFailure("bounded native zombie observation unavailable")
 
 
 async def _new_session() -> MineflayerProcessSession:
