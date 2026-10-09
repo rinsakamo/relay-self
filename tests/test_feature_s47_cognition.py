@@ -3,6 +3,12 @@ from __future__ import annotations
 
 import test_postmain_s42_world_contrast as s42
 
+from relay_self.cognitive_allocation import (
+    AllocationPath,
+    CognitionBudget,
+    allocate_cognition,
+)
+from relay_self.provenance import Provenance
 from relay_self.reactive_l0 import L0Step
 from relay_self.relay_engine import (
     BoundedChoice,
@@ -14,11 +20,7 @@ from relay_self.relay_engine import (
     ProviderExpression,
     RelayEngine,
 )
-from relay_self.provenance import Provenance
 from relay_self.world_conditioned_choice import select_world_conditioned_choice
-from relay_self.cognitive_allocation import (
-    AllocationPath, CognitionBudget, allocate_cognition,
-)
 
 
 def req():
