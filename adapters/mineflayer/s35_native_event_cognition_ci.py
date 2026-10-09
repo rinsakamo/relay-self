@@ -16,6 +16,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from typing import Any
 
 import test_postmain_two_epoch_continuation as s19
 from adapters.mineflayer.process_session import MineflayerProcessSession
@@ -101,7 +102,7 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         "automatic_action_issued": False,
         "relay_engine_called": False,
         "autonomous_scheduler": False,
-        "retained_source": "CALLER_SEEDED_REV1_NOT_LEARNED_IN_S35",
+        "retained_source": "FROZEN_S19_DETERMINISTIC_GOVERNED_COMMIT_NOT_PHYSICAL",
         "physical_action_executed": False,
         "world_authenticity_attested": False,
         "local_codex_s31b": "SKIPPED",
@@ -218,14 +219,29 @@ async def qualify(report_path: Path, server_log: Path) -> int:
             "escape-threat", objective="escape the nearby threat",
             at_ns=1, provenance=s19.provenance("s35-caller-current-intent"),
         )
-        # Rev1 here is an explicitly seeded cognitive policy input.
-        # There is no S35 learning, feedback or preceding physical Action.
-        state = s19.LearningPreferenceState(
-            target_id="risk_weight", value=4, minimum=0, maximum=10,
-            revision=1, origin_provenance=s19.provenance("s35-caller-owned-retained"),
+        # The frozen S19 deterministic apparatus supplies an authentic
+        # governed rev1 commit with all required provenance. It is
+        # SYNTHETIC antecedent history (FakeSession), not Minecraft.
+        # Run its sync setup on a worker thread because it uses asyncio.run.
+        past_supervisor, past_commit, _past_intent, past_closed, past_feedback, _ = (
+            await asyncio.to_thread(s19._epoch_one)
         )
+        if (
+            past_supervisor.get(past_closed.action_id) is not past_closed
+            or past_feedback.feedback is None
+            or past_commit.new_state.value != 4
+            or past_commit.new_state.revision != 1
+            or past_supervisor.open_actions != ()
+        ):
+            raise S35EvidenceFailure("frozen S19 retained state was not governed")
+        report["synthetic_predecessor"] = {
+            "kind": "FROZEN_S19_FAKESESSION_NOT_REAL_MINECRAFT",
+            "retained_before": "3/rev0",
+            "retained_after": "4/rev1",
+            "first_action_id": past_closed.action_id,
+        }
         values, epoch = _native_epoch_two(
-            supervisor, intent, state, state,
+            supervisor, intent, past_commit.new_state, past_commit.new_state,
             expected_revision=1, native=native,
         )
         if (
