@@ -141,6 +141,19 @@ async def qualify(report_path: Path, server_log: Path) -> int:
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
             reading = await _correlated_observe(session, request_id)
             probes[reading.seq] = reading
+            report.setdefault("source_pair_trace", []).append({
+                "event_seq": frame.seq,
+                "event_kind": frame.kind,
+                "event_entities": [
+                    {"name": e.name, "id": e.entity_id, "d": e.distance}
+                    for e in frame.snapshot.nearby_entities
+                ],
+                "probe_seq": reading.seq,
+                "probe_entities": [
+                    {"name": e.name, "id": e.entity_id, "d": e.distance}
+                    for e in reading.snapshot.nearby_entities
+                ],
+            })
             return reading
 
         def decide_grant(choice, event_seq):
