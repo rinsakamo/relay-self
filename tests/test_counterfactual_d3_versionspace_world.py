@@ -164,6 +164,7 @@ def test_corrupt_source_history_is_not_a_valid_world_episode():
         d3.predictor_evidence(negative)
     valid = d3.predictor_evidence(by_id()["I_AND"])
     bad = deepcopy(valid)
+    bad["presentCues"] = "001"  # frozen negative case, distinct from prior 000
     bad["pastDirectEpisodes"] = [
         {"cues": "000", "observedHazards": "00"},
         {"cues": "000", "observedHazards": "11"},
