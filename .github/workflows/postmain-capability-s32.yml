@@ -77,6 +77,8 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - name: Install frozen S23 test-apparatus dependency
+        run: python -m pip install --disable-pip-version-check "pytest==9.1.1"
       - name: Confirm actual unmodified Mineflayer dependency
         run: |
           java -version
