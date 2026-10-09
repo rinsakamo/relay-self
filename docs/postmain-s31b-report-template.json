@@ -1,0 +1,22 @@
+{
+  "milestone": "S31-B",
+  "status": "PENDING_LOCAL_EXECUTION",
+  "physical_attempts": 0,
+  "tested_head": null,
+  "tested_tree": null,
+  "kernel": null,
+  "runtime_identity": null,
+  "frozen_file_sha256": null,
+  "loopback_bind_before": null,
+  "runner_exit_code": null,
+  "original_report_path": null,
+  "original_report_sha256": null,
+  "server_log_sha256": null,
+  "bridge_exit_code": null,
+  "server_exit_code": null,
+  "loopback_bind_after": null,
+  "ci_comparison": null,
+  "blocker_or_failure": null,
+  "automatic_action_authorization": false,
+  "llm_calls": 0
+}

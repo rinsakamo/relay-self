@@ -1,0 +1,68 @@
+{
+  "milestone": "S31-B",
+  "status": "PASS",
+  "physical_attempts": 1,
+  "physical_runner_exit_code": 0,
+  "execution_lane": "LocalCodex/user Windows 11 WSL2; not GitHub Actions",
+  "tested_head": "2f3af780508a51b66513043b4cfedf80d20ff1a0",
+  "tested_tree": "c7bb81a82416ac92505f3a643b3b009d8273731f",
+  "tested_checkout_clean_before_and_after": true,
+  "kernel": "6.18.33.2-microsoft-standard-WSL2",
+  "distribution": "Ubuntu 24.04.4 LTS",
+  "windows": {
+    "Caption": "Microsoft Windows 11 Home",
+    "Version": "10.0.26200",
+    "BuildNumber": "26200"
+  },
+  "java": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)\n",
+  "python": "3.12.3",
+  "node": "v22.22.2",
+  "npm": "10.9.7",
+  "mineflayer": "4.39.0",
+  "npm_ci_exit_code": 0,
+  "npm_install_source": "frozen package-lock npm ci --omit=dev --no-audit --no-fund",
+  "injection_vars_present": [],
+  "available_memory_kib": 15548912,
+  "disk_free_bytes": 874005155840,
+  "server_heap": "-Xms512M -Xmx1536M",
+  "loopback_bind_before": "PASS",
+  "loopback_bind_after": "PASS",
+  "bridge_exit_code": 0,
+  "server_exit_code": 0,
+  "nearby_entity_max_distance_m": 16,
+  "coverage_radius_authority": "unchanged python_protocol.py decoder rejects any other max_distance; original report omits radius",
+  "immutable_runner_report": "s31a-report.json",
+  "original_runner_labels_preserved": true,
+  "runner_report_label_caveat": "milestone S31-A and QUALIFIED_LOCAL_CI_SANDBOX are inherited frozen strings; this envelope establishes S31-B local provenance",
+  "frozen_file_sha256": {
+    "adapters/mineflayer/s31a_real_server_ci.py": "87317a4b9805801f3a36a5f33db8388796fd0e5c1929150f9c73b303fb85c478",
+    "adapters/mineflayer/bridge.mjs": "e29dce9f5b9fceeb8cd9bcf0500beb326be357c08657e9dfd96af8c92db9222e",
+    "adapters/mineflayer/process_session.py": "e6e53d1740d3de778cd21fd48b7e4c33632182883631d3e6a4d3c422ca56ea0b",
+    "adapters/mineflayer/package-lock.json": "545e32a148b1f3649ba199dac9383fca72d0aaae17afbe740dc26163491ae568"
+  },
+  "runtime_sha256": {
+    "node_linux_elf": "81925c0995b5c1427b5d538e6a90ca2fdc4daffb786b09af749beaf7369d4e90",
+    "java_linux_elf": "635baf419576ec4ad4f785014283fb93f1be1103e6d02252f7a00517f0e2a245"
+  },
+  "ci_comparison": {
+    "push_run": 37861978950,
+    "pr_run": 37861999744,
+    "same_server_sha1_and_size": true,
+    "same_versions": true,
+    "same_distance_m": 2,
+    "distinct_session_ids": true,
+    "local_entity_id": 32,
+    "ci_entity_ids": [
+      2,
+      2
+    ],
+    "local_target_seq": 17,
+    "ci_target_seqs": [
+      7,
+      7
+    ],
+    "variation": "World spawn/entity allocation and unsolicited native frames vary; request correlation and monotonic sequence remain valid."
+  },
+  "automatic_action_authorization": false,
+  "llm_calls": 0
+}
