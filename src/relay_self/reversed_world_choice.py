@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from relay_self.action import ActionLifecycle, ActionState
-from relay_self.action_supervision import ActionSupervisor
+from relay_self.action_supervision import ActionSupervisor, UnknownSupervisedAction
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
     WorldChoiceRejected,
@@ -57,6 +57,14 @@ def verify_far_then_near(
     explicit and must have caused zero newly open Action. Historical UNKNOWN
     cannot be rewritten even when a later probe establishes changed geometry.
     """
+    if not isinstance(supervisor, ActionSupervisor):
+        raise ReversedWorldChoiceRejected("typed current Action owner required")
+    if not isinstance(prior_unknown, ActionLifecycle):
+        raise ReversedWorldChoiceRejected("typed historical UNKNOWN required")
+    try:
+        current_unknown = supervisor.get(prior_unknown.action_id)
+    except UnknownSupervisedAction as exc:
+        raise ReversedWorldChoiceRejected("foreign historical Action ID") from exc
     if (
         not isinstance(far, WorldConditionedChoice)
         or not isinstance(near, WorldConditionedChoice)
@@ -65,7 +73,7 @@ def verify_far_then_near(
         or not isinstance(supervisor, ActionSupervisor)
         or not isinstance(prior_unknown, ActionLifecycle)
         or prior_unknown.state is not ActionState.UNKNOWN
-        or supervisor.get(prior_unknown.action_id) is not prior_unknown
+        or current_unknown is not prior_unknown
         or supervisor.open_actions != ()
         or not 0 <= far_event_seq < far.probe_seq < near_event_seq < near.probe_seq
         or far.selection is not WorldChoiceKind.WAIT
