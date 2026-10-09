@@ -1,0 +1,3 @@
+# S48 cognition interrupt feature slice
+
+One outstanding L2 ticket can be marked interrupt-requested, host-cancelled, backend-stopped and independently resource-released. Current session/World sequence/intent revision/retained revision are bound to each result; changed context or any cancellation rejects late output before Action or retention. The guard never actually stops an inference process or confirms GPU memory: its ACK and release inputs must come from an external measured executor. CPU L0 can continue independently through S44. No physical GPU preemption, latency gain, concurrent LLM run or urgent end-to-end Minecraft qualification is claimed. Refs #385, #367.
