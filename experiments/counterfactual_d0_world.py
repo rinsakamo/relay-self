@@ -11,7 +11,7 @@ import json
 from copy import deepcopy
 from dataclasses import dataclass
 from fractions import Fraction
-from typing import Any, Mapping
+from typing import Mapping
 
 MANIFEST_VERSION = "CF-D0-TOY-v1"
 EXPECTED_MANIFEST_SHA256 = (
