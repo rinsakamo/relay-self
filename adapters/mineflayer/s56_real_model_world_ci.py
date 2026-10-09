@@ -347,32 +347,57 @@ async def qualify(
             })
 
         async def on_urgent_action(step):
-            if not report["l0_completed_before_fake_http_response"]:
-                if (
-                    not http_request_seen.is_set() or http_release.is_set()
-                    or http_response_sent.is_set()
-                ):
-                    raise S56PhysicalFailure(
-                        "urgent L0 did not begin during blocked L2"
-                    )
-                current = CognitionContext(
+            if not report["l0_outcome_during_pending_model_call"]:
+                probe = probes[step.choice.probe_seq]
+                # One OPEN call explicitly admitted for independent tentative
+                # reasoning. Text is never an Action candidate or World truth.
+                ticket_context = CognitionContext(
                     sid, step.choice.probe_seq, 1, retained.revision,
                 )
-                result = await owner.urgent_l0(
-                    current, lambda: on_action(step),
+                owner.begin_l2(
+                    "s56-actual-local-l2", ticket_context,
+                    lambda: do_actual_open_inference(probe),
+                )
+                for _ in range(60):
+                    if witness.started.is_set() or witness.finished.is_set():
+                        break
+                    await asyncio.sleep(0.02)
+                if not witness.started.is_set() or witness.finished.is_set():
+                    raise S56PhysicalFailure(
+                        "a live provider call must remain pending before L0 starts"
+                    )
+
+                async def independently_authorized_physical_l0():
+                    witness.l0_enter(action_id=step.action_request_id)
+                    await on_action(step)
+                    actual = report["actual_native_actions"][-1]
+                    receipt = witness.l0_closed(
+                        action_id=step.action_request_id,
+                        movement_m=actual["movement_m"],
+                    )
+                    if not receipt.proven_overlap:
+                        raise S56PhysicalFailure(
+                            "physical L0 Action was not concurrent with L2"
+                        )
+                    report["l0_model_overlap_ms"] = round(
+                        (receipt.l0_closed_ns - receipt.l0_enter_ns) / 1_000_000, 3,
+                    )
+
+                interrupted = await owner.urgent_l0(
+                    ticket_context, independently_authorized_physical_l0,
                 )
                 if (
-                    not result.l0_completed or result.backend_stopped
-                    or result.gpu_released or http_release.is_set()
-                    or http_response_sent.is_set()
+                    not interrupted.l0_completed
+                    or interrupted.backend_stopped
+                    or interrupted.gpu_released
+                    or witness.finished.is_set()
                     or not report["actual_native_actions"]
                 ):
                     raise S56PhysicalFailure(
-                        "physical L0 must reach OUTCOME before model HTTP release"
+                        "L2 must still be running after real L0 OUTCOME"
                     )
-                report["l0_completed_before_fake_http_response"] = True
+                report["l0_outcome_during_pending_model_call"] = True
                 report["urgent_world_seq"] = step.choice.probe_seq
-                http_release.set()
             else:
                 await on_action(step)
 
@@ -381,7 +406,7 @@ async def qualify(
             _command(server, "gamerule doMobSpawning false")
             await server.stdin.drain()
             await asyncio.sleep(2)
-            for distance_m, hold in ((10, 5), (2, 8), (2, 8)):
+            for distance_m, hold in ((10, 4), (2, 6), (2, 6)):
                 _command(server, "kill @e[type=minecraft:zombie]")
                 await server.stdin.drain()
                 await asyncio.sleep(2)
@@ -403,16 +428,28 @@ async def qualify(
             ),
             timeout=95,
         )
-        if not http_release.is_set() or not http_request_seen.is_set():
-            raise S56PhysicalFailure("L0 never released outstanding HTTP request")
+        if not report["l0_outcome_during_pending_model_call"]:
+            raise S56PhysicalFailure("no qualified L0 while model still in flight")
         last_context = CognitionContext(
             sid, trace[-1].choice.probe_seq, 1, retained.revision,
         )
-        discarded = await asyncio.wait_for(owner.collect_l2(last_context), timeout=12)
-        report["fake_loopback_http_calls"] = len(request_log)
+        try:
+            discarded = await asyncio.wait_for(
+                owner.collect_l2(last_context), timeout=timeout_s + 5,
+            )
+        except (asyncio.TimeoutError, OSError, ValueError) as exc:
+            raise S56PhysicalFailure(
+                "real model did not produce an admissible terminal response"
+            ) from exc
         report["stale_l2_result_discarded"] = discarded is None
-        report["http_response_sent_after_l0"] = http_response_sent.is_set()
-        report["backend_stop_ack"] = not owner.pending_backend_stop
+        report["provider_calls_observed"] = witness.provider_attempt_count
+        report["backend_stop_ack"] = False
+        report["model_call"] = model_result
+        report["local_call_witness"] = {
+            "started": witness.started.is_set(),
+            "finished": witness.finished.is_set(),
+            "completed_after_l0": witness.receipt().proven_overlap,
+        }
         report["ignored_hurt_frames"] = observation_source.ignored_hurt_frames
         report["ignored_non_target_entities"] = observation_source.ignored_non_target_entities
         report["ignored_duplicate_target_updates"] = observation_source.ignored_duplicate_target_updates
@@ -436,20 +473,23 @@ async def qualify(
             or trace[0].asks_for_action
             or host.action_requests != 2
             or host.events != 3
-            or not report["l0_completed_before_fake_http_response"]
+            or not report["l0_outcome_during_pending_model_call"]
             or not report["stale_l2_result_discarded"]
-            or not report["http_response_sent_after_l0"]
-            or report["fake_loopback_http_calls"] != 1
+            or report["provider_calls_observed"] != 1
+            or not witness.receipt().proven_overlap
+            or not witness.finished.is_set()
+            or model_result.get("completion_tokens") is None
+            or model_result.get("prompt_tokens") is None
             or not owner.pending_backend_stop
         ):
             raise S56PhysicalFailure("not three unattended decisions and two real closures")
         report["status"] = "PASS"
         report["classification"] = (
-            "REAL_MINECRAFT_L0_ACTION_BEFORE_FAKE_HTTP_L2_RELEASE_QUALIFIED"
+            "NATIVE_WORLD_AND_LOCAL_MODEL_HTTP_OVERLAP_BACKEND_ID_UNVERIFIED"
         )
         report["stage"] = "CLOSED"
         rc = 0
-    except (S31ABlocked, OSError) as exc:
+    except (S56LocalBlocked, S31ABlocked) as exc:
         report["status"] = "BLOCKED"
         report["error"] = f"{type(exc).__name__}: {exc}"
         print("S56 BLOCKED: " + str(exc), file=sys.stderr)
@@ -460,7 +500,6 @@ async def qualify(
         print("S56 FAIL: " + str(exc), file=sys.stderr)
         rc = 1
     finally:
-        http_release.set()
         if staging is not None:
             staging.cancel()
             try:
@@ -481,11 +520,6 @@ async def qualify(
             rc = 1
         if server is not None:
             report["server_exit"] = server.returncode
-        if httpd is not None:
-            httpd.shutdown()
-            httpd.server_close()
-        if http_thread is not None:
-            http_thread.join(timeout=3)
         if temp is not None:
             temp.cleanup()
         if report["status"] == "PASS" and report.get("server_exit") != 0:
@@ -505,8 +539,18 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--server-log", type=Path, required=True)
+    parser.add_argument("--model", required=True)
+    parser.add_argument("--endpoint", default="http://127.0.0.1:1234/v1/chat/completions")
+    parser.add_argument("--gguf", type=Path, required=True)
+    parser.add_argument("--expected-sha256", required=True)
+    parser.add_argument("--timeout-s", type=float, default=100.0)
+    parser.add_argument("--max-tokens", type=int, default=768)
     args = parser.parse_args()
-    return asyncio.run(qualify(args.report, args.server_log))
+    return asyncio.run(qualify(
+        args.report, args.server_log, model=args.model, endpoint=args.endpoint,
+        gguf=args.gguf, expected_sha256=args.expected_sha256,
+        timeout_s=args.timeout_s, max_tokens=args.max_tokens,
+    ))
 
 
 if __name__ == "__main__":
