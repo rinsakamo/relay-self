@@ -34,9 +34,18 @@ from relay_self.native_event_cognition import (
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Frozen S35 fixture constructs synthetic predecessor Actions using
+# asyncio.run(). Materialize the limited geometries at module import time,
+# BEFORE test scheduler event loops begin; the events themselves are then
+# immutable typed observations safely cloned for every async negative test.
+_SOURCE_EVENTS = {
+    distance: s35._source(distance_m=distance)[0]
+    for distance in (1.5, 2.0, 2.5, 3.5, 5.0, 6.0)
+}
+
 
 def _event(session="s36-session-a", seq=10, distance=2.0, entity_id=None):
-    event, _ = s35._source(distance_m=distance)
+    event = _SOURCE_EVENTS[float(distance)]
     if entity_id is not None:
         entity = replace(event.snapshot.nearby_entities[0], entity_id=entity_id)
         event = replace(event, snapshot=replace(
