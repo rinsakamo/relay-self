@@ -177,7 +177,7 @@ class NormalSessionActionExecutor:
             raise NormalActionRejected("actual Skill/Action proposal absent")
         authorized = proposed.authorize(
             at_ns=t + 1, provenance=propose.provenance,
-            authority=issue.authority_id,
+            authority=propose.authority_id,
         )
         issued = self.supervisor.issue(
             authorized, at_ns=t + 2, deadline_ns=t + 100,
