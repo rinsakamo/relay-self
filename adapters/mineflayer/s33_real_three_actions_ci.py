@@ -16,11 +16,11 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-import test_postmain_two_epoch_continuation as s19
-import test_postmain_second_action_closure as s20
-import test_postmain_skill_terminal_closure as s21
-import test_postmain_skill_exit_routing as s22
 import test_postmain_local_recovery_action as s23
+import test_postmain_second_action_closure as s20
+import test_postmain_skill_exit_routing as s22
+import test_postmain_skill_terminal_closure as s21
+import test_postmain_two_epoch_continuation as s19
 from adapters.mineflayer.action_outcome import interpret_world_consequence
 from adapters.mineflayer.execution import (
     WorldConsequenceStatus,
@@ -389,7 +389,7 @@ def _prepare_second_real(supervisor, commit, intent, closed1, feedback):
         bound, intent, at_ns=31, provenance=action_provenance,
     )
     assert proposed2.events[0].provenance == action_provenance
-    assert skill2.state is SkillState.STARTED
+    assert skill2.state is s20.SkillState.STARTED
     assert proposed2.state is ActionState.PROPOSED
     return {
         "supervisor": supervisor, "commit": commit, "intent": intent,
