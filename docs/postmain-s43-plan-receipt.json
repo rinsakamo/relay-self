@@ -1,0 +1,16 @@
+{
+  "milestone": "S43",
+  "status": "PENDING_CI",
+  "classification": "NOT_QUALIFIED",
+  "base_pr": 379,
+  "base_head": "0b46d6b3c42c43c004ce00e29c571a0cb0821ab6",
+  "qualification_requires": "S43_REPORT.status == PASS",
+  "minimum_exact_head_ci_runs": 2,
+  "physical_world": "GENUINE_MOJANG_JAVA_1.21.8_MINEFLAYER_4.39.0",
+  "experiment": "real third Node revalidated with near bootstrap (NO ACTION); real far zombie event+correlated probe -> explicit WAIT with NO Action; new near zombie event+correlated probe and S35 admission -> new MOVE_AWAY action with S15 movement and S16 OUTCOME; historical unknown unmodified",
+  "fixed": "single third Node session, human intent escape-threat, governed S19 retained risk_weight=4 rev1, exact same S42 PLAN policy WAIT near=8 far=0 MOVE=7",
+  "requirements": "far event < far probe < new near event < new near probe; distinct far/near zombie IDs and request IDs; no Action at far; one independently admitted near Action; existing UNKNOWN never retroclassified",
+  "limits": "S38 requires separate real near bootstrap to revalidate Node source; NOT genuinely far-first sensory exposure; explicitly reversed decision-bearing contrast only. No learned policy/no automatically scheduled distant cognition/no independent order-randomization.",
+  "frozen": "S18_TO_S42_RELAYTHEORY_R6_PAPER2_MAIN40_UNMODIFIED",
+  "s31b_wsl2_reproduction": "SKIPPED"
+}
