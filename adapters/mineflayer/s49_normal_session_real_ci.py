@@ -22,6 +22,7 @@ from adapters.mineflayer.normal_action import (
     NormalActionAuthorization,
     NormalActionStage,
     NormalSessionActionExecutor,
+    NormalWorldL0,
 )
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import (
@@ -52,7 +53,7 @@ from relay_self.execution_binding import (
 )
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
-from relay_self.reactive_l0 import L0ActionGrant, ReactiveL0
+from relay_self.reactive_l0 import L0ActionGrant
 from relay_self.world_conditioned_choice import WorldChoiceKind
 
 
@@ -72,11 +73,20 @@ class NativeObservationOnly:
         self.session = session
         self.started = session.started
         self.ignored_hurt_frames = 0
+        self.ignored_non_target_entities = 0
 
     async def receive(self):
         for _ in range(60):
             frame = await self.session.receive()
             if isinstance(frame, MineflayerObservation):
+                if (
+                    frame.kind == "entities"
+                    and not any(e.name == "zombie" for e in frame.snapshot.nearby_entities)
+                ):
+                    # Other World entities do not trigger *zombie* control,
+                    # but we do not infer that the World is otherwise safe.
+                    self.ignored_non_target_entities += 1
+                    continue
                 return frame
             if isinstance(frame, MineflayerEntityHurt):
                 self.ignored_hurt_frames += 1
@@ -131,7 +141,7 @@ async def qualify(report_path: Path, server_log: Path) -> int:
             "escape-threat", objective="escape near zombie", at_ns=1,
             provenance=source("committed-existing-intent"),
         )
-        host = ReactiveL0(
+        host = NormalWorldL0(
             sid, "escape-threat", retained, max_events=3, max_action_requests=2,
         )
         executor = NormalSessionActionExecutor(sid, intent)
@@ -258,6 +268,7 @@ async def qualify(report_path: Path, server_log: Path) -> int:
             timeout=95,
         )
         report["ignored_hurt_frames"] = observation_source.ignored_hurt_frames
+        report["ignored_non_target_entities"] = observation_source.ignored_non_target_entities
         report["decisions"] = [{
             "event_seq": s.event_seq,
             "entity_id": s.choice.entity_id,
