@@ -148,7 +148,11 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         "real_world_learning": False,
         "retained_origin": "FROZEN_S19_SYNTHETIC_GOVERNED_REV1",
         "s31b_wsl2_reproduction": "SKIPPED",
-        "inflight_unknown_outcome_qualified": False,\n        "third_world_real_event_observed": False,\n        "new_action_independent": False,\n        "prior_unknown_preserved": False,\n        "new_physical_action_terminal": "NOT_ISSUED",
+        "inflight_unknown_outcome_qualified": False,
+        "third_world_real_event_observed": False,
+        "new_action_independent": False,
+        "prior_unknown_preserved": False,
+        "new_physical_action_terminal": "NOT_ISSUED",
     }
     server = collector = None
     session: MineflayerProcessSession | None = None
