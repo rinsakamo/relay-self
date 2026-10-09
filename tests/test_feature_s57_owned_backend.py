@@ -5,6 +5,8 @@ import asyncio
 import hashlib
 import json
 import socket
+import threading
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
@@ -12,6 +14,7 @@ from adapters.mineflayer.s57_owned_llama_backend import (
     OwnedBackendRejected,
     OwnedBackendSpec,
     backend_environment,
+    backend_ready,
     preflight_available_port,
     run_owned_world,
 )
@@ -126,3 +129,58 @@ def test_github_host_cannot_claim_local_backend_even_with_opt_in(
     assert result == 2
     assert receipt["status"] == "BLOCKED"
     assert receipt["owned_backend_started"] is False
+
+
+def test_fake_local_health_probe_never_counts_as_model_attestation():
+    """Unit health transport test, NOT a model execution or GPU test."""
+    class HealthHandler(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            return
+
+        def do_GET(self):
+            body = b'{"status":"ok"}'
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+    class FakeProcess:
+        def poll(self):
+            return None
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), HealthHandler)
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    try:
+        backend_ready(server.server_port, FakeProcess(), timeout_s=2)
+        assert True  # Healthy test socket alone is not GGUF attestation.
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join(timeout=3)
+
+
+def test_untrusted_local_health_redirect_is_rejected_without_following():
+    class Redirect(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            return
+
+        def do_GET(self):
+            self.send_response(302)
+            self.send_header("Location", "https://example.invalid/leave-localhost")
+            self.end_headers()
+
+    class FakeProcess:
+        def poll(self):
+            return None
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Redirect)
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    try:
+        with pytest.raises(OwnedBackendRejected):
+            backend_ready(server.server_port, FakeProcess(), timeout_s=1)
+    finally:
+        server.shutdown()
+        server.server_close()
+        worker.join(timeout=3)
