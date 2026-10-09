@@ -177,13 +177,27 @@ class MemoryView:
             query_work = 1 + len(selected)
             build_work = self.index_build_work
             if mode == "tags_typed_graph":
-                # Graph can *only* decorate already admissible tag hits. It
-                # cannot promote CAUSAL_HYPOTHESIS to OBSERVED.
-                relevant = {ep.episode_id for ep in selected}
-                query_work += sum(
-                    edge.origin in relevant or edge.target in relevant
-                    for edge in self.edges
-                )
+                # Traverse only evidence-qualified association or observed
+                # transition edges. Never infer causality or expand outside
+                # the exact query's applicable World evidence.
+                seed = {ep.episode_id for ep in selected}
+                neighbors: set[str] = set()
+                for edge in self.edges:
+                    if edge.kind not in (
+                        EdgeKind.ASSOCIATED_WITH, EdgeKind.OBSERVED_TRANSITION
+                    ):
+                        continue
+                    if edge.origin in seed:
+                        neighbors.add(edge.target)
+                    if edge.kind is EdgeKind.ASSOCIATED_WITH and edge.target in seed:
+                        neighbors.add(edge.origin)
+                selected = tuple({
+                    ep.episode_id: ep for ep in (
+                        *selected, *(self.by_id[ref] for ref in neighbors)
+                    )
+                    if (ep.cue.a, ep.cue.b) == (a, b)
+                }.values())
+                query_work += len(self.edges) + len(neighbors)
                 build_work += self.edge_build_work
         flags: dict[tuple[int, int, int], set[bool]] = {}
         for ep in selected:
@@ -282,17 +296,13 @@ def distill(
     )
 
 
-def cheap_rule(training: tuple[Episode, ...]) -> tuple[str, int] | None:
-    """Strong cheap comparator: four declared hypotheses, no hidden regime access."""
-    expected: dict[tuple[int, int], int] = {}
-    for ep in training:
-        key = (ep.cue.a, ep.cue.b)
-        if ep.success:
-            if key in expected and expected[key] != ep.action:
-                return None
-            expected[key] = ep.action
-    if len(expected) != 4:
-        return None
+def cheap_rule(
+    world: DeterministicWorld, training: tuple[Episode, ...],
+) -> tuple[str, int] | None:
+    """Strong four-hypothesis cheap comparator on the same qualified evidence."""
+    expected = _derive_paired_success(
+        world, training, session=world.session, revision=world.revision, weather=0
+    )
     candidates = (
         ("constant", 0, lambda a, b: 0),
         ("constant", 1, lambda a, b: 1),
@@ -303,7 +313,6 @@ def cheap_rule(training: tuple[Episode, ...]) -> tuple[str, int] | None:
         fn(a, b) == action for (a, b), action in expected.items()
     )]
     return matches[0] if len(matches) == 1 else None
-
 
 def apply_cheap(rule: tuple[str, int] | None, cue: Cue) -> int | None:
     if rule is None:
@@ -324,7 +333,7 @@ def run_fixture() -> dict[str, object]:
     train = observe_split(world, 0)
     valid = observe_split(world, 1)
     candidate = distill(world, train, valid, session=world.session, revision=0)
-    rule = cheap_rule(train)
+    rule = cheap_rule(world, train)
     edges = tuple(
         TypedEdge(train[i].episode_id, train[i + 1].episode_id,
                   EdgeKind.ASSOCIATED_WITH)
