@@ -99,7 +99,7 @@ def inspect_pinned_source_text(
     control_only = (
         'action != "reasoning_end"' in control_section
         and "unknown control action" in control_section
-        and '"reasoning_end"' in readme
+        and "reasoning_end" in readme
     )
     erase_deferred = (
         "if (slot->is_processing())" in erase_section
