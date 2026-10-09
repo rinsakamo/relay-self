@@ -24,7 +24,6 @@ from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.bounded_native_host_loop import (
     BoundedNativeHostLoop,
     HostCognitionEvent,
-    HostLoopBoundaryError,
     HostLoopBudget,
 )
 from relay_self.native_event_cognition import (
