@@ -87,7 +87,7 @@ async def _real_epoch_one(supervisor, adapter):
             belief,
             candidate_id="belief:zombie-nearby",
             payload_ref="transient:belief:zombie-nearby",
-            s19.provenance=s19.provenance("belief-to-concept"),
+            provenance=s19.provenance("belief-to-concept"),
         ),
         s19.ConceptCriterion(
             criterion_id="supported-nearby",
@@ -103,7 +103,7 @@ async def _real_epoch_one(supervisor, adapter):
         concept,
         state_id="threat:zombie-1",
         extra_variables=(s19.StateVariable("comparison_score", 99),),
-        s19.provenance=s19.provenance("concept-to-prediction"),
+        provenance=s19.provenance("concept-to-prediction"),
     )
     wait_prediction = s19.predict_transition(
         base,
@@ -111,7 +111,7 @@ async def _real_epoch_one(supervisor, adapter):
             rule_id="wait",
             preconditions=(s19.StateVariable("concept", "spatial:nearby_threat"),),
             assignments=(s19.StateVariable("comparison_score", 8),),
-            s19.provenance=s19.provenance("wait"),
+            provenance=s19.provenance("wait"),
         ),
     )
     move_prediction = s19.predict_transition(
@@ -120,7 +120,7 @@ async def _real_epoch_one(supervisor, adapter):
             rule_id="move-away",
             preconditions=(s19.StateVariable("concept", "spatial:nearby_threat"),),
             assignments=(s19.StateVariable("comparison_score", 3),),
-            s19.provenance=s19.provenance("move"),
+            provenance=s19.provenance("move"),
         ),
     )
     plan = s19.select_plan(
@@ -129,13 +129,13 @@ async def _real_epoch_one(supervisor, adapter):
                 wait_prediction,
                 candidate_id="WAIT",
                 feature_keys=("comparison_score",),
-                s19.provenance=s19.provenance("wait-plan"),
+                provenance=s19.provenance("wait-plan"),
             ),
             s19.plan_candidate_from_prediction(
                 move_prediction,
                 candidate_id="MOVE_AWAY",
                 feature_keys=("comparison_score",),
-                s19.provenance=s19.provenance("move-plan"),
+                provenance=s19.provenance("move-plan"),
             ),
         ),
         s19.PlanningCriterion(
@@ -158,10 +158,10 @@ async def _real_epoch_one(supervisor, adapter):
                 ),
                 candidate_ref="MOVE_AWAY",
                 priority=10,
-                s19.provenance=s19.provenance("habit"),
+                provenance=s19.provenance("habit"),
             ),
         ),
-        s19.provenance=s19.provenance("repertoire"),
+        provenance=s19.provenance("repertoire"),
     )
     habit = s19.select_habit(
         repertoire,
@@ -170,7 +170,7 @@ async def _real_epoch_one(supervisor, adapter):
             features=(
                 s19.CueFeature("concept", "spatial:nearby_threat"),
             ),
-            s19.provenance=s19.provenance("cue"),
+            provenance=s19.provenance("cue"),
         ),
     )
     assert habit.selected_candidate_ref == "MOVE_AWAY"
@@ -182,7 +182,7 @@ async def _real_epoch_one(supervisor, adapter):
             criterion_id="route-fail-closed",
             conflict_policy=s19.RouteConflictPolicy.FAIL_CLOSED,
         ),
-        s19.provenance=s19.provenance("route"),
+        provenance=s19.provenance("route"),
     )
     assert route.status is s19.RouteDecisionStatus.AGREED
     control = s19.control_candidate_from_route_decision(route)
@@ -193,7 +193,7 @@ async def _real_epoch_one(supervisor, adapter):
         "escape-threat",
         objective="escape the nearby threat",
         at_ns=1,
-        s19.provenance=s19.provenance("intent"),
+        provenance=s19.provenance("intent"),
     )
     admission_criterion = s19.ExecutionAdmissionCriterion(
         criterion_id="escape-threat-allow-list",
@@ -206,7 +206,7 @@ async def _real_epoch_one(supervisor, adapter):
         route,
         intent,
         admission_criterion,
-        s19.provenance=s19.provenance("admission"),
+        provenance=s19.provenance("admission"),
     )
     assert admission.status is s19.AdmissionDecisionStatus.ADMITTED
 
@@ -218,7 +218,7 @@ async def _real_epoch_one(supervisor, adapter):
         skill_ref="escape-movement",
         action_id="action-move-backward-1",
         action_ref="MOVE_BACKWARD",
-        s19.provenance=s19.provenance("binding"),
+        provenance=s19.provenance("binding"),
     )
     bound = s19.resolve_execution_binding(
         admission,
@@ -227,27 +227,27 @@ async def _real_epoch_one(supervisor, adapter):
         intent,
         admission_criterion,
         binding,
-        s19.provenance=s19.provenance("resolve-binding"),
+        provenance=s19.provenance("resolve-binding"),
     )
     skill, proposed, binding_result = s19.start_and_propose_bound_execution(
         bound,
         intent,
         at_ns=10,
-        s19.provenance=s19.provenance("start-propose"),
+        provenance=s19.provenance("start-propose"),
     )
     assert skill.state is s19.SkillState.STARTED
     assert proposed.state is s19.ActionState.PROPOSED
 
     authorized = proposed.authorize(
         at_ns=11,
-        s19.provenance=s19.provenance("authorize"),
+        provenance=s19.provenance("authorize"),
         authority="s18-explicit-authority",
     )
     issued = supervisor.issue(
         authorized,
         at_ns=12,
         deadline_ns=100,
-        s19.provenance=s19.provenance("issue"),
+        provenance=s19.provenance("issue"),
     )
     assert issued.state is s19.ActionState.ISSUED
 
@@ -262,7 +262,7 @@ async def _real_epoch_one(supervisor, adapter):
         issued,
         binding_result,
         consequence,
-        s19.provenance=s19.provenance("outcome-interpretation"),
+        provenance=s19.provenance("outcome-interpretation"),
     )
     closed = s19.record_interpreted_action_outcome(
         supervisor,
@@ -282,13 +282,13 @@ async def _real_epoch_one(supervisor, adapter):
         required_outcome_disposition=s19.ActionOutcomeDisposition.OUTCOME,
         required_outcome_reason="observed_execution",
         feedback_direction=s19.FeedbackDirection.INCREASE,
-        s19.provenance=s19.provenance("feedback-criterion"),
+        provenance=s19.provenance("feedback-criterion"),
     )
     feedback_interpretation = s19.interpret_action_outcome_as_learning_feedback(
         closed,
         outcome_interpretation,
         feedback_criterion,
-        s19.provenance=s19.provenance("feedback"),
+        provenance=s19.provenance("feedback"),
     )
     assert (
         feedback_interpretation.status
@@ -319,9 +319,9 @@ async def _real_epoch_one(supervisor, adapter):
         s19.LearningUpdateAuthority(
             authority_id="s18-learning-authority",
             target_id="risk_weight",
-            s19.provenance=s19.provenance("learning-authority"),
+            provenance=s19.provenance("learning-authority"),
         ),
-        s19.provenance=s19.provenance("learning-commit"),
+        provenance=s19.provenance("learning-commit"),
     )
 
     assert committed.previous_state.value == 3
