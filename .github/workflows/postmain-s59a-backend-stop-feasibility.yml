@@ -1,0 +1,28 @@
+name: S59-A exact-backend stop feasibility (NO physical request cancellation)
+on:
+  push:
+    branches:
+      - self/postmain-feature-s59a-backend-stop-feasibility-20261009
+  pull_request:
+    branches:
+      - self/postmain-feature-s57-owned-local-llama-backend-20261009
+permissions:
+  contents: read
+jobs:
+  source-audit-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src:${{ github.workspace }}/tests
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+      - name: Verify source audit never fabricates a request-scoped backend stop
+        run: python -m pytest -q tests/test_feature_s59a_stop_source_audit.py
+      - name: Static lint
+        run: |
+          python -m compileall -q adapters/mineflayer/s59a_backend_stop_audit.py
+          ruff check adapters/mineflayer/s59a_backend_stop_audit.py tests/test_feature_s59a_stop_source_audit.py
