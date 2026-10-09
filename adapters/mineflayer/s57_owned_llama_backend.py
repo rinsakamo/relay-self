@@ -121,21 +121,26 @@ def preflight_available_port(port: int) -> None:
 
 
 def backend_environment() -> dict[str, str]:
-    # An inherited LLAMA_ARG_MODEL or LLAMA_ARG_HOST must not silently
-    # override the explicit one-model command-line authority.
-    return {
-        key: value for key, value in os.environ.items()
-        if not key.startswith("LLAMA_ARG_")
-        and key.upper() not in {
-            "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
-            "http_proxy", "https_proxy", "all_proxy", "no_proxy",
-        }
+    """Minimal process environment; never forward API tokens or model overrides."""
+    allowed = {
+        "PATH", "HOME", "USER", "LANG", "LC_ALL", "TZ", "LD_LIBRARY_PATH",
+        "CUDA_VISIBLE_DEVICES", "CUDA_PATH", "CUDA_HOME",
+        "NVIDIA_VISIBLE_DEVICES", "XDG_CACHE_HOME", "OMP_NUM_THREADS",
+        "TMPDIR", "TMP", "TEMP",
     }
+    return {key: value for key, value in os.environ.items() if key in allowed}
+
+
+class _NoHealthRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, request, fp, code, message, headers, newurl):
+        return None
 
 
 def backend_ready(port: int, process: subprocess.Popen[bytes], *,
                   timeout_s: float = 90) -> None:
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    opener = urllib.request.build_opener(
+        urllib.request.ProxyHandler({}), _NoHealthRedirect(),
+    )
     url = f"http://127.0.0.1:{port}/health"
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
