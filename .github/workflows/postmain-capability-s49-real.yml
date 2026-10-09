@@ -28,6 +28,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
       - name: Unmodified Mineflayer version preflight
         run: |
           java -version
