@@ -11,9 +11,9 @@ import test_postmain_source_native_world as s27
 from adapters.mineflayer.s34_native_world_cognition_ci import (
     MAX_GOAL_DISTANCE_M,
     S34EvidenceFailure,
+    _native_epoch_two,
     _native_threat,
     _real_epoch_one,
-    _native_epoch_two,
     _real_skill2_evidence,
 )
 
