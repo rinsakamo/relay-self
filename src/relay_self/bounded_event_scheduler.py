@@ -46,13 +46,15 @@ class EventQueueDisposition(str, Enum):
 class EventSchedulerBudget:
     max_pending: int = 4
     max_epochs_per_batch: int = 2
+    max_total_cognition: int = 4
     max_event_age_seq: int = 16
     max_urgent_burst: int = 2
     per_probe_timeout_s: float = 10.0
 
     def __post_init__(self) -> None:
         for field in (
-            "max_pending", "max_epochs_per_batch", "max_event_age_seq",
+            "max_pending", "max_epochs_per_batch", "max_total_cognition",
+            "max_event_age_seq",
             "max_urgent_burst",
         ):
             value = getattr(self, field)
@@ -202,7 +204,11 @@ class BoundedEventCognitionScheduler:
         dropped = self._drop_stale()
         outcomes: list[SchedulerOutcome] = []
         attempts = 0
-        while self._pending and attempts < self.budget.max_epochs_per_batch:
+        while (
+            self._pending
+            and attempts < self.budget.max_epochs_per_batch
+            and self.total_cognition < self.budget.max_total_cognition
+        ):
             item = self._pop_next()
             attempts += 1
             try:
@@ -237,6 +243,8 @@ class BoundedEventCognitionScheduler:
         This is an event-loop callback entrypoint, not caller-driven explicit
         cognition invocation. No background threads or unbounded retries.
         """
+        if self.total_cognition >= self.budget.max_total_cognition:
+            raise SchedulerResourceExhausted("total cognitive epochs exhausted")
         disposition = self.ingest_native(event)
         if disposition in (EventQueueDisposition.STALE, EventQueueDisposition.FULL):
             return disposition, SchedulerBatch((), 0, self.pending_count, 0)
