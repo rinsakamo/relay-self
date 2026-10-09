@@ -74,6 +74,8 @@ class NativeObservationOnly:
         self.started = session.started
         self.ignored_hurt_frames = 0
         self.ignored_non_target_entities = 0
+        self._admitted_zombie_entities: set[int] = set()
+        self.ignored_duplicate_target_updates = 0
 
     async def receive(self):
         for _ in range(60):
@@ -87,6 +89,17 @@ class NativeObservationOnly:
                     # but we do not infer that the World is otherwise safe.
                     self.ignored_non_target_entities += 1
                     continue
+                if frame.kind == "entities":
+                    zombies = [
+                        e for e in frame.snapshot.nearby_entities if e.name == "zombie"
+                    ]
+                    if len(zombies) == 1:
+                        if zombies[0].entity_id in self._admitted_zombie_entities:
+                            # Same target event may recur when an unrelated
+                            # native item changes. It is not a new stimulus.
+                            self.ignored_duplicate_target_updates += 1
+                            continue
+                        self._admitted_zombie_entities.add(zombies[0].entity_id)
                 return frame
             if isinstance(frame, MineflayerEntityHurt):
                 self.ignored_hurt_frames += 1
@@ -269,6 +282,7 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         )
         report["ignored_hurt_frames"] = observation_source.ignored_hurt_frames
         report["ignored_non_target_entities"] = observation_source.ignored_non_target_entities
+        report["ignored_duplicate_target_updates"] = observation_source.ignored_duplicate_target_updates
         report["decisions"] = [{
             "event_seq": s.event_seq,
             "entity_id": s.choice.entity_id,
