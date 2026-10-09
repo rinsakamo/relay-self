@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+import test_postmain_skill_terminal_closure as s21
 import test_postmain_source_native_world as s27
 from adapters.mineflayer.s34_native_world_cognition_ci import (
     MAX_GOAL_DISTANCE_M,
@@ -87,6 +88,57 @@ def test_exact_native_evidence_is_threaded_into_s19_cognition_not_just_preflight
     assert "project_source_native_threat(" in source
     assert "run_explicit_postfailure_epoch(" in source
     assert callable(_real_skill2_evidence)
+
+
+@pytest.mark.parametrize("distance, expected_status", [
+    (2.0, s21.SkillGoalStatus.VIOLATED),
+    (5.0, s21.SkillGoalStatus.SATISFIED),
+])
+def test_native_post_action2_skill_goal_produces_actual_distance_verdict(
+    distance, expected_status,
+):
+    data, closed2, outcome, *_ = s21._prepared(
+        s21.SkillGoalStatus.VIOLATED
+    )
+    # The synthetic S21 owner/Action history is test scaffolding ONLY.
+    # Goal source is a separate typed MineflayerObservation with its
+    # session matched to the exact second Action outcome.
+    observation = replace(
+        _probe(distance=distance, request_id="s34-goal:unit"),
+        session_id=outcome.session_id,
+        seq=5,
+    )
+    native = _native_threat(observation, "s34-goal:unit")
+    _data, action, interpretation, criterion, evidence, authority = (
+        _real_skill2_evidence(data, closed2, outcome, native, after_seq=4)
+    )
+    assert action is closed2 and interpretation is outcome
+    assert evidence.status is expected_status
+    assert evidence.provenance == observation.provenance
+    assert evidence.session_id == outcome.session_id
+    assessment = s21._assess(data, action, interpretation, criterion, evidence)
+    disposition = s21.SkillTerminalDisposition.FAILED if (
+        expected_status is s21.SkillGoalStatus.VIOLATED
+    ) else s21.SkillTerminalDisposition.SUCCEEDED
+    assert assessment.disposition is disposition
+    assert authority.granted is True
+
+
+def test_goal_stale_seq_and_cross_session_denied_before_skill_commit():
+    data, closed2, outcome, *_ = s21._prepared()
+    obs = _probe(request_id="s34-goal:unit")
+    wrong_session = _native_threat(obs, "s34-goal:unit")
+    with pytest.raises(S34EvidenceFailure):
+        _real_skill2_evidence(
+            data, closed2, outcome, wrong_session, after_seq=4,
+        )
+    same_session_obs = replace(obs, session_id=outcome.session_id, seq=4)
+    with pytest.raises(S34EvidenceFailure):
+        _real_skill2_evidence(
+            data, closed2, outcome,
+            _native_threat(same_session_obs, "s34-goal:unit"),
+            after_seq=4,
+        )
 
 
 def test_static_plan_is_not_fake_dynamic_result():
