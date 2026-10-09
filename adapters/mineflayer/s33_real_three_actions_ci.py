@@ -438,6 +438,9 @@ def _real_skill2_exit(data, action, outcome):
     data, action, outcome, criterion21, evidence21, authority21 = _real_skill2_evidence(
         data, action, outcome, s21.SkillGoalStatus.VIOLATED,
     )
+    terminal = s22.SkillState.FAILED
+    local = s22.LocalPathStatus.AVAILABLE
+    impact = s22.IntentImpact.NOT_CHALLENGED
     if terminal is s22.SkillState.CANCELLED:
         closed = data["skill2"].cancel(
             reason="explicit-caller-cancel", at_ns=42,
