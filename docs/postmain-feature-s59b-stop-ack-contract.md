@@ -14,7 +14,7 @@ ADMITTED -> GENERATING (real progress observed)
          -> SLOT_REUSED (new distinct completion on same PID+slot)
 ```
 
-`NativeStopSubject` must bind: owner session, work ID, completion ID, work generation, backend PID, slot ID, slot generation, World sequence. STOP is impossible until monotonic observed generated tokens progress. Stop authorization is independent of the model's text. A worker ACK must include that exact subject, exact full completion ID, native worker/task identity, native worker provenance, `processed=true` and `slot_released=true`. These strings and values require runtime attestation; a local test can fabricate them, so passing this checker **cannot prove physical stop**.
+`NativeStopSubject` must bind: owner session, work ID, completion ID, work generation, backend PID, native worker task ID, slot ID, slot generation, World sequence. STOP is impossible until monotonic observed generated tokens progress. Stop authorization is independent of the model's text. A worker ACK must include that exact subject, exact full completion ID, **the same** native worker task ID as the subject, native worker provenance, `processed=true` and `slot_released=true`. These strings and values require runtime attestation; a local test can fabricate them, so passing this checker **cannot prove physical stop**.
 
 The same process/slot result is a separate stage. It requires independently observed slot idle with same backend PID and a new different completion ID and increasing slot generation that actually completes tokens. A process restart or whole-backend kill never qualifies request-scoped stop or slot reuse.
 
