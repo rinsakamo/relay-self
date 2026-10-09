@@ -218,8 +218,15 @@ def test_nested_source_mutation_and_future_result_leakage_fail_closed():
         p[field] = content
         with pytest.raises(d3.D3ContractError):
             d3.assert_source_bound(case, p)
-        with pytest.raises(d3.D3ContractError):
-            d3.version_space(p)
+        if field != "pastDirectEpisodes":
+            with pytest.raises(d3.D3ContractError):
+                d3.version_space(p)
+        else:
+            # A structurally valid but forged past record is rejected
+            # by the independent source owner, not by pure shape parsing.
+            assert d3.version_space(p) != d3.version_space(
+                d3.predictor_evidence(case)
+            )
 
 
 def test_forecast_shape_rejects_bool_or_nonbinary_cues_and_observations():
