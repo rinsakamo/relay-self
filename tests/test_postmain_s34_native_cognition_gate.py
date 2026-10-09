@@ -9,6 +9,7 @@ import pytest
 
 import test_postmain_skill_terminal_closure as s21
 import test_postmain_source_native_world as s27
+from adapters.mineflayer.python_protocol import MineflayerAdapterProtocolError
 from adapters.mineflayer.s34_native_world_cognition_ci import (
     MAX_GOAL_DISTANCE_M,
     S34EvidenceFailure,
@@ -58,7 +59,14 @@ def test_threat_gate_fails_closed_for_unsupported_sensor_sources(variant):
             nearby_entities=(), nearby_entities_coverage=coverage))
     elif variant == "incomplete":
         coverage = replace(obs.snapshot.nearby_entities_coverage, truncated=True)
-        obs = replace(obs, snapshot=replace(obs.snapshot, nearby_entities_coverage=coverage))
+        # This malformed truncation fixture is rejected *earlier*, when the
+        # typed protocol snapshot checks max_entities/candidate_count.
+        # It cannot legitimately reach the higher S34 source projection.
+        with pytest.raises(MineflayerAdapterProtocolError):
+            replace(obs, snapshot=replace(
+                obs.snapshot, nearby_entities_coverage=coverage,
+            ))
+        return
     elif variant == "wrong_entity":
         expected_id += 100
     else:
