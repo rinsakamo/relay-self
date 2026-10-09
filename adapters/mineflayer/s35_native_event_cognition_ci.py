@@ -16,7 +16,6 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
 
 import test_postmain_two_epoch_continuation as s19
 from adapters.mineflayer.process_session import MineflayerProcessSession
@@ -29,7 +28,6 @@ from adapters.mineflayer.s31a_real_server_ci import (
     MINECRAFT_VERSION,
     MINEFLAYER_VERSION,
     S31ABlocked,
-    _await_spawn,
     _command,
     _correlated_observe,
     _fetch_official_server,
