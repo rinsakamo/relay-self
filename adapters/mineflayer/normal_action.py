@@ -8,8 +8,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
-
 from adapters.mineflayer.action_outcome import interpret_world_consequence
 from adapters.mineflayer.execution import (
     WorldConsequence,
@@ -19,6 +17,7 @@ from adapters.mineflayer.execution import (
 from adapters.mineflayer.present_projection import project_mineflayer_present
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_outcome import (
     ActionOutcomeDisposition,
