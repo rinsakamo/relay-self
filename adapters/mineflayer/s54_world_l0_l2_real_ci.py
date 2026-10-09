@@ -51,21 +51,20 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     _new_session,
 )
 from relay_self.action import ActionState
-from relay_self.concurrent_cognition import ConcurrentL0L2
-from relay_self.interruption_fence import CognitionContext
 from relay_self.action_supervision import ActionSupervisor
+from relay_self.concurrent_cognition import ConcurrentL0L2
 from relay_self.execution_binding import (
     ExecutionBinding,
     resolve_execution_binding,
 )
 from relay_self.intent import IntentCommitment
+from relay_self.interruption_fence import CognitionContext
 from relay_self.provenance import Provenance
 from relay_self.reactive_l0 import L0ActionGrant
 from relay_self.relay_engine import (
     BoundedChoice,
     BoundedChoiceRequest,
     CognitionMode,
-    DecisionStatus,
 )
 from relay_self.world_conditioned_choice import WorldChoiceKind
 
