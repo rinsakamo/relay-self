@@ -39,6 +39,8 @@ def test_world_outcomes_are_observed_not_presumed():
         world.verify(replace(true, kind="PREDICTED"))
     with pytest.raises(EvidenceError):
         world.verify(replace(true, evidence_digest="forged"))
+    with pytest.raises(EvidenceError):
+        cheap_rule(world, (replace(true, success=False),))
 
 
 def test_retrieval_same_admissible_evidence_and_amortized_cost():
@@ -123,6 +125,8 @@ def test_distillation_requires_independent_qualified_outcomes():
     with pytest.raises(EvidenceError):
         distill(world, train, train, session=world.session, revision=0)
     with pytest.raises(EvidenceError):
+        cheap_rule(world, train[:-1])
+    with pytest.raises(EvidenceError):
         distill(world, train[:-1], valid, session=world.session, revision=0)
     with pytest.raises(EvidenceError):
         distill(world, train, valid[:-1] + (train[0],),
@@ -149,7 +153,7 @@ def test_no_unobserved_action_assumption_or_l2_text_only_qualification():
 def test_cheap_rule_matches_conditional_habit_on_unseen_full_cues():
     world, train, valid = fixture()
     candidate = distill(world, train, valid, session=world.session, revision=0)
-    rule = cheap_rule(train)
+    rule = cheap_rule(world, train)
     assert rule == ("xor", 0)
     for a in (0, 1):
         for b in (0, 1):
