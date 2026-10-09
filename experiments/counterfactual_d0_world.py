@@ -149,6 +149,21 @@ def validate_predictor_evidence(value: object) -> int:
     return k
 
 
+def validate_source_bound_evidence(
+    value: object, *, source_class_k: int,
+) -> int:
+    """Protect a source-bound prior from valid-but-different class substitution.
+
+    Structural JSON validity alone cannot establish origin. The independent
+    source class must come from the trusted Present/Memory provenance.
+    """
+    expected = _require_class(source_class_k)
+    actual = validate_predictor_evidence(value)
+    if actual != expected:
+        raise FixtureContractError("source-bound prior class mismatch")
+    return actual
+
+
 def intervene(source: WorldState, action: str) -> Consequence:
     """One non-mutating do(action) from a preserved pre-action World state."""
     if not isinstance(source, WorldState):
