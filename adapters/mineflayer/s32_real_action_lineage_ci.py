@@ -19,7 +19,6 @@ from typing import Any
 # The frozen S23 test apparatus is deliberately reused as a seeded history.
 # This CI-only harness must be launched with PYTHONPATH including tests/.
 import test_postmain_local_recovery_action as s23
-
 from adapters.mineflayer.action_outcome import interpret_world_consequence
 from adapters.mineflayer.execution import (
     WorldConsequenceStatus,
@@ -35,7 +34,6 @@ from adapters.mineflayer.s31a_real_server_ci import (
     SERVER_HOST,
     SERVER_PORT,
     S31ABlocked,
-    S31AQualificationError,
     _await_spawn,
     _command,
     _correlated_observe,
