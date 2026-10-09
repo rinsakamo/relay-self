@@ -547,3 +547,320 @@ def _real_recovery_prep(data, closed2, outcome2):
     return data, failed, inputs
 
 
+
+async def _new_session() -> MineflayerProcessSession:
+    session = await MineflayerProcessSession.launch(
+        MineflayerLaunchConfig(
+            host=SERVER_HOST, port=SERVER_PORT,
+            username=BOT_USERNAME, version=MINECRAFT_VERSION,
+        ),
+        startup_timeout_s=12,
+    )
+    await _await_spawn(session)
+    return session
+
+
+def _summarize_action(consequence, closed):
+    return {
+        "action_id": closed.action_id,
+        "state": closed.state.value,
+        "world_status": consequence.status.value,
+        "session_id": consequence.session_id,
+        "before_seq": consequence.before_observation.seq,
+        "dispatch_seq": consequence.dispatch_receipt.seq,
+        "cleanup_seq": consequence.cleanup_receipt.seq,
+        "after_seq": consequence.after_observation.seq,
+        "movement_distance_m": consequence.movement_distance,
+        "source_provenance": consequence.after_observation.provenance.reference,
+    }
+
+
+async def qualify(report_path: Path, server_log: Path) -> int:
+    report: dict[str, Any] = {
+        "milestone": "S33",
+        "status": "BLOCKED",
+        "stage": "START",
+        "classification": "NOT_QUALIFIED",
+        "minecraft_version": MINECRAFT_VERSION,
+        "mineflayer_version": MINEFLAYER_VERSION,
+        "session_count": 0,
+        "real_actions": [],
+        "action1_learning_source": "UNDETERMINED",
+        "first_external_threat_input": "FROZEN_STRUCTURED_TEST_INPUT_NOT_REAL_SENSOR",
+        "second_epoch_external_threat_input": "FROZEN_STRUCTURED_TEST_INPUT_NOT_REAL_SENSOR",
+        "skill2_failure_goal_evidence": "CALLER_FIXED_VIOLATED_NOT_REAL_WORLD_GOAL_EVALUATION",
+        "automatic_action4_issued": False,
+        "autonomous_epoch_reentry": False,
+        "cryptographic_world_attestation": False,
+        "local_codex_s31b": "SKIPPED",
+    }
+    server = None
+    collector = None
+    tmp: tempfile.TemporaryDirectory[str] | None = None
+    session: MineflayerProcessSession | None = None
+    exit_code = 2
+    try:
+        if os.environ.get("S33_REAL_SERVER_CI") != "1":
+            raise S31ABlocked("S33_REAL_SERVER_CI=1 required")
+        if os.environ.get("NODE_OPTIONS"):
+            raise S31ABlocked("Node test preload forbidden")
+        report["stage"] = "OFFICIAL_SERVER_DOWNLOAD"
+        tmp = tempfile.TemporaryDirectory(prefix="relay-self-s33-")
+        root = Path(tmp.name)
+        metadata = await asyncio.to_thread(
+            _fetch_official_server, root / "minecraft-server.jar",
+        )
+        report.update(metadata)
+        _write_config(root)
+        report["stage"] = "JAVA_SERVER_START"
+        server, collector, _ = await _ready_server(
+            root, root / "minecraft-server.jar", server_log,
+        )
+
+        # 1: the S19 first structured threat input remains a bounded fixture.
+        # Real MOVE_BACKWARD supplies physical Action1 outcome; it is NOT
+        # replaced by the synthetic S19 FakeSession.
+        report["stage"] = "ACTION1_REAL_AND_GOVERNED_LEARNING"
+        session = await _new_session()
+        supervisor = ActionSupervisor()
+        commit, intent, closed1, feedback1, consequence1, issued1, skill1 = (
+            await _real_epoch_one(supervisor, session)
+        )
+        if consequence1.session_id != session.started.session_id:
+            raise S33EvidenceFailure("Action1 session mismatch")
+        if (
+            closed1.state is not ActionState.OUTCOME
+            or supervisor.get(closed1.action_id) is not closed1
+            or commit.previous_state.value != 3
+            or commit.previous_state.revision != 0
+            or commit.new_state.value != 4
+            or commit.new_state.revision != 1
+            or feedback1.feedback is None
+        ):
+            raise S33EvidenceFailure("Action1 real outcome/learning commit invalid")
+        session_id1 = session.started.session_id
+        report["real_actions"].append(_summarize_action(consequence1, closed1))
+        report["action1_learning_source"] = "REAL_ACTION1_OUTCOME_TO_S19_FEEDBACK_COMMIT"
+        report["retained"] = {
+            "before_value": commit.previous_state.value,
+            "before_revision": commit.previous_state.revision,
+            "after_value": commit.new_state.value,
+            "after_revision": commit.new_state.revision,
+            "feedback_id": feedback1.feedback.feedback_id,
+            "feedback_action_id": closed1.action_id,
+        }
+        await session.shutdown(timeout_s=10)
+        if session.process_returncode != 0:
+            raise S33EvidenceFailure("Action1 bridge did not close cleanly")
+        report["session_count"] = 1
+        session = None
+
+        # 2: only NOW the actual learning owner snapshot may drive a new
+        # explicit cognitive epoch and independent Action2 admission/issue.
+        report["stage"] = "ACTION2_REAL_WITH_RETAINED_READ"
+        data = _prepare_second_real(
+            supervisor, commit, intent, closed1, feedback1,
+        )
+        if (
+            data["lineage"].committed_revision != 1
+            or data["values"]["plan"].selected.candidate_id != "MOVE_AWAY"
+            or data["commit"] is not commit
+            or data["closed1"] is not closed1
+        ):
+            raise S33EvidenceFailure("Action2 did not derive from real Action1 retention")
+        _authorized2, issued2 = s20._issue_second(data)
+        session = await _new_session()
+        if session.started.session_id == session_id1:
+            raise S33EvidenceFailure("Action2 reused Action1 session UUID")
+        command2 = build_mineflayer_command(issued2, data["binding_result2"])
+        consequence2 = await execute_mineflayer_command(
+            session, command2, timeout_s=9,
+            provenance=s20.p("s33-real-world2-consequence"),
+        )
+        if consequence2.status is not WorldConsequenceStatus.EXECUTED:
+            raise S33EvidenceFailure("Action2 did not execute physical movement")
+        require_fresh_second_consequence(
+            supervisor, issued2, data["binding_result2"], consequence2,
+            expected_session_id=session.started.session_id,
+            first_session_id=session_id1,
+            at_ns=40,
+        )
+        outcome2 = interpret_world_consequence(
+            issued2, data["binding_result2"], consequence2,
+            provenance=s20.p("s33-real-world2-outcome-interpretation"),
+        )
+        closed2 = record_interpreted_action_outcome(
+            supervisor, outcome2, at_ns=40,
+        )
+        if supervisor.get(closed2.action_id) is not closed2:
+            raise S33EvidenceFailure("Action2 supervisor did not own OUTCOME")
+        session_id2 = session.started.session_id
+        report["real_actions"].append(_summarize_action(consequence2, closed2))
+        report["action2_retained_revision"] = data["lineage"].committed_revision
+        await session.shutdown(timeout_s=10)
+        if session.process_returncode != 0:
+            raise S33EvidenceFailure("Action2 bridge did not close cleanly")
+        report["session_count"] = 2
+        session = None
+
+        # 3: explicit separate Skill2 FAILED route comes from the existing
+        # *caller-fixed* S21 goal-violation criterion. Although Action2 is
+        # physical, the goal failure is not independently sensed from World.
+        report["stage"] = "ACTION3_REAL_RECOVERY_AND_POST_ACTION_WORLD"
+        data, failed_skill, inputs = _real_recovery_prep(
+            data, closed2, outcome2,
+        )
+        proposed3, binding3, _handoff = s23._propose(inputs)
+        _authorized3, issued3 = s23._issue(data, proposed3)
+        session = await _new_session()
+        if session.started.session_id in {session_id1, session_id2}:
+            raise S33EvidenceFailure("Action3 session UUID not distinct")
+        command3 = build_mineflayer_command(issued3, binding3)
+        consequence3 = await execute_mineflayer_command(
+            session, command3, timeout_s=9,
+            provenance=s23.p("s33-real-world3-consequence"),
+        )
+        if consequence3.status is not WorldConsequenceStatus.EXECUTED:
+            raise S33EvidenceFailure("Action3 not physically EXECUTED")
+        outcome3 = interpret_world_consequence(
+            issued3, binding3, consequence3,
+            provenance=s23.p("s33-real-world3-outcome-interpretation"),
+        )
+        closed3 = record_interpreted_action_outcome(
+            supervisor, outcome3, at_ns=60,
+        )
+        if (
+            closed3.state is not ActionState.OUTCOME
+            or supervisor.get(closed3.action_id) is not closed3
+        ):
+            raise S33EvidenceFailure("Action3 not supervised OUTCOME")
+        report["real_actions"].append(_summarize_action(consequence3, closed3))
+        report["session_count"] = 3
+        report["stage"] = "FRESH_REAL_ZOMBIE_POST_ACTION3"
+        _command(server, "gamerule doMobSpawning false")
+        _command(server, "time set midnight")
+        _command(
+            server, "execute at RelaySelf run summon minecraft:zombie ~2 ~ ~ "
+            "{NoAI:1b,Silent:1b,PersistenceRequired:1b}",
+        )
+        assert server.stdin is not None
+        await server.stdin.drain()
+        observed = None
+        target = None
+        for attempt in range(5):
+            await asyncio.sleep(2)
+            candidate = await _correlated_observe(
+                session, f"s33-after-action3:{attempt:03d}",
+            )
+            target = _verified_target(candidate)
+            if target is not None:
+                observed = candidate
+                break
+        if observed is None or target is None:
+            raise S33EvidenceFailure("actual new zombie not observed")
+        if (
+            observed.session_id != consequence3.session_id
+            or consequence3.after_observation is None
+            or observed.seq <= consequence3.after_observation.seq
+        ):
+            raise S33EvidenceFailure("fresh post-Action3 session lineage failed")
+        report["target"] = target
+        receipt = project_source_native_threat(
+            supervisor, closed3, consequence3, observed,
+            target_entity_id=target["entity_id"],
+            target_name="zombie",
+            observed_at_ns=65, inspected_at_ns=67, max_age_ns=5,
+        )
+        report["s27"] = {
+            "evidence_id": receipt.evidence.evidence_id,
+            "distance_cm": receipt.evidence.threat_clearance_cm,
+            "parent_action": receipt.evidence.action_id,
+            "parent_after_seq": receipt.parent_after_seq,
+            "fresh_seq": observed.seq,
+            "session_id": observed.session_id,
+        }
+        trace = run_explicit_postfailure_epoch(
+            supervisor, closed3, consequence3,
+            inputs["recovery_skill"], intent, commit.new_state,
+            receipt.evidence, at_ns=70,
+            provenance=s23.p("s33-explicit-third-epoch"),
+        )
+        report["s24"] = {
+            "selected_candidate": trace.selected_candidate,
+            "admission_status": trace.admission_status.value,
+            "retained_revision": trace.retained_revision,
+            "wait_score": trace.wait_score,
+            "move_score": trace.move_score,
+        }
+        if (
+            trace.selected_candidate != "WAIT"
+            or trace.admission_status.value != "admitted"
+            or trace.retained_revision != 1
+            or len({a["session_id"] for a in report["real_actions"]}) != 3
+            or supervisor.open_actions != ()
+            or failed_skill.state.value != "failed"
+            or inputs["recovery_skill"].state.value != "started"
+            or skill1.state.value != "started"
+        ):
+            raise S33EvidenceFailure("3-action retained/Skill/World qualification failed")
+        await session.shutdown(timeout_s=10)
+        if session.process_returncode != 0:
+            raise S33EvidenceFailure("Action3 bridge did not close cleanly")
+        session = None
+        report["stage"] = "SUCCESS"
+        report["status"] = "PASS"
+        report["classification"] = (
+            "THREE_REAL_ACTIONS_REAL_ACTION1_LEARNING_WITH_FIXED_THREAT_INPUTS_QUALIFIED"
+        )
+        exit_code = 0
+    except (S31ABlocked, OSError) as exc:
+        report["status"] = "BLOCKED"
+        report["error"] = str(exc)
+        exit_code = 2
+        print(f"S33 BLOCKED at {report['stage']}: {exc}", file=sys.stderr)
+    except Exception as exc:
+        report["status"] = "FAIL"
+        report["error"] = f"{type(exc).__name__}: {exc}"
+        exit_code = 1
+        print(f"S33 FAIL at {report['stage']}: {exc}", file=sys.stderr)
+    finally:
+        if session is not None:
+            try:
+                await session.shutdown(timeout_s=10)
+            except Exception as exc:
+                report["bridge_shutdown_error"] = str(exc)
+                await session.terminate()
+        try:
+            await _shutdown_server(server, collector)
+        except Exception as exc:
+            report["server_shutdown_error"] = str(exc)
+            exit_code = 1
+        if server is not None:
+            report["server_exit_code"] = server.returncode
+        if tmp is not None:
+            tmp.cleanup()
+        if report["status"] == "PASS" and report.get("server_exit_code") != 0:
+            report["status"] = "FAIL"
+            report["classification"] = "TEARDOWN_FAILED_NOT_QUALIFIED"
+            report["stage"] = "TEARDOWN"
+            report["error"] = "server did not exit with zero"
+            exit_code = 1
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(
+            json.dumps(report, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        print("S33_REPORT=" + json.dumps(report, sort_keys=True))
+    return exit_code
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--server-log", type=Path, required=True)
+    args = parser.parse_args()
+    return asyncio.run(qualify(args.report, args.server_log))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
