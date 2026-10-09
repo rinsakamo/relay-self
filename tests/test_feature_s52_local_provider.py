@@ -10,6 +10,7 @@ from adapters.mineflayer.local_chat_provider import (
     LoopbackChatProvider,
     LoopbackInferenceConfig,
 )
+from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     BoundedChoice,
     BoundedChoiceRequest,
@@ -18,7 +19,6 @@ from relay_self.relay_engine import (
     DecisionStatus,
     OpenCognitionRequest,
 )
-from relay_self.provenance import Provenance
 
 
 @pytest.mark.parametrize("url", (
