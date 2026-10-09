@@ -214,8 +214,18 @@ async def qualify(report_path: Path, server_log: Path) -> int:
                 ticket.correlated_probe, ticket.probe_request_id,
                 expected_entity_id=ticket.candidate.target_entity_id,
             )
+            # S41 epoch 3 is a fresh stateless cognitive computation.
+            # The historical Action owner already advanced to t=40 for
+            # S40 UNKNOWN and may NEVER be rewound to the frozen S19
+            # cognition-planning t=30. This local supervisor owns NO Action;
+            # all new S41 physical issuance stays on the same original owner.
+            decision_owner = (
+                ActionSupervisor()
+                if fence.host.total_epochs >= 2
+                else supervisor
+            )
             values, epoch = _native_epoch_two(
-                supervisor, intent, committed.new_state,
+                decision_owner, intent, committed.new_state,
                 committed.new_state, expected_revision=1, native=native,
             )
             if (
