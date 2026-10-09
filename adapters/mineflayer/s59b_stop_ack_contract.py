@@ -22,6 +22,7 @@ class NativeStopSubject:
     completion_id: str
     work_generation: int
     backend_pid: int
+    native_task_id: int
     slot_id: int
     slot_generation: int
     world_seq: int
@@ -42,6 +43,8 @@ class NativeStopSubject:
             or self.slot_generation == 0
             or type(self.backend_pid) is not int
             or self.backend_pid <= 0
+            or type(self.native_task_id) is not int
+            or self.native_task_id <= 0
         ):
             raise NativeStopRejected("complete exact request/session/PID/slot binding required")
 
@@ -157,6 +160,7 @@ class NativeStopLedger:
             or not isinstance(ack, NativeStopAck)
             or ack.subject != self.subject
             or ack.acknowledged_request_id != self.subject.completion_id
+            or ack.native_task_id != self.subject.native_task_id
             or not ack.processed
             or not ack.slot_released
         ):
@@ -226,6 +230,7 @@ class NativeStopLedger:
             "work_generation": self.subject.work_generation,
             "slot_generation": self.subject.slot_generation,
             "backend_pid": self.subject.backend_pid,
+            "native_task_id": self.subject.native_task_id,
             "generated_tokens_observed_before_stop": self.generated_before_stop,
             "stop_request_recorded": self.stop_request_ns is not None,
             "native_worker_ack_recorded": self.native_ack is not None,
