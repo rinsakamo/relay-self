@@ -4,9 +4,18 @@ from dataclasses import replace
 import pytest
 
 from experiments.ac_b_memory_distillation import (
-    Cue, DeterministicWorld, EdgeKind, EvidenceError, HabitCandidate,
-    MemoryView, RetrievalStatus, TypedEdge, apply_cheap, cheap_rule,
-    distill, observe_split, run_fixture,
+    Cue,
+    DeterministicWorld,
+    EdgeKind,
+    EvidenceError,
+    MemoryView,
+    RetrievalStatus,
+    TypedEdge,
+    apply_cheap,
+    cheap_rule,
+    distill,
+    observe_split,
+    run_fixture,
 )
 
 
