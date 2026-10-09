@@ -111,7 +111,9 @@ def test_uncertain_loss_negative_controls_fail_without_owner_transition(variant)
     elif variant == "rejected_dispatch":
         consequence = replace(
             consequence,
-            dispatch_receipt=replace(consequence.dispatch_receipt, result="rejected"),
+            dispatch_receipt=replace(
+                consequence.dispatch_receipt, result="rejected", error="denied",
+            ),
         )
     elif variant == "post_after_exists":
         consequence = replace(consequence, after_observation=replace(
