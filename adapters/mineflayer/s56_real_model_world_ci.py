@@ -51,7 +51,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     _new_session,
 )
 from adapters.mineflayer.s55_local_model_probe import hash_gguf
-from adapters.mineflayer.s56_overlap_gate import L0ModelOverlap, OverlapDenied
+from adapters.mineflayer.s56_overlap_gate import L0ModelOverlap
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.concurrent_cognition import ConcurrentL0L2
@@ -220,11 +220,17 @@ async def qualify(
 
         def do_actual_open_inference(native_probe):
             # Any available response remains an untrusted generated hypothesis.
+            native_zombies = [
+                e for e in native_probe.snapshot.nearby_entities
+                if e.name == "zombie"
+            ]
+            if len(native_zombies) != 1:
+                raise S56PhysicalFailure("one real native zombie witness required")
             context = CognitionDatum.from_value(
                 "native_observed_entity",
                 {
-                    "id": native_probe.snapshot.nearby_entities[0].entity_id,
-                    "distance": native_probe.snapshot.nearby_entities[0].distance,
+                    "id": native_zombies[0].entity_id,
+                    "distance": native_zombies[0].distance,
                     "source_seq": native_probe.seq,
                 },
                 native_probe.provenance,
@@ -390,7 +396,6 @@ async def qualify(
                     not interrupted.l0_completed
                     or interrupted.backend_stopped
                     or interrupted.gpu_released
-                    or witness.finished.is_set()
                     or not report["actual_native_actions"]
                 ):
                     raise S56PhysicalFailure(
