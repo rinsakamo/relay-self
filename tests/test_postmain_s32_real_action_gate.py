@@ -36,7 +36,10 @@ def test_s32_requires_explicit_distinct_new_correlated_id():
     assert "record_interpreted_action_outcome(" in source
     assert "project_source_native_threat(" in source
     assert "run_explicit_postfailure_epoch(" in source
-    assert "s23._prepare_recovery()" in source
+    # The frozen synthetic predecessor fixture uses asyncio.run internally;
+    # S32 isolates it in a worker thread while the real-world loop is active.
+    assert "asyncio.to_thread(" in source
+    assert "s23._prepare_recovery" in source
 
 
 def test_offline_exact_S23_ancestry_projects_separate_source_evidence():
