@@ -11,7 +11,6 @@ import pytest
 
 from experiments import counterfactual_d4_cost_world as d4
 
-
 COUNTS = {
     "I_AND": (1, "IDENTIFIED", "DIRECT"),
     "I_NAND": (1, "IDENTIFIED", "DETOUR"),
