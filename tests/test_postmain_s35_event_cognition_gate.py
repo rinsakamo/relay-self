@@ -152,10 +152,11 @@ def test_admitted_event_can_run_existing_cognition_without_action_issue():
         "escape-threat", objective="escape the nearby threat",
         at_ns=1, provenance=s19.provenance("s35-offline-intent"),
     )
-    retained = s19.LearningPreferenceState(
-        target_id="risk_weight", value=4, minimum=0, maximum=10, revision=1,
-        origin_provenance=s19.provenance("s35-offline-caller-seeded-retention"),
-    )
+    # A rev1 read requires the real governed-commit record from the
+    # frozen S19 deterministic history, not a fabricated revision field.
+    past_supervisor, committed, _intent, closed, _feedback, _result = s19._epoch_one()
+    assert past_supervisor.get(closed.action_id) is closed
+    retained = committed.new_state
     outputs, epoch = _native_epoch_two(
         supervisor, intent, retained, retained,
         expected_revision=1, native=native,
