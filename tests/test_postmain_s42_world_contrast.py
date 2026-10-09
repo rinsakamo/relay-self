@@ -88,9 +88,9 @@ def test_malformed_source_or_retained_cannot_adjudicate(variant):
     elif variant == "native-distance-lie":
         near = replace(near, distance_m=7.0)
     elif variant == "stale-revision":
-        retained = replace(retained, revision=0)
+        retained = replace(retained, revision=0, last_update=None)
     elif variant == "altered-value":
-        retained = replace(retained, value=3)
+        retained = replace(retained, value=3, last_update=None)
     with pytest.raises(WorldChoiceRejected):
         select_world_conditioned_choice(
             near, retained, expected_session_id=sid, expected_entity_id=eid,
