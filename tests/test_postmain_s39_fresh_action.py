@@ -52,7 +52,7 @@ def _grant(event, purpose="PROPOSE", *, granted=True):
 
 def _scenario():
     async def run():
-        _past, committed, _, _, _, _ = s19._epoch_one()
+        _past, committed, _, _, _, _ = await asyncio.to_thread(s19._epoch_one)
         supervisor = ActionSupervisor()
         intent = s19.IntentCommitment()
         intent.commit(
