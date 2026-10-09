@@ -19,9 +19,9 @@ from relay_self.learning import LearningPreferenceState
 from relay_self.planning import (
     PlanCandidate,
     PlanFeature,
-    PlanSelectionStatus,
     PlanningCriterion,
     PlanningDirection,
+    PlanSelectionStatus,
     select_plan,
 )
 from relay_self.provenance import Provenance
