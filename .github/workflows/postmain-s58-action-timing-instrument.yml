@@ -1,0 +1,28 @@
+name: S58 every-Action journal instrument-only (NOT physical timing qualification)
+on:
+  push:
+    branches:
+      - self/postmain-feature-s58-all-action-timing-20261009
+  pull_request:
+    branches:
+      - self/postmain-feature-s57-owned-local-llama-backend-20261009
+permissions:
+  contents: read
+jobs:
+  timing-instrument-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src:${{ github.workspace }}/tests
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+      - name: Require two separate durable Action outcomes without physical replays
+        run: python -m pytest -q tests/test_feature_s58_action_timing.py
+      - name: Lint S58 instrument and touched native paths
+        run: |
+          python -m compileall -q adapters/mineflayer/s58_action_timing.py adapters/mineflayer/s56_real_model_world_ci.py adapters/mineflayer/s57_owned_llama_backend.py
+          ruff check adapters/mineflayer/s58_action_timing.py adapters/mineflayer/s56_real_model_world_ci.py adapters/mineflayer/s57_owned_llama_backend.py tests/test_feature_s58_action_timing.py

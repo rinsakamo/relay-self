@@ -52,6 +52,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
 )
 from adapters.mineflayer.s55_local_model_probe import hash_gguf
 from adapters.mineflayer.s56_overlap_gate import L0ModelOverlap
+from adapters.mineflayer.s58_action_timing import ActionKey, ActionTimingJournal
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.concurrent_cognition import ConcurrentL0L2
@@ -136,6 +137,7 @@ async def qualify(
     report_path: Path, server_log: Path, *,
     model: str, endpoint: str, gguf: Path, expected_sha256: str,
     timeout_s: float, max_tokens: int,
+    action_timing_jsonl: Path | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S56", "stage": "START", "status": "BLOCKED",
@@ -158,6 +160,7 @@ async def qualify(
         "auto_crash_recovery": False,
     }
     server = collector = session = staging = temp = None
+    journal: ActionTimingJournal | None = None
     witness = L0ModelOverlap()
     model_result: dict[str, object] = {}
     owner = ConcurrentL0L2()
@@ -200,6 +203,11 @@ async def qualify(
         session = await _new_session()
         sid = session.started.session_id
         report["session_id"] = sid
+        if action_timing_jsonl is not None:
+            # Only new S58 opt-in flows allocate immutable append-only output.
+            journal = ActionTimingJournal(
+                action_timing_jsonl, session_id=sid, max_actions=2,
+            )
         _, committed, _, _, _, _ = await asyncio.to_thread(s19._epoch_one)
         retained = committed.new_state
         if retained.target_id != "risk_weight" or retained.revision != 1 or retained.value != 4:
@@ -331,18 +339,50 @@ async def qualify(
                 intent, values["policies"][-2], binding,
                 provenance=source(f"admitted-{step.event_seq}"),
             )
-            receipt = await executor.execute(
-                session, step, bound, probe,
-                authorize(step, NormalActionStage.PROPOSE),
-                authorize(step, NormalActionStage.ISSUE),
-            )
-            if (
-                receipt.terminal.state is not ActionState.OUTCOME
-                or receipt.consequence.status is not WorldConsequenceStatus.EXECUTED
-                or receipt.consequence.movement_distance is None
-                or receipt.consequence.movement_distance < 0.05
-            ):
-                raise S56PhysicalFailure("World movement or existing S16 OUTCOME absent")
+            action_key = None
+            if journal is not None:
+                if step.grant is None:
+                    raise S56PhysicalFailure("journal requires independent L0 grant")
+                action_key = ActionKey(
+                    session_id=sid, action_id=step.action_request_id,
+                    grant_authority_id=step.grant.authority_id,
+                    event_seq=step.event_seq, probe_seq=step.choice.probe_seq,
+                    entity_id=step.choice.entity_id,
+                )
+                journal.begin(action_key)
+            try:
+                receipt = await executor.execute(
+                    session, step, bound, probe,
+                    authorize(step, NormalActionStage.PROPOSE),
+                    authorize(step, NormalActionStage.ISSUE),
+                )
+                if (
+                    receipt.terminal.state is not ActionState.OUTCOME
+                    or receipt.consequence.status is not WorldConsequenceStatus.EXECUTED
+                    or receipt.consequence.movement_distance is None
+                    or receipt.consequence.movement_distance < 0.05
+                ):
+                    raise S56PhysicalFailure(
+                        "World movement or existing S16 OUTCOME absent"
+                    )
+                if journal is not None and action_key is not None:
+                    journal.outcome(
+                        action_key, terminal_action_id=receipt.terminal.action_id,
+                        terminal_outcome=receipt.terminal.state is ActionState.OUTCOME,
+                        physical_movement_m=receipt.consequence.movement_distance,
+                        source_session_id=receipt.consequence.session_id,
+                    )
+            except (Exception, asyncio.CancelledError) as exc:
+                if (
+                    journal is not None and action_key is not None
+                    and action_key.action_id in journal.started
+                    and action_key.action_id not in journal.closed
+                    and action_key.action_id not in journal.incomplete
+                ):
+                    journal.incomplete_action(
+                        action_key, error_type=type(exc).__name__,
+                    )
+                raise
             report["actual_native_actions"].append({
                 "action": receipt.terminal.action_id,
                 "terminal": receipt.terminal.state.value,
@@ -466,6 +506,13 @@ async def qualify(
             "selected": s.choice.selection.value,
             "issued": s.asks_for_action,
         } for s in trace]
+        if journal is not None:
+            recorded = journal.summary(required=2)
+            if recorded["action_ids"] != [
+                s.action_request_id for s in trace if s.asks_for_action
+            ]:
+                raise S56PhysicalFailure("journal Action order differs from native trace")
+            report["s58_action_timing"] = recorded
         if (
             len(trace) != 3
             or [s.choice.selection.value for s in trace]
@@ -505,6 +552,8 @@ async def qualify(
         print("S56 FAIL: " + str(exc), file=sys.stderr)
         rc = 1
     finally:
+        if journal is not None:
+            journal.close()
         if staging is not None:
             staging.cancel()
             try:

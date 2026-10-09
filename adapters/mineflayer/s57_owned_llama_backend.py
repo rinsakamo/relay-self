@@ -187,7 +187,8 @@ def terminate_owned_process(process: subprocess.Popen[bytes]) -> int | None:
 async def run_owned_world(spec: OwnedBackendSpec, *,
                           report_file: Path, server_log: Path,
                           backend_log: Path,
-                          timeout_s: float = 100) -> int:
+                          timeout_s: float = 100,
+                          action_timing_jsonl: Path | None = None) -> int:
     receipt: dict[str, object] = {
         "milestone": "S57", "status": "BLOCKED",
         "classification": "OWNED_LOCAL_BACKEND_PHYSICAL_QUALIFICATION_PENDING",
@@ -236,6 +237,7 @@ async def run_owned_world(spec: OwnedBackendSpec, *,
                 endpoint=f"http://127.0.0.1:{spec.port}/v1/chat/completions",
                 gguf=spec.gguf, expected_sha256=spec.gguf_sha256,
                 timeout_s=timeout_s, max_tokens=768,
+                action_timing_jsonl=action_timing_jsonl,
             )
         finally:
             if previous is None:
@@ -244,6 +246,13 @@ async def run_owned_world(spec: OwnedBackendSpec, *,
                 os.environ["S56_LOCAL_REAL_MODEL"] = previous
         receipt["s56_report_generated"] = inner_report.is_file()
         receipt["s56_exit_code"] = result_code
+        if action_timing_jsonl is not None and inner_report.is_file():
+            inner_receipt = json.loads(inner_report.read_text(encoding="utf-8"))
+            receipt["s58_action_timing"] = inner_receipt.get("s58_action_timing")
+            if result_code == 0 and receipt["s58_action_timing"] is None:
+                raise OwnedBackendRejected(
+                    "requested every-Action timestamp receipt was not produced"
+                )
         receipt["native_world_actual_model_overlap_pass"] = result_code == 0
         if result_code != 0:
             receipt["classification"] = "OWNED_BACKEND_WORLD_MODEL_GATE_NOT_QUALIFIED"
@@ -293,6 +302,7 @@ def main() -> int:
     p.add_argument("--report", type=Path, required=True)
     p.add_argument("--server-log", type=Path, required=True)
     p.add_argument("--backend-log", type=Path, required=True)
+    p.add_argument("--action-timing-jsonl", type=Path)
     args = p.parse_args()
     try:
         spec = OwnedBackendSpec(
@@ -311,6 +321,7 @@ def main() -> int:
     return asyncio.run(run_owned_world(
         spec, report_file=args.report, server_log=args.server_log,
         backend_log=args.backend_log, timeout_s=args.timeout_s,
+        action_timing_jsonl=args.action_timing_jsonl,
     ))
 
 
