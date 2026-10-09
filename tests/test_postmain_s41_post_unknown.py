@@ -9,7 +9,6 @@ import pytest
 
 import test_postmain_s40_inflight_loss as s40
 import test_postmain_two_epoch_continuation as s19
-from adapters.mineflayer.process_session import MineflayerProcessEnded
 from relay_self.action import ActionState, InvalidTransition
 from relay_self.execution_binding import ExecutionBinding
 from relay_self.post_unknown_continuation import (
