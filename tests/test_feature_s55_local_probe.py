@@ -8,12 +8,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
+from adapters.mineflayer.local_chat_provider import LocalInferenceUnavailable
 from adapters.mineflayer.s55_local_model_probe import (
     InvalidLocalQualification,
     hash_gguf,
     qualify,
 )
-from adapters.mineflayer.local_chat_provider import LocalInferenceUnavailable
 
 
 def test_gguf_hash_does_not_qualify_runtime_model(tmp_path):
