@@ -261,10 +261,18 @@ async def run_owned_world(spec: OwnedBackendSpec, *,
         code = 2 if isinstance(exc, OwnedBackendRejected) else 1
     finally:
         if proc is not None:
-            receipt["backend_process_exit_code"] = await asyncio.to_thread(
-                terminate_owned_process, proc,
-            )
-            receipt["backend_process_terminated"] = proc.poll() is not None
+            try:
+                receipt["backend_process_exit_code"] = await asyncio.to_thread(
+                    terminate_owned_process, proc,
+                )
+                receipt["backend_process_terminated"] = proc.poll() is not None
+            except (OSError, subprocess.TimeoutExpired) as exc:
+                receipt["backend_process_terminated"] = False
+                receipt["backend_cleanup_error_type"] = type(exc).__name__
+            if not receipt.get("backend_process_terminated", False):
+                receipt["status"] = "FAIL"
+                receipt["classification"] = "OWNED_BACKEND_TERMINATION_UNVERIFIED"
+                code = 1
         report_file.parent.mkdir(parents=True, exist_ok=True)
         report_file.write_text(json.dumps(receipt, sort_keys=True, indent=2) + "\n")
         print("S57_REPORT=" + json.dumps(receipt, sort_keys=True))
