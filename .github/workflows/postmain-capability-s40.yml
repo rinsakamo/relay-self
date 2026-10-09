@@ -84,7 +84,7 @@ jobs:
           node --version
           npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
           node -e "const v=require('./adapters/mineflayer/node_modules/mineflayer/package.json').version; if(v!=='4.39.0') process.exit(2); console.log('S40_MINEFLAYER='+v)"
-      - name: Two actual Node SIGKILLs: post-applied effect UNKNOWN and no Action retry
+      - name: "Two actual Node SIGKILLs: post-applied effect UNKNOWN and no Action retry"
         run: |
           mkdir -p s40-artifacts
           python -B -m adapters.mineflayer.s40_inflight_node_loss_ci \
