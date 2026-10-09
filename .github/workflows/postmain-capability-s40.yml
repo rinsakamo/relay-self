@@ -3,10 +3,10 @@ name: Post-MAIN S40 real in-flight Node loss UNKNOWN and no retry
 on:
   push:
     branches:
-      - self/postmain-s40-fresh-source-action-20261009
+      - self/postmain-s40-inflight-node-loss-unknown-20261009
   pull_request:
     branches:
-      - self/postmain-s38-forced-node-loss-revalidation-20261009
+      - self/postmain-s39-fresh-source-action-20261009
 
 permissions:
   contents: read
