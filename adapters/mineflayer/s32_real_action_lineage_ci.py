@@ -109,7 +109,12 @@ async def qualify(report_path: Path, server_log: Path) -> int:
 
         # The antecedents are frozen deterministic history, NOT physical tests.
         report["stage"] = "EXPLICIT_S23_ACTION3_AUTHORITY"
-        data, failed_skill, inputs = s23._prepare_recovery()
+        # Frozen S23 fixture internally calls asyncio.run for synthetic
+        # predecessor Action1/2; isolate only that seeded setup on a worker
+        # thread rather than nesting an event loop in this live session.
+        data, failed_skill, inputs = await asyncio.to_thread(
+            s23._prepare_recovery
+        )
         proposed, binding, handoff = s23._propose(inputs)
         _authorized, issued = s23._issue(data, proposed)
         if issued.state is not ActionState.ISSUED:
