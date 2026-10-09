@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S32",
+  "base_head": "2f3af780508a51b66513043b4cfedf80d20ff1a0",
+  "classification_if_qualified": "HYBRID_SEEDED_ANCESTRY_REAL_ACTION3_S15_S16_S27_S24_QUALIFIED",
+  "status": "PENDING_CI",
+  "qualification_requires": "S32_REPORT.status == PASS",
+  "minecraft_version": "1.21.8",
+  "mineflayer_version": "4.39.0",
+  "server_source": "Official Mojang 1.21.8 jar verified against published SHA1/size via frozen S31-A helper",
+  "real_action3_execution_required": true,
+  "real_prior_actions_qualified": false,
+  "synthetic_ancestry": "S19-S23 seeded only",
+  "real_action3_command": "MOVE_BACKWARD issued under S23 separate Action3 admission/authorization/issue",
+  "real_world_consequence_owner": "existing S15 WorldConsequence from real Python Node/Mineflayer session",
+  "real_supervised_outcome_owner": "existing S16 interpret_world_consequence + record_interpreted_action_outcome",
+  "real_post_action_evidence_projection": "existing S27 project_source_native_threat bound to same real session and supervised Action3",
+  "explicit_cognitive_epoch": "existing S24 run_explicit_postfailure_epoch, separate caller-invoked",
+  "expected_comparison": "2.0m -> 200cm, risk_weight 4/rev1, WAIT4 vs MOVE7 -> WAIT",
+  "automatic_action4_issued": false,
+  "autonomous_epoch_reentry": false,
+  "world_evidence_authenticity": "controlled local Minecraft game state under privileged CI server, no cryptographic attestation",
+  "live_server_result": "NOT_YET_VERIFIED",
+  "conditional": "Do not claim PASS from static receipt or general pytest: inspect S32 dynamic report and job",
+  "no_reinterpretation": "Frozen S18-S31A and RelayTheory R6/Paper2 MAIN40 untouched",
+  "nonclaims": [
+    "Earlier Action1/2, learning and Skill3 are prepared from deterministic frozen test fixtures; physical outcome only for Action3",
+    "Logical Action/S27 nanosecond timestamps are caller-injected verification clock, not independently authenticated source timestamps",
+    "Target zombie is privileged server-console-generated in controlled sandbox",
+    "S24 cognition uses fixed comparison fixture, not LLM inference or autonomous event scheduler",
+    "No new Action4 proposal or issue, no Skill3 terminal change, no LRN commit, no real WSL2 replication"
+  ]
+}
