@@ -118,7 +118,7 @@ def test_hidden_world_or_experiment_metadata_injection_rejected(field):
 
 def test_type_exact_source_schema_and_nested_forgery_rejected():
     src = d2.session(1)
-    cues = (0, 1)
+    cues = (1, 0)
     valid = d2.predictor_evidence(
         src, cues, include_memory=True, episode=d2.grounded_episode(src),
     )
@@ -217,7 +217,7 @@ def test_invalid_world_parameter_fails_closed(invalid):
     with pytest.raises(d2.D2ContractError):
         d2.session(invalid)
     with pytest.raises(d2.D2ContractError):
-        d2.session(0) if invalid == 0 else d2._bit(invalid, "cue")
+        d2._bit(invalid, "cue")
 
 
 @pytest.mark.parametrize("bad", [
