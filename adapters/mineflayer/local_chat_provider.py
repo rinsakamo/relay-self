@@ -84,9 +84,19 @@ class LoopbackChatProvider:
                 "intent_id": request.intent_id,
                 "focus": request.focus,
                 "context": [
-                    {"key": item.key, "value_json": item.value_json}
+                    {
+                        "key": item.key, "value_json": item.value_json,
+                        "source": item.provenance.source,
+                        "reference": item.provenance.reference,
+                    }
                     for item in request.context
                 ],
+                "identity_context": None if request.identity_context is None else {
+                    "key": request.identity_context.key,
+                    "value_json": request.identity_context.value_json,
+                    "source": request.identity_context.provenance.source,
+                    "reference": request.identity_context.provenance.reference,
+                },
             }, ensure_ascii=False)},
         ]
         payload = json.dumps({
@@ -102,7 +112,7 @@ class LoopbackChatProvider:
         )
         # Disable redirects: a loopback HTTP provider must never redirect to
         # another host. The opener below is intentionally request-local.
-        opener = urllib.request.build_opener(_NoRedirect)
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect)
         try:
             with opener.open(outgoing, timeout=self.config.timeout_s) as response:
                 if response.geturl() != self.config.endpoint:
