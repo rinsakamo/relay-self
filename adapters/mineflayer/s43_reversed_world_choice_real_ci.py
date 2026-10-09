@@ -776,7 +776,7 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         report["no_action_before_near"] = True
         report["stage"] = "NEW_REENTRY_GRANT_NEW_PROPOSAL_NEW_ISSUE"
         fresh_gate = reentry.admit_new_action(
-            near_event, followup_binding(), reentry_grant(third),
+            near_event, followup_binding(), reentry_grant(near_event),
         )
         new_skill, new_proposed, new_result = fresh_gate.propose(
             intent, followup_binding(), followup_grant(near_event, "PROPOSE"),
