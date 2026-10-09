@@ -1,0 +1,22 @@
+{
+  "milestone": "S39",
+  "status": "PENDING_CI",
+  "classification": "NOT_QUALIFIED",
+  "base_pr": 375,
+  "base_head": "f02db77e22ee7348ac1289c5be0ec9e142a1dbb5",
+  "base_branch": "self/postmain-s38-forced-node-loss-revalidation-20261009",
+  "candidate_classification": "FRESH_SOURCE_POST_FAULT_REAL_ACTION_OUTCOME_QUALIFIED",
+  "qualification_requires": "S39_REPORT.status == PASS",
+  "minimum_exact_head_ci_runs": 2,
+  "physical_world": "OFFICIAL_MOJANG_JAVA_1.21.8_AND_GENUINE_MINEFLAYER_4.39.0",
+  "fault": "ACTUAL_OS_SIGKILL_OLD_NODE_PRIOR_TO_ACTION_PROPOSAL",
+  "require": "new genuine entitySpawn + independently correlated probe + separate cognition/Action PROPOSE/Action ISSUE grants + one ISSUED Move + real >=0.05m motion + S16 OUTCOME",
+  "action_lifecycle": "S13_ADMISSION_SEPARATE_FROM_S14_PROPOSAL_SEPARATE_FROM_AUTHORIZATION_SEPARATE_FROM_S15_DISPATCH",
+  "pre_fault_action": "NEVER_ISSUED",
+  "old_ticket_release": "DENIED",
+  "s31b_wsl2_reproduction": "SKIPPED",
+  "real_world_learning": false,
+  "unattended_reconnect": false,
+  "inflight_action_loss": "NOT_QUALIFIED",
+  "frozen_artifacts": "S18_TO_S38_RELAYTHEORY_R6_PAPER2_MAIN40_UNCHANGED"
+}
