@@ -2,10 +2,10 @@ name: Post-MAIN S54 genuine one-session reactive L0 during blocked fake L2 HTTP
 on:
   push:
     branches:
-      - self/postmain-feature-s54-normal-runtime-20261009
+      - self/postmain-feature-s54-world-l0-during-l2-http-20261009
   pull_request:
     branches:
-      - self/postmain-feature-s48-interruption-fence-20261009
+      - self/postmain-feature-s53-concurrent-cognition-20261009
 permissions:
   contents: read
 jobs:
