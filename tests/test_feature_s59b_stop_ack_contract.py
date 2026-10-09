@@ -21,6 +21,7 @@ def subject() -> NativeStopSubject:
         completion_id="chatcmpl-active-A",
         work_generation=3,
         backend_pid=67890,
+        native_task_id=2000,
         slot_id=0,
         slot_generation=2,
         world_seq=19,
@@ -79,6 +80,7 @@ def test_positive_fixture_qualifies_contract_only_not_physical_stop():
     {"work_id": "foreign"},
     {"work_generation": 4},
     {"backend_pid": 123},
+    {"native_task_id": 1000},
     {"slot_id": 1},
     {"slot_generation": 5},
     {"world_seq": 20},
@@ -104,6 +106,8 @@ def test_host_cancel_or_http_close_is_not_native_ack():
 
 def test_enqueue_ack_does_not_equal_processed_slot_release():
     ledger, key = prepare()
+    with pytest.raises(NativeStopRejected):
+        ledger.accept_native_ack(replace(ack(key), native_task_id=2))
     with pytest.raises(NativeStopRejected):
         ledger.accept_native_ack(replace(ack(key), processed=False))
     with pytest.raises(NativeStopRejected):
