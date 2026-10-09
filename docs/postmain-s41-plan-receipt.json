@@ -1,0 +1,16 @@
+{
+  "milestone": "S41",
+  "status": "PENDING_CI",
+  "classification": "NOT_QUALIFIED",
+  "base_pr": 377,
+  "base_head": "1c3127d0990f23f3514c2431fcde0dd3f3837e96",
+  "base_qualified": "REAL_INFLIGHT_NODE_SIGKILL_APPLIED_DISPATCH_UNKNOWN_NO_RETRY_QUALIFIED",
+  "qualification_requires": "S41_REPORT.status == PASS",
+  "minimum_exact_head_ci_runs": 2,
+  "physical_world": "GENUINE_MOJANG_JAVA_1.21.8_MINEFLAYER_4.39.0",
+  "mission": "THREE_REAL_NODE_SESSIONS_TWO_REAL_SIGKILLS_UNKNOWN_PRESERVED_THIRD_NATIVE_WORLD_NEW_DISTINCT_ACTION_EXECUTED",
+  "required": "old action permanently UNKNOWN, third distinct Node/new entity+probe/independent cognition, explicit new generation admission and independent PROPOSE/ISSUE grants, new disjoint ISSUED action with measured real S15 movement+S16 OUTCOME, no replay old Action",
+  "nonclaims": "NO_RECOVERY_OF_HISTORICAL_UNKNOWN_WORLD_EFFECT_NO_IMPLICIT_RETRY_NO_GLOBAL_EXACTLY_ONCE_NO_UNATTENDED_RECONNECT_NO_NATIVE_REAL_WORLD_LEARNING",
+  "frozen": "S18_TO_S40_RELAYTHEORY_R6_PAPER2_MAIN40_UNMODIFIED",
+  "s31b_wsl2_reproduction": "SKIPPED"
+}
