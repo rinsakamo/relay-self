@@ -14,7 +14,6 @@ from adapters.mineflayer.s59a_backend_stop_audit import (
     main,
 )
 
-
 README = """
 ### POST `/slots/{id_slot}?action=erase`: Erase the prompt cache.
 ### POST `/v1/chat/completions/control`
