@@ -179,6 +179,7 @@ class NativeStopLedger:
         if (
             self.stage is not NativeStopStage.NATIVE_ACK
             or subject != self.subject
+            or type(backend_pid_alive) is not int
             or backend_pid_alive != self.subject.backend_pid
             or source != "independent-backend-slot-observer"
             or type(generated_tokens_after_ack) is not int
@@ -204,7 +205,9 @@ class NativeStopLedger:
     ) -> None:
         if (
             self.stage is not NativeStopStage.SLOT_IDLE
+            or type(same_live_pid) is not int
             or same_live_pid != self.subject.backend_pid
+            or type(slot_id) is not int
             or slot_id != self.subject.slot_id
             or type(new_slot_generation) is not int
             or new_slot_generation <= self.subject.slot_generation
