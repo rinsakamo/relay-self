@@ -1,0 +1,29 @@
+name: S56 instrument-only negative-control gates (NOT real-model evidence)
+on:
+  push:
+    branches:
+      - self/postmain-feature-s56-live-model-world-overlap-20261009
+  pull_request:
+    branches:
+      - self/postmain-feature-s55-local-actual-model-probe-20261009
+permissions:
+  contents: read
+jobs:
+  s56-instrument-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src:${{ github.workspace }}/tests
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install instrument-only test dependencies
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+      - name: Reject nonexistent runtime, early inference and unproven Action
+        run: python -m pytest -q tests/test_feature_s56_overlap.py
+      - name: Instrument syntax, lint and import boundary
+        run: |
+          python -m compileall -q adapters/mineflayer/s56_overlap_gate.py adapters/mineflayer/s56_real_model_world_ci.py
+          ruff check adapters/mineflayer/s56_overlap_gate.py adapters/mineflayer/s56_real_model_world_ci.py tests/test_feature_s56_overlap.py
