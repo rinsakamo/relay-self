@@ -45,12 +45,9 @@ def test_nested_hidden_world_injection_and_source_drift_fail_closed():
         ("hazardCount", 20),
     ]:
         payload = d0.predictor_evidence(10)
-        if key == "future":
-            payload["prior"][key] = value
-        else:
-            payload["prior"][key] = value
+        payload["prior"][key] = value
         with pytest.raises(d0.FixtureContractError):
-            d0.validate_predictor_evidence(payload)
+            d0.validate_source_bound_evidence(payload, source_class_k=10)
 
     for mutation in [
         lambda p: p["actions"]["DIRECT"].update({"elapsedTicks": 999}),
