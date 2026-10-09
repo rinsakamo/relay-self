@@ -225,7 +225,20 @@ def validate_source_bound_evidence(
     expected = predictor_evidence(
         source, cues, include_memory=include_memory, episode=correct,
     )
-    if evidence != expected or not isinstance(evidence, dict):
+    if not isinstance(evidence, dict):
+        raise D2ContractError("source-bound evidence must be an object")
+    try:
+        canonical_actual = json.dumps(
+            evidence, sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False, allow_nan=False,
+        )
+        canonical_expected = json.dumps(
+            expected, sort_keys=True, separators=(",", ":"),
+            ensure_ascii=False, allow_nan=False,
+        )
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise D2ContractError("uncanonicalizable evidence") from exc
+    if canonical_actual != canonical_expected:
         raise D2ContractError("source-bound evidence mismatch or oracle leakage")
 
 
