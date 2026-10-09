@@ -1,10 +1,11 @@
 """S41 actual Minecraft: UNKNOWN stays terminal; new World allows NEW Action.
 
-Runs one genuine Mojang server and two genuine Mineflayer processes. After
+Runs one genuine Mojang server and three genuine Mineflayer processes. After
 S38's first quarantine and fresh native revalidation, kill the successor
 Node child only AFTER a genuine applied set_control effect result. Existing
 S15 returns incomplete FAILED evidence; existing S16 must close UNKNOWN.
-The OLD physical result remains unknown; a newly observed third-source Action\nis separately executed and measured through unchanged S15/S16.
+The OLD physical result remains unknown; a newly observed third-source Action
+is separately executed and measured through unchanged S15/S16.
 """
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import test_postmain_two_epoch_continuation as s19
+from adapters.mineflayer.action_outcome import interpret_world_consequence
 from adapters.mineflayer.execution import (
     WorldConsequenceStatus,
     execute_mineflayer_command,
@@ -59,14 +61,14 @@ from relay_self.fresh_source_action import (
     FreshSourceActionRejected,
 )
 from relay_self.inflight_node_loss import close_inflight_node_loss_unknown
+from relay_self.native_event_cognition import (
+    EventCognitionTriggerGrant,
+    NativeEventCognitionCandidate,
+)
 from relay_self.post_unknown_continuation import (
     PostUnknownContinuationGate,
     PostUnknownReentryGrant,
     PostUnknownReentryRejected,
-)
-from relay_self.native_event_cognition import (
-    EventCognitionTriggerGrant,
-    NativeEventCognitionCandidate,
 )
 
 
