@@ -11,7 +11,6 @@ import test_postmain_s35_event_cognition_gate as s35
 import test_postmain_two_epoch_continuation as s19
 from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
 from relay_self.native_event_cognition import native_entity_event_to_cognition_candidate
-from relay_self.provenance import Provenance
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
     WorldChoiceRejected,
@@ -33,13 +32,11 @@ def _pair():
         probe2, session_id=probe1.session_id,
         seq=probe1.seq + 9,
         request_id="s42-far-offline-probe",
-        provenance=Provenance(source="mineflayer", reference="s42-offline-far-source"),
         snapshot=replace(probe2.snapshot, nearby_entities=(current,)),
     )
     event2 = replace(
         event2, session_id=probe1.session_id,
         seq=probe1.seq + 8,
-        provenance=probe2.provenance,
         snapshot=probe2.snapshot,
     )
     near = _native_threat(
