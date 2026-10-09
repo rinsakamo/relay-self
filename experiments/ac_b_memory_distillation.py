@@ -5,10 +5,10 @@ It deliberately does not import S10/S11/S17 unmerged Draft sources.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, replace
 from enum import Enum
 from hashlib import sha256
-import json
 
 
 class EvidenceError(ValueError):
@@ -164,7 +164,7 @@ class MemoryView:
         self.edge_build_work = len(edges)
 
     def search(self, a: int, b: int, mode: str) -> Retrieval:
-        if a not in (0, 1) or b not in (0, 1) or mode not in (
+        if type(a) is not int or type(b) is not int or a not in (0, 1) or b not in (0, 1) or mode not in (
             "full_scan", "tags", "tags_typed_graph",
         ):
             raise EvidenceError("invalid query")
