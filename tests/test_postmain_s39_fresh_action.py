@@ -13,14 +13,17 @@ import test_postmain_s37_host_loop as s37
 import test_postmain_two_epoch_continuation as s19
 from adapters.mineflayer.process_session import MineflayerProcessEnded
 from adapters.mineflayer.s34_native_world_cognition_ci import (
-    _native_epoch_two, _native_threat,
+    _native_epoch_two,
+    _native_threat,
 )
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.execution_binding import ExecutionBinding
 from relay_self.forced_node_loss_fence import ForcedNodeLossFence
 from relay_self.fresh_source_action import (
-    FreshSourceActionGate, FreshSourceActionGrant, FreshSourceActionRejected,
+    FreshSourceActionGate,
+    FreshSourceActionGrant,
+    FreshSourceActionRejected,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
