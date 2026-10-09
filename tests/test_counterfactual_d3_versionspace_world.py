@@ -246,7 +246,7 @@ def test_forecast_shape_rejects_bool_or_nonbinary_cues_and_observations():
         d3.version_space(p)
 
 
-def test_only_matching_three-action_permutation_is_admissible():
+def test_only_matching_three_action_permutation_is_admissible():
     case = by_id()["A_AND"]
     for bad in (
         ("DIRECT", "DIRECT", "SCOUT"),
