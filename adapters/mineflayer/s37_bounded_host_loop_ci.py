@@ -27,8 +27,8 @@ from adapters.mineflayer.s31a_real_server_ci import (
     _fetch_official_server,
     _ready_server,
     _shutdown_server,
+    _write_config,
 )
-from adapters.mineflayer.s31a_real_server_ci import _write_config
 from adapters.mineflayer.s34_native_world_cognition_ci import (
     _native_epoch_two,
     _native_threat,
