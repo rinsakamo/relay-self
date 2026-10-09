@@ -1,0 +1,63 @@
+{
+  "action_issued": false,
+  "autonomous_cognition": false,
+  "bridge_exit_code": 0,
+  "classification": "REAL_MINEFLAYER_LOCAL_MINECRAFT_CORRELATED_WORLD_PROBE_QUALIFIED",
+  "download_host": "piston-data.mojang.com",
+  "duplicate_rejected_seq": 8,
+  "initial_probe": {
+    "position": [
+      -2.5,
+      -60.0,
+      1.5
+    ],
+    "request_id": "s31a-initial:001",
+    "seq": 2
+  },
+  "java_major_version": 21,
+  "last_world_probe_id": "s31a-target:000",
+  "live_minecraft": "QUALIFIED_LOCAL_CI_SANDBOX",
+  "manifest_version_url_host": "piston-meta.mojang.com",
+  "milestone": "S31-A",
+  "minecraft_version": "1.21.8",
+  "mineflayer_version": "4.39.0",
+  "node_test_shim": false,
+  "real_minecraft_server": true,
+  "real_mineflayer_package": true,
+  "server_exit_code": 0,
+  "server_host": "127.0.0.1",
+  "server_port": 25565,
+  "server_sha1": "6bce4ef400e4efaa63a13d5e6f6b500be969ef81",
+  "server_size_bytes": 57555044,
+  "session_id": "ec04a848-7096-4807-999f-558baa750786",
+  "spawn_position": [
+    -2.5,
+    -60.0,
+    1.5
+  ],
+  "spawn_seq": 1,
+  "stage": "SUCCESS",
+  "status": "PASS",
+  "target": {
+    "bot_position": [
+      -2.5,
+      -60.0,
+      1.5
+    ],
+    "coverage_candidates": 1,
+    "coverage_scope": "mineflayer_entity_registry",
+    "coverage_truncated": false,
+    "distance_m": 2.0,
+    "entity_id": 2,
+    "entity_position": [
+      -0.5,
+      -60.0,
+      1.5
+    ],
+    "name": "zombie",
+    "observation_seq": 7,
+    "provenance": "ec04a848-7096-4807-999f-558baa750786:7",
+    "request_id": "s31a-target:000"
+  },
+  "world_evidence_projected_into_s27": false
+}
