@@ -1,0 +1,100 @@
+name: Post-MAIN S40 real in-flight Node loss UNKNOWN and no retry
+
+on:
+  push:
+    branches:
+      - self/postmain-s40-fresh-source-action-20261009
+  pull_request:
+    branches:
+      - self/postmain-s38-forced-node-loss-revalidation-20261009
+
+permissions:
+  contents: read
+
+jobs:
+  repository-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python tools/check_repository.py
+
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - run: python -m pip install --disable-pip-version-check "pytest==9.1.1"
+      - run: python -m pytest
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --disable-pip-version-check "ruff==0.16.7"
+      - run: ruff check src tests experiments adapters observability
+
+  mineflayer-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - run: npm run check --prefix adapters/mineflayer
+
+  s40-real-unknown:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      S40_REAL_SERVER_CI: "1"
+      PYTHONPATH: ${{ github.workspace }}/src:${{ github.workspace }}/tests
+      NODE_OPTIONS: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: python -m pip install --disable-pip-version-check "pytest==9.1.1"
+      - name: Verify genuine Mineflayer and unshimmed adapter
+        run: |
+          java -version
+          node --version
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "const v=require('./adapters/mineflayer/node_modules/mineflayer/package.json').version; if(v!=='4.39.0') process.exit(2); console.log('S40_MINEFLAYER='+v)"
+      - name: Two actual Node SIGKILLs: post-applied effect UNKNOWN and no Action retry
+        run: |
+          mkdir -p s40-artifacts
+          python -B -m adapters.mineflayer.s40_inflight_node_loss_ci \
+            --report s40-artifacts/s40-report.json \
+            --server-log s40-artifacts/minecraft-server.log
+      - name: Preserve dynamic real-world evidence even on FAIL/BLOCKED
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s40-inflight-node-loss-unknown
+          path: s40-artifacts/
+          if-no-files-found: error
+          retention-days: 30
