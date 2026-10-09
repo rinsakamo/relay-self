@@ -90,7 +90,7 @@ def test_reversed_gate_rejects_invalid_chronology_source_or_history(variant):
     elif variant == "mislabeled_near":
         near = replace(near, selection=far.selection)
     elif variant == "untrusted_old_action":
-        unknown = replace(unknown, state=ActionState.ISSUED)
+        unknown = replace(unknown, action_id="not-the-current-unknown")
     with pytest.raises(ReversedWorldChoiceRejected):
         verify_far_then_near(
             far, near, far_event_seq=far_event, near_event_seq=near_event,
