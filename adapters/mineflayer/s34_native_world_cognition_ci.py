@@ -836,6 +836,8 @@ async def _observe_native_threat(
             and observation.seq <= after_seq
         ):
             raise S34EvidenceFailure("probe is not newer than source Action")
+        if _verified_target(observation) is None:
+            continue
         native = _native_threat(
             observation, request_id, expected_entity_id=expected_entity_id,
         )
@@ -881,13 +883,16 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         "session_count": 0,
         "real_actions": [],
         "action1_learning_source": "UNDETERMINED",
-        "first_external_threat_input": "FROZEN_STRUCTURED_TEST_INPUT_NOT_REAL_SENSOR",
-        "second_epoch_external_threat_input": "FROZEN_STRUCTURED_TEST_INPUT_NOT_REAL_SENSOR",
-        "skill2_failure_goal_evidence": "CALLER_FIXED_VIOLATED_NOT_REAL_WORLD_GOAL_EVALUATION",
+        "first_external_threat_input": "REQUIRES_REAL_MINEFLAYER_CORRELATED_PROBE",
+        "second_epoch_external_threat_input": "REQUIRES_REAL_MINEFLAYER_CORRELATED_PROBE",
+        "skill2_failure_goal_evidence": "REQUIRES_REAL_POST_ACTION2_GOAL_PROBE",
         "automatic_action4_issued": False,
         "autonomous_epoch_reentry": False,
         "cryptographic_world_attestation": False,
         "local_codex_s31b": "SKIPPED",
+        "goal_threshold_m": MAX_GOAL_DISTANCE_M,
+        "threat_concept_semantic_alias": "zombie-1",
+        "native_entity_identity_policy": "same exact Mineflayer entity ID across three sessions",
     }
     server = None
     collector = None
@@ -912,14 +917,37 @@ async def qualify(report_path: Path, server_log: Path) -> int:
             root, root / "minecraft-server.jar", server_log,
         )
 
-        # 1: the S19 first structured threat input remains a bounded fixture.
-        # Real MOVE_BACKWARD supplies physical Action1 outcome; it is NOT
-        # replaced by the synthetic S19 FakeSession.
-        report["stage"] = "ACTION1_REAL_AND_GOVERNED_LEARNING"
+        # The experimenter first places a single controlled real zombie.
+        # S34 derives both cognitive threat propositions and the Skill2 goal
+        # result from explicit actual Mineflayer observations of this entity.
+        report["stage"] = "REAL_INITIAL_THREAT_PROBE"
         session = await _new_session()
+        assert server is not None and server.stdin is not None
+        _command(server, "gamerule doMobSpawning false")
+        _command(server, "time set midnight")
+        _command(
+            server, "execute at RelaySelf run summon minecraft:zombie ~2 ~ ~ "
+            "{NoAI:1b,Silent:1b,PersistenceRequired:1b,Invulnerable:1b}",
+        )
+        await server.stdin.drain()
+        initial_native = await _observe_native_threat(
+            session, request_prefix="s34-initial-world",
+        )
+        if initial_native.distance_m >= MAX_GOAL_DISTANCE_M:
+            raise S34EvidenceFailure("initial real zombie not nearby")
+        report["first_external_threat_input"] = "REAL_NATIVE_WORLD_PROBE"
+        report["initial_threat"] = {
+            "request_id": initial_native.request_id,
+            "session_id": initial_native.observation.session_id,
+            "probe_seq": initial_native.observation.seq,
+            "entity_id": initial_native.entity_id,
+            "distance_m": initial_native.distance_m,
+            "source_provenance": initial_native.observation.provenance.reference,
+        }
+        report["stage"] = "ACTION1_REAL_AND_GOVERNED_LEARNING"
         supervisor = ActionSupervisor()
         commit, intent, closed1, feedback1, consequence1, issued1, skill1 = (
-            await _real_epoch_one(supervisor, session)
+            await _real_epoch_one(supervisor, session, initial_native)
         )
         if consequence1.session_id != session.started.session_id:
             raise S34EvidenceFailure("Action1 session mismatch")
@@ -952,9 +980,27 @@ async def qualify(report_path: Path, server_log: Path) -> int:
 
         # 2: only NOW the actual learning owner snapshot may drive a new
         # explicit cognitive epoch and independent Action2 admission/issue.
-        report["stage"] = "ACTION2_REAL_WITH_RETAINED_READ"
+        report["stage"] = "ACTION2_REAL_NATIVE_THREAT_WITH_RETAINED_READ"
+        session = await _new_session()
+        if session.started.session_id == session_id1:
+            raise S34EvidenceFailure("Action2 reused Action1 session UUID")
+        native2 = await _observe_native_threat(
+            session, request_prefix="s34-second-world",
+            expected_entity_id=initial_native.entity_id,
+        )
+        if native2.distance_m >= MAX_GOAL_DISTANCE_M:
+            raise S34EvidenceFailure("second epoch no longer has supported nearby threat")
+        report["second_epoch_external_threat_input"] = "REAL_NATIVE_WORLD_PROBE"
+        report["second_threat"] = {
+            "request_id": native2.request_id,
+            "session_id": native2.observation.session_id,
+            "probe_seq": native2.observation.seq,
+            "entity_id": native2.entity_id,
+            "distance_m": native2.distance_m,
+            "source_provenance": native2.observation.provenance.reference,
+        }
         data = _prepare_second_real(
-            supervisor, commit, intent, closed1, feedback1,
+            supervisor, commit, intent, closed1, feedback1, native2,
         )
         if (
             data["lineage"].committed_revision != 1
@@ -964,9 +1010,6 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         ):
             raise S34EvidenceFailure("Action2 did not derive from real Action1 retention")
         _authorized2, issued2 = s20._issue_second(data)
-        session = await _new_session()
-        if session.started.session_id == session_id1:
-            raise S34EvidenceFailure("Action2 reused Action1 session UUID")
         command2 = build_mineflayer_command(issued2, data["binding_result2"])
         consequence2 = await execute_mineflayer_command(
             session, command2, timeout_s=9,
@@ -992,18 +1035,42 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         session_id2 = session.started.session_id
         report["real_actions"].append(_summarize_action(consequence2, closed2))
         report["action2_retained_revision"] = data["lineage"].committed_revision
+        report["stage"] = "FRESH_WORLD_GOAL_AFTER_ACTION2"
+        goal_native = await _observe_native_threat(
+            session, request_prefix="s34-goal-after-action2",
+            expected_entity_id=initial_native.entity_id,
+            after_seq=consequence2.after_observation.seq,
+        )
+        goal_status = (
+            "VIOLATED"
+            if goal_native.distance_m < MAX_GOAL_DISTANCE_M
+            else "SATISFIED"
+        )
+        report["skill2_failure_goal_evidence"] = "REAL_POST_ACTION2_CORRELATED_PROBE"
+        report["skill2_goal"] = {
+            "request_id": goal_native.request_id,
+            "session_id": goal_native.observation.session_id,
+            "probe_seq": goal_native.observation.seq,
+            "parent_action_after_seq": consequence2.after_observation.seq,
+            "entity_id": goal_native.entity_id,
+            "distance_m": goal_native.distance_m,
+            "goal_min_clearance_m": MAX_GOAL_DISTANCE_M,
+            "derived_status": goal_status,
+            "provenance": goal_native.observation.provenance.reference,
+        }
         await session.shutdown(timeout_s=10)
         if session.process_returncode != 0:
             raise S34EvidenceFailure("Action2 bridge did not close cleanly")
         report["session_count"] = 2
         session = None
 
-        # 3: explicit separate Skill2 FAILED route comes from the existing
-        # *caller-fixed* S21 goal-violation criterion. Although Action2 is
-        # physical, the goal failure is not independently sensed from World.
+        # Skill2 terminal result is a separate decision on a fresh real
+        # post-Action2 entity-distance probe. If the goal is satisfied there
+        # is no failed Skill and therefore no Recovery Action3 in this case.
         report["stage"] = "ACTION3_REAL_RECOVERY_AND_POST_ACTION_WORLD"
         data, failed_skill, inputs = _real_recovery_prep(
             data, closed2, outcome2,
+            goal_native, consequence2.after_observation.seq,
         )
         proposed3, binding3, _handoff = s23._propose(inputs)
         _authorized3, issued3 = s23._issue(data, proposed3)
@@ -1032,33 +1099,15 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         report["real_actions"].append(_summarize_action(consequence3, closed3))
         report["session_count"] = 3
         report["stage"] = "FRESH_REAL_ZOMBIE_POST_ACTION3"
-        _command(server, "gamerule doMobSpawning false")
-        _command(server, "time set midnight")
-        _command(
-            server, "execute at RelaySelf run summon minecraft:zombie ~2 ~ ~ "
-            "{NoAI:1b,Silent:1b,PersistenceRequired:1b}",
+        third_native = await _observe_native_threat(
+            session, request_prefix="s34-after-action3",
+            expected_entity_id=initial_native.entity_id,
+            after_seq=consequence3.after_observation.seq,
         )
-        assert server.stdin is not None
-        await server.stdin.drain()
-        observed = None
-        target = None
-        for attempt in range(5):
-            await asyncio.sleep(2)
-            candidate = await _correlated_observe(
-                session, f"s34-after-action3:{attempt:03d}",
-            )
-            target = _verified_target(candidate)
-            if target is not None:
-                observed = candidate
-                break
-        if observed is None or target is None:
-            raise S34EvidenceFailure("actual new zombie not observed")
-        if (
-            observed.session_id != consequence3.session_id
-            or consequence3.after_observation is None
-            or observed.seq <= consequence3.after_observation.seq
-        ):
-            raise S34EvidenceFailure("fresh post-Action3 session lineage failed")
+        observed = third_native.observation
+        target = _verified_target(observed)
+        if observed.session_id != consequence3.session_id:
+            raise S34EvidenceFailure("post-Action3 session changed")
         report["target"] = target
         receipt = project_source_native_threat(
             supervisor, closed3, consequence3, observed,
@@ -1105,7 +1154,7 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         report["stage"] = "SUCCESS"
         report["status"] = "PASS"
         report["classification"] = (
-            "THREE_REAL_ACTIONS_REAL_ACTION1_LEARNING_WITH_FIXED_THREAT_INPUTS_QUALIFIED"
+            "THREE_REAL_ACTIONS_WITH_NATIVE_THREAT_AND_GOAL_EVIDENCE_QUALIFIED"
         )
         exit_code = 0
     except (S31ABlocked, OSError) as exc:
