@@ -36,7 +36,6 @@ from relay_self.learning import (
     propose_learning_update,
 )
 from relay_self.provenance import Provenance
-
 from test_action_feedback_qualification import (
     feedback_criterion,
     issued_chain,
