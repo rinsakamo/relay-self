@@ -40,6 +40,7 @@ MANIFEST_PATH = Path(__file__).resolve().parents[2] / "experiments" / "ac_c_c16_
 MANIFEST_SHA = "a4cd1607d9dc6d552b4ed3a1cc217a9a087cd48e20a5b15f074e115d4f204c0b"
 CONFIRM = "C16-I-OWN-LOCAL-TEST-WORLD"
 MAX_EVENTS = 80
+SAFE_FORWARD_WALL_SECONDS = 0.20  # protective source-delay stop bound, not physical distance
 
 
 class C16Blocked(RuntimeError):
@@ -224,6 +225,7 @@ class OneShotQualification:
         start_state = "NOT_RUN"
         stop_state = "NOT_RUN"
         issued_start = False
+        forward_deadline: float | None = None
         forward_pos: MineflayerPosition | None = None
         baseline: MineflayerPosition | None = None
         posts: list[MineflayerPosition] = []
@@ -242,8 +244,13 @@ class OneShotQualification:
             nonlocal next_seq, source_events
             if source_events >= MAX_EVENTS:
                 raise C16Blocked("EVENT_LIMIT_REACHED")
+            timeout = timeout_s
+            if forward_deadline is not None:
+                timeout = min(timeout, forward_deadline - time.monotonic())
+                if timeout <= 0:
+                    raise C16Blocked("FORWARD_WALL_WATCHDOG_EXPIRED")
             try:
-                msg = await asyncio.wait_for(session.receive(), timeout_s)
+                msg = await asyncio.wait_for(session.receive(), timeout)
             except TimeoutError as exc:
                 raise C16Blocked("SOURCE_WAIT_TIMED_OUT") from exc
             source_events += 1
@@ -325,8 +332,12 @@ class OneShotQualification:
                 intent_commitment=intent, at_ns=now(), provenance=prov("skill"),
             )
             issue_action(start_id)
-            await session.send_set_control(start_id, control="forward", state=True)
             issued_start = True
+            forward_deadline = time.monotonic() + SAFE_FORWARD_WALL_SECONDS
+            await asyncio.wait_for(
+                session.send_set_control(start_id, control="forward", state=True),
+                timeout=SAFE_FORWARD_WALL_SECONDS,
+            )
             await wait_ack(start_id, "set_control")
             start_state = "OUTCOME"
 
@@ -343,7 +354,8 @@ class OneShotQualification:
                         forward_pos = candidate
 
             issue_action(stop_id)
-            await session.send_clear_controls(stop_id)
+            await asyncio.wait_for(session.send_clear_controls(stop_id), timeout=1.0)
+            forward_deadline = None
             await wait_ack(stop_id, "clear_controls")
             stop_state = "OUTCOME"
 
@@ -357,7 +369,7 @@ class OneShotQualification:
             )
             return C16Result(status, reason, source, tuple(refs),
                              start_state, stop_state, delta, world_file_verified)
-        except (C16Blocked, ValueError, RuntimeError, KeyError) as exc:
+        except (C16Blocked, TimeoutError, ValueError, RuntimeError, KeyError) as exc:
             return C16Result("UNDETERMINED", f"FAIL_CLOSED:{type(exc).__name__}:{exc}",
                              source, tuple(refs), start_state, stop_state,
                              _horizontal(baseline,forward_pos)
@@ -368,7 +380,10 @@ class OneShotQualification:
                 # Emergency cleanup is NOT a supervised qualified Action.
                 # Exactly one bounded stop attempt; no retry or automatic replacement.
                 try:
-                    await session.send_clear_controls(f"c16-emergency-{source}")
+                    await asyncio.wait_for(
+                        session.send_clear_controls(f"c16-emergency-{source}"),
+                        timeout=0.5,
+                    )
                 except (OSError, RuntimeError, ValueError):
                     pass
 
