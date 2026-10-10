@@ -129,6 +129,7 @@ def trajectory(seed: int, arm: str) -> dict:
     case_groups = cases_for(seed, cfg["episodes_per_phase"])
     phases: dict[str, dict] = {}
     shift_frames: list[dict] = []
+    full_trace: list[dict] = []
     for phase in cfg["phase_schedule"]:
         frame_list: list[dict] = []
         for case in case_groups:
@@ -164,6 +165,7 @@ def trajectory(seed: int, arm: str) -> dict:
                 "damage": 0 if receipt is None else receipt.damage,
             })
         frames = tuple(frame_list)
+        full_trace.extend({"phase": phase, "step": step, **frame} for step, frame in enumerate(frames))
         if len(frames) != cfg["episodes_per_phase"]:
             raise AssertionError("PHASE_LENGTH_MISMATCH")
         phases[phase] = {
@@ -197,19 +199,10 @@ def trajectory(seed: int, arm: str) -> dict:
             "lag": escalations[0] - first_failure if escalations else None,
             "censored": not bool(escalations),
         }
-    recovery_frames = [
-        case for case in case_groups if case.phase == "recovery"
-    ]
-    if len(recovery_frames) != 64:
-        raise AssertionError("RECOVERY_PHASE_MISMATCH")
-    # Do not mistake raw post-shift cheap correctness for learning recovery.
     return {
         "seed": seed, "arm": arm, "phases": phases,
         "shift_witness": witnessed,
-        "frames": tuple(
-            {"phase": phase, **frame} for phase in cfg["phase_schedule"]
-            for frame in _frames_again(seed, arm, phase, cfg)
-        ) if False else None,
+        "frames": tuple(full_trace),
     }
 
 
@@ -234,9 +227,33 @@ def paired_report() -> dict:
                 v["censored"] for r in rows for v in r["shift_witness"].values()
             ),
         }
+    paired = {}
+    for seed in cfg["confirmation_seeds"]:
+        active = next(r for r in records if r["seed"] == seed and r["arm"] == "LEARNED")
+        no_feedback = next(
+            r for r in records if r["seed"] == seed and r["arm"] == "LEARNED_NO_FEEDBACK"
+        )
+        if tuple(f["session"] for f in active["frames"]) != tuple(
+            f["session"] for f in no_feedback["frames"]
+        ):
+            raise AssertionError("UNPAIRED_WORLD_CASES")
+        differences = [
+            i for i, (a, b) in enumerate(zip(
+                active["frames"], no_feedback["frames"], strict=True
+            )) if a["mode"] != b["mode"]
+        ]
+        paired[str(seed)] = {
+            "feedback_selection_divergences": len(differences),
+            "first_divergent_episode": differences[0] if differences else None,
+            "correctness_gain_over_no_feedback": (
+                sum(p["success"] for p in active["phases"].values()) -
+                sum(p["success"] for p in no_feedback["phases"].values())
+            ),
+        }
     return {
         "manifest_sha256": MANIFEST_SHA256,
         "records_sha256": canonical_hash(records),
+        "feedback_ablation_pairs": paired,
         "records": records,
         "summaries": summaries,
         "cheap_exact_provisional_work_costs": {
