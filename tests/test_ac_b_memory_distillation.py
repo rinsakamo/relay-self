@@ -211,3 +211,18 @@ def test_predeclared_outcomes_and_grand_null():
     assert result["shift_recovered_heldout_4"] == 4
     assert not result["graph_incremental_gain"]
     assert not result["habit_incremental_gain_over_cheap_rule"]
+
+
+def test_identical_receipts_from_different_world_instances_do_not_cross_attest():
+    # Same session/sequence/context/outcome/digest is NOT same source witness.
+    owner = DeterministicWorld()
+    foreign = DeterministicWorld()
+    own = owner.act(Cue(0, 0, 0), 0)
+    cross = foreign.act(Cue(0, 0, 0), 0)
+    assert own == cross  # value equality exposes the former provenance loophole
+    assert own is not cross
+    owner.verify(own)
+    with pytest.raises(EvidenceError):
+        owner.verify(cross)
+    with pytest.raises(EvidenceError):
+        MemoryView(owner, (cross,), session=owner.session, revision=0)
