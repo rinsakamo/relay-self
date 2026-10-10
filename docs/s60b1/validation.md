@@ -62,3 +62,12 @@ include third-party node_modules documentation and report broken links. Move
 that generated dependency directory outside this isolated checkout after the
 33-test Node check; repository contracts then pass. Frozen checker unchanged;
 CI uses separate clean jobs for contracts and Node.
+
+First completed local full regression (earlier source snapshot): 8 failed,
+1762 passed in 262.70s. All eight failures are inherited S30 offline Node
+subprocess tests: this shell had no node on PATH. An additional in-progress
+full run with the same missing PATH was stopped after identifying the cause.
+Use installed Node 22.22.2 nvm bin on PATH for the final regression; also add
+explicit Node 22 setup to the dedicated pytest CI job. No Node options,
+acceptance thresholds or predecessor tests are changed; no real Minecraft
+process is launched by these offline test-only Node shims.

@@ -69,6 +69,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Set up Node 22 for inherited offline subprocess tests
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
       - name: Install pytest
         run: python -m pip install --disable-pip-version-check "pytest==9.1.1"
 
