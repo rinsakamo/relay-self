@@ -15,7 +15,6 @@ import json
 import os
 import shutil
 import sys
-from dataclasses import asdict
 from pathlib import Path
 
 from relay_self.habit import (
