@@ -149,6 +149,31 @@ def test_failed_worktree_module_resolution_denied_before_model_start(
         owned._preflight_mineflayer_dependencies()
 
 
+def test_bad_real_worktree_dependency_blocks_wrapper_before_any_process(
+    tmp_path, monkeypatch, capsys,
+):
+    # Reconstruct the exact class of WSL2 operator mistake: node_modules
+    # symlink points outside worktree. Java/Node check passes, but no GGUF
+    # hash, llama process or Minecraft process may be started.
+    import shutil
+
+    adapter = _fake_worktree_packages(tmp_path, symlink=True)
+    monkeypatch.setattr(owned, "__file__", str(adapter / "self_owned_llama.py"))
+    actual_which = shutil.which
+    monkeypatch.setattr(
+        shutil, "which",
+        lambda x: "/ci/fake/" + x if x in ("java", "node") else actual_which(x),
+    )
+    args, out = _args(tmp_path)
+    assert owned.main(args) == 2
+    blocked = json.loads(capsys.readouterr().out)
+    assert blocked["status"] == "BLOCKED"
+    assert blocked["model_process_launched"] is False
+    assert blocked["minecraft_launched"] is False
+    assert not (out / owned.LOG_NAME).exists()
+    assert not (out / owned.REPORT_NAME).exists()
+
+
 def test_owned_localhost_model_spawn_once_reuses_original_world_cli_and_stops(
     tmp_path, monkeypatch,
 ):
