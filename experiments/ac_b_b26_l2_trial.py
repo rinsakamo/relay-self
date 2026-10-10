@@ -19,8 +19,8 @@ from urllib.request import Request, urlopen
 
 from experiments.ac_b_b24_structural_transfer import (
     ANCHORS,
-    HELDOUT,
     FIELDS,
+    HELDOUT,
     PAIRS,
     StructuralWorld,
     WorldAction,
