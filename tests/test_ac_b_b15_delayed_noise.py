@@ -211,10 +211,10 @@ def test_both_same_result_reports_abstain_not_discarded_or_promoted_to_success()
     # report (not independently authenticated sensor truth).
     a = world.act(0, 0, 0)
     b = world.act(0, 0, 1)
-    new_a = replace(a, success=True)
-    assert new_a.success == b.success is True
-    world._issued[new_a.event_id] = new_a
-    ledger = QualifiedLedger(world, (new_a, b))
+    new_b = replace(b, success=True)
+    assert a.success == new_b.success is True
+    world._issued[new_b.event_id] = new_b
+    ledger = QualifiedLedger(world, (a, new_b))
     with pytest.raises(UnqualifiedHabitAcquisition, match="uniquely"):
         ledger.chosen(0, 0)
     with pytest.raises(NoSharedWorldEvidence, match="missing"):
