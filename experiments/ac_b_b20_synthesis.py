@@ -153,12 +153,12 @@ def check_frozen_evidence(manifest: Mapping[str, object]) -> EvidenceSynthesis:
         raise InvalidFrozenEvidence("experimental Grand Null promoted")
     limits = manifest.get("limits")
     if not isinstance(limits, list) or not any(
-        "not physical" in str(v).lower()
+        "Minecraft" in str(v)
         for v in limits
     ):
         # Precise wording here is a documented static limitation, not
         # cryptographic validation of the original sources.
-        raise InvalidFrozenEvidence("physical source disclaimer missing")
+        raise InvalidFrozenEvidence("Minecraft source limit missing")
     return EvidenceSynthesis(
         terminal=BOUNDED_TERMINAL,
         qualified_offline_draft_count=9,
