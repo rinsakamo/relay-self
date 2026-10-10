@@ -265,3 +265,55 @@ S49-S60 history. No modifications to #46/#415 frozen scientific runs,
 **CIは実機を起動しません。** 新しい実機証拠はオペレーター承認付きの
 別の使い捨てWorld実行で取得する必要があり、先行実機結果を上書き・
 再実行することはありません。
+
+
+## Selfが所有するローカル llama.cpp 起動（明示的実機実行のみ）
+
+これまでの `--live-think` は**既に起動済みの**モデルを利用しました。
+新しい `adapters.mineflayer.self_owned_llama` は、実行の都度、
+**このコマンドが新しく起動した llama-server だけ**を所有して、
+同じ `self_demo --run-disposable --live-think` に渡し、終了を管理します。
+既存LM Studio、他のllama-server、他のNode/Javaは終了しません。
+
+WSL2の既存RelaySelf checkoutから、実行前にバイナリ/モデルの正しい
+絶対パスを指定し、**前もってGGUFのSHA256**を照合します。
+予期しないサーバーの再利用を避けるため、新規の空きloopbackポート
+（Minecraft 25565とは別）を使い、新しい空の証拠フォルダを準備します。
+
+```bash
+# 先に Java21 / Node22 / npm ci / 新規worktree / port空きを確認
+export PYTHONPATH="$PWD/src:$PWD/tests:$PWD"
+GGUF="/absolute/path/to/your/model.gguf"
+BIN="/absolute/path/to/your/llama.cpp/build/bin/llama-server"
+SHA="$(sha256sum "$GGUF" | awk '{print $1}')"
+mkdir ./self-owned-demo-receipts
+
+python -m adapters.mineflayer.self_owned_llama \
+  --run-disposable --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
+  --output-dir ./self-owned-demo-receipts \
+  --llama-server "$BIN" --gguf "$GGUF" --gguf-sha256 "$SHA" \
+  --model-alias relay-self-local --model-port 12345 \
+  --ctx-size 4352 --gpu-layers 60 \
+  --ready-timeout 90 --model-timeout 12
+```
+
+- `--gpu-layers` の値はVRAMに応じてオペレーターが決めてください。0はCPUのみ。
+- 起動時に`--host 127.0.0.1 --parallel 1`を強制し、
+  `/health`と`/v1/models`のaliasをチェックします。
+  **GGUFのディスクバイトSHA256照合は、GPUが実際に何を計算したか
+  という独立した証明ではありません。**
+- Minecraft側は既存S49だけがActionを発行し、L0はL2 HTTPを待たない。
+  L2出力はread-only。停止した古いL2はActionやHabitsを更新できません。
+- `owned_llama_server.log`、`owned_llama_receipt.json` を追加保存します。
+  process PID、バイナリSHA256、GGUF照合結果、loopback readiness、
+  Java/Nodeデモの返値、モデル子プロセス終了結果を追跡します。
+  **物理STOP ACK、VRAM解放、GGUF実ロードの独立証明は付けません。**
+- 自分が起動した新しいプロセスグループだけSIGTERM（必要ならSIGKILL）。
+  他の推論サービス、Minecraft World、古いプロセスを停止しません。
+- 空きポートのチェックはTOCTOU競合の余地を残すため、他者が同時に
+  ポートを奪った場合は操作を中断して証拠を保全してください。
+- 本モードのCIは実GGUF、GPU、Minecraftを立ち上げず、代替localhost
+  モデルのプロセスで事前条件と終了処理だけを検証します。
+
+**旧実機記録は不変。** この新モードの実World＋実GGUF同時実行は、
+ユーザーのローカル実行結果が得られるまではNOT_RUNです。
