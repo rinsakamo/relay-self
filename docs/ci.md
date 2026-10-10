@@ -233,3 +233,12 @@ Before considering a CI change complete, a reviewer should be able to answer:
 7. Are empirical observations kept out of deterministic CI claims?
 
 The objective is not more gates. The objective is a small set of trustworthy guarantees with stable meaning.
+
+## Lane A E10 stacked Draft verification
+
+`epistemic-e10-action-world.yml` verifies the exact E10 head, stacked on frozen
+E9. Its pytest job runs the focused deterministic Action3/S29/S24/S14–S16/WAIT
+and later evaluator tests, then full regression. The other three jobs retain
+repository contracts, Ruff, and offline Node protocol/hook checks. No game,
+provider, GPU, or live adapter process is launched. These are Draft engineering
+checks, not additional main ruleset requirements or E6 physical qualification.

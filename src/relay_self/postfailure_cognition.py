@@ -35,6 +35,7 @@ from relay_self.epoch_plan import (
     coordinate_planned_epoch,
 )
 from relay_self.execution_admission import (
+    AdmissionDecision,
     AdmissionDecisionStatus,
     AdmissionPolicy,
     ExecutionAdmissionCriterion,
@@ -57,7 +58,9 @@ from relay_self.prediction import (
 )
 from relay_self.provenance import Provenance
 from relay_self.route_adjudication import (
+    ControlCandidate,
     RouteCriterion,
+    RouteDecision,
     adjudicate_routes,
     control_candidate_from_route_decision,
 )
@@ -106,6 +109,11 @@ class PostFailureEpochTrace:
     epoch: PlannedDecisionEpochResult
     stage_ids: tuple[str, ...]
     source_provenance: tuple[Provenance, ...]
+    # Exact existing S12/S13 outputs for S14; these grant no Action authority.
+    control: ControlCandidate
+    route: RouteDecision
+    admission: AdmissionDecision
+    admission_criterion: ExecutionAdmissionCriterion
 
 
 def run_explicit_postfailure_epoch(
@@ -334,6 +342,8 @@ def run_explicit_postfailure_epoch(
         admission_status=outputs["admission"].status,
         epoch=epoch, stage_ids=epoch.executed_work_ids,
         source_provenance=outputs["prediction_input"].source_provenance,
+        control=outputs["control"], route=outputs["route"],
+        admission=outputs["admission"], admission_criterion=admission_rule,
     )
 
 
