@@ -37,9 +37,8 @@ def timeline(
     actions = [r for r in original if r["kind"] == "native_action_outcome"]
     if len(observations) != 3 or len(decisions) != 3 or len(actions) != 2:
         raise TimelineRejected("incomplete S49 owner projection")
-    event = lambda kind, **values: {
-        "schema": SCHEMA, "kind": kind, "session": sid, **values,
-    }
+    def event(kind: str, **values: Any) -> dict[str, Any]:
+        return {"schema": SCHEMA, "kind": kind, "session": sid, **values}
     rows: list[dict[str, Any]] = [
         event("session", source="S49_COMPLETED_REPORT",
               authority="REPORTED_NOT_INDEPENDENTLY_ATTESTED",
