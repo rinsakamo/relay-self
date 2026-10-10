@@ -33,7 +33,10 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
           git merge-base --is-ancestor 66b8045fd2b47d9c35febb12c495379d1248bb4e HEAD
-          test -z "$(git diff --name-only --diff-filter=CDMRTUXB 66b8045fd2b47d9c35febb12c495379d1248bb4e HEAD)"
+          # The product evidence fix intentionally adds one append-only field
+          # to the S49 report writer; every other inherited source stays frozen.
+          changed="$(git diff --name-only --diff-filter=CDMRTUXB 66b8045fd2b47d9c35febb12c495379d1248bb4e HEAD)"
+          test "$changed" = "adapters/mineflayer/s49_normal_session_real_ci.py"
       - run: python tools/check_repository.py
 
   pytest:
