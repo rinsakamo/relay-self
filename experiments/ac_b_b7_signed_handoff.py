@@ -469,12 +469,24 @@ class HandoffGate:
         _token("nonce", nonce)
         self._revoked.add(nonce)
 
-    def admit(self, proposal: DraftResult, grant: SignedGrant | None) -> Admission:
-        if not isinstance(proposal, DraftResult):
-            raise InvalidEvidence("qualified draft result required")
+    def admit(
+        self, bridge: ReadOnlyBridge, proposal: DraftResult,
+        grant: SignedGrant | None,
+    ) -> Admission:
+        if not isinstance(bridge, ReadOnlyBridge) or not isinstance(
+            proposal, DraftResult
+        ):
+            raise InvalidEvidence("qualified read-only bridge and draft required")
         if proposal.status is not Status.FOUND or proposal.draft is None:
             return Admission(Status.DENIED, None)
         draft = proposal.draft
+        # Require current external-source attestation, not a forged draft.
+        current = bridge.draft(
+            draft.a, draft.b, target_id=draft.target_id,
+            session=draft.session, revision=draft.revision,
+        )
+        if current != proposal or current.status is not Status.FOUND:
+            return Admission(Status.DENIED, None)
         if not isinstance(grant, SignedGrant):
             return Admission(Status.DENIED, None)
         if (
@@ -531,10 +543,11 @@ def run_fixture() -> dict[str, object]:
                          session=world.session, revision=0)
             for a, b in CONTEXTS
         ]
-        denied = sum(gate.admit(draft, None).status is Status.DENIED
+        denied = sum(gate.admit(bridge, draft, None).status is Status.DENIED
                      for draft in drafts)
-        handed = [gate.admit(draft, gate.issue(draft.draft)) for draft in drafts]
+        handed = [gate.admit(bridge, draft, gate.issue(draft.draft)) for draft in drafts]
         admitted = sum(approved.status is Status.ADMITTED for approved in handed)
+        spare_old_grants = [gate.issue(draft.draft) for draft in drafts]
         candidate_actions = [draft.draft.action for draft in drafts]
         fresh_objects = all(a is not b for a, b in zip(original, recovered_receipts))
         independent_json = restored is not owner and restored == owner
@@ -557,9 +570,8 @@ def run_fixture() -> dict[str, object]:
             a, b, target_id="b7-learning-target", session=world.session,
             revision=0).status is Status.STALE for a, b in CONTEXTS)
         old_grants_blocked = sum(
-            gate.admit(draft, gate.issue(draft.draft)).status is Status.DENIED
-            if False else gate.admit(draft, None).status is Status.DENIED
-            for draft in drafts
+            gate.admit(fresh_bridge, draft, old).status is Status.DENIED
+            for draft, old in zip(drafts, spare_old_grants)
         )
         shifted = observe_all(world)
         shifted_owner = retain_fixture(shifted)
@@ -573,7 +585,7 @@ def run_fixture() -> dict[str, object]:
             for a, b in CONTEXTS
         ]
         recovered = sum(
-            gate.admit(d, gate.issue(d.draft)).status is Status.ADMITTED
+            gate.admit(shifted_bridge, d, gate.issue(d.draft)).status is Status.ADMITTED
             for d in new_drafts
         )
         world.change_rule(announce=False)
