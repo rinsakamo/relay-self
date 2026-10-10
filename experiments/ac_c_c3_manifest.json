@@ -1,0 +1,23 @@
+{
+  "version": "AC-C-C3-CAUSAL-AUDIT-v1",
+  "owner": "RelaySelf #432 Lane C / #438 prior frozen result; C3 independent follow-up",
+  "frozen_parent_head": "c2c4b2b6e1fcf245f7c85eb4bc3caac46404a13f",
+  "frozen_parent_tree": "9784414c54414a80b8804bcec174c61675d86513",
+  "phase_schedule": ["unknown", "stable", "shift", "recovery"],
+  "episodes_per_phase": 64,
+  "confirmation_seeds": [53, 59, 61, 67, 71],
+  "arms": ["FIXED", "LEARNED", "LEARNED_NO_FEEDBACK", "CHEAP_EXACT"],
+  "scenario": "BODY_AWARE",
+  "provenance": "experimental immutable source-session / 0->1 revised World-generated outcome receipt; strict matching and no replay; cryptographic physical attestation NOT claimed",
+  "selector_sight": "only Evidence + retained own observed outcome in LEARNED; phase and World target evaluators only; no hidden truth supplied",
+  "ablation": "LEARNED_NO_FEEDBACK uses identical policy, schedule, admissibility, selector cost, but suppresses recorded reliability update while advancing seen",
+  "cheap_null": "3-bit parity from already visible raw glyph, one synthetic decision tick, provisional work cost reported as 1/2/3 operation units separately; do not assert GPU/CPU energy equivalence",
+  "re_escalation": "per cue first shifted FAST failure receipt -> next selected SLOW or OBSERVE within shift; count intervening opportunities; non-occurrence is censored, not success",
+  "feedback_causality": "pair LEARNED vs NO_FEEDBACK on same exogenous opportunities; divergences can demonstrate allocation effect only, not World benefit",
+  "metric_policy": "per phase success, failure, abstain, mechanism mix, selector overhead, chosen-mode work, re-escalation witnessed/censored, return-to-cheap successes, paired correct/abstain difference",
+  "cost_units": "synthetic ticks/work ops only; direct cost of cheap parity explicitly provisional; no electric energy or Minecraft hunger from compute",
+  "negative_controls": ["wrong session", "stale revision", "duplicate terminal receipt", "forged mode", "receipt with unobserved outcome", "no feedback", "cheap exact already-visible glyph"],
+  "no_retune": "do not change previously frozen C1 selector, thresholds, phase distributions, seed set or mechanism decoders after seeing C3 results",
+  "claim_ceiling": "retrospective read-only C1 instrumentation plus freshly heldout confirmation seeds; not qualified real L1/L2 or source-authoritative World",
+  "no_go": ["new owner", "central scheduler", "production mutation", "LLM", "GGUF", "GPU", "Minecraft", "unmerged Lane A or B code", "automatic PR merge"]
+}
