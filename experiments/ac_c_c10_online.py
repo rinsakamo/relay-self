@@ -608,6 +608,23 @@ def report() -> dict:
                 epoch: sum(r["phases"][epoch]["success"] for r in active)
                 for epoch in m["epochs"]
             }
+            # Evaluator-only calibration audit. Never supply true regime
+            # probabilities or phase names to the ordinary online selector.
+            summary[split][arm]["end_phase_obstruction_prior_mean"] = {
+                epoch: round(
+                    sum(r["phases"][epoch]["last_block_p_estimate"] for r in active)
+                    / len(active), 4
+                ) for epoch in m["epochs"]
+            }
+            summary[split][arm]["end_phase_prior_abs_error_mean"] = {
+                epoch: round(
+                    sum(
+                        abs(r["phases"][epoch]["last_block_p_estimate"]
+                            - m["obstruction_probability"][epoch])
+                        for r in active
+                    ) / len(active), 4
+                ) for epoch in m["epochs"]
+            }
             summary[split][arm]["warmup_sources_identical"] = True
     paired = {}
     for seed in m["seeds"]["heldout"]:
