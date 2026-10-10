@@ -9,6 +9,7 @@ from experiments.ac_b_b24_structural_transfer import (
     ANCHORS,
     HELDOUT,
     StructuralWorld,
+    InvalidStructuralExperience,
     _habit_cue,
 )
 from experiments.ac_b_b25_discrimination import (
@@ -255,7 +256,7 @@ def test_partial_training_does_not_allow_hypothesis_selection():
     )
     for i, cue in enumerate(ANCHORS[:10]):
         runner.agent.encounter(cue, "TRAIN", f"partial-{i}")
-    with pytest.raises(InvalidHypothesisEvidence, match="source-verified"):
+    with pytest.raises(InvalidHypothesisEvidence, match="unseen relevant hypothesis cue"):
         runner._select_novel(FIRST_PROBE)
     with pytest.raises(Exception):
         runner.agent.learn_structure()
@@ -311,5 +312,5 @@ def test_unfamiliar_arm_or_candidate_and_invalid_source_fail_closed():
         execute_arm("UNKNOWN_WORLD", "FULL_HYPOTHESIS_S11")
     with pytest.raises(InvalidHypothesisEvidence, match="frozen"):
         execute_arm("NORMAL", "REAL_L2_WAS_QUALIFIED")
-    with pytest.raises(InvalidHypothesisEvidence):
+    with pytest.raises(InvalidStructuralExperience):
         known_residual((0, 1, 2, 0))
