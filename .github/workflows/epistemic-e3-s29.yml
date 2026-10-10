@@ -49,7 +49,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install --disable-pip-version-check "pytest==9.1.1"
-      - run: python -m pytest
+      - name: Check E3 focused integration first
+        run: python -m pytest tests/test_epistemic_e3_s29_integration.py
+      - name: Check all repository regression tests
+        run: python -m pytest
 
   lint:
     runs-on: ubuntu-latest
