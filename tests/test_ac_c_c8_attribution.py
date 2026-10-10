@@ -1,5 +1,4 @@
 """C8 source-only action attribution, falsification and Grand Null tests."""
-from collections import deque
 from dataclasses import replace
 
 import pytest
