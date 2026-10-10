@@ -195,10 +195,16 @@ class FixtureWorld:
     def validate(self, present: PresentProjection) -> None:
         if not isinstance(present, PresentProjection):
             raise ContractError("UNKNOWN: Present type mismatch")
-        if not projection_is_current(
+        if type(present.source_revision) is not int or not projection_is_current(
             present, current_source_revision=self.revision,
         ) or present != self.project():
             raise ContractError("UNKNOWN: stale or forged source/revision/intent evidence")
+        # Dataclass equality alone is not sufficient: bool compares equal to int.
+        _history(present)
+        if self.revision == 1:
+            signal = present.fact("observed_signal")
+            if signal is None or type(signal.value) is not int:
+                raise ContractError("UNKNOWN: observed signal must be a source integer")
 
     def observe(self, present: PresentProjection) -> PresentProjection:
         self.validate(present)
