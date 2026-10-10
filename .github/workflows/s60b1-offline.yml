@@ -1,0 +1,132 @@
+name: S60-B1 exact-head offline loopback transport
+
+on:
+  pull_request:
+    branches:
+      - self/s60a-best-effort-displacement-20261010
+  push:
+    branches:
+      - self/s60b1-loopback-adapter-*
+
+permissions:
+  contents: read
+
+concurrency:
+  group: relay-self-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out exact transaction head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact head
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Verify frozen manifest and unchanged predecessor tree
+        run: |
+          sha256sum -c docs/s60a/manifest.sha256
+          echo "68e7983c06e4501cab519a0c55fe0f9e14ef336058310191e22891f0d016b739  docs/s60b1/manifest.md" | sha256sum -c
+          test "$(git rev-parse HEAD:docs/s60b1/manifest.md)" = "965a76c8205c36e7e352b072f47c01456fcd36ad"
+          git merge-base --is-ancestor 71d7daeaade1562a0f0c9684d18f88cc6383e7ff HEAD
+          test -z "$(git diff --name-only --diff-filter=CDMRTUXB 71d7daeaade1562a0f0c9684d18f88cc6383e7ff HEAD)"
+
+      - name: Verify repository contracts
+        run: python tools/check_repository.py
+
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out exact transaction head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact head
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install pytest
+        run: python -m pip install --disable-pip-version-check "pytest==9.1.1"
+
+      - name: Run deterministic tests
+        run: |
+          python -m pytest tests/test_feature_s60b1_adapter.py tests/test_feature_s60a_displacement.py
+          python -m pytest
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out exact transaction head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact head
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install Ruff
+        run: python -m pip install --disable-pip-version-check "ruff==0.16.7"
+
+      - name: Run lint
+        run: ruff check src tests experiments adapters observability
+
+  mineflayer-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out exact transaction head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Verify exact head
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+
+      - name: Set up Node 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      - name: Install locked Mineflayer dependency graph
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+
+      - name: Verify Mineflayer adapter protocol
+        run: npm run check --prefix adapters/mineflayer

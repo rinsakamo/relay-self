@@ -89,22 +89,26 @@ class FakeHTTP:
             self.errors.append(type(exc).__name__)
         finally:
             writer.close()
-            await writer.wait_closed()
-            self.writers.discard(writer)
-            self.tasks.discard(task)
+            try:
+                await writer.wait_closed()
+            except (ConnectionError, OSError, asyncio.CancelledError):
+                pass
+            finally:
+                self.writers.discard(writer)
+                self.tasks.discard(task)
 
     async def next_post(self):
         return await asyncio.wait_for(self.arrived.get(), 2)
 
     async def __aexit__(self, *args):
         self.server.close()
-        await self.server.wait_closed()
         for writer in self.writers:
             writer.close()
         remaining = list(self.tasks)
         for task in remaining:
             task.cancel()
         await asyncio.gather(*remaining, return_exceptions=True)
+        await self.server.wait_closed()
         assert not self.tasks and not self.writers
         assert not self.errors
 
@@ -161,6 +165,7 @@ def test_held_cancel_ignored_priority_coalescing_l0_then_complete_stale_and_next
             first_task = rig.adapter._attempt.task
             assert future.get_loop() is asyncio.get_running_loop()
             a = rig.submit(priority=3)
+            assert rig.events().index("DISPLACED") < rig.events().index("HOST_CANCEL_REQUESTED")
             rig.submit(priority=2)
             assert rig.owner.pending is a
             latest = rig.submit(priority=3)
@@ -178,7 +183,6 @@ def test_held_cancel_ignored_priority_coalescing_l0_then_complete_stale_and_next
             receipt = await rig.owner.urgent_l0(CONTEXT, l0)
             assert ran == ["independent callback"] and receipt.l0_completed
             assert not receipt.backend_stopped and not receipt.gpu_released
-            assert rig.events().index("DISPLACED") < rig.events().index("HOST_CANCEL_REQUESTED")
             server.release[0].set()
             await rig.terminal()
             assert rig.owner.tick() is None
@@ -551,4 +555,84 @@ def test_binding_is_exact_single_owner_and_closed_adapter_cannot_restart():
             await rig.adapter.aclose()
             rig.submit()
             assert "PROVIDER_UNCONFIRMED" in rig.events() and not server.posts
+    asyncio.run(scenario())
+
+
+def test_stock_optional_metadata_is_validated_and_not_published():
+    async def scenario():
+        async with FakeHTTP() as server:
+            value = envelope()
+            value.update(id="chatcmpl-offline", object="chat.completion", created=123,
+                         system_fingerprint="offline-build",
+                         timings=dict(cache_n=0, prompt_n=10, predicted_n=3, prompt_ms=1.5))
+            value["usage"]["prompt_tokens_details"] = dict(cached_tokens=0)
+            value["choices"][0]["message"]["reasoning_content"] = "private reasoning"
+            value["choices"][0]["logprobs"] = None
+            server.responses = [response(json.dumps(value).encode())]
+            rig = Rig(server)
+            request = rig.submit()
+            await server.next_post()
+            server.release[0].set()
+            await rig.terminal()
+            result = rig.owner.tick()
+            assert result.request is request and result.value == "transient-output"
+            assert "reasoning" not in repr(rig.adapter.receipts)
+            head, posted = server.posts[0]
+            assert posted == payload() and b"Authorization" not in head
+            assert [r[0] for r in rig.adapter.receipts] == [
+                "START_INVOKED", "SOCKET_POST_SENT", "HTTP_COMPLETION_OBSERVED",
+            ]
+            await rig.adapter.aclose()
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("change", [
+    {"timings": {"prompt_ms": -1}}, {"timings": {"predicted_n": True}},
+    {"timings": {"foreign": 0}}, {"timings": "bad"},
+    {"usage": {"prompt_tokens_details": {"cached_tokens": -1}}},
+    {"usage": {"prompt_tokens": 2, "prompt_tokens_details": {"cached_tokens": 3}}},
+    {"choices": [{"message": {"content": "x", "reasoning_content": []}}]},
+    {"choices": [{"message": {"content": "x"}, "logprobs": {}}]},
+])
+def test_bad_stock_metadata_is_unknown(change):
+    value = envelope()
+    value.update(change)
+    test_http_negative_controls_fail_closed_no_next_post(response(json.dumps(value).encode()))
+
+
+def test_same_loop_callback_requirement_and_foreign_future_boundary():
+    async def scenario():
+        async with FakeHTTP() as server:
+            rig = Rig(server)
+            foreign_loop = asyncio.new_event_loop()
+            try:
+                foreign = foreign_loop.create_future()
+                # Untrusted substituted callback: unchanged S60-A must reject it.
+                rig.owner._start = lambda request: foreign
+                old = rig.submit()
+                assert rig.owner.tick() is None and rig.owner.active is old
+                assert "PROVIDER_UNCONFIRMED" in rig.events()
+                assert not server.posts and rig.adapter.transport_tasks == 0
+            finally:
+                foreign_loop.close()
+            await rig.adapter.aclose()
+    asyncio.run(scenario())
+
+
+def test_replayed_future_boundary_after_real_success():
+    async def scenario():
+        async with FakeHTTP() as server:
+            server.responses = [response()]
+            rig = Rig(server)
+            rig.submit()
+            await server.next_post()
+            server.release[0].set()
+            await rig.terminal()
+            completed = rig.adapter._attempt.future
+            assert rig.owner.tick() is not None
+            rig.owner._start = lambda request: completed
+            old = rig.submit()
+            assert rig.owner.tick() is None and rig.owner.active is old
+            assert "PROVIDER_UNCONFIRMED" in rig.events() and len(server.posts) == 1
+            await rig.adapter.aclose()
     asyncio.run(scenario())

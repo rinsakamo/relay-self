@@ -138,11 +138,15 @@ class LoopbackDisplacementAdapter:
                 or payload["temperature"] != 0
                 or not isinstance(messages, (list, tuple)) or not 1 <= len(messages) <= 64):
                 raise ValueError
+            total_chars = 0
             for message in messages:
                 if (not isinstance(message, dict) or set(message) != {"role", "content"}
                     or message["role"] not in ("system", "user", "assistant")
                     or not isinstance(message["content"], str) or not message["content"].strip()
                     or len(message["content"]) > self.REQUEST_LIMIT):
+                    raise ValueError
+                total_chars += len(message["content"])
+                if total_chars > self.REQUEST_LIMIT:
                     raise ValueError
             raw = json.dumps(dict(payload), ensure_ascii=False, allow_nan=False).encode("utf-8")
             if len(raw) > self.REQUEST_LIMIT:
@@ -166,6 +170,7 @@ class LoopbackDisplacementAdapter:
         attempt = _Attempt(request, future)
         self._attempt = attempt
         self._record("START_INVOKED", attempt)
+        future.add_done_callback(lambda f: self._observe_future(attempt, f))
         try:
             payload = self._payload(request)
         except TransportUnconfirmed:
@@ -174,12 +179,13 @@ class LoopbackDisplacementAdapter:
         attempt.task = self._loop.create_task(self._transport(attempt, payload))
         # Done callback also handles cancellation before the coroutine's first step.
         attempt.task.add_done_callback(lambda task: self._terminal(attempt, task))
-        future.add_done_callback(lambda f: self._future_cancelled(attempt, f))
         return future
 
-    def _future_cancelled(self, attempt: _Attempt, future: asyncio.Future) -> None:
+    def _observe_future(self, attempt: _Attempt, future: asyncio.Future) -> None:
         if future.cancelled():
             self._cancel(attempt)
+        else:
+            future.exception()
 
     def cancel(self, request: ModelRequest) -> None:
         self._local()
@@ -334,6 +340,7 @@ class LoopbackDisplacementAdapter:
                                 parse_constant=lambda value: (_ for _ in ()).throw(ValueError()))
             if not isinstance(parsed, dict) or set(parsed) - {
                 "id", "object", "created", "model", "choices", "usage", "system_fingerprint",
+                "timings",
             }:
                 raise ValueError
             if "model" in parsed and parsed["model"] != self.config.model:
@@ -351,12 +358,17 @@ class LoopbackDisplacementAdapter:
             if not isinstance(choices, list) or len(choices) != 1:
                 raise ValueError
             choice = choices[0]
-            if (not isinstance(choice, dict) or set(choice) - {"index", "message", "finish_reason"}
+            if (not isinstance(choice, dict) or set(choice) - {"index", "message", "finish_reason", "logprobs"}
                 or type(choice.get("index", 0)) is not int or choice.get("index", 0) != 0):
                 raise ValueError
+            if choice.get("logprobs") is not None:
+                raise ValueError
             message = choice["message"]
-            if (not isinstance(message, dict) or set(message) - {"role", "content"}
+            if (not isinstance(message, dict) or set(message) - {"role", "content", "reasoning_content"}
                 or message.get("role", "assistant") != "assistant"):
+                raise ValueError
+            if ("reasoning_content" in message
+                and not isinstance(message["reasoning_content"], str)):
                 raise ValueError
             answer = message["content"]
             if not isinstance(answer, str) or not answer.strip():
@@ -366,9 +378,27 @@ class LoopbackDisplacementAdapter:
                 raise ValueError
             usage = parsed.get("usage", {})
             if not isinstance(usage, dict) or set(usage) - {
-                "prompt_tokens", "completion_tokens", "total_tokens",
+                "prompt_tokens", "completion_tokens", "total_tokens", "prompt_tokens_details",
             }:
                 raise ValueError
+            if "prompt_tokens_details" in usage:
+                details = usage["prompt_tokens_details"]
+                if (not isinstance(details, dict) or set(details) != {"cached_tokens"}
+                    or type(details["cached_tokens"]) is not int or details["cached_tokens"] < 0
+                    or (usage.get("prompt_tokens") is not None
+                        and details["cached_tokens"] > usage["prompt_tokens"])):
+                    raise ValueError
+            if "timings" in parsed:
+                timings = parsed["timings"]
+                counts = {"cache_n", "prompt_n", "predicted_n", "draft_n", "draft_n_accepted"}
+                rates = {"prompt_ms", "prompt_per_token_ms", "prompt_per_second",
+                         "predicted_ms", "predicted_per_token_ms", "predicted_per_second"}
+                if not isinstance(timings, dict) or set(timings) - (counts | rates):
+                    raise ValueError
+                for key, number in timings.items():
+                    if (type(number) not in (int, float) or not math.isfinite(number) or number < 0
+                        or (key in counts and type(number) is not int)):
+                        raise ValueError
             # Inherit S52 ProviderCallFacts validation and enforce request output bound.
             facts = ProviderCallFacts(max_tokens, usage.get("prompt_tokens"),
                                       usage.get("completion_tokens"), usage.get("total_tokens"),
@@ -376,7 +406,8 @@ class LoopbackDisplacementAdapter:
             if facts.completion_tokens is not None and facts.completion_tokens > max_tokens:
                 raise ValueError
             if (all(k in usage for k in ("prompt_tokens", "completion_tokens", "total_tokens"))
-                and all(usage[k] is not None for k in usage)
+                and all(usage[k] is not None
+                        for k in ("prompt_tokens", "completion_tokens", "total_tokens"))
                 and usage["total_tokens"] != usage["prompt_tokens"] + usage["completion_tokens"]):
                 raise ValueError
             return answer.strip()
