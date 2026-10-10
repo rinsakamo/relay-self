@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 from dataclasses import replace
 from pathlib import Path
 
@@ -123,7 +122,7 @@ def test_actual_s29_s24_s19_memory_s11_matched_readonly(distance, reference, cm)
     assert result.requires_l2_candidate is False
     assert result.source_request_id == s29.REQUEST1
     assert result.source_session == args["consequence3"].session_id
-    assert result.source_seq == kwargs["adapter"].frames[0].seq + 1 if False else 5
+    assert result.source_seq == 5
     assert args["trace"].world_evidence.threat_clearance_cm == cm
     assert result.retained_revision == 1
     assert result.memory_id == "i1-pointer"
