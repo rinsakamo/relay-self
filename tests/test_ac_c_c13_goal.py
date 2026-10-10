@@ -206,7 +206,7 @@ def test_hard_budget_and_health_reject_unsafe_detour():
     assert not admissible_detour(too_hungry)
     bad = replace(e, health=2, deadline=1)
     assert not admissible_first(bad)
-    risky = replace(e, threat=True, health=4, deadline=7)
+    risky = replace(e, threat=True, health=3, deadline=7)
     assert not admissible_detour(risky)
 
 
