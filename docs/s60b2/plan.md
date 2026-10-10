@@ -125,7 +125,10 @@ The fixture now releases/cancels/joins owned handlers and closes streams
 before waiting for listener closure. No physical attempt was made. The next completed run had 82 passes and four
 assertion failures because a redaction metadata key contained the word
 "private". Those assertions now check actual secret values/paths/diagnostics
-rather than rejecting the metadata key. Acceptance criteria are unchanged.
+rather than rejecting the metadata key. Acceptance criteria are unchanged. The first push CI for ec7a502 failed
+before pytest because the added plan CLI step lacked PYTHONPATH=.:src. The
+workflow now supplies that explicit import path and disables bytecode writes;
+its other three jobs passed. Superseded failed CI is not final evidence.
 
 P0-only ceiling: PHYSICAL_RUN_NOT_AUTHORIZED, BACKEND_STOP_UNCONFIRMED,
 NO_SAME_PROCESS_SLOT_REUSE_PROOF, NO_GPU_PREEMPTION_CLAIM, NO_PRODUCTION_GO.
