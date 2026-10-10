@@ -26,6 +26,12 @@ def _case():
     action = report["actual_native_actions"][0]
     e = action["execution_evidence"]
     sid = report["session_id"]
+    # S17's deterministic typed fixture uses probe request_id=None, which
+    # the actual Mineflayer wire decoder correctly rejects when serialized.
+    # Give BOTH synthetic probe receipts protocol-valid original request IDs
+    # *before* creating a matching raw transcript. Never repair real receipts.
+    e["before_observation"]["request_id"] = "c15-baseline-fixture-probe"
+    e["after_observation"]["request_id"] = "c15-poststop-fixture-probe"
     before = e["before_observation"]["snapshot"]["position"]
     after = e["after_observation"]["snapshot"]["position"]
     # A fixture-specific PREDECLARED region in this test is NOT a production
