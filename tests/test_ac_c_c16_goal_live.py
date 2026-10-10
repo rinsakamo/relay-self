@@ -353,6 +353,28 @@ def test_rejected_stop_ack_requires_one_emergency_clear() -> None:
     assert clear_calls[1][1] == f"c16-emergency-{SESSION}"
     assert not result.physical_world_server_association_verified
 
+
+def test_forward_wall_watchdog_stops_when_source_ack_is_delayed() -> None:
+    class DelayedForwardAck(FakeOwned):
+        async def receive(self):
+            if self._events and self._events[0].seq == 3:
+                await asyncio.sleep(0.35)
+            return await super().receive()
+
+    fake = DelayedForwardAck(raw_messages())
+    goal, alt = goal_regions()
+    result = asyncio.run(
+        OneShotQualification().run(fake, goal=goal, alternative=alt, timeout_s=1.0)
+    )
+    assert result.classification == "UNDETERMINED"
+    assert "TIMED_OUT" in result.reason or "WATCHDOG" in result.reason
+    assert fake.sends.count(("observe",)) == 1
+    assert len([x for x in fake.sends if x[0] == "set_control"]) == 1
+    emergency = [x for x in fake.sends if x[0] == "clear_controls"]
+    assert emergency == [("clear_controls", f"c16-emergency-{SESSION}")]
+    assert result.signed_negative_label == "BLOCKED_UNDETERMINED"
+
+
 def fixture_report() -> dict:
     good = [
         run_fixture(raw_messages(ending=place))[0].classification
