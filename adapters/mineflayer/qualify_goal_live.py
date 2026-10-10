@@ -115,10 +115,11 @@ def preflight(*, execute: bool, confirmation: str | None,
               check_tcp: bool = True) -> tuple[Region, Region] | C16Result:
     """Default is NEVER to inspect a server or launch a process."""
     manifest()
-    blocked = lambda why: C16Result(
-        "BLOCKED_WORLD_OR_AUTHORITY_UNVERIFIED", why, None, (),
-        "NOT_RUN", "NOT_RUN", None, False,
-    )
+    def blocked(why: str) -> C16Result:
+        return C16Result(
+            "BLOCKED_WORLD_OR_AUTHORITY_UNVERIFIED", why, None, (),
+            "NOT_RUN", "NOT_RUN", None, False,
+        )
     if not execute:
         return blocked("DRY_BLOCKED_NO_PROCESS")
     if confirmation != CONFIRM:
@@ -223,7 +224,6 @@ class OneShotQualification:
         start_state = "NOT_RUN"
         stop_state = "NOT_RUN"
         issued_start = False
-        issued_stop = False
         forward_pos: MineflayerPosition | None = None
         baseline: MineflayerPosition | None = None
         posts: list[MineflayerPosition] = []
@@ -344,7 +344,6 @@ class OneShotQualification:
 
             issue_action(stop_id)
             await session.send_clear_controls(stop_id)
-            issued_stop = True
             await wait_ack(stop_id, "clear_controls")
             stop_state = "OUTCOME"
 
