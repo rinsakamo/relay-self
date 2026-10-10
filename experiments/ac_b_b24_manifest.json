@@ -1,0 +1,111 @@
+{
+  "schema": "AC_B_B24_NOVEL_RELEVANT_STRUCTURAL_TRANSFER_V1",
+  "authority": {
+    "issue": 547,
+    "lane_B": 431,
+    "parent_AC": 426,
+    "B23_pr": 546,
+    "B23_head": "752c8d3283f6e203a275990a870b5d4dd51fc594",
+    "pr_base": "self/ac-b-b23-cognitive-loop-20261010",
+    "main": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "excluded_B22": 541
+  },
+  "fixed_world": {
+    "features": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "normal_goal": "a XOR b XOR c XOR d XOR (a AND b)",
+    "twin_residual": "XOR of all four triple conjunctions plus a*b*c*d",
+    "worlds": [
+      "NORMAL",
+      "TWIN"
+    ],
+    "action_candidates": [
+      0,
+      1
+    ],
+    "training": "11 cue anchors with Hamming weight<=2, lexicographically sorted, identical source-observed choice outcomes for NORMAL and TWIN",
+    "heldout": "five relevant new cues Hamming weight>=3, lexicographically sorted, replay once each",
+    "no_hidden_truth_inference": true
+  },
+  "arms": [
+    "STRUCTURAL_S11",
+    "CHEAP_DEG2",
+    "FLAT_TAG"
+  ],
+  "protocol": {
+    "train": "try real action0; only on observed failure try real action1; 11 confirmed-success source memory; exactly 16 actually issued World Actions per arm",
+    "infer": "After all 11 anchors, learn 11 GF2 degree2 coefficients; STRUCTURAL_S11 generic Gaussian elimination, CHEAP_DEG2 finite differences; FLAT_TAG no generalization, default action0",
+    "heldout": "make learned/flat first choice, actually issue one Action and alternate only on observed failure, append both results to Memory, retain successful source as typed immutable S11 rule or cheap tag",
+    "replay": "same five relevant heldout cues with new nuisance trial IDs, actual frozen S11 select_habit on all original trained/heldout rules; no new relevant combos during replay"
+  },
+  "predicted": {
+    "NORMAL": {
+      "STRUCTURAL_S11": {
+        "training_world_actions": 16,
+        "first_holdout_correct": 5,
+        "first_holdout_actions": 5,
+        "replay_world_actions": 5,
+        "total_world_actions": 26
+      },
+      "CHEAP_DEG2": {
+        "training_world_actions": 16,
+        "first_holdout_correct": 5,
+        "first_holdout_actions": 5,
+        "replay_world_actions": 5,
+        "total_world_actions": 26
+      },
+      "FLAT_TAG": {
+        "training_world_actions": 16,
+        "first_holdout_correct": 2,
+        "first_holdout_actions": 8,
+        "replay_world_actions": 5,
+        "total_world_actions": 29
+      }
+    },
+    "TWIN": {
+      "STRUCTURAL_S11": {
+        "training_world_actions": 16,
+        "first_holdout_correct": 0,
+        "first_holdout_actions": 10,
+        "replay_world_actions": 5,
+        "total_world_actions": 31
+      },
+      "CHEAP_DEG2": {
+        "training_world_actions": 16,
+        "first_holdout_correct": 0,
+        "first_holdout_actions": 10,
+        "replay_world_actions": 5,
+        "total_world_actions": 31
+      },
+      "FLAT_TAG": {
+        "training_world_actions": 16,
+        "first_holdout_correct": 3,
+        "first_holdout_actions": 7,
+        "replay_world_actions": 5,
+        "total_world_actions": 28
+      }
+    }
+  },
+  "total_world_actions_six_separate_arms": 171,
+  "possible_claims": [
+    "NOVEL_RELEVANT_CUE_MODEL_TRANSFER_UNDER_DEG2_ASSUMPTION",
+    "CHEAP_DEG2_EXACTLY_MATCHES_STRUCTURAL_S11",
+    "IDENTICAL_TRAINING_UNDERDETERMINES_HELDOUT_LAW",
+    "GENERIC_STRUCTURAL_RULE_CAN_OUTPERFORM_FLAT_TAG_OR_WORSE_UNDER_TWIN",
+    "NO_REAL_L2_OR_MINECRAFT",
+    "NO_PRODUCTION_S11_ACQUISITION"
+  ],
+  "limits": [
+    "L2-like algorithmic polynomial learner is NOT real LLM/L2 inference",
+    "No real physical Minecraft/S16/S17, or GPU",
+    "No hidden rule or oracle accessed by learning/decision policy",
+    "Production frozen S11 read-only; experimental immutable owner local only",
+    "No measured physical compute or energy",
+    "No B22 security work",
+    "only 4 new B24 files, no main edits"
+  ]
+}
