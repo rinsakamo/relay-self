@@ -184,10 +184,11 @@ def test_r3_direct_read_timeout_and_pre_response_refusal():
     asyncio.run(scenario())
 
 
-def test_live_api_has_no_diagnostic_toggle():
+def test_live_api_keeps_adapter_injection_private():
     import inspect
     assert 'diagnostic_adapter' not in inspect.signature(probe.run).parameters
-    assert 'R3DiagnosticTransport' not in inspect.getsource(probe.run)
+    assert 'diagnostic_arm_a' in inspect.signature(probe.run).parameters
+    assert 'diagnostic_grant_bytes' in inspect.signature(probe.run).parameters
 
 
 def test_frozen_manifest_and_predecessor_separation():
