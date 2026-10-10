@@ -17,7 +17,7 @@ from experiments.ac_b_b11_governed_habit import (
     CurrentWorld,
     ObservedOutcome,
 )
-from experiments.ac_b_b15_delayed_noise import DELAYS, DelayedEpisode, MatchedPolicies
+from experiments.ac_b_b15_delayed_noise import DelayedEpisode, MatchedPolicies
 
 MANIFEST_PATH = Path(__file__).with_name("ac_integration_i4_manifest.json")
 FROZEN_DIGEST = "7d84969b7cd6739f62524edef32452d7c112336f1289d6df9243bdc9a44e1cf4"
