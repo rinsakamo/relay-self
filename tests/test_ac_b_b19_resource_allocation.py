@@ -21,13 +21,13 @@ from experiments.ac_b_b19_resource_allocation import (
     PROFILES,
     InvalidB19Allocation,
     Resource,
-    source_action,
     candidate_expected_net_Q,
     choose,
     qualify_reported_pair,
     recompute_same_public_Q,
     run_b19_comparison,
     score_arm,
+    source_action,
 )
 from relay_self.learning import (
     FeedbackDirection,
