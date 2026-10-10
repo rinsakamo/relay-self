@@ -16,7 +16,6 @@ from hashlib import sha256
 from adapters.mineflayer.action_outcome import interpret_world_consequence
 from adapters.mineflayer.execution import (
     WorldConsequence,
-    WorldConsequenceStatus,
     build_mineflayer_command,
 )
 from relay_self.action import ActionLifecycle
