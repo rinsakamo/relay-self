@@ -164,6 +164,7 @@ def audit_decoded(
     old_entity_id: int | None = None
     new_entity_id: int | None = None
     old_absent = False
+    far_seen = False
     new_seen = False
     phase = 0  # 0 spawn, 1 far probe, 2 old gone, 3 new appeared, 4 near probe
     for index, frame in enumerate(stream):
@@ -188,11 +189,13 @@ def audit_decoded(
             raise E7Rejected("unsupported native observation in calibration")
         if frame.kind == "probe":
             if phase == 0:
+                if not far_seen:
+                    raise E7Rejected("far zombie not witnessed by native entitySpawn event")
                 if frame.request_id != MANIFEST["first_request_id"]:
                     raise E7Rejected("first exact far correlated request_id mismatch")
                 first = _zombie(frame.snapshot)
-                if first[1] != 180:
-                    raise E7Rejected("first far target must be exactly rounded 180cm")
+                if first[1] != 180 or first[0].entity_id != old_entity_id:
+                    raise E7Rejected("first far target must match earlier native 180cm entitySpawn")
                 far = frame
                 old_entity_id = first[0].entity_id
                 phase = 1
@@ -208,7 +211,14 @@ def audit_decoded(
                 raise E7Rejected("third/early/replayed/legacy probe or transition absent")
         elif frame.kind == "entities":
             found = _zombie(frame.snapshot, allow_absent=True)
-            if phase == 1:
+            if phase == 0:
+                if found is None or found[1] != 180:
+                    raise E7Rejected("far native entitySpawn must establish exactly 180cm")
+                if far_seen and found[0].entity_id != old_entity_id:
+                    raise E7Rejected("far source identity changed before probe")
+                old_entity_id = found[0].entity_id
+                far_seen = True
+            elif phase == 1:
                 if found is None:
                     old_absent = True
                     phase = 2
@@ -232,7 +242,7 @@ def audit_decoded(
             raise E7Rejected("bot state changed after final near probe")
     if (
         phase != 4 or far is None or near is None or spawn is None
-        or not old_absent or not new_seen
+        or not far_seen or not old_absent or not new_seen
         or old_entity_id is None or new_entity_id is None
         or old_entity_id == new_entity_id
         or not far.seq < near.seq
