@@ -1,0 +1,230 @@
+{
+  "version": "AC-C-C10-ONLINE-CALIBRATION-v1",
+  "authority": {
+    "issue": 490,
+    "lane": 432,
+    "parent": 426,
+    "main_sha": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "main_tree": "7816055966dd520b6690de7662a267047e57ccc0",
+    "prior_c9_head": "62b700ae9c0aea47d635bfd90291acaab2cfc549"
+  },
+  "seeds": {
+    "calibration": [
+      359,
+      367,
+      373
+    ],
+    "heldout": [
+      389,
+      397,
+      401,
+      409,
+      419
+    ]
+  },
+  "epochs": [
+    "warmup",
+    "block_shift",
+    "rule_shift",
+    "joint_shift",
+    "return"
+  ],
+  "n_per_epoch": 120,
+  "hidden_z_probability_1": {
+    "warmup": [
+      0.1,
+      0.9
+    ],
+    "block_shift": [
+      0.1,
+      0.9
+    ],
+    "rule_shift": [
+      0.9,
+      0.1
+    ],
+    "joint_shift": [
+      0.9,
+      0.1
+    ],
+    "return": [
+      0.1,
+      0.9
+    ]
+  },
+  "obstruction_probability": {
+    "warmup": 0.1,
+    "block_shift": 0.6,
+    "rule_shift": 0.1,
+    "joint_shift": 0.6,
+    "return": 0.1
+  },
+  "world": {
+    "group": "equiprobable binary",
+    "public_prefix": "uniform 0..3; target action=parity(prefix) XOR z",
+    "first_move": "zguess=z and obstruction false",
+    "detour_move": "zguess=z regardless of obstruction",
+    "cheap_hint_presence": 0.65,
+    "cheap_hint_accuracy": 0.7,
+    "inspect_hint_accuracy": 0.9,
+    "inspect_hint_independent_given_block": true,
+    "inspect_available": 0.7,
+    "deadline": [
+      2,
+      4,
+      5,
+      7
+    ],
+    "health": [
+      2,
+      4,
+      7,
+      10
+    ],
+    "hunger": [
+      2,
+      6,
+      12
+    ],
+    "threat_probability": 0.25,
+    "failed_first_damage": 1,
+    "failed_second_damage": 1,
+    "detour_threat_exposure": 1
+  },
+  "modes": {
+    "FIRST_NORMAL": {
+      "ticks": 1,
+      "work": 1
+    },
+    "NORMAL_FLIP": {
+      "ticks": 1,
+      "work": 1
+    },
+    "NORMAL_SAME": {
+      "ticks": 1,
+      "work": 1
+    },
+    "DETOUR_SAME": {
+      "ticks": 3,
+      "work": 4
+    },
+    "DETOUR_FLIP": {
+      "ticks": 3,
+      "work": 4
+    },
+    "INSPECT": {
+      "ticks": 2,
+      "work": 3
+    },
+    "STOP": {
+      "ticks": 0,
+      "work": 0
+    }
+  },
+  "safety": {
+    "first": "health>2,deadline>=1",
+    "normal_second": "health-after-first>2, fits deadline after optional INSPECT",
+    "detour_second": "hunger>2 and health-after-first>1+threat_exposure, fits deadline",
+    "inspect": "only after consumed failed-first; available; remaining time allows a non-STOP second; at most once",
+    "stop": "always viable after failed first"
+  },
+  "learning": {
+    "prior": "Beta(1,1) by group",
+    "z_history_window": 12,
+    "hard_labels": [
+      "first_NORMAL_success proves zguess",
+      "second_NORMAL_FLIP_success proves second zguess",
+      "second_DETOUR_success proves second zguess",
+      "second_DETOUR_failure proves opposite second zguess because bypass guaranteed"
+    ],
+    "failed_normal_not_label": true,
+    "max_z_updates_per_episode": 1,
+    "cheap_obstruction_hints_window": 24,
+    "obstruction_prior_center": 0.3,
+    "obstruction_pseudocount_strength": 4,
+    "obstruction_hint_sensitivity": 0.7,
+    "obstruction_hint_false_positive": 0.3,
+    "estimated_block_clamp": [
+      0.05,
+      0.95
+    ],
+    "update_obstruction_from": "FIRST cheap hint only; never inspection or hidden b",
+    "warmup": "all arms identical CHEAP_HINT redecision and identical source-only learning",
+    "frozen_controls": "same learned warmup state, no postwarmup retained update",
+    "no_evaluator_truth_for_learning": true
+  },
+  "planning": {
+    "fixed_obstruction_prior": 0.3,
+    "cheap_hint_accuracy": 0.7,
+    "inspection_hint_accuracy": 0.9,
+    "conditioning": "first normal failed; first cheap hint optional; inspector hint iff paid",
+    "second_actions_order": [
+      "STOP",
+      "NORMAL_FLIP",
+      "DETOUR_SAME",
+      "DETOUR_FLIP",
+      "NORMAL_SAME"
+    ],
+    "second_score": {
+      "success": 12,
+      "failure": -6,
+      "stop": -1,
+      "per_work": -0.6,
+      "per_tick": -0.4
+    },
+    "voi_rule": "inspect iff expected post-inspection max minus paid 2ticks,3work > no-inspect max, and inspect physically viable"
+  },
+  "arms": [
+    "FROZEN_HINT",
+    "FROZEN_FLIP",
+    "ADAPT_HINT",
+    "ADAPT_FLIP",
+    "ADAPT_BAYES_FIXED",
+    "ADAPT_BAYES_BLOCK",
+    "ADAPT_VOI_BLOCK",
+    "ADAPT_INSPECT_SIMPLE",
+    "NO_FEEDBACK_HINT",
+    "EVALUATOR_ORACLE"
+  ],
+  "selector_work": {
+    "FROZEN_HINT": 1,
+    "FROZEN_FLIP": 0,
+    "ADAPT_HINT": 1,
+    "ADAPT_FLIP": 0,
+    "ADAPT_BAYES_FIXED": 2,
+    "ADAPT_BAYES_BLOCK": 3,
+    "ADAPT_VOI_BLOCK": 4,
+    "ADAPT_INSPECT_SIMPLE": 1,
+    "NO_FEEDBACK_HINT": 1,
+    "EVALUATOR_ORACLE": 0
+  },
+  "episode_utility": {
+    "success": 12,
+    "exhausted_failure": -6,
+    "stop": -1,
+    "initial_abstain": -1,
+    "per_all_work": -0.6,
+    "per_world_tick": -0.4
+  },
+  "adoption": {
+    "cheap": {
+      "adapt_success_advantage": 100,
+      "noninferior_utility": true,
+      "max_work_factor": 1.15
+    },
+    "block_model": {
+      "vs_adapt_hint_success_advantage": 25,
+      "vs_fixed_p_b_success_advantage": 15,
+      "utility_strictly_greater": true,
+      "max_work_factor": 1.25
+    },
+    "voi": {
+      "vs_block_bayes_success_advantage": 15,
+      "vs_adapt_hint_success_advantage": 25,
+      "utility_strictly_greater": true,
+      "max_work_factor_vs_adapt_hint": 1.25,
+      "changed_actions_min": 10
+    }
+  },
+  "limitations": "synthetic source-identity World, does not emulate Minecraft/LLM/GPU/power; no new scheduler/Habit owner/production authority; no sibling Draft import; no frozen preregistration retuning; all cost proxy only"
+}
