@@ -12,6 +12,7 @@ import json
 from dataclasses import dataclass
 
 from adapters.mineflayer.execution import WorldConsequence
+from experiments.epistemic_e3_s29_integration import EpistemicResult
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.correlated_probe import (
@@ -39,7 +40,6 @@ from relay_self.wait_release_action import (
     propose_explicit_wait_release_action,
 )
 
-from experiments.epistemic_e3_s29_integration import EpistemicResult
 
 VERSION = "AC-A-E4-S29-S25-S26-ACTION-OUTCOME-v1"
 MANIFEST_SHA256 = "2aba8fa2cb7760afc1c5159b9e766e549ecaa40fd3b9e095e61a7ebf34b2c767"
