@@ -203,6 +203,7 @@ class PolicyState:
     capsule: dict[int, Capsule] = field(default_factory=dict)
     strikes: dict[int, deque[bool]] = field(default_factory=dict)
     label_count: dict[int, int] = field(default_factory=dict)
+    last_verified_session: dict[int, str] = field(default_factory=dict)
     since_revocation: dict[int, int] = field(default_factory=dict)
     recent_first_wrong: dict[int, int] = field(default_factory=dict)
     revocation_at: dict[int, int] = field(default_factory=dict)
@@ -229,8 +230,10 @@ class PolicyState:
         self.strikes[group] = deque(maxlen=cfg["guard"]["window_of_executed_cached_cheap"])
         return True
 
-    def certify_warmup(self, source_session: str) -> dict[str, bool]:
-        return {str(group): self.certify(group, source_session) for group in (0, 1)}
+    def certify_warmup(self) -> dict[str, bool]:
+        return {str(group): self.certify(
+            group, self.last_verified_session.get(group, "")
+        ) for group in (0, 1)}
 
     def record_verified(
         self, e: Evidence, receipt: Receipt, *, arm: str,
@@ -239,6 +242,7 @@ class PolicyState:
         z = receipt.observed_target ^ (e.prefix.bit_count() & 1)
         self.history.setdefault(e.group, deque(maxlen=12)).append(z)
         self.label_count[e.group] = self.label_count.get(e.group, 0) + 1
+        self.last_verified_session[e.group] = e.session
         outcome = {"revoked": False, "recompiled": False, "revocation_lag": None}
         if warmup or arm != "GUARDED_CAPSULE":
             return outcome
@@ -264,8 +268,8 @@ class PolicyState:
                 self.since_revocation[e.group] = 0
             elif not any(strikes):
                 self.recent_first_wrong.pop(e.group, None)
-        elif active is None:
-            # Post-revocation observations only, never count trigger receipt.
+        elif active is None and e.group in self.revocation_at:
+            # Post-revocation observations only; never invent initial capsules.
             self.since_revocation[e.group] = self.since_revocation.get(e.group, 0) + 1
             if (
                 self.since_revocation[e.group]
@@ -324,7 +328,7 @@ def trajectory(seed: int, arm: str) -> dict:
     for index, case in enumerate(generate(seed)):
         warmup = case.epoch == "warmup"
         if not warmup and initial_certification is None:
-            initial_certification = state.certify_warmup(trace[-1]["session"])
+            initial_certification = state.certify_warmup()
         world = World(case)
         e = world.evidence()
         if arm == "EVALUATOR_ORACLE" and not warmup:
