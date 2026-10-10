@@ -48,6 +48,11 @@ class CrossOwnerRead:
     habit_selection: HabitSelection
     original_state: LearningPreferenceState
     original_repertoire: HabitRepertoire
+    source_action: ActionLifecycle
+    source_outcome: ActionOutcomeInterpretation | None
+    source_criterion: ActionFeedbackCriterion | None
+    update_rule: LearningUpdateRule
+    interpretation_provenance: Provenance
     no_action_authority: bool = True
 
     @property
@@ -106,6 +111,11 @@ def inspect_existing_stack(
         habit_selection=selection,
         original_state=preference,
         original_repertoire=repertoire,
+        source_action=action,
+        source_outcome=outcome,
+        source_criterion=criterion,
+        update_rule=update_rule,
+        interpretation_provenance=provenance,
     )
 
 
@@ -124,6 +134,20 @@ def commit_only_by_explicit_owner(
         raise TypeError("valid B8 read-only inspection required")
     if inspected.learning_proposal is None or not inspected.qualified_feedback:
         raise NoQualifiedFeedback("no S17-qualified LearningFeedback for update")
+    # Fail closed if the read-only envelope was spliced/tampered after S17.
+    # Re-run the *actual* S17 and S10 pure functions against exact witnesses.
+    regenerated = inspect_existing_stack(
+        action=inspected.source_action,
+        outcome=inspected.source_outcome,
+        criterion=inspected.source_criterion,
+        preference=inspected.original_state,
+        update_rule=inspected.update_rule,
+        repertoire=inspected.original_repertoire,
+        cue=inspected.habit_selection.cue,
+        provenance=inspected.interpretation_provenance,
+    )
+    if regenerated != inspected:
+        raise NoQualifiedFeedback("source/feedback/proposal handoff mismatch")
     return commit_learning_update(
         inspected.original_state,
         inspected.learning_proposal,
