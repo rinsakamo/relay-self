@@ -114,13 +114,20 @@ def test_feedback_applies_to_own_completed_receipt_only():
     r = w.consume(e, w.issue(e, mode), mode)
     state = State()
     assert not state.fast_result
-    state.feedback(e, r, "LEARNED_NO_FEEDBACK")
+    w.apply_feedback(e, r, "LEARNED_NO_FEEDBACK", state)
     assert not state.fast_result
-    state.feedback(e, r, "LEARNED_ALLOC")
-    assert state.fast_result[e.group][-1] == r.success
-    cheap = State()
-    cheap.feedback(e, r, "CHEAP_HISTORY")
-    assert cheap.z_history[e.group][-1] == r.observed_target ^ (e.prefix.bit_count() & 1)
+    with pytest.raises(ValueError, match="DUPLICATE"):
+        w.apply_feedback(e, r, "LEARNED_ALLOC", state)
+    assert not state.fast_result
+    for arm, attribute in (("LEARNED_ALLOC", "fast_result"), ("CHEAP_HISTORY", "z_history")):
+        fresh = SourceWorld(good)
+        e2 = fresh.e0()
+        receipt = fresh.consume(e2, fresh.issue(e2, "FAST"), "FAST")
+        s = State()
+        with pytest.raises(ValueError, match="UNATTESTED"):
+            fresh.apply_feedback(e2, replace(receipt), arm, s)
+        fresh.apply_feedback(e2, receipt, arm, s)
+        assert s.__getattribute__(attribute)[e2.group]
 
 
 def test_simple_switch_is_cheap_source_matched_competitor():
