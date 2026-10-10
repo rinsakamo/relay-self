@@ -136,6 +136,10 @@ class CognitiveAgent:
             observed.a, observed.b
         ) != cue:
             raise InconsistentExperience("cannot learn from unexecuted or failed Action")
+        if not self.memory or self.memory[-1].original_outcome is not observed:
+            raise InconsistentExperience(
+                "the confirmed Action must be the latest recorded Memory experience"
+            )
         if self.arm == "ALWAYS_RETHINK":
             return
         new_action = observed.action
