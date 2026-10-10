@@ -1,0 +1,62 @@
+{
+  "schema": "AC_B_B27_BUDGET_ONLY_2048_PROSPECTIVE_V1",
+  "issue": 560,
+  "lane_B": 431,
+  "parent_AC": 426,
+  "predecessor": {
+    "issue": 554,
+    "pr": 556,
+    "exact_head": "0c7f73c593f3ab642ac175ef7481dd748db87f6e",
+    "pr_base": "self/ac-b-b26-local-l2-proposal-20261010",
+    "main_frozen": "4348a614900c1d0828581a8eec2c523ba5ae237f"
+  },
+  "fixed_negative": {
+    "label": "B26_512_SINGLE_NATIVE_L2_INVALID",
+    "generation_calls": 1,
+    "temperature": 0,
+    "max_tokens": 512,
+    "usage": {
+      "prompt_tokens": 336,
+      "completion_tokens": 512,
+      "total_tokens": 848
+    },
+    "content": "",
+    "finish_reason": "length",
+    "reasoning_content": "incomplete, not a valid prediction",
+    "heldout_evaluations": 0,
+    "offline_world_actions": 16,
+    "model_GGUF_SHA256": "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed",
+    "source": "Issue #554 reported actual owned llama.cpp execution, comment 6098599042"
+  },
+  "single_change": {
+    "max_tokens": 2048
+  },
+  "held_constant": [
+    "exact original B26 prompt generator and eleven original offline World-issued training successes",
+    "GF2 16-bit ANF coefficient-only strict JSON schema",
+    "temperature=0; stream=false; no added reasoning_effort or thinking-disable parameter",
+    "Gemma4-12B-it-Q4_K_M GGUF exactly verified SHA256 c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed",
+    "llama-server owned runtime using repository helpers; context8192, slots1, n_gpu_layers999, no-context-shift",
+    "full original B26 parse_and_qualify and cheap DEG2 comparison on both NORMAL/TWIN",
+    "only one native L2 completion, no retry/replay/fallback or after-the-fact repair"
+  ],
+  "implementation_scope": [
+    "new B27 opt-in CLI consumes and preserves legacy B26 source-only prompt",
+    "minimal optional transport max_tokens parameter with default512 for backwards compatibility",
+    "B27 explicit raw wire response saved BEFORE parse; invalid still terminal with usage and actual finish_reason",
+    "B27 no real local L2 in CI, only mocked transport; no extra server process launched by GitHub",
+    "real separate local run only on WSL2 with operator-owned llama.cpp and exact model identity"
+  ],
+  "expected_terminal_if_CI": [
+    "B27_MAX2048_RUNNER_QUALIFIED_MOCK_ONLY",
+    "B26_512_INVALID_FROZEN",
+    "B27_REAL_L2_EXECUTION_PENDING",
+    "NO_ACTUAL_2048_PREDICTION_YET"
+  ],
+  "safety_scope": [
+    "No modification of frozen B26 branch, S10/S11/S17, main or other lanes",
+    "No Minecraft/LLM/GPU from GitHub",
+    "No hypothetical attacker/security/SQLite work",
+    "No claim that longer max_tokens guarantees valid answer"
+  ]
+}
