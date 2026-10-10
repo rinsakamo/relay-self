@@ -13,15 +13,28 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from experiments.ac_b_b11_governed_habit import (
-    CONTEXTS, CurrentWorld, ObservedOutcome, cue_for, empty_repertoire,
+    CONTEXTS,
+    CurrentWorld,
+    ObservedOutcome,
+    cue_for,
+    empty_repertoire,
 )
 from experiments.ac_b_b16_quorum import (
-    MIN_VOTES, N_TRIALS, BatchLedger, PairedTrial, commit_test_quorum_habit,
-    initial_state, issue_observed_trial, issue_test_authority, native_s10_commit,
+    MIN_VOTES,
+    N_TRIALS,
+    BatchLedger,
+    PairedTrial,
+    commit_test_quorum_habit,
+    initial_state,
+    issue_observed_trial,
+    issue_test_authority,
+    native_s10_commit,
     propose_quorum_habit,
 )
 from relay_self.habit import (
-    HabitRepertoire, HabitSelectionStatus, select_habit,
+    HabitRepertoire,
+    HabitSelectionStatus,
+    select_habit,
 )
 from relay_self.learning import LearningUpdateAuthority
 from relay_self.provenance import Provenance
