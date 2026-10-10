@@ -100,14 +100,14 @@ def test_untrusted_b11_metadata_cannot_relabel_same_world_or_production(name, va
         _run(args, data, grant, replace(scope, **{name: value}))
 
 
-@pytest.mark.parametrize("request", [
+@pytest.mark.parametrize("requested", [
     "production", "physical", "automatic_l2", "issue_action",
     "commit_habit", "L0", "join_by_CI", "join_by_matching_labels",
 ])
-def test_green_cis_or_text_labels_cannot_promote_authority(request):
+def test_green_cis_or_text_labels_cannot_promote_authority(requested):
     args, data, _, _, grant, scope = _case()
     with pytest.raises(i3.I3Rejected):
-        _run(args, data, grant, scope, request=request)
+        _run(args, data, grant, scope, request=requested)
 
 
 @pytest.mark.parametrize("change", ["missing_source", "fake_request", "fake_seq",
