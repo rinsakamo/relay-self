@@ -15,19 +15,21 @@ import test_postmain_correlated_probe as s29
 import test_postmain_wait_release_action as s26
 from adapters.mineflayer.action_outcome import interpret_world_consequence
 from adapters.mineflayer.execution import WorldConsequenceStatus
-from experiments import (
-    epistemic_e3_s29_integration as e3,
-    epistemic_e4_action_closure as e4,
-)
+from experiments import epistemic_e3_s29_integration as e3
+from experiments import epistemic_e4_action_closure as e4
 from relay_self.action import ActionState, InvalidTransition
-from relay_self.action_outcome import record_interpreted_action_outcome
-from relay_self.action_supervision import DuplicateSupervisedAction
+from relay_self.action_outcome import (
+    ActionOutcomeDisposition,
+    InvalidActionOutcomeData,
+    record_interpreted_action_outcome,
+)
+from relay_self.action_supervision import DuplicateSupervisedAction, UnknownSupervisedAction
 from relay_self.correlated_probe import CorrelatedProbeGrant, InvalidCorrelatedProbe
 from relay_self.execution_binding import ExecutionBinding
 from relay_self.explicit_probe import ExclusiveProbeCursor
 from relay_self.explicit_wait import WaitAuthorityScope, WaitGateAuthority
 from relay_self.provenance import Provenance
-from relay_self.wait_release_action import WaitReleaseActionAuthority, InvalidWaitReleaseAction
+from relay_self.wait_release_action import InvalidWaitReleaseAction, WaitReleaseActionAuthority
 
 
 def p(name: str) -> Provenance:
@@ -242,7 +244,8 @@ def test_still_far_wait_has_second_S24_cognition_but_never_action():
     assert kwargs["adapter"].sent_ids == [s29.REQUEST1, s29.REQUEST2]
     assert first.receipt.probe_seq == 5 and second.second_receipt.probe_seq == 6
     assert data["supervisor"].open_actions == ()
-    assert data["supervisor"].get(s26.ACTION4) if False else True
+    with pytest.raises(UnknownSupervisedAction):
+        data["supervisor"].get(s26.ACTION4)
     with pytest.raises(e4.E4Rejected, match="non-Action"):
         e4.explicitly_reconsider_and_propose(
             **{**recheck, "release_authority": _fake_release(data, second)}
@@ -355,11 +358,28 @@ def test_world_unknown_never_mistaken_for_executed_terminal_outcome():
         authorized, at_ns=97, deadline_ns=180, provenance=p("issued"),
     )
     consequence = s26._world(issued, trace.proposal.binding_result)
-    with pytest.raises(ValueError):
-        interpret_world_consequence(
-            issued, trace.proposal.binding_result,
-            replace(consequence, status=WorldConsequenceStatus.UNDETERMINED),
-            provenance=p("cannot-interpret-unknown-as-success"),
+    unavailable = interpret_world_consequence(
+        issued, trace.proposal.binding_result,
+        replace(consequence, status=WorldConsequenceStatus.UNDETERMINED),
+        provenance=p("undetermined-is-not-success"),
+    )
+    assert unavailable.disposition is ActionOutcomeDisposition.UNAVAILABLE
+    with pytest.raises(InvalidActionOutcomeData, match="cannot close Action"):
+        record_interpreted_action_outcome(
+            data["supervisor"], unavailable, at_ns=105,
         )
     assert data["supervisor"].get(s26.ACTION4) is issued
     assert issued.state is ActionState.ISSUED
+    # A genuinely FAILED/unknown adapter outcome uses the distinct UNKNOWN
+    # transition, never a successful Action OUTCOME.
+    unknown = interpret_world_consequence(
+        issued, trace.proposal.binding_result,
+        replace(consequence, status=WorldConsequenceStatus.FAILED),
+        provenance=p("failure-is-not-observed-execution"),
+    )
+    assert unknown.disposition is ActionOutcomeDisposition.UNKNOWN
+    closed = record_interpreted_action_outcome(
+        data["supervisor"], unknown, at_ns=106,
+    )
+    assert closed.state is ActionState.UNKNOWN
+    assert data["supervisor"].open_actions == ()
