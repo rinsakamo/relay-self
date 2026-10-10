@@ -338,7 +338,31 @@ def run_arm(seed: int, arm: str) -> dict:
             "cache_hits": sum(x["cache_hit"] for x in r),
             "counts": dict(sorted(Counter(x["mode"] for x in r).items())),
         }
-    return {"seed": seed, "arm": arm, "phases": phases, "trace": tuple(rows)}
+    # Temporal witness only: do not infer causal re-escalation from order.
+    shift_rows = [x for x in rows if x["phase"] == "shift"]
+    witnesses = {}
+    for group in (0, 1):
+        fail = [i for i, x in enumerate(shift_rows) if (
+            x["group"] == group and x["mode"] == "CHEAP"
+            and x["success"] is False
+        )]
+        if not fail:
+            witnesses[str(group)] = {
+                "failed_cheap": False, "lag": None, "censored": False
+            }
+            continue
+        first = fail[0]
+        expensive = [j for j in range(first + 1, len(shift_rows)) if (
+            shift_rows[j]["group"] == group and
+            shift_rows[j]["mode"] in ("MEDIUM", "SCAN", "DEEP")
+        )]
+        witnesses[str(group)] = {
+            "failed_cheap": True,
+            "lag": expensive[0] - first if expensive else None,
+            "censored": not bool(expensive),
+        }
+    return {"seed": seed, "arm": arm, "phases": phases,
+            "witnesses": witnesses, "trace": tuple(rows)}
 
 
 def run() -> dict:
@@ -358,6 +382,16 @@ def run() -> dict:
                 for key in ("correct", "wrong", "abstain", "mechanism_work",
                             "selector_work", "world_ticks", "utility_tenths", "cache_hits")
             }
+            sums[group][arm]["shift_escalation_witnesses"] = sum(
+                w["failed_cheap"] and w["lag"] is not None
+                for r in rr for w in r["witnesses"].values()
+            )
+            sums[group][arm]["shift_escalation_censored"] = sum(
+                w["censored"] for r in rr for w in r["witnesses"].values()
+            )
+            sums[group][arm]["shift_no_prior_cheap_failure"] = sum(
+                not w["failed_cheap"] for r in rr for w in r["witnesses"].values()
+            )
     matched = {}
     for seed in m["seeds"]["heldout"]:
         a, b, c = (next(r for r in records if r["seed"] == seed and r["arm"] == arm)
@@ -380,7 +414,23 @@ def run() -> dict:
             ),
             "cache_hits": sum(x["cache_hit"] for x in t3),
         }
-    data = {"manifest_sha256": MANIFEST_SHA, "summaries": sums, "paired": matched}
+    phase_heldout = {
+        arm: {
+            phase: {
+                key: sum(
+                    r["phases"][phase][key] for r in records
+                    if r["arm"] == arm and r["seed"] in m["seeds"]["heldout"]
+                )
+                for key in ("correct", "wrong", "abstain", "utility_tenths")
+            } for phase in m["phases"]
+        } for arm in ARMS
+    }
+    data = {
+        "manifest_sha256": MANIFEST_SHA,
+        "summaries": sums,
+        "paired": matched,
+        "heldout_phases": phase_heldout,
+    }
     data["result_sha256"] = canonical_hash(data)
     return data
 
