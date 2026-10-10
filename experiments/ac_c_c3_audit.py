@@ -14,7 +14,6 @@ from pathlib import Path
 
 from experiments.ac_c_allocation import (
     MODES,
-    TICKS,
     WORK,
     Evidence,
     LearningState,
