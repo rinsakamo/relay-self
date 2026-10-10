@@ -9,7 +9,6 @@ import pytest
 from experiments.ac_b_b11_governed_habit import (
     CONTEXTS,
     CurrentWorld,
-    QualifiedHabitView,
     QualifiedLedger,
     UnqualifiedHabitAcquisition,
     cue_for,
