@@ -5,10 +5,10 @@ import pytest
 
 from experiments.ac_c_c9_epistemic import (
     ARMS,
+    E0,
     MANIFEST_SHA,
     CalibrationWorld,
     Case,
-    E0,
     InspectReceipt,
     World,
     cfg,
