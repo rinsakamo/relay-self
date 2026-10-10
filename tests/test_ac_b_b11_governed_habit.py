@@ -9,7 +9,6 @@ from experiments.ac_b_b11_governed_habit import (
     CONTEXTS,
     CurrentWorld,
     ExperimentHabitAuthority,
-    ObservedOutcome,
     QualifiedHabitView,
     QualifiedLedger,
     UnqualifiedHabitAcquisition,
