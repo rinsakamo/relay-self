@@ -21,6 +21,7 @@ from experiments.ac_b_b19_resource_allocation import (
     PROFILES,
     InvalidB19Allocation,
     Resource,
+    source_action,
     candidate_expected_net_Q,
     choose,
     qualify_reported_pair,
@@ -29,6 +30,7 @@ from experiments.ac_b_b19_resource_allocation import (
     score_arm,
 )
 from relay_self.learning import (
+    FeedbackDirection,
     InvalidLearningAuthority,
     LearningFeedback,
     LearningPreferenceState,
@@ -285,13 +287,10 @@ def test_frozen_native_s10_requires_separate_learning_authority():
     )
     feedback = LearningFeedback(
         feedback_id="b19-feedback-1", target_id=state.target_id,
-        direction="increase",
+        direction=FeedbackDirection.INCREASE,
         provenance=Provenance("b19-test", "source"),
         consequence_ref="test-only-not-physical",
     )
-    from relay_self.learning import FeedbackDirection
-
-    feedback = replace(feedback, direction=FeedbackDirection.INCREASE)
     rule = LearningUpdateRule("b19-step", version=1, step=1)
     proposal = propose_learning_update(state, feedback, rule)
     with pytest.raises(InvalidLearningAuthority):
