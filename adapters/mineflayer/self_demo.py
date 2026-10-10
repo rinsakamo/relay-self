@@ -325,8 +325,19 @@ def main(argv: list[str] | None = None) -> int:
                       help="explicitly start owned disposable Mojang server and S49 bot")
     parser.add_argument("--confirm", help="required exact consent for disposable world")
     parser.add_argument("--output-dir", type=Path, help="pre-existing output directory")
+    parser.add_argument("--think", action="store_true",
+                        help="one L2 commentary AFTER a completed real native run, never an Action")
+    parser.add_argument("--model-alias", help="explicit pre-existing loopback model alias")
+    parser.add_argument("--model-port", type=int, help="existing localhost OpenAI-compatible port")
+    parser.add_argument("--model-timeout", type=float, default=12.0)
     args = parser.parse_args(argv)
 
+    if args.think and not args.run_disposable:
+        print(json.dumps(_row(
+            "blocked", "NO_WORLD_USED", reason="L2_REQUIRES_REAL_NATIVE_SOURCE",
+            model_calls=0, actual_actions=0,
+        ), sort_keys=True))
+        return 2
     if args.run_disposable:
         if args.confirm != CONFIRM:
             print(json.dumps(_row(
@@ -352,6 +363,24 @@ def main(argv: list[str] | None = None) -> int:
                 actual_actions=0,
             ), sort_keys=True))
             return 2
+        if args.think:
+            from adapters.mineflayer.s60b1_loopback_adapter import (
+                LoopbackTransportConfig,
+                TransportUnconfirmed,
+            )
+
+            try:
+                LoopbackTransportConfig(
+                    model=args.model_alias, port=args.model_port,
+                    slots=1, max_tokens=96, connect_s=3.0,
+                    read_s=args.model_timeout, whole_s=args.model_timeout,
+                )
+            except (TransportUnconfirmed, TypeError, ValueError):
+                print(json.dumps(_row(
+                    "blocked", "NO_WORLD_USED", reason="INVALID_EXPLICIT_L2_LOOPBACK_CONFIG",
+                    model_calls=0, actual_actions=0,
+                ), sort_keys=True))
+                return 2
         report_file = args.output_dir / "native_report.json"
         server_log = args.output_dir / "minecraft_server.log"
         trace_file = args.output_dir / "self_trace.jsonl"
@@ -375,6 +404,26 @@ def main(argv: list[str] | None = None) -> int:
             trace = project_native_report(result)
             memory = retain_native_observations(trace)
             save_persistent_cognition(memory_file, memory)
+            if args.think:
+                # L2 sees only the completed native trace, not an invented
+                # goal or new Action admission. The World host has finished.
+                from adapters.mineflayer.self_think import bounded_native_commentary
+
+                try:
+                    advisory = asyncio.run(bounded_native_commentary(
+                        trace, model=args.model_alias, port=args.model_port,
+                        timeout_s=args.model_timeout,
+                    ))
+                except (OSError, ValueError, RuntimeError) as exc:
+                    advisory = _row(
+                        "l2_commentary", "SELF_DEMO_S60B1_L2_ADVISORY",
+                        status="UNCONFIRMED", reason=type(exc).__name__,
+                        authorized_actions=0, used_as_action=False,
+                        learning_feedback_created=False,
+                        habit_updated=False,
+                        backend_stop_ack=False, gpu_release_claimed=False,
+                    )
+                trace = (*trace, advisory)
             _write_trace(trace_file, trace + (_row(
                 "observed_memory", SOURCE_NATIVE,
                 retained_episodes=len(memory.memories),
@@ -396,7 +445,7 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps(_row(
         "ready", "NO_WORLD_USED", mode="DRY_RUN",
         actions_issued=0, model_calls=0,
-        next="--smoke or --run-disposable with explicit --confirm and --output-dir",
+        next="--smoke or --run-disposable with explicit --confirm and --output-dir (optional --think)",
         warning="Native is existing S49 three-event test-world behavior, not a full autonomous Self 1.0",
     ), sort_keys=True))
     return 0
