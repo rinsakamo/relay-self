@@ -201,7 +201,7 @@ def test_memory_content_is_not_world_truth(distance):
         ("trace", lambda x: replace(x, wait_score=-5)),
         ("trace", lambda x: replace(x, retained_revision=0)),
         ("trace", lambda x: replace(x, world_evidence=replace(x.world_evidence))),
-        ("current_retained", lambda x: replace(x, value=5)),
+        ("current_retained", lambda x: replace(x, last_update=None)),
         ("supplied_retained", lambda x: replace(x)),
         ("memory_id", lambda x: "imaginary-pointer"),
         ("consequence3", lambda x: replace(x, status=WorldConsequenceStatus.UNDETERMINED)),
