@@ -323,6 +323,8 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--smoke", action="store_true", help="synthetic 3-epoch S10/S11 demo")
     mode.add_argument("--run-disposable", action="store_true",
                       help="explicitly start owned disposable Mojang server and S49 bot")
+    mode.add_argument("--reflect-report", type=Path,
+                      help="read an EXISTING S49 native_report.json, never run Minecraft")
     parser.add_argument("--confirm", help="required exact consent for disposable world")
     parser.add_argument("--output-dir", type=Path, help="pre-existing output directory")
     parser.add_argument("--think", action="store_true",
@@ -332,12 +334,92 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model-timeout", type=float, default=12.0)
     args = parser.parse_args(argv)
 
-    if args.think and not args.run_disposable:
+    if args.think and not (args.run_disposable or args.reflect_report):
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="L2_REQUIRES_REAL_NATIVE_SOURCE",
             model_calls=0, actual_actions=0,
         ), sort_keys=True))
         return 2
+    if args.reflect_report is not None:
+        # Reflect on an existing physical receipt WITHOUT replaying any World
+        # Action, starting Java/Node, loading a new world, or overwriting it.
+        from adapters.mineflayer.s60b1_loopback_adapter import (
+            LoopbackTransportConfig,
+            TransportUnconfirmed,
+        )
+
+        if not args.think:
+            print(json.dumps(_row(
+                "blocked", "NO_WORLD_USED", reason="REFLECTION_REQUIRES_EXPLICIT_THINK",
+                actual_actions=0, model_calls=0,
+            ), sort_keys=True))
+            return 2
+        try:
+            LoopbackTransportConfig(
+                model=args.model_alias, port=args.model_port, slots=1,
+                max_tokens=96, connect_s=3.0,
+                read_s=args.model_timeout, whole_s=args.model_timeout,
+            )
+        except (TransportUnconfirmed, TypeError, ValueError):
+            print(json.dumps(_row(
+                "blocked", "NO_WORLD_USED",
+                reason="INVALID_EXPLICIT_L2_LOOPBACK_CONFIG",
+                model_calls=0, actual_actions=0,
+            ), sort_keys=True))
+            return 2
+        if (args.output_dir is None or not args.output_dir.is_dir()
+                or args.output_dir.is_symlink()
+                or args.reflect_report.is_symlink()
+                or not args.reflect_report.is_file()
+                or args.reflect_report.stat().st_size > 2_000_000):
+            print(json.dumps(_row(
+                "blocked", "NO_WORLD_USED",
+                reason="REFLECTION_SOURCE_OR_OUTPUT_UNVERIFIED",
+                model_calls=0, actual_actions=0,
+            ), sort_keys=True))
+            return 2
+        dest = args.output_dir / "l2_reflection.jsonl"
+        if dest.exists() or dest.is_symlink():
+            print(json.dumps(_row(
+                "blocked", "NO_WORLD_USED", reason="REFLECTION_OUTPUT_EXISTS",
+                model_calls=0, actual_actions=0,
+            ), sort_keys=True))
+            return 2
+        try:
+            report = json.loads(args.reflect_report.read_text(encoding="utf-8"))
+            trace = project_native_report(report)
+        except (OSError, UnicodeError, ValueError, TypeError, DemoRejected):
+            print(json.dumps(_row(
+                "blocked", "NO_WORLD_USED", reason="INVALID_NATIVE_SOURCE_REPORT",
+                model_calls=0, actual_actions=0,
+            ), sort_keys=True))
+            return 2
+        from adapters.mineflayer.self_think import bounded_native_commentary
+
+        try:
+            reflection = asyncio.run(bounded_native_commentary(
+                trace, model=args.model_alias, port=args.model_port,
+                timeout_s=args.model_timeout,
+            ))
+        except (OSError, RuntimeError, TypeError, ValueError) as exc:
+            reflection = _row(
+                "l2_commentary", "SELF_DEMO_S60B1_L2_ADVISORY",
+                status="UNCONFIRMED", reason=type(exc).__name__,
+                authorized_actions=0, used_as_action=False,
+                learning_feedback_created=False, habit_updated=False,
+                backend_stop_ack=False, gpu_release_claimed=False,
+            )
+        _write_trace(dest, (_row(
+            "source", SOURCE_NATIVE, session=trace[0]["session"],
+            origin="OPERATOR_PROVIDED_REPORT_NOT_INDEPENDENTLY_ATTESTED",
+            minecraft_launched=False, replayed_actions=0,
+        ), reflection, _row(
+            "summary", "READ_ONLY_REFLECTION",
+            input_decisions=3, observed_actions=2,
+            replayed_actions=0, minecraft_launched=False,
+            learning_updates=0, production_habit_granted=False,
+        )))
+        return 0
     if args.run_disposable:
         if args.confirm != CONFIRM:
             print(json.dumps(_row(
@@ -445,7 +527,7 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps(_row(
         "ready", "NO_WORLD_USED", mode="DRY_RUN",
         actions_issued=0, model_calls=0,
-        next="--smoke or --run-disposable with explicit --confirm and --output-dir (optional --think)",
+        next="--smoke, --run-disposable or --reflect-report (read-only L2) with explicit options",
         warning="Native is existing S49 three-event test-world behavior, not a full autonomous Self 1.0",
     ), sort_keys=True))
     return 0
