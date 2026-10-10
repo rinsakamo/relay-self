@@ -160,11 +160,15 @@ def test_unreproducible_or_forged_new_report_rejected(kind):
 
 def test_capture_rejects_unexecuted_s16_and_does_not_start_world():
     original = _source()
-    with pytest.raises(NativeEvidenceRejected):
+    # Frozen S16 constructor itself rejects inconsistent UNDETERMINED
+    # objects before the downstream evidence reader can see them.
+    with pytest.raises(ValueError):
         capture_native_action_evidence(
             replace(original, status=type(original.status).UNDETERMINED,
                     movement_distance=None)
         )
+    with pytest.raises(NativeEvidenceRejected):
+        capture_native_action_evidence(None)
 
 
 def test_s49_only_uses_existing_closed_consequence_no_new_probe_or_action():
