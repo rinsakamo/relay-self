@@ -14,7 +14,6 @@ import pytest
 from adapters.mineflayer import self_owned_llama as owned
 from adapters.mineflayer.self_demo import CONFIRM
 
-
 SCRIPT = """#!/usr/bin/env python3
 import argparse
 import json
