@@ -1,0 +1,79 @@
+{
+  "version": "AC-INTEGRATION-I5-B16-QUORUM-WORLD-ACTION-v1",
+  "owner_issue": 515,
+  "exact_b16_base": "f4e31933c464f9b39f854dd2408134544d3f9f76",
+  "b16_ci": 38036245443,
+  "protected_main": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+  "episodes": [
+    "clean",
+    "adversarial"
+  ],
+  "source_sessions": [
+    "b16-offline-clean",
+    "b16-offline-noisy"
+  ],
+  "contexts": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      0
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "training_trials_per_cue": 5,
+  "training_actions_per_episode": 40,
+  "total_training_actions": 80,
+  "early_training_checkpoint": 8,
+  "late_training_checkpoint": 40,
+  "early_arm": "ONE_SHOT",
+  "late_arms": [
+    "S11_QUORUM",
+    "CHEAP_COUNT"
+  ],
+  "quorum_required_votes": 4,
+  "expected_extra_actions": [
+    12,
+    9
+  ],
+  "expected_total_extra_actions": 21,
+  "expected_total_world_actions": 101,
+  "expected_arm_attempts": {
+    "ONE_SHOT": 7,
+    "S11_QUORUM": 7,
+    "CHEAP_COUNT": 7
+  },
+  "expected_arm_success": {
+    "ONE_SHOT": 4,
+    "S11_QUORUM": 6,
+    "CHEAP_COUNT": 6
+  },
+  "expected_episode_success": {
+    "clean": {
+      "ONE_SHOT": 4,
+      "S11_QUORUM": 4,
+      "CHEAP_COUNT": 4
+    },
+    "adversarial": {
+      "ONE_SHOT": 0,
+      "S11_QUORUM": 2,
+      "CHEAP_COUNT": 2
+    }
+  },
+  "evaluation_receipts_are_training": false,
+  "native_s16_s17_world_join": false,
+  "s11_production_owner": false,
+  "real_minecraft": false,
+  "actual_l2": false,
+  "production_go": false,
+  "claim_ceiling": "I5_B16_QUORUM_SIMULATOR_ACTION_CLOSURE_CHEAP_COUNT_PARITY"
+}
