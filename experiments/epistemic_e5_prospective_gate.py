@@ -278,7 +278,13 @@ def _check_trial(raw: dict[str, Any], spec: TrialSpec, kind: str) -> tuple[int, 
             if state not in ("OUTCOME", "UNKNOWN"):
                 raise E5Rejected("invalid terminal Action state")
             term = _int(t["action_terminal_ns"], "Action terminal time", least=1)
-            if not issue < term < evaluated or (world, reason) != _REASON[state]:
+            known_rejection = (
+                state == "OUTCOME" and world == "FAILED"
+                and reason == "known_adapter_rejection"
+            )
+            if not issue < term < evaluated or (
+                (world, reason) != _REASON[state] and not known_rejection
+            ):
                 raise E5Rejected("terminal disposition must be owner-conformant")
         if state == "OUTCOME" and (
             after is None or t["damage_points"] is None
