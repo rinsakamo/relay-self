@@ -3,15 +3,6 @@ from dataclasses import replace
 
 import pytest
 
-from relay_self.persistent_cognition import (
-    DuplicateMemoryIdentity,
-    Memory,
-    PersistentCognition,
-    load_persistent_cognition,
-    save_persistent_cognition,
-)
-from relay_self.provenance import Provenance
-
 from experiments.ac_b_b6_main_memory_projection import (
     CONTEXTS,
     SOURCE_NAME,
@@ -24,6 +15,14 @@ from experiments.ac_b_b6_main_memory_projection import (
     observe_all,
     run_fixture,
 )
+from relay_self.persistent_cognition import (
+    DuplicateMemoryIdentity,
+    Memory,
+    PersistentCognition,
+    load_persistent_cognition,
+    save_persistent_cognition,
+)
+from relay_self.provenance import Provenance
 
 
 def fixture():
