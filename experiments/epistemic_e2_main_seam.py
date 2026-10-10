@@ -116,6 +116,8 @@ class Result:
     net_expected_information_value: Fraction
     source_revision_at_action: int
     open_actions_after: int
+    source_session: str = ""
+    handoff: EvidenceHandoff | None = None
     model_calls: int = 0
 
 
@@ -131,7 +133,7 @@ class EvidenceHandoff:
     selected_action: str
     information_acquired: bool
     observed_outcome: tuple[int, int]  # ticks, damage; actually observed only
-    prediction_error: Fraction
+    prediction_error: Fraction | None  # unobserved hazard on DETOUR stays UNKNOWN
     uncertainty: Fraction  # source-matched Bernoulli variance, not oracle confidence
     observe_ticks: int
     total_world_ticks: int
@@ -365,14 +367,33 @@ def run(case: Case, strategy: str) -> Result:
         brier1 = (p1 - hazard(case.rule, case.signal)) ** 2
     final = tail or first
     action_revision = latest.source_revision
+    # Capture source-verified projection and hypotheses BEFORE World is terminal.
+    qualified_predictions = forecast(world, latest)
+    prior_p = qualified_predictions[0].probability_hazard
     duration, damage, history = world.execute_terminal(latest, final)
     ticks = duration + world.observe_count
+    handoff = EvidenceHandoff(
+        source=world.session,
+        world_revision=action_revision,
+        observed_present=latest.facts,
+        action_candidates=tuple(f.action for f in qualified_predictions),
+        conditional_predictions=qualified_predictions,
+        selected_action=final.action,
+        information_acquired=world.observe_count == 1,
+        observed_outcome=(duration, damage),
+        prediction_error=(prior_p - Fraction(int(damage > 0))) ** 2
+        if final.action == "DIRECT" else None,
+        uncertainty=prior_p * (1 - prior_p),
+        observe_ticks=world.observe_count,
+        total_world_ticks=ticks,
+        model_calls=0,
+    )
     return Result(
         strategy, case.rule, case.signal, first.action,
         tail.action if tail is not None else None, world.observe_count,
         1 + world.observe_count, history, ticks, damage, 20 - ticks - damage,
         brier0, brier1, information_value, action_revision,
-        len(world.supervisor.open_actions),
+        len(world.supervisor.open_actions), source_session=world.session, handoff=handoff,
     )
 
 
@@ -382,25 +403,8 @@ def expected_utility(rule: str, strategy: str) -> Fraction:
     return Fraction(sum(run(Case(rule, s), strategy).utility for s in (0, 1)), 2)
 
 
-def evidence_handoff(world: FixtureWorld, present: PresentProjection,
-                     result: Result) -> EvidenceHandoff:
-    """Read-only transient export; caller must invoke BEFORE terminal World closure.
 
-    Requires an externally observed terminal result from a matching intervention.
-    No Memory, Habit, or CognitiveResource owner is updated.
-    """
-    world.validate(present)
-    if result.rule != world.case.rule or result.test_signal != world.case.signal:
-        raise ContractError("UNKNOWN: result/source case mismatch")
-    predictions = forecast(world, present)
-    selected = result.second_action or result.first_action
-    if selected == "OBSERVE":
-        raise ContractError("UNKNOWN: no terminal action to export")
-    p = next(x.probability_hazard for x in predictions if x.action == "DIRECT")
-    return EvidenceHandoff(
-        world.session, world.revision, present.facts,
-        tuple(x.action for x in predictions), predictions, selected,
-        result.observation_count == 1, (result.ticks, result.damage),
-        (p - hazard(world.case.rule, world.case.signal)) ** 2,
-        p * (1 - p), result.observation_count, result.ticks, result.model_calls,
-    )
+def exported_episode(result: Result) -> EvidenceHandoff:
+    if result.handoff is None or result.source_session != result.handoff.source:
+        raise ContractError("UNKNOWN: no source-bound recorded episode")
+    return result.handoff
