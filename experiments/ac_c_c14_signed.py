@@ -14,7 +14,7 @@ from functools import lru_cache
 from pathlib import Path
 
 MANIFEST = Path(__file__).with_name("ac_c_c14_manifest.json")
-MANIFEST_SHA = "fc3495b6f2f280fd95bcd54830dd0a692869e2f5e69928bdb43d1b20e27d38cf"
+MANIFEST_SHA = "f642de2a2b8c2aab312afb41956ad9d700518a844372b61d47c77570f7a423ca"
 ARMS = (
     "FROZEN_GROUP", "NO_FEEDBACK_GROUP", "POS_ONLY_GROUP",
     "SIGNED_GROUP", "FROZEN_MAJORITY", "SIGNED_MAJORITY",
