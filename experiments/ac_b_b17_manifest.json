@@ -85,11 +85,12 @@
       "wrong": 1
     },
     "diversified_correlated": {
-      "adaptive_source_actions": 32,
+      "adaptive_source_actions": 34,
       "fixed_source_actions": 40,
       "covered": 3,
       "correct": 3,
-      "abstained": 1
+      "abstained": 1,
+      "note": "At t4: 3 wrong and 1 clean vote, the final secondary vote could still make 4/5 wrong, so run t5; then final 3 vs2 -> abstain. Never early-abstain at t4."
     },
     "cheap_adaptive": "exact same decisions, action counts and source cost as native S10 gated S11 in every scenario"
   },
@@ -109,5 +110,6 @@
     "CHEAP_COUNTS_MATCH_NATIVE_S10_S11",
     "NO_PRODUCTION_S11_OWNER",
     "NO_AUTONOMOUS_L2_TO_L1_DISTILLATION"
-  ]
+  ],
+  "amendment": "Pre-implementation arithmetic correction: diverse correlated poison cue requires fifth trial because 3+1 remaining could reach the 4-vote quorum; expected 34 adaptive source Actions, not 32. Manifest amended before experiment source/tests."
 }
