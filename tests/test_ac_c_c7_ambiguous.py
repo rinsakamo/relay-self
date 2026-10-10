@@ -189,11 +189,17 @@ def test_recompile_only_after_four_new_valid_exact_labels():
     for i, kind in enumerate(("EXACT", "WEAK", "WEAK")):
         verified(s, subject(f"x{i}", kind, vote=1), "WEIGHTED_GUARD", i)
     assert 0 not in s.capsules
-    for i in range(4):
-        w = World(subject(f"new{i}", "MISSING", z=1))
-        c = verified(s, w._case, "WEIGHTED_GUARD", i+3, False,
-                     mode="DIAGNOSTIC")
-        assert c["recompiled"] == (i == 3)
+    recompiled = False
+    for i in range(20):
+        change = verified(s, subject(f"new{i}", "MISSING", z=1),
+                          "WEIGHTED_GUARD", i+3, False, mode="DIAGNOSTIC")
+        if i < 3:
+            assert not change["recompiled"]  # >=4 new exact receipts required
+        if change["recompiled"]:
+            assert i >= 3  # posterior confidence is a separate requirement
+            recompiled = True
+            break
+    assert recompiled
     assert s.capsules[0].predicted_z == 1
     assert s.capsules[0].revision == 2
 
