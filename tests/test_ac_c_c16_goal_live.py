@@ -18,7 +18,6 @@ from adapters.mineflayer.goal_witness import Region
 from adapters.mineflayer.python_protocol import (
     MINEFLAYER_VERSION,
     MineflayerStreamDecoder,
-    parse_mineflayer_line,
 )
 from adapters.mineflayer.qualify_goal_live import (
     CONFIRM,
