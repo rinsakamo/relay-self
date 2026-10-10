@@ -297,6 +297,21 @@ def test_policy_only_gets_price_prior_no_scene_and_evaluator_after_decision():
             e5.audit_bundle(b)
 
 
+def test_s16_known_adapter_rejection_is_terminal_outcome_not_observed_execution():
+    receipt = fake_bundle()
+    item = receipt["trials"][NEAR_OBSERVE]
+    item["action_owner_state"] = "OUTCOME"
+    item["world_result"] = "FAILED"
+    item["reason_code"] = "known_adapter_rejection"
+    item["movement_m"] = 0
+    report = e5.audit_bundle(receipt)
+    assert report.classification == "OFFLINE_SYNTHETIC_STRUCTURE_VALID"
+    assert report.physical_effect == "UNDETERMINED"
+    assert not report.physically_authenticated
+    # Known adapter rejection closes the Action owner but says nothing about
+    # successful movement, positive value or actually realized skill utility.
+
+
 def test_unknown_and_unavailable_are_counted_without_success_inference():
     for state, world, reason, term in (
         ("UNKNOWN", "FAILED", "adapter_failure_consequence_unknown", 1_075_000_000),
