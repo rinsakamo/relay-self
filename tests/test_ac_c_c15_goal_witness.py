@@ -5,7 +5,6 @@ new protocol or live Action is started by this test suite.
 """
 from __future__ import annotations
 
-import copy
 import json
 import warnings
 from dataclasses import fields
