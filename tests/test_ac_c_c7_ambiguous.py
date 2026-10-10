@@ -253,3 +253,18 @@ def test_qualified_result_receipt_in_exact_head_ci_log():
         "paired": r["paired"],
     }
     warnings.warn("C7_RESULT_JSON " + json.dumps(payload, sort_keys=True), UserWarning)
+
+def test_all_arms_share_identical_warmup_training_and_real_exact_certificates():
+    # Scientific pairing: source-admission and initial capsules must be
+    # identical prior to the post-warmup intervention in every arm.
+    for seed in (229, 239):
+        records = [trajectory(seed, arm) for arm in ARMS]
+        reference = records[0]
+        warmup = [row for row in reference["trace"] if row["epoch"] == "warmup"]
+        baseline = [(row["session"], row["mode"], row["success"], row["quality"])
+                    for row in warmup]
+        for record in records[1:]:
+            assert record["initial_qualification"] == reference["initial_qualification"]
+            current = [row for row in record["trace"] if row["epoch"] == "warmup"]
+            assert [(row["session"], row["mode"], row["success"], row["quality"])
+                    for row in current] == baseline
