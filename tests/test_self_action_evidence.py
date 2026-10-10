@@ -169,6 +169,7 @@ def test_capture_rejects_unexecuted_s16_and_does_not_start_world():
 
 def test_s49_only_uses_existing_closed_consequence_no_new_probe_or_action():
     from pathlib import Path
+
     import adapters.mineflayer.s49_normal_session_real_ci as s49
 
     text = Path(s49.__file__).read_text(encoding="utf-8")
