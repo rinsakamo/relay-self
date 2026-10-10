@@ -24,16 +24,24 @@ S49/S60/Action/S10/S11 authority, Paper2, RelayTheory or protected main.
   It downloads a Mojang 1.21.8 dedicated server into a temporary workspace,
   accepts EULA for this disposable local test, spawns non-AI zombie fixtures
   through server console and shuts down/removes its test World afterward.
-  For the two source-checked native Action OUTCOME receipts, the product\n  entrypoint also writes one **existing PersistentCognition** Memory snapshot\n  (`observed_memory.json`) containing only observed movement and explicit\n  `goal_success_attested=false`. No S10 preference change or S11 Habit grant.\n  It is not a general game-playing agent or operator World. S49 itself
+  For the two source-checked native Action OUTCOME receipts, the product
+  entrypoint also writes one **existing PersistentCognition** Memory snapshot
+  (`observed_memory.json`) containing only observed movement and explicit
+  `goal_success_attested=false`. No S10 preference change or S11 Habit grant.
+  It is not a general game-playing agent or operator World. S49 itself
   supplies *synthetic earlier retained rev1*; **no new learning in live World**.
   This mode can run ONLY locally on an operator machine with the toolchain.
   GitHub CI does **not** run Minecraft.
-- **L2:** the S60-B1 nonblocking stock llama.cpp adapter exists in the inherited
-  feature branch, but this **initial demo deliberately does not start a real
-  model or convert generated text into Action**. Do not label the S49 native
-  three-epoch task a complete L0/L1/L2 learning agent. This is the shortest
-  honest playable vertical slice; model-aware natural control is the next
-  product step, not a mandatory scientific qualification.
+- **Optional `--think`:** after a *successfully completed* real S49 test World,
+  submit the validated World observation summary ONCE to an explicitly named,
+  **already running** localhost OpenAI-compatible model using the inherited
+  S60-A owner and S60-B1 loopback transport. Its L2 answer appears as an
+  `l2_commentary` JSONL entry with `used_as_action=false`.
+  This is **post-hoc read-only reflection**, not concurrent L0/L2 inference,
+  a new game command, Skill/Action authorization or learned Habit. If the
+  local model is unavailable, the World trace still survives with an
+  `UNCONFIRMED` commentary. This CLI does not launch llama-server, verify
+  the model's GGUF/binary hash, assert backend STOP ACK or measured VRAM release.
 
 ## 1. Running locally from the integration Draft checkout
 
@@ -74,6 +82,25 @@ PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m adapters.mineflayer.self_demo \
   --output-dir ./self-demo-receipts
 ```
 
+If you already own a locally running **single-slot** OpenAI-compatible
+`llama-server` with a known local model alias and loopback port, add these
+options to that SAME command to request one L2 reflection **after** the
+Minecraft task ends:
+
+```bash
+  --think --model-alias YOUR_LOCAL_MODEL_ALIAS --model-port 12345
+```
+
+(The above line is a set of **additional flags**, not a separate shell
+command. The model is not automatically started and its alias/port are
+operator-provided; its true GGUF identity is not qualified by this demo.)
+The L2 prompt contains only S49 native World distances, fixed L0 decisions
+and observed movement; it explicitly states that objective success and
+learned Habit have not been proven. Model output is untrusted text that is
+visible in JSONL but cannot become an Action or LearningFeedback. Any
+HTTP failure, invalid model response or timeout yields `UNCONFIRMED`;
+no retry and no backend-idle or GPU-release assertion.
+
 - The command deliberately does *not* start unless the exact consent token,
   prepared output folder, available `java`/`node`, no Node shims and
   no existing evidence-file collisions are verified. It operates
@@ -87,7 +114,9 @@ PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m adapters.mineflayer.self_demo \
   for checked genuine S49 run and `SYNTHETIC_SMOKE_ONLY` for offline
   control. The live trace has 3 native observations and 3 L0 choices;
   two independent source-bound Action OUTCOME/physical movement records.
-  Original owner-local PersistentCognition stores precisely two observational\n  memories, while no LearningPreferenceState or HabitRepertoire is changed.\n  **Action OUTCOME != Goal success != LearningFeedback != Habit learning**.
+  Original owner-local PersistentCognition stores precisely two observational
+  memories, while no LearningPreferenceState or HabitRepertoire is changed.
+  **Action OUTCOME != Goal success != LearningFeedback != Habit learning**.
 - The local Minecraft server uses port 25565 only during the disposable test.
   It is short-lived, and the report appears at the end. If you join it
   with the Minecraft client during the test, you may observe the scripted
@@ -111,7 +140,8 @@ Real source event -> real probe -> existing S49 L0 decision
   -> existing S16 OUTCOME/UNKNOWN -> single JSONL trace
 ```
 
-S49's model calls are exactly zero. The retained-origin field explicitly
+S49's **in-World** model calls are exactly zero. The separately enabled L2
+commentary comes AFTER the S49 World run and has no Action permission. The retained-origin field explicitly
 reports the existing offline S19 controlled preference as
 `S19_FROZEN_SYNTHETIC_GOVERNED_REV1`. A JSONL receipt is a durable
 observer trace, **not** a replacement for persistent Memory, a privileged
@@ -119,7 +149,7 @@ World truth source, a new central scheduler or a governed S10/S11 commit.
 
 One limitation remains conspicuous: the live S49 experiment stages known
 zombie events and uses an existing L0 rule. No unknown quest, new Minecraft
-Skill, real autonomous L2 decision, experiential Habit compilation or
+Skill, L2-driven physical Action, experiential Habit compilation or
 adaptive low-cost allocation has been established. That is the next
 **product integration** step if this first playable loop works.
 
