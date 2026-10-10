@@ -18,6 +18,7 @@ from typing import Any
 
 import test_postmain_two_epoch_continuation as s19
 from adapters.mineflayer.execution import WorldConsequenceStatus
+from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from adapters.mineflayer.normal_action import (
     NormalActionAuthorization,
     NormalActionStage,
@@ -251,6 +252,12 @@ async def qualify(report_path: Path, server_log: Path) -> int:
                 "movement_m": receipt.consequence.movement_distance,
                 "event_seq": step.event_seq,
                 "probe_seq": step.choice.probe_seq,
+                # Decoded original before/after observations and exact effect
+                # receipts, captured BEFORE the immutable consequence is lost.
+                # Legacy reports have no such field and remain EVIDENCE_PARTIAL.
+                "execution_evidence": capture_native_action_evidence(
+                    receipt.consequence
+                ),
             })
 
         async def stage_world():
