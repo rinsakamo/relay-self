@@ -1,7 +1,6 @@
 """B20: frozen exact nine-Draft evidence terminal and fail-closed promotion tests."""
 from __future__ import annotations
 
-from copy import deepcopy
 from dataclasses import asdict, replace
 
 import pytest
