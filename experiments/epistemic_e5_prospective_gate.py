@@ -395,6 +395,10 @@ def _main(argv: list[str] | None = None) -> int:
         print(json.dumps({"classification": "REJECTED", "reason": str(exc)}))
         return 2
     print(json.dumps(obj, ensure_ascii=False, sort_keys=True))
+    # Command-line fail-closed: callers checking only the exit code must
+    # never mistake plausible caller-created LIVE JSON for authenticated World.
+    if obj.get("classification") == "UNATTESTED_PHYSICAL_CLAIM":
+        return 3
     return 0
 
 
