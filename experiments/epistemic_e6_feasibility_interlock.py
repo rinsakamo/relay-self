@@ -274,7 +274,8 @@ def check_claims(payload: object) -> E6Readiness:
     if type(claims) is not list or len(claims) != len(REQUIRED):
         raise E6Rejected("all ten pre-registered capability slots are mandatory")
     missing: list[str] = []
-    sessions: set[str] = set()
+    world_sessions: dict[int, str] = {}
+    action3_ids: dict[int, str] = {}
     witness_hashes: set[str] = set()
     ids: list[str] = []
     for i, raw in enumerate(claims):
@@ -298,11 +299,11 @@ def check_claims(payload: object) -> E6Readiness:
             if c["witness_sha256"] in witness_hashes:
                 raise E6Rejected("replayed witness hash across independent checks")
             witness_hashes.add(c["witness_sha256"])
-            if i in (0, 1, 2, 3):
-                if session in sessions and i in (0, 2):
-                    raise E6Rejected("independent Action/session witness reused")
-                sessions.add(session)
             _validate_details(i, c["details"])
+            if i in (0, 1, 2, 3):
+                world_sessions[i] = session
+            if i in (2, 3):
+                action3_ids[i] = c["details"]["action3_id"]
             ids.append(name)
         else:
             if (
@@ -313,6 +314,15 @@ def check_claims(payload: object) -> E6Readiness:
             ):
                 raise E6Rejected("missing/denied capability cannot smuggle evidence")
             missing.append(name)
+    # E5's exact S29 parent is one original Action3 terminal/World
+    # source, while S15's next Action4 is a separate execution session.
+    if set(world_sessions) == {0, 1, 2, 3}:
+        if (
+            len({world_sessions[i] for i in (0, 1, 2)}) != 1
+            or world_sessions[3] == world_sessions[0]
+            or action3_ids[2] != action3_ids[3]
+        ):
+            raise E6Rejected("S29 two-probe/Action3 parent and separate Action4 source mismatch")
     return E6Readiness(
         classification=(
             "CLAIMED_CAPABILITIES_UNATTESTED" if not missing
