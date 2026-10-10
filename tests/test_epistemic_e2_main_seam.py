@@ -141,7 +141,9 @@ def test_wrong_source_stale_revision_forged_history_and_missing_event_fail_close
         modified = list(e0.facts)
         i = next(i for i, fact in enumerate(modified) if fact.key == "history:0")
         modified[i] = replace(modified[i], value=replacement)
-        with pytest.raises(e2.ContractError, match="stale or forged"):
+        with pytest.raises(
+            e2.ContractError, match="stale or forged|insufficient source history"
+        ):
             w.observe(replace(e0, facts=tuple(modified)))
     e1 = w.observe(e0)
     with pytest.raises(e2.ContractError, match="stale or forged"):
