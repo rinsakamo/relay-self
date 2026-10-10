@@ -421,7 +421,7 @@ class ReadOnlyHandoff:
     revision: int
     cue_features: tuple[tuple[str, int], ...]
     action_candidate_ref: str
-    proposed_feedback_direction: str
+    proposed_feedback_direction: str | None
     source_outcome_refs: tuple[str, ...]
     retained_memory_ids: tuple[str, ...]
     grant_nonce: str
@@ -514,7 +514,10 @@ class HandoffGate:
             revision=draft.revision,
             cue_features=(("a", draft.a), ("b", draft.b)),
             action_candidate_ref=draft.candidate_ref,
-            proposed_feedback_direction="increase",
+            # S17 requires an independently matched Action-feedback
+            # criterion. This offline handoff supplies NONE; no direction may
+            # be fabricated or treated as committed LearningFeedback.
+            proposed_feedback_direction=None,
             source_outcome_refs=draft.observed_ids,
             retained_memory_ids=draft.memory_ids,
             grant_nonce=grant.nonce,
