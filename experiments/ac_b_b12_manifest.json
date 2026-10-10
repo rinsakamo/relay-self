@@ -1,0 +1,16 @@
+{
+  "protocol": "AC_B_B12_V1",
+  "authority_issue": 489,
+  "parents": [431, 426],
+  "base_pr": 485,
+  "base_head": "8dd1f0cc115285293736f5d36950469d3866a9db",
+  "pr_target": "self/ac-b-b11-governed-habit-acquisition-20261010",
+  "allowed_new_files": ["experiments/ac_b_b12_manifest.json", "experiments/ac_b_b12_independent_habit_grant.py", "tests/test_ac_b_b12_independent_habit_grant.py", ".github/workflows/ac-b-b12.yml"],
+  "grant": "Independent caller-held S11-only HMAC-SHA256 key; canonical JSON binds domain, issuer, grant ID, granted flag, exact admitted owner snapshot digest, repertoire ID/revision, B11 proposal/session/revision, two observed event IDs, cue a/b, complete candidate rule and evidence digest. Verification recomputes source and proposal from caller-supplied live World and ledger, never receipt-supplied keys or scope. In-memory admitted owner and consumed grant/proposal ledger only.",
+  "non_transfer": "Existing S17 deterministic FakeSession MOVE_BACKWARD outcome and explicit matching criterion -> existing S10 feedback/propose/authorized commit risk_weight 3/rev0 -> 4/rev1. Commit/criterion/authority alone supplies NO_SHARED_WORLD_CUE_WITNESSES and cannot authorize S11. Source protocols differ.",
+  "training": {"relevant_cues": [[0,0],[0,1],[1,0],[1,1]], "observed_actions_per_cue": [0,1], "total_offline_outcomes": 8, "signed_s11_commits": 4},
+  "holdout": {"nuisance_rounds": 3, "total": 12, "novel_relevant_cues": false, "baseline": "B11 cheap_flat_tags trained on identical QualifiedLedger", "adoption": "Grand Null retained unless Habit outperforms cheap tags; symbolic work is not physical cost"},
+  "negative_controls": ["wrong key", "forgery", "changed witness", "source session/revision", "cue/candidate", "owner ID/revision/snapshot", "issuer/domain", "proposal ID", "evidence digest", "denied grant", "grant/proposal replay including old owner", "stale live World", "lost/fabricated source witness", "preexisting rule conflict", "B11 authority", "S10 authority/commit", "B7 schema grant"],
+  "ceilings": ["INDEPENDENT_EXPERIMENTAL_S11_GRANT_CHECK_QUALIFIED", "NO_CAUSAL_S10_TO_S11_BRIDGE", "CHEAP_TAG_RULE_MATCHES_HABIT_ON_HELDOUT", "NO_PRODUCTION_HABIT_OWNER_AUTHORITY"],
+  "limits": ["Trusted key holder can sign arbitrary data", "B11 source is local object identity only, not B7/B9/B10/S16 signed evidence", "No cross-process key custody or persistent replay/owner ledger", "Raw S11 selector remains epoch-blind", "No physical Minecraft, LLM, GPU, GGUF, physical Action or science spend", "No production edits, L0 promotion, Lane A/C or Theory/Paper2 work", "Author audit only; independent security/scientific review and protected merge pending"]
+}
