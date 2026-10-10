@@ -1,0 +1,130 @@
+{
+  "schema": "AC_B_B15_DELAYED_NOISY_SILENT_MATCHED_v1",
+  "authority": {
+    "issue": 504,
+    "lane": 431,
+    "parent": 426,
+    "base_head": "7edbc294778494f4c1585a2db94f8bc36a607a6a",
+    "base_branch": "self/ac-b-b14-matched-readaptation-20261010",
+    "main": "4348a614900c1d0828581a8eec2c523ba5ae237f"
+  },
+  "phases": [
+    {
+      "id": 0,
+      "regime": 0,
+      "hidden_shift": false,
+      "corrupted": []
+    },
+    {
+      "id": 1,
+      "regime": 1,
+      "hidden_shift": true,
+      "corrupted": []
+    },
+    {
+      "id": 2,
+      "regime": 1,
+      "hidden_shift": false,
+      "corrupted": [
+        {
+          "cue": [
+            0,
+            0
+          ],
+          "action": 0,
+          "flip": true
+        },
+        {
+          "cue": [
+            1,
+            1
+          ],
+          "action": 0,
+          "flip": true
+        },
+        {
+          "cue": [
+            1,
+            1
+          ],
+          "action": 1,
+          "flip": true
+        }
+      ]
+    }
+  ],
+  "action_order": "4 binary cues in [(0,0),(0,1),(1,0),(1,1)] x actions (0,1), each actually executed once per phase",
+  "issued_action_ticks": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "receipt_delay_offsets": [
+    2,
+    0,
+    3,
+    1,
+    2,
+    0,
+    3,
+    1
+  ],
+  "due_ticks": [
+    2,
+    1,
+    5,
+    4,
+    6,
+    5,
+    9,
+    8
+  ],
+  "last_receipt_tick": 9,
+  "samples": {
+    "actual_world_actions_per_phase": 8,
+    "actual_world_actions_total": 24,
+    "release_only_learning": true
+  },
+  "policies": {
+    "A": "B13 actual native S10 owner commits + independently B12 test signed S11 rule retention, S11 qualified read only; only unambiguous complete receipt pair",
+    "B": "same delivered B11 QualifiedLedger pair -> cheapest flat dict lookup; same detector and reset as A"
+  },
+  "detector": "compare each delivered reported success to preceding phase same cue and action; on first contradiction trigger both-policies quarantine + explicit experiment-only reset; never inspect true regime from learner",
+  "heldout": "4 previously seen relevant binary contexts each phase, 3 fresh nuisance IDs per context; score after policy inference only",
+  "expected_analytical_result": "E0 delivered 8 -> both 4/4 correct, E1 first contradiction tick1 after silent shift -> both eventual 4/4, E2 first corrupt contradiction tick2 FALSE ALARM -> both 3/4 covered 2/4 correct (1 ambiguous; 1 coherent wrong pair). Predictions are falsifiable; report actual CI results",
+  "negative": [
+    "receipt withheld before release denies training",
+    "wrong or cloned source object denied",
+    "both positive/both negative ambiguous pair denies both",
+    "both flipped coherent pair can deceive both",
+    "no independent physical sensor authentication",
+    "raw S11 epoch-blind and SAME rev across shift",
+    "native S10 and B12 grants independent and test-only",
+    "false detector alarm possible on noise",
+    "no novel relevant cue generalization"
+  ],
+  "terminal_if_supported": [
+    "MATCHED_DELAYED_EVIDENCE_LEARNING",
+    "MATCHED_UNANNOUNCED_SHIFT_READAPTATION",
+    "NO_OBSERVED_S10_ADVANTAGE_UNDER_DELAY_NOISE_OR_SILENT_SHIFT",
+    "FALSE_ALARM_FROM_NOISE",
+    "UNDETECTABLE_CONSISTENT_CORRUPTION",
+    "NO_PRODUCTION_S11_OWNER",
+    "NO_AUTONOMOUS_L2_TO_L1_DISTILLATION"
+  ],
+  "prohibited": [
+    "real Minecraft physical claims",
+    "production source trust",
+    "auto S10->S11 distillation",
+    "real measured CPU/energy/token/GPU costs",
+    "frozen prior code/main modification",
+    "merge",
+    "#46/#415 spend",
+    "L0"
+  ]
+}
