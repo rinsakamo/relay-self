@@ -325,16 +325,27 @@ def _local_endpoint(endpoint: str) -> str:
 def run_local_one_call(
     *, endpoint: str, model: str, messages: list[dict[str, str]],
     timeout_seconds: int = 90,
+    max_tokens: int = 512,
+    raw_response_path: Path | None = None,
 ) -> dict[str, object]:
-    """One user-authorized synchronous local L2 call. NO retries/fallbacks."""
+    """One user-authorized synchronous local L2 call. NO retries/fallbacks.
+
+    The default remains B26's exact 512-token original request. B27 can
+    supply 2048 with the SAME messages and freeze raw HTTP bytes BEFORE
+    strict JSON/qualification, including invalid or empty model content.
+    """
     endpoint = _local_endpoint(endpoint)
     if not isinstance(model, str) or not model.strip() or len(model) > 256:
         raise InvalidB26Proposal("explicit exact locally loaded model ID required")
     if type(timeout_seconds) is not int or not 1 <= timeout_seconds <= 300:
         raise InvalidB26Proposal("bounded HTTP inference timeout required")
+    if type(max_tokens) is not int or not 1 <= max_tokens <= 4096:
+        raise InvalidB26Proposal("positive bounded generation budget required")
+    if raw_response_path is not None and not isinstance(raw_response_path, Path):
+        raise InvalidB26Proposal("raw HTTP receipt destination must be Path")
     payload = json.dumps({
         "model": model, "messages": messages,
-        "temperature": 0, "max_tokens": 512, "stream": False,
+        "temperature": 0, "max_tokens": max_tokens, "stream": False,
     }, separators=(",", ":")).encode("utf-8")
     request = Request(
         endpoint, data=payload, headers={"Content-Type": "application/json"},
@@ -342,6 +353,11 @@ def run_local_one_call(
     )
     with urlopen(request, timeout=timeout_seconds) as response:
         raw = response.read(MAX_RESPONSE_BYTES + 1)
+    if raw_response_path is not None:
+        # Exclusive create protects prior trial receipts. Wire bytes are
+        # recorded even when B26 strict model JSON validation will fail.
+        with raw_response_path.open("xb") as record:
+            record.write(raw)
     if len(raw) > MAX_RESPONSE_BYTES:
         raise InvalidB26Proposal("oversized L2 inference response")
     outer = _strict_json(raw.decode("utf-8"))
