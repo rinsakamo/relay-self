@@ -1,0 +1,33 @@
+{
+  "version": "AC-C-ALLOCATION-v1",
+  "repository_base": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+  "repository_base_tree": "7816055966dd520b6690de7662a267047e57ccc0",
+  "authority": [432, 426, 367, 59, 60, 384, 417],
+  "scope": "offline zero-model synthetic cognition selection; no semantic owner or World authority",
+  "training_seeds": [11, 13, 17],
+  "heldout_seeds": [31, 37, 41, 43, 47],
+  "episodes_per_phase": 64,
+  "phases": ["unknown", "stable", "shift", "recovery"],
+  "cue_matches_parity_probability": {"unknown": 0.5, "stable": 0.9, "shift": 0.1, "recovery": 0.85},
+  "mechanisms": {
+    "FAST": {"ticks": 1, "work_units": 1, "decoding": "observed cue"},
+    "MEDIUM": {"ticks": 2, "work_units": 3, "decoding": "xor low two raw bits"},
+    "SLOW": {"ticks": 5, "work_units": 12, "decoding": "xor three raw bits"},
+    "OBSERVE": {"ticks": 4, "work_units": 2, "decoding": "authorized simulator signal after revision increment, then act"}
+  },
+  "synthetic_costs": "ticks are synthetic decision/world-time exposure units; work_units are algorithmic proxies, not watts or GPU time",
+  "provider_measurements": "wall/CPU/GPU/token/electric-energy are unobserved; do not infer them",
+  "visible_observations": ["cue", "raw_glyph", "deadline_ticks", "health", "hunger", "threat", "scan_available", "source_session", "world_revision", "fatigue_if_enabled"],
+  "evaluator_only": ["phase", "parity_target", "future_outcome", "random_seed"],
+  "observational_rule": "World target = parity(raw_glyph); no oracle truth to selector; SLOW decoding is declared mechanistic capability, OBSERVE purchases source-qualified target bit",
+  "arms": ["FAST_ONLY", "SLOW_ONLY", "FIXED", "LEARNED", "ORACLE_UPPER_BOUND"],
+  "learning": "per-cue rolling six observed chosen-mechanism outcomes for FAST/MEDIUM; safe scheduled FAST probe every fourth eligible task; no implicit counterfactual labels; all tuning frozen before heldout",
+  "policy": {"threshold": 0.75, "probe_period": 4, "learned_selector_ops": 6, "fixed_selector_ops": 1, "baseline_selector_ops": 0},
+  "cost_interventions": ["TIME_ONLY", "TIME_PLUS_WORK", "BODY_AWARE", "FATIGUE_BRIDGE_OFF", "FATIGUE_BRIDGE_ON", "HIGH_OVERHEAD"],
+  "bridge": "OFF=no compute-hunger coupling; ON=declared virtual fatigue accumulates work_units//3 minus one recovery per episode; at high fatigue SLOW/OBSERVE unavailable; hunger unaffected by compute in both arms",
+  "hard_viability": "health must remain > worst-case damage of permitted actions; fail closed ABSTAIN if no safe feasible mechanism; never trade life for weighted reward",
+  "metric_split": "per-phase success, missed deadline, abstain, violation, mechanism count, ticks, work, selector overhead, health damage, hunger, virtual fatigue, shift and recovery delays",
+  "grand_null": "choose simplest fixed or cheap arm on equal or better task outcome and no greater cost; no new production selector from mere scripted mechanics",
+  "qualifications": "deterministic simulation only; training and heldout seeds distinct; no Minecraft, LLM, GGUF, GPU, physical power",
+  "lane_a_b": "read-only optional future source-validated prediction/epistemic gain, retained reliability and applicability; no imports from sibling Draft branches"
+}
