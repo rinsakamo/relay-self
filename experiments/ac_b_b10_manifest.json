@@ -1,0 +1,43 @@
+{
+  "schema": "AC-B-B10-OBSERVED-SESSION-ISSUER-DURABLE-LOCAL-REPLAY-v1",
+  "authority": {
+    "issue": 474,
+    "parent": 431,
+    "B9_pr": 471,
+    "B9_head": "a8fda329b93394a53b76f101424cea063abb8200",
+    "pr_base": "self/ac-b-b9-exact-s16-signed-source-20261010",
+    "S17_head": "64868337510a960c140e96d5d3d20949ad53fb8e",
+    "main_unchanged": "4348a614900c1d0828581a8eec2c523ba5ae237f"
+  },
+  "fixture": "S17 issued_chain + S15 execute_mineflayer_command with offline deterministic FakeSession; not physical Minecraft",
+  "issuer": "Only execute and sign when an observed adapter wrapper captured command/response ordered transcript that exactly matches the complete typed S16 WorldConsequence; no arbitrary consequence signing public method",
+  "transcript": "send observe, receive before; send set_control, receive dispatch; send clear_controls, receive cleanup; send observe, receive after; strict monotone seq and exact session/action/effect; sign only EXECUTED",
+  "consumer": "B9 ExternalS16EvidenceGate read-only source HMAC/epoch/issued Action validation plus SQLite BEGIN IMMEDIATE INSERT with event and (session,action) uniqueness, explicitly preinitialized valid ledger, no auto-create in read path",
+  "independence": "issuer secret, external trusted current epoch and journal path separately provided; no production authority; no automatic ActionSupervisor record or S17 feedback",
+  "positive": [
+    "complete observed session exact-S16 signed result",
+    "no arbitrary WorldConsequence signing B10 surface",
+    "only one admitted S16 interpretation per session/action",
+    "reopened gate replays denied",
+    "separate interpreter replay denied",
+    "negative wrong session/sequence/commands/tamper",
+    "no source signing if failed/undetermined S15",
+    "original ActionSupervisor unchanged"
+  ],
+  "limiting_controls": [
+    "FakeSession can fabricate native messages; physical source origin UNQUALIFIED",
+    "SQLite path rollback by privileged actor undetectable",
+    "symmetric key could be used to sign arbitrary data by its holder",
+    "B7 generic binary receipt lacks S16 complete consequence",
+    "no production key management/remote validation",
+    "no real Minecraft/GGUF/GPU/LLM",
+    "no L0/Habit acquisition",
+    "no #46/#415 spend",
+    "no merging"
+  ],
+  "terminal": [
+    "OBSERVATION_BOUND_SOURCE_AND_LOCAL_DURABLE_REPLAY_QUALIFIED_OFFLINE",
+    "PHYSICAL_SOURCE_ORIGIN_UNQUALIFIED",
+    "B7_GENERIC_RECEIPT_NOT_ADMISSIBLE_AS_S16"
+  ]
+}
