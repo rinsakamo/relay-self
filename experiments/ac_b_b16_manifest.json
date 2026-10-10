@@ -1,0 +1,146 @@
+{
+  "schema": "AC-B-B16-PROSPECTIVE-REPEATED-NOISY-QUORUM-v1",
+  "authority": {
+    "issue": 508,
+    "lane": 431,
+    "parent": 426,
+    "exact_B15_head": "68f23eb7b51cf761c6f8eccc575fc2749a55755c",
+    "pr_base": "self/ac-b-b15-delayed-noisy-silent-20261010",
+    "main": "4348a614900c1d0828581a8eec2c523ba5ae237f"
+  },
+  "phases": [
+    "clean",
+    "adversarial"
+  ],
+  "per_phase": {
+    "context_order": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "rounds": 5,
+    "actions_per_round": [
+      0,
+      1
+    ],
+    "actual_world_actions": 40,
+    "rule": "action==(a xor b)",
+    "quorum": ">=4 of 5 VALID paired votes, 5 complete pairs first, ambiguities count against threshold",
+    "nuisance_holdouts": 3
+  },
+  "corruption": {
+    "clean": [],
+    "adversarial": [
+      {
+        "cue": [
+          0,
+          0
+        ],
+        "rounds": [
+          0
+        ],
+        "actions": [
+          0,
+          1
+        ]
+      },
+      {
+        "cue": [
+          0,
+          1
+        ],
+        "rounds": [
+          0
+        ],
+        "actions": [
+          0
+        ]
+      },
+      {
+        "cue": [
+          1,
+          0
+        ],
+        "rounds": [
+          0,
+          1,
+          2
+        ],
+        "actions": [
+          0,
+          1
+        ]
+      },
+      {
+        "cue": [
+          1,
+          1
+        ],
+        "rounds": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "actions": [
+          0,
+          1
+        ]
+      }
+    ]
+  },
+  "arms": [
+    "one_shot_cheap_pair_first_trial_only",
+    "actual_S10_commit_plus_experimental_S11_quorum_with_separate_B16_grant",
+    "cheap_counted_quorum_no_S10"
+  ],
+  "world_actions_total_shared": 80,
+  "expected": {
+    "clean": {
+      "one_shot_correct": 4,
+      "quorum_correct": 4,
+      "cheap_correct": 4
+    },
+    "adversarial": {
+      "one_shot_correct": 0,
+      "one_shot_covered": 3,
+      "quorum_correct": 2,
+      "quorum_covered": 3,
+      "cheap_correct": 2,
+      "cheap_covered": 3
+    }
+  },
+  "quorum_requires": "exact five actual World-issued paired observation objects from same session, epoch, cue, no duplicate and no missing alternative; source may report false success relative to hidden truth",
+  "commit": "use actual frozen S10 feedback/propose/commit with native explicit LRN authority and full source digest; separate forgeable B16 TEST authority matching full five pairs, owner revision and candidate to construct actual immutable S11 HabitRepertoire snapshot; do not substitute B12 pair-only grant; production S11 remains READ_ONLY",
+  "evaluation": "world.heldout_score only after independent decisions; 4 relevant contexts and 12 new nuisance IDs; no novel relevant context tested; operations/actions not walltime/power",
+  "limits": [
+    "synthetic B11 same-process observed report registry, not physical Minecraft or signed S16",
+    "test-only B16 grant forgeable; no production owner",
+    "S10 commit result cloneable",
+    "no autonomous L2->L1",
+    "counted cheap majority shares all five observations",
+    "no novel relevant-cue generalization, no latency or energy"
+  ],
+  "classification_if_verified": [
+    "QUORUM_GAINS_OVER_ONE_SHOT_ON_FIXED_NOISE",
+    "CHEAP_COUNTS_EQUAL_S10_GATED_S11_QUORUM",
+    "EXTRA_WORLD_ACTIONS_REQUIRED",
+    "CONFIDENT_WRONG_UNDER_COHERENT_CORRUPTION",
+    "NO_PRODUCTION_HABIT_AUTHORITY",
+    "NO_AUTONOMOUS_L2_TO_L1_DISTILLATION"
+  ]
+}
