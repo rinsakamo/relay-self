@@ -1,7 +1,7 @@
 """Prospective B7 signed World evidence + separate handoff authority gates."""
-from dataclasses import asdict, replace
 import json
 import secrets
+from dataclasses import asdict, replace
 
 import pytest
 
@@ -14,7 +14,6 @@ from experiments.ac_b_b7_signed_handoff import (
     HandoffGate,
     InvalidEvidence,
     ReadOnlyBridge,
-    SignedReceipt,
     Status,
     WorldSource,
     decode_receipts,
@@ -108,7 +107,7 @@ def test_exact_scoped_grants_admit_but_never_authorize_action_or_commit():
         assert h.source_outcome_refs == result.draft.observed_ids
         assert h.action_candidate_ref == result.draft.candidate_ref
         assert h.cue_features == (("a", a), ("b", b))
-        assert h.proposed_feedback_direction == "increase"
+        assert h.proposed_feedback_direction is None  # no S17 criterion/orientation
         assert h.grant_nonce == grant.nonce
         assert not hasattr(h, "issue_action")
         assert not hasattr(h, "commit_learning_update")
