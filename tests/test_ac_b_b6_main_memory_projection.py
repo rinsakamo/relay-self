@@ -103,13 +103,6 @@ def test_retained_memory_prose_does_not_become_observed_truth():
     for a, b in CONTEXTS:
         assert read.query(a, b, session=world.session, revision=0).proposal == (
             view.query(a, b, session=world.session, revision=0).proposal
-            if (a, b) != (0, 0) else
-            replace(
-                view.query(a, b, session=world.session, revision=0).proposal,
-                memory_ids=(
-                    view.query(a, b, session=world.session, revision=0).proposal.memory_ids
-                ),
-            )
         )
     assert world.action_count == len(events)
 
@@ -313,3 +306,13 @@ def test_no_claim_to_real_model_learning_or_power_measurement():
     assert result["requalified_actual_successes"] == 4
     assert result["silent_shift_quarantine"]
     assert "energy_joules" not in result and "llm_tokens" not in result
+
+
+def test_derived_indices_cannot_be_modified_after_qualification():
+    world, events, ledger, snapshot, view = fixture()
+    with pytest.raises(TypeError):
+        ledger.by_source[events[0].source_provenance] = events[-1]
+    with pytest.raises(TypeError):
+        view.by_tag[(0, 0)] = ()
+    assert view.query(0, 0, session=world.session, revision=0).status is Status.FOUND
+    assert snapshot.memories[0].source_provenance == events[0].source_provenance
