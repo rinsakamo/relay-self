@@ -24,13 +24,13 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
     encode_observe,
 )
-from experiments.epistemic_e11_avatar_handoff import HandoffReceipt, SequentialActionHandoff
 from experiments.epistemic_e3_s29_integration import (
     EpistemicResult,
     _first_for_arm,
     continue_with_existing_owners,
     plan_epistemic,
 )
+from experiments.epistemic_e11_avatar_handoff import HandoffReceipt, SequentialActionHandoff
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_outcome import (
     ActionOutcomeDisposition,
