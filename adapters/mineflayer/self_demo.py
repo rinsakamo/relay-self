@@ -337,16 +337,33 @@ def _write_trace(path: Path | None, rows: tuple[dict[str, object], ...]) -> None
     sys.stdout.write(encoded)
 
 
-async def _run_disposable(report_path: Path, server_log: Path) -> int:
+async def _run_disposable(
+    report_path: Path, server_log: Path, *,
+    live_model: tuple[str, int, float] | None = None,
+) -> int:
     # Existing exact S49 host is the *only* issuer. No duplicated event loop,
     # no new Game Action code or arbitrary LLM output -> Action mapping.
     from adapters.mineflayer.s49_normal_session_real_ci import qualify
 
+    live_observer = None
+    if live_model is not None:
+        from adapters.mineflayer.self_live_think import LiveL2Observer
+
+        live_observer = LiveL2Observer(
+            model=live_model[0], port=live_model[1], timeout_s=live_model[2],
+        )
     previous = os.environ.get("S49_REAL_SERVER_CI")
     os.environ["S49_REAL_SERVER_CI"] = "1"
     try:
-        return await qualify(report_path, server_log)
+        if live_observer is None:
+            return await qualify(report_path, server_log)
+        return await qualify(report_path, server_log, live_probe=live_observer.observe)
     finally:
+        if live_observer is not None:
+            # Separate product-side L2 receipt, never misstate original S49
+            # host model calls=0 or infer a new native Action permission.
+            live_row = await live_observer.close()
+            _write_trace(report_path.parent / "live_l2.jsonl", (live_row,))
         if previous is None:
             os.environ.pop("S49_REAL_SERVER_CI", None)
         else:
@@ -367,11 +384,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-dir", type=Path, help="pre-existing output directory")
     parser.add_argument("--think", action="store_true",
                         help="one L2 commentary AFTER a completed real native run, never an Action")
+    parser.add_argument("--live-think", action="store_true",
+                        help="one L2 model attempt DURING native World; L0 remains independent")
     parser.add_argument("--model-alias", help="explicit pre-existing loopback model alias")
     parser.add_argument("--model-port", type=int, help="existing localhost OpenAI-compatible port")
     parser.add_argument("--model-timeout", type=float, default=12.0)
     args = parser.parse_args(argv)
 
+    if args.think and args.live_think:
+        print(json.dumps(_row(
+            "blocked", "NO_WORLD_USED", reason="TWO_MODEL_ATTEMPTS_DENIED",
+            model_calls=0, actual_actions=0,
+        ), sort_keys=True))
+        return 2
+    if args.live_think and not args.run_disposable:
+        print(json.dumps(_row(
+            "blocked", "NO_WORLD_USED", reason="LIVE_L2_REQUIRES_NATIVE_WORLD",
+            model_calls=0, actual_actions=0,
+        ), sort_keys=True))
+        return 2
     if args.think and not (args.run_disposable or args.reflect_report):
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="L2_REQUIRES_REAL_NATIVE_SOURCE",
@@ -483,7 +514,7 @@ def main(argv: list[str] | None = None) -> int:
                 actual_actions=0,
             ), sort_keys=True))
             return 2
-        if args.think:
+        if args.think or args.live_think:
             from adapters.mineflayer.s60b1_loopback_adapter import (
                 LoopbackTransportConfig,
                 TransportUnconfirmed,
@@ -505,15 +536,22 @@ def main(argv: list[str] | None = None) -> int:
         server_log = args.output_dir / "minecraft_server.log"
         trace_file = args.output_dir / "self_trace.jsonl"
         memory_file = args.output_dir / "observed_memory.json"
+        live_file = args.output_dir / "live_l2.jsonl"
         if any(path.exists() or path.is_symlink()
-               for path in (report_file, server_log, trace_file, memory_file)):
+               for path in (report_file, server_log, trace_file, memory_file, live_file)):
             print(json.dumps(_row(
                 "blocked", "NO_WORLD_USED", reason="EVIDENCE_ALREADY_EXISTS",
                 actual_actions=0,
             ), sort_keys=True))
             return 2
         try:
-            code = asyncio.run(_run_disposable(report_file, server_log))
+            if args.live_think:
+                code = asyncio.run(_run_disposable(
+                    report_file, server_log,
+                    live_model=(args.model_alias, args.model_port, args.model_timeout),
+                ))
+            else:
+                code = asyncio.run(_run_disposable(report_file, server_log))
             if code != 0:
                 print(json.dumps(_row(
                     "unknown", SOURCE_NATIVE, reason="NATIVE_OWNER_DID_NOT_QUALIFY",
@@ -524,6 +562,20 @@ def main(argv: list[str] | None = None) -> int:
             trace = project_native_report(result)
             memory = retain_native_observations(trace)
             save_persistent_cognition(memory_file, memory)
+            if args.live_think:
+                if not live_file.is_file() or live_file.is_symlink():
+                    raise DemoRejected("live L2 sidecar receipt missing")
+                lines = live_file.read_text(encoding="utf-8").splitlines()
+                if len(lines) != 1:
+                    raise DemoRejected("one live L2 attempt receipt required")
+                row = json.loads(lines[0])
+                if (row.get("kind") != "l2_live_observer"
+                        or row.get("session") != trace[0]["session"]
+                        or row.get("model_attempts") not in (0, 1)
+                        or row.get("authorized_actions") != 0
+                        or row.get("l2_used_as_action") is not False):
+                    raise DemoRejected("live L2 receipt contradicts original S49")
+                trace = (*trace, row)
             if args.think:
                 # L2 sees only the completed native trace, not an invented
                 # goal or new Action admission. The World host has finished.
@@ -565,7 +617,7 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps(_row(
         "ready", "NO_WORLD_USED", mode="DRY_RUN",
         actions_issued=0, model_calls=0,
-        next="--smoke, --run-disposable or --reflect-report (read-only L2) with explicit options",
+        next="--smoke, --run-disposable (--live-think optional), or --reflect-report",
         warning="Native is existing S49 three-event test-world behavior, not a full autonomous Self 1.0",
     ), sort_keys=True))
     return 0
