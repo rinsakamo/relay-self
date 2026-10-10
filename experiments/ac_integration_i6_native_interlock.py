@@ -18,7 +18,7 @@ from adapters.mineflayer.execution import (
     WorldConsequence,
     WorldConsequenceStatus,
 )
-from experiments.ac_b_b16_quorum import BatchLedger, N_TRIALS
+from experiments.ac_b_b16_quorum import N_TRIALS, BatchLedger
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_feedback import (
     ActionFeedbackCriterion,
