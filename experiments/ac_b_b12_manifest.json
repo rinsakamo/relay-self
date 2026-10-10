@@ -1,0 +1,40 @@
+{
+  "schema": "AC-B-B12-INDEPENDENT-S11-GRANT-S10-NONTRANSFER-v1",
+  "issue": 489,
+  "parent": 431,
+  "base": {
+    "B11_head": "8dd1f0cc115285293736f5d36950469d3866a9db",
+    "pr_base": "self/ac-b-b11-governed-habit-acquisition-20261010",
+    "S17_head": "64868337510a960c140e96d5d3d20949ad53fb8e",
+    "S10_head": "897ada1afb956b900841e92479606aa8abd7a950",
+    "S11_head": "0095d30fd004a62c6b05bb469751a8624e846b4b",
+    "main": "4348a614900c1d0828581a8eec2c523ba5ae237f"
+  },
+  "source": "B11 offline CurrentWorld local object-identity ledger only, NOT independently signed B10 S16 source or physical Minecraft",
+  "grant": "Experiment-only external HMAC-SHA256 S11 grant scoped to B11 full proposal digest, exact source events/cue/action/World epoch/repertoire target/revision; separate from S10 LRN authority and B7 schema grant",
+  "s10": "Real S17 fake-Mineflayer ActionOutcome via explicit ActionFeedbackCriterion, then actual S10 LearningFeedback/propose/explicit LearningUpdateAuthority commit yields 3/r0->4/r1 but source lacks B11 two observed competing Actions and common cue scope",
+  "positive": [
+    "signed independent S11 grant permits immutable new S11 repertoire rev +1 with exact B11 source",
+    "four grants four source-qualified rules on B11 simulated world",
+    "12 nuisance-only heldout actual S11 selects equals 12 cheap flat tag lookups",
+    "S10 committed update alone never creates Habit or authorizes S11"
+  ],
+  "negative": [
+    "S10 LearningUpdateAuthority cannot be S11 grant",
+    "B11 plain dataclass grant cannot be signed grant",
+    "wrong key/forged/denied/tampered grant",
+    "owner ID/revision/witness/candidate/cue/world session/epoch mismatch",
+    "old signed grant replay after owner revision",
+    "raw frozen S11 selection stale after announced World update",
+    "World source local only",
+    "issuer key holder can mint arbitrary grant; not production trust",
+    "S10 source and B11 source unrelated"
+  ],
+  "terminal": [
+    "INDEPENDENT_EXPERIMENTAL_S11_GRANT_CHECK_QUALIFIED",
+    "NO_CAUSAL_S10_TO_S11_BRIDGE",
+    "CHEAP_TAG_RULE_MATCHES_HABIT_ON_HELDOUT",
+    "NO_PRODUCTION_HABIT_OWNER_AUTHORITY"
+  ],
+  "isolation": "B12 new experiment and tests only; frozen B11/S10/S11/S17 unmodified, no physical actions/merge"
+}
