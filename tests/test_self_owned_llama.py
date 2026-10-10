@@ -6,7 +6,6 @@ import json
 import os
 import socket
 import stat
-import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
