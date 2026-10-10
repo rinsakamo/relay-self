@@ -1,0 +1,145 @@
+{
+  "version": "AC-C-C5-DISTILL-v1",
+  "authority": {
+    "owner_issue": 456,
+    "parent_issues": [
+      432,
+      426
+    ],
+    "base": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "base_tree": "7816055966dd520b6690de7662a267047e57ccc0",
+    "prior_c4_head": "5f008262b563cde5a55d4bab39113e9dbafcc4eb"
+  },
+  "seeds": {
+    "calibration": [
+      127,
+      131,
+      137
+    ],
+    "heldout": [
+      139,
+      149,
+      151,
+      157,
+      163
+    ]
+  },
+  "phases": [
+    "warmup",
+    "shift",
+    "return"
+  ],
+  "episodes_per_phase": 96,
+  "latent_probability_z1": {
+    "warmup": [
+      0.1,
+      0.9
+    ],
+    "shift": [
+      0.9,
+      0.1
+    ],
+    "return": [
+      0.1,
+      0.9
+    ]
+  },
+  "world": {
+    "group": "uniform binary",
+    "prefix": "uniform integer 0..3 visible before decision",
+    "latent_z": "hidden stochastic suffix",
+    "target": "parity(prefix)^latent_z",
+    "medium_hint_accuracy": 0.8,
+    "scan_available_probability": 0.55,
+    "threat_probability": 0.25,
+    "deadlines": [
+      1,
+      2,
+      3,
+      5,
+      6
+    ],
+    "health": [
+      2,
+      3,
+      6,
+      9
+    ],
+    "hunger": [
+      2,
+      6,
+      12
+    ],
+    "post_outcome_target_visible": true
+  },
+  "mechanisms": {
+    "CHEAP": {
+      "ticks": 1,
+      "work": 1,
+      "accuracy": "posterior chosen z"
+    },
+    "MEDIUM": {
+      "ticks": 2,
+      "work": 2,
+      "accuracy": 0.8
+    },
+    "SCAN": {
+      "ticks": 3,
+      "work": 5,
+      "accuracy": 1
+    },
+    "DEEP": {
+      "ticks": 5,
+      "work": 8,
+      "accuracy": 1
+    }
+  },
+  "policy": {
+    "window": 12,
+    "beta_prior": [
+      1,
+      1
+    ],
+    "gate_threshold": 0.75,
+    "resource_overhead": 8,
+    "cache_hit_overhead": 1,
+    "cache_miss_overhead": 8,
+    "simple_overhead": 1,
+    "static_overhead": 0,
+    "decision_rule": "choose mode highest predicted per-outcome utility score based on verified posterior and fixed mode accuracy",
+    "cache_key": "context group, ones, count of retained last-12 observed z, admissible mask, predicted MAP z",
+    "no_feedback": "same decision procedure but suppress post-outcome retention"
+  },
+  "arms": [
+    "STATIC_ZERO",
+    "CHEAP_HISTORY",
+    "STATIC_DIAGNOSTIC",
+    "SIMPLE_GATE",
+    "RESOURCE_BAYES",
+    "RESOURCE_NO_FEEDBACK",
+    "CACHE_COMPILED",
+    "EVALUATOR_ORACLE"
+  ],
+  "safety": {
+    "worst_error_damage": 2,
+    "threat_exposure_at_ticks_gte": 3,
+    "threat_exposure_damage": 1,
+    "deep_requires_hunger_gt": 2,
+    "viability": "health > max_error_damage+exposure; no violations allowed; hard abstain when none"
+  },
+  "objective": {
+    "correct": 10,
+    "wrong": -10,
+    "abstain": -3,
+    "per_work": -0.4,
+    "per_world_tick": -0.2,
+    "work_includes_selector": true
+  },
+  "primary_positive_gate": {
+    "correct_over_simple_gate_at_least": 16,
+    "total_work_at_most_factor_simple_gate": 1.15,
+    "utility_advantage_per_opportunity": 0.05,
+    "better_correct_and_utility_than_no_feedback": true
+  },
+  "scope": "independent deterministic offline source-bound World information, not LLM depth or physical watts; no import from sibling Drafts; no production changes; remain Draft/unmerged"
+}
