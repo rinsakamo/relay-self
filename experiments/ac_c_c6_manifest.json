@@ -1,0 +1,168 @@
+{
+  "version": "AC-C-C6-REVOCABLE-CAPSULE-v1",
+  "authority": {
+    "issue": 461,
+    "parent": [
+      432,
+      426
+    ],
+    "frozen_main": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "frozen_tree": "7816055966dd520b6690de7662a267047e57ccc0",
+    "prior_c5_draft_head": "c3027114eaf2c4c47368b47578a5fa18572a2c0f"
+  },
+  "seeds": {
+    "calibration": [
+      167,
+      173,
+      179
+    ],
+    "heldout": [
+      181,
+      191,
+      193,
+      197,
+      199
+    ]
+  },
+  "epochs": [
+    "warmup",
+    "shift",
+    "return"
+  ],
+  "opportunities": {
+    "warmup": 80,
+    "shift": 100,
+    "return": 100
+  },
+  "hidden_z_probability_1": {
+    "warmup": [
+      0.1,
+      0.9
+    ],
+    "shift": [
+      0.9,
+      0.1
+    ],
+    "return": [
+      0.1,
+      0.9
+    ]
+  },
+  "world": {
+    "group": "uniform 0/1 observable",
+    "prefix": "uniform 0..3 two-bit observable",
+    "latent": "Bernoulli per group/epoch hidden",
+    "target": "parity(prefix)^latent_z",
+    "scan_availability": 0.75,
+    "threat_probability": 0.25,
+    "deadline_values": [
+      1,
+      3,
+      5,
+      6
+    ],
+    "health_values": [
+      2,
+      4,
+      8
+    ],
+    "hunger_values": [
+      2,
+      6,
+      12
+    ],
+    "world_result": "terminal observed target after chosen Action ONLY, no evaluator-label leakage"
+  },
+  "modes": {
+    "CHEAP": {
+      "ticks": 1,
+      "work": 1,
+      "information": "one group-specific predicted latent z, no new signal"
+    },
+    "DIAGNOSTIC": {
+      "ticks": 3,
+      "work": 4,
+      "information": "exact latent z, paid, requires scan availability"
+    },
+    "DEEP": {
+      "ticks": 5,
+      "work": 7,
+      "information": "exact latent z, paid, hunger>2"
+    }
+  },
+  "safety": {
+    "worst_case_error_damage": 2,
+    "threat_exposure_damage": 1,
+    "threat_exposure_ticks_at_least": 3,
+    "viability": "health>maximum possible action damage; no score-based exception; fail ABSTAIN"
+  },
+  "arms": [
+    "STATIC_CAPSULE",
+    "GUARDED_CAPSULE",
+    "POSTERIOR_GATE",
+    "CHEAP_HISTORY",
+    "PAID_ONLY",
+    "GUARDED_NO_FEEDBACK",
+    "EVALUATOR_ORACLE"
+  ],
+  "training": {
+    "policy": "DIAGNOSTIC then DEEP then CHEAP with rolling MAP; same for all arms; no policy-lane hindsight",
+    "required_group_labels": 8,
+    "retained_recent_per_group": 12,
+    "beta_prior": [
+      1,
+      1
+    ],
+    "minimum_qualification_probability": 0.75,
+    "certificate": "owner-local frozen z bit and rev index at warmup end; no phase to selector"
+  },
+  "guard": {
+    "contradictions_required": 2,
+    "window_of_executed_cached_cheap": 4,
+    "needs_post_revocation_labels": 8,
+    "posterior_recertify_threshold": 0.75,
+    "source": "only consumed World receipt binds capsule invalidation/recompile",
+    "revocation": "invalidate after second contradicted executed CHEAP within last four cached CHEAP uses of a group",
+    "recompile": "at least 8 NEW same-group valid terminal receipts after last invalidate AND current rolling posterior>=.75",
+    "no_feedback_control": "retains warmup capsule and ignores post-warmup outcome updating and revocation"
+  },
+  "selectors": {
+    "STATIC_CAPSULE": 1,
+    "GUARDED_CAPSULE": 2,
+    "POSTERIOR_GATE": 1,
+    "CHEAP_HISTORY": 1,
+    "PAID_ONLY": 0,
+    "GUARDED_NO_FEEDBACK": 2,
+    "EVALUATOR_ORACLE": 0
+  },
+  "objective": {
+    "correct": 10,
+    "wrong": -10,
+    "abstain": -3,
+    "per_work": -0.4,
+    "per_tick": -0.2,
+    "work": "mode_work + selector_work, synthetic only"
+  },
+  "positive_gate": {
+    "guarded_correct_over_static_at_least": 20,
+    "guarded_utility_greater_than_static": true,
+    "guarded_correct_over_posterior_gate_at_least": 10,
+    "guarded_work_no_more_than_gate_factor": 1.15,
+    "guarded_utility_greater_than_gate": true,
+    "heldout_posttraining_cases": 1000
+  },
+  "negative_controls": [
+    "fake equal-value receipt",
+    "wrong session",
+    "stale E0 revision",
+    "wrong mode",
+    "double issue",
+    "double consume",
+    "double learning update",
+    "learning before world consumption",
+    "unsafe mode",
+    "uncertified capsule use",
+    "oracle input leak"
+  ],
+  "claim_ceiling": "offline symbolic memory capsule; not real L1 Habit/SKILL or physical energy/CPU/GPU/Minecraft; no production scheduler or new owner; no sibling Drafts imported; no protected merge"
+}
