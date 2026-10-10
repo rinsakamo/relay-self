@@ -50,6 +50,7 @@ class CommonSourcePair:
     evidence_ids: tuple[str, str]
     session: str
     revision: int
+    source_world_identity: int
     digest: str
     criterion_id: str = ORIENTATION_ID
 
@@ -77,6 +78,7 @@ def exact_source_pair(
         raise NoSharedWorldEvidence("missing or stale competing World evidence") from exc
     data = {
         "criterion_id": ORIENTATION_ID, "session": ledger.session,
+        "source_world_identity": id(ledger.world),
         "revision": ledger.revision, "a": a, "b": b,
         "winner": winner, "evidence_ids": evidence_ids,
     }
@@ -87,7 +89,8 @@ def exact_source_pair(
         a=a, b=b, winner=winner,
         evidence_ids=evidence_ids,
         session=ledger.session,
-        revision=ledger.revision, digest=digest,
+        revision=ledger.revision, source_world_identity=id(ledger.world),
+        digest=digest,
     )
 
 
@@ -121,10 +124,14 @@ def orient_pair_as_s10_feedback(pair: CommonSourcePair) -> LearningFeedback:
 
 
 def propose_existing_s10(
-    pair: CommonSourcePair, state: LearningPreferenceState,
+    ledger: QualifiedLedger,
+    pair: CommonSourcePair,
+    state: LearningPreferenceState,
 ) -> LearningUpdateProposal:
     if not isinstance(state, LearningPreferenceState):
         raise NoSharedWorldEvidence("actual S10 owner required")
+    if exact_source_pair(ledger, pair.a, pair.b) != pair:
+        raise NoSharedWorldEvidence("source owner and original pair mismatch")
     if state != initial_s10_state(pair):
         raise NoSharedWorldEvidence("unexpected S10 initial owner snapshot")
     return propose_learning_update(
@@ -133,12 +140,13 @@ def propose_existing_s10(
 
 
 def commit_existing_s10(
+    ledger: QualifiedLedger,
     pair: CommonSourcePair,
     state: LearningPreferenceState,
     authority: LearningUpdateAuthority | None,
 ) -> LearningCommitResult:
     """Real S10 API; caller must provide a separate native S10 authority."""
-    proposal = propose_existing_s10(pair, state)
+    proposal = propose_existing_s10(ledger, pair, state)
     return commit_learning_update(
         state, proposal, authority,
         provenance=Provenance("b13.offline-s10-commit", pair.digest),
