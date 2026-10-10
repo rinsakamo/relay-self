@@ -214,6 +214,16 @@ def test_identity_and_source_coverages_guard_all_native_frames(index):
     fail(source_scope)
 
 
+def test_initial_far_entity_spawn_must_precede_far_request_and_match_identity():
+    fail(lambda items: items[2].__setitem__("kind", "health"))
+    fail(lambda items: items[3]["snapshot"]["nearby_entities"][0].__setitem__(
+        "id", 777,
+    ))
+    fail(lambda items: items[2]["snapshot"]["nearby_entities"][0].__setitem__(
+        "id", 777,
+    ))
+
+
 def test_removed_far_entity_must_be_witnessed_by_unsolicited_entities():
     fail(lambda items: items[4].__setitem__("kind", "health"))
     fail(lambda items: items[4].__setitem__("kind", "probe"))
