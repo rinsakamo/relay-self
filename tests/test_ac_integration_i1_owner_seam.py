@@ -25,7 +25,6 @@ from relay_self.postfailure_cognition import run_explicit_postfailure_epoch
 from relay_self.provenance import Provenance
 
 
-
 def p(reference: str) -> Provenance:
     return Provenance(source="i1-owner-contract-test", reference=reference)
 
