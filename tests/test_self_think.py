@@ -227,3 +227,120 @@ def test_product_cli_projects_one_advisory_after_native_and_saves_memory(
 
     asyncio.run(scenario())
     assert len(capsys.readouterr().out.splitlines()) >= 12
+
+
+def test_existing_real_report_readonly_reflection_with_no_minecraft(
+    capsys, tmp_path: Path, monkeypatch,
+) -> None:
+    async def scenario():
+        async with OneShotLocalModel() as model:
+            previous = tmp_path / "native_report.json"
+            previous.write_text(json.dumps(_native_report()), encoding="utf-8")
+            original = previous.read_bytes()
+            destination = tmp_path / "reflections"
+            destination.mkdir()
+
+            async def forbidden_native(*_args, **_kwargs):
+                raise AssertionError("real Minecraft must never be launched")
+
+            monkeypatch.setattr(self_demo, "_run_disposable", forbidden_native)
+            monkeypatch.setattr(
+                self_demo.shutil, "which",
+                lambda _: (_ for _ in ()).throw(AssertionError("no java/node check")),
+            )
+            args = [
+                "--reflect-report", str(previous),
+                "--think", "--output-dir", str(destination),
+                "--model-alias", "self-demo-test-model",
+                "--model-port", str(model.port), "--model-timeout", "2",
+            ]
+            rc = await asyncio.to_thread(self_demo.main, args)
+            assert rc == 0
+            assert model.requests == 1
+            assert previous.read_bytes() == original
+            rows = [
+                json.loads(line) for line in
+                (destination / "l2_reflection.jsonl").read_text().splitlines()
+            ]
+            assert [x["kind"] for x in rows] == ["source", "l2_commentary", "summary"]
+            assert rows[0]["origin"] == "OPERATOR_PROVIDED_REPORT_NOT_INDEPENDENTLY_ATTESTED"
+            assert rows[1]["status"] == "ADVISORY_ONLY"
+            assert rows[1]["used_as_action"] is False
+            assert rows[-1]["replayed_actions"] == 0
+            assert rows[-1]["minecraft_launched"] is False
+            assert rows[-1]["learning_updates"] == 0
+            assert sorted(x.name for x in destination.iterdir()) == ["l2_reflection.jsonl"]
+
+    asyncio.run(asyncio.wait_for(scenario(), timeout=6))
+    assert len(capsys.readouterr().out.splitlines()) == 3
+
+
+def test_reflection_requires_both_model_consent_and_existing_report(
+    capsys, tmp_path: Path,
+):
+    file = tmp_path / "native_report.json"
+    file.write_text(json.dumps(_native_report()), encoding="utf-8")
+    assert self_demo.main([
+        "--reflect-report", str(file), "--output-dir", str(tmp_path),
+    ]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == (
+        "REFLECTION_REQUIRES_EXPLICIT_THINK"
+    )
+    assert self_demo.main([
+        "--reflect-report", str(file), "--think", "--output-dir", str(tmp_path),
+        "--model-alias", "bad model", "--model-port", "12345",
+    ]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == (
+        "INVALID_EXPLICIT_L2_LOOPBACK_CONFIG"
+    )
+
+
+def test_reflection_fails_closed_for_invalid_source_and_existing_output(
+    capsys, tmp_path: Path,
+):
+    valid = tmp_path / "native_report.json"
+    valid.write_text(json.dumps(_native_report()), encoding="utf-8")
+    broken = tmp_path / "broken.json"
+    broken.write_text(json.dumps({**_native_report(), "status": "FAIL"}), encoding="utf-8")
+    output = tmp_path / "reflections"
+    output.mkdir()
+    opts = [
+        "--think", "--output-dir", str(output),
+        "--model-alias", "test-model", "--model-port", "12345",
+    ]
+    assert self_demo.main(["--reflect-report", str(broken), *opts]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "INVALID_NATIVE_SOURCE_REPORT"
+    (output / "l2_reflection.jsonl").write_text("keep original evidence", encoding="utf-8")
+    assert self_demo.main(["--reflect-report", str(valid), *opts]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "REFLECTION_OUTPUT_EXISTS"
+    assert (output / "l2_reflection.jsonl").read_text() == "keep original evidence"
+
+
+def test_reflection_no_model_returns_unknown_without_changing_world(
+    capsys, tmp_path: Path,
+):
+    import socket
+
+    native = tmp_path / "native_report.json"
+    native.write_text(json.dumps(_native_report()), encoding="utf-8")
+    output = tmp_path / "reflections"
+    output.mkdir()
+    # Explicit unused loopback port; only a rejected HTTP request is permitted.
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    if port <= 1024:
+        pytest.skip("eligible unused TCP port unavailable")
+    assert self_demo.main([
+        "--reflect-report", str(native), "--think",
+        "--output-dir", str(output),
+        "--model-alias", "not-running", "--model-port", str(port),
+        "--model-timeout", "0.5",
+    ]) == 0
+    rows = [
+        json.loads(line) for line in
+        (output / "l2_reflection.jsonl").read_text().splitlines()
+    ]
+    assert rows[1]["status"] == "UNCONFIRMED"
+    assert rows[1]["authorized_actions"] == 0
+    assert rows[-1]["replayed_actions"] == 0
