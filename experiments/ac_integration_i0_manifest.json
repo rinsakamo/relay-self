@@ -1,0 +1,61 @@
+{
+  "version": "AC-INTEGRATION-I0-v1",
+  "baseline_main": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+  "owner_issue": 464,
+  "scope": "OFFLINE_READ_ONLY_EVIDENCE_LEDGER",
+  "lanes": [
+    {
+      "lane": "A",
+      "issue": 457,
+      "pr": 460,
+      "head": "640d9df6fdc0310ab6189a05084bd13993864a75",
+      "ci_run": 38015748304,
+      "evidence": "E5_OFFLINE_RECEIPT_ADMISSION_CI_PASS",
+      "physical_effect": "UNDETERMINED",
+      "physical_trials": 0,
+      "planned_physical_trials": 36,
+      "cheap_comparator": "CHEAP_EXACT_PRESERVED"
+    },
+    {
+      "lane": "B",
+      "issue": 455,
+      "pr": 459,
+      "head": "127663c2a4da4533a39c52c96362a7f549038093",
+      "ci_run": 38015628355,
+      "evidence": "SERIALIZED_SOURCE_AND_EXPLICIT_HANDOFF_GATE_QUALIFIED",
+      "simulated_source_actions": 8,
+      "physical_source_actions": 0,
+      "learning_commit": "NOT_ATTESTED",
+      "handoff": "READ_ONLY_NON_AUTHORITATIVE",
+      "feedback_direction": "NONE_WITHOUT_CRITERION"
+    },
+    {
+      "lane": "C",
+      "issue": 456,
+      "pr": 458,
+      "head": "c3027114eaf2c4c47368b47578a5fa18572a2c0f",
+      "ci_run": 38015616541,
+      "evidence": "SIMPLE_GATE_SUFFICIENT_UNDER_FROZEN_UTILITY",
+      "heldout_opportunities": 1440,
+      "resource_correct": 1131,
+      "no_feedback_correct": 1068,
+      "simple_gate_correct": 1088,
+      "simple_gate_utility_tenths": 66532,
+      "resource_utility_tenths": 29872,
+      "physical_compute": "NOT_MEASURED",
+      "production_selector": "DENIED"
+    }
+  ],
+  "joint_result": "I0_OFFLINE_READ_ONLY_RECONCILED",
+  "joint_runtime_go": false,
+  "physical_world_effect": "UNDETERMINED",
+  "retained_update": "NOT_ATTESTED",
+  "production_selector_go": false,
+  "forbidden_promotions": [
+    "physical_world_success",
+    "production_habit_commit",
+    "action_authorization",
+    "automatic_l0_promotion",
+    "high_overhead_allocator_go"
+  ]
+}
