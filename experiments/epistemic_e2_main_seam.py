@@ -276,9 +276,12 @@ def _history(present: PresentProjection) -> tuple[int, int]:
     return values[0], values[1]
 
 
-def forecast(world: FixtureWorld, present: PresentProjection) -> tuple[Forecast, ...]:
-    """Action-conditioned *hypotheses*, not World-observed outcomes."""
-    world.validate(present)
+def forecast(present: PresentProjection) -> tuple[Forecast, ...]:
+    """Pure source-limited forecast: NO fixture World, truth rule, or future signal input.
+
+    The external caller checks the source against the trusted World before use;
+    this stateless mechanism can propose but cannot authorize or issue Actions.
+    """
     h = _history(present)
     if present.source_revision == 0:
         p = Fraction(sum(h), 2)
@@ -290,11 +293,13 @@ def forecast(world: FixtureWorld, present: PresentProjection) -> tuple[Forecast,
         )
     if present.source_revision != 1:
         raise ContractError("UNKNOWN: unsupported temporal horizon")
+    source = present.fact("source_session")
     signal = present.fact("observed_signal")
     event = present.fact("observation_event")
     if (
-        signal is None or type(signal.value) is not int or signal.value not in (0, 1)
-        or event is None or event.value != world.session + "/observe/rev1"
+        source is None or not isinstance(source.value, str)
+        or signal is None or type(signal.value) is not int or signal.value not in (0, 1)
+        or event is None or event.value != source.value + "/observe/rev1"
     ):
         raise ContractError("UNKNOWN: missing source-bound observation event")
     p = Fraction(h[signal.value])
@@ -304,34 +309,41 @@ def forecast(world: FixtureWorld, present: PresentProjection) -> tuple[Forecast,
     )
 
 
+def _source(present: PresentProjection) -> str:
+    fact = present.fact("source_session")
+    if fact is None or not isinstance(fact.value, str) or not fact.value:
+        raise ContractError("UNKNOWN: missing source session")
+    return fact.value
+
+
 def choose_first(
-    world: FixtureWorld, present: PresentProjection, *, allow_observe: bool = True,
+    present: PresentProjection, *, allow_observe: bool = True,
 ) -> Decision:
     if present.source_revision != 0:
         raise ContractError("UNKNOWN: first epoch requires revision 0")
-    options = forecast(world, present)
+    options = forecast(present)
     if not allow_observe:
         options = options[:2]
     best = max(x.expected_utility for x in options)
     winners = [x.action for x in options if x.expected_utility == best]
     if len(winners) != 1:
         raise ContractError("UNKNOWN: tied actions")
-    return Decision(winners[0], world.session, 0)
+    return Decision(winners[0], _source(present), 0)
 
 
-def choose_second(world: FixtureWorld, present: PresentProjection) -> Decision:
+def choose_second(present: PresentProjection) -> Decision:
     if present.source_revision != 1:
         raise ContractError("UNKNOWN: second epoch requires revision 1")
-    options = forecast(world, present)
+    options = forecast(present)
     best = max(x.expected_utility for x in options)
     winners = [x.action for x in options if x.expected_utility == best]
     if len(winners) != 1:
         raise ContractError("UNKNOWN: tied actions")
-    return Decision(winners[0], world.session, 1)
+    return Decision(winners[0], _source(present), 1)
 
 
-def expected_information_value(world: FixtureWorld, present: PresentProjection) -> Fraction:
-    scores = forecast(world, present)
+def expected_information_value(present: PresentProjection) -> Fraction:
+    scores = forecast(present)
     if present.source_revision != 0:
         raise ContractError("UNKNOWN: information value defined only at E0")
     return scores[2].expected_utility - max(scores[0].expected_utility,
@@ -344,17 +356,17 @@ def run(case: Case, strategy: str) -> Result:
         raise ContractError("UNKNOWN: unsupported strategy")
     world = FixtureWorld(case)
     e0 = world.project()
-    e0_forecast = forecast(world, e0)
+    e0_forecast = forecast(e0)
     p0 = e0_forecast[0].probability_hazard
     brier0 = (p0 - hazard(case.rule, case.signal)) ** 2
-    information_value = expected_information_value(world, e0)
+    information_value = expected_information_value(e0)
     if strategy in ("DIRECT", "DETOUR"):
         first = Decision(strategy, world.session, 0)
     elif strategy == "SCOUT_SCRIPT":
         first = Decision("OBSERVE", world.session, 0)
     else:
         first = choose_first(
-            world, e0, allow_observe=strategy != "NO_OBSERVE",
+            e0, allow_observe=strategy != "NO_OBSERVE",
         )
     tail: Decision | None = None
     brier1: Fraction | None = None
@@ -368,13 +380,13 @@ def run(case: Case, strategy: str) -> Result:
             label = "DIRECT" if observation.value == 0 else "DETOUR"
             tail = Decision(label, world.session, latest.source_revision)
         else:
-            tail = choose_second(world, latest)
-        p1 = forecast(world, latest)[0].probability_hazard
+            tail = choose_second(latest)
+        p1 = forecast(latest)[0].probability_hazard
         brier1 = (p1 - hazard(case.rule, case.signal)) ** 2
     final = tail or first
     action_revision = latest.source_revision
     # Capture source-verified projection and hypotheses BEFORE World is terminal.
-    qualified_predictions = forecast(world, latest)
+    qualified_predictions = forecast(latest)
     prior_p = qualified_predictions[0].probability_hazard
     duration, damage, history = world.execute_terminal(latest, final)
     ticks = duration + world.observe_count
