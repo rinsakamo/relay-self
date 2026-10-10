@@ -261,3 +261,24 @@ def test_result_step_count_matches_world_original_event_count():
         )
         assert ids == tuple(x.original_event_id for x in agent.memory)
         assert all(not x.unexpected_world_revision for x in agent.encounters)
+
+
+def test_habit_requires_success_already_recorded_as_latest_memory_event():
+    world = CurrentWorld(session="b23-experience-before-distillation")
+    agent = CognitiveAgent("HABIT", world)
+    # A World-registered success alone is not enough: the agent must actually
+    # RECEIVE and retain that experience in its episode Memory.
+    unremembered = world.act(0, 0, 0)
+    assert world.observed(unremembered) and unremembered.success
+    with pytest.raises(InconsistentExperience, match="latest recorded Memory"):
+        agent._retain((0, 0), unremembered)
+    assert agent.owner.revision == 0
+    recorded = agent.actually_try(1, (0, 0), 0, "BOUNDED_FRESH_THOUGHT")
+    agent._retain((0, 0), recorded)
+    assert agent.owner.revision == 1
+    # Old successes cannot be injected again as a fresh update after the
+    # agent has already experienced a newer Action result.
+    agent.actually_try(2, (0, 1), 0, "BOUNDED_FRESH_THOUGHT")
+    with pytest.raises(InconsistentExperience, match="latest recorded Memory"):
+        agent._retain((0, 0), recorded)
+    assert agent.owner.revision == 1
