@@ -413,3 +413,26 @@ Minecraftサーバーとの独立認証、Actionが原因で目標達成した�
 既存S49にC15要件を追加する新しい物理測定は**NOT_RUN**。
 この読み取り専用の接続は、SelfとLane Cのソースコード上の
 最初の合流であり、実Worldでの因果学習合流ではない。
+
+## Self の認知タイムライン（RelayUI向け・読み取り専用）
+
+既存の S49 レポートを**もう一度Minecraftを起動せず**に読み、
+各エポックの World 観測 → L0 選択 → S16 Action 結果を一画面で表示します。
+実際に所有する任意の過去のレシートについて、元のファイルを変更しません。
+
+```bash
+PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m adapters.mineflayer.self_timeline \
+  --native-report ./self-demo-receipts/native_report.json
+```
+
+同じコマンドに `--memory ./self-demo-receipts/observed_memory.json` と、
+`--live-l2 ./self-demo-receipts/live_l2.jsonl` （存在する場合）、
+`--format jsonl` を追加すると、RelayUI等で消費できる安定した
+`relay-self.product.cognition-timeline.v1` 行指向イベントが標準出力へ流れます。
+ターミナルで直接見る場合はデフォルトの短いテキスト表示を使います。
+
+**境界:** このビューアは Action を発行せず、L2 を起動せず、
+Memory・学習・Habitを書き換えません。過去の S49 レポートに保存されていない
+原本や因果的なゴール成功を生成しません。L2 のテキストは非信頼の参考情報であり、
+WorldとL2の物理的時間重複の独立証明とは表示しません。
+既存レポートや Memory と矛盾するソースは `UNDETERMINED` として拒否します。
