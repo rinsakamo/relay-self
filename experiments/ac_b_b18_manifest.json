@@ -1,0 +1,108 @@
+{
+  "schema": "AC_B_B18_EMPIRICAL_VOI_RISK_TRADEOFF_PROSPECTIVE_v1",
+  "issue": 521,
+  "authority": {
+    "lane": 431,
+    "parent": 426,
+    "base_head": "c299b8b57a9e5d16e740f3ad8459c84181a0e865",
+    "pr_base": "self/ac-b-b17-voi-correlated-sources-20261010",
+    "main": "4348a614900c1d0828581a8eec2c523ba5ae237f"
+  },
+  "training": {
+    "regimes": [
+      "clean",
+      "primary_correlated_only_cue_00"
+    ],
+    "relevant_cues": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "prefix": "two actually executed complete P action0/action1 pairs",
+    "other_counters": "third actually executed P pair and third actually executed S pair for EACH training case, no imagined outcomes",
+    "cases": 8,
+    "world_action_executions_per_case": 8,
+    "total": 64,
+    "source": "two distinct B11 local World python fixtures with distinct session ids, no physical independence"
+  },
+  "learner": {
+    "keys": [
+      "p_vote_0",
+      "p_vote_1"
+    ],
+    "candidate_order": [
+      "STOP",
+      "ABSTAIN",
+      "QUERY_P",
+      "QUERY_S"
+    ],
+    "result": "incremental empirical mean realized utility from training outcome labels, hidden truth used ONLY after observed action pairs are issued",
+    "decision": "candidate QUERY does not blindly accept contradictory source; disagree/ambiguous abstain",
+    "cost": {
+      "primary_pair": 1,
+      "secondary_pair": 2,
+      "correct": 5,
+      "abstain": -1,
+      "wrong_penalties": [
+        -15,
+        -5
+      ]
+    }
+  },
+  "predictions": {
+    "P0_cases": 3,
+    "P1_cases": 5,
+    "P1_correct": 4,
+    "P1_wrong": 1,
+    "HIGH": {
+      "P0": "STOP",
+      "P1": "QUERY_S",
+      "actions": 42,
+      "correct": 7,
+      "wrong": 0,
+      "abstain": 1,
+      "utility": 8
+    },
+    "LOW": {
+      "P0": "STOP",
+      "P1": "STOP",
+      "actions": 32,
+      "correct": 7,
+      "wrong": 1,
+      "abstain": 0,
+      "utility": 14
+    }
+  },
+  "holdout": "new World session instances, same 8 (4 cues x2 regimes) relevant contexts; policies share exact outcome pairs within each risk condition; distinct physical sim actions across risk cases",
+  "s10_s11": "actually perform frozen S10 LearningFeedback/commit each historical training case with native separate owner authority; learned Q table is EXTERNAL to S10 scalar, separate test-only B18 grant per HabitRule of vote0/vote1, read-only original S11 selects learned action; do not ascribe Q calculation to native S10",
+  "null": "cheap empirical table trained on exactly same data outputs IDENTICAL decisions/cost as S10-gated existing S11 selector",
+  "safety": [
+    "no source claims beyond B11 local registry",
+    "no physical statistical source independence",
+    "no true S17/S16 or Minecraft",
+    "no production S11 owner or L2->L1 autonomous distillation",
+    "no measured CPU energy VRAM latency",
+    "no file edits outside four new B18 files",
+    "no protected merge"
+  ],
+  "terminal_if_verified": [
+    "EMPIRICAL_VOI_RISK_DEPENDENCE_ON_FIXED_SYNTHETIC_CASES",
+    "SECONDARY_QUERY_CAN_AVOID_FALSE_CONFIDENCE_AT_COST",
+    "CHEAP_EMPIRICAL_Q_MATCHES_S10_GATED_S11",
+    "NO_PRODUCTION_HABIT_AUTHORITY",
+    "NO_AUTONOMOUS_L2_TO_L1_DISTILLATION"
+  ]
+}
