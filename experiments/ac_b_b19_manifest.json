@@ -1,0 +1,161 @@
+{
+  "schema": "AC_B_B19_MATCHED_INFORMATION_AND_RESOURCE_ALLOCATOR_PROSPECTIVE_V1",
+  "owner_issue": 527,
+  "parent_B": 431,
+  "conceptual_C": 432,
+  "parent_AC": 426,
+  "base_head": "616ae873c73cd87cd81cd3b79a7fc989a91eb6d7",
+  "base_branch": "self/ac-b-b18-empirical-voi-20261010",
+  "main_unmodified": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+  "source": "actual B18 64 offline World Action TRAINING receipts, eight separate native S10 scalar LearningCommitResults; Q table EXTERNAL, S11 test grant forgeable; no real L2 or Mineflayer, no import of sibling C Draft code",
+  "heldout": {
+    "risks": [
+      "HIGH",
+      "LOW"
+    ],
+    "profiles": {
+      "OPEN": {
+        "health": 6,
+        "hunger": 6,
+        "deadline": 7
+      },
+      "TIGHT": {
+        "health": 6,
+        "hunger": 6,
+        "deadline": 1
+      },
+      "HUNGRY": {
+        "health": 3,
+        "hunger": 1,
+        "deadline": 7
+      }
+    },
+    "conditions": "8 new B11 local sessions per risk x profile x policy: 4 relevant binary cues times CLEAN and CORRELATED primary reporting; all see same exogenous schedule but separate ACTUAL event objects across arms",
+    "prefix": "each case actually issues 2 P paired source Actions = 4 World Action executions at price2; unknown to source S until explicit QUERY_S",
+    "policies": [
+      "L1_STOP",
+      "B18_CHEAP_Q",
+      "ALWAYS_THINK",
+      "VALUE_GATE"
+    ]
+  },
+  "admission": {
+    "STOP": {
+      "health_min": 3,
+      "deadline_min": 1,
+      "work": 1,
+      "tick": 1
+    },
+    "QUERY_S": {
+      "health_min": 3,
+      "hunger_min": 3,
+      "deadline_min": 3,
+      "work": 2,
+      "tick": 3,
+      "source_cost": 2
+    },
+    "THINK": {
+      "health_min": 4,
+      "hunger_min": 4,
+      "deadline_min": 4,
+      "extra_work": 4,
+      "extra_tick": 3
+    },
+    "THINK_QUERY_S": {
+      "deadline_min": 6
+    },
+    "value_gate_selector_extra_work": 1
+  },
+  "reward": {
+    "correct": 5,
+    "wrong_HIGH": -15,
+    "wrong_LOW": -5,
+    "abstain": -1
+  },
+  "penalties": {
+    "work_per_unit": "1/2",
+    "tick_per_unit": "1/4"
+  },
+  "fixed_risk_policy": {
+    "HIGH": "B18 Q Pvote0 STOP; Pvote1 QUERY_S if viable",
+    "LOW": "STOP for both votes"
+  },
+  "future_observation": "QUERY_S only after admitted request executes one actual S source action0/action1 pair; no hidden oracle before choice; mismatched vote -> ABSTAIN",
+  "think": "analytic argmax recomputation of SAME already public B18 Q means, no new evidence and positive 4 work +3 ticks; not L2 language model",
+  "value_gate": "external option scorer compares STOP vs QUERY_S vs THINK variants using frozen B18 Q means, fixed unit costs and viability; separate selector work1; tie pref STOP; no source data privileged",
+  "predictions": {
+    "OPEN_HIGH": {
+      "L1_STOP": {
+        "actions": 32,
+        "correct": 7,
+        "wrong": 1,
+        "abstain": 0,
+        "net": "-2"
+      },
+      "B18_CHEAP_Q": {
+        "actions": 42,
+        "correct": 7,
+        "wrong": 0,
+        "abstain": 1,
+        "net": "-3"
+      },
+      "ALWAYS_THINK": {
+        "actions": 42,
+        "correct": 7,
+        "wrong": 0,
+        "abstain": 1,
+        "net": "-25"
+      },
+      "VALUE_GATE": {
+        "actions": 32,
+        "correct": 7,
+        "wrong": 1,
+        "abstain": 0,
+        "net": "-6"
+      }
+    },
+    "OPEN_LOW": {
+      "L1_STOP": {
+        "actions": 32,
+        "correct": 7,
+        "wrong": 1,
+        "net": "8"
+      },
+      "B18_CHEAP_Q": {
+        "actions": 32,
+        "correct": 7,
+        "wrong": 1,
+        "net": "8"
+      },
+      "ALWAYS_THINK": {
+        "actions": 32,
+        "correct": 7,
+        "wrong": 1,
+        "net": "-14"
+      },
+      "VALUE_GATE": {
+        "actions": 32,
+        "correct": 7,
+        "wrong": 1,
+        "net": "4"
+      }
+    },
+    "restricted": "TIGHT/HUNGRY forbid query and THINK, all actions fallback STOP; VALUE_GATE selector overhead may still apply"
+  },
+  "authority": "No B19 production S11 ownership. Reuse B18 plain test-only S11 grants and frozen read-only selector, existing S10 history feedback. All owner/source identities local-process. Safety guards do not derive from model.",
+  "evaluation": "retained trial action and source decision before scoring; score only after sim actions issued; log actual action counts, query, work, tick, deadline admissibility, utilities, deny counters; no CPU latency power claim",
+  "terminal": [
+    "RESOURCE_LIMITS_BLOCK_INFORMATION_PURCHASE",
+    "CHEAP_Q_MATCHES_REAL_S11_POLICY",
+    "INFORMATION_NEUTRAL_THINKING_COST_DOMINATED",
+    "SELECTOR_OVERHEAD_WITHOUT_DISCRIMINATING_GAIN",
+    "NO_PHYSICAL_L2_ALLOCATION_QUALIFICATION",
+    "NO_PRODUCTION_HABIT_OWNER"
+  ],
+  "constraints": [
+    "Only B19 four new files",
+    "No Lane C branch import",
+    "no frozen changes/main/merge",
+    "no real Minecraft LLM GPU source; #46/#415 off"
+  ]
+}
