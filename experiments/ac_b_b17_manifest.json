@@ -1,0 +1,115 @@
+{
+  "schema": "AC_B_B17_SOURCE_DIVERSITY_VOI_PROSPECTIVE_v1",
+  "authority": {
+    "issue": 517,
+    "parent_lane": 431,
+    "parent_ac": 426,
+    "base_head": "f4e31933c464f9b39f854dd2408134544d3f9f76",
+    "pr_base": "self/ac-b-b16-quorum-vs-count-20261010",
+    "main_head": "4348a614900c1d0828581a8eec2c523ba5ae237f"
+  },
+  "world": {
+    "kind": "B11 local CurrentWorld mock, distinct channel World fixtures, NOT physically independent sources",
+    "contexts": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "max_trials": 5,
+    "actions_per_trial": [
+      0,
+      1
+    ]
+  },
+  "regimes": [
+    "CLEAN",
+    "PRIMARY_CORRELATED"
+  ],
+  "channel_plans": {
+    "SINGLE": [
+      "P",
+      "P",
+      "P",
+      "P",
+      "P"
+    ],
+    "DIVERSIFIED": [
+      "P",
+      "P",
+      "P",
+      "S",
+      "S"
+    ]
+  },
+  "corruption": "In PRIMARY_CORRELATED flip BOTH P-channel reported outcome bits for cue(0,0) every trial, other reports clean including all S-channel. No corruption oracle available to policies.",
+  "arms": [
+    "adaptive native S10 authorized scalar update+separate B17 test S11 immutable Habit retention/read-only frozen S11 selection",
+    "identically informed cheap adaptive count",
+    "matched separately executed fixed-five cheap count"
+  ],
+  "decision": "At prefix t choose winner if >=4 valid votes for one Action. Otherwise early abstain if max(valid vote count for either Action)+(5-t)<4. Else request next actually executed Action0/Action1 pair. No probabilistic inference or hidden truth.",
+  "cost": {
+    "primary_pair": 1,
+    "secondary_pair": 2,
+    "s10_s11_test_control_per_retained_rule": 1,
+    "correct_reward": 5,
+    "wrong_reward": -5,
+    "abstain_reward": 0,
+    "note": "Symbolic cost units only; not wall-clock/CPU/energy."
+  },
+  "expected": {
+    "clean": {
+      "adaptive_source_actions": 32,
+      "fixed_source_actions": 40,
+      "adaptive_correct": 4,
+      "fixed_correct": 4
+    },
+    "single_correlated": {
+      "adaptive_source_actions": 32,
+      "fixed_source_actions": 40,
+      "covered": 4,
+      "correct": 3,
+      "wrong": 1
+    },
+    "diversified_correlated": {
+      "adaptive_source_actions": 34,
+      "fixed_source_actions": 40,
+      "covered": 3,
+      "correct": 3,
+      "abstained": 1,
+      "note": "At t4: 3 wrong and 1 clean vote, the final secondary vote could still make 4/5 wrong, so run t5; then final 3 vs2 -> abstain. Never early-abstain at t4."
+    },
+    "cheap_adaptive": "exact same decisions, action counts and source cost as native S10 gated S11 in every scenario"
+  },
+  "negative": [
+    "cannot count unexecuted/partial/duplicate foreign or cloned evidence",
+    "cross-source registration verified separately, no inferred independence",
+    "same-channel coherent false majority still wrong",
+    "native S10 grant and test-only S11 retention grant separate",
+    "S10 typed commit not independently cryptographic; local test grant forgeable",
+    "no production Habit owner or S17/S16/Minecraft provenance"
+  ],
+  "isolation": "only 4 new B17 files, manifest first, no frozen owners or physical/gpu runs, Draft stacked not main",
+  "terminal": [
+    "EARLY_DETERMINACY_SAVES_SOURCE_PAIRS",
+    "CORRELATED_SAME_CHANNEL_FALSE_CONFIDENCE",
+    "SECOND_CHANNEL_BOUNDED_ABSTENTION",
+    "CHEAP_COUNTS_MATCH_NATIVE_S10_S11",
+    "NO_PRODUCTION_S11_OWNER",
+    "NO_AUTONOMOUS_L2_TO_L1_DISTILLATION"
+  ],
+  "amendment": "Pre-implementation arithmetic correction: diverse correlated poison cue requires fifth trial because 3+1 remaining could reach the 4-vote quorum; expected 34 adaptive source Actions, not 32. Manifest amended before experiment source/tests."
+}
