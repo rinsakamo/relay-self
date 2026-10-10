@@ -1,0 +1,176 @@
+{
+  "version": "AC-C-C4-HIDDEN-STATE-ALLOCATION-v1",
+  "authority": {
+    "parent": 432,
+    "coordination": 426,
+    "predecessor_draft_prs": [
+      440,
+      448
+    ],
+    "main_base": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "main_tree": "7816055966dd520b6690de7662a267047e57ccc0"
+  },
+  "scope": "Independent deterministic hidden-evidence, budgeted information acquisition and source-grounded allocation experiment; not a new owner",
+  "seeds": {
+    "calibration": [
+      73,
+      79,
+      83
+    ],
+    "heldout": [
+      101,
+      103,
+      107,
+      109,
+      113
+    ]
+  },
+  "phases": [
+    "unknown",
+    "familiar",
+    "shift",
+    "recovery"
+  ],
+  "episodes_per_phase": 80,
+  "hidden_suffix_one_probability_by_group": {
+    "unknown": [
+      0.5,
+      0.5
+    ],
+    "familiar": [
+      0.1,
+      0.9
+    ],
+    "shift": [
+      0.9,
+      0.1
+    ],
+    "recovery": [
+      0.1,
+      0.9
+    ]
+  },
+  "world": {
+    "group": "visible binary cue sampled equiprobably, no phase label visible to selector",
+    "prefix": "visible two-bit integer 0..3 uniformly drawn",
+    "latent_z": "hidden 1-bit suffix drawn with phase/group probabilities; not in initial Evidence",
+    "target": "parity(prefix) XOR latent_z; latent_z unavailable without bounded paid MEDIUM/SLOW/OBSERVE",
+    "medium_hint": "paid and separately generated hint agrees with latent_z with probability 0.75; never pre-visible",
+    "world_feedback": "one source/session/revision-bound terminal receipt with observed target and success for selected action, after the decision; no future observations",
+    "scan_available_probability": 0.4,
+    "threat_probability": 0.3,
+    "deadline_ticks": [
+      1,
+      3,
+      4,
+      5,
+      7
+    ],
+    "health": [
+      2,
+      3,
+      6,
+      10
+    ],
+    "hunger": [
+      2,
+      5,
+      12,
+      18
+    ]
+  },
+  "mechanisms": {
+    "FAST": {
+      "ticks": 1,
+      "work": 1,
+      "information": "prefix only",
+      "action": "parity(prefix)"
+    },
+    "MEDIUM": {
+      "ticks": 3,
+      "work": 3,
+      "information": "pay for separate noisy hint of latent_z",
+      "action": "parity(prefix) XOR hint"
+    },
+    "OBSERVE": {
+      "ticks": 4,
+      "work": 4,
+      "information": "if scan_available, pay for fresh exact latent_z observation",
+      "action": "parity(prefix) XOR observed latent_z"
+    },
+    "SLOW": {
+      "ticks": 5,
+      "work": 8,
+      "information": "pay to expose latent_z through bounded deep diagnostic",
+      "action": "parity(prefix) XOR latent_z"
+    }
+  },
+  "arms": [
+    "FAST_ONLY",
+    "SLOW_ONLY",
+    "FIXED",
+    "LEARNED_ALLOC",
+    "LEARNED_NO_FEEDBACK",
+    "CHEAP_HISTORY",
+    "SIMPLE_SWITCH",
+    "EVALUATOR_ORACLE"
+  ],
+  "cost": {
+    "mechanism_work": "synthetic counted work units",
+    "selector_work": {
+      "FAST_ONLY": 0,
+      "SLOW_ONLY": 0,
+      "FIXED": 1,
+      "LEARNED_ALLOC": 6,
+      "LEARNED_NO_FEEDBACK": 6,
+      "CHEAP_HISTORY": 2,
+      "SIMPLE_SWITCH": 2,
+      "EVALUATOR_ORACLE": 0
+    },
+    "ticks": "synthetic World decision-time units; selector overhead separately measured, not physical time or energy",
+    "worst_case_action_damage_if_incorrect": 2,
+    "hazard_exposure": 1,
+    "exposure_condition": "threat and ticks>=4",
+    "viability": "health > worst-case damage, and SLOW forbidden if hunger<=2; any ineligible choice ABSTAIN"
+  },
+  "learning": {
+    "rolling_window": 8,
+    "alloc_threshold": 0.75,
+    "simple_switch_threshold": 0.75,
+    "probe_period": 5,
+    "allocation_prior": "Beta(1,1); infer FAST reliability per group from only FAST World receipts; uncertainty means escalate if capable",
+    "learned_policy": "on every fifth opportunity choose FAST if eligible; otherwise if FAST posterior >=0.75 choose FAST, else choose cheapest viable exact information channel OBSERVE then SLOW, followed by MEDIUM then FAST if needed",
+    "no_feedback": "same policy and opportunity clock, but do not update retained reliability",
+    "cheap_history": "last-eight source-validated observed latent_z labels per group; choose FAST one-tick using majority MAP; tie chooses 0; no paid diagnostics",
+    "simple_switch": "same as learned but a separate low-overhead sliding reliability threshold; after failure use paid diagnostic if feasible; no additional semantic owner",
+    "source_rule": "only post-action terminal World outcome may update; evaluator latent never read by chooser"
+  },
+  "comparison": {
+    "paired_exogenous_cases": "same underlying seed/cases and hidden facts across all arms, independent policy state",
+    "primary": "heldout total correct/incorrect/abstain, disjoint viability, total work + selector work and World ticks",
+    "secondary": "phase mode counts, observed FAST failures, per-group next expensive choice after witnessed failure (censor), feedback/no-feedback paired choice divergences, fatigue/exposure separated",
+    "cheap_null": "CHEAP_HISTORY strong source-matched cheap learned controller; FAST_ONLY cheap fixed; no cheap oracle access",
+    "evaluator_oracle": "privileged-only diagnostic bound; excluded from fair rankings",
+    "anti_oracle": "no phase, latent_z, medium_hint, outcome, seed or prior true distribution in selection Evidence",
+    "cost_sensitivity": "include selector overhead; no conversion from synthetic work to joules; alternative scalar score optional only with published weights",
+    "classification": [
+      "FIXED_SUFFICIENT",
+      "ADAPTIVE_BOUNDED_GAIN",
+      "CHEAP_LEARNING_SUFFICIENT",
+      "OVERHEAD_DOMINATES",
+      "NON_DISCRIMINATING",
+      "UNDETERMINED"
+    ]
+  },
+  "hard_bounds": [
+    "no source mutation outside three new experiment-local files",
+    "no draft sibling imports",
+    "no physical inference, GPU, GGUF, Minecraft",
+    "no #415 reuse",
+    "no #417 STOP/ACK claims",
+    "no new scheduler or semantic owner",
+    "no merging draft PRs",
+    "do not change RelayTheory/Paper2",
+    "do not retune after heldout"
+  ]
+}
