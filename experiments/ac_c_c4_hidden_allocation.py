@@ -181,7 +181,6 @@ class State:
     opportunity: int = 0
     fast_result: dict[int, deque[bool]] = field(default_factory=dict)
     z_history: dict[int, deque[int]] = field(default_factory=dict)
-    last_fast: dict[int, bool] = field(default_factory=dict)
 
     def p_fast(self, group: int) -> float:
         xs = self.fast_result.get(group, ())
@@ -196,7 +195,6 @@ class State:
             return
         if arm in ("LEARNED_ALLOC", "SIMPLE_SWITCH") and receipt.mechanism == "FAST":
             self.fast_result.setdefault(e.group, deque(maxlen=8)).append(receipt.success)
-            self.last_fast[e.group] = receipt.success
         if arm == "CHEAP_HISTORY":
             # Source-qualified *past* terminal target reveals the binary
             # latent difference for this completed case; no future target.
@@ -229,11 +227,12 @@ def decide(e: Evidence, arm: str, state: State) -> tuple[str, int]:
         if state.p_fast(e.group) >= 0.75 and admissible(e, "FAST"):
             return "FAST", 0
         return prefer(e, ("OBSERVE", "SLOW", "MEDIUM", "FAST")), 0
-    # SIMPLE_SWITCH: no aggregate posterior, only observed last FAST result,
-    # with the same periodic exploration clock.
+    # SIMPLE_SWITCH: low-overhead empirical moving reliability without
+    # Bayesian smoothing; same exploration clock and admissibility as LEARNED.
     if state.opportunity % 5 == 4 and admissible(e, "FAST"):
         return "FAST", 0
-    if state.last_fast.get(e.group, True) and admissible(e, "FAST"):
+    recent = state.fast_result.get(e.group, ())
+    if (not recent or sum(recent) / len(recent) >= 0.75) and admissible(e, "FAST"):
         return "FAST", 0
     return prefer(e, ("OBSERVE", "SLOW", "MEDIUM", "FAST")), 0
 
