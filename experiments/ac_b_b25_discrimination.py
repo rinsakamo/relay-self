@@ -15,7 +15,6 @@ from experiments.ac_b_b24_structural_transfer import (
     ANCHORS,
     HELDOUT,
     Episode,
-    Experience,
     StructuralAgent,
     StructuralWorld,
     WorldAction,
