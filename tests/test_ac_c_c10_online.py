@@ -283,3 +283,34 @@ def test_exact_head_ci_emits_result_with_manifest_sha():
         "paired": r["paired"],
     }
     warnings.warn("C10_RESULT_JSON " + json.dumps(warning, sort_keys=True), UserWarning)
+
+
+def test_frozen_and_no_feedback_are_exactly_equivalent_in_postwarmup_outcomes():
+    a = run(389, "FROZEN_HINT")
+    b = run(389, "NO_FEEDBACK_HINT")
+    assert a["warmup_state"] == b["warmup_state"]
+    assert a["phases"] == b["phases"]
+    assert [(x["session"], x["success"], x["choice"])
+            for x in a["trace"]] == [
+        (x["session"], x["success"], x["choice"])
+        for x in b["trace"]
+    ]
+
+
+def test_preregistered_obstruction_rate_audit_only_in_evaluator_report():
+    result = report()
+    truth = manifest()["obstruction_probability"]
+    for arm in ARMS:
+        row = result["summary"]["heldout"][arm]
+        estimates = row["end_phase_obstruction_prior_mean"]
+        errors = row["end_phase_prior_abs_error_mean"]
+        assert set(estimates) == set(manifest()["epochs"])
+        assert set(errors) == set(estimates)
+        for epoch, p in estimates.items():
+            assert .05 <= p <= .95 or (
+                epoch == "warmup" and p == .3
+            )
+            assert 0 <= errors[epoch] <= 1
+            # The truth comparison belongs to reporting and is not an
+            # admitted World observation in any ordinary selector.
+            assert abs(p - truth[epoch]) <= 1
