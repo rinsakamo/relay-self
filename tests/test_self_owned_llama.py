@@ -71,6 +71,82 @@ def _toolchain(monkeypatch):
         shutil, "which",
         lambda x: "/ci/fake/" + x if x in ("java", "node") else real(x),
     )
+    # Dedicated tests below exercise the genuine Node import preflight with
+    # fake on-disk packages; launcher process lifecycle tests mock only it.
+    monkeypatch.setattr(
+        owned, "_preflight_mineflayer_dependencies",
+        lambda: {
+            "mineflayer": "4.39.0",
+            "mineflayer_entry": "/ci/mock/mineflayer/index.js",
+            "minecraft_protocol_entry": "/ci/mock/minecraft-protocol/index.js",
+        },
+    )
+
+
+def _fake_worktree_packages(tmp_path, *, missing_protocol=False, symlink=False,
+                            wrong_version=False):
+    adapter = tmp_path / "adapters" / "mineflayer"
+    adapter.mkdir(parents=True)
+    (adapter / "bridge.mjs").write_text("// no bot/network started\\n")
+    (adapter / "self_owned_llama.py").write_text("# marker for Path(__file__)\\n")
+    modules = adapter / "node_modules"
+    if symlink:
+        actual = tmp_path / "outside-node-modules"
+        actual.mkdir()
+        modules.symlink_to(actual, target_is_directory=True)
+    else:
+        modules.mkdir()
+    mineflayer = modules / "mineflayer"
+    mineflayer.mkdir()
+    (mineflayer / "package.json").write_text(json.dumps({
+        "version": "4.38.0" if wrong_version else "4.39.0",
+        "main": "index.js",
+    }))
+    (mineflayer / "index.js").write_text(
+        "const p=require('minecraft-protocol');"
+        "module.exports={createBot(){return p}};"
+    )
+    if not missing_protocol:
+        protocol = modules / "minecraft-protocol"
+        protocol.mkdir()
+        (protocol / "package.json").write_text(json.dumps({
+            "name": "minecraft-protocol", "version": "1.0.0", "main": "index.js",
+        }))
+        (protocol / "index.js").write_text("module.exports={createClient(){}};")
+    return adapter
+
+
+def test_actual_bridge_relative_transitive_node_import_without_network(
+    tmp_path, monkeypatch,
+):
+    adapter = _fake_worktree_packages(tmp_path)
+    monkeypatch.setattr(
+        owned, "__file__", str(adapter / "self_owned_llama.py"),
+    )
+    receipt = owned._preflight_mineflayer_dependencies()
+    assert receipt["mineflayer"] == "4.39.0"
+    assert receipt["mineflayer_entry"] == str(
+        adapter / "node_modules" / "mineflayer" / "index.js"
+    )
+    assert receipt["minecraft_protocol_entry"] == str(
+        adapter / "node_modules" / "minecraft-protocol" / "index.js"
+    )
+
+
+@pytest.mark.parametrize("failure", [
+    "transitive_missing", "symlink_nodes", "wrong_version",
+])
+def test_failed_worktree_module_resolution_denied_before_model_start(
+    tmp_path, monkeypatch, failure,
+):
+    adapter = _fake_worktree_packages(
+        tmp_path, missing_protocol=failure == "transitive_missing",
+        symlink=failure == "symlink_nodes",
+        wrong_version=failure == "wrong_version",
+    )
+    monkeypatch.setattr(owned, "__file__", str(adapter / "self_owned_llama.py"))
+    with pytest.raises(owned.OwnedModelRejected):
+        owned._preflight_mineflayer_dependencies()
 
 
 def test_owned_localhost_model_spawn_once_reuses_original_world_cli_and_stops(
@@ -92,6 +168,7 @@ def test_owned_localhost_model_spawn_once_reuses_original_world_cli_and_stops(
     assert "src" in options["env"]["PYTHONPATH"]
     result = json.loads((work / owned.REPORT_NAME).read_text())
     assert result["model_process_launched"] is True
+    assert result["node_bridge_dependency_preflight"]["mineflayer"] == "4.39.0"
     assert result["loopback_health_and_alias_checked"] is True
     assert result["self_demo_exit"] == 0
     assert result["owned_process_waited"] is True
