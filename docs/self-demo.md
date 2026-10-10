@@ -122,6 +122,42 @@ no retry and no backend-idle or GPU-release assertion.
   with the Minecraft client during the test, you may observe the scripted
   zombie-event experiment, **not freeform autonomous gameplay**.
 
+### Optional live L2 during Minecraft (L0 remains independent)
+
+Use the **same existing operator-owned disposable World** and an already running
+localhost one-slot OpenAI-compatible LLM, but pass `--live-think` instead of
+`--think`:
+
+```bash
+mkdir -p ./self-demo-live-receipts
+PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m adapters.mineflayer.self_demo \\
+  --run-disposable --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \\
+  --output-dir ./self-demo-live-receipts \\
+  --live-think --model-alias YOUR_LOCAL_MODEL_ALIAS --model-port 12345
+```
+
+This starts ONE S60-B1 localhost L2 request on the first admissible genuine
+source native zombie probe while the S49 native L0 loop continues.
+S60-A owns the deadline, completion and World revision stale fences;
+new World observations invalidate old L2 thoughts. `live_l2.jsonl`
+captures exactly one bounded model-attempt receipt, source seq, whether
+its commentary is still current, and model transport status. The main
+`self_trace.jsonl` includes this sidecar if S49 closes successfully.
+
+**The model does NOT choose/issue MOVE_BACKWARD or alter the S49 L0 policy.**
+This is concurrent read-only observation, not L2-guided gameplay, not
+an L1/Habit update, not an independently verified GGUF identity or
+guaranteed observed inference/physical Action overlap. A timeout or
+HTTP error never grants Minecraft Action authority; an L0 move never
+depends on L2 completion. Without a real local model or authorized
+test World the integration can only be tested with synthetic local HTTP.
+
+The two options `--live-think` and `--think` are mutually exclusive:
+the product cannot start two model attempts. The S49 internal
+`real_model_calls=0` means *S49 itself* never calls a model;
+the **separate product L2 attempt** is reported in the sidecar.
+Old physical source reports remain untouched.
+
 ### Reflect on an existing Minecraft run without repeating it
 
 If you already have the four receipts from a previous approved S49 run,
