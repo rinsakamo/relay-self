@@ -1,0 +1,112 @@
+{
+  "version": "AC-C-C16-ONE-SHOT-PHYSICAL-ENDPOINT-v1",
+  "owner": {
+    "issue": 526,
+    "lane": 432,
+    "parent": 426,
+    "stacked_on_c15_head": "5e738596b805522d8516b43fa1b7ee001bfc5b2b",
+    "pr_base": "self/ac-c-c15-mineflayer-goal-witness-20261010",
+    "protected_main": "4348a614900c1d0828581a8eec2c523ba5ae237f"
+  },
+  "protocol": {
+    "existing_decoder": "MineflayerStreamDecoder",
+    "existing_process_session": "MineflayerProcessSession",
+    "existing_action": "ActionSupervisor + ActionLifecycle",
+    "existing_goal_geometry": "Region + SpatialContract (C15)",
+    "new_protocol_commands": 0,
+    "allowed_effects": [
+      "set_control forward true",
+      "clear_controls"
+    ],
+    "allowed_non_action": "observe",
+    "startup": "one bridge process lifetime, no server launch",
+    "maximum_control_issues": 1,
+    "maximum_normal_stop_issues": 1,
+    "maximum_emergency_stop_issues": 1,
+    "observe_before_action": 1,
+    "observe_after_stop": 2,
+    "first_movement_required_horizontal_m": 0.05,
+    "maximum_movement_horizontal_m": 0.3,
+    "stable_poststop_xyz_tolerance_m": 0.05,
+    "goal_interior_margin_m": 0.05,
+    "disjoint_regions_gap_m": 0.2,
+    "forbid_danger_events": [
+      "forcedMove",
+      "respawn",
+      "death",
+      "connection_end",
+      "adapter_error",
+      "command_error"
+    ],
+    "source_contiguous_session_seq": true,
+    "ack_requires_existing_supervisor_outcome": true,
+    "action_ack_not_goal_success": true,
+    "independent_sensor_attestation_claim": false
+  },
+  "physical_admission": {
+    "default": "DRY_BLOCKED_NO_PROCESS",
+    "explicit_run_flag": "--run",
+    "confirmation": "C16-I-OWN-LOCAL-TEST-WORLD",
+    "loopback_only": "127.0.0.1",
+    "must_exist_world_dir_and_level_dat": true,
+    "level_dat_regular_nonsymlink": true,
+    "expected_level_dat_sha256_required": true,
+    "existing_server_tcp_probe_only": true,
+    "goal_regions_spec_file_required": true,
+    "operator_goal_region_ownership_not_automatically_verified": true,
+    "server_live_world_association_not_independently_verified": true,
+    "one_shot_no_retry": true,
+    "server_or_world_write": false,
+    "bridge_runtime_node": "22 or newer",
+    "mineflayer_version": "4.39.0",
+    "live_execution_in_GitHub_CI": false
+  },
+  "predefined_fixture_outcomes": {
+    "positive": [
+      "goal_stable",
+      "alternative_stable"
+    ],
+    "unknown": [
+      "baseline_in_region",
+      "unstable_probes",
+      "out_of_region",
+      "missing_post_probe",
+      "wrong_action_id",
+      "rejected_ack",
+      "forced_move",
+      "missing_baseline",
+      "movement_below_minimum",
+      "movement_above_maximum",
+      "foreign_session",
+      "missing_world_file",
+      "mismatched_world_sha",
+      "unconfirmed_run",
+      "wrong_tcp_target",
+      "duplicate_attempt"
+    ],
+    "false_positive_max": 0
+  },
+  "output": {
+    "spatial": [
+      "GOAL_REGION_OBSERVED",
+      "ALTERNATIVE_REGION_OBSERVED",
+      "UNDETERMINED"
+    ],
+    "physical_qualification_default": "NOT_RUN",
+    "learned_signed_negative": "BLOCKED_UNDETERMINED",
+    "no_skill_promotion": true,
+    "no_habit_updates": true,
+    "no_LLM_or_GPU": true,
+    "real_power_not_measured": true
+  },
+  "code_paths": [
+    "experiments/ac_c_c16_manifest.json",
+    "adapters/mineflayer/qualify_goal_live.py",
+    "tests/test_ac_c_c16_goal_live.py"
+  ],
+  "gate": {
+    "CI_jobs": 4,
+    "physical_pass_requires_external_owned_world_run": true,
+    "static_pass_does_not_mean_world_pass": true
+  }
+}
