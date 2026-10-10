@@ -265,9 +265,9 @@ def test_world_epoch_shift_stales_s10_proposal_and_existing_s11_view():
     assert guarded.select(cue, world) == ("STALE", None)
     # Raw frozen S11 may still choose stale action.
     assert select_habit(old_owner, cue).selected_candidate_ref == "action:0"
-    with pytest.raises(NoSharedWorldEvidence, match="source"):
+    with pytest.raises(NoSharedWorldEvidence, match="stale"):
         propose_same_source_s11(old_owner, ledger, p, c)
-    with pytest.raises(NoSharedWorldEvidence, match="source"):
+    with pytest.raises(NoSharedWorldEvidence, match="stale"):
         commit_existing_s10(ledger, p, initial_s10_state(p), permission(p))
 
 
