@@ -40,7 +40,6 @@ from relay_self.wait_release_action import (
     propose_explicit_wait_release_action,
 )
 
-
 VERSION = "AC-A-E4-S29-S25-S26-ACTION-OUTCOME-v1"
 MANIFEST_SHA256 = "2aba8fa2cb7760afc1c5159b9e766e549ecaa40fd3b9e095e61a7ebf34b2c767"
 MANIFEST = {
