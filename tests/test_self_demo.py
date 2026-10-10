@@ -126,6 +126,41 @@ def test_native_event_mismatch_and_probe_swap_fails_closed():
             demo.project_native_report(r)
 
 
+
+def test_existing_persistent_cognition_retains_only_native_observations(tmp_path):
+    from relay_self.persistent_cognition import (
+        load_persistent_cognition,
+        save_persistent_cognition,
+    )
+
+    trace = demo.project_native_report(_native_report())
+    snapshot = demo.retain_native_observations(trace)
+    assert len(snapshot.memories) == 2
+    assert len(set(m.memory_id for m in snapshot.memories)) == 2
+    assert snapshot.identity.directives
+    assert snapshot.appraisal_dispositions == ()
+    for item in snapshot.memories:
+        obj = json.loads(item.content)
+        assert obj["terminal"] == "outcome"
+        assert obj["movement_m"] == 0.627
+        assert obj["goal_success_attested"] is False
+        assert obj["learning_feedback_qualified"] is False
+        assert item.source_provenance.source == "self-demo-projected-S49-report"
+    file = tmp_path / "observed_memory.json"
+    save_persistent_cognition(file, snapshot)
+    restored = load_persistent_cognition(file)
+    assert restored == snapshot
+
+
+def test_native_memory_cannot_come_from_synthetic_or_unverified_goal():
+    with pytest.raises(demo.DemoRejected):
+        demo.retain_native_observations(demo.smoke_trace())
+    rows = list(demo.project_native_report(_native_report()))
+    rows[3] = {**rows[3], "goal_success_attested": True}
+    with pytest.raises(demo.DemoRejected):
+        demo.retain_native_observations(tuple(rows))
+
+
 def test_default_dry_run_never_issues_actions(capsys):
     assert demo.main([]) == 0
     out = json.loads(capsys.readouterr().out)
