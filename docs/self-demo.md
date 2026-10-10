@@ -362,3 +362,54 @@ Self所有起動ラッパー`self_owned_llama.py`自身も、これと同等の
 誤バージョン、node_modules symlinkの負例を評価する。
 CI成功はあくまで起動前検査の資格化であり、
 **2026-10-11 FAILED試験をPASSへ書き換えない**。
+
+
+## Lane C C15 → Self の読み取り専用接続（2026-10-11）
+
+[Lane C #522 / Draft #525](https://github.com/rinsakamo/relay-self/pull/525)
+で凍結された `goal_witness.py` と `ac_c_c15_manifest.json` を
+**原文／凍結ハッシュを維持して**既存Self製品Draftへ取り込む。
+C15の元のCIテストも継承する。C16 #531の実機Runner自体は
+取り込まず、独立した承認・資格化のままとする。
+
+Selfの現在のS49 Action OUTCOMEでは、制御開始前probe、
+set_control ACK、clear_controls ACK、終了後probeは保存しているが、
+**C15の要求する終了後の独立した2回目probeと、元の連続した
+adapter JSONL streamは保存していない**。したがって、
+**既存のSelf 1.0 / Self 1.1物理レポートからC15の
+GOAL_REGION_OBSERVEDを後付けしてはいけない**。
+Goal/Alternative領域も現行のSelf実行では事前指定していない。
+
+追加した `self_spatial_review.py` は、**別途取得済みの本来の
+Mineflayer JSONL全文**、既存のS49 native_report、明示的な
+3D領域仕様が揃った場合だけ、厳密なC15 `EndpointReducer`を
+**読み取り専用**で起動できる。4枚のAction前後・dispatch・cleanupを
+S49のデコード済み原本に対してsession/action/seq/snapshot/ACKまで照合し、
+C15の元の時系列検査と2回のpoststop probe判定に委ねる。
+元のシーケンス番号を詰め直したり、2回目probeを合成したりしない。
+
+```bash
+export PYTHONPATH="$PWD/src:$PWD/tests:$PWD"
+mkdir spatial-readonly-evidence
+python -m adapters.mineflayer.self_spatial_review \
+  --native-report /path/to/original/native_report.json \
+  --source-transcript /path/to/original/adapter-source.jsonl \
+  --regions /path/to/predeclared-regions.json \
+  --action-index 0 \
+  --output-dir spatial-readonly-evidence
+```
+
+`--regions` は `{"goal":{"low":[x,y,z],"high":[x,y,z]},
+"alternative":{"low":[x,y,z],"high":[x,y,z]}}`。
+これは現行S49に存在しない **事前宣言された課題の目的領域**として
+扱う必要がある。目標を観測後に合わせ込んでも因果成功証拠にならない。
+処理の結果は `spatial_review.json` に保存し、デフォルトで
+既存証拠を上書きしない。
+
+結果が `GOAL_REGION_OBSERVED` でも、その分類は**空間的終点の観測のみ**。
+Minecraftサーバーとの独立認証、Actionが原因で目標達成したこと、
+負報酬ラベル、S17 LearningFeedback、S10/11学習権限、
+またL2からのAction許可を付与しない。
+既存S49にC15要件を追加する新しい物理測定は**NOT_RUN**。
+この読み取り専用の接続は、SelfとLane Cのソースコード上の
+最初の合流であり、実Worldでの因果学習合流ではない。
