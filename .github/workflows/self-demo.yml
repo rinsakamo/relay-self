@@ -57,6 +57,7 @@ jobs:
           python -m adapters.mineflayer.self_demo
           python -m adapters.mineflayer.self_demo --smoke
           python -m pytest -q tests/test_self_demo.py
+          python -m pytest -vv -x tests/test_self_think.py
       - name: Full inherited regression
         run: python -m pytest -q
 
