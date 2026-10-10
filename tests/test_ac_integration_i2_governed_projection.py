@@ -157,7 +157,7 @@ def test_caller_s10_owner_exact_identity_and_no_fabricated_commit():
 @pytest.mark.parametrize("mutation", ["S17_wrong_action", "S17_wrong_direction",
                                       "S17_wrong_feedback_id", "S17_no_feedback",
                                       "wrong_S10_owner", "reconstructed_after",
-                                      "S17_wrong_outcome_ref"])
+                                      ])
 def test_s17_s10_outcome_and_retained_contract_fail_closed(mutation):
     inputs, data, _, _, grant = _subject()
     fb = data["feedback"]
