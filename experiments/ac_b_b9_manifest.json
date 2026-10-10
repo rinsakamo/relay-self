@@ -1,0 +1,64 @@
+{
+  "schema": "AC-B-B9-SIGNED-EXACT-S16-CONSEQUENCE-v1",
+  "authority": {
+    "issue": 470,
+    "parent": 431,
+    "S16_pr": 352,
+    "S16_head": "5196c5b2d2fed92df7c08371394d55ce0ebb7ed9",
+    "S17_pr": 353,
+    "S17_base": "64868337510a960c140e96d5d3d20949ad53fb8e",
+    "S17_tree": "8c2f82924808b3da45329cd17ee4722c1762dad7",
+    "pr_base": "self/postmain-s17-learning-feedback-closure-20261007",
+    "main_unmodified": "4348a614900c1d0828581a8eec2c523ba5ae237f"
+  },
+  "source": {
+    "fixture": "preexisting S17 issued_chain + successful_session + execute_mineflayer_command (mock Mineflayer, not physical)",
+    "evidence": "exact typed WorldConsequence with before,dispatch,cleanup,after, movement",
+    "signer": "offline HMAC-SHA256 over full canonical dataclasses.asdict(consequence) digest + exact session/revision/action/binding/ref/status/provenance",
+    "trusted_inputs": "external 32-byte source key + external mutable World session/revision",
+    "no_actual_B7": "B7 generic a,b,action,success cannot satisfy exact S16 evidence; never promote"
+  },
+  "positive": {
+    "one_s16_executed_outcome": "outcome known",
+    "one_S17_matched_criterion": "LearningFeedback produced after independent explicitly recorded S16 OUTCOME",
+    "zero_implicit_supervisor_transition": true
+  },
+  "negative": [
+    "generic_B7_receipt",
+    "no_source_witness",
+    "wrong_key",
+    "wrong_session",
+    "wrong_revision",
+    "stale_after_epoch_change",
+    "forged_signature_or_digest",
+    "modified_world_observation",
+    "altered_dispatch",
+    "altered_cleanup",
+    "altered_provenance",
+    "wrong_action",
+    "wrong_binding",
+    "wrong_action_ref",
+    "replayed_evidence_id",
+    "duplicate_json_field",
+    "unknown_json_field",
+    "bool_integer_confusion",
+    "non_current_issued_action",
+    "missing_explicit_feedback_criterion",
+    "nonmatching_criterion",
+    "no_S10_authority"
+  ],
+  "terminal": [
+    "SIGNED_S16_CROSSCHECK_QUALIFIED_OFFLINE",
+    "B7_GENERIC_RECEIPT_NOT_ADMISSIBLE_AS_S16",
+    "UNDETERMINED"
+  ],
+  "limits": [
+    "no production trust",
+    "not original B7 signed source",
+    "no new World result",
+    "no real Minecraft",
+    "no source issuer attestation from physical World",
+    "no implicit S10/S11/L0 mutations",
+    "no merge"
+  ]
+}
