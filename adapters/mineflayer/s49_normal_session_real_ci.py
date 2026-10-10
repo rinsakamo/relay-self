@@ -14,6 +14,7 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 import test_postmain_two_epoch_continuation as s19
@@ -115,7 +116,10 @@ def source(tag: str) -> Provenance:
     return Provenance("s49-independent-operator", tag)
 
 
-async def qualify(report_path: Path, server_log: Path) -> int:
+async def qualify(
+    report_path: Path, server_log: Path, *,
+    live_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
+) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
         "classification": "PENDING_REAL_NATIVE_EVIDENCE",
@@ -165,6 +169,11 @@ async def qualify(report_path: Path, server_log: Path) -> int:
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
             reading = await _correlated_observe(session, request_id)
             probes[reading.seq] = reading
+            if live_probe is not None:
+                # Product-only observer sees an already received native probe.
+                # Original S49 L0 selection, Action ownership and receipt
+                # collection run exactly as before and never await L2 inference.
+                await live_probe(reading)
             report.setdefault("source_pair_trace", []).append({
                 "event_seq": frame.seq,
                 "event_kind": frame.kind,
