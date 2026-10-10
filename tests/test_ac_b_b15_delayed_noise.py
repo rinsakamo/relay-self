@@ -30,7 +30,6 @@ from experiments.ac_b_b15_delayed_noise import (
     CONTEXT_ACTIONS,
     DELAYS,
     DelayedEpisode,
-    MatchedPolicies,
     run_b15_matched_probe,
 )
 from relay_self.habit import select_habit
