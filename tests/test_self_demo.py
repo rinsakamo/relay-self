@@ -156,7 +156,7 @@ def test_native_memory_cannot_come_from_synthetic_or_unverified_goal():
     with pytest.raises(demo.DemoRejected):
         demo.retain_native_observations(demo.smoke_trace())
     rows = list(demo.project_native_report(_native_report()))
-    rows[3] = {**rows[3], "goal_success_attested": True}
+    rows[5] = {**rows[5], "goal_success_attested": True}
     with pytest.raises(demo.DemoRejected):
         demo.retain_native_observations(tuple(rows))
 
