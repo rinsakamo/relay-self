@@ -205,7 +205,7 @@ def test_b27_invalid_proposals_still_get_wire_and_terminal(
 def test_b27_transport_failure_is_single_attempt_and_persisted(monkeypatch, tmp_path):
     calls = []
 
-    def fail_once(_request, _timeout):
+    def fail_once(_request, timeout):
         calls.append(1)
         raise OSError("MOCKED CONNECTION FAILURE")
 
