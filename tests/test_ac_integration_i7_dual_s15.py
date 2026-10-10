@@ -18,9 +18,7 @@ from adapters.mineflayer.action_outcome import interpret_world_consequence
 from adapters.mineflayer.execution import (
     MOVE_BACKWARD_ACTION_REF,
     MOVE_FORWARD_ACTION_REF,
-    MOVE_FORWARD_DURATION_S,
     InvalidMineflayerExecutionData,
-    MineflayerCommand,
     WorldConsequenceStatus,
     build_mineflayer_command,
     execute_mineflayer_command,
@@ -241,7 +239,7 @@ def test_two_independently_s13_admitted_and_s15_issued_actions_close_s16(forward
     assert result.disposition is ActionOutcomeDisposition.OUTCOME
     assert result.reason_code == "observed_execution"
     assert supervisor.get(issued.action_id) is closed
-    assert not closed.is_terminal is False
+    assert closed.is_terminal
     assert not supervisor.open_actions
 
 
@@ -310,8 +308,10 @@ def test_unsafe_forward_commands_do_not_become_executable(field, value):
 ])
 def test_forward_cannot_use_foreign_or_unauthorized_s14_binding(field, value):
     issued, binding, _ = _forward_owner_chain()
-    wrong = replace(binding, **{field: value})
-    with pytest.raises(InvalidMineflayerExecutionData):
+    # Invalid identifiers can fail at the earlier frozen S14 typed
+    # constructor; well-formed unauthorized changes reach S15's own gate.
+    with pytest.raises(ValueError):
+        wrong = replace(binding, **{field: value})
         build_mineflayer_command(issued, wrong, allow_forward=True)
 
 
