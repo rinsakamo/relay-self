@@ -38,14 +38,16 @@ class OneShotLocalModel:
         return self
 
     async def __aexit__(self, *_):
+        # Python 3.12 Server.wait_closed() also waits for live clients.
+        # Close accepted client sockets FIRST or fixture teardown deadlocks.
         self.server.close()
-        await self.server.wait_closed()
         for writer in self.writers:
             writer.close()
         await asyncio.gather(
             *(writer.wait_closed() for writer in self.writers),
             return_exceptions=True,
         )
+        await self.server.wait_closed()
 
     async def handle(self, reader, writer):
         self.writers.append(writer)
