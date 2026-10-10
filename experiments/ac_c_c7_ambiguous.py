@@ -264,7 +264,7 @@ class PolicyState:
         # NAIVE is the explicit unsafe scientific comparator; weak evidence
         # is laundered into strong confidence ONLY inside this arm.
         accepted_quality = quality
-        if arm == "NAIVE_WEAK_AS_EXACT" and quality == "WEAK":
+        if arm == "NAIVE_WEAK_AS_EXACT" and quality == "WEAK" and not warmup:
             accepted_quality, weight = "EXACT", 1.0
         result = {"revoked": False, "recompiled": False, "lag": None, "quality": quality}
         if accepted_quality != "MISSING":
