@@ -47,7 +47,10 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install --disable-pip-version-check "pytest==9.1.1"
-      - run: python -m pytest
+      - name: Run I1 focused owner-contract tests first
+        run: python -m pytest tests/test_ac_integration_i1_owner_seam.py
+      - name: Run full deterministic regressions
+        run: python -m pytest
 
   lint:
     runs-on: ubuntu-latest
