@@ -385,7 +385,11 @@ async def run_once(raw: Path, report: Path, *, port: int = 25565) -> int:
                 stdout=asyncio.subprocess.PIPE, stderr=None,
             )
             try:
-                candidate = await capture_one(proc, writer)
+                # Bound the entire manual one-shot calibration, not just each
+                # native frame; no idle event stream may hold a process forever.
+                candidate = await asyncio.wait_for(
+                    capture_one(proc, writer), timeout=300
+                )
                 outcome = _data(candidate)
                 code = 3  # structurally valid locally acquired trace is NOT attested
             finally:
