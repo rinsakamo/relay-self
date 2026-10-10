@@ -194,3 +194,38 @@ no guessed positive/negative z, no forged S17 approval or production Habit.
 Do not merge this stacked PR without review of the S60-B1 and inherited
 S49-S60 history. No modifications to #46/#415 frozen scientific runs,
 #417 stop/cancellation physical qualification, RelayTheory or Paper2.
+
+
+## Action前後のネイティブ観測原本（今後の実行のみ）
+
+2026-10-10の実機実行HEAD `be852fb64e1174507a72ae9a6d9de9e3321778cc` は
+3回の判断と2回のAction OUTCOME・Memoryまで確認済みですが、
+**Action前後のフレームを永続化していません**。その原本やSHA256は
+変更せず、後から座標を推定・補完しません。
+
+本改修以降の新しいS49実行では、既存の`WorldConsequence`から
+次のデコード済みネイティブ型付き証拠を`native_report.json`の
+`actual_native_actions[*].execution_evidence`に追加記録します。
+
+- `before_observation` / `after_observation`: 元のsession、seq、kind、
+  request ID、Health/Food/Inventory/Time、周辺entity coverage、各entityの
+  座標を含む**デコード済みsnapshot全文**、およびMineflayer由来provenance
+- `dispatch_receipt` / `cleanup_receipt`: 元のsession、seq、action ID、
+  effect、result、error、provenance
+- Action/binding/session ID、明示的な後退Action、movement、S16 terminal status。
+  座標x,zから`hypot(Δx, Δz)`を**独立再計算**しS16値と照合。
+
+これらは**デコード済みPythonオブジェクトの原本値**で、Node側から受信した
+*生のJSON通信バイト*の保存ではありません。また、座標・World観測が真に
+信頼できる物理的因果やgoal successを暗号学的に証明するわけではありません。
+
+`self_trace.jsonl`にもデコード済み証拠全文とSHA256を保持し、
+`observed_memory.json`にはAction観測Memoryとその証拠SHA256参照だけを
+保存します。欠損・順序違反・session/action不一致・座標から再計算できない
+移動量はfail-closedです。古い`native_report.json`には
+`execution_evidence`が無いので`action_frames_complete=false`と明示し、
+過去の実機実験を完全証拠と再分類しません。
+
+**CIは実機を起動しません。** 新しい実機証拠はオペレーター承認付きの
+別の使い捨てWorld実行で取得する必要があり、先行実機結果を上書き・
+再実行することはありません。
