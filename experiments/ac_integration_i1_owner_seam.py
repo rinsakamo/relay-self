@@ -10,10 +10,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 
 from adapters.mineflayer.execution import WorldConsequence, WorldConsequenceStatus
+from adapters.mineflayer.python_protocol import (
+    MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+    MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+)
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.correlated_probe import CorrelatedProbeReceipt
@@ -31,7 +36,7 @@ from relay_self.learning import LearningPreferenceState
 from relay_self.persistent_cognition import PersistentCognition
 from relay_self.postfailure_cognition import PostFailureEpochTrace
 from relay_self.provenance import Provenance
-from relay_self.source_native_world import project_source_native_threat
+from relay_self.source_native_world import SourceNativeThreatReceipt
 
 VERSION = "AC-INTEGRATION-I1-S29-OWNER-READONLY-v1"
 MANIFEST_SHA256 = "5007043587580a3e6c9d23023bcc618582f3468b897e8ded8707b434ca87a06f"
@@ -150,8 +155,12 @@ def read_i1_owner_seam(
 
     r = supplied_receipt
     s = r.source_receipt
+    if not isinstance(s, SourceNativeThreatReceipt):
+        raise I1OwnerSeamRejected("requires existing S27 source projection")
     obs = s.source
     evidence = s.evidence
+    if consequence3.after_observation is None:
+        raise I1OwnerSeamRejected("missing original terminal World observation")
     if (
         r.request_id != "s29-probe:one.1"
         or r.request_id != r.acknowledged_request_id
@@ -170,18 +179,52 @@ def read_i1_owner_seam(
         or evidence.consequence_provenance != consequence3.provenance
     ):
         raise I1OwnerSeamRejected("source/request/observation/trace lineage mismatch")
-    # The existing S27 contract checks actual positions, entity identity,
-    # bounded coverage, source-native provenance and observation freshness.
-    checked = project_source_native_threat(
-        supervisor, action3, consequence3, obs,
-        target_entity_id=s.target_entity_id,
-        target_name=s.target_name,
-        observed_at_ns=s.observed_at_ns,
-        inspected_at_ns=s.inspected_at_ns,
-        max_age_ns=s.max_age_ns,
+    # S27 ALREADY admitted the historical S29 observation at its original
+    # inspected_at_ns. S24 then moved the ActionSupervisor's epoch clock
+    # forward: re-invoking S27 as if this were a NEW current observation would
+    # correctly fail. Recheck only immutable historical geometry/provenance,
+    # without rolling back the owner clock or fabricating new source authority.
+    coverage = obs.snapshot.nearby_entities_coverage
+    matches = tuple(
+        x for x in obs.snapshot.nearby_entities if x.entity_id == s.target_entity_id
     )
-    if checked != s:
-        raise I1OwnerSeamRejected("forged S27 projection values or stale source")
+    if (
+        s.target_name != "zombie"
+        or type(s.target_entity_id) is not int
+        or s.target_entity_id < 0
+        or len(matches) != 1
+        or matches[0].name != s.target_name
+        or coverage.source_scope != MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE
+        or coverage.max_distance != MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE
+        or coverage.truncated
+        or coverage.candidate_count != len(obs.snapshot.nearby_entities)
+        or type(s.observed_at_ns) is not int
+        or type(s.inspected_at_ns) is not int
+        or type(s.max_age_ns) is not int
+        or s.max_age_ns <= 0
+        or s.observed_at_ns <= action3.events[-1].at_ns
+        or not s.observed_at_ns <= s.inspected_at_ns <= s.observed_at_ns + s.max_age_ns
+        or evidence.observed_at_ns != s.observed_at_ns
+        or evidence.provenance != obs.provenance
+        or evidence.evidence_id != (
+            f"mineflayer:{obs.session_id}:{obs.seq}:entity-{s.target_entity_id}"
+        )
+    ):
+        raise I1OwnerSeamRejected("historic S27 source scope/evidence invalid")
+    pose = obs.snapshot.position
+    target = matches[0]
+    distance = math.dist(
+        (pose.x, pose.y, pose.z),
+        (target.position.x, target.position.y, target.position.z),
+    )
+    if (
+        not math.isfinite(distance)
+        or distance > coverage.max_distance
+        or not math.isclose(distance, target.distance, rel_tol=0, abs_tol=1e-6)
+        or not math.isclose(distance, s.calculated_distance_m, rel_tol=0, abs_tol=1e-6)
+        or evidence.threat_clearance_cm != math.floor(distance * 100 + 0.5)
+    ):
+        raise I1OwnerSeamRejected("forged historical S27 geometry or distance")
 
     retention = read_retained_preference(
         current_retained, supplied_retained,
