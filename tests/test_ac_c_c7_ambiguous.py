@@ -5,8 +5,20 @@ from dataclasses import replace
 import pytest
 
 from experiments.ac_c_c7_ambiguous import (
-    ARMS, MANIFEST_SHA, Case, Capsule, Evidence, PolicyState, World,
-    cases, choose, digest, frozen_manifest, report, trajectory, viable,
+    ARMS,
+    MANIFEST_SHA,
+    Capsule,
+    Case,
+    Evidence,
+    PolicyState,
+    World,
+    cases,
+    choose,
+    digest,
+    frozen_manifest,
+    report,
+    trajectory,
+    viable,
 )
 
 
