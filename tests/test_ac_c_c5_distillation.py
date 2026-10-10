@@ -43,7 +43,8 @@ def test_cases_paired_deterministic_and_no_hidden_E0_leak():
 
 
 def test_reject_unpaid_knowledge_and_stale_source():
-    w = World(cases(149)[0])
+    subject = next(c for c in cases(149) if c.deadline >= 2 and c.health > 2)
+    w = World(subject)
     e = w.evidence()
     with pytest.raises(ValueError, match="UNPAID"):
         w.issue(e, "MEDIUM", z_guess=1)
@@ -150,3 +151,18 @@ def test_report_determinism_and_heldout_pairing():
     for arm in ARMS:
         row = a["summaries"]["heldout"][arm]
         assert row["correct"] + row["wrong"] + row["abstain"] == 1440
+
+
+def test_report_provenance_to_ci_warning_log():
+    """Record frozen exact-head aggregate, not only pass/fail, in CI logs."""
+    import json
+    import warnings
+
+    r = run()
+    payload = {
+        "manifest_sha256": r["manifest_sha256"],
+        "result_sha256": r["result_sha256"],
+        "heldout": r["summaries"]["heldout"],
+        "paired": r["paired"],
+    }
+    warnings.warn("C5_RESULT_JSON " + json.dumps(payload, sort_keys=True), UserWarning)
