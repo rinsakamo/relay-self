@@ -34,6 +34,12 @@ from relay_self.learning import (
     commit_learning_update,
     propose_learning_update,
 )
+from relay_self.persistent_cognition import (
+    IdentitySpecification,
+    Memory,
+    PersistentCognition,
+    save_persistent_cognition,
+)
 from relay_self.provenance import Provenance
 
 CONFIRM = "SELF-DEMO-I-OWN-DISPOSABLE-WORLD"
@@ -219,6 +225,64 @@ def project_native_report(report: dict[str, object]) -> tuple[dict[str, object],
     return tuple(rows)
 
 
+
+def retain_native_observations(
+    rows: tuple[dict[str, object], ...],
+) -> PersistentCognition:
+    """Use original owner-local PersistentCognition for *observed* receipts.
+
+    This records S49 reported movement, NOT World goal correctness,
+    negative-z feedback, inferred S10 learning or S11 Habit acquisition.
+    A caller that did not obtain rows via project_native_report has no
+    independent physical trust root; do not treat snapshot as attestation.
+    """
+    if (not isinstance(rows, tuple) or len(rows) != 10
+            or rows[0].get("source_type") != SOURCE_NATIVE
+            or rows[-1].get("kind") != "summary"
+            or rows[-1].get("in_world_learning_updates") != 0):
+        raise DemoRejected("validated native trace required before Memory projection")
+    session = rows[0].get("session")
+    actions = [r for r in rows if r.get("kind") == "native_action_outcome"]
+    if (not isinstance(session, str) or not session
+            or len(actions) != 2
+            or any(a.get("terminal") != "outcome"
+                   or a.get("world_source_session") != session
+                   or a.get("goal_success_attested") is not False
+                   or a.get("signed_negative_z") is not False
+                   or a.get("retained_update") is not False
+                   for a in actions)):
+        raise DemoRejected("non-observed or promoted Action cannot become Memory")
+    operator = Provenance("self-demo-operator", "explicit-observation-retention")
+    identity = IdentitySpecification(
+        "self-demo-" + session,
+        ("Keep observed movement distinct from goal success and signed feedback.",),
+        operator,
+    )
+    snapshot = PersistentCognition(identity)
+    for entry in actions:
+        action_id = entry.get("action_id")
+        if not isinstance(action_id, str) or not action_id:
+            raise DemoRejected("source Action identity missing")
+        content = json.dumps({
+            "type": "S49_OBSERVED_ACTION_OUTCOME",
+            "session": session,
+            "action_id": action_id,
+            "terminal": entry["terminal"],
+            "movement_m": entry["movement_m"],
+            "goal_success_attested": False,
+            "learning_feedback_qualified": False,
+        }, sort_keys=True)
+        memory = Memory(
+            f"observed:{session}:{action_id}", content,
+            Provenance("self-demo-projected-S49-report", f"{session}:{action_id}"),
+            operator,
+        )
+        snapshot = snapshot.retain_memory(memory)
+    if len(snapshot.memories) != 2:
+        raise DemoRejected("retained native episode count mismatch")
+    return snapshot
+
+
 def _write_trace(path: Path | None, rows: tuple[dict[str, object], ...]) -> None:
     encoded = "".join(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n"
                       for row in rows)
@@ -291,8 +355,9 @@ def main(argv: list[str] | None = None) -> int:
         report_file = args.output_dir / "native_report.json"
         server_log = args.output_dir / "minecraft_server.log"
         trace_file = args.output_dir / "self_trace.jsonl"
+        memory_file = args.output_dir / "observed_memory.json"
         if any(path.exists() or path.is_symlink()
-               for path in (report_file, server_log, trace_file)):
+               for path in (report_file, server_log, trace_file, memory_file)):
             print(json.dumps(_row(
                 "blocked", "NO_WORLD_USED", reason="EVIDENCE_ALREADY_EXISTS",
                 actual_actions=0,
@@ -307,7 +372,16 @@ def main(argv: list[str] | None = None) -> int:
                 ), sort_keys=True))
                 return code
             result = json.loads(report_file.read_text(encoding="utf-8"))
-            _write_trace(trace_file, project_native_report(result))
+            trace = project_native_report(result)
+            memory = retain_native_observations(trace)
+            save_persistent_cognition(memory_file, memory)
+            _write_trace(trace_file, trace + (_row(
+                "observed_memory", SOURCE_NATIVE,
+                retained_episodes=len(memory.memories),
+                learning_preference_changed=False,
+                habit_auto_granted=False,
+                durable_file=memory_file.name,
+            ),))
             return 0
         except (DemoRejected, OSError, RuntimeError, ValueError) as exc:
             print(json.dumps(_row(
