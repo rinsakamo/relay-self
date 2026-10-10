@@ -168,6 +168,48 @@ def test_full_synthetic_36_trial_schema_and_distinct_denominators():
     assert report.cheap_exact_comparator_present
 
 
+def test_world_seed_is_not_an_implicit_hidden_distance_label():
+    specs = e5.planned_trials()
+    for price in e5.MANIFEST["price_quarters"]:
+        for order in range(3):
+            near = next(s for s in specs if s.distance_cm == 20
+                        and s.price_quarters == price and s.order_index == order)
+            far = next(s for s in specs if s.distance_cm == 180
+                       and s.price_quarters == price and s.order_index == order)
+            assert near.world_seed == far.world_seed
+    # Only the source evaluator controls the scenario; E0 inputs have price
+    # and prior, and seed itself cannot signal the hidden near/far assignment.
+
+
+def test_matched_arm_baseline_health_and_outcome_evaluation_horizon():
+    for key, value in (
+        ("health_before", 19),
+        ("evaluator_ns", 1_120_000_000),
+    ):
+        b = fake_bundle()
+        b["trials"][1][key] = value
+        if key == "evaluator_ns":
+            b["trials"][1]["elapsed_ms"] = 120
+        with pytest.raises(e5.E5Rejected, match="paired arms require"):
+            e5.audit_bundle(b)
+    fail_mutated(NEAR_NO_OBS, "health_after", None)
+    fail_mutated(NEAR_NO_OBS, "damage_points", None)
+    fail_mutated(NEAR_NO_OBS, "evaluator_ms", 80)
+    fail_mutated(NEAR_OBSERVE, "probe_ms", 40)
+
+
+def test_independently_supervised_action4_sessions_cannot_be_reused():
+    b = fake_bundle()
+    observed = [i for i, trial in enumerate(b["trials"])
+                if trial["action_session_id"] is not None]
+    assert len(observed) == 9
+    b["trials"][observed[1]]["action_session_id"] = (
+        b["trials"][observed[0]]["action_session_id"]
+    )
+    with pytest.raises(e5.E5Rejected, match="source-session reuse"):
+        e5.audit_bundle(b)
+
+
 def test_live_claim_even_with_all_plausible_sha256_is_never_authenticated():
     live = fake_bundle("CLAIMED_LIVE")
     report = e5.audit_bundle(live)
