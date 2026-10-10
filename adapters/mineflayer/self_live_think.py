@@ -180,6 +180,9 @@ class LiveL2Observer:
         if self._owner is not None and self._accepted_text is not None:
             if self._accepted_source_seq != self._current_seq:
                 self._phase = "EXPIRED_WORLD_ADVANCED"
+        elif self._phase == "IN_FLIGHT":
+            # Local task cancellation is NOT proof of backend stop/slot release.
+            self._phase = "UNCONFIRMED_LOCAL_CLIENT_CLOSED"
         return {
             "kind": "l2_live_observer",
             "source_type": "SELF_DEMO_S60B1_LIVE_L2",
