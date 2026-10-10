@@ -365,7 +365,7 @@ class OneShotQualification:
                              if baseline is not None and forward_pos is not None else None,
                              world_file_verified)
         finally:
-            if issued_start and not issued_stop:
+            if issued_start and stop_state != "OUTCOME":
                 # Emergency cleanup is NOT a supervised qualified Action.
                 # Exactly one bounded stop attempt; no retry or automatic replacement.
                 try:
