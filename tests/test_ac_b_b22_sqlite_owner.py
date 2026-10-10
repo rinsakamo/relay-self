@@ -2,17 +2,14 @@
 from __future__ import annotations
 
 import hashlib
-import sqlite3
 from dataclasses import replace
 
 import pytest
 
 from experiments.ac_b_b11_governed_habit import cue_for, empty_repertoire
 from experiments.ac_b_b22_sqlite_owner import (
-    HabitProposal,
     OfflineTestIssuer,
     RejectedHabitTransaction,
-    SignedTestApproval,
     SqliteTestHabitOwner,
 )
 from relay_self.habit import (
