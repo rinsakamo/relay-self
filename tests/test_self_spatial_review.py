@@ -75,6 +75,16 @@ def _review(report, frames, goal, alternative):
     )
 
 
+def test_c15_decodes_original_product_frame_projection_without_resequencing():
+    from adapters.mineflayer.python_protocol import MineflayerStreamDecoder
+
+    _, frames, _, _ = _case()
+    decoder = MineflayerStreamDecoder()
+    for frame in frames:
+        decoded = decoder.decode(json.dumps(frame))
+        assert decoded.seq == frame["seq"]
+
+
 def test_c15_is_integrated_for_fully_matched_two_poststop_source():
     report, frames, goal, alternative = _case()
     verdict = _review(report, frames, goal, alternative)
