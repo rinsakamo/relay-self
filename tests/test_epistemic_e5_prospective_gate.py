@@ -179,7 +179,7 @@ def test_live_claim_even_with_all_plausible_sha256_is_never_authenticated():
 
 
 @pytest.mark.parametrize("field,value", [
-    ("arm", "OBSERVE"),
+    ("arm", "NO_OBSERVE"),
     ("trial_id", "forged"),
     ("world_seed", 5),
     ("source_kind", "CLAIMED_LIVE"),
