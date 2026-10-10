@@ -438,7 +438,6 @@ def run(seed: int, arm: str) -> dict:
         first = None
         inspector = None
         second = None
-        mode = "ABSTAIN"
         choice = "NONE"
         inspected = False
         changed = False
@@ -451,7 +450,6 @@ def run(seed: int, arm: str) -> dict:
         z0 = state.zposterior(e.group)[1]
         if first_viable(e):
             first = world.consume_first(e, world.issue_first(e, z0))
-            mode = "FIRST_NORMAL"
             first_success = first.moved
             success = first_success
             if not first_success:
