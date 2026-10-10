@@ -12,8 +12,8 @@ import test_epistemic_e8_operator_calibration as e8_fixture
 from adapters.mineflayer.python_protocol import encode_observe, encode_shutdown
 from experiments import epistemic_e7_native_trace_gate as e7
 from experiments import epistemic_e8_operator_calibration as e8
-from experiments import epistemic_e9_native_hurt_gate as gate
 from experiments import epistemic_e9_hurt_aware_operator as e9
+from experiments import epistemic_e9_native_hurt_gate as gate
 
 
 def frames_with_hurt(*, suffix: bool = False) -> list[dict]:
