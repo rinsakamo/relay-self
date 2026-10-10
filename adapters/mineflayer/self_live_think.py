@@ -86,11 +86,16 @@ class LiveL2Observer:
             return
         if self._model_attempts:
             raise ValueError("one model attempt per owned World session")
-        if len(reading.snapshot.nearby_entities) != 1:
-            # No fabricated target/world prompt or model attempt.
+        targets = [
+            entity for entity in reading.snapshot.nearby_entities
+            if entity.name == "zombie"
+        ]
+        if len(targets) != 1:
+            # Other native item entities may coexist in Mineflayer registry;
+            # one uniquely selected zombie is enough for a bounded prompt.
             self._phase = "NO_UNAMBIGUOUS_ENTITY"
             return
-        entity = reading.snapshot.nearby_entities[0]
+        entity = targets[0]
         if (entity.name != "zombie" or type(entity.distance) not in (int, float)
                 or not math.isfinite(entity.distance)
                 or not 0 < entity.distance <= 16):
