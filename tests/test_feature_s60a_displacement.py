@@ -77,7 +77,9 @@ def test_blocked_l2_l1_l0_then_natural_completion_stale_and_new_attempt():
         assert result.request is urgent and result.value == "fresh transient"
         assert rig.owner.tick() is None
         assert rig.events().count("STALE_REJECTED") == 1
-        assert not any("ACK" in e or "GPU" in e or "IDLE" in e for e in rig.events())
+        assert not set(rig.events()) & {
+            "STOP_ACK", "BACKEND_STOP_ACK", "GPU_RELEASED", "BACKEND_IDLE",
+        }
     asyncio.run(scenario())
 
 
@@ -323,4 +325,37 @@ def test_cancel_callback_reentry_cannot_corrupt_pending():
         request = rig.submit(priority=2)
         assert rig.owner.pending is request and len(rig.starts) == 1
         assert "HOST_CANCEL_FAILED" in rig.events()
+    asyncio.run(scenario())
+
+
+def test_urgent_l0_unknown_cannot_be_success_receipt_and_no_task_accumulation():
+    async def scenario():
+        rig = Rig()
+        tasks = asyncio.all_tasks()
+        rig.submit(level="L2")
+        for _ in range(10):
+            rig.submit(priority=2)
+        assert asyncio.all_tasks() == tasks
+
+        async def unknown():
+            return "UNKNOWN"
+
+        with pytest.raises(DisplacementRejected):
+            await rig.owner.urgent_l0(CONTEXT, unknown)
+        assert "L0_COMPLETED" not in rig.events()
+        assert rig.events().count("L0_CALLBACK_RETURNED") == 1
+        assert len(rig.starts) == 1
+    asyncio.run(scenario())
+
+
+def test_active_deadline_fences_before_provider_terminal_without_fake_release():
+    async def scenario():
+        rig = Rig()
+        old = rig.submit(level="L2", deadline=2)
+        rig.now = 2
+        assert rig.owner.tick() is None
+        assert rig.cancels == [old] and rig.owner.active is old
+        rig.futures[0].set_result("too late")
+        assert rig.owner.tick() is None
+        assert "STALE_REJECTED" in rig.events()
     asyncio.run(scenario())

@@ -284,7 +284,7 @@ class BestEffortDisplacement:
         if not callable(callback):
             raise DisplacementRejected("L0 callback required")
         value = await callback()
-        self._record("L0_COMPLETED")
+        self._record("L0_COMPLETED" if value is None else "L0_CALLBACK_RETURNED")
         return value
 
     async def urgent_l0(
@@ -293,7 +293,9 @@ class BestEffortDisplacement:
         self.observe(context)
         request = self.active
         self._displace()
-        await self.run_l0(callback)
+        value = await self.run_l0(callback)
+        if value is not None:
+            raise DisplacementRejected("L0 status cannot be converted to success")
         return UrgentL0Receipt(
             request.work_id if request else "", context.world_seq, True, False, False,
         )

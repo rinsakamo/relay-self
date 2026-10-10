@@ -12,3 +12,10 @@ searched substring ACK, which also matches BACKEND_BUSY/COMPLETION; this is a
 fixture assertion defect, not a stop claim. Whole-repository Ruff passed.
 The red implementation/test snapshot is retained in Git history. Fix checks
 explicit forbidden proof event names without changing acceptance thresholds.
+
+Corrected focused run: 35 passed. Additional checks explicitly reject conversion
+of L0 UNKNOWN to a success receipt, verify no task accumulation, and revoke an
+active deadline before natural completion. No acceptance thresholds changed.
+Whole-repository Ruff, repository contracts, frozen manifest SHA256 and Node 22
+protocol checks (33 tests) pass. Full regression and exact-head CI results are
+recorded in PR/Issue receipts after their actual completion.
