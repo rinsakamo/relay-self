@@ -34,7 +34,7 @@ def native_frames(*, suffix: bool = False) -> list[dict]:
     def observed(seq, kind, ss, *, request=None):
         v = {
             "type": "observation", "session_id": sid, "seq": seq,
-            "kind": kind, "snapshot": ss,
+            "kind": kind, "snapshot": copy.deepcopy(ss),
         }
         if request:
             v["request_id"] = request
