@@ -311,7 +311,7 @@ class PolicyState:
                 self.first_opposite.pop(e.group, None)
         elif capsule is None and e.group in self.revocation_index:
             # Only feedback from a later transaction than revocation.
-            if quality == "EXACT":
+            if accepted_quality == "EXACT":
                 self.epoch_exact_since_revocation[e.group] = (
                     self.epoch_exact_since_revocation.get(e.group, 0) + 1
                 )
