@@ -92,7 +92,7 @@ class Decision:
 @dataclass(frozen=True, slots=True)
 class Forecast:
     action: str
-    probability_hazard: Fraction
+    probability_hazard: Fraction | None  # route hazard; OBSERVE has no route outcome
     expected_ticks: Fraction
     expected_utility: Fraction
     horizon: int
@@ -286,7 +286,7 @@ def forecast(world: FixtureWorld, present: PresentProjection) -> tuple[Forecast,
         return (
             Forecast("DIRECT", p, Fraction(2), 18 - 8 * p, 1),
             Forecast("DETOUR", Fraction(0), Fraction(5), Fraction(15), 1),
-            Forecast("OBSERVE", p, Fraction(1), observe_expected, 2),
+            Forecast("OBSERVE", None, Fraction(1), observe_expected, 2),
         )
     if present.source_revision != 1:
         raise ContractError("UNKNOWN: unsupported temporal horizon")
