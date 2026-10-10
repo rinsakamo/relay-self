@@ -1,0 +1,200 @@
+{
+  "version": "AC-C-C9-POSTFAIL-INSPECT-v1",
+  "authority": {
+    "issue": 482,
+    "parent_issues": [
+      432,
+      426
+    ],
+    "main_commit": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "main_tree": "7816055966dd520b6690de7662a267047e57ccc0",
+    "prior_c8_head": "97685ed02906a6c37404463063df74b9adb5e733"
+  },
+  "seeds": {
+    "calibration": [
+      307,
+      311,
+      313
+    ],
+    "heldout": [
+      317,
+      331,
+      337,
+      347,
+      349
+    ]
+  },
+  "epochs": [
+    "base",
+    "block_shift",
+    "rule_shift",
+    "joint_shift"
+  ],
+  "episodes_per_epoch": 100,
+  "hidden_z_p1": {
+    "base": [
+      0.1,
+      0.9
+    ],
+    "block_shift": [
+      0.1,
+      0.9
+    ],
+    "rule_shift": [
+      0.9,
+      0.1
+    ],
+    "joint_shift": [
+      0.9,
+      0.1
+    ]
+  },
+  "obstruction_probability": {
+    "base": 0.1,
+    "block_shift": 0.55,
+    "rule_shift": 0.1,
+    "joint_shift": 0.55
+  },
+  "world": {
+    "group": "equiprobable binary",
+    "prefix": "uniform 0..3 visible",
+    "target": "parity(prefix) XOR hidden_z",
+    "first_action": "NORMAL with common calibration-derived group MAP",
+    "first_move": "action bit equals target AND obstruction false",
+    "cheap_obstacle_hint_present": 0.65,
+    "cheap_obstacle_hint_accuracy": 0.7,
+    "inspector_available": 0.7,
+    "inspect_hint_accuracy": 0.9,
+    "inspect_hint_independent_conditional_obstruction": true,
+    "deadline_values": [
+      2,
+      4,
+      5,
+      7
+    ],
+    "health_values": [
+      2,
+      4,
+      7,
+      10
+    ],
+    "hunger_values": [
+      2,
+      6,
+      12
+    ],
+    "threat_probability": 0.25,
+    "first_fail_health_damage": 1,
+    "second_failed_health_damage": 1,
+    "detour_threat_exposure": 1
+  },
+  "mechanisms": {
+    "FIRST_NORMAL": {
+      "ticks": 1,
+      "work": 1
+    },
+    "NORMAL_FLIP": {
+      "ticks": 1,
+      "work": 1
+    },
+    "NORMAL_SAME": {
+      "ticks": 1,
+      "work": 1
+    },
+    "DETOUR_SAME": {
+      "ticks": 3,
+      "work": 4
+    },
+    "DETOUR_FLIP": {
+      "ticks": 3,
+      "work": 4
+    },
+    "INSPECT": {
+      "ticks": 2,
+      "work": 3
+    },
+    "STOP": {
+      "ticks": 0,
+      "work": 0
+    }
+  },
+  "viability": {
+    "first": "health>2 and deadline>=1",
+    "second_normal": "remaining_health>2 and remaining_deadline>=1",
+    "second_detour": "remaining_health>1+threat_exposure and hunger>2 and remaining_deadline>=3",
+    "inspect": "first failed, inspector available, remaining_deadline>=2 and at least one non-STOP second admissible after charging inspection; never multiple inspect",
+    "stop": "always feasible"
+  },
+  "calibration": {
+    "shared_per_group_paid_z_labels": 24,
+    "source": "pre-epoch deterministic World-issued/identity-consumed calibration receipts",
+    "distribution": "warmup z1 group0 .1 group1 .9; seeded independent of evaluation episodes",
+    "posterior": "Beta(1,1), q=(1+matching observed labels)/(2+24)",
+    "no_cross_episode_learning": true
+  },
+  "planning": {
+    "assumed_obstruction_probability": 0.3,
+    "cheap_hint_accuracy": 0.7,
+    "inspect_hint_accuracy": 0.9,
+    "belief": "prior over zmatch, obstruction independent; condition on failed first NORMAL; optionally condition cheap hint; after admitted INSPECT condition new noisy hint",
+    "second_score": {
+      "success": 12,
+      "failure": -6,
+      "stop": -1,
+      "per_work": -0.6,
+      "per_tick": -0.4
+    },
+    "inspect_cost_included": true,
+    "choose": "max expected second score, frozen tie order STOP,NORMAL_FLIP,DETOUR_SAME,DETOUR_FLIP,NORMAL_SAME",
+    "inspect_decision": "if expectation over both possible inspection observations of post-inspection optimal continuation minus inspect cost STRICTLY exceeds best no-inspection expected score, and physically viable, inspect"
+  },
+  "arms": [
+    "NO_RETRY",
+    "ALWAYS_FLIP",
+    "ALWAYS_DETOUR",
+    "CHEAP_HINT",
+    "NO_INSPECT_BAYES",
+    "ALWAYS_INSPECT",
+    "VOI_BAYES",
+    "INSPECT_SIMPLE",
+    "EVALUATOR_ORACLE"
+  ],
+  "selector_overhead_per_failed_initial_attempt": {
+    "NO_RETRY": 0,
+    "ALWAYS_FLIP": 0,
+    "ALWAYS_DETOUR": 0,
+    "CHEAP_HINT": 1,
+    "NO_INSPECT_BAYES": 2,
+    "ALWAYS_INSPECT": 2,
+    "VOI_BAYES": 4,
+    "INSPECT_SIMPLE": 1,
+    "EVALUATOR_ORACLE": 0
+  },
+  "final_episode_utility": {
+    "success": 12,
+    "exhausted_failed_retry": -6,
+    "voluntary_stop_after_first_failure": -1,
+    "initial_inadmissible_abstain": -1,
+    "per_combined_work": -0.6,
+    "per_world_tick": -0.4
+  },
+  "adoption_gate": {
+    "voi_more_successes_than_cheap_hint_at_least": 25,
+    "voi_more_successes_than_no_inspect_bayes_at_least": 15,
+    "voi_utility_strictly_higher_than_both": true,
+    "voi_total_work_le_cheap_hint_factor": 1.25,
+    "actual_changed_action_after_inspection_at_least": 10
+  },
+  "negative_controls": [
+    "first and inspector source receipts object identity",
+    "no inspect before failed first",
+    "no inspector hint to uninspected policy",
+    "no inspect twice",
+    "no second before consumed first receipt",
+    "no late or unsafe inspect/second",
+    "no World hidden z,b,target leakage into E0",
+    "same failed first result from distinct latent cause",
+    "foreign forged equal value and stale receipt denial"
+  ],
+  "scope": "toy World with paid information; no physical LLM/Minecraft/GPU/action authority, no semantic owner, no paper change, no sibling Draft import or protected merge"
+}
