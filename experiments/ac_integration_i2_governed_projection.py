@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from experiments.ac_integration_i1_owner_seam import read_i1_owner_seam
 from relay_self.action import ActionState
 from relay_self.action_feedback import (
     LearningFeedbackInterpretation,
@@ -19,14 +20,19 @@ from relay_self.action_feedback import (
 )
 from relay_self.epoch_continuation import read_retained_preference
 from relay_self.habit import (
-    CueFeature, HabitCue, HabitRepertoire, HabitRule, HabitSelectionStatus, select_habit,
+    CueFeature,
+    HabitCue,
+    HabitRepertoire,
+    HabitRule,
+    HabitSelectionStatus,
+    select_habit,
 )
 from relay_self.learning import (
-    FeedbackDirection, LearningCommitResult, LearningProposalStatus,
+    FeedbackDirection,
+    LearningCommitResult,
+    LearningProposalStatus,
 )
 from relay_self.provenance import Provenance
-
-from experiments.ac_integration_i1_owner_seam import read_i1_owner_seam
 
 MANIFEST = Path(__file__).with_name("ac_integration_i2_manifest.json")
 FROZEN_DIGEST = "735e6713f905844d5bedfed514605002624779b935a289982fc3344620293d96"
@@ -181,7 +187,8 @@ def evaluate_i2(
         or feedback.action_id != action1.action_id
         or feedback.skill_execution_id != action1.skill_execution_id
         or feedback.intent_id != action1.intent_id
-        or feedback.world_provenance is None
+        or feedback.world_provenance != action1.events[-1].provenance
+        or feedback.outcome_ref != feedback.feedback.consequence_ref
         or rec.feedback_id != feedback.feedback.feedback_id
         or rec.feedback_provenance != feedback.feedback.provenance
         or rec.authority_id != "s18-learning-authority"
