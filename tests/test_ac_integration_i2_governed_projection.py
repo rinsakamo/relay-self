@@ -172,8 +172,6 @@ def test_s17_s10_outcome_and_retained_contract_fail_closed(mutation):
             fb, status=LearningFeedbackInterpretationStatus.NOT_APPLICABLE,
             feedback=None,
         )
-    elif mutation == "S17_wrong_outcome_ref":
-        fb = replace(fb, outcome_ref="fabricated-reference")
     elif mutation == "wrong_S10_owner":
         inputs = dict(inputs)
         inputs["current_retained"] = data["commit"].previous_state
@@ -221,6 +219,13 @@ def test_source_bound_world_and_memory_stay_independent(mutate):
     with pytest.raises(ValueError):
         _run(inputs, data, grant)
 
+
+
+def test_existing_s17_typed_outcome_ref_forbids_fabrication_even_before_i2():
+    _inputs, data, _, _, _grant0 = _subject()
+    fb = data["feedback"]
+    with pytest.raises(ValueError):
+        replace(fb, outcome_ref="fabricated-reference")
 
 def test_synthetic_memory_prose_cannot_influence_select_or_truth():
     inputs, data, _, _, grant = _subject()
