@@ -416,7 +416,7 @@ def test_cli_plan_and_read_only_audit(tmp_path, capsys):
 def test_bogus_live_text_is_not_a_real_qualifying_receipt(tmp_path, capsys):
     file = tmp_path / "claimed-live.json"
     file.write_text(json.dumps(fake_bundle("CLAIMED_LIVE")), encoding="utf-8")
-    assert e5._main(["--audit", str(file)]) == 0
+    assert e5._main(["--audit", str(file)]) == 3
     response = json.loads(capsys.readouterr().out)
     assert response["classification"] == "UNATTESTED_PHYSICAL_CLAIM"
     assert response["physical_effect"] == "UNDETERMINED"
