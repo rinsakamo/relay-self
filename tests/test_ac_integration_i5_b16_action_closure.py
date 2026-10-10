@@ -90,9 +90,7 @@ def test_actual_b16_policy_issued_simulator_world_closed_to_terminal_and_cheap_n
             assert trial.native_world_attested is False
             assert trial.production_go is False
             if trial.source_event is not None:
-                assert trial.status if False else trial.terminal == (
-                    "SIMULATOR_SOURCE_ACTION_TERMINAL"
-                )
+                assert trial.terminal == "SIMULATOR_SOURCE_ACTION_TERMINAL"
                 assert trial.source_event.kind == "OBSERVED_ACTION"
                 assert trial.source_event.success is trial.success
                 assert trial.source_event.action == trial.selected_action
