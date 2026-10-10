@@ -5,9 +5,9 @@ import pytest
 
 from experiments.ac_c_c14_signed import (
     ARMS,
+    E0,
     MANIFEST_SHA,
     Case,
-    E0,
     FirstReceipt,
     Memory,
     VerifyReceipt,
