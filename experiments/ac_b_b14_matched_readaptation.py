@@ -55,6 +55,9 @@ class EpochComparison:
     source_revision: int
     owner: HabitRepertoire
     _grant_secret: bytes
+    _issuer: OfflineIndependentS11Issuer = field(init=False, repr=False)
+    _gate: IndependentS11Admission = field(init=False, repr=False)
+    view: QualifiedHabitView = field(init=False)
     observed: list[ObservedOutcome] = field(default_factory=list)
     learned_tags: dict[tuple[int, int], int] = field(default_factory=dict)
     s10_native_commit_count: int = 0
