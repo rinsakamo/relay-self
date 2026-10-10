@@ -102,7 +102,7 @@ def planned_trials() -> tuple[TrialSpec, ...]:
         for price in MANIFEST["price_quarters"]:
             for order_idx, arms in enumerate(_ARM_ORDER):
                 block = f"e5-d{distance}-p{price}-o{order_idx}"
-                seed = 510_000 + 100 * distance + 10 * price + order_idx
+                seed = 510_000 + 10 * price + order_idx  # never encode hidden distance
                 for position, arm in enumerate(arms):
                     result.append(TrialSpec(
                         trial_id=f"{block}-a{position}", block_id=block,
@@ -234,15 +234,18 @@ def _check_trial(raw: dict[str, Any], spec: TrialSpec, kind: str) -> tuple[int, 
         p2 = _int(t["second_probe_ns"], "second source time", least=1)
         if not start < p1 < p2 < decision:
             raise E5Rejected("source must be consumed in proper two-probe order")
-        if _real(t["probe_ms"], "policy probe duration") <= 0:
-            raise E5Rejected("a policy read must record nonzero cost")
+        policy_cost = _real(t["probe_ms"], "policy probe duration")
+        if policy_cost <= 0 or policy_cost > (decision - start) // 1_000_000:
+            raise E5Rejected("policy read cost exceeds source-before-decision horizon")
     elif (
         t["first_probe_ns"] is not None
         or t["second_probe_ns"] is not None
         or t["probe_ms"] != 0
     ):
         raise E5Rejected("NO_OBSERVE must have no policy sensing/cost")
-    _real(t["evaluator_ms"], "evaluator duration")
+    evaluation_cost = _real(t["evaluator_ms"], "evaluator duration")
+    if evaluation_cost > (evaluated - decision) // 1_000_000:
+        raise E5Rejected("evaluator cost exceeds declared follow-up horizon")
     before = _real(t["health_before"], "health before")
     after = _real(t["health_after"], "health after", allow_none=True)
     if before > 20 or (after is not None and after > 20):
@@ -254,6 +257,8 @@ def _check_trial(raw: dict[str, Any], spec: TrialSpec, kind: str) -> tuple[int, 
     world = t["world_result"]
     reason = t["reason_code"]
     if not has_action:
+        if after is None or t["damage_points"] is None or t["movement_m"] is None:
+            raise E5Rejected("WAIT requires independent end-of-window task evaluation")
         if (
             t["action_session_id"] is not None
             or t["action_issue_ns"] is not None
@@ -309,7 +314,9 @@ def audit_bundle(payload: object) -> E5Audit:
     if type(trials) is not list or len(trials) != len(specs):
         raise E5Rejected("all 36 prospectively planned trials required")
     sessions: set[str] = set()
+    action_sessions: set[str] = set()
     resets: set[str] = set()
+    matched: dict[str, tuple[float, int]] = {}
     receipts: set[str] = set()
     ids: set[str] = set()
     probes = actions = unresolved = 0
@@ -319,6 +326,18 @@ def audit_bundle(payload: object) -> E5Audit:
             raise E5Rejected("cross-arm session/reset reuse instead of matched independent reset")
         sessions.add(item["session_id"])
         resets.add(item["reset_id"])
+        action_session = item["action_session_id"]
+        if action_session is not None:
+            if action_session in action_sessions or action_session in sessions:
+                raise E5Rejected("cross-arm Action4 source-session reuse")
+            action_sessions.add(action_session)
+        declared_baseline = (
+            float(item["health_before"]),
+            (item["evaluator_ns"] - item["decision_ns"]) // 1_000_000,
+        )
+        if spec.block_id in matched and matched[spec.block_id] != declared_baseline:
+            raise E5Rejected("paired arms require same initial health/follow-up horizon")
+        matched.setdefault(spec.block_id, declared_baseline)
         if item["receipt_sha256"] in receipts:
             raise E5Rejected("identical receipt hash across independent trials")
         receipts.add(item["receipt_sha256"])
@@ -331,7 +350,10 @@ def audit_bundle(payload: object) -> E5Audit:
         actions += int(action)
         unresolved += int(missing)
     blocks = len(set(spec.block_id for spec in specs))
-    if blocks != 12 or len(sessions) != 36 or len(resets) != 36:
+    if (
+        blocks != 12 or len(sessions) != 36 or len(resets) != 36
+        or action_sessions.intersection(sessions)
+    ):
         raise E5Rejected("matched 12-block independent source denominator invalid")
     # These are internal JSON logical checks only. Even a fake LIVE receipt with
     # plausible SHA256 fields is *not* independent physical authentication.
