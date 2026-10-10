@@ -1,5 +1,5 @@
 """B8 exact frozen S17-stack contract qualification, offline fake World only."""
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
@@ -308,3 +308,32 @@ def test_structured_b7_schema_only_grant_is_not_real_s10_authority():
             {"granted": True, "grant_nonce": "b7-offline-test"},
             provenance=provenance("not-a-real-s10-authority"),
         )
+
+
+def test_spliced_s17_feedback_or_replaced_criterion_cannot_cross_owner_gate():
+    _, state, repertoire, read = qualified_fixture()
+    counterfeit = LearningFeedback(
+        feedback_id="b8-cross-origin-signal",
+        target_id="risk_weight",
+        direction=FeedbackDirection.HOLD,
+        provenance=provenance("not-observed-s17-feedback"),
+    )
+    counterfeit_proposal = propose_learning_update(
+        state, counterfeit, learning_rule()
+    )
+    spliced = replace(read, learning_proposal=counterfeit_proposal)
+    with pytest.raises(NoQualifiedFeedback, match="handoff mismatch"):
+        commit_only_by_explicit_owner(
+            spliced, learning_authority(),
+            provenance=provenance("reject-spliced-proposal"),
+        )
+    bad_criterion = replace(
+        read, source_criterion=feedback_criterion(reason="different-outcome")
+    )
+    with pytest.raises(NoQualifiedFeedback, match="handoff mismatch"):
+        commit_only_by_explicit_owner(
+            bad_criterion, learning_authority(),
+            provenance=provenance("reject-spliced-criterion"),
+        )
+    assert state.value == 3 and state.revision == 0
+    assert len(repertoire.rules) == 1
