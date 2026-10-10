@@ -5,11 +5,13 @@ from dataclasses import replace
 
 import pytest
 
+from experiments.ac_b_b11_governed_habit import empty_repertoire
 from experiments.ac_b_b24_structural_transfer import (
     ANCHORS,
     HELDOUT,
-    StructuralWorld,
     InvalidStructuralExperience,
+    StructuralAgent,
+    StructuralWorld,
     _habit_cue,
 )
 from experiments.ac_b_b25_discrimination import (
@@ -17,7 +19,7 @@ from experiments.ac_b_b25_discrimination import (
     CANDIDATES,
     FIRST_PROBE,
     WORLDS,
-    HypothesisState,
+    B25CognitiveArm,
     InvalidHypothesisEvidence,
     execute_arm,
     known_residual,
@@ -189,12 +191,6 @@ def test_source_retained_s11_rules_bound_to_actual_successful_memory():
 
 
 def test_phantom_or_cloned_report_cannot_discriminate():
-    from experiments.ac_b_b25_discrimination import (
-        B25CognitiveArm,
-    )
-    from experiments.ac_b_b24_structural_transfer import StructuralAgent
-    from experiments.ac_b_b11_governed_habit import empty_repertoire
-
     world = StructuralWorld("b25-original-only", twin=True)
     agent = StructuralAgent(
         "STRUCTURAL_S11", world,
@@ -210,7 +206,7 @@ def test_phantom_or_cloned_report_cannot_discriminate():
     agent._remember("NOVEL", FIRST_PROBE, "probe", result)
     with pytest.raises(InvalidHypothesisEvidence, match="latest original"):
         rich.hypotheses.observe(agent, cloned)
-    with pytest.raises(InvalidHypothesisEvidence, match="latest original"):
+    with pytest.raises(InvalidHypothesisEvidence, match="latest actual Memory"):
         rich._update_after_source(FIRST_PROBE, cloned)
     update = rich.hypotheses.observe(agent, result)
     assert update.after == ("H1_HIGHER_ORDER",)
@@ -218,10 +214,6 @@ def test_phantom_or_cloned_report_cannot_discriminate():
 
 
 def test_cheap_bit_does_not_switch_before_real_probe_or_outside_first_cue():
-    from experiments.ac_b_b25_discrimination import B25CognitiveArm
-    from experiments.ac_b_b24_structural_transfer import StructuralAgent
-    from experiments.ac_b_b11_governed_habit import empty_repertoire
-
     world = StructuralWorld("b25-cheap-source-only", twin=True)
     agent = StructuralAgent(
         "CHEAP_DEG2", world,
@@ -243,10 +235,6 @@ def test_cheap_bit_does_not_switch_before_real_probe_or_outside_first_cue():
 
 
 def test_partial_training_does_not_allow_hypothesis_selection():
-    from experiments.ac_b_b25_discrimination import B25CognitiveArm
-    from experiments.ac_b_b24_structural_transfer import StructuralAgent
-    from experiments.ac_b_b11_governed_habit import empty_repertoire
-
     world = StructuralWorld("b25-not-full-train", twin=False)
     runner = B25CognitiveArm(
         "FULL_HYPOTHESIS_S11", StructuralAgent(
@@ -264,10 +252,6 @@ def test_partial_training_does_not_allow_hypothesis_selection():
 
 
 def test_predictions_do_not_call_world_truth_or_oracle_before_source_action():
-    from experiments.ac_b_b25_discrimination import B25CognitiveArm
-    from experiments.ac_b_b24_structural_transfer import StructuralAgent
-    from experiments.ac_b_b11_governed_habit import empty_repertoire
-
     native = StructuralAgent(
         "STRUCTURAL_S11",
         StructuralWorld("b25-knowledge-boundary", twin=False),
