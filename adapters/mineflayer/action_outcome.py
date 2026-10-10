@@ -22,6 +22,7 @@ def interpret_world_consequence(
     consequence: WorldConsequence,
     *,
     provenance: Provenance,
+    allow_forward: bool = False,
 ) -> ActionOutcomeInterpretation:
     """Purely interpret one exact S15 consequence for existing Action closure.
 
@@ -29,7 +30,9 @@ def interpret_world_consequence(
     This function owns no Action state and performs no supervisor transition.
     """
 
-    command = build_mineflayer_command(issued_action, binding_result)
+    command = build_mineflayer_command(
+        issued_action, binding_result, allow_forward=allow_forward,
+    )
     if not isinstance(consequence, WorldConsequence):
         raise InvalidActionOutcomeData(
             "consequence must be WorldConsequence"
