@@ -1,0 +1,161 @@
+{
+  "version": "AC-C-C8-CAUSAL-ATTRIBUTION-v1",
+  "authority": {
+    "issue": 475,
+    "parent": [
+      432,
+      426
+    ],
+    "main": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "main_tree": "7816055966dd520b6690de7662a267047e57ccc0",
+    "prior_c7_head": "dac1da8be762d07afa9513d9e9688cc88a60eff3"
+  },
+  "seeds": {
+    "calibration": [
+      257,
+      263,
+      269
+    ],
+    "heldout": [
+      271,
+      277,
+      281,
+      283,
+      293
+    ]
+  },
+  "epochs": [
+    "warmup",
+    "block_only",
+    "rule_only",
+    "both",
+    "return"
+  ],
+  "episode_counts": {
+    "warmup": 80,
+    "block_only": 100,
+    "rule_only": 100,
+    "both": 100,
+    "return": 100
+  },
+  "hidden_z_probability_1": {
+    "warmup": [
+      0.1,
+      0.9
+    ],
+    "block_only": [
+      0.1,
+      0.9
+    ],
+    "rule_only": [
+      0.9,
+      0.1
+    ],
+    "both": [
+      0.9,
+      0.1
+    ],
+    "return": [
+      0.1,
+      0.9
+    ]
+  },
+  "independent_obstruction_probability": {
+    "warmup": 0.1,
+    "block_only": 0.6,
+    "rule_only": 0.1,
+    "both": 0.6,
+    "return": 0.1
+  },
+  "world": {
+    "group": "uniform binary context",
+    "prefix": "uniform 0..3 public",
+    "target": "parity(prefix) XOR hidden_z",
+    "moved": "selected_action matches target AND NOT hidden_obstruction",
+    "obstacle_hint_presence": 0.6,
+    "obstacle_hint_accuracy": 0.8,
+    "probe_available": 0.65,
+    "deadline_values": [
+      1,
+      3,
+      5
+    ],
+    "health_values": [
+      2,
+      4,
+      8
+    ],
+    "hunger_values": [
+      2,
+      6,
+      12
+    ],
+    "threat_probability": 0.2,
+    "terminal_receipt": "moved bool and optional noisy obstacle hint; paid PROBE returns exact z; no cheap target, hidden z or obstruction truth"
+  },
+  "modes": {
+    "CHEAP": {
+      "ticks": 1,
+      "work": 1,
+      "information": "retained prediction only",
+      "viability": "health>2 and ticks<=deadline"
+    },
+    "PROBE": {
+      "ticks": 3,
+      "work": 5,
+      "information": "paid exact z after admitted selection",
+      "viability": "probe available and hunger>2 and health>exposure and deadline>=3"
+    }
+  },
+  "learners": {
+    "history_window": 12,
+    "beta_prior": [
+      1,
+      1
+    ],
+    "warmup": "all arms PROBE if viable else CHEAP group MAP, retain probe exact or successful cheap as exact, ignore failed cheap",
+    "no_feedback": "frozen after warmup",
+    "assumed_obstruction_prior": 0.3,
+    "hint_accuracy_assumed": 0.8,
+    "causal_posterior": "on moved=false, posterior P(z=chosen_z|observation) propto prior_mass(chosen_z) * p_obstruction * p(hint|obstruction), versus opposite_z likelihood P(hint) under independent obstruction; append fractional expected z label with weight1",
+    "naive": "on failed CHEAP infer opposite z, 1 full label",
+    "success_only": "only moved CHEAP supplies exact inferred z=chosen_z",
+    "sensor_heuristic": "if failed and observed hint=true ignore failure; if failed with hint=false or hint missing append opposite chosen z exact",
+    "causal_no_sensor": "same model with missing hint even if hint present",
+    "probe_first": "paid PROBE when viable, else CHEAP and learn only movement positive"
+  },
+  "arms": [
+    "FROZEN_MAP",
+    "NAIVE_BLAME",
+    "SUCCESS_ONLY",
+    "SENSOR_HEURISTIC",
+    "CAUSAL_BAYES",
+    "CAUSAL_NO_SENSOR",
+    "PROBE_FIRST",
+    "EVALUATOR_ORACLE"
+  ],
+  "selector_overhead": {
+    "FROZEN_MAP": 0,
+    "NAIVE_BLAME": 1,
+    "SUCCESS_ONLY": 1,
+    "SENSOR_HEURISTIC": 1,
+    "CAUSAL_BAYES": 3,
+    "CAUSAL_NO_SENSOR": 2,
+    "PROBE_FIRST": 0,
+    "EVALUATOR_ORACLE": 0
+  },
+  "objective": {
+    "correct_decision": 10,
+    "wrong_decision": -10,
+    "abstain": -3,
+    "per_mechanism_and_selector_work": -0.4,
+    "per_world_tick": -0.2
+  },
+  "primary_positive_gate": {
+    "causal_more_correct_than_success_only": 25,
+    "causal_more_correct_than_sensor_heuristic": 15,
+    "strictly_higher_utility_than_both": true,
+    "total_work_no_more_than_heuristic_factor": 1.2
+  },
+  "scope": "offline deterministic action attribution; decision correctness evaluator-only; movement observed but confounded; no actual Minecraft/LLM/GPU/power and no new semantic owner; no sibling Draft imports or merge"
+}
