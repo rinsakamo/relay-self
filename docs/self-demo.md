@@ -24,7 +24,7 @@ S49/S60/Action/S10/S11 authority, Paper2, RelayTheory or protected main.
   It downloads a Mojang 1.21.8 dedicated server into a temporary workspace,
   accepts EULA for this disposable local test, spawns non-AI zombie fixtures
   through server console and shuts down/removes its test World afterward.
-  It is not a general game-playing agent or operator World. S49 itself
+  For the two source-checked native Action OUTCOME receipts, the product\n  entrypoint also writes one **existing PersistentCognition** Memory snapshot\n  (`observed_memory.json`) containing only observed movement and explicit\n  `goal_success_attested=false`. No S10 preference change or S11 Habit grant.\n  It is not a general game-playing agent or operator World. S49 itself
   supplies *synthetic earlier retained rev1*; **no new learning in live World**.
   This mode can run ONLY locally on an operator machine with the toolchain.
   GitHub CI does **not** run Minecraft.
@@ -80,14 +80,14 @@ PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m adapters.mineflayer.self_demo \
   **only** on a disposable server/World it launches, not your existing
   multiplayer or persistent World.
 - Success creates `native_report.json` (unmodified original S49 summary),
-  `minecraft_server.log` and `self_trace.jsonl`; the latter is also
+  `minecraft_server.log`, `observed_memory.json` and `self_trace.jsonl`; the latter is also
   printed to stdout after the owned experiment. If S49 returns BLOCKED,
   UNKNOWN or FAIL, no fabricated PASS trace is emitted.
 - Each JSONL row contains a `source_type`: `S49_REAL_MINEFLAYER_RECEIPT`
   for checked genuine S49 run and `SYNTHETIC_SMOKE_ONLY` for offline
   control. The live trace has 3 native observations and 3 L0 choices;
   two independent source-bound Action OUTCOME/physical movement records.
-  **Action OUTCOME != Goal success != LearningFeedback != Habit learning**.
+  Original owner-local PersistentCognition stores precisely two observational\n  memories, while no LearningPreferenceState or HabitRepertoire is changed.\n  **Action OUTCOME != Goal success != LearningFeedback != Habit learning**.
 - The local Minecraft server uses port 25565 only during the disposable test.
   It is short-lived, and the report appears at the end. If you join it
   with the Minecraft client during the test, you may observe the scripted
