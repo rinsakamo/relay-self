@@ -148,8 +148,12 @@ def review_s49_spatial(
     except (
         ValueError, TypeError, KeyError, OSError,
         NativeEvidenceRejected, DemoRejected,
-    ):
-        return _deny("INVALID_OR_UNQUALIFIED_SOURCE", action_id, sid)
+    ) as exc:
+        # Lossless class name only; never accept data merely because it decoded.
+        return _deny(
+            "INVALID_OR_UNQUALIFIED_SOURCE:" + type(exc).__name__,
+            action_id, sid,
+        )
 
 
 def _load_regions(path: Path) -> tuple[Region, Region]:
