@@ -31,6 +31,7 @@ from relay_self.provenance import Provenance
 
 BASE = "66b8045fd2b47d9c35febb12c495379d1248bb4e"
 MANIFEST = "1ce5eefa1125d9701f0987cf2ea14489a6c978720f06d89bb3f5a1522560e07d"
+R3B_MANIFEST = "7fb4fbb5e4b91e4c561fbd462b522dc4ec89513fdb1d35b409ca5f9b88276330"
 SOURCE = "e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d"
 BINARY = "ad5d4787bc739ad88a55b614c18d29580b3ec071cad632edb0ebb42b89f78536"
 FINGERPRINT = "b10874-e2d2c0d6a"
@@ -171,6 +172,39 @@ def authorize(config_bytes: bytes, approval_bytes: bytes, evidence: Path) -> Con
         or digest(ROOT / "docs/s60b2/manifest.md") != MANIFEST):
         raise ProbeRejected("separate exact local operator approval required")
     return config
+
+
+def authorize_diagnostic(config: Config, config_bytes: bytes, approval_bytes: bytes,
+                         grant_bytes: bytes, evidence: Path):
+    """Additional admission only; never rewrite or replace B2 authorize()."""
+    if not isinstance(grant_bytes, bytes) or len(grant_bytes) > 8192:
+        raise ProbeRejected("bounded separate diagnostic grant required")
+    grant = parse_json(grant_bytes)
+    approval = parse_json(approval_bytes)
+    root = evidence.resolve()
+    if (not isinstance(grant, dict) or set(grant) != {
+        "runner_head", "manifest_sha256", "base_manifest_sha256", "config_sha256",
+        "approval_sha256", "arm", "diagnostic_arm_a", "operator_token",
+        "allow_model_gpu_launch", "source_binary_mapping_reviewed",
+        "runtime_shared_libraries_reviewed", "prior_cleanup_confirmed", "evidence_root",
+    } or config.arm != "A" or grant.get("arm") != "A"
+        or any(grant.get(k) is not True for k in (
+            "diagnostic_arm_a", "allow_model_gpu_launch", "source_binary_mapping_reviewed",
+            "runtime_shared_libraries_reviewed", "prior_cleanup_confirmed"))
+        or grant.get("runner_head") != git(ROOT, "rev-parse", "HEAD")
+        or git(ROOT, "status", "--porcelain")
+        or grant.get("manifest_sha256") != R3B_MANIFEST
+        or digest(ROOT / "docs/s60b2-r3b/manifest.md") != R3B_MANIFEST
+        or grant.get("base_manifest_sha256") != MANIFEST
+        or grant.get("config_sha256") != hashlib.sha256(config_bytes).hexdigest()
+        or grant.get("approval_sha256") != hashlib.sha256(approval_bytes).hexdigest()
+        or not isinstance(grant.get("operator_token"), str)
+        or not re.fullmatch(r"[a-f0-9]{64}", grant["operator_token"])
+        or grant.get("operator_token") != approval.get("operator_token")
+        or grant.get("evidence_root") != str(root)
+        or ROOT == root or ROOT in root.parents or root.exists()
+        or root.is_symlink()):
+        raise ProbeRejected("separate exact diagnostic Arm A grant required")
 
 
 class Journal:
@@ -430,7 +464,7 @@ class KeepStream(MeasuredTransport):
 
 async def measure(config: Config, witness, journal: Journal, *,
                   diagnostic_adapter: type[MeasuredTransport] | None = None):
-    # Prospective R3 offline seam; run()/CLI never select diagnostic mode.
+    # Prospective R3 seam; run()/CLI select only after independent R3-B admission.
     if diagnostic_adapter is not None:
         from adapters.mineflayer.s60b2_r3_diagnostic import R3DiagnosticTransport
         if config.arm != "A" or diagnostic_adapter is not R3DiagnosticTransport:
@@ -605,8 +639,15 @@ async def cleanup(process, journal: Journal):
     journal.emit("OWNED_PROCESS_EXIT", returncode=process.returncode)
 
 
-async def run(config_bytes: bytes, approval_bytes: bytes, evidence: Path):
+async def run(config_bytes: bytes, approval_bytes: bytes, evidence: Path, *,
+              diagnostic_arm_a: bool = False, diagnostic_grant_bytes: bytes | None = None):
     config = authorize(config_bytes, approval_bytes, evidence)
+    if type(diagnostic_arm_a) is not bool or (
+        not diagnostic_arm_a and diagnostic_grant_bytes is not None
+    ):
+        raise ProbeRejected("explicit diagnostic Arm A mode required")
+    if diagnostic_arm_a:
+        authorize_diagnostic(config, config_bytes, approval_bytes, diagnostic_grant_bytes, evidence)
     # Never put evidence in checkout; no generated paths in public receipts.
     root = evidence.resolve()
     if ROOT == root or ROOT in root.parents:
@@ -634,7 +675,13 @@ async def run(config_bytes: bytes, approval_bytes: bytes, evidence: Path):
         witness = ProcessWitness(config, process.pid, pins)
         await ready(config, process, witness)
         journal.emit("HEALTH_RESPONSE_OBSERVED")
-        result = await measure(config, witness, journal)
+        if diagnostic_arm_a:
+            from adapters.mineflayer.s60b2_r3_diagnostic import R3DiagnosticTransport
+            result = await measure(config, witness, journal,
+                                   diagnostic_adapter=R3DiagnosticTransport)
+            result["status"] = "R3B_RECEIPTS_REVIEW_REQUIRED"
+        else:
+            result = await measure(config, witness, journal)
     except asyncio.CancelledError:
         journal.emit("HOST_ABORTED")
         raise
@@ -681,16 +728,30 @@ def main(argv=None):
     parser.add_argument("--config", type=Path)
     parser.add_argument("--approval", type=Path)
     parser.add_argument("--evidence", type=Path)
+    parser.add_argument("--diagnostic-arm-a", action="store_true")
+    parser.add_argument("--diagnostic-grant", type=Path)
     args = parser.parse_args(argv)
+    if ((args.diagnostic_arm_a and not args.run)
+        or (args.diagnostic_grant is not None and not args.diagnostic_arm_a)):
+        print(json.dumps(dict(status="BLOCKED", reason="explicit diagnostic run required")))
+        return 2
     if not args.run:
         print(json.dumps(plan(), sort_keys=True))
         return 0
     try:
         if any(p is None for p in (args.config, args.approval, args.evidence)):
             raise ProbeRejected("separate local approval/config/evidence required")
-        result = asyncio.run(run(bounded_read(args.config), bounded_read(args.approval), args.evidence))
+        kwargs = {}
+        if args.diagnostic_arm_a:
+            if args.diagnostic_grant is None:
+                raise ProbeRejected("separate diagnostic grant required")
+            kwargs = dict(diagnostic_arm_a=True,
+                          diagnostic_grant_bytes=bounded_read(args.diagnostic_grant))
+        result = asyncio.run(run(bounded_read(args.config), bounded_read(args.approval),
+                                args.evidence, **kwargs))
         print(json.dumps(result, sort_keys=True))
-        return 0 if result["status"] == "P1_RECEIPTS_REVIEW_REQUIRED" else 2
+        return 0 if result["status"] in (
+            "P1_RECEIPTS_REVIEW_REQUIRED", "R3B_RECEIPTS_REVIEW_REQUIRED") else 2
     except (OSError, ValueError, TimeoutError):
         print(json.dumps(dict(status="BLOCKED", reason="local admission unconfirmed")))
         return 2
