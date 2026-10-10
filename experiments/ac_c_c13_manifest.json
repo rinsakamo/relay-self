@@ -1,0 +1,201 @@
+{
+  "version": "AC-C-C13-GOAL-WITNESS-v1",
+  "authority": {
+    "issue": 509,
+    "lane": 432,
+    "coord": 426,
+    "main_head": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "main_tree": "7816055966dd520b6690de7662a267047e57ccc0",
+    "c12_head": "c33fe966787e7c968e5bd5418fd3cb457e3f390f"
+  },
+  "seeds": {
+    "calibration": [
+      523,
+      541,
+      547
+    ],
+    "heldout": [
+      557,
+      563,
+      569,
+      571,
+      577
+    ]
+  },
+  "epochs": [
+    "warmup",
+    "rule_shift",
+    "sensor_drift",
+    "return",
+    "joint_shift"
+  ],
+  "episodes_per_epoch": 120,
+  "hidden_z_p1": {
+    "warmup": [
+      0.1,
+      0.9
+    ],
+    "rule_shift": [
+      0.9,
+      0.1
+    ],
+    "sensor_drift": [
+      0.9,
+      0.1
+    ],
+    "return": [
+      0.1,
+      0.9
+    ],
+    "joint_shift": [
+      0.9,
+      0.1
+    ]
+  },
+  "public_cue_reliability": {
+    "warmup": 0.82,
+    "rule_shift": 0.82,
+    "sensor_drift": 0.52,
+    "return": 0.82,
+    "joint_shift": 0.52
+  },
+  "world": {
+    "group": "binary uniform",
+    "prefix": "public uniform 0..3",
+    "cues": 3,
+    "public_cues_independent_given_z": true,
+    "normal_block_probability": 0.25,
+    "detour_unexpected_block_probability": 0.15,
+    "normal_moved": "!blocked regardless of correctness",
+    "detour_moved": "!detour_unexpected_block regardless of correctness",
+    "goal_reached": "moved and executed_z==hidden_z",
+    "direct_exact_z_labels_never": true,
+    "source_observable": "moved,goal_reached,mode and Action lineage; no hidden z,correct,blocked,epoch",
+    "health": [
+      2,
+      4,
+      8
+    ],
+    "deadline": [
+      2,
+      4,
+      5,
+      7
+    ],
+    "hunger": [
+      2,
+      6,
+      12
+    ],
+    "threat_p": 0.25,
+    "damage_on_each_failed_goal": 1,
+    "detour_threat_exposure": 1
+  },
+  "action": {
+    "FIRST_NORMAL": {
+      "ticks": 1,
+      "work": 1
+    },
+    "DETOUR_SAME": {
+      "ticks": 3,
+      "work": 4
+    },
+    "DETOUR_FLIP": {
+      "ticks": 3,
+      "work": 4
+    },
+    "STOP": {
+      "ticks": 0,
+      "work": 0
+    }
+  },
+  "viability": {
+    "first": "health>2 and deadline>=1",
+    "detour": "after consumed first goal failure, remaining deadline>=3, remaining health>1+threatExposure, hunger>2; at most once"
+  },
+  "retention": {
+    "common_warmup": "all arms L1_GROUP first NORMAL, no detour, source positive goal witness only",
+    "group_window": 12,
+    "z_beta_prior": [
+      1,
+      1
+    ],
+    "cue_window": 24,
+    "cue_r_prior": 0.78,
+    "cue_r_pseudocount": 4,
+    "cue_r_clamp": [
+      0.5,
+      0.95
+    ],
+    "admissible_certificate": "source-consumed first goal_reached=true or one source-consumed detour goal_reached=true, label is executed choice z NOT hidden World z",
+    "no_negative_labels": true,
+    "no_raw_moved_label": true,
+    "max_updates_per_episode": 1,
+    "learning_work_per_certificate": 1,
+    "frozen_arms": [
+      "FROZEN_GROUP",
+      "FROZEN_MAJORITY",
+      "NO_FEEDBACK_GROUP"
+    ],
+    "never_evaluator_for_learning": true
+  },
+  "arms": [
+    "FROZEN_GROUP",
+    "NO_FEEDBACK_GROUP",
+    "ADAPT_GROUP",
+    "FROZEN_MAJORITY",
+    "ADAPT_MAJORITY",
+    "STATIC_GATE",
+    "LEARNED_GATE",
+    "SIMPLE_R_GATE",
+    "CERTIFY_ALWAYS",
+    "CERTIFY_SELECTIVE",
+    "CERTIFY_ACTION_ONLY",
+    "EVALUATOR_ORACLE"
+  ],
+  "selector_overhead_on_first_admitted": {
+    "FROZEN_GROUP": 0,
+    "NO_FEEDBACK_GROUP": 0,
+    "ADAPT_GROUP": 0,
+    "FROZEN_MAJORITY": 0,
+    "ADAPT_MAJORITY": 0,
+    "STATIC_GATE": 1,
+    "LEARNED_GATE": 1,
+    "SIMPLE_R_GATE": 1,
+    "CERTIFY_ALWAYS": 1,
+    "CERTIFY_SELECTIVE": 2,
+    "CERTIFY_ACTION_ONLY": 1,
+    "EVALUATOR_ORACLE": 0
+  },
+  "selection": {
+    "static_r": 0.78,
+    "simple_gate_r": 0.7,
+    "selective_certify_r": 0.65,
+    "gate_rule": "select cheap majority iff 20*(majority_accuracy(r)-max(p1,1-p1))>0.5 incremental mechanism work; otherwise group",
+    "majority_accuracy": "3*r*r-2*r*r*r",
+    "certify_detour": "after failed first goal, choose majority z; detour mode SAME iff majority==first_z else FLIP",
+    "selective_detour": "only if public majority disagrees with first guess OR learned cue reliability<.65, and admitted body/timing",
+    "action_only": "same detour action as CERTIFY_ALWAYS but ignore source proof from second detour for learning",
+    "oracle": "privileged hidden z first action only, not fair competitor"
+  },
+  "score": {
+    "goal_reached": 12,
+    "attempted_no_goal": -6,
+    "initial_abstain": -3,
+    "per_work": -0.5,
+    "per_tick": -0.3
+  },
+  "adoption": {
+    "cheap_gate_vs_frozen_majority_min_goal_gain": 40,
+    "cheap_gate_vs_adapt_group_min_goal_gain": 40,
+    "cheap_gate_higher_utility_than_both": true,
+    "cheap_gate_work_max_factor": 1.3,
+    "cheap_gate_both_modes_min": 40,
+    "selective_vs_gate_goal_gain_min": 20,
+    "selective_more_proofs_min": 10,
+    "selective_higher_utility_than_gate": true,
+    "selective_work_max_factor": 1.35,
+    "selective_utility_noninferior_always": true
+  },
+  "scope": "deterministic toy World with assumed unforgeable positive goal witness under binary target law; neither movement nor failed detour certifies z; no actual Minecraft goal attestation, LLM/GPU, power, HABIT/production or Paper2 modifications, no sibling Draft imports"
+}
