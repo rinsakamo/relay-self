@@ -1,0 +1,94 @@
+{
+  "schema": "AC-B-B6-MAINLINE-READ-ONLY-WITNESS-v1",
+  "authority": {
+    "issue": 449,
+    "parent": 431,
+    "main_commit": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "main_tree": "7816055966dd520b6690de7662a267047e57ccc0",
+    "reference_draft_prs": [
+      346,
+      347,
+      353,
+      436,
+      439,
+      446
+    ]
+  },
+  "scope": "Only experiments/test; imports actual mainline relay_self.persistent_cognition and relay_self.provenance. No imports from unmerged S10/S11/S17/B1-B5; no production writes.",
+  "world": {
+    "session": "b6-world",
+    "context_pairs": [
+      "00",
+      "01",
+      "10",
+      "11"
+    ],
+    "actions": [
+      0,
+      1
+    ],
+    "rule_evaluator_only": "success iff action==(a XOR b XOR hidden_flip)",
+    "initial_revision": 0,
+    "observed_per_revision": 8,
+    "recovery_revision": 1
+  },
+  "evidence": {
+    "source_world_ledger_required": true,
+    "memory_contents_not_evidence": true,
+    "integration_provenance_not_world_attestation": true,
+    "source_provenance_is_pointer_only": true,
+    "world_receipt_identity_in_memory": "ledger validates exact receipt object; not portable attestation"
+  },
+  "operations": [
+    "construct existing PersistentCognition snapshot via governed *test-fixture* retains",
+    "read-only external source linking",
+    "full scan vs tag-index lookup",
+    "conditional read-only proposal",
+    "unchanged JSON save/load test",
+    "source shift invalidation and requalification"
+  ],
+  "query_cost": {
+    "repeat_rounds": 8,
+    "unique_contexts": 4,
+    "full_scan_inspects_all_8": true,
+    "tag_index_build": 8,
+    "tag_query": "one tag lookup plus number of matching receipts",
+    "no_clock_or_power_claim": true
+  },
+  "qualification": "only 2 independently observed actions per context and exactly one success; no guessed unchosen action; no policy if evidence missing, contradictory, stale or source unable to attest",
+  "gates": [
+    "source absent -> NO_SOURCE_WITNESS_NO_DECISION",
+    "duplicate source pointer",
+    "duplicate memory ID",
+    "wrong session/revision",
+    "forged digest/receipt",
+    "value-identical cross-world forged identity",
+    "memory content injection ignored",
+    "integration provenance not evidence",
+    "wrong-source pointer",
+    "source witnesses not yet observed",
+    "observation not predicted text",
+    "incomplete action pair",
+    "unknown query",
+    "retention unchanged by projection",
+    "snapshot JSON round-trip",
+    "world revision stale",
+    "same-revision observed contradiction quarantines"
+  ],
+  "terminal_states": [
+    "READ_ONLY_LINKAGE_QUALIFIED_WITH_EXTERNAL_WITNESS",
+    "NO_SOURCE_WITNESS_NO_DECISION",
+    "UNDETERMINED"
+  ],
+  "boundaries": [
+    "experiment-only SourceLedger",
+    "not new production Memory owner",
+    "not S11/Habit selection",
+    "not LRN commit",
+    "not Action issuance",
+    "not L0",
+    "not Minecraft/GGUF/GPU",
+    "not RelayTheory/Paper2",
+    "not merge"
+  ]
+}
