@@ -344,6 +344,16 @@ def test_one_shot_reuse_is_denied_even_with_different_evidence():
     assert fresh.sends == []
 
 
+
+def test_rejected_stop_ack_requires_one_emergency_clear() -> None:
+    result, fake = run_fixture(adverse_case("stop_ack_rejected"))
+    assert result.classification == "UNDETERMINED"
+    clear_calls = [call for call in fake.sends if call[0] == "clear_controls"]
+    assert len(clear_calls) == 2
+    assert clear_calls[0][1] == f"c16-stop-{SESSION}"
+    assert clear_calls[1][1] == f"c16-emergency-{SESSION}"
+    assert not result.physical_world_server_association_verified
+
 def fixture_report() -> dict:
     good = [
         run_fixture(raw_messages(ending=place))[0].classification
