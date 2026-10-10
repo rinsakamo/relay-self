@@ -1,0 +1,64 @@
+{
+  "schema": "AC_B_B14_MATCHED_WORLD_READAPTATION_v1",
+  "authority": {
+    "issue": 498,
+    "lane": 431,
+    "parent": 426,
+    "B13_head": "71affb6fd5bbbdc9b41ee245ab1d6f46d2307ab0",
+    "pr_base": "self/ac-b-b13-shared-world-s10-s11-20261010",
+    "main": "4348a614900c1d0828581a8eec2c523ba5ae237f"
+  },
+  "source": "B11 local CurrentWorld and QualifiedLedger, 4 binary contexts, 2 actually executed Actions/cue; not S16/S17 physical Mineflayer",
+  "regimes": [
+    0,
+    1,
+    0
+  ],
+  "flip_announce": true,
+  "world_actions_per_epoch": 8,
+  "total_world_actions": 24,
+  "checkpoint_action_prefix": [
+    0,
+    2,
+    4,
+    6,
+    8
+  ],
+  "holdout_nuisance_per_context": 3,
+  "holdout_relevant_contexts_new": false,
+  "arms": {
+    "s10_s11": "real B13 S10 feedback/propose/actual separate S10 authority commit, B13 gate, distinct B12 signed experiment-only S11 grant, new frozen actual S11 repertoire, qualified view",
+    "cheap_tag": "same B11 World receipts, per-context direct winner into flat dictionary, source epoch checked; no owner authority beyond test fixture"
+  },
+  "scoring": "after qualifying local source, evaluate fresh nuisance cue IDs. score both four context coverage and correct; abstention counts as incorrect. No World evaluator access for training. At epoch boundary invalidate both arms and explicitly reset experimental owner with different repertoire ID; do not imply product Habit forgetting",
+  "comparisons": "readaptation to all four eligible contexts via exactly 8 matched observed Actions for BOTH; accuracy 12/12 on nuisance-only final heldout expected; calculate symbolic owner/grant/lookup counts not actual time, power, tokens or CPU",
+  "negative": [
+    "missing alternative fails learning both",
+    "world regime/epoch stale denies both",
+    "native S10 commit absent/denied prevents B13 bridging but tags remain trainable",
+    "wrong native S10 direction does not authorize S11",
+    "B12 signed grant absent/wrong key prevents S11",
+    "source ID clone/invention rejected",
+    "raw frozen S11 selects stale if not wrapper",
+    "S10 does not cause independently observable mapping",
+    "no true S10/S11 product authority"
+  ],
+  "terminal_candidate": [
+    "MATCHED_WORLD_ACTION_SAMPLE_EFFICIENCY",
+    "MATCHED_ANNOUNCED_SHIFT_READAPTATION",
+    "CHEAP_TAG_MATCHES_S11_ACCURACY",
+    "S10_GATE_ADDS_AUTHORITY_STEPS_WITHOUT_OBSERVED_BENEFIT",
+    "NO_PRODUCTION_S11_OWNER",
+    "NO_AUTONOMOUS_L2_TO_L1_DISTILLATION"
+  ],
+  "limits": [
+    "same process World identity only",
+    "B12 signed grants offline and bypassable",
+    "S10 commit cloneable",
+    "no physical Minecraft",
+    "no unseen relevant cue generalization",
+    "no measured computational time/energy",
+    "no #46/#415 scientific spend",
+    "no frozen source changes or merge"
+  ]
+}
