@@ -9,13 +9,6 @@ import pytest
 
 import test_postmain_correlated_probe as s29
 from adapters.mineflayer.execution import WorldConsequenceStatus
-from relay_self.correlated_probe import InvalidCorrelatedProbe
-from relay_self.habit import CueFeature, HabitRepertoire, HabitRule
-from relay_self.intent import IntentCommitment
-from relay_self.persistent_cognition import IdentitySpecification, Memory, PersistentCognition
-from relay_self.postfailure_cognition import run_explicit_postfailure_epoch
-from relay_self.provenance import Provenance
-
 from experiments.ac_integration_i1_owner_seam import (
     MANIFEST_PATH,
     MANIFEST_SHA256,
@@ -24,6 +17,13 @@ from experiments.ac_integration_i1_owner_seam import (
     read_i1_owner_seam,
     verify_frozen_manifest,
 )
+from relay_self.correlated_probe import InvalidCorrelatedProbe
+from relay_self.habit import CueFeature, HabitRepertoire, HabitRule
+from relay_self.intent import IntentCommitment
+from relay_self.persistent_cognition import IdentitySpecification, Memory, PersistentCognition
+from relay_self.postfailure_cognition import run_explicit_postfailure_epoch
+from relay_self.provenance import Provenance
+
 
 
 def p(reference: str) -> Provenance:
