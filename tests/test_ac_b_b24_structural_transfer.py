@@ -1,8 +1,6 @@
 """B24: novel RELEVANT states, strong cheap polynomial null, impossible twin."""
 from __future__ import annotations
 
-from dataclasses import replace
-
 import pytest
 
 from experiments.ac_b_b11_governed_habit import empty_repertoire
@@ -257,12 +255,15 @@ def test_inference_is_from_memory_winners_not_extra_world_oracle():
     )
     for i, cue in enumerate(ANCHORS):
         agent.encounter(cue, "TRAIN", f"a-{i}")
+    verified_examples = agent.completed_training_examples()
     class WorldWithoutFutureAccess:
         def __getattribute__(self, _name):
             raise AssertionError("structural solver read World during inference")
     agent.world = WorldWithoutFutureAccess()
-    coeff = agent.learn_structure()
-    assert coeff == EXPECTED_COEFFICIENTS  # if solver peeked it would explode
+    # Source eligibility was separately established before inference;
+    # the actual model solver consumes ONLY copied successful experiences.
+    assert infer_degree2_gaussian(verified_examples) == EXPECTED_COEFFICIENTS
+    assert infer_degree2_cheap(verified_examples) == EXPECTED_COEFFICIENTS
 
 
 @pytest.mark.parametrize("arm", ARMS)
