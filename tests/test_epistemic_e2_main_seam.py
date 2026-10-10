@@ -88,8 +88,8 @@ def test_information_value_and_no_unnecessary_observation():
         world = e2.FixtureWorld(e2.Case(rule, 0))
         initial = world.project()
         expected = Fraction(1, 2) if rule in ("NORMAL", "REVERSE") else -1
-        assert e2.expected_information_value(world, initial) == expected
-        decision = e2.choose_first(world, initial)
+        assert e2.expected_information_value(initial) == expected
+        decision = e2.choose_first(initial)
         assert (decision.action == "OBSERVE") == (expected > 0)
         assert world.observe_count == 0
         actual = e2.run(e2.Case(rule, 0), "REDECIDE")
@@ -106,7 +106,7 @@ def test_new_revision_changes_reconsidered_action_without_e0_gold():
             assert e0.fact("observation_event") is None
             assert w.session.startswith("e2/")
             assert rule not in w.session
-            d0 = e2.choose_first(w, e0)
+            d0 = e2.choose_first(e0)
             assert d0.action == "OBSERVE"
             assert len(w.supervisor.open_actions) == 0
             e1 = w.observe(e0)
@@ -114,7 +114,7 @@ def test_new_revision_changes_reconsidered_action_without_e0_gold():
             assert e1.fact("observed_signal").value == signal
             assert e1.fact("observation_event").provenance.reference.endswith("/event")
             assert not projection_is_current(e0, current_source_revision=w.revision)
-            d1 = e2.choose_second(w, e1)
+            d1 = e2.choose_second(e1)
             assert d1.action in ("DIRECT", "DETOUR")
             actions.add(d1.action)
             with pytest.raises(e2.ContractError, match="stale"):
@@ -134,9 +134,7 @@ def test_wrong_source_stale_revision_forged_history_and_missing_event_fail_close
     with pytest.raises(e2.ContractError, match="stale or forged"):
         w_other.validate(e0)
     with pytest.raises(e2.ContractError, match="stale or forged"):
-        e2.choose_first(
-            w, replace(e0, facts=e0.facts[:-1]),
-        )
+        w.validate(replace(e0, facts=e0.facts[:-1]))
     for replacement in (0, True, "fake"):
         modified = list(e0.facts)
         i = next(i for i, fact in enumerate(modified) if fact.key == "history:0")
@@ -157,8 +155,7 @@ def test_wrong_source_stale_revision_forged_history_and_missing_event_fail_close
     with pytest.raises(e2.ContractError, match="duplicate OBSERVE"):
         w.observe(e1)
     with pytest.raises(e2.ContractError, match="second epoch"):
-        e2.choose_second(e2.FixtureWorld(e2.Case("NORMAL", 0)),
-                         e2.FixtureWorld(e2.Case("NORMAL", 0)).project())
+        e2.choose_second(e0)
     # bool==1 must not launder a forged revision or observed signal.
     w1 = e2.FixtureWorld(e2.Case("NORMAL", 1))
     fresh = w1.observe(w1.project())
@@ -175,7 +172,7 @@ def test_forecast_horizon_brier_and_hidden_outcome_separation():
     for case in e2.cases():
         w = e2.FixtureWorld(case)
         e0 = w.project()
-        f0 = e2.forecast(w, e0)
+        f0 = e2.forecast(e0)
         assert tuple(f.action for f in f0) == ("DIRECT", "DETOUR", "OBSERVE")
         assert tuple(f.horizon for f in f0) == (1, 1, 2)
         assert f0[2].probability_hazard is None  # OBSERVE is not a route
@@ -186,7 +183,7 @@ def test_forecast_horizon_brier_and_hidden_outcome_separation():
             assert p0 in (0, 1)
         assert w.revision == 0
         e1 = w.observe(e0)
-        f1 = e2.forecast(w, e1)
+        f1 = e2.forecast(e1)
         assert tuple(f.action for f in f1) == ("DIRECT", "DETOUR")
         assert f1[0].probability_hazard == e2.hazard(case.rule, case.signal)
         result = e2.run(case, "REDECIDE")
