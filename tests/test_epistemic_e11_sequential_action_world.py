@@ -92,7 +92,7 @@ def test_deferred_real_session_boundary_is_after_authorization_before_issue(arm,
     assert result.handoff.physically_authenticated is False
     assert result.physically_authenticated is False
     assert result.handoff.same_declared_avatar is True
-    assert result.native_frames[2].request_id is not None  # second source probe
+    assert any(isinstance(x, MineflayerObservation) and x.kind == "probe"\n               and x.request_id == result.decision.receipt.request_id\n               for x in result.native_frames)  # original second policy probe
     assert any(x.seq == 1 and x.kind == "spawn"
                for x in result.native_frames if isinstance(x, MineflayerObservation))
     assert action_world.commands == [
