@@ -11,6 +11,7 @@ from experiments.ac_b_b11_governed_habit import (
     empty_repertoire,
 )
 from experiments.ac_b_b16_quorum import (
+    RULE,
     BatchLedger,
     ExperimentQuorumAuthority,
     PairedTrial,
