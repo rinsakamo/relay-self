@@ -78,7 +78,7 @@ def _review(report, frames, goal, alternative):
 def test_c15_is_integrated_for_fully_matched_two_poststop_source():
     report, frames, goal, alternative = _case()
     verdict = _review(report, frames, goal, alternative)
-    assert verdict.classification == "GOAL_REGION_OBSERVED"
+    assert verdict.classification == "GOAL_REGION_OBSERVED", (verdict.reason, verdict)
     assert verdict.reason == "SPATIAL_ENDPOINT_ONLY"
     assert len(verdict.source_references) == 6
     assert verdict.world_session == report["session_id"]
