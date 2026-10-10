@@ -5,14 +5,13 @@ from dataclasses import replace
 
 import pytest
 
-from experiments.ac_b_b11_governed_habit import CurrentWorld, empty_repertoire
+from experiments.ac_b_b11_governed_habit import CurrentWorld, cue_for, empty_repertoire
 from experiments.ac_b_b17_source_value import (
     PLANS,
+    RULE,
     B17TestHabitGrant,
-    ChannelTrial,
     InvalidB17Evidence,
     MixedSourceLedger,
-    RULE,
     commit_native_s10,
     execute_trial,
     expected_s10_feedback,
@@ -20,9 +19,8 @@ from experiments.ac_b_b17_source_value import (
     propose_s11_rule,
     retain_experiment_s11,
     run_b17_comparison,
-    run_scenario,
-    test_grant as issue_test_grant,
 )
+from experiments.ac_b_b17_source_value import test_grant as issue_test_grant
 from relay_self.habit import HabitSelectionStatus, select_habit
 from relay_self.learning import (
     FeedbackDirection,
@@ -33,7 +31,6 @@ from relay_self.learning import (
     propose_learning_update,
 )
 from relay_self.provenance import Provenance
-from experiments.ac_b_b11_governed_habit import cue_for
 
 
 def sources(label="b17-test"):
