@@ -122,6 +122,35 @@ no retry and no backend-idle or GPU-release assertion.
   with the Minecraft client during the test, you may observe the scripted
   zombie-event experiment, **not freeform autonomous gameplay**.
 
+### Reflect on an existing Minecraft run without repeating it
+
+If you already have the four receipts from a previous approved S49 run,
+**do not replay the disposable World just to test the LLM**. Reuse only the
+saved `native_report.json`; the source is marked operator-provided, NOT
+cryptographically or physically re-attested by this read-only command.
+
+With an already-running one-slot local `llama-server` at a known alias/port:
+
+```bash
+mkdir -p ./self-demo-reflection
+PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m adapters.mineflayer.self_demo \\
+  --reflect-report /path/to/earlier/self-demo-receipts/native_report.json \\
+  --think --model-alias YOUR_LOCAL_MODEL_ALIAS --model-port 12345 \\
+  --output-dir ./self-demo-reflection
+```
+
+This reads a completed original S49 report, requires its explicit 3
+source decisions and 2 closed Action outcomes, submits **one** observation
+summary to the preexisting localhost S60-B1 provider, and writes only
+`self-demo-reflection/l2_reflection.jsonl`. It never starts Java/Node or
+Minecraft, performs no native Action, and does not overwrite or update the
+original native report, source Memory or World. It remains read-only L2
+reflection, **not L2 choosing the next game Action**. A missing/invalid model
+gives `UNCONFIRMED` but preserves the reflection and no Action rights.
+
+Use a fresh output folder each time. Do not treat an operator-provided JSON
+report as independent cryptographic proof of a physical server.
+
 ### Stopping
 
 Use **Ctrl+C** in the local operator terminal if necessary and check whether
