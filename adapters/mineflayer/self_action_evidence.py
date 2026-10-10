@@ -6,6 +6,7 @@ No goal-success label, S17 feedback or production Habit permission is inferred.
 """
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import asdict
 from typing import Any
@@ -121,7 +122,9 @@ def verify_native_action_evidence(
 
 
 def _source_frame(message: Any) -> dict[str, Any]:
-    frame = asdict(message)
+    # dataclasses.asdict preserves Python tuples; protocol JSON converts
+    # them to arrays. Validate the exact durable JSON shape we actually save.
+    frame = json.loads(json.dumps(asdict(message), allow_nan=False))
     frame["provenance"] = asdict(message.provenance)
     return frame
 
