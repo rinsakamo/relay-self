@@ -1,0 +1,31 @@
+{
+  "version": "AC-I7-S15-DUAL-MOVEMENT-EXPLICIT-OPTIN-v1",
+  "issue": 538,
+  "exact_i6_base": "8911fe3b3c41e2ae34834ccc91724ab348920bd7",
+  "protected_main": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+  "legacy_action": {
+    "candidate_ref": "MOVE_AWAY",
+    "action_ref": "MOVE_BACKWARD",
+    "control": "back",
+    "opt_in_required": false
+  },
+  "added_action": {
+    "candidate_ref": "MOVE_FORWARD",
+    "action_ref": "MOVE_FORWARD",
+    "control": "forward",
+    "opt_in_required": true,
+    "duration_s": 0.2
+  },
+  "common_effect": "set_control",
+  "common_cleanup": "clear_controls",
+  "native_actions_for_test": 2,
+  "source_mode": "S17_TEST_DOUBLE_MINEFLAYER_ONLY",
+  "signed_goal_label": false,
+  "physical_attestation": false,
+  "native_competing_same_world_causal_reward": false,
+  "production_s11_grant": false,
+  "durable_replay_authority": false,
+  "real_minecraft_run": false,
+  "production_go": false,
+  "claim_ceiling": "I7_DUAL_EXPLICIT_S15_ACTIONS_OFFLINE_FAKE_SOURCE_QUALIFIED"
+}

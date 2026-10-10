@@ -23,6 +23,9 @@ MOVE_BACKWARD_EFFECT = "set_control"
 MOVE_BACKWARD_CONTROL = "back"
 MOVE_BACKWARD_DURATION_S = 0.20
 MOVE_BACKWARD_MINIMUM_DISTANCE = 0.05
+MOVE_FORWARD_ACTION_REF = "MOVE_FORWARD"
+MOVE_FORWARD_CONTROL = "forward"
+MOVE_FORWARD_DURATION_S = 0.20
 
 
 class MineflayerExecutionError(ValueError):
@@ -70,6 +73,7 @@ class MineflayerCommand:
     state: bool
     duration_s: float
     cleanup_action_id: str
+    forward_opt_in: bool = False
 
     def __post_init__(self) -> None:
         _require_identifier("action_id", self.action_id)
@@ -78,21 +82,39 @@ class MineflayerCommand:
         _require_identifier("effect", self.effect)
         _require_identifier("control", self.control)
         _require_identifier("cleanup_action_id", self.cleanup_action_id)
-        if self.action_ref != MOVE_BACKWARD_ACTION_REF:
+        if type(self.forward_opt_in) is not bool:
+            raise InvalidMineflayerExecutionData("forward_opt_in must be bool")
+        if self.action_ref == MOVE_BACKWARD_ACTION_REF:
+            if self.forward_opt_in:
+                raise InvalidMineflayerExecutionData(
+                    "legacy MOVE_BACKWARD cannot carry forward opt-in"
+                )
+            required_control = MOVE_BACKWARD_CONTROL
+        elif self.action_ref == MOVE_FORWARD_ACTION_REF:
+            if not self.forward_opt_in:
+                raise InvalidMineflayerExecutionData(
+                    "MOVE_FORWARD requires explicit caller opt-in"
+                )
+            if type(self.duration_s) is not float or self.duration_s != MOVE_FORWARD_DURATION_S:
+                raise InvalidMineflayerExecutionData(
+                    "MOVE_FORWARD duration must be the fixed bounded 0.20s"
+                )
+            required_control = MOVE_FORWARD_CONTROL
+        else:
             raise InvalidMineflayerExecutionData(
                 f"unsupported S15 action_ref: {self.action_ref}"
             )
         if self.effect != MOVE_BACKWARD_EFFECT:
             raise InvalidMineflayerExecutionData(
-                "MOVE_BACKWARD command effect must be set_control"
+                f"{self.action_ref} command effect must be set_control"
             )
-        if self.control != MOVE_BACKWARD_CONTROL:
+        if self.control != required_control:
             raise InvalidMineflayerExecutionData(
-                "MOVE_BACKWARD command control must be back"
+                f"{self.action_ref} command control must be {required_control}"
             )
         if self.state is not True:
             raise InvalidMineflayerExecutionData(
-                "MOVE_BACKWARD command must enable backward control"
+                f"{self.action_ref} command must enable movement control"
             )
         _require_positive_number("duration_s", self.duration_s)
         if self.cleanup_action_id == self.action_id:
@@ -198,9 +220,13 @@ class WorldConsequence:
 def build_mineflayer_command(
     issued_action: ActionLifecycle,
     binding_result: ExecutionBindingResult,
+    *,
+    allow_forward: bool = False,
 ) -> MineflayerCommand:
     """Purely join exact Action authority with S14 physical-action binding."""
 
+    if type(allow_forward) is not bool:
+        raise InvalidMineflayerExecutionData("allow_forward must be bool")
     if not isinstance(issued_action, ActionLifecycle):
         raise InvalidMineflayerExecutionData(
             "issued_action must be ActionLifecycle"
@@ -233,7 +259,21 @@ def build_mineflayer_command(
         raise InvalidMineflayerExecutionData(
             "issued intent_id does not match ExecutionBindingResult"
         )
-    if binding_result.action_ref != MOVE_BACKWARD_ACTION_REF:
+    if binding_result.action_ref == MOVE_BACKWARD_ACTION_REF:
+        if allow_forward:
+            raise InvalidMineflayerExecutionData(
+                "forward opt-in cannot be transferred to legacy backward Action"
+            )
+        control = MOVE_BACKWARD_CONTROL
+        duration = MOVE_BACKWARD_DURATION_S
+    elif binding_result.action_ref == MOVE_FORWARD_ACTION_REF:
+        if not allow_forward or binding_result.candidate_ref != MOVE_FORWARD_ACTION_REF:
+            raise InvalidMineflayerExecutionData(
+                "MOVE_FORWARD needs exact admitted candidate and explicit opt-in"
+            )
+        control = MOVE_FORWARD_CONTROL
+        duration = MOVE_FORWARD_DURATION_S
+    else:
         raise InvalidMineflayerExecutionData(
             f"unsupported S15 action_ref: {binding_result.action_ref}"
         )
@@ -243,10 +283,11 @@ def build_mineflayer_command(
         binding_id=binding_result.binding_id,
         action_ref=binding_result.action_ref,
         effect=MOVE_BACKWARD_EFFECT,
-        control=MOVE_BACKWARD_CONTROL,
+        control=control,
         state=True,
-        duration_s=MOVE_BACKWARD_DURATION_S,
+        duration_s=duration,
         cleanup_action_id=f"{issued_action.action_id}-s15-clear",
+        forward_opt_in=allow_forward,
     )
 
 
@@ -257,7 +298,7 @@ async def execute_mineflayer_command(
     timeout_s: float = 2.0,
     provenance: Provenance,
 ) -> WorldConsequence:
-    """Execute one bounded MOVE_BACKWARD command with structured observation.
+    """Execute one already issued, strictly scoped movement command with evidence.
 
     The function owns no Action lifecycle state. It sends one explicit
     backward-control command, clears controls exactly once on the normal path,
@@ -309,7 +350,7 @@ async def execute_mineflayer_command(
         )
         if dispatch.result != "applied":
             raise MineflayerExecutionError(
-                "Mineflayer rejected MOVE_BACKWARD dispatch: "
+                f"Mineflayer rejected {command.action_ref} dispatch: "
                 f"{dispatch.error}"
             )
 
