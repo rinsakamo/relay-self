@@ -1,0 +1,41 @@
+{
+  "version": "AC-INTEGRATION-I6-S15-S16-S17-FOREIGN-HABIT-INTERLOCK-v1",
+  "issue": 529,
+  "base_i5": "7637f2369b4fa7fcf72abadd4fb378612d780612",
+  "i5_ci": 38038316517,
+  "b18_head": "616ae873c73cd87cd81cd3b79a7fc989a91eb6d7",
+  "b18_ci": 38039043328,
+  "c15_head": "5e738596b805522d8516b43fa1b7ee001bfc5b2b",
+  "c15_ci": 38039130042,
+  "s60b1_head": "66b8045fd2b47d9c35febb12c495379d1248bb4e",
+  "s60b1_ci": 38038917654,
+  "protected_main": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+  "native_s15_action_refs": [
+    "MOVE_BACKWARD"
+  ],
+  "native_shaped_s17_target": "risk_weight",
+  "s17_criterion_required": true,
+  "native_source_fixture": "S17_DETERMINISTIC_TEST_DOUBLE",
+  "b16_source_sessions": [
+    "b16-offline-clean",
+    "b16-offline-noisy"
+  ],
+  "b16_actions": [
+    0,
+    1
+  ],
+  "b16_competing_pairs_per_cue": 5,
+  "b16_matched_cheap_outcomes": {
+    "s11_success": 6,
+    "cheap_success": 6
+  },
+  "b18_cheap_q_matches": true,
+  "c15_spatial_label_signed": false,
+  "true_native_s15_competing_actions": false,
+  "physical_source_attested": false,
+  "s11_production_grant": false,
+  "durable_replay_ledger": false,
+  "measured_native_cost_benefit": false,
+  "production_go": false,
+  "classification": "I6_OFFLINE_NATIVE_SHAPED_LINEAGE_AND_FOREIGN_SOURCE_DENIAL_QUALIFIED"
+}
