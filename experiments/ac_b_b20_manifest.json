@@ -34,7 +34,7 @@
       "base": "8dd1f0cc115285293736f5d36950469d3866a9db",
       "ci_run": 38030776737,
       "classification": "EXPERIMENTAL_SIGNED_GRANT_WITH_DISJOINT_S17_SOURCE",
-      "source_type": "OFFLINE_LOCAL_TEST_WORLD",
+      "source_type": "DISJOINT_OFFLINE_S17_FAKE_AND_B11_SIM",
       "production_authority": false,
       "actual_llm_l2": false,
       "cheap_comparator_no_worse": true
@@ -161,5 +161,6 @@
     "No actual resource measurement",
     "Do not merge/change parent draft/source"
   ],
-  "terminal_if_verified": "B11_B19_BOUNDED_GRAND_NULL_SYNTHESIZED_WITH_EXPLICIT_POSITIVE_CONTROLS"
+  "terminal_if_verified": "B11_B19_BOUNDED_GRAND_NULL_SYNTHESIZED_WITH_EXPLICIT_POSITIVE_CONTROLS",
+  "prospective_amendment": "Pre-implementation precision correction: B12 source samples are independent fake-S17 and local B11 simulations, NOT a shared B11 World outcome. No source code/test/results existed at amendment."
 }
