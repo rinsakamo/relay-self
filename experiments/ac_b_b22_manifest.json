@@ -1,0 +1,42 @@
+{
+  "schema": "AC_B_B22_SQLITE_HABIT_OWNER_TRANSACTION_PROSPECTIVE_V1",
+  "owner": 540,
+  "parent_B": 431,
+  "parent_AC": 426,
+  "B21_pr": 536,
+  "B21_exact": "193febe5184142a70d5e55200e9c5d2ef0bef50b",
+  "main": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+  "pr_base": "self/ac-b-b21-typed-physical-source-boundary-20261010",
+  "implementation": "EXPERIMENT_ONLY SQLite retained S11 owner service, stdlib sqlite3 and HMAC, four B22 NEW files only",
+  "source_scope": "B22_OFFLINE_TEST_ONLY",
+  "grant": "separate offline HMAC signer; HMAC-SHA256 over domain-separated exact proposal with complete typed HabitRule/owner ID/prior revision/state seal/nonce/source digest/scope and boolean granted",
+  "storage": "one initial immutable HabitRepertoire owner per test sqlite path; canonical JSON with keyed state integrity seal; BEGIN IMMEDIATE, SQLite unique grant_id and owner/source_digest, CAS original owner revision+seal, rollback all on error, read-only native S11 selection after cold reopen",
+  "test_matrix": [
+    "cold reopen persistence",
+    "duplicate identical and new grant id same evidence",
+    "two independent sqlite connections stale CAS",
+    "wrong owner,revision,prior seal",
+    "denied grant/wrong key/forged HMAC/tampered fields",
+    "plain B11/B16/B18 or S10 authority not accepted",
+    "noncanonical duplicate/extra JSON rejected",
+    "typed S11 invalid/duplicate/collision fail closed",
+    "SQLite direct tamper without secret detected",
+    "rollback after replay insert leaves no source+grant consumed",
+    "original owner immutable",
+    "two independent competing writers at most one wins"
+  ],
+  "unqualified": [
+    "signed test grant source digest is caller supplied metadata, no verified S16/S17 physical origin",
+    "offline grant signer and SQLite writer both run in same Python process with caller held shared key",
+    "direct SQLite file write with key or B11 toy commit bypass cannot be prevented",
+    "not OS process isolation/ACL/independent verifier/production S11",
+    "no crash/power-off durability qualification",
+    "no L2/LLM/GPU/Minecraft World or real body-cost data"
+  ],
+  "terminal": [
+    "B22_SQLITE_OWNER_ATOMIC_REPLAY_GUARD_QUALIFIED_TEST_ONLY",
+    "NO_PRODUCTION_EXCLUSIVE_S11_AUTHORITY",
+    "NO_REAL_PHYSICAL_WORLD_SOURCE",
+    "NO_AUTONOMOUS_L2_TO_L1_DISTILLATION"
+  ]
+}
