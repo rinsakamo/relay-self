@@ -159,6 +159,16 @@ def test_wrong_source_stale_revision_forged_history_and_missing_event_fail_close
     with pytest.raises(e2.ContractError, match="second epoch"):
         e2.choose_second(e2.FixtureWorld(e2.Case("NORMAL", 0)),
                          e2.FixtureWorld(e2.Case("NORMAL", 0)).project())
+    # bool==1 must not launder a forged revision or observed signal.
+    w1 = e2.FixtureWorld(e2.Case("NORMAL", 1))
+    fresh = w1.observe(w1.project())
+    with pytest.raises(e2.ContractError, match="stale or forged"):
+        w1.validate(replace(fresh, source_revision=True))
+    values = list(fresh.facts)
+    signal_index = next(i for i, fact in enumerate(values) if fact.key == "observed_signal")
+    values[signal_index] = replace(values[signal_index], value=True)
+    with pytest.raises(e2.ContractError, match="source integer"):
+        w1.validate(replace(fresh, facts=tuple(values)))
 
 
 def test_forecast_horizon_brier_and_hidden_outcome_separation():
@@ -168,6 +178,7 @@ def test_forecast_horizon_brier_and_hidden_outcome_separation():
         f0 = e2.forecast(w, e0)
         assert tuple(f.action for f in f0) == ("DIRECT", "DETOUR", "OBSERVE")
         assert tuple(f.horizon for f in f0) == (1, 1, 2)
+        assert f0[2].probability_hazard is None  # OBSERVE is not a route
         p0 = f0[0].probability_hazard
         if case.rule in ("NORMAL", "REVERSE"):
             assert p0 == Fraction(1, 2)
