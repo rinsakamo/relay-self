@@ -138,7 +138,7 @@ def parse_grant(raw: str) -> SignedHabitGrant:
         obj = json.loads(raw, object_pairs_hook=_unique_pairs)
     except (TypeError, ValueError) as exc:
         raise InvalidIndependentHabitGrant("invalid JSON grant") from exc
-    if type(obj) is not dict or set(obj) != SignedHabitGrant.__dataclass_fields__:
+    if type(obj) is not dict or set(obj) != set(SignedHabitGrant.__dataclass_fields__):
         raise InvalidIndependentHabitGrant("wrong signed grant fields")
     ids = obj["observed_ids"]
     if type(ids) is not list or len(ids) != 2 or not all(
