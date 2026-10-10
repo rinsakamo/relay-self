@@ -10,6 +10,7 @@ import json
 from dataclasses import dataclass
 from enum import Enum
 from hashlib import sha256
+from types import MappingProxyType
 
 from relay_self.persistent_cognition import (
     IdentitySpecification,
@@ -163,7 +164,7 @@ class SourceLedger:
                 _binary(name, getattr(receipt, name))
             seen_ids.add(receipt.event_id)
             indexed[receipt.source_provenance] = receipt
-        self.by_source = indexed
+        self.by_source = MappingProxyType(indexed)
 
     def verify_pointer(self, pointer: Provenance) -> WorldReceipt:
         if not isinstance(pointer, Provenance):
@@ -198,7 +199,7 @@ class MemoryProjection:
         self.session, self.revision = session, revision
         self.quarantined = quarantined
         self.records: tuple[tuple[Memory, WorldReceipt], ...] = ()
-        self.by_tag: dict[tuple[int, int], tuple[tuple[Memory, WorldReceipt], ...]] = {}
+        self.by_tag = MappingProxyType({})
         self.build_work = 0
         if ledger is None:
             return
@@ -224,7 +225,7 @@ class MemoryProjection:
         for record in self.records:
             event = record[1]
             tagged.setdefault((event.a, event.b), []).append(record)
-        self.by_tag = {k: tuple(v) for k, v in tagged.items()}
+        self.by_tag = MappingProxyType({k: tuple(v) for k, v in tagged.items()})
         self.build_work = len(self.records)
 
     def query(
