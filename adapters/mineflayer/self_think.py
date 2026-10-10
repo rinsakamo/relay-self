@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import math
 import time
-from collections.abc import Mapping
 from typing import Any
 
 from adapters.mineflayer.s60b1_loopback_adapter import (
