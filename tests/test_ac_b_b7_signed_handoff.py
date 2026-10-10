@@ -1,7 +1,11 @@
 """Prospective B7 signed World evidence + separate handoff authority gates."""
 import json
+import os
 import secrets
+import subprocess
+import sys
 from dataclasses import asdict, replace
+from pathlib import Path
 
 import pytest
 
@@ -365,3 +369,64 @@ def test_frozen_terminal_fixture_and_cost_boundary():
     assert result["silent_observed_mismatch_quarantined"]
     assert result["source_actions_during_draft_queries"] == 0
     assert "watts" not in result and "llm_tokens" not in result
+
+
+def test_genuine_fresh_python_process_rehydrates_source_proof_and_grants(tmp_path):
+    """Actual new interpreter receives keys/epoch separately via trusted test IPC."""
+    world, _, receipts, owner, _, _, source_key, grant_key = fixture()
+    root = Path(__file__).resolve().parents[1]
+    persisted_owner = tmp_path / "owner.json"
+    persisted_source = tmp_path / "signed-observed-receipts.json"
+    save_persistent_cognition(persisted_owner, owner)
+    persisted_source.write_text(encode_receipts(receipts), encoding="utf-8")
+    assert source_key.hex() not in persisted_owner.read_text(encoding="utf-8")
+    assert grant_key.hex() not in persisted_source.read_text(encoding="utf-8")
+    # Separate process cannot access original in-memory receipt identity,
+    # and does not have a running World simulator or access to its hidden rule.
+    child = """
+import json
+import sys
+from relay_self.persistent_cognition import load_persistent_cognition
+from experiments.ac_b_b7_signed_handoff import (
+    CONTEXTS, CurrentEpoch, EvidenceVerifier, HandoffGate,
+    ReadOnlyBridge, Status, decode_receipts,
+)
+data = json.loads(sys.stdin.read())
+epoch = CurrentEpoch(data["session"], data["revision"])
+owner = load_persistent_cognition(data["owner_file"])
+with open(data["receipt_file"], encoding="utf-8") as stream:
+    sidecar = decode_receipts(stream.read())
+bridge = ReadOnlyBridge(owner, sidecar, EvidenceVerifier(bytes.fromhex(data["source_key"]), epoch))
+gate = HandoffGate(bytes.fromhex(data["grant_key"]), epoch)
+outputs = []
+for a, b in CONTEXTS:
+    d = bridge.draft(a, b, target_id="b7-target",
+                     session=epoch.session, revision=epoch.revision)
+    no_grant = gate.admit(bridge, d, None)
+    granted = gate.admit(bridge, d, gate.issue(d.draft))
+    outputs.append((d.draft.action, no_grant.status.value, granted.status.value))
+print(json.dumps(outputs))
+"""
+    request = {
+        "session": world.session, "revision": world.revision,
+        "source_key": source_key.hex(), "grant_key": grant_key.hex(),
+        "owner_file": str(persisted_owner),
+        "receipt_file": str(persisted_source),
+    }
+    env = os.environ.copy()
+    env["PYTHONPATH"] = (
+        str(root) + os.pathsep + str(root / "src")
+        + os.pathsep + env.get("PYTHONPATH", "")
+    )
+    child_result = subprocess.run(
+        [sys.executable, "-c", child],
+        input=json.dumps(request), text=True,
+        capture_output=True, env=env, timeout=15, check=True,
+    )
+    assert json.loads(child_result.stdout) == [
+        [0, "DENIED", "ADMITTED"],
+        [1, "DENIED", "ADMITTED"],
+        [1, "DENIED", "ADMITTED"],
+        [0, "DENIED", "ADMITTED"],
+    ]
+    assert world.action_count == 8  # child never called the original World
