@@ -1,0 +1,56 @@
+{
+  "schema": "AC_B_B26_PROSPECTIVE_ACTUAL_LOCAL_L2_PROPOSAL_V1",
+  "owner": 554,
+  "parents": {
+    "B": 431,
+    "AC": 426,
+    "B25_issue": 552,
+    "B25_draft": 553,
+    "B25_exact_head": "f155d01f46ce273611b6073c949a45738a7cf049",
+    "branch_base": "self/ac-b-b25-discriminating-first-action-20261010",
+    "main": "4348a614900c1d0828581a8eec2c523ba5ae237f"
+  },
+  "model_gate": {
+    "network": "ONLY explicit opt-in --run-local-l2; localhost 127.0.0.1 or ::1 OpenAI-compatible POST /v1/chat/completions; never CI",
+    "calls": 1,
+    "retries": 0,
+    "response": "STRICT JSON {coefficients:[16 binary ints]}, no extra keys; reject train mismatch, missing, duplicate, wrong shape, bool coefficients or markdown text; fail closed",
+    "prompt": "Exactly 11 actual source-observed original World Action successes with 4 binary cue features, neutral 16-term algebraic normal form ordered masks 0..15, no hidden source label, NORMAL/TWIN name, gifted H1 formula, unseen target labels or heldout cues",
+    "model": "Must capture user-supplied actual model name, usage if supplied, exact raw response and error without relabeling synthetic as real"
+  },
+  "world": {
+    "base": "B24 local offline StructuralWorld (not Minecraft)",
+    "training": "11 source-confirmed binary contexts weight<=2, 16 actually executed World Actions/arm, retry action1 only after observed failure",
+    "heldout": "five weight>=3 previously unobserved relevant cue combinations, actual World.act first predicted Action and fallback only after failure, no hidden evaluator before choice",
+    "conditions": [
+      "NORMAL",
+      "TWIN"
+    ],
+    "arms": [
+      "LOCAL_L2_FROZEN_PROPOSAL",
+      "CHEAP_DEG2"
+    ],
+    "source": "independent World instances each arm; same exogenous training sequence, not identical Action objects",
+    "proposal": "one and same frozen 16-coefficient vector applied to both conditions, cannot know world identity from equal source training",
+    "cheap": "degree<=2 finite differences with high-order coefficient 0; same original 11 source examples, 16 ANF representational capacity",
+    "decision": "source success/failure actually issued, no source truth peeking or imagined opposite"
+  },
+  "testing": "GitHub CI injects only deterministic FAKE candidate vectors to qualify interface, never represents generated model results",
+  "result_rule": "NORMAL and TWIN novel-first accuracies of ANY SAME frozen polynomial sum to5. No model can guarantee both given identical training; independent real local L2 call required for scientific trial.",
+  "terms": [
+    "NO_ACTUAL_LOCAL_L2_RUN_IN_CI",
+    "NO_GIFTED_H1_STRUCTURE_OR_WORLD_LABEL_IN_PROMPT",
+    "NO_PRODUCTION_S11_HABIT_ACQUISITION",
+    "NO_REAL_MINECRAFT_OR_S16_S17",
+    "NO_L2_PHYSICAL_RESOURCE_CLAIM",
+    "NO_B22_SECURITY_INHERITANCE",
+    "NO_FROZEN_S10_S11_S17_OR_OLDER_B_EDITS"
+  ],
+  "terminal_if_qualified": [
+    "B26_LOCAL_L2_PROPOSAL_RUNNER_QUALIFIED_NON_GENERATIVE",
+    "CHEAP_DEG2_SOURCE_MATCHED",
+    "IDENTICAL_TRAINING_REMAINS_UNDERDETERMINED",
+    "ACTUAL_LOCAL_L2_NOT_YET_EXECUTED",
+    "NOT_PHYSICAL_MINECRAFT_OR_PRODUCTION_S11"
+  ]
+}
