@@ -7,7 +7,7 @@ No production, Mineflayer, LLM, or sibling Draft imports.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from enum import Enum
 from hashlib import sha256
 from types import MappingProxyType
