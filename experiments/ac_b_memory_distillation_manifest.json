@@ -1,0 +1,88 @@
+{
+  "version": "AC-B-RETRIEVAL-DISTILLATION-v1",
+  "authority": {
+    "parent_issue": 431,
+    "implementation_issue": 435,
+    "freeze_comment": 6091176016,
+    "main_commit": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "main_tree": "7816055966dd520b6690de7662a267047e57ccc0"
+  },
+  "scope": "offline Python deterministic World; no LLM, Minecraft, production authority, or borrowed sibling Draft",
+  "world": {
+    "sessions": [
+      "session-b"
+    ],
+    "actions": [
+      0,
+      1
+    ],
+    "features": [
+      "a",
+      "b",
+      "weather"
+    ],
+    "rule": "success iff action==(a XOR b XOR regime); regime never passed to learner",
+    "train": {
+      "weather": 0,
+      "cases": 4,
+      "actions_per_case": 2
+    },
+    "qualification": {
+      "weather": 1,
+      "cases": 4,
+      "actions_per_case": 2
+    },
+    "heldout": {
+      "weather": 2,
+      "cases": 4,
+      "actions_per_case": 1
+    },
+    "shift": {
+      "increment_world_revision": true,
+      "flip_regime": true,
+      "weather": 3
+    }
+  },
+  "comparators": [
+    "no_retention_action0",
+    "exact_full_cue_case",
+    "cheap_four_hypothesis_family",
+    "tags_plus_conditioned_habit",
+    "expensive_two_world_probes"
+  ],
+  "retrieval": [
+    "full_scan",
+    "tags",
+    "tags_typed_graph"
+  ],
+  "typed_edges": [
+    "ASSOCIATED_WITH",
+    "OBSERVED_TRANSITION",
+    "CAUSAL_HYPOTHESIS",
+    "HABIT_CANDIDATE"
+  ],
+  "admissibility": "world receipt witness exact identity/digest; same session/revision; observed only; hypothesis never grounds a policy",
+  "gate": "for each (a,b), 1 unique successful and 1 unique failed candidate in training and independent validation, agreeing; otherwise no candidate",
+  "negative_controls": [
+    "forged",
+    "wrong_session",
+    "stale_revision",
+    "duplicate",
+    "contradiction",
+    "hypothesis_laundering",
+    "graph_cross_session",
+    "shift_reescalation",
+    "silent_mismatch_quarantine",
+    "unseen_context"
+  ],
+  "outcomes": [
+    "retrieval_equal_evidence",
+    "graph_incremental_gain_or_null",
+    "heldout_accuracy",
+    "coverage",
+    "world_probe_count",
+    "work_operations",
+    "recovery_actions"
+  ],
+  "expected_interpretation": "cheap typed projection/rules may suffice; do not conclude LLM learning, graph benefit, physical energy saving, or L0 promotion"
+}
