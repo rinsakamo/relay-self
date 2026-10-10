@@ -7,7 +7,6 @@ from experiments.ac_c_c10_online import (
     ARMS,
     MANIFEST_SHA,
     Belief,
-    Evidence,
     HiddenCase,
     InspectReceipt,
     World,
