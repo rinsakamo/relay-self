@@ -114,7 +114,7 @@ class DeterministicWorld:
             raise EvidenceError("not an Episode")
         if (
             episode.kind != "OBSERVED"
-            or self._ledger.get(episode.episode_id) != episode
+            or self._ledger.get(episode.episode_id) is not episode
             or not episode.outcome_ref.startswith("offline-world:")
         ):
             raise EvidenceError("outcome is not exactly source-qualified")
