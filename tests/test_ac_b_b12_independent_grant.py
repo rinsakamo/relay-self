@@ -20,12 +20,11 @@ from experiments.ac_b_b11_governed_habit import (
     propose_habit,
 )
 from experiments.ac_b_b12_independent_grant import (
-    NO_SHARED_SOURCE,
     GRANT_KIND,
+    NO_SHARED_SOURCE,
     IndependentS11Admission,
     InvalidIndependentHabitGrant,
     OfflineIndependentS11Issuer,
-    SignedHabitGrant,
     inspect_real_s10_nontransfer,
     parse_grant,
     serialize_grant,
@@ -34,7 +33,7 @@ from relay_self.action_feedback import (
     LearningFeedbackInterpretationStatus,
     interpret_action_outcome_as_learning_feedback,
 )
-from relay_self.habit import HabitRule, HabitRepertoire, CueFeature, select_habit
+from relay_self.habit import CueFeature, HabitRepertoire, HabitRule, select_habit
 from relay_self.learning import (
     LearningCommitResult,
     LearningUpdateAuthority,
