@@ -51,6 +51,69 @@ def _regular(path: Path, *, executable: bool = False) -> Path:
     return item
 
 
+def _preflight_mineflayer_dependencies() -> dict[str, str]:
+    """Verify actual bridge-context Node imports, BEFORE llama/GPU/Java launch.
+
+    Node's package resolution follows module realpaths. Merely finding a
+    mineflayer/package.json via a symlink does not qualify its transitive
+    minecraft-protocol dependency. No bot or Minecraft connection is made.
+    """
+    folder = Path(__file__).resolve().parent
+    bridge = folder / "bridge.mjs"
+    modules = folder / "node_modules"
+    if (not bridge.is_file() or bridge.is_symlink()
+            or not modules.is_dir() or modules.is_symlink()):
+        raise OwnedModelRejected(
+            "actual worktree bridge and physical node_modules required; "
+            "run npm ci --prefix adapters/mineflayer in this checkout"
+        )
+    # Execute actual module imports from this bridge's own URL and the
+    # resolved Mineflayer package realpath; no shell or network operations.
+    bridge_literal = json.dumps(str(bridge), ensure_ascii=True)
+    probe = (
+        "const {createRequire}=require('node:module');"
+        f"const root=createRequire({bridge_literal});"
+        "const mf=root('mineflayer');"
+        "const pkg=root('mineflayer/package.json');"
+        "if(pkg.version!=='4.39.0'||typeof mf.createBot!=='function')"
+        "{process.exit(21)};"
+        "const internal=createRequire(root.resolve('mineflayer'));"
+        "const protocol=internal('minecraft-protocol');"
+        "if(!protocol||typeof protocol!=='object'){process.exit(22)};"
+        "process.stdout.write(JSON.stringify({"
+        "mineflayer:pkg.version,"
+        "mineflayer_entry:require('node:fs').realpathSync(root.resolve('mineflayer')),"
+        "minecraft_protocol_entry:"
+        "require('node:fs').realpathSync(internal.resolve('minecraft-protocol'))"
+        "}));"
+    )
+    try:
+        done = subprocess.run(
+            ["node", "-e", probe], cwd=folder, check=False,
+            capture_output=True, text=True, timeout=12,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise OwnedModelRejected(
+            "Mineflayer bridge-relative module import preflight unavailable"
+        ) from exc
+    if done.returncode != 0 or len(done.stdout) > 4096:
+        raise OwnedModelRejected(
+            "Mineflayer/ minecraft-protocol import failed from actual "
+            "bridge path; npm ci into this worktree, do not symlink node_modules"
+        )
+    try:
+        value = json.loads(done.stdout)
+        if (value["mineflayer"] != "4.39.0"
+                or not Path(value["mineflayer_entry"]).is_file()
+                or not Path(value["minecraft_protocol_entry"]).is_file()):
+            raise ValueError("inconsistent resolved module paths")
+    except (ValueError, KeyError, TypeError) as exc:
+        raise OwnedModelRejected(
+            "Mineflayer bridge-relative dependency evidence invalid"
+        ) from exc
+    return value
+
+
 def _free_loopback(port: int) -> None:
     # A preflight, not a retained reservation: the process is checked as alive
     # after model/model-ID probing. Never connect to a pre-existing service.
@@ -161,6 +224,8 @@ def main(argv: list[str] | None = None) -> int:
             raise OwnedModelRejected("NODE_OPTIONS shim is forbidden")
         if not __import__("shutil").which("java") or not __import__("shutil").which("node"):
             raise OwnedModelRejected("Java and Node missing")
+        # Mandatory BEFORE expensive GGUF hash, model spawn and World startup.
+        node_deps = _preflight_mineflayer_dependencies()
         binary = _regular(args.llama_server, executable=True)
         gguf = _regular(args.gguf)
         if gguf.suffix.lower() != ".gguf":
@@ -193,6 +258,7 @@ def main(argv: list[str] | None = None) -> int:
         "stop_ack": False, "gpu_release_verified": False,
         "backend_model_identity_attested": False,
         "physical_minecraft_outcome_attested_by_wrapper": False,
+        "node_bridge_dependency_preflight": node_deps,
         "model_process_launched": False, "minecraft_launch_attempted": False,
     }
     process: subprocess.Popen | None = None
