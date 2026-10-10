@@ -1,0 +1,80 @@
+{
+  "version": "AC-INTEGRATION-I4-SIMULATOR-ACTION-CLOSURE-v1",
+  "owner_issue": 511,
+  "base_b15": "68f23eb7b51cf761c6f8eccc575fc2749a55755c",
+  "b15_ci": 38035317588,
+  "protected_main": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+  "b11_source_session": "b11-sim-world",
+  "source_revision": 0,
+  "phases": [
+    0,
+    1,
+    2
+  ],
+  "phase_rule": [
+    "XOR0_CLEAN",
+    "SILENT_XOR1",
+    "XOR1_WITH_REPORTED_NOISE"
+  ],
+  "delays": [
+    2,
+    0,
+    3,
+    1,
+    2,
+    0,
+    3,
+    1
+  ],
+  "checkpoints": [
+    0,
+    9
+  ],
+  "contexts": [
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      1,
+      0
+    ],
+    [
+      1,
+      1
+    ]
+  ],
+  "arms": [
+    "HABIT",
+    "CHEAP_TAG"
+  ],
+  "expected_training_world_actions": 24,
+  "expected_followup_world_actions": 38,
+  "expected_all_world_actions": 62,
+  "expected_per_arm_coverage": 19,
+  "expected_per_arm_successes": 14,
+  "phase_followup_counts": [
+    8,
+    16,
+    14
+  ],
+  "phase_per_arm_success": [
+    4,
+    4,
+    6
+  ],
+  "source_witness": "B11_CURRENTWORLD_EXACT_LOCAL_OBJECT_IDENTITY",
+  "eval_receipts_feed_training": false,
+  "physical_minecraft": false,
+  "action_supervisor_issued": false,
+  "production_s11_owner": false,
+  "native_s16_s17_join": false,
+  "actual_l2_executed": false,
+  "measured_resource_advantage": false,
+  "production_go": false,
+  "terminal": "I4_SIMULATOR_L1_ACTION_OUTCOME_CLOSED_CHEAP_PARITY"
+}
