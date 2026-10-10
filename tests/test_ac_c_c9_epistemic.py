@@ -9,6 +9,7 @@ from experiments.ac_c_c9_epistemic import (
     CalibrationWorld,
     Case,
     E0,
+    InspectReceipt,
     World,
     cfg,
     cheap_heuristic,
@@ -165,7 +166,7 @@ def test_failure_second_action_cannot_be_issued_before_first_consumption():
         w.issue_second(e, first, "NORMAL_FLIP")
     w.consume_first(e, first)
     with pytest.raises(ValueError, match="UNPAID"):
-        w.issue_second(e, first, "NORMAL_FLIP", inspect=World(case("other"))._inspect)
+        w.issue_second(e, first, "NORMAL_FLIP", inspect=InspectReceipt("other", "forged", True, 2))
 
 
 def test_health_time_and_inspector_budget_is_hard_viability():
