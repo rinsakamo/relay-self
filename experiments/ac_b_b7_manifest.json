@@ -1,0 +1,98 @@
+{
+  "version": "AC-B-B7-DUAL-WITNESS-GATE-v1",
+  "authority": {
+    "issue": 455,
+    "parent": 431,
+    "main_sha": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "main_tree": "7816055966dd520b6690de7662a267047e57ccc0",
+    "unmerged_refs": {
+      "S10": "#346:897ada1afb956b900841e92479606aa8abd7a950",
+      "S11": "#347:0095d30fd004a62c6b05bb469751a8624e846b4b",
+      "S17": "#353:64868337510a960c140e96d5d3d20949ad53fb8e",
+      "B6": "#453"
+    }
+  },
+  "world": {
+    "session": "b7-world",
+    "rule_evaluator_only": "action == (a XOR b XOR flip)",
+    "contexts": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "actions": [
+      0,
+      1
+    ],
+    "observed_receipts_per_epoch": 8,
+    "revision_initial": 0,
+    "requalification_actions": 8,
+    "silent_shift_detect_after_observed_mismatch_only": true
+  },
+  "cryptographic_fixture": {
+    "source": "HMAC-SHA256 over canonically encoded exact observed Action payload, independent source key",
+    "grant": "separate independent HMAC-SHA256 exact scoped grant, fresh random nonce",
+    "key_bytes": 32,
+    "retained_memory_contains_secrets": false,
+    "source_bundle_contains_secrets": false,
+    "source_verifier_epoch_source": "separately trusted current revision oracle",
+    "limitations": "shared-secret toy, not public-key/prod multi-process attestation; no cross-process replay prevention without persisted authoritative grant state"
+  },
+  "mainline": "explicit fixture retention and unchanged PersistentCognition save/load with source and integration provenance; read-only projection imports only mainline types",
+  "sidecar": "JSON canonical, exact keys, duplicate key rejection, fresh Python objects reverified without relying on object identity",
+  "handoff": "schema-only LRN/HABIT projection with exactly two observed action receipts, candidate ref and source IDs; no real S10/S11/S17 calls, no Action issuance or retention mutation",
+  "positive": {
+    "complete_drafts": 4,
+    "denied_without_grant": 4,
+    "admitted_with_four_independent_exact_grants": 4,
+    "reloaded_evidence_proposal_equivalence": 4,
+    "stale_grants_after_shift": 4,
+    "requalification_actions": 8,
+    "silent_quarantine": 1
+  },
+  "negative_controls": [
+    "missing source witness/key",
+    "wrong source key",
+    "wrong grant key",
+    "forged receipt/digest/HMAC",
+    "duplicate source event",
+    "extra/duplicate JSON keys",
+    "invalid binary types and kind",
+    "predicted text not observed",
+    "incomplete opposite action",
+    "contradictory same-key events",
+    "duplicate retained source alias",
+    "wrong session/revision",
+    "rollback to stale epoch",
+    "no explicit grant",
+    "granted=true without valid HMAC",
+    "revoked/replayed nonce",
+    "wrong target or source IDs/action candidate",
+    "misleading Memory content/integration",
+    "silent same-revision mismatch after new observed Action",
+    "no owner mutation"
+  ],
+  "result": "SERIALIZED_SOURCE_AND_EXPLICIT_HANDOFF_GATE_QUALIFIED only within the offline fixture, else NO_WITNESS_NO_HANDOFF/UNDETERMINED",
+  "exclusions": [
+    "production source owner",
+    "real S10/S11/S17 import/write",
+    "L0",
+    "GGUF/GPU/LLM/Minecraft physical test",
+    "RelayTheory/Paper2",
+    "Lane A/C edits",
+    "merge"
+  ]
+}
