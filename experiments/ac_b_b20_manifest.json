@@ -1,0 +1,165 @@
+{
+  "schema": "AC_B_B20_B11_B19_EVIDENCE_SYNTHESIS_V1",
+  "authority": {
+    "issue": 533,
+    "parent_lane_B": 431,
+    "parent_AC": 426,
+    "read_only_lane_C": 432,
+    "main": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "S17": "64868337510a960c140e96d5d3d20949ad53fb8e",
+    "B19_exact": "20efc7ea5c35c556f6d83907357c418d3501cfa8",
+    "pr_base_branch": "self/ac-b-b19-resource-vs-epistemic-value-20261010",
+    "C15_static_endpoint_PR": 525,
+    "C15_static_head": "5e738596b805522d8516b43fa1b7ee001bfc5b2b"
+  },
+  "prospective_entries": [
+    {
+      "step": "B11",
+      "issue": 481,
+      "pr": 485,
+      "head": "8dd1f0cc115285293736f5d36950469d3866a9db",
+      "base": "64868337510a960c140e96d5d3d20949ad53fb8e",
+      "ci_run": 38030146847,
+      "classification": "CHEAP_TAG_TIE",
+      "source_type": "OFFLINE_LOCAL_TEST_WORLD",
+      "production_authority": false,
+      "actual_llm_l2": false,
+      "cheap_comparator_no_worse": true
+    },
+    {
+      "step": "B12",
+      "issue": 489,
+      "pr": 491,
+      "head": "33686285cd2ffe5865538fd11113c8736f6c36a4",
+      "base": "8dd1f0cc115285293736f5d36950469d3866a9db",
+      "ci_run": 38030776737,
+      "classification": "EXPERIMENTAL_SIGNED_GRANT_WITH_DISJOINT_S17_SOURCE",
+      "source_type": "OFFLINE_LOCAL_TEST_WORLD",
+      "production_authority": false,
+      "actual_llm_l2": false,
+      "cheap_comparator_no_worse": true
+    },
+    {
+      "step": "B13",
+      "issue": 493,
+      "pr": 496,
+      "head": "71affb6fd5bbbdc9b41ee245ab1d6f46d2307ab0",
+      "base": "33686285cd2ffe5865538fd11113c8736f6c36a4",
+      "ci_run": 38031339497,
+      "classification": "SHARED_SIMULATOR_S10_S11_ADMISSION_NOT_CAUSATION",
+      "source_type": "OFFLINE_LOCAL_TEST_WORLD",
+      "production_authority": false,
+      "actual_llm_l2": false,
+      "cheap_comparator_no_worse": true
+    },
+    {
+      "step": "B14",
+      "issue": 498,
+      "pr": 501,
+      "head": "7edbc294778494f4c1585a2db94f8bc36a607a6a",
+      "base": "71affb6fd5bbbdc9b41ee245ab1d6f46d2307ab0",
+      "ci_run": 38033351256,
+      "classification": "CHEAP_TAG_MATCHES_HABIT_READAPTATION",
+      "source_type": "OFFLINE_LOCAL_TEST_WORLD",
+      "production_authority": false,
+      "actual_llm_l2": false,
+      "cheap_comparator_no_worse": true
+    },
+    {
+      "step": "B15",
+      "issue": 504,
+      "pr": 506,
+      "head": "68f23eb7b51cf761c6f8eccc575fc2749a55755c",
+      "base": "7edbc294778494f4c1585a2db94f8bc36a607a6a",
+      "ci_run": 38035317588,
+      "classification": "NOISY_SILENT_CHANGE_CHEAP_TIE_FALSE_ALARM",
+      "source_type": "OFFLINE_LOCAL_TEST_WORLD",
+      "production_authority": false,
+      "actual_llm_l2": false,
+      "cheap_comparator_no_worse": true
+    },
+    {
+      "step": "B16",
+      "issue": 508,
+      "pr": 510,
+      "head": "f4e31933c464f9b39f854dd2408134544d3f9f76",
+      "base": "68f23eb7b51cf761c6f8eccc575fc2749a55755c",
+      "ci_run": 38036245443,
+      "classification": "CHEAP_QUORUM_GAIN_OVER_ONE_SHOT_AND_TIE_S10",
+      "source_type": "OFFLINE_LOCAL_TEST_WORLD",
+      "production_authority": false,
+      "actual_llm_l2": false,
+      "cheap_comparator_no_worse": true
+    },
+    {
+      "step": "B17",
+      "issue": 517,
+      "pr": 520,
+      "head": "c299b8b57a9e5d16e740f3ad8459c84181a0e865",
+      "base": "f4e31933c464f9b39f854dd2408134544d3f9f76",
+      "ci_run": 38038315538,
+      "classification": "CHEAP_EARLY_STOP_SOURCE_DIVERSITY_POSITIVE_NO_S10_GAIN",
+      "source_type": "OFFLINE_LOCAL_TEST_WORLD",
+      "production_authority": false,
+      "actual_llm_l2": false,
+      "cheap_comparator_no_worse": true
+    },
+    {
+      "step": "B18",
+      "issue": 521,
+      "pr": 524,
+      "head": "616ae873c73cd87cd81cd3b79a7fc989a91eb6d7",
+      "base": "c299b8b57a9e5d16e740f3ad8459c84181a0e865",
+      "ci_run": 38039043328,
+      "classification": "CHEAP_EMPIRICAL_Q_RISK_ADAPTATION_AND_S11_TIE",
+      "source_type": "OFFLINE_LOCAL_TEST_WORLD",
+      "production_authority": false,
+      "actual_llm_l2": false,
+      "cheap_comparator_no_worse": true
+    },
+    {
+      "step": "B19",
+      "issue": 527,
+      "pr": 530,
+      "head": "20efc7ea5c35c556f6d83907357c418d3501cfa8",
+      "base": "616ae873c73cd87cd81cd3b79a7fc989a91eb6d7",
+      "ci_run": 38042242916,
+      "classification": "INFORMATION_NEUTRAL_THINK_COST_DOMINATED_CHEAP_TIE",
+      "source_type": "OFFLINE_LOCAL_TEST_WORLD",
+      "production_authority": false,
+      "actual_llm_l2": false,
+      "cheap_comparator_no_worse": true
+    }
+  ],
+  "bounded_generic_positive": [
+    "B16_4_OF_5_QUORUM_BEATS_FIRST_SHOT_UNDER_FIXED_NOISE",
+    "B17_DECISION_DETERMINACY_REDUCES_SOURCE_ACTIONS",
+    "B17_SECOND_TEST_SOURCE_TURNS_WRONG_DECISION_INTO_ABSTENTION_UNDER_ASSUMED_CLEAN_CHANNEL",
+    "B18_CHEAP_Q_LEARNS_RISK_COST_DEPENDENT_QUERY_CHOICE",
+    "B19_WORK_TICK_REACCOUNTING_CAN_REVERSE_SOURCE_ONLY_QUERY_ADVANTAGE"
+  ],
+  "disallowed_promotions": [
+    "PROMOTE_PRODUCTION_HABIT_OWNER",
+    "VERIFIED_S17_TO_S11_PHYSICAL_BRIDGE",
+    "LIVE_L2_RESOURCE_GAIN",
+    "VERIFIED_L2_TO_L1_DISTILLATION",
+    "L0_REFLEX_COMPILE"
+  ],
+  "pending_physical_prerequisites": [
+    "AUTHENTICATED_COMMON_PHYSICAL_ACTION_OUTCOME",
+    "NON_BYPASSABLE_PRODUCTION_S11_OWNER",
+    "CAUSALLY_DISCRIMINATING_HELDOUT_L2_VS_CHEAP",
+    "MEASURED_COMPUTE_AND_CALIBRATED_BODY_COST_FOR_COST_CLAIMS"
+  ],
+  "interpretation": "All B11–B19 draft arms remain offline-source qualified only, read-only frozen S11 owner; extra native S10 gate is not demonstrated to improve decisions vs exact cheapest controls. B16–B18 cheap mechanisms DO have bounded positive findings versus weaker controls.",
+  "limits": [
+    "No L0 or actual L2/GPU/Minecraft inference",
+    "Different simulated source World object IDs not trusted independent sensors",
+    "All S11 grants experiment-only forgeable or bypassable",
+    "S10 typed commits are not cryptographic independent owner receipts",
+    "C15 static positional endpoint is not signed action goal proof",
+    "No actual resource measurement",
+    "Do not merge/change parent draft/source"
+  ],
+  "terminal_if_verified": "B11_B19_BOUNDED_GRAND_NULL_SYNTHESIZED_WITH_EXPLICIT_POSITIVE_CONTROLS"
+}
