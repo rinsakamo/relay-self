@@ -1,0 +1,62 @@
+{
+  "schema": "AC_B_B21_TYPED_S17_S10_C15_SOURCE_BOUNDARY_V1",
+  "authority": {
+    "issue": 535,
+    "lane_B": 431,
+    "parent": 426,
+    "lane_C_readonly": 432,
+    "C15_issue": 522,
+    "C15_draft_pr": 525,
+    "C15_draft_head": "5e738596b805522d8516b43fa1b7ee001bfc5b2b",
+    "B20_pr": 534,
+    "B20_exact_head": "71695a872b89d859dda60c8cb2ccd32241470efa",
+    "main": "4348a614900c1d0828581a8eec2c523ba5ae237f"
+  },
+  "inputs": {
+    "real_code": [
+      "ActionLifecycle",
+      "ActionOutcomeInterpretation",
+      "LearningFeedbackInterpretation",
+      "LearningCommitResult",
+      "HabitRepertoire"
+    ],
+    "fixture": "tests/test_action_feedback_qualification.py existing deterministic executed_closed_chain / feedback_criterion / learning_state / learning_rule / learning_authority",
+    "C15_external": "Descriptive-only static EndpointWitness(status,reason,session_id,evidence), SpatialContract separately has action IDs; NOT imported or authenticated."
+  },
+  "typed_positive": "S17-to-S10 in-process fake-Mineflayer test fixture ACTUAL real owner commit, exact predecessor and revision / feedback / Action / binding / outcome lineage",
+  "negative": [
+    "missing outcome",
+    "swapped Action ID",
+    "wrong binding/intent/session",
+    "cloned fake feedback reference even if fields equal",
+    "incorrect actual S10 commit",
+    "stale/proposal revision",
+    "native S10 denied authority",
+    "C15 positive/alternative endpoint matching all strings STILL cannot prove causal S17 goal result",
+    "C15 static claim for goal does not issue any product S11 owner grant",
+    "no mutation of S11 owner",
+    "no L0"
+  ],
+  "required_independent_authorities": [
+    "REAL_PHYSICAL_EXACT_S16_S17_SOURCE_AND_TASK_GOAL",
+    "CAUSALLY_LINKED_C15_SPATIAL_ENDPOINT_TO_S17_ACTION",
+    "EXCLUSIVE_NONBYPASSABLE_S11_OWNER_WITH_DURABLE_REPLAY",
+    "CAUSALLY_DISCRIMINATING_L2_VS_CHEAP_RELEVANT_HELDOUT",
+    "METERED_COST_IF_REAL_RESOURCE_CLAIM"
+  ],
+  "source_limits": [
+    "S17 deterministic fake Mineflayer is not live physical attestation",
+    "C15 Draft static endpoint GOAL_REGION_OBSERVED not success nor negative z",
+    "S10 explicit caller criterion determines feedback direction, no task goal verifier",
+    "S11 product API is select_habit read-only",
+    "same process test grants forgeable"
+  ],
+  "no_production_mutations": true,
+  "terminal": [
+    "TYPED_LOCAL_S17_TO_S10_CHAIN_CONSISTENT",
+    "EXTERNAL_C15_ENDPOINT_NOT_S17_GOAL_PROOF",
+    "NO_SHARED_AUTHENTICATED_PHYSICAL_ACTION_WITNESS",
+    "PRODUCTION_S11_RETENTION_BLOCKED",
+    "NO_AUTONOMOUS_L2_TO_L1_DISTILLATION"
+  ]
+}
