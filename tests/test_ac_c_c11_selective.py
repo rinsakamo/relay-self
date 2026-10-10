@@ -50,7 +50,7 @@ def test_protocol_identity_and_new_seed_sets():
 
 def test_source_visible_e0_has_no_future_or_hidden_truth():
     c = example("same", z=0, blocked=True, exact=False)
-    other = replace(c, z=1, blocked=False, exact=True)
+    other = replace(c, hidden_z=1, obstructed=False, exact_available=True)
     assert World(c).e0() == World(other).e0()
     e = World(c).e0()
     assert isinstance(e, Evidence)
