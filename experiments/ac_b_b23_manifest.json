@@ -1,0 +1,98 @@
+{
+  "schema": "AC_B_B23_EXPERIENCE_HABIT_SURPRISE_LOOP_PROSPECTIVE_V1",
+  "issue": 543,
+  "lane_B": 431,
+  "parent": 426,
+  "baseline": {
+    "base_B21": "193febe5184142a70d5e55200e9c5d2ef0bef50b",
+    "base_pr": 536,
+    "base_branch": "self/ac-b-b21-typed-physical-source-boundary-20261010",
+    "B22_security_sibling_pr": 541,
+    "exclude_B22_head": "3a6b7340d5bde7634dc45d37d6d301b38af3132e",
+    "main": "4348a614900c1d0828581a8eec2c523ba5ae237f"
+  },
+  "experiment": {
+    "source": "B11 CurrentWorld.offline local deterministic simulator",
+    "cue_order": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "rounds": 8,
+    "flip_before_round": 4,
+    "flip_announced": false,
+    "first_phase_rule": 0,
+    "second_phase_rule": 1,
+    "arms": [
+      "HABIT",
+      "CHEAP_TABLE",
+      "ALWAYS_RETHINK"
+    ],
+    "encounters_per_arm": 32,
+    "explore": "On unknown cue actually perform action0; only if FAILURE execute other action1 and accept only observed success.",
+    "surprise": "On previously learned cue try actual L1 success candidate; only if it actually FAILS perform opposite Action (bounded L2-LIKE reconsideration); after actually observed success replace existing cue rule.",
+    "memory": "Append immutable source-issued observation records with attempt,event ID,world session/revision,cue,Action and actual observed success. No hidden World evaluator or unexecuted counterfactual.",
+    "habit": "Construct new original frozen S11 typed HabitRule/HabitRepertoire snapshots with winning observed original event provenance; actual select_habit on novel nuisance IDs; no product S11 owner API.",
+    "cheap": "Simple dict cue→last successful Action, same observed result and exact same fallback protocol; matched separate World instance.",
+    "no_retention": "Try action0 first on EVERY encounter and action1 only on observed failure, never reuse learned mapping, matched separate offline World instance."
+  },
+  "predictions": {
+    "HABIT": {
+      "actual_actions": 38,
+      "successful_encounters": 32,
+      "failed_attempts": 6,
+      "novel_cue_deliberations": 4,
+      "surprise_reconsiderations": 4,
+      "L1_selected_attempts": 28,
+      "rule_updates": 8,
+      "final_S11_revision": 8
+    },
+    "CHEAP_TABLE": {
+      "actual_actions": 38,
+      "successful_encounters": 32,
+      "failed_attempts": 6,
+      "novel_cue_deliberations": 4,
+      "surprise_reconsiderations": 4,
+      "table_updates": 8
+    },
+    "ALWAYS_RETHINK": {
+      "actual_actions": 48,
+      "successful_encounters": 32,
+      "failed_attempts": 16,
+      "novel_cue_deliberations": 32,
+      "surprise_reconsiderations": 0,
+      "retained_entries": 0
+    },
+    "total_actual_world_actions_across_independent_arms": 124
+  },
+  "scope": [
+    "No security/crypto/mac/SQLite in B23",
+    "No actual L2 model, only bounded two-action reconsideration",
+    "No actual Minecraft, real S16/S17 physical provenance or L0",
+    "No production S11 acquisition, native S11 selector is READ_ONLY",
+    "No novel relevant cue combinations or measured LLM/GPU cost",
+    "Cheap tags tie on exact useful task behavior, stronger claim prohibited",
+    "No alternate Action claimed observed without actual World.act"
+  ],
+  "terminal_if_verified": [
+    "ACTUAL_SIMULATOR_EXPERIENCE_TO_NATIVE_S11_L1_LOOP",
+    "SILENT_CHANGE_SURPRISE_TRIGGERS_RECONSIDERATION",
+    "GENERIC_RETENTION_BEATS_NO_REUSE",
+    "CHEAP_TABLE_MATCHES_HABIT_EXACTLY",
+    "NOT_ACTUAL_L2_OR_PHYSICAL_MINECRAFT",
+    "NO_PRODUCTION_S11_ACQUISITION"
+  ]
+}
