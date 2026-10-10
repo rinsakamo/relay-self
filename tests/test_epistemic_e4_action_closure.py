@@ -374,7 +374,10 @@ def test_world_unknown_never_mistaken_for_executed_terminal_outcome():
     # transition, never a successful Action OUTCOME.
     unknown = interpret_world_consequence(
         issued, trace.proposal.binding_result,
-        replace(consequence, status=WorldConsequenceStatus.FAILED),
+        replace(
+            consequence, status=WorldConsequenceStatus.FAILED,
+            error="offline-synthetic-transport-failure",
+        ),
         provenance=p("failure-is-not-observed-execution"),
     )
     assert unknown.disposition is ActionOutcomeDisposition.UNKNOWN
