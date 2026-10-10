@@ -171,7 +171,7 @@ class Belief:
         if not values:
             return manifest()["learning"]["obstruction_prior_center"]
         m = manifest()["learning"]
-        n0 = m["learning"]["obstruction_pseudocount_strength"] if "learning" in m["learning"] else m["obstruction_pseudocount_strength"]
+        n0 = m["obstruction_pseudocount_strength"]
         # Calibrated pseudocount centered on the observed hint-true rate.
         prior = m["obstruction_prior_center"]
         false_positive = m["obstruction_hint_false_positive"]
@@ -425,6 +425,7 @@ def run(seed: int, arm: str) -> dict:
     state = Belief()
     rows = []
     warmup_end_state = None
+    block_phase_end = {}
     for c in generate(seed):
         warmup = c.epoch == "warmup"
         if not warmup and warmup_end_state is None:
@@ -475,8 +476,8 @@ def run(seed: int, arm: str) -> dict:
                 elif arm in ("FROZEN_FLIP", "ADAPT_FLIP"):
                     choice = "NORMAL_FLIP" if viable_second(e, "NORMAL_FLIP", False) else "STOP"
                 elif arm in ("ADAPT_BAYES_FIXED", "ADAPT_BAYES_BLOCK", "ADAPT_VOI_BLOCK"):
-                    _, zconf = state.zposterior(e.group)
-                    q = zconf if z0 else (1-zconf)
+                    p1, _ = state.zposterior(e.group)
+                    q = p1 if z0 else (1-p1)
                     pb = (m["planning"]["fixed_obstruction_prior"]
                           if arm == "ADAPT_BAYES_FIXED" else pb_before)
                     choice = expected(e, posterior(q, pb, first.cheap_hint), False)[0]
@@ -537,6 +538,7 @@ def run(seed: int, arm: str) -> dict:
         damage = int(first is not None and not first_success)
         damage += int(second is not None and not second.moved)
         damage += int(e.threat and choice.startswith("DETOUR"))
+        block_phase_end[c.epoch] = state.obstacle_rate()
         rows.append({
             "session": e.session, "epoch": c.epoch, "group": e.group,
             "first": first is not None, "first_success": first_success,
@@ -572,9 +574,7 @@ def run(seed: int, arm: str) -> dict:
             "initial_abstain": sum(x["terminal"] == "INITIAL_ABSTAIN" for x in subset),
             "stopped": sum(x["terminal"] == "STOP" for x in subset),
             "failed_second": sum(x["terminal"] == "FAILED_SECOND" for x in subset),
-            "last_block_p_estimate": round(state.obstacle_rate(), 4) if epoch == "return" else (
-                round(subset[-1]["block_p_estimate"], 4)
-            ),
+            "last_block_p_estimate": round(block_phase_end[epoch], 4),
             "choices": dict(sorted(Counter(x["choice"] for x in subset).items())),
         }
     return {
