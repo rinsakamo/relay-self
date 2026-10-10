@@ -375,6 +375,18 @@ def test_forward_wall_watchdog_stops_when_source_ack_is_delayed() -> None:
     assert result.signed_negative_label == "BLOCKED_UNDETERMINED"
 
 
+
+@pytest.mark.parametrize("body_field", ["health", "food"])
+def test_unhealthy_spawn_prohibits_any_forward_action(body_field: str) -> None:
+    rows = raw_messages()
+    rows[1]["snapshot"][body_field] = 2
+    result, fake = run_fixture(rows)
+    assert result.classification == "UNDETERMINED"
+    assert "UNSAFE_SPAWN_BODY" in result.reason
+    assert not any(x[0] == "set_control" for x in fake.sends)
+    assert result.automatic_learning_updates == 0
+
+
 def fixture_report() -> dict:
     good = [
         run_fixture(raw_messages(ending=place))[0].classification
