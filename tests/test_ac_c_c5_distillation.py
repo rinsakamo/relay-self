@@ -151,6 +151,9 @@ def test_report_determinism_and_heldout_pairing():
     for arm in ARMS:
         row = a["summaries"]["heldout"][arm]
         assert row["correct"] + row["wrong"] + row["abstain"] == 1440
+        assert (row["shift_escalation_witnesses"] +
+                row["shift_escalation_censored"] +
+                row["shift_no_prior_cheap_failure"]) == 10
 
 
 def test_report_provenance_to_ci_warning_log():
@@ -164,5 +167,6 @@ def test_report_provenance_to_ci_warning_log():
         "result_sha256": r["result_sha256"],
         "heldout": r["summaries"]["heldout"],
         "paired": r["paired"],
+        "heldout_phases": r["heldout_phases"],
     }
     warnings.warn("C5_RESULT_JSON " + json.dumps(payload, sort_keys=True), UserWarning)
