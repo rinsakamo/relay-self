@@ -428,11 +428,19 @@ class KeepStream(MeasuredTransport):
             raise ProbeRejected("exact ignored-cancel ticket required")
 
 
-async def measure(config: Config, witness, journal: Journal):
+async def measure(config: Config, witness, journal: Journal, *,
+                  diagnostic_adapter: type[MeasuredTransport] | None = None):
+    # Prospective R3 offline seam; run()/CLI never select diagnostic mode.
+    if diagnostic_adapter is not None:
+        from adapters.mineflayer.s60b2_r3_diagnostic import R3DiagnosticTransport
+        if config.arm != "A" or diagnostic_adapter is not R3DiagnosticTransport:
+            raise ProbeRejected("R3 offline Arm A diagnostic adapter required")
     deadline = time.monotonic() + 60
     context = CognitionContext("s60b2-callback", 1, 1, 1)
     provenance = Provenance("s60b2", "operator-approved-probe")
     adapter_type = KeepStream if config.arm == "B" else MeasuredTransport
+    if diagnostic_adapter is not None:
+        adapter_type = diagnostic_adapter
     adapter = adapter_type(LoopbackTransportConfig(config.alias, config.port), lambda _: dict(
         model=config.alias, messages=[dict(role="user", content=config.prompt)],
         temperature=0, max_tokens=256, stream=False,
