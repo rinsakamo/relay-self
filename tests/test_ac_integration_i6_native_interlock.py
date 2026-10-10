@@ -179,6 +179,21 @@ def test_s15_s16_s17_source_grant_and_outcome_tamper_fails_closed(mutation):
             _audit(native, batch, caller_current_feedback=replace(native.feedback))
         return
 
+    # These three malformed values are already rejected at the original
+    # S16/S17 dataclass construction boundary. Do not bypass that protection.
+    if mutation == "wrong_consequence_status":
+        with pytest.raises(ValueError):
+            replace(native.consequence, status="undetermined")
+        return
+    if mutation == "missing_dispatch":
+        with pytest.raises(ValueError):
+            replace(native.consequence, dispatch_receipt=None)
+        return
+    if mutation == "feedback_wrong_target":
+        with pytest.raises(ValueError):
+            replace(native.feedback, target_id="other-target")
+        return
+
     if mutation.startswith("wrong_consequence"):
         field = "session_id" if mutation.endswith("session") else (
             "action_id" if mutation.endswith("action") else "status"
