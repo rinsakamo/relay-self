@@ -124,6 +124,7 @@ class SourceWorld:
         self._case = case
         self._issued: OutcomeReceipt | None = None
         self._consumed = False
+        self._feedback_used = False
 
     def e0(self) -> Evidence:
         c = self._case
@@ -175,6 +176,16 @@ class SourceWorld:
         self._consumed = True
         return receipt
 
+    def apply_feedback(
+        self, e: Evidence, receipt: OutcomeReceipt, arm: str, state: State
+    ) -> None:
+        """Only this World may authorize one retained toy update per outcome."""
+        if (self._issued is not receipt or not self._consumed
+                or self._feedback_used or e != self.e0()):
+            raise ValueError("UNATTESTED_OR_DUPLICATE_LEARNING_FEEDBACK")
+        self._feedback_used = True
+        state._learn_verified(e, receipt, arm)
+
 
 @dataclass
 class State:
@@ -190,7 +201,7 @@ class State:
         zs = self.z_history.get(group, ())
         return int(sum(zs) > len(zs) / 2)  # tie -> 0
 
-    def feedback(self, e: Evidence, receipt: OutcomeReceipt, arm: str) -> None:
+    def _learn_verified(self, e: Evidence, receipt: OutcomeReceipt, arm: str) -> None:
         if arm == "LEARNED_NO_FEEDBACK":
             return
         if arm in ("LEARNED_ALLOC", "SIMPLE_SWITCH") and receipt.mechanism == "FAST":
@@ -274,7 +285,7 @@ def trajectory(seed: int, arm: str) -> dict:
                 success = None
             else:
                 receipt = world.consume(e, world.issue(e, mode, cheap_z=cheap_z), mode)
-                state.feedback(e, receipt, arm)
+                world.apply_feedback(e, receipt, arm, state)
                 success = receipt.success
         ledger.append({
             "phase": case.phase, "group": e.group, "session": e.session,
