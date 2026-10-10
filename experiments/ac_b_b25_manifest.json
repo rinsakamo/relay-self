@@ -1,0 +1,100 @@
+{
+  "schema": "AC_B_B25_SOURCE_DISCRIMINATION_TWO_HYPOTHESES_PROSPECTIVE_V1",
+  "owner_issue": 552,
+  "lanes": {
+    "B": 431,
+    "AC": 426
+  },
+  "authority": {
+    "B24_ISSUE": 547,
+    "B24_DRAFT_PR": 548,
+    "B24_HEAD": "9d4e3311525c8fea852b0e4a1479403d4727b1f0",
+    "pr_base": "self/ac-b-b24-novel-structural-transfer-20261010",
+    "main": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "B22_crypto_not_inherited": 541
+  },
+  "hypotheses": {
+    "H0": "Learn degree<=2 GF2 11 coefficients from original World successful training Action outcome experiences (B24).",
+    "H1": "H0 XOR parity of all 4 triple conjunctions XOR 4-way conjunction. Supplied candidate family, NOT autonomously learned.",
+    "training": "11 four-bit relevant cues weight<=2, both H0/H1 SAME source result",
+    "probe": "first B24 heldout lexicographic weight>=3 cue (0,1,1,1); H0/H1 predict oppositely, one actual issued Action result discriminates hypotheses",
+    "novel": "all 5 weight>=3 heldouts, then replay same 5; no new relevant cue in replay"
+  },
+  "protocol": {
+    "world_conditions": [
+      "NORMAL",
+      "TWIN"
+    ],
+    "arms": [
+      "FULL_HYPOTHESIS_S11",
+      "CHEAP_HYPOTHESIS_BIT",
+      "FIXED_DEG2",
+      "FLAT_TAG"
+    ],
+    "one_world_per_arm": true,
+    "training": "Reuse original B24 StructuralAgent local offline World.act, 11 completed training successes, 16 actual simulator actions per arm; no invented opposite Action results",
+    "decision": "before first heldout Action both hypothesis arms choose H0. After original source-observed first action success/fail is stored in latest Memory, FULL_HYPOTHESIS_S11 filters {H0,H1}; CHEAP_HYPOTHESIS_BIT chooses H1 iff first probe H0 choice failed, otherwise H0. Future relevant contexts apply selected hypothesis. Every Action executed. Alternate actual Action only after real failure; original frozen S11 immutable HabitRule stored only after observed/latest recorded success; native S11 select_habit used on replay; others cheap dict.",
+    "privacy": "the world identity, hidden correctness and hidden World._goal are not in policy features or decision calls"
+  },
+  "predictions": {
+    "NORMAL": {
+      "FULL_HYPOTHESIS_S11": {
+        "first_novel_correct": 5,
+        "source_actions": 26
+      },
+      "CHEAP_HYPOTHESIS_BIT": {
+        "first_novel_correct": 5,
+        "source_actions": 26
+      },
+      "FIXED_DEG2": {
+        "first_novel_correct": 5,
+        "source_actions": 26
+      },
+      "FLAT_TAG": {
+        "first_novel_correct": 2,
+        "source_actions": 29
+      }
+    },
+    "TWIN": {
+      "FULL_HYPOTHESIS_S11": {
+        "first_novel_correct": 4,
+        "source_actions": 27
+      },
+      "CHEAP_HYPOTHESIS_BIT": {
+        "first_novel_correct": 4,
+        "source_actions": 27
+      },
+      "FIXED_DEG2": {
+        "first_novel_correct": 0,
+        "source_actions": 31
+      },
+      "FLAT_TAG": {
+        "first_novel_correct": 3,
+        "source_actions": 28
+      }
+    }
+  },
+  "total_eight_separate_source_world_actions": 220,
+  "all_arms_encounters": 21,
+  "training_action_attempts": 16,
+  "novel_replay": "five genuine first-novel episodes and five actual source-replayed successful cue encounters; replay world actions=5",
+  "limits": [
+    "NO_LLM_L2_OR_GPU_INFERENCE",
+    "NO_REAL_MINECRAFT_OR_S16_S17_WORLD",
+    "H1_SECOND_HYPOTHESIS_GIFTED_IN_ADVANCE",
+    "HYPOTHESIS_OTHERS_NOT_EXCLUDED",
+    "CHEAP_BIT_HAS_EXACT_SAME_PRIOR_AND_SOURCE",
+    "NO_PRODUCTION_S11_ACQUISITION",
+    "NO_CONCLUSIONS_ABOUT_UNCONSTRAINED_CAUSAL_LAW",
+    "NO_CRYPTO_SQLITE_OR_B22_DEPENDENCY",
+    "ONLY_FOUR_B25_NEW_FILES_NO_FROZEN_EDITS"
+  ],
+  "terminal_expected": [
+    "SOURCE_CONDITIONED_DISCRIMINATION_AFTER_REAL_NOVEL_ACTION",
+    "CONDITIONAL_HYPOTHESIS_REVISION_REDUCES_TWIN_ERRORS",
+    "CHEAP_ONE_BIT_MATCHES_STRUCTURAL_S11",
+    "FINITE_HYPOTHESIS_BANK_GIFTED_NOT_LEARNED",
+    "NO_REAL_L2_OR_MINECRAFT",
+    "NO_PRODUCTION_S11_OWNER"
+  ]
+}
