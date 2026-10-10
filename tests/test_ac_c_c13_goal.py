@@ -5,8 +5,8 @@ import pytest
 
 from experiments.ac_c_c13_goal import (
     ARMS,
-    MANIFEST_SHA,
     E0,
+    MANIFEST_SHA,
     Hidden,
     Retention,
     World,
