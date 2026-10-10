@@ -207,7 +207,7 @@ def test_failed_action_never_compiles_retained_success():
     agent = CognitiveAgent("HABIT", world)
     failed = agent.actually_try(1, (0, 1), 0, "BOUNDED_FRESH_THOUGHT")
     assert not failed.success
-    with pytest.raises(InconsistentExperience, match="successful"):
+    with pytest.raises(InconsistentExperience, match="unexecuted or failed"):
         agent._retain((0, 1), failed)
     assert agent.owner.revision == 0 and agent.owner.rules == ()
     assert agent.learned_updates == 0
