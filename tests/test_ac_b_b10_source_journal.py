@@ -15,23 +15,20 @@ import pytest
 from adapters.mineflayer.execution import (
     WorldConsequenceStatus,
     build_mineflayer_command,
-    execute_mineflayer_command,
-)
-from experiments.ac_b_b10_source_journal import (
-    DurableReadOnlyGate,
-    ObservationBoundIssuer,
-    ObservedAdapter,
-    ObservedS16Packet,
-    PersistentReplayJournal,
-    UnqualifiedWorldEvidence,
-    run_offline_transaction,
 )
 from experiments.ac_b_b9_signed_s16 import (
     ExternalS16EvidenceGate,
     OfflineS16SourceIssuer,
     TrustedWorldEpoch,
-    parse_signed_evidence,
     serialize_signed_evidence,
+)
+from experiments.ac_b_b10_source_journal import (
+    DurableReadOnlyGate,
+    ObservationBoundIssuer,
+    ObservedS16Packet,
+    PersistentReplayJournal,
+    UnqualifiedWorldEvidence,
+    run_offline_transaction,
 )
 from relay_self.action import ActionState
 from relay_self.action_outcome import ActionOutcomeDisposition
