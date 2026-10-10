@@ -57,7 +57,11 @@ def _deny(reason: str, action: str | None = None,
 
 def _json_frame(message: Any) -> dict[str, Any]:
     # Typed protocol decoder owns source/ref/seq validation.
-    return json.loads(json.dumps(asdict(message), ensure_ascii=False, allow_nan=False))
+    frame = json.loads(json.dumps(asdict(message), ensure_ascii=False, allow_nan=False))
+    # Match the ORIGINAL S16 retained frame format: source provenance is a
+    # derived Mineflayer protocol property, not a dataclass field.
+    frame["provenance"] = asdict(message.provenance)
+    return frame
 
 
 def review_s49_spatial(
