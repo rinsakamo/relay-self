@@ -309,3 +309,46 @@ def test_no_implicit_action_outcome_or_learning_from_signed_evidence(tmp_path):
     assert old.state is ActionState.ISSUED
     assert not hasattr(interpreted, "learning_feedback")
     assert not hasattr(interpreted, "commit_habit")
+
+
+def test_coherent_untrusted_adapter_messages_are_not_physical_attestation(tmp_path):
+    """A lying adapter can produce consistent signed proof: physical origin UNKNOWN."""
+    *_, binding, _, supervisor, issued = issued_chain()[-4:]
+    command = build_mineflayer_command(issued, binding)
+    # These coordinates are INVENTED by this test: no physical Minecraft
+    # session exists. All structured protocol checks will nevertheless pass.
+    forged_but_coherent = FakeSession((
+        observation(1, 100.0, 200.0),
+        effect(2, command.action_id, "set_control"),
+        effect(3, command.cleanup_action_id, "clear_controls"),
+        observation(4, 100.0, 200.20),
+    ))
+    key = secrets.token_bytes(32)
+    packet = run_offline_transaction(
+        issued, binding, forged_but_coherent, key, origin(),
+    )
+    path = tmp_path / "untrusted-observer.sqlite"
+    PersistentReplayJournal.initialize(path)
+    qualified = fresh_gate(key, packet, path).qualify(issued, binding, packet)
+    assert qualified.disposition is ActionOutcomeDisposition.OUTCOME
+    assert supervisor.get(issued.action_id).state is ActionState.ISSUED
+    # Therefore protocol-observation + HMAC cannot certify physical origin.
+
+
+def test_privileged_sqlite_file_rollback_defeats_local_replay_claim(tmp_path):
+    """A hostile filesystem rollback needs a separate trusted anti-rollback root."""
+    issued, binding, supervisor, _, packet, _, key = source_fixture()
+    path = tmp_path / "rollback-limited.sqlite"
+    PersistentReplayJournal.initialize(path)
+    empty_journal_snapshot = path.read_bytes()
+    first = fresh_gate(key, packet, path).qualify(issued, binding, packet)
+    assert first.disposition is ActionOutcomeDisposition.OUTCOME
+    with pytest.raises(UnqualifiedWorldEvidence, match="replay"):
+        fresh_gate(key, packet, path).qualify(issued, binding, packet)
+    # A privileged actor who can replace the whole SQLite DB can rewind the
+    # journal. This test intentionally documents a FAILURE of external trust,
+    # not a success of replay protection against a filesystem adversary.
+    path.write_bytes(empty_journal_snapshot)
+    second = fresh_gate(key, packet, path).qualify(issued, binding, packet)
+    assert second == first
+    assert supervisor.get(issued.action_id).state is ActionState.ISSUED
