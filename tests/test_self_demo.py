@@ -5,7 +5,6 @@ No Java/Node/Minecraft/GGUF action is executed during these tests.
 from __future__ import annotations
 
 import json
-from dataclasses import replace
 from pathlib import Path
 
 import pytest
