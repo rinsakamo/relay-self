@@ -374,6 +374,10 @@ def trajectory(seed: int, arm: str) -> dict:
         oracle_free = arm == "EVALUATOR_ORACLE" and not warmup and viable(e, "CHEAP")
         if oracle_free:
             mode, bit, used_capsule = "CHEAP", case.hidden_z, False
+        elif arm == "EVALUATOR_ORACLE" and not warmup:
+            # Evaluator upper bound still pays for eligible DIAGNOSTIC;
+            # never pass hidden truth to an ordinary choose() call.
+            mode, bit, used_capsule = fallback(e, state)
         else:
             mode, bit, used_capsule = choose(e, arm, state, warmup=warmup)
         selector_work = 0 if warmup else cfg["selector_work"][arm]
