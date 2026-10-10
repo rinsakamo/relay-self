@@ -1,0 +1,174 @@
+{
+  "version": "AC-C-C7-AMBIGUOUS-OUTCOME-v1",
+  "authority": {
+    "owner_issue": 469,
+    "parents": [
+      432,
+      426
+    ],
+    "prior_c6_head": "925ec303faf2caa213e0311bcc87524da7488926",
+    "frozen_main": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "frozen_main_tree": "7816055966dd520b6690de7662a267047e57ccc0"
+  },
+  "seeds": {
+    "calibration": [
+      211,
+      223,
+      227
+    ],
+    "heldout": [
+      229,
+      233,
+      239,
+      241,
+      251
+    ]
+  },
+  "epochs": [
+    "warmup",
+    "shift",
+    "return"
+  ],
+  "episodes_per_epoch": {
+    "warmup": 96,
+    "shift": 120,
+    "return": 120
+  },
+  "hidden_z_p1": {
+    "warmup": [
+      0.1,
+      0.9
+    ],
+    "shift": [
+      0.9,
+      0.1
+    ],
+    "return": [
+      0.1,
+      0.9
+    ]
+  },
+  "world": {
+    "public_context_group": "uniform binary",
+    "public_prefix": "uniform 0..3, target parity(prefix)^hidden_z",
+    "feedback_exact_probability": 0.25,
+    "feedback_weak_probability": 0.45,
+    "feedback_missing_probability": 0.3,
+    "weak_vote_accuracy": 0.7,
+    "scan_available_probability": 0.7,
+    "threat_probability": 0.25,
+    "deadline_values": [
+      1,
+      3,
+      5,
+      6
+    ],
+    "health_values": [
+      2,
+      4,
+      8
+    ],
+    "hunger_values": [
+      2,
+      6,
+      12
+    ],
+    "result_rule": "World terminal receipt contains one of EXACT hidden z; WEAK z vote with known quality; MISSING no label. Paid DIAGNOSTIC observes exact z after selector commits, takes precedence over terminal weak/missing."
+  },
+  "modes": {
+    "CHEAP": {
+      "ticks": 1,
+      "work": 1,
+      "observation": "retained group predicted z only"
+    },
+    "DIAGNOSTIC": {
+      "ticks": 3,
+      "work": 4,
+      "observation": "paid exact hidden z if scan available"
+    }
+  },
+  "safety": {
+    "worst_case_CHEAP_error_damage": 2,
+    "threat_exposure_damage": 1,
+    "exposure_ticks_gte": 3,
+    "mode_viability": "health>max possible error plus exposure; deadline bound; DIAGNOSTIC scan only; no trade-off"
+  },
+  "retention": {
+    "window": 12,
+    "exact_weight": 1,
+    "weak_weight": 0.25,
+    "missing_weight": 0,
+    "posterior": "(1+weighted_ones)/(2+sum_weights)",
+    "map_ties": "0",
+    "warmup_qualification_exact": 4,
+    "qualification_confidence": 0.75,
+    "recompile_exact_post_revocation": 4,
+    "recompile_confidence": 0.75,
+    "per_terminal_admission": "at most one evidence update; PAID observation exact overrides outcome weak/missing"
+  },
+  "guard": {
+    "naive_revocation_hard_opposites": 2,
+    "naive_recent_executed_capsule_cheap": 4,
+    "strict_revocation_exact_opposites": 2,
+    "strict_recent_executed_capsule_cheap": 4,
+    "weighted_recent_executed_capsule_cheap": 6,
+    "weighted_contradictory_weight_at_least": 1.5,
+    "weighted_requires_at_least_one_exact_opposite": true,
+    "missing_not_hard": true
+  },
+  "arms": [
+    "STATIC_CAPSULE",
+    "NAIVE_WEAK_AS_EXACT",
+    "STRICT_EXACT_ONLY",
+    "WEIGHTED_GUARD",
+    "POSTERIOR_GATE",
+    "CHEAP_HISTORY",
+    "PAID_ONLY",
+    "NO_FEEDBACK_CAPSULE",
+    "EVALUATOR_ORACLE"
+  ],
+  "selector_work": {
+    "STATIC_CAPSULE": 1,
+    "NAIVE_WEAK_AS_EXACT": 2,
+    "STRICT_EXACT_ONLY": 2,
+    "WEIGHTED_GUARD": 3,
+    "POSTERIOR_GATE": 1,
+    "CHEAP_HISTORY": 1,
+    "PAID_ONLY": 0,
+    "NO_FEEDBACK_CAPSULE": 2,
+    "EVALUATOR_ORACLE": 0
+  },
+  "shared_warmup": "DIAGNOSTIC if viable else CHEAP group-MAP from only previous admitted observations, all arms identical",
+  "fallback": "when no certified capsule choose DIAGNOSTIC if viable else CHEAP group MAP if viable else ABSTAIN",
+  "objective": {
+    "correct": 10,
+    "wrong": -10,
+    "abstain": -3,
+    "per_work": -0.4,
+    "per_tick": -0.2,
+    "units": "synthetic only"
+  },
+  "primary_positive_gate": {
+    "weighted_minus_naive_correct_at_least": 15,
+    "return_false_revocations_less_than_naive": true,
+    "weighted_minus_simple_gate_correct_at_least": 10,
+    "weighted_work_no_more_than_gate_factor": 1.2,
+    "weighted_utility_strictly_greater_than_gate": true
+  },
+  "evaluation": {
+    "source_matched_comparator": "POSTERIOR_GATE and PAID_ONLY",
+    "receipts": "single-use in-memory World session/revision/mode/evidence identity validated; no raw correctness conveyed to learning",
+    "ground_truth": "evaluator only, never selector",
+    "revocation_false_positive_metric": "revocation in RETURN epoch as a coarse surrogate, NOT a definitive causal false positive",
+    "censor": "cannot infer failure when WEAK/MISSING; time is synthetic decision opportunity index"
+  },
+  "hard_stop": [
+    "no live Minecraft/LLM/GGUF/GPU",
+    "no production semantic owner or central Scheduler",
+    "no Paper2/RelayTheory modifications",
+    "no sibling Draft imports",
+    "no #415 scientific spend",
+    "no #417 STOP/GPU promotion",
+    "no automatic PR merge"
+  ]
+}
