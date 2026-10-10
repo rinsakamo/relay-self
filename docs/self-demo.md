@@ -317,3 +317,48 @@ python -m adapters.mineflayer.self_owned_llama \
 
 **旧実機記録は不変。** この新モードの実World＋実GGUF同時実行は、
 ユーザーのローカル実行結果が得られるまではNOT_RUNです。
+
+
+### Mineflayerの実依存解決を起動前に確認（2026-10-11実機失敗への修正）
+
+2026-10-11のSelf所有llama.cpp＋Minecraft単発実機試験は**FAILED**
+（実Action・L0観測・L2 chat POSTは0）。使い捨てWorldと
+llama-serverは起動したが、独立worktreeの`node_modules`を
+外部ディレクトリへのsymlinkにしたため、`bridge.mjs`がロードする
+Mineflayerの内側から`minecraft-protocol`を解決できずに終了した。
+元の失敗原本・SHA256はIssue #537に保存。再試行ではない。
+
+**今後の新しい実行**では、独立worktreeの`adapters/mineflayer`内に
+lockfileどおりの物理的な`node_modules`をインストールする。
+既存外部node_modulesのsymlinkを流用しない。実行前に、既存Worldや
+既存推論サービスに触れず、次の**非接続**チェックを行う：
+
+```bash
+# 自分が所有する新規・独立worktree内だけで行う
+npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+test -d adapters/mineflayer/node_modules
+test ! -L adapters/mineflayer/node_modules
+node -e '
+const {createRequire}=require("node:module");
+const {resolve}=require("node:path");
+const fromBridge=createRequire(resolve("adapters/mineflayer/bridge.mjs"));
+const mineflayer=fromBridge("mineflayer");
+const version=fromBridge("mineflayer/package.json").version;
+const internal=createRequire(fromBridge.resolve("mineflayer"));
+const protocol=internal("minecraft-protocol");
+if(version!=="4.39.0" || typeof mineflayer.createBot!=="function" || !protocol)
+  process.exit(1);
+console.log("bridge Mineflayer and transitive minecraft-protocol import OK");
+'
+```
+
+Self所有起動ラッパー`self_owned_llama.py`自身も、これと同等の
+**実`bridge.mjs`基準・内部依存までのimport検査**を、GGUFのSHA256
+計算、llama-server起動、Minecraft起動の**すべてより前**に実施し、
+依存配置が不十分なら`BLOCKED`として0モデル／0Worldで終了する。
+自動`npm ci`、既存symlinkの削除、実行試験のリトライは行わない。
+
+この修正のCIは非接続モックの物理ディレクトリ、欠損依存、
+誤バージョン、node_modules symlinkの負例を評価する。
+CI成功はあくまで起動前検査の資格化であり、
+**2026-10-11 FAILED試験をPASSへ書き換えない**。
