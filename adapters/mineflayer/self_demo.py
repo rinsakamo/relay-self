@@ -11,12 +11,17 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import shutil
 import sys
 from pathlib import Path
 
+from adapters.mineflayer.self_action_evidence import (
+    NativeEvidenceRejected,
+    verify_native_action_evidence,
+)
 from relay_self.habit import (
     CueFeature,
     HabitCue,
@@ -174,6 +179,22 @@ def project_native_report(report: dict[str, object]) -> tuple[dict[str, object],
                    or not a["action"]
                    for a in actions)):
         raise DemoRejected("invalid native issued Action OUTCOME")
+    # Reports written before the S49 fix are intentionally preserved as
+    # evidence-PARTIAL: never backfill their missing native frames.
+    has_evidence = ["execution_evidence" in a for a in actions]
+    if any(has_evidence) and not all(has_evidence):
+        raise DemoRejected("partial/inconsistent original Action frame retention")
+    evidence_complete = all(has_evidence)
+    if evidence_complete:
+        try:
+            for a in actions:
+                verify_native_action_evidence(
+                    a["execution_evidence"],
+                    action_id=a["action"], session_id=session,
+                    movement_m=a["movement_m"],
+                )
+        except NativeEvidenceRejected as exc:
+            raise DemoRejected("Action evidence cannot be independently replayed") from exc
     event_seq = [d.get("event_seq") for d in decisions]
     if (any(type(v) is not int or v < 0 for v in event_seq)
             or len(set(event_seq)) != 3 or event_seq != sorted(event_seq)
@@ -193,6 +214,11 @@ def project_native_report(report: dict[str, object]) -> tuple[dict[str, object],
         "start", SOURCE_NATIVE, session=session, minecraft_version=report.get("minecraft_version"),
         mineflayer_version=report.get("mineflayer_version"), retained_origin=report.get("retained_origin"),
         retained_learning_during_live_run=False,
+        action_frames_complete=evidence_complete,
+        frame_format=(
+            "DECODED_NATIVE_TYPED_FRAMES_NOT_RAW_WIRE"
+            if evidence_complete else "LEGACY_ACTION_FRAMES_NOT_RETAINED"
+        ),
     )]
     for i, (d, evidence) in enumerate(zip(decisions, probes, strict=True), start=1):
         rows.append(_row(
@@ -213,6 +239,15 @@ def project_native_report(report: dict[str, object]) -> tuple[dict[str, object],
                 action_id=a["action"], terminal=a["terminal"],
                 world_source_session=a["source"],
                 movement_m=a["movement_m"],
+                decoded_execution_evidence=a.get("execution_evidence"),
+                execution_evidence_sha256=(
+                    hashlib.sha256(json.dumps(
+                        a["execution_evidence"], sort_keys=True,
+                        separators=(",", ":"), ensure_ascii=False,
+                    ).encode("utf-8")).hexdigest()
+                    if evidence_complete else None
+                ),
+                action_frames_complete=evidence_complete,
                 goal_success_attested=False, signed_negative_z=False,
                 retained_update=False,
             ))
@@ -220,6 +255,7 @@ def project_native_report(report: dict[str, object]) -> tuple[dict[str, object],
         "summary", SOURCE_NATIVE, decisions=3, native_terminal_actions=2,
         real_model_calls=0, in_world_learning_updates=0,
         production_habit_granted=False, signed_goal_labels=0,
+        action_frames_complete=evidence_complete,
         server_exit=report.get("server_exit"),
     ))
     return tuple(rows)
@@ -269,6 +305,8 @@ def retain_native_observations(
             "action_id": action_id,
             "terminal": entry["terminal"],
             "movement_m": entry["movement_m"],
+            "action_frames_complete": entry.get("action_frames_complete", False),
+            "execution_evidence_sha256": entry.get("execution_evidence_sha256"),
             "goal_success_attested": False,
             "learning_feedback_qualified": False,
         }, sort_keys=True)
