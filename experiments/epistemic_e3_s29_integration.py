@@ -148,6 +148,7 @@ async def continue_with_existing_owners(
     max_age_ns: int = 5,
     timeout_s: float = 0.05,
     max_frames: int = 4,
+    previous_receipt: CorrelatedProbeReceipt | None = None,
 ) -> EpistemicResult:
     """At most one S29 correlated observation then one actual S24 decision epoch.
 
@@ -175,6 +176,7 @@ async def continue_with_existing_owners(
         adapter, cursor, grant, supervisor, action, consequence,
         observed_at_ns=observed_at_ns, inspected_at_ns=inspected_at_ns,
         max_age_ns=max_age_ns, timeout_s=timeout_s, max_frames=max_frames,
+        previous_receipt=previous_receipt,
     )
     evidence = receipt.source_receipt.evidence
     if (
