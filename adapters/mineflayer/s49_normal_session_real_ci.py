@@ -18,7 +18,6 @@ from typing import Any
 
 import test_postmain_two_epoch_continuation as s19
 from adapters.mineflayer.execution import WorldConsequenceStatus
-from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from adapters.mineflayer.normal_action import (
     NormalActionAuthorization,
     NormalActionStage,
@@ -46,6 +45,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     _native_threat,
     _new_session,
 )
+from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.execution_binding import (
