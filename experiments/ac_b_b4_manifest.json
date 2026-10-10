@@ -1,0 +1,117 @@
+{
+  "version": "AC-B-B4-RELEVANT-CUE-PROSPECTIVE-v1",
+  "authority": {
+    "parent": 431,
+    "implementation": 437,
+    "prior_draft": 436,
+    "prior_methodological_audit": 6091327775,
+    "main_commit": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "main_tree": "7816055966dd520b6690de7662a267047e57ccc0"
+  },
+  "scope": "standalone offline deterministic World fixture; not Minecraft/LLM; no production owner",
+  "evaluator_only": {
+    "families": [
+      "PARITY3",
+      "OR3",
+      "MAJORITY3",
+      "AND3"
+    ],
+    "flips": [
+      0,
+      1
+    ],
+    "rule": "success iff action==evaluated binary World rule; never an inference input"
+  },
+  "evidence": {
+    "session": "ac-b4",
+    "revision_initial": 0,
+    "source": "source-verified exact stored receipts",
+    "each_action": "independently reset deterministic World trial",
+    "candidate_actions": [
+      0,
+      1
+    ]
+  },
+  "splits": {
+    "train": {
+      "contexts": [
+        "000",
+        "100",
+        "010",
+        "001"
+      ],
+      "both_actions": true,
+      "receipts": 8
+    },
+    "validation": {
+      "contexts": [
+        "110"
+      ],
+      "both_actions": true,
+      "receipts": 2
+    },
+    "heldout": {
+      "contexts": [
+        "011",
+        "101",
+        "111"
+      ],
+      "never_read_by_learner": true,
+      "scored_per_family": 3
+    }
+  },
+  "arms": [
+    "fixed_action_0",
+    "exact_full_cue_lookup_abstain",
+    "qualified_cheap_analytic_rule",
+    "compiled_guarded_policy_candidate"
+  ],
+  "qualification": {
+    "train_only_version_space": "non-singleton; candidate UNKNOWN",
+    "train_plus_validation_version_space": "singleton under 8 predeclared hypotheses",
+    "missing_conflicting_wrong_source": "UNKNOWN/fail-closed",
+    "provenance": "exact session/revision/receipt IDs and digest"
+  },
+  "shift": {
+    "announced": "flip with world revision increment; old policy abstains; new 8 train + 2 validation receipts independently qualify",
+    "silent": "flip without revision; first verified mismatch quarantines; recovery NOT asserted"
+  },
+  "measurement": {
+    "primary": [
+      "per-family relevant-heldout outcome/coverage",
+      "joint outcome/coverage",
+      "source-visible observed World action counts",
+      "abstention",
+      "version-space size",
+      "shift recovery World actions",
+      "wrong-deployment/quarantine"
+    ],
+    "secondary": [
+      "symbolic hypothesis tests, not ms or energy"
+    ],
+    "not_qualified": [
+      "LLM token cost",
+      "physical energy",
+      "Minecraft task outcome",
+      "new semantic owner",
+      "real L1/L2 reuse",
+      "L0 promotion"
+    ]
+  },
+  "negative_controls": [
+    "forged receipt",
+    "duplicate receipt",
+    "wrong session",
+    "stale revision",
+    "wrong split contexts",
+    "missing opposite action",
+    "conflicting qualified receipts",
+    "prediction as outcome",
+    "train-only ambiguity",
+    "heldout leakage",
+    "silent mismatch",
+    "invalid cue"
+  ],
+  "decision": "CHEAP_RULE_SUFFICIENT_FOR_RELEVANT_HOLDOUT if strong cheap rule ties candidate; otherwise report actual outcome and abstentions; no automatic scientific promotion",
+  "graph_followup": "Separate genuinely relational task required; do not infer usefulness from previous exact-tags experiment"
+}
