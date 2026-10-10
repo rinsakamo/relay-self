@@ -351,7 +351,8 @@ def run_episode(*, noisy: bool) -> dict[str, object]:
                 v = ledger.first_shot()
                 if v is not None:
                     first[a, b] = v
-            assert ledger.counted_quorum() is None if trial < 4 else True
+            if trial < N_TRIALS - 1:
+                assert ledger.counted_quorum() is None
         if trial == 0:
             one_shot_issued_when_complete = world.actions_executed
     assert world.actions_executed == 40
@@ -397,10 +398,23 @@ def run_episode(*, noisy: bool) -> dict[str, object]:
         covered = correct = 0
         for j in range(3):
             for a, b in CONTEXTS:
-                _ = cue_for(a, b, trial=f"b16-heldout-{j}")
-                if (a, b) in policy:
+                cue = cue_for(a, b, trial=f"b16-heldout-{j}")
+                if key == "s10_s11_quorum":
+                    # Run the ACTUAL existing S11 read-only selector for every
+                    # heldout cue ID, rather than copying the train-time vote.
+                    selected = select_habit(owner, cue)
+                    action = (
+                        int(selected.selected_candidate_ref.split(":")[1])
+                        if selected.status is HabitSelectionStatus.SELECTED
+                        and selected.selected_candidate_ref is not None
+                        else None
+                    )
+                    assert action == policy.get((a, b))
+                else:
+                    action = policy.get((a, b))
+                if action is not None:
                     covered += 1
-                    correct += int(world.heldout_score(a, b, policy[a, b]))
+                    correct += int(world.heldout_score(a, b, action))
         heldout[key] = (covered, correct)
     return {
         "episode": "adversarial" if noisy else "clean",
