@@ -117,7 +117,7 @@ class ResetWorld:
     def verify(self, receipt: Receipt) -> None:
         if (
             not isinstance(receipt, Receipt) or receipt.kind != "OBSERVED"
-            or self._ledger.get(receipt.receipt_id) != receipt
+            or self._ledger.get(receipt.receipt_id) is not receipt
         ):
             raise UnqualifiedEvidence("receipt is not exact observed World evidence")
 
