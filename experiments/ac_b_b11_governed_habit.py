@@ -6,7 +6,7 @@ cryptographic/physical source attestation or S10-to-S11 authority is implied.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Mapping
 
@@ -37,11 +37,11 @@ class CurrentWorld:
     revision: int = 0
     _rule: int = 0
     _count: int = 0
+    _issued: dict[str, ObservedOutcome] = field(default_factory=dict, init=False, repr=False)
 
     def __post_init__(self) -> None:
         if not self.session or type(self.revision) is not int or self.revision < 0:
             raise UnqualifiedHabitAcquisition("invalid World scope")
-        self._issued: dict[str, ObservedOutcome] = {}
 
     def act(self, a: int, b: int, action: int) -> ObservedOutcome:
         for name, value in (("a", a), ("b", b), ("action", action)):
