@@ -36,7 +36,7 @@ def fixture(*, end=c15.GOAL):
     frames = []
     for row in rows[1:5]:
         msg = parse_mineflayer_line(json.dumps(row))
-        frame = asdict(msg)
+        frame = json.loads(json.dumps(asdict(msg), allow_nan=False))
         frame["provenance"] = {
             "source": "mineflayer",
             "reference": f"{row['session_id']}:{row['seq']}",
