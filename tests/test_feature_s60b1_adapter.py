@@ -636,3 +636,107 @@ def test_replayed_future_boundary_after_real_success():
             assert "PROVIDER_UNCONFIRMED" in rig.events() and len(server.posts) == 1
             await rig.adapter.aclose()
     asyncio.run(scenario())
+
+
+# RSEE optional wire controls. The legacy S60-B1 form MUST remain untouched.
+def test_rsee_optional_reasoning_and_cache_wire_exact_no_implicit_default():
+    async def scenario():
+        async with FakeHTTP() as server:
+            server.responses = [response()]
+            controls = LoopbackTransportConfig(
+                "offline-model", server.port,
+                reasoning_effort="none", cache_prompt=False,
+            )
+            rig = Rig(server, config=controls, supplier=lambda _: {
+                **payload(), "reasoning_effort": "none", "cache_prompt": False,
+            })
+            rig.submit(level="L2")
+            assert await server.next_post() == 0
+            assert server.posts[0][1] == {
+                **payload(), "reasoning_effort": "none", "cache_prompt": False,
+            }
+            assert rig.adapter.transport_tasks == 1
+            server.release[0].set()
+            await rig.terminal()
+            result = rig.owner.tick()
+            assert result.value == "transient-output"
+            rig.assert_sanitized()
+            await rig.adapter.aclose()
+    asyncio.run(scenario())
+
+
+def test_rsee_legacy_wire_remains_exact_five_fields():
+    async def scenario():
+        async with FakeHTTP() as server:
+            server.responses = [response()]
+            rig = Rig(server)
+            rig.submit()
+            assert await server.next_post() == 0
+            assert server.posts[0][1] == payload()
+            assert set(server.posts[0][1]) == {
+                "model", "messages", "temperature", "max_tokens", "stream"
+            }
+            server.release[0].set()
+            await rig.terminal()
+            assert rig.owner.tick().value == "transient-output"
+            await rig.adapter.aclose()
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("reason,cache", [
+    ("medium", None), ("low", None), ("off", None),
+    ("NONE", None), (False, None), (True, None),
+    (None, True), (None, "false"), (None, 0),
+])
+def test_rsee_optin_unsupported_request_treatment_is_rejected(reason, cache):
+    with pytest.raises(TransportUnconfirmed):
+        LoopbackTransportConfig(
+            "offline-model", 12345, reasoning_effort=reason, cache_prompt=cache
+        )
+
+
+@pytest.mark.parametrize("change", [
+    {"reasoning_effort": "low"},
+    {"reasoning_effort": None},
+    {"cache_prompt": True},
+    {"cache_prompt": None},
+    {"response_format": {"type": "json_object"}},
+    {"json_schema": {}},
+])
+def test_rsee_mismatched_or_extra_controls_block_before_socket(change):
+    async def scenario():
+        async with FakeHTTP() as server:
+            rig = Rig(
+                server,
+                config=LoopbackTransportConfig(
+                    "offline-model", server.port,
+                    reasoning_effort="none", cache_prompt=False,
+                ),
+                supplier=lambda _: {
+                    **payload(), "reasoning_effort": "none", "cache_prompt": False,
+                    **change,
+                },
+            )
+            rig.submit(level="L2")
+            await asyncio.sleep(0)
+            assert not server.posts
+            assert rig.owner.tick() is None
+            assert rig.adapter.transport_tasks == 0
+            rig.assert_sanitized()
+            await rig.adapter.aclose()
+    asyncio.run(scenario())
+
+
+def test_rsee_optin_fields_cannot_leak_into_non_opted_legacy_request():
+    async def scenario():
+        async with FakeHTTP() as server:
+            rig = Rig(server, supplier=lambda _: {
+                **payload(), "reasoning_effort": "none", "cache_prompt": False,
+            })
+            rig.submit()
+            await asyncio.sleep(0)
+            assert not server.posts
+            assert rig.owner.tick() is None
+            assert rig.adapter.transport_tasks == 0
+            await rig.adapter.aclose()
+    asyncio.run(scenario())
