@@ -267,10 +267,18 @@ def _rsee_live_binding(
             ) from exc
 
     try:
-        if evidence_dir is not None and (
-            evidence_dir.is_symlink() or not evidence_dir.is_dir()
-        ):
-            raise OwnedModelRejected("RSEE_BINDING_EVIDENCE_DIRECTORY_INVALID")
+        if evidence_dir is not None:
+            if evidence_dir.is_symlink() or not evidence_dir.is_dir():
+                raise OwnedModelRejected("RSEE_BINDING_EVIDENCE_DIRECTORY_INVALID")
+            names = (
+                "rsee_http_models.json", "rsee_http_props.json",
+                "rsee_http_slots.json", "rsee_live_binding_diagnostic.json",
+            )
+            if any(
+                (evidence_dir / name).exists() or (evidence_dir / name).is_symlink()
+                for name in names
+            ):
+                raise OwnedModelRejected("RSEE_BINDING_EVIDENCE_COLLISION")
 
         # Fetch every endpoint exactly once before validating any contents.
         # If a transport/JSON error occurs, keep the first terminal; no retry.
