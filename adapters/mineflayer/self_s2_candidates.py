@@ -85,6 +85,8 @@ class S2ReadOnlyCandidates:
             or choice.provenance.source != "mineflayer"
             or choice.action_authorized
             or choice.selection not in (WorldChoiceKind.WAIT, WorldChoiceKind.MOVE_AWAY)
+            or ((choice.distance_m < choice.threshold_m)
+                != (choice.selection is WorldChoiceKind.MOVE_AWAY))
         ):
             raise S2CandidateRejected("fresh same-session S49 source required")
         self._last_probe_seq = choice.probe_seq
@@ -92,7 +94,7 @@ class S2ReadOnlyCandidates:
             f"s2-native-cue-{self.session_id}-{choice.probe_seq}",
             (CueFeature(
                 "native_threat_band",
-                "far" if choice.selection is WorldChoiceKind.WAIT else "near",
+                "near" if choice.distance_m < choice.threshold_m else "far",
             ),),
             choice.provenance,
         )
