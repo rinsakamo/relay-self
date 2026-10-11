@@ -54,6 +54,7 @@ from relay_self.intent import IntentCommitment
 from relay_self.reactive_l0 import L0ActionGrant
 from relay_self.world_conditioned_choice import WorldChoiceKind
 
+
 class NaturalS49ObservationSource(NativeObservationOnly):
     """S49 source rules extended only to allow non-target native observations.
 
