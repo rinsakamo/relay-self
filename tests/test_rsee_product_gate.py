@@ -284,3 +284,90 @@ def test_rsee_live_binding_refuses_truncated_or_duplicate_json(
     monkeypatch.setattr(model_owner.urllib.request, "build_opener", lambda *_: Opener())
     with pytest.raises(model_owner.OwnedModelRejected):
         model_owner._rsee_live_binding(1234, "a", gguf)
+
+
+@pytest.mark.parametrize(
+    ("failure", "expected", "last_endpoint"),
+    [
+        ("duplicate", "RSEE_BINDING_PROPS_JSON_INVALID", "props"),
+        ("oversize", "RSEE_BINDING_PROPS_BODY_TOO_LARGE", "props"),
+        ("http_status", "RSEE_BINDING_PROPS_HTTP_NOT_200", "props"),
+    ],
+)
+def test_rsee_http_first_failure_seals_bounded_raw_response_and_diagnostic(
+    tmp_path, monkeypatch, failure, expected, last_endpoint,
+) -> None:
+    gguf = tmp_path / "model.gguf"
+    gguf.write_bytes(b"fake model")
+    evidence = tmp_path / "source-evidence"
+    evidence.mkdir()
+    requested = []
+
+    class Response:
+        def __init__(self, url):
+            self.status = 500 if failure == "http_status" and url.endswith("/props") else 200
+            if url.endswith("/v1/models"):
+                self.data = b'{"data":[{"id":"rsee-gemma4"}]}'
+            elif failure == "duplicate":
+                self.data = b'{"model_path":"a","model_path":"b"}'
+            elif failure == "oversize":
+                self.data = b" " * 16385
+            else:
+                self.data = b'{"error":"offline fixture"}'
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            return False
+        def read(self, length):
+            return self.data[:length]
+
+    class Opener:
+        def open(self, url, timeout):
+            assert timeout == 2.0
+            requested.append(url.rsplit("/", 1)[-1])
+            return Response(url)
+
+    monkeypatch.setattr(owned.urllib.request, "build_opener", lambda *_: Opener())
+    with pytest.raises(owned.OwnedModelRejected, match=expected):
+        owned._rsee_live_binding(
+            1234, "rsee-gemma4", gguf, evidence_dir=evidence,
+        )
+    assert requested == ["models", last_endpoint]
+    diagnostic = json.loads(
+        (evidence / "rsee_live_binding_diagnostic.json").read_text()
+    )
+    assert diagnostic["failed_checks"] == [expected]
+    assert diagnostic["status"] == "BLOCKED"
+    assert "slots" not in diagnostic["endpoint_receipts"]
+    assert (evidence / "rsee_http_models.json").is_file()
+    raw = (evidence / "rsee_http_props.json").read_bytes()
+    assert len(raw) == (16385 if failure == "oversize" else len(Response(
+        "http://127.0.0.1:1234/props",
+    ).data))
+    assert diagnostic["endpoint_receipts"]["props"]["bytes_read"] == len(raw)
+    assert diagnostic["endpoint_receipts"]["props"]["response_truncated"] == (
+        failure == "oversize"
+    )
+    assert diagnostic["model_post_count"] == 0
+
+
+def test_rsee_existing_evidence_prevents_any_http_requests(
+    tmp_path, monkeypatch,
+) -> None:
+    gguf = tmp_path / "model.gguf"
+    gguf.write_bytes(b"fake")
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    (evidence / "rsee_http_models.json").write_bytes(b"immutable")
+    count = []
+
+    class Opener:
+        def open(self, *_args, **_kwargs):
+            count.append("GET")
+            return None
+
+    monkeypatch.setattr(owned.urllib.request, "build_opener", lambda *_: Opener())
+    with pytest.raises((owned.OwnedModelRejected, OSError)):
+        owned._rsee_live_binding(1234, "rsee-gemma4", gguf, evidence_dir=evidence)
+    assert (evidence / "rsee_http_models.json").read_bytes() == b"immutable"
+    assert count == ["GET"]
