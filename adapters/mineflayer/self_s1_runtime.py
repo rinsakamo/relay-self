@@ -42,6 +42,7 @@ from adapters.mineflayer.self_continuous_host import (
 )
 from experiments.standard_env.golden_admission import verify_qualified_world
 from experiments.standard_env.node_runtime import verify_node_runtime
+from experiments.standard_env.preflight import _check_tools, read_profile
 from experiments.standard_env.world_binding import prepare_stopped_world
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.execution_binding import ExecutionBinding, resolve_execution_binding
@@ -84,8 +85,12 @@ def preflight(root: Path, output: Path):
         or not shutil.which("java") or not shutil.which("node")
     ):
         raise SessionRunRejected("shared RSEE interpreter, Java21 and Node22 required")
-    import httpx  # noqa: F401  -- RSEE import closure checked before World
-    import pytest  # noqa: F401  -- inherited S49 depends on test modules
+    # Reuse the existing RSEE 1.0 runtime/version/import admission.
+    # Only invoked after explicit physical opt-in; never from dry-run.
+    profile, _ = read_profile()
+    errors = _check_tools(profile)
+    if errors:
+        raise SessionRunRejected("RSEE host preflight: " + "; ".join(errors))
     jar, snapshot, manifest, evidence, node_root = runtime_inputs(root)
     verify_node_runtime(node_root, Path(__file__).resolve().parent)
     return verify_qualified_world(jar, snapshot, manifest, evidence)
