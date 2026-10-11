@@ -353,6 +353,15 @@ def main(argv: list[str] | None = None) -> int:
             raise OwnedModelRejected("NODE_OPTIONS shim is forbidden")
         if not __import__("shutil").which("java") or not __import__("shutil").which("node"):
             raise OwnedModelRejected("Java and Node missing")
+        # RSEE profile names the Python/runtime coordinate explicitly. Verify
+        # versions and imports before expensive GGUF hash or any LLM/World launch.
+        if args.rsee_required:
+            from experiments.standard_env.preflight import _check_tools, read_profile
+
+            candidate, _ = read_profile()
+            tool_errors = _check_tools(candidate)
+            if tool_errors:
+                raise OwnedModelRejected("RSEE local toolchain/import preflight blocked")
         # Mandatory BEFORE expensive GGUF hash, model spawn and World startup.
         node_deps = _preflight_mineflayer_dependencies()
         python_deps = _preflight_python_world_imports()
