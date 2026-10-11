@@ -20,7 +20,6 @@ from adapters.mineflayer.python_protocol import (
     MineflayerSnapshot,
     MineflayerTime,
 )
-
 from experiments.standard_env import world_binding as binding
 from experiments.standard_env import world_bootstrap as bootstrap
 
