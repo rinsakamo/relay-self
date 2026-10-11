@@ -14,7 +14,6 @@ import math
 import os
 import shutil
 import socket
-import stat
 import struct
 from dataclasses import asdict
 from pathlib import Path
@@ -34,8 +33,17 @@ from adapters.mineflayer.s31a_real_server_ci import (
     _write_config,
 )
 from experiments.standard_env.world_binding import (
-    JAR_SHA256, LEVEL, MAX_LEVEL, SCHEMA, SEED, WorldBindingRejected,
-    _hash_file, _regular, _world_files, _NBT, _seed_from_level,
+    _NBT,
+    JAR_SHA256,
+    LEVEL,
+    MAX_LEVEL,
+    SCHEMA,
+    SEED,
+    WorldBindingRejected,
+    _hash_file,
+    _regular,
+    _seed_from_level,
+    _world_files,
     verify_world_binding,
 )
 
@@ -197,11 +205,11 @@ def _preflight(jar: Path, output: Path, consent: str, eula: bool) -> Path:
         raise BootstrapRejected("new preexisting EMPTY evidence directory required")
     if os.environ.get("NODE_OPTIONS"):
         raise BootstrapRejected("Node shim not allowed")
-    from experiments.standard_env.preflight import _check_tools, read_profile
     from adapters.mineflayer.self_owned_llama import (
         _preflight_mineflayer_dependencies,
         _preflight_python_world_imports,
     )
+    from experiments.standard_env.preflight import _check_tools, read_profile
     profile, _ = read_profile()
     if _check_tools(profile):
         raise BootstrapRejected("RSEE host toolchain not qualified")
