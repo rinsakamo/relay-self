@@ -22,7 +22,11 @@ from adapters.mineflayer.normal_action import (
     NormalWorldL0,
 )
 from adapters.mineflayer.process_session import MineflayerProcessSession
-from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
+from adapters.mineflayer.python_protocol import (
+    MineflayerEntityHurt,
+    MineflayerLaunchConfig,
+    MineflayerObservation,
+)
 from adapters.mineflayer.s31a_real_server_ci import (
     _await_spawn,
     _correlated_observe,
@@ -49,6 +53,42 @@ from relay_self.execution_binding import ExecutionBinding, resolve_execution_bin
 from relay_self.intent import IntentCommitment
 from relay_self.reactive_l0 import L0ActionGrant
 from relay_self.world_conditioned_choice import WorldChoiceKind
+
+class NaturalS49ObservationSource(NativeObservationOnly):
+    """S49 source rules extended only to allow non-target native observations.
+
+    S49's real CI filter rejects health/time/move events not used by its fixed
+    three-entity trial. Normal World gameplay legitimately emits those frames.
+    Preserve strict source ownership, hurt handling and zombie-ID de-duplication
+    while passing all native observations to the existing L0 driver (which
+    ignores non-entity kinds without inventing a safety decision).
+    """
+
+    async def receive(self):
+        for _ in range(60):
+            frame = await self.session.receive()
+            if isinstance(frame, MineflayerObservation):
+                if frame.kind == "entities":
+                    zombies = [
+                        e for e in frame.snapshot.nearby_entities if e.name == "zombie"
+                    ]
+                    if not zombies:
+                        self.ignored_non_target_entities += 1
+                    elif len(zombies) == 1:
+                        entity_id = zombies[0].entity_id
+                        if entity_id in self._admitted_zombie_entities:
+                            self.ignored_duplicate_target_updates += 1
+                            continue
+                        self._admitted_zombie_entities.add(entity_id)
+                return frame
+            if isinstance(frame, MineflayerEntityHurt):
+                self.ignored_hurt_frames += 1
+                continue
+            raise SessionRunRejected(
+                f"unexpected native S49 frame: {type(frame).__name__}"
+            )
+        raise SessionRunRejected("S49 native frame filter exceeded bound")
+
 
 RSEE = Path("/home/rinsa/.local/share/relay-self/rsee-1.0-20261011")
 CONFIRM = "SELF-S1-ONE-DISPOSABLE-SESSION"
@@ -219,7 +259,7 @@ async def run_physical(binding, output: Path, budget: SessionBudget) -> dict:
             max_action_requests=budget.max_actions,
         )
         executor = NormalSessionActionExecutor(sid, intent)
-        observation_source = NativeObservationOnly(session)
+        observation_source = NaturalS49ObservationSource(session)
         sink = AppendOnlySessionEvents(output / "session_events.jsonl", sid)
         driver = BoundedSessionDriver(host, observation_source, budget, sink)
         reprobe, grant, on_action = s49_callbacks(session, host, executor)
