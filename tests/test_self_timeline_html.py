@@ -24,7 +24,7 @@ def test_browser_preview_renders_existing_original_world_events():
     assert "<title>RelaySelf · Cognition timeline</title>" in html
     assert html.count("class='event'") == 10
     assert "Epoch 1" in html
-    assert "L0 →" not in html
+    assert html.count("<div class='lane'>L0</div>") == 3
     assert "WAIT" in html and "MOVE_AWAY" in html
     assert "0.627" in html
     assert "Goal: UNKNOWN" in html
