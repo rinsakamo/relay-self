@@ -311,7 +311,7 @@ def test_rsee_http_first_failure_seals_bounded_raw_response_and_diagnostic(
             elif failure == "duplicate":
                 self.data = b'{"model_path":"a","model_path":"b"}'
             elif failure == "oversize":
-                self.data = b" " * 16385
+                self.data = b" " * (owned.RSEE_BINDING_PROPS_BODY_LIMIT + 1)
             else:
                 self.data = b'{"error":"offline fixture"}'
         def __enter__(self):
@@ -341,10 +341,16 @@ def test_rsee_http_first_failure_seals_bounded_raw_response_and_diagnostic(
     assert "slots" not in diagnostic["endpoint_receipts"]
     assert (evidence / "rsee_http_models.json").is_file()
     raw = (evidence / "rsee_http_props.json").read_bytes()
-    assert len(raw) == (16385 if failure == "oversize" else len(Response(
-        "http://127.0.0.1:1234/props",
-    ).data))
+    assert len(raw) == (
+        owned.RSEE_BINDING_PROPS_BODY_LIMIT + 1
+        if failure == "oversize" else len(Response(
+            "http://127.0.0.1:1234/props",
+        ).data)
+    )
     assert diagnostic["endpoint_receipts"]["props"]["bytes_read"] == len(raw)
+    assert diagnostic["endpoint_receipts"]["props"]["limit_bytes"] == (
+        owned.RSEE_BINDING_PROPS_BODY_LIMIT
+    )
     assert diagnostic["endpoint_receipts"]["props"]["response_truncated"] == (
         failure == "oversize"
     )
