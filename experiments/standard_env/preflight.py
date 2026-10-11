@@ -265,14 +265,34 @@ def verify_local(
                     _preflight_python_world_imports,
                 )
 
-                product_dependencies["python"] = _preflight_python_world_imports()
-                product_dependencies["node"] = (
-                    _preflight_mineflayer_dependencies()
-                    if node_runtime_root is None else
-                    _preflight_mineflayer_dependencies(node_runtime_root)
-                )
             except Exception as exc:
-                errors.append(f"actual product import closure failed: {type(exc).__name__}")
+                errors.append(f"actual product source/import setup failed: {type(exc).__name__}")
+            else:
+                # Stage-specific diagnosis: never mistake a missing Python
+                # module for a Node dependency failure (or vice versa).
+                # Preserve fail-closed sequencing: Node is not probed when
+                # Python closure has already failed.
+                try:
+                    product_dependencies["python"] = _preflight_python_world_imports()
+                except Exception as exc:
+                    errors.append(
+                        f"actual product Python import closure failed: {type(exc).__name__}"
+                    )
+                    if exc.__cause__ is not None:
+                        errors.append(
+                            f"actual product Python root cause: {type(exc.__cause__).__name__}"
+                        )
+                else:
+                    try:
+                        product_dependencies["node"] = (
+                            _preflight_mineflayer_dependencies()
+                            if node_runtime_root is None else
+                            _preflight_mineflayer_dependencies(node_runtime_root)
+                        )
+                    except Exception as exc:
+                        errors.append(
+                            f"actual product Node import closure failed: {type(exc).__name__}"
+                        )
     result = {
         "classification": (
             "RSEE_LOCAL_PREFLIGHT_BLOCKED"
