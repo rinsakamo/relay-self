@@ -193,16 +193,44 @@ def _ready(port: int, alias: str) -> bool:
         return False
 
 
-def _rsee_live_binding(port: int, alias: str, gguf: Path) -> dict[str, object]:
-    """Fresh read-only *owned* llama-server binding before disposable World.
+def _rsee_live_binding(
+    port: int, alias: str, gguf: Path, *, evidence_dir: Path | None = None,
+) -> dict[str, object]:
+    """Check the *owned* llama.cpp model with one GET per endpoint, no inference.
 
-    This confirms HTTP-exposed settings, NOT GPU computation, Thinking semantics,
-    STOP ACK or real World identity. No inference, retries or fallback requests.
+    /v1/models is authority for the request alias. The upstream /props
+    contract does not require model_alias; if provided, it must not disagree.
+    Verify model path and context in /props, slot count and context in /slots.
+    On an opted-in RSEE run preserve original bounded HTTP bytes and an
+    itemized diagnostic even when qualification fails, before GPU cleanup.
+    This remains HTTP configuration attestation, NOT physical GPU/Thinking.
     """
+    diagnostic: dict[str, object] = {
+        "schema": "RSEE_LIVE_BINDING_DIAGNOSTIC_V1",
+        "status": "BLOCKED",
+        "endpoint_receipts": {},
+        "checks": {},
+        "failed_checks": [],
+        "model_post_count": 0,
+        "minecraft_launch_count": 0,
+        "gpu_execution_attested": False,
+        "thinking_off_attested": False,
+    }
+    failures: list[str] = diagnostic["failed_checks"]  # type: ignore[assignment]
+    checks: dict[str, object] = diagnostic["checks"]  # type: ignore[assignment]
+    endpoints: dict[str, object] = diagnostic["endpoint_receipts"]  # type: ignore[assignment]
 
-    def fetch(endpoint: str) -> object:
+    def check(name: str, ok: bool, *, expected: object, observed: object) -> None:
+        checks[name] = {"passed": ok, "expected": expected, "observed": observed}
+        if not ok:
+            failures.append(name)
+
+    def fetch(endpoint: str, label: str) -> object:
+        # Never use environment proxy settings for the owned loopback server.
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         url = f"http://127.0.0.1:{port}/{endpoint}"
+        observed: dict[str, object] = {"endpoint": "/" + endpoint}
+        endpoints[label] = observed
 
         def reject_duplicates(pairs):
             value = {}
@@ -214,47 +242,128 @@ def _rsee_live_binding(port: int, alias: str, gguf: Path) -> dict[str, object]:
 
         try:
             with opener.open(url, timeout=2.0) as response:
-                if response.status != 200:
-                    raise OwnedModelRejected("llama binding endpoint not HTTP 200")
-                blob = response.read(16385)
-            if len(blob) > 16384:
-                raise OwnedModelRejected("llama binding response too large")
-            return json.loads(blob.decode("utf-8"), object_pairs_hook=reject_duplicates)
-        except (OSError, UnicodeError, ValueError, urllib.error.URLError) as exc:
-            raise OwnedModelRejected("RSEE llama binding unavailable or invalid") from exc
+                observed["http_status"] = response.status
+                raw = response.read(16385)
+            observed["bytes_read"] = len(raw)
+            observed["response_sha256"] = hashlib.sha256(raw).hexdigest()
+            observed["response_truncated"] = len(raw) > 16384
+            if evidence_dir is not None:
+                # Real response bytes, including 4xx or over-limit bodies.
+                # Exclusive creation; never overwrite pre-existing evidence.
+                with (evidence_dir / f"rsee_http_{label}.json").open("xb") as stream:
+                    stream.write(raw)
+            if observed["http_status"] != 200:
+                raise OwnedModelRejected(f"RSEE_BINDING_{label.upper()}_HTTP_NOT_200")
+            if len(raw) > 16384:
+                raise OwnedModelRejected(f"RSEE_BINDING_{label.upper()}_BODY_TOO_LARGE")
+            try:
+                return json.loads(raw.decode("utf-8"), object_pairs_hook=reject_duplicates)
+            except (UnicodeError, ValueError) as exc:
+                raise OwnedModelRejected(f"RSEE_BINDING_{label.upper()}_JSON_INVALID") from exc
+        except (OSError, urllib.error.URLError) as exc:
+            observed["transport_error_type"] = type(exc).__name__
+            raise OwnedModelRejected(
+                f"RSEE_BINDING_{label.upper()}_TRANSPORT_UNAVAILABLE"
+            ) from exc
 
-    props = fetch("props")
-    slots = fetch("slots")
-    if not isinstance(props, dict) or not isinstance(slots, list):
-        raise OwnedModelRejected("RSEE llama props/slots shape invalid")
-    model_path = props.get("model_path")
-    settings = props.get("default_generation_settings")
-    if (props.get("model_alias") != alias
-            or not isinstance(model_path, str)
-            or Path(model_path).expanduser().resolve() != gguf
-            or not isinstance(settings, dict)
-            or type(settings.get("n_ctx")) is not int
-            or settings["n_ctx"] != 8192
-            or type(props.get("total_slots")) is not int
-            or props["total_slots"] != 1
-            or len(slots) != 1
-            or not isinstance(slots[0], dict)
-            or type(slots[0].get("n_ctx")) is not int
-            or slots[0]["n_ctx"] != 8192
-            or not isinstance(props.get("build_info"), str)
-            or not props["build_info"].strip()):
-        raise OwnedModelRejected("RSEE live model identity/context/slot mismatch")
-    return {
-        "model_alias": alias,
-        "model_path": str(gguf),
-        "context": 8192,
-        "slot_count": 1,
-        "build_info": props["build_info"],
-        "live_http_binding_verified": True,
-        "gpu_execution_attested": False,
-        "thinking_disabled_physically_attested": False,
-        "backend_stop_ack": False,
-    }
+    try:
+        if evidence_dir is not None:
+            if evidence_dir.is_symlink() or not evidence_dir.is_dir():
+                raise OwnedModelRejected("RSEE_BINDING_EVIDENCE_DIRECTORY_INVALID")
+            names = (
+                "rsee_http_models.json", "rsee_http_props.json",
+                "rsee_http_slots.json", "rsee_live_binding_diagnostic.json",
+            )
+            if any(
+                (evidence_dir / name).exists() or (evidence_dir / name).is_symlink()
+                for name in names
+            ):
+                raise OwnedModelRejected("RSEE_BINDING_EVIDENCE_COLLISION")
+
+        # Fetch every endpoint exactly once before validating any contents.
+        # If a transport/JSON error occurs, keep the first terminal; no retry.
+        models = fetch("v1/models", "models")
+        props = fetch("props", "props")
+        slots = fetch("slots", "slots")
+        check("models.object", isinstance(models, dict),
+              expected="object", observed=type(models).__name__)
+        data = models.get("data") if isinstance(models, dict) else None
+        check("models.data.array", isinstance(data, list),
+              expected="array", observed=type(data).__name__)
+        matching = (
+            sum(isinstance(item, dict) and item.get("id") == alias for item in data)
+            if isinstance(data, list) else 0
+        )
+        check("models.alias.exactly_once", matching == 1,
+              expected=1, observed=matching)
+        check("props.object", isinstance(props, dict),
+              expected="object", observed=type(props).__name__)
+        props = props if isinstance(props, dict) else {}
+        # model_alias is not a required /props field according to llama.cpp.
+        # A present conflicting alias remains a hard source-identity failure.
+        if "model_alias" in props:
+            check("props.optional_alias.consistent",
+                  type(props["model_alias"]) is str and props["model_alias"] == alias,
+                  expected=alias, observed=props["model_alias"])
+        model_path = props.get("model_path")
+        check("props.model_path.exact",
+              isinstance(model_path, str)
+              and Path(model_path).expanduser().resolve() == gguf,
+              expected=str(gguf), observed=model_path)
+        settings = props.get("default_generation_settings")
+        check("props.default_generation_settings.object",
+              isinstance(settings, dict),
+              expected="object", observed=type(settings).__name__)
+        context = settings.get("n_ctx") if isinstance(settings, dict) else None
+        check("props.default_generation_settings.n_ctx",
+              type(context) is int and context == 8192,
+              expected=8192, observed=context)
+        total = props.get("total_slots")
+        check("props.total_slots", type(total) is int and total == 1,
+              expected=1, observed=total)
+        build = props.get("build_info")
+        check("props.build_info",
+              isinstance(build, str) and bool(build.strip()),
+              expected="nonempty string", observed=build)
+        check("slots.array", isinstance(slots, list),
+              expected="array", observed=type(slots).__name__)
+        check("slots.exactly_one",
+              isinstance(slots, list) and len(slots) == 1,
+              expected=1, observed=len(slots) if isinstance(slots, list) else None)
+        first_slot = slots[0] if isinstance(slots, list) and len(slots) == 1 else None
+        check("slots[0].object", isinstance(first_slot, dict),
+              expected="object", observed=type(first_slot).__name__)
+        slot_context = first_slot.get("n_ctx") if isinstance(first_slot, dict) else None
+        check("slots[0].n_ctx",
+              type(slot_context) is int and slot_context == 8192,
+              expected=8192, observed=slot_context)
+        if failures:
+            raise OwnedModelRejected("RSEE_BINDING_FIELD_MISMATCH")
+        diagnostic["status"] = "HTTP_BINDING_QUALIFIED_NOT_PHYSICAL_PROOF"
+        return {
+            "model_alias": alias,
+            "model_path": str(gguf),
+            "context": 8192,
+            "slot_count": 1,
+            "build_info": build,
+            "live_http_binding_verified": True,
+            "gpu_execution_attested": False,
+            "thinking_disabled_physically_attested": False,
+            "backend_stop_ack": False,
+        }
+    except (OSError, ValueError) as exc:
+        if not failures:
+            failures.append(str(exc) if isinstance(exc, OwnedModelRejected)
+                            else type(exc).__name__)
+        raise
+    finally:
+        if evidence_dir is not None:
+            # Save before owned backend shutdown, regardless of pass or fail.
+            with (evidence_dir / "rsee_live_binding_diagnostic.json").open(
+                "x", encoding="utf-8",
+            ) as stream:
+                json.dump(diagnostic, stream, ensure_ascii=False, indent=2, sort_keys=True)
+                stream.write("\n")
 
 
 def _stop_only_owned(proc: subprocess.Popen, *, grace_s: float = 5.0) -> dict[str, object]:
@@ -489,10 +598,14 @@ def main(argv: list[str] | None = None) -> int:
                 try:
                     state["rsee_live_binding"] = _rsee_live_binding(
                         args.model_port, args.model_alias, gguf,
+                        evidence_dir=args.output_dir,
                     )
                 except (OSError, ValueError) as exc:
                     state["status"] = "RSEE_LIVE_BINDING_UNCONFIRMED"
                     state["rsee_live_binding_error"] = type(exc).__name__
+                    state["rsee_binding_diagnostic_file"] = (
+                        "rsee_live_binding_diagnostic.json"
+                    )
             if (state.get("loopback_health_and_alias_checked")
                     and (not args.rsee_required or "rsee_live_binding" in state)):
                 state["minecraft_launch_attempted"] = True
