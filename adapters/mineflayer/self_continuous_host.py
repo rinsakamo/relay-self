@@ -252,6 +252,12 @@ class BoundedSessionDriver:
                             or review.probe_seq != reading.seq
                             or review.l0_selection != choice.selection.value
                             or review.effective_selection != choice.selection.value
+                            or review.l1_source != choice.provenance.reference
+                            or review.l1_candidate not in (None, "WAIT")
+                            or review.l1_status not in ("selected", "tied", "no_match")
+                            or type(review.l1_repertoire_revision) is not int
+                            or review.l1_repertoire_revision != 0
+                            or (review.l1_status == "selected") != (review.l1_candidate == "WAIT")
                             or review.action_authorized_by_l1
                             or review.learned_habit_claimed
                             or review.l2_used_for_action
