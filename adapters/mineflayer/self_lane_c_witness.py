@@ -85,7 +85,7 @@ def qualify_self_action_spatial(
     if not isinstance(session, str) or not session:
         return _unknown("MISSING_SESSION", action=action_id)
     if (report.get("session_id") != session
-            or entry.get("terminal") != "OUTCOME"
+            or entry.get("terminal") != "outcome"
             or spec.session_id != session
             or spec.start_action_id != action_id
             or spec.stop_action_id != f"{action_id}-s15-clear"):
