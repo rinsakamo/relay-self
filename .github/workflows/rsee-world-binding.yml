@@ -12,6 +12,7 @@ on:
       - 'self/rsee-golden-host-readonly-gate-*'
       - 'self/rsee-central-runtime-*'
       - 'self/rsee-live-binding-evidence-*'
+      - 'self/rsee-props-1mib-*'
   pull_request:
     branches:
       - 'infra/rsee-wsl2-host-preparation-*'
@@ -38,7 +39,7 @@ jobs:
           EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
-          git merge-base --is-ancestor cbf8c40d83e149ec438a9af024c5416cff4df0dc HEAD
+          git merge-base --is-ancestor 784df44a668b7c5f0b0367588ce59aa796b2a817 HEAD
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
