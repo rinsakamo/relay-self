@@ -69,3 +69,67 @@ qualify a positive C15 endpoint. The historic Self 1.1 physical attempt on
 
 Never merge the integration Draft into frozen Self #545 or main without
 reconciling independent Lane C authority and physical source evidence.
+
+
+## Self product timeline integration (read-only)
+
+A second optional CLI now projects existing completed native World/L0/L2/Memory
+rows and appends two typed Lane C observations directly after the corresponding
+S16 Action outcomes:
+
+    PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m \
+      adapters.mineflayer.self_lane_c_timeline \
+      --native-report /path/to/native_report.json \
+      --spatial-questions /path/to/retrospective-questions.json \
+      --live-l2 /path/to/live_l2.jsonl \
+      --memory /path/to/observed_memory.json \
+      --format jsonl
+
+The optional --bridge-jsonl argument accepts only an original bounded regular
+source file if one really exists. It never obtains fresh World data, alters
+a sealed evidence directory or launches a server. An absent --bridge-jsonl is
+allowed, producing UNDETERMINED evidence for the selected spatial questions.
+
+A sample shape for a bounded retrospective-questions.json is:
+
+    {
+      "schema": "SELF_LANEC_C15_SPATIAL_QUESTIONS_V1",
+      "session_id": "<EXACT_NATIVE_S49_SESSION>",
+      "questions": [
+        {
+          "action_id": "<FIRST_EXACT_NATIVE_ACTION_ID>",
+          "goal": {"low": [50, 62, 20], "high": [52, 66, 22]},
+          "alternative": {"low": [-52, 62, 20], "high": [-50, 66, 22]}
+        },
+        {
+          "action_id": "<SECOND_EXACT_NATIVE_ACTION_ID>",
+          "goal": {"low": [50, 62, 20], "high": [52, 66, 22]},
+          "alternative": {"low": [-52, 62, 20], "high": [-50, 66, 22]}
+        }
+      ]
+    }
+
+Those positions are EXAMPLE QUESTIONS ONLY, not real goal locations,
+Minecraft measurements, or preauthorized task target regions. Any region
+selected after observing an Action remains a retrospective question; never
+promote that choice into a precommitted goal. Both exact Action IDs must be
+present; foreign, duplicate, overlapping and out-of-session specs are denied.
+
+The output preserves every original action_outcome spatial_goal_success=UNKNOWN,
+and emits separate lane_c_spatial_observation events with the C15 result,
+source references/digest, retrospective-question provenance and explicit
+physical_source_attested=false, goal_success_attested=false,
+s17_feedback_issued=false, s10_updates=0, s11_habit_promotions=0.
+
+C15's frozen reducer expects a single complete strict original stream starting
+at adapter_started seq=0 and only its accepted per-Action event order. A real
+multi-epoch S49 bridge stream can contain unrelated observations and two
+separately issued actions; this alone does NOT qualify as the C15
+single-transaction stream. No filtering, rewriting source seq, recomposing,
+or reconstructing missing Action events is performed. Even if future S49
+receipts contain two post-stop source observations, the cross-owner
+multi-action temporal decoding contract still needs explicit future design
+and qualification before a physical C15 positive result can be claimed.
+
+This CLI supports text and JSONL, not HTML; the existing original Self
+timeline/HTML remains unchanged.
