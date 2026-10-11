@@ -220,7 +220,6 @@ def test_fake_owned_world_closes_processes_and_evidence_without_action(
     monkeypatch.setattr(s1, "_shutdown_server", fake_shutdown)
     monkeypatch.setattr(s1, "_await_spawn", fake_spawn)
     monkeypatch.setattr(s1.MineflayerProcessSession, "launch", fake_launch)
-    monkeypatch.setattr(s1, "NativeObservationOnly", lambda session: session)
     monkeypatch.setattr(s1, "RSEE", tmp_path / "shared-root")
     budget = SessionBudget(max_events=1, max_actions=1, max_frames=1,
                            max_seconds=2, poll_seconds=.02)
@@ -322,3 +321,35 @@ def test_s49_native_callback_forwards_original_probe_and_separate_stage_grants(
         ("correlated", f"s49-actual:{sid}:event-{event.seq}"),
         ("existing-executor", f"s49-native-move-{event.seq}"),
     ]
+
+
+def test_natural_s49_filter_accepts_benign_native_frames_and_deduplicates_target():
+    """S49 fixed-test filter must not reject authentic health/time World events."""
+    _, _, _, zombie, _ = s42._pair()
+    health = replace(zombie, kind="health", seq=1)
+    first = replace(zombie, seq=2)
+    duplicate = replace(zombie, seq=3)
+    time_frame = replace(zombie, kind="time", seq=4)
+
+    class Frames:
+        started = SimpleNamespace(session_id=zombie.session_id)
+
+        def __init__(self):
+            self.frames = [health, first, duplicate, time_frame]
+            self.consumed = []
+
+        async def receive(self):
+            msg = self.frames.pop(0)
+            self.consumed.append(msg.seq)
+            return msg
+
+    owned = Frames()
+    filtered = s1.NaturalS49ObservationSource(owned)
+
+    async def trial():
+        return [await filtered.receive() for _ in range(3)]
+
+    observed = asyncio.run(trial())
+    assert [x.kind for x in observed] == ["health", "entities", "time"]
+    assert owned.consumed == [1, 2, 3, 4]
+    assert filtered.ignored_duplicate_target_updates == 1
