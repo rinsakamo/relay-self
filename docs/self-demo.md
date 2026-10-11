@@ -436,3 +436,24 @@ Memory・学習・Habitを書き換えません。過去の S49 レポートに�
 原本や因果的なゴール成功を生成しません。L2 のテキストは非信頼の参考情報であり、
 WorldとL2の物理的時間重複の独立証明とは表示しません。
 既存レポートや Memory と矛盾するソースは `UNDETERMINED` として拒否します。
+
+
+### オフラインHTMLビュー（RelayUIに接続する前の軽量プレビュー）
+
+テキスト/JSONLと**同じ読み取り専用タイムライン**を、Webサーバー無しで
+ブラウザで開ける静的な `timeline.html` にできます。
+
+```bash
+export PYTHONPATH="$PWD/src:$PWD/tests:$PWD"
+python -m adapters.mineflayer.self_timeline \
+  --native-report ./self-demo-receipts/native_report.json \
+  --format html --output ./timeline.html
+```
+
+`--live-l2` と `--memory` も従来同様に指定できます（レシートがある場合のみ）。
+HTMLにはWorld観測・L0判断・S16 OUTCOME・任意のL2要約・Memoryの
+source-bound結果が表示されます。**JavaScript、外部CDN、通信、画像取得は無く、
+実行も学習も一切行いません。** モデル文章はHTMLエスケープします。
+`--output` はまだ存在しない `.html` パスであることが必須で、原本・既存
+HTMLは上書きできません。ブラウザ画面は既存のS49記録の表示であり、
+現在進行中のMinecraftをライブ監視したり、Goal成功を認定するものではありません。
