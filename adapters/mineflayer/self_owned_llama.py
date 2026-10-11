@@ -193,6 +193,12 @@ def _ready(port: int, alias: str) -> bool:
         return False
 
 
+# Keep the admission limits explicit and endpoint-specific. /props may
+# contain large generation defaults; do not weaken small identity/slot replies.
+RSEE_BINDING_SMALL_BODY_LIMIT = 16 * 1024
+RSEE_BINDING_PROPS_BODY_LIMIT = 1024 * 1024
+
+
 def _rsee_live_binding(
     port: int, alias: str, gguf: Path, *, evidence_dir: Path | None = None,
 ) -> dict[str, object]:
@@ -230,6 +236,14 @@ def _rsee_live_binding(
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         url = f"http://127.0.0.1:{port}/{endpoint}"
         observed: dict[str, object] = {"endpoint": "/" + endpoint}
+        # A single byte beyond the limit establishes overrun without reading
+        # an unbounded body. Never claim that capture is the entire response
+        # if that sentinel byte was observed.
+        limit = (
+            RSEE_BINDING_PROPS_BODY_LIMIT
+            if label == "props" else RSEE_BINDING_SMALL_BODY_LIMIT
+        )
+        observed["limit_bytes"] = limit
         endpoints[label] = observed
 
         def reject_duplicates(pairs):
@@ -243,10 +257,10 @@ def _rsee_live_binding(
         try:
             with opener.open(url, timeout=2.0) as response:
                 observed["http_status"] = response.status
-                raw = response.read(16385)
+                raw = response.read(limit + 1)
             observed["bytes_read"] = len(raw)
             observed["response_sha256"] = hashlib.sha256(raw).hexdigest()
-            observed["response_truncated"] = len(raw) > 16384
+            observed["response_truncated"] = len(raw) > limit
             if evidence_dir is not None:
                 # Real response bytes, including 4xx or over-limit bodies.
                 # Exclusive creation; never overwrite pre-existing evidence.
@@ -254,11 +268,11 @@ def _rsee_live_binding(
                     stream.write(raw)
             if observed["http_status"] != 200:
                 raise OwnedModelRejected(f"RSEE_BINDING_{label.upper()}_HTTP_NOT_200")
-            if len(raw) > 16384:
+            if len(raw) > limit:
                 raise OwnedModelRejected(f"RSEE_BINDING_{label.upper()}_BODY_TOO_LARGE")
             try:
                 return json.loads(raw.decode("utf-8"), object_pairs_hook=reject_duplicates)
-            except (UnicodeError, ValueError) as exc:
+            except (UnicodeError, ValueError, RecursionError) as exc:
                 raise OwnedModelRejected(f"RSEE_BINDING_{label.upper()}_JSON_INVALID") from exc
         except (OSError, urllib.error.URLError) as exc:
             observed["transport_error_type"] = type(exc).__name__
