@@ -215,6 +215,7 @@ def test_nonzero_java_exit_preserves_failure_without_snapshot(monkeypatch, tmp_p
     out.mkdir()
     jar = tmp_path / "jar"
     jar.write_bytes(b"fake")
+    monkeypatch.setattr(boot, "JAR_SHA256", bind._hash_file(jar))
     stages = []
 
     class _Stdin:
