@@ -7,7 +7,6 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import replace
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -89,7 +88,7 @@ def test_preexisting_output_does_not_get_overwritten(tmp_path, monkeypatch):
 
 
 def test_non_target_native_observation_never_probes_or_issues(tmp_path):
-    retained, near, far, near_event, _ = s42._pair()
+    retained, _, _, near_event, _ = s42._pair()
     sid = near_event.session_id
     snapshot = replace(near_event.snapshot, nearby_entities=())
     event = replace(near_event, snapshot=snapshot, seq=1)
