@@ -174,3 +174,53 @@ def test_explicit_live_mode_uses_original_s49_owner_and_retains_one_sidecar(
 
     asyncio.run(asyncio.wait_for(scenario(), 6))
     assert "l2_live_observer" in capsys.readouterr().out
+
+
+def test_rsee_live_l2_is_exact_optin_reasoning_none_and_cache_off():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port,
+                timeout_s=2, rsee_controls=True,
+            )
+            await observer.observe(native_probe(8, 10))
+            await asyncio.sleep(.12)
+            assert len(server.posts) == 1
+            request = server.posts[0]
+            assert request["reasoning_effort"] == "none"
+            assert request["cache_prompt"] is False
+            assert set(request) == {
+                "model", "messages", "stream", "temperature", "max_tokens",
+                "reasoning_effort", "cache_prompt",
+            }
+            await observer.observe(native_probe(19, 2))
+            row = await observer.close()
+            assert row["rsee_request_controls_selected"] is True
+            assert row["authorized_actions"] == 0
+            assert row["backend_stop_ack"] is False
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_legacy_live_l2_wire_has_no_new_controls():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(model="self-demo-test-model", port=server.port)
+            await observer.observe(native_probe(8, 10))
+            await asyncio.sleep(.12)
+            request = server.posts[0]
+            assert set(request) == {
+                "model", "messages", "stream", "temperature", "max_tokens",
+            }
+            await observer.close()
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_rsee_standard_flag_requires_live_disposable_world(capsys):
+    for args in (
+        ["--rsee-standard"], ["--smoke", "--rsee-standard"],
+        ["--run-disposable", "--rsee-standard"],
+    ):
+        assert self_demo.main(args) == 2
+        assert json.loads(capsys.readouterr().out)["reason"] == (
+            "RSEE_REQUIRES_LIVE_DISPOSABLE_WORLD"
+        )
