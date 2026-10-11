@@ -153,6 +153,7 @@ def audit(
     initial_evidence: Path,
     gguf: Path,
     llama_server: Path,
+    node_runtime_root: Path | None = None,
     repo: Path = REPO_ROOT,
 ) -> dict[str, Any]:
     """Fail closed; no launch, output folder creation, or mutation of inputs."""
@@ -168,6 +169,8 @@ def audit(
         errors.append("EVIDENCE_DESTINATION_NOT_FRESH")
     if os.environ.get("NODE_OPTIONS"):
         errors.append("NODE_OPTIONS_OVERRIDE_PRESENT")
+    if node_runtime_root is None:
+        errors.append("EXPLICIT_SHARED_NODE_RUNTIME_REQUIRED")
 
     preflight = verify_local(
         PROFILE,
@@ -178,6 +181,7 @@ def audit(
         minecraft_sha256=JAR_SHA256,
         mineflayer_root=repo / "adapters" / "mineflayer",
         verify_product=True,
+        node_runtime_root=node_runtime_root,
     )
     if preflight["classification"] != "RSEE_LOCAL_FILES_VERIFIED_NOT_PHYSICALLY_QUALIFIED":
         errors.append("HOST_ARTIFACT_OR_DEPENDENCY_MISMATCH")
@@ -225,6 +229,9 @@ def audit(
             "exclusive_port_ownership_qualified": False,
         },
         "output_dir_absent": _new_destination(output_dir),
+        "node_runtime_root": str(node_runtime_root) if node_runtime_root else None,
+        "python_runtime_interpreter": preflight.get("python_interpreter"),
+        "python_runtime_prefix": preflight.get("python_runtime_prefix"),
         "runtime_props_slots_qualified": False,
         "thinking_off_execution_qualified": False,
         "gpu_execution_qualified": False,
@@ -247,6 +254,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--initial-evidence", type=Path, required=True)
     parser.add_argument("--gguf", type=Path, required=True)
     parser.add_argument("--llama-server", type=Path, required=True)
+    parser.add_argument("--node-runtime-root", type=Path, required=True,
+                        help="absolute physical external npm root with exact source manifests")
     args = parser.parse_args(argv)
     try:
         result = audit(
@@ -258,6 +267,7 @@ def main(argv: list[str] | None = None) -> int:
             initial_evidence=args.initial_evidence,
             gguf=args.gguf,
             llama_server=args.llama_server,
+            node_runtime_root=args.node_runtime_root,
         )
     except (OSError, TypeError, ValueError, subprocess.SubprocessError) as exc:
         result = {

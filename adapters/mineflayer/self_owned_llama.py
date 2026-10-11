@@ -52,7 +52,7 @@ def _regular(path: Path, *, executable: bool = False) -> Path:
     return item
 
 
-def _preflight_mineflayer_dependencies() -> dict[str, str]:
+def _preflight_mineflayer_dependencies(runtime_root: Path | None = None) -> dict[str, str]:
     """Verify actual bridge-context Node imports, BEFORE llama/GPU/Java launch.
 
     Node's package resolution follows module realpaths. Merely finding a
@@ -61,7 +61,12 @@ def _preflight_mineflayer_dependencies() -> dict[str, str]:
     """
     folder = Path(__file__).resolve().parent
     bridge = folder / "bridge.mjs"
-    modules = folder / "node_modules"
+    runtime_receipt: dict[str, str] = {}
+    if runtime_root is not None:
+        from experiments.standard_env.node_runtime import verify_node_runtime
+
+        runtime_receipt = verify_node_runtime(runtime_root, folder)
+    modules = folder / "node_modules" if runtime_root is None else runtime_root / "node_modules"
     if (not bridge.is_file() or bridge.is_symlink()
             or not modules.is_dir() or modules.is_symlink()):
         raise OwnedModelRejected(
@@ -70,7 +75,8 @@ def _preflight_mineflayer_dependencies() -> dict[str, str]:
         )
     # Execute actual module imports from this bridge's own URL and the
     # resolved Mineflayer package realpath; no shell or network operations.
-    bridge_literal = json.dumps(str(bridge), ensure_ascii=True)
+    anchor = bridge if runtime_root is None else runtime_root / "package.json"
+    bridge_literal = json.dumps(str(anchor), ensure_ascii=True)
     probe = (
         "const {createRequire}=require('node:module');"
         f"const root=createRequire({bridge_literal});"
@@ -112,6 +118,12 @@ def _preflight_mineflayer_dependencies() -> dict[str, str]:
         raise OwnedModelRejected(
             "Mineflayer bridge-relative dependency evidence invalid"
         ) from exc
+    if runtime_root is not None:
+        required_parent = modules.resolve()
+        if (not Path(value["mineflayer_entry"]).is_relative_to(required_parent)
+                or not Path(value["minecraft_protocol_entry"]).is_relative_to(required_parent)):
+            raise OwnedModelRejected("Node runtime resolved imports outside verified root")
+        value.update(runtime_receipt)
     return value
 
 
@@ -297,6 +309,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rsee-world-manifest", type=Path)
     parser.add_argument("--rsee-initial-evidence", type=Path)
     parser.add_argument("--rsee-eula-accepted", action="store_true")
+    parser.add_argument("--rsee-node-runtime-root", type=Path,
+                        help="external physical pinned npm root, not a worktree node_modules")
     parser.add_argument("--rsee-golden-run-once", action="store_true",
                         help="independent ONE-SHOT Golden Run permission, not bootstrap grant")
     args = parser.parse_args(argv)
@@ -342,7 +356,8 @@ def main(argv: list[str] | None = None) -> int:
         )
         if not args.rsee_required:
             if (any(x is not None for x in world_values)
-                    or args.rsee_eula_accepted or args.rsee_golden_run_once):
+                    or args.rsee_eula_accepted or args.rsee_golden_run_once
+                    or args.rsee_node_runtime_root is not None):
                 raise OwnedModelRejected("RSEE World fields require strict standard mode")
             bound_world = None
         else:
@@ -350,6 +365,8 @@ def main(argv: list[str] | None = None) -> int:
                 raise OwnedModelRejected("RSEE jar/snapshot/manifest/initial evidence and EULA required")
             if not args.rsee_golden_run_once:
                 raise OwnedModelRejected("a new explicit one-shot Golden Run grant is required")
+            if args.rsee_node_runtime_root is None:
+                raise OwnedModelRejected("explicit external Node runtime root required for RSEE")
             from experiments.standard_env.golden_admission import verify_qualified_world
 
             bound_world = verify_qualified_world(*world_values)
@@ -387,7 +404,11 @@ def main(argv: list[str] | None = None) -> int:
             if tool_errors:
                 raise OwnedModelRejected("RSEE local toolchain/import preflight blocked")
         # Mandatory BEFORE expensive GGUF hash, model spawn and World startup.
-        node_deps = _preflight_mineflayer_dependencies()
+        node_deps = (
+            _preflight_mineflayer_dependencies()
+            if args.rsee_node_runtime_root is None else
+            _preflight_mineflayer_dependencies(args.rsee_node_runtime_root)
+        )
         python_deps = _preflight_python_world_imports()
         binary = _regular(args.llama_server, executable=True)
         gguf = _regular(args.gguf)
@@ -478,6 +499,8 @@ def main(argv: list[str] | None = None) -> int:
                 # Calls the EXISTING S49 product CLI in an owned child process.
                 # No shell, replay, new Game Action authorizer or L2->Action route.
                 env = dict(os.environ)
+                if args.rsee_required:
+                    env["RELAYSELF_RSEE_NODE_RUNTIME_ROOT"] = str(args.rsee_node_runtime_root)
                 env["PYTHONPATH"] = os.pathsep.join(
                     [str(Path(__file__).resolve().parents[2] / "src"),
                      str(Path(__file__).resolve().parents[2] / "tests"),
@@ -490,6 +513,7 @@ def main(argv: list[str] | None = None) -> int:
                         "--output-dir", str(args.output_dir),
                         "--live-think",
                         *(["--rsee-standard", "--rsee-golden-run-once",
+                            "--rsee-node-runtime-root", str(args.rsee_node_runtime_root),
                             "--rsee-world-jar", str(bound_world.jar),
                             "--rsee-world-snapshot", str(bound_world.snapshot),
                             "--rsee-world-manifest", str(bound_world.manifest),

@@ -38,6 +38,7 @@ def fake_host(monkeypatch, tmp_path):
     return {
         "expected_head": head, "output_dir": new_output,
         "repo": repo, "gguf": tmp_path / "model.gguf",
+        "node_runtime_root": tmp_path / "central_node",
         "llama_server": tmp_path / "llama-server",
         "jar": tmp_path / "jar",
         "snapshot": tmp_path / "snapshot",
@@ -184,6 +185,7 @@ def test_main_never_starts_physical_runtime_on_invalid_head(tmp_path, capsys, mo
         "--jar", str(path), "--snapshot", str(path),
         "--manifest", str(path), "--initial-evidence", str(path),
         "--gguf", str(path), "--llama-server", str(path),
+        "--node-runtime-root", str(path),
     ]
     assert gate.main(flags) == 2
     output = json.loads(capsys.readouterr().out)

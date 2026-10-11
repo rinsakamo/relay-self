@@ -229,3 +229,60 @@ def test_product_source_drift_blocks_even_when_local_files_pass(monkeypatch):
     )
     assert result["classification"] == "RSEE_LOCAL_PREFLIGHT_BLOCKED"
     assert result["errors"] == ["OWNED_LLAMA_CONTEXT_SHIFT_NOT_DISABLED"]
+
+
+@pytest.mark.parametrize(
+    ("stage", "expected"),
+    [
+        ("python", "actual product Python import closure failed: OwnedModelRejected"),
+        ("node", "actual product Node import closure failed: OwnedModelRejected"),
+    ],
+)
+def test_shared_runtime_preflight_reports_exact_failed_import_stage(
+    monkeypatch, stage, expected,
+) -> None:
+    """One failed host report must identify which installed runtime is broken."""
+    from adapters.mineflayer import self_owned_llama as owner
+    from experiments.standard_env import product_gate
+
+    monkeypatch.setattr(preflight, "_check_tools", lambda _: [])
+    monkeypatch.setattr(preflight, "_check_mineflayer", lambda *_, **__: [])
+    monkeypatch.setattr(preflight, "_check_file", lambda *_, **__: [])
+    monkeypatch.setattr(product_gate, "audit_product", lambda **_: {
+        "classification": "RSEE_PRODUCT_STATIC_COMPATIBLE_NOT_PHYSICALLY_QUALIFIED",
+        "gaps": [],
+    })
+    calls: list[str] = []
+
+    def check_python():
+        calls.append("python")
+        if stage == "python":
+            try:
+                raise ModuleNotFoundError("no module named 'fixture_closure'")
+            except ModuleNotFoundError as exc:
+                raise owner.OwnedModelRejected("S49 import unavailable") from exc
+        return {"closure": "PASS"}
+
+    def check_node(*_args):
+        calls.append("node")
+        if stage == "node":
+            raise owner.OwnedModelRejected("physical central npm root unavailable")
+        return {"closure": "PASS"}
+
+    monkeypatch.setattr(owner, "_preflight_python_world_imports", check_python)
+    monkeypatch.setattr(owner, "_preflight_mineflayer_dependencies", check_node)
+    result = preflight.verify_local(
+        preflight.PROFILE,
+        model=None, llama_server=None, llama_sha256=None,
+        minecraft_jar=None, minecraft_sha256=None,
+        mineflayer_root=preflight.REPO_ROOT / "adapters/mineflayer",
+        node_runtime_root=preflight.REPO_ROOT.parent / "central-runtime-test",
+        verify_product=True,
+    )
+    assert result["classification"] == "RSEE_LOCAL_PREFLIGHT_BLOCKED"
+    assert expected in result["errors"]
+    assert ("actual product Python root cause: ModuleNotFoundError" in result["errors"]) == (
+        stage == "python"
+    )
+    assert calls == (["python"] if stage == "python" else ["python", "node"])
+    assert result["physical_execution_authorized"] is False

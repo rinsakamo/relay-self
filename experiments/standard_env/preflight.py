@@ -160,10 +160,23 @@ def _check_tools(profile: dict[str, Any]) -> list[str]:
     return errors
 
 
-def _check_mineflayer(root: Path, expected_version: str) -> list[str]:
+def _check_mineflayer(
+    root: Path, expected_version: str, *, node_runtime_root: Path | None = None,
+) -> list[str]:
     errors: list[str] = []
     lock = root / "package-lock.json"
-    installed = root / "node_modules" / "mineflayer" / "package.json"
+    if node_runtime_root is not None:
+        from experiments.standard_env.node_runtime import (
+            NodeRuntimeRejected,
+            verify_node_runtime,
+        )
+
+        try:
+            verify_node_runtime(node_runtime_root, root)
+        except (NodeRuntimeRejected, OSError) as exc:
+            errors.append(f"external Node runtime invalid: {type(exc).__name__}")
+    installed_root = root if node_runtime_root is None else node_runtime_root
+    installed = installed_root / "node_modules" / "mineflayer" / "package.json"
     for path, label in ((lock, "lockfile"), (installed, "installed mineflayer")):
         try:
             obj = json.loads(path.read_text(encoding="utf-8"))
@@ -215,10 +228,17 @@ def verify_local(
     llama_sha256: str | None, minecraft_jar: str | None,
     minecraft_sha256: str | None, mineflayer_root: Path,
     verify_product: bool = False,
+    node_runtime_root: Path | None = None,
 ) -> dict[str, Any]:
     profile, digest = read_profile(profile_path)
     errors = _check_tools(profile)
-    errors.extend(_check_mineflayer(mineflayer_root, profile["minecraft"]["mineflayer"]))
+    if node_runtime_root is None:
+        errors.extend(_check_mineflayer(mineflayer_root, profile["minecraft"]["mineflayer"]))
+    else:
+        errors.extend(_check_mineflayer(
+            mineflayer_root, profile["minecraft"]["mineflayer"],
+            node_runtime_root=node_runtime_root,
+        ))
     errors.extend(_check_file(model, profile["llm"]["model_sha256"], "GGUF"))
     errors.extend(_check_file(llama_server, llama_sha256, "llama-server", executable=True))
     errors.extend(_check_file(minecraft_jar, minecraft_sha256, "Minecraft server jar"))
@@ -245,10 +265,34 @@ def verify_local(
                     _preflight_python_world_imports,
                 )
 
-                product_dependencies["python"] = _preflight_python_world_imports()
-                product_dependencies["node"] = _preflight_mineflayer_dependencies()
             except Exception as exc:
-                errors.append(f"actual product import closure failed: {type(exc).__name__}")
+                errors.append(f"actual product source/import setup failed: {type(exc).__name__}")
+            else:
+                # Stage-specific diagnosis: never mistake a missing Python
+                # module for a Node dependency failure (or vice versa).
+                # Preserve fail-closed sequencing: Node is not probed when
+                # Python closure has already failed.
+                try:
+                    product_dependencies["python"] = _preflight_python_world_imports()
+                except Exception as exc:
+                    errors.append(
+                        f"actual product Python import closure failed: {type(exc).__name__}"
+                    )
+                    if exc.__cause__ is not None:
+                        errors.append(
+                            f"actual product Python root cause: {type(exc.__cause__).__name__}"
+                        )
+                else:
+                    try:
+                        product_dependencies["node"] = (
+                            _preflight_mineflayer_dependencies()
+                            if node_runtime_root is None else
+                            _preflight_mineflayer_dependencies(node_runtime_root)
+                        )
+                    except Exception as exc:
+                        errors.append(
+                            f"actual product Node import closure failed: {type(exc).__name__}"
+                        )
     result = {
         "classification": (
             "RSEE_LOCAL_PREFLIGHT_BLOCKED"
@@ -259,6 +303,9 @@ def verify_local(
         "physical_execution_authorized": False,
         "live_world_and_model_verified": False,
         "side_effects": "NO_LLM_OR_WORLD_LAUNCH",
+        "python_interpreter": sys.executable,
+        "python_runtime_prefix": sys.prefix,
+        "node_runtime_root": str(node_runtime_root) if node_runtime_root is not None else None,
     }
     if verify_product:
         result["product_dependencies"] = product_dependencies
@@ -286,6 +333,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--llama-sha256")
     parser.add_argument("--minecraft-jar")
     parser.add_argument("--minecraft-sha256")
+    parser.add_argument("--node-runtime-root", type=Path,
+                        help="explicit separately installed physical npm root")
     parser.add_argument("--mineflayer-root", type=Path,
                         default=REPO_ROOT / "adapters" / "mineflayer")
     args = parser.parse_args(argv)
@@ -297,10 +346,11 @@ def main(argv: list[str] | None = None) -> int:
                 minecraft_sha256=args.minecraft_sha256,
                 mineflayer_root=args.mineflayer_root,
                 verify_product=args.verify_product,
+                node_runtime_root=args.node_runtime_root,
             )
         else:
             if any((args.verify_product, args.model, args.llama_server, args.llama_sha256,
-                    args.minecraft_jar, args.minecraft_sha256)):
+                    args.minecraft_jar, args.minecraft_sha256, args.node_runtime_root)):
                 raise PreflightError("artifact flags require --verify-local")
             result = plan(args.profile)
     except (PreflightError, OSError) as exc:
