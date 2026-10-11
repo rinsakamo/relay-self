@@ -3,10 +3,10 @@ name: S Lane S3 offline Memory handoff
 on:
   push:
     branches:
-      - 'self/s-lane-s3-experience-*'
+      - 'self/s-lane-s2-experience-*'
   pull_request:
     branches:
-      - 'self/s-lane-s3-*'
+      - 'self/s-lane-s2-decision-*'
 
 permissions:
   contents: read
