@@ -42,6 +42,10 @@ jobs:
             test "$(git rev-parse HEAD:"$file")" = \
               "$(git rev-parse 5e738596b805522d8516b43fa1b7ee001bfc5b2b:"$file")"
           done
+          # Product timeline is also copied byte-identically from #545 later
+          # product HEAD, never reimplemented or retroactively signed here.
+          test "$(git rev-parse HEAD:adapters/mineflayer/self_timeline.py)" = \
+            "$(git rev-parse 4edac0b139d2d49b0169ffaad7c5892bed7fa2d1:adapters/mineflayer/self_timeline.py)"
           test -z "$(git diff --name-only --diff-filter=CDMRTUXB \
             f1f908d68c46f1315230171737fb9d8cb08f6df3 HEAD)"
       - run: python tools/check_repository.py
