@@ -357,6 +357,148 @@ def test_rsee_http_first_failure_seals_bounded_raw_response_and_diagnostic(
     assert diagnostic["model_post_count"] == 0
 
 
+@pytest.mark.parametrize(
+    "props_size",
+    [owned.RSEE_BINDING_SMALL_BODY_LIMIT + 1,
+     owned.RSEE_BINDING_PROPS_BODY_LIMIT],
+)
+def test_rsee_props_large_valid_json_admitted_up_to_exact_1mib(
+    tmp_path, monkeypatch, props_size,
+) -> None:
+    gguf = tmp_path / "model.gguf"
+    gguf.write_bytes(b"synthetic model bytes")
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    models = b'{"data":[{"id":"rsee-gemma4"}]}'
+    props = json.dumps({
+        "model_path": str(gguf),
+        "default_generation_settings": {"n_ctx": 8192},
+        "total_slots": 1,
+        "build_info": "offline-test-build",
+        "other_verbose_settings": "diagnostic",
+    }).encode()
+    assert len(props) < props_size
+    props += b" " * (props_size - len(props))
+    slots = b'[{"n_ctx":8192}]'
+    calls = []
+
+    class Response:
+        status = 200
+
+        def __init__(self, raw):
+            self.raw = raw
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self, length):
+            assert length in (
+                owned.RSEE_BINDING_SMALL_BODY_LIMIT + 1,
+                owned.RSEE_BINDING_PROPS_BODY_LIMIT + 1,
+            )
+            return self.raw[:length]
+
+    class Opener:
+        def open(self, url, timeout):
+            assert timeout == 2.0
+            name = url.rsplit("/", 1)[-1]
+            calls.append(name)
+            body = {
+                "models": models,
+                "props": props,
+                "slots": slots,
+            }[name]
+            return Response(body)
+
+    monkeypatch.setattr(owned.urllib.request, "build_opener", lambda *_: Opener())
+    result = owned._rsee_live_binding(
+        1234, "rsee-gemma4", gguf, evidence_dir=evidence,
+    )
+    assert result["live_http_binding_verified"] is True
+    assert result["gpu_execution_attested"] is False
+    assert calls == ["models", "props", "slots"]
+    assert (evidence / "rsee_http_props.json").read_bytes() == props
+    diagnostic = json.loads(
+        (evidence / "rsee_live_binding_diagnostic.json").read_text()
+    )
+    assert diagnostic["failed_checks"] == []
+    assert diagnostic["endpoint_receipts"]["props"]["bytes_read"] == props_size
+    assert diagnostic["endpoint_receipts"]["props"]["limit_bytes"] == (
+        owned.RSEE_BINDING_PROPS_BODY_LIMIT
+    )
+    assert diagnostic["endpoint_receipts"]["props"]["response_truncated"] is False
+
+
+@pytest.mark.parametrize(
+    ("oversized_endpoint", "expected_requests"),
+    [
+        ("models", ["models"]),
+        ("slots", ["models", "props", "slots"]),
+    ],
+)
+def test_rsee_models_and_slots_remain_strictly_16kib_bounded(
+    tmp_path, monkeypatch, oversized_endpoint, expected_requests,
+) -> None:
+    gguf = tmp_path / "model.gguf"
+    gguf.write_bytes(b"synthetic")
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    bodies = {
+        "models": b'{"data":[{"id":"rsee-gemma4"}]}',
+        "props": json.dumps({
+            "model_path": str(gguf),
+            "default_generation_settings": {"n_ctx": 8192},
+            "total_slots": 1, "build_info": "offline",
+        }).encode(),
+        "slots": b'[{"n_ctx":8192}]',
+    }
+    bodies[oversized_endpoint] = b" " * (
+        owned.RSEE_BINDING_SMALL_BODY_LIMIT + 1024
+    )
+    calls = []
+
+    class Response:
+        status = 200
+
+        def __init__(self, body):
+            self.body = body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self, length):
+            return self.body[:length]
+
+    class Opener:
+        def open(self, url, timeout):
+            assert timeout == 2.0
+            name = url.rsplit("/", 1)[-1]
+            calls.append(name)
+            return Response(bodies[name])
+
+    monkeypatch.setattr(owned.urllib.request, "build_opener", lambda *_: Opener())
+    with pytest.raises(owned.OwnedModelRejected, match=(
+        f"RSEE_BINDING_{oversized_endpoint.upper()}_BODY_TOO_LARGE"
+    )):
+        owned._rsee_live_binding(
+            1234, "rsee-gemma4", gguf, evidence_dir=evidence,
+        )
+    assert calls == expected_requests
+    raw = (evidence / f"rsee_http_{oversized_endpoint}.json").read_bytes()
+    assert len(raw) == owned.RSEE_BINDING_SMALL_BODY_LIMIT + 1
+    audit = json.loads((evidence / "rsee_live_binding_diagnostic.json").read_text())
+    assert audit["failed_checks"] == [
+        f"RSEE_BINDING_{oversized_endpoint.upper()}_BODY_TOO_LARGE",
+    ]
+    assert audit["endpoint_receipts"][oversized_endpoint]["response_truncated"] is True
+
+
 def test_rsee_existing_evidence_prevents_any_http_requests(
     tmp_path, monkeypatch,
 ) -> None:
