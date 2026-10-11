@@ -1,0 +1,80 @@
+{
+  "version": "AC_B_B29_NATIVE_LLAMA_CPP_SCHEMA_V1",
+  "issue": 572,
+  "laneB": 431,
+  "AC": 426,
+  "baseB28": {
+    "issue": 569,
+    "PR": 571,
+    "exact_head": "b191acb760a205e2b3e5a3af159b730260ce39a1",
+    "branch": "self/ac-b-b28-reasoning-off-20261011",
+    "real_terminal": "B28_INVALID_OUTPUT_OR_TRAINING_FIT",
+    "output": "fenced 16-bit list, source semantic fit not qualified"
+  },
+  "historical_frozen": [
+    "B26 512 reasoning length content empty INVALID",
+    "B27 2048 reasoning length content empty INVALID",
+    "B28 2048 thinking off strict JSON fenced INVALID"
+  ],
+  "external_authority": {
+    "relaylm_v2_head_observed": "cc305e71e24b5387062564fafbc03827d12b8bf8",
+    "files": [
+      "tools/v2_cognitive_ir_s2_selected_llama_cpp.py",
+      "tools/v2_cognitive_work_structured_output_qualification.py"
+    ],
+    "physical": [
+      "relay-lm#2302 12/12 full JSON/schema/strict parser on LM Studio llama.cpp Gemma4",
+      "relay-lm#2758 18/18 strict native llama.cpp build10874 same model GGUF / reasoning none"
+    ]
+  },
+  "single_change": "add top-level response_format native json_schema strict, no other generation/prompt/semantic change",
+  "response_format": {
+    "type": "json_schema",
+    "json_schema": {
+      "name": "relay_self_b29_anf_coefficients_v1",
+      "strict": true,
+      "schema": {
+        "type": "object",
+        "properties": {
+          "coefficients": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "minItems": 16,
+            "maxItems": 16
+          }
+        },
+        "required": [
+          "coefficients"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "constants": {
+    "reasoning_effort": "none",
+    "max_tokens": 2048,
+    "temperature": 0,
+    "stream": false,
+    "eleven_original_sources": true,
+    "sixteen_training_actions": true,
+    "GF2_model_16_bits": true,
+    "GGUF_sha256": "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed",
+    "llama_cpp_source": "e2d2c0d6aa9b996d5d3a3c1d5e24c8c19728bb3d",
+    "ctx": 8192,
+    "slots": 1,
+    "GPU_layers": 999,
+    "no_context_shift": true,
+    "original_semantic_validator": "B26 parse_and_qualify",
+    "heldout_arms": [
+      "NORMAL",
+      "TWIN",
+      "CHEAP_DEG2"
+    ]
+  },
+  "protocol": "one LOCAL owner authorized real run separately; mocked CI only; immutable raw response persisted before strict parser; semantic mismatch invalid without heldout/no retry",
+  "terminal_if_CI": "B29_NATIVE_JSON_SCHEMA_RUNNER_QUALIFIED_MOCK_ONLY / B26_B27_B28_INVALID_FROZEN / B29_REAL_LLM_NOT_EXECUTED"
+}
