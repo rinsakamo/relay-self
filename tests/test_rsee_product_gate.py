@@ -155,6 +155,8 @@ def test_opted_standard_still_requires_operator_consent(tmp_path, capsys) -> Non
 
 @pytest.mark.parametrize("change", [
     None,
+    ("model_alias_missing", None),
+    ("models_alias", "WRONG_ALIAS"),
     ("model_alias", "WRONG_ALIAS"),
     ("model_path", "/foreign/model.gguf"),
     ("total_slots", 2),
@@ -177,9 +179,14 @@ def test_rsee_live_props_slots_source_binding_fail_closed(
         "build_info": "offline-fixture-build",
     }
     slots = [{"n_ctx": 8192}]
+    models = {"data": [{"id": "relay-self-local"}]}
     if change is not None:
         key, val = change
-        if key == "n_ctx":
+        if key == "model_alias_missing":
+            props.pop("model_alias")
+        elif key == "models_alias":
+            models["data"][0]["id"] = val
+        elif key == "n_ctx":
             props["default_generation_settings"]["n_ctx"] = val
         elif key == "slot_ctx":
             slots[0]["n_ctx"] = val
@@ -207,12 +214,19 @@ def test_rsee_live_props_slots_source_binding_fail_closed(
             assert url in (
                 "http://127.0.0.1:1234/props",
                 "http://127.0.0.1:1234/slots",
+                "http://127.0.0.1:1234/v1/models",
             )
+            if url.endswith("/v1/models"):
+                return Response(models)
             return Response(props if url.endswith("/props") else slots)
 
     monkeypatch.setattr(model_owner.urllib.request, "build_opener", lambda *_: Opener())
-    if change is None:
-        receipt = model_owner._rsee_live_binding(1234, "relay-self-local", gguf)
+    evidence = tmp_path / "endpoint-evidence"
+    evidence.mkdir()
+    if change is None or change[0] == "model_alias_missing":
+        receipt = model_owner._rsee_live_binding(
+            1234, "relay-self-local", gguf, evidence_dir=evidence,
+        )
         assert receipt["context"] == 8192
         assert receipt["slot_count"] == 1
         assert receipt["gpu_execution_attested"] is False
@@ -220,7 +234,33 @@ def test_rsee_live_props_slots_source_binding_fail_closed(
         assert receipt["backend_stop_ack"] is False
     else:
         with pytest.raises(model_owner.OwnedModelRejected):
-            model_owner._rsee_live_binding(1234, "relay-self-local", gguf)
+            model_owner._rsee_live_binding(
+                1234, "relay-self-local", gguf, evidence_dir=evidence,
+            )
+    audit = json.loads((evidence / "rsee_live_binding_diagnostic.json").read_text())
+    assert audit["model_post_count"] == 0
+    assert audit["minecraft_launch_count"] == 0
+    assert audit["status"] == (
+        "HTTP_BINDING_QUALIFIED_NOT_PHYSICAL_PROOF"
+        if change is None or change[0] == "model_alias_missing" else "BLOCKED"
+    )
+    assert len(audit["endpoint_receipts"]) == 3
+    assert {
+        "rsee_http_models.json", "rsee_http_props.json", "rsee_http_slots.json",
+        "rsee_live_binding_diagnostic.json",
+    } == {p.name for p in evidence.iterdir()}
+    for key, filename in [
+        ("models", "rsee_http_models.json"),
+        ("props", "rsee_http_props.json"),
+        ("slots", "rsee_http_slots.json"),
+    ]:
+        assert len((evidence / filename).read_bytes()) == audit[
+            "endpoint_receipts"
+        ][key]["bytes_read"]
+    if change is not None and change[0] == "models_alias":
+        assert "models.alias.exactly_once" in audit["failed_checks"]
+    if change is not None and change[0] == "model_alias":
+        assert "props.optional_alias.consistent" in audit["failed_checks"]
 
 
 def test_rsee_live_binding_refuses_truncated_or_duplicate_json(
