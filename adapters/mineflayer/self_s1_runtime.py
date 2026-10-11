@@ -46,7 +46,6 @@ from experiments.standard_env.world_binding import prepare_stopped_world
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.execution_binding import ExecutionBinding, resolve_execution_binding
 from relay_self.intent import IntentCommitment
-from relay_self.provenance import Provenance
 from relay_self.reactive_l0 import L0ActionGrant
 from relay_self.world_conditioned_choice import WorldChoiceKind
 
