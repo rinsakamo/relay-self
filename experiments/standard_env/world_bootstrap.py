@@ -80,7 +80,7 @@ def _saved_state(snapshot: Path) -> dict:
     }
     if type(rules) is not dict or any(rules.get(k) != v for k, v in expected.items()):
         raise BootstrapRejected("stored World gamerules do not match frozen bootstrap")
-    if (type(data.get("DayTime")) is not int
+    if (not isinstance(data.get("DayTime"), int)
             or int(data["DayTime"]) % 24000 != 18000
             or data.get("raining") != 0 or data.get("thundering") != 0):
         raise BootstrapRejected("stored time/weather mismatch")
