@@ -214,6 +214,7 @@ def verify_local(
     profile_path: Path, *, model: str | None, llama_server: str | None,
     llama_sha256: str | None, minecraft_jar: str | None,
     minecraft_sha256: str | None, mineflayer_root: Path,
+    verify_product: bool = False,
 ) -> dict[str, Any]:
     profile, digest = read_profile(profile_path)
     errors = _check_tools(profile)
@@ -221,7 +222,34 @@ def verify_local(
     errors.extend(_check_file(model, profile["llm"]["model_sha256"], "GGUF"))
     errors.extend(_check_file(llama_server, llama_sha256, "llama-server", executable=True))
     errors.extend(_check_file(minecraft_jar, minecraft_sha256, "Minecraft server jar"))
-    return {
+    product_dependencies: dict[str, Any] = {}
+    product_audit: dict[str, Any] = {}
+    if verify_product:
+        # Reuse the existing owner's real import probes, never its main/launcher.
+        # Node imports packages only: no createBot, sockets, Java or GPU process.
+        if mineflayer_root.resolve() != (REPO_ROOT / "adapters/mineflayer").resolve():
+            errors.append("product verification requires this worktree's Mineflayer root")
+        else:
+            try:
+                from experiments.standard_env.product_gate import audit_product
+
+                product_audit = audit_product(
+                    ctx=profile["llm"]["context"],
+                    gpu_layers=profile["llm"]["gpu_layers"],
+                    model_port=profile["llm"]["port"],
+                    gguf_sha256=profile["llm"]["model_sha256"],
+                )
+                errors.extend(product_audit["gaps"])
+                from adapters.mineflayer.self_owned_llama import (
+                    _preflight_mineflayer_dependencies,
+                    _preflight_python_world_imports,
+                )
+
+                product_dependencies["python"] = _preflight_python_world_imports()
+                product_dependencies["node"] = _preflight_mineflayer_dependencies()
+            except Exception as exc:
+                errors.append(f"actual product import closure failed: {type(exc).__name__}")
+    result = {
         "classification": (
             "RSEE_LOCAL_PREFLIGHT_BLOCKED"
             if errors else "RSEE_LOCAL_FILES_VERIFIED_NOT_PHYSICALLY_QUALIFIED"
@@ -232,6 +260,18 @@ def verify_local(
         "live_world_and_model_verified": False,
         "side_effects": "NO_LLM_OR_WORLD_LAUNCH",
     }
+    if verify_product:
+        result["product_dependencies"] = product_dependencies
+        result["product_profile_audit"] = product_audit
+        # This source stack has no exact jar/seed/snapshot input on original S49.
+        # A local-file PASS must never be promoted into Golden Run readiness.
+        result["golden_run_readiness"] = "BLOCKED"
+        result["golden_run_blockers"] = [
+            "original S49 downloads a new per-run jar; inspected local file is not bound",
+            "original World seed/initial snapshot and restore inputs are unbound",
+            "live model settings and separate operator/EULA grants are unverified",
+        ]
+    return result
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -239,6 +279,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--profile", type=Path, default=PROFILE)
     parser.add_argument("--verify-local", action="store_true",
                         help="Opt-in read-only tools/import/checksum verification; never launch")
+    parser.add_argument("--verify-product", action="store_true",
+                        help="With --verify-local, probe actual owner Python/Node imports only")
     parser.add_argument("--model")
     parser.add_argument("--llama-server")
     parser.add_argument("--llama-sha256")
@@ -254,9 +296,10 @@ def main(argv: list[str] | None = None) -> int:
                 llama_sha256=args.llama_sha256, minecraft_jar=args.minecraft_jar,
                 minecraft_sha256=args.minecraft_sha256,
                 mineflayer_root=args.mineflayer_root,
+                verify_product=args.verify_product,
             )
         else:
-            if any((args.model, args.llama_server, args.llama_sha256,
+            if any((args.verify_product, args.model, args.llama_server, args.llama_sha256,
                     args.minecraft_jar, args.minecraft_sha256)):
                 raise PreflightError("artifact flags require --verify-local")
             result = plan(args.profile)

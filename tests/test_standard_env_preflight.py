@@ -156,3 +156,76 @@ def test_version_and_sha_input_denials(monkeypatch) -> None:
     errors = preflight._check_tools(preflight.read_profile()[0])
     assert "Node >=22 required" in errors
     assert "Java 21 required" in errors
+
+
+def test_product_probe_requires_local_opt_in(capsys) -> None:
+    assert preflight.main(["--verify-product"]) == 2
+    assert json.loads(capsys.readouterr().out)["classification"] == "RSEE_PROFILE_INVALID"
+
+
+@pytest.mark.parametrize("failure", ["python", "node", None])
+def test_actual_product_dependency_gate_never_launches(monkeypatch, failure) -> None:
+    from adapters.mineflayer import self_owned_llama as owner
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("product preflight must never launch or contact a server")
+
+    monkeypatch.setattr(owner.subprocess, "Popen", forbidden)
+    monkeypatch.setattr(owner, "_ready", forbidden)
+    monkeypatch.setattr(owner, "_free_loopback", forbidden)
+    monkeypatch.setattr(preflight, "_check_tools", lambda _: [])
+    monkeypatch.setattr(preflight, "_check_mineflayer", lambda *_: [])
+    monkeypatch.setattr(preflight, "_check_file", lambda *_, **__: [])
+    calls = []
+
+    def probe(name):
+        calls.append(name)
+        if failure == name:
+            raise owner.OwnedModelRejected("missing actual dependency")
+        return {"closure": "PASS"}
+
+    monkeypatch.setattr(owner, "_preflight_python_world_imports", lambda: probe("python"))
+    monkeypatch.setattr(owner, "_preflight_mineflayer_dependencies", lambda: probe("node"))
+    result = preflight.verify_local(
+        preflight.PROFILE, model=None, llama_server=None, llama_sha256=None,
+        minecraft_jar=None, minecraft_sha256=None,
+        mineflayer_root=preflight.REPO_ROOT / "adapters/mineflayer", verify_product=True,
+    )
+    assert calls == (["python"] if failure == "python" else ["python", "node"])
+    assert bool(result["errors"]) == (failure is not None)
+    assert result["golden_run_readiness"] == "BLOCKED"
+    assert result["physical_execution_authorized"] is False
+
+
+def test_foreign_dependency_folder_cannot_qualify_product(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(preflight, "_check_tools", lambda _: [])
+    monkeypatch.setattr(preflight, "_check_mineflayer", lambda *_: [])
+    monkeypatch.setattr(preflight, "_check_file", lambda *_, **__: [])
+    result = preflight.verify_local(
+        preflight.PROFILE, model=None, llama_server=None, llama_sha256=None,
+        minecraft_jar=None, minecraft_sha256=None,
+        mineflayer_root=tmp_path, verify_product=True,
+    )
+    assert result["classification"] == "RSEE_LOCAL_PREFLIGHT_BLOCKED"
+    assert result["product_dependencies"] == {}
+
+
+def test_product_source_drift_blocks_even_when_local_files_pass(monkeypatch):
+    from adapters.mineflayer import self_owned_llama as owner
+    from experiments.standard_env import product_gate
+
+    monkeypatch.setattr(preflight, "_check_tools", lambda _: [])
+    monkeypatch.setattr(preflight, "_check_mineflayer", lambda *_: [])
+    monkeypatch.setattr(preflight, "_check_file", lambda *_, **__: [])
+    monkeypatch.setattr(product_gate, "audit_product", lambda **_: {
+        "gaps": ["OWNED_LLAMA_CONTEXT_SHIFT_NOT_DISABLED"],
+    })
+    monkeypatch.setattr(owner, "_preflight_python_world_imports", lambda: {"closure": "PASS"})
+    monkeypatch.setattr(owner, "_preflight_mineflayer_dependencies", lambda: {"closure": "PASS"})
+    result = preflight.verify_local(
+        preflight.PROFILE, model=None, llama_server=None, llama_sha256=None,
+        minecraft_jar=None, minecraft_sha256=None,
+        mineflayer_root=preflight.REPO_ROOT / "adapters/mineflayer", verify_product=True,
+    )
+    assert result["classification"] == "RSEE_LOCAL_PREFLIGHT_BLOCKED"
+    assert result["errors"] == ["OWNED_LLAMA_CONTEXT_SHIFT_NOT_DISABLED"]
