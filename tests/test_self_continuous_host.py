@@ -89,7 +89,7 @@ def _events(root):
 def test_bounded_two_decisions_and_one_existing_s17_closed_outcome(tmp_path):
     driver, probe, grant, execute, requests, source = _fixture(tmp_path)
     result = asyncio.run(driver.run(probe=probe, grant=grant, on_action=execute))
-    assert result["terminal"] == "ACTION_BUDGET_ENDED"
+    assert result["terminal"] == "EVENT_BUDGET_ENDED"
     assert result["events"] == 2
     assert result["action_requests"] == result["closed_outcomes"] == 1
     assert result["learning_updates"] == result["habit_grants"] == 0
