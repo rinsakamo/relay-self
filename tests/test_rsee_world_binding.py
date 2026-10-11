@@ -6,7 +6,6 @@ import gzip
 import hashlib
 import json
 import struct
-from pathlib import Path
 
 import pytest
 
