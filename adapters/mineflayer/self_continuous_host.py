@@ -209,6 +209,9 @@ class BoundedSessionDriver:
                 self.events.write(
                     "world_decision", epoch=self.host.events,
                     event_seq=frame.seq, probe_seq=reading.seq,
+                    event_source=frame.provenance.reference,
+                    probe_source=reading.provenance.reference,
+                    probe_request_id=reading.request_id,
                     source_type="MINEFLAYER_NATIVE",
                     entity_id=choice.entity_id, distance_m=choice.distance_m,
                     layer="L0", selection=choice.selection.value,
@@ -229,6 +232,12 @@ class BoundedSessionDriver:
                     remaining = end - time.monotonic()
                     if remaining <= 0 or self._stopped or self._paused:
                         terminal = "ACTION_NOT_DISPATCHED_TIME_PAUSE_OR_STOP"
+                        self.events.write(
+                            "action_not_dispatched",
+                            action_id=step.action_request_id,
+                            physical_outcome="NOT_ISSUED",
+                            safe_to_replay=False,
+                        )
                         break
                     receipt = await asyncio.wait_for(
                         on_action(step), timeout=min(15, remaining),
@@ -246,6 +255,13 @@ class BoundedSessionDriver:
                         or receipt.consequence.movement_distance < 0.05
                     ):
                         raise SessionRunRejected("unqualified S49 native Action terminal")
+                    # Preserve and hash original decoded S49 evidence before
+                    # admitting a positive closure into the RelayUI stream.
+                    native_evidence = capture_native_action_evidence(receipt.consequence)
+                    native_bytes = json.dumps(
+                        native_evidence, sort_keys=True, separators=(",", ":"),
+                        ensure_ascii=False, allow_nan=False,
+                    ).encode("utf-8")
                 except BaseException as exc:
                     self.events.write(
                         "action_outcome_unknown", action_id=step.action_request_id,
@@ -253,13 +269,6 @@ class BoundedSessionDriver:
                         safe_to_replay=False,
                     )
                     raise
-                # Record the original decoded S49 physical frames alongside
-                # its typed Action terminal; no reconstructed "success" label.
-                native_evidence = capture_native_action_evidence(receipt.consequence)
-                native_bytes = json.dumps(
-                    native_evidence, sort_keys=True, separators=(",", ":"),
-                    ensure_ascii=False, allow_nan=False,
-                ).encode("utf-8")
                 self.events.write(
                     "action_outcome", epoch=self.host.events,
                     action_id=receipt.terminal.action_id,
