@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "qualification": "CANDIDATE_NOT_PHYSICALLY_QUALIFIED",
+  "host": {
+    "platform": "linux-wsl2",
+    "python": "3.12",
+    "node_major": 22,
+    "java_major": 21,
+    "python_imports": ["pytest", "httpx"]
+  },
+  "llm": {
+    "engine": "llama.cpp",
+    "model_family": "Gemma-4-12B-it-Q4_K_M",
+    "model_sha256": "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed",
+    "host": "127.0.0.1",
+    "port": 1234,
+    "context": 8192,
+    "slots": 1,
+    "gpu_layers": 999,
+    "context_shift": false,
+    "cache_prompt": false,
+    "reasoning_effort": "none",
+    "structured_output": {
+      "type": "json_schema",
+      "strict": true
+    }
+  },
+  "minecraft": {
+    "mode": "disposable_only",
+    "version": "1.21.8",
+    "host": "127.0.0.1",
+    "port": 25565,
+    "mineflayer": "4.39.0",
+    "initial_world": "UNBOUND_PER_RUN"
+  },
+  "resource_key": "llama-cpp:local-gpu",
+  "not_inferred": [
+    "llama_binary_sha256",
+    "minecraft_server_jar_sha256",
+    "world_seed_and_snapshot",
+    "chat_template_and_tokenizer",
+    "request_model_alias",
+    "prompt_schema_and_sampling",
+    "physical_execution_authorization"
+  ]
+}

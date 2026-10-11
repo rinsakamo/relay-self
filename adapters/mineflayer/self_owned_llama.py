@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib
 import json
 import os
 import signal
@@ -114,6 +115,32 @@ def _preflight_mineflayer_dependencies() -> dict[str, str]:
     return value
 
 
+def _preflight_python_world_imports() -> dict[str, str]:
+    """Import the actual S49 Python closure before the model/World is started.
+
+    S49 imports test_postmain_two_epoch_continuation and its pytest dependency
+    at module import time; a missing pytest must never be discovered after
+    starting llama-server or the Minecraft Java server.
+    """
+    root = Path(__file__).resolve().parents[2]
+    old_path = list(sys.path)
+    try:
+        for rel in ("tests", "src"):
+            folder = str(root / rel)
+            if folder not in sys.path:
+                sys.path.insert(0, folder)
+        importlib.import_module("pytest")
+        importlib.import_module("adapters.mineflayer.s49_normal_session_real_ci")
+    except Exception as exc:
+        raise OwnedModelRejected(
+            "actual S49 Python import closure missing; prepare the exact worktree venv "
+            "including pytest before model/World launch"
+        ) from exc
+    finally:
+        sys.path[:] = old_path
+    return {"interpreter": sys.executable, "s49_import_closure": "PASS"}
+
+
 def _free_loopback(port: int) -> None:
     # A preflight, not a retained reservation: the process is checked as alive
     # after model/model-ID probing. Never connect to a pre-existing service.
@@ -196,7 +223,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--gpu-layers", type=int, default=0)
     parser.add_argument("--ready-timeout", type=float, default=90.0)
     parser.add_argument("--model-timeout", type=float, default=12.0)
+    rsee_mode = parser.add_mutually_exclusive_group()
+    rsee_mode.add_argument("--rsee-audit", action="store_true",
+                           help="source/profile audit ONLY, never start any process")
+    rsee_mode.add_argument("--rsee-required", action="store_true",
+                           help="deny physical start until strict profile/source matches")
     args = parser.parse_args(argv)
+
+    if args.rsee_audit or args.rsee_required:
+        # The RSEE profile is separately owned by #575/#576; this product
+        # bridge only checks the exact product source/request/launch surfaces.
+        # No model, Java, Node, socket or imported World session is started.
+        from experiments.standard_env.product_gate import print_audit
+
+        gate_rc = print_audit(
+            ctx=args.ctx_size, gpu_layers=args.gpu_layers,
+            model_port=args.model_port, gguf_sha256=args.gguf_sha256,
+        )
+        if gate_rc != 0 or args.rsee_audit:
+            return gate_rc
 
     # Strict preflight before any new process, logfile or model read.
     try:
@@ -226,6 +271,7 @@ def main(argv: list[str] | None = None) -> int:
             raise OwnedModelRejected("Java and Node missing")
         # Mandatory BEFORE expensive GGUF hash, model spawn and World startup.
         node_deps = _preflight_mineflayer_dependencies()
+        python_deps = _preflight_python_world_imports()
         binary = _regular(args.llama_server, executable=True)
         gguf = _regular(args.gguf)
         if gguf.suffix.lower() != ".gguf":
@@ -259,6 +305,7 @@ def main(argv: list[str] | None = None) -> int:
         "backend_model_identity_attested": False,
         "physical_minecraft_outcome_attested_by_wrapper": False,
         "node_bridge_dependency_preflight": node_deps,
+        "python_world_import_preflight": python_deps,
         "model_process_launched": False, "minecraft_launch_attempted": False,
     }
     process: subprocess.Popen | None = None

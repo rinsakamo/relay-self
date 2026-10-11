@@ -1,0 +1,87 @@
+name: RSEE Self product offline integration
+
+on:
+  push:
+    branches:
+      - 'self/rsee-product-prelaunch-*'
+  pull_request:
+    branches:
+      - 'self/product-self-one-command-*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: self-rsee-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Verify exact head and product base
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor 4edac0b139d2d49b0169ffaad7c5892bed7fa2d1 HEAD
+      - run: python tools/check_repository.py
+
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: RSEE prelaunch and product regressions (zero physical use)
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          python -m experiments.standard_env.preflight
+          python -m pytest -q tests/test_standard_env_preflight.py tests/test_rsee_product_gate.py tests/test_self_owned_llama.py
+      - name: Full inherited regression
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: python -m pytest -q
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'ruff==0.16.7'
+      - run: ruff check src tests experiments adapters observability
+
+  mineflayer-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - run: npm run check --prefix adapters/mineflayer
