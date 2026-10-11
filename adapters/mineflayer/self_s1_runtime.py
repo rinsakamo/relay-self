@@ -24,14 +24,16 @@ from adapters.mineflayer.normal_action import (
 from adapters.mineflayer.s34_native_world_cognition_ci import (
     _native_epoch_two,
     _native_threat,
-    _new_session,
 )
 from adapters.mineflayer.s31a_real_server_ci import (
+    _await_spawn,
     _correlated_observe,
     _ready_server,
     _shutdown_server,
 )
 from adapters.mineflayer.s49_normal_session_real_ci import NativeObservationOnly, source
+from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
 from adapters.mineflayer.self_continuous_host import (
     AppendOnlySessionEvents,
     BoundedSessionDriver,
@@ -187,7 +189,16 @@ async def run_physical(binding, output: Path, budget: SessionBudget) -> dict:
             world_dir, world_dir / "minecraft.jar",
             output / "minecraft_server.log",
         )
-        session = await _new_session()  # S49 native startup + first spawn
+        # Hold process ownership immediately after launch; if spawn admission
+        # fails, finally still shuts down the exact child, not a replacement.
+        session = await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(
+                host="127.0.0.1", port=25565,
+                username="RelaySelf", version="1.21.8",
+            ),
+            startup_timeout_s=12,
+        )
+        await _await_spawn(session)
         sid = session.started.session_id
         _, committed, _, _, _, _ = await asyncio.to_thread(s19._epoch_one)
         retained = committed.new_state
@@ -244,7 +255,7 @@ async def run_physical(binding, output: Path, budget: SessionBudget) -> dict:
                 "model_stop_ack": False,
                 "gpu_release_claimed": False,
                 "physical_action_replay": False,
-            }, sort_keys=True) + "\\n", encoding="utf-8")
+            }, sort_keys=True) + "\n", encoding="utf-8")
             if previous is None:
                 os.environ.pop("RELAYSELF_RSEE_NODE_RUNTIME_ROOT", None)
             else:
