@@ -505,3 +505,57 @@ Minecraft 1.21.8 server jarは既存S49がMojang公式から実行時取得し
 published SHA1/sizeを検証する。RSEEで別jarのSHA256を検査しても、
 そのjarが実Worldで使用されたという証明にはならない。
 World seed/snapshotとサーバーバイナリ実体の結合は後続の実行時証拠として残る。
+
+
+### RSEE opt-in request / owned-server alignment (Draft #579)
+
+[Owner-local S60-B1 Draft #578](https://github.com/rinsakamo/relay-self/pull/578)
+の任意リクエスト制御だけを **exact blob copy** で取り込み、
+`self_demo --live-think --rsee-standard` のみに以下を付与する。
+
+```json
+"reasoning_effort": "none",
+"cache_prompt": false
+```
+
+変更しない従来ルートではB1元来の5フィールドだけを送る。
+RSEEでは、`--rsee-required` と以下の引数をすべて**明示**する。
+
+```bash
+# これは構成例であり実機起動を推奨/承認するものではない。
+# 起動前に別の正式な実機権限・preflight/現物SHA・空きポートが必要。
+python3.12 -m adapters.mineflayer.self_owned_llama \
+  --run-disposable --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
+  --output-dir /absolute/path/to/new-empty-receipts \
+  --llama-server /absolute/path/to/owned/llama-server \
+  --gguf /home/rinsa/models/gguf/gemma-4-12B-it-Q4_K_M.gguf \
+  --gguf-sha256 c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed \
+  --model-alias relay-self-local --model-port 1234 \
+  --ctx-size 8192 --gpu-layers 999 --rsee-required
+```
+
+`--rsee-required` はstart前にsource/profile差分を確認するだけで、
+実機権限を発行しない。RSEE選択時のみ `--no-context-shift` を起動引数に
+追加し `-ngl 999` を許す。もとの非RSEE経路は `-ngl 0..99` と
+元の起動引数・元の5項目のまま。
+
+**資格の上限：** 実装・模擬localhost HTTPによるexact request
+確認のみ。llama-serverの特定ビルドが実際にThinkingを無効化した証明、
+`/props`/`/slots`/CUDA/VRAM/STOP ACK、World jar/seed/snapshotの
+同一性、Minecraft Actionとの物理的並行性はここでは未資格。
+RSEE標準のStructured JSON Schemaも、現在のread-only自由文L2の
+インターフェースには導入しない。必要な場合は別のstructured cognition
+依頼とSchemaを凍結してから計測する。
+
+既存のS49 World生成はMojang公式server jarのSHA1/sizeを検査するが、
+追加のRSEEファイル検査に別jar SHA256を入力しても、そのjarが実Worldで
+起動した証明にはならない。新しい実機Golden Runはまだ **NOT_RUN**。
+
+
+RSEE有効時は、モデルが `/health` と `/v1/models` でreadyとされた直後、
+**Minecraftを開始する前に** owned `/props` と `/slots` を再取得し、
+`model_alias`、実GGUFパス、Context=8192、slot=1、
+非空build_infoを照合する。異常・API未対応・不一致は
+`RSEE_LIVE_BINDING_UNCONFIRMED` としWorldは起動しない。
+これは動的ライブラリ同一性・GPU実行・Thinking効果・backend STOP ACKを
+証明しない。request/native-Worldの実機資格化は別途必要。

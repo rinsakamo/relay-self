@@ -340,6 +340,7 @@ def _write_trace(path: Path | None, rows: tuple[dict[str, object], ...]) -> None
 async def _run_disposable(
     report_path: Path, server_log: Path, *,
     live_model: tuple[str, int, float] | None = None,
+    rsee_controls: bool = False,
 ) -> int:
     # Existing exact S49 host is the *only* issuer. No duplicated event loop,
     # no new Game Action code or arbitrary LLM output -> Action mapping.
@@ -351,6 +352,7 @@ async def _run_disposable(
 
         live_observer = LiveL2Observer(
             model=live_model[0], port=live_model[1], timeout_s=live_model[2],
+            rsee_controls=rsee_controls,
         )
     previous = os.environ.get("S49_REAL_SERVER_CI")
     os.environ["S49_REAL_SERVER_CI"] = "1"
@@ -389,8 +391,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model-alias", help="explicit pre-existing loopback model alias")
     parser.add_argument("--model-port", type=int, help="existing localhost OpenAI-compatible port")
     parser.add_argument("--model-timeout", type=float, default=12.0)
+    parser.add_argument("--rsee-standard", action="store_true",
+                        help="RSEE opt-in request controls, valid only during live World L2")
     args = parser.parse_args(argv)
 
+    if args.rsee_standard and (not args.run_disposable or not args.live_think):
+        print(json.dumps(_row(
+            "blocked", "NO_WORLD_USED", reason="RSEE_REQUIRES_LIVE_DISPOSABLE_WORLD",
+            model_calls=0, actual_actions=0,
+        ), sort_keys=True))
+        return 2
     if args.think and args.live_think:
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="TWO_MODEL_ATTEMPTS_DENIED",
@@ -549,6 +559,7 @@ def main(argv: list[str] | None = None) -> int:
                 code = asyncio.run(_run_disposable(
                     report_file, server_log,
                     live_model=(args.model_alias, args.model_port, args.model_timeout),
+                    rsee_controls=args.rsee_standard,
                 ))
             else:
                 code = asyncio.run(_run_disposable(report_file, server_log))

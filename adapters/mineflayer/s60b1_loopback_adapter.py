@@ -30,6 +30,9 @@ class LoopbackTransportConfig:
     connect_s: float = 5.0
     read_s: float = 15.0
     whole_s: float = 45.0
+    # Optional RSEE request controls. Defaults retain original exact B1 request.
+    reasoning_effort: str | None = None
+    cache_prompt: bool | None = None
 
     def __post_init__(self) -> None:
         if (not isinstance(self.model, str)
@@ -37,6 +40,12 @@ class LoopbackTransportConfig:
             or type(self.port) is not int or not 1025 <= self.port <= 65535
             or type(self.slots) is not int or self.slots != 1
             or type(self.max_tokens) is not int or not 1 <= self.max_tokens <= 1024
+            or self.reasoning_effort not in (None, "none")
+            or self.cache_prompt not in (None, False)
+            or (self.reasoning_effort is not None
+                and type(self.reasoning_effort) is not str)
+            or (self.cache_prompt is not None
+                and type(self.cache_prompt) is not bool)
             or any(type(t) not in (int, float) or not math.isfinite(t) or not 0 < t <= 120
                    for t in (self.connect_s, self.read_s, self.whole_s))):
             raise TransportUnconfirmed("invalid explicit loopback bounds")
@@ -126,9 +135,18 @@ class LoopbackDisplacementAdapter:
     def _payload(self, request: ModelRequest) -> bytes:
         try:
             payload = self._payload_for(request)
-            if not isinstance(payload, Mapping) or set(payload) != {
-                "model", "messages", "temperature", "max_tokens", "stream",
-            }:
+            expected = {"model", "messages", "temperature", "max_tokens", "stream"}
+            if self.config.reasoning_effort is not None:
+                expected.add("reasoning_effort")
+            if self.config.cache_prompt is not None:
+                expected.add("cache_prompt")
+            if not isinstance(payload, Mapping) or set(payload) != expected:
+                raise ValueError
+            if (self.config.reasoning_effort is not None
+                    and payload["reasoning_effort"] != self.config.reasoning_effort):
+                raise ValueError
+            if (self.config.cache_prompt is not None
+                    and payload["cache_prompt"] is not self.config.cache_prompt):
                 raise ValueError
             messages = payload["messages"]
             if (payload["model"] != self.config.model or payload["stream"] is not False

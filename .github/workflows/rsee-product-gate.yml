@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'self/rsee-product-prelaunch-*'
+      - 'self/rsee-standard-product-optin-*'
   pull_request:
     branches:
       - 'self/product-self-one-command-*'

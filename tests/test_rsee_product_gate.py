@@ -11,15 +11,17 @@ from adapters.mineflayer import self_owned_llama as owned
 from experiments.standard_env import product_gate
 
 
-def test_exact_product_source_reports_real_standardization_gaps() -> None:
+def test_exact_product_source_has_optin_standard_controls_not_physical_proof() -> None:
     result = product_gate.audit_product()
-    assert result["classification"] == "RSEE_PRODUCT_STATIC_GAPS"
+    assert result["classification"] == (
+        "RSEE_PRODUCT_STATIC_COMPATIBLE_NOT_PHYSICALLY_QUALIFIED"
+    )
     assert result["runtime_observation"] is False
     assert result["physical_execution_authorized"] is False
-    assert "L2_REQUEST_REASONING_OFF_NOT_EXPLICIT" in result["gaps"]
-    assert "L2_REQUEST_CACHE_DISABLED_NOT_EXPLICIT" in result["gaps"]
-    assert "OWNED_LLAMA_CONTEXT_SHIFT_NOT_DISABLED" in result["gaps"]
-    assert "OWNED_LLAMA_GPU_LAYER_CAP_BELOW_STANDARD" in result["gaps"]
+    assert result["gaps"] == []
+    assert "reasoning_effort" in result["observed_l2_wire_fields"]
+    assert "cache_prompt" in result["observed_l2_wire_fields"]
+    assert "--no-context-shift" in result["observed_launcher_flags"]
     assert "response_format" not in result["observed_l2_wire_fields"]
 
 
@@ -116,3 +118,129 @@ def test_product_source_audit_rejects_source_symlink(tmp_path) -> None:
     link.symlink_to(product_gate.L2)
     with pytest.raises(product_gate.PreflightError):
         product_gate.audit_product(l2=link)
+
+
+def test_standard_rsee_audit_reaches_static_compatibility_without_side_effects(
+    tmp_path, monkeypatch, capsys,
+) -> None:
+    def forbidden(*_args, **_kwargs):
+        pytest.fail("audit must never touch toolchain/model/World")
+    monkeypatch.setattr(owned, "_preflight_python_world_imports", forbidden)
+    monkeypatch.setattr(owned, "_preflight_mineflayer_dependencies", forbidden)
+    monkeypatch.setattr(owned.subprocess, "Popen", forbidden)
+    args = _args(tmp_path)
+    args[args.index("--gguf-sha256") + 1] = product_gate.read_profile()[0][
+        "llm"
+    ]["model_sha256"]
+    args[args.index("--model-port") + 1] = "1234"
+    args.extend(["--ctx-size", "8192", "--gpu-layers", "999", "--rsee-audit"])
+    assert owned.main(args) == 0
+    outcome = json.loads(capsys.readouterr().out)
+    assert outcome["classification"] == (
+        "RSEE_PRODUCT_STATIC_COMPATIBLE_NOT_PHYSICALLY_QUALIFIED"
+    )
+    assert not (tmp_path / "not-prepared").exists()
+
+
+def test_opted_standard_still_requires_operator_consent(tmp_path, capsys) -> None:
+    args = _args(tmp_path)
+    args[args.index("--gguf-sha256") + 1] = product_gate.read_profile()[0][
+        "llm"
+    ]["model_sha256"]
+    args[args.index("--model-port") + 1] = "1234"
+    args.extend(["--ctx-size", "8192", "--gpu-layers", "999", "--rsee-required"])
+    assert owned.main(args) == 2
+    assert json.loads(capsys.readouterr().out)["status"] == "BLOCKED"
+
+
+@pytest.mark.parametrize("change", [
+    None,
+    ("model_alias", "WRONG_ALIAS"),
+    ("model_path", "/foreign/model.gguf"),
+    ("total_slots", 2),
+    ("build_info", ""),
+    ("n_ctx", 4352),
+    ("slot_ctx", 2048),
+])
+def test_rsee_live_props_slots_source_binding_fail_closed(
+    tmp_path, monkeypatch, change,
+) -> None:
+    import adapters.mineflayer.self_owned_llama as model_owner
+
+    gguf = tmp_path / "gemma-4-12B-it-Q4_K_M.gguf"
+    gguf.write_bytes(b"synthetic-not-a-model")
+    props = {
+        "model_alias": "relay-self-local",
+        "model_path": str(gguf),
+        "default_generation_settings": {"n_ctx": 8192},
+        "total_slots": 1,
+        "build_info": "offline-fixture-build",
+    }
+    slots = [{"n_ctx": 8192}]
+    if change is not None:
+        key, val = change
+        if key == "n_ctx":
+            props["default_generation_settings"]["n_ctx"] = val
+        elif key == "slot_ctx":
+            slots[0]["n_ctx"] = val
+        else:
+            props[key] = val
+
+    class Response:
+        status = 200
+
+        def __init__(self, value):
+            self.data = json.dumps(value).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, _n):
+            return self.data
+
+    class Opener:
+        def open(self, url, timeout):
+            assert timeout == 2.0
+            assert url in (
+                "http://127.0.0.1:1234/props",
+                "http://127.0.0.1:1234/slots",
+            )
+            return Response(props if url.endswith("/props") else slots)
+
+    monkeypatch.setattr(model_owner.urllib.request, "build_opener", lambda *_: Opener())
+    if change is None:
+        receipt = model_owner._rsee_live_binding(1234, "relay-self-local", gguf)
+        assert receipt["context"] == 8192
+        assert receipt["slot_count"] == 1
+        assert receipt["gpu_execution_attested"] is False
+        assert receipt["thinking_disabled_physically_attested"] is False
+        assert receipt["backend_stop_ack"] is False
+    else:
+        with pytest.raises(model_owner.OwnedModelRejected):
+            model_owner._rsee_live_binding(1234, "relay-self-local", gguf)
+
+
+def test_rsee_live_binding_refuses_truncated_or_duplicate_json(
+    tmp_path, monkeypatch,
+) -> None:
+    import adapters.mineflayer.self_owned_llama as model_owner
+
+    gguf = tmp_path / "model.gguf"
+    gguf.write_bytes(b"synthetic")
+    class Response:
+        status = 200
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            return False
+        def read(self, _):
+            return b'{"model_alias":"a","model_alias":"b"}'
+    class Opener:
+        def open(self, *_args, **_kwargs):
+            return Response()
+    monkeypatch.setattr(model_owner.urllib.request, "build_opener", lambda *_: Opener())
+    with pytest.raises(model_owner.OwnedModelRejected):
+        model_owner._rsee_live_binding(1234, "a", gguf)

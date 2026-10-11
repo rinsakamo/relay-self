@@ -181,6 +181,70 @@ def _ready(port: int, alias: str) -> bool:
         return False
 
 
+def _rsee_live_binding(port: int, alias: str, gguf: Path) -> dict[str, object]:
+    """Fresh read-only *owned* llama-server binding before disposable World.
+
+    This confirms HTTP-exposed settings, NOT GPU computation, Thinking semantics,
+    STOP ACK or real World identity. No inference, retries or fallback requests.
+    """
+
+    def fetch(endpoint: str) -> object:
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        url = f"http://127.0.0.1:{port}/{endpoint}"
+
+        def reject_duplicates(pairs):
+            value = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError("duplicate llama.cpp binding key")
+                value[key] = item
+            return value
+
+        try:
+            with opener.open(url, timeout=2.0) as response:
+                if response.status != 200:
+                    raise OwnedModelRejected("llama binding endpoint not HTTP 200")
+                blob = response.read(16385)
+            if len(blob) > 16384:
+                raise OwnedModelRejected("llama binding response too large")
+            return json.loads(blob.decode("utf-8"), object_pairs_hook=reject_duplicates)
+        except (OSError, UnicodeError, ValueError, urllib.error.URLError) as exc:
+            raise OwnedModelRejected("RSEE llama binding unavailable or invalid") from exc
+
+    props = fetch("props")
+    slots = fetch("slots")
+    if not isinstance(props, dict) or not isinstance(slots, list):
+        raise OwnedModelRejected("RSEE llama props/slots shape invalid")
+    model_path = props.get("model_path")
+    settings = props.get("default_generation_settings")
+    if (props.get("model_alias") != alias
+            or not isinstance(model_path, str)
+            or Path(model_path).expanduser().resolve() != gguf
+            or not isinstance(settings, dict)
+            or type(settings.get("n_ctx")) is not int
+            or settings["n_ctx"] != 8192
+            or type(props.get("total_slots")) is not int
+            or props["total_slots"] != 1
+            or len(slots) != 1
+            or not isinstance(slots[0], dict)
+            or type(slots[0].get("n_ctx")) is not int
+            or slots[0]["n_ctx"] != 8192
+            or not isinstance(props.get("build_info"), str)
+            or not props["build_info"].strip()):
+        raise OwnedModelRejected("RSEE live model identity/context/slot mismatch")
+    return {
+        "model_alias": alias,
+        "model_path": str(gguf),
+        "context": 8192,
+        "slot_count": 1,
+        "build_info": props["build_info"],
+        "live_http_binding_verified": True,
+        "gpu_execution_attested": False,
+        "thinking_disabled_physically_attested": False,
+        "backend_stop_ack": False,
+    }
+
+
 def _stop_only_owned(proc: subprocess.Popen, *, grace_s: float = 5.0) -> dict[str, object]:
     """Signal only freshly spawned process group. No killall/pkill/system services."""
     before = proc.poll()
@@ -231,17 +295,35 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.rsee_audit or args.rsee_required:
-        # The RSEE profile is separately owned by #575/#576; this product
-        # bridge only checks the exact product source/request/launch surfaces.
         # No model, Java, Node, socket or imported World session is started.
-        from experiments.standard_env.product_gate import print_audit
-
-        gate_rc = print_audit(
-            ctx=args.ctx_size, gpu_layers=args.gpu_layers,
-            model_port=args.model_port, gguf_sha256=args.gguf_sha256,
+        from experiments.standard_env.product_gate import (
+            PreflightError,
+            audit_product,
+            print_audit,
         )
-        if gate_rc != 0 or args.rsee_audit:
-            return gate_rc
+
+        options = {
+            "ctx": args.ctx_size, "gpu_layers": args.gpu_layers,
+            "model_port": args.model_port, "gguf_sha256": args.gguf_sha256,
+        }
+        if args.rsee_audit:
+            return print_audit(**options)
+        # Strict mode prints only a terminal BLOCK or the later actual result,
+        # never concatenated audit-PASS and operator-consent outcomes.
+        try:
+            gate = audit_product(**options)
+        except (PreflightError, OSError, ValueError) as exc:
+            print(json.dumps({
+                "classification": "RSEE_PRODUCT_AUDIT_INVALID",
+                "reason": type(exc).__name__,
+                "physical_execution_authorized": False,
+            }, sort_keys=True))
+            return 2
+        if gate["classification"] != (
+            "RSEE_PRODUCT_STATIC_COMPATIBLE_NOT_PHYSICALLY_QUALIFIED"
+        ):
+            print(json.dumps(gate, sort_keys=True))
+            return 2
 
     # Strict preflight before any new process, logfile or model read.
     try:
@@ -254,7 +336,9 @@ def main(argv: list[str] | None = None) -> int:
                 or args.model_port == 25565):
             raise OwnedModelRejected("non-game localhost model port required")
         if (type(args.ctx_size) is not int or not 256 <= args.ctx_size <= 32768
-                or type(args.gpu_layers) is not int or not 0 <= args.gpu_layers <= 99
+                or type(args.gpu_layers) is not int or not 0 <= args.gpu_layers <= (
+                    999 if args.rsee_required else 99
+                )
                 or not .1 <= args.model_timeout <= 120
                 or not 1 <= args.ready_timeout <= 180):
             raise OwnedModelRejected("unbounded model resource configuration")
@@ -269,6 +353,15 @@ def main(argv: list[str] | None = None) -> int:
             raise OwnedModelRejected("NODE_OPTIONS shim is forbidden")
         if not __import__("shutil").which("java") or not __import__("shutil").which("node"):
             raise OwnedModelRejected("Java and Node missing")
+        # RSEE profile names the Python/runtime coordinate explicitly. Verify
+        # versions and imports before expensive GGUF hash or any LLM/World launch.
+        if args.rsee_required:
+            from experiments.standard_env.preflight import _check_tools, read_profile
+
+            candidate, _ = read_profile()
+            tool_errors = _check_tools(candidate)
+            if tool_errors:
+                raise OwnedModelRejected("RSEE local toolchain/import preflight blocked")
         # Mandatory BEFORE expensive GGUF hash, model spawn and World startup.
         node_deps = _preflight_mineflayer_dependencies()
         python_deps = _preflight_python_world_imports()
@@ -318,6 +411,7 @@ def main(argv: list[str] | None = None) -> int:
                     "--host", "127.0.0.1", "--port", str(args.model_port),
                     "--parallel", "1", "--ctx-size", str(args.ctx_size),
                     "--n-gpu-layers", str(args.gpu_layers),
+                    *(["--no-context-shift"] if args.rsee_required else []),
                 ],
                 stdin=subprocess.DEVNULL, stdout=stream,
                 stderr=subprocess.STDOUT, close_fds=True,
@@ -337,7 +431,16 @@ def main(argv: list[str] | None = None) -> int:
                 time.sleep(.1)
             else:
                 state["status"] = "MODEL_READINESS_TIMEOUT"
-            if state.get("loopback_health_and_alias_checked"):
+            if state.get("loopback_health_and_alias_checked") and args.rsee_required:
+                try:
+                    state["rsee_live_binding"] = _rsee_live_binding(
+                        args.model_port, args.model_alias, gguf,
+                    )
+                except (OSError, ValueError) as exc:
+                    state["status"] = "RSEE_LIVE_BINDING_UNCONFIRMED"
+                    state["rsee_live_binding_error"] = type(exc).__name__
+            if (state.get("loopback_health_and_alias_checked")
+                    and (not args.rsee_required or "rsee_live_binding" in state)):
                 state["minecraft_launch_attempted"] = True
                 # Calls the EXISTING S49 product CLI in an owned child process.
                 # No shell, replay, new Game Action authorizer or L2->Action route.
@@ -352,7 +455,9 @@ def main(argv: list[str] | None = None) -> int:
                         sys.executable, "-m", "adapters.mineflayer.self_demo",
                         "--run-disposable", "--confirm", CONFIRM,
                         "--output-dir", str(args.output_dir),
-                        "--live-think", "--model-alias", args.model_alias,
+                        "--live-think",
+                        *(["--rsee-standard"] if args.rsee_required else []),
+                        "--model-alias", args.model_alias,
                         "--model-port", str(args.model_port),
                         "--model-timeout", str(args.model_timeout),
                     ], check=False, env=env,

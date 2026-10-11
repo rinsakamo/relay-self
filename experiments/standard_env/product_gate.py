@@ -44,6 +44,32 @@ def _model_request_keys(tree: ast.AST) -> set[str]:
     return found[0]
 
 
+def _optional_rsee_l2_controls(tree: ast.AST) -> bool:
+    """Static candidate check only; native wire remains unqualified."""
+    conditional_payload = any(
+        isinstance(node, ast.IfExp)
+        and isinstance(node.test, ast.Attribute)
+        and node.test.attr == "rsee_controls"
+        and isinstance(node.body, ast.Dict)
+        and {
+            k.value: v.value
+            for k, v in zip(node.body.keys, node.body.values, strict=True)
+            if isinstance(k, ast.Constant) and isinstance(v, ast.Constant)
+        } == {"reasoning_effort": "none", "cache_prompt": False}
+        for node in ast.walk(tree)
+    )
+    explicit_config = any(
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "LoopbackTransportConfig"
+        and {"reasoning_effort", "cache_prompt"}.issubset(
+            {kw.arg for kw in node.keywords}
+        )
+        for node in ast.walk(tree)
+    )
+    return conditional_payload and explicit_config
+
+
 def _launch_flags(tree: ast.AST) -> set[str]:
     launches = []
     for node in ast.walk(tree):
@@ -53,7 +79,7 @@ def _launch_flags(tree: ast.AST) -> set[str]:
                 and node.func.attr == "Popen" and node.args
                 and isinstance(node.args[0], ast.List)):
             flags = {
-                item.value for item in node.args[0].elts
+                item.value for item in ast.walk(node.args[0])
                 if isinstance(item, ast.Constant) and isinstance(item.value, str)
             }
             launches.append(flags)
@@ -73,8 +99,12 @@ def audit_product(
     gguf_sha256: str | None = None,
 ) -> dict[str, Any]:
     profile, digest = read_profile(profile_path)
-    request_keys = _model_request_keys(_source(l2))
-    flags = _launch_flags(_source(owner))
+    l2_tree = _source(l2)
+    owner_tree = _source(owner)
+    request_keys = _model_request_keys(l2_tree)
+    if _optional_rsee_l2_controls(l2_tree):
+        request_keys |= {"reasoning_effort", "cache_prompt"}
+    flags = _launch_flags(owner_tree)
     llm = profile["llm"]
     gaps: list[str] = []
 
@@ -94,18 +124,19 @@ def audit_product(
         gaps.append("LOOPBACK_PORT_DIFFERS_FROM_STANDARD")
     if gguf_sha256 is not None and gguf_sha256 != llm["model_sha256"]:
         gaps.append("GGUF_IDENTITY_DIFFERS_FROM_STANDARD")
-    # Product wrapper also caps --gpu-layers at 99; this is an explicit
-    # version-scoped fact, checked against AST rather than assumed from text.
-    caps_99 = any(
-        isinstance(node, ast.Compare)
-        and any(isinstance(comp, ast.Constant) and comp.value == 99
-                for comp in node.comparators)
-        and isinstance(node.left, ast.Constant) and node.left.value == 0
-        for node in ast.walk(_source(owner))
+    rsee_999_cap = any(
+        isinstance(node, ast.IfExp)
+        and any(
+            isinstance(part, ast.Constant) and part.value == 999
+            for part in ast.walk(node.body)
+        )
+        and any(
+            isinstance(part, ast.Attribute) and part.attr == "rsee_required"
+            for part in ast.walk(node.test)
+        )
+        for node in ast.walk(owner_tree)
     )
-    # The exact product AST uses "0 <= args.gpu_layers <= 99", so the value
-    # 99 appears in the Compare comparators, with a first comparator on arg.
-    if caps_99 and llm["gpu_layers"] > 99:
+    if not rsee_999_cap:
         gaps.append("OWNED_LLAMA_GPU_LAYER_CAP_BELOW_STANDARD")
 
     return {

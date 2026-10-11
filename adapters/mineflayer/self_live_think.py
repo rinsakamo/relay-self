@@ -28,10 +28,16 @@ class LiveL2Observer:
     L0 Action. A newer World probe fences earlier reasoning immediately.
     """
 
-    def __init__(self, *, model: str, port: int, timeout_s: float = 12.0) -> None:
+    def __init__(self, *, model: str, port: int, timeout_s: float = 12.0,
+                 rsee_controls: bool = False) -> None:
+        if type(rsee_controls) is not bool:
+            raise ValueError("RSEE opt-in must be a boolean")
+        self.rsee_controls = rsee_controls
         self.config = LoopbackTransportConfig(
             model=model, port=port, slots=1, max_tokens=96,
             connect_s=min(3.0, timeout_s), read_s=timeout_s, whole_s=timeout_s,
+            reasoning_effort="none" if rsee_controls else None,
+            cache_prompt=False if rsee_controls else None,
         )
         self.timeout_s = timeout_s
         self._session_id: str | None = None
@@ -123,6 +129,8 @@ class LiveL2Observer:
                 ],
                 "stream": False, "temperature": 0,
                 "max_tokens": self.config.max_tokens,
+                **({"reasoning_effort": "none", "cache_prompt": False}
+                   if self.rsee_controls else {}),
             },
         )
         owner = BestEffortDisplacement(
@@ -208,6 +216,7 @@ class LiveL2Observer:
             "backend_stop_ack": False,
             "gpu_release_verified": False,
             "model_binary_identity_verified": False,
+            "rsee_request_controls_selected": self.rsee_controls,
             "owner_events": (
                 [r.event for r in self._owner.receipts]
                 if self._owner is not None else []
