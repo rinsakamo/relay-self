@@ -9,8 +9,8 @@ from dataclasses import dataclass
 
 import pytest
 
-from experiments.standard_env import world_bootstrap as boot
 from experiments.standard_env import world_binding as bind
+from experiments.standard_env import world_bootstrap as boot
 
 
 def _str(s: str) -> bytes:
