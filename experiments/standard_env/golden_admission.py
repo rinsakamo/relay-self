@@ -43,3 +43,47 @@ def verify_qualified_world(
             or binding.initial_evidence_sha256 != QUALIFIED_INITIAL_EVIDENCE_SHA256):
         raise WorldBindingRejected("not the independently qualified #583 initial World")
     return binding
+
+
+def main(argv: list[str] | None = None) -> int:
+    """Read-only qualified-World check; no model, port, JVM, Node or game."""
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(
+        description="Verify exact #583 stopped World identity; never launch a process"
+    )
+    parser.add_argument("--jar", type=Path, required=True)
+    parser.add_argument("--snapshot", type=Path, required=True)
+    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--initial-evidence", type=Path, required=True)
+    args = parser.parse_args(argv)
+    try:
+        binding = verify_qualified_world(
+            args.jar, args.snapshot, args.manifest, args.initial_evidence,
+        )
+    except (OSError, TypeError, WorldBindingRejected) as exc:
+        print(json.dumps({
+            "classification": "GOLDEN_WORLD_ADMISSION_BLOCKED",
+            "reason": type(exc).__name__,
+            "physical_execution_authorized": False,
+        }, sort_keys=True))
+        return 2
+    print(json.dumps({
+        "classification": "GOLDEN_WORLD_BYTES_PINNED_OFFLINE",
+        "qualified_bootstrap_head": QUALIFIED_BOOTSTRAP_HEAD,
+        "qualified_scope": QUALIFICATION,
+        "jar_sha256": binding.jar_sha256,
+        "world_manifest_sha256": binding.manifest_sha256,
+        "initial_native_sha256": binding.initial_evidence_sha256,
+        "files": len(binding.files),
+        "physical_execution_authorized": False,
+        "llm_post": 0,
+        "world_action": 0,
+        "golden_run": "NOT_RUN",
+    }, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
