@@ -21,6 +21,7 @@ from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import NormalActionReceipt, NormalWorldL0
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
+from adapters.mineflayer.self_s2_candidates import S2CandidateReview
 from relay_self.action import ActionState
 from relay_self.reactive_l0 import L0ActionGrant, L0Step
 from relay_self.world_conditioned_choice import WorldChoiceKind, WorldConditionedChoice
@@ -142,8 +143,12 @@ class BoundedSessionDriver:
         probe: Callable[[MineflayerObservation], Awaitable[MineflayerObservation]],
         grant: Callable[[WorldConditionedChoice, int], L0ActionGrant | None],
         on_action: Callable[[L0Step], Awaitable[NormalActionReceipt]],
+        on_candidate: Callable[[WorldConditionedChoice, int], S2CandidateReview] | None = None,
+        on_l2_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
     ) -> dict[str, object]:
-        if self._used or not all(callable(x) for x in (probe, grant, on_action)):
+        if (self._used or not all(callable(x) for x in (probe, grant, on_action))
+                or (on_candidate is not None and not callable(on_candidate))
+                or (on_l2_probe is not None and not callable(on_l2_probe))):
             raise SessionRunRejected("one invocation and explicit S49 callbacks required")
         self._used = True
         start = time.monotonic()
@@ -204,6 +209,24 @@ class BoundedSessionDriver:
                     terminal = "PAUSED_AFTER_PROBE_NO_ACTION"
                     break
                 choice = self.host._check(frame, reading)
+                # The original S49 grant/decision remains independent of L1/L2.
+                if on_l2_probe is not None:
+                    try:
+                        await asyncio.wait_for(
+                            on_l2_probe(reading), timeout=min(.1, max(.001, end-time.monotonic())),
+                        )
+                        self.events.write(
+                            "l2_probe_observed", event_seq=frame.seq,
+                            probe_seq=reading.seq, native_source=reading.provenance.reference,
+                            used_as_action=False, authorized_actions=0,
+                        )
+                    except Exception as exc:
+                        # Advisory failure cannot prevent hard L0 survival.
+                        self.events.write(
+                            "l2_probe_unavailable", event_seq=frame.seq,
+                            probe_seq=reading.seq, reason_type=type(exc).__name__,
+                            used_as_action=False, authorized_actions=0,
+                        )
                 permit = grant(choice, frame.seq) if choice.selection is WorldChoiceKind.MOVE_AWAY else None
                 step = self.host.decide(frame, reading, grant=permit)
                 self.events.write(
@@ -219,6 +242,41 @@ class BoundedSessionDriver:
                     retained_revision=self.host.retained.revision,
                     goal_success_attested=False,
                 )
+                if on_candidate is not None:
+                    try:
+                        review = on_candidate(choice, frame.seq)
+                        if (
+                            not isinstance(review, S2CandidateReview)
+                            or review.session_id != self.host.session_id
+                            or review.event_seq != frame.seq
+                            or review.probe_seq != reading.seq
+                            or review.l0_selection != choice.selection.value
+                            or review.effective_selection != choice.selection.value
+                            or review.action_authorized_by_l1
+                            or review.learned_habit_claimed
+                            or review.l2_used_for_action
+                        ):
+                            raise SessionRunRejected("untrusted L1 candidate")
+                        self.events.write(
+                            "l1_candidate_review", epoch=self.host.events,
+                            event_seq=frame.seq, probe_seq=reading.seq,
+                            source_provenance=review.l1_source,
+                            l0_selection=review.l0_selection,
+                            l1_candidate=review.l1_candidate,
+                            l1_status=review.l1_status,
+                            l1_repertoire_revision=review.l1_repertoire_revision,
+                            effective_selection=review.effective_selection,
+                            l1_authorized_actions=0, learned_habit=False,
+                            l2_used_as_action=False,
+                        )
+                    except Exception as exc:
+                        self.events.write(
+                            "l1_candidate_unavailable", epoch=self.host.events,
+                            event_seq=frame.seq, probe_seq=reading.seq,
+                            reason_type=type(exc).__name__,
+                            effective_selection=choice.selection.value,
+                            l1_authorized_actions=0,
+                        )
                 if not step.asks_for_action:
                     continue
                 # Before any potentially irreversible command, flush the exact
