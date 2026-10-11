@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -161,10 +160,11 @@ def main(argv: list[str] | None = None) -> int:
             if len(l2_lines) != 1:
                 raise SpatialTimelineRejected("one L2 sidecar is required")
             l2 = json.loads(l2_lines[0])
-        mem = (
-            load_persistent_cognition(args.memory)
-            if args.memory is not None and _file(args.memory) else None
-        )
+        mem = None
+        if args.memory is not None:
+            if not _file(args.memory):
+                raise SpatialTimelineRejected("empty Memory source")
+            mem = load_persistent_cognition(args.memory)
         rows = timeline_with_spatial(
             report, questions=questions, original_bridge_lines=original_lines,
             live_l2=l2, memory=mem,
