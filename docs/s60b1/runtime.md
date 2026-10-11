@@ -25,8 +25,14 @@ proxy, redirects, auth, environment overrides, UDS, SSE or server cancel API.
 
 `payload_for(request)` is an independently trusted **nonblocking** caller
 callback invoked only when S60-A actually starts that exact request. It returns
-model/messages/temperature=0/max_tokens/stream=False; no other request fields
-are supported. Caller must retain at most the active/latest eligible pending
+model/messages/temperature=0/max_tokens/stream=False by default; optional
+RSEE fields `reasoning_effort="none"` and `cache_prompt=false` are supported
+**only when explicitly enabled in `LoopbackTransportConfig`**. The default
+wire remains the exact original five fields. If enabled, those fields must
+appear with the exact values in each payload; unsupported values, omitted
+controls or extra fields fail *before* opening a socket. No JSON Schema
+support is added to this text-only transport and no physical reasoning or
+KV-cache semantics are claimed from offline tests. Caller must retain at most the active/latest eligible pending
 payload and discard superseded/expired/context-stale payloads. Prompts live
 outside `ModelRequest` and receipts. The adapter snapshots/validates/encodes
 payload before the first await, never calls S52 synchronous urllib and creates
@@ -85,3 +91,15 @@ BACKEND_STOP_UNCONFIRMED, NO_PHYSICAL_SLOT_RELEASE_CLAIM, NO_PRODUCTION_GO.
 Real llama.cpp/selected GGUF compatibility, same-process slot availability,
 native cancellation, GPU/VRAM release, Minecraft and physical L0 latency
 remain unqualified and require separate S60-B2 authority.
+
+## Optional RSEE request controls (2026-10-11)
+
+`LoopbackTransportConfig(..., reasoning_effort="none", cache_prompt=False)`
+can be selected by a separately authorized, source-qualified product owner.
+Default None/None preserves all original S60-B1 requests and receipts.
+The adapter does not set defaults behind the caller, infer model capabilities,
+create a new model process, or change L0/L2/Action/Memory semantics.
+Source-level opt-in and exact payload shape were verified with native fake
+localhost HTTP in CI; no selected Gemma/llama.cpp/World experiment ran.
+The actual host must verify whether its llama.cpp revision maps `none` to
+thinking-disabled and supports `cache_prompt=false`; if unproven, BLOCK.
