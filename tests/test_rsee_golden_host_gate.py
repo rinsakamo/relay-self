@@ -185,6 +185,7 @@ def test_main_never_starts_physical_runtime_on_invalid_head(tmp_path, capsys, mo
         "--jar", str(path), "--snapshot", str(path),
         "--manifest", str(path), "--initial-evidence", str(path),
         "--gguf", str(path), "--llama-server", str(path),
+        "--node-runtime-root", str(path),
     ]
     assert gate.main(flags) == 2
     output = json.loads(capsys.readouterr().out)
