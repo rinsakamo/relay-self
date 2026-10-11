@@ -1,0 +1,80 @@
+name: V Lane V1 independent offline evaluation
+
+on:
+  push:
+    branches:
+      - 'validation/v1-independent-evaluation-*'
+  pull_request:
+    branches:
+      - 'infra/rsee-r1-shared-runtime-20261011'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v1-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Exact head R1 ancestry
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor 7c9a013f10e55172f6415deb9002ce7d4417f504 HEAD
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+      - name: Pure V1 and inherited R1 focused tests
+        env:
+          PYTHONPATH: 'src:tests:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m pytest -q tests/test_validation_v1.py tests/test_rsee_shared_runtime.py
+          python -m experiments.validation.v1
+      - name: Ruff
+        run: ruff check src tests experiments adapters observability
+      - name: Repository contracts
+        run: python tools/check_repository.py
+
+  full-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Inherited full Python regression; no physical execution
+        env:
+          PYTHONPATH: 'src:tests:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -m pytest -q
+
+  mineflayer-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - run: npm run check --prefix adapters/mineflayer
