@@ -233,7 +233,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.rsee_audit or args.rsee_required:
         # No model, Java, Node, socket or imported World session is started.
         from experiments.standard_env.product_gate import (
-            PreflightError, audit_product, print_audit,
+            PreflightError,
+            audit_product,
+            print_audit,
         )
 
         options = {
