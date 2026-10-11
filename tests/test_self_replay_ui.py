@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from adapters.mineflayer import self_replay_ui as viewer
 from adapters.mineflayer import self_demo
+from adapters.mineflayer import self_replay_ui as viewer
 from relay_self.persistent_cognition import save_persistent_cognition
 from test_self_demo import _native_report
 
