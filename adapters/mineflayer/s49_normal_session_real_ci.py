@@ -47,7 +47,11 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     _new_session,
 )
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
-from experiments.standard_env.world_binding import WorldBinding, prepare_stopped_world
+from experiments.standard_env.world_binding import (
+    WorldBinding,
+    WorldBindingRejected,
+    prepare_stopped_world,
+)
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.execution_binding import (
@@ -338,7 +342,7 @@ async def qualify(
         report["classification"] = "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
         report["stage"] = "CLOSED"
         rc = 0
-    except (S31ABlocked, OSError) as exc:
+    except (S31ABlocked, WorldBindingRejected, OSError) as exc:
         report["status"] = "BLOCKED"
         report["error"] = f"{type(exc).__name__}: {exc}"
         print("S49 BLOCKED: " + str(exc), file=sys.stderr)
