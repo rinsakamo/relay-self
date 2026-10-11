@@ -11,14 +11,15 @@ import json
 from pathlib import Path
 from typing import Any
 
-from adapters.mineflayer.goal_witness import InvalidSpatialContract, Region, SpatialContract
-from adapters.mineflayer.self_lane_c_witness import qualify_self_action_spatial
 from adapters.mineflayer.self_timeline import (
     MAX_SOURCE_BYTES,
     SCHEMA,
     _read_json,
     timeline,
 )
+
+from adapters.mineflayer.goal_witness import InvalidSpatialContract, Region, SpatialContract
+from adapters.mineflayer.self_lane_c_witness import qualify_self_action_spatial
 from relay_self.persistent_cognition import load_persistent_cognition
 
 SPATIAL_QUESTIONS_SCHEMA = "SELF_LANEC_C15_SPATIAL_QUESTIONS_V1"
