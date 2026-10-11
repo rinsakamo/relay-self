@@ -19,9 +19,9 @@ from adapters.mineflayer.goal_witness import (
     SpatialContract,
 )
 from adapters.mineflayer.python_protocol import (
-    MineflayerStreamDecoder,
     MineflayerEffectResult,
     MineflayerObservation,
+    MineflayerStreamDecoder,
 )
 from adapters.mineflayer.self_action_evidence import (
     NativeEvidenceRejected,
@@ -129,7 +129,10 @@ def qualify_self_action_spatial(
                 return _unknown("S16_FRAME_MISSING_FROM_SOURCE", session, action_id)
             expected = dict(original)
             expected.pop("provenance", None)
-            if asdict(decoded) != expected:
+            # S16 saved decoded frames in JSON-native representation;
+            # dataclasses.asdict retains source tuples (e.g. entities).
+            decoded_json = json.loads(json.dumps(asdict(decoded), allow_nan=False))
+            if decoded_json != expected:
                 return _unknown("S16_SOURCE_CONTENT_MISMATCH", session, action_id)
     except (ValueError, TypeError, KeyError, UnicodeError):
         return _unknown("INVALID_OR_NONCONTIGUOUS_SOURCE", session, action_id)
