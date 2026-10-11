@@ -90,7 +90,12 @@ def test_preexisting_output_does_not_get_overwritten(tmp_path, monkeypatch):
 def test_non_target_native_observation_never_probes_or_issues(tmp_path):
     retained, _, _, near_event, _ = s42._pair()
     sid = near_event.session_id
-    snapshot = replace(near_event.snapshot, nearby_entities=())
+    snapshot = replace(
+        near_event.snapshot, nearby_entities=(),
+        nearby_entities_coverage=replace(
+            near_event.snapshot.nearby_entities_coverage, candidate_count=0,
+        ),
+    )
     event = replace(near_event, snapshot=snapshot, seq=1)
     host = NormalWorldL0(sid, "escape-threat", retained, max_events=1,
                          max_action_requests=1)
