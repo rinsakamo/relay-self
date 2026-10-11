@@ -361,10 +361,19 @@ def test_rsee_existing_evidence_prevents_any_http_requests(
     (evidence / "rsee_http_models.json").write_bytes(b"immutable")
     count = []
 
+    class Response:
+        status = 200
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            return False
+        def read(self, *_):
+            return b'{"data":[{"id":"rsee-gemma4"}]}'
+
     class Opener:
         def open(self, *_args, **_kwargs):
             count.append("GET")
-            return None
+            return Response()
 
     monkeypatch.setattr(owned.urllib.request, "build_opener", lambda *_: Opener())
     with pytest.raises((owned.OwnedModelRejected, OSError)):
