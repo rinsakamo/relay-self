@@ -175,6 +175,31 @@ def test_paused_at_start_stops_on_wall_budget_without_invented_safety(tmp_path):
     assert outcome["action_requests"] == 0
 
 
+def test_pause_during_correlated_probe_fails_closed_without_grant(tmp_path):
+    driver, probe, _, execute, _, source = _fixture(tmp_path, two_events=False)
+    granted = []
+
+    async def pause_during_probe(event):
+        reading = await probe(event)
+        driver.pause()
+        return reading
+
+    def forbidden_grant(choice, seq):
+        granted.append((choice, seq))
+        raise AssertionError("paused controller requested Action")
+
+    result = asyncio.run(driver.run(
+        probe=pause_during_probe, grant=forbidden_grant, on_action=execute,
+    ))
+    assert result["terminal"] == "PAUSED_AFTER_PROBE_NO_ACTION"
+    assert result["events"] == result["action_requests"] == 0
+    assert source.calls == 1
+    assert granted == []
+    assert [r["kind"] for r in _events(tmp_path)] == [
+        "session_started", "session_terminal",
+    ]
+
+
 def test_foreign_native_frame_is_rejected_before_grant_or_action(tmp_path):
     driver, probe, grant, execute, _, source = _fixture(tmp_path)
     source.frames[0] = replace(source.frames[0], session_id="other-world")
