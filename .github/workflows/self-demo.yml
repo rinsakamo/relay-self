@@ -64,6 +64,7 @@ jobs:
           timeout 35s python -m pytest -q -x tests/test_self_live_think.py
           timeout 35s python -m pytest -q -x tests/test_self_owned_llama.py
           python -m pytest -q tests/test_self_timeline.py
+          python -m pytest -q tests/test_self_timeline_html.py
           timeout 35s python -m pytest -q -x tests/test_ac_c_c15_goal_witness.py tests/test_self_spatial_review.py
       - name: Full inherited regression
         run: python -m pytest -q
