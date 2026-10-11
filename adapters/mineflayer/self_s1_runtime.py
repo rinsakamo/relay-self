@@ -231,39 +231,49 @@ async def run_physical(binding, output: Path, budget: SessionBudget) -> dict:
     finally:
         if driver is not None:
             driver.stop()
-        if session is not None:
-            try:
-                result["node_exit"] = await session.shutdown(timeout_s=10)
-            except BaseException:
-                result["node_cleanup_unconfirmed"] = True
-                await session.terminate()
         try:
-            await _shutdown_server(server, collector)
-        finally:
+            if session is not None:
+                try:
+                    result["node_exit"] = await session.shutdown(timeout_s=10)
+                except BaseException:
+                    result["node_cleanup_unconfirmed"] = True
+                    try:
+                        result["node_exit"] = await session.terminate()
+                    except BaseException as exc:
+                        result["node_terminate_error_type"] = type(exc).__name__
+            try:
+                await _shutdown_server(server, collector)
+            except BaseException as exc:
+                result["server_cleanup_unconfirmed"] = type(exc).__name__
             if server is not None:
                 result["server_exit"] = server.returncode
-            if temp is not None:
-                temp.cleanup()
-            # Separate honest post-shutdown receipt. The driver's JSONL was
-            # fsync'd before any Action and closed before resource teardown.
-            cleanup_file = output / "owned_cleanup.json"
-            if cleanup_file.exists() or cleanup_file.is_symlink():
-                raise SessionRunRejected("cleanup receipt would overwrite evidence")
-            cleanup_file.write_text(json.dumps({
-                "schema": "SELF1_S1_OWNER_CLEANUP_V1",
-                "session": session.started.session_id if session is not None else None,
-                "node_exit": result.get("node_exit"),
-                "server_exit": result.get("server_exit"),
-                "node_cleanup_unconfirmed": result.get("node_cleanup_unconfirmed", False),
-                "native_stop_ack": False,
-                "model_stop_ack": False,
-                "gpu_release_claimed": False,
-                "physical_action_replay": False,
-            }, sort_keys=True) + "\n", encoding="utf-8")
-            if previous is None:
-                os.environ.pop("RELAYSELF_RSEE_NODE_RUNTIME_ROOT", None)
-            else:
-                os.environ["RELAYSELF_RSEE_NODE_RUNTIME_ROOT"] = previous
+        finally:
+            try:
+                if temp is not None:
+                    temp.cleanup()
+            finally:
+                try:
+                    cleanup_file = output / "owned_cleanup.json"
+                    if cleanup_file.exists() or cleanup_file.is_symlink():
+                        raise SessionRunRejected("cleanup receipt would overwrite evidence")
+                    cleanup_file.write_text(json.dumps({
+                        "schema": "SELF1_S1_OWNER_CLEANUP_V1",
+                        "session": session.started.session_id if session is not None else None,
+                        "node_exit": result.get("node_exit"),
+                        "server_exit": result.get("server_exit"),
+                        "node_cleanup_unconfirmed": result.get("node_cleanup_unconfirmed", False),
+                        "node_terminate_error_type": result.get("node_terminate_error_type"),
+                        "server_cleanup_unconfirmed": result.get("server_cleanup_unconfirmed"),
+                        "native_stop_ack": False,
+                        "model_stop_ack": False,
+                        "gpu_release_claimed": False,
+                        "physical_action_replay": False,
+                    }, sort_keys=True) + "\n", encoding="utf-8")
+                finally:
+                    if previous is None:
+                        os.environ.pop("RELAYSELF_RSEE_NODE_RUNTIME_ROOT", None)
+                    else:
+                        os.environ["RELAYSELF_RSEE_NODE_RUNTIME_ROOT"] = previous
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -297,6 +307,12 @@ def main(argv: list[str] | None = None) -> int:
         )
         binding = preflight(RSEE, args.output_dir)
         result = asyncio.run(run_physical(binding, args.output_dir, budget))
+        if (
+            result.get("node_exit") != 0 or result.get("server_exit") != 0
+            or result.get("node_cleanup_unconfirmed")
+            or result.get("server_cleanup_unconfirmed")
+        ):
+            raise SessionRunRejected("owned physical processes not cleanly closed")
     except (Exception, KeyboardInterrupt) as exc:
         print(json.dumps({
             "classification": "S1_UNKNOWN_OR_BLOCKED",
