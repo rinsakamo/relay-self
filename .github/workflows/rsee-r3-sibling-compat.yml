@@ -56,6 +56,10 @@ jobs:
           fetch-depth: 0
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          path: r2
+          ref: '0ab360375a797141e8bc0f2a9c04188a2db9e650'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
           path: s3
           ref: '6f493b7a559dd72ea365998b9eadbd35fd7eb9b4'
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -76,7 +80,7 @@ jobs:
           PYTHONPATH: 'r3:r3/src'
         run: |
           PYTHONPATH="r3:r3/src" python -m experiments.standard_env.lane_compat --verify \
-            --r-root "$PWD/r3" --s-root "$PWD/s3" \
+            --r-root "$PWD/r2" --s-root "$PWD/s3" \
             --l-root "$PWD/l1" --v-root "$PWD/v1"
       - name: S3, L1, V1 actual owner offline interfaces (isolated)
         env:
