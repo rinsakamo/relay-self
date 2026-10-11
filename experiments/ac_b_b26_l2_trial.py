@@ -328,6 +328,7 @@ def run_local_one_call(
     max_tokens: int = 512,
     raw_response_path: Path | None = None,
     reasoning_effort: str | None = None,
+    response_format: dict[str, object] | None = None,
 ) -> dict[str, object]:
     """One user-authorized synchronous local L2 call. NO retries/fallbacks.
 
@@ -352,6 +353,10 @@ def run_local_one_call(
     }
     if reasoning_effort is not None:
         request_body["reasoning_effort"] = reasoning_effort
+    if response_format is not None:
+        if type(response_format) is not dict:
+            raise InvalidB26Proposal("native structured response_format must be an object")
+        request_body["response_format"] = response_format
     payload = json.dumps(request_body, separators=(",", ":")).encode("utf-8")
     request = Request(
         endpoint, data=payload, headers={"Content-Type": "application/json"},
