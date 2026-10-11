@@ -197,6 +197,10 @@ class BoundedSessionDriver:
                 if self._stopped or time.monotonic() >= end:
                     terminal = "TIME_OR_OPERATOR_STOP_AFTER_PROBE"
                     break
+                if self._paused:
+                    # Never resume an old probe as if the World had not moved.
+                    terminal = "PAUSED_AFTER_PROBE_NO_ACTION"
+                    break
                 choice = self.host._check(frame, reading)
                 permit = grant(choice, frame.seq) if choice.selection is WorldChoiceKind.MOVE_AWAY else None
                 step = self.host.decide(frame, reading, grant=permit)
@@ -221,8 +225,8 @@ class BoundedSessionDriver:
                 )
                 try:
                     remaining = end - time.monotonic()
-                    if remaining <= 0 or self._stopped:
-                        terminal = "ACTION_NOT_DISPATCHED_TIME_OR_STOP"
+                    if remaining <= 0 or self._stopped or self._paused:
+                        terminal = "ACTION_NOT_DISPATCHED_TIME_PAUSE_OR_STOP"
                         break
                     receipt = await asyncio.wait_for(
                         on_action(step), timeout=min(15, remaining),
@@ -238,7 +242,7 @@ class BoundedSessionDriver:
                         or receipt.consequence.movement_distance < 0.05
                     ):
                         raise SessionRunRejected("unqualified S49 native Action terminal")
-                except (Exception, asyncio.CancelledError) as exc:
+                except BaseException as exc:
                     self.events.write(
                         "action_outcome_unknown", action_id=step.action_request_id,
                         error_type=type(exc).__name__, physical_outcome="UNKNOWN",
