@@ -151,3 +151,96 @@ def test_opted_standard_still_requires_operator_consent(tmp_path, capsys) -> Non
     args.extend(["--ctx-size", "8192", "--gpu-layers", "999", "--rsee-required"])
     assert owned.main(args) == 2
     assert json.loads(capsys.readouterr().out)["status"] == "BLOCKED"
+
+
+@pytest.mark.parametrize("change", [
+    None,
+    ("model_alias", "WRONG_ALIAS"),
+    ("model_path", "/foreign/model.gguf"),
+    ("total_slots", 2),
+    ("build_info", ""),
+    ("n_ctx", 4352),
+    ("slot_ctx", 2048),
+])
+def test_rsee_live_props_slots_source_binding_fail_closed(
+    tmp_path, monkeypatch, change,
+) -> None:
+    import adapters.mineflayer.self_owned_llama as model_owner
+
+    gguf = tmp_path / "gemma-4-12B-it-Q4_K_M.gguf"
+    gguf.write_bytes(b"synthetic-not-a-model")
+    props = {
+        "model_alias": "relay-self-local",
+        "model_path": str(gguf),
+        "default_generation_settings": {"n_ctx": 8192},
+        "total_slots": 1,
+        "build_info": "offline-fixture-build",
+    }
+    slots = [{"n_ctx": 8192}]
+    if change is not None:
+        key, val = change
+        if key == "n_ctx":
+            props["default_generation_settings"]["n_ctx"] = val
+        elif key == "slot_ctx":
+            slots[0]["n_ctx"] = val
+        else:
+            props[key] = val
+
+    class Response:
+        status = 200
+
+        def __init__(self, value):
+            self.data = json.dumps(value).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, _n):
+            return self.data
+
+    class Opener:
+        def open(self, url, timeout):
+            assert timeout == 2.0
+            assert url in (
+                "http://127.0.0.1:1234/props",
+                "http://127.0.0.1:1234/slots",
+            )
+            return Response(props if url.endswith("/props") else slots)
+
+    monkeypatch.setattr(model_owner.urllib.request, "build_opener", lambda *_: Opener())
+    if change is None:
+        receipt = model_owner._rsee_live_binding(1234, "relay-self-local", gguf)
+        assert receipt["context"] == 8192
+        assert receipt["slot_count"] == 1
+        assert receipt["gpu_execution_attested"] is False
+        assert receipt["thinking_disabled_physically_attested"] is False
+        assert receipt["backend_stop_ack"] is False
+    else:
+        with pytest.raises(model_owner.OwnedModelRejected):
+            model_owner._rsee_live_binding(1234, "relay-self-local", gguf)
+
+
+def test_rsee_live_binding_refuses_truncated_or_duplicate_json(
+    tmp_path, monkeypatch,
+) -> None:
+    import adapters.mineflayer.self_owned_llama as model_owner
+
+    gguf = tmp_path / "model.gguf"
+    gguf.write_bytes(b"synthetic")
+    class Response:
+        status = 200
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            return False
+        def read(self, _):
+            return b'{"model_alias":"a","model_alias":"b"}'
+    class Opener:
+        def open(self, *_args, **_kwargs):
+            return Response()
+    monkeypatch.setattr(model_owner.urllib.request, "build_opener", lambda *_: Opener())
+    with pytest.raises(model_owner.OwnedModelRejected):
+        model_owner._rsee_live_binding(1234, "a", gguf)
