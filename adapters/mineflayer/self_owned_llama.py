@@ -404,7 +404,11 @@ def main(argv: list[str] | None = None) -> int:
             if tool_errors:
                 raise OwnedModelRejected("RSEE local toolchain/import preflight blocked")
         # Mandatory BEFORE expensive GGUF hash, model spawn and World startup.
-        node_deps = _preflight_mineflayer_dependencies(args.rsee_node_runtime_root)
+        node_deps = (
+            _preflight_mineflayer_dependencies()
+            if args.rsee_node_runtime_root is None else
+            _preflight_mineflayer_dependencies(args.rsee_node_runtime_root)
+        )
         python_deps = _preflight_python_world_imports()
         binary = _regular(args.llama_server, executable=True)
         gguf = _regular(args.gguf)
