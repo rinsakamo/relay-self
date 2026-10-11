@@ -1,0 +1,40 @@
+name: S60-B1 RSEE opt-in wire offline
+
+on:
+  push:
+    branches:
+      - 'self/s60b1-rsee-optin-controls-*'
+  pull_request:
+    branches:
+      - 'self/s60b1-loopback-adapter-*'
+
+permissions:
+  contents: read
+
+jobs:
+  exact-head:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Verify branch lineage
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor 66b8045fd2b47d9c35febb12c495379d1248bb4e HEAD
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+      - name: Exact opt-in/legacy request regressions
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: python -m pytest -q tests/test_feature_s60b1_adapter.py
+      - name: Ruff
+        run: ruff check src tests experiments adapters observability
+      - name: Repository contracts
+        run: python tools/check_repository.py
