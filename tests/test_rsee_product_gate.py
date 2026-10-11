@@ -11,15 +11,17 @@ from adapters.mineflayer import self_owned_llama as owned
 from experiments.standard_env import product_gate
 
 
-def test_exact_product_source_reports_real_standardization_gaps() -> None:
+def test_exact_product_source_has_optin_standard_controls_not_physical_proof() -> None:
     result = product_gate.audit_product()
-    assert result["classification"] == "RSEE_PRODUCT_STATIC_GAPS"
+    assert result["classification"] == (
+        "RSEE_PRODUCT_STATIC_COMPATIBLE_NOT_PHYSICALLY_QUALIFIED"
+    )
     assert result["runtime_observation"] is False
     assert result["physical_execution_authorized"] is False
-    assert "L2_REQUEST_REASONING_OFF_NOT_EXPLICIT" in result["gaps"]
-    assert "L2_REQUEST_CACHE_DISABLED_NOT_EXPLICIT" in result["gaps"]
-    assert "OWNED_LLAMA_CONTEXT_SHIFT_NOT_DISABLED" in result["gaps"]
-    assert "OWNED_LLAMA_GPU_LAYER_CAP_BELOW_STANDARD" in result["gaps"]
+    assert result["gaps"] == []
+    assert "reasoning_effort" in result["observed_l2_wire_fields"]
+    assert "cache_prompt" in result["observed_l2_wire_fields"]
+    assert "--no-context-shift" in result["observed_launcher_flags"]
     assert "response_format" not in result["observed_l2_wire_fields"]
 
 
@@ -116,3 +118,36 @@ def test_product_source_audit_rejects_source_symlink(tmp_path) -> None:
     link.symlink_to(product_gate.L2)
     with pytest.raises(product_gate.PreflightError):
         product_gate.audit_product(l2=link)
+
+
+def test_standard_rsee_audit_reaches_static_compatibility_without_side_effects(
+    tmp_path, monkeypatch, capsys,
+) -> None:
+    def forbidden(*_args, **_kwargs):
+        pytest.fail("audit must never touch toolchain/model/World")
+    monkeypatch.setattr(owned, "_preflight_python_world_imports", forbidden)
+    monkeypatch.setattr(owned, "_preflight_mineflayer_dependencies", forbidden)
+    monkeypatch.setattr(owned.subprocess, "Popen", forbidden)
+    args = _args(tmp_path)
+    args[args.index("--gguf-sha256") + 1] = product_gate.read_profile()[0][
+        "llm"
+    ]["model_sha256"]
+    args[args.index("--model-port") + 1] = "1234"
+    args.extend(["--ctx-size", "8192", "--gpu-layers", "999", "--rsee-audit"])
+    assert owned.main(args) == 0
+    outcome = json.loads(capsys.readouterr().out)
+    assert outcome["classification"] == (
+        "RSEE_PRODUCT_STATIC_COMPATIBLE_NOT_PHYSICALLY_QUALIFIED"
+    )
+    assert not (tmp_path / "not-prepared").exists()
+
+
+def test_opted_standard_still_requires_operator_consent(tmp_path, capsys) -> None:
+    args = _args(tmp_path)
+    args[args.index("--gguf-sha256") + 1] = product_gate.read_profile()[0][
+        "llm"
+    ]["model_sha256"]
+    args[args.index("--model-port") + 1] = "1234"
+    args.extend(["--ctx-size", "8192", "--gpu-layers", "999", "--rsee-required"])
+    assert owned.main(args) == 2
+    assert json.loads(capsys.readouterr().out)["status"] == "BLOCKED"
