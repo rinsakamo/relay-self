@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { createRequire } from 'node:module'
+import { dependencyRequire } from './dependency_runtime.mjs'
 import readline from 'node:readline'
 
 import {
@@ -19,7 +19,7 @@ import {
 } from './protocol.mjs'
 
 const EXPECTED_MINEFLAYER_VERSION = '4.39.0'
-const require = createRequire(import.meta.url)
+const require = dependencyRequire(import.meta.url)
 const mineflayer = require('mineflayer')
 const mineflayerPackage = require('mineflayer/package.json')
 

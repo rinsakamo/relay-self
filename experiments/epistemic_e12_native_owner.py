@@ -97,6 +97,7 @@ class OriginalWireSession(MineflayerProcessSession):
         bridge_path: str | Path | None = None,
         startup_timeout_s: float = 10.0,
         spawn: Callable | None = None,
+        node_runtime_root: Path | None = None,
     ) -> "OriginalWireSession":
         _loopback(config)
         path = Path(raw_path)
@@ -112,6 +113,10 @@ class OriginalWireSession(MineflayerProcessSession):
             raise E12Rejected("original bridge not found")
         if not node_executable or node_executable != node_executable.strip():
             raise E12Rejected("invalid Node executable")
+        child_options = {}
+        if node_runtime_root is not None:
+            from experiments.epistemic_e13_shared_runtime import child_env
+            child_options["env"] = child_env(node_runtime_root, bridge.parent)
         # Atomic exclusive output reservation, before any child or physical I/O.
         try:
             file = path.open("xb")
@@ -126,6 +131,7 @@ class OriginalWireSession(MineflayerProcessSession):
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=None,
+                **child_options,
             )
             session = cls(process, file)
             msg = await asyncio.wait_for(session.receive(), startup_timeout_s)
@@ -234,6 +240,7 @@ class OneAvatarOriginalOwner:
         bridge_path: str | Path | None = None,
         node_executable: str = "node",
         spawn: Callable | None = None,
+        node_runtime_root: Path | None = None,
     ) -> None:
         _loopback(config)
         self.config = config
@@ -246,6 +253,7 @@ class OneAvatarOriginalOwner:
         self.bridge_path = bridge_path
         self.node_executable = node_executable
         self.spawn = spawn
+        self.node_runtime_root = node_runtime_root
         self.parent = None
         self.action4 = None
         self.phase = "NEW"
@@ -260,6 +268,7 @@ class OneAvatarOriginalOwner:
             bridge_path=self.bridge_path,
             node_executable=self.node_executable,
             spawn=self.spawn,
+            node_runtime_root=self.node_runtime_root,
         )
         self.phase = "PARENT"
         return self.parent
@@ -282,6 +291,7 @@ class OneAvatarOriginalOwner:
             bridge_path=self.bridge_path,
             node_executable=self.node_executable,
             spawn=self.spawn,
+            node_runtime_root=self.node_runtime_root,
         )
         if self.action4.started.session_id == self.parent.started.session_id:
             await self.action4.terminate()
