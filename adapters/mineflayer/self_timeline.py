@@ -221,9 +221,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--native-report", type=Path, required=True)
     p.add_argument("--live-l2", type=Path)
     p.add_argument("--memory", type=Path)
-    p.add_argument("--format", choices=["text", "jsonl"], default="text")
+    p.add_argument("--format", choices=["text", "jsonl", "html"], default="text")
+    p.add_argument("--output", type=Path,
+                   help="fresh .html file path required when --format html")
     args = p.parse_args(argv)
     try:
+        if (args.format == "html") is not (args.output is not None):
+            raise TimelineRejected("HTML requires an output path, other formats use stdout")
         native = _read_json(args.native_report)
         l2 = None
         if args.live_l2 is not None:
@@ -241,7 +245,24 @@ def main(argv: list[str] | None = None) -> int:
                 raise TimelineRejected("Memory snapshot untrusted or oversized")
             mem = load_persistent_cognition(args.memory)
         result = timeline(native, live_l2=l2, memory=mem)
-        print(_show(result, args.format), end="")
+        if args.format == "html":
+            from adapters.mineflayer.self_timeline_html import render_html
+
+            target = args.output
+            if (target.suffix.lower() != ".html" or target.is_symlink()
+                    or target.exists() or not target.parent.is_dir()
+                    or target.parent.is_symlink()):
+                raise TimelineRejected("new local .html file in existing folder required")
+            content = render_html(result)
+            with target.open("x", encoding="utf-8") as stream:
+                stream.write(content)
+            print(json.dumps({
+                "schema": SCHEMA, "status": "VIEW_WRITTEN",
+                "output": str(target), "world_actions_issued": 0,
+                "model_requests_issued": 0,
+            }, sort_keys=True))
+        else:
+            print(_show(result, args.format), end="")
         return 0
     except (OSError, UnicodeError, ValueError, TypeError, KeyError, IndexError):
         print(json.dumps({
