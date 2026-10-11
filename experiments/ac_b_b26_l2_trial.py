@@ -327,6 +327,7 @@ def run_local_one_call(
     timeout_seconds: int = 90,
     max_tokens: int = 512,
     raw_response_path: Path | None = None,
+    reasoning_effort: str | None = None,
 ) -> dict[str, object]:
     """One user-authorized synchronous local L2 call. NO retries/fallbacks.
 
@@ -343,10 +344,15 @@ def run_local_one_call(
         raise InvalidB26Proposal("positive bounded generation budget required")
     if raw_response_path is not None and not isinstance(raw_response_path, Path):
         raise InvalidB26Proposal("raw HTTP receipt destination must be Path")
-    payload = json.dumps({
+    if reasoning_effort not in (None, "none"):
+        raise InvalidB26Proposal("only proven llama.cpp reasoning_effort=none is supported")
+    request_body = {
         "model": model, "messages": messages,
         "temperature": 0, "max_tokens": max_tokens, "stream": False,
-    }, separators=(",", ":")).encode("utf-8")
+    }
+    if reasoning_effort is not None:
+        request_body["reasoning_effort"] = reasoning_effort
+    payload = json.dumps(request_body, separators=(",", ":")).encode("utf-8")
     request = Request(
         endpoint, data=payload, headers={"Content-Type": "application/json"},
         method="POST",
