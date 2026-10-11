@@ -590,10 +590,14 @@ def main(argv: list[str] | None = None) -> int:
                 try:
                     state["rsee_live_binding"] = _rsee_live_binding(
                         args.model_port, args.model_alias, gguf,
+                        evidence_dir=args.output_dir,
                     )
                 except (OSError, ValueError) as exc:
                     state["status"] = "RSEE_LIVE_BINDING_UNCONFIRMED"
                     state["rsee_live_binding_error"] = type(exc).__name__
+                    state["rsee_binding_diagnostic_file"] = (
+                        "rsee_live_binding_diagnostic.json"
+                    )
             if (state.get("loopback_health_and_alias_checked")
                     and (not args.rsee_required or "rsee_live_binding" in state)):
                 state["minecraft_launch_attempted"] = True
