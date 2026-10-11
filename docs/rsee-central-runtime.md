@@ -74,6 +74,13 @@ do not delete/recreate, retry, or silently switch versions. The repository
 does not install anything by itself. Do **not** install into #585's
 stopped audit worktree or modify its terminal evidence.
 
+The new preflight reports Python/S49 and Node/Mineflayer import closure
+failures separately. A Python failure includes the underlying exception
+**type** (e.g. `ModuleNotFoundError`) without logging local traceback
+or executing a second probe. This diagnostic is not a dependency installer.
+Read and preserve the first error, never infer that all imports passed from
+a generic `OwnedModelRejected`.
+
 ## New host read-only validation from the child HEAD
 
 Only when central npm installation is physically complete, use the *new*
