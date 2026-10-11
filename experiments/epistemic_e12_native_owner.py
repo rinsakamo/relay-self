@@ -23,7 +23,6 @@ from adapters.mineflayer.process_session import (
     MineflayerProcessEnded,
     MineflayerProcessIOError,
     MineflayerProcessSession,
-    MineflayerProcessStartError,
 )
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterStarted,
