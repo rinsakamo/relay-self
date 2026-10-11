@@ -59,8 +59,8 @@ def runtime_inputs(root: Path = RSEE) -> tuple[Path, Path, Path, Path, Path]:
     return (
         root / "minecraft-1.21.8.jar",
         world / "snapshot",
-        world / "world-manifest.json",
-        world / "initial-evidence.json",
+        world / "snapshot_manifest.json",
+        world / "initial_native_observation.json",
         root / "npm-mineflayer-4.39.0",
     )
 
@@ -172,47 +172,47 @@ def s49_callbacks(session, host: NormalWorldL0, executor: NormalSessionActionExe
 
 async def run_physical(binding, output: Path, budget: SessionBudget) -> dict:
     """Exactly one owned Java + Mineflayer lifetime, natural World events only."""
-    server = collector = session = driver = None
+    server = collector = session = driver = temp = None
     previous = os.environ.get("RELAYSELF_RSEE_NODE_RUNTIME_ROOT")
     root = RSEE
     result: dict = {"classification": "S1_WORLD_NOT_COMPLETED", "physical_outcome": "UNKNOWN"}
     try:
-        with tempfile.TemporaryDirectory(prefix="relay-self-s1-") as tmp:
-            world_dir = Path(tmp)
-            await asyncio.to_thread(
-                prepare_stopped_world, world_dir, binding, eula_accepted=True,
-            )
-            os.environ["RELAYSELF_RSEE_NODE_RUNTIME_ROOT"] = str(runtime_inputs(root)[4])
-            server, collector, _ = await _ready_server(
-                world_dir, world_dir / "minecraft.jar",
-                output / "minecraft_server.log",
-            )
-            session = await _new_session()  # S49 native startup + first spawn
-            sid = session.started.session_id
-            _, committed, _, _, _, _ = await asyncio.to_thread(s19._epoch_one)
-            retained = committed.new_state
-            if retained.target_id != "risk_weight" or retained.revision != 1:
-                raise SessionRunRejected("S49 inherited retained identity drift")
-            intent = IntentCommitment()
-            intent.commit(
-                INTENT_ID, objective="escape near zombie", at_ns=1,
-                provenance=source("committed-existing-intent"),
-            )
-            host = NormalWorldL0(
-                sid, INTENT_ID, retained,
-                max_events=budget.max_events,
-                max_action_requests=budget.max_actions,
-            )
-            executor = NormalSessionActionExecutor(sid, intent)
-            observation_source = NativeObservationOnly(session)
-            sink = AppendOnlySessionEvents(output / "session_events.jsonl", sid)
-            driver = BoundedSessionDriver(host, observation_source, budget, sink)
-            reprobe, grant, on_action = s49_callbacks(session, host, executor)
-            # No staging task and NO concurrent consumer of session.receive().
-            result = await driver.run(probe=reprobe, grant=grant, on_action=on_action)
-            if executor.supervisor.open_actions:
-                raise SessionRunRejected("S49 Action supervisor has open Action")
-            return result
+        temp = tempfile.TemporaryDirectory(prefix="relay-self-s1-")
+        world_dir = Path(temp.name)
+        await asyncio.to_thread(
+            prepare_stopped_world, world_dir, binding, eula_accepted=True,
+        )
+        os.environ["RELAYSELF_RSEE_NODE_RUNTIME_ROOT"] = str(runtime_inputs(root)[4])
+        server, collector, _ = await _ready_server(
+            world_dir, world_dir / "minecraft.jar",
+            output / "minecraft_server.log",
+        )
+        session = await _new_session()  # S49 native startup + first spawn
+        sid = session.started.session_id
+        _, committed, _, _, _, _ = await asyncio.to_thread(s19._epoch_one)
+        retained = committed.new_state
+        if retained.target_id != "risk_weight" or retained.revision != 1:
+            raise SessionRunRejected("S49 inherited retained identity drift")
+        intent = IntentCommitment()
+        intent.commit(
+            INTENT_ID, objective="escape near zombie", at_ns=1,
+            provenance=source("committed-existing-intent"),
+        )
+        host = NormalWorldL0(
+            sid, INTENT_ID, retained,
+            max_events=budget.max_events,
+            max_action_requests=budget.max_actions,
+        )
+        executor = NormalSessionActionExecutor(sid, intent)
+        observation_source = NativeObservationOnly(session)
+        sink = AppendOnlySessionEvents(output / "session_events.jsonl", sid)
+        driver = BoundedSessionDriver(host, observation_source, budget, sink)
+        reprobe, grant, on_action = s49_callbacks(session, host, executor)
+        # No staging task and NO concurrent consumer of session.receive().
+        result = await driver.run(probe=reprobe, grant=grant, on_action=on_action)
+        if executor.supervisor.open_actions:
+            raise SessionRunRejected("S49 Action supervisor has open Action")
+        return result
     finally:
         if driver is not None:
             driver.stop()
@@ -227,6 +227,24 @@ async def run_physical(binding, output: Path, budget: SessionBudget) -> dict:
         finally:
             if server is not None:
                 result["server_exit"] = server.returncode
+            if temp is not None:
+                temp.cleanup()
+            # Separate honest post-shutdown receipt. The driver's JSONL was
+            # fsync'd before any Action and closed before resource teardown.
+            cleanup_file = output / "owned_cleanup.json"
+            if cleanup_file.exists() or cleanup_file.is_symlink():
+                raise SessionRunRejected("cleanup receipt would overwrite evidence")
+            cleanup_file.write_text(json.dumps({
+                "schema": "SELF1_S1_OWNER_CLEANUP_V1",
+                "session": session.started.session_id if session is not None else None,
+                "node_exit": result.get("node_exit"),
+                "server_exit": result.get("server_exit"),
+                "node_cleanup_unconfirmed": result.get("node_cleanup_unconfirmed", False),
+                "native_stop_ack": False,
+                "model_stop_ack": False,
+                "gpu_release_claimed": False,
+                "physical_action_replay": False,
+            }, sort_keys=True) + "\\n", encoding="utf-8")
             if previous is None:
                 os.environ.pop("RELAYSELF_RSEE_NODE_RUNTIME_ROOT", None)
             else:
