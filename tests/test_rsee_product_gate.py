@@ -379,4 +379,6 @@ def test_rsee_existing_evidence_prevents_any_http_requests(
     with pytest.raises((owned.OwnedModelRejected, OSError)):
         owned._rsee_live_binding(1234, "rsee-gemma4", gguf, evidence_dir=evidence)
     assert (evidence / "rsee_http_models.json").read_bytes() == b"immutable"
-    assert count == ["GET"]
+    assert count == []
+    audit = json.loads((evidence / "rsee_live_binding_diagnostic.json").read_text())
+    assert audit["failed_checks"] == ["RSEE_BINDING_EVIDENCE_COLLISION"]
