@@ -53,6 +53,17 @@ def _fixture(tmp_path, *, seed=575):
     return jar, root, manifest, evidence, jar_sha
 
 
+def test_seed_as_wrong_nbt_tag_int_is_not_accepted(tmp_path):
+    # Numeric equality is insufficient: 1.21.8 WorldGenSettings.seed is a TAG_Long.
+    path = tmp_path / "level.dat"
+    inner = b"\\x03" + _named("seed") + struct.pack(">i", 575) + b"\\x00"
+    generation = b"\\x0a" + _named("WorldGenSettings") + inner
+    data = b"\\x0a" + _named("Data") + generation + b"\\x00"
+    path.write_bytes(gzip.compress(b"\\x0a" + _named("") + data + b"\\x00", mtime=0))
+    with pytest.raises(world.WorldBindingRejected):
+        world._seed_from_level(path)
+
+
 def test_seed_read_from_native_nbt_not_manifest(tmp_path):
     path = tmp_path / "level.dat"
     path.write_bytes(_level(575))
