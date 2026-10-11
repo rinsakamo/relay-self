@@ -83,3 +83,36 @@ jobs:
           node-version: '22'
       - run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
       - run: npm run check --prefix adapters/mineflayer
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Actual external npm root and product Mineflayer import (no World)
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          ROOT="$RUNNER_TEMP/rsee-npm-mineflayer-4.39.0"
+          test ! -e "$ROOT"
+          mkdir -- "$ROOT"
+          cp adapters/mineflayer/package.json "$ROOT/package.json"
+          cp adapters/mineflayer/package-lock.json "$ROOT/package-lock.json"
+          npm ci --prefix "$ROOT" --ignore-scripts --omit=dev --no-audit --no-fund --fetch-retries=0
+          RSEE_NODE_ROOT="$ROOT" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from adapters.mineflayer.self_owned_llama import _preflight_mineflayer_dependencies
+          root = Path(os.environ["RSEE_NODE_ROOT"])
+          result = _preflight_mineflayer_dependencies(root)
+          assert result["node_runtime_root"] == str(root)
+          assert result["mineflayer"] == "4.39.0"
+          assert result["mineflayer_installed_version"] == "4.39.0"
+          print(json.dumps({
+              "qualification": "EXTERNAL_NODE_IMPORT_CI_ONLY",
+              "node_runtime_root": str(root),
+              "source_lock_sha256": result["source_lock_sha256"],
+              "mineflayer_entry": result["mineflayer_entry"],
+              "minecraft_protocol_entry": result["minecraft_protocol_entry"],
+              "minecraft_launched": False,
+              "llm_post": 0,
+          }, sort_keys=True))
+          PY
