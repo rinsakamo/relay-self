@@ -700,6 +700,12 @@ def main(argv: list[str] | None = None) -> int:
                 signed_goal_labels=0, production_habit_granted=False,
             ), sort_keys=True))
             return 1
+        finally:
+            if args.rsee_standard:
+                if previous_runtime is None:
+                    os.environ.pop("RELAYSELF_RSEE_NODE_RUNTIME_ROOT", None)
+                else:
+                    os.environ["RELAYSELF_RSEE_NODE_RUNTIME_ROOT"] = previous_runtime
 
     if args.smoke:
         _write_trace(None, smoke_trace())
