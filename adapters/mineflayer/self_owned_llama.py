@@ -231,17 +231,33 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.rsee_audit or args.rsee_required:
-        # The RSEE profile is separately owned by #575/#576; this product
-        # bridge only checks the exact product source/request/launch surfaces.
         # No model, Java, Node, socket or imported World session is started.
-        from experiments.standard_env.product_gate import print_audit
-
-        gate_rc = print_audit(
-            ctx=args.ctx_size, gpu_layers=args.gpu_layers,
-            model_port=args.model_port, gguf_sha256=args.gguf_sha256,
+        from experiments.standard_env.product_gate import (
+            PreflightError, audit_product, print_audit,
         )
-        if gate_rc != 0 or args.rsee_audit:
-            return gate_rc
+
+        options = {
+            "ctx": args.ctx_size, "gpu_layers": args.gpu_layers,
+            "model_port": args.model_port, "gguf_sha256": args.gguf_sha256,
+        }
+        if args.rsee_audit:
+            return print_audit(**options)
+        # Strict mode prints only a terminal BLOCK or the later actual result,
+        # never concatenated audit-PASS and operator-consent outcomes.
+        try:
+            gate = audit_product(**options)
+        except (PreflightError, OSError, ValueError) as exc:
+            print(json.dumps({
+                "classification": "RSEE_PRODUCT_AUDIT_INVALID",
+                "reason": type(exc).__name__,
+                "physical_execution_authorized": False,
+            }, sort_keys=True))
+            return 2
+        if gate["classification"] != (
+            "RSEE_PRODUCT_STATIC_COMPATIBLE_NOT_PHYSICALLY_QUALIFIED"
+        ):
+            print(json.dumps(gate, sort_keys=True))
+            return 2
 
     # Strict preflight before any new process, logfile or model read.
     try:
