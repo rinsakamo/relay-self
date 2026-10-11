@@ -44,6 +44,11 @@ from adapters.mineflayer.self_continuous_host import (
     SessionBudget,
     SessionRunRejected,
 )
+from adapters.mineflayer.self_live_think import LiveL2Observer
+from adapters.mineflayer.self_s2_candidates import (
+    S2ReadOnlyCandidates,
+    preconfigured_wait_repertoire,
+)
 from experiments.standard_env.golden_admission import verify_qualified_world
 from experiments.standard_env.node_runtime import verify_node_runtime
 from experiments.standard_env.preflight import _check_tools, read_profile
@@ -217,8 +222,13 @@ def s49_callbacks(session, host: NormalWorldL0, executor: NormalSessionActionExe
     return reprobe, grant, on_action
 
 
-async def run_physical(binding, output: Path, budget: SessionBudget) -> dict:
+async def run_physical(
+    binding, output: Path, budget: SessionBudget, *,
+    l2_observer: LiveL2Observer | None = None,
+) -> dict:
     """Exactly one owned Java + Mineflayer lifetime, natural World events only."""
+    if l2_observer is not None and not isinstance(l2_observer, LiveL2Observer):
+        raise SessionRunRejected("existing S60 read-only owner required")
     server = collector = session = driver = temp = None
     previous = os.environ.get("RELAYSELF_RSEE_NODE_RUNTIME_ROOT")
     root = RSEE
@@ -264,14 +274,43 @@ async def run_physical(binding, output: Path, budget: SessionBudget) -> dict:
         sink = AppendOnlySessionEvents(output / "session_events.jsonl", sid)
         driver = BoundedSessionDriver(host, observation_source, budget, sink)
         reprobe, grant, on_action = s49_callbacks(session, host, executor)
-        # No staging task and NO concurrent consumer of session.receive().
-        result = await driver.run(probe=reprobe, grant=grant, on_action=on_action)
+        candidates = S2ReadOnlyCandidates(sid, preconfigured_wait_repertoire())
+        # Only S49 consumes native frames; existing S60 L2 sees validated
+        # already-received probes and can never supply an Action grant.
+        result = await driver.run(
+            probe=reprobe, grant=grant, on_action=on_action,
+            on_candidate=candidates.review,
+            on_l2_probe=l2_observer.observe if l2_observer is not None else None,
+        )
         if executor.supervisor.open_actions:
             raise SessionRunRejected("S49 Action supervisor has open Action")
         return result
     finally:
         if driver is not None:
             driver.stop()
+        if l2_observer is not None:
+            # Advisory shutdown does not imply backend STOP/GPU release and
+            # cannot prevent the Java/Node owner cleanup.
+            sidecar = output / "s2_l2_advisory.jsonl"
+            try:
+                observation = await l2_observer.close()
+            except BaseException as exc:
+                observation = {
+                    "kind": "l2_live_observer",
+                    "status": "UNCONFIRMED",
+                    "reason_type": type(exc).__name__,
+                    "authorized_actions": 0,
+                    "l2_used_as_action": False,
+                    "backend_stop_ack": False,
+                    "gpu_release_verified": False,
+                }
+            try:
+                with sidecar.open("x", encoding="utf-8") as stream:
+                    stream.write(json.dumps(observation, sort_keys=True) + "\n")
+                    stream.flush()
+                    os.fsync(stream.fileno())
+            except OSError:
+                result["l2_sidecar_unconfirmed"] = True
         try:
             if session is not None:
                 try:
@@ -352,6 +391,7 @@ def main(argv: list[str] | None = None) -> int:
             result.get("node_exit") != 0 or result.get("server_exit") != 0
             or result.get("node_cleanup_unconfirmed")
             or result.get("server_cleanup_unconfirmed")
+            or result.get("l2_sidecar_unconfirmed")
         ):
             raise SessionRunRejected("owned physical processes not cleanly closed")
     except (Exception, KeyboardInterrupt) as exc:
