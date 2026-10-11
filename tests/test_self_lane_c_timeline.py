@@ -11,16 +11,38 @@ from pathlib import Path
 
 import pytest
 
-from adapters.mineflayer import self_demo, self_lane_c_timeline as joined
+from adapters.mineflayer import self_demo
+from adapters.mineflayer import self_lane_c_timeline as joined
 from adapters.mineflayer.self_lane_c_witness import (
     SCHEMA,
     SelfSpatialObservation,
 )
-from adapters.mineflayer.self_timeline import SCHEMA as TIMELINE_SCHEMA
 from relay_self.persistent_cognition import save_persistent_cognition
 from test_self_action_evidence import _fixture_evidence
 from test_self_demo import _native_report
-from test_self_timeline import _l2
+
+
+def _l2():
+    return {
+        "kind": "l2_live_observer",
+        "source_type": "SELF_DEMO_S60B1_LIVE_L2",
+        "session": "real-native-session-test-record",
+        "native_l0_action_owner": "S49_NATIVE_EXISTING",
+        "model_attempts": 1,
+        "source_world_seq": 6,
+        "latest_world_seq": 22,
+        "text_source_seq": 6,
+        "text_observation_only": "Read-only untrusted observation.",
+        "text_current": False,
+        "status": "EXPIRED_WORLD_ADVANCED",
+        "authorized_actions": 0,
+        "l2_used_as_action": False,
+        "learning_updates": 0,
+        "habit_grants": 0,
+        "backend_stop_ack": False,
+        "gpu_release_verified": False,
+        "model_binary_identity_verified": False,
+    }
 
 
 def _questions(report):
@@ -69,7 +91,7 @@ def test_product_timeline_retains_all_l0_l2_memory_and_c15_unknown():
         if row["kind"] == "action_outcome":
             assert row["spatial_goal_success"] == "UNKNOWN"
         if row["kind"] == "lane_c_spatial_observation":
-            assert row["schema"] == TIMELINE_SCHEMA
+            assert row["schema"] == joined.SCHEMA
             assert row["region_reason"] == "NO_COMPLETE_ORIGINAL_BRIDGE_JSONL"
             assert not row["physical_source_attested"]
             assert not row["goal_success_attested"]
