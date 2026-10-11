@@ -159,8 +159,9 @@ def test_invalid_budgets_fail_before_session():
         SessionBudget(max_seconds=float("inf"))
 
 
+@pytest.mark.parametrize("node_shutdown_fails", [False, True])
 def test_fake_owned_world_closes_processes_and_evidence_without_action(
-    tmp_path, monkeypatch,
+    tmp_path, monkeypatch, node_shutdown_fails,
 ):
     """Mock every process/World boundary; never run native dependencies."""
     source = s42._pair()[3]
@@ -184,10 +185,15 @@ def test_fake_owned_world_closes_processes_and_evidence_without_action(
 
         async def shutdown(self, **kwargs):
             shutdown_order.append("node")
+            if node_shutdown_fails:
+                raise RuntimeError("mock node cleanup failed")
             return 0
 
         async def terminate(self):
-            pytest.fail("normal fake shutdown never terminates by force")
+            if not node_shutdown_fails:
+                pytest.fail("normal fake shutdown never terminates by force")
+            shutdown_order.append("node-terminate")
+            raise RuntimeError("mock terminate failed")
 
     class FakeServer:
         returncode = None
@@ -220,9 +226,19 @@ def test_fake_owned_world_closes_processes_and_evidence_without_action(
                            max_seconds=2, poll_seconds=.02)
     result = asyncio.run(s1.run_physical(object(), output, budget))
     assert result["events"] == result["action_requests"] == 0
-    assert shutdown_order == ["server-start", "node-start", "node", "server-stop"]
+    expected = ["server-start", "node-start", "node"]
+    if node_shutdown_fails:
+        expected.append("node-terminate")
+    expected.append("server-stop")
+    assert shutdown_order == expected
     cleanup = json.loads((output / "owned_cleanup.json").read_text())
     assert cleanup["native_stop_ack"] is False
     assert cleanup["gpu_release_claimed"] is False
-    assert cleanup["node_exit"] == cleanup["server_exit"] == 0
+    assert cleanup["server_exit"] == 0
+    assert cleanup["node_cleanup_unconfirmed"] is node_shutdown_fails
+    if node_shutdown_fails:
+        assert cleanup["node_exit"] is None
+        assert cleanup["node_terminate_error_type"] == "RuntimeError"
+    else:
+        assert cleanup["node_exit"] == 0
     assert not list(output.glob("*.pid"))
