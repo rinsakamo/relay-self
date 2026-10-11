@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from dataclasses import replace
 
 import pytest
@@ -19,7 +18,6 @@ from adapters.mineflayer.python_protocol import (
 from experiments.epistemic_e12_native_owner import (
     E12Rejected,
     OneAvatarOriginalOwner,
-    OriginalWireSession,
     run_issued_parent_action3,
 )
 from relay_self.action import ActionState
@@ -208,7 +206,7 @@ def test_startup_config_mismatch_stops_owner_and_keeps_original(tmp_path):
     with pytest.raises(E12Rejected, match="config"):
         run(owner.start_parent())
     assert len(called) == 1 and child.terminated
-    assert (tmp_path / "parent-original.jsonl").read_bytes() == e8_fixture.line_bytes(frames)
+    assert (tmp_path / "parent-original.jsonl").read_bytes() == e8_fixture.line_bytes(frames[:1])
 
 
 def test_actual_existing_action3_s15_s16_world_owner_through_fake_transport(monkeypatch):
