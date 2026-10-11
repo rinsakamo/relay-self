@@ -49,8 +49,8 @@ from adapters.mineflayer.self_s2_candidates import (
     S2ReadOnlyCandidates,
     preconfigured_wait_repertoire,
 )
-from adapters.mineflayer.self_s4_observation import S4NativeObservationAudit
 from adapters.mineflayer.self_s3_experience import S3ReadOnlyExperience
+from adapters.mineflayer.self_s4_observation import S4NativeObservationAudit
 from experiments.standard_env.golden_admission import verify_qualified_world
 from experiments.standard_env.node_runtime import verify_node_runtime
 from experiments.standard_env.preflight import _check_tools, read_profile
