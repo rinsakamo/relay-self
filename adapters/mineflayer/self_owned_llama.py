@@ -181,6 +181,70 @@ def _ready(port: int, alias: str) -> bool:
         return False
 
 
+def _rsee_live_binding(port: int, alias: str, gguf: Path) -> dict[str, object]:
+    """Fresh read-only *owned* llama-server binding before disposable World.
+
+    This confirms HTTP-exposed settings, NOT GPU computation, Thinking semantics,
+    STOP ACK or real World identity. No inference, retries or fallback requests.
+    """
+
+    def fetch(endpoint: str) -> object:
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+        url = f"http://127.0.0.1:{port}/{endpoint}"
+
+        def reject_duplicates(pairs):
+            value = {}
+            for key, item in pairs:
+                if key in value:
+                    raise ValueError("duplicate llama.cpp binding key")
+                value[key] = item
+            return value
+
+        try:
+            with opener.open(url, timeout=2.0) as response:
+                if response.status != 200:
+                    raise OwnedModelRejected("llama binding endpoint not HTTP 200")
+                blob = response.read(16385)
+            if len(blob) > 16384:
+                raise OwnedModelRejected("llama binding response too large")
+            return json.loads(blob.decode("utf-8"), object_pairs_hook=reject_duplicates)
+        except (OSError, UnicodeError, ValueError, urllib.error.URLError) as exc:
+            raise OwnedModelRejected("RSEE llama binding unavailable or invalid") from exc
+
+    props = fetch("props")
+    slots = fetch("slots")
+    if not isinstance(props, dict) or not isinstance(slots, list):
+        raise OwnedModelRejected("RSEE llama props/slots shape invalid")
+    model_path = props.get("model_path")
+    settings = props.get("default_generation_settings")
+    if (props.get("model_alias") != alias
+            or not isinstance(model_path, str)
+            or Path(model_path).expanduser().resolve() != gguf
+            or not isinstance(settings, dict)
+            or type(settings.get("n_ctx")) is not int
+            or settings["n_ctx"] != 8192
+            or type(props.get("total_slots")) is not int
+            or props["total_slots"] != 1
+            or len(slots) != 1
+            or not isinstance(slots[0], dict)
+            or type(slots[0].get("n_ctx")) is not int
+            or slots[0]["n_ctx"] != 8192
+            or not isinstance(props.get("build_info"), str)
+            or not props["build_info"].strip()):
+        raise OwnedModelRejected("RSEE live model identity/context/slot mismatch")
+    return {
+        "model_alias": alias,
+        "model_path": str(gguf),
+        "context": 8192,
+        "slot_count": 1,
+        "build_info": props["build_info"],
+        "live_http_binding_verified": True,
+        "gpu_execution_attested": False,
+        "thinking_disabled_physically_attested": False,
+        "backend_stop_ack": False,
+    }
+
+
 def _stop_only_owned(proc: subprocess.Popen, *, grace_s: float = 5.0) -> dict[str, object]:
     """Signal only freshly spawned process group. No killall/pkill/system services."""
     before = proc.poll()
@@ -358,7 +422,16 @@ def main(argv: list[str] | None = None) -> int:
                 time.sleep(.1)
             else:
                 state["status"] = "MODEL_READINESS_TIMEOUT"
-            if state.get("loopback_health_and_alias_checked"):
+            if state.get("loopback_health_and_alias_checked") and args.rsee_required:
+                try:
+                    state["rsee_live_binding"] = _rsee_live_binding(
+                        args.model_port, args.model_alias, gguf,
+                    )
+                except (OSError, ValueError) as exc:
+                    state["status"] = "RSEE_LIVE_BINDING_UNCONFIRMED"
+                    state["rsee_live_binding_error"] = type(exc).__name__
+            if (state.get("loopback_health_and_alias_checked")
+                    and (not args.rsee_required or "rsee_live_binding" in state)):
                 state["minecraft_launch_attempted"] = True
                 # Calls the EXISTING S49 product CLI in an owned child process.
                 # No shell, replay, new Game Action authorizer or L2->Action route.
