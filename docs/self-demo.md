@@ -457,3 +457,51 @@ source-bound結果が表示されます。**JavaScript、外部CDN、通信、�
 `--output` はまだ存在しない `.html` パスであることが必須で、原本・既存
 HTMLは上書きできません。ブラウザ画面は既存のS49記録の表示であり、
 現在進行中のMinecraftをライブ監視したり、Goal成功を認定するものではありません。
+
+
+## RSEE 1.0 / RelayLM2標準環境との接続（候補段階、実機未実行）
+
+共有インフラ [#575](https://github.com/rinsakamo/relay-self/issues/575) /
+独立Draft [#576](https://github.com/rinsakamo/relay-self/pull/576) の
+`profile.v1.json` と `preflight.py` を一時的に同一内容で取り込み、
+この **stacked Draftのみ** で既存 `self_owned_llama` の
+起動前検査に接続した。独立Draftのマージ後は重複を整理し、
+RSEEのcanonical writerを増やさない。
+
+最初に実行するのは一切のモデル・World起動を行わない検査：
+
+```bash
+python3.12 -m experiments.standard_env.preflight
+
+# 以下は追加の実験承認ではなく、既存オペレータ引数の静的監査のみ。
+python3.12 -m adapters.mineflayer.self_owned_llama \
+  --run-disposable --output-dir /path/to/empty-evidence   --llama-server /path/to/llama-server \
+  --gguf /path/to/gemma-4-12B-it-Q4_K_M.gguf \
+  --gguf-sha256 c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed \
+  --model-alias relay-self-local --model-port 1234 \
+  --ctx-size 8192 --gpu-layers 999 --rsee-audit
+```
+
+`--rsee-audit` はSource/profileから **不足点**を報告し、model・
+Java・Node・HTTP接続を開始しない。現在の基盤は
+`reasoning_effort=none` / `cache_prompt=false` をlive L2 bodyに
+明示していない、`--no-context-shift` 未指定、GPU layers最大99と
+いう差分があり、厳密な標準環境ではない。
+
+`--rsee-required` を付けた実行は不足がある間は **モデルをロードせずBLOCK**。
+これは旧self_demo実験の意味やS60-B1既定ワイヤを自動変更しないための措置。
+`--rsee-required` の静的合格は将来的にも物理資格・起動許可そのものではなく、
+従来の独立オペレータ同意/モデル・World grantが必要。
+将来のThinking OFFとnative構造化出力を追加する際は、
+**S60-B1の所有者でワイヤ変更を先に資格化**し、既存プロダクトに黙って注入しない。
+
+新しい `_preflight_python_world_imports` は、本物のS49モジュールと
+`pytest` をモデル起動 **前** にimportし、依存欠落によるJava/llama無駄起動を拒否。
+Mineflayer内部のNode import検査も既存のものを引き続き用いる。
+
+RSEEオフラインPASSや以前の#545 one-shotの証拠は、現行実GGUF/World
+実行の結果ではない。新しい標準Golden Runは **NOT_RUN**。
+Minecraft 1.21.8 server jarは既存S49がMojang公式から実行時取得し
+published SHA1/sizeを検証する。RSEEで別jarのSHA256を検査しても、
+そのjarが実Worldで使用されたという証明にはならない。
+World seed/snapshotとサーバーバイナリ実体の結合は後続の実行時証拠として残る。
