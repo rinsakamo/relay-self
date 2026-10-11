@@ -22,8 +22,8 @@ from relay_self.persistent_cognition import Memory, PersistentCognition
 from relay_self.provenance import Provenance
 
 SCHEMA = "L1_SOURCE_EPISODE_V1"
-_SHA256 = re.compile(r"[0-9a-f]{64}\\Z")
-_TOKEN = re.compile(r"[A-Za-z0-9_.:/-]+\\Z")
+_SHA256 = re.compile(r"[0-9a-f]{64}")
+_TOKEN = re.compile(r"[A-Za-z0-9_.:/-]+")
 
 
 class ExperienceRejected(ValueError):
