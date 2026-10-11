@@ -58,8 +58,8 @@ def read_profile(path: Path = PROFILE) -> tuple[dict[str, Any], str]:
              "unsupported profile version")
     _require(profile["qualification"] == "CANDIDATE_NOT_PHYSICALLY_QUALIFIED",
              "profile cannot self-declare physical qualification")
-    h, l, m = profile["host"], profile["llm"], profile["minecraft"]
-    _require(isinstance(h, dict) and isinstance(l, dict) and isinstance(m, dict),
+    h, llm_config, m = profile["host"], profile["llm"], profile["minecraft"]
+    _require(isinstance(h, dict) and isinstance(llm_config, dict) and isinstance(m, dict),
              "host/llm/minecraft must be objects")
     _require(
         h == {
@@ -70,7 +70,7 @@ def read_profile(path: Path = PROFILE) -> tuple[dict[str, Any], str]:
         "unexpected host/runtime condition",
     )
     _require(
-        set(l) == {
+        set(llm_config) == {
             "engine", "model_family", "model_sha256", "host", "port",
             "context", "slots", "gpu_layers", "context_shift", "cache_prompt",
             "reasoning_effort", "structured_output"
@@ -78,19 +78,19 @@ def read_profile(path: Path = PROFILE) -> tuple[dict[str, Any], str]:
         "unexpected LLM profile fields",
     )
     _require(
-        l["engine"] == "llama.cpp"
-        and l["model_family"] == "Gemma-4-12B-it-Q4_K_M"
-        and l["model_sha256"]
+        llm_config["engine"] == "llama.cpp"
+        and llm_config["model_family"] == "Gemma-4-12B-it-Q4_K_M"
+        and llm_config["model_sha256"]
         == "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed"
-        and l["host"] == "127.0.0.1"
-        and type(l["port"]) is int and l["port"] == 1234
-        and type(l["context"]) is int and l["context"] == 8192
-        and type(l["slots"]) is int and l["slots"] == 1
-        and type(l["gpu_layers"]) is int and l["gpu_layers"] == 999
-        and l["context_shift"] is False
-        and l["cache_prompt"] is False
-        and l["reasoning_effort"] == "none"
-        and l["structured_output"] == {"type": "json_schema", "strict": True},
+        and llm_config["host"] == "127.0.0.1"
+        and type(llm_config["port"]) is int and llm_config["port"] == 1234
+        and type(llm_config["context"]) is int and llm_config["context"] == 8192
+        and type(llm_config["slots"]) is int and llm_config["slots"] == 1
+        and type(llm_config["gpu_layers"]) is int and llm_config["gpu_layers"] == 999
+        and llm_config["context_shift"] is False
+        and llm_config["cache_prompt"] is False
+        and llm_config["reasoning_effort"] == "none"
+        and llm_config["structured_output"] == {"type": "json_schema", "strict": True},
         "unexpected LLM condition; change requires a separately versioned profile",
     )
     _require(
