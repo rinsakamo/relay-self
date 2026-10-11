@@ -297,6 +297,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rsee-world-manifest", type=Path)
     parser.add_argument("--rsee-initial-evidence", type=Path)
     parser.add_argument("--rsee-eula-accepted", action="store_true")
+    parser.add_argument("--rsee-golden-run-once", action="store_true",
+                        help="independent ONE-SHOT Golden Run permission, not bootstrap grant")
     args = parser.parse_args(argv)
 
     if args.rsee_audit or args.rsee_required:
@@ -339,15 +341,18 @@ def main(argv: list[str] | None = None) -> int:
             args.rsee_world_manifest, args.rsee_initial_evidence,
         )
         if not args.rsee_required:
-            if any(x is not None for x in world_values) or args.rsee_eula_accepted:
+            if (any(x is not None for x in world_values)
+                    or args.rsee_eula_accepted or args.rsee_golden_run_once):
                 raise OwnedModelRejected("RSEE World fields require strict standard mode")
             bound_world = None
         else:
             if not all(x is not None for x in world_values) or not args.rsee_eula_accepted:
                 raise OwnedModelRejected("RSEE jar/snapshot/manifest/initial evidence and EULA required")
-            from experiments.standard_env.world_binding import verify_world_binding
+            if not args.rsee_golden_run_once:
+                raise OwnedModelRejected("a new explicit one-shot Golden Run grant is required")
+            from experiments.standard_env.golden_admission import verify_qualified_world
 
-            bound_world = verify_world_binding(*world_values)
+            bound_world = verify_qualified_world(*world_values)
         if (args.output_dir.is_symlink() or not args.output_dir.is_dir()
                 or any(args.output_dir.iterdir())):
             raise OwnedModelRejected("evidence folder must be new and empty")
@@ -423,6 +428,10 @@ def main(argv: list[str] | None = None) -> int:
             bound_world.manifest_sha256 if bound_world is not None else None
         ),
         "rsee_world_native_initial_attested": False,
+        "golden_run_operator_permission_requested": args.rsee_golden_run_once,
+        "qualified_world_manifest_identity": (
+            bound_world.manifest_sha256 if bound_world is not None else None
+        ),
         "model_process_launched": False, "minecraft_launch_attempted": False,
     }
     process: subprocess.Popen | None = None
@@ -480,7 +489,7 @@ def main(argv: list[str] | None = None) -> int:
                         "--run-disposable", "--confirm", CONFIRM,
                         "--output-dir", str(args.output_dir),
                         "--live-think",
-                        *(["--rsee-standard",
+                        *(["--rsee-standard", "--rsee-golden-run-once",
                             "--rsee-world-jar", str(bound_world.jar),
                             "--rsee-world-snapshot", str(bound_world.snapshot),
                             "--rsee-world-manifest", str(bound_world.manifest),
