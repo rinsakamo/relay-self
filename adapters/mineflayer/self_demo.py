@@ -551,8 +551,8 @@ def main(argv: list[str] | None = None) -> int:
                     model_calls=0, actual_actions=0,
                 ), sort_keys=True))
                 return 2
-            from experiments.standard_env.world_binding import WorldBindingRejected
             from experiments.standard_env.golden_admission import verify_qualified_world
+            from experiments.standard_env.world_binding import WorldBindingRejected
 
             try:
                 world_binding = verify_qualified_world(*supplied_world)
