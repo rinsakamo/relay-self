@@ -205,3 +205,34 @@ def test_stopped_world_manifest_source_is_not_qualification(tmp_path):
     ).hexdigest()
     # Even perfect byte matching cannot certify physical acquisition or consent.
     assert binding.files and not hasattr(binding, "physical_execution_authorized")
+
+
+def test_owned_llama_rsee_missing_snapshot_blocks_before_model_process(
+    tmp_path, monkeypatch, capsys,
+):
+    from adapters.mineflayer import self_owned_llama as owned
+    from experiments.standard_env.preflight import read_profile
+
+    def forbidden(*_args, **_kwargs):
+        pytest.fail("model must never spawn without World snapshot+EULA")
+
+    monkeypatch.setattr(owned.subprocess, "Popen", forbidden)
+    monkeypatch.setattr(owned, "_sha256", forbidden)
+    out = tmp_path / "empty-evidence"
+    out.mkdir()
+    opts = [
+        "--run-disposable", "--confirm", self_demo.CONFIRM,
+        "--output-dir", str(out),
+        "--llama-server", str(tmp_path / "missing-llama-server"),
+        "--gguf", str(tmp_path / "missing-model.gguf"),
+        "--gguf-sha256", read_profile()[0]["llm"]["model_sha256"],
+        "--model-alias", "rsee-gemma4", "--model-port", "1234",
+        "--ctx-size", "8192", "--gpu-layers", "999",
+        "--rsee-required",
+    ]
+    assert owned.main(opts) == 2
+    event = json.loads(capsys.readouterr().out)
+    assert event["status"] == "BLOCKED"
+    assert event["model_process_launched"] is False
+    assert event["minecraft_launched"] is False
+    assert list(out.iterdir()) == []
