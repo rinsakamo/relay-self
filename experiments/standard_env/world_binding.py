@@ -80,6 +80,10 @@ def _load_json(path: Path) -> dict:
     return value
 
 
+class _NBTLong(int):
+    """Preserve native TAG_Long identity rather than accepting TAG_Int seed."""
+
+
 class _NBT:
     """Bounded NBT reader: read the *stored* Data.WorldGenSettings.seed."""
 
@@ -111,7 +115,7 @@ class _NBT:
         if tag == 3:
             return self.number("i")
         if tag == 4:
-            return self.number("q")
+            return _NBTLong(self.number("q"))
         if tag == 5:
             return self.number("f")
         if tag == 6:
@@ -155,7 +159,7 @@ def _seed_from_level(path: Path) -> int:
         if reader.pos != len(raw):
             raise WorldBindingRejected("level.dat contains trailing bytes")
         root = data["Data"]["WorldGenSettings"]["seed"]
-        if type(root) is not int:
+        if type(root) is not _NBTLong:
             raise WorldBindingRejected("World seed is not a native long")
         return root
     except (OSError, EOFError, KeyError, TypeError, UnicodeError, struct.error) as exc:
