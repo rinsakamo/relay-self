@@ -17,7 +17,7 @@ R3 checks the *actual* unmerged source branches together in ephemeral CI. It cat
 | L1 #594 | `40db58d548ea31c4a70acabcc71b0954c7b6ce42` | original bounded Experience bridge tests |
 | V1 #595 | `fc76b89638487eadda752e61e9bd7913e67088e5` | original V1 report-only/no-original audit and independent tests |
 
-Four checkouts are separate sibling directories in CI (not copies of a shared venv). The source checker requires exact Git HEAD, no tracked or untracked drift, and verifies **actual worktree file bytes** by recomputing Git blob hashes for `experiments/standard_env/profile.v1.json`, `adapters/mineflayer/package.json`, `package-lock.json`; the S3/L1 `src/relay_self/experience_bridge.py` blob must also be equal. All these byte identities were independently queried from the specified GitHub HEADs before pinning them in `lane_compat.py`.
+Five checkouts are separate directories in CI: one R3 verifier plus four frozen R2/S3/L1/V1 sources (not copies of a shared venv). The source checker requires exact Git HEAD, no tracked or untracked drift, and verifies **actual worktree file bytes** by recomputing Git blob hashes for `experiments/standard_env/profile.v1.json`, `adapters/mineflayer/package.json`, `package-lock.json`; the S3/L1 `src/relay_self/experience_bridge.py` blob must also be equal. All these byte identities were independently queried from the specified GitHub HEADs before pinning them in `lane_compat.py`.
 
 Run default pure plan without any host/git/files:
 
