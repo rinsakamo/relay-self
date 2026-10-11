@@ -19,8 +19,8 @@ from typing import Awaitable, Callable
 
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import NormalActionReceipt, NormalWorldL0
-from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from relay_self.action import ActionState
 from relay_self.reactive_l0 import L0ActionGrant, L0Step
 from relay_self.world_conditioned_choice import WorldChoiceKind, WorldConditionedChoice
