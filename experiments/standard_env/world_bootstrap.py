@@ -204,8 +204,6 @@ def _seal_stopped_world(out: Path, original_jar: Path, probe, spawn, report: dic
 
 async def _execute(jar: Path, output_dir: Path) -> int:
     """Exactly one disposable Java and one real Mineflayer process."""
-    from adapters.mineflayer.s31a_real_server_ci import _write_config
-
     root = output_dir / "server"
     root.mkdir()
     shutil.copyfile(jar, root / "minecraft.jar")
