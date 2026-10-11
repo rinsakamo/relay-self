@@ -1,0 +1,82 @@
+{
+  "schema": "AC_B_B28_RELAYLM_REASONING_EFFORT_NONE_PROSPECTIVE_V1",
+  "authority": {
+    "issue": 569,
+    "parentLaneB": 431,
+    "parentAC": 426,
+    "predecessorB27_issue": 560,
+    "predecessorB27_pr": 562,
+    "exact_predecessor_head": "d1d8f894668184dd978edee73e72287ef8867b34",
+    "base_branch": "self/ac-b-b27-max2048-20261011",
+    "main_frozen": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "RelayLM_refs": [
+      "rinsakamo/relay-lm#2422",
+      "rinsakamo/relay-lm#2423",
+      "rinsakamo/relay-lm#2986",
+      "rinsakamo/relay-lm#3003",
+      "rinsakamo/relay-lm#3005"
+    ]
+  },
+  "historical": {
+    "B26": {
+      "max_tokens": 512,
+      "finish": "length",
+      "content": "",
+      "classification": "INVALID"
+    },
+    "B27": {
+      "max_tokens": 2048,
+      "finish": "length",
+      "content": "",
+      "classification": "B27_INVALID_2048_EXHAUSTED_BEFORE_CONTENT"
+    },
+    "no_retroactive_rescoring": true
+  },
+  "single_intervention": {
+    "key": "reasoning_effort",
+    "value": "none",
+    "location": "POST /v1/chat/completions top-level",
+    "effective_llama_mapping": "enable_thinking=false in pinned llama.cpp e2d2c0d6aa.. build10874",
+    "not_server_flag": "--reasoning off is NOT used",
+    "not_format_control": "reasoning_format=none is NOT used",
+    "not_template_kwargs": "chat_template_kwargs is NOT added"
+  },
+  "constants": {
+    "max_tokens": 2048,
+    "temperature": 0,
+    "stream": false,
+    "training_examples": 11,
+    "training_source_world_actions": 16,
+    "model_artifact_SHA256": "c088a44859de42a1966851b552ba628c0ff4419b87c4622539d69430f40024ed",
+    "model": "Gemma4-12B-it-Q4_K_M actual `/v1/models` ID at runtime",
+    "ctx": 8192,
+    "slots": 1,
+    "gpu_layers": 999,
+    "context_shift": false,
+    "worlds": [
+      "NORMAL",
+      "TWIN"
+    ],
+    "baseline": "CHEAP_DEG2",
+    "source_only_prompt": "B26.prompt_messages unchanged",
+    "schema": "strict 16 binary GF2 ANF coefficients",
+    "no_H1_gift": true
+  },
+  "classification_rules": {
+    "valid": "finish_reason stop, strict nonempty message.content JSON and source-fit, message.reasoning/reasoning_content absent/empty, if present reasoning_tokens must be zero",
+    "reasoning_not_off": "nonempty message.reasoning or reasoning_content, or explicit usage reasoning_tokens positive, regardless of otherwise valid JSON",
+    "unknown_usage": "missing usage reasoning_tokens is UNKNOWN and not silently asserted zero, but absence/empty reasoning must still pass",
+    "invalid": "length, empty content, invalid strict JSON, wrong fit, contradiction or transport exception -> terminal without heldout score",
+    "valid_case": "evaluate original B26 NORMAL/TWIN vs CHEAP_DEG2 by original actually issued toy World actions only after frozen source-fit proposal"
+  },
+  "runtime": "one OPTIONAL LocalCodex host-only owned llama.cpp real call, never in Github CI",
+  "CI": "mock only with full repo regression",
+  "limits": [
+    "no actual LLM run in CI",
+    "no B26/B27/main branch mutation",
+    "no native product S11 acquisition",
+    "no physical Minecraft",
+    "no model quality success claim before actual output",
+    "no crypto or SQLite"
+  ]
+}
