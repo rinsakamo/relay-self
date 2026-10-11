@@ -21,6 +21,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_outcome import (
     ActionOutcomeDisposition,
+    ActionOutcomeInterpretation,
     record_interpreted_action_outcome,
 )
 from relay_self.action_supervision import ActionSupervisor
@@ -133,6 +134,8 @@ class NormalActionReceipt:
     terminal: ActionLifecycle
     consequence: WorldConsequence
     source: Provenance
+    # Original S16 product; optional only for backward-compatible older fixtures.
+    outcome_interpretation: ActionOutcomeInterpretation | None = None
 
 
 class NormalSessionActionExecutor:
@@ -261,7 +264,7 @@ class NormalSessionActionExecutor:
                 terminal = record_interpreted_action_outcome(
                     self.supervisor, interpretation, at_ns=t + 3,
                 )
-            return NormalActionReceipt(terminal, consequence, probe.provenance)
+            return NormalActionReceipt(terminal, consequence, probe.provenance, interpretation)
         except BaseException:
             if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
                 self.supervisor.mark_unknown(
