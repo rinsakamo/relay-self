@@ -38,6 +38,7 @@ def fake_host(monkeypatch, tmp_path):
     return {
         "expected_head": head, "output_dir": new_output,
         "repo": repo, "gguf": tmp_path / "model.gguf",
+        "node_runtime_root": tmp_path / "central_node",
         "llama_server": tmp_path / "llama-server",
         "jar": tmp_path / "jar",
         "snapshot": tmp_path / "snapshot",
