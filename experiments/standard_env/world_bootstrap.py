@@ -34,6 +34,7 @@ from adapters.mineflayer.s31a_real_server_ci import (
     _write_config,
 )
 from experiments.standard_env.world_binding import (
+    _NBT,
     JAR_SHA256,
     LEVEL,
     MAX_LEVEL,
@@ -45,8 +46,8 @@ from experiments.standard_env.world_binding import (
     _regular,
     _world_files,
     verify_world_binding,
-    _NBT,
 )
+
 
 class BootstrapRejected(ValueError):
     """Bootstrap admission or physically acquired World cannot be qualified."""
