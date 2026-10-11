@@ -13,6 +13,7 @@ on:
       - 'self/rsee-central-runtime-*'
       - 'self/rsee-live-binding-evidence-*'
       - 'self/rsee-props-1mib-*'
+      - 'self/self1-relayui-replay-*'
   pull_request:
     branches:
       - 'infra/rsee-wsl2-host-preparation-*'
@@ -39,7 +40,7 @@ jobs:
           EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
-          git merge-base --is-ancestor 784df44a668b7c5f0b0367588ce59aa796b2a817 HEAD
+          git merge-base --is-ancestor 34820f6bf391c77f325d7c29d3b779a33e3ca835 HEAD
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
@@ -48,7 +49,7 @@ jobs:
         env:
           PYTHONPATH: 'src:tests:.'
         run: |
-          python -m pytest -q tests/test_rsee_world_binding.py tests/test_rsee_world_bootstrap.py tests/test_rsee_golden_admission.py tests/test_rsee_golden_host_gate.py tests/test_rsee_node_runtime.py tests/test_rsee_product_gate.py tests/test_self_demo.py tests/test_self_owned_llama.py tests/test_standard_env_preflight.py
+          python -m pytest -q tests/test_rsee_world_binding.py tests/test_rsee_world_bootstrap.py tests/test_rsee_golden_admission.py tests/test_rsee_golden_host_gate.py tests/test_rsee_node_runtime.py tests/test_rsee_product_gate.py tests/test_self_demo.py tests/test_self_replay_ui.py tests/test_self_owned_llama.py tests/test_standard_env_preflight.py
       - name: Ruff
         run: ruff check src tests experiments adapters observability
       - name: Repository contracts
