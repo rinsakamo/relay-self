@@ -292,6 +292,11 @@ def main(argv: list[str] | None = None) -> int:
                            help="source/profile audit ONLY, never start any process")
     rsee_mode.add_argument("--rsee-required", action="store_true",
                            help="deny physical start until strict profile/source matches")
+    parser.add_argument("--rsee-world-jar", type=Path)
+    parser.add_argument("--rsee-world-snapshot", type=Path)
+    parser.add_argument("--rsee-world-manifest", type=Path)
+    parser.add_argument("--rsee-initial-evidence", type=Path)
+    parser.add_argument("--rsee-eula-accepted", action="store_true")
     args = parser.parse_args(argv)
 
     if args.rsee_audit or args.rsee_required:
@@ -329,6 +334,20 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if not args.run_disposable or args.confirm != CONFIRM:
             raise OwnedModelRejected("explicit disposable-World consent required")
+        world_values = (
+            args.rsee_world_jar, args.rsee_world_snapshot,
+            args.rsee_world_manifest, args.rsee_initial_evidence,
+        )
+        if not args.rsee_required:
+            if any(x is not None for x in world_values) or args.rsee_eula_accepted:
+                raise OwnedModelRejected("RSEE World fields require strict standard mode")
+            bound_world = None
+        else:
+            if not all(x is not None for x in world_values) or not args.rsee_eula_accepted:
+                raise OwnedModelRejected("RSEE jar/snapshot/manifest/initial evidence and EULA required")
+            from experiments.standard_env.world_binding import verify_world_binding
+
+            bound_world = verify_world_binding(*world_values)
         if (args.output_dir.is_symlink() or not args.output_dir.is_dir()
                 or any(args.output_dir.iterdir())):
             raise OwnedModelRejected("evidence folder must be new and empty")
@@ -399,6 +418,11 @@ def main(argv: list[str] | None = None) -> int:
         "physical_minecraft_outcome_attested_by_wrapper": False,
         "node_bridge_dependency_preflight": node_deps,
         "python_world_import_preflight": python_deps,
+        "rsee_world_bytes_verified": bound_world is not None,
+        "rsee_world_manifest_sha256": (
+            bound_world.manifest_sha256 if bound_world is not None else None
+        ),
+        "rsee_world_native_initial_attested": False,
         "model_process_launched": False, "minecraft_launch_attempted": False,
     }
     process: subprocess.Popen | None = None
@@ -456,7 +480,12 @@ def main(argv: list[str] | None = None) -> int:
                         "--run-disposable", "--confirm", CONFIRM,
                         "--output-dir", str(args.output_dir),
                         "--live-think",
-                        *(["--rsee-standard"] if args.rsee_required else []),
+                        *(["--rsee-standard",
+                            "--rsee-world-jar", str(bound_world.jar),
+                            "--rsee-world-snapshot", str(bound_world.snapshot),
+                            "--rsee-world-manifest", str(bound_world.manifest),
+                            "--rsee-initial-evidence", str(bound_world.initial_evidence),
+                            "--rsee-eula-accepted"] if args.rsee_required else []),
                         "--model-alias", args.model_alias,
                         "--model-port", str(args.model_port),
                         "--model-timeout", str(args.model_timeout),

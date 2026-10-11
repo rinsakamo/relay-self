@@ -341,6 +341,7 @@ async def _run_disposable(
     report_path: Path, server_log: Path, *,
     live_model: tuple[str, int, float] | None = None,
     rsee_controls: bool = False,
+    world_binding=None,
 ) -> int:
     # Existing exact S49 host is the *only* issuer. No duplicated event loop,
     # no new Game Action code or arbitrary LLM output -> Action mapping.
@@ -354,12 +355,18 @@ async def _run_disposable(
             model=live_model[0], port=live_model[1], timeout_s=live_model[2],
             rsee_controls=rsee_controls,
         )
+    world_kwargs = (
+        {"rsee_world": world_binding, "rsee_eula_accepted": True}
+        if world_binding is not None else {}
+    )
     previous = os.environ.get("S49_REAL_SERVER_CI")
     os.environ["S49_REAL_SERVER_CI"] = "1"
     try:
         if live_observer is None:
-            return await qualify(report_path, server_log)
-        return await qualify(report_path, server_log, live_probe=live_observer.observe)
+            return await qualify(report_path, server_log, **world_kwargs)
+        return await qualify(
+            report_path, server_log, live_probe=live_observer.observe, **world_kwargs,
+        )
     finally:
         if live_observer is not None:
             # Separate product-side L2 receipt, never misstate original S49
@@ -393,11 +400,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model-timeout", type=float, default=12.0)
     parser.add_argument("--rsee-standard", action="store_true",
                         help="RSEE opt-in request controls, valid only during live World L2")
+    parser.add_argument("--rsee-world-jar", type=Path)
+    parser.add_argument("--rsee-world-snapshot", type=Path)
+    parser.add_argument("--rsee-world-manifest", type=Path)
+    parser.add_argument("--rsee-initial-evidence", type=Path)
+    parser.add_argument("--rsee-eula-accepted", action="store_true")
     args = parser.parse_args(argv)
 
     if args.rsee_standard and (not args.run_disposable or not args.live_think):
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="RSEE_REQUIRES_LIVE_DISPOSABLE_WORLD",
+            model_calls=0, actual_actions=0,
+        ), sort_keys=True))
+        return 2
+    supplied_world = (
+        args.rsee_world_jar, args.rsee_world_snapshot,
+        args.rsee_world_manifest, args.rsee_initial_evidence,
+    )
+    if not args.rsee_standard and (any(x is not None for x in supplied_world)
+                                   or args.rsee_eula_accepted):
+        print(json.dumps(_row(
+            "blocked", "NO_WORLD_USED", reason="RSEE_WORLD_FLAGS_REQUIRE_STANDARD",
             model_calls=0, actual_actions=0,
         ), sort_keys=True))
         return 2
@@ -512,6 +535,27 @@ def main(argv: list[str] | None = None) -> int:
                 actual_actions=0,
             ), sort_keys=True))
             return 2
+        world_binding = None
+        if args.rsee_standard:
+            if not all(x is not None for x in supplied_world) or not args.rsee_eula_accepted:
+                print(json.dumps(_row(
+                    "blocked", "NO_WORLD_USED", reason="RSEE_WORLD_INPUT_OR_EULA_MISSING",
+                    model_calls=0, actual_actions=0,
+                ), sort_keys=True))
+                return 2
+            from experiments.standard_env.world_binding import (
+                WorldBindingRejected,
+                verify_world_binding,
+            )
+
+            try:
+                world_binding = verify_world_binding(*supplied_world)
+            except (WorldBindingRejected, OSError, ValueError):
+                print(json.dumps(_row(
+                    "blocked", "NO_WORLD_USED", reason="RSEE_WORLD_BYTES_UNBOUND",
+                    model_calls=0, actual_actions=0,
+                ), sort_keys=True))
+                return 2
         if not shutil.which("java") or not shutil.which("node"):
             print(json.dumps(_row(
                 "blocked", "NO_WORLD_USED", reason="JAVA_AND_NODE_REQUIRED",
@@ -560,6 +604,7 @@ def main(argv: list[str] | None = None) -> int:
                     report_file, server_log,
                     live_model=(args.model_alias, args.model_port, args.model_timeout),
                     rsee_controls=args.rsee_standard,
+                    world_binding=world_binding,
                 ))
             else:
                 code = asyncio.run(_run_disposable(report_file, server_log))

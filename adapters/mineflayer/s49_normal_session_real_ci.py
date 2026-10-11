@@ -47,6 +47,11 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     _new_session,
 )
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
+from experiments.standard_env.world_binding import (
+    WorldBinding,
+    WorldBindingRejected,
+    prepare_stopped_world,
+)
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.execution_binding import (
@@ -119,6 +124,8 @@ def source(tag: str) -> Provenance:
 async def qualify(
     report_path: Path, server_log: Path, *,
     live_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
+    rsee_world: WorldBinding | None = None,
+    rsee_eula_accepted: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -141,8 +148,18 @@ async def qualify(
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
-        report.update(await asyncio.to_thread(_fetch_official_server, root / "minecraft.jar"))
-        _write_config(root)
+        if rsee_world is not None:
+            report["stage"] = "RSEE_BIND_STOPPED_WORLD_BEFORE_JAVA"
+            report["rsee_world_binding"] = await asyncio.to_thread(
+                prepare_stopped_world, root, rsee_world,
+                eula_accepted=rsee_eula_accepted,
+            )
+        else:
+            # Original standalone S49 mode is unchanged, not an RSEE run.
+            report.update(await asyncio.to_thread(
+                _fetch_official_server, root / "minecraft.jar",
+            ))
+            _write_config(root)
         server, collector, _ = await _ready_server(
             root, root / "minecraft.jar", server_log,
         )
@@ -325,7 +342,7 @@ async def qualify(
         report["classification"] = "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
         report["stage"] = "CLOSED"
         rc = 0
-    except (S31ABlocked, OSError) as exc:
+    except (S31ABlocked, WorldBindingRejected, OSError) as exc:
         report["status"] = "BLOCKED"
         report["error"] = f"{type(exc).__name__}: {exc}"
         print("S49 BLOCKED: " + str(exc), file=sys.stderr)
