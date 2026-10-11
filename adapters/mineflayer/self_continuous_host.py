@@ -22,6 +22,7 @@ from adapters.mineflayer.normal_action import NormalActionReceipt, NormalWorldL0
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from adapters.mineflayer.self_s2_candidates import S2CandidateReview
+from adapters.mineflayer.self_s4_observation import S4NativeObservationAudit
 from relay_self.action import ActionState
 from relay_self.reactive_l0 import L0ActionGrant, L0Step
 from relay_self.world_conditioned_choice import WorldChoiceKind, WorldConditionedChoice
@@ -145,10 +146,15 @@ class BoundedSessionDriver:
         on_action: Callable[[L0Step], Awaitable[NormalActionReceipt]],
         on_candidate: Callable[[WorldConditionedChoice, int], S2CandidateReview] | None = None,
         on_l2_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
+        observation_audit: S4NativeObservationAudit | None = None,
     ) -> dict[str, object]:
         if (self._used or not all(callable(x) for x in (probe, grant, on_action))
                 or (on_candidate is not None and not callable(on_candidate))
-                or (on_l2_probe is not None and not callable(on_l2_probe))):
+                or (on_l2_probe is not None and not callable(on_l2_probe))
+                or (observation_audit is not None
+                    and (not isinstance(observation_audit, S4NativeObservationAudit)
+                         or observation_audit.session_id != self.host.session_id
+                         or observation_audit.max_frames != self.budget.max_frames))):
             raise SessionRunRejected("one invocation and explicit S49 callbacks required")
         self._used = True
         start = time.monotonic()
@@ -190,6 +196,8 @@ class BoundedSessionDriver:
                     raise SessionRunRejected("invalid native observation or connection ended")
                 if frame.session_id != self.host.session_id:
                     raise SessionRunRejected("foreign native World session")
+                if observation_audit is not None:
+                    observation_audit.observe(frame)
                 if frame.kind != "entities":
                     continue
                 if not any(e.name == "zombie" for e in frame.snapshot.nearby_entities):
@@ -361,9 +369,23 @@ class BoundedSessionDriver:
                 "learning_updates": 0, "habit_grants": 0,
                 "l2_attempts": 0, "model_stop_ack": False,
             }
+            if observation_audit is not None:
+                self.events.write(
+                    "native_observation_audit",
+                    **observation_audit.report(self.session, decisions=self.host.events),
+                )
             self.events.write("session_terminal", **summary)
             return summary
         except BaseException as exc:
+            if observation_audit is not None:
+                try:
+                    self.events.write(
+                        "native_observation_audit",
+                        **observation_audit.report(self.session, decisions=self.host.events),
+                    )
+                except Exception:
+                    # Original failure remains primary; no false audit qualification.
+                    pass
             self.events.write(
                 "session_failed", reason=type(exc).__name__,
                 action_requests=self.host.action_requests,
