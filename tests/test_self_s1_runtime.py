@@ -242,3 +242,83 @@ def test_fake_owned_world_closes_processes_and_evidence_without_action(
     else:
         assert cleanup["node_exit"] == 0
     assert not list(output.glob("*.pid"))
+
+
+
+def test_s49_native_callback_forwards_original_probe_and_separate_stage_grants(
+    monkeypatch,
+):
+    """An admitted S49 selection reaches the existing executor, not a new issuer."""
+    retained, near, _, near_event, _ = s42._pair()
+    sid = near_event.session_id
+    event = replace(near_event, seq=3)
+    reading = replace(near.observation, seq=4)
+    session = SimpleNamespace(started=SimpleNamespace(session_id=sid))
+    host = NormalWorldL0(
+        sid, "escape-threat", retained, max_events=2, max_action_requests=1,
+    )
+    called = []
+
+    async def correlated(owner, request_id):
+        assert owner is session
+        called.append(("correlated", request_id))
+        return reading
+
+    async def existing_execute(owner, step, bound, probe, propose, issue):
+        assert owner is session
+        assert probe is reading and bound == "already-admitted-binding"
+        assert propose.stage.value == "PROPOSE"
+        assert issue.stage.value == "ISSUE"
+        assert propose.action_id == issue.action_id == step.action_request_id
+        assert propose.session_id == issue.session_id == sid
+        assert propose.event_seq == issue.event_seq == event.seq
+        assert propose.probe_seq == issue.probe_seq == reading.seq
+        assert propose.authority_id != issue.authority_id
+        assert propose.provenance != issue.provenance
+        called.append(("existing-executor", step.action_request_id))
+        return "ORIGINAL_TYPED_RECEIPT_SENTINEL"
+
+    executor = SimpleNamespace(intent=object(), execute=existing_execute)
+    monkeypatch.setattr(s1, "_correlated_observe", correlated)
+    monkeypatch.setattr(
+        s1, "_native_threat",
+        lambda observation, request_id, **kwargs: SimpleNamespace(distance_m=2),
+    )
+    state = {}
+
+    def epoch(supervisor, intent, owner, supplied, *, expected_revision, native):
+        assert owner is retained and supplied is retained
+        assert expected_revision == retained.revision and native.distance_m == 2
+        state["admission"] = True
+        return (
+            {
+                "plan": SimpleNamespace(selected=SimpleNamespace(candidate_id="MOVE_AWAY")),
+                "admission": SimpleNamespace(status=SimpleNamespace(value="admitted")),
+                "control": object(), "route": object(),
+                "policies": ("unused", "native-admission-policy", "last"),
+            },
+            SimpleNamespace(cognition_requested=False),
+        )
+
+    monkeypatch.setattr(s1, "_native_epoch_two", epoch)
+    monkeypatch.setattr(
+        s1, "resolve_execution_binding",
+        lambda *args, **kwargs: "already-admitted-binding",
+    )
+    probe, grant, on_action = s1.s49_callbacks(session, host, executor)
+
+    async def run():
+        fresh = await probe(event)
+        assert fresh is reading
+        choice = host._check(event, fresh)
+        assert choice.selection.value == "MOVE_AWAY"
+        step = host.decide(event, fresh, grant=grant(choice, event.seq))
+        return await on_action(step)
+
+    receipt = asyncio.run(run())
+    assert receipt == "ORIGINAL_TYPED_RECEIPT_SENTINEL"
+    assert state["admission"]
+    assert called == [
+        ("correlated", f"s49-actual:{sid}:event-{event.seq}"),
+        ("existing-executor", f"s49-native-move-{event.seq}"),
+    ]
