@@ -21,19 +21,19 @@ from adapters.mineflayer.normal_action import (
     NormalSessionActionExecutor,
     NormalWorldL0,
 )
-from adapters.mineflayer.s34_native_world_cognition_ci import (
-    _native_epoch_two,
-    _native_threat,
-)
+from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
 from adapters.mineflayer.s31a_real_server_ci import (
     _await_spawn,
     _correlated_observe,
     _ready_server,
     _shutdown_server,
 )
+from adapters.mineflayer.s34_native_world_cognition_ci import (
+    _native_epoch_two,
+    _native_threat,
+)
 from adapters.mineflayer.s49_normal_session_real_ci import NativeObservationOnly, source
-from adapters.mineflayer.process_session import MineflayerProcessSession
-from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
 from adapters.mineflayer.self_continuous_host import (
     AppendOnlySessionEvents,
     BoundedSessionDriver,
