@@ -50,6 +50,7 @@ from adapters.mineflayer.self_s2_candidates import (
     preconfigured_wait_repertoire,
 )
 from adapters.mineflayer.self_s3_experience import S3ReadOnlyExperience
+from adapters.mineflayer.self_s4_observation import S4NativeObservationAudit
 from experiments.standard_env.golden_admission import verify_qualified_world
 from experiments.standard_env.node_runtime import verify_node_runtime
 from experiments.standard_env.preflight import _check_tools, read_profile
@@ -326,12 +327,14 @@ async def run_physical(
             session, host, executor, experience=experience, events=sink,
         )
         candidates = S2ReadOnlyCandidates(sid, preconfigured_wait_repertoire())
+        audit = S4NativeObservationAudit(sid, max_frames=budget.max_frames)
         # Only S49 consumes native frames; existing S60 L2 sees validated
         # already-received probes and can never supply an Action grant.
         result = await driver.run(
             probe=reprobe, grant=grant, on_action=on_action,
             on_candidate=candidates.review,
             on_l2_probe=l2_observer.observe if l2_observer is not None else None,
+            observation_audit=audit,
         )
         if executor.supervisor.open_actions:
             raise SessionRunRejected("S49 Action supervisor has open Action")
