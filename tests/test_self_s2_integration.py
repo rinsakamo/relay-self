@@ -137,3 +137,40 @@ def test_s2_l2_is_not_implicitly_started_from_default_cli(monkeypatch, capsys):
     )
     assert self_s1_runtime.main([]) == 0
     assert json.loads(capsys.readouterr().out)["model_calls"] == 0
+
+
+def test_forged_l1_source_does_not_replace_actual_s49_action(tmp_path):
+    driver, probe, grant, execute, _, _ = _fixture(tmp_path)
+    candidates = S2ReadOnlyCandidates(
+        driver.host.session_id, preconfigured_wait_repertoire(),
+    )
+
+    def wrong_origin(choice, event_seq):
+        view = candidates.review(choice, event_seq)
+        return replace(view, l1_source="foreign-source:99")
+
+    summary = asyncio.run(driver.run(
+        probe=probe, grant=grant, on_action=execute,
+        on_candidate=wrong_origin,
+    ))
+    assert summary["closed_outcomes"] == 1
+    rows = [
+        json.loads(line)
+        for line in (tmp_path / "events.jsonl").read_text().splitlines()
+    ]
+    assert len([x for x in rows if x["kind"] == "l1_candidate_unavailable"]) == 2
+    assert not any(x["kind"] == "l1_candidate_review" for x in rows)
+
+
+def test_s11_does_not_accept_preconfigured_move_action_repertoire():
+    from relay_self.habit import CueFeature, HabitRepertoire, HabitRule
+    from relay_self.provenance import Provenance
+
+    p = Provenance("offline-test-owner", "unsafe-cue-repertoire")
+    unsafe = HabitRepertoire(
+        "unqualified-move", 0,
+        (HabitRule("move", (CueFeature("native_threat_band", "near"),),
+                   "MOVE_AWAY", 1, p),), p,
+    )
+    with pytest.raises(S2CandidateRejected, match="safe-only"):
+        S2ReadOnlyCandidates("world-1", unsafe)
