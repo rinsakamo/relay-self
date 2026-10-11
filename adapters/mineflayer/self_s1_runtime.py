@@ -49,6 +49,7 @@ from adapters.mineflayer.self_s2_candidates import (
     S2ReadOnlyCandidates,
     preconfigured_wait_repertoire,
 )
+from adapters.mineflayer.self_s3_experience import S3ReadOnlyExperience
 from experiments.standard_env.golden_admission import verify_qualified_world
 from experiments.standard_env.node_runtime import verify_node_runtime
 from experiments.standard_env.preflight import _check_tools, read_profile
@@ -56,6 +57,7 @@ from experiments.standard_env.world_binding import prepare_stopped_world
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.execution_binding import ExecutionBinding, resolve_execution_binding
 from relay_self.intent import IntentCommitment
+from relay_self.persistent_cognition import save_persistent_cognition
 from relay_self.reactive_l0 import L0ActionGrant
 from relay_self.world_conditioned_choice import WorldChoiceKind
 
@@ -142,7 +144,11 @@ def preflight(root: Path, output: Path):
     return verify_qualified_world(jar, snapshot, manifest, evidence)
 
 
-def s49_callbacks(session, host: NormalWorldL0, executor: NormalSessionActionExecutor):
+def s49_callbacks(
+    session, host: NormalWorldL0, executor: NormalSessionActionExecutor, *,
+    experience: S3ReadOnlyExperience | None = None,
+    events: AppendOnlySessionEvents | None = None,
+):
     """Reuse original S49 native admission and independent operator stage grants.
 
     Calls are serialized by BoundedSessionDriver: host.receive -> probe ->
@@ -150,12 +156,35 @@ def s49_callbacks(session, host: NormalWorldL0, executor: NormalSessionActionExe
     """
     if session.started.session_id != host.session_id:
         raise SessionRunRejected("foreign S49 process")
+    if experience is not None and (
+        not isinstance(experience, S3ReadOnlyExperience)
+        or experience.session_id != host.session_id
+        or not isinstance(events, AppendOnlySessionEvents)
+        or events.session_id != host.session_id
+    ):
+        raise SessionRunRejected("source-bound read-only experience and event owner required")
     probes = {}
 
     async def reprobe(frame):
         request_id = f"s49-actual:{host.session_id}:event-{frame.seq}"
         reading = await _correlated_observe(session, request_id)
         probes[reading.seq] = reading
+        if experience is not None:
+            try:
+                hint = experience.hint_for_next(reading)
+            except Exception as exc:
+                events.write(
+                    "experience_unavailable", reason=type(exc).__name__,
+                    action_authority=False, learning_updates=0, habit_grants=0,
+                )
+            else:
+                events.write(
+                    "experience_read_only_hint", status=hint.status.value,
+                    memory_ids=hint.memory_ids, observed_action_refs=hint.observed_action_refs,
+                    examined=hint.examined, reason=hint.reason,
+                    source_seq=reading.seq, action_authority=False,
+                    learning_updates=0, habit_grants=0,
+                )
         return reading
 
     def grant(choice, event_seq):
@@ -213,11 +242,30 @@ def s49_callbacks(session, host: NormalWorldL0, executor: NormalSessionActionExe
             provenance=source(f"admitted-{step.event_seq}"),
         )
         # Existing S49/S16 executor is the ONLY issuer and owns UNKNOWN closure.
-        return await executor.execute(
+        receipt = await executor.execute(
             session, step, bound, reading,
             authorize(step, NormalActionStage.PROPOSE),
             authorize(step, NormalActionStage.ISSUE),
         )
+        if experience is not None:
+            try:
+                record = experience.observe_original(
+                    receipt, correlated_probe=reading,
+                    expected_action_id=step.action_request_id,
+                )
+            except Exception as exc:
+                events.write(
+                    "experience_not_retained", reason=type(exc).__name__,
+                    action_authority=False, learning_updates=0, habit_grants=0,
+                )
+            else:
+                events.write(
+                    "experience_retained_observation", memory_id=record.memory_id,
+                    evidence_sha256=record.evidence_sha256, source_seq=record.source_seq,
+                    session=record.session_id, goal_success_attested=False,
+                    learning_updates=0, habit_grants=0, action_authority=False,
+                )
+        return receipt
 
     return reprobe, grant, on_action
 
@@ -273,7 +321,10 @@ async def run_physical(
         observation_source = NaturalS49ObservationSource(session)
         sink = AppendOnlySessionEvents(output / "session_events.jsonl", sid)
         driver = BoundedSessionDriver(host, observation_source, budget, sink)
-        reprobe, grant, on_action = s49_callbacks(session, host, executor)
+        experience = S3ReadOnlyExperience(sid)
+        reprobe, grant, on_action = s49_callbacks(
+            session, host, executor, experience=experience, events=sink,
+        )
         candidates = S2ReadOnlyCandidates(sid, preconfigured_wait_repertoire())
         # Only S49 consumes native frames; existing S60 L2 sees validated
         # already-received probes and can never supply an Action grant.
@@ -284,6 +335,13 @@ async def run_physical(
         )
         if executor.supervisor.open_actions:
             raise SessionRunRejected("S49 Action supervisor has open Action")
+        memory_path = output / "s3_observed_memory.json"
+        if memory_path.exists() or memory_path.is_symlink():
+            raise SessionRunRejected("memory snapshot must not overwrite existing evidence")
+        save_persistent_cognition(memory_path, experience.snapshot)
+        result["s3_observed_memories"] = len(experience.snapshot.memories)
+        result["s3_learning_updates"] = 0
+        result["s3_habit_grants"] = 0
         return result
     finally:
         if driver is not None:
