@@ -157,3 +157,72 @@ def test_explicit_s49_foreground_callbacks_have_one_probe_owner(monkeypatch):
 def test_invalid_budgets_fail_before_session():
     with pytest.raises(SessionRunRejected):
         SessionBudget(max_seconds=float("inf"))
+
+
+def test_fake_owned_world_closes_processes_and_evidence_without_action(
+    tmp_path, monkeypatch,
+):
+    """Mock every process/World boundary; never run native dependencies."""
+    source = s42._pair()[3]
+    output = tmp_path / "output"
+    output.mkdir()
+    shutdown_order = []
+
+    class FakeSession:
+        started = SimpleNamespace(session_id=source.session_id)
+
+        async def receive(self):
+            return replace(
+                source,
+                snapshot=replace(
+                    source.snapshot, nearby_entities=(),
+                    nearby_entities_coverage=replace(
+                        source.snapshot.nearby_entities_coverage, candidate_count=0,
+                    ),
+                ),
+            )
+
+        async def shutdown(self, **kwargs):
+            shutdown_order.append("node")
+            return 0
+
+        async def terminate(self):
+            pytest.fail("normal fake shutdown never terminates by force")
+
+    class FakeServer:
+        returncode = None
+
+    server = FakeServer()
+    async def fake_ready(*args):
+        shutdown_order.append("server-start")
+        return server, None, None
+
+    async def fake_shutdown(server_arg, collector):
+        assert server_arg is server
+        shutdown_order.append("server-stop")
+        server.returncode = 0
+
+    async def fake_spawn(session_arg):
+        assert isinstance(session_arg, FakeSession)
+
+    async def fake_launch(*args, **kwargs):
+        shutdown_order.append("node-start")
+        return FakeSession()
+
+    monkeypatch.setattr(s1, "prepare_stopped_world", lambda *a, **k: {})
+    monkeypatch.setattr(s1, "_ready_server", fake_ready)
+    monkeypatch.setattr(s1, "_shutdown_server", fake_shutdown)
+    monkeypatch.setattr(s1, "_await_spawn", fake_spawn)
+    monkeypatch.setattr(s1.MineflayerProcessSession, "launch", fake_launch)
+    monkeypatch.setattr(s1, "NativeObservationOnly", lambda session: session)
+    monkeypatch.setattr(s1, "RSEE", tmp_path / "shared-root")
+    budget = SessionBudget(max_events=1, max_actions=1, max_frames=1,
+                           max_seconds=2, poll_seconds=.02)
+    result = asyncio.run(s1.run_physical(object(), output, budget))
+    assert result["events"] == result["action_requests"] == 0
+    assert shutdown_order == ["server-start", "node-start", "node", "server-stop"]
+    cleanup = json.loads((output / "owned_cleanup.json").read_text())
+    assert cleanup["native_stop_ack"] is False
+    assert cleanup["gpu_release_claimed"] is False
+    assert cleanup["node_exit"] == cleanup["server_exit"] == 0
+    assert not list(output.glob("*.pid"))
