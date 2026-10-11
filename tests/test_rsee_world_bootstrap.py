@@ -11,18 +11,18 @@ from types import SimpleNamespace
 
 import pytest
 
-from experiments.standard_env import world_bootstrap as bootstrap
-from experiments.standard_env import world_binding as binding
 from adapters.mineflayer.python_protocol import (
     MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
     MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
     MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
-    MineflayerInventoryItem,
     MineflayerNearbyEntitiesCoverage,
     MineflayerPosition,
     MineflayerSnapshot,
     MineflayerTime,
 )
+
+from experiments.standard_env import world_binding as binding
+from experiments.standard_env import world_bootstrap as bootstrap
 
 
 def _name(s):
