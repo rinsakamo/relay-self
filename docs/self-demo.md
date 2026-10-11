@@ -550,3 +550,12 @@ RSEE標準のStructured JSON Schemaも、現在のread-only自由文L2の
 既存のS49 World生成はMojang公式server jarのSHA1/sizeを検査するが、
 追加のRSEEファイル検査に別jar SHA256を入力しても、そのjarが実Worldで
 起動した証明にはならない。新しい実機Golden Runはまだ **NOT_RUN**。
+
+
+RSEE有効時は、モデルが `/health` と `/v1/models` でreadyとされた直後、
+**Minecraftを開始する前に** owned `/props` と `/slots` を再取得し、
+`model_alias`、実GGUFパス、Context=8192、slot=1、
+非空build_infoを照合する。異常・API未対応・不一致は
+`RSEE_LIVE_BINDING_UNCONFIRMED` としWorldは起動しない。
+これは動的ライブラリ同一性・GPU実行・Thinking効果・backend STOP ACKを
+証明しない。request/native-Worldの実機資格化は別途必要。
