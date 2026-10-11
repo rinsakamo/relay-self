@@ -5,12 +5,12 @@ Authority: [#537](https://github.com/rinsakamo/relay-self/issues/537) and the **
 ## What was physically demonstrated
 
 Exactly one fixed S49 session at source HEAD
-\`34820f6bf391c77f325d7c29d3b779a33e3ca835\`: 3 native
+`34820f6bf391c77f325d7c29d3b779a33e3ca835`: 3 native
 observations / L0 decisions, 1 WAIT, 2 MOVE_AWAY actions with physical
 OUTCOME and ~0.627 m measured movement each, 2 retained *observed* Memory
-episodes, and 1 L2 advisory response with \`EXPIRED_WORLD_ADVANCED\`.
+episodes, and 1 L2 advisory response with `EXPIRED_WORLD_ADVANCED`.
 All three HTTP identity endpoints passed; /props 22,858 bytes. The original
-first terminal \`SELF_DEMO_RETURNED_SUCCESS_NOT_PHYSICAL_ATTESTATION\` / exit 0
+first terminal `SELF_DEMO_RETURNED_SUCCESS_NOT_PHYSICAL_ATTESTATION` / exit 0
 does **not** independently certify all physical claims.
 
 No live S10 preference update, S11 Habit grant, signed goal completion,
@@ -18,14 +18,14 @@ L2-generated Action or model STOP ACK was certified. No original HTTP wire
 request/response for the L2 transaction was retained. Later offline
 viewing cannot create missing evidence. The user reported a verified
 69-file final SHA256 index:
-\`57f0f55079943f8a9c714f166213917ca625ab5e143c4102a927fa4de7195fb0\`.
+`57f0f55079943f8a9c714f166213917ca625ab5e143c4102a927fa4de7195fb0`.
 That index remains on the user's WSL2 host, **not** inside this GitHub PR.
 
 ## Generate a visual replay from already sealed evidence
 
 In a checkout of this child Draft, with existing Python environment:
 
-\`\`\`bash
+```bash
 export PYTHONPATH="$PWD/src:$PWD/tests:$PWD"
 BASE=/home/rinsa/.local/share/relay-self/rsee-1.0-20261011
 EVIDENCE="$BASE/golden-third-20261011-authorized-once"
@@ -41,17 +41,17 @@ mkdir -p /home/rinsa/work/self-ui-replay
   --output-file /home/rinsa/work/self-ui-replay/self-1-world-replay.html
 
 # Open the generated HTML in a browser on your own host, no server needed.
-\`\`\`
+```
 
-The CLI reads exactly the **existing** \`native_report.json\`,
-\`self_trace.jsonl\`, \`observed_memory.json\`, and optional
-\`live_l2.jsonl\`. Each must be a non-symlink regular source file at most
+The CLI reads exactly the **existing** `native_report.json`,
+`self_trace.jsonl`, `observed_memory.json`, and optional
+`live_l2.jsonl`. Each must be a non-symlink regular source file at most
 5 MiB; duplicate JSON keys, inconsistent session/epoch/trace or missing
 native Action evidence are rejected before creating the output.
 
 It delegates original source binding to
-\`self_demo.project_native_report\` and retained snapshot regeneration to
-\`self_demo.retain_native_observations\`. The stored trace must match this
+`self_demo.project_native_report` and retained snapshot regeneration to
+`self_demo.retain_native_observations`. The stored trace must match this
 projection exactly; loaded retained Memory must equal the projected native
 snapshot. L2 sidecar must match the trace, carry zero Action/LRN/Habit
 grants and correctly flag expired stale text. The page contains the
@@ -78,7 +78,7 @@ Actions. Do not relabel it autonomous open-ended gameplay.
    **one-session supervised gameplay owner** with pause/resume/stop,
    idle intervals, explicit per-session Action count, start/end, and
    local fail-closed recovery (NO automatic restart). Reuse
-   \`NormalWorldL0\` and \`NormalSessionActionExecutor\` in place;
+   `NormalWorldL0` and `NormalSessionActionExecutor` in place;
    do not reimplement L0 grants or grant L1/L2 Action authority.
 2. Emit **append-only, source-tagged** event receipts from the real
    runtime (Present/epoch, L0/L1/L2 status, Action proposal/admission,
