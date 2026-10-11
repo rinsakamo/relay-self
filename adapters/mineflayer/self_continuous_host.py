@@ -8,6 +8,7 @@ dispatch callback. No server/model launcher, background daemon or new authority.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import math
 import os
@@ -19,6 +20,7 @@ from typing import Awaitable, Callable
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import NormalActionReceipt, NormalWorldL0
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from relay_self.action import ActionState
 from relay_self.reactive_l0 import L0ActionGrant, L0Step
 from relay_self.world_conditioned_choice import WorldChoiceKind, WorldConditionedChoice
@@ -207,6 +209,9 @@ class BoundedSessionDriver:
                 self.events.write(
                     "world_decision", epoch=self.host.events,
                     event_seq=frame.seq, probe_seq=reading.seq,
+                    event_source=frame.provenance.reference,
+                    probe_source=reading.provenance.reference,
+                    probe_request_id=reading.request_id,
                     source_type="MINEFLAYER_NATIVE",
                     entity_id=choice.entity_id, distance_m=choice.distance_m,
                     layer="L0", selection=choice.selection.value,
@@ -227,6 +232,12 @@ class BoundedSessionDriver:
                     remaining = end - time.monotonic()
                     if remaining <= 0 or self._stopped or self._paused:
                         terminal = "ACTION_NOT_DISPATCHED_TIME_PAUSE_OR_STOP"
+                        self.events.write(
+                            "action_not_dispatched",
+                            action_id=step.action_request_id,
+                            physical_outcome="NOT_ISSUED",
+                            safe_to_replay=False,
+                        )
                         break
                     receipt = await asyncio.wait_for(
                         on_action(step), timeout=min(15, remaining),
@@ -238,10 +249,19 @@ class BoundedSessionDriver:
                         or receipt.consequence.status is not WorldConsequenceStatus.EXECUTED
                         or receipt.consequence.action_id != step.action_request_id
                         or receipt.consequence.session_id != self.host.session_id
+                        or receipt.source != reading.provenance
+                        or not receipt.terminal.is_current_snapshot
                         or receipt.consequence.movement_distance is None
                         or receipt.consequence.movement_distance < 0.05
                     ):
                         raise SessionRunRejected("unqualified S49 native Action terminal")
+                    # Preserve and hash original decoded S49 evidence before
+                    # admitting a positive closure into the RelayUI stream.
+                    native_evidence = capture_native_action_evidence(receipt.consequence)
+                    native_bytes = json.dumps(
+                        native_evidence, sort_keys=True, separators=(",", ":"),
+                        ensure_ascii=False, allow_nan=False,
+                    ).encode("utf-8")
                 except BaseException as exc:
                     self.events.write(
                         "action_outcome_unknown", action_id=step.action_request_id,
@@ -249,16 +269,24 @@ class BoundedSessionDriver:
                         safe_to_replay=False,
                     )
                     raise
-                closures += 1
                 self.events.write(
                     "action_outcome", epoch=self.host.events,
                     action_id=receipt.terminal.action_id,
+                    original_action_state=receipt.terminal.state.value,
+                    original_world_status=receipt.consequence.status.value,
+                    original_source_session=receipt.consequence.session_id,
+                    source_provenance=receipt.source.reference,
+                    before_seq=receipt.consequence.before_observation.seq,
+                    after_seq=receipt.consequence.after_observation.seq,
+                    native_execution_evidence=native_evidence,
+                    native_execution_sha256=hashlib.sha256(native_bytes).hexdigest(),
                     physical_outcome="outcome",
                     movement_m=receipt.consequence.movement_distance,
                     goal_success_attested=False,
                     learning_feedback_qualified=False,
                     habit_granted=False,
                 )
+                closures += 1
             else:
                 terminal = "FRAME_BUDGET_ENDED"
             summary: dict[str, object] = {

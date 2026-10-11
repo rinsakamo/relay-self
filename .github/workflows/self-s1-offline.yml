@@ -1,0 +1,74 @@
+name: S Lane S1 offline physical wiring
+
+on:
+  push:
+    branches:
+      - 'self/s-lane-s1-*'
+  pull_request:
+    branches:
+      - 'self/self1-bounded-session-*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s-lane-s1-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Verify exact source ancestry
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor c361aeb546bb437b99362f6bf381902a15a955da HEAD
+          python tools/check_repository.py
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Dry-run never starts Minecraft
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          python -m adapters.mineflayer.self_s1_runtime
+          python -m pytest -q tests/test_self_s1_runtime.py tests/test_self_continuous_host.py
+      - name: Full Python regression (offline)
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: python -m pytest -q
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'ruff==0.16.7'
+      - run: ruff check src tests experiments adapters observability
+
+  mineflayer-protocol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      # CI runner only. Never install into the operator's existing RSEE root.
+      - run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - run: npm run check --prefix adapters/mineflayer
