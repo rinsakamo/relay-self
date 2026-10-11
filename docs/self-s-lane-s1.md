@@ -13,7 +13,7 @@ remains immutable. S1 offline CI is not a physical qualification.
 `adapters.mineflayer.self_s1_runtime` binds the existing
 `BoundedSessionDriver` to one original `MineflayerProcessSession` on a
 **new disposable copy** of the already verified RSEE 1.0 World, using:
-`NativeObservationOnly` (S49 source filter), `_correlated_observe`,
+`NaturalS49ObservationSource` (S49 `NativeObservationOnly` source rules,\nbut accepts authentic health/time/move observations), `_correlated_observe`,
 `NormalWorldL0`, S49's independently operator-scoped L0/PROPOSE/ISSUE
 authorizations, existing S14/S15 admission, and the original
 `NormalSessionActionExecutor.execute`. No other Action issuer exists.
