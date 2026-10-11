@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -57,8 +58,20 @@ def check_required_paths(errors: list[str]) -> None:
             fail(errors, f"missing required repository path: {relative}")
 
 
+def iter_repository_files() -> list[Path]:
+    """Scan owned source without traversing installed third-party dependencies."""
+    files = []
+    for folder, directories, names in os.walk(ROOT):
+        directories[:] = [
+            name for name in directories
+            if name not in {".git", "node_modules", ".venv", "__pycache__"}
+        ]
+        files.extend(Path(folder) / name for name in names)
+    return sorted(files)
+
+
 def iter_markdown_files() -> list[Path]:
-    return sorted(path for path in ROOT.rglob("*.md") if ".git" not in path.parts)
+    return [path for path in iter_repository_files() if path.suffix == ".md"]
 
 
 def normalize_markdown_target(raw: str) -> str | None:
@@ -114,7 +127,7 @@ def check_markdown_links(errors: list[str]) -> None:
 
 
 def check_conflict_markers(errors: list[str]) -> None:
-    for path in sorted(ROOT.rglob("*")):
+    for path in iter_repository_files():
         if not path.is_file() or ".git" in path.parts:
             continue
         if path.suffix.lower() not in TEXT_SUFFIXES:
