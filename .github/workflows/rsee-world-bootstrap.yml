@@ -1,0 +1,77 @@
+name: RSEE one-shot initial World bootstrap offline
+
+on:
+  push:
+    branches:
+      - 'self/rsee-world-bootstrap-once-*'
+  pull_request:
+    branches:
+      - 'self/rsee-world-binding-offline-*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: world-bootstrap-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Verify exact head / preflight base
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor 6860ce46230bf1bbf5002e9233f2f930276c53d8 HEAD
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+      - name: Deterministic bootstrap fake-native-stop and inherited product gates
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          python -m pytest -q tests/test_rsee_world_bootstrap.py tests/test_rsee_world_binding.py tests/test_rsee_product_gate.py tests/test_self_demo.py tests/test_self_owned_llama.py tests/test_standard_env_preflight.py
+      - name: Ruff
+        run: ruff check src tests experiments adapters observability
+      - name: Repository contracts
+        run: python tools/check_repository.py
+
+  full-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Inherited Python suite without real Java/GPU/World
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: python -m pytest -q
+
+  mineflayer-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - run: npm run check --prefix adapters/mineflayer
