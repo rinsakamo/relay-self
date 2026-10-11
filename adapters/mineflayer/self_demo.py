@@ -405,6 +405,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rsee-world-manifest", type=Path)
     parser.add_argument("--rsee-initial-evidence", type=Path)
     parser.add_argument("--rsee-eula-accepted", action="store_true")
+    parser.add_argument("--rsee-node-runtime-root", type=Path)
     parser.add_argument("--rsee-golden-run-once", action="store_true")
     args = parser.parse_args(argv)
 
@@ -420,7 +421,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     if not args.rsee_standard and (any(x is not None for x in supplied_world)
                                    or args.rsee_eula_accepted
-                                   or args.rsee_golden_run_once):
+                                   or args.rsee_golden_run_once
+                                   or args.rsee_node_runtime_root is not None):
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="RSEE_WORLD_FLAGS_REQUIRE_STANDARD",
             model_calls=0, actual_actions=0,
@@ -551,6 +553,24 @@ def main(argv: list[str] | None = None) -> int:
                     model_calls=0, actual_actions=0,
                 ), sort_keys=True))
                 return 2
+            if args.rsee_node_runtime_root is None:
+                print(json.dumps(_row(
+                    "blocked", "NO_WORLD_USED", reason="RSEE_EXTERNAL_NODE_RUNTIME_REQUIRED",
+                    model_calls=0, actual_actions=0,
+                ), sort_keys=True))
+                return 2
+            from experiments.standard_env.node_runtime import (
+                NodeRuntimeRejected,
+                verify_node_runtime,
+            )
+            try:
+                verify_node_runtime(args.rsee_node_runtime_root, Path(__file__).resolve().parent)
+            except (NodeRuntimeRejected, OSError, ValueError):
+                print(json.dumps(_row(
+                    "blocked", "NO_WORLD_USED", reason="RSEE_EXTERNAL_NODE_RUNTIME_UNQUALIFIED",
+                    model_calls=0, actual_actions=0,
+                ), sort_keys=True))
+                return 2
             from experiments.standard_env.golden_admission import verify_qualified_world
             from experiments.standard_env.world_binding import WorldBindingRejected
 
@@ -604,6 +624,14 @@ def main(argv: list[str] | None = None) -> int:
                 actual_actions=0,
             ), sort_keys=True))
             return 2
+        # Scoped only to this already-authorized RSEE invocation and its Node child.
+        # The original worktree source remains unchanged; external npm modules
+        # are selected by the bridge's explicit createRequire anchor.
+        previous_runtime = os.environ.get("RELAYSELF_RSEE_NODE_RUNTIME_ROOT")
+        if args.rsee_standard:
+            os.environ["RELAYSELF_RSEE_NODE_RUNTIME_ROOT"] = str(
+                args.rsee_node_runtime_root
+            )
         try:
             if args.live_think:
                 code = asyncio.run(_run_disposable(
