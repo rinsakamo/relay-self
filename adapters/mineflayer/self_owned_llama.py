@@ -254,7 +254,9 @@ def main(argv: list[str] | None = None) -> int:
                 or args.model_port == 25565):
             raise OwnedModelRejected("non-game localhost model port required")
         if (type(args.ctx_size) is not int or not 256 <= args.ctx_size <= 32768
-                or type(args.gpu_layers) is not int or not 0 <= args.gpu_layers <= 99
+                or type(args.gpu_layers) is not int or not 0 <= args.gpu_layers <= (
+                    999 if args.rsee_required else 99
+                )
                 or not .1 <= args.model_timeout <= 120
                 or not 1 <= args.ready_timeout <= 180):
             raise OwnedModelRejected("unbounded model resource configuration")
@@ -318,6 +320,7 @@ def main(argv: list[str] | None = None) -> int:
                     "--host", "127.0.0.1", "--port", str(args.model_port),
                     "--parallel", "1", "--ctx-size", str(args.ctx_size),
                     "--n-gpu-layers", str(args.gpu_layers),
+                    *(["--no-context-shift"] if args.rsee_required else []),
                 ],
                 stdin=subprocess.DEVNULL, stdout=stream,
                 stderr=subprocess.STDOUT, close_fds=True,
@@ -352,7 +355,9 @@ def main(argv: list[str] | None = None) -> int:
                         sys.executable, "-m", "adapters.mineflayer.self_demo",
                         "--run-disposable", "--confirm", CONFIRM,
                         "--output-dir", str(args.output_dir),
-                        "--live-think", "--model-alias", args.model_alias,
+                        "--live-think",
+                        *(["--rsee-standard"] if args.rsee_required else []),
+                        "--model-alias", args.model_alias,
                         "--model-port", str(args.model_port),
                         "--model-timeout", str(args.model_timeout),
                     ], check=False, env=env,
