@@ -39,7 +39,7 @@ jobs:
           PYTHONPATH: 'src:tests:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m pytest -q tests/test_validation_v1.py tests/test_rsee_shared_runtime.py
+          python -m pytest -q tests/test_validation_v1.py tests/test_validation_l1_oracle.py tests/test_rsee_shared_runtime.py
           python -m experiments.validation.v1
       - name: Ruff
         run: ruff check src tests experiments adapters observability
@@ -78,3 +78,49 @@ jobs:
           node-version: '22'
       - run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
       - run: npm run check --prefix adapters/mineflayer
+
+  sibling-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Pin exact V1 HEAD
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - name: Checkout L1 immutable sibling (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 40db58d548ea31c4a70acabcc71b0954c7b6ce42
+          path: external-l1
+          persist-credentials: false
+      - name: Checkout S1 immutable sibling (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 75054188f1c7e8141690697794b6e705495de205
+          path: external-s1
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Independent cheap tag/episode oracle against unchanged L1 source
+        env:
+          PYTHONPATH: 'external-l1/src:src:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m experiments.validation.l1_independent_audit --l1-root "$PWD/external-l1"
+          test "$(git -C external-l1 rev-parse HEAD)" = "40db58d548ea31c4a70acabcc71b0954c7b6ce42"
+          test -z "$(git -C external-l1 status --porcelain --untracked-files=no)"
+      - name: S1 default CLI dry-run, not World execution
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-s1 rev-parse HEAD)" = "75054188f1c7e8141690697794b6e705495de205"
+          (cd external-s1 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m adapters.mineflayer.self_s1_runtime) > s1-dry-run.json
+          python -c 'import json; d=json.load(open("s1-dry-run.json")); assert d["classification"]=="S1_DRY_RUN_NO_EFFECTS" and d["world"]=="NOT_STARTED" and d["action"]=="NOT_ISSUED" and d["model_calls"]==0'
+          test -z "$(git -C external-s1 status --porcelain --untracked-files=no)"

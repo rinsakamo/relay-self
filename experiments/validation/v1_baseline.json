@@ -198,6 +198,17 @@
       "receipt_sha256": null,
       "status": "UNDETERMINED",
       "authority": "#588 / #537"
+    },
+    {
+      "id": "L1_REUSE_BRIDGE",
+      "lane": "L",
+      "claim": "L1 typed S16 observational retention + read-only hint; same-source cheap tag comparator equal; offline-only",
+      "source_head": "40db58d548ea31c4a70acabcc71b0954c7b6ce42",
+      "evidence_origin": "GITHUB_CI_REPORT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "SOURCE_SHAPED_PASS_REPORTED",
+      "authority": "#594 / #426 comment 6110665640"
     }
   ],
   "golden": {
