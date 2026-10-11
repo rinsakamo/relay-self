@@ -8,6 +8,7 @@ dispatch callback. No server/model launcher, background daemon or new authority.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import math
 import os
@@ -18,6 +19,7 @@ from typing import Awaitable, Callable
 
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import NormalActionReceipt, NormalWorldL0
+from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.action import ActionState
 from relay_self.reactive_l0 import L0ActionGrant, L0Step
@@ -238,6 +240,8 @@ class BoundedSessionDriver:
                         or receipt.consequence.status is not WorldConsequenceStatus.EXECUTED
                         or receipt.consequence.action_id != step.action_request_id
                         or receipt.consequence.session_id != self.host.session_id
+                        or receipt.source != reading.provenance
+                        or not receipt.terminal.is_current_snapshot
                         or receipt.consequence.movement_distance is None
                         or receipt.consequence.movement_distance < 0.05
                     ):
@@ -249,16 +253,31 @@ class BoundedSessionDriver:
                         safe_to_replay=False,
                     )
                     raise
-                closures += 1
+                # Record the original decoded S49 physical frames alongside
+                # its typed Action terminal; no reconstructed "success" label.
+                native_evidence = capture_native_action_evidence(receipt.consequence)
+                native_bytes = json.dumps(
+                    native_evidence, sort_keys=True, separators=(",", ":"),
+                    ensure_ascii=False, allow_nan=False,
+                ).encode("utf-8")
                 self.events.write(
                     "action_outcome", epoch=self.host.events,
                     action_id=receipt.terminal.action_id,
+                    original_action_state=receipt.terminal.state.value,
+                    original_world_status=receipt.consequence.status.value,
+                    original_source_session=receipt.consequence.session_id,
+                    source_provenance=receipt.source.reference,
+                    before_seq=receipt.consequence.before_observation.seq,
+                    after_seq=receipt.consequence.after_observation.seq,
+                    native_execution_evidence=native_evidence,
+                    native_execution_sha256=hashlib.sha256(native_bytes).hexdigest(),
                     physical_outcome="outcome",
                     movement_m=receipt.consequence.movement_distance,
                     goal_success_attested=False,
                     learning_feedback_qualified=False,
                     habit_granted=False,
                 )
+                closures += 1
             else:
                 terminal = "FRAME_BUDGET_ENDED"
             summary: dict[str, object] = {
