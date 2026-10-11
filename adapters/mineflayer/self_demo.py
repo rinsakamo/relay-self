@@ -405,6 +405,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rsee-world-manifest", type=Path)
     parser.add_argument("--rsee-initial-evidence", type=Path)
     parser.add_argument("--rsee-eula-accepted", action="store_true")
+    parser.add_argument("--rsee-golden-run-once", action="store_true")
     args = parser.parse_args(argv)
 
     if args.rsee_standard and (not args.run_disposable or not args.live_think):
@@ -418,7 +419,8 @@ def main(argv: list[str] | None = None) -> int:
         args.rsee_world_manifest, args.rsee_initial_evidence,
     )
     if not args.rsee_standard and (any(x is not None for x in supplied_world)
-                                   or args.rsee_eula_accepted):
+                                   or args.rsee_eula_accepted
+                                   or args.rsee_golden_run_once):
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="RSEE_WORLD_FLAGS_REQUIRE_STANDARD",
             model_calls=0, actual_actions=0,
@@ -543,13 +545,17 @@ def main(argv: list[str] | None = None) -> int:
                     model_calls=0, actual_actions=0,
                 ), sort_keys=True))
                 return 2
-            from experiments.standard_env.world_binding import (
-                WorldBindingRejected,
-                verify_world_binding,
-            )
+            if not args.rsee_golden_run_once:
+                print(json.dumps(_row(
+                    "blocked", "NO_WORLD_USED", reason="GOLDEN_RUN_NOT_AUTHORIZED",
+                    model_calls=0, actual_actions=0,
+                ), sort_keys=True))
+                return 2
+            from experiments.standard_env.world_binding import WorldBindingRejected
+            from experiments.standard_env.golden_admission import verify_qualified_world
 
             try:
-                world_binding = verify_world_binding(*supplied_world)
+                world_binding = verify_qualified_world(*supplied_world)
             except (WorldBindingRejected, OSError, ValueError):
                 print(json.dumps(_row(
                     "blocked", "NO_WORLD_USED", reason="RSEE_WORLD_BYTES_UNBOUND",
