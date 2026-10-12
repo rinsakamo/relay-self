@@ -430,7 +430,7 @@ async def run_physical(
                             "primary_reason_type": type(primary_failure).__name__,
                             "retained_observation_count": len(experience.snapshot.memories),
                             "original_primary_failure_preserved": True,
-                        }, sort_keys=True) + "\\n")
+                        }, sort_keys=True) + "\n")
                         partial_status.flush()
                         os.fsync(partial_status.fileno())
                 except BaseException:
