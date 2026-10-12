@@ -285,9 +285,9 @@ def main(argv: list[str] | None = None) -> int:
             "science_qualified": False,
         }
     print(json.dumps(output, ensure_ascii=False, sort_keys=True))
+    # An informative zero-retention report is not a successful V handoff.
     return 0 if output["classification"] in (
         "RSEE_R4_PLAN_ONLY",
-        "RSEE_R4_NO_RETAINED_ACTION_NOT_V_ADMISSIBLE",
         "RSEE_R4_DERIVED_MEMORY_MATCH_R2_BYTES_REVIEW_ONLY",
     ) else 2
 
