@@ -107,10 +107,10 @@ jobs:
       - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
       - name: Execute independent actual V cheap two-feature oracle over original L5 synthetic fixture
         env:
-          PYTHONPATH: sibling-v:sibling-l5/src:sibling-l5/tests:sibling-l5
+          PYTHONPATH: sibling-l5/src:sibling-l5/tests:sibling-l5
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m experiments.validation.l5_cheap_oracle > "$RUNNER_TEMP/s12_v_oracle.json"
+          python sibling-v/experiments/validation/l5_cheap_oracle.py > "$RUNNER_TEMP/s12_v_oracle.json"
       - name: S12 consumer verifies original V cheap-null and S49 action opportunity
         env:
           PYTHONPATH: src:tests:.
