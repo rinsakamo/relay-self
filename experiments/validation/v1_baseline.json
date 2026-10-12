@@ -253,6 +253,39 @@
       "receipt_sha256": null,
       "status": "NO_GO",
       "authority": "#607 / #575 comment 6117770145"
+    },
+    {
+      "id": "S8_ONE_OUTCOME_EXCEPTION",
+      "lane": "S",
+      "claim": "S8 one-shot original bridge capture; one Action OUTCOME and read-only Memory recall reported; second Action blocked by multi-zombie; permission consumed",
+      "source_head": "eac08081d497b11f8386edd1229704c816d1a78d",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": null,
+      "receipt_sha256": "474eb0b20a7a93852e17a1e7239301e812b81c62f800727db2d6e58f2371b5c3",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#537 comment 6119140571 / #608"
+    },
+    {
+      "id": "S9_TWO_CONTROLLED_OUTCOMES_REPORTED",
+      "lane": "S",
+      "claim": "S9 one controlled same-session two Action OUTCOMEs and two retained observations; memory recall observed but causal influence not established, S10/S11 0",
+      "source_head": "916814742567f8ff396b5c078d22f897d8418927",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "dacf338b-4ba9-4e91-8eea-d4aebd0aef22",
+      "receipt_sha256": "614bdb6be1cff97ad598b49be5dd0beaf21bc5a440933d8af91a1f5860703844",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#537 comment 6120089028 / #609"
+    },
+    {
+      "id": "S9_G0_V_NATIVE_READBACK",
+      "lane": "V",
+      "claim": "Reported original S9 Mineflayer received/sent JSONL SHA and retained Memory, but no V-owned WSL2 byte readback or R9 exact public HEAD/source receipt verified",
+      "source_head": "916814742567f8ff396b5c078d22f897d8418927",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "dacf338b-4ba9-4e91-8eea-d4aebd0aef22",
+      "receipt_sha256": null,
+      "status": "UNDETERMINED",
+      "authority": "#537 comment 6120089028 / #544 / #595"
     }
   ],
   "golden": {

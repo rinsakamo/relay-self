@@ -39,9 +39,10 @@ jobs:
           PYTHONPATH: 'src:tests:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m pytest -q tests/test_validation_v1.py tests/test_validation_l1_oracle.py tests/test_validation_s1_l1_boundary.py tests/test_validation_s6_report.py tests/test_rsee_shared_runtime.py
+          python -m pytest -q tests/test_validation_v1.py tests/test_validation_l1_oracle.py tests/test_validation_s1_l1_boundary.py tests/test_validation_s6_report.py tests/test_validation_s9_two_epoch.py tests/test_rsee_shared_runtime.py
           python -m experiments.validation.v1
           python -m experiments.validation.s6_report_review
+          python -m experiments.validation.s9_two_epoch_review
       - name: Ruff
         run: ruff check src tests experiments adapters observability
       - name: Repository contracts
@@ -112,10 +113,24 @@ jobs:
           ref: 364f4cc66fbe393717d31adce22747be17446dd8
           path: external-r5
           persist-credentials: false
+      - name: Checkout S9 original source at exact HEAD (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 916814742567f8ff396b5c078d22f897d8418927
+          path: external-s9
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: S9 frozen source owner's offline tests, not World
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-s9 rev-parse HEAD)" = "916814742567f8ff396b5c078d22f897d8418927"
+          (cd external-s9 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_self_s9_failure_receipts.py)
+          test -z "$(git -C external-s9 status --porcelain --untracked-files=no)"
       - name: Verify pinned R5 S6 historical denial without raw-source spoofing
         env:
           PYTHONDONTWRITEBYTECODE: '1'
