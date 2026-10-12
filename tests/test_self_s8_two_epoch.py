@@ -63,19 +63,17 @@ def _native_clearance(owner, *, zombies=(), foreign=False, truncated=False,
     members = tuple(replace(original, entity_id=n) for n in zombies)
     if non_target:
         members += (replace(original, name="item", entity_id=42),)
+    if truncated:
+        bound = near.snapshot.nearby_entities_coverage.max_entities
+        members = tuple(
+            replace(original, entity_id=1000 + n, name="item")
+            for n in range(bound)
+        )
     coverage = replace(
         near.snapshot.nearby_entities_coverage,
         candidate_count=(len(members) + 1 if truncated else len(members)),
         truncated=truncated,
     )
-    # Truncated Mineflayer snapshots require candidate_count > max_entities;
-    # use a separate later value in negative tests if protocol validates it.
-    if truncated:
-        coverage = replace(
-            near.snapshot.nearby_entities_coverage,
-            candidate_count=near.snapshot.nearby_entities_coverage.max_entities + 1,
-            truncated=False,
-        )
     snapshot = replace(near.snapshot, nearby_entities=members,
                        nearby_entities_coverage=coverage)
     calls = []
@@ -169,7 +167,10 @@ def test_ambiguous_second_command_does_not_retry(tmp_path):
     driver, probe, grant, execute, _, _ = _fixture(tmp_path)
     owner, server = _controller(driver, fail_at=2)
     async def closed(step, receipt):
-        await owner.after_action_closed(server, step, receipt, memory_count=1)
+        await owner.after_action_closed(
+            server, step, receipt, memory_count=1,
+            clearance_probe=_native_clearance(owner),
+        )
 
     with pytest.raises(OSError):
         asyncio.run(driver.run(
@@ -188,7 +189,10 @@ def test_second_action_requires_distinct_entity_and_action_id(tmp_path):
     captured = []
     async def closed(step, receipt):
         captured.append((step, receipt))
-        await owner.after_action_closed(server, step, receipt, memory_count=1)
+        await owner.after_action_closed(
+            server, step, receipt, memory_count=1,
+            clearance_probe=_native_clearance(owner),
+        )
 
     asyncio.run(driver.run(
         probe=probe, grant=grant, on_action=execute,
@@ -331,20 +335,9 @@ def test_clearance_rejects_foreign_stale_ambiguous_or_incomplete_source(tmp_path
     observed = _native_clearance(
         owner, foreign=failure == "foreign", stale=failure == "stale",
         zombies=(2, 4) if failure == "mixed" else (),
+        truncated=failure == "truncated",
     )
-    if failure == "truncated":
-        async def missing_coverage(request_id):
-            valid = await observed(request_id)
-            return replace(valid, snapshot=replace(
-                valid.snapshot,
-                nearby_entities_coverage=replace(
-                    valid.snapshot.nearby_entities_coverage,
-                    candidate_count=1,
-                ),
-            ))
-        source = missing_coverage
-    else:
-        source = observed
+    source = observed
 
     async def closed(step, receipt):
         await owner.after_action_closed(
