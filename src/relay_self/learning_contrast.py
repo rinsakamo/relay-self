@@ -39,6 +39,7 @@ class LearningReviewStatus(str, Enum):
     NO_TRANSFER = "no_independent_transfer"
     CHEAP_NULL_EQUAL = "cheap_null_equal"
     CHEAP_DOMINATES = "cheap_dominates"
+    TRADEOFF_UNRESOLVED = "unpriced_goal_cost_tradeoff"
     REVIEW_LIFT_ONLY = "prospective_lift_requires_independent_v"
 
 
@@ -306,13 +307,18 @@ def review_matched_transfer(
     if not observed_cues:
         return MatchedReview(LearningReviewStatus.NO_TRANSFER,
                              reason="no_heldout_cue_outside_training")
-    status = (
-        LearningReviewStatus.REVIEW_LIFT_ONLY
-        if retained_wins > cheap_wins and retained_work <= cheap_work
-        else LearningReviewStatus.CHEAP_NULL_EQUAL
-        if retained_wins == cheap_wins and retained_work == cheap_work
-        else LearningReviewStatus.CHEAP_DOMINATES
-    )
+    if retained_wins == cheap_wins and retained_work == cheap_work:
+        status = LearningReviewStatus.CHEAP_NULL_EQUAL
+    elif (
+        retained_wins >= cheap_wins and retained_work <= cheap_work
+    ):
+        status = LearningReviewStatus.REVIEW_LIFT_ONLY
+    elif cheap_wins >= retained_wins and cheap_work <= retained_work:
+        status = LearningReviewStatus.CHEAP_DOMINATES
+    else:
+        # A goal improvement at higher unpriced resource cost is NOT cheap
+        # dominance or measured net benefit. V owns utility calibration.
+        status = LearningReviewStatus.TRADEOFF_UNRESOLVED
     return MatchedReview(
         status, len(pairs), retained_wins, cheap_wins,
         retained_work, cheap_work, len(observed_cues),
