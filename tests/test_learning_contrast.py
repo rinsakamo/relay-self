@@ -237,3 +237,32 @@ def test_data_type_and_authority_are_not_inferred_from_dataclass():
         replace(trial(0, TrialArm.CHEAP, goal=False), goal_reached=1)
     with pytest.raises(MatchedEvidenceRejected, match="original S/R/V"):
         replace(a, cost_sha256=frozenset({"invalid"}))
+
+
+def test_heldout_original_action_or_goal_cannot_be_reused_from_training():
+    owner, training, pairs, admission = fixture()
+    trained_action = owner.memories[0]
+    import json
+
+    original_action_digest = json.loads(trained_action.content)["evidence_sha256"]
+    reused_action = (
+        replace(pairs[0], action_sha256=original_action_digest), *pairs[1:],
+    )
+    with pytest.raises(MatchedEvidenceRejected, match="replayed from training"):
+        assess(owner, training, reused_action, admission)
+    reused_goal = (
+        replace(pairs[0], goal_sha256=training[0].goal_source_sha256), *pairs[1:],
+    )
+    with pytest.raises(MatchedEvidenceRejected, match="replayed from training"):
+        assess(owner, training, reused_goal, admission)
+
+
+def test_training_goal_source_original_must_be_independent_across_sessions():
+    owner, training, pairs, admission = fixture()
+    duplicated_goal = (
+        training[0],
+        replace(training[1], goal_source_sha256=training[0].goal_source_sha256),
+        training[2],
+    )
+    with pytest.raises(MatchedEvidenceRejected, match="duplicate training original"):
+        assess(owner, duplicated_goal, pairs, admission)
