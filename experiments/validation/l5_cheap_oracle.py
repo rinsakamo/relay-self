@@ -88,7 +88,6 @@ def cheap_two_feature_table(
 def review_l5_fixture() -> dict[str, Any]:
     """Import untouched L5's own original synthetic fixture for comparison."""
     import test_contextual_shadow as owner_fixture  # pinned sibling only
-
     from relay_self.contextual_shadow import ContextualStatus
 
     cognition, labels, admission = owner_fixture.setup_experience()
