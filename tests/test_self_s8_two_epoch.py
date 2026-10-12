@@ -17,7 +17,11 @@ from adapters.mineflayer import self_s8_trial as trial
 from adapters.mineflayer.self_continuous_host import SessionBudget, SessionRunRejected
 from adapters.mineflayer.self_s7_native_trial import CONSUMED_S6_GRANT
 from adapters.mineflayer.self_s8_two_epoch import (
-    CLEAR, SUMMON, S8InterventionRejected, S8TwoEpochIntervention, S8TwoEpochPlan,
+    CLEAR,
+    SUMMON,
+    S8InterventionRejected,
+    S8TwoEpochIntervention,
+    S8TwoEpochPlan,
 )
 from test_self_continuous_host import _fixture
 
