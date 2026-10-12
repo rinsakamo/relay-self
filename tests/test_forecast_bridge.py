@@ -290,3 +290,48 @@ def test_untrusted_review_memory_cannot_silently_be_a_successful_hint():
             owner, session_id="session-1", cue_tags=l1.TAGS,
             world_revision=2, admitted_evidence_sha256=ADMITTED,
         )
+
+
+def test_plausible_surprise_without_originals_cannot_be_retrieved():
+    import json
+
+    review = {
+        "schema": "L2_OBSERVED_COMPARISON_V1",
+        "forecast_memory_id": "l2:forecast:session-1:missing",
+        "observation_memory_id": "l1:session-1:absent:2",
+        "session_id": "session-1",
+        "world_revision": 2,
+        "action_ref": "MOVE_BACKWARD",
+        "evidence_sha256": l1.DIGEST_B,
+        "cue_tags": list(l1.TAGS),
+        "status": "surprise",
+        "comparison_keys": ["hazard_after"],
+        "mismatched_keys": ["hazard_after"],
+        "learning_authorized": False,
+        "goal_success_attested": False,
+    }
+    owner = l1.identity().retain_memory(Memory(
+        "l2:comparison:fake-but-plausible",
+        json.dumps(review), p("fabricated", "world"), p("fabricated", "store"),
+    ))
+    with pytest.raises(ForecastRejected, match="original forecast/observation"):
+        read_surprise_candidates(
+            owner, session_id="session-1", cue_tags=l1.TAGS,
+            world_revision=3, admitted_evidence_sha256=ADMITTED,
+        )
+
+
+def test_surprise_lookup_fails_closed_without_both_original_digest_admissions():
+    f = forecast()
+    o = observation(result="near")
+    owner, _ = retain_comparison(
+        original_owner(f, o), f, o,
+        admitted_source_sha256=ADMITTED,
+        integration_provenance=p("L2", "review"),
+    )
+    with pytest.raises(ForecastRejected, match="original evidence"):
+        read_surprise_candidates(
+            owner, session_id="session-1", cue_tags=l1.TAGS,
+            world_revision=3,
+            admitted_evidence_sha256=frozenset({l1.DIGEST_B}),
+        )
