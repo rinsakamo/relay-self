@@ -148,11 +148,13 @@ class BoundedSessionDriver:
         on_l2_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
         observation_audit: S4NativeObservationAudit | None = None,
         on_session_started: Callable[[], Awaitable[None]] | None = None,
+        on_outcome_closed: Callable[[L0Step, NormalActionReceipt], Awaitable[None]] | None = None,
     ) -> dict[str, object]:
         if (self._used or not all(callable(x) for x in (probe, grant, on_action))
                 or (on_candidate is not None and not callable(on_candidate))
                 or (on_l2_probe is not None and not callable(on_l2_probe))
                 or (on_session_started is not None and not callable(on_session_started))
+                or (on_outcome_closed is not None and not callable(on_outcome_closed))
                 or (observation_audit is not None
                     and (not isinstance(observation_audit, S4NativeObservationAudit)
                          or observation_audit.session_id != self.host.session_id
@@ -370,6 +372,17 @@ class BoundedSessionDriver:
                     habit_granted=False,
                 )
                 closures += 1
+                if on_outcome_closed is not None:
+                    # Only after durable, independently validated Action outcome.
+                    # Any failed continuation is UNKNOWN/no-replay, not a
+                    # second authorized Self Action or a replay of this one.
+                    remaining = end - time.monotonic()
+                    if remaining <= 0 or self._stopped or self._paused:
+                        terminal = "OUTCOME_CLOSED_CONTINUATION_NOT_DISPATCHED"
+                        break
+                    await asyncio.wait_for(
+                        on_outcome_closed(step, receipt), timeout=min(10, remaining),
+                    )
             else:
                 terminal = "FRAME_BUDGET_ENDED"
             summary: dict[str, object] = {

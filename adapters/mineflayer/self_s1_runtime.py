@@ -56,6 +56,7 @@ from adapters.mineflayer.self_s6_intervention import (
     S6ControlledPlan,
 )
 from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
+from adapters.mineflayer.self_s8_two_epoch import S8TwoEpochIntervention, S8TwoEpochPlan
 from experiments.standard_env.golden_admission import verify_qualified_world
 from experiments.standard_env.node_runtime import verify_node_runtime
 from experiments.standard_env.preflight import _check_tools, read_profile
@@ -279,18 +280,22 @@ def s49_callbacks(
 async def run_physical(
     binding, output: Path, budget: SessionBudget, *,
     l2_observer: LiveL2Observer | None = None,
-    controlled_target: S6ControlledPlan | None = None,
+    controlled_target: S6ControlledPlan | S8TwoEpochPlan | None = None,
     capture_native_originals: bool = False,
 ) -> dict:
     """Exactly one owned Java + Mineflayer lifetime, natural World events only."""
     if l2_observer is not None and not isinstance(l2_observer, LiveL2Observer):
         raise SessionRunRejected("existing S60 read-only owner required")
-    if controlled_target is not None and not isinstance(controlled_target, S6ControlledPlan):
-        raise SessionRunRejected("S6 requires an independently authorized controlled plan")
+    if controlled_target is not None and not isinstance(
+        controlled_target, (S6ControlledPlan, S8TwoEpochPlan)
+    ):
+        raise SessionRunRejected("S6/S8 requires an independently authorized controlled plan")
     if type(capture_native_originals) is not bool:
         raise SessionRunRejected("S7 capture requires explicit bool")
     if controlled_target is not None and l2_observer is not None:
-        raise SessionRunRejected("controlled S6 target forbids additional L2 owner")
+        raise SessionRunRejected("controlled S6/S8 target forbids additional L2 owner")
+    if isinstance(controlled_target, S8TwoEpochPlan) and not capture_native_originals:
+        raise SessionRunRejected("S8 two-epoch run requires prospective S7 bridge capture")
     server = collector = session = driver = temp = receipt = None
     previous = os.environ.get("RELAYSELF_RSEE_NODE_RUNTIME_ROOT")
     root = RSEE
@@ -351,7 +356,9 @@ async def run_physical(
         audit = S4NativeObservationAudit(sid, max_frames=budget.max_frames)
         intervention = (
             S6ControlledIntervention(controlled_target, native_spawn, sink)
-            if controlled_target is not None else None
+            if isinstance(controlled_target, S6ControlledPlan)
+            else S8TwoEpochIntervention(controlled_target, native_spawn, sink)
+            if isinstance(controlled_target, S8TwoEpochPlan) else None
         )
         # Only S49 consumes native frames; existing S60 L2 sees validated
         # already-received probes and can never supply an Action grant.
@@ -361,8 +368,17 @@ async def run_physical(
             on_l2_probe=l2_observer.observe if l2_observer is not None else None,
             observation_audit=audit,
             on_session_started=(
-                (lambda: intervention.submit_once(server))
+                (lambda: intervention.submit_first(server))
+                if isinstance(intervention, S8TwoEpochIntervention)
+                else (lambda: intervention.submit_once(server))
                 if intervention is not None else None
+            ),
+            on_outcome_closed=(
+                (lambda step, receipt: intervention.after_action_closed(
+                    server, step, receipt,
+                    memory_count=len(experience.snapshot.memories),
+                ))
+                if isinstance(intervention, S8TwoEpochIntervention) else None
             ),
         )
         if executor.supervisor.open_actions:
@@ -374,6 +390,10 @@ async def run_physical(
         result["s3_observed_memories"] = len(experience.snapshot.memories)
         result["s3_learning_updates"] = 0
         result["s3_habit_grants"] = 0
+        if isinstance(intervention, S8TwoEpochIntervention):
+            result["s8_external_commands_attempted"] = intervention.commands_attempted
+            result["s8_distinct_second_target_closed"] = intervention.second_closed
+            result["s8_memory_caused_action_attested"] = False
         return result
     finally:
         if driver is not None:
