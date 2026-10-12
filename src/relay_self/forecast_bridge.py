@@ -224,6 +224,10 @@ def compare_forecast(
         return ForecastContrast(
             ContrastStatus.NOT_OBSERVED, base, reason="different_action_executed",
         )
+    if e.cue_tags != forecast.cue_tags:
+        return ForecastContrast(
+            ContrastStatus.UNKNOWN, base, reason="source_cue_context_mismatch",
+        )
     if e.world_revision <= forecast.source_revision:
         return ForecastContrast(
             ContrastStatus.STALE, base, reason="observation_not_after_forecast",
