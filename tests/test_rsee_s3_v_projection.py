@@ -174,7 +174,7 @@ def test_derived_retention_and_independent_raw_bytes_reviewer_only(original_proj
 
 @pytest.mark.parametrize(("key", "value", "reason"), [
     ("expected_head", "a" * 40, "frozen source HEAD"),
-    ("expected_session", "other", "session identity mismatch"),
+    ("expected_session", "other", "S3 event identity/order/source mismatch"),
     ("expected_profile_sha256", "wrong", "profile SHA256"),
 ])
 def test_independent_source_identity_fail_closed(original_projection, key, value, reason):
