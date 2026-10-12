@@ -26,7 +26,7 @@ def test_pinned_issue_report_is_not_raw_or_scientific_go():
 
 @pytest.mark.parametrize(("key", "value"), [
     ("source_head", v.S7_HEAD),
-    ("r5_source_head", v.S6_HEAD),
+    ("r5_source_head", v.SOURCE_HEAD),
     ("target_type", "NATURAL_HOSTILE_ZOMBIE"),
     ("native_outer_frames_reported", 188),
     ("physical_retry_reported", 1),
