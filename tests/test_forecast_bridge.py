@@ -207,6 +207,12 @@ def test_qualification_and_absence_do_not_produce_fake_result(which, expected):
 
 def test_strict_value_comparison_does_not_confuse_boolean_with_integer():
     f = forecast()
+    integer_rule = replace(
+        f.prediction.rule, assignments=(StateVariable("hazard_after", 1),),
+    )
+    f = replace(f, prediction=predict_transition(
+        f.prediction.source_state, integer_rule,
+    ))
     o = replace(observation(), variables=(StateVariable("hazard_after", True),))
     assert compare_forecast(
         f, o, admitted_source_sha256=ADMITTED,
