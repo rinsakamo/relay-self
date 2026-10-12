@@ -48,6 +48,9 @@ def _controller(driver, *, fail_at=None):
                     kind="spawn", seq=2)
     server = SimpleNamespace(returncode=None, stdin=FakeStdin(fail_at=fail_at))
     owner = S8TwoEpochIntervention(S8TwoEpochPlan(REF), spawn, driver.events)
+    # Build synthetic fixture before asyncio.run; S42 builds retained state via
+    # its own offline asyncio runner, which must not be nested in callbacks.
+    owner._test_clearance_template = s42._pair()[1].observation
     return owner, server
 
 
@@ -58,7 +61,7 @@ def _rows(tmp_path):
 def _native_clearance(owner, *, zombies=(), foreign=False, truncated=False,
                       non_target=False, stale=False):
     """Actual native-message SHAPE, not an actual World/source receipt."""
-    near = s42._pair()[1].observation
+    near = owner._test_clearance_template
     original = near.snapshot.nearby_entities[0]
     members = tuple(replace(original, entity_id=n) for n in zombies)
     if non_target:
