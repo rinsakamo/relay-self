@@ -64,9 +64,11 @@ L4 returns one of:
 - `NO_MATCHED_HOLDOUT` / `NO_GOAL_SOURCE` / `UNVERIFIED` / `NON_MATCHED` /
   `NO_TRANSFER`: no paired value claim;
 - `CHEAP_NULL_EQUAL` or `CHEAP_DOMINATES`: no distinctive retained value;
+- `TRADEOFF_UNRESOLVED`: one arm improves a goal metric but costs more
+  unpriced work; never infer net benefit or cheap dominance;
 - `REVIEW_LIFT_ONLY`: a *synthetic or externally supplied candidate* with
-  more goal successes and no more declared work; **independent V scientific
-  qualification still required**.
+  no fewer goal successes and no more declared work, with at least one
+  strict improvement; **independent V scientific qualification still required**.
 
 Every output has `science_qualified=false`,
 `action_authority=false`, `learning_updates=0`, `habit_grants=0`.
