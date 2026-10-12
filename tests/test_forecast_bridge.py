@@ -213,7 +213,10 @@ def test_forecast_requires_existing_action_condition_and_real_prd_result():
     with pytest.raises(ForecastRejected, match="action_ref"):
         forecast(has_condition=False)
     f = forecast()
-    forged = replace(f.prediction, status=PredictionStatus.UNDETERMINED)
+    altered_future = replace(
+        f.prediction.predicted_state, state_id="different-proposed-next-state",
+    )
+    forged = replace(f.prediction, predicted_state=altered_future)
     with pytest.raises(ForecastRejected, match="forged"):
         replace(f, prediction=forged)
     with pytest.raises(ForecastRejected, match="source SHA256"):
