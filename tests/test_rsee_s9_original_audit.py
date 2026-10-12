@@ -238,7 +238,8 @@ def test_r5_s9_requires_actual_original_and_r1_envelope(case, monkeypatch):
 
     # Even after independently reviewed S9 bytes, R2 must have an
     # original source envelope: the mock fixture alone cannot be promoted.
-    monkeypatch.setattr(s9, "audit", lambda root: r6.audit(
+    original_audit = r6.audit
+    monkeypatch.setattr(s9, "audit", lambda root: original_audit(
         root, expected=case["expected"],
     ))
     with pytest.raises(r4.R4Rejected, match="predecode received bridge"):
