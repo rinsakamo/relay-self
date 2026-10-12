@@ -3,7 +3,7 @@ name: RSEE R5 pinned S3-S6-S7 source contract offline
 on:
   push:
     branches:
-      - 'infra/rsee-r5-sibling-compat-*'
+      - 'infra/rsee-r5-pinned-s3-lineage-*'
   pull_request:
     branches:
       - 'infra/rsee-r4-evidence-projection-*'
