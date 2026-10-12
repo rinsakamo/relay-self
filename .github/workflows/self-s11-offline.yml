@@ -1,0 +1,124 @@
+name: Self S Lane S11 L5 read-only shadow intake
+
+on:
+  push:
+    branches:
+      - 'self/s-lane-s11-*'
+  pull_request:
+    branches:
+      - 'self/s-lane-s10-*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: self-s11-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Verify source ancestry and repository contracts
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor cd6edc11f390c759feeb437dd5a14ad03bf8ee98 HEAD
+          python tools/check_repository.py
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: S11 L5 shadow intake + S10 paired Memory negatives and inherited S9/S3
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          python -m adapters.mineflayer.self_s1_runtime
+          python -m adapters.mineflayer.self_s6_controlled_trial
+          python -m adapters.mineflayer.self_s7_native_trial
+          python -m adapters.mineflayer.self_s8_trial
+          python -m adapters.mineflayer.self_s7_evidence_audit
+          python -m pytest -q tests/test_self_s11_l5_shadow_intake.py tests/test_self_s10_memory_ablation.py tests/test_self_s9_failure_receipts.py tests/test_self_s8_two_epoch.py tests/test_self_s7_native_originals.py tests/test_mineflayer_process_session.py tests/test_self_s6_controlled.py tests/test_self_s5_world_opportunity.py tests/test_self_s4_observation.py tests/test_self_s3_experience.py tests/test_self_s2_integration.py tests/test_self_s1_runtime.py tests/test_self_continuous_host.py
+      - name: Full inherited Python regression
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: python -m pytest -q
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'ruff==0.16.7'
+      - run: ruff check src tests experiments adapters observability
+  mineflayer-protocol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - run: npm run check --prefix adapters/mineflayer
+
+  pinned-l5-crosslane:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 17c5357fd5625274ee567ad979b780e77bf7b1e7
+          path: sibling-l5
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Verify exact independent L5 ownership
+        run: |
+          test "$(git -C sibling-l5 rev-parse HEAD)" = "17c5357fd5625274ee567ad979b780e77bf7b1e7"
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          test -z "$(git -C sibling-l5 status --porcelain --untracked-files=all)"
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Produce real fixed-L5 ShadowAdvice JSON from original L5 implementation
+        env:
+          PYTHONPATH: sibling-l5/src:sibling-l5/tests:sibling-l5
+        run: |
+          python - <<'PY' > "$RUNNER_TEMP/s11_l5_advice.json"
+          import json
+          from dataclasses import asdict
+          import test_contextual_shadow as l5
+          owner, labels, admission = l5.setup_experience()
+          other, other_labels, other_admission = l5.setup_experience(
+              constant_winner="OPTION_B",
+          )
+          result = {
+              "producer_head": "17c5357fd5625274ee567ad979b780e77bf7b1e7",
+              "distinct": asdict(l5.review(owner, labels, admission)),
+              "cheap": asdict(l5.review(other, other_labels, other_admission)),
+              "withheld": asdict(l5.review(owner, (), admission)),
+          }
+          print(json.dumps(result, sort_keys=True, separators=(",", ":")))
+          PY
+      - name: Consumer exercises S11 contract against real pinned L5 output
+        env:
+          PYTHONPATH: src:tests:.
+          S11_ACTUAL_L5_ADVICE: ${{ runner.temp }}/s11_l5_advice.json
+        run: python -m pytest -q tests/s11_l5_actual_crosslane.py
