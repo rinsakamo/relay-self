@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
-from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterStarted,
     MineflayerDecodedMessage,
@@ -18,6 +17,7 @@ from adapters.mineflayer.python_protocol import (
     encode_set_control,
     encode_shutdown,
 )
+from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 
 
 class MineflayerProcessError(RuntimeError):
