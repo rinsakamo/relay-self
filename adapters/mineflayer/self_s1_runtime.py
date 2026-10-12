@@ -51,6 +51,10 @@ from adapters.mineflayer.self_s2_candidates import (
 )
 from adapters.mineflayer.self_s3_experience import S3ReadOnlyExperience
 from adapters.mineflayer.self_s4_observation import S4NativeObservationAudit
+from adapters.mineflayer.self_s6_intervention import (
+    S6ControlledIntervention,
+    S6ControlledPlan,
+)
 from experiments.standard_env.golden_admission import verify_qualified_world
 from experiments.standard_env.node_runtime import verify_node_runtime
 from experiments.standard_env.preflight import _check_tools, read_profile
@@ -274,10 +278,15 @@ def s49_callbacks(
 async def run_physical(
     binding, output: Path, budget: SessionBudget, *,
     l2_observer: LiveL2Observer | None = None,
+    controlled_target: S6ControlledPlan | None = None,
 ) -> dict:
     """Exactly one owned Java + Mineflayer lifetime, natural World events only."""
     if l2_observer is not None and not isinstance(l2_observer, LiveL2Observer):
         raise SessionRunRejected("existing S60 read-only owner required")
+    if controlled_target is not None and not isinstance(controlled_target, S6ControlledPlan):
+        raise SessionRunRejected("S6 requires an independently authorized controlled plan")
+    if controlled_target is not None and l2_observer is not None:
+        raise SessionRunRejected("controlled S6 target forbids additional L2 owner")
     server = collector = session = driver = temp = None
     previous = os.environ.get("RELAYSELF_RSEE_NODE_RUNTIME_ROOT")
     root = RSEE
@@ -302,7 +311,7 @@ async def run_physical(
             ),
             startup_timeout_s=12,
         )
-        await _await_spawn(session)
+        native_spawn = await _await_spawn(session)
         sid = session.started.session_id
         _, committed, _, _, _, _ = await asyncio.to_thread(s19._epoch_one)
         retained = committed.new_state
@@ -328,6 +337,10 @@ async def run_physical(
         )
         candidates = S2ReadOnlyCandidates(sid, preconfigured_wait_repertoire())
         audit = S4NativeObservationAudit(sid, max_frames=budget.max_frames)
+        intervention = (
+            S6ControlledIntervention(controlled_target, native_spawn, sink)
+            if controlled_target is not None else None
+        )
         # Only S49 consumes native frames; existing S60 L2 sees validated
         # already-received probes and can never supply an Action grant.
         result = await driver.run(
@@ -335,6 +348,10 @@ async def run_physical(
             on_candidate=candidates.review,
             on_l2_probe=l2_observer.observe if l2_observer is not None else None,
             observation_audit=audit,
+            on_session_started=(
+                lambda: intervention.submit_once(server)
+                if intervention is not None else None
+            ),
         )
         if executor.supervisor.open_actions:
             raise SessionRunRejected("S49 Action supervisor has open Action")
