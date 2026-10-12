@@ -113,7 +113,7 @@ jobs:
           (
             cd s7
             export PYTHONPATH="src:tests:."
-            python -m adapters.mineflayer.self_s7_native_trial | grep -F 'S7_DRY_RUN_NO_EFFECTS'
+            python -m adapters.mineflayer.self_s7_native_trial | grep -F 'S7_NATIVE_ORIGINALS_DRY_RUN_NO_EFFECTS'
             python -m pytest -q tests/test_self_s7_native_originals.py
           )
           (
