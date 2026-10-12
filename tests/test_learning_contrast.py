@@ -105,8 +105,10 @@ def test_s9_two_actions_without_independent_goal_or_matched_cheap_control_are_no
                           "expected"), [
     ((True, True), (True, True), (3, 3), (3, 3),
      LearningReviewStatus.CHEAP_NULL_EQUAL),
-    ((False, False), (True, True), (3, 3), (5, 5),
+    ((False, False), (True, True), (3, 3), (2, 2),
      LearningReviewStatus.CHEAP_DOMINATES),
+    ((False, False), (True, True), (3, 3), (5, 5),
+     LearningReviewStatus.TRADEOFF_UNRESOLVED),
     ((True, True), (False, False), (9, 9), (5, 5),
      LearningReviewStatus.TRADEOFF_UNRESOLVED),
 ])
