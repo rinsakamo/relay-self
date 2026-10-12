@@ -335,7 +335,7 @@ def test_surprise_lookup_fails_closed_without_both_original_digest_admissions():
         admitted_source_sha256=ADMITTED,
         integration_provenance=p("L2", "review"),
     )
-    with pytest.raises(ForecastRejected, match="original evidence"):
+    with pytest.raises(ForecastRejected, match="original forecast/observation"):
         read_surprise_candidates(
             owner, session_id="session-1", cue_tags=l1.TAGS,
             world_revision=3,
