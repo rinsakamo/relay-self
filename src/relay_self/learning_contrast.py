@@ -143,13 +143,14 @@ def _training(
     owner: PersistentCognition,
     labels: tuple[ExternalGoalLabel, ...],
     admission: ExternalTrialAdmission,
-) -> tuple[set[str], set[str], set[str]]:
+) -> tuple[set[str], set[str], set[str], set[str]]:
     if not isinstance(labels, tuple) or not 2 <= len(labels) <= _MAX_TRAIN:
         raise MatchedEvidenceRejected("bounded prior training source tuple required")
     originals = {m.memory_id: m for m in owner.memories}
     sessions: set[str] = set()
     training_memory_ids: set[str] = set()
     cues: set[str] = set()
+    training_originals: set[str] = set()
     for label in labels:
         if not isinstance(label, ExternalGoalLabel):
             raise MatchedEvidenceRejected("typed original goal witness pointer required")
@@ -190,6 +191,12 @@ def _training(
             raise MatchedEvidenceRejected("prior training and goal originals unverified")
         if not label.goal_reached:
             raise MatchedEvidenceRejected("unsuccessful experience is not proven training")
+        source_pair = (v["evidence_sha256"], label.goal_source_sha256)
+        if len(set(source_pair)) != 2 or any(
+            item in training_originals for item in source_pair
+        ):
+            raise MatchedEvidenceRejected("duplicate training original action/goal receipt")
+        training_originals.update(source_pair)
         hint = retrieve_experience(owner, ReuseQuery(
             v["session_id"], v["world_revision"], tuple(v["cue_tags"]),
             frozenset({v["evidence_sha256"]}), max_revision_lag=0,
@@ -204,7 +211,7 @@ def _training(
         sessions.add(v["session_id"])
         training_memory_ids.add(label.observed_memory_id)
         cues.add("/".join(v["cue_tags"]))
-    return sessions, training_memory_ids, cues
+    return sessions, training_memory_ids, cues, training_originals
 
 
 def review_matched_transfer(
@@ -239,7 +246,9 @@ def review_matched_transfer(
     if not training:
         return MatchedReview(LearningReviewStatus.NO_GOAL_SOURCE,
                              reason="no_independent_training_goal")
-    training_sessions, training_ids, train_cues = _training(owner, training, admission)
+    training_sessions, training_ids, train_cues, training_originals = _training(
+        owner, training, admission,
+    )
     if preregistered_plan_sha256 not in admission.plan_sha256:
         return MatchedReview(LearningReviewStatus.UNVERIFIED,
                              reason="preregistered_source_plan_not_admitted")
@@ -270,6 +279,10 @@ def review_matched_transfer(
             trial.action_sha256, trial.goal_sha256,
             trial.decision_sha256, trial.cost_sha256,
         ):
+            if evidence in training_originals:
+                raise MatchedEvidenceRejected(
+                    "heldout source original replayed from training"
+                )
             if evidence in seen_originals:
                 raise MatchedEvidenceRejected("replayed source original across trials")
             seen_originals.add(evidence)
