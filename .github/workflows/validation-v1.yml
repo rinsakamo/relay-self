@@ -113,6 +113,13 @@ jobs:
           ref: 364f4cc66fbe393717d31adce22747be17446dd8
           path: external-r5
           persist-credentials: false
+      - name: Checkout R6 immutable S9 native-original reviewer (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: b5ca2afc0e2cb8b419e7d2f18afc3e24f991ad4a
+          path: external-r6
+          persist-credentials: false
       - name: Checkout S9 original source at exact HEAD (read only)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -131,6 +138,15 @@ jobs:
           test "$(git -C external-s9 rev-parse HEAD)" = "916814742567f8ff396b5c078d22f897d8418927"
           (cd external-s9 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_self_s9_failure_receipts.py)
           test -z "$(git -C external-s9 status --porcelain --untracked-files=no)"
+      - name: R6 true immutable source offline tests and default no-I/O review plan
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-r6 rev-parse HEAD)" = "b5ca2afc0e2cb8b419e7d2f18afc3e24f991ad4a"
+          (cd external-r6 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_rsee_s9_original_audit.py)
+          (cd external-r6 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m experiments.standard_env.s9_original_audit) > "$RUNNER_TEMP/r6-plan.json"
+          python -c 'import json,os; p=os.path.join(os.environ["RUNNER_TEMP"],"r6-plan.json"); d=json.load(open(p)); assert d["classification"]=="RSEE_R6_PLAN_ONLY" and d["v_admission_granted"] is False and d["science_qualified"] is False'
+          test -z "$(git -C external-r6 status --porcelain --untracked-files=no)"
       - name: Verify pinned R5 S6 historical denial without raw-source spoofing
         env:
           PYTHONDONTWRITEBYTECODE: '1'

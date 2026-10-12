@@ -103,3 +103,97 @@ def test_report_manipulation_cannot_hide_no_source():
     row["evidence_origin"] = "R9_VERIFIED_RAW_ORIGINALS"
     with pytest.raises(v.VRejected):
         v.review(row)
+
+
+def synthetic_r6_claim():
+    """Source-shaped fixture only; NOT a host original readback."""
+    return {
+        "classification": v.R6_REVIEW_CLASS,
+        "source_head": v.S9_HEAD,
+        "source_session": "dacf338b-4ba9-4e91-8eea-d4aebd0aef22",
+        "received_sha256_verified": v.S9_IN,
+        "sent_sha256_verified": v.S9_OUT,
+        "received_original_lines": 39,
+        "sent_attempt_lines": 14,
+        "retained_memory_count": 2,
+        "distinct_reported_action_ids": 2,
+        "source_scope": "MINEFLAYER_BRIDGE_JSONL_NOT_MINECRAFT_TCP",
+        "hash_expectation_origin":
+            "S9_OPERATOR_REPORT_NOT_INDEPENDENT_PHYSICAL_ATTESTATION",
+        "r1_envelope_verified": False,
+        "r2_raw_handoff_admitted": False,
+        "typed_s16_semantics_attested": False,
+        "memory_causal_effect_attested": False,
+        "native_stop_ack_attested": False,
+        "goal_success_attested": False,
+        "science_qualified": False,
+        "v_admission_granted": False,
+        "physical_execution_authorized": False,
+        "side_effects": "READ_ONLY_NO_WRITE_NO_PROCESS",
+    }
+
+
+def test_s9_external_staging_gate_is_not_memory_cognitive_policy():
+    out = v.review(original())
+    assert out["memory_count_gated_external_epoch2"] == "YES_IN_FROZEN_S9_SOURCE"
+    assert out["memory_hint_controls_l0_choice"] == "NO_IN_FROZEN_S9_SOURCE"
+    assert out["memory_effect_on_second_action"] == "NOT_DEMONSTRATED"
+
+
+def test_valid_synthetic_r6_result_is_review_only_not_host_attestation():
+    x = v.review_r6_result(synthetic_r6_claim())
+    assert x["pinned_r6_source_head"] == v.R6_HEAD
+    assert x["s9_source_head"] == v.S9_HEAD
+    assert x["r1_envelope"] == "NOT_ADMITTED"
+    assert x["r2_typed_action_originals"] == "NOT_ADMITTED"
+    assert x["v_independent_original_bytes_read"] is False
+    assert x["r6_result_origin_independently_attested"] is False
+    assert x["science_qualified"] is False
+    assert x["product_qualified"] is False
+
+
+@pytest.mark.parametrize(("field", "value"), [
+    ("classification", "RSEE_R1_ORIGINALS_ADMITTED"),
+    ("source_head", v.S8_HEAD),
+    ("source_session", "foreign"),
+    ("received_sha256_verified", "a" * 64),
+    ("sent_sha256_verified", v.S9_IN),
+    ("retained_memory_count", 1),
+    ("distinct_reported_action_ids", 1),
+    ("source_scope", "MINECRAFT_TCP_PACKETS"),
+    ("r1_envelope_verified", True),
+    ("r2_raw_handoff_admitted", True),
+    ("typed_s16_semantics_attested", True),
+    ("memory_causal_effect_attested", True),
+    ("native_stop_ack_attested", True),
+    ("goal_success_attested", True),
+    ("science_qualified", True),
+    ("v_admission_granted", True),
+    ("physical_execution_authorized", True),
+])
+def test_r6_claim_cannot_promote_original_or_science(field, value):
+    x = synthetic_r6_claim()
+    x[field] = value
+    with pytest.raises(v.VRejected):
+        v.review_r6_result(x)
+
+
+def test_r6_unexpected_claim_field_rejected():
+    x = synthetic_r6_claim()
+    x["model_advantage"] = True
+    with pytest.raises(v.VRejected):
+        v.review_r6_result(x)
+
+
+def test_r6_cli_synthetic_candidate_cannot_claim_host_originals(tmp_path, capsys):
+    candidate = tmp_path / "synthetic_r6_result.json"
+    candidate.write_text(json.dumps(synthetic_r6_claim()), encoding="utf-8")
+    assert v.main(["--r6-result", str(candidate)]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["r6_review_candidate"]["v_independent_original_bytes_read"] is False
+    assert out["r6_review_candidate"]["science_qualified"] is False
+    symlink = tmp_path / "symlink"
+    symlink.symlink_to(candidate)
+    assert v.main(["--r6-result", str(symlink)]) == 2
+    candidate.write_text(json.dumps({**synthetic_r6_claim(), "science_qualified": True}))
+    assert v.main(["--r6-result", str(candidate)]) == 2

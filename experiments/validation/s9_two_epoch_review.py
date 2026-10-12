@@ -126,6 +126,9 @@ def review(report: dict[str, Any]) -> dict[str, Any]:
         "controlled_target_clearance": "THREE_BOUNDED_FRESH_PROBES_REPORTED",
         "physical_goal": "NOT_ATTESTED",
         "memory_effect_on_second_action": "NOT_DEMONSTRATED",
+        "memory_count_gated_external_epoch2": "YES_IN_FROZEN_S9_SOURCE",
+        "memory_hint_controls_l0_choice": "NO_IN_FROZEN_S9_SOURCE",
+        "s9_source_bound_no_direct_cognitive_memory_effect": True,
         "cheap_control_counterfactual": "NOT_RUN_UNMATCHED_S8_S9",
         "learning_revision": "NONE_REPORTED",
         "learned_habit": "NONE_REPORTED",
@@ -146,9 +149,65 @@ def review(report: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+R6_HEAD = "b5ca2afc0e2cb8b419e7d2f18afc3e24f991ad4a"
+R6_REVIEW_CLASS = "RSEE_R6_S9_ORIGINAL_BRIDGE_AND_MEMORY_BYTES_REVIEW_ONLY"
+
+
+def review_r6_result(receipt: dict[str, Any]) -> dict[str, Any]:
+    """Validate a claimed R6 result's qualification ceiling, not its host origin."""
+    expected: dict[str, Any] = {
+        "classification": R6_REVIEW_CLASS,
+        "source_head": S9_HEAD,
+        "source_session": "dacf338b-4ba9-4e91-8eea-d4aebd0aef22",
+        "received_sha256_verified": S9_IN,
+        "sent_sha256_verified": S9_OUT,
+        "received_original_lines": 39,
+        "sent_attempt_lines": 14,
+        "retained_memory_count": 2,
+        "distinct_reported_action_ids": 2,
+        "source_scope": "MINEFLAYER_BRIDGE_JSONL_NOT_MINECRAFT_TCP",
+        "hash_expectation_origin":
+            "S9_OPERATOR_REPORT_NOT_INDEPENDENT_PHYSICAL_ATTESTATION",
+        "r1_envelope_verified": False,
+        "r2_raw_handoff_admitted": False,
+        "typed_s16_semantics_attested": False,
+        "memory_causal_effect_attested": False,
+        "native_stop_ack_attested": False,
+        "goal_success_attested": False,
+        "science_qualified": False,
+        "v_admission_granted": False,
+        "physical_execution_authorized": False,
+        "side_effects": "READ_ONLY_NO_WRITE_NO_PROCESS",
+    }
+    check(type(receipt) is dict and set(receipt) == set(expected),
+          "R6 claimed readback contract incomplete/expanded")
+    for key, value in expected.items():
+        equals(receipt, key, value)
+    return {
+        "schema": "RELAYSELF_V1_R6_REVIEW_INTAKE_V1",
+        "pinned_r6_source_head": R6_HEAD,
+        "s9_source_head": S9_HEAD,
+        "s9_session": expected["source_session"],
+        "reported_r6_result": R6_REVIEW_CLASS,
+        "v_independent_original_bytes_read": False,
+        "r6_result_origin_independently_attested": False,
+        "r1_envelope": "NOT_ADMITTED",
+        "r2_typed_action_originals": "NOT_ADMITTED",
+        "memory_caused_l0_action": "NOT_DEMONSTRATED",
+        "source_causality": (
+            "S3_MEMORY_COUNT_GATES_EXTERNAL_EPOCH2_EXPERIMENT"
+            "_NOT_L0_ACTION_SELECTION"
+        ),
+        "science_qualified": False,
+        "product_qualified": False,
+        "classification": "V_R6_RESULT_SHAPE_MATCH_REVIEW_ONLY_NO_SCIENCE_OR_ACTION_ADMISSION",
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--report", type=Path, default=REPORT)
+    parser.add_argument("--r6-result", type=Path)
     args = parser.parse_args(argv)
     try:
         file = args.report
@@ -156,6 +215,15 @@ def main(argv: list[str] | None = None) -> int:
               and 0 < file.stat().st_size <= 100_000,
               "bounded nonsymlink original report required")
         output = review(json.loads(file.read_text(encoding="utf-8")))
+        if args.r6_result is not None:
+            r6_file = args.r6_result
+            check(r6_file.is_absolute() and r6_file.is_file()
+                  and not r6_file.is_symlink()
+                  and 0 < r6_file.stat().st_size <= 100_000,
+                  "existing bounded absolute R6 result required")
+            output["r6_review_candidate"] = review_r6_result(
+                json.loads(r6_file.read_text(encoding="utf-8"))
+            )
         print(json.dumps(output, indent=2, sort_keys=True))
         return 0
     except (ValueError, OSError, TypeError, KeyError) as exc:

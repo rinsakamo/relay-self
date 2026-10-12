@@ -286,6 +286,28 @@
       "receipt_sha256": null,
       "status": "UNDETERMINED",
       "authority": "#537 comment 6120089028 / #544 / #595"
+    },
+    {
+      "id": "R6_S9_BRIDGE_MEMORY_REVIEW_SOURCE_ONLY",
+      "lane": "R",
+      "claim": "Actual immutable R6 source checker audits existing host-local S9 predecode received/sent originals and 2 S3 Memory; exact CI PASS; host original byte audit NOT_RUN by V/R GitHub",
+      "source_head": "b5ca2afc0e2cb8b419e7d2f18afc3e24f991ad4a",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": "dacf338b-4ba9-4e91-8eea-d4aebd0aef22",
+      "receipt_sha256": null,
+      "status": "UNDETERMINED",
+      "authority": "#610 / #575 comment 6120364746"
+    },
+    {
+      "id": "S9_MEMORY_STAGING_NOT_L0_POLICY",
+      "lane": "V",
+      "claim": "At exact S9 source Memory count gates external experiment epoch2 continuation, whereas read-only Memory hint is never an input to NormalWorldL0/Action grant. Causal cognitive benefit cannot be claimed.",
+      "source_head": "916814742567f8ff396b5c078d22f897d8418927",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": "dacf338b-4ba9-4e91-8eea-d4aebd0aef22",
+      "receipt_sha256": null,
+      "status": "NO_GO",
+      "authority": "#609 / #595 / #544"
     }
   ],
   "golden": {
