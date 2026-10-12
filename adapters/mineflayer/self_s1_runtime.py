@@ -55,6 +55,7 @@ from adapters.mineflayer.self_s6_intervention import (
     S6ControlledIntervention,
     S6ControlledPlan,
 )
+from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 from experiments.standard_env.golden_admission import verify_qualified_world
 from experiments.standard_env.node_runtime import verify_node_runtime
 from experiments.standard_env.preflight import _check_tools, read_profile
@@ -279,15 +280,18 @@ async def run_physical(
     binding, output: Path, budget: SessionBudget, *,
     l2_observer: LiveL2Observer | None = None,
     controlled_target: S6ControlledPlan | None = None,
+    capture_native_originals: bool = False,
 ) -> dict:
     """Exactly one owned Java + Mineflayer lifetime, natural World events only."""
     if l2_observer is not None and not isinstance(l2_observer, LiveL2Observer):
         raise SessionRunRejected("existing S60 read-only owner required")
     if controlled_target is not None and not isinstance(controlled_target, S6ControlledPlan):
         raise SessionRunRejected("S6 requires an independently authorized controlled plan")
+    if type(capture_native_originals) is not bool:
+        raise SessionRunRejected("S7 capture requires explicit bool")
     if controlled_target is not None and l2_observer is not None:
         raise SessionRunRejected("controlled S6 target forbids additional L2 owner")
-    server = collector = session = driver = temp = None
+    server = collector = session = driver = temp = receipt = None
     previous = os.environ.get("RELAYSELF_RSEE_NODE_RUNTIME_ROOT")
     root = RSEE
     result: dict = {"classification": "S1_WORLD_NOT_COMPLETED", "physical_outcome": "UNKNOWN"}
@@ -298,6 +302,13 @@ async def run_physical(
             prepare_stopped_world, world_dir, binding, eula_accepted=True,
         )
         os.environ["RELAYSELF_RSEE_NODE_RUNTIME_ROOT"] = str(runtime_inputs(root)[4])
+        if capture_native_originals:
+            # Only future S7 opt-in sessions; S6's already-consumed session
+            # cannot be reconstructed from derived S3/S4 JSON files.
+            receipt = NativeStreamReceipt(
+                output / "native_bridge_received_original.jsonl",
+                output / "native_bridge_sent_original.jsonl",
+            )
         server, collector, _ = await _ready_server(
             world_dir, world_dir / "minecraft.jar",
             output / "minecraft_server.log",
@@ -310,6 +321,7 @@ async def run_physical(
                 username="RelaySelf", version="1.21.8",
             ),
             startup_timeout_s=12,
+            native_receipt=receipt,
         )
         native_spawn = await _await_spawn(session)
         sid = session.started.session_id
@@ -411,6 +423,13 @@ async def run_physical(
                     temp.cleanup()
             finally:
                 try:
+                    if receipt is not None:
+                        details = receipt.close()
+                        report = output / "native_bridge_source_receipt.json"
+                        with report.open("x", encoding="utf-8") as file:
+                            file.write(json.dumps(details, sort_keys=True) + "\n")
+                            file.flush()
+                            os.fsync(file.fileno())
                     cleanup_file = output / "owned_cleanup.json"
                     if cleanup_file.exists() or cleanup_file.is_symlink():
                         raise SessionRunRejected("cleanup receipt would overwrite evidence")
