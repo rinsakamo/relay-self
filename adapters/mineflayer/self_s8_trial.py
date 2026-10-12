@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     if (
         args.confirm != CONFIRM or not args.standing_eula_confirmed
         or not args.authorization_reference
-        or args.authorization_reference in SPENT_S6_REFS
+        or args.authorization_reference in SPENT_PHYSICAL_REFS
         or args.output_dir is None
     ):
         print(json.dumps({
