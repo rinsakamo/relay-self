@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from typing import Awaitable, Callable
 
 from adapters.mineflayer.normal_action import NormalActionReceipt
 from adapters.mineflayer.python_protocol import MineflayerObservation
@@ -109,6 +110,7 @@ class S8TwoEpochIntervention:
     async def after_action_closed(
         self, server: object, step: L0Step, receipt: NormalActionReceipt, *,
         memory_count: int,
+        clearance_probe: Callable[[str], Awaitable[MineflayerObservation]],
     ) -> None:
         if not self._first_ready or not isinstance(receipt, NormalActionReceipt):
             raise S8InterventionRejected("no original S49 closed Action after first target")
@@ -128,8 +130,78 @@ class S8TwoEpochIntervention:
                 learning_updates=0, habit_grants=0,
             )
             await self._submit(server, CLEAR, stage="clear_tagged_epoch1")
-            await self._submit(server, SUMMON, stage="epoch2_summon")
-            return
+            # stdin drain is NOT a Minecraft kill acknowledgement. In the S8
+            # physical trial the old and new zombies coexisted at the next
+            # probe and original L0 correctly rejected both. A fresh original
+            # native *probe*, not server log or command drain, gates summon2.
+            if not callable(clearance_probe):
+                raise S8InterventionRejected("S8_CLEAR_NOT_NATIVE_VERIFIED")
+            latest_seq = receipt.consequence.after_observation.seq
+            inspected = 0
+            for attempt in range(1, 5):
+                await asyncio.sleep(0.4)
+                request_id = f"s9-clear-{self.spawn.session_id[:32]}-{self._first_entity_id}-{attempt}"
+                reading = await asyncio.wait_for(
+                    clearance_probe(request_id), timeout=1.5,
+                )
+                if (
+                    not isinstance(reading, MineflayerObservation)
+                    or reading.kind != "probe"
+                    or reading.request_id != request_id
+                    or reading.session_id != self.sink.session_id
+                    or reading.provenance.source != "mineflayer"
+                    or reading.seq <= latest_seq
+                    or reading.snapshot.nearby_entities_coverage.truncated
+                    or reading.snapshot.nearby_entities_coverage.candidate_count
+                    != len(reading.snapshot.nearby_entities)
+                ):
+                    self.sink.write(
+                        "s9_clearance_probe_rejected", attempt=attempt,
+                        reason="foreign_stale_or_incomplete",
+                        command_executed_attested=False,
+                        action_authorized=False,
+                    )
+                    raise S8InterventionRejected("S8_CLEAR_NOT_NATIVE_VERIFIED")
+                latest_seq = reading.seq
+                inspected += 1
+                zombies = [
+                    e.entity_id for e in reading.snapshot.nearby_entities
+                    if e.name == "zombie"
+                ]
+                self.sink.write(
+                    "s9_clearance_source_probe", attempt=attempt,
+                    request_id=request_id, source_seq=reading.seq,
+                    source_ref=reading.provenance.reference,
+                    bounded_zombie_ids=zombies,
+                    bounded_registry_candidate_count=(
+                        reading.snapshot.nearby_entities_coverage.candidate_count
+                    ),
+                    first_entity_absent=self._first_entity_id not in zombies,
+                    bounded_zero_zombies=len(zombies) == 0,
+                    underlying_world_absence_proven=False,
+                    command_executed_attested=False,
+                    action_authorized=False,
+                )
+                if not zombies:
+                    self.sink.write(
+                        "s9_clearance_native_verified",
+                        first_entity_id=self._first_entity_id,
+                        request_id=request_id, source_seq=reading.seq,
+                        source_ref=reading.provenance.reference,
+                        bounded_registry_only=True,
+                        kill_ack_attested=False,
+                        action_authorized=False,
+                    )
+                    await self._submit(server, SUMMON, stage="epoch2_summon")
+                    return
+            self.sink.write(
+                "s9_clearance_unverified",
+                first_entity_id=self._first_entity_id,
+                original_probes_inspected=inspected,
+                second_summon_attempted=False, command_executed_attested=False,
+                action_authorized=False,
+            )
+            raise S8InterventionRejected("S8_CLEAR_NOT_NATIVE_VERIFIED")
         if self._second_closed:
             raise S8InterventionRejected("more than two closed Actions forbidden")
         if (
