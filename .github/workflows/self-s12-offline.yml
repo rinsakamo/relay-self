@@ -1,0 +1,119 @@
+name: Self S Lane S12 discrimination preflight against independent V cheap two-feature null
+
+on:
+  push:
+    branches:
+      - 'self/s-lane-s12-*'
+  pull_request:
+    branches:
+      - 'self/s-lane-s11-*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: self-s12-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Verify source ancestry and repository contracts
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor 69a150cc6f687e5b379713ba4c5e0ba2de60b38f HEAD
+          python tools/check_repository.py
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: S12 current S49 experiment readiness NO-GO plus S11/S10/S9 inherited
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          python -m adapters.mineflayer.self_s1_runtime
+          python -m adapters.mineflayer.self_s6_controlled_trial
+          python -m adapters.mineflayer.self_s7_native_trial
+          python -m adapters.mineflayer.self_s8_trial
+          python -m adapters.mineflayer.self_s7_evidence_audit
+          python -m pytest -q tests/test_self_s12_discrimination_preflight.py tests/test_self_s11_l5_shadow_intake.py tests/test_self_s10_memory_ablation.py tests/test_self_s9_failure_receipts.py tests/test_self_s8_two_epoch.py tests/test_self_s7_native_originals.py tests/test_mineflayer_process_session.py tests/test_self_s6_controlled.py tests/test_self_s5_world_opportunity.py tests/test_self_s4_observation.py tests/test_self_s3_experience.py tests/test_self_s2_integration.py tests/test_self_s1_runtime.py tests/test_self_continuous_host.py
+      - name: Full inherited Python regression
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: python -m pytest -q
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'ruff==0.16.7'
+      - run: ruff check src tests experiments adapters observability
+  mineflayer-protocol:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - run: npm run check --prefix adapters/mineflayer
+
+  pinned-v-and-l5-crosslane:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 17c5357fd5625274ee567ad979b780e77bf7b1e7
+          path: sibling-l5
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 53d50029da64a95c56bb56c6d48b5d14ce94e84a
+          path: sibling-v
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Verify fixed independent owner source identity
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          test "$(git -C sibling-l5 rev-parse HEAD)" = 17c5357fd5625274ee567ad979b780e77bf7b1e7
+          test "$(git -C sibling-v rev-parse HEAD)" = 53d50029da64a95c56bb56c6d48b5d14ce94e84a
+          test -z "$(git -C sibling-l5 status --porcelain --untracked-files=all)"
+          test -z "$(git -C sibling-v status --porcelain --untracked-files=all)"
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Execute independent actual V cheap two-feature oracle over original L5 synthetic fixture
+        env:
+          PYTHONPATH: sibling-l5/src:sibling-l5/tests:sibling-l5
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python sibling-v/experiments/validation/l5_cheap_oracle.py > "$RUNNER_TEMP/s12_v_oracle.json"
+      - name: S12 consumer verifies original V cheap-null and S49 action opportunity
+        env:
+          PYTHONPATH: src:tests:.
+          S12_ACTUAL_V_ORACLE: ${{ runner.temp }}/s12_v_oracle.json
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -m pytest -q tests/s12_v_actual_crosslane.py
