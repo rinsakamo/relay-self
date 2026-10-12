@@ -18,8 +18,9 @@ from adapters.mineflayer.self_s7_native_trial import CONSUMED_S6_GRANT
 from adapters.mineflayer.self_s8_two_epoch import S8TwoEpochPlan
 
 CONFIRM = "SELF-S8-TWO-EPOCH-ORIGINAL-ONE-SESSION"
-SPENT_S6_REFS = frozenset({
+SPENT_PHYSICAL_REFS = frozenset({
     CONSUMED_S6_GRANT,
+    "https://github.com/rinsakamo/relay-self/issues/537#issuecomment-6118976649",
     "https://github.com/rinsakamo/relay-self/issues/537#issuecomment-6116304704",
 })
 
