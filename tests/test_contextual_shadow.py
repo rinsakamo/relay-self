@@ -5,6 +5,7 @@ from dataclasses import replace
 
 import pytest
 
+import test_experience_bridge as l1
 from relay_self.contextual_shadow import (
     ContextualShadowRejected,
     ContextualStatus,
@@ -15,8 +16,6 @@ from relay_self.contextual_shadow import (
 from relay_self.experience_bridge import qualify_episode, retain_observation
 from relay_self.habit_shadow import ExternalGoalLabel, GoalSourceAdmission
 from relay_self.provenance import Provenance
-
-import test_experience_bridge as l1
 
 FEATURES = ("alpha", "beta")
 ACTIONS = ("OPTION_A", "OPTION_B")
