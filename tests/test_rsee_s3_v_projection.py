@@ -289,3 +289,21 @@ def test_no_hidden_grants_or_unauthorized_v_input(capsys):
     output = json.loads(capsys.readouterr().out)
     assert output["classification"] == "RSEE_R4_EVIDENCE_CHAIN_BLOCKED"
     assert output["v_admission_granted"] is False
+
+
+def test_cli_no_action_exits_nonzero_and_never_admits_v(original_projection, capsys):
+    kw = original_projection["kwargs"]
+    code = r4.main([
+        "--verify",
+        "--derived-root", str(kw["derived_root"]),
+        "--original-root", str(kw["original_root"]),
+        "--envelope", str(kw["envelope"]),
+        "--expected-head", kw["expected_head"],
+        "--expected-profile-sha256", kw["expected_profile_sha256"],
+        "--expected-session", kw["expected_session"],
+    ])
+    assert code == 2
+    result = json.loads(capsys.readouterr().out)
+    assert result["classification"] == "RSEE_R4_NO_RETAINED_ACTION_NOT_V_ADMISSIBLE"
+    assert result["v_admission_granted"] is False
+    assert result["r2_original_bytes"] == "NOT_CHECKED"
