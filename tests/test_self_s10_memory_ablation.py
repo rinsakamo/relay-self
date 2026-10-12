@@ -29,9 +29,16 @@ def _arms():
         receipt, correlated_probe=previous,
         expected_action_id=receipt.terminal.action_id,
     )
-    base, _, _, original_event, _ = s42._pair()
+    base, near, _, original_event, _ = s42._pair()
     event = replace(original_event, seq=5, session_id=sid)
-    reading = replace(previous, seq=6, request_id="s10-shadow-next-source")
+    # S3's earlier synthetic retention probe mixes S17 before-observation
+    # geometry with the S42 threat cue; suitable for S3 retention tests but
+    # NOT a native S49 geometric policy input. Use S42's matched geometry
+    # for the prospective paired event/probe instead.
+    reading = replace(
+        near.observation, session_id=sid, seq=6,
+        request_id="s10-shadow-next-source",
+    )
     a = NormalWorldL0(sid, "escape-threat", base, max_events=2,
                       max_action_requests=1)
     b = NormalWorldL0(sid, "escape-threat", base, max_events=2,
