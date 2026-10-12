@@ -24,7 +24,7 @@ from adapters.mineflayer.self_action_evidence import capture_native_action_evide
 from adapters.mineflayer.self_s2_candidates import S2CandidateReview
 from adapters.mineflayer.self_s4_observation import S4NativeObservationAudit
 from relay_self.action import ActionState
-from relay_self.reactive_l0 import L0ActionGrant, L0Step
+from relay_self.reactive_l0 import L0ActionGrant, L0Step, ReactiveL0Rejected
 from relay_self.world_conditioned_choice import WorldChoiceKind, WorldConditionedChoice
 
 
@@ -412,6 +412,10 @@ class BoundedSessionDriver:
                     pass
             self.events.write(
                 "session_failed", reason=type(exc).__name__,
+                reason_detail=(
+                    str(exc)[:240] if isinstance(exc, ReactiveL0Rejected)
+                    else None
+                ),
                 action_requests=self.host.action_requests,
                 closed_outcomes=closures, physical_outcome="UNKNOWN_IF_IN_FLIGHT",
                 no_replay=True, learning_updates=0, habit_grants=0,
