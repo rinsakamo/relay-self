@@ -341,3 +341,17 @@ def test_surprise_lookup_fails_closed_without_both_original_digest_admissions():
             world_revision=3,
             admitted_evidence_sha256=frozenset({l1.DIGEST_B}),
         )
+
+
+def test_same_action_but_different_cue_context_never_scores_forecast():
+    f = replace(forecast(), cue_tags=("different_cue",))
+    o = observation()
+    contrast = compare_forecast(f, o, admitted_source_sha256=ADMITTED)
+    assert contrast.status is ContrastStatus.UNKNOWN
+    assert contrast.reason == "source_cue_context_mismatch"
+    original = original_owner(f, o)
+    final, review = retain_comparison(
+        original, f, o, admitted_source_sha256=ADMITTED,
+        integration_provenance=p("L2", "wrong-context"),
+    )
+    assert final == original and review.status is ContrastStatus.UNKNOWN
