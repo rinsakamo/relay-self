@@ -15,7 +15,7 @@ from relay_self.learning_contrast import (
     review_matched_transfer,
 )
 
-HEAD = "916814742567f8ff396b5c078d22f897d8418927"
+HEAD = "1" * 40  # purely synthetic, NOT the consumed S9 source HEAD
 PLAN = "f" * 64
 WORLD = "e" * 64
 GOAL = "d" * 64
@@ -108,7 +108,7 @@ def test_s9_two_actions_without_independent_goal_or_matched_cheap_control_are_no
     ((False, False), (True, True), (3, 3), (5, 5),
      LearningReviewStatus.CHEAP_DOMINATES),
     ((True, True), (False, False), (9, 9), (5, 5),
-     LearningReviewStatus.CHEAP_DOMINATES),
+     LearningReviewStatus.TRADEOFF_UNRESOLVED),
 ])
 def test_cheap_null_and_resource_regressions_not_promoted(
     retained, cheap, work_retained, work_cheap, expected,
