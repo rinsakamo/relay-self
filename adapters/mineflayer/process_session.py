@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
+from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterStarted,
     MineflayerDecodedMessage,
@@ -38,7 +39,10 @@ class MineflayerProcessIOError(MineflayerProcessError):
 class MineflayerProcessSession:
     """Own one Node/Mineflayer bridge process without adding Self semantics."""
 
-    def __init__(self, process: asyncio.subprocess.Process) -> None:
+    def __init__(
+        self, process: asyncio.subprocess.Process, *,
+        native_receipt: NativeStreamReceipt | None = None,
+    ) -> None:
         if process.stdin is None or process.stdout is None:
             raise MineflayerProcessStartError(
                 "Mineflayer child process requires stdin and stdout pipes"
@@ -46,6 +50,9 @@ class MineflayerProcessSession:
         self._process = process
         self._decoder = MineflayerStreamDecoder()
         self._started: MineflayerAdapterStarted | None = None
+        if native_receipt is not None and not isinstance(native_receipt, NativeStreamReceipt):
+            raise MineflayerProcessStartError("S7 native receipt must be existing owner")
+        self._native_receipt = native_receipt
 
     @classmethod
     async def launch(
@@ -55,6 +62,7 @@ class MineflayerProcessSession:
         bridge_path: str | Path | None = None,
         node_executable: str = "node",
         startup_timeout_s: float = 10.0,
+        native_receipt: NativeStreamReceipt | None = None,
     ) -> "MineflayerProcessSession":
         """Launch exactly one bridge process and consume its startup attestation."""
 
@@ -82,7 +90,7 @@ class MineflayerProcessSession:
             ) from exc
 
         try:
-            session = cls(process)
+            session = cls(process, native_receipt=native_receipt)
         except Exception:
             await _terminate_child(process)
             raise
@@ -127,6 +135,8 @@ class MineflayerProcessSession:
                 "Mineflayer bridge stdout ended; "
                 f"returncode={self._process.returncode}"
             )
+        if self._native_receipt is not None:
+            self._native_receipt.record_received(line)
         try:
             text = line.decode("utf-8")
         except UnicodeDecodeError as exc:
@@ -234,7 +244,10 @@ class MineflayerProcessSession:
 
         assert self._process.stdin is not None
         try:
-            self._process.stdin.write(line.encode("utf-8"))
+            raw = line.encode("utf-8")
+            if self._native_receipt is not None:
+                self._native_receipt.record_sent(raw)
+            self._process.stdin.write(raw)
             await self._process.stdin.drain()
         except (BrokenPipeError, ConnectionResetError) as exc:
             raise MineflayerProcessIOError(
