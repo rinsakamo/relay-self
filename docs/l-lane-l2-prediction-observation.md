@@ -33,8 +33,10 @@ L must *not* extrapolate observed variables from its own forecast or from
 a narrative/LLM-generated explanation.
 
 - Both S-owned forecast-source and outcome-source SHA256 must be admitted,
-  with exact session and action kind, earlier forecast source sequence, and a
-  bounded source-sequence lag (default 64; not proof of stable World state).
+  with exact session, action kind AND cue tags, earlier forecast source
+  sequence, and a bounded source-sequence lag (default 64; not proof of
+  stable World state). The same Action in a changed cue context is UNKNOWN,
+  never a scored hit/miss.
 - OUTCOME/observed_execution is **physical Action result only**. It is
   still not goal success or feedback authority. A known adapter rejection,
   UNKNOWN, missing observation key, stale/future revision, unverified digest,
