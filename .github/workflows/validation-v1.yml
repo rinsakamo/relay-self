@@ -1,0 +1,240 @@
+name: V Lane V1 independent offline evaluation
+
+on:
+  push:
+    branches:
+      - 'validation/v1-independent-evaluation-*'
+  pull_request:
+    branches:
+      - 'infra/rsee-r1-shared-runtime-20261011'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v1-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Exact head R1 ancestry
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor 7c9a013f10e55172f6415deb9002ce7d4417f504 HEAD
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+      - name: Pure V1 and inherited R1 focused tests
+        env:
+          PYTHONPATH: 'src:tests:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m pytest -q tests/test_validation_v1.py tests/test_validation_l1_oracle.py tests/test_validation_s1_l1_boundary.py tests/test_validation_s6_report.py tests/test_validation_s9_two_epoch.py tests/test_validation_s9_joint_checkpoint.py tests/test_validation_l5_cheap_oracle.py tests/test_rsee_shared_runtime.py
+          python -m experiments.validation.v1
+          python -m experiments.validation.s6_report_review
+          python -m experiments.validation.s9_two_epoch_review
+          python -m experiments.validation.s9_joint_checkpoint
+      - name: Ruff
+        run: ruff check src tests experiments adapters observability
+      - name: Repository contracts
+        run: python tools/check_repository.py
+
+  full-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Inherited full Python regression; no physical execution
+        env:
+          PYTHONPATH: 'src:tests:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -m pytest -q
+
+  mineflayer-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - run: npm run check --prefix adapters/mineflayer
+
+  sibling-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Pin exact V1 HEAD
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+      - name: Checkout L1 immutable sibling (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 40db58d548ea31c4a70acabcc71b0954c7b6ce42
+          path: external-l1
+          persist-credentials: false
+      - name: Checkout S1 immutable sibling (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 75054188f1c7e8141690697794b6e705495de205
+          path: external-s1
+          persist-credentials: false
+      - name: Checkout R5 exact bounded original-byte lineage reviewer (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 364f4cc66fbe393717d31adce22747be17446dd8
+          path: external-r5
+          persist-credentials: false
+      - name: Checkout R6 immutable S9 native-original reviewer (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: b5ca2afc0e2cb8b419e7d2f18afc3e24f991ad4a
+          path: external-r6
+          persist-credentials: false
+      - name: Checkout S10 frozen Memory-withholding negative control (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: cd6edc11f390c759feeb437dd5a14ad03bf8ee98
+          path: external-s10
+          persist-credentials: false
+      - name: Checkout L4 frozen prospective matched baseline owner (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 28b90ad2f2d204a808610a36a8b619f2c194be73
+          path: external-l4
+          persist-credentials: false
+      - name: Checkout L5 original contextual shadow producer (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 17c5357fd5625274ee567ad979b780e77bf7b1e7
+          path: external-l5
+          persist-credentials: false
+      - name: Checkout S11 original non-authorizing consumer (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 69a150cc6f687e5b379713ba4c5e0ba2de60b38f
+          path: external-s11
+          persist-credentials: false
+      - name: Checkout S9 original source at exact HEAD (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 916814742567f8ff396b5c078d22f897d8418927
+          path: external-s9
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: S9 frozen source owner's offline tests, not World
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-s9 rev-parse HEAD)" = "916814742567f8ff396b5c078d22f897d8418927"
+          (cd external-s9 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_self_s9_failure_receipts.py)
+          test -z "$(git -C external-s9 status --porcelain --untracked-files=no)"
+      - name: S10/L4 independent sibling source-shaped controls; never a World run
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-s10 rev-parse HEAD)" = "cd6edc11f390c759feeb437dd5a14ad03bf8ee98"
+          test "$(git -C external-l4 rev-parse HEAD)" = "28b90ad2f2d204a808610a36a8b619f2c194be73"
+          (cd external-s10 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_self_s10_memory_ablation.py)
+          (cd external-l4 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_learning_contrast.py)
+          test -z "$(git -C external-s10 status --porcelain --untracked-files=no)"
+          test -z "$(git -C external-l4 status --porcelain --untracked-files=no)"
+      - name: Independent strongest-cheap L5 oracle, S11 original shadow non-authority
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-l5 rev-parse HEAD)" = "17c5357fd5625274ee567ad979b780e77bf7b1e7"
+          test "$(git -C external-s11 rev-parse HEAD)" = "69a150cc6f687e5b379713ba4c5e0ba2de60b38f"
+          PYTHONPATH="external-l5/src:external-l5/tests:src:." python -m experiments.validation.l5_cheap_oracle > "$RUNNER_TEMP/v-l5-cheap-null.json"
+          python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v-l5-cheap-null.json"))); assert d["classification"]=="V_L5_TWO_FEATURE_CHEAP_NULL_REPRODUCES_CONTEXTUAL_SHADOW" and d["four_contexts_tested"]==4 and d["cheap_matches_l5_all_contexts"] and d["scientific_g3"]=="NO_GO" and not d["learning_mechanism_advantage_over_strongest_cheap"]'
+          (cd external-s11 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_self_s11_l5_shadow_intake.py)
+          test -z "$(git -C external-l5 status --porcelain --untracked-files=no)"
+          test -z "$(git -C external-s11 status --porcelain --untracked-files=no)"
+      - name: R6 true immutable source offline tests and default no-I/O review plan
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-r6 rev-parse HEAD)" = "b5ca2afc0e2cb8b419e7d2f18afc3e24f991ad4a"
+          (cd external-r6 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_rsee_s9_original_audit.py)
+          (cd external-r6 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m experiments.standard_env.s9_original_audit) > "$RUNNER_TEMP/r6-plan.json"
+          python -c 'import json,os; p=os.path.join(os.environ["RUNNER_TEMP"],"r6-plan.json"); d=json.load(open(p)); assert d["classification"]=="RSEE_R6_PLAN_ONLY" and d["v_admission_granted"] is False and d["science_qualified"] is False'
+          test -z "$(git -C external-r6 status --porcelain --untracked-files=no)"
+      - name: Verify pinned R5 S6 historical denial without raw-source spoofing
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-r5 rev-parse HEAD)" = "364f4cc66fbe393717d31adce22747be17446dd8"
+          (cd external-r5 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_rsee_s3_v_projection.py)
+          (cd external-r5 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -c 'from experiments.standard_env import s3_v_projection as r; assert r.S6_HEAD=="a6ed8ed6b99dd09edcaa6cc9e5cefc08778aec8f" and r.S7_HEAD=="d23378d0c2d8271997389f6296a9bd018e488327" and r.PINNED_S3_LINEAGE[r.S6_HEAD]=="S6_CONTROLLED_PHYSICAL_DERIVED_NO_BRIDGE_RAW"')
+          test -z "$(git -C external-r5 status --porcelain --untracked-files=no)"
+      - name: Independent cheap tag/episode oracle against unchanged L1 source
+        env:
+          PYTHONPATH: 'external-l1/src:src:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m experiments.validation.l1_independent_audit --l1-root "$PWD/external-l1"
+          test "$(git -C external-l1 rev-parse HEAD)" = "40db58d548ea31c4a70acabcc71b0954c7b6ce42"
+          test -z "$(git -C external-l1 status --porcelain --untracked-files=no)"
+      - name: S1 default CLI dry-run, not World execution
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-s1 rev-parse HEAD)" = "75054188f1c7e8141690697794b6e705495de205"
+          (cd external-s1 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m adapters.mineflayer.self_s1_runtime) > s1-dry-run.json
+          python -c 'import json; d=json.load(open("s1-dry-run.json")); assert d["classification"]=="S1_DRY_RUN_NO_EFFECTS" and d["world"]=="NOT_STARTED" and d["action"]=="NOT_ISSUED" and d["model_calls"]==0'
+          test -z "$(git -C external-s1 status --porcelain --untracked-files=no)"
+
+      - name: Generate original S1 source-shaped stream from pinned S1 test owner
+        env:
+          PYTHONPATH: 'external-s1/tests:external-s1/src:src:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          (cd external-s1 && PYTHONPATH="$PWD/tests:$PWD/src:$PWD" python "$GITHUB_WORKSPACE/experiments/validation/emit_s1_fixture.py" --out "$RUNNER_TEMP/s1-v-fixture.jsonl")
+          test "$(git -C external-s1 rev-parse HEAD)" = "75054188f1c7e8141690697794b6e705495de205"
+          test -z "$(git -C external-s1 status --porcelain --untracked-files=no)"
+      - name: V independent S1 event to L1 eligibility audit, fail closed
+        env:
+          PYTHONPATH: 'src:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m experiments.validation.s1_l1_boundary --stream "$RUNNER_TEMP/s1-v-fixture.jsonl" > "$RUNNER_TEMP/s1-v-audit.json"
+          python -c 'import json,os; p=os.path.join(os.environ["RUNNER_TEMP"],"s1-v-audit.json"); d=json.load(open(p)); assert d["terminal"]=="S1_LOG_CONSISTENT_NO_L1_ADMISSION" and d["closed_outcomes"]==1 and d["L1_admission"]=="NOT_AUTHORIZED_FROM_LOG" and d["science_go"] is False'
+          python -m pytest -q tests/test_validation_s1_l1_boundary.py

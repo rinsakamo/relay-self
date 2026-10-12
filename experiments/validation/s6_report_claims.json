@@ -1,0 +1,51 @@
+{
+  "schema": "RELAYSELF_V1_S6_FROZEN_OPERATOR_CLAIMS_V1",
+  "evidence_kind": "GITHUB_ISSUE_OPERATOR_REPORT_NOT_ORIGINAL_WSL2_BYTES",
+  "source_issue_comment": "https://github.com/rinsakamo/relay-self/issues/537#issuecomment-6116683016",
+  "sha_audit_comment": "https://github.com/rinsakamo/relay-self/issues/537#issuecomment-6117549533",
+  "source_head": "a6ed8ed6b99dd09edcaa6cc9e5cefc08778aec8f",
+  "session": "a5cdc400-572a-41ee-b411-e7399bbb80fd",
+  "r5_source_head": "364f4cc66fbe393717d31adce22747be17446dd8",
+  "prospective_s7_head": "d23378d0c2d8271997389f6296a9bd018e488327",
+  "physical_reported_runs": 1,
+  "physical_retry_reported": 0,
+  "target_type": "CONTROLLED_NOAI_ZOMBIE_NOT_NATURAL",
+  "native_outer_frames_reported": 187,
+  "native_entity_frames_reported": 1,
+  "l0_decisions_reported": 1,
+  "action_requests_reported": 1,
+  "terminal_outcomes_reported": 1,
+  "native_action_id": "s49-native-move-4",
+  "native_evidence_sha256_reported": "c39c85598f34770ce89d59852e911ea419898df9c1f54984381308f5eb1fa0ad",
+  "movement_m_reported": 0.6269065734210617,
+  "retained_observational_memories_reported": 1,
+  "s10_updates_reported": 0,
+  "s11_habit_grants_reported": 0,
+  "l2_model_calls_reported": 0,
+  "task_goal_attested": false,
+  "natural_hostile_threat_attested": false,
+  "physical_origin_independently_verified_by_v": false,
+  "native_predecode_bridge_original_archived": false,
+  "r1_r2_original_action_envelope_present": false,
+  "s6_late_reconstruction_allowed": false,
+  "native_stop_ack_attested": false,
+  "same_source_cheap_control_run": false,
+  "heldout_goal_outcomes_attested": false,
+  "measured_resource_net_benefit": false,
+  "independent_transfer_attested": false,
+  "sha_indexes_reported": {
+    "SHA256SUMS": {
+      "sha256": "b22598cc985d5fce4f8c8ffbb15452a8e6f79578aa18d5326650eaa4143536e7",
+      "checked_entries": 32
+    },
+    "FINAL_SHA256SUMS": {
+      "sha256": "baa0e633a10f2cfd64107d1aee77250e56b4fa56405c826ff27e2f3f3652fd47",
+      "checked_entries": 39
+    }
+  },
+  "derived_files_reported": {
+    "physical/session_events.jsonl": "6626e94d23fcf5df91514c9355d07315165441d64643e5caefc45e536a56f645",
+    "physical/s3_observed_memory.json": "15440763030b6bb3ddd11ac4e3fcf5dfef46638223d376b6151be1127fb0a2e7",
+    "physical/owned_cleanup.json": "a3f2e0c9c86afcb99e287af3c70aaa1eb7155e60b66285186e5a52f3ba1721e4"
+  }
+}

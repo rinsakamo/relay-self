@@ -1,0 +1,402 @@
+{
+  "schema": "RELAYSELF_V1_INDEPENDENT_EVALUATION",
+  "claims": [
+    {
+      "id": "R1_CONTRACT",
+      "lane": "R",
+      "claim": "Read-only plan/preflight/evidence provenance; exact-head offline CI 3/3 reported",
+      "source_head": "7c9a013f10e55172f6415deb9002ce7d4417f504",
+      "evidence_origin": "GITHUB_CI_REPORT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "OFFLINE_PASS_REPORTED",
+      "authority": "#593 / #575"
+    },
+    {
+      "id": "S1_CONTRACT",
+      "lane": "S",
+      "claim": "S49 bounded native runtime wiring and CI; no new physical trial",
+      "source_head": "75054188f1c7e8141690697794b6e705495de205",
+      "evidence_origin": "GITHUB_CI_REPORT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "OFFLINE_PASS_REPORTED",
+      "authority": "#592 / #537"
+    },
+    {
+      "id": "S0_SIMULATED",
+      "lane": "S",
+      "claim": "Bounded source-shaped Action callback + UNKNOWN fences CI (not real World)",
+      "source_head": "c361aeb546bb437b99362f6bf381902a15a955da",
+      "evidence_origin": "GITHUB_CI_REPORT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "SOURCE_SHAPED_PASS_REPORTED",
+      "authority": "#590 / #537"
+    },
+    {
+      "id": "WORLD_OBSERVATION",
+      "lane": "S",
+      "claim": "Three native real observations and three L0 decisions in sealed Golden",
+      "source_head": "34820f6bf391c77f325d7c29d3b779a33e3ca835",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "6e039522-c79d-40b2-8b03-bc8c389f2a52",
+      "receipt_sha256": "f78b4473ca6dd3d37b2bad758b3b4b944822bc180a2a5953fd86e1727c55c6f1",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#588 / #537 comment 6109127102"
+    },
+    {
+      "id": "WORLD_ACTION_OUTCOME",
+      "lane": "S",
+      "claim": "Two physical Action terminal OUTCOME receipts, no verified task goal",
+      "source_head": "34820f6bf391c77f325d7c29d3b779a33e3ca835",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "6e039522-c79d-40b2-8b03-bc8c389f2a52",
+      "receipt_sha256": "f78b4473ca6dd3d37b2bad758b3b4b944822bc180a2a5953fd86e1727c55c6f1",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#588 / #537"
+    },
+    {
+      "id": "TASK_GOAL",
+      "lane": "S",
+      "claim": "Verified World task goal success not attested",
+      "source_head": "34820f6bf391c77f325d7c29d3b779a33e3ca835",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "6e039522-c79d-40b2-8b03-bc8c389f2a52",
+      "receipt_sha256": null,
+      "status": "UNDETERMINED",
+      "authority": "#588 / #537"
+    },
+    {
+      "id": "OBSERVATIONAL_MEMORY",
+      "lane": "L",
+      "claim": "Two observational retained action episodes; not learning",
+      "source_head": "34820f6bf391c77f325d7c29d3b779a33e3ca835",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "6e039522-c79d-40b2-8b03-bc8c389f2a52",
+      "receipt_sha256": "ddde5cb591c5b3d4499a3bdf440918ab1109d47ab58dcd4d2e19a4e42a830329",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#588 / #537"
+    },
+    {
+      "id": "S10_GOVERNED_UPDATE",
+      "lane": "L",
+      "claim": "No in-world qualified S10 learning update",
+      "source_head": "34820f6bf391c77f325d7c29d3b779a33e3ca835",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "6e039522-c79d-40b2-8b03-bc8c389f2a52",
+      "receipt_sha256": null,
+      "status": "NOT_RUN",
+      "authority": "#588 / #537"
+    },
+    {
+      "id": "S11_HABIT_ACQUISITION",
+      "lane": "L",
+      "claim": "No in-world qualified S11 Habit grant/reuse",
+      "source_head": "34820f6bf391c77f325d7c29d3b779a33e3ca835",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "6e039522-c79d-40b2-8b03-bc8c389f2a52",
+      "receipt_sha256": null,
+      "status": "NOT_RUN",
+      "authority": "#588 / #537"
+    },
+    {
+      "id": "L2_STALE",
+      "lane": "S",
+      "claim": "One real L2 inference attempt; EXPIRED_WORLD_ADVANCED; no Action grant",
+      "source_head": "34820f6bf391c77f325d7c29d3b779a33e3ca835",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "6e039522-c79d-40b2-8b03-bc8c389f2a52",
+      "receipt_sha256": "bf1acbc6753472b62f8cde66fba1f9d6ec9197fe23188cfe6a90dd19b2ecb173",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#588 / #537"
+    },
+    {
+      "id": "CONTINUOUS_PRODUCT",
+      "lane": "S",
+      "claim": "S1 multi-epoch natural World continuous execution untested",
+      "source_head": "75054188f1c7e8141690697794b6e705495de205",
+      "evidence_origin": "GITHUB_CI_REPORT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "NOT_RUN",
+      "authority": "#592 / #537"
+    },
+    {
+      "id": "PREDICTIVE_ADVANTAGE",
+      "lane": "V",
+      "claim": "D1-D4 finite exact cheap solution; D5 G3 NO-GO",
+      "source_head": null,
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "NO_GO",
+      "authority": "#544"
+    },
+    {
+      "id": "LEARNING_CHEAP",
+      "lane": "L",
+      "claim": "B29 sourced L2 JSON schema offline qualification, not superiority over cheap learner",
+      "source_head": "49bd629982095d4ec132799f755a30c354dc1c0b",
+      "evidence_origin": "GITHUB_CI_REPORT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "SOURCE_SHAPED_PASS_REPORTED",
+      "authority": "#573 / #431"
+    },
+    {
+      "id": "RESOURCE_C11",
+      "lane": "L",
+      "claim": "Synthetic cheap MAJORITY outperformed costly selector; bounded ADAPT_GROUP positive synthetic only",
+      "source_head": null,
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "NEGATIVE_RESULT_REPORTED",
+      "authority": "#499 / #502 / #544"
+    },
+    {
+      "id": "F46_HISTORY",
+      "lane": "HISTORICAL",
+      "claim": "36/36 valid, 18/18 paired unchanged; no effect; consumed",
+      "source_head": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "NEGATIVE_RESULT_REPORTED",
+      "authority": "#415"
+    },
+    {
+      "id": "F46_ORIGINAL",
+      "lane": "HISTORICAL",
+      "claim": "Historical #46 NON_DISCRIMINATING frozen",
+      "source_head": null,
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "NEGATIVE_RESULT_REPORTED",
+      "authority": "#46"
+    },
+    {
+      "id": "UI_SOURCE_MATCH",
+      "lane": "S",
+      "claim": "Read-only replay projection contract CI; actual viewer on operator source not verified here",
+      "source_head": null,
+      "evidence_origin": "GITHUB_CI_REPORT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "OFFLINE_PASS_REPORTED",
+      "authority": "#589 / #537"
+    },
+    {
+      "id": "STOP_ACK",
+      "lane": "R",
+      "claim": "Backend/native STOP ACK not independently attested by sealed Golden",
+      "source_head": "34820f6bf391c77f325d7c29d3b779a33e3ca835",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "6e039522-c79d-40b2-8b03-bc8c389f2a52",
+      "receipt_sha256": null,
+      "status": "UNDETERMINED",
+      "authority": "#588 / #537"
+    },
+    {
+      "id": "L1_REUSE_BRIDGE",
+      "lane": "L",
+      "claim": "L1 typed S16 observational retention + read-only hint; same-source cheap tag comparator equal; offline-only",
+      "source_head": "40db58d548ea31c4a70acabcc71b0954c7b6ce42",
+      "evidence_origin": "GITHUB_CI_REPORT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "SOURCE_SHAPED_PASS_REPORTED",
+      "authority": "#594 / #426 comment 6110665640"
+    },
+    {
+      "id": "S1_L1_HANDOFF",
+      "lane": "V",
+      "claim": "Actual S1 event schema offers decoded native Action SHA, but L1 requires original current typed S16 Action/Outcome + World revision and S-owned source digest; offline synthetic source-shaped boundary only",
+      "source_head": "75054188f1c7e8141690697794b6e705495de205",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "UNDETERMINED",
+      "authority": "#592 / #594 / #595 / #537"
+    },
+    {
+      "id": "S6_CONTROLLED_PHYSICAL_REPORTED",
+      "lane": "S",
+      "claim": "Operator reports one controlled NoAI target S49 MOVE_AWAY native OUTCOME, 0.6269065734210617m, Memory1; S10/S11 0, not survival/goal",
+      "source_head": "a6ed8ed6b99dd09edcaa6cc9e5cefc08778aec8f",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "a5cdc400-572a-41ee-b411-e7399bbb80fd",
+      "receipt_sha256": "6626e94d23fcf5df91514c9355d07315165441d64643e5caefc45e536a56f645",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#537 comment 6116683016 / #604"
+    },
+    {
+      "id": "S6_SHA_INDEX_RECONCILED",
+      "lane": "R",
+      "claim": "Different original SHA256SUMS (32 entries) and FINAL_SHA256SUMS (39 entries) validated by operator, NOT V original-byte readback",
+      "source_head": "d23378d0c2d8271997389f6296a9bd018e488327",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "a5cdc400-572a-41ee-b411-e7399bbb80fd",
+      "receipt_sha256": "baa0e633a10f2cfd64107d1aee77250e56b4fa56405c826ff27e2f3f3652fd47",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#537 comment 6117549533 / #605"
+    },
+    {
+      "id": "R5_S6_RAW_SOURCE_DENIAL",
+      "lane": "R",
+      "claim": "S6 has no archived native predecode bridge bytes; R5 refuses retrospective R2/V admission, S7 producer only prospective offline",
+      "source_head": "364f4cc66fbe393717d31adce22747be17446dd8",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": "a5cdc400-572a-41ee-b411-e7399bbb80fd",
+      "receipt_sha256": null,
+      "status": "NO_GO",
+      "authority": "#607 / #575 comment 6117770145"
+    },
+    {
+      "id": "S8_ONE_OUTCOME_EXCEPTION",
+      "lane": "S",
+      "claim": "S8 one-shot original bridge capture; one Action OUTCOME and read-only Memory recall reported; second Action blocked by multi-zombie; permission consumed",
+      "source_head": "eac08081d497b11f8386edd1229704c816d1a78d",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": null,
+      "receipt_sha256": "474eb0b20a7a93852e17a1e7239301e812b81c62f800727db2d6e58f2371b5c3",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#537 comment 6119140571 / #608"
+    },
+    {
+      "id": "S9_TWO_CONTROLLED_OUTCOMES_REPORTED",
+      "lane": "S",
+      "claim": "S9 one controlled same-session two Action OUTCOMEs and two retained observations; memory recall observed but causal influence not established, S10/S11 0",
+      "source_head": "916814742567f8ff396b5c078d22f897d8418927",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "dacf338b-4ba9-4e91-8eea-d4aebd0aef22",
+      "receipt_sha256": "614bdb6be1cff97ad598b49be5dd0beaf21bc5a440933d8af91a1f5860703844",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#537 comment 6120089028 / #609"
+    },
+    {
+      "id": "S9_G0_V_NATIVE_READBACK",
+      "lane": "V",
+      "claim": "Reported original S9 Mineflayer received/sent JSONL SHA and retained Memory, but no V-owned WSL2 byte readback or R9 exact public HEAD/source receipt verified",
+      "source_head": "916814742567f8ff396b5c078d22f897d8418927",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "dacf338b-4ba9-4e91-8eea-d4aebd0aef22",
+      "receipt_sha256": null,
+      "status": "UNDETERMINED",
+      "authority": "#537 comment 6120089028 / #544 / #595"
+    },
+    {
+      "id": "R6_S9_BRIDGE_MEMORY_REVIEW_SOURCE_ONLY",
+      "lane": "R",
+      "claim": "Actual immutable R6 source checker audits existing host-local S9 predecode received/sent originals and 2 S3 Memory; exact CI PASS; host original byte audit NOT_RUN by V/R GitHub",
+      "source_head": "b5ca2afc0e2cb8b419e7d2f18afc3e24f991ad4a",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": "dacf338b-4ba9-4e91-8eea-d4aebd0aef22",
+      "receipt_sha256": null,
+      "status": "UNDETERMINED",
+      "authority": "#610 / #575 comment 6120364746"
+    },
+    {
+      "id": "S9_MEMORY_STAGING_NOT_L0_POLICY",
+      "lane": "V",
+      "claim": "At exact S9 source Memory count gates external experiment epoch2 continuation, whereas read-only Memory hint is never an input to NormalWorldL0/Action grant. Causal cognitive benefit cannot be claimed.",
+      "source_head": "916814742567f8ff396b5c078d22f897d8418927",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": "dacf338b-4ba9-4e91-8eea-d4aebd0aef22",
+      "receipt_sha256": null,
+      "status": "NO_GO",
+      "authority": "#609 / #595 / #544"
+    },
+    {
+      "id": "R6_REAL_HOST_ORIGINAL_BYTES_REPORTED",
+      "lane": "R",
+      "claim": "Actual R6 operator WSL2 read-only audit reconciled six S9 originals and two SHA indexes 47/56, 57 existing files unchanged; V GitHub has not directly read host bytes and typed S16 remains unqualified.",
+      "source_head": "b5ca2afc0e2cb8b419e7d2f18afc3e24f991ad4a",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "dacf338b-4ba9-4e91-8eea-d4aebd0aef22",
+      "receipt_sha256": "1579167489e67cd9fb3a4d174abc1831cd8d3569e0de615de60cacde0d779432",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#575 comment 6121953835 / #610"
+    },
+    {
+      "id": "S10_MEMORY_WITHHELD_L0_NULL",
+      "lane": "S",
+      "claim": "Same synthetic source event Memory-present recall vs withheld no recall, L0 identical; offline-only no causal real World goal delta.",
+      "source_head": "cd6edc11f390c759feeb437dd5a14ad03bf8ee98",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "OFFLINE_PASS_REPORTED",
+      "authority": "#611 / #537 comment 6121472698"
+    },
+    {
+      "id": "L4_CHEAP_MATCHED_HELDOUT_CONTRACT",
+      "lane": "L",
+      "claim": "Prospective two-arm retained vs cheap original-Goal/Decision/Action/cost and heldout contract offline-qualified, real physical paired experiments NOT_RUN.",
+      "source_head": "28b90ad2f2d204a808610a36a8b619f2c194be73",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "OFFLINE_PASS_REPORTED",
+      "authority": "#612 / #537 comment 6121551874"
+    },
+    {
+      "id": "L5_CONTEXTUAL_SHADOW_CANDIDATE",
+      "lane": "L",
+      "claim": "Context-conditioned Action ref from 16 original source-shaped synthetic goal-labeled episodes, S-owned source admission still unproven; no authority, no physical benefit.",
+      "source_head": "17c5357fd5625274ee567ad979b780e77bf7b1e7",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "SOURCE_SHAPED_PASS_REPORTED",
+      "authority": "#613 / #426 comment 6122703770"
+    },
+    {
+      "id": "S11_L5_READONLY_INTAKE",
+      "lane": "S",
+      "claim": "Actual pinned L5 synthetic ShadowAdvice producer to S11 read-only consumer contract 4/4 CI, S10 MOVE_AWAY versus L5 OPTION_A/B unpaired; no Action grant.",
+      "source_head": "69a150cc6f687e5b379713ba4c5e0ba2de60b38f",
+      "evidence_origin": "GITHUB_CI_REPORT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "OFFLINE_PASS_REPORTED",
+      "authority": "#614 / #537 comment 6123171354"
+    },
+    {
+      "id": "V_L5_STRONGEST_TWO_FEATURE_CHEAP_NULL",
+      "lane": "V",
+      "claim": "Independent V same-training 2-feature 4-cell cheap lookup reproduces all 4 L5 synthetic Action proposals; no advantage or matched physical goal gain.",
+      "source_head": "17c5357fd5625274ee567ad979b780e77bf7b1e7",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "NO_GO",
+      "authority": "#595 / #544"
+    }
+  ],
+  "golden": {
+    "head": "34820f6bf391c77f325d7c29d3b779a33e3ca835",
+    "session": "6e039522-c79d-40b2-8b03-bc8c389f2a52",
+    "source_index_sha256_reported": "57f0f55079943f8a9c714f166213917ca625ab5e143c4102a927fa4de7195fb0",
+    "known_original_digests": {
+      "native_report.json": "f78b4473ca6dd3d37b2bad758b3b4b944822bc180a2a5953fd86e1727c55c6f1",
+      "live_l2.jsonl": "bf1acbc6753472b62f8cde66fba1f9d6ec9197fe23188cfe6a90dd19b2ecb173",
+      "observed_memory.json": "ddde5cb591c5b3d4499a3bdf440918ab1109d47ab58dcd4d2e19a4e42a830329"
+    },
+    "raw_original_verification": "NOT_RUN",
+    "reported_decisions": [
+      "WAIT",
+      "MOVE_AWAY",
+      "MOVE_AWAY"
+    ],
+    "reported_actions": 2,
+    "reported_memories": 2,
+    "reported_l2_status": "EXPIRED_WORLD_ADVANCED",
+    "learning_updates": 0,
+    "habit_grants": 0,
+    "goal_success": "UNDETERMINED",
+    "stop_ack": "UNDETERMINED"
+  }
+}
