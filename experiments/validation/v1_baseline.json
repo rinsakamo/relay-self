@@ -341,6 +341,39 @@
       "receipt_sha256": null,
       "status": "OFFLINE_PASS_REPORTED",
       "authority": "#612 / #537 comment 6121551874"
+    },
+    {
+      "id": "L5_CONTEXTUAL_SHADOW_CANDIDATE",
+      "lane": "L",
+      "claim": "Context-conditioned Action ref from 16 original source-shaped synthetic goal-labeled episodes, S-owned source admission still unproven; no authority, no physical benefit.",
+      "source_head": "17c5357fd5625274ee567ad979b780e77bf7b1e7",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "SOURCE_SHAPED_PASS_REPORTED",
+      "authority": "#613 / #426 comment 6122703770"
+    },
+    {
+      "id": "S11_L5_READONLY_INTAKE",
+      "lane": "S",
+      "claim": "Actual pinned L5 synthetic ShadowAdvice producer to S11 read-only consumer contract 4/4 CI, S10 MOVE_AWAY versus L5 OPTION_A/B unpaired; no Action grant.",
+      "source_head": "69a150cc6f687e5b379713ba4c5e0ba2de60b38f",
+      "evidence_origin": "GITHUB_CI_REPORT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "OFFLINE_PASS_REPORTED",
+      "authority": "#614 / #537 comment 6123171354"
+    },
+    {
+      "id": "V_L5_STRONGEST_TWO_FEATURE_CHEAP_NULL",
+      "lane": "V",
+      "claim": "Independent V same-training 2-feature 4-cell cheap lookup reproduces all 4 L5 synthetic Action proposals; no advantage or matched physical goal gain.",
+      "source_head": "17c5357fd5625274ee567ad979b780e77bf7b1e7",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "NO_GO",
+      "authority": "#595 / #544"
     }
   ],
   "golden": {

@@ -39,7 +39,7 @@ jobs:
           PYTHONPATH: 'src:tests:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m pytest -q tests/test_validation_v1.py tests/test_validation_l1_oracle.py tests/test_validation_s1_l1_boundary.py tests/test_validation_s6_report.py tests/test_validation_s9_two_epoch.py tests/test_validation_s9_joint_checkpoint.py tests/test_rsee_shared_runtime.py
+          python -m pytest -q tests/test_validation_v1.py tests/test_validation_l1_oracle.py tests/test_validation_s1_l1_boundary.py tests/test_validation_s6_report.py tests/test_validation_s9_two_epoch.py tests/test_validation_s9_joint_checkpoint.py tests/test_validation_l5_cheap_oracle.py tests/test_rsee_shared_runtime.py
           python -m experiments.validation.v1
           python -m experiments.validation.s6_report_review
           python -m experiments.validation.s9_two_epoch_review
@@ -135,6 +135,20 @@ jobs:
           ref: 28b90ad2f2d204a808610a36a8b619f2c194be73
           path: external-l4
           persist-credentials: false
+      - name: Checkout L5 original contextual shadow producer (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 17c5357fd5625274ee567ad979b780e77bf7b1e7
+          path: external-l5
+          persist-credentials: false
+      - name: Checkout S11 original non-authorizing consumer (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 69a150cc6f687e5b379713ba4c5e0ba2de60b38f
+          path: external-s11
+          persist-credentials: false
       - name: Checkout S9 original source at exact HEAD (read only)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -163,6 +177,17 @@ jobs:
           (cd external-l4 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_learning_contrast.py)
           test -z "$(git -C external-s10 status --porcelain --untracked-files=no)"
           test -z "$(git -C external-l4 status --porcelain --untracked-files=no)"
+      - name: Independent strongest-cheap L5 oracle, S11 original shadow non-authority
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-l5 rev-parse HEAD)" = "17c5357fd5625274ee567ad979b780e77bf7b1e7"
+          test "$(git -C external-s11 rev-parse HEAD)" = "69a150cc6f687e5b379713ba4c5e0ba2de60b38f"
+          PYTHONPATH="external-l5/src:external-l5/tests:src:." python -m experiments.validation.l5_cheap_oracle > "$RUNNER_TEMP/v-l5-cheap-null.json"
+          python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v-l5-cheap-null.json"))); assert d["classification"]=="V_L5_TWO_FEATURE_CHEAP_NULL_REPRODUCES_CONTEXTUAL_SHADOW" and d["four_contexts_tested"]==4 and d["cheap_matches_l5_all_contexts"] and d["scientific_g3"]=="NO_GO" and not d["learning_mechanism_advantage_over_strongest_cheap"]'
+          (cd external-s11 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_self_s11_l5_shadow_intake.py)
+          test -z "$(git -C external-l5 status --porcelain --untracked-files=no)"
+          test -z "$(git -C external-s11 status --porcelain --untracked-files=no)"
       - name: R6 true immutable source offline tests and default no-I/O review plan
         env:
           PYTHONDONTWRITEBYTECODE: '1'
