@@ -110,7 +110,7 @@ test -x "$BASE/venv/bin/python" || exit 1
 "$BASE/venv/bin/python" -m pytest -q \
   tests/test_contextual_shadow.py tests/test_learning_contrast.py \
   tests/test_habit_shadow.py tests/test_forecast_bridge.py \
-  tests/test_experience_bridge.py tests/test_self_s10_memory_ablation.py
+  tests/test_experience_bridge.py tests/test_habit_qualification.py
 "$BASE/venv/bin/python" -m pytest -q
 "$BASE/venv/bin/ruff" check src tests experiments adapters observability
 "$BASE/venv/bin/python" tools/check_repository.py
