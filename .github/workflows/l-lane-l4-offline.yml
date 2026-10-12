@@ -1,0 +1,59 @@
+name: L Lane L4 matched cheap-control transfer (offline)
+
+on:
+  push:
+    branches:
+      - 'learning/l4-matched-transfer-*'
+  pull_request:
+    branches:
+      - 'learning/l3-shadow-habit-*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: l-lane-l4-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-and-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Exact L3 ancestry / source integrity
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor 8d0ad7a834b768165ee527f3a90e7f986cdb30ee HEAD
+          python tools/check_repository.py
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Install pytest only in ephemeral GitHub worker
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Focused L4/L3/L2/L1 plus S11 controls
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: python -m pytest -q tests/test_learning_contrast.py tests/test_habit_shadow.py tests/test_forecast_bridge.py tests/test_experience_bridge.py tests/test_habit_qualification.py
+      - name: Full inherited Python regression
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: python -m pytest -q
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --disable-pip-version-check 'ruff==0.16.7'
+      - run: ruff check src tests experiments adapters observability
