@@ -18,7 +18,11 @@ from relay_self.forecast_bridge import (
     retain_comparison,
     retain_forecast,
 )
-from relay_self.persistent_cognition import Memory, load_persistent_cognition, save_persistent_cognition
+from relay_self.persistent_cognition import (
+    Memory,
+    load_persistent_cognition,
+    save_persistent_cognition,
+)
 from relay_self.prediction import (
     PredictionState,
     PredictionStatus,
