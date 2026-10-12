@@ -67,6 +67,7 @@ class S8TwoEpochIntervention:
         self._first_ready = False
         self._second_started = False
         self._first_entity_id: int | None = None
+        self._first_action_id: str | None = None
         self._second_closed = False
 
     @property
@@ -117,6 +118,7 @@ class S8TwoEpochIntervention:
             if self.commands_attempted != 1 or memory_count < 1:
                 raise S8InterventionRejected("S3 observation not retained after first closure")
             self._first_entity_id = step.choice.entity_id
+            self._first_action_id = receipt.terminal.action_id
             self._second_started = True  # no retry, including ambiguous clear
             self.sink.write(
                 "s8_epoch1_closed_memory_retained",
@@ -130,7 +132,11 @@ class S8TwoEpochIntervention:
             return
         if self._second_closed:
             raise S8InterventionRejected("more than two closed Actions forbidden")
-        if self.commands_attempted != 3 or step.choice.entity_id == self._first_entity_id:
+        if (
+            self.commands_attempted != 3
+            or step.choice.entity_id == self._first_entity_id
+            or receipt.terminal.action_id == self._first_action_id
+        ):
             raise S8InterventionRejected("second distinct native target not established")
         if memory_count < 2:
             raise S8InterventionRejected("second S3 observation not retained")
