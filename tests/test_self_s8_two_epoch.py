@@ -46,7 +46,7 @@ class FakeStdin:
 def _controller(driver, *, fail_at=None):
     spawn = replace(s42._pair()[3], session_id=driver.host.session_id,
                     kind="spawn", seq=2)
-    server = SimpleNamespace(stdin=FakeStdin(fail_at=fail_at))
+    server = SimpleNamespace(returncode=None, stdin=FakeStdin(fail_at=fail_at))
     owner = S8TwoEpochIntervention(S8TwoEpochPlan(REF), spawn, driver.events)
     return owner, server
 
