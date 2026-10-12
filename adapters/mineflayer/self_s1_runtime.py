@@ -349,7 +349,7 @@ async def run_physical(
             on_l2_probe=l2_observer.observe if l2_observer is not None else None,
             observation_audit=audit,
             on_session_started=(
-                lambda: intervention.submit_once(server)
+                (lambda: intervention.submit_once(server))
                 if intervention is not None else None
             ),
         )
