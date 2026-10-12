@@ -254,6 +254,9 @@ def review_matched_transfer(
         if trial.plan_sha256 != preregistered_plan_sha256:
             return MatchedReview(LearningReviewStatus.NON_MATCHED,
                                  reason="trial_not_in_predeclared_experiment")
+        arm_records = pairs.setdefault(trial.pair_id, {})
+        if trial.arm in arm_records:
+            raise MatchedEvidenceRejected("duplicate treatment or cheap arm")
         if not all((
             trial.action_sha256 in admission.action_sha256,
             trial.goal_sha256 in admission.goal_sha256,
@@ -271,9 +274,6 @@ def review_matched_transfer(
             seen_originals.add(evidence)
         if trial.arm is TrialArm.RETAINED and trial.memory_id not in training_ids:
             raise MatchedEvidenceRejected("retained evidence not from independent training")
-        arm_records = pairs.setdefault(trial.pair_id, {})
-        if trial.arm in arm_records:
-            raise MatchedEvidenceRejected("duplicate treatment or cheap arm")
         arm_records[trial.arm] = trial
     if len(pairs) < min_independent_pairs:
         return MatchedReview(LearningReviewStatus.NO_TRANSFER,
