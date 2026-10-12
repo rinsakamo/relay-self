@@ -50,12 +50,10 @@ def _fixture_index(root: Path):
 
 def test_full_original_bridge_received_and_sent_bytes(monkeypatch, tmp_path):
     process = FakeProcess([started_line(), observation_line()])
-    from asyncio import subprocess
-
     async def launch(*_args, **_kwargs):
         return process
 
-    monkeypatch.setattr(subprocess, "create_subprocess_exec", launch)
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", launch)
     bridge = tmp_path / "bridge.mjs"
     bridge.write_text("fixture")
     receipt = NativeStreamReceipt(
