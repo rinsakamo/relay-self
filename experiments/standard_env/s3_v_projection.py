@@ -22,6 +22,18 @@ MAX_EVENTS_BYTES = 4 * 1024 * 1024
 MAX_EVENTS = 4096
 MAX_MEMORY_BYTES = 4 * 1024 * 1024
 S3_HEAD = "6f493b7a559dd72ea365998b9eadbd35fd7eb9b4"
+S6_HEAD = "a6ed8ed6b99dd09edcaa6cc9e5cefc08778aec8f"
+S7_HEAD = "d23378d0c2d8271997389f6296a9bd018e488327"
+# Frozen S3 descendants independently verified by exact Git ancestry.
+# Do not accept arbitrary future commits as qualified native source owners.
+PINNED_S3_LINEAGE = {
+    S3_HEAD: "S3_SOURCE_SHAPED_ONLY",
+    S6_HEAD: "S6_CONTROLLED_PHYSICAL_DERIVED_NO_BRIDGE_RAW",
+    S7_HEAD: "S7_PROSPECTIVE_BRIDGE_RAW_PRODUCER_NOT_RUN",
+}
+S7_RAW_RECEIVED = "native_bridge_received_original.jsonl"
+S7_RAW_SENT = "native_bridge_sent_original.jsonl"
+S7_DERIVED_INDEX = "native_bridge_source_receipt.json"
 EVENT_SCHEMA = "SELF1_BOUNDED_WORLD_EVENT_V1"
 EPISODE_SCHEMA = "L1_SOURCE_EPISODE_V1"
 CLEANUP_SCHEMA = "SELF1_S1_OWNER_CLEANUP_V1"
@@ -140,7 +152,9 @@ def audit(
     Does not produce an R1 envelope, native frames, typed S16 reconstruction,
     positive V science outcome, or on-disk review artifact.
     """
-    _must(expected_head == S3_HEAD, "S3 frozen source HEAD required")
+    _must(isinstance(expected_head, str)
+          and expected_head in PINNED_S3_LINEAGE,
+          "pinned S3-lineage source HEAD required")
     _must(isinstance(expected_session, str) and bool(expected_session.strip()),
           "independent S49 session required")
     _must(isinstance(expected_profile_sha256, str)
@@ -184,6 +198,7 @@ def audit(
     projected = {
         "schema": "RSEE_R4_V_REVIEW_CANDIDATE_ONLY",
         "source_head": expected_head,
+        "source_lineage_class": PINNED_S3_LINEAGE[expected_head],
         "source_session": expected_session,
         "environment_profile_sha256": expected_profile_sha256,
         "s3_event_rows": len(observed),
@@ -204,6 +219,18 @@ def audit(
             "r2_original_bytes": "NOT_CHECKED",
             "reason": "No S3 retained Action/OUTCOME witness",
         }
+    # S6 ran before S7's pre-decode archive existed: its source JSONL
+    # cannot be reconstructed from S3 Memory, S4 counts or hash indexes.
+    # Even an invented envelope/receipt must not retroactively qualify it.
+    if expected_head == S6_HEAD:
+        return {
+            **projected,
+            "classification": "RSEE_R5_S6_DERIVED_ONLY_RAW_NOT_ARCHIVED",
+            "r2_original_bytes": "NOT_CHECKED",
+            "v_result": "NOT_ADMISSIBLE_MISSING_NATIVE_ORIGINAL",
+            "reason": "S6 original Mineflayer bridge JSONL was not archived",
+        }
+
     # Only consume an existing independently produced R1 envelope.
     try:
         r2_result = r2.audit_file(
@@ -215,10 +242,28 @@ def audit(
         )
     except (OSError, ValueError) as exc:
         raise R4Rejected("R2 independent raw-source handoff blocked") from exc
-    indexed = json.loads(envelope.read_bytes(), object_pairs_hook=r2._unique_pairs)
+    try:
+        indexed = json.loads(
+            envelope.read_bytes(), object_pairs_hook=r2._unique_pairs,
+        )
+    except (ValueError, OSError, UnicodeError) as exc:
+        raise R4Rejected("independent original envelope no longer readable") from exc
     _must(not any(str(path) in indexed["evidence_sha256_index"]
                   for path in (events, memory, cleanup, envelope)),
           "derived files cannot masquerade as original native Action receipts")
+    if expected_head == S7_HEAD:
+        source_names = {
+            Path(row["path"]).name for row in indexed["original_receipt_refs"]
+        }
+        action_names = {
+            Path(row["path"]).name for row in indexed["action_outcome_refs"]
+        }
+        _must(S7_RAW_RECEIVED in source_names,
+              "S7 original predecode received bridge JSONL required")
+        _must(not action_names.intersection({S7_RAW_SENT, S7_DERIVED_INDEX}),
+              "S7 sent command/derived SHA index is not Action OUTCOME")
+        # File bytes are now checked by R2, never source/authenticity attested.
+
     return {
         **projected,
         "classification": "RSEE_R4_DERIVED_MEMORY_MATCH_R2_BYTES_REVIEW_ONLY",
