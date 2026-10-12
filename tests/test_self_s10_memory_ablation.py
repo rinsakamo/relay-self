@@ -11,11 +11,11 @@ import pytest
 
 import test_postmain_s42_world_contrast as s42
 from adapters.mineflayer.normal_action import NormalWorldL0
+from adapters.mineflayer.self_s3_experience import S3ReadOnlyExperience
 from adapters.mineflayer.self_s10_memory_ablation import (
     S10AblationRejected,
     compare_shadow_ab,
 )
-from adapters.mineflayer.self_s3_experience import S3ReadOnlyExperience
 from relay_self.experience_bridge import ExperienceRejected, ReuseStatus
 from test_self_s3_experience import fixture
 
