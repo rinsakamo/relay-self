@@ -66,8 +66,8 @@ def adjudicate(data: dict[str, Any]) -> dict[str, Any]:
     exactly(data, "schema", "RELAYSELF_V1_R6_S10_L4_JOINT_CHECKPOINT")
     exactly(data, "evidence_class",
             "GITHUB_OPERATOR_REPORTED_REAL_WSL2_R6_READBACK_NOT_V_LOCAL_BYTES")
-    r, s, l = data["r6"], data["s10"], data["l4"]
-    require(all(type(x) is dict for x in (r, s, l)), "typed lane source evidence required")
+    r, s, learning = data["r6"], data["s10"], data["l4"]
+    require(all(type(x) is dict for x in (r, s, learning)), "typed lane source evidence required")
     fixed_r: dict[str, Any] = {
         "authority_url": R6_COMMENT,
         "source_head": R6_HEAD,
@@ -125,7 +125,7 @@ def adjudicate(data: dict[str, Any]) -> dict[str, Any]:
         "physical_matched_retained_vs_cheap_trials": 0,
         "minimum_heldout_pairs": 2, "scientific_go": False,
     }
-    for row, expected in ((s, expected_s), (l, expected_l)):
+    for row, expected in ((s, expected_s), (learning, expected_l)):
         require(set(row) == set(expected), "unqualified lane or goal fields")
         for name, value in expected.items():
             exactly(row, name, value)
