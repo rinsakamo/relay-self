@@ -390,6 +390,10 @@ async def run_physical(
         result["s3_observed_memories"] = len(experience.snapshot.memories)
         result["s3_learning_updates"] = 0
         result["s3_habit_grants"] = 0
+        if isinstance(intervention, S8TwoEpochIntervention):
+            result["s8_external_commands_attempted"] = intervention.commands_attempted
+            result["s8_distinct_second_target_closed"] = intervention.second_closed
+            result["s8_memory_caused_action_attested"] = False
         return result
     finally:
         if driver is not None:
