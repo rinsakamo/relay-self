@@ -330,6 +330,55 @@ def retain_comparison(
     return updated, contrast
 
 
+def _validate_comparison_links(
+    review: Memory,
+    record: dict,
+    by_id: dict[str, Memory],
+    admitted: frozenset[str],
+) -> None:
+    """A derived review must never stand alone as purported World evidence."""
+    try:
+        f = by_id[record["forecast_memory_id"]]
+        o = by_id[record["observation_memory_id"]]
+        prospective = json.loads(f.content)
+        observed = json.loads(o.content)
+        if (
+            not isinstance(prospective, dict)
+            or not isinstance(observed, dict)
+            or prospective.get("schema") != FORECAST_SCHEMA
+            or observed.get("schema") != "L1_SOURCE_EPISODE_V1"
+            or prospective.get("session_id") != record["session_id"]
+            or observed.get("session_id") != record["session_id"]
+            or prospective.get("action_ref") != record["action_ref"]
+            or observed.get("action_ref") != record["action_ref"]
+            or prospective.get("observed_world_fact") is not False
+            or prospective.get("executed_alternative") is not False
+            or observed.get("disposition") != "outcome"
+            or observed.get("source_status") != "executed"
+            or observed.get("reason_code") != "observed_execution"
+            or observed.get("world_revision") != record["world_revision"]
+            or observed.get("evidence_sha256") != record["evidence_sha256"]
+            or observed.get("cue_tags") != record["cue_tags"]
+            or review.source_provenance != o.source_provenance
+            or prospective.get("source_sha256") not in admitted
+            or observed.get("evidence_sha256") not in admitted
+            or record["status"] not in {
+                ContrastStatus.MATCH.value, ContrastStatus.SURPRISE.value,
+            }
+            or not isinstance(record["comparison_keys"], list)
+            or not isinstance(record["mismatched_keys"], list)
+            or not record["comparison_keys"]
+            or not set(record["mismatched_keys"]).issubset(record["comparison_keys"])
+            or (record["status"] == ContrastStatus.MATCH.value
+                and bool(record["mismatched_keys"]))
+            or (record["status"] == ContrastStatus.SURPRISE.value
+                and not record["mismatched_keys"])
+        ):
+            raise ForecastRejected("derived comparison links are not original evidence")
+    except (KeyError, ValueError, TypeError) as exc:
+        raise ForecastRejected("missing or forged original forecast/observation Memory") from exc
+
+
 def read_surprise_candidates(
     owner: PersistentCognition,
     *,
@@ -353,6 +402,7 @@ def read_surprise_candidates(
     ):
         raise ForecastRejected("admitted S digest set required")
     found = []
+    by_id = {m.memory_id: m for m in owner.memories}
     for item in owner.memories:
         if not item.memory_id.startswith("l2:comparison:"):
             continue
@@ -375,6 +425,9 @@ def read_surprise_candidates(
             raise ForecastRejected("untrusted comparison Memory") from exc
         if value["session_id"] != session_id:
             continue
+        _validate_comparison_links(
+            item, value, by_id, admitted_evidence_sha256,
+        )
         if (
             value["status"] != ContrastStatus.SURPRISE.value
             or tuple(value["cue_tags"]) != cue_tags
