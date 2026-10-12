@@ -173,7 +173,7 @@ def test_derived_retention_and_independent_raw_bytes_reviewer_only(original_proj
 
 
 @pytest.mark.parametrize(("key", "value", "reason"), [
-    ("expected_head", "a" * 40, "frozen source HEAD"),
+    ("expected_head", "a" * 40, "pinned S3-lineage source HEAD"),
     ("expected_session", "other", "S3 event identity/order/source mismatch"),
     ("expected_profile_sha256", "wrong", "profile SHA256"),
 ])
@@ -307,3 +307,127 @@ def test_cli_no_action_exits_nonzero_and_never_admits_v(original_projection, cap
     assert result["classification"] == "RSEE_R4_NO_RETAINED_ACTION_NOT_V_ADMISSIBLE"
     assert result["v_admission_granted"] is False
     assert result["r2_original_bytes"] == "NOT_CHECKED"
+
+
+
+def select_emitter_head(case, head):
+    """Test-only rewrite of mock expected identity AND mock envelope source."""
+    case["kwargs"]["expected_head"] = head
+    path = case["envelope"]
+    contents = json.loads(path.read_text(encoding="utf-8"))
+    contents["source_head"] = head
+    path.write_text(json.dumps(contents), encoding="utf-8")
+
+
+def rename_original(case, source_key, new_name):
+    """Keep R2 original paths/hashes source-shaped without inventing a run."""
+    old = case[source_key]
+    new = old.rename(old.parent / new_name)
+    env = json.loads(case["envelope"].read_text(encoding="utf-8"))
+    ref_key = "original_receipt_refs" if source_key == "primary" else "action_outcome_refs"
+    for ref in env[ref_key]:
+        if ref["path"] == str(old):
+            ref["path"] = str(new)
+    env["evidence_sha256_index"][str(new)] = env["evidence_sha256_index"].pop(
+        str(old)
+    )
+    case["envelope"].write_text(json.dumps(env), encoding="utf-8")
+    case[source_key] = new
+
+
+def test_s3_s6_s7_pinned_exact_source_roster():
+    assert set(r4.PINNED_S3_LINEAGE) == {
+        r4.S3_HEAD, r4.S6_HEAD, r4.S7_HEAD,
+    }
+    assert len(set(r4.PINNED_S3_LINEAGE)) == 3
+
+
+def test_s6_original_predecode_not_archived_is_never_reconstructed(
+    original_projection, monkeypatch,
+):
+    with_retention(original_projection)
+    select_emitter_head(original_projection, r4.S6_HEAD)
+    # Even a forged synthetic source envelope cannot resurrect unarchived
+    # native S6 bytes or become a positive V Action admission.
+    def forbidden(*_args, **_kwargs):
+        pytest.fail("R2 cannot retroactively check S6 unrecorded native stream")
+
+    monkeypatch.setattr(r4.r2, "audit_file", forbidden)
+    got = r4.audit(**original_projection["kwargs"])
+    assert got["classification"] == "RSEE_R5_S6_DERIVED_ONLY_RAW_NOT_ARCHIVED"
+    assert got["r2_original_bytes"] == "NOT_CHECKED"
+    assert got["v_result"] == "NOT_ADMISSIBLE_MISSING_NATIVE_ORIGINAL"
+    assert got["source_lineage_class"] == "S6_CONTROLLED_PHYSICAL_DERIVED_NO_BRIDGE_RAW"
+    assert got["v_admission_granted"] is False
+    assert got["science_qualified"] is False
+
+
+def test_s6_derived_only_cli_exit_is_nonzero(original_projection, capsys):
+    with_retention(original_projection)
+    select_emitter_head(original_projection, r4.S6_HEAD)
+    kw = original_projection["kwargs"]
+    code = r4.main([
+        "--verify",
+        "--derived-root", str(kw["derived_root"]),
+        "--original-root", str(kw["original_root"]),
+        "--envelope", str(kw["envelope"]),
+        "--expected-head", kw["expected_head"],
+        "--expected-profile-sha256", kw["expected_profile_sha256"],
+        "--expected-session", kw["expected_session"],
+    ])
+    assert code == 2
+    data = json.loads(capsys.readouterr().out)
+    assert data["classification"] == "RSEE_R5_S6_DERIVED_ONLY_RAW_NOT_ARCHIVED"
+
+
+def test_s7_future_original_predecode_bridge_is_review_only(original_projection):
+    with_retention(original_projection)
+    select_emitter_head(original_projection, r4.S7_HEAD)
+    rename_original(original_projection, "primary", r4.S7_RAW_RECEIVED)
+    got = r4.audit(**original_projection["kwargs"])
+    assert got["classification"] == "RSEE_R4_DERIVED_MEMORY_MATCH_R2_BYTES_REVIEW_ONLY"
+    assert got["source_lineage_class"] == "S7_PROSPECTIVE_BRIDGE_RAW_PRODUCER_NOT_RUN"
+    assert got["native_source_semantics_attested"] is False
+    assert got["action_correlation_attested"] is False
+    assert got["v_admission_granted"] is False
+    assert got["science_qualified"] is False
+
+
+def test_s7_missing_original_bridge_rejected_even_if_other_hashes_match(
+    original_projection,
+):
+    with_retention(original_projection)
+    select_emitter_head(original_projection, r4.S7_HEAD)
+    with pytest.raises(r4.R4Rejected, match="S7 original predecode received bridge"):
+        r4.audit(**original_projection["kwargs"])
+
+
+def test_s7_sent_attempt_cannot_impersonate_s16_outcome(original_projection):
+    with_retention(original_projection)
+    select_emitter_head(original_projection, r4.S7_HEAD)
+    rename_original(original_projection, "primary", r4.S7_RAW_RECEIVED)
+    rename_original(original_projection, "outcome", r4.S7_RAW_SENT)
+    with pytest.raises(r4.R4Rejected, match="sent command/derived SHA index"):
+        r4.audit(**original_projection["kwargs"])
+
+
+def test_s7_actual_raw_tamper_or_wrong_envelope_head_blocks(original_projection):
+    with_retention(original_projection)
+    select_emitter_head(original_projection, r4.S7_HEAD)
+    rename_original(original_projection, "primary", r4.S7_RAW_RECEIVED)
+    original_projection["primary"].write_bytes(b"modified bridge bytes")
+    with pytest.raises(r4.R4Rejected, match="R2 independent raw-source handoff blocked"):
+        r4.audit(**original_projection["kwargs"])
+    original_projection["primary"].write_bytes(b'{"source":"original"}\n')
+    env = json.loads(original_projection["envelope"].read_text(encoding="utf-8"))
+    env["source_head"] = r4.S3_HEAD
+    original_projection["envelope"].write_text(json.dumps(env), encoding="utf-8")
+    with pytest.raises(r4.R4Rejected, match="R2 independent raw-source handoff blocked"):
+        r4.audit(**original_projection["kwargs"])
+
+
+def test_s6_zero_memory_is_still_no_retained_action(original_projection):
+    select_emitter_head(original_projection, r4.S6_HEAD)
+    got = r4.audit(**original_projection["kwargs"])
+    assert got["classification"] == "RSEE_R4_NO_RETAINED_ACTION_NOT_V_ADMISSIBLE"
+    assert got["source_lineage_class"] == "S6_CONTROLLED_PHYSICAL_DERIVED_NO_BRIDGE_RAW"
