@@ -220,6 +220,39 @@
       "receipt_sha256": null,
       "status": "UNDETERMINED",
       "authority": "#592 / #594 / #595 / #537"
+    },
+    {
+      "id": "S6_CONTROLLED_PHYSICAL_REPORTED",
+      "lane": "S",
+      "claim": "Operator reports one controlled NoAI target S49 MOVE_AWAY native OUTCOME, 0.6269065734210617m, Memory1; S10/S11 0, not survival/goal",
+      "source_head": "a6ed8ed6b99dd09edcaa6cc9e5cefc08778aec8f",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "a5cdc400-572a-41ee-b411-e7399bbb80fd",
+      "receipt_sha256": "6626e94d23fcf5df91514c9355d07315165441d64643e5caefc45e536a56f645",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#537 comment 6116683016 / #604"
+    },
+    {
+      "id": "S6_SHA_INDEX_RECONCILED",
+      "lane": "R",
+      "claim": "Different original SHA256SUMS (32 entries) and FINAL_SHA256SUMS (39 entries) validated by operator, NOT V original-byte readback",
+      "source_head": "d23378d0c2d8271997389f6296a9bd018e488327",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "a5cdc400-572a-41ee-b411-e7399bbb80fd",
+      "receipt_sha256": "baa0e633a10f2cfd64107d1aee77250e56b4fa56405c826ff27e2f3f3652fd47",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#537 comment 6117549533 / #605"
+    },
+    {
+      "id": "R5_S6_RAW_SOURCE_DENIAL",
+      "lane": "R",
+      "claim": "S6 has no archived native predecode bridge bytes; R5 refuses retrospective R2/V admission, S7 producer only prospective offline",
+      "source_head": "364f4cc66fbe393717d31adce22747be17446dd8",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": "a5cdc400-572a-41ee-b411-e7399bbb80fd",
+      "receipt_sha256": null,
+      "status": "NO_GO",
+      "authority": "#607 / #575 comment 6117770145"
     }
   ],
   "golden": {

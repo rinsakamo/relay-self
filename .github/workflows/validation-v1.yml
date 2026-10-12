@@ -39,8 +39,9 @@ jobs:
           PYTHONPATH: 'src:tests:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m pytest -q tests/test_validation_v1.py tests/test_validation_l1_oracle.py tests/test_validation_s1_l1_boundary.py tests/test_rsee_shared_runtime.py
+          python -m pytest -q tests/test_validation_v1.py tests/test_validation_l1_oracle.py tests/test_validation_s1_l1_boundary.py tests/test_validation_s6_report.py tests/test_rsee_shared_runtime.py
           python -m experiments.validation.v1
+          python -m experiments.validation.s6_report_review
       - name: Ruff
         run: ruff check src tests experiments adapters observability
       - name: Repository contracts
@@ -104,10 +105,25 @@ jobs:
           ref: 75054188f1c7e8141690697794b6e705495de205
           path: external-s1
           persist-credentials: false
+      - name: Checkout R5 exact bounded original-byte lineage reviewer (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 364f4cc66fbe393717d31adce22747be17446dd8
+          path: external-r5
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Verify pinned R5 S6 historical denial without raw-source spoofing
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-r5 rev-parse HEAD)" = "364f4cc66fbe393717d31adce22747be17446dd8"
+          (cd external-r5 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_rsee_s3_v_projection.py)
+          (cd external-r5 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -c 'from experiments.standard_env import s3_v_projection as r; assert r.S6_HEAD=="a6ed8ed6b99dd09edcaa6cc9e5cefc08778aec8f" and r.S7_HEAD=="d23378d0c2d8271997389f6296a9bd018e488327" and r.PINNED_S3_LINEAGE[r.S6_HEAD]=="S6_CONTROLLED_PHYSICAL_DERIVED_NO_BRIDGE_RAW"')
+          test -z "$(git -C external-r5 status --porcelain --untracked-files=no)"
       - name: Independent cheap tag/episode oracle against unchanged L1 source
         env:
           PYTHONPATH: 'external-l1/src:src:.'
