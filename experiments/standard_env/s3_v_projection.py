@@ -7,7 +7,6 @@ separately existing R1 envelope and R2 matching raw bytes may support review.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 from typing import Any
