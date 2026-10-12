@@ -159,7 +159,7 @@ def test_wrong_world_hash_or_wrong_source_head_not_pair_matched():
     assert assess(owner, train, wrong_world, admission).status is (
         LearningReviewStatus.NON_MATCHED
     )
-    wrong_head = (*pairs[:1], replace(pairs[1], source_head="1" * 40),
+    wrong_head = (*pairs[:1], replace(pairs[1], source_head="2" * 40),
                   *pairs[2:])
     assert assess(owner, train, wrong_head, admission).status is (
         LearningReviewStatus.NON_MATCHED
