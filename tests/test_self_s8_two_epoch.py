@@ -48,11 +48,50 @@ def _controller(driver, *, fail_at=None):
                     kind="spawn", seq=2)
     server = SimpleNamespace(returncode=None, stdin=FakeStdin(fail_at=fail_at))
     owner = S8TwoEpochIntervention(S8TwoEpochPlan(REF), spawn, driver.events)
+    # Build synthetic fixture before asyncio.run; S42 builds retained state via
+    # its own offline asyncio runner, which must not be nested in callbacks.
+    owner._test_clearance_template = s42._pair()[1].observation
     return owner, server
 
 
 def _rows(tmp_path):
     return [json.loads(x) for x in (tmp_path / "events.jsonl").read_text().splitlines()]
+
+
+def _native_clearance(owner, *, zombies=(), foreign=False, truncated=False,
+                      non_target=False, stale=False):
+    """Actual native-message SHAPE, not an actual World/source receipt."""
+    near = owner._test_clearance_template
+    original = near.snapshot.nearby_entities[0]
+    members = tuple(replace(original, entity_id=n) for n in zombies)
+    if non_target:
+        members += (replace(original, name="item", entity_id=42),)
+    if truncated:
+        bound = near.snapshot.nearby_entities_coverage.max_entities
+        members = tuple(
+            replace(original, entity_id=1000 + n, name="item")
+            for n in range(bound)
+        )
+    coverage = replace(
+        near.snapshot.nearby_entities_coverage,
+        candidate_count=(len(members) + 1 if truncated else len(members)),
+        truncated=truncated,
+    )
+    snapshot = replace(near.snapshot, nearby_entities=members,
+                       nearby_entities_coverage=coverage)
+    calls = []
+
+    async def observe(request_id):
+        calls.append(request_id)
+        return replace(
+            near, session_id=("foreign" if foreign else owner.sink.session_id),
+            kind="probe", request_id=request_id,
+            seq=(1 if stale else 100 + len(calls)),
+            snapshot=snapshot,
+        )
+
+    observe.calls = calls
+    return observe
 
 
 def test_second_external_target_follows_closed_action_and_retained_memory(tmp_path):
@@ -63,7 +102,8 @@ def test_second_external_target_follows_closed_action_and_retained_memory(tmp_pa
     async def closed(step, receipt):
         assert any(x["kind"] == "action_outcome" for x in _rows(tmp_path))
         seen.append((step, receipt))
-        await owner.after_action_closed(server, step, receipt, memory_count=1)
+        await owner.after_action_closed(server, step, receipt, memory_count=1,
+                                        clearance_probe=_native_clearance(owner))
 
     result = asyncio.run(driver.run(
         probe=probe, grant=grant, on_action=execute,
@@ -73,6 +113,7 @@ def test_second_external_target_follows_closed_action_and_retained_memory(tmp_pa
     assert result["closed_outcomes"] == 1
     assert owner.commands_attempted == 3
     assert owner.second_closed is False
+    assert any(r["kind"] == "s9_clearance_native_verified" for r in _rows(tmp_path))
     assert seen
     assert server.stdin.commands == [
         (SUMMON + "\n").encode(), (CLEAR + "\n").encode(), (SUMMON + "\n").encode(),
@@ -89,7 +130,8 @@ def test_no_retained_memory_blocks_second_target_after_first_outcome(tmp_path):
     driver, probe, grant, execute, _, _ = _fixture(tmp_path)
     owner, server = _controller(driver)
     async def closed(step, receipt):
-        await owner.after_action_closed(server, step, receipt, memory_count=0)
+        await owner.after_action_closed(server, step, receipt, memory_count=0,
+                                        clearance_probe=_native_clearance(owner))
 
     with pytest.raises(S8InterventionRejected, match="not retained"):
         asyncio.run(driver.run(
@@ -128,7 +170,10 @@ def test_ambiguous_second_command_does_not_retry(tmp_path):
     driver, probe, grant, execute, _, _ = _fixture(tmp_path)
     owner, server = _controller(driver, fail_at=2)
     async def closed(step, receipt):
-        await owner.after_action_closed(server, step, receipt, memory_count=1)
+        await owner.after_action_closed(
+            server, step, receipt, memory_count=1,
+            clearance_probe=_native_clearance(owner),
+        )
 
     with pytest.raises(OSError):
         asyncio.run(driver.run(
@@ -147,7 +192,10 @@ def test_second_action_requires_distinct_entity_and_action_id(tmp_path):
     captured = []
     async def closed(step, receipt):
         captured.append((step, receipt))
-        await owner.after_action_closed(server, step, receipt, memory_count=1)
+        await owner.after_action_closed(
+            server, step, receipt, memory_count=1,
+            clearance_probe=_native_clearance(owner),
+        )
 
     asyncio.run(driver.run(
         probe=probe, grant=grant, on_action=execute,
@@ -156,7 +204,8 @@ def test_second_action_requires_distinct_entity_and_action_id(tmp_path):
     ))
     step, receipt = captured[0]
     with pytest.raises(S8InterventionRejected, match="distinct"):
-        asyncio.run(owner.after_action_closed(server, step, receipt, memory_count=2))
+        asyncio.run(owner.after_action_closed(server, step, receipt, memory_count=2,
+                                        clearance_probe=_native_clearance(owner)))
     assert owner.second_closed is False
     assert len(server.stdin.commands) == 3
 
@@ -253,3 +302,98 @@ def test_offline_stub_does_not_infer_learning_or_goal(tmp_path, monkeypatch, cap
     assert result["memory_caused_action_attested"] is False
     assert result["science_go"] is False
     assert result["s11_habit_grants"] == 0
+
+
+
+def test_old_zombie_persists_after_clear_second_summon_is_never_attempted(tmp_path):
+    driver, probe, grant, execute, _, _ = _fixture(tmp_path)
+    owner, server = _controller(driver)
+    observed = _native_clearance(owner, zombies=(7,))
+
+    async def closed(step, receipt):
+        await owner.after_action_closed(
+            server, step, receipt, memory_count=1, clearance_probe=observed,
+        )
+
+    with pytest.raises(S8InterventionRejected, match="S8_CLEAR_NOT_NATIVE_VERIFIED"):
+        asyncio.run(driver.run(
+            probe=probe, grant=grant, on_action=execute,
+            on_session_started=lambda: owner.submit_first(server),
+            on_outcome_closed=closed,
+        ))
+    assert len(observed.calls) == 4
+    assert owner.commands_attempted == 2
+    assert server.stdin.commands == [
+        (SUMMON + "\n").encode(), (CLEAR + "\n").encode(),
+    ]
+    rows = _rows(tmp_path)
+    assert any(r["kind"] == "s9_clearance_unverified" for r in rows)
+    assert rows[-1]["no_replay"] is True
+
+
+@pytest.mark.parametrize("failure", ["foreign", "stale", "mixed", "truncated"])
+def test_clearance_rejects_foreign_stale_ambiguous_or_incomplete_source(tmp_path, failure):
+    driver, probe, grant, execute, _, _ = _fixture(tmp_path)
+    owner, server = _controller(driver)
+    observed = _native_clearance(
+        owner, foreign=failure == "foreign", stale=failure == "stale",
+        zombies=(2, 4) if failure == "mixed" else (),
+        truncated=failure == "truncated",
+    )
+    source = observed
+
+    async def closed(step, receipt):
+        await owner.after_action_closed(
+            server, step, receipt, memory_count=1, clearance_probe=source,
+        )
+
+    with pytest.raises(S8InterventionRejected, match="S8_CLEAR_NOT_NATIVE_VERIFIED"):
+        asyncio.run(driver.run(
+            probe=probe, grant=grant, on_action=execute,
+            on_session_started=lambda: owner.submit_first(server),
+            on_outcome_closed=closed,
+        ))
+    assert owner.commands_attempted == 2
+    assert server.stdin.commands[-1] == (CLEAR + "\n").encode()
+    assert not any(
+        r["stage"] == "epoch2_summon"
+        for r in _rows(tmp_path)
+        if r["kind"] == "s8_external_command_intent"
+    )
+
+
+def test_zero_zombie_with_unrelated_item_allows_single_second_summon(tmp_path):
+    driver, probe, grant, execute, _, _ = _fixture(tmp_path)
+    owner, server = _controller(driver)
+    observed = _native_clearance(owner, non_target=True)
+
+    async def closed(step, receipt):
+        await owner.after_action_closed(
+            server, step, receipt, memory_count=1, clearance_probe=observed,
+        )
+
+    asyncio.run(driver.run(
+        probe=probe, grant=grant, on_action=execute,
+        on_session_started=lambda: owner.submit_first(server),
+        on_outcome_closed=closed,
+    ))
+    assert owner.commands_attempted == 3
+    assert len(observed.calls) == 1
+    verified = [
+        r for r in _rows(tmp_path) if r["kind"] == "s9_clearance_native_verified"
+    ]
+    assert len(verified) == 1
+    assert verified[0]["kill_ack_attested"] is False
+
+
+def test_consumed_s8_grant_cannot_authorize_another_trial(monkeypatch, capsys):
+    monkeypatch.setattr(trial.s1, "preflight", lambda *_:
+                        pytest.fail("consumed S8 grant must not reach host"))
+    assert trial.main([
+        "--run-disposable", "--confirm", trial.CONFIRM,
+        "--standing-eula-confirmed",
+        "--authorization-reference",
+        "https://github.com/rinsakamo/relay-self/issues/537#issuecomment-6118976649",
+        "--output-dir", "/tmp/nonexistent-operator-output",
+    ]) == 2
+    assert "S8_NEW_TWO_EPOCH_AUTHORITY_REQUIRED" in capsys.readouterr().out

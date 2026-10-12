@@ -297,6 +297,8 @@ async def run_physical(
     if isinstance(controlled_target, S8TwoEpochPlan) and not capture_native_originals:
         raise SessionRunRejected("S8 two-epoch run requires prospective S7 bridge capture")
     server = collector = session = driver = temp = receipt = None
+    experience = None
+    primary_failure: BaseException | None = None
     previous = os.environ.get("RELAYSELF_RSEE_NODE_RUNTIME_ROOT")
     root = RSEE
     result: dict = {"classification": "S1_WORLD_NOT_COMPLETED", "physical_outcome": "UNKNOWN"}
@@ -377,6 +379,9 @@ async def run_physical(
                 (lambda step, receipt: intervention.after_action_closed(
                     server, step, receipt,
                     memory_count=len(experience.snapshot.memories),
+                    clearance_probe=(
+                        lambda request_id: _correlated_observe(session, request_id)
+                    ),
                 ))
                 if isinstance(intervention, S8TwoEpochIntervention) else None
             ),
@@ -395,9 +400,41 @@ async def run_physical(
             result["s8_distinct_second_target_closed"] = intervention.second_closed
             result["s8_memory_caused_action_attested"] = False
         return result
+    except BaseException as exc:
+        primary_failure = exc
+        raise
     finally:
         if driver is not None:
             driver.stop()
+        # A real S8 trial retained S3 Memory and then failed in the second
+        # encounter, causing the normal success-only snapshot to be skipped.
+        # Prospectively preserve the *actual in-memory* S3 projection on failure
+        # without inventing a historical artifact or masking primary failure.
+        if (
+            primary_failure is not None and experience is not None
+            and experience.snapshot.memories
+        ):
+            try:
+                partial_path = output / "s9_partial_observed_memory_on_failure.json"
+                if partial_path.exists() or partial_path.is_symlink():
+                    raise SessionRunRejected("partial S3 receipt would overwrite evidence")
+                save_persistent_cognition(partial_path, experience.snapshot)
+            except BaseException as receipt_failure:
+                try:
+                    with (output / "s9_partial_memory_save_failure.json").open(
+                        "x", encoding="utf-8",
+                    ) as partial_status:
+                        partial_status.write(json.dumps({
+                            "schema": "SELF_S9_PARTIAL_MEMORY_SAVE_FAILURE_V1",
+                            "reason_type": type(receipt_failure).__name__,
+                            "primary_reason_type": type(primary_failure).__name__,
+                            "retained_observation_count": len(experience.snapshot.memories),
+                            "original_primary_failure_preserved": True,
+                        }, sort_keys=True) + "\n")
+                        partial_status.flush()
+                        os.fsync(partial_status.fileno())
+                except BaseException:
+                    pass
         if l2_observer is not None:
             # Advisory shutdown does not imply backend STOP/GPU release and
             # cannot prevent the Java/Node owner cleanup.
