@@ -21,7 +21,7 @@ from relay_self.habit import (
     HabitSelectionStatus,
     select_habit,
 )
-from relay_self.persistent_cognition import Memory, PersistentCognition
+from relay_self.persistent_cognition import PersistentCognition
 from relay_self.provenance import Provenance
 
 _TOKEN = re.compile(r"[A-Za-z0-9_.:/-]+")
@@ -174,6 +174,8 @@ def _samples(
                 or _SHA.fullmatch(data["evidence_sha256"]) is None
             ):
                 raise ShadowHabitRejected("invalid original L1 Action scope")
+        except ShadowHabitRejected:
+            raise
         except (ValueError, TypeError, KeyError) as exc:
             raise ShadowHabitRejected("malformed original L1 observed Memory") from exc
         # Reuse the actual L1 admission and contradiction gate; a goal label
@@ -263,9 +265,11 @@ def review_shadow_habit(
     test_samples, test_unverified = _samples(owner, holdout, admission)
     if train_unverified or test_unverified:
         return ShadowReview(ShadowStatus.UNVERIFIED, reason="original_digest_not_admitted")
+    combined = train_samples + test_samples
     if (
-        len(set(x.memory_id for x in train_samples + test_samples))
-        != len(train_samples + test_samples)
+        len(set(x.memory_id for x in combined)) != len(combined)
+        or len(set(x.observed_sha256 for x in combined)) != len(combined)
+        or len(set(x.goal_sha256 for x in combined)) != len(combined)
         or set(x.session_id for x in train_samples)
         & set(x.session_id for x in test_samples)
         or set(x.observed_sha256 for x in train_samples)
