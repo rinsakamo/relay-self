@@ -24,12 +24,16 @@ MAX_MEMORY_BYTES = 4 * 1024 * 1024
 S3_HEAD = "6f493b7a559dd72ea365998b9eadbd35fd7eb9b4"
 S6_HEAD = "a6ed8ed6b99dd09edcaa6cc9e5cefc08778aec8f"
 S7_HEAD = "d23378d0c2d8271997389f6296a9bd018e488327"
+S8_HEAD = "eac08081d497b11f8386edd1229704c816d1a78d"
+S9_HEAD = "916814742567f8ff396b5c078d22f897d8418927"
 # Frozen S3 descendants independently verified by exact Git ancestry.
 # Do not accept arbitrary future commits as qualified native source owners.
 PINNED_S3_LINEAGE = {
     S3_HEAD: "S3_SOURCE_SHAPED_ONLY",
     S6_HEAD: "S6_CONTROLLED_PHYSICAL_DERIVED_NO_BRIDGE_RAW",
     S7_HEAD: "S7_PROSPECTIVE_BRIDGE_RAW_PRODUCER_NOT_RUN",
+    S8_HEAD: "S8_ONE_CLOSED_ACTION_EXCEPTION_PARTIAL_MEMORY_NOT_ADMISSIBLE",
+    S9_HEAD: "S9_TWO_CONTROLLED_ACTIONS_ORIGINAL_REPORTED_PENDING_R2_V",
 }
 S7_RAW_RECEIVED = "native_bridge_received_original.jsonl"
 S7_RAW_SENT = "native_bridge_sent_original.jsonl"
@@ -219,6 +223,16 @@ def audit(
             "r2_original_bytes": "NOT_CHECKED",
             "reason": "No S3 retained Action/OUTCOME witness",
         }
+    # S8's actual one-shot ended exceptionally after only the first Action.
+    # It never wrote the success-path s3_observed_memory.json. A reconstructed
+    # snapshot must not qualify it, even if supplied by an untrusted caller.
+    if expected_head == S8_HEAD:
+        return {
+            **projected,
+            "classification": "RSEE_R6_S8_PARTIAL_SESSION_NOT_V_ADMISSIBLE",
+            "r2_original_bytes": "NOT_CHECKED",
+            "v_result": "NOT_ADMISSIBLE_INCOMPLETE_TWO_EPOCH_SOURCE",
+        }
     # S6 ran before S7's pre-decode archive existed: its source JSONL
     # cannot be reconstructed from S3 Memory, S4 counts or hash indexes.
     # Even an invented envelope/receipt must not retroactively qualify it.
@@ -231,6 +245,21 @@ def audit(
             "reason": "S6 original Mineflayer bridge JSONL was not archived",
         }
 
+    # Exact S9 reports two retained observations and source capture, but
+    # GitHub cannot open local WSL2 bytes. Independently review the actual
+    # S7-captured bridge + source receipt + S3 event/Memory before any R2
+    # handoff. This review is NOT a typed S16 or V admission.
+    if expected_head == S9_HEAD:
+        _must(len(retained) == 2, "S9 exact two retained observations required")
+        from experiments.standard_env import s9_original_audit as s9
+
+        try:
+            s9_report = s9.audit(derived_root)
+        except (ValueError, OSError) as exc:
+            raise R4Rejected("S9 raw bridge and Memory readback blocked") from exc
+        _must(s9_report["classification"]
+              == "RSEE_R6_S9_ORIGINAL_BRIDGE_AND_MEMORY_BYTES_REVIEW_ONLY",
+              "S9 original review classification mismatch")
     # Only consume an existing independently produced R1 envelope.
     try:
         r2_result = r2.audit_file(
@@ -251,7 +280,7 @@ def audit(
     _must(not any(str(path) in indexed["evidence_sha256_index"]
                   for path in (events, memory, cleanup, envelope)),
           "derived files cannot masquerade as original native Action receipts")
-    if expected_head == S7_HEAD:
+    if expected_head in (S7_HEAD, S8_HEAD, S9_HEAD):
         source_names = {
             Path(row["path"]).name for row in indexed["original_receipt_refs"]
         }
@@ -271,6 +300,10 @@ def audit(
         "raw_receipt_file_count": r2_result["original_files_sha256_checked"],
         "original_action_file_count": r2_result["action_outcome_original_files_declared"],
         "r2_envelope_sha256": r2_result["evidence_envelope_sha256"],
+        "s9_original_source_readback": (
+            "REVIEW_ONLY_BYTES_MATCH"
+            if expected_head == S9_HEAD else "NOT_APPLICABLE"
+        ),
         "v_result": "UNDETERMINED_INDEPENDENT_V_OWNER_REQUIRED",
         "side_effects": "NO_WRITE_NO_ACTION_NO_PROCESS",
     }
