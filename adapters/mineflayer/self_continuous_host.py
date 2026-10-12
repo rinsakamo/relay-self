@@ -147,10 +147,12 @@ class BoundedSessionDriver:
         on_candidate: Callable[[WorldConditionedChoice, int], S2CandidateReview] | None = None,
         on_l2_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
         observation_audit: S4NativeObservationAudit | None = None,
+        on_session_started: Callable[[], Awaitable[None]] | None = None,
     ) -> dict[str, object]:
         if (self._used or not all(callable(x) for x in (probe, grant, on_action))
                 or (on_candidate is not None and not callable(on_candidate))
                 or (on_l2_probe is not None and not callable(on_l2_probe))
+                or (on_session_started is not None and not callable(on_session_started))
                 or (observation_audit is not None
                     and (not isinstance(observation_audit, S4NativeObservationAudit)
                          or observation_audit.session_id != self.host.session_id
@@ -166,6 +168,15 @@ class BoundedSessionDriver:
                           max_events=self.budget.max_events,
                           max_actions=self.budget.max_actions)
         try:
+            if on_session_started is not None:
+                # Single foreground callback after source session_started is
+                # fsync'd; no native reader or S49 Action grant is transferred.
+                remaining = end - time.monotonic()
+                if remaining <= 0:
+                    raise SessionRunRejected("budget expired before controlled setup")
+                await asyncio.wait_for(
+                    on_session_started(), timeout=min(5.0, remaining),
+                )
             while frames < self.budget.max_frames:
                 remaining = end - time.monotonic()
                 if self._stopped:
