@@ -63,8 +63,8 @@ def test_missing_complete_balanced_cell_cannot_win():
 
 def test_equivalent_goal_rates_produce_abstention():
     x = rows()
-    x[0] = replace(x[0], success=False)
-    x[1] = replace(x[1], success=False)
+    x[2] = replace(x[2], success=False)
+    x[3] = replace(x[3], success=False)
     with pytest.raises(CheapOracleRejected, match="discriminating"):
         cheap_two_feature_table(x)
 
