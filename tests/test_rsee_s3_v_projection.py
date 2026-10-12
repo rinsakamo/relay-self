@@ -337,9 +337,9 @@ def rename_original(case, source_key, new_name):
 
 def test_s3_s6_s7_pinned_exact_source_roster():
     assert set(r4.PINNED_S3_LINEAGE) == {
-        r4.S3_HEAD, r4.S6_HEAD, r4.S7_HEAD,
+        r4.S3_HEAD, r4.S6_HEAD, r4.S7_HEAD, r4.S8_HEAD, r4.S9_HEAD,
     }
-    assert len(set(r4.PINNED_S3_LINEAGE)) == 3
+    assert len(set(r4.PINNED_S3_LINEAGE)) == 5
 
 
 def test_s6_original_predecode_not_archived_is_never_reconstructed(
