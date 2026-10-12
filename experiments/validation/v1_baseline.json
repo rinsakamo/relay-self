@@ -209,6 +209,17 @@
       "receipt_sha256": null,
       "status": "SOURCE_SHAPED_PASS_REPORTED",
       "authority": "#594 / #426 comment 6110665640"
+    },
+    {
+      "id": "S1_L1_HANDOFF",
+      "lane": "V",
+      "claim": "Actual S1 event schema offers decoded native Action SHA, but L1 requires original current typed S16 Action/Outcome + World revision and S-owned source digest; offline synthetic source-shaped boundary only",
+      "source_head": "75054188f1c7e8141690697794b6e705495de205",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "UNDETERMINED",
+      "authority": "#592 / #594 / #595 / #537"
     }
   ],
   "golden": {

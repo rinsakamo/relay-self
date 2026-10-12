@@ -39,7 +39,7 @@ jobs:
           PYTHONPATH: 'src:tests:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m pytest -q tests/test_validation_v1.py tests/test_validation_l1_oracle.py tests/test_rsee_shared_runtime.py
+          python -m pytest -q tests/test_validation_v1.py tests/test_validation_l1_oracle.py tests/test_validation_s1_l1_boundary.py tests/test_rsee_shared_runtime.py
           python -m experiments.validation.v1
       - name: Ruff
         run: ruff check src tests experiments adapters observability
@@ -124,3 +124,20 @@ jobs:
           (cd external-s1 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m adapters.mineflayer.self_s1_runtime) > s1-dry-run.json
           python -c 'import json; d=json.load(open("s1-dry-run.json")); assert d["classification"]=="S1_DRY_RUN_NO_EFFECTS" and d["world"]=="NOT_STARTED" and d["action"]=="NOT_ISSUED" and d["model_calls"]==0'
           test -z "$(git -C external-s1 status --porcelain --untracked-files=no)"
+
+      - name: Generate original S1 source-shaped stream from pinned S1 test owner
+        env:
+          PYTHONPATH: 'external-s1/tests:external-s1/src:src:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m experiments.validation.emit_s1_fixture --out "$RUNNER_TEMP/s1-v-fixture.jsonl"
+          test "$(git -C external-s1 rev-parse HEAD)" = "75054188f1c7e8141690697794b6e705495de205"
+          test -z "$(git -C external-s1 status --porcelain --untracked-files=no)"
+      - name: V independent S1 event to L1 eligibility audit, fail closed
+        env:
+          PYTHONPATH: 'src:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m experiments.validation.s1_l1_boundary --stream "$RUNNER_TEMP/s1-v-fixture.jsonl" > "$RUNNER_TEMP/s1-v-audit.json"
+          python -c 'import json,os; p=os.path.join(os.environ["RUNNER_TEMP"],"s1-v-audit.json"); d=json.load(open(p)); assert d["terminal"]=="S1_LOG_CONSISTENT_NO_L1_ADMISSION" and d["closed_outcomes"]==1 and d["L1_admission"]=="NOT_AUTHORIZED_FROM_LOG" and d["science_go"] is False'
+          python -m pytest -q tests/test_validation_s1_l1_boundary.py
