@@ -11,8 +11,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from experiments.standard_env.golden_admission import verify_qualified_world
-from experiments.standard_env.world_bootstrap import _parse_native_nbt
 from experiments.standard_env.world_binding import WorldBindingRejected
+from experiments.standard_env.world_bootstrap import _parse_native_nbt
 
 RSEE = Path("/home/rinsa/.local/share/relay-self/rsee-1.0-20261011")
 
