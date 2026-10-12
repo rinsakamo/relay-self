@@ -130,7 +130,7 @@ jobs:
           PYTHONPATH: 'external-s1/tests:external-s1/src:src:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m experiments.validation.emit_s1_fixture --out "$RUNNER_TEMP/s1-v-fixture.jsonl"
+          (cd external-s1 && PYTHONPATH="$PWD/tests:$PWD/src:$PWD" python "$GITHUB_WORKSPACE/experiments/validation/emit_s1_fixture.py" --out "$RUNNER_TEMP/s1-v-fixture.jsonl")
           test "$(git -C external-s1 rev-parse HEAD)" = "75054188f1c7e8141690697794b6e705495de205"
           test -z "$(git -C external-s1 status --porcelain --untracked-files=no)"
       - name: V independent S1 event to L1 eligibility audit, fail closed
