@@ -69,6 +69,10 @@ class S8TwoEpochIntervention:
         self._first_entity_id: int | None = None
         self._second_closed = False
 
+    @property
+    def second_closed(self) -> bool:
+        return self._second_closed
+
     async def _submit(self, server: object, command: str, *, stage: str) -> None:
         # Record intent BEFORE the potentially irreversible server write.
         # A write or drain failure may already have sent the command. No retry.
@@ -97,8 +101,7 @@ class S8TwoEpochIntervention:
     async def submit_first(self, server: object) -> None:
         if self.commands_attempted:
             raise S8InterventionRejected("first controlled target already attempted")
-        # Mark even a failed/ambiguous first send as consumed.
-        self.commands_attempted = 0
+        # A failed/ambiguous send still consumes the at-most-once attempt.
         await self._submit(server, SUMMON, stage="epoch1_summon")
         self._first_ready = True
 
