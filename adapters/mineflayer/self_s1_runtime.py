@@ -51,11 +51,11 @@ from adapters.mineflayer.self_s2_candidates import (
 )
 from adapters.mineflayer.self_s3_experience import S3ReadOnlyExperience
 from adapters.mineflayer.self_s4_observation import S4NativeObservationAudit
-from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 from adapters.mineflayer.self_s6_intervention import (
     S6ControlledIntervention,
     S6ControlledPlan,
 )
+from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 from experiments.standard_env.golden_admission import verify_qualified_world
 from experiments.standard_env.node_runtime import verify_node_runtime
 from experiments.standard_env.preflight import _check_tools, read_profile
