@@ -39,10 +39,11 @@ jobs:
           PYTHONPATH: 'src:tests:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m pytest -q tests/test_validation_v1.py tests/test_validation_l1_oracle.py tests/test_validation_s1_l1_boundary.py tests/test_validation_s6_report.py tests/test_validation_s9_two_epoch.py tests/test_rsee_shared_runtime.py
+          python -m pytest -q tests/test_validation_v1.py tests/test_validation_l1_oracle.py tests/test_validation_s1_l1_boundary.py tests/test_validation_s6_report.py tests/test_validation_s9_two_epoch.py tests/test_validation_s9_joint_checkpoint.py tests/test_rsee_shared_runtime.py
           python -m experiments.validation.v1
           python -m experiments.validation.s6_report_review
           python -m experiments.validation.s9_two_epoch_review
+          python -m experiments.validation.s9_joint_checkpoint
       - name: Ruff
         run: ruff check src tests experiments adapters observability
       - name: Repository contracts
@@ -120,6 +121,20 @@ jobs:
           ref: b5ca2afc0e2cb8b419e7d2f18afc3e24f991ad4a
           path: external-r6
           persist-credentials: false
+      - name: Checkout S10 frozen Memory-withholding negative control (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: cd6edc11f390c759feeb437dd5a14ad03bf8ee98
+          path: external-s10
+          persist-credentials: false
+      - name: Checkout L4 frozen prospective matched baseline owner (read only)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 28b90ad2f2d204a808610a36a8b619f2c194be73
+          path: external-l4
+          persist-credentials: false
       - name: Checkout S9 original source at exact HEAD (read only)
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -138,6 +153,16 @@ jobs:
           test "$(git -C external-s9 rev-parse HEAD)" = "916814742567f8ff396b5c078d22f897d8418927"
           (cd external-s9 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_self_s9_failure_receipts.py)
           test -z "$(git -C external-s9 status --porcelain --untracked-files=no)"
+      - name: S10/L4 independent sibling source-shaped controls; never a World run
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-s10 rev-parse HEAD)" = "cd6edc11f390c759feeb437dd5a14ad03bf8ee98"
+          test "$(git -C external-l4 rev-parse HEAD)" = "28b90ad2f2d204a808610a36a8b619f2c194be73"
+          (cd external-s10 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_self_s10_memory_ablation.py)
+          (cd external-l4 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_learning_contrast.py)
+          test -z "$(git -C external-s10 status --porcelain --untracked-files=no)"
+          test -z "$(git -C external-l4 status --porcelain --untracked-files=no)"
       - name: R6 true immutable source offline tests and default no-I/O review plan
         env:
           PYTHONDONTWRITEBYTECODE: '1'

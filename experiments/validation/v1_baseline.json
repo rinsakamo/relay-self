@@ -308,6 +308,39 @@
       "receipt_sha256": null,
       "status": "NO_GO",
       "authority": "#609 / #595 / #544"
+    },
+    {
+      "id": "R6_REAL_HOST_ORIGINAL_BYTES_REPORTED",
+      "lane": "R",
+      "claim": "Actual R6 operator WSL2 read-only audit reconciled six S9 originals and two SHA indexes 47/56, 57 existing files unchanged; V GitHub has not directly read host bytes and typed S16 remains unqualified.",
+      "source_head": "b5ca2afc0e2cb8b419e7d2f18afc3e24f991ad4a",
+      "evidence_origin": "GITHUB_ISSUE_RECEIPT",
+      "source_session": "dacf338b-4ba9-4e91-8eea-d4aebd0aef22",
+      "receipt_sha256": "1579167489e67cd9fb3a4d174abc1831cd8d3569e0de615de60cacde0d779432",
+      "status": "PHYSICAL_REPORTED",
+      "authority": "#575 comment 6121953835 / #610"
+    },
+    {
+      "id": "S10_MEMORY_WITHHELD_L0_NULL",
+      "lane": "S",
+      "claim": "Same synthetic source event Memory-present recall vs withheld no recall, L0 identical; offline-only no causal real World goal delta.",
+      "source_head": "cd6edc11f390c759feeb437dd5a14ad03bf8ee98",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "OFFLINE_PASS_REPORTED",
+      "authority": "#611 / #537 comment 6121472698"
+    },
+    {
+      "id": "L4_CHEAP_MATCHED_HELDOUT_CONTRACT",
+      "lane": "L",
+      "claim": "Prospective two-arm retained vs cheap original-Goal/Decision/Action/cost and heldout contract offline-qualified, real physical paired experiments NOT_RUN.",
+      "source_head": "28b90ad2f2d204a808610a36a8b619f2c194be73",
+      "evidence_origin": "SOURCE_CODE_CONTRACT",
+      "source_session": null,
+      "receipt_sha256": null,
+      "status": "OFFLINE_PASS_REPORTED",
+      "authority": "#612 / #537 comment 6121551874"
     }
   ],
   "golden": {
