@@ -197,6 +197,19 @@ def test_consumed_s6_authorization_cannot_be_reused(monkeypatch, capsys):
     assert "S8_NEW_TWO_EPOCH_AUTHORITY_REQUIRED" in capsys.readouterr().out
 
 
+def test_s6_worktree_repair_permission_also_spent(monkeypatch, capsys):
+    monkeypatch.setattr(trial.s1, "preflight", lambda *_:
+                        pytest.fail("spent S6 worktree grant cannot reach host"))
+    assert trial.main([
+        "--run-disposable", "--confirm", trial.CONFIRM,
+        "--standing-eula-confirmed",
+        "--authorization-reference",
+        "https://github.com/rinsakamo/relay-self/issues/537#issuecomment-6116304704",
+        "--output-dir", "/tmp/nonexistent-operator-output",
+    ]) == 2
+    assert "S8_NEW_TWO_EPOCH_AUTHORITY_REQUIRED" in capsys.readouterr().out
+
+
 def test_s8_bounded_caps_checked_before_preflight(monkeypatch, capsys):
     monkeypatch.setattr(trial.s1, "preflight", lambda *_:
                         pytest.fail("budget violation cannot reach host"))
