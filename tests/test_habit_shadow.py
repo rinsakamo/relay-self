@@ -203,7 +203,7 @@ def test_malformed_original_observed_memory_cannot_be_upgraded():
         owner.identity, (invalid, *owner.memories[1:]),
         owner.appraisal_dispositions,
     )
-    with pytest.raises(ShadowHabitRejected, match="malformed original"):
+    with pytest.raises(ShadowHabitRejected, match="not an observed S16"):
         review(owner, labels, admission)
 
 
