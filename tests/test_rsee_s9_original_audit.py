@@ -11,8 +11,8 @@ from experiments.standard_env import s3_v_projection as r4
 from experiments.standard_env import s9_original_audit as r6
 from relay_self.persistent_cognition import load_persistent_cognition
 
+from test_rsee_s3_v_projection import original_projection as r4_fixture
 from test_rsee_s3_v_projection import (
-    original_projection as r4_fixture,
     rename_original,
     select_emitter_head,
     with_retention,
