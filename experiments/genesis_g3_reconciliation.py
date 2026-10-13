@@ -150,6 +150,20 @@ class G3Commit:
     evidence_status: Literal["OFFLINE_READBACK_CONSISTENT"] = "OFFLINE_READBACK_CONSISTENT"
 
 
+class SourceBoundGenesisRegistry(FundedGenesisRegistry):
+    """G3 path disables direct unaudited G2 commit calls."""
+
+    def commit_funded_births(self, *args, **kwargs):
+        raise ValueError("G3 requires M readback reconciliation")
+
+    def _commit_after_reconciliation(
+        self, receipt: FundedBirthReceipt, *, inherit: bool, mutate: bool
+    ) -> tuple[Individual, ...]:
+        return super().commit_funded_births(
+            receipt, inherit=inherit, mutate=mutate
+        )
+
+
 class MFundedLineageBridge:
     """A fail-closed wrapper, not another birth or metabolism owner.
 
@@ -159,13 +173,13 @@ class MFundedLineageBridge:
 
     def __init__(
         self,
-        registry: FundedGenesisRegistry,
+        registry: SourceBoundGenesisRegistry,
         *,
         expected_source: MSourceIdentity,
         ledger_revision: int,
     ) -> None:
-        if not isinstance(registry, FundedGenesisRegistry):
-            raise ValueError("G3 requires G2 funded registry")
+        if not isinstance(registry, SourceBoundGenesisRegistry):
+            raise ValueError("G3 requires source-bound funded registry")
         if type(ledger_revision) is not int or ledger_revision < 0:
             raise ValueError("invalid initial M ledger revision")
         self.registry = registry
@@ -240,7 +254,7 @@ class MFundedLineageBridge:
 
         # Validation only through this point. G2 now checks its own receipt
         # identities, replay, mutation and capacity before birth commit.
-        children = self.registry.commit_funded_births(
+        children = self.registry._commit_after_reconciliation(
             event.receipt, inherit=inherit, mutate=mutate
         )
         self._used_events.add(event.event_id)
