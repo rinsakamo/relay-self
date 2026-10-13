@@ -176,3 +176,78 @@ authorization only when integration is required.
   independent study; setting `inherit=False` is **not selection OFF**.
 - No original World birth, true authorized energy debit, M2↔G2 production
   adapter, S-constructed Self, Minecraft/LLM/GPU, science or merge.
+
+
+## G3 — M ledger/readback consistency gate (2026-10-13)
+
+### Why G2 was not yet a payable-lineage interface
+
+G2 tied a birth cost report to a preselected parent, but did not require
+the initial reported `PhysicalBirthDebit.before` to equal any separately
+reported **M ledger balance**. A fabricated 40 → 38 debit could pass even
+if the actual M parent energy were 8. Birth costs and genetic parentage
+must not be asserted by G.
+
+### New G3 offline evidence envelope
+
+`experiments/genesis_g3_reconciliation.py` introduces:
+
+1. `SourceBoundGenesisRegistry`: keeps all G2 preselection and lineage
+   capabilities, but refuses the generic G2 `commit_funded_births` path.
+   G3 users must use the reconciliation bridge. This is a **Python API
+   discipline**, not a security boundary against malicious local code.
+2. `MSourceIdentity`: immutable declared external source session, frozen
+   World snapshot identity and M ledger ID. A caller must supply an
+   **independently R/M-established** identity; the object itself is not proof.
+3. `MFundedEvent`: exact G2 `FundedBirthReceipt`, globally unique event
+   ID (within one G3 bridge), strictly increasing M ledger revisions,
+   sorted per-parent M balance snapshots before and after the funded births.
+4. `MReadback`: separately supplied M ledger revision, M source identity,
+   after-balances, and deterministic SHA256 over the event's canonical
+   parsed content. Matching that hash is only a tamper/accidental mismatch
+   check, **not** source authentication: a forger can hash their own event.
+5. `MFundedLineageBridge.reconcile_and_commit`: compare expected source,
+   currently preselected G plan/epoch, event uniqueness, continuity of
+   M revisions, independently supplied after-state, and each debit's
+   **exact** parent starting balance → sequential debit chain → final
+   M balance. Reject absent/extra parents, wrong payer, forged energy
+   trajectory, failed readback, stale World/source or reused event.
+   Only then call G2's parent-ID/cost/replay gate to mint lineage.
+6. `G3Commit`: archive event ID, ledger revision, matched event digest
+   and child IDs for later audit. `evidence_status` is deliberately
+   `OFFLINE_READBACK_CONSISTENT`, never a production authentic status.
+
+**No physics duplication:** G3 never calls `metabolism_step`, `make_child`
+or a simulation tick and never writes true M energy. The existing M2 Draft
+#621 retains its own real offline parent-funded `make_child` mechanics;
+its independently frozen outcomes must not be rewritten to satisfy G3.
+
+### What is **not** qualified
+
+- The existing M2 #621 `BirthRecord` still does not contain these G2/G3
+  parent-before-selection IDs, M ledger revisions, R source identifiers
+  or independent readback. An automatic translation would **invent**
+  missing evidence. The default M2 generations replace their cohort
+  rather than preserving every living parent, and inherit 2 different
+  policy alleles. G3 does not silently convert those results or alleles.
+- Offline G3 tests deliberately synthesize event/readback records. They
+  show consistent/reproducible intake and rejection of altered records,
+  **not** that any authentic World payment or M production transaction
+  happened. An adversarial actor supplying both matching fake records
+  is not prevented by the local deterministic SHA.
+- `MFundedLineageBridge` holds an in-memory revision/replay set. A restart,
+  split-brain worker or process crash **is not safe** without externally
+  persisted M and G atomic receipts and idempotent reconciliation.
+- Neither G3 nor M2 provides a production S instance binding, genuine child
+  spawn, source-authenticated R evidence, M2 scientific success,
+  a new selection-OFF experiment or a cross-lane merge.
+- Actual World authentic lineage requires R/M to specify the provenance
+  and transaction owner (including payment failures/partial events,
+  restart recovery, exact full cohort state), then S to bind individual
+  construction and L to initialize acquired state independently.
+  V owns knockdown/scientific judgment.
+
+**Expected exact-head engineering classification:**
+`G3_OFFLINE_M_LEDGER_READBACK_CONSISTENCY_PASS` only if new Draft CI
+passes; `M2_TO_G3_AUTHENTIC_RECEIPT_UNAVAILABLE`,
+`WORLD_NOT_RUN`, `SCIENCE_NOT_CLAIMED`.
