@@ -39,7 +39,7 @@ jobs:
           B0_PARENT=4edac0b139d2d49b0169ffaad7c5892bed7fa2d1
           git merge-base --is-ancestor "$B0_PARENT" HEAD
           git diff --quiet "$B0_PARENT" HEAD -- adapters/mineflayer/s49_normal_session_real_ci.py
-          changed="$(git diff --name-only --diff-filter=CDMRTUXB "$B0_PARENT" HEAD)"
+          changed="$(git diff --name-only --diff-filter=ACDMRTUXB "$B0_PARENT" HEAD)"
           expected="$(printf '%s\n' \
             .github/workflows/self-demo.yml \
             adapters/mineflayer/b0_ground_foraging.py \
