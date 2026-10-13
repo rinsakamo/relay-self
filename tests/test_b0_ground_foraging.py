@@ -4,12 +4,12 @@ from dataclasses import replace
 import pytest
 
 import test_feature_s46_eat as s46
+from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.b0_ground_foraging import (
     GroundRejected,
     compare_pickup,
     select_ground_target,
 )
-from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.b0_ground_runner import _admit_native_l0_seek
 from adapters.mineflayer.python_protocol import (
     MineflayerEntityFact,
