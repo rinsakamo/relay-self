@@ -69,13 +69,13 @@ def _streams():
     return messages, original_in, original_out
 
 
-def _run(*, received=None, sent=None, owner=None, **kwargs):
+def _run(*, received=None, sent=None, owner=None, target_id=2, **kwargs):
     _, native_in, native_out = _streams()
     return review_nonissued_wait_interval(
         received_original=native_in if received is None else received,
         sent_original=native_out if sent is None else sent,
         owner=_owner() if owner is None else owner,
-        expected_session_id="session-1", expected_target_id=2,
+        expected_session_id="session-1", expected_target_id=target_id,
         **kwargs,
     )
 
@@ -184,7 +184,7 @@ def test_fail_closed_when_nonissuance_or_bounded_interval_not_proven(case):
         owner.supervisor._lifecycles["forged"] = object()
     elif case == "bad_expected":
         with pytest.raises(S13NonissuanceRejected):
-            _run(expected_target_id=-1)
+            _run(target_id=-1)
         return
     elif case == "trailing_garbage":
         native_out += b'{"type":"nope"}\n'
