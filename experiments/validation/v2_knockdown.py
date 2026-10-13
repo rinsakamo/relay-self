@@ -16,7 +16,7 @@ SCHEMA = "RELAYSELF_V2_KNOCKDOWN_PREREG_1"
 PROTOCOL = Path(__file__).with_name("v2_knockdown_manifest.json")
 V_HEAD = "53d50029da64a95c56bb56c6d48b5d14ce94e84a"
 S_HEAD = "34cf226e55645f85172317172c37ae6cbd481ae4"
-SHA256 = re.compile(r"[a-f0-9]{64}\\Z")
+SHA256 = re.compile(r"[a-f0-9]{64}\Z")
 ARMS = ("SENSOR_ON", "SHAM_ON", "SENSOR_MASKED", "CHEAP_NATIVE")
 SENSORS = {
     "SENSOR_ON": ("sensor_gate", 1, 0, 1),
