@@ -1,0 +1,70 @@
+name: M Lane M2 offline diagnostics
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "experiments/metabolism_m2.py"
+      - "experiments/metabolism_m2_scarcity.py"
+      - "experiments/metabolism_m2_costs.py"
+      - "experiments/metabolism_m2_uncertainty.py"
+      - "tests/test_metabolism_m2_experiment.py"
+      - "tests/test_metabolism_m2_scarcity.py"
+      - "tests/test_metabolism_m2_costs.py"
+      - "tests/test_metabolism_m2_uncertainty.py"
+      - "docs/m-lane-metabolism-m2.md"
+      - ".github/workflows/m-lane-m2-offline.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prospective-seed-family:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out exact transaction head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Verify exact head
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install offline test tool
+        run: python -m pip install --disable-pip-version-check "pytest==9.1.1"
+
+      - name: Fixed M2 deterministic negative controls
+        run: python -m pytest -q tests/test_metabolism_m2_experiment.py tests/test_metabolism_m2_scarcity.py tests/test_metabolism_m2_costs.py tests/test_metabolism_m2_uncertainty.py
+
+      - name: Freeze and report four non-selected seed outcomes
+        run: |
+          for seed in 7 17 31 43; do
+            echo "M2_PREDECLARED_SEED=$seed"
+            python -m experiments.metabolism_m2 --seed "$seed"
+          done
+          echo "M2_DESCRIPTIVE_DIAGNOSTICS_ONLY_NO_SCIENCE_GO"
+
+      - name: Run predeclared scarcity four-seed family (never tune on these seeds)
+        run: |
+          python -m experiments.metabolism_m2_scarcity --seeds
+          echo "M2_SCARCITY_DESCRIPTIVE_ONLY_NO_SCIENCE_GO"
+
+      - name: Run preregistered MOVE/FIGHT cost matrix (new seed family only)
+        run: |
+          python -m experiments.metabolism_m2_costs --fixed-matrix
+          echo "M2_COSTS_DESCRIPTIVE_ONLY_SCIENCE_NO_GO"
+
+      - name: Run prospectively frozen hidden-state and IID negative control family
+        run: |
+          python -m experiments.metabolism_m2_uncertainty --fixed-family
+          echo "M2D_HIDDEN_WORLD_DESCRIPTIVE_ONLY_SCIENCE_NO_GO"
