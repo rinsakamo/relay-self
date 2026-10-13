@@ -9,6 +9,8 @@ from adapters.mineflayer.b0_ground_foraging import (
     compare_pickup,
     select_ground_target,
 )
+from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+from adapters.mineflayer.b0_ground_runner import _admit_native_l0_seek
 from adapters.mineflayer.python_protocol import (
     MineflayerEntityFact,
     MineflayerInventoryItem,
@@ -118,3 +120,39 @@ def test_wrong_distance_and_unreachable_height_denied():
     ))
     with pytest.raises(GroundRejected):
         select_ground_target(wrong)
+
+
+def test_native_ground_seek_requires_real_l0_selection_not_operator_override():
+    from dataclasses import replace
+
+    p = _ground()
+    target = select_ground_target(p)
+    ledger = B0EnergyLedger(p.session_id)
+    # A full-food L0 does not choose SEEK. Operator may not force one.
+    with pytest.raises(GroundRejected, match="L0 did not choose"):
+        _admit_native_l0_seek(ledger, p, target)
+
+    hungry = replace(p, seq=p.seq + 1, request_id="hungry-ground-native",
+                     snapshot=replace(p.snapshot, food=13.0))
+    admitted = _admit_native_l0_seek(ledger, hungry, target)
+    assert admitted["l0_kind"] == "SEEK"
+    assert admitted["entity_id"] == 70
+    assert admitted["probe_seq"] == hungry.seq
+    assert admitted["issued_action"] is False
+    assert ledger.body.tick == 0 and ledger.credit_count == 0
+
+
+def test_ground_seek_native_source_refuses_stale_or_foreign_target():
+    from dataclasses import replace
+
+    p = _ground()
+    hungry = replace(p, snapshot=replace(p.snapshot, food=13.0))
+    ledger = B0EnergyLedger(p.session_id)
+    target = select_ground_target(hungry)
+    _admit_native_l0_seek(ledger, hungry, target)
+    with pytest.raises(Exception):
+        _admit_native_l0_seek(ledger, hungry, target)
+
+    next_probe = replace(hungry, seq=hungry.seq + 1, request_id="other-probe")
+    with pytest.raises(GroundRejected, match="L0 did not choose"):
+        _admit_native_l0_seek(ledger, next_probe, replace(target, entity_id=999))

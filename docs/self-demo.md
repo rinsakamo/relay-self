@@ -675,3 +675,40 @@ retains the postterminal probe seq and refuses any unproven denial.
 Unknown item/coverage or replay causes FAIL, not a starvation PASS.
 One live World run requires **one new, explicit, mode-specific grant**.
 Existing B0 inventory authorization was already consumed.
+
+
+### B0 ground one-shot — fresh user grant, L0-grounded SEEK
+
+As of 2026-10-13, the previous `inventory` and `none` World grants
+were each consumed by their separate successful single-session trials.
+A *new explicit* grant for one `--food-source ground` World trial was
+received. **The grant has not been consumed by these source edits or CI.**
+
+Ground mode first uses the operator World Hunger effect only to
+establish a genuine *native-measured* food deficit while the World is
+still item-free. Each correlated hunger observation gives one designed
+L0 WAIT; only preceding WAIT decisions incur M0 basal charges.
+After hunger falls below 14, the Hunger effect is cleared and the
+operator summons exactly one local ground-item fixture. The fresh
+native observation must independently lead the existing cheap L0
+to `SEEK` the unique observed item, otherwise physical movement is
+rejected BEFORE issuing the next Action. Subsequent proposed SEEK
+movements also require fresh L0 SEEK agreement. S50-issued movement,
+pickup-disappearance plus inventory-rise consistency, S51 issued EAT
+and verified native food/inventory change, one M0 credit and next
+fresh L0 are separate evidence boundaries.
+
+The external summon is NOT endogenous food creation. The entity's
+item-stack metadata and playerCollect event are not authenticated by
+the current native protocol. A consistent inventory-rise + item
+disappearance is **not** direct causal proof of that exact item being
+picked up or of a zombie drop. The L0 here is a deliberately coded
+cheap behavior, not learned/evolved foraging, and does not establish
+autonomous exploration of unknown resources. Human operator fixture,
+physical tests, and V causal comparison remain separate.
+
+**No additional Java/Node/World/LLM/GPU invocation has occurred as
+a result of this implementation commit.** Local WSL2 LocalCodex must
+verify exact updated PR HEAD and successful CI, source binding and
+read-only RSEE preflight, and then use the new mode-specific grant
+for **exactly one** real trial with fresh output paths and no retry.

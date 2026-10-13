@@ -273,7 +273,41 @@ async def qualify(
         _command(server, "gamemode survival RelaySelf")
         await server.stdin.drain()
         if food_source == "ground":
-            report["stage"] = "ISSUED_SEEK_GROUND_PICKUP"
+            # Before seeing a target, the same cheap L0 must have a genuine
+            # food deficit. Otherwise L0 would WAIT, while the operator
+            # forced an unrelated SEEK (invalid behavior attribution).
+            report["stage"] = "GROUND_NATIVE_APPETITE_BEFORE_FORAGING"
+            report["ground_appetite_trace"] = []
+            _command(server, "effect give RelaySelf minecraft:hunger 25 20 true")
+            await server.stdin.drain()
+            for attempt in range(16):
+                await asyncio.sleep(2)
+                read = await _correlated_observe(
+                    session, f"b0-ground-appetite-{attempt:02d}",
+                )
+                decision = ledger.decide(read)
+                if decision.kind != "WAIT":
+                    raise S51PhysicalFailure("unexpected L0 action before ground fixture")
+                trace = {
+                    "probe_seq": read.seq,
+                    "kind": decision.kind,
+                    "food": read.snapshot.food,
+                    "energy_sensor_reading": decision.sensor_reading,
+                    "metabolic_tick": decision.body_tick,
+                    "issued_action": False,
+                }
+                report["ground_appetite_trace"].append(trace)
+                if read.snapshot.food < 14:
+                    break
+                transition = ledger.step("WAIT")
+                trace["energy_after_wait"] = transition.after.energy
+                if transition.terminal_now:
+                    raise S51PhysicalFailure("M0 terminal before ground SEEK")
+            else:
+                raise S51PhysicalFailure("ground-native appetite never fell below 14")
+            _command(server, "effect clear RelaySelf minecraft:hunger")
+            await server.stdin.drain()
+            report["stage"] = "ISSUED_L0_SEEK_GROUND_PICKUP"
             report["ground_pickup"] = await acquire_staged_ground_flesh(
                 session, server, energy_ledger=ledger,
             )
@@ -339,8 +373,9 @@ async def qualify(
             report["stage"] = "CLOSED"
             rc = 0
         else:
-            _command(server, "effect give RelaySelf minecraft:hunger 25 20 true")
-            await server.stdin.drain()
+            if food_source != "ground":
+                _command(server, "effect give RelaySelf minecraft:hunger 25 20 true")
+                await server.stdin.drain()
             cursor = EatCursor(sid, hunger_threshold=14.0)
             before = choice = None
             report["hunger_l0_trace"] = []

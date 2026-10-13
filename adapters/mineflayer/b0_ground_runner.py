@@ -28,6 +28,32 @@ def _p(name: str) -> Provenance:
     return Provenance("b0-explicit-operator", name)
 
 
+def _admit_native_l0_seek(
+    ledger: B0EnergyLedger, probe: Any, target: Any,
+) -> dict[str, Any]:
+    """A source-bound designed L0 SEEK; never an Action authorization."""
+    if not isinstance(ledger, B0EnergyLedger):
+        raise GroundRejected("live session energy ledger required for ground SEEK")
+    decision = ledger.decide(probe)
+    if (
+        decision.kind != "SEEK"
+        or decision.ground_target is None
+        or decision.ground_target.entity_id != target.entity_id
+        or decision.ground_target.session_id != target.session_id
+        or decision.probe_seq != probe.seq
+        or ledger.body.terminal
+    ):
+        raise GroundRejected("native L0 did not choose the observed ground target")
+    return {
+        "probe_seq": decision.probe_seq,
+        "l0_kind": decision.kind,
+        "entity_id": decision.ground_target.entity_id,
+        "energy_sensor_reading": decision.sensor_reading,
+        "metabolic_tick": decision.body_tick,
+        "issued_action": False,
+    }
+
+
 async def acquire_staged_ground_flesh(
     session: Any, server: Any, *, energy_ledger: B0EnergyLedger | None = None,
 ) -> dict[str, Any]:
@@ -64,6 +90,9 @@ async def acquire_staged_ground_flesh(
     if first is None or target is None:
         raise GroundRejected("single ground item not visible in bounded probes")
 
+    # No operator-forced SEEK: the cheap L0 must actually select the one
+    # native-observed item before any proposal/authorization/World movement.
+    l0_trace = [_admit_native_l0_seek(energy_ledger, first, target)]
     intent = IntentCommitment()
     intent.commit(
         "b0-staged-ground-item", objective="approach the one observed ground item",
@@ -86,6 +115,7 @@ async def acquire_staged_ground_flesh(
             )
         ):
             raise GroundRejected("ground item vanished without pickup evidence")
+        l0_trace.append(_admit_native_l0_seek(energy_ledger, read, target))
         step = cursor.plan(read, target.waypoint())
         if step.status is SeekStatus.NEEDS_ROUTE:
             raise GroundRejected("no pathfinding authority for vertical route")
@@ -152,6 +182,8 @@ async def acquire_staged_ground_flesh(
         "pickup_inventory_delta": picked.rotten_flesh_inventory_delta,
         "pickup_evidence": picked.evidence_kind,
         "movement_outcomes": movements,
+        "l0_ground_seek_trace": l0_trace,
+        "selection_policy": "DESIGNED_NATIVE_L0_SEEK_NOT_LEARNED",
         "item_contents_from_entity_metadata": "UNKNOWN",
         "zombie_drop_observed": False,
         "m_energy_credited": False,
