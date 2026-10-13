@@ -11,18 +11,31 @@ import argparse
 import asyncio
 import json
 import os
+import shutil
 import sys
 import tempfile
 from pathlib import Path
 from typing import Any
 
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+from adapters.mineflayer.b0_rsee import (
+    B0_CONFIRM,
+    B0RSEEInputs,
+    B0RSEERejected,
+    verify_b0_rsee,
+)
+from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
 from adapters.mineflayer.b0_ground_runner import acquire_staged_ground_flesh
 from adapters.mineflayer.eat_execution import IssuedEatingExecutor
 from adapters.mineflayer.s31a_real_server_ci import (
     MINECRAFT_VERSION,
     MINEFLAYER_VERSION,
     S31ABlocked,
+    BOT_USERNAME,
+    SERVER_HOST,
+    SERVER_PORT,
+    _await_spawn,
     _command,
     _correlated_observe,
     _fetch_official_server,
@@ -50,6 +63,7 @@ def p(ref: str) -> Provenance:
 async def qualify(
     report_path: Path, server_log: Path, *,
     food_item: str = "bread", food_source: str = "inventory",
+    rsee: B0RSEEInputs | None = None, confirmation: str | None = None,
 ) -> int:
     if food_item not in ("bread", "rotten_flesh"):
         raise ValueError("only operator-staged bread or rotten_flesh allowed")
@@ -80,15 +94,72 @@ async def qualify(
     try:
         if os.environ.get("S51_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("explicit real-survival qualification environment required")
+        if food_item == "rotten_flesh":
+            # Not a permission token: physical permission is external and
+            # per-run. Never use the legacy unqualified-download B0 path.
+            if rsee is None or confirmation != B0_CONFIRM:
+                raise S31ABlocked("B0 requires pinned RSEE and new one-shot operator confirmation")
+            report["stage"] = "RSEE_ORIGINAL_READONLY_PRELAUNCH_GATE"
+            attestation = await asyncio.to_thread(verify_b0_rsee, rsee)
+            report["rsee_preflight"] = attestation
+        elif rsee is not None:
+            raise S31ABlocked("RSEE B0 mode only supports rotten_flesh")
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s51-")
         root = Path(temp.name)
-        report["stage"] = "OFFICIAL_WORLD_PROVISION"
-        report.update(await asyncio.to_thread(_fetch_official_server, root / "minecraft.jar"))
-        _write_config(root)
-        server, collector, _ = await _ready_server(
-            root, root / "minecraft.jar", server_log,
-        )
-        session = await _new_session()
+        if rsee is not None:
+            report["stage"] = "RSEE_DISPOSABLE_SNAPSHOT_COPY"
+            clone = root / "s31a-ephemeral"
+            shutil.copytree(rsee.snapshot, clone)
+            _write_config(root)
+            props = root / "server.properties"
+            props.write_text(
+                props.read_text(encoding="utf-8") + "level-seed=575\\n",
+                encoding="utf-8",
+            )
+            report["stage"] = "RSEE_RECHECK_SOURCE_AND_CLONE_BEFORE_JAVA"
+            copied = await asyncio.to_thread(
+                verify_b0_rsee, rsee, snapshot_copy=clone,
+            )
+            if (
+                copied["manifest_sha256"] != attestation["manifest_sha256"]
+                or copied["initial_evidence_sha256"]
+                != attestation["initial_evidence_sha256"]
+            ):
+                raise B0RSEERejected("disposable World differs from source")
+            jar = rsee.jar
+            report["world_source"] = "RSEE_583_PINNED_STOPPED_WORLD_CLONED"
+        else:
+            report["stage"] = "OFFICIAL_WORLD_PROVISION"
+            report.update(await asyncio.to_thread(
+                _fetch_official_server, root / "minecraft.jar",
+            ))
+            _write_config(root)
+            jar = root / "minecraft.jar"
+        server, collector, _ = await _ready_server(root, jar, server_log)
+        if rsee is None:
+            session = await _new_session()
+        else:
+            # Reuse the verified R-owned bridge and external npm root; S does
+            # not patch the bridge or create a second dependency installation.
+            old_root = os.environ.get("RELAYSELF_RSEE_NODE_RUNTIME_ROOT")
+            os.environ["RELAYSELF_RSEE_NODE_RUNTIME_ROOT"] = str(
+                rsee.node_runtime_root,
+            )
+            try:
+                session = await MineflayerProcessSession.launch(
+                    MineflayerLaunchConfig(
+                        host=SERVER_HOST, port=SERVER_PORT,
+                        username=BOT_USERNAME, version=MINECRAFT_VERSION,
+                    ),
+                    bridge_path=rsee.checkout / "adapters/mineflayer/bridge.mjs",
+                    startup_timeout_s=12,
+                )
+            finally:
+                if old_root is None:
+                    os.environ.pop("RELAYSELF_RSEE_NODE_RUNTIME_ROOT", None)
+                else:
+                    os.environ["RELAYSELF_RSEE_NODE_RUNTIME_ROOT"] = old_root
+            await _await_spawn(session)
         sid = session.started.session_id
         report["session_id"] = sid
         ledger = B0EnergyLedger(sid)
@@ -226,7 +297,7 @@ async def qualify(
         )
         report["stage"] = "CLOSED"
         rc = 0
-    except (S31ABlocked, OSError) as exc:
+    except (S31ABlocked, B0RSEERejected, OSError) as exc:
         report["status"] = "BLOCKED"
         report["error"] = f"{type(exc).__name__}: {exc}"
         rc = 2
@@ -272,10 +343,29 @@ def main() -> int:
     parser.add_argument(
         "--food-source", choices=("inventory", "ground"), default="inventory",
     )
+    parser.add_argument("--rsee-checkout", type=Path)
+    parser.add_argument("--rsee-jar", type=Path)
+    parser.add_argument("--rsee-snapshot", type=Path)
+    parser.add_argument("--rsee-manifest", type=Path)
+    parser.add_argument("--rsee-initial-evidence", type=Path)
+    parser.add_argument("--rsee-node-runtime-root", type=Path)
+    parser.add_argument("--rsee-eula-accepted", action="store_true")
+    parser.add_argument("--confirm", help="operator acknowledgement; NOT a physical grant")
     args = parser.parse_args()
+    fields = (
+        args.rsee_checkout, args.rsee_jar, args.rsee_snapshot,
+        args.rsee_manifest, args.rsee_initial_evidence,
+        args.rsee_node_runtime_root,
+    )
+    # Partial RSEE values are rejected in qualify before any java/node.
+    rsee = (
+        B0RSEEInputs(*fields, eula_accepted=args.rsee_eula_accepted)
+        if all(value is not None for value in fields) else None
+    )
     return asyncio.run(qualify(
         args.report, args.server_log,
         food_item=args.food_item, food_source=args.food_source,
+        rsee=rsee, confirmation=args.confirm,
     ))
 
 

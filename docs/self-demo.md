@@ -550,3 +550,40 @@ authorization remain mandatory before any Minecraft/Node/Java run.
 Synthetic offline tests and CI do not demonstrate physical B0 success,
 zombie drops, native item metadata, no-food World starvation,
 learning, evolution or a V scientific result.
+
+
+## B0 — qualified RSEE dependency reuse and local admission (offline code only)
+
+B0 rotten-flesh modes now **require** an explicit RSEE checkout at immutable
+[#588](https://github.com/rinsakamo/relay-self/pull/588)
+`34820f6bf391c77f325d7c29d3b779a33e3ca835`. The S runner
+reuses the ORIGINAL owner `golden_admission.verify_qualified_world`
+(#583 qualified initial stopped World), `node_runtime.verify_node_runtime`
+(#586 real npm installation) and the ORIGINAL R-owned `bridge.mjs`
+with byte-pinned RSEE source. It does not merge R's Draft into S.
+It checks the original World, copies it into a **disposable** server
+directory, then calls RSEE on the copy again before Java. No Mojang
+download, new seed, generated World or home World substitution in B0 mode.
+
+CLI flags on existing S51 module (no new launcher):
+`--food-item rotten_flesh --food-source inventory` for first
+operator-given food; later choose `--food-source ground` for the
+operator-staged single local item. Additionally require
+`--rsee-checkout PATH --rsee-jar PATH --rsee-snapshot PATH
+--rsee-manifest PATH --rsee-initial-evidence PATH
+--rsee-node-runtime-root PATH --rsee-eula-accepted
+--confirm B0-RSEE-I-OWN-ONE-DISPOSABLE-WORLD`.
+
+These flags are **NOT an authorization**: require a fresh explicit one-shot
+user physical grant plus independent R and V admission before even attempting
+a real local run. The existing `S51_REAL_SERVER_CI=1` gate and empty
+`NODE_OPTIONS` are also required. This B0 branch is non-LLM and never
+starts llama.cpp/GPU. Current GitHub checkout has neither the local
+qualified stopped World, nor operator machine access; physical trials
+are `NOT_RUN`. Zero retry/fallback on missing verification.
+
+The source RSEE module must be a physically present separate exact HEAD;
+Git checkout HEAD and nine source blobs are independently checked.
+New S code does **not** claim independent original-world qualification.
+RSEE controls World/env identity; S controls Action and body ledger;
+V controls the scientific result. Source object grants remain separate.
