@@ -9,7 +9,7 @@ import argparse
 import json
 import math
 import random
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Literal
 
 from experiments.metabolism_m1 import M1Config, M1Result, run_trial
