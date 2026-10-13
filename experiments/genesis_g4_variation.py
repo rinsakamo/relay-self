@@ -11,7 +11,7 @@ import random
 from dataclasses import dataclass
 from typing import Literal, Sequence
 
-from experiments.genesis_heredity import Genome, _TRAITS, _positive_int, _finite_number
+from experiments.genesis_heredity import _TRAITS, Genome, _finite_number, _positive_int
 
 Strategy = Literal["uniform_pool", "maximin_pool", "mutation"]
 
