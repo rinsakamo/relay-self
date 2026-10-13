@@ -7,12 +7,12 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass
 
 from experiments.metabolism_m2 import (
+    EvolutionResult,
     HoldoutScore,
     M2Config,
-    EvolutionResult,
     _heldout,
     founder_population,
     run_evolution,
