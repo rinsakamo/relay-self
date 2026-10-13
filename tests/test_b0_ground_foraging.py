@@ -169,13 +169,16 @@ def test_nonforcing_wait_then_seek_same_item_source_no_action():
     item = select_ground_target(p)
     ledger = B0EnergyLedger(p.session_id, forage_policy="sensor_gate")
     observed = []
-    for i in range(9):
+    for i in range(8):
         read = replace(p, seq=p.seq + i, request_id=f"nonforcing-{i}")
         row = nonforcing_ground_decision(ledger, read, item)
         observed.append(row["kind"])
         assert row["issued_action"] is False
-    assert observed == ["WAIT"] * 8 + ["SEEK"]
-    assert ledger.body.energy == 8 and ledger.body.tick == 8
+    # Existing M0 quantum=1 uses Python's ties-to-even rounding:
+    # E=8.5 is observed as 8 and permits SEEK at decision 8.
+    assert observed == ["WAIT"] * 7 + ["SEEK"]
+    assert row["energy_sensor"] == 8
+    assert ledger.body.energy == 8.5 and ledger.body.tick == 7
     assert ledger.credit_count == 0
 
 
