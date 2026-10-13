@@ -33,7 +33,7 @@ def test_g4_seeded_equal_budget_against_random_pool_baseline() -> None:
 
 
 def test_g4_spacing_not_confused_with_any_scientific_outcome() -> None:
-    arms = paired_variation(101, VariationBudget(8, 64))
+    arms = paired_variation(211, VariationBudget(8, 64))
     spaced = diagnose(arms["maximin_pool"])
     random = diagnose(arms["uniform_pool"])
     assert spaced.minimum_spacing > random.minimum_spacing
