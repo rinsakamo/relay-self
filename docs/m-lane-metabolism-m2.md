@@ -73,3 +73,60 @@ and improvement beyond the cheapest competitive active controller.
 
 Run `python -m experiments.metabolism_m2_scarcity --seeds`. No
 Minecraft/LLM/GPU, new central owners, S/L/R/V changes, or PR merge.
+
+## M2c — MOVE/FIGHT physical expenditure factorization (prospective matrix)
+
+After M2b's 4-seed result was frozen, the user noted that energy costs
+for MOVE/FIGHT should be consequential. M2 already has physical costs:
+per-tick `basal=0.23`, additional `MOVE=0.12`, `FIGHT=0.28` and
+food intake `+4`. M2c does NOT change any baseline; it measures how
+increasing action costs independently changes real accounting and cheap
+baselines under the already fixed `scarce_active` profile.
+
+A new separate fixed seed family is `503,607,709,811`, not any of the
+previously inspected seed sets `7/17/31/43` or `101/211/307/419`.
+Before first observations, predeclare the following full 2x2 factorial
+of additional MOVE/FIGHT expenditure per tick (WAIT remains basal):
+
+| Condition | MOVE additional | FIGHT additional |
+|---|---:|---:|
+| original | 0.12 | 0.28 |
+| costly_move | 1.10 | 0.28 |
+| costly_fight | 0.12 | 1.45 |
+| costly_both | 1.10 | 1.45 |
+
+These high levels are **mechanistically motivated**, not fit to outcomes:
+in the scarce World there is a food opportunity only every third
+tick and the rewarded action alternates MOVE/FIGHT via precommitted
+random cues. An always-MOVE / always-FIGHT policy typically accesses
+only half of opportunities; even before move cost the expected 4
+energy intake per 6 ticks is about 0.667 energy/tick. At high cost,
+each corresponding fixed policy has cost above its expected intake.
+An informed cue-conditioned cheap controller that rests on blank
+ticks still has an advantage, which is why it stays a mandatory
+strong comparator.
+
+The evaluator adds a **read-only physical ledger** to `Episode`:
+counts of WAIT/MOVE/FIGHT and true energy intake, actual expenditure,
+capacity overflow, and the unpaid shortfall on terminal starvation.
+Energy balance checks include the energy *actually transferred* to
+offspring. No new energy/reward information enters the individual
+controller, and no new L/World model is created. These diagnostics
+are internal engineering measurements and do not attest authentic
+Minecraft action costs.
+
+The matrix reports inherited, disconnected-inheritance, fixed WAIT,
+MOVE, FIGHT, cue oracle, starvation, mean births per individual,
+and realized physical costs; extinct populations are reported as null
+rather than re-seeded. **No score threshold or winner is selected in
+advance.** Equal birth ceiling, widespread extinction, or cheap
+controller dominance remain fully acceptable NO-GO results. This
+parameter survey maps conditions; it cannot establish H2,
+within-lifetime cognitive learning, or value emergence from physical
+metabolism.
+
+Run `python -m experiments.metabolism_m2_costs --fixed-matrix`.
+The CI runs all 16 fixed cases on the exact PR HEAD, as well as the
+previous frozen M2/M2b experiments without changing their inputs.
+This is a new offline engineering check, not an S/R/V approval
+or user-host GPU/World experiment.

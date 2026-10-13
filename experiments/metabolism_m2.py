@@ -122,6 +122,14 @@ class Episode:
     births: tuple[BirthRecord, ...]
     forecast_updates: int
     final_energy: float
+    # Evaluator-only physical ledger. These never enter the individual's policy.
+    energy_intake: float
+    energy_expenditure: float
+    energy_overflow: float
+    terminal_shortfall: float
+    wait_ticks: int
+    move_ticks: int
+    fight_ticks: int
 
 
 @dataclass(frozen=True)
@@ -281,6 +289,11 @@ def run_episode(
     body = initial_body(physics)
     probe = DeltaProbe(retained=True) if passive_learning else None
     births: list[BirthRecord] = []
+    energy_intake = 0.0
+    energy_expenditure = 0.0
+    energy_overflow = 0.0
+    terminal_shortfall = 0.0
+    action_counts = {"WAIT": 0, "MOVE": 0, "FIGHT": 0}
 
     for cue in schedule:
         reading = observe_energy(body, sensor).reading
@@ -305,6 +318,16 @@ def run_episode(
         eaten = int(cue != 0 and action == OPPORTUNITIES[cue])
         transition = metabolism_step(
             body, action=action, consumed_food_units=eaten, config=physics
+        )
+        action_counts[action] += 1
+        energy_intake += transition.intake
+        energy_expenditure += transition.expenditure
+        energy_overflow += transition.overflow
+        # M0 clamps terminal energy to zero. Preserve the physically unpaid
+        # part of terminal expenditure instead of manufacturing consumption.
+        terminal_shortfall += max(
+            0.0,
+            transition.expenditure - (body.energy + transition.intake - transition.overflow),
         )
         body = transition.after
         if body.terminal:
@@ -353,6 +376,13 @@ def run_episode(
         births=tuple(births),
         forecast_updates=probe.scored if probe is not None else 0,
         final_energy=body.energy,
+        energy_intake=energy_intake,
+        energy_expenditure=energy_expenditure,
+        energy_overflow=energy_overflow,
+        terminal_shortfall=terminal_shortfall,
+        wait_ticks=action_counts["WAIT"],
+        move_ticks=action_counts["MOVE"],
+        fight_ticks=action_counts["FIGHT"],
     )
 
 
