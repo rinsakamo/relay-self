@@ -251,3 +251,64 @@ its independently frozen outcomes must not be rewritten to satisfy G3.
 `G3_OFFLINE_M_LEDGER_READBACK_CONSISTENCY_PASS` only if new Draft CI
 passes; `M2_TO_G3_AUTHENTIC_RECEIPT_UNAVAILABLE`,
 `WORLD_NOT_RUN`, `SCIENCE_NOT_CLAIMED`.
+
+
+## G4 — arena-cost-free variation generator (priority change 2026-10-13)
+
+The research owner explicitly prioritizes **efficient candidate variation**,
+not M-cost-bearing biological reproduction in the original arena where
+combat HP death respawns but starvation alone terminates an individual.
+A paid childbirth is a direct single-parent energy burden and the arena
+does not yet specify any countervailing kin/world benefit. Avoid making
+reproduction an intrinsic objective merely to force it.
+
+### Non-biological experimental candidate generation
+
+`experiments/genesis_g4_variation.py` adds a **pure offline** variation
+layer, independent of G1/G2/G3 M birth receipts and independent of M's
+existing M2c cost-physics research:
+
+- `Variant` records immutable genome, local candidate ID, operator,
+  raw sampled proposal index and optionally a source candidate ID;
+  no `Individual` World life, biological parent, birth cost, energy,
+  Memory, Habit, Q-state, reward or fitness.
+- A shared source-proposal budget `VariationBudget` fixes the same
+  **N evaluation slots** and **K proposal draws** for the paired
+  `uniform_pool` baseline and `maximin_pool` sampler. Both use the
+  **same exact uniformly drawn K genomes** under one seed.
+- `maximin_pool` greedily selects points in normalized initial-trait
+  space with large pairwise separation. This **engineers parameter-space
+  diversity** and expends extra pairwise CPU comparisons. It is NOT
+  fitness, improved survival, adaptive search, learned value or a proof
+  that cognition needs variation. `uniform_pool` selects N random
+  proposals from that identical pool. Proposal budgets and eval slots
+  are identical; CPU work is not, and is explicitly reported.
+- `mutate_candidates` samples from a **caller-supplied** source roster,
+  using the existing G1 bounded Gaussian trait mutation (or strict
+  zero-mutation clone control), preserving source-candidate ID only.
+  Sources can later be restricted by separately V-qualified results;
+  the G4 code does not observe or optimize World outcomes itself.
+- Diagnostics: min normalized pairwise spacing, marginal axis-bin
+  coverage, unique candidate count, proposal and distance-comparison
+  counts. Spacing and marginal coverage may trade off (one can improve
+  while the other worsens); no single diversity statistic should be
+  misreported as superior cognitive performance.
+- Selection OFF/ON, heldout World cognition, per-episode GPU cost,
+  production Self/S spawn, source-authenticated fitness evidence and
+  physical reproduction are **NOT** implemented/qualified. No current
+  real individual can clone itself using this offline function.
+
+**Scope and interpretation:** G4 is an **experimental initial-condition
+sampling operator**, not an evolved organism population. If candidates
+later become real S instances, an independent external admission process
+must enforce population caps, fixed initial body provisioning, R World
+session/evaluation slots and complete source evidence. Variation does
+not grant a second life or energy to a currently starving agent.
+
+M2a–M2c authored independently in Draft #621 remain scientifically
+distinct research on cost-bearing physical offspring; previous exact
+HEAD results of G1–G3 remain intact. Default roadmap shifts to
+`efficient_variation -> externally equal-budget evaluation -> V selection
+and ablations`; the actual paid-birth M2→G3 bridge is **DEFERRED**
+until an explicit ecology gives its cost a testable tradeoff. No owner
+change, PR merge or live run is implied.
