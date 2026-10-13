@@ -50,6 +50,7 @@ async def qualify(
 ) -> int:
     if food_item not in ("bread", "rotten_flesh"):
         raise ValueError("only operator-staged bread or rotten_flesh allowed")
+    count_field = "bread_count" if food_item == "bread" else "rotten_flesh_count"
     report: dict[str, Any] = {
         "milestone": "S51", "status": "BLOCKED", "stage": "START",
         "minecraft_version": MINECRAFT_VERSION,
@@ -119,7 +120,7 @@ async def qualify(
         report["before"] = {
             "food": before.snapshot.food,
             "food_item": food_item,
-            "bread_count": sum(
+            count_field: sum(
                 x.count for x in before.snapshot.inventory if x.name == food_item
             ),
             "probe_seq": before.seq,
@@ -161,7 +162,7 @@ async def qualify(
             "food": result.outcome.food_after,
             "food_item": food_item,
             "item_count_delta": result.outcome.count_before - result.outcome.count_after,
-            "bread_count": result.outcome.count_after,
+            count_field: result.outcome.count_after,
             "after_seq": result.outcome.after_probe_seq,
             "action_id": result.outcome.action_id,
             "terminal": result.terminal.state.value,
