@@ -19,7 +19,7 @@ from experiments.genesis_g2_handoff import (
     FundedBirthReceipt,
     FundedGenesisRegistry,
 )
-from experiments.genesis_heredity import Individual, _finite_number, _positive_int
+from experiments.genesis_heredity import Individual, _finite_number
 
 
 def _name(value: str) -> bool:
