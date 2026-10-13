@@ -390,7 +390,7 @@ async def qualify(
             report["server_exit"] = server.returncode
         if temp is not None:
             temp.cleanup()
-        if report["status"] == "PASS" and report.get("server_exit") != 0:
+        if server is not None and report["status"] == "PASS" and report.get("server_exit") != 0:
             report["status"] = "FAIL"
             report["error"] = "Minecraft server teardown failed"
             rc = 1
