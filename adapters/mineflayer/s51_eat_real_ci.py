@@ -118,14 +118,14 @@ async def qualify(
 ) -> int:
     if food_item not in ("bread", "rotten_flesh"):
         raise ValueError("only operator-staged bread or rotten_flesh allowed")
-    if food_source not in ("inventory", "ground", "none", "ground2"):
+    if food_source not in ("inventory", "ground", "none", "ground2", "ground2observe"):
         raise ValueError("unsupported source")
-    if food_source in ("ground", "none", "ground2") and food_item != "rotten_flesh":
+    if food_source in ("ground", "none", "ground2", "ground2observe") and food_item != "rotten_flesh":
         raise ValueError("ground/none/ground2 B0 mode requires rotten_flesh")
     if (
         b0_forage_policy not in ("native_only", "sensor_gate")
         or b0_sensor not in ("on", "masked")
-        or (food_source != "ground2" and (
+        or (food_source not in ("ground2", "ground2observe") and (
             b0_forage_policy != "native_only" or b0_sensor != "on"
         ))
         or (b0_sensor == "masked" and b0_forage_policy != "sensor_gate")
@@ -139,7 +139,8 @@ async def qualify(
         "world_food_supply": (
             "OPERATOR_SUMMONED_SINGLE_GROUND_ITEM"
             if food_source == "ground" else "OPERATOR_SUMMONED_TWO_SEQUENTIAL_GROUND_ITEMS"
-            if food_source == "ground2" else "NO_FOOD_PROVISIONED"
+            if food_source in ("ground2", "ground2observe")
+            else "NO_FOOD_PROVISIONED"
             if food_source == "none" else "OPERATOR_GIVEN"
         ),
         "food_source": food_source,
@@ -156,7 +157,7 @@ async def qualify(
     native_path = report_path.with_suffix(".native.jsonl")
     command_path = report_path.with_suffix(".commands.jsonl")
     report["java_start_attempted"] = False
-    if food_source == "ground2":
+    if food_source in ("ground2", "ground2observe"):
         report["b0_sensor_policy"] = {
             "forage_policy": b0_forage_policy,
             "sensor_mode": b0_sensor,
@@ -342,19 +343,34 @@ async def qualify(
         elif food_source == "inventory":
             _command(server, f"give RelaySelf minecraft:{food_item} 3")
             await server.stdin.drain()
-        if food_source == "ground2":
-            report["stage"] = "BOUNDED_TWO_GROUND_EPOCHS"
-            report["two_ground_epochs"] = []
-            await run_two_ground_epochs(
-                session, server, ledger, report["two_ground_epochs"],
+        if food_source in ("ground2", "ground2observe"):
+            nonforcing = food_source == "ground2observe"
+            report["stage"] = (
+                "BOUNDED_NONFORCING_GROUND_OUTCOMES"
+                if nonforcing else "BOUNDED_TWO_GROUND_EPOCHS"
             )
+            report["two_ground_epochs"] = []
+            outcome = await run_two_ground_epochs(
+                session, server, ledger, report["two_ground_epochs"],
+                nonforcing=nonforcing,
+            )
+            if nonforcing:
+                if outcome is None:
+                    raise S51PhysicalFailure("missing bounded nonforcing outcome")
+                report["nonforcing_outcome"] = outcome
             report["status"] = "PASS"
             report["classification"] = (
+                "B0_NONFORCING_GROUND_OUTCOME_ENGINEERING_ONLY"
+                if nonforcing else
                 "B0_TWO_OPERATOR_STAGED_GROUND_EPOCHS_ENGINEERING_ONLY"
             )
-            report["m_energy_credited"] = ledger.credit_count == 2
+            report["m_energy_credited"] = (
+                ledger.credit_count > 0 if nonforcing else ledger.credit_count == 2
+            )
             report["metabolism_terminal"] = asdict(ledger.body)
-            report["next_l0"] = report["two_ground_epochs"][-1]["next_l0"]
+            report["next_l0"] = report["two_ground_epochs"][-1].get(
+                "next_l0", "NOT_ISSUED_TERMINAL_OR_CENSORED",
+            )
             report["stage"] = "CLOSED"
             rc = 0
         elif food_source == "none":
@@ -618,7 +634,7 @@ def main() -> int:
         "--food-item", choices=("bread", "rotten_flesh"), default="bread",
     )
     parser.add_argument(
-        "--food-source", choices=("inventory", "ground", "none", "ground2"), default="inventory",
+        "--food-source", choices=("inventory", "ground", "none", "ground2", "ground2observe"), default="inventory",
     )
     parser.add_argument(
         "--b0-forage-policy", choices=("native_only", "sensor_gate"),

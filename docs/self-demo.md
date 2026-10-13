@@ -805,3 +805,31 @@ separate explicit user grants, a V #619 preregistered reference,
 sham/cheap controls and RSEE preflight for each run.** If the
 `native_only` cheap policy does as well, scientific incremental
 value remains NULL/NO-GO.
+
+
+### B0 nonforcing ground sensor contrast — offline runner ready, no real grant
+
+The strictly opt-in S51 `--food-source ground2observe` mode
+records L0 WAIT while one operator-staged ground item remains source-visible.
+Each nonissued WAIT charges the authentic unchanged M0 experimental
+basal cost, requests a new correlated World probe, and may end
+in `M0_TERMINAL_NO_PICKUP`. A live but unproductive 24-decision bound
+ends as `HORIZON_CENSORED_NO_PICKUP`, NOT as death. If L0 later chooses
+SEEK, the existing independently issued S50 moves/S51 EAT and
+one-credit-per-EAT receipt chain is reused. The same session and body
+continue to a second food epoch when a first meal is actually observed.
+A complete two-epoch episode returns `TWO_GROUND_MEALS_COMPLETED`.
+Disappeared/ambiguous item, missing source, unknown Action or invalid
+effect is engineering INVALID, not a physiological behavioral outcome.
+
+This is a source/decision-tick-limited observation path, not elapsed
+Minecraft time or an ecosystem with autonomous food generation. It does
+not establish native collect event identity, zombie provenance, genuine
+homeostatic learning, survival advantage, or a V scientific contrast.
+The hard-coded `sensor_gate` threshold and constant bias12 OFF mask
+are explicit manipulated-policy confounds; a sham and cheap native-only
+reference need separate paired freeze conditions. The existing RSEE/S51
+physical runner can parse the mode, but **no ground2observe physical
+launch is authorized or has run**. Earlier ground2 grant is consumed.
+Use only read-only preflight/offline tests until new user permission and
+V #619 prospective comparison protocol.

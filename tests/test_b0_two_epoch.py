@@ -48,3 +48,48 @@ def test_two_epoch_runner_refuses_stale_or_used_body_before_world():
     assert terminal.body.terminal
     with pytest.raises(B0TwoEpochRejected, match="fresh live"):
         asyncio.run(run_two_ground_epochs(None, None, terminal, []))
+
+
+def test_nonforcing_two_epoch_prelaunch_rejects_used_trace():
+    probe = s46.case()
+    ledger = B0EnergyLedger(probe.session_id, forage_policy="sensor_gate")
+    with pytest.raises(B0TwoEpochRejected, match="fresh live"):
+        asyncio.run(run_two_ground_epochs(
+            None, None, ledger, [{"used": True}], nonforcing=True,
+        ))
+
+
+def test_nonforcing_terminal_is_measured_outcome_not_forced_seek(monkeypatch):
+    import adapters.mineflayer.b0_two_epoch as two
+
+    probe = s46.case()
+    ledger = B0EnergyLedger(
+        probe.session_id, forage_policy="sensor_gate",
+        config=MetabolismConfig(initial_energy=1),
+    )
+
+    async def fake_stage(*args):
+        return None
+
+    async def fake_opportunity(*args, **kwargs):
+        assert kwargs["nonforcing"] is True
+        assert kwargs["epoch"] == 0
+        ledger.step("WAIT")
+        ledger.step("WAIT")
+        return {
+            "status": "M0_TERMINAL_NO_PICKUP",
+            "pickup_inventory_delta": 0,
+            "epoch": 0,
+        }
+
+    monkeypatch.setattr(two, "_stage_hunger", fake_stage)
+    monkeypatch.setattr(two, "acquire_staged_ground_flesh", fake_opportunity)
+    traces = []
+    result = asyncio.run(run_two_ground_epochs(
+        None, None, ledger, traces, nonforcing=True,
+    ))
+    assert result["outcome"] == "M0_TERMINAL_NO_PICKUP"
+    assert result["m0_terminal"] is True
+    assert result["credits"] == result["meals"] == 0
+    assert result["epochs_started"] == 1
+    assert len(traces) == 1 and traces[0]["stage"] == "OBSERVED_NONFORCING_NO_PICKUP"

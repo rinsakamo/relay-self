@@ -206,14 +206,18 @@ async def _eat_verified(
 
 async def run_two_ground_epochs(
     session: Any, server: Any, ledger: B0EnergyLedger,
-    traces: list[dict[str, Any]],
-) -> None:
+    traces: list[dict[str, Any]], *, nonforcing: bool = False,
+) -> dict[str, Any] | None:
     """One owned session with two sequential staged-item EAT outcomes.
 
     Caller owns physical lifecycle and original byte recording. This module
     only performs an explicitly authorized bounded two-epoch product trial.
     """
-    if not isinstance(ledger, B0EnergyLedger) or traces or ledger.body.terminal:
+    if (
+        not isinstance(ledger, B0EnergyLedger)
+        or type(nonforcing) is not bool
+        or traces or ledger.body.terminal
+    ):
         raise B0TwoEpochRejected("fresh live two-epoch body and trace required")
     for epoch in range(2):
         entry: dict[str, Any] = {"epoch": epoch, "stage": "START"}
@@ -223,14 +227,36 @@ async def run_two_ground_epochs(
         try:
             entry["ground_pickup"] = await acquire_staged_ground_flesh(
                 session, server, energy_ledger=ledger, epoch=epoch,
+                nonforcing=nonforcing,
             )
         except GroundRejected as exc:
             raise B0TwoEpochRejected("ground fixture/pickup failed") from exc
+        item_status = entry["ground_pickup"]["status"]
+        if nonforcing and item_status in (
+            "M0_TERMINAL_NO_PICKUP", "HORIZON_CENSORED_NO_PICKUP",
+        ):
+            entry["stage"] = "OBSERVED_NONFORCING_NO_PICKUP"
+            return {
+                "outcome": item_status, "epochs_started": len(traces),
+                "meals": ledger.body.meals, "credits": ledger.credit_count,
+                "energy": ledger.body.energy, "m0_terminal": ledger.body.terminal,
+                "minecraft_hp_death": "NOT_ESTABLISHED", "science": "NO_GO",
+            }
         if (
-            entry["ground_pickup"]["pickup_inventory_delta"] != 1
+            item_status != "PICKUP_SOURCE_CONSISTENT"
+            or entry["ground_pickup"]["pickup_inventory_delta"] != 1
             or entry["ground_pickup"]["epoch"] != epoch
         ):
             raise B0TwoEpochRejected("exactly one fresh item required per epoch")
         await _eat_verified(session, ledger, epoch, entry)
     if ledger.credit_count != 2 or ledger.body.meals != 2 or ledger.body.terminal:
         raise B0TwoEpochRejected("two completed meals did not retain a live body")
+    if nonforcing:
+        return {
+            "outcome": "TWO_GROUND_MEALS_COMPLETED",
+            "epochs_started": len(traces),
+            "meals": ledger.body.meals, "credits": ledger.credit_count,
+            "energy": ledger.body.energy, "m0_terminal": ledger.body.terminal,
+            "minecraft_hp_death": "NOT_ESTABLISHED", "science": "NO_GO",
+        }
+    return None
