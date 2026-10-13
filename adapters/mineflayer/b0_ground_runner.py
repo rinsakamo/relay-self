@@ -1,0 +1,151 @@
+"""B0 opt-in isolated ground rotten-flesh acquisition by existing S50 issuer.
+
+Operator-owned fixture only. Do not confuse server-summoned item with zombie
+drop, native item metadata identity, source-authenticated intake or live proof.
+"""
+from __future__ import annotations
+
+import asyncio
+from typing import Any
+
+from adapters.mineflayer.b0_ground_foraging import (
+    GroundRejected,
+    compare_pickup,
+    select_ground_target,
+)
+from adapters.mineflayer.s31a_real_server_ci import _command, _correlated_observe
+from adapters.mineflayer.seek_execution import SeekConsequenceKind, execute_seek_step
+from relay_self.action import ActionLifecycle, ActionState
+from relay_self.action_supervision import ActionSupervisor
+from relay_self.intent import IntentCommitment
+from relay_self.provenance import Provenance
+from relay_self.seek_waypoint import SeekCursor, SeekStatus
+from relay_self.skill import SkillExecution
+
+
+def _p(name: str) -> Provenance:
+    return Provenance("b0-explicit-operator", name)
+
+
+async def acquire_staged_ground_flesh(session: Any, server: Any) -> dict[str, Any]:
+    """One World item, <=8 distinct issued moves; no command retry or unknown credit."""
+    if server.stdin is None:
+        raise GroundRejected("server console owner absent")
+    origin = await _correlated_observe(session, "b0-initial-item-free")
+    coverage = origin.snapshot.nearby_entities_coverage
+    if (
+        coverage.truncated
+        or any(e.name == "item" for e in origin.snapshot.nearby_entities)
+        or any(i.name == "rotten_flesh" for i in origin.snapshot.inventory)
+    ):
+        raise GroundRejected("ground fixture requires item-free initial World")
+    # A new operator-summoned ground item; NOT a zombie drop.
+    position = origin.snapshot.position
+    _command(
+        server,
+        f"summon item {position.x + 2.5:.3f} "
+        f"{position.y + 0.2:.3f} {position.z:.3f} "
+        '{Item:{id:"minecraft:rotten_flesh",count:1}}',
+    )
+    await server.stdin.drain()
+    first = target = None
+    for i in range(8):
+        probe = await _correlated_observe(session, f"b0-item-discovery-{i:02d}")
+        try:
+            target = select_ground_target(probe)
+        except GroundRejected:
+            await asyncio.sleep(0.25)
+        else:
+            first = probe
+            break
+    if first is None or target is None:
+        raise GroundRejected("single ground item not visible in bounded probes")
+
+    intent = IntentCommitment()
+    intent.commit(
+        "b0-staged-ground-item", objective="approach the one observed ground item",
+        at_ns=1, provenance=_p("operator-item-intent"),
+    )
+    supervisor = ActionSupervisor()
+    cursor = SeekCursor(target.session_id)
+    movements: list[dict[str, Any]] = []
+    picked = None
+    for i in range(8):
+        read = await _correlated_observe(session, f"b0-ground-step-{i:02d}")
+        if any(x.name == "rotten_flesh" and x.count > 0 for x in read.snapshot.inventory):
+            picked = compare_pickup(first, read, target)
+            break
+        if (
+            read.snapshot.nearby_entities_coverage.truncated
+            or not any(
+                e.entity_id == target.entity_id
+                for e in read.snapshot.nearby_entities
+            )
+        ):
+            raise GroundRejected("ground item vanished without pickup evidence")
+        step = cursor.plan(read, target.waypoint())
+        if step.status is SeekStatus.NEEDS_ROUTE:
+            raise GroundRejected("no pathfinding authority for vertical route")
+        if step.status is SeekStatus.ARRIVED:
+            # Nonissuance; do not manufacture an S16 WAIT Action outcome.
+            await asyncio.sleep(0.25)
+            continue
+        skill = SkillExecution.start(
+            f"b0-ground-seek-skill-{i}", skill_id="seek-waypoint",
+            intent_commitment=intent, at_ns=10+i*10,
+            provenance=_p(f"skill-{i}"),
+        )
+        proposed = ActionLifecycle.propose(
+            f"b0-ground-seek-action-{i}", skill_execution=skill,
+            intent_commitment=intent, at_ns=11+i*10,
+            provenance=_p(f"proposal-{i}"),
+        )
+        authorized = proposed.authorize(
+            at_ns=12+i*10, authority=f"b0-independent-operator-grant-{i}",
+            provenance=_p(f"authorization-{i}"),
+        )
+        issued = supervisor.issue(
+            authorized, at_ns=13+i*10, deadline_ns=1000+i*10,
+            provenance=_p(f"issue-{i}"),
+        )
+        try:
+            effect = await execute_seek_step(session, supervisor, issued, step)
+            if effect.kind is SeekConsequenceKind.BLOCKED:
+                raise GroundRejected("issued SEEK did not make progress")
+            closed = supervisor.record_outcome(
+                issued.action_id, at_ns=14+i*10,
+                provenance=_p(f"closed-{i}"),
+            )
+            if closed.state is not ActionState.OUTCOME:
+                raise GroundRejected("SEEK not closed with a World consequence")
+            movements.append({
+                "action_id": issued.action_id,
+                "before_seq": effect.before_seq,
+                "after_seq": effect.after_seq,
+                "kind": effect.kind.value,
+                "progress_m": effect.progress_m,
+            })
+        except BaseException:
+            if supervisor.get(issued.action_id).state is ActionState.ISSUED:
+                supervisor.mark_unknown(
+                    issued.action_id, at_ns=14+i*10,
+                    provenance=_p(f"unknown-{i}"),
+                )
+            raise
+    if picked is None:
+        after = await _correlated_observe(session, "b0-ground-last-pickup")
+        picked = compare_pickup(first, after, target)
+    if supervisor.open_actions:
+        raise GroundRejected("unclosed ground Action")
+
+    return {
+        "item_entity_id": target.entity_id,
+        "source_probe_seq": first.seq,
+        "pickup_probe_seq": picked.after_seq,
+        "pickup_inventory_delta": picked.rotten_flesh_inventory_delta,
+        "pickup_evidence": picked.evidence_kind,
+        "movement_outcomes": movements,
+        "item_contents_from_entity_metadata": "UNKNOWN",
+        "zombie_drop_observed": False,
+        "m_energy_credited": False,
+    }
