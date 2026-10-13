@@ -92,8 +92,13 @@ def test_mutation_multiplier_zero_and_random_genome_control() -> None:
     registry = registry_with_outcomes(config=config)
     inherited = registry.spawn_children(permit("first"), mutate=True)[0]
     assert inherited.genome == registry.lineage[inherited.parent_id].genome
+    registry.record_m_outcomes(
+        MOutcomeBatch(
+            "m2", 2, tuple(MOutcome(i, 2, "ALIVE", 1) for i in registry.active_ids)
+        )
+    )
     random_genome = registry.spawn_children(
-        permit("second"), inherit=False, mutate=False
+        permit("second", batch="m2", tick=2), inherit=False, mutate=False
     )[0]
     assert random_genome.genome != registry.lineage[random_genome.parent_id].genome
 
