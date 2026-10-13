@@ -40,19 +40,19 @@ jobs:
           git merge-base --is-ancestor "$B0_PARENT" HEAD
           git diff --quiet "$B0_PARENT" HEAD -- adapters/mineflayer/s49_normal_session_real_ci.py
           changed="$(git diff --name-only --diff-filter=ACDMRTUXB "$B0_PARENT" HEAD)"
-          expected="$(printf '%s\n' \\
-            .github/workflows/self-demo.yml \\
-            adapters/mineflayer/b0_energy_bridge.py \\
-            adapters/mineflayer/b0_ground_foraging.py \\
-            adapters/mineflayer/b0_ground_runner.py \\
-            adapters/mineflayer/b0_rsee.py \\
-            adapters/mineflayer/s51_eat_real_ci.py \\
-            docs/self-demo.md \\
-            experiments/metabolism_viability.py \\
-            src/relay_self/eat_hunger.py \\
-            tests/test_b0_energy_bridge.py \\
-            tests/test_b0_ground_foraging.py \\
-            tests/test_b0_rsee.py \\
+          expected="$(printf '%s\n' \
+            .github/workflows/self-demo.yml \
+            adapters/mineflayer/b0_energy_bridge.py \
+            adapters/mineflayer/b0_ground_foraging.py \
+            adapters/mineflayer/b0_ground_runner.py \
+            adapters/mineflayer/b0_rsee.py \
+            adapters/mineflayer/s51_eat_real_ci.py \
+            docs/self-demo.md \
+            experiments/metabolism_viability.py \
+            src/relay_self/eat_hunger.py \
+            tests/test_b0_energy_bridge.py \
+            tests/test_b0_ground_foraging.py \
+            tests/test_b0_rsee.py \
             tests/test_feature_s51_eat_execution.py
           )"
           test "$changed" = "$expected"

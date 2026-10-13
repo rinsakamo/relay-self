@@ -7,10 +7,10 @@ import pytest
 
 from adapters.mineflayer.b0_rsee import (
     B0_CONFIRM,
-    B0RSEEInputs,
-    B0RSEERejected,
     RSEE_HEAD,
     SOURCE_BLOBS,
+    B0RSEEInputs,
+    B0RSEERejected,
     verify_b0_rsee,
 )
 from adapters.mineflayer.s51_eat_real_ci import qualify

@@ -18,23 +18,23 @@ from pathlib import Path
 from typing import Any
 
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+from adapters.mineflayer.b0_ground_runner import acquire_staged_ground_flesh
 from adapters.mineflayer.b0_rsee import (
     B0_CONFIRM,
     B0RSEEInputs,
     B0RSEERejected,
     verify_b0_rsee,
 )
+from adapters.mineflayer.eat_execution import IssuedEatingExecutor
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
-from adapters.mineflayer.b0_ground_runner import acquire_staged_ground_flesh
-from adapters.mineflayer.eat_execution import IssuedEatingExecutor
 from adapters.mineflayer.s31a_real_server_ci import (
+    BOT_USERNAME,
     MINECRAFT_VERSION,
     MINEFLAYER_VERSION,
-    S31ABlocked,
-    BOT_USERNAME,
     SERVER_HOST,
     SERVER_PORT,
+    S31ABlocked,
     _await_spawn,
     _command,
     _correlated_observe,
