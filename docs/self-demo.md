@@ -490,3 +490,36 @@ and explicitly marks `zombie_drop_observed=false` and
 `m_energy_credited=false`. Existing bread-mode default classification,
 old evidence and issued-action logic are unchanged. Real World-source
 authentication and exactly-once physical M credit remain the next gate.
+
+## B0 opt-in physical ground-item foraging (still NOT_RUN)
+
+The existing `s51_eat_real_ci` operator runner now accepts
+`--food-source ground --food-item rotten_flesh`. In ONE
+owned disposable World, it summons precisely one `rotten_flesh`
+ground item near the original observed body (not a zombie kill),
+selects a visible `item` entity using the original complete
+native source, and admits up to eight **distinct, authorized S50
+SEEK** actions toward that location. An observed item entity
+disappearance plus `rotten_flesh` inventory increase is required;
+then the existing S51 issued EAT independently checks both inventory
+decrease and hunger-meter increase.
+
+It does **not** establish the exact item's metadata identity,
+causal pickup or zombie origin; these require improved original
+bridge evidence. No autonomous hunting, M ledger credit, Hunger
+effect accounting, full L0 survival, L2 or scientific selection claim.
+
+After **fresh, explicit** R/S World authorization, example only:
+
+```bash
+S51_REAL_SERVER_CI=1 PYTHONPATH="$PWD/src:$PWD/tests:$PWD" \
+  python -m adapters.mineflayer.s51_eat_real_ci \
+  --food-item rotten_flesh --food-source ground \
+  --report ./fresh-ground-b0.json \
+  --server-log ./fresh-ground-b0-server.log
+```
+
+Never use this command on a persistent/personal World, and never
+run it under an already consumed one-shot grant. CI is offline
+only; new physical runtime remains unqualified. The existing
+`--food-source inventory` default preserves previous S51 modes.

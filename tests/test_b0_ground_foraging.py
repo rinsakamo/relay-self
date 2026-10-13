@@ -93,6 +93,7 @@ def test_no_item_ambiguous_item_incomplete_coverage_are_denied():
         select_ground_target(crowded)
     truncated = replace(p, snapshot=replace(
         p.snapshot,
+        nearby_entities=p.snapshot.nearby_entities * 16,
         nearby_entities_coverage=replace(
             p.snapshot.nearby_entities_coverage,
             candidate_count=17, truncated=True,
