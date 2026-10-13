@@ -16,6 +16,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.b0_ground_runner import acquire_staged_ground_flesh
 from adapters.mineflayer.eat_execution import IssuedEatingExecutor
 from adapters.mineflayer.s31a_real_server_ci import (
@@ -90,6 +91,14 @@ async def qualify(
         session = await _new_session()
         sid = session.started.session_id
         report["session_id"] = sid
+        ledger = B0EnergyLedger(sid)
+        report["metabolism"] = {
+            "source": "M0_617_BYTE_IDENTICAL",
+            "unit": "simulated_experimental_energy",
+            "initial_energy": ledger.body.energy,
+            "basal_cost_per_decision": ledger.config.basal_cost,
+            "food_energy_per_verified_item": ledger.config.food_energy,
+        }
         report["stage"] = "EXTERNAL_SURVIVAL_AND_FOOD_STAGING"
         assert server.stdin is not None
         _command(server, "gamemode survival RelaySelf")
@@ -97,7 +106,7 @@ async def qualify(
         if food_source == "ground":
             report["stage"] = "ISSUED_SEEK_GROUND_PICKUP"
             report["ground_pickup"] = await acquire_staged_ground_flesh(
-                session, server,
+                session, server, energy_ledger=ledger,
             )
         else:
             _command(server, f"give RelaySelf minecraft:{food_item} 3")
@@ -111,16 +120,17 @@ async def qualify(
             reading = await _correlated_observe(
                 session, f"s51-hunger-native:{attempt:02d}",
             )
+            decision = ledger.decide(reading)
             if (
-                reading.snapshot.food < 14.0
-                and any(
-                    item.name == food_item and item.count > 0
-                    for item in reading.snapshot.inventory
-                )
+                decision.kind == "EAT"
+                and decision.eat_choice is not None
+                and decision.eat_choice.item_name == food_item
             ):
                 before = reading
                 choice = cursor.choose(reading)
                 break
+            if ledger.step("WAIT").terminal_now:
+                raise S51PhysicalFailure("M0 irreversible starvation during WAIT")
         report["last_food_observed"] = reading.snapshot.food
         report["inventory_item_names"] = [
             item.name for item in reading.snapshot.inventory
@@ -174,6 +184,29 @@ async def qualify(
             or supervisor.open_actions
         ):
             raise S51PhysicalFailure("no real independent native food+stock effects")
+        # Only the verified S51 terminal may supply M0 credit.
+        transition = ledger.step("WAIT", eating=result)
+        report["m_energy_credited"] = ledger.credit_count == 1
+        report["metabolism_after_eat"] = {
+            "energy": ledger.body.energy,
+            "tick": ledger.body.tick,
+            "meals": ledger.body.meals,
+            "intake": transition.intake,
+            "expenditure": transition.expenditure,
+            "terminal": transition.terminal_now,
+            "credited_action_id": result.outcome.action_id,
+        }
+        if transition.terminal_now:
+            raise S51PhysicalFailure("M0 terminal after native consumption")
+        fresh = await _correlated_observe(session, "b0-next-l0-native")
+        next_l0 = ledger.decide(fresh)
+        report["next_l0"] = {
+            "probe_seq": next_l0.probe_seq,
+            "kind": next_l0.kind,
+            "energy_sensor_reading": next_l0.sensor_reading,
+            "metabolic_tick": next_l0.body_tick,
+            "issued_action": False,
+        }
         report["after"] = {
             "food": result.outcome.food_after,
             "food_item": food_item,
@@ -185,9 +218,9 @@ async def qualify(
         }
         report["status"] = "PASS"
         report["classification"] = (
-            "B0_GROUND_PICKUP_AND_NATIVE_EAT_CONSISTENCY_ONLY"
+            "B0_GROUND_EAT_M0_NEXT_L0_ENGINEERING_ONLY"
             if food_source == "ground"
-            else "B0_ROTTEN_FLESH_OPERATOR_STAGED_NATIVE_EAT_ONLY"
+            else "B0_STAGED_EAT_M0_NEXT_L0_ENGINEERING_ONLY"
             if food_item == "rotten_flesh"
             else "REAL_SURVIVAL_HUNGER_EAT_NATIVE_FOOD_DELTA_QUALIFIED"
         )

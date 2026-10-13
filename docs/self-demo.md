@@ -523,3 +523,30 @@ Never use this command on a persistent/personal World, and never
 run it under an already consumed one-shot grant. CI is offline
 only; new physical runtime remains unqualified. The existing
 `--food-source inventory` default preserves previous S51 modes.
+
+
+## B0 M0 bridge (2026-10-13; engineering candidate, WORLD_NOT_RUN)
+
+The existing S51 `--food-item rotten_flesh` and optional
+`--food-source ground` paths now feed only verified, terminal S51
+EAT outcomes to an S-owned session ledger, then make one fresh,
+non-issuing L0 native-World decision. No item pickup/UNKNOWN/replay
+credits energy; each decision WAIT costs basal, each closed S50 SEEK
+costs MOVE, and starvation is irreversible. Energy is an experimental
+M0 value, **not** Minecraft hunger, physical joules or a reward.
+L0 EAT/SEEK/WAIT reactions are designed, not spontaneously evolved.
+
+`experiments/metabolism_viability.py` reuses the EXACT unchanged M0
+source blob `4ecabd2811377a05925fb85cb32070dcd2d6bb0e`
+from M #617 at `4bdc9daf0444e55908cff321111bae9a2927942c`.
+This is one-file source reuse on the S product Draft, **not** a
+merge or cherry-pick of M's Draft, and future M edits need manual
+reconciliation. Decision ticks do not continuously measure wall
+time, including subprocess wait time. The current S51 disposable
+server script has NOT yet been placed behind the RSEE-qualified
+preflight/evidence owner #575. R/S/V and a fresh one-shot local
+authorization remain mandatory before any Minecraft/Node/Java run.
+
+Synthetic offline tests and CI do not demonstrate physical B0 success,
+zombie drops, native item metadata, no-food World starvation,
+learning, evolution or a V scientific result.

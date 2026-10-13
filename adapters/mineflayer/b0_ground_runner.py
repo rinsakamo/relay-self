@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.b0_ground_foraging import (
     GroundRejected,
     compare_pickup,
@@ -27,7 +28,9 @@ def _p(name: str) -> Provenance:
     return Provenance("b0-explicit-operator", name)
 
 
-async def acquire_staged_ground_flesh(session: Any, server: Any) -> dict[str, Any]:
+async def acquire_staged_ground_flesh(
+    session: Any, server: Any, *, energy_ledger: B0EnergyLedger | None = None,
+) -> dict[str, Any]:
     """One World item, <=8 distinct issued moves; no command retry or unknown credit."""
     if server.stdin is None:
         raise GroundRejected("server console owner absent")
@@ -88,6 +91,8 @@ async def acquire_staged_ground_flesh(session: Any, server: Any) -> dict[str, An
             raise GroundRejected("no pathfinding authority for vertical route")
         if step.status is SeekStatus.ARRIVED:
             # Nonissuance; do not manufacture an S16 WAIT Action outcome.
+            if energy_ledger is not None and energy_ledger.step("WAIT").terminal_now:
+                raise GroundRejected("M0 terminal during WAIT")
             await asyncio.sleep(0.25)
             continue
         skill = SkillExecution.start(
@@ -118,6 +123,8 @@ async def acquire_staged_ground_flesh(session: Any, server: Any) -> dict[str, An
             )
             if closed.state is not ActionState.OUTCOME:
                 raise GroundRejected("SEEK not closed with a World consequence")
+            if energy_ledger is not None and energy_ledger.step("MOVE").terminal_now:
+                raise GroundRejected("M0 terminal after issued SEEK")
             movements.append({
                 "action_id": issued.action_id,
                 "before_seq": effect.before_seq,
