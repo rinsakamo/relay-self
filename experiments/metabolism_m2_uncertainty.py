@@ -16,7 +16,6 @@ from statistics import fmean
 from typing import Literal
 
 from experiments.evolved_values import Agent, RewardGenes, SimulationConfig, make_child
-from experiments.metabolism_m2 import M2Config
 from experiments.metabolism_m2_costs import config_for_costs
 from experiments.metabolism_viability import (
     Interoception,

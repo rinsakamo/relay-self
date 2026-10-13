@@ -11,7 +11,7 @@ on:
       - "experiments/metabolism_m2_uncertainty.py"
       - "tests/test_metabolism_m2_experiment.py"
       - "tests/test_metabolism_m2_scarcity.py"
-      - "tests/test_metabolism_m2_costs.py tests/test_metabolism_m2_uncertainty.py"
+      - "tests/test_metabolism_m2_costs.py"
       - "tests/test_metabolism_m2_uncertainty.py"
       - "docs/m-lane-metabolism-m2.md"
       - ".github/workflows/m-lane-m2-offline.yml"
