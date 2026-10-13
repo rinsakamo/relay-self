@@ -115,6 +115,26 @@ def test_delayed_scan_pays_energy_and_only_changes_next_cue() -> None:
     assert cfg.scanned_accuracy > cfg.cue_accuracy
 
 
+
+def test_scan_information_is_delayed_and_precommitted() -> None:
+    cfg = M2DConfig()
+    observed_scan = False
+    for seed in M2D_SEEDS:
+        world = make_world(seed=seed, regime="persistent", config=cfg)
+        trial = run_episode(
+            world=world, policy="scan_bayes", seed=seed, config=cfg
+        )
+        assert trial.observed_hints[0] == world.weak_hint_fight[0]
+        for index in range(1, trial.ticks):
+            if trial.action_trace[index - 1] == "SCAN":
+                observed_scan = True
+                assert trial.observed_hints[index] == world.strong_hint_fight[index]
+            else:
+                assert trial.observed_hints[index] == world.weak_hint_fight[index]
+    assert observed_scan
+
+
+
 def test_full_suite_fixed_row_count_and_no_automatic_success() -> None:
     report = frozen_family()
     assert report == frozen_family()
