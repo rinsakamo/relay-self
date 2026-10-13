@@ -26,7 +26,6 @@ from experiments.metabolism_viability import (
 from relay_self.action import ActionState
 from relay_self.eat_hunger import ALLOWED_FOODS, EatChoice, EatCursor, EatStatus
 
-
 B0_SENSOR_SEEK_THRESHOLD = 8.0
 
 
