@@ -64,6 +64,7 @@ async def qualify(
     report_path: Path, server_log: Path, *,
     food_item: str = "bread", food_source: str = "inventory",
     rsee: B0RSEEInputs | None = None, confirmation: str | None = None,
+    preflight_only: bool = False,
 ) -> int:
     if food_item not in ("bread", "rotten_flesh"):
         raise ValueError("only operator-staged bread or rotten_flesh allowed")
@@ -93,7 +94,24 @@ async def qualify(
     server = collector = session = temp = None
     rc = 2
     try:
-        if os.environ.get("S51_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
+        if os.environ.get("NODE_OPTIONS"):
+            raise S31ABlocked("Node substitution forbidden")
+        if preflight_only:
+            # Safe preflight: no Java, Node, Minecraft, network or Action.
+            # External RSEE source and World/Node bytes remain the authority.
+            if food_item != "rotten_flesh" or rsee is None:
+                raise S31ABlocked("B0 offline preflight requires full RSEE inputs")
+            report["stage"] = "RSEE_READONLY_PREFLIGHT"
+            report["rsee_preflight"] = await asyncio.to_thread(
+                verify_b0_rsee, rsee,
+            )
+            report["status"] = "PASS"
+            report["classification"] = "B0_RSEE_READONLY_PREFLIGHT_ONLY"
+            report["physical_execution_authorized"] = False
+            report["stage"] = "CLOSED"
+            rc = 0
+            return rc
+        if os.environ.get("S51_REAL_SERVER_CI") != "1":
             raise S31ABlocked("explicit real-survival qualification environment required")
         if food_item == "rotten_flesh":
             # Not a permission token: physical permission is external and
@@ -399,6 +417,10 @@ def main() -> int:
     parser.add_argument("--rsee-initial-evidence", type=Path)
     parser.add_argument("--rsee-node-runtime-root", type=Path)
     parser.add_argument("--rsee-eula-accepted", action="store_true")
+    parser.add_argument(
+        "--preflight-only", action="store_true",
+        help="read-only pinned RSEE verification; never starts a World",
+    )
     parser.add_argument("--confirm", help="operator acknowledgement; NOT a physical grant")
     args = parser.parse_args()
     fields = (
@@ -415,6 +437,7 @@ def main() -> int:
         args.report, args.server_log,
         food_item=args.food_item, food_source=args.food_source,
         rsee=rsee, confirmation=args.confirm,
+        preflight_only=args.preflight_only,
     ))
 
 

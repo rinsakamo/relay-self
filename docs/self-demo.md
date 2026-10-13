@@ -604,3 +604,34 @@ fails. This test does **not** demonstrate food acquisition, learning,
 or physically real energy; it tests the research ledger's starvation
 consequence in a real World source stream. No Minecraft run has
 been authorized or executed here.
+
+ 
+### One-command read-only B0 RSEE check (no physical grant consumed)
+
+Before proposing a real Minecraft run, use **the existing S51 entry point**
+with `--preflight-only`, `--food-item rotten_flesh`, and the six complete
+`--rsee-*` path values plus explicit `--rsee-eula-accepted`. For example,
+with the already qualified RSEE host assets and separately checked #588
+worktree (`$RSEE_CHECKOUT`):
+
+```bash
+export PYTHONPATH="$PWD/src:$PWD/tests:$PWD"
+BASE=/home/rinsa/.local/share/relay-self/rsee-1.0-20261011
+python -m adapters.mineflayer.s51_eat_real_ci \
+  --preflight-only --food-item rotten_flesh \
+  --report ./b0-preflight.json --server-log ./b0-not-started.log \
+  --rsee-checkout "$RSEE_CHECKOUT" \
+  --rsee-jar "$BASE/minecraft-1.21.8.jar" \
+  --rsee-snapshot "$BASE/bootstrap-approved-20261011-once/snapshot" \
+  --rsee-manifest "$BASE/bootstrap-approved-20261011-once/snapshot_manifest.json" \
+  --rsee-initial-evidence "$BASE/bootstrap-approved-20261011-once/initial_native_observation.json" \
+  --rsee-node-runtime-root "$BASE/npm-mineflayer-4.39.0" \
+  --rsee-eula-accepted
+```
+
+This mode calls original #588 RSEE owner validators read-only, preserves
+the result in the normal S51 report, **never** opens a Node/Java/Minecraft
+session and never consumes an experimental physical grant. A qualified
+offline result still cannot authorize starting the actual World. Source
+checkout, operator-owned artifacts and Python dependencies must exist
+on the local host. A dry-run synthetic CI result is not a host attestation.

@@ -89,3 +89,58 @@ def test_all_b0_physical_variants_refuse_missing_rsee_before_world(
     assert value["status"] == "BLOCKED"
     assert value["m_energy_credited"] is False
     assert not log.exists()
+
+
+def test_readonly_preflight_never_requires_physical_permission_or_starts_java(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Synthetic verifier return proves the *branch routing* only, not RSEE
+    # qualification. The original source verifier is exercised on a host.
+    from adapters.mineflayer import s51_eat_real_ci as host
+
+    monkeypatch.delenv("S51_REAL_SERVER_CI", raising=False)
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    fake = B0RSEEInputs(
+        *(tmp_path / str(i) for i in range(6)), eula_accepted=True,
+    )
+    calls = []
+
+    def verify_once(inputs):
+        calls.append(inputs)
+        return {
+            "classification": "SYNTHETIC_TEST_READONLY_ONLY",
+            "physical_execution_authorized": False,
+        }
+
+    monkeypatch.setattr(host, "verify_b0_rsee", verify_once)
+    report_path, log = tmp_path / "result.json", tmp_path / "no-java.log"
+    rc = asyncio.run(host.qualify(
+        report_path, log,
+        food_item="rotten_flesh",
+        rsee=fake,
+        preflight_only=True,
+    ))
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert rc == 0 and report["status"] == "PASS"
+    assert report["classification"] == "B0_RSEE_READONLY_PREFLIGHT_ONLY"
+    assert report["physical_execution_authorized"] is False
+    assert report["rsee_preflight"]["classification"] == "SYNTHETIC_TEST_READONLY_ONLY"
+    assert calls == [fake]
+    assert not log.exists() and not report.get("session_id")
+
+
+def test_readonly_preflight_requires_full_pinned_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    path = tmp_path / "blocked.json"
+    rc = asyncio.run(qualify(
+        path, tmp_path / "no-java.log",
+        food_item="rotten_flesh",
+        preflight_only=True,
+    ))
+    result = json.loads(path.read_text(encoding="utf-8"))
+    assert rc == 2 and result["status"] == "BLOCKED"
+    assert "RSEE" in result["error"]
+    assert result.get("physical_execution_authorized") is None
+    assert not (tmp_path / "no-java.log").exists()
