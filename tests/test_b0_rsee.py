@@ -174,3 +174,78 @@ def test_previous_server_log_blocks_reuse_of_run_namespace(
     saved = json.loads(report.read_text(encoding="utf-8"))
     assert saved["status"] == "BLOCKED"
     assert "fresh distinct" in saved["error"]
+
+
+def test_native_recorder_retains_exact_bytes_and_original_io_errors():
+    from io import BytesIO
+    from types import SimpleNamespace
+
+    from adapters.mineflayer.s51_eat_real_ci import _recording_session_type
+
+    original = b'{"native":"unmodified","seq":2}\n'
+
+    class Reader:
+        async def readline(self):
+            return original
+
+    class Stdin:
+        def write(self, raw):
+            self.written = raw
+
+        async def drain(self):
+            raise BrokenPipeError("original transport failure")
+
+    from adapters.mineflayer.process_session import MineflayerProcessIOError
+
+    native, commands = BytesIO(), BytesIO()
+    process = SimpleNamespace(stdout=Reader(), stdin=Stdin(), returncode=None)
+    session = _recording_session_type(native, commands)(process)
+    assert asyncio.run(process.stdout.readline()) == original
+    assert native.getvalue() == original
+    line = '{"type":"observe"}\n'
+    with pytest.raises(MineflayerProcessIOError):
+        asyncio.run(session._send(line))
+    assert commands.getvalue() == line.encode()
+    assert process.stdin.written == line.encode()
+
+
+def test_native_recorder_drains_unread_terminal_bytes_after_process_exit():
+    from io import BytesIO
+    from types import SimpleNamespace
+
+    from adapters.mineflayer.s51_eat_real_ci import _recording_session_type
+
+    raw = b'{"type":"shutdown_ack"}\n'
+
+    class Reader:
+        def __init__(self):
+            self.lines = iter((raw, b""))
+
+        async def readline(self):
+            return next(self.lines)
+
+    native = BytesIO()
+    process = SimpleNamespace(stdout=Reader(), stdin=object(), returncode=0)
+    session = _recording_session_type(native, BytesIO())(process)
+    assert asyncio.run(session.shutdown()) == 0
+    assert native.getvalue() == raw
+
+
+def test_prior_native_stream_blocks_java_before_rsee_or_world_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setenv("S51_REAL_SERVER_CI", "1")
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    inp = B0RSEEInputs(*(tmp_path / str(i) for i in range(6)), eula_accepted=True)
+    report = tmp_path / "run.json"
+    raw = report.with_suffix(".native.jsonl")
+    raw.write_bytes(b"SEALED_NATIVE")
+    rc = asyncio.run(qualify(
+        report, tmp_path / "server.log", food_item="rotten_flesh",
+        rsee=inp, confirmation=B0_CONFIRM,
+    ))
+    saved = json.loads(report.read_text())
+    assert rc == 2 and saved["stage"] == "START"
+    assert saved["grant_consumed"] is False
+    assert raw.read_bytes() == b"SEALED_NATIVE"
+    assert not saved["java_start_attempted"]

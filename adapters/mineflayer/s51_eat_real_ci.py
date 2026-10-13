@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import shutil
 import sys
 import tempfile
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +58,46 @@ class S51PhysicalFailure(RuntimeError):
     """Real observed appetite, consumption or Action outcome was insufficient."""
 
 
+def _recording_session_type(native_output, command_output):
+    """Tee original bridge bytes without replacing decoding or IO errors."""
+    class RecordingReader:
+        def __init__(self, reader):
+            self.reader = reader
+
+        async def readline(self):
+            raw = await self.reader.readline()
+            native_output.write(raw)
+            native_output.flush()
+            return raw
+
+    class RecordedSession(MineflayerProcessSession):
+        def __init__(self, process):
+            super().__init__(process)
+            process.stdout = RecordingReader(process.stdout)
+
+        async def _send(self, line):
+            command_output.write(line.encode("utf-8"))
+            command_output.flush()
+            await super()._send(line)
+
+        async def _drain_original(self):
+            # After owned process exit, retain unread shutdown/error frames.
+            while await self._process.stdout.readline():
+                pass
+
+        async def shutdown(self, *, timeout_s=5.0):
+            result = await super().shutdown(timeout_s=timeout_s)
+            await self._drain_original()
+            return result
+
+        async def terminate(self):
+            result = await super().terminate()
+            await self._drain_original()
+            return result
+
+    return RecordedSession
+
+
 def p(ref: str) -> Provenance:
     return Provenance("s51-explicit-operator", ref)
 
@@ -92,6 +134,10 @@ async def qualify(
         "real_model_calls": 0,
     }
     server = collector = session = temp = None
+    native_output = command_output = None
+    native_path = report_path.with_suffix(".native.jsonl")
+    command_path = report_path.with_suffix(".commands.jsonl")
+    report["java_start_attempted"] = False
     rc = 2
     try:
         # Claim a fresh receipt namespace BEFORE any physical effect.
@@ -103,6 +149,10 @@ async def qualify(
             or not server_log.parent.is_dir()
         ):
             raise S31ABlocked("fresh distinct evidence paths required; no overwrite")
+        if rsee is not None and not preflight_only and any(
+            path.exists() or path.is_symlink() for path in (native_path, command_path)
+        ):
+            raise S31ABlocked("fresh native evidence paths required; no overwrite")
         if os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("Node substitution forbidden")
         if preflight_only:
@@ -163,7 +213,21 @@ async def qualify(
             ))
             _write_config(root)
             jar = root / "minecraft.jar"
+        report["disposable_root"] = str(root)
+        report["server_config_sha256"] = hashlib.sha256(
+            (root / "server.properties").read_bytes(),
+        ).hexdigest()
+        if rsee is not None:
+            # Reserve both originals before Java. Never truncate an old stream.
+            native_output = native_path.open("xb")
+            command_output = command_path.open("xb")
+            report["native_stdout_path"] = str(native_path)
+            report["commands_path"] = str(command_path)
+            report["clone_prelaunch_binding"] = copied
+        report["stage"] = "JAVA_START_ONESHOT_BOUNDARY"
+        report["java_start_attempted"] = True
         server, collector, _ = await _ready_server(root, jar, server_log)
+        report["java_pid"] = server.pid
         if rsee is None:
             session = await _new_session()
         else:
@@ -174,7 +238,8 @@ async def qualify(
                 rsee.node_runtime_root,
             )
             try:
-                session = await MineflayerProcessSession.launch(
+                session_type = _recording_session_type(native_output, command_output)
+                session = await session_type.launch(
                     MineflayerLaunchConfig(
                         host=SERVER_HOST, port=SERVER_PORT,
                         username=BOT_USERNAME, version=MINECRAFT_VERSION,
@@ -188,6 +253,7 @@ async def qualify(
                 else:
                     os.environ["RELAYSELF_RSEE_NODE_RUNTIME_ROOT"] = old_root
             await _await_spawn(session)
+            report["node_pid"] = session._process.pid
         sid = session.started.session_id
         report["session_id"] = sid
         ledger = B0EnergyLedger(sid)
@@ -262,12 +328,20 @@ async def qualify(
             await server.stdin.drain()
             cursor = EatCursor(sid, hunger_threshold=14.0)
             before = choice = None
+            report["hunger_l0_trace"] = []
             for attempt in range(16):
                 await asyncio.sleep(2)
                 reading = await _correlated_observe(
                     session, f"s51-hunger-native:{attempt:02d}",
                 )
                 decision = ledger.decide(reading)
+                report["hunger_l0_trace"].append({
+                    "probe_seq": reading.seq, "kind": decision.kind,
+                    "food": reading.snapshot.food,
+                    "body_tick": ledger.body.tick,
+                    "energy_before": ledger.body.energy,
+                    "issued_action": False,
+                })
                 if (
                     decision.kind == "EAT"
                     and decision.eat_choice is not None
@@ -320,10 +394,16 @@ async def qualify(
             issued = supervisor.issue(
                 authorized, at_ns=5, deadline_ns=200, provenance=p("issued"),
             )
+            report["issued_action_id"] = issued.action_id
             report["stage"] = "GENUINE_TWO_NATIVE_FOOD_EFFECTS"
-            result = await IssuedEatingExecutor().execute(
-                session, supervisor, issued, choice, before,
-            )
+            try:
+                result = await IssuedEatingExecutor().execute(
+                    session, supervisor, issued, choice, before,
+                )
+            finally:
+                report["action_terminal"] = supervisor.get(issued.action_id).state.value
+            report["eat_outcome"] = asdict(result.outcome)
+            report["action_terminal"] = result.terminal.state.value
             if (
                 result.terminal.state is not ActionState.OUTCOME
                 or result.outcome.food_after <= result.outcome.food_before
@@ -332,6 +412,7 @@ async def qualify(
             ):
                 raise S51PhysicalFailure("no real independent native food+stock effects")
             # Only the verified S51 terminal may supply M0 credit.
+            report["metabolism_before_eat"] = asdict(ledger.body)
             transition = ledger.step("WAIT", eating=result)
             report["m_energy_credited"] = ledger.credit_count == 1
             report["metabolism_after_eat"] = {
@@ -342,10 +423,12 @@ async def qualify(
                 "expenditure": transition.expenditure,
                 "terminal": transition.terminal_now,
                 "credited_action_id": result.outcome.action_id,
+                "credit_count": ledger.credit_count,
             }
             if transition.terminal_now:
                 raise S51PhysicalFailure("M0 terminal after native consumption")
             fresh = await _correlated_observe(session, "b0-next-l0-native")
+            report["next_native_probe"] = asdict(fresh)
             next_l0 = ledger.decide(fresh)
             report["next_l0"] = {
                 "probe_seq": next_l0.probe_seq,
@@ -386,9 +469,18 @@ async def qualify(
         if session is not None:
             try:
                 report["node_exit"] = await session.shutdown(timeout_s=10)
+                if report["node_exit"] != 0:
+                    report["status"] = "FAIL"
+                    report["node_cleanup_error"] = "nonzero bridge exit"
+                    rc = 1
             except Exception as exc:
                 report["node_cleanup_error"] = str(exc)
-                await session.terminate()
+                report["status"] = "FAIL"
+                rc = 1
+                try:
+                    report["node_exit"] = await session.terminate()
+                except Exception as cleanup_exc:
+                    report["node_termination_error"] = str(cleanup_exc)
         try:
             await _shutdown_server(server, collector)
         except Exception as exc:
@@ -397,6 +489,15 @@ async def qualify(
             rc = 1
         if server is not None:
             report["server_exit"] = server.returncode
+        # Log creation occurs only after Java subprocess creation in the
+        # original server helper; an attempted spawn alone is not a start.
+        report["physical_java_started"] = bool(
+            report["java_start_attempted"] and (server is not None or server_log.exists())
+        )
+        report["grant_consumed"] = report["physical_java_started"]
+        for stream in (native_output, command_output):
+            if stream is not None:
+                stream.close()
         if temp is not None:
             temp.cleanup()
         if server is not None and report["status"] == "PASS" and report.get("server_exit") != 0:

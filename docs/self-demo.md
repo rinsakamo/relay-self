@@ -635,3 +635,21 @@ session and never consumes an experimental physical grant. A qualified
 offline result still cannot authorize starting the actual World. Source
 checkout, operator-owned artifacts and Python dependencies must exist
 on the local host. A dry-run synthetic CI result is not a host attestation.
+
+### B0 one-shot original evidence (2026-10-13)
+
+RSEE physical S51 runs reserve `<report stem>.native.jsonl` and
+`<report stem>.commands.jsonl` with exclusive creation before Java. The
+native stream tees exact bridge stdout bytes, including unread terminal
+frames after process exit; existing decoder and transport exceptions are
+preserved. Command lines record attempted sends, not applied effects.
+No new launcher, RSEE bridge change or Action authority is introduced.
+
+The report retains the issued Action ID and terminal even on executor
+failure, verified eating outcome before M0 credit, body state immediately
+before credit, credit count, intake/cost/tick and the next native probe.
+Node cleanup errors or nonzero exit prevent PASS. Java-start attempt and
+observed physical start are separate: the original helper creates its log
+only after spawning Java. Cleanup exit does not by itself prove STOP ACK;
+inspect the preserved native bytes and independently check owned PIDs and
+port release. A staged-food loop is engineering evidence only, SCIENCE_NO_GO.
