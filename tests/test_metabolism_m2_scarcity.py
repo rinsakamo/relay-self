@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from experiments.metabolism_m1 import food_schedule
 from experiments.metabolism_m2 import (
     M2Config,
     Member,
@@ -85,9 +86,7 @@ def test_scarce_seed_result_is_stable_and_no_inferred_science_go() -> None:
 def test_legacy_profile_and_previous_seed_family_are_not_reinterpreted() -> None:
     base = M2Config()
     assert base.world_profile == "legacy_uniform"
-    assert world_schedule(7 + 44, base) == __import__(
-        "experiments.metabolism_m1", fromlist=["food_schedule"]
-    ).food_schedule(7 + 44, base.horizon)
+    assert world_schedule(7 + 44, base) == food_schedule(7 + 44, base.horizon)
 
 
 def test_invalid_profiles_and_posthoc_seed_choice_fail_closed() -> None:

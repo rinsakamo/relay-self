@@ -16,7 +16,6 @@ from experiments.metabolism_m2 import (
     _heldout,
     founder_population,
     run_evolution,
-    world_schedule,
 )
 
 # Frozen before the new profile's first CI run; never recalibrate on these seeds.
