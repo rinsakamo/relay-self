@@ -30,7 +30,6 @@ from adapters.mineflayer.self_s7_native_receipt import (
     MAX_SENT_BYTES,
     MAX_SENT_LINES,
 )
-from relay_self.world_conditioned_choice import WorldChoiceKind
 
 
 class S13NonissuanceRejected(ValueError):
