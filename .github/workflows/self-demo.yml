@@ -33,10 +33,20 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
           git merge-base --is-ancestor 66b8045fd2b47d9c35febb12c495379d1248bb4e HEAD
-          # The product evidence fix intentionally adds one append-only field
-          # to the S49 report writer; every other inherited source stays frozen.
-          changed="$(git diff --name-only --diff-filter=CDMRTUXB 66b8045fd2b47d9c35febb12c495379d1248bb4e HEAD)"
-          test "$changed" = "adapters/mineflayer/s49_normal_session_real_ci.py"
+          # S49 original evidence and other product owners are immutable.
+          # The old single-S49-file gate was historical and contradicted
+          # the already existing #545 product branch's integrated changes.
+          B0_PARENT=4edac0b139d2d49b0169ffaad7c5892bed7fa2d1
+          git merge-base --is-ancestor "$B0_PARENT" HEAD
+          git diff --quiet "$B0_PARENT" HEAD -- adapters/mineflayer/s49_normal_session_real_ci.py
+          changed="$(git diff --name-only --diff-filter=CDMRTUXB "$B0_PARENT" HEAD)"
+          expected="$(printf '%s\\n' \\
+            .github/workflows/self-demo.yml \\
+            adapters/mineflayer/s51_eat_real_ci.py \\
+            docs/self-demo.md \\
+            src/relay_self/eat_hunger.py \\
+            tests/test_feature_s51_eat_execution.py)"
+          test "$changed" = "$expected"
       - run: python tools/check_repository.py
 
   pytest:
