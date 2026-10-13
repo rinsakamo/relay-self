@@ -1,0 +1,81 @@
+{
+  "schema": "RELAYSELF_V2_KNOCKDOWN_PREREG_1",
+  "issue": 619,
+  "status": "PROSPECTIVE_OFFLINE_ONLY",
+  "sources": {
+    "v1_head": "53d50029da64a95c56bb56c6d48b5d14ce94e84a",
+    "s_sensor_head": "34cf226e55645f85172317172c37ae6cbd481ae4",
+    "s_product_pr": 545,
+    "v1_pr": 595,
+    "m0_issue": 616,
+    "product_issue": 537,
+    "rsee_issue": 575
+  },
+  "arms": {
+    "SENSOR_ON": {
+      "forage_policy": "sensor_gate",
+      "gain": 1,
+      "bias": 0,
+      "quantum": 1,
+      "toggle_path": "sensor_setting"
+    },
+    "SHAM_ON": {
+      "forage_policy": "sensor_gate",
+      "gain": 1,
+      "bias": 0,
+      "quantum": 1,
+      "toggle_path": "sensor_setting"
+    },
+    "SENSOR_MASKED": {
+      "forage_policy": "sensor_gate",
+      "gain": 0,
+      "bias": 12,
+      "quantum": 1,
+      "toggle_path": "sensor_setting"
+    },
+    "CHEAP_NATIVE": {
+      "forage_policy": "native_only",
+      "gain": 1,
+      "bias": 0,
+      "quantum": 1,
+      "toggle_path": "sensor_setting"
+    }
+  },
+  "design": {
+    "study": "ACQUIRED_STATE_EXPRESSION_ONLY_NOT_DEVELOPMENT",
+    "intended_reference": "FROZEN_REAL_PRODUCT_NOT_YET_ELIGIBLE",
+    "minimum_independent_world_starts": 4,
+    "horizon_m0_ticks": 16,
+    "max_issued_moves": 8,
+    "exogenous_food_schedule": "PRECOMMITTED_IDENTICAL_PER_PAIRED_WORLD_START",
+    "no_forced_seeking": true,
+    "wait_semantics": "NONISSUED_BOUNDED_OBSERVATION",
+    "stop_rule": "RUN_TO_M0_TERMINAL_OR_16_TICKS_REPORT_CENSORING",
+    "primary": "M0_TERMINAL_FREE_TICKS_WITH_CENSORING",
+    "secondary": [
+      "NATIVE_S51_EAT_OUTCOME_COUNT",
+      "M0_FINAL_ENERGY",
+      "M0_NET_ENERGY",
+      "NATIVE_MOVE_COUNT",
+      "RESOURCE_COSTS",
+      "FOOD_SOURCE_PROVENANCE"
+    ],
+    "baseline_rule": "SENSOR_ON_MUST_BE_COMPARED_WITH_SHAM_AND_STRONGEST_CHEAP_NATIVE",
+    "source_rule": "INDEPENDENT_ORIGINAL_BYTES_WORLD_RESET_GOAL_AND_ACTION_CHAIN_REQUIRED_FOR_LIVE",
+    "analysis_rule": "MATCHED_WORLD_SEED_ARM_LEVEL_CONTRAST_PREDECLARED_NO_POSTHOC_TUNING"
+  },
+  "boundaries": {
+    "m0_physics_always_on": true,
+    "safety_l0_always_on": true,
+    "action_authority_unchanged": true,
+    "goal_attestation_not_implemented": true,
+    "non_forcing_world_runner_not_implemented": true,
+    "original_byte_audit_not_run": true,
+    "consumed_grants_not_reusable": true,
+    "real_world_runs_authorized": false,
+    "physical_runs": 0,
+    "model_calls": 0,
+    "science_go": false,
+    "production_go": false
+  }
+}
