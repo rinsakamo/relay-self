@@ -14,12 +14,12 @@ from adapters.mineflayer.b0_ground_runner import (
     _admit_native_l0_seek,
     nonforcing_ground_decision,
 )
-from experiments.metabolism_viability import Interoception, MetabolismConfig
 from adapters.mineflayer.python_protocol import (
     MineflayerEntityFact,
     MineflayerInventoryItem,
     MineflayerPosition,
 )
+from experiments.metabolism_viability import Interoception, MetabolismConfig
 
 
 def _ground():
