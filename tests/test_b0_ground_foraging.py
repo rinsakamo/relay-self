@@ -10,7 +10,11 @@ from adapters.mineflayer.b0_ground_foraging import (
     compare_pickup,
     select_ground_target,
 )
-from adapters.mineflayer.b0_ground_runner import _admit_native_l0_seek
+from adapters.mineflayer.b0_ground_runner import (
+    _admit_native_l0_seek,
+    nonforcing_ground_decision,
+)
+from experiments.metabolism_viability import Interoception, MetabolismConfig
 from adapters.mineflayer.python_protocol import (
     MineflayerEntityFact,
     MineflayerInventoryItem,
@@ -157,3 +161,61 @@ def test_ground_seek_native_source_refuses_stale_or_foreign_target():
     next_probe = replace(hungry, seq=hungry.seq + 1, request_id="other-probe")
     with pytest.raises(GroundRejected, match="L0 did not choose"):
         _admit_native_l0_seek(ledger, next_probe, replace(target, entity_id=999))
+
+
+def test_nonforcing_wait_then_seek_same_item_source_no_action():
+    p = _ground()
+    p = replace(p, snapshot=replace(p.snapshot, food=13.0))
+    item = select_ground_target(p)
+    ledger = B0EnergyLedger(p.session_id, forage_policy="sensor_gate")
+    observed = []
+    for i in range(9):
+        read = replace(p, seq=p.seq + i, request_id=f"nonforcing-{i}")
+        row = nonforcing_ground_decision(ledger, read, item)
+        observed.append(row["kind"])
+        assert row["issued_action"] is False
+    assert observed == ["WAIT"] * 8 + ["SEEK"]
+    assert ledger.body.energy == 8 and ledger.body.tick == 8
+    assert ledger.credit_count == 0
+
+
+def test_nonforcing_masked_wait_records_true_m0_terminal():
+    p = _ground()
+    p = replace(p, snapshot=replace(p.snapshot, food=13.0))
+    item = select_ground_target(p)
+    ledger = B0EnergyLedger(
+        p.session_id, forage_policy="sensor_gate",
+        sensor=Interoception(gain=0, bias=12),
+        config=MetabolismConfig(initial_energy=2),
+    )
+    rows = []
+    for i in range(4):
+        read = replace(p, seq=p.seq + i, request_id=f"masked-{i}")
+        rows.append(nonforcing_ground_decision(ledger, read, item))
+    assert [r["kind"] for r in rows] == ["WAIT"] * 4
+    assert [r["m0_energy_after"] for r in rows] == [1.5, 1, 0.5, 0]
+    assert [r["m0_terminal_now"] for r in rows] == [False, False, False, True]
+    assert ledger.body.terminal and ledger.credit_count == 0
+
+
+def test_nonforcing_rejects_replay_or_entity_switch_without_extra_charge():
+    p = _ground()
+    p = replace(p, snapshot=replace(p.snapshot, food=13.0))
+    item = select_ground_target(p)
+    ledger = B0EnergyLedger(
+        p.session_id, forage_policy="sensor_gate",
+        sensor=Interoception(gain=0, bias=12),
+    )
+    nonforcing_ground_decision(ledger, p, item)
+    with pytest.raises(Exception):
+        nonforcing_ground_decision(ledger, p, item)
+    swapped = replace(
+        p, seq=p.seq + 1, request_id="switched",
+        snapshot=replace(
+            p.snapshot,
+            nearby_entities=(replace(p.snapshot.nearby_entities[0], entity_id=72),),
+        ),
+    )
+    with pytest.raises(GroundRejected, match="changed"):
+        nonforcing_ground_decision(ledger, swapped, item)
+    assert ledger.body.tick == 1 and ledger.body.energy == 11.5

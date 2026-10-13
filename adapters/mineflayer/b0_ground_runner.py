@@ -54,11 +54,57 @@ def _admit_native_l0_seek(
     }
 
 
+
+def nonforcing_ground_decision(
+    ledger: B0EnergyLedger, probe: Any, expected: Any,
+) -> dict[str, Any]:
+    """Native observed WAIT is valid and costs M0 energy, never an Action."""
+    if not isinstance(ledger, B0EnergyLedger) or ledger.body.terminal:
+        raise GroundRejected("living M0 owner required for nonforcing ground")
+    observed = select_ground_target(probe)
+    if (
+        observed.session_id != expected.session_id
+        or observed.entity_id != expected.entity_id
+    ):
+        raise GroundRejected("source-observed item entity changed")
+    decision = ledger.decide(probe)
+    if decision.kind not in ("WAIT", "SEEK"):
+        raise GroundRejected("unexpected ground L0 choice")
+    if decision.kind == "SEEK" and (
+        decision.ground_target is None
+        or decision.ground_target.entity_id != expected.entity_id
+    ):
+        raise GroundRejected("native L0 chose different ground target")
+    row: dict[str, Any] = {
+        "probe_seq": probe.seq, "kind": decision.kind,
+        "world_food": probe.snapshot.food,
+        "item_entity_id": expected.entity_id,
+        "energy_sensor": decision.sensor_reading,
+        "m0_energy_before": ledger.body.energy,
+        "m0_tick_before": ledger.body.tick,
+        "issued_action": False,
+    }
+    if decision.kind == "WAIT":
+        transition = ledger.step("WAIT")
+        if transition.intake != 0 or transition.expenditure != ledger.config.basal_cost:
+            raise GroundRejected("invalid nonissued WAIT metabolism")
+        row.update({
+            "m0_energy_after": transition.after.energy,
+            "m0_tick_after": transition.after.tick,
+            "m0_terminal_now": transition.terminal_now,
+            "intake": transition.intake,
+            "expenditure": transition.expenditure,
+        })
+    return row
+
+
 async def acquire_staged_ground_flesh(
     session: Any, server: Any, *, energy_ledger: B0EnergyLedger | None = None,
-    epoch: int = 0,
+    epoch: int = 0, nonforcing: bool = False,
 ) -> dict[str, Any]:
-    """One fixture/epoch, <=8 distinct issued moves; no retry or credit."""
+    """One fixture with bounded L0 nonissuance or original issued SEEK."""
+    if type(nonforcing) is not bool or (nonforcing and energy_ledger is None):
+        raise GroundRejected("nonforcing needs a real typed M0 owner")
     if type(epoch) is not int or not 0 <= epoch <= 7:
         raise GroundRejected("bounded ground epoch namespace required")
     namespace = "b0" if epoch == 0 else f"b0-e{epoch}"
@@ -94,9 +140,42 @@ async def acquire_staged_ground_flesh(
     if first is None or target is None:
         raise GroundRejected("single ground item not visible in bounded probes")
 
-    # No operator-forced SEEK: the cheap L0 must actually select the one
-    # native-observed item before any proposal/authorization/World movement.
-    l0_trace = [_admit_native_l0_seek(energy_ledger, first, target)]
+    # Legacy mode retains its strict SEEK gate. The opt-in mode records
+    # genuine nonissued WAIT until L0 elects SEEK, M0 terminal or horizon.
+    l0_trace: list[dict[str, Any]] = []
+    if nonforcing:
+        for n in range(24):
+            read = first if n == 0 else await _correlated_observe(
+                session, f"{namespace}-nf-wait-{n:02d}",
+            )
+            row = nonforcing_ground_decision(energy_ledger, read, target)
+            l0_trace.append(row)
+            if row["kind"] == "SEEK":
+                break
+            if row["m0_terminal_now"]:
+                return {
+                    "status": "M0_TERMINAL_NO_PICKUP", "epoch": epoch,
+                    "item_entity_id": target.entity_id,
+                    "source_probe_seq": first.seq,
+                    "l0_ground_seek_trace": l0_trace,
+                    "movement_outcomes": [],
+                    "pickup_inventory_delta": 0,
+                    "pickup_evidence": "NOT_OBSERVED",
+                    "m_energy_credited": False,
+                }
+        else:
+            return {
+                "status": "HORIZON_CENSORED_NO_PICKUP", "epoch": epoch,
+                "item_entity_id": target.entity_id,
+                "source_probe_seq": first.seq,
+                "l0_ground_seek_trace": l0_trace,
+                "movement_outcomes": [],
+                "pickup_inventory_delta": 0,
+                "pickup_evidence": "NOT_OBSERVED",
+                "m_energy_credited": False,
+            }
+    else:
+        l0_trace = [_admit_native_l0_seek(energy_ledger, first, target)]
     intent = IntentCommitment()
     intent.commit(
         f"{namespace}-staged-ground-item", objective="approach the one observed ground item",
@@ -181,6 +260,7 @@ async def acquire_staged_ground_flesh(
 
     return {
         "epoch": epoch,
+        "status": "PICKUP_SOURCE_CONSISTENT",
         "item_entity_id": target.entity_id,
         "source_probe_seq": first.seq,
         "pickup_probe_seq": picked.after_seq,
