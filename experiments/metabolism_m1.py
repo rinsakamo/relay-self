@@ -10,7 +10,7 @@ import json
 import math
 import random
 from dataclasses import asdict, dataclass, field, replace
-from typing import Literal, Sequence
+from typing import Callable, Literal, Sequence
 
 from experiments.evolved_values import Agent, RewardGenes, SimulationConfig
 from experiments.metabolism_viability import (
@@ -22,7 +22,7 @@ from experiments.metabolism_viability import (
     observe_energy,
 )
 
-Policy = Literal["q_zero", "q_food", "random", "fixed_wait", "fixed_cue", "reactive"]
+Policy = Literal["q_zero", "q_food", "random", "fixed_wait", "fixed_cue", "reactive", "external"]
 ACTIONS = {-1: "WAIT", 0: "MOVE", 1: "FIGHT"}
 OPPORTUNITIES = {0: None, 1: "WAIT", 2: "MOVE", 3: "FIGHT"}
 _Q_CONFIG = SimulationConfig(epsilon=0.12, learning_rate=0.3, discount=0.8)
@@ -120,10 +120,13 @@ def run_trial(
     learning: bool,
     config: M1Config | None = None,
     schedule: Sequence[int] | None = None,
+    external_selector: Callable[[int, float], str] | None = None,
 ) -> M1Result:
     cfg = config or M1Config()
-    if policy not in ("q_zero", "q_food", "random", "fixed_wait", "fixed_cue", "reactive"):
+    if policy not in ("q_zero", "q_food", "random", "fixed_wait", "fixed_cue", "reactive", "external"):
         raise ValueError("unknown M1 policy")
+    if (policy == "external") != (external_selector is not None):
+        raise ValueError("external selector must appear only with external policy")
     opportunities = tuple(schedule) if schedule is not None else food_schedule(seed, cfg.horizon)
     if len(opportunities) != cfg.horizon or any(type(c) is not int or c not in OPPORTUNITIES for c in opportunities):
         raise ValueError("invalid externally frozen World schedule")
@@ -150,7 +153,13 @@ def run_trial(
 
     for i, cue in enumerate(opportunities):
         state = _encoded_state(seen, cue)
-        if policy in ("q_zero", "q_food"):
+        if policy == "external":
+            assert external_selector is not None
+            action = external_selector(cue, seen)
+            if action not in ACTIONS.values():
+                raise ValueError("invalid external experimental action")
+            selected = next(key for key, name in ACTIONS.items() if name == action)
+        elif policy in ("q_zero", "q_food"):
             selected = learner.choose_action(state, chooser_rng, _Q_CONFIG.epsilon)
             action = ACTIONS[selected]
         elif policy == "random":

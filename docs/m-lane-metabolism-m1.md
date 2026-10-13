@@ -27,3 +27,50 @@ Run `python -m experiments.metabolism_m1 --seed 17 --horizon 48`; output is repr
 5. Real World authentication, HP combat, food provenance and live Resource/Action authority remain entirely with R/S. The M1 cue model does not authenticate real food. Engineering CI may pass without behavioral/scientific validity; V #544 independently adjudicates any future qualification.
 
 M2 must reuse #42 inheritance/mutation/selection and add held-out no-selection comparators; this M1 fixture neither creates offspring nor equates population persistence with lifetime learning.
+
+## M1 follow-on: prediction versus appraisal (same Draft, no new owner)
+
+`experiments/metabolism_m1_prediction.py` provides an **experiment-local,
+12-cell sufficient-statistic diagnostic**, not a reusable L-learning/Action
+component. `run_trial(policy="external")` only passes the *public cue* and
+*current sensed energy reading* to a bounded offline callback. It never passes
+true energy, World food counts, survival labels, death notices, offspring,
+physics equations or a reward. The external callback only returns a synthetic
+WAIT/MOVE/FIGHT action; this is not S-authorized Action issuance.
+
+For each completed step followed by a second live observation, the diagnostic
+updates a conditional mean of `next_sensor_reading - prior_sensor_reading`
+indexed by the public cue and executed action. This is **prediction-error
+learning without a survival/food-positive teaching label**. It does not train
+Q values or add a generic World Model. It cannot learn the final fatal
+transition: the readback at the next step is missing, so the fatal outcome is
+explicitly right-censored. The prequential prediction MAE is computed **before**
+updating each observation and compared to a zero-forecast/frozen-memory
+control. Blind sensing (gain=0) can give *perfect* forecast accuracy while
+conveying no energy information: prediction MAE alone is not adaptive value.
+
+The matched experiment separates three properties:
+
+1. **Passive retained vs frozen prediction:** both actions and physical
+   outcomes must be *bit-identical* within the same seed. Prediction updates
+   cannot themselves select actions or establish motivation.
+2. **Directionally coupled prediction:** `higher` / `lower` choose the
+   higher/lower predicted sensor change, plus declared random exploration.
+   That ordering **is an engineered appetite/aversion prior**, even though
+   the forecast training is reward-free. Any improved physical survival or
+   food outcome belongs to the `predictor + installed preference` system,
+   never to reward-free self-emergence.
+3. **Cheap controls and inference boundaries:** existing fixed cue oracle,
+   WAIT, random, reward-free Q ON/OFF and overt food-reward controls remain
+   stronger/null reference points. An explicit model of the frozen cue→food
+   rule is cheaper than this predictor. Different actions can be produced
+   by flipping the *installed* preference without changing physics.
+
+Run `python -m experiments.metabolism_m1_prediction --seed 17`. Default M1
+physics can censor many observations through early starvation; any
+claim about prediction accuracy must report scored transitions and sampling
+bias. Nonterminal abundant-energy fixtures used in engineering tests do
+not establish Colosseum survival gains. Exact-head CI exercises the
+implementation; only V may issue scientific qualification. Live R/S actions,
+LLM/GPU, S10/S11 learning promotion and generational inheritance remain out
+of scope.
