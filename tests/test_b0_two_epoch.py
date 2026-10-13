@@ -1,4 +1,5 @@
 """B0 two-epoch control and source gates; no Java/Node/World startup."""
+import asyncio
 from dataclasses import replace
 
 import pytest
@@ -34,12 +35,11 @@ def test_two_epoch_hunger_wait_requires_real_item_free_source():
         ))
 
 
-@pytest.mark.asyncio
-async def test_two_epoch_runner_refuses_stale_or_used_body_before_world():
+def test_two_epoch_runner_refuses_stale_or_used_body_before_world():
     probe = s46.case()
     ledger = B0EnergyLedger(probe.session_id)
     with pytest.raises(B0TwoEpochRejected, match="fresh live"):
-        await run_two_ground_epochs(None, None, ledger, [{"already": "used"}])
+        asyncio.run(run_two_ground_epochs(None, None, ledger, [{"already": "used"}]))
     terminal = B0EnergyLedger(
         probe.session_id,
         config=MetabolismConfig(initial_energy=0.5),
@@ -47,4 +47,4 @@ async def test_two_epoch_runner_refuses_stale_or_used_body_before_world():
     terminal.step("WAIT")
     assert terminal.body.terminal
     with pytest.raises(B0TwoEpochRejected, match="fresh live"):
-        await run_two_ground_epochs(None, None, terminal, [])
+        asyncio.run(run_two_ground_epochs(None, None, terminal, []))

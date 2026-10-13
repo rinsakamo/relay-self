@@ -45,16 +45,16 @@ jobs:
             adapters/mineflayer/b0_energy_bridge.py \
             adapters/mineflayer/b0_ground_foraging.py \
             adapters/mineflayer/b0_ground_runner.py \
-            adapters/mineflayer/b0_rsee.py
+            adapters/mineflayer/b0_rsee.py \
             adapters/mineflayer/b0_two_epoch.py \
             adapters/mineflayer/s51_eat_real_ci.py \
             docs/self-demo.md \
             experiments/metabolism_viability.py \
             src/relay_self/eat_hunger.py \
             tests/test_b0_energy_bridge.py \
-            tests/test_b0_ground_foraging.py
-            tests/test_b0_two_epoch.py \
+            tests/test_b0_ground_foraging.py \
             tests/test_b0_rsee.py \
+            tests/test_b0_two_epoch.py \
             tests/test_feature_s51_eat_execution.py
           )"
           test "$changed" = "$expected"

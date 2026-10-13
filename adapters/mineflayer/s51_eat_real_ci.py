@@ -25,13 +25,13 @@ from adapters.mineflayer.b0_energy_bridge import (
     verify_starvation_reentry_denied,
 )
 from adapters.mineflayer.b0_ground_runner import acquire_staged_ground_flesh
-from adapters.mineflayer.b0_two_epoch import run_two_ground_epochs
 from adapters.mineflayer.b0_rsee import (
     B0_CONFIRM,
     B0RSEEInputs,
     B0RSEERejected,
     verify_b0_rsee,
 )
+from adapters.mineflayer.b0_two_epoch import run_two_ground_epochs
 from adapters.mineflayer.eat_execution import IssuedEatingExecutor
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
