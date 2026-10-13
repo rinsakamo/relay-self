@@ -587,3 +587,20 @@ Git checkout HEAD and nine source blobs are independently checked.
 New S code does **not** claim independent original-world qualification.
 RSEE controls World/env identity; S controls Action and body ledger;
 V controls the scientific result. Source object grants remain separate.
+
+
+### No-food real-World negative control (NOT_RUN)
+
+The SAME S51 operator runner now accepts
+`--food-item rotten_flesh --food-source none` with the identical
+pinned RSEE inputs, fresh per-run physical authorization and isolated
+World. The runner provisions no food and repeatedly obtains fresh
+native observations. Every WAIT is non-issuing yet debits M0 basal
+energy; exactly one irreversible terminal is expected. It checks
+absent inventory and absent observed ground-item entities with
+non-truncated coverage before each step. The 64-decision cap is a
+bound, not a retry, and a missing terminal or inconsistent source
+fails. This test does **not** demonstrate food acquisition, learning,
+or physically real energy; it tests the research ledger's starvation
+consequence in a real World source stream. No Minecraft run has
+been authorized or executed here.

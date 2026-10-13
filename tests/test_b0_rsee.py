@@ -70,3 +70,22 @@ def test_eula_consent_is_independent_of_operator_confirmation(tmp_path: Path) ->
     inp = B0RSEEInputs(*(tmp_path / str(i) for i in range(6)))
     with pytest.raises(B0RSEERejected, match="EULA"):
         verify_b0_rsee(inp)
+
+
+@pytest.mark.parametrize("mode", ["ground", "none"])
+def test_all_b0_physical_variants_refuse_missing_rsee_before_world(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: str,
+) -> None:
+    monkeypatch.setenv("S51_REAL_SERVER_CI", "1")
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    output = tmp_path / "report.json"
+    log = tmp_path / "server.log"
+    rc = asyncio.run(qualify(
+        output, log, food_item="rotten_flesh",
+        food_source=mode, confirmation=B0_CONFIRM,
+    ))
+    assert rc == 2
+    value = json.loads(output.read_text(encoding="utf-8"))
+    assert value["status"] == "BLOCKED"
+    assert value["m_energy_credited"] is False
+    assert not log.exists()

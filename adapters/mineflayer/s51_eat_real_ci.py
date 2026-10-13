@@ -67,10 +67,10 @@ async def qualify(
 ) -> int:
     if food_item not in ("bread", "rotten_flesh"):
         raise ValueError("only operator-staged bread or rotten_flesh allowed")
-    if food_source not in ("inventory", "ground"):
+    if food_source not in ("inventory", "ground", "none"):
         raise ValueError("unsupported source")
-    if food_source == "ground" and food_item != "rotten_flesh":
-        raise ValueError("ground mode requires rotten_flesh")
+    if food_source in ("ground", "none") and food_item != "rotten_flesh":
+        raise ValueError("ground/none B0 mode requires rotten_flesh")
     count_field = "bread_count" if food_item == "bread" else "rotten_flesh_count"
     report: dict[str, Any] = {
         "milestone": "S51", "status": "BLOCKED", "stage": "START",
@@ -78,7 +78,8 @@ async def qualify(
         "mineflayer_version": MINEFLAYER_VERSION,
         "world_food_supply": (
             "OPERATOR_SUMMONED_SINGLE_GROUND_ITEM"
-            if food_source == "ground" else "OPERATOR_GIVEN"
+            if food_source == "ground" else "NO_FOOD_PROVISIONED"
+            if food_source == "none" else "OPERATOR_GIVEN"
         ),
         "food_source": food_source,
         "ground_pickup": "NOT_RUN",
@@ -179,124 +180,172 @@ async def qualify(
             report["ground_pickup"] = await acquire_staged_ground_flesh(
                 session, server, energy_ledger=ledger,
             )
-        else:
+        elif food_source == "inventory":
             _command(server, f"give RelaySelf minecraft:{food_item} 3")
             await server.stdin.drain()
-        _command(server, "effect give RelaySelf minecraft:hunger 25 20 true")
-        await server.stdin.drain()
-        cursor = EatCursor(sid, hunger_threshold=14.0)
-        before = choice = None
-        for attempt in range(16):
-            await asyncio.sleep(2)
-            reading = await _correlated_observe(
-                session, f"s51-hunger-native:{attempt:02d}",
-            )
-            decision = ledger.decide(reading)
+        if food_source == "none":
+            # No food at all: the M0 body must irrevocably exhaust itself
+            # under native observations, without inventing WAIT Actions.
+            report["stage"] = "NATIVE_NO_FOOD_WAIT_TO_M0_TERMINAL"
+            report["starvation_trace"] = []
+            for epoch in range(64):
+                probe = await _correlated_observe(
+                    session, f"b0-nofood-native:{epoch:02d}",
+                )
+                coverage = probe.snapshot.nearby_entities_coverage
+                if (
+                    coverage.truncated
+                    or coverage.candidate_count != len(probe.snapshot.nearby_entities)
+                    or any(item.count > 0 for item in probe.snapshot.inventory)
+                    or any(e.name == "item" for e in probe.snapshot.nearby_entities)
+                ):
+                    raise S51PhysicalFailure("no-food World condition not independently observed")
+                decision = ledger.decide(probe)
+                if decision.kind != "WAIT":
+                    raise S51PhysicalFailure("no-food designed L0 did not WAIT")
+                transition = ledger.step("WAIT")
+                report["starvation_trace"].append({
+                    "epoch": epoch,
+                    "probe_seq": probe.seq,
+                    "action": "WAIT_NON_ISSUANCE",
+                    "issued_action": False,
+                    "energy_after": transition.after.energy,
+                    "metabolic_tick": transition.after.tick,
+                    "terminal_now": transition.terminal_now,
+                })
+                if transition.terminal_now:
+                    break
+            else:
+                raise S51PhysicalFailure("M0 terminal did not occur within 64 WAIT decisions")
+            report["status"] = "PASS"
+            report["classification"] = "B0_RSEE_NOFOOD_NATIVE_WAIT_TERMINAL_ENGINEERING_ONLY"
+            report["m_energy_credited"] = False
+            report["m_terminal"] = True
+            report["metabolism_terminal"] = {
+                "energy": ledger.body.energy,
+                "tick": ledger.body.tick,
+                "meals": ledger.body.meals,
+                "irreversible": ledger.body.terminal,
+            }
+            report["next_l0"] = "DENIED_IRREVERSIBLE_STARVATION"
+            report["stage"] = "CLOSED"
+            rc = 0
+        else:
+            _command(server, "effect give RelaySelf minecraft:hunger 25 20 true")
+            await server.stdin.drain()
+            cursor = EatCursor(sid, hunger_threshold=14.0)
+            before = choice = None
+            for attempt in range(16):
+                await asyncio.sleep(2)
+                reading = await _correlated_observe(
+                    session, f"s51-hunger-native:{attempt:02d}",
+                )
+                decision = ledger.decide(reading)
+                if (
+                    decision.kind == "EAT"
+                    and decision.eat_choice is not None
+                    and decision.eat_choice.item_name == food_item
+                ):
+                    before = reading
+                    choice = cursor.choose(reading)
+                    break
+                if ledger.step("WAIT").terminal_now:
+                    raise S51PhysicalFailure("M0 irreversible starvation during WAIT")
+            report["last_food_observed"] = reading.snapshot.food
+            report["inventory_item_names"] = [
+                item.name for item in reading.snapshot.inventory
+            ]
             if (
-                decision.kind == "EAT"
-                and decision.eat_choice is not None
-                and decision.eat_choice.item_name == food_item
+                before is None
+                or choice is None or choice.status is not EatStatus.CANDIDATE
+                or choice.item_name != food_item
             ):
-                before = reading
-                choice = cursor.choose(reading)
-                break
-            if ledger.step("WAIT").terminal_now:
-                raise S51PhysicalFailure("M0 irreversible starvation during WAIT")
-        report["last_food_observed"] = reading.snapshot.food
-        report["inventory_item_names"] = [
-            item.name for item in reading.snapshot.inventory
-        ]
-        if (
-            before is None
-            or choice is None or choice.status is not EatStatus.CANDIDATE
-            or choice.item_name != food_item
-        ):
-            raise S51PhysicalFailure("actual native hunger + inventory gate not reached")
-        _command(server, "effect clear RelaySelf minecraft:hunger")
-        await server.stdin.drain()
-        report["before"] = {
-            "food": before.snapshot.food,
-            "food_item": food_item,
-            count_field: sum(
-                x.count for x in before.snapshot.inventory if x.name == food_item
-            ),
-            "probe_seq": before.seq,
-            "item_name": choice.item_name,
-        }
-        intent = IntentCommitment()
-        intent.commit(
-            "eat-when-hungry", objective=f"eat {food_item} when hungry", at_ns=1,
-            provenance=p("committed"),
-        )
-        skill = SkillExecution.start(
-            "s51-eat-skill", skill_id="eat", intent_commitment=intent,
-            at_ns=2, provenance=p("skill"),
-        )
-        proposed = ActionLifecycle.propose(
-            f"s51-eat-{food_item}", skill_execution=skill, intent_commitment=intent,
-            at_ns=3, provenance=p("proposed"),
-        )
-        authorized = proposed.authorize(
-            at_ns=4, authority="s51-independent-eat-authorization",
-            provenance=p("authorized"),
-        )
-        supervisor = ActionSupervisor()
-        issued = supervisor.issue(
-            authorized, at_ns=5, deadline_ns=200, provenance=p("issued"),
-        )
-        report["stage"] = "GENUINE_TWO_NATIVE_FOOD_EFFECTS"
-        result = await IssuedEatingExecutor().execute(
-            session, supervisor, issued, choice, before,
-        )
-        if (
-            result.terminal.state is not ActionState.OUTCOME
-            or result.outcome.food_after <= result.outcome.food_before
-            or result.outcome.count_after >= result.outcome.count_before
-            or supervisor.open_actions
-        ):
-            raise S51PhysicalFailure("no real independent native food+stock effects")
-        # Only the verified S51 terminal may supply M0 credit.
-        transition = ledger.step("WAIT", eating=result)
-        report["m_energy_credited"] = ledger.credit_count == 1
-        report["metabolism_after_eat"] = {
-            "energy": ledger.body.energy,
-            "tick": ledger.body.tick,
-            "meals": ledger.body.meals,
-            "intake": transition.intake,
-            "expenditure": transition.expenditure,
-            "terminal": transition.terminal_now,
-            "credited_action_id": result.outcome.action_id,
-        }
-        if transition.terminal_now:
-            raise S51PhysicalFailure("M0 terminal after native consumption")
-        fresh = await _correlated_observe(session, "b0-next-l0-native")
-        next_l0 = ledger.decide(fresh)
-        report["next_l0"] = {
-            "probe_seq": next_l0.probe_seq,
-            "kind": next_l0.kind,
-            "energy_sensor_reading": next_l0.sensor_reading,
-            "metabolic_tick": next_l0.body_tick,
-            "issued_action": False,
-        }
-        report["after"] = {
-            "food": result.outcome.food_after,
-            "food_item": food_item,
-            "item_count_delta": result.outcome.count_before - result.outcome.count_after,
-            count_field: result.outcome.count_after,
-            "after_seq": result.outcome.after_probe_seq,
-            "action_id": result.outcome.action_id,
-            "terminal": result.terminal.state.value,
-        }
-        report["status"] = "PASS"
-        report["classification"] = (
-            "B0_GROUND_EAT_M0_NEXT_L0_ENGINEERING_ONLY"
-            if food_source == "ground"
-            else "B0_STAGED_EAT_M0_NEXT_L0_ENGINEERING_ONLY"
-            if food_item == "rotten_flesh"
-            else "REAL_SURVIVAL_HUNGER_EAT_NATIVE_FOOD_DELTA_QUALIFIED"
-        )
-        report["stage"] = "CLOSED"
-        rc = 0
+                raise S51PhysicalFailure("actual native hunger + inventory gate not reached")
+            _command(server, "effect clear RelaySelf minecraft:hunger")
+            await server.stdin.drain()
+            report["before"] = {
+                "food": before.snapshot.food,
+                "food_item": food_item,
+                count_field: sum(
+                    x.count for x in before.snapshot.inventory if x.name == food_item
+                ),
+                "probe_seq": before.seq,
+                "item_name": choice.item_name,
+            }
+            intent = IntentCommitment()
+            intent.commit(
+                "eat-when-hungry", objective=f"eat {food_item} when hungry", at_ns=1,
+                provenance=p("committed"),
+            )
+            skill = SkillExecution.start(
+                "s51-eat-skill", skill_id="eat", intent_commitment=intent,
+                at_ns=2, provenance=p("skill"),
+            )
+            proposed = ActionLifecycle.propose(
+                f"s51-eat-{food_item}", skill_execution=skill, intent_commitment=intent,
+                at_ns=3, provenance=p("proposed"),
+            )
+            authorized = proposed.authorize(
+                at_ns=4, authority="s51-independent-eat-authorization",
+                provenance=p("authorized"),
+            )
+            supervisor = ActionSupervisor()
+            issued = supervisor.issue(
+                authorized, at_ns=5, deadline_ns=200, provenance=p("issued"),
+            )
+            report["stage"] = "GENUINE_TWO_NATIVE_FOOD_EFFECTS"
+            result = await IssuedEatingExecutor().execute(
+                session, supervisor, issued, choice, before,
+            )
+            if (
+                result.terminal.state is not ActionState.OUTCOME
+                or result.outcome.food_after <= result.outcome.food_before
+                or result.outcome.count_after >= result.outcome.count_before
+                or supervisor.open_actions
+            ):
+                raise S51PhysicalFailure("no real independent native food+stock effects")
+            # Only the verified S51 terminal may supply M0 credit.
+            transition = ledger.step("WAIT", eating=result)
+            report["m_energy_credited"] = ledger.credit_count == 1
+            report["metabolism_after_eat"] = {
+                "energy": ledger.body.energy,
+                "tick": ledger.body.tick,
+                "meals": ledger.body.meals,
+                "intake": transition.intake,
+                "expenditure": transition.expenditure,
+                "terminal": transition.terminal_now,
+                "credited_action_id": result.outcome.action_id,
+            }
+            if transition.terminal_now:
+                raise S51PhysicalFailure("M0 terminal after native consumption")
+            fresh = await _correlated_observe(session, "b0-next-l0-native")
+            next_l0 = ledger.decide(fresh)
+            report["next_l0"] = {
+                "probe_seq": next_l0.probe_seq,
+                "kind": next_l0.kind,
+                "energy_sensor_reading": next_l0.sensor_reading,
+                "metabolic_tick": next_l0.body_tick,
+                "issued_action": False,
+            }
+            report["after"] = {
+                "food": result.outcome.food_after,
+                "food_item": food_item,
+                "item_count_delta": result.outcome.count_before - result.outcome.count_after,
+                count_field: result.outcome.count_after,
+                "after_seq": result.outcome.after_probe_seq,
+                "action_id": result.outcome.action_id,
+                "terminal": result.terminal.state.value,
+            }
+            report["status"] = "PASS"
+            report["classification"] = (
+                "B0_GROUND_EAT_M0_NEXT_L0_ENGINEERING_ONLY"
+                if food_source == "ground"
+                else "B0_STAGED_EAT_M0_NEXT_L0_ENGINEERING_ONLY"
+                if food_item == "rotten_flesh"
+                else "REAL_SURVIVAL_HUNGER_EAT_NATIVE_FOOD_DELTA_QUALIFIED"
+            )
+            report["stage"] = "CLOSED"
+            rc = 0
     except (S31ABlocked, B0RSEERejected, OSError) as exc:
         report["status"] = "BLOCKED"
         report["error"] = f"{type(exc).__name__}: {exc}"
@@ -341,7 +390,7 @@ def main() -> int:
         "--food-item", choices=("bread", "rotten_flesh"), default="bread",
     )
     parser.add_argument(
-        "--food-source", choices=("inventory", "ground"), default="inventory",
+        "--food-source", choices=("inventory", "ground", "none"), default="inventory",
     )
     parser.add_argument("--rsee-checkout", type=Path)
     parser.add_argument("--rsee-jar", type=Path)
