@@ -113,7 +113,7 @@ async def qualify(
             _write_config(root)
             props = root / "server.properties"
             props.write_text(
-                props.read_text(encoding="utf-8") + "level-seed=575\\n",
+                props.read_text(encoding="utf-8") + "level-seed=575\n",
                 encoding="utf-8",
             )
             report["stage"] = "RSEE_RECHECK_SOURCE_AND_CLONE_BEFORE_JAVA"

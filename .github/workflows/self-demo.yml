@@ -40,7 +40,7 @@ jobs:
           git merge-base --is-ancestor "$B0_PARENT" HEAD
           git diff --quiet "$B0_PARENT" HEAD -- adapters/mineflayer/s49_normal_session_real_ci.py
           changed="$(git diff --name-only --diff-filter=ACDMRTUXB "$B0_PARENT" HEAD)"
-          expected="$(printf '%s\\n' \\
+          expected="$(printf '%s\n' \\
             .github/workflows/self-demo.yml \\
             adapters/mineflayer/b0_energy_bridge.py \\
             adapters/mineflayer/b0_ground_foraging.py \\
