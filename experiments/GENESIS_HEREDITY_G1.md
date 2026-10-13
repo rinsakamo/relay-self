@@ -103,3 +103,76 @@ Expected claim ceiling: offline mechanics validated under exact HEAD only
 when GitHub CI actually reports success. Neither selective advantage nor
 generational emergence is inferred from deterministic unit tests. No
 legacy experimental results are rewritten. No automatic physical runs.
+
+
+## G2 — funded-parent commit protocol (2026-10-13)
+
+The independent M Lane has already implemented M2 physics and its own offspring
+population (#621, latest inspected M2 HEAD
+`7410e1a806b205ebc795fa9c27e06cb394b4f46f`).
+**Do not duplicate or graft M2's simulator onto this G branch.**
+
+### Reconciliation: a real parent identity gap in G1
+
+In G1, `spawn_children` could receive a generic paid-total assertion and *then*
+choose a random parent. That is adequate only for its isolated mechanistic
+exercise; it cannot bind the claimed M debit to the genetic parent. G2 introduces
+`experiments/genesis_g2_handoff.py`, an additive **offline** upgrade:
+
+1. G1 retains the original separate legacy experimental API and its frozen
+   mechanical tests. For G2, instantiate **`FundedGenesisRegistry`**, which
+   rejects the old generic `spawn_children` call outright.
+2. External M/R declares **`BirthOpportunity`** for the current complete M
+   survivor snapshot and lists only its physically funded-eligible parent IDs.
+   G does not calculate eligibility from an assumed hunger/fitness target.
+3. `prepare_births` fixes the **exact sampled parent IDs** *before* any
+   claimed M debit. One plan per M batch, unique plan ID and cap checks; the
+   parent sampling distribution is explicit and deterministic.
+4. M must subsequently fund precisely those parents. An offline
+   `FundedBirthReceipt` declares a unique event ID, plan ID, same tick/batch,
+   and ordered `PhysicalBirthDebit` records with parent IDs, before/after
+   parent energy and transferred child energy.
+5. `commit_funded_births` refuses wrong parent, missing birth, extra birth,
+   duplicate debit, incorrect transfer cost, broken energy conservation,
+   nonconsecutive repeated-parent debits, stale tick/plan/receipt and any
+   previously finalized plan. Only after **all** checks does G assign a
+   `Genome`, generation and immutable genealogical `Individual`.
+6. `abort_birth_plan` closes a plan without newborns. No second random
+   selection from that same M tick, so a failed selected parent cannot
+   trigger silent genotype-favorable re-selection. The next M batch may make
+   a new plan.
+
+Both parent and child remain in the G active roster after a successful
+commit, but G has not constructed either physical body, S Self runtime,
+L learned state or Minecraft avatar.
+
+**Remaining external-proof gap:** These are structural, caller-reported
+energy-debit fields, **not signed, source-qualified original M/R receipts**.
+A forged object passing shape checks is not evidence of paid energy.
+If M actually debits an energy ledger then G rejects/aborts the plan, G2
+does not roll back M's physical state; an authoritative caller must ensure
+all-or-nothing ordering, idempotency and reconciliation across M/G/S/R
+before production admission.
+
+**Current M2 contract mismatch:** M2 `BirthRecord` contains generation,
+parent/child ID, physical energy before/after, child provisioning and traits,
+but lacks G2's exact **batch/tick, preselected parent plan ID and unique debit
+receipt identity**. M2 also runs generation-disjoint cohorts (offspring become
+the next cohort) while G1/G2 preserve an active parent with concurrent
+offspring. M2's two trait alleles are `cue_bias` and `sensor_coupling`, *not*
+the G1 three initial knobs. Therefore **a direct adapter is NOT QUALIFIED**:
+neither copy M2 child IDs/genes into G2 nor claim source/transfer identity.
+M/R owners should decide on a shared event schema and real funded/declined
+authorization only when integration is required.
+
+### G2 verification ceiling
+
+- Dedicated deterministic tests cover plan/parent binding, conserved
+  per-parent debit chains, lineage, mutation/identity, capacity, duplicate
+  and forged-field rejection, no retries after abort, and untouched acquired
+  state. Existing G1 and historical #42 regression tests remain intact.
+- Main-target GitHub CI is the only exact-head qualification when completed.
+- Selection OFF still requires externally defined M/V-matched viability and
+  independent study; setting `inherit=False` is **not selection OFF**.
+- No original World birth, true authorized energy debit, M2↔G2 production
+  adapter, S-constructed Self, Minecraft/LLM/GPU, science or merge.
