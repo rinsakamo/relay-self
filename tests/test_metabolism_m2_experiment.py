@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from experiments.metabolism_m1 import food_schedule
 from experiments.metabolism_m2 import (
     M2Config,
     Member,
@@ -13,7 +14,6 @@ from experiments.metabolism_m2 import (
     run_episode,
     run_evolution,
 )
-from experiments.metabolism_m1 import food_schedule
 from experiments.metabolism_viability import MetabolismConfig
 
 
