@@ -26,7 +26,8 @@ from experiments.metabolism_viability import (
 )
 
 Inheritance = Literal["inherited", "disconnected"]
-Control = Literal["genetic", "oracle", "random", "wait"]
+WorldProfile = Literal["legacy_uniform", "scarce_active"]
+Control = Literal["genetic", "oracle", "random", "wait", "move", "fight"]
 _ACTION_SET = tuple(ACTIONS.values())
 
 
@@ -50,6 +51,7 @@ class Member:
 
 @dataclass(frozen=True)
 class M2Config:
+    world_profile: WorldProfile = "legacy_uniform"
     cohort_size: int = 12
     generations: int = 4
     horizon: int = 64
@@ -69,6 +71,8 @@ class M2Config:
     ))
 
     def __post_init__(self) -> None:
+        if self.world_profile not in ("legacy_uniform", "scarce_active"):
+            raise ValueError("invalid world profile")
         for name in (
             "cohort_size", "generations", "horizon", "max_cohort",
             "births_per_parent", "maturation_ticks",
@@ -183,6 +187,24 @@ def founder_population(seed: int, config: M2Config) -> tuple[Member, ...]:
     )
 
 
+def world_schedule(seed: int, config: M2Config) -> tuple[int, ...]:
+    """Immutable profile. Legacy is byte-for-byte identical to the M2 seed World.
+
+    Scarce: exactly one opportunity every 3 ticks, exclusively MOVE/FIGHT.
+    Phase and active action are seed-fixed, never based on policy outcomes.
+    """
+    if config.world_profile == "legacy_uniform":
+        return food_schedule(seed, config.horizon)
+    if config.world_profile != "scarce_active":
+        raise ValueError("unrecognized World profile")
+    rng = random.Random(seed ^ 0x4D325343)
+    phase = rng.randrange(3)
+    return tuple(
+        2 + rng.randrange(2) if tick % 3 == phase else 0
+        for tick in range(config.horizon)
+    )
+
+
 def _soft_probability(value: float) -> float:
     # Explicit *policy wiring*, not a learned hunger signal or reward.
     z = max(-30.0, min(30.0, value))
@@ -200,6 +222,10 @@ def _select(
 ) -> str:
     if control == "wait":
         return "WAIT"
+    if control == "move":
+        return "MOVE"
+    if control == "fight":
+        return "FIGHT"
     if control == "oracle":
         return OPPORTUNITIES[cue] or "WAIT"
     if control == "random" or cue == 0:
@@ -231,7 +257,7 @@ def run_episode(
     passive_learning: bool,
     control: Control = "genetic",
 ) -> Episode:
-    if control not in ("genetic", "oracle", "random", "wait"):
+    if control not in ("genetic", "oracle", "random", "wait", "move", "fight"):
         raise ValueError("invalid control")
     if type(passive_learning) is not bool or type(seed) is not int:
         raise ValueError("invalid episode flags")
@@ -341,7 +367,7 @@ def _heldout(
         raise ValueError("cannot grade an extinct cohort as survivors")
     results: list[Episode] = []
     for holdout_index in range(3):
-        schedule = food_schedule((seed ^ 0x484F4C44) + holdout_index, config.horizon)
+        schedule = world_schedule((seed ^ 0x484F4C44) + holdout_index, config)
         for slot, member in enumerate(members):
             results.append(
                 run_episode(
@@ -394,7 +420,7 @@ def run_evolution(
             break
         world = (
             tuple(schedules[generation]) if schedules is not None
-            else food_schedule(seed + generation * 997 + 44, cfg.horizon)
+            else world_schedule(seed + generation * 997 + 44, cfg)
         )
         episodes = [
             run_episode(

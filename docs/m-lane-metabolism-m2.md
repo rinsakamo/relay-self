@@ -26,3 +26,50 @@ A run produces cohort size, true births, starvation deaths, meals, mean lifespan
 - An observed survival/birth advantage requires comparison against detached-inheritance and **fixed-cue cheap control**, plus independent heldout/seeds before any V adjudication. M Lane never awards scientific SUCCESS itself.
 - No S Lane Action owner, L Lane learning/Memory owner, RSEE runtime, Minecraft launcher, LLM/GPU experiments, R/V source receipts, or protected main changed.
 - M3 group dynamics and inherited sensor fidelity/cognition-cost loci remain future separate hypotheses, not hidden extensions of this minimal M2.
+
+## M2b — resource scarcity discrimination (predeclared 2026-10-13)
+
+**Prior M2 result is frozen:** Four historical seeds 7/17/31/43, uniform
+encounters, permissive food and 3-birth ceiling: fixed WAIT achieved
+3.000 births per individual, so H2 remains SCIENCE_NO_GO. This extension
+does not modify that configuration, seed family, results or interpretation.
+
+**New independently fixed synthetic condition:** profile `scarce_active`
+changes ONLY opportunity scheduling: each third tick has exactly one food
+opportunity, with a seeded MOVE or FIGHT cue; other ticks have no food
+and WAIT is never a food-producing action. The same M0 energy physics,
+threshold, transfer, genetic initialization, mutation and parent-funded
+reproduction are retained. Each generation and three heldout episodes
+use profile-specific immutable sequences, independent of policy choices.
+Seed family is frozen in source before running: **101, 211, 307, 419**.
+No tuning/reseeding allowed after opening results. A predeclared
+resource constraint follows the **mechanical necessity** that WAIT-only
+cannot reach the reproduction threshold when initial energy is below it.
+
+**New cheap controls:** fixed MOVE and fixed FIGHT alongside WAIT,
+random and full-cue oracle. Zero WAIT reproduction is a calibration
+identity only, not an adaptive-cognition effect. Either cheap active
+controller matching/exceeding evolved lineages implies no distinctive
+H2 support. Oracle is a designed upper bound for food acquisition,
+not an expected evolutionary competitor to beat.
+
+**Study logic:** compare (i) genetically inherited (ii) disconnected
+genotypes with independently redrawn frozen-founder distribution,
+(iii) cheap behavior, using independent heldout mean births, starvation
+and meals, reporting `null` when a lineage goes extinct. Do not
+treat changed offspring counts, a designed cue-action mapping, or a
+sensor-dependent stochastic exploitation coefficient as endogenous
+value learning. Sensor coupling is genetically selected but still
+pre-wired; passive lifetime prediction is nonauthorizing.
+
+**Engineering gates:** legacy schedule preservation, exact seed family,
+no WAIT food, terminal starvation, real parent-to-child energy transfer,
+cheap active nulls, deterministic behavior, invalid profile/seed fail
+closed. The dedicated CI must print all four seed results and all
+ordinary repository checks must pass. Results are DESCRIPTIVE ONLY.
+A potential heldout advantage versus disconnected inheritance
+is not H2 qualification without V's independent design, replication
+and improvement beyond the cheapest competitive active controller.
+
+Run `python -m experiments.metabolism_m2_scarcity --seeds`. No
+Minecraft/LLM/GPU, new central owners, S/L/R/V changes, or PR merge.
