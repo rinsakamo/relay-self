@@ -126,6 +126,7 @@ def test_native_ground_seek_requires_real_l0_selection_not_operator_override():
     from dataclasses import replace
 
     p = _ground()
+    p = replace(p, snapshot=replace(p.snapshot, food=20.0))
     target = select_ground_target(p)
     ledger = B0EnergyLedger(p.session_id)
     # A full-food L0 does not choose SEEK. Operator may not force one.
