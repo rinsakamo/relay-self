@@ -27,6 +27,9 @@ from relay_self.action import ActionState
 from relay_self.eat_hunger import ALLOWED_FOODS, EatChoice, EatCursor, EatStatus
 
 
+B0_SENSOR_SEEK_THRESHOLD = 8.0
+
+
 class B0EnergyRejected(ValueError):
     """Untrusted World evidence, replay, or irreversible starvation."""
 
@@ -50,12 +53,18 @@ class B0EnergyLedger:
         *,
         config: MetabolismConfig | None = None,
         sensor: Interoception | None = None,
+        forage_policy: Literal["native_only", "sensor_gate"] = "native_only",
     ) -> None:
         if not isinstance(session_id, str) or not session_id:
             raise B0EnergyRejected("nonempty session required")
+        if forage_policy not in ("native_only", "sensor_gate"):
+            raise B0EnergyRejected("unsupported explicit L0 forage policy")
+        if sensor is not None and not isinstance(sensor, Interoception):
+            raise B0EnergyRejected("M0 interoception projection required")
         self.session_id = session_id
         self.config = config if config is not None else MetabolismConfig()
         self.sensor = sensor if sensor is not None else Interoception()
+        self.forage_policy = forage_policy
         self.body: BodyState = initial_body(self.config)
         self._credits: set[str] = set()
         self._last_eat_seq = -1
@@ -116,18 +125,29 @@ class B0EnergyLedger:
         ):
             raise B0EnergyRejected("requires living body + fresh World probe")
         choice = EatCursor(self.session_id).choose(probe)
+        # Only the M0 sensor projection enters the optional decision gate.
+        # True body energy remains inside M0 and terminal safety is unchanged.
+        sensor = observe_energy(self.body, self.sensor)
         kind: Literal["WAIT", "SEEK", "EAT"] = "WAIT"
         target = None
         if choice.status is EatStatus.CANDIDATE:
-            kind = "EAT"
+            kind = "EAT"  # native edible inventory remains available for both arms
         elif choice.status is EatStatus.NO_FOOD:
             try:
-                target = select_ground_target(probe)
+                candidate = select_ground_target(probe)
             except GroundRejected:
                 pass
             else:
-                kind = "SEEK"
-        sensor = observe_energy(self.body, self.sensor)
+                # The native-only cheap baseline preserves all prior B0 behavior.
+                # In the opt-in arm, low *observed* energy admits SEEK; a
+                # sensor masked to a fixed high value does not. This is an
+                # intentionally hand-coded policy, NOT learned motivation.
+                if (
+                    self.forage_policy == "native_only"
+                    or sensor.reading <= B0_SENSOR_SEEK_THRESHOLD
+                ):
+                    target = candidate
+                    kind = "SEEK"
         self._last_decision_seq = probe.seq
         return B0Decision(
             kind, probe.seq, sensor.reading, self.body.tick,

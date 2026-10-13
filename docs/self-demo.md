@@ -753,3 +753,55 @@ original RSEE read-only `--preflight-only`, use NEW exclusive evidence
 paths, and consume the fresh **single World start** authorization only
 on Java start. No retry/fallback. Any additional controls need
 separate prospective V #619 experimental authority and user grants.
+
+
+### B0 interoception → L0 choice (opt-in, OFFLINE ONLY, 2026-10-14)
+
+**Why:** Previous physical `ground2` qualifies only a designed
+native-food/item L0. The M0 `observe_energy` reading was logged but
+did not causally affect `WAIT/SEEK`. The new strictly opt-in
+`--b0-forage-policy sensor_gate` inserts a *designed* low-cost
+decision gate for a uniquely observed ground item when native Food
+already indicates hunger (the existing `EatCursor` NO_FOOD case).
+The threshold is explicitly fixed at **M0 sensor reading <= 8.0**.
+This is neither learned motive, evolutionary fitness, emergent value,
+nor proof that 8.0 is the appropriate survival policy. M0 physical
+ledger, costs, intake, event attribution and terminal behavior are
+unchanged.
+
+**Intervention definition:** with `--food-source ground2` only,
+`--b0-sensor on` uses unchanged `Interoception(gain=1, bias=0,
+quantum=1)`; `--b0-sensor masked` uses `gain=0, bias=12,
+quantum=1`, so it always reports **12** regardless of true M0 energy.
+The original M0 evaluator still advances identically. This is an
+explicit *high constant readout* lesion, not physically absent
+sensor, and its choice of fixed bias is a potential intervention
+confound for V to review. All other existing S51 modes continue to
+use `native_only/on` defaults; the existing B0 native ground and
+two-epoch physical evidence remain unaffected. `native_only` is a
+cheap deterministic comparator. `on` with the same policy is a
+sham; no matched independent World trial is yet authorized.
+
+**Matched synthetic counterfactual:** using the same typed
+Mineflayer-shaped hungry native item observation and identical M0
+energy **E=7 / tick10** after 10 WAIT costs:
+- `sensor_gate/on`: observed 7, L0 SEEK
+- `sensor_gate/sham`: observed 7, L0 SEEK
+- `sensor_gate/masked`: observed constant 12, L0 WAIT
+- `native_only/on`: L0 SEEK.
+
+At **E=12**, `sensor_gate/on` and `sensor_gate/masked` WAIT
+while `native_only/on` SEEK. Inventory EAT, true terminal safety,
+source validity, Action authority and M0 cost are not lesioned.
+These are deliberately *coded policy outputs*, not empirical
+survival, value learning or a V causal advantage.
+
+`--b0-forage-policy sensor_gate --b0-sensor on|masked` is accepted
+only under the already opt-in `ground2` CLI. Argument validation
+is before any World start. The new switches do not authorize World
+launch, test repetition or retroactive reclassification. Prior
+ground2 one-shot grant is consumed; **new live comparisons require
+separate explicit user grants, a V #619 preregistered reference,
+sham/cheap controls and RSEE preflight for each run.** If the
+`native_only` cheap policy does as well, scientific incremental
+value remains NULL/NO-GO.

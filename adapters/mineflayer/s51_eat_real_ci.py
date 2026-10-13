@@ -51,6 +51,7 @@ from adapters.mineflayer.s31a_real_server_ci import (
     _write_config,
 )
 from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
+from experiments.metabolism_viability import Interoception
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.eat_hunger import EatCursor, EatStatus
@@ -112,6 +113,8 @@ async def qualify(
     food_item: str = "bread", food_source: str = "inventory",
     rsee: B0RSEEInputs | None = None, confirmation: str | None = None,
     preflight_only: bool = False,
+    b0_forage_policy: str = "native_only",
+    b0_sensor: str = "on",
 ) -> int:
     if food_item not in ("bread", "rotten_flesh"):
         raise ValueError("only operator-staged bread or rotten_flesh allowed")
@@ -119,6 +122,15 @@ async def qualify(
         raise ValueError("unsupported source")
     if food_source in ("ground", "none", "ground2") and food_item != "rotten_flesh":
         raise ValueError("ground/none/ground2 B0 mode requires rotten_flesh")
+    if (
+        b0_forage_policy not in ("native_only", "sensor_gate")
+        or b0_sensor not in ("on", "masked")
+        or (food_source != "ground2" and (
+            b0_forage_policy != "native_only" or b0_sensor != "on"
+        ))
+        or (b0_sensor == "masked" and b0_forage_policy != "sensor_gate")
+    ):
+        raise ValueError("sensor contrast is opt-in ground2/sensor_gate only")
     count_field = "bread_count" if food_item == "bread" else "rotten_flesh_count"
     report: dict[str, Any] = {
         "milestone": "S51", "status": "BLOCKED", "stage": "START",
@@ -144,6 +156,14 @@ async def qualify(
     native_path = report_path.with_suffix(".native.jsonl")
     command_path = report_path.with_suffix(".commands.jsonl")
     report["java_start_attempted"] = False
+    if food_source == "ground2":
+        report["b0_sensor_policy"] = {
+            "forage_policy": b0_forage_policy,
+            "sensor_mode": b0_sensor,
+            "seek_threshold_reading": 8.0,
+            "sensor_masked_bias": 12.0 if b0_sensor == "masked" else None,
+            "experimental_policy_not_learned": True,
+        }
     rc = 2
     try:
         # Claim a fresh receipt namespace BEFORE any physical effect.
@@ -262,7 +282,13 @@ async def qualify(
             report["node_pid"] = session._process.pid
         sid = session.started.session_id
         report["session_id"] = sid
-        ledger = B0EnergyLedger(sid)
+        sensor = (
+            Interoception(gain=0.0, bias=12.0)
+            if b0_sensor == "masked" else Interoception()
+        )
+        ledger = B0EnergyLedger(
+            sid, sensor=sensor, forage_policy=b0_forage_policy,
+        )
         report["metabolism"] = {
             "source": "M0_617_BYTE_IDENTICAL",
             "unit": "simulated_experimental_energy",
@@ -594,6 +620,14 @@ def main() -> int:
     parser.add_argument(
         "--food-source", choices=("inventory", "ground", "none", "ground2"), default="inventory",
     )
+    parser.add_argument(
+        "--b0-forage-policy", choices=("native_only", "sensor_gate"),
+        default="native_only", help="opt-in L0 source/sensor policy for ground2 only",
+    )
+    parser.add_argument(
+        "--b0-sensor", choices=("on", "masked"), default="on",
+        help="masked=zero-gain fixed-12 M0 observation; ground2 sensor_gate only",
+    )
     parser.add_argument("--rsee-checkout", type=Path)
     parser.add_argument("--rsee-jar", type=Path)
     parser.add_argument("--rsee-snapshot", type=Path)
@@ -622,6 +656,8 @@ def main() -> int:
         food_item=args.food_item, food_source=args.food_source,
         rsee=rsee, confirmation=args.confirm,
         preflight_only=args.preflight_only,
+        b0_forage_policy=args.b0_forage_policy,
+        b0_sensor=args.b0_sensor,
     ))
 
 

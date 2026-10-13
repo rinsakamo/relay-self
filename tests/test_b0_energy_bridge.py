@@ -5,6 +5,7 @@ import pytest
 
 import test_feature_s46_eat as s46
 from adapters.mineflayer.b0_energy_bridge import (
+    B0_SENSOR_SEEK_THRESHOLD,
     B0EnergyLedger,
     B0EnergyRejected,
     nofood_native_wait,
@@ -211,3 +212,92 @@ def test_nofood_terminal_denial_requires_fresh_matching_world_source():
             request_id="foreign-next",
         ))
     assert ledger.body.tick == 1 and ledger.body.terminal
+
+
+def _forage_probe():
+    import test_b0_ground_foraging as ground
+
+    original = ground._ground()
+    return replace(
+        original, snapshot=replace(original.snapshot, food=13.0),
+    )
+
+
+def _ledger_after_identical_waits(source, *, policy, sensor, waits):
+    ledger = B0EnergyLedger(
+        source.session_id, forage_policy=policy, sensor=sensor,
+    )
+    for _ in range(waits):
+        transition = ledger.step("WAIT")
+        assert not transition.terminal_now
+    return ledger
+
+
+def test_opt_in_interoception_changes_l0_seek_on_matched_world_and_body():
+    source = _forage_probe()
+    assert B0_SENSOR_SEEK_THRESHOLD == 8.0
+    # Same native-shaped source, exact M0 state/cost/decision-tick budget.
+    on = _ledger_after_identical_waits(
+        source, policy="sensor_gate", sensor=Interoception(), waits=10,
+    )
+    sham = _ledger_after_identical_waits(
+        source, policy="sensor_gate", sensor=Interoception(gain=1), waits=10,
+    )
+    masked = _ledger_after_identical_waits(
+        source, policy="sensor_gate",
+        sensor=Interoception(gain=0, bias=12), waits=10,
+    )
+    cheap = _ledger_after_identical_waits(
+        source, policy="native_only", sensor=Interoception(), waits=10,
+    )
+    assert {x.body.energy for x in (on, sham, masked, cheap)} == {7.0}
+    assert {x.body.tick for x in (on, sham, masked, cheap)} == {10}
+    assert [x.decide(source).kind for x in (on, sham, masked, cheap)] == [
+        "SEEK", "SEEK", "WAIT", "SEEK",
+    ]
+    assert on.credit_count == sham.credit_count == masked.credit_count == cheap.credit_count == 0
+    assert on.body == sham.body == masked.body == cheap.body
+
+
+def test_opt_in_sensor_gate_waits_when_true_body_high_without_truth_leak():
+    source = _forage_probe()
+    on = B0EnergyLedger(source.session_id, forage_policy="sensor_gate")
+    masked = B0EnergyLedger(
+        source.session_id, forage_policy="sensor_gate",
+        sensor=Interoception(gain=0, bias=12),
+    )
+    cheap = B0EnergyLedger(source.session_id)
+    assert on.decide(source).kind == "WAIT"
+    assert masked.decide(source).kind == "WAIT"
+    assert cheap.decide(source).kind == "SEEK"
+    assert on.body == masked.body == cheap.body
+
+
+def test_sensor_gate_does_not_disable_eat_or_terminal_safety():
+    source = _forage_probe()
+    eaten = replace(
+        source,
+        snapshot=replace(source.snapshot, inventory=(
+            MineflayerInventoryItem("rotten_flesh", 1, 4),
+        )),
+    )
+    ledger = B0EnergyLedger(
+        source.session_id, forage_policy="sensor_gate",
+        config=MetabolismConfig(initial_energy=0.5),
+        sensor=Interoception(gain=0, bias=12),
+    )
+    assert ledger.decide(eaten).kind == "EAT"
+    assert ledger.step("WAIT").terminal_now
+    with pytest.raises(B0EnergyRejected):
+        ledger.decide(replace(eaten, seq=eaten.seq + 1, request_id="dead-probe"))
+    with pytest.raises(B0EnergyRejected):
+        ledger.step("WAIT")
+    assert ledger.body.terminal and ledger.body.energy == 0
+
+
+def test_sensor_gate_rejects_bad_configuration():
+    source = _forage_probe()
+    with pytest.raises(B0EnergyRejected, match="policy"):
+        B0EnergyLedger(source.session_id, forage_policy="best")
+    with pytest.raises(B0EnergyRejected, match="interoception"):
+        B0EnergyLedger(source.session_id, sensor="fake")

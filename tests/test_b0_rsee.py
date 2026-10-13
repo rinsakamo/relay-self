@@ -249,3 +249,21 @@ def test_prior_native_stream_blocks_java_before_rsee_or_world_copy(
     assert saved["grant_consumed"] is False
     assert raw.read_bytes() == b"SEALED_NATIVE"
     assert not saved["java_start_attempted"]
+
+
+@pytest.mark.parametrize("profile", [
+    {"food_source": "ground", "b0_forage_policy": "sensor_gate"},
+    {"food_source": "inventory", "b0_sensor": "masked"},
+    {"food_source": "ground2", "b0_sensor": "masked"},
+    {"food_source": "ground2", "b0_forage_policy": "invented"},
+])
+def test_b0_sensor_intervention_rejects_unadmitted_modes_before_java(
+    tmp_path: Path, profile: dict,
+) -> None:
+    with pytest.raises(ValueError, match="sensor contrast"):
+        asyncio.run(qualify(
+            tmp_path / "unused.json", tmp_path / "unused.log",
+            food_item="rotten_flesh", **profile,
+        ))
+    assert not (tmp_path / "unused.json").exists()
+    assert not (tmp_path / "unused.log").exists()
