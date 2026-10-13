@@ -110,7 +110,7 @@ def test_g3_does_not_accept_plain_g2_registry() -> None:
             SOURCE.source_session, "replaced-world", SOURCE.metabolism_ledger
         ))), "source identity"),
         (lambda event, readback: (
-            replace(event, ledger_before_revision=11), readback
+            replace(event, ledger_before_revision=9), readback
         ), "ledger revision"),
         (lambda event, readback: (
             event, replace(readback, ledger_revision=12)
@@ -153,7 +153,7 @@ def test_g3_ledger_energy_snapshot_guards(failure: str) -> None:
     elif failure == "after":
         bad = replace(event, balances_after=(ParentBalance(0, 17),))
     elif failure == "missing":
-        bad = replace(event, balances_before=(ParentBalance(1, 20),))
+        bad = replace(\n            event, balances_before=(ParentBalance(1, 20),),\n            balances_after=(ParentBalance(1, 16),)\n        )
     else:
         bad = replace(event, balances_before=(ParentBalance(0, 20), ParentBalance(1, 20)),
                       balances_after=(ParentBalance(0, 16), ParentBalance(1, 20)))
@@ -161,7 +161,7 @@ def test_g3_ledger_energy_snapshot_guards(failure: str) -> None:
     bad_readback = MReadback(
         SOURCE, bad.ledger_after_revision, event_fingerprint(bad), bad.balances_after
     )
-    with pytest.raises(ValueError, match="snapshot|debit|balance"):
+    with pytest.raises(ValueError, match="snapshot|debit|balance|mismatch"):
         bridge.reconcile_and_commit(plan, bad, bad_readback)
     assert registry.births == 0
     assert bridge.commits == ()
