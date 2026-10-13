@@ -144,3 +144,33 @@ def test_readonly_preflight_requires_full_pinned_source(
     assert "RSEE" in result["error"]
     assert result.get("physical_execution_authorized") is None
     assert not (tmp_path / "no-java.log").exists()
+
+
+def test_prior_one_shot_evidence_is_not_overwritten(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    report, log = tmp_path / "previous.json", tmp_path / "unused.log"
+    report.write_bytes(b"ORIGINAL_SEALED_RECEIPT")
+    rc = asyncio.run(qualify(
+        report, log, food_item="rotten_flesh", preflight_only=True,
+    ))
+    assert rc == 2
+    assert report.read_bytes() == b"ORIGINAL_SEALED_RECEIPT"
+    assert not log.exists()
+
+
+def test_previous_server_log_blocks_reuse_of_run_namespace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    report, log = tmp_path / "fresh.json", tmp_path / "old-server.log"
+    log.write_bytes(b"OLD_WORLD_ORIGINAL")
+    rc = asyncio.run(qualify(
+        report, log, food_item="rotten_flesh", preflight_only=True,
+    ))
+    assert rc == 2
+    assert log.read_bytes() == b"OLD_WORLD_ORIGINAL"
+    saved = json.loads(report.read_text(encoding="utf-8"))
+    assert saved["status"] == "BLOCKED"
+    assert "fresh distinct" in saved["error"]

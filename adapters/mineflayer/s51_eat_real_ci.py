@@ -94,6 +94,15 @@ async def qualify(
     server = collector = session = temp = None
     rc = 2
     try:
+        # Claim a fresh receipt namespace BEFORE any physical effect.
+        # The one-shot runner must never overwrite prior run evidence.
+        if (
+            report_path == server_log
+            or report_path.exists() or report_path.is_symlink()
+            or server_log.exists() or server_log.is_symlink()
+            or not server_log.parent.is_dir()
+        ):
+            raise S31ABlocked("fresh distinct evidence paths required; no overwrite")
         if os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("Node substitution forbidden")
         if preflight_only:
@@ -394,8 +403,15 @@ async def qualify(
             report["status"] = "FAIL"
             report["error"] = "Minecraft server teardown failed"
             rc = 1
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text(json.dumps(report, sort_keys=True, indent=2)+"\n")
+        if report_path.exists() or report_path.is_symlink():
+            # Never replace an earlier original even if this run was blocked.
+            report["status"] = "BLOCKED"
+            report["error"] = "existing report path retained unchanged"
+            rc = 2
+        else:
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            with report_path.open("x", encoding="utf-8") as output:
+                output.write(json.dumps(report, sort_keys=True, indent=2) + "\n")
         print("S51_REPORT="+json.dumps(report, sort_keys=True))
     return rc
 
