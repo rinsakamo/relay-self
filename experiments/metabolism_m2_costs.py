@@ -10,7 +10,6 @@ from dataclasses import asdict, dataclass, replace
 
 from experiments.metabolism_m2 import (
     M2Config,
-    HoldoutScore,
     Member,
     _heldout,
     founder_population,
