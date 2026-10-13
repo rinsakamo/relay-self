@@ -16,6 +16,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from adapters.mineflayer.b0_ground_runner import acquire_staged_ground_flesh
 from adapters.mineflayer.eat_execution import IssuedEatingExecutor
 from adapters.mineflayer.s31a_real_server_ci import (
     MINECRAFT_VERSION,
@@ -46,16 +47,26 @@ def p(ref: str) -> Provenance:
 
 
 async def qualify(
-    report_path: Path, server_log: Path, *, food_item: str = "bread"
+    report_path: Path, server_log: Path, *,
+    food_item: str = "bread", food_source: str = "inventory",
 ) -> int:
     if food_item not in ("bread", "rotten_flesh"):
         raise ValueError("only operator-staged bread or rotten_flesh allowed")
+    if food_source not in ("inventory", "ground"):
+        raise ValueError("unsupported source")
+    if food_source == "ground" and food_item != "rotten_flesh":
+        raise ValueError("ground mode requires rotten_flesh")
     count_field = "bread_count" if food_item == "bread" else "rotten_flesh_count"
     report: dict[str, Any] = {
         "milestone": "S51", "status": "BLOCKED", "stage": "START",
         "minecraft_version": MINECRAFT_VERSION,
         "mineflayer_version": MINEFLAYER_VERSION,
-        "world_food_supply": "OPERATOR_GIVEN",
+        "world_food_supply": (
+            "OPERATOR_SUMMONED_SINGLE_GROUND_ITEM"
+            if food_source == "ground" else "OPERATOR_GIVEN"
+        ),
+        "food_source": food_source,
+        "ground_pickup": "NOT_RUN",
         "food_item": food_item,
         "zombie_drop_observed": False,
         "m_energy_credited": False,
@@ -81,13 +92,18 @@ async def qualify(
         report["session_id"] = sid
         report["stage"] = "EXTERNAL_SURVIVAL_AND_FOOD_STAGING"
         assert server.stdin is not None
-        for cmd in (
-            "gamemode survival RelaySelf",
-            f"give RelaySelf minecraft:{food_item} 3",
-            "effect give RelaySelf minecraft:hunger 25 20 true",
-        ):
-            _command(server, cmd)
+        _command(server, "gamemode survival RelaySelf")
+        await server.stdin.drain()
+        if food_source == "ground":
+            report["stage"] = "ISSUED_SEEK_GROUND_PICKUP"
+            report["ground_pickup"] = await acquire_staged_ground_flesh(
+                session, server,
+            )
+        else:
+            _command(server, f"give RelaySelf minecraft:{food_item} 3")
             await server.stdin.drain()
+        _command(server, "effect give RelaySelf minecraft:hunger 25 20 true")
+        await server.stdin.drain()
         cursor = EatCursor(sid, hunger_threshold=14.0)
         before = choice = None
         for attempt in range(16):
@@ -169,7 +185,9 @@ async def qualify(
         }
         report["status"] = "PASS"
         report["classification"] = (
-            "B0_ROTTEN_FLESH_OPERATOR_STAGED_NATIVE_EAT_ONLY"
+            "B0_GROUND_PICKUP_AND_NATIVE_EAT_CONSISTENCY_ONLY"
+            if food_source == "ground"
+            else "B0_ROTTEN_FLESH_OPERATOR_STAGED_NATIVE_EAT_ONLY"
             if food_item == "rotten_flesh"
             else "REAL_SURVIVAL_HUNGER_EAT_NATIVE_FOOD_DELTA_QUALIFIED"
         )
@@ -218,9 +236,13 @@ def main() -> int:
     parser.add_argument(
         "--food-item", choices=("bread", "rotten_flesh"), default="bread",
     )
+    parser.add_argument(
+        "--food-source", choices=("inventory", "ground"), default="inventory",
+    )
     args = parser.parse_args()
     return asyncio.run(qualify(
-        args.report, args.server_log, food_item=args.food_item,
+        args.report, args.server_log,
+        food_item=args.food_item, food_source=args.food_source,
     ))
 
 
