@@ -38,7 +38,7 @@ def _streams():
                     "time_of_day": tick, "day": 2, "is_day": False,
                 },
                 "nearby_entities": [{
-                    "entity_id": 2, "name": "zombie", "entity_type": "zombie",
+                    "id": 2, "name": "zombie", "type": "zombie",
                     "distance": 5, "position": {"x": 4, "y": 64, "z": 2},
                 }],
                 "nearby_entities_coverage": {
@@ -162,14 +162,14 @@ def test_fail_closed_when_nonissuance_or_bounded_interval_not_proven(case):
         cov = messages[4]["snapshot"]["nearby_entities_coverage"]
         cov.update({"truncated": True, "candidate_count": 17})
         messages[4]["snapshot"]["nearby_entities"] = [
-            {**messages[4]["snapshot"]["nearby_entities"][0], "entity_id": i}
+            {**messages[4]["snapshot"]["nearby_entities"][0], "id": i}
             for i in range(16)
         ]
     elif case == "zombie_disappears":
         messages[4]["snapshot"]["nearby_entities"] = []
         messages[4]["snapshot"]["nearby_entities_coverage"]["candidate_count"] = 0
     elif case == "foreign_target":
-        messages[4]["snapshot"]["nearby_entities"][0]["entity_id"] = 9
+        messages[4]["snapshot"]["nearby_entities"][0]["id"] = 9
     elif case == "same_tick":
         messages[4]["snapshot"]["time"]["time_of_day"] = 13001
     elif case == "reverse_tick":
