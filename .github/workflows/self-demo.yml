@@ -40,11 +40,11 @@ jobs:
           git merge-base --is-ancestor "$B0_PARENT" HEAD
           git diff --quiet "$B0_PARENT" HEAD -- adapters/mineflayer/s49_normal_session_real_ci.py
           changed="$(git diff --name-only --diff-filter=CDMRTUXB "$B0_PARENT" HEAD)"
-          expected="$(printf '%s\\n' \\
-            .github/workflows/self-demo.yml \\
-            adapters/mineflayer/s51_eat_real_ci.py \\
-            docs/self-demo.md \\
-            src/relay_self/eat_hunger.py \\
+          expected="$(printf '%s\n' \
+            .github/workflows/self-demo.yml \
+            adapters/mineflayer/s51_eat_real_ci.py \
+            docs/self-demo.md \
+            src/relay_self/eat_hunger.py \
             tests/test_feature_s51_eat_execution.py)"
           test "$changed" = "$expected"
       - run: python tools/check_repository.py
