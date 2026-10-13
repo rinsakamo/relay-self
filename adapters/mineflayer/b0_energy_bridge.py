@@ -133,3 +133,74 @@ class B0EnergyLedger:
             kind, probe.seq, sensor.reading, self.body.tick,
             choice if kind == "EAT" else None, target,
         )
+
+
+def nofood_native_wait(
+    ledger: B0EnergyLedger, probe: MineflayerObservation,
+) -> tuple[B0Decision, EnergyTransition]:
+    """One source-qualified food-free decision/tick, never a fake S16 Action.
+
+    This witnesses the M0 *experimental* metabolism, not Minecraft HP death
+    or physiological elapsed-time energy expenditure.
+    """
+    if not isinstance(ledger, B0EnergyLedger):
+        raise B0EnergyRejected("B0 body owner required")
+    if not isinstance(probe, MineflayerObservation):
+        raise B0EnergyRejected("typed native no-food probe required")
+    coverage = probe.snapshot.nearby_entities_coverage
+    if (
+        ledger.credit_count != 0 or ledger.body.meals != 0
+        or coverage.truncated
+        or coverage.candidate_count != len(probe.snapshot.nearby_entities)
+        or any(item.count > 0 for item in probe.snapshot.inventory)
+        or any(entity.name == "item" for entity in probe.snapshot.nearby_entities)
+    ):
+        raise B0EnergyRejected("no-food source, coverage or body not clean")
+    decision = ledger.decide(probe)
+    if decision.kind != "WAIT":
+        raise B0EnergyRejected("no-food L0 did not choose nonissued WAIT")
+    transition = ledger.step("WAIT")
+    if (
+        transition.intake != 0
+        or transition.expenditure != ledger.config.basal_cost
+        or ledger.credit_count != 0
+        or ledger.body.meals != 0
+    ):
+        raise B0EnergyRejected("no-food M0 charged unexpected food or action")
+    return decision, transition
+
+
+def verify_starvation_reentry_denied(
+    ledger: B0EnergyLedger, probe: MineflayerObservation,
+) -> None:
+    """Use a NEW correlated World observation to prove terminal non-reentry.
+
+    Both L0 selection and M0 advancement must reject, without state change.
+    No Action is proposed or issued here.
+    """
+    if (
+        not isinstance(ledger, B0EnergyLedger)
+        or not ledger.body.terminal or ledger.body.energy != 0
+        or ledger.credit_count != 0 or ledger.body.meals != 0
+        or not isinstance(probe, MineflayerObservation)
+        or probe.kind != "probe" or not probe.request_id
+        or probe.session_id != ledger.session_id
+        or probe.provenance.source != "mineflayer"
+        or probe.seq <= ledger._last_decision_seq
+    ):
+        raise B0EnergyRejected("no qualified post-terminal World observation")
+    original = ledger.body
+    try:
+        ledger.decide(probe)
+    except B0EnergyRejected:
+        pass
+    else:
+        raise B0EnergyRejected("dead L0 wrongly admitted a new decision")
+    try:
+        ledger.step("WAIT")
+    except B0EnergyRejected:
+        pass
+    else:
+        raise B0EnergyRejected("terminal M0 body advanced again")
+    if ledger.body != original:
+        raise B0EnergyRejected("terminal body mutated during denied re-entry")

@@ -19,7 +19,11 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+from adapters.mineflayer.b0_energy_bridge import (
+    B0EnergyLedger,
+    nofood_native_wait,
+    verify_starvation_reentry_denied,
+)
 from adapters.mineflayer.b0_ground_runner import acquire_staged_ground_flesh
 from adapters.mineflayer.b0_rsee import (
     B0_CONFIRM,
@@ -285,24 +289,16 @@ async def qualify(
                 probe = await _correlated_observe(
                     session, f"b0-nofood-native:{epoch:02d}",
                 )
-                coverage = probe.snapshot.nearby_entities_coverage
-                if (
-                    coverage.truncated
-                    or coverage.candidate_count != len(probe.snapshot.nearby_entities)
-                    or any(item.count > 0 for item in probe.snapshot.inventory)
-                    or any(e.name == "item" for e in probe.snapshot.nearby_entities)
-                ):
-                    raise S51PhysicalFailure("no-food World condition not independently observed")
-                decision = ledger.decide(probe)
-                if decision.kind != "WAIT":
-                    raise S51PhysicalFailure("no-food designed L0 did not WAIT")
-                transition = ledger.step("WAIT")
+                decision, transition = nofood_native_wait(ledger, probe)
                 report["starvation_trace"].append({
                     "epoch": epoch,
                     "probe_seq": probe.seq,
                     "action": "WAIT_NON_ISSUANCE",
                     "issued_action": False,
+                    "sensor_reading": decision.sensor_reading,
                     "energy_after": transition.after.energy,
+                    "intake": transition.intake,
+                    "expenditure": transition.expenditure,
                     "metabolic_tick": transition.after.tick,
                     "terminal_now": transition.terminal_now,
                 })
@@ -310,9 +306,28 @@ async def qualify(
                     break
             else:
                 raise S51PhysicalFailure("M0 terminal did not occur within 64 WAIT decisions")
+            # One additional real correlated observation proves L0 and M0
+            # cannot continue after starvation. A string alone is not proof.
+            postterminal = await _correlated_observe(
+                session, "b0-nofood-postterminal-denial",
+            )
+            verify_starvation_reentry_denied(ledger, postterminal)
+            if sum(1 for row in report["starvation_trace"] if row["terminal_now"]) != 1:
+                raise S51PhysicalFailure("terminal event not exactly once")
+            report["postterminal_denial"] = {
+                "probe_seq": postterminal.seq,
+                "last_live_probe_seq": probe.seq,
+                "same_session": postterminal.session_id == sid,
+                "l0_decision_denied": True,
+                "m0_step_denied": True,
+                "body_unchanged": True,
+                "issued_action": False,
+            }
             report["status"] = "PASS"
             report["classification"] = "B0_RSEE_NOFOOD_NATIVE_WAIT_TERMINAL_ENGINEERING_ONLY"
             report["m_energy_credited"] = False
+            report["minecraft_hp_death_claimed"] = False
+            report["starvation_source"] = "M0_EXPERIMENTAL_DECISION_TICKS_NOT_MINECRAFT_STARVATION"
             report["m_terminal"] = True
             report["metabolism_terminal"] = {
                 "energy": ledger.body.energy,

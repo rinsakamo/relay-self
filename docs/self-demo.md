@@ -653,3 +653,25 @@ observed physical start are separate: the original helper creates its log
 only after spawning Java. Cleanup exit does not by itself prove STOP ACK;
 inspect the preserved native bytes and independently check owned PIDs and
 port release. A staged-food loop is engineering evidence only, SCIENCE_NO_GO.
+
+
+### B0 no-food next trial — proof ceiling and terminal non-reentry
+
+The no-food mode is *not* the completed one-shot `inventory` trial.
+It remains **NOT_RUN / NEW_EXPLICIT_GRANT_REQUIRED**. It uses the
+unchanged M0 `MetabolismConfig(initial_energy=12, basal_cost=0.5)`:
+if there is no verified food and only nonissued WAIT steps, the
+experiment ledger reaches exactly one terminal on decision-tick 24.
+Each decision is taken from one NEW correlated Mineflayer World probe,
+with inventory empty, no visible ground-item entity, complete nearby
+coverage, no food credit and cost 0.5. This does not prove 24 elapsed
+Minecraft ticks, Minecraft hunger damage or in-World HP death.
+
+After that terminal, a **new 25th correlated probe** must be obtained.
+The same body must reject both a further L0 decision and an M0 WAIT
+advance without mutating its terminal state. A reporter string is NOT
+sufficient: code actually exercises both negative admission checks,
+retains the postterminal probe seq and refuses any unproven denial.
+Unknown item/coverage or replay causes FAIL, not a starvation PASS.
+One live World run requires **one new, explicit, mode-specific grant**.
+Existing B0 inventory authorization was already consumed.

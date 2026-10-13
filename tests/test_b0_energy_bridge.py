@@ -4,7 +4,12 @@ from dataclasses import replace
 import pytest
 
 import test_feature_s46_eat as s46
-from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger, B0EnergyRejected
+from adapters.mineflayer.b0_energy_bridge import (
+    B0EnergyLedger,
+    B0EnergyRejected,
+    nofood_native_wait,
+    verify_starvation_reentry_denied,
+)
 from adapters.mineflayer.eat_execution import EatingActionReceipt
 from adapters.mineflayer.python_protocol import MineflayerInventoryItem
 from experiments.metabolism_viability import Interoception, MetabolismConfig
@@ -134,3 +139,75 @@ def test_eat_receipt_cannot_be_used_as_move_credit():
     with pytest.raises(B0EnergyRejected):
         ledger.step("MOVE", eating=_receipt(p))
     assert ledger.credit_count == 0
+
+
+def _empty_food_world():
+    origin = _before()
+    return replace(
+        origin,
+        snapshot=replace(origin.snapshot, food=20, inventory=()),
+    )
+
+
+def test_nofood_native_stream_starves_exactly_once_and_rejects_new_l0():
+    origin = _empty_food_world()
+    ledger = B0EnergyLedger(origin.session_id)
+    observed = []
+    for epoch in range(64):
+        probe = replace(
+            origin, seq=origin.seq + epoch,
+            request_id=f"synthetic-nofood-{epoch:02d}",
+        )
+        decision, transition = nofood_native_wait(ledger, probe)
+        assert decision.kind == "WAIT" and decision.body_tick == epoch
+        assert transition.intake == 0
+        assert transition.expenditure == 0.5
+        assert ledger.credit_count == ledger.body.meals == 0
+        observed.append(transition.terminal_now)
+        if transition.terminal_now:
+            break
+    assert epoch == 23
+    assert observed == [False] * 23 + [True]
+    assert ledger.body.energy == 0
+    assert ledger.body.tick == 24
+    assert ledger.body.terminal
+    post = replace(
+        origin, seq=probe.seq + 1, request_id="synthetic-nofood-postterminal",
+    )
+    snapshot = ledger.body
+    verify_starvation_reentry_denied(ledger, post)
+    assert ledger.body == snapshot
+    assert ledger.credit_count == 0
+
+
+def test_nofood_controls_reject_inventory_before_any_metabolic_charge():
+    origin = _empty_food_world()
+    ledger = B0EnergyLedger(origin.session_id)
+    observed_food = replace(
+        origin,
+        snapshot=replace(origin.snapshot, inventory=(
+            MineflayerInventoryItem("rotten_flesh", 1, 4),
+        )),
+    )
+    with pytest.raises(B0EnergyRejected, match="no-food source"):
+        nofood_native_wait(ledger, observed_food)
+    assert ledger.body.tick == 0 and ledger.body.energy == 12
+    assert ledger.credit_count == 0
+
+
+def test_nofood_terminal_denial_requires_fresh_matching_world_source():
+    origin = _empty_food_world()
+    ledger = B0EnergyLedger(
+        origin.session_id,
+        config=MetabolismConfig(initial_energy=0.5),
+    )
+    _, terminal = nofood_native_wait(ledger, origin)
+    assert terminal.terminal_now
+    with pytest.raises(B0EnergyRejected, match="post-terminal"):
+        verify_starvation_reentry_denied(ledger, origin)
+    with pytest.raises(B0EnergyRejected, match="post-terminal"):
+        verify_starvation_reentry_denied(ledger, replace(
+            origin, seq=origin.seq + 1, session_id="foreign",
+            request_id="foreign-next",
+        ))
+    assert ledger.body.tick == 1 and ledger.body.terminal
