@@ -153,7 +153,10 @@ def test_g3_ledger_energy_snapshot_guards(failure: str) -> None:
     elif failure == "after":
         bad = replace(event, balances_after=(ParentBalance(0, 17),))
     elif failure == "missing":
-        bad = replace(\n            event, balances_before=(ParentBalance(1, 20),),\n            balances_after=(ParentBalance(1, 16),)\n        )
+        bad = replace(
+            event, balances_before=(ParentBalance(1, 20),),
+            balances_after=(ParentBalance(1, 16),)
+        )
     else:
         bad = replace(event, balances_before=(ParentBalance(0, 20), ParentBalance(1, 20)),
                       balances_after=(ParentBalance(0, 16), ParentBalance(1, 20)))
