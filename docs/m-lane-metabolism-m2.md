@@ -130,3 +130,73 @@ The CI runs all 16 fixed cases on the exact PR HEAD, as well as the
 previous frozen M2/M2b experiments without changing their inputs.
 This is a new offline engineering check, not an S/R/V approval
 or user-host GPU/World experiment.
+
+## M2d — uncertain action outcomes and temporal memory discrimination
+
+The M2c physical-cost factorial and its seeds **503,607,709,811** are
+historical/frozen. This M2d *experiment-local individual pilot*, built
+after those results, uses **new prespecified seeds**
+`907,1009,1103,1201,1301,1409,1511,1601`.
+It does not modify the prior M2/M2b/M2c results or qualify evolution.
+
+**World:** hidden binary regime, known only to the evaluator. In one
+regime FIGHT is relatively food-profitable, in the other MOVE is. The
+regime is either persistent (same-state probability 0.94) or IID
+(same-state probability 0.50) at each step. Agent receives an imperfect
+public hint (63% accurate), plus M0 quantized interoception; never
+the true regime, food probabilities, damage draw or future cue. Agent
+can optionally **SCAN** instead of acting: it pays extra energy
+0.55 **now**, receives no food, and the *next* tick receives a
+precommitted 90%-accurate hint. SCAN costs WAIT basal energy plus
+information cost; it is never free observation or retroactive knowledge.
+
+MOVE and FIGHT obtain at most one food unit per tick with fixed
+probabilities (0.80 if the latent regime favors that action, 0.08
+otherwise). FIGHT has a second independently precommitted injury
+outcome (probability 0.08 in the favorable regime, 0.35 otherwise);
+an injury physically spends another 0.70 energy. The initial
+energy/food/reproductive bounds reuse M2c `costly_both` without
+changing MOVE or FIGHT costs. Independent seed-separated RNG streams
+freeze **all potential Action outcomes** before selecting a policy;
+policies' actions cannot reroll food, change future regime or bias
+future evidence.
+
+**Cheap policies all see precisely the same currently admissible hint
+and sensed energy**: WAIT, MOVE, FIGHT, random, instant hint
+classifier, last-five-hint majority, model-informed Bayesian two-state
+filter, Bayesian belief reset each tick, and SCAN-triggering Bayesian
+filter. The Bayes transition/observation probabilities are
+**supplied by the experimenter**; its presence is not learned
+World knowledge, general reasoning, or biological belief emergence.
+Current-cue vs history-retaining Bayes tests the causal value of
+cross-tick history in the predeclared environment; IID is a negative
+control for that benefit. A full-memory filter cannot be presumed
+more cost-efficient than cheap last-five memory. SCAN uses an overt
+engineered 'uncertain posterior' threshold and may lose by paying
+for information. Neither cue policy nor learned filter has an
+endogenous reward; the policy's tendency to select the predicted
+food-opportunity action is **already engineered**.
+
+Outcomes are genuine M0 evaluator energy debits/credits (not authentic
+Minecraft receipts), offspring paid for via the existing #42
+`make_child` adapter, starvation, number of scans/injuries and
+cost conservation, prediction of hidden-state truth scored *only by
+the evaluator*. The `run_episode` call gives the policy only its
+own hint and sensor reading; hidden regime is never supplied.
+M2d **does not inherit selected genotypes**, because individual
+prediction/decision differentiation must be characterized before
+a new M2 population experiment could claim selection pressure.
+There are no production L or S semantic grants.
+
+**Acceptance is engineering-only:** deterministic World fixtures,
+counterfactual draws paired within regime+seed, same first
+observation, scan affects only future cue accuracy, state history
+knockout effect in persistent regime and **no history benefit by
+construction in IID**, physical energy conservation including injury,
+SCAN cost, overflow, terminal shortfall and offspring transfer.
+All metrics, including results unfavorable to Bayes or scan, are
+reported for the entire frozen 8×2×9 matrix; do not tune seed,
+cue quality, transition rate, injury or cost after inspecting outputs.
+No claim of information-value gain, H1/H2 scientific success, or
+value/emotion emergence without independent V qualification and
+cost-sensitive comparisons to the strongest cheap baseline.

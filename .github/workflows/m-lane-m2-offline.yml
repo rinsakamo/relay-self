@@ -8,9 +8,11 @@ on:
       - "experiments/metabolism_m2.py"
       - "experiments/metabolism_m2_scarcity.py"
       - "experiments/metabolism_m2_costs.py"
+      - "experiments/metabolism_m2_uncertainty.py"
       - "tests/test_metabolism_m2_experiment.py"
       - "tests/test_metabolism_m2_scarcity.py"
-      - "tests/test_metabolism_m2_costs.py"
+      - "tests/test_metabolism_m2_costs.py tests/test_metabolism_m2_uncertainty.py"
+      - "tests/test_metabolism_m2_uncertainty.py"
       - "docs/m-lane-metabolism-m2.md"
       - ".github/workflows/m-lane-m2-offline.yml"
   workflow_dispatch:
@@ -61,3 +63,8 @@ jobs:
         run: |
           python -m experiments.metabolism_m2_costs --fixed-matrix
           echo "M2_COSTS_DESCRIPTIVE_ONLY_SCIENCE_NO_GO"
+
+      - name: Run prospectively frozen hidden-state and IID negative control family
+        run: |
+          python -m experiments.metabolism_m2_uncertainty --fixed-family
+          echo "M2D_HIDDEN_WORLD_DESCRIPTIVE_ONLY_SCIENCE_NO_GO"
