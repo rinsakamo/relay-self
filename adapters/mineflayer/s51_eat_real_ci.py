@@ -45,12 +45,19 @@ def p(ref: str) -> Provenance:
     return Provenance("s51-explicit-operator", ref)
 
 
-async def qualify(report_path: Path, server_log: Path) -> int:
+async def qualify(
+    report_path: Path, server_log: Path, *, food_item: str = "bread"
+) -> int:
+    if food_item not in ("bread", "rotten_flesh"):
+        raise ValueError("only operator-staged bread or rotten_flesh allowed")
     report: dict[str, Any] = {
         "milestone": "S51", "status": "BLOCKED", "stage": "START",
         "minecraft_version": MINECRAFT_VERSION,
         "mineflayer_version": MINEFLAYER_VERSION,
         "world_food_supply": "OPERATOR_GIVEN",
+        "food_item": food_item,
+        "zombie_drop_observed": False,
+        "m_energy_credited": False,
         "food_acquisition_autonomous": False,
         "automatic_goal_selection": False,
         "real_model_calls": 0,
@@ -75,7 +82,7 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         assert server.stdin is not None
         for cmd in (
             "gamemode survival RelaySelf",
-            "give RelaySelf minecraft:bread 3",
+            f"give RelaySelf minecraft:{food_item} 3",
             "effect give RelaySelf minecraft:hunger 25 20 true",
         ):
             _command(server, cmd)
@@ -90,7 +97,7 @@ async def qualify(report_path: Path, server_log: Path) -> int:
             if (
                 reading.snapshot.food < 14.0
                 and any(
-                    item.name == "bread" and item.count > 0
+                    item.name == food_item and item.count > 0
                     for item in reading.snapshot.inventory
                 )
             ):
@@ -104,22 +111,23 @@ async def qualify(report_path: Path, server_log: Path) -> int:
         if (
             before is None
             or choice is None or choice.status is not EatStatus.CANDIDATE
-            or choice.item_name != "bread"
+            or choice.item_name != food_item
         ):
             raise S51PhysicalFailure("actual native hunger + inventory gate not reached")
         _command(server, "effect clear RelaySelf minecraft:hunger")
         await server.stdin.drain()
         report["before"] = {
             "food": before.snapshot.food,
+            "food_item": food_item,
             "bread_count": sum(
-                x.count for x in before.snapshot.inventory if x.name == "bread"
+                x.count for x in before.snapshot.inventory if x.name == food_item
             ),
             "probe_seq": before.seq,
             "item_name": choice.item_name,
         }
         intent = IntentCommitment()
         intent.commit(
-            "eat-when-hungry", objective="eat bread when hungry", at_ns=1,
+            "eat-when-hungry", objective=f"eat {food_item} when hungry", at_ns=1,
             provenance=p("committed"),
         )
         skill = SkillExecution.start(
@@ -127,7 +135,7 @@ async def qualify(report_path: Path, server_log: Path) -> int:
             at_ns=2, provenance=p("skill"),
         )
         proposed = ActionLifecycle.propose(
-            "s51-eat-bread", skill_execution=skill, intent_commitment=intent,
+            f"s51-eat-{food_item}", skill_execution=skill, intent_commitment=intent,
             at_ns=3, provenance=p("proposed"),
         )
         authorized = proposed.authorize(
@@ -151,13 +159,19 @@ async def qualify(report_path: Path, server_log: Path) -> int:
             raise S51PhysicalFailure("no real independent native food+stock effects")
         report["after"] = {
             "food": result.outcome.food_after,
+            "food_item": food_item,
+            "item_count_delta": result.outcome.count_before - result.outcome.count_after,
             "bread_count": result.outcome.count_after,
             "after_seq": result.outcome.after_probe_seq,
             "action_id": result.outcome.action_id,
             "terminal": result.terminal.state.value,
         }
         report["status"] = "PASS"
-        report["classification"] = "REAL_SURVIVAL_HUNGER_EAT_NATIVE_FOOD_DELTA_QUALIFIED"
+        report["classification"] = (
+            "B0_ROTTEN_FLESH_OPERATOR_STAGED_NATIVE_EAT_ONLY"
+            if food_item == "rotten_flesh"
+            else "REAL_SURVIVAL_HUNGER_EAT_NATIVE_FOOD_DELTA_QUALIFIED"
+        )
         report["stage"] = "CLOSED"
         rc = 0
     except (S31ABlocked, OSError) as exc:
@@ -200,8 +214,13 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--server-log", type=Path, required=True)
+    parser.add_argument(
+        "--food-item", choices=("bread", "rotten_flesh"), default="bread",
+    )
     args = parser.parse_args()
-    return asyncio.run(qualify(args.report, args.server_log))
+    return asyncio.run(qualify(
+        args.report, args.server_log, food_item=args.food_item,
+    ))
 
 
 if __name__ == "__main__":

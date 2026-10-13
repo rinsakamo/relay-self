@@ -457,3 +457,36 @@ source-bound結果が表示されます。**JavaScript、外部CDN、通信、�
 `--output` はまだ存在しない `.html` パスであることが必須で、原本・既存
 HTMLは上書きできません。ブラウザ画面は既存のS49記録の表示であり、
 現在進行中のMinecraftをライブ監視したり、Goal成功を認定するものではありません。
+
+
+## B0 optional rotten-flesh eating check (2026-10-13)
+
+The low-cost existing S46 EatCursor now allows `rotten_flesh` as a
+**last-choice** fallback. The existing S51 source-correlated actual eater
+still requires native equip→consume applied receipts, Minecraft food-meter
+increase and inventory count decrease. A rotten-flesh meal can cause the
+Hunger effect; its nutritional **net benefit is not yet attested**, and
+the M Lane research metabolic ledger has **not** been credited.
+
+The existing S51 **operator-staged** disposable World runner can be invoked
+with `--food-item rotten_flesh` after separately approved, fresh R/S
+physical authorization, using the SAME optional preflight/cleanup protocol
+as its default bread case:
+
+```bash
+S51_REAL_SERVER_CI=1 PYTHONPATH="$PWD/src:$PWD/tests:$PWD" \
+  python -m adapters.mineflayer.s51_eat_real_ci \
+  --food-item rotten_flesh \
+  --report ./fresh-rotten-eat-report.json \
+  --server-log ./fresh-rotten-server.log
+```
+
+**Do not run this without fresh approval.** Uses operator `/give` of
+corrupt flesh plus an explicit hunger staging effect; that is not a
+zombie-kill drop, autonomous SEEK, real M0 energy debit/credit or a
+completed bacterium-like survival loop. In this optional mode the
+report is classified `B0_ROTTEN_FLESH_OPERATOR_STAGED_NATIVE_EAT_ONLY`
+and explicitly marks `zombie_drop_observed=false` and
+`m_energy_credited=false`. Existing bread-mode default classification,
+old evidence and issued-action logic are unchanged. Real World-source
+authentication and exactly-once physical M credit remain the next gate.
