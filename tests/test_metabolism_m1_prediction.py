@@ -69,7 +69,8 @@ def test_probe_never_learns_terminal_censored_delta() -> None:
     cfg = M1Config(
         horizon=20,
         physics=MetabolismConfig(
-            initial_energy=1, basal_cost=0.25, move_cost=0, fight_cost=0,\n            food_energy=0.01,
+            initial_energy=1, basal_cost=0.25, move_cost=0, fight_cost=0,
+            food_energy=0.01,
         ),
     )
     result = run_probe(seed=5, preference="none", retained=True, config=cfg)
