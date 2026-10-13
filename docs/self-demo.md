@@ -712,3 +712,44 @@ a result of this implementation commit.** Local WSL2 LocalCodex must
 verify exact updated PR HEAD and successful CI, source binding and
 read-only RSEE preflight, and then use the new mode-specific grant
 for **exactly one** real trial with fresh output paths and no retry.
+
+
+### B0 controlled two-epoch World trial — new one-shot grant, NOT_RUN
+
+The user authorized **one new bounded multi-epoch physical World run**
+after three individually consumed one-shot B0 trials. The existing S51
+runner gains an opt-in `--food-item rotten_flesh --food-source ground2`
+profile on the same RSEE #588 stopped snapshot. There is **one** Java
+start, one owned Mineflayer session, two separate sequential
+**operator-summoned single-item** ground fixtures, and at most the
+existing 8 issued SEEK moves per fixture. The local World never
+auto-creates food as an autonomous resource.
+
+Per epoch: after source-qualified native appetite (food <14), the
+operator clears the hunger *effect*, summons one item, and requires
+fresh L0 SEEK before S50 issued moves. Item disappearance plus inventory
+increase is consistent pickup evidence only. A later **unique EAT Action
+ID** per epoch uses the original S51 equip/consume native effects, terminal
+OUTCOME, source-verified single consumed item and a single M0 +4 food
+credit (with basal cost), followed by the next fresh L0 decision. Native
+request/action IDs are namespaced across the epochs; no second issue of
+an uncertain Action is permitted. The second epoch reuses the SAME
+ledger and session, never resetting energy or the meal/credit tally.
+The terminal must have `credit_count=2`, `meals=2`, positive energy
+and nonterminal body; first-epoch evidence is retained in the report
+even if the second fails. Original stdout/command JSONL remain retained.
+
+World hunger/food is **not** M0 simulated energy. The operator's hunger
+effect is a controlled environment intervention, not discovered
+scarcity or a calibrated physiological process. Two meals in one
+session do not show positive net long-term viability or evolution.
+The L0 energy sensor is observed but **does not currently drive the
+EAT/SEEK/WAIT policy**; merely toggling sensor gain would be
+non-discriminating, so do not claim a sensor-driven behavioral response
+or run extra sensor-off World trials under this grant.
+
+Physical execution must wait for final exact-HEAD CI success and the
+original RSEE read-only `--preflight-only`, use NEW exclusive evidence
+paths, and consume the fresh **single World start** authorization only
+on Java start. No retry/fallback. Any additional controls need
+separate prospective V #619 experimental authority and user grants.

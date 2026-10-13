@@ -56,11 +56,15 @@ def _admit_native_l0_seek(
 
 async def acquire_staged_ground_flesh(
     session: Any, server: Any, *, energy_ledger: B0EnergyLedger | None = None,
+    epoch: int = 0,
 ) -> dict[str, Any]:
-    """One World item, <=8 distinct issued moves; no command retry or unknown credit."""
+    """One fixture/epoch, <=8 distinct issued moves; no retry or credit."""
+    if type(epoch) is not int or not 0 <= epoch <= 7:
+        raise GroundRejected("bounded ground epoch namespace required")
+    namespace = "b0" if epoch == 0 else f"b0-e{epoch}"
     if server.stdin is None:
         raise GroundRejected("server console owner absent")
-    origin = await _correlated_observe(session, "b0-initial-item-free")
+    origin = await _correlated_observe(session, f"{namespace}-initial-item-free")
     coverage = origin.snapshot.nearby_entities_coverage
     if (
         coverage.truncated
@@ -79,7 +83,7 @@ async def acquire_staged_ground_flesh(
     await server.stdin.drain()
     first = target = None
     for i in range(8):
-        probe = await _correlated_observe(session, f"b0-item-discovery-{i:02d}")
+        probe = await _correlated_observe(session, f"{namespace}-item-discovery-{i:02d}")
         try:
             target = select_ground_target(probe)
         except GroundRejected:
@@ -95,7 +99,7 @@ async def acquire_staged_ground_flesh(
     l0_trace = [_admit_native_l0_seek(energy_ledger, first, target)]
     intent = IntentCommitment()
     intent.commit(
-        "b0-staged-ground-item", objective="approach the one observed ground item",
+        f"{namespace}-staged-ground-item", objective="approach the one observed ground item",
         at_ns=1, provenance=_p("operator-item-intent"),
     )
     supervisor = ActionSupervisor()
@@ -103,7 +107,7 @@ async def acquire_staged_ground_flesh(
     movements: list[dict[str, Any]] = []
     picked = None
     for i in range(8):
-        read = await _correlated_observe(session, f"b0-ground-step-{i:02d}")
+        read = await _correlated_observe(session, f"{namespace}-ground-step-{i:02d}")
         if any(x.name == "rotten_flesh" and x.count > 0 for x in read.snapshot.inventory):
             picked = compare_pickup(first, read, target)
             break
@@ -126,12 +130,12 @@ async def acquire_staged_ground_flesh(
             await asyncio.sleep(0.25)
             continue
         skill = SkillExecution.start(
-            f"b0-ground-seek-skill-{i}", skill_id="seek-waypoint",
+            f"{namespace}-ground-seek-skill-{i}", skill_id="seek-waypoint",
             intent_commitment=intent, at_ns=10+i*10,
             provenance=_p(f"skill-{i}"),
         )
         proposed = ActionLifecycle.propose(
-            f"b0-ground-seek-action-{i}", skill_execution=skill,
+            f"{namespace}-ground-seek-action-{i}", skill_execution=skill,
             intent_commitment=intent, at_ns=11+i*10,
             provenance=_p(f"proposal-{i}"),
         )
@@ -170,12 +174,13 @@ async def acquire_staged_ground_flesh(
                 )
             raise
     if picked is None:
-        after = await _correlated_observe(session, "b0-ground-last-pickup")
+        after = await _correlated_observe(session, f"{namespace}-ground-last-pickup")
         picked = compare_pickup(first, after, target)
     if supervisor.open_actions:
         raise GroundRejected("unclosed ground Action")
 
     return {
+        "epoch": epoch,
         "item_entity_id": target.entity_id,
         "source_probe_seq": first.seq,
         "pickup_probe_seq": picked.after_seq,

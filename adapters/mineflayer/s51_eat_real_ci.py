@@ -25,6 +25,7 @@ from adapters.mineflayer.b0_energy_bridge import (
     verify_starvation_reentry_denied,
 )
 from adapters.mineflayer.b0_ground_runner import acquire_staged_ground_flesh
+from adapters.mineflayer.b0_two_epoch import run_two_ground_epochs
 from adapters.mineflayer.b0_rsee import (
     B0_CONFIRM,
     B0RSEEInputs,
@@ -114,10 +115,10 @@ async def qualify(
 ) -> int:
     if food_item not in ("bread", "rotten_flesh"):
         raise ValueError("only operator-staged bread or rotten_flesh allowed")
-    if food_source not in ("inventory", "ground", "none"):
+    if food_source not in ("inventory", "ground", "none", "ground2"):
         raise ValueError("unsupported source")
-    if food_source in ("ground", "none") and food_item != "rotten_flesh":
-        raise ValueError("ground/none B0 mode requires rotten_flesh")
+    if food_source in ("ground", "none", "ground2") and food_item != "rotten_flesh":
+        raise ValueError("ground/none/ground2 B0 mode requires rotten_flesh")
     count_field = "bread_count" if food_item == "bread" else "rotten_flesh_count"
     report: dict[str, Any] = {
         "milestone": "S51", "status": "BLOCKED", "stage": "START",
@@ -125,7 +126,8 @@ async def qualify(
         "mineflayer_version": MINEFLAYER_VERSION,
         "world_food_supply": (
             "OPERATOR_SUMMONED_SINGLE_GROUND_ITEM"
-            if food_source == "ground" else "NO_FOOD_PROVISIONED"
+            if food_source == "ground" else "OPERATOR_SUMMONED_TWO_SEQUENTIAL_GROUND_ITEMS"
+            if food_source == "ground2" else "NO_FOOD_PROVISIONED"
             if food_source == "none" else "OPERATOR_GIVEN"
         ),
         "food_source": food_source,
@@ -314,7 +316,22 @@ async def qualify(
         elif food_source == "inventory":
             _command(server, f"give RelaySelf minecraft:{food_item} 3")
             await server.stdin.drain()
-        if food_source == "none":
+        if food_source == "ground2":
+            report["stage"] = "BOUNDED_TWO_GROUND_EPOCHS"
+            report["two_ground_epochs"] = []
+            await run_two_ground_epochs(
+                session, server, ledger, report["two_ground_epochs"],
+            )
+            report["status"] = "PASS"
+            report["classification"] = (
+                "B0_TWO_OPERATOR_STAGED_GROUND_EPOCHS_ENGINEERING_ONLY"
+            )
+            report["m_energy_credited"] = ledger.credit_count == 2
+            report["metabolism_terminal"] = asdict(ledger.body)
+            report["next_l0"] = report["two_ground_epochs"][-1]["next_l0"]
+            report["stage"] = "CLOSED"
+            rc = 0
+        elif food_source == "none":
             # No food at all: the M0 body must irrevocably exhaust itself
             # under native observations, without inventing WAIT Actions.
             report["stage"] = "NATIVE_NO_FOOD_WAIT_TO_M0_TERMINAL"
@@ -575,7 +592,7 @@ def main() -> int:
         "--food-item", choices=("bread", "rotten_flesh"), default="bread",
     )
     parser.add_argument(
-        "--food-source", choices=("inventory", "ground", "none"), default="inventory",
+        "--food-source", choices=("inventory", "ground", "none", "ground2"), default="inventory",
     )
     parser.add_argument("--rsee-checkout", type=Path)
     parser.add_argument("--rsee-jar", type=Path)
