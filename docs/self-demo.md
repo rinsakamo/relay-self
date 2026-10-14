@@ -833,3 +833,49 @@ physical runner can parse the mode, but **no ground2observe physical
 launch is authorized or has run**. Earlier ground2 grant is consumed.
 Use only read-only preflight/offline tests until new user permission and
 V #619 prospective comparison protocol.
+
+
+### S-owned V2 prospective fixed-horizon single-fixture study (OFFLINE ONLY)
+
+S #545 adds an explicit opt-in `--food-source groundv2 --b0-v2-arm
+SENSOR_ON|SHAM_ON|SENSOR_MASKED|CHEAP_NATIVE`. It does not alter any
+historical `ground/ground2/ground2observe` default or frozen evidence.
+It uses the existing S51/RSEE physical owner (never a second launcher),
+but **NO real World startup is authorized**. Per original V #625 frozen
+manifest, its prospective S study mode sets a **GLOBAL M0 16-tick
+horizon** inclusive of all pre-item hunger WAITs, **8 total issued
+MOVE max**, and a **single precommitted operator fixture after the
+11th M0 decision tick**. No learned motor/value/utility emerges.
+
+The single item is offered in all four arms at the same *declared
+simulated M0 tick boundary*, not as a function of how quickly a
+previous meal was consumed. If actual World hunger is not below
+native food14 **exactly at M0 tick11**, source admission FAILS
+rather than rescheduling or claiming a matched stimulus. This
+is not a verified match of elapsed **Minecraft World ticks**;
+record native/host timings and compare independently in R/V.
+No automatic item creation occurs before the controlled fixture.
+
+L0 WAIT in sight of source-qualified single item is nonissued
+but charges genuine M0 basal 0.5; it can be horizon-censored rather
+than forced SEEK, and no true M0 terminal should be claimed at E4.
+SEEK uses S50 issued MOVE under the same global horizon and existing
+S51 verified EAT, with true food receipt +4 (basal charged). After
+a verified meal the runner continues actual independent native WAIT
+observations to tick16, not a fake no-op or Action. The report
+retains true final M0 E, action counts, source provenance, item
+identity UNKNOWN, food receipt, and explicit
+`world_time_matched=NOT_INDEPENDENTLY_ATTESTED`.
+
+This fixes S's major *local source* 24-opportunity/per-epoch MOVE
+budget mismatch for a **new** study mode. It does not by itself
+satisfy V independent frozen Golden World clone, matched
+exogenous host/World tick schedule across 4 arms and seeds,
+R original-byte/Goal admission, or V scientific evidence.
+If the cheap policy achieves the same food outcome as ON,
+incremental value is unproven. Note: under a 16-M0-tick
+horizon with initial E12 and a single opportunity at tick11,
+**all four arms can remain M0-terminal-free**; early SEEK
+differences can be relegated to secondary EAT/energy outcomes
+without promoting the primary. Every arm/start needs a fresh
+explicit one-shot user grant, so this mode is **NOT_RUN**.

@@ -31,7 +31,11 @@ from adapters.mineflayer.b0_rsee import (
     B0RSEERejected,
     verify_b0_rsee,
 )
-from adapters.mineflayer.b0_two_epoch import run_two_ground_epochs
+from adapters.mineflayer.b0_two_epoch import (
+    V2_ARMS,
+    run_two_ground_epochs,
+    run_v2_fixed_study,
+)
 from adapters.mineflayer.eat_execution import IssuedEatingExecutor
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
@@ -115,12 +119,13 @@ async def qualify(
     preflight_only: bool = False,
     b0_forage_policy: str = "native_only",
     b0_sensor: str = "on",
+    b0_v2_arm: str | None = None,
 ) -> int:
     if food_item not in ("bread", "rotten_flesh"):
         raise ValueError("only operator-staged bread or rotten_flesh allowed")
-    if food_source not in ("inventory", "ground", "none", "ground2", "ground2observe"):
+    if food_source not in ("inventory", "ground", "none", "ground2", "ground2observe", "groundv2"):
         raise ValueError("unsupported source")
-    if food_source in ("ground", "none", "ground2", "ground2observe") and food_item != "rotten_flesh":
+    if food_source in ("ground", "none", "ground2", "ground2observe", "groundv2") and food_item != "rotten_flesh":
         raise ValueError("ground/none/ground2 B0 mode requires rotten_flesh")
     if (
         b0_forage_policy not in ("native_only", "sensor_gate")
@@ -131,6 +136,18 @@ async def qualify(
         or (b0_sensor == "masked" and b0_forage_policy != "sensor_gate")
     ):
         raise ValueError("sensor contrast is opt-in ground2/sensor_gate only")
+    if food_source == "groundv2":
+        if b0_v2_arm not in V2_ARMS or (
+            b0_forage_policy != "native_only" or b0_sensor != "on"
+        ):
+            raise ValueError("V2 requires one named fixed arm, no custom sensor switches")
+        effective_policy, sensor_gain, sensor_bias = V2_ARMS[b0_v2_arm]
+    else:
+        if b0_v2_arm is not None:
+            raise ValueError("V2 arm is restricted to groundv2")
+        effective_policy = b0_forage_policy
+        sensor_gain = 0.0 if b0_sensor == "masked" else 1.0
+        sensor_bias = 12.0 if b0_sensor == "masked" else 0.0
     count_field = "bread_count" if food_item == "bread" else "rotten_flesh_count"
     report: dict[str, Any] = {
         "milestone": "S51", "status": "BLOCKED", "stage": "START",
@@ -138,7 +155,8 @@ async def qualify(
         "mineflayer_version": MINEFLAYER_VERSION,
         "world_food_supply": (
             "OPERATOR_SUMMONED_SINGLE_GROUND_ITEM"
-            if food_source == "ground" else "OPERATOR_SUMMONED_TWO_SEQUENTIAL_GROUND_ITEMS"
+            if food_source == "ground" else "OPERATOR_SINGLE_FIXED_ITEM_AT_M0_TICK_11"
+            if food_source == "groundv2" else "OPERATOR_SUMMONED_TWO_SEQUENTIAL_GROUND_ITEMS"
             if food_source in ("ground2", "ground2observe")
             else "NO_FOOD_PROVISIONED"
             if food_source == "none" else "OPERATOR_GIVEN"
@@ -163,6 +181,15 @@ async def qualify(
             "sensor_mode": b0_sensor,
             "seek_threshold_reading": 8.0,
             "sensor_masked_bias": 12.0 if b0_sensor == "masked" else None,
+            "experimental_policy_not_learned": True,
+        }
+    if food_source == "groundv2":
+        report["b0_v2_study"] = {
+            "arm": b0_v2_arm, "global_horizon_m0_ticks": 16,
+            "max_issued_moves": 8,
+            "predeclared_item_spawn_m0_tick": 11,
+            "world_time_matched": "NOT_INDEPENDENTLY_ATTESTED",
+            "preregistration_owner": "V_619_PR_625_NOT_MODIFIED",
             "experimental_policy_not_learned": True,
         }
     rc = 2
@@ -283,12 +310,9 @@ async def qualify(
             report["node_pid"] = session._process.pid
         sid = session.started.session_id
         report["session_id"] = sid
-        sensor = (
-            Interoception(gain=0.0, bias=12.0)
-            if b0_sensor == "masked" else Interoception()
-        )
+        sensor = Interoception(gain=sensor_gain, bias=sensor_bias)
         ledger = B0EnergyLedger(
-            sid, sensor=sensor, forage_policy=b0_forage_policy,
+            sid, sensor=sensor, forage_policy=effective_policy,
         )
         report["metabolism"] = {
             "source": "M0_617_BYTE_IDENTICAL",
@@ -343,7 +367,20 @@ async def qualify(
         elif food_source == "inventory":
             _command(server, f"give RelaySelf minecraft:{food_item} 3")
             await server.stdin.drain()
-        if food_source in ("ground2", "ground2observe"):
+        if food_source == "groundv2":
+            report["stage"] = "S_V2_GLOBAL_16_TICK_FIXED_SINGLE_ITEM_STUDY"
+            report["v2_trace"] = {}
+            outcome = await run_v2_fixed_study(
+                session, server, ledger, b0_v2_arm, report["v2_trace"],
+            )
+            report["v2_outcome"] = outcome
+            report["status"] = "PASS"
+            report["classification"] = "B0_V2_SOURCE_BOUNDED_OUTCOME_ENGINEERING_ONLY"
+            report["metabolism_terminal"] = asdict(ledger.body)
+            report["m_energy_credited"] = ledger.credit_count > 0
+            report["stage"] = "CLOSED"
+            rc = 0
+        elif food_source in ("ground2", "ground2observe"):
             nonforcing = food_source == "ground2observe"
             report["stage"] = (
                 "BOUNDED_NONFORCING_GROUND_OUTCOMES"
@@ -634,7 +671,7 @@ def main() -> int:
         "--food-item", choices=("bread", "rotten_flesh"), default="bread",
     )
     parser.add_argument(
-        "--food-source", choices=("inventory", "ground", "none", "ground2", "ground2observe"), default="inventory",
+        "--food-source", choices=("inventory", "ground", "none", "ground2", "ground2observe", "groundv2"), default="inventory",
     )
     parser.add_argument(
         "--b0-forage-policy", choices=("native_only", "sensor_gate"),
@@ -643,6 +680,10 @@ def main() -> int:
     parser.add_argument(
         "--b0-sensor", choices=("on", "masked"), default="on",
         help="masked=zero-gain fixed-12 M0 observation; ground2 sensor_gate only",
+    )
+    parser.add_argument(
+        "--b0-v2-arm", choices=tuple(V2_ARMS), default=None,
+        help="prospective V2 fixed global 16-tick/8-MOVE single-item arm",
     )
     parser.add_argument("--rsee-checkout", type=Path)
     parser.add_argument("--rsee-jar", type=Path)
@@ -673,7 +714,7 @@ def main() -> int:
         rsee=rsee, confirmation=args.confirm,
         preflight_only=args.preflight_only,
         b0_forage_policy=args.b0_forage_policy,
-        b0_sensor=args.b0_sensor,
+        b0_sensor=args.b0_sensor, b0_v2_arm=args.b0_v2_arm,
     ))
 
 

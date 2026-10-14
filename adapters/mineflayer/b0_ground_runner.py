@@ -101,10 +101,19 @@ def nonforcing_ground_decision(
 async def acquire_staged_ground_flesh(
     session: Any, server: Any, *, energy_ledger: B0EnergyLedger | None = None,
     epoch: int = 0, nonforcing: bool = False,
+    global_m0_horizon: int | None = None,
+    global_move_limit: int | None = None,
 ) -> dict[str, Any]:
-    """One fixture with bounded L0 nonissuance or original issued SEEK."""
+    """One fixture with bounded native L0 nonissuance or issued SEEK."""
     if type(nonforcing) is not bool or (nonforcing and energy_ledger is None):
         raise GroundRejected("nonforcing needs a real typed M0 owner")
+    if global_m0_horizon is not None or global_move_limit is not None:
+        if (
+            nonforcing is not True
+            or global_m0_horizon != 16 or global_move_limit != 8
+            or energy_ledger is None or energy_ledger.body.tick >= 16
+        ):
+            raise GroundRejected("prospective global V2 M0 tick/MOVE bounds required")
     if type(epoch) is not int or not 0 <= epoch <= 7:
         raise GroundRejected("bounded ground epoch namespace required")
     namespace = "b0" if epoch == 0 else f"b0-e{epoch}"
@@ -145,6 +154,20 @@ async def acquire_staged_ground_flesh(
     l0_trace: list[dict[str, Any]] = []
     if nonforcing:
         for n in range(24):
+            if (
+                global_m0_horizon is not None
+                and energy_ledger.body.tick >= global_m0_horizon
+            ):
+                return {
+                    "status": "HORIZON_CENSORED_NO_PICKUP", "epoch": epoch,
+                    "item_entity_id": target.entity_id,
+                    "source_probe_seq": first.seq,
+                    "l0_ground_seek_trace": l0_trace,
+                    "movement_outcomes": [],
+                    "pickup_inventory_delta": 0,
+                    "pickup_evidence": "NOT_OBSERVED",
+                    "m_energy_credited": False,
+                }
             read = first if n == 0 else await _correlated_observe(
                 session, f"{namespace}-nf-wait-{n:02d}",
             )
@@ -198,7 +221,37 @@ async def acquire_staged_ground_flesh(
             )
         ):
             raise GroundRejected("ground item vanished without pickup evidence")
-        l0_trace.append(_admit_native_l0_seek(energy_ledger, read, target))
+        if global_m0_horizon is not None and energy_ledger.body.tick >= global_m0_horizon:
+            return {
+                "status": "HORIZON_CENSORED_NO_PICKUP", "epoch": epoch,
+                "item_entity_id": target.entity_id,
+                "source_probe_seq": first.seq,
+                "l0_ground_seek_trace": l0_trace,
+                "movement_outcomes": movements,
+                "pickup_inventory_delta": 0,
+                "pickup_evidence": "NOT_OBSERVED",
+                "m_energy_credited": False,
+            }
+        if global_move_limit is not None and len(movements) >= global_move_limit:
+            raise GroundRejected("V2 global MOVE budget reached before pickup")
+        if nonforcing:
+            row = nonforcing_ground_decision(energy_ledger, read, target)
+            l0_trace.append(row)
+            if row["kind"] == "WAIT":
+                if row["m0_terminal_now"]:
+                    return {
+                        "status": "M0_TERMINAL_NO_PICKUP", "epoch": epoch,
+                        "item_entity_id": target.entity_id,
+                        "source_probe_seq": first.seq,
+                        "l0_ground_seek_trace": l0_trace,
+                        "movement_outcomes": movements,
+                        "pickup_inventory_delta": 0,
+                        "pickup_evidence": "NOT_OBSERVED",
+                        "m_energy_credited": False,
+                    }
+                continue
+        else:
+            l0_trace.append(_admit_native_l0_seek(energy_ledger, read, target))
         step = cursor.plan(read, target.waypoint())
         if step.status is SeekStatus.NEEDS_ROUTE:
             raise GroundRejected("no pathfinding authority for vertical route")
@@ -253,6 +306,19 @@ async def acquire_staged_ground_flesh(
                 )
             raise
     if picked is None:
+        if global_m0_horizon is not None:
+            if energy_ledger.body.tick >= global_m0_horizon:
+                return {
+                    "status": "HORIZON_CENSORED_NO_PICKUP", "epoch": epoch,
+                    "item_entity_id": target.entity_id,
+                    "source_probe_seq": first.seq,
+                    "l0_ground_seek_trace": l0_trace,
+                    "movement_outcomes": movements,
+                    "pickup_inventory_delta": 0,
+                    "pickup_evidence": "NOT_OBSERVED",
+                    "m_energy_credited": False,
+                }
+            raise GroundRejected("V2 item not acquired within MOVE source bound")
         after = await _correlated_observe(session, f"{namespace}-ground-last-pickup")
         picked = compare_pickup(first, after, target)
     if supervisor.open_actions:

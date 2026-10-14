@@ -260,3 +260,125 @@ async def run_two_ground_epochs(
             "minecraft_hp_death": "NOT_ESTABLISHED", "science": "NO_GO",
         }
     return None
+
+
+V2_HORIZON_M0_TICKS = 16
+V2_MAX_ISSUED_MOVES = 8
+V2_FIRST_ITEM_TICK = 11
+V2_ARMS = {
+    "SENSOR_ON": ("sensor_gate", 1.0, 0.0),
+    "SHAM_ON": ("sensor_gate", 1.0, 0.0),
+    "SENSOR_MASKED": ("sensor_gate", 0.0, 12.0),
+    "CHEAP_NATIVE": ("native_only", 1.0, 0.0),
+}
+
+
+def validate_v2_arm(ledger: B0EnergyLedger, arm: str) -> None:
+    from experiments.metabolism_viability import Interoception
+
+    if (
+        arm not in V2_ARMS
+        or not isinstance(ledger, B0EnergyLedger)
+        or ledger.body.tick != 0 or ledger.body.meals != 0
+        or ledger.credit_count != 0 or ledger.body.terminal
+    ):
+        raise B0TwoEpochRejected("V2 requires a fresh and named reference arm")
+    policy, gain, bias = V2_ARMS[arm]
+    if (
+        ledger.forage_policy != policy
+        or ledger.sensor != Interoception(gain=gain, bias=bias)
+    ):
+        raise B0TwoEpochRejected("V2 arm/policy/sensor projection mismatch")
+
+
+async def run_v2_fixed_study(
+    session: Any, server: Any, ledger: B0EnergyLedger,
+    arm: str, entry: dict[str, Any],
+) -> dict[str, Any]:
+    """Prospective S owner product path, NOT V independent science admission.
+
+    One operator item at the predeclared M0 tick-11 boundary, then
+    continue on unchanged M0 physics to globally censored tick16 or
+    earlier terminal. World-clock synchronization remains R/V-unqualified.
+    """
+    validate_v2_arm(ledger, arm)
+    if entry:
+        raise B0TwoEpochRejected("V2 requires fresh unmodified original report")
+    entry.update({
+        "study": "V2_SINGLE_PRECOMMITTED_GROUND_OPPORTUNITY",
+        "arm": arm, "global_m0_horizon": V2_HORIZON_M0_TICKS,
+        "global_max_issued_moves": V2_MAX_ISSUED_MOVES,
+        "predeclared_item_spawn_m0_tick": V2_FIRST_ITEM_TICK,
+        "external_food_items": 1,
+        "stage": "START", "action_source": "S50_S51_EXISTING_OWNER",
+        "independent_v_science": "NOT_ADMITTED",
+    })
+    await _stage_hunger(session, server, ledger, 0, entry)
+    if ledger.body.tick != V2_FIRST_ITEM_TICK:
+        raise B0TwoEpochRejected(
+            "unmatched exogenous first item timing: expected M0 tick 11"
+        )
+    entry["stage"] = "SINGLE_FIXED_ITEM_OPPORTUNITY"
+    entry["ground_pickup"] = await acquire_staged_ground_flesh(
+        session, server, energy_ledger=ledger, epoch=0, nonforcing=True,
+        global_m0_horizon=V2_HORIZON_M0_TICKS,
+        global_move_limit=V2_MAX_ISSUED_MOVES,
+    )
+    pickup = entry["ground_pickup"]
+    if pickup["status"] == "M0_TERMINAL_NO_PICKUP":
+        status = "M0_TERMINAL_BEFORE_GLOBAL_HORIZON"
+    elif pickup["status"] == "HORIZON_CENSORED_NO_PICKUP":
+        status = "HORIZON_CENSORED_NO_PICKUP"
+    elif pickup["status"] == "PICKUP_SOURCE_CONSISTENT":
+        if ledger.body.tick >= V2_HORIZON_M0_TICKS:
+            status = "HORIZON_CENSORED_BEFORE_EAT"
+        else:
+            entry["stage"] = "ISSUED_NATIVE_S51_EAT"
+            await _eat_verified(session, ledger, 0, entry)
+            if ledger.body.tick > V2_HORIZON_M0_TICKS:
+                raise B0TwoEpochRejected("S51 EAT exceeded global M0 horizon")
+            status = "EAT_VERIFIED_CONTINUE"
+    else:
+        raise B0TwoEpochRejected("unexpected V2 ground opportunity result")
+    entry["finish_wait_trace"] = []
+    while ledger.body.tick < V2_HORIZON_M0_TICKS and not ledger.body.terminal:
+        read = await _correlated_observe(
+            session, f"b0-v2-{arm.lower()}-finish-t{ledger.body.tick:02d}",
+        )
+        decision = ledger.decide(read)
+        if decision.kind != "WAIT":
+            raise B0TwoEpochRejected("non-WAIT at fixed V2 continuation horizon")
+        transition = ledger.step("WAIT")
+        entry["finish_wait_trace"].append({
+            "probe_seq": read.seq, "kind": decision.kind,
+            "energy_sensor": decision.sensor_reading,
+            "energy_after": transition.after.energy,
+            "m0_tick_after": transition.after.tick,
+            "terminal_now": transition.terminal_now,
+            "issued_action": False,
+        })
+    moves = len(pickup["movement_outcomes"])
+    if (
+        ledger.body.tick > V2_HORIZON_M0_TICKS
+        or moves > V2_MAX_ISSUED_MOVES
+        or ledger.credit_count != ledger.body.meals
+        or ledger.body.meals > 1
+        or (ledger.body.terminal and ledger.body.energy != 0)
+    ):
+        raise B0TwoEpochRejected("V2 global budget/credited-source invariant failed")
+    entry["stage"] = "CLOSED"
+    return {
+        "outcome": "M0_TERMINAL" if ledger.body.terminal else "HORIZON_CENSORED",
+        "source_outcome": status,
+        "m0_terminal_free_ticks": ledger.body.tick,
+        "final_m0_energy": ledger.body.energy,
+        "net_m0_energy": ledger.body.energy - ledger.config.initial_energy,
+        "eats": ledger.body.meals, "credits": ledger.credit_count,
+        "issued_moves": moves,
+        "global_horizon": V2_HORIZON_M0_TICKS,
+        "global_max_moves": V2_MAX_ISSUED_MOVES,
+        "fixed_fixture_m0_tick": V2_FIRST_ITEM_TICK,
+        "external_world_time_matched": "NOT_INDEPENDENTLY_ATTESTED",
+        "native_item_pickup_causation": "UNKNOWN",
+        "v_scientific_admission": "NO_GO",
+    }

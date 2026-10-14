@@ -93,3 +93,71 @@ def test_nonforcing_terminal_is_measured_outcome_not_forced_seek(monkeypatch):
     assert result["credits"] == result["meals"] == 0
     assert result["epochs_started"] == 1
     assert len(traces) == 1 and traces[0]["stage"] == "OBSERVED_NONFORCING_NO_PICKUP"
+
+
+def test_v2_arm_identity_and_global_horizon_admission():
+    from adapters.mineflayer.b0_two_epoch import (
+        V2_ARMS,
+        V2_FIRST_ITEM_TICK,
+        V2_HORIZON_M0_TICKS,
+        V2_MAX_ISSUED_MOVES,
+        validate_v2_arm,
+    )
+    from experiments.metabolism_viability import Interoception
+
+    probe = s46.case()
+    assert (V2_HORIZON_M0_TICKS, V2_MAX_ISSUED_MOVES, V2_FIRST_ITEM_TICK) == (16, 8, 11)
+    assert tuple(V2_ARMS) == (
+        "SENSOR_ON", "SHAM_ON", "SENSOR_MASKED", "CHEAP_NATIVE",
+    )
+    for arm, (policy, gain, bias) in V2_ARMS.items():
+        ledger = B0EnergyLedger(
+            probe.session_id, forage_policy=policy,
+            sensor=Interoception(gain=gain, bias=bias),
+        )
+        validate_v2_arm(ledger, arm)
+        ledger.step("WAIT")
+        with pytest.raises(B0TwoEpochRejected, match="fresh"):
+            validate_v2_arm(ledger, arm)
+    bad = B0EnergyLedger(probe.session_id, forage_policy="native_only")
+    with pytest.raises(B0TwoEpochRejected, match="mismatch"):
+        validate_v2_arm(bad, "SENSOR_MASKED")
+
+
+def test_v2_study_does_not_claim_science_or_allow_m0_horizon_overrun(monkeypatch):
+    import adapters.mineflayer.b0_two_epoch as study
+    from experiments.metabolism_viability import Interoception
+
+    probe = s46.case()
+    ledger = B0EnergyLedger(
+        probe.session_id, forage_policy="sensor_gate",
+        sensor=Interoception(),
+    )
+    async def stage(*args):
+        for _ in range(11):
+            ledger.step("WAIT")
+
+    async def ground(*args, **kwargs):
+        assert kwargs["nonforcing"] is True
+        assert kwargs["global_m0_horizon"] == 16
+        assert kwargs["global_move_limit"] == 8
+        assert ledger.body.tick == 11
+        for _ in range(5):
+            ledger.step("WAIT")
+        return {
+            "status": "HORIZON_CENSORED_NO_PICKUP",
+            "movement_outcomes": [],
+        }
+    monkeypatch.setattr(study, "_stage_hunger", stage)
+    monkeypatch.setattr(study, "acquire_staged_ground_flesh", ground)
+    report = {}
+    result = asyncio.run(study.run_v2_fixed_study(
+        None, None, ledger, "SENSOR_ON", report,
+    ))
+    assert result["outcome"] == "HORIZON_CENSORED"
+    assert result["source_outcome"] == "HORIZON_CENSORED_NO_PICKUP"
+    assert result["m0_terminal_free_ticks"] == 16
+    assert result["eats"] == result["issued_moves"] == 0
+    assert result["final_m0_energy"] == 4
+    assert result["v_scientific_admission"] == "NO_GO"
+    assert report["predeclared_item_spawn_m0_tick"] == 11
