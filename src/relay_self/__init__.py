@@ -25,6 +25,15 @@ from relay_self.appraisal import (
     InvalidAppraisalData,
     project_entity_appraisal,
 )
+from relay_self.capability import (
+    CapabilityCompositionError,
+    CapabilityDependencyCycle,
+    CapabilityPlan,
+    CapabilitySpec,
+    InvalidCapabilityData,
+    UnknownCapability,
+    UnsatisfiedCapabilityDependency,
+)
 from relay_self.intent import (
     CurrentIntent,
     DuplicateIntentIdentity,
@@ -97,6 +106,13 @@ __all__ = [
     "AppraisalTargetKind",
     "BoundedChoice",
     "BoundedChoiceRequest",
+    "CapabilityCompositionError",
+    "CapabilityDependencyCycle",
+    "CapabilityPlan",
+    "CapabilitySpec",
+    "InvalidCapabilityData",
+    "UnknownCapability",
+    "UnsatisfiedCapabilityDependency",
     "CurrentIntent",
     "CurrentAppraisal",
     "CognitionUnavailable",
