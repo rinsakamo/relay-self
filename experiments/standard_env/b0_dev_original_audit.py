@@ -211,7 +211,7 @@ def audit(root: Path, readback: Path, expected: Expectations = Expectations()) -
     for move in moves:
         a, b = move.get("before_seq"), move.get("after_seq")
         require(type(a) is int and type(b) is int and a < b
-                and move.get("kind") == "MOVE"
+                and move.get("kind") in ("PROGRESSED", "ARRIVED")
                 and b < len(native), "invalid reported MOVE outcome")
         probe(native, a)
         probe(native, b)
