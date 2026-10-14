@@ -77,6 +77,16 @@ def review_s_nonforcing(s_root: Path) -> dict[str, Any]:
 
     Run only with PYTHONPATH pointing to separately checked-out exact S HEAD.
     """
+    # V and S are independent checkouts. V's regular experiments package
+    # does not contain S's unmerged M0 module: extend only the in-process
+    # import search path to the *pinned read-only S checkout*, never copy code.
+    import experiments
+
+    s_experiments = s_root / "experiments"
+    require(s_experiments.is_dir() and not s_experiments.is_symlink(),
+            "pinned S experiment directory missing")
+    experiments.__path__ = [*experiments.__path__, str(s_experiments.resolve())]
+
     import test_b0_ground_foraging as s_fixture
     from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
     from adapters.mineflayer.b0_ground_foraging import select_ground_target
