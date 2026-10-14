@@ -253,8 +253,9 @@ one explicit user authorization for one real World session.
 ## V6 atomic food fixture: R source and stopped World-overlay checks
 
 R #575 `experiments.standard_env.v6_atomic_admission` is read-only.
-It pins exact S source HEAD `cf55c118135e2b11243a1a2d1c375998858f5894`
-and blob `b7f0900b27a536c2efa30b6ce8f7a912c4d0378b` for
+It pins exact S **V2 single-attempt** source HEAD
+`37f9365d3d16c9bda440ca9a9c8a10be6a32f1fc` and Git blob
+`ea4f4123e9d43a774f736b519743616115b78ea2` for
 `adapters/mineflayer/v6_atomic_fixture.py`. Existing R CI checks out
 this immutable S revision separately. The R module independently
 constructs three expected Java 1.21.8 (format81) candidate datapack
@@ -280,12 +281,17 @@ scoreboard, summons one rotten-flesh item and records gametime again.
 `review_score_claim` can reject mismatched, out-of-bounds or ambiguous
 reported scores, a false summon success, replay claims and wrong M0
 tick. It ALWAYS returns CLAIM_REVIEW_ONLY: no source-owned original
-server stdout or loaded function is attested. The source has NO
-single-use guard: subsequent invocation overwrites all three
-scoreboard values. Independently proving exactly one invocation
-remains an admission blocker; a source-only claim of one invocation
-does not close it. The signed 32-bit scoreboard value also needs
-an independently qualified age bound.
+server stdout or loaded function is attested. The V2 **source** increments a persistent `#attempt` scoreboard,
+guards all before/summon/after effects behind `#attempt matches 1`,
+and does not reset `#attempt` in its install function. Thus a later
+normal function invocation would not re-summon or overwrite the
+first source receipt *if the server loads and executes exactly these
+bytes with untampered scoreboard state*. R checks this independently
+at the source and staged-byte level, but does NOT attest the real
+single-use behavior. A privileged external operator may reset scores,
+change functions, or issue a separate summon; unique original server
+command/score logs and independent enforcement still gate admission.
+The signed 32-bit scoreboard value also needs a qualified age bound.
 
 Before any future physical World grant, independently qualify
 actual Minecraft 1.21.8 function parsing/loading, original server
