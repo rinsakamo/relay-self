@@ -39,7 +39,7 @@ jobs:
           PYTHONPATH: 'src:tests:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m pytest -q tests/test_rsee_v6_atomic_admission.py tests/test_rsee_v6_packet_provenance.py tests/test_rsee_v6_world_timing.py tests/test_rsee_b0_existing_audit.py tests/test_rsee_s9_original_audit.py tests/test_rsee_s3_v_projection.py tests/test_rsee_lane_compat.py tests/test_rsee_source_handoff.py tests/test_rsee_shared_runtime.py
+          python -m pytest -q tests/test_rsee_v6_start_admission.py tests/test_rsee_v6_atomic_admission.py tests/test_rsee_v6_packet_provenance.py tests/test_rsee_v6_world_timing.py tests/test_rsee_b0_existing_audit.py tests/test_rsee_s9_original_audit.py tests/test_rsee_s3_v_projection.py tests/test_rsee_lane_compat.py tests/test_rsee_source_handoff.py tests/test_rsee_shared_runtime.py
       - name: Ruff
         run: ruff check src tests experiments adapters observability
       - name: Repository contracts
@@ -92,6 +92,11 @@ jobs:
         with:
           path: sv6atomic
           ref: '37f9365d3d16c9bda440ca9a9c8a10be6a32f1fc'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: sv6start
+          ref: '2aaff0b921bcbd47a61d563b52d502596f896924'
+          fetch-depth: 0
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
@@ -129,6 +134,38 @@ jobs:
           }
           assert actual == frozen, "pinned S atomic-food pack bytes differ from independent R contract"
           print("RSEE_V6_S_ATOMIC_SOURCE_BYTES_EQUAL_R_EXPECTATIONS_REVIEW_ONLY")
+          PY
+      - name: Independent start-marker V1 and food V2 six-file byte parity
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONPATH: 'r3:r3/src'
+        run: |
+          python - <<'PY'
+          import runpy
+          import sys
+          from pathlib import Path
+          from experiments.standard_env.v6_start_admission import (
+              START_PACK_DIR, expected_start_pack_bytes,
+              expected_combined_pack_bytes, review_s_start_source,
+          )
+          from experiments.standard_env.v6_atomic_admission import (
+              expected_pack_bytes, review_s_atomic_source,
+          )
+          start = Path.cwd() / "sv6start"
+          food = Path.cwd() / "sv6atomic"
+          slot = "WORLD_START_A"
+          nonce = "0123456789abcdef0123456789abcdef"
+          review_s_start_source(start, slot=slot, nonce=nonce)
+          review_s_atomic_source(food)
+          sys.path.insert(0, str(start))
+          source = runpy.run_path(str(start / "adapters/mineflayer/v6_start_marker.py"))
+          actual = {
+              f"{START_PACK_DIR}/{rel}": data
+              for rel, data in source["proposed_start_pack"](slot, nonce).items()
+          }
+          assert actual == expected_start_pack_bytes(slot, nonce)
+          assert {**expected_pack_bytes(), **actual} == expected_combined_pack_bytes(slot, nonce)
+          print("RSEE_V6_TWO_S_PRODUCERS_EXACT_SIX_FILE_SOURCE_BYTES_MATCH_REVIEW_ONLY")
           PY
       - name: Frozen S3 to S6 to S7 to S8 to S9 Git ancestry
         run: |
