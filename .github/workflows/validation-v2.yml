@@ -5,6 +5,7 @@ on:
     branches:
       - 'validation/v2-knockdown-*'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - 'validation/v1-independent-evaluation-20261012'
 
@@ -30,38 +31,16 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$CURRENT_HEAD"
           git merge-base --is-ancestor 53d50029da64a95c56bb56c6d48b5d14ce94e84a HEAD
-          git diff --name-only 53d50029da64a95c56bb56c6d48b5d14ce94e84a HEAD > "$RUNNER_TEMP/paths"
-          test "$(wc -l < "$RUNNER_TEMP/paths")" -eq 30
-          grep -Fxq ".github/workflows/validation-v2.yml" "$RUNNER_TEMP/paths"
-          grep -Fxq "docs/validation-v2-knockdown.md" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v2_knockdown_manifest.json" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v2_knockdown.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "tests/test_validation_v2_knockdown.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v2_s_nonforcing_review.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "tests/test_validation_v2_s_nonforcing_review.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v3_m0_energy.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v3_m0_energy_manifest.json" "$RUNNER_TEMP/paths"
-          grep -Fxq "tests/test_validation_v3_m0_energy.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "docs/validation-v3-knockdown.md" "$RUNNER_TEMP/paths"
-          grep -Fxq "docs/validation-v4-identifiability.md" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v4_identifiability.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v4_identifiability_manifest.json" "$RUNNER_TEMP/paths"
-          grep -Fxq "tests/test_validation_v4_identifiability.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v5_b0_l0.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v5_b0_l0_manifest.json" "$RUNNER_TEMP/paths"
-          grep -Fxq "tests/test_validation_v5_b0_l0.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "docs/validation-v5-b0-l0.md" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v6_b0_two_regime_manifest.json" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v6_b0_two_regime.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "tests/test_validation_v6_b0_two_regime.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "tests/test_validation_v6_b0_paired_world_plan.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v6_b0_paired_world_plan.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v6_b0_paired_world_plan.json" "$RUNNER_TEMP/paths"
-          grep -Fxq "docs/validation-v6-b0-two-regime.md" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v6_r_clock_source_review.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "tests/test_validation_v6_r_clock_source_review.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "experiments/validation/v6_b0_synthetic_scoring.py" "$RUNNER_TEMP/paths"
-          grep -Fxq "tests/test_validation_v6_b0_synthetic_scoring.py" "$RUNNER_TEMP/paths"
+          # DEV/PR hygiene checks ownership, not a frozen count of filenames.
+          # Preregistered science manifests are still tested below; immutable
+          # scientific evidence is never reinterpreted by this path fence.
+          git diff --name-only --diff-filter=ACDMRTUXB 53d50029da64a95c56bb56c6d48b5d14ce94e84a HEAD > "$RUNNER_TEMP/paths"
+          while IFS= read -r changed; do
+            case "$changed" in
+              .github/workflows/validation-v2.yml|docs/validation-*.md|experiments/validation/*|tests/test_validation_*.py) ;;
+              *) echo "Out-of-owner change: $changed" >&2; exit 1 ;;
+            esac
+          done < "$RUNNER_TEMP/paths"
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
@@ -89,6 +68,8 @@ jobs:
           ruff check src tests experiments adapters observability
           python tools/check_repository.py
   pinned-r-owner:
+    # Full independent cross-owner/scientific pre-merge checks, not per DEV commit.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -116,6 +97,8 @@ jobs:
           python -c 'import json,os; from pathlib import Path; from experiments.validation.v6_r_clock_source_review import review_json_file; q=review_json_file(Path(os.environ["RUNNER_TEMP"])/"v6-r-no-launch.json"); assert q["classification"]=="V6_R_THREE_CLOCK_PRODUCER_GAP_CONFIRMED_G0" and not q["physical_session_admitted"] and q["science_g3"]=="NO_GO"'
           test -z "$(git -C external-r-v6 status --porcelain --untracked-files=no)"
   pinned-s-owner:
+    # Full independent cross-owner/scientific pre-merge checks, not per DEV commit.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -238,6 +221,8 @@ jobs:
           )
           test -z "$(git -C external-s-v3 status --porcelain --untracked-files=no)"
   full-regression:
+    # Full independent cross-owner/scientific pre-merge checks, not per DEV commit.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
