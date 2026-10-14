@@ -170,8 +170,9 @@ def review_clock_trace(trace: dict[str, Any]) -> dict[str, Any]:
     ages = [frame["world_age_tick"] for frame in frames]
     known_ages = all(age is not None for age in ages)
     if known_ages:
-        _need(all(right > left for left, right in zip(ages, ages[1:])),
-              "world age not strictly progressing despite later native probes")
+        # More than one native probe may occur within the same Minecraft tick.
+        _need(all(right >= left for left, right in zip(ages, ages[1:])),
+              "native World age rewound between ordered probes")
     # day*timeOfDay is clock display/phase only. It is NOT a native World age.
     phases = [
         row["native_time"]["day"] * WORLD_DAY_TICKS
