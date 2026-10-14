@@ -215,11 +215,23 @@ class OwnedStreams:
 
     async def wait_log(self, pattern: str, start: int = 0, timeout: float = 15) -> str:
         deadline = time.monotonic() + timeout
+        cursor = start
         while time.monotonic() < deadline:
             self.check_readers()
-            for line in self.server_lines[start:]:
+            for line in self.server_lines[cursor:]:
+                # Dispatch alone is not a datapack effect: fail on explicit
+                # Minecraft parser or command errors before accepting a reply.
+                if re.search(
+                    r"Unknown function|Unknown command|Failed to load|"
+                    r"Couldn't load|Error loading", line,
+                    re.IGNORECASE,
+                ):
+                    raise QualificationBlocked(
+                        "original server error before readback: " + line.strip()
+                    )
                 if re.search(pattern, line):
                     return line
+            cursor = len(self.server_lines)
             need(self.server is not None and self.server.returncode is None,
                  "server ended before readback")
             await asyncio.sleep(.05)
@@ -328,8 +340,15 @@ async def execute(args: argparse.Namespace, run: Path, report: dict) -> None:
         report["node_pid"] = owner.node.pid
         owner.tasks.append(asyncio.create_task(owner.native_reader()))
         await owner.next_native(lambda m: isinstance(m, MineflayerObservation) and m.kind == "spawn", 75)
-        await owner.issue(*PHASES[0], r"Executed \d+ command")
-        await owner.issue(*PHASES[1], r"Executed \d+ command")
+        # Actual Minecraft 1.21.8 console output reports "Running function
+        # <id>", NOT "Executed N command". This is a dispatch witness only:
+        # the subsequent original scoreboard readbacks remain mandatory.
+        await owner.issue(
+            *PHASES[0], r"\bRunning function relayself_v6:install(?:\s|$)",
+        )
+        await owner.issue(
+            *PHASES[1], r"\bRunning function relayself_v6_start:install(?:\s|$)",
+        )
         first = await owner.probe("v6-qualification-first-item-free")
         capture.note_first_native_probe(first)
         await owner.issue(*PHASES[3], "RELAYSELF_V6_TRIAL_START_" + args.slot + "_" + args.nonce + "_NOT_ADMITTED")
