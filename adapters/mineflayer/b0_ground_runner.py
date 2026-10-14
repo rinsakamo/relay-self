@@ -109,6 +109,7 @@ async def acquire_staged_ground_flesh(
     source_time_bracket: dict[str, Any] | None = None,
     b1_local: B1LocalCandidate | None = None,
     b1_obstacle: bool = False,
+    progress_trace: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """One fixture with bounded native L0 nonissuance or issued SEEK."""
     if type(nonforcing) is not bool or (nonforcing and energy_ledger is None):
@@ -122,6 +123,17 @@ async def acquire_staged_ground_flesh(
         or nonforcing
     )):
         raise GroundRejected("B1 local adaptation requires one typed DEV source")
+    if progress_trace is not None:
+        if not isinstance(progress_trace, dict) or progress_trace:
+            raise GroundRejected("fresh optional DEV progress trace required")
+        # Append-only owner-local diagnostic; never a pickup/Action success receipt.
+        progress_trace.update({
+            "stage": "INITIAL_SOURCE_PENDING",
+            "status": "INCOMPLETE_NOT_PICKUP",
+            "movement_outcomes": [],
+            "b1_local_decisions": [],
+            "b1_obstacle_request": None,
+        })
     if global_m0_horizon is not None or global_move_limit is not None:
         if (
             nonforcing is not True
@@ -178,6 +190,8 @@ async def acquire_staged_ground_flesh(
             server, f"fill {bx} {by} {bz} {bx} {by + 1} {bz} minecraft:stone",
         )
         await server.stdin.drain()
+    if progress_trace is not None:
+        progress_trace["b1_obstacle_request"] = obstacle_request
     # A new operator-summoned ground item; NOT a zombie drop.
     _command(
         server,
@@ -198,6 +212,12 @@ async def acquire_staged_ground_flesh(
             break
     if first is None or target is None:
         raise GroundRejected("single ground item not visible in bounded probes")
+    if progress_trace is not None:
+        progress_trace.update({
+            "stage": "TARGET_OBSERVED",
+            "source_probe_seq": first.seq,
+            "observed_item_entity_id": target.entity_id,
+        })
     if source_time_bracket is not None:
         if first.snapshot.time is None:
             raise GroundRejected("V2 requires native post-fixture World clock")
@@ -271,6 +291,11 @@ async def acquire_staged_ground_flesh(
     movements: list[dict[str, Any]] = []
     picked = None
     b1_decisions: list[dict[str, Any]] = []
+    if progress_trace is not None:
+        # Keep the actual partial native outcomes even if later steps fail.
+        progress_trace["movement_outcomes"] = movements
+        progress_trace["b1_local_decisions"] = b1_decisions
+        progress_trace["stage"] = "MOVE_SOURCE_IN_PROGRESS"
     for i in range(8):
         read = await _correlated_observe(session, f"{namespace}-ground-step-{i:02d}")
         if any(x.name == "rotten_flesh" and x.count > 0 for x in read.snapshot.inventory):
@@ -411,6 +436,9 @@ async def acquire_staged_ground_flesh(
         picked = compare_pickup(first, after, target)
     if supervisor.open_actions:
         raise GroundRejected("unclosed ground Action")
+    if progress_trace is not None:
+        progress_trace["stage"] = "PICKUP_SOURCE_CLOSED"
+        progress_trace["status"] = "PICKUP_SOURCE_CONSISTENT"
 
     return {
         "epoch": epoch,

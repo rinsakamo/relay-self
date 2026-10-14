@@ -172,3 +172,45 @@ def test_v2_study_does_not_claim_science_or_allow_m0_horizon_overrun(monkeypatch
     assert report["predeclared_item_spawn_m0_tick"] == 11
     assert report["source_time_bracket"]["before_fixture_native_world_time"]["time_of_day"] == 10
     assert report["source_time_bracket"]["after_visible_native_world_time"]["time_of_day"] == 13
+
+
+def test_b1_dev_failed_ground_keeps_partial_native_action_outcomes(tmp_path, monkeypatch):
+    """A failed DEV attempt never drops previously correlated native-shaped rows."""
+    import adapters.mineflayer.b0_two_epoch as two
+    from adapters.mineflayer.b0_ground_foraging import GroundRejected
+
+    probe = s46.case()
+    ledger = B0EnergyLedger(probe.session_id)
+
+    async def stage(*args):
+        return None
+
+    async def ground(*args, **kwargs):
+        assert kwargs["b1_obstacle"] is True
+        partial = kwargs["progress_trace"]
+        assert partial == {}
+        partial.update({
+            "status": "INCOMPLETE_NOT_PICKUP",
+            "source_probe_seq": probe.seq,
+            "movement_outcomes": [
+                {"action_id": "test-native-action", "kind": "BLOCKED",
+                 "before_seq": probe.seq, "after_seq": probe.seq + 4},
+            ],
+        })
+        raise GroundRejected("actual lateral step blocked")
+
+    monkeypatch.setattr(two, "_stage_hunger", stage)
+    monkeypatch.setattr(two, "acquire_staged_ground_flesh", ground)
+    traces = []
+    with pytest.raises(B0TwoEpochRejected, match="ground fixture/pickup failed"):
+        asyncio.run(run_two_ground_epochs(
+            None, None, ledger, traces, b1_local_adaptation=True,
+            b1_memory_path=tmp_path / "b1-native.json",
+        ))
+    assert len(traces) == 1
+    assert traces[0]["ground_pickup_attempt"]["status"] == "INCOMPLETE_NOT_PICKUP"
+    assert traces[0]["ground_pickup_attempt"]["movement_outcomes"][0]["kind"] == "BLOCKED"
+    assert traces[0]["ground_pickup_failure"] == "actual lateral step blocked"
+    assert traces[0]["b1_local_final"]["science_success"] is False
+    assert "ground_pickup" not in traces[0]
+    assert not (tmp_path / "b1-native.json").exists()

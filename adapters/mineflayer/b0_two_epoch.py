@@ -262,6 +262,9 @@ async def _run_two_ground_epochs_body(
         traces.append(entry)  # retain partial original report on failure
         await _stage_hunger(session, server, ledger, epoch, entry)
         entry["stage"] = "NATIVE_L0_SEEK_AND_ISSUED_S50_MOVE"
+        progress = {} if b1_local is not None and epoch == 0 else None
+        if progress is not None:
+            entry["ground_pickup_attempt"] = progress
         try:
             entry["ground_pickup"] = await acquire_staged_ground_flesh(
                 session, server, energy_ledger=ledger, epoch=epoch,
@@ -270,8 +273,10 @@ async def _run_two_ground_epochs_body(
                 # an unrelated second food target. Epoch 1 runs original L0.
                 b1_local=b1_local if epoch == 0 else None,
                 b1_obstacle=b1_local is not None and epoch == 0,
+                progress_trace=progress,
             )
         except GroundRejected as exc:
+            entry["ground_pickup_failure"] = str(exc)
             raise B0TwoEpochRejected("ground fixture/pickup failed") from exc
         item_status = entry["ground_pickup"]["status"]
         if nonforcing and item_status in (

@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - 'self/s60b1-loopback-adapter-*'
+    types: [opened, reopened, synchronize, ready_for_review]
 
 permissions:
   contents: read
@@ -39,48 +40,38 @@ jobs:
           B0_PARENT=4edac0b139d2d49b0169ffaad7c5892bed7fa2d1
           git merge-base --is-ancestor "$B0_PARENT" HEAD
           git diff --quiet "$B0_PARENT" HEAD -- adapters/mineflayer/s49_normal_session_real_ci.py
+          # Permit ordinary S-owned feature/test growth, not changes in other lanes.
           changed="$(git diff --name-only --diff-filter=ACDMRTUXB "$B0_PARENT" HEAD)"
-          expected="$(printf '%s\n' \
-            .github/workflows/self-demo.yml \
-            adapters/mineflayer/b0_energy_bridge.py \
-            adapters/mineflayer/b0_ground_foraging.py \
-            adapters/mineflayer/b0_ground_runner.py \
-            adapters/mineflayer/b0_rsee.py \
-            adapters/mineflayer/b0_two_epoch.py \
-            adapters/mineflayer/b0_v6_source.py \
-            adapters/mineflayer/b1_local_adaptation.py \
-            adapters/mineflayer/bridge.mjs \
-            adapters/mineflayer/package.json \
-            adapters/mineflayer/python_protocol.py \
-            adapters/mineflayer/s51_eat_real_ci.py \
-            adapters/mineflayer/self_demo.py \
-            adapters/mineflayer/v6_atomic_fixture.py \
-            adapters/mineflayer/v6_native_clock.mjs \
-            adapters/mineflayer/v6_native_clock.test.mjs \
-            adapters/mineflayer/v6_original_capture.py \
-            adapters/mineflayer/v6_start_marker.py \
-            adapters/mineflayer/v6_world_qualification.py \
-            docs/self-demo.md \
-            docs/v6-world-qualification-once.md \
-            experiments/metabolism_viability.py \
-            src/relay_self/eat_hunger.py \
-            tests/test_b0_energy_bridge.py \
-            tests/test_b0_ground_foraging.py \
-            tests/test_b0_rsee.py \
-            tests/test_b0_two_epoch.py \
-            tests/test_b0_v5_l0_scope_feasibility.py \
-            tests/test_b0_v6_atomic_fixture.py \
-            tests/test_b0_v6_native_clock.py \
-            tests/test_b0_v6_original_capture.py \
-            tests/test_b0_v6_six_arm_source.py \
-            tests/test_b0_v6_start_marker.py \
-            tests/test_b1_dev.py \
-            tests/test_b1_local_adaptation.py \
-            tests/test_feature_s51_eat_execution.py \
-            tests/test_self_dev.py \
-            tests/test_v6_world_qualification.py
-          )"
-          test "$changed" = "$expected"
+          while IFS= read -r path; do
+            test -n "$path" || continue
+            case "$path" in
+              .github/workflows/self-demo.yml|\
+              adapters/mineflayer/b0_*.py|\
+              adapters/mineflayer/b1_*.py|\
+              adapters/mineflayer/bridge.mjs|\
+              adapters/mineflayer/package.json|\
+              adapters/mineflayer/python_protocol.py|\
+              adapters/mineflayer/s51_eat_real_ci.py|\
+              adapters/mineflayer/self_demo.py|\
+              adapters/mineflayer/v6_*.py|\
+              adapters/mineflayer/v6_*.mjs|\
+              adapters/mineflayer/v6_*.test.mjs|\
+              docs/self-demo.md|\
+              docs/v6-world-qualification-once.md|\
+              experiments/metabolism_viability.py|\
+              src/relay_self/eat_hunger.py|\
+              tests/test_b0_*.py|\
+              tests/test_b1_*.py|\
+              tests/test_feature_s51_eat_execution.py|\
+              tests/test_self_dev.py|\
+              tests/test_v6_world_qualification.py)
+                ;;
+              *)
+                echo "::error::Non-S-owner path since $B0_PARENT: $path"
+                exit 1
+                ;;
+            esac
+          done <<< "$changed"
       - run: python tools/check_repository.py
 
   pytest:
@@ -115,8 +106,6 @@ jobs:
           python -m pytest -q tests/test_self_timeline.py
           python -m pytest -q tests/test_self_timeline_html.py
           timeout 35s python -m pytest -q -x tests/test_ac_c_c15_goal_witness.py tests/test_self_spatial_review.py
-      - name: Full inherited regression
-        run: python -m pytest -q
 
   lint:
     runs-on: ubuntu-latest
@@ -143,3 +132,22 @@ jobs:
           node-version: '22'
       - run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
       - run: npm run check --prefix adapters/mineflayer
+
+  full-regression:
+    # Draft runs remain FAST; full inherited tests are a review-stage gate.
+    if: github.event_name == 'pull_request' && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - run: python -m pytest -q
