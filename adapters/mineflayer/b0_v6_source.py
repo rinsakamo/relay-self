@@ -45,8 +45,11 @@ def source_only_v6_first_choice(
         target = select_ground_target(probe)
     except ValueError as exc:
         raise V6SourceRejected("native one-item source not qualified") from exc
-    if target.distance != 2.5:
-        raise V6SourceRejected("V6 needs the source-shaped 2.5m item")
+    if (
+        len(probe.snapshot.nearby_entities) != 1
+        or probe.snapshot.nearby_entities[0].distance != 2.5
+    ):
+        raise V6SourceRejected("V6 needs only the source-shaped 2.5m item")
     # Independent fresh M0 owners; no backdoor truth-channel to any policy.
     initial = V6_PHASES[phase]
     if arm == "ALWAYS_SEEK":
