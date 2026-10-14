@@ -2,7 +2,7 @@
 
 Only read stopped candidate bytes and evaluate reported values. No datapack
 installation, Minecraft process, command invocation, original runtime receipt,
-World-time parity, single-use guarantee, or experimental authorization.
+World-time parity, independently authenticated single use or authorization.
 """
 from __future__ import annotations
 
@@ -17,27 +17,33 @@ from experiments.standard_env.golden_admission import verify_qualified_world
 from experiments.standard_env.v6_packet_provenance import _safe
 from experiments.standard_env.world_binding import _world_files
 
-S_ATOMIC_SOURCE_HEAD = "cf55c118135e2b11243a1a2d1c375998858f5894"
-S_ATOMIC_SOURCE_BLOB = "b7f0900b27a536c2efa30b6ce8f7a912c4d0378b"
+S_ATOMIC_SOURCE_HEAD = "37f9365d3d16c9bda440ca9a9c8a10be6a32f1fc"
+S_ATOMIC_SOURCE_BLOB = "ea4f4123e9d43a774f736b519743616115b78ea2"
 PACK_DIR = "datapacks/relayself_v6_atomic"
 OBJECTIVE = "rs_v6_tick"
 MAX_SCORE = 2**31 - 1
 
 SOURCE_INSTALL = (
     f"scoreboard objectives add {OBJECTIVE} dummy",
-    f"scoreboard players set #before {OBJECTIVE} -1",
-    f"scoreboard players set #after {OBJECTIVE} -1",
-    f"scoreboard players set #ok {OBJECTIVE} 0",
+    f"scoreboard players add #attempt {OBJECTIVE} 0",
+    f"scoreboard players add #before {OBJECTIVE} 0",
+    f"scoreboard players add #after {OBJECTIVE} 0",
+    f"scoreboard players add #ok {OBJECTIVE} 0",
 )
+ONCE = f"execute if score #attempt {OBJECTIVE} matches 1 run "
 SOURCE_FUNCTION = (
-    f"scoreboard players set #before {OBJECTIVE} -1",
-    f"scoreboard players set #after {OBJECTIVE} -1",
-    f"scoreboard players set #ok {OBJECTIVE} 0",
-    f"execute store result score #before {OBJECTIVE} run time query gametime",
-    f"execute store success score #ok {OBJECTIVE} run summon minecraft:item ~2.5 ~0.2 ~ "
+    f"scoreboard players add #attempt {OBJECTIVE} 1",
+    ONCE + f"scoreboard players set #before {OBJECTIVE} -1",
+    ONCE + f"scoreboard players set #after {OBJECTIVE} -1",
+    ONCE + f"scoreboard players set #ok {OBJECTIVE} 0",
+    ONCE + f"execute store result score #before {OBJECTIVE} run time query gametime",
+    ONCE + "execute store success score #ok "
+    f'{OBJECTIVE} run summon minecraft:item ~2.5 ~0.2 ~ '
     '{Item:{id:"minecraft:rotten_flesh",count:1}}',
-    f"execute store result score #after {OBJECTIVE} run time query gametime",
-    "say RELAYSELF_V6_ATOMIC_SOURCE_CANDIDATE_NOT_ADMITTED",
+    ONCE + f"execute store result score #after {OBJECTIVE} run time query gametime",
+    ONCE + "say RELAYSELF_V6_FIRST_INVOCATION_SOURCE_NOT_ADMITTED",
+    f"execute if score #attempt {OBJECTIVE} matches 2.. "
+    "run say RELAYSELF_V6_REPEAT_BLOCKED_SOURCE_NOT_ADMITTED",
 )
 
 
@@ -108,7 +114,8 @@ def review_s_atomic_source(checkout: Path) -> dict[str, Any]:
         },
         "installed_or_loaded": False,
         "server_function_executed": False,
-        "single_use_guard_present": False,
+        "single_use_guard_present_source_only": True,
+        "independent_single_use_verified": False,
         "physical_execution_authorized": False, "science_g3": "NO_GO",
     }
 
@@ -150,7 +157,8 @@ def review_staged_index(
         },
         "staged_clone_world_started": "NOT_ATTESTED",
         "server_function_loaded": False,
-        "single_use_guard_present": False,
+        "single_use_guard_present_source_only": True,
+        "independent_single_use_verified": False,
         "exact_summon_effect_tick_attested": False,
         "physical_execution_authorized": False, "science_g3": "NO_GO",
     }
@@ -221,6 +229,7 @@ def review_score_claim(
         "m0_decision_tick": 11,
         "function_sha256": sha,
         "claimed_invocations": 1,
+        "single_use_guard_present_source_only": True,
         "original_server_command_bytes_verified": False,
         "function_loaded_by_server_attested": False,
         "independent_single_use_verified": False,
@@ -237,7 +246,7 @@ def plan() -> dict[str, Any]:
         "golden_checked": False,
         "staged_clone_checked": False,
         "actual_server_originals_read": False,
-        "server_function_single_use": "UNGUARDED_SOURCE",
+        "server_function_single_use": "GUARDED_IN_SOURCE_ONLY_UNVERIFIED_RUNTIME",
         "server_function_parse_verified_1_21_8": False,
         "matched_elapsed_world_time": False,
         "physical_execution_authorized": False, "science_g3": "NO_GO",
