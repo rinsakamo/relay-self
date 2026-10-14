@@ -20,6 +20,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 from pathlib import Path
 
@@ -472,6 +473,7 @@ def _dev_run(args: argparse.Namespace) -> int:
         return 2
 
     code = 2
+    dev_started_monotonic = time.monotonic()
     previous_temp = tempfile.tempdir
     try:
         receipt["git_head"] = subprocess.check_output(
@@ -537,11 +539,47 @@ def _dev_run(args: argparse.Namespace) -> int:
             receipt["dev_b1_l1_source"] = native.get("b1_local_final", "NOT_ESTABLISHED")
             receipt["dev_b1_retention_enabled"] = getattr(args, "b1_retention", "on") == "on"
             receipt["dev_b1_source_status"] = native.get("owner_status")
-            receipt["dev_b1_action_outcomes"] = sum(
-                (len(e["ground_pickup"].get("movement_outcomes", []))
-                 if isinstance(e.get("ground_pickup"), dict) else 0)
-                + int(e.get("eat_action_terminal") == "outcome")
+            # Include issued/closed source outcomes retained on failed attempts;
+            # a failed acquisition cannot be reported as a successful pickup.
+            pickups = [
+                (e.get("ground_pickup") if isinstance(e.get("ground_pickup"), dict)
+                 else e.get("ground_pickup_attempt"))
                 for e in epochs if isinstance(e, dict)
+            ]
+            move_rows = [
+                move for pickup in pickups if isinstance(pickup, dict)
+                for move in pickup.get("movement_outcomes", [])
+                if isinstance(move, dict)
+            ]
+            choice_rows = [
+                choice for pickup in pickups if isinstance(pickup, dict)
+                for choice in pickup.get("b1_local_decisions", [])
+                if isinstance(choice, dict)
+            ]
+            receipt["dev_b1_move_outcomes"] = len(move_rows)
+            receipt["dev_b1_blocked_outcomes"] = sum(
+                move.get("kind") == "BLOCKED" for move in move_rows
+            )
+            receipt["dev_b1_lateral_choices"] = sum(
+                choice.get("waypoint_id") == "b1-local-lateral" for choice in choice_rows
+            )
+            receipt["dev_b1_lateral_progressed"] = sum(
+                move.get("waypoint_id") == "b1-local-lateral"
+                and move.get("kind") in ("PROGRESSED", "ARRIVED")
+                for move in move_rows
+            )
+            receipt["dev_b1_m0_energy_final"] = (
+                terminal.get("energy") if isinstance(terminal, dict) else None
+            )
+            receipt["dev_b1_m0_tick_final"] = (
+                terminal.get("tick") if isinstance(terminal, dict) else None
+            )
+            receipt["dev_b1_eat_outcomes"] = sum(
+                e.get("eat_action_terminal") == "outcome"
+                for e in epochs if isinstance(e, dict)
+            )
+            receipt["dev_b1_action_outcomes"] = (
+                receipt["dev_b1_move_outcomes"] + receipt["dev_b1_eat_outcomes"]
             )
             receipt["dev_b1_decisions"] = sum(
                 len(e.get("hunger_trace", [])) + len(e.get("eat_gate_trace", []))
@@ -613,6 +651,10 @@ def _dev_run(args: argparse.Namespace) -> int:
     finally:
         tempfile.tempdir = previous_temp
         receipt["exit_code"] = code
+        # Host-side diagnostic duration, not a qualified Minecraft time source.
+        receipt["dev_host_elapsed_seconds"] = round(
+            time.monotonic() - dev_started_monotonic, 3,
+        )
         # Only this run's own mutable receipt is finalized; originals are never rewritten.
         (root / "dev_receipt.json").write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
         with (root / "SHA256SUMS").open("x") as index:

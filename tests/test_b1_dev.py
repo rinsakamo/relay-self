@@ -76,6 +76,12 @@ def test_b1_forged_owner_success_never_promotes_to_r_or_v(tmp_path, monkeypatch)
     assert output["classification"] == "DEV_ONLY"
     assert output["source_scope"] == "S51_OWNER_B1_DEV_NOT_QUALIFIED"
     assert output["dev_b1_action_outcomes"] == 5
+    assert output["dev_b1_move_outcomes"] == 3
+    assert output["dev_b1_blocked_outcomes"] == 1
+    assert output["dev_b1_lateral_choices"] == 0
+    assert output["dev_b1_lateral_progressed"] == 0
+    assert output["dev_b1_m0_energy_final"] == 3.0
+    assert output["dev_host_elapsed_seconds"] >= 0
     assert output["dev_b1_decisions"] == 8
     assert output["dev_b1_epoch_count"] == 2
     assert output["dev_b1_meals"] == 2
@@ -84,3 +90,39 @@ def test_b1_forged_owner_success_never_promotes_to_r_or_v(tmp_path, monkeypatch)
     assert not any(output[k] for k in (
         "engineering_qualified", "science_success", "g3_go", "m_energy_credited",
     ))
+
+
+def test_b1_dev_partial_failure_counts_only_closed_move_rows(tmp_path, monkeypatch):
+    monkeypatch.setattr(demo.shutil, "which", lambda _: "/tool")
+    monkeypatch.setattr(demo.subprocess, "run", lambda *a, **kw:
+                        SimpleNamespace(returncode=0, stdout="v", stderr=""))
+
+    async def failed_owner(report, log, *, retention):
+        report.write_text(json.dumps({
+            "status": "FAILED", "classification": "DEV_ONLY",
+            "session_id": "failed-source", "server_exit": 0, "node_exit": 0,
+            "two_ground_epochs": [{
+                "ground_pickup_attempt": {
+                    "status": "INCOMPLETE_NOT_PICKUP",
+                    "movement_outcomes": [{
+                        "kind": "BLOCKED", "action_id": "closed-real-move",
+                        "waypoint_id": "ground-target",
+                    }],
+                    "b1_local_decisions": [{"waypoint_id": "ground-target"}],
+                },
+                "ground_pickup_failure": "blocked source",
+            }],
+        }))
+        return 1
+
+    monkeypatch.setattr(demo, "_run_b1_local_dev", failed_owner)
+    root = tmp_path / "fresh-b1-failed"
+    assert demo._dev_run(_args(root)) == 1
+    receipt = json.loads((root / "dev_receipt.json").read_text())
+    assert receipt["classification"] == "DEV_ONLY"
+    assert receipt["status"] == "FAILED"
+    assert receipt["dev_b1_action_outcomes"] == 1
+    assert receipt["dev_b1_blocked_outcomes"] == 1
+    assert receipt["dev_b1_eat_outcomes"] == 0
+    assert receipt["dev_b1_m0_energy_final"] is None
+    assert receipt["m_energy_credited"] is False
