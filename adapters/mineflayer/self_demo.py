@@ -375,13 +375,33 @@ async def _run_disposable(
             os.environ["S49_REAL_SERVER_CI"] = previous
 
 
+async def _run_b0_ground_dev(report_path: Path, server_log: Path) -> int:
+    """Run the EXISTING S51 owner with fresh DEV World, not the RSEE/V runner."""
+    from adapters.mineflayer.s51_eat_real_ci import qualify as s51_qualify
+
+    previous = os.environ.get("S51_REAL_SERVER_CI")
+    os.environ["S51_REAL_SERVER_CI"] = "1"
+    try:
+        return await s51_qualify(
+            report_path, server_log, food_item="rotten_flesh",
+            food_source="ground", dev_only=True,
+        )
+    finally:
+        if previous is None:
+            os.environ.pop("S51_REAL_SERVER_CI", None)
+        else:
+            os.environ["S51_REAL_SERVER_CI"] = previous
+
+
 def _dev_run(args: argparse.Namespace) -> int:
-    """DEV uses the unchanged S49 host, with no qualification/admission delegation."""
+    """Two opt-in existing owner routes; both persist DEV_ONLY without elevation."""
+    scenario = getattr(args, "dev_scenario", "native")
     receipt = {
         "mode": "DEV", "classification": "DEV_ONLY", "status": "NOT_RUN",
+        "scenario": scenario,
         "run_id": uuid.uuid4().hex, "retry_of": args.retry_of,
         "intent": "S49 disposable L0 development; Java/Node, Mojang download and EULA",
-        "world_source": "NEW_S49_FLAT_WORLD_NOT_GOLDEN",
+        "world_source": "NEW_DEV_MOJANG_WORLD_NOT_GOLDEN",
         "seed": "SERVER_GENERATED_NOT_ATTESTED",
         "minecraft_version": "1.21.8", "mineflayer_version": "4.39.0",
         "world_launch_attempted": False,
@@ -390,6 +410,8 @@ def _dev_run(args: argparse.Namespace) -> int:
     }
     root = args.output_dir
     try:
+        if scenario not in ("native", "b0-ground"):
+            raise DemoRejected("DEV supports only explicit native or b0-ground owner route")
         if args.confirm != CONFIRM or not args.run_disposable:
             raise DemoRejected("DEV requires disposable opt-in and exact confirmation")
         if args.think or args.live_think or args.reflect_report or args.smoke:
@@ -459,10 +481,38 @@ def _dev_run(args: argparse.Namespace) -> int:
         with (root / "host_stdout.log").open("x") as stdout, (
             root / "host_stderr.log"
         ).open("x") as stderr, contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            code = asyncio.run(_run_disposable(
-                root / "native_report.json", root / "minecraft_server.log",
-            ))
+            if scenario == "b0-ground":
+                code = asyncio.run(_run_b0_ground_dev(
+                    root / "native_report.json", root / "minecraft_server.log",
+                ))
+            else:
+                code = asyncio.run(_run_disposable(
+                    root / "native_report.json", root / "minecraft_server.log",
+                ))
         native = json.loads((root / "native_report.json").read_text())
+        if scenario == "b0-ground":
+            # Read-only projection of source; NOT independent R qualification.
+            acquisition = native.get("ground_pickup")
+            metabolism = native.get("metabolism_after_eat")
+            next_l0 = native.get("next_l0")
+            receipt["dev_b0_source_status"] = native.get("owner_status")
+            receipt["dev_b0_pickup"] = (
+                acquisition.get("status") if isinstance(acquisition, dict) else "UNKNOWN"
+            )
+            receipt["dev_b0_move_outcomes"] = (
+                len(acquisition.get("movement_outcomes", []))
+                if isinstance(acquisition, dict) else 0
+            )
+            receipt["dev_b0_eat_outcome"] = native.get("action_terminal", "UNKNOWN")
+            receipt["dev_b0_m0_credit_source_claim"] = bool(native.get("m_energy_credited"))
+            receipt["dev_b0_m0_credit_count"] = (
+                metabolism.get("credit_count") if isinstance(metabolism, dict) else None
+            )
+            receipt["dev_b0_next_l0_kind"] = (
+                next_l0.get("kind") if isinstance(next_l0, dict) else None
+            )
+            # Qualified M0 energy stays false in DEV; these are owner-local
+            # measurements on a disposable, non-R-qualified World.
         receipt.update(
             status="COMPLETED" if code == 0 else "FAILED",
             reason=native.get("error"), session_id=native.get("session_id"),
@@ -517,12 +567,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model-timeout", type=float, default=12.0)
     parser.add_argument("--mode", choices=("DEV",),
                         help="DEV_ONLY; never delegates to QUALIFICATION or SCIENCE")
+    parser.add_argument("--dev-scenario", choices=("native", "b0-ground"), default="native",
+                        help="DEV only: existing S49 native or S51 ground/EAT/M0 route")
     parser.add_argument("--retry-of", help="prior DEV run ID, informational lineage only")
     args = parser.parse_args(argv)
     if args.mode == "DEV":
         return _dev_run(args)
     if args.retry_of is not None:
         parser.error("--retry-of requires --mode DEV")
+    if args.dev_scenario != "native":
+        parser.error("--dev-scenario b0-ground requires --mode DEV")
 
     if args.think and args.live_think:
         print(json.dumps(_row(
