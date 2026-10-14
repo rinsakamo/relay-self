@@ -39,7 +39,7 @@ jobs:
           PYTHONPATH: 'src:tests:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m pytest -q tests/test_rsee_v6_packet_provenance.py tests/test_rsee_v6_world_timing.py tests/test_rsee_b0_existing_audit.py tests/test_rsee_s9_original_audit.py tests/test_rsee_s3_v_projection.py tests/test_rsee_lane_compat.py tests/test_rsee_source_handoff.py tests/test_rsee_shared_runtime.py
+          python -m pytest -q tests/test_rsee_v6_atomic_admission.py tests/test_rsee_v6_packet_provenance.py tests/test_rsee_v6_world_timing.py tests/test_rsee_b0_existing_audit.py tests/test_rsee_s9_original_audit.py tests/test_rsee_s3_v_projection.py tests/test_rsee_lane_compat.py tests/test_rsee_source_handoff.py tests/test_rsee_shared_runtime.py
       - name: Ruff
         run: ruff check src tests experiments adapters observability
       - name: Repository contracts
@@ -88,6 +88,10 @@ jobs:
         with:
           path: sv6
           ref: '67c03400a16d0170264e16884b8d82439e3a3194'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: sv6atomic
+          ref: 'cf55c118135e2b11243a1a2d1c375998858f5894'
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
@@ -98,6 +102,12 @@ jobs:
           PYTHONPATH: 'r3:r3/src'
         run: |
           python -m experiments.standard_env.v6_packet_provenance --s-checkout "$PWD/sv6" | grep -F 'RSEE_V6_EXPERIMENTAL_CLOCK_SOURCE_PINNED_REVIEW_ONLY'
+      - name: Pin server-atomic datapack S source without executing it
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONPATH: 'r3:r3/src'
+        run: |
+          python -m experiments.standard_env.v6_atomic_admission --s-checkout "$PWD/sv6atomic" | grep -F 'RSEE_V6_ATOMIC_S_SOURCE_PINNED_REVIEW_ONLY'
       - name: Frozen S3 to S6 to S7 to S8 to S9 Git ancestry
         run: |
           git -C s7 merge-base --is-ancestor 6f493b7a559dd72ea365998b9eadbd35fd7eb9b4 a6ed8ed6b99dd09edcaa6cc9e5cefc08778aec8f
