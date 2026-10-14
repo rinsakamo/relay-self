@@ -1,5 +1,14 @@
 # S/R — V6 1回限り実World環境資格確認（2026-10-14）
 
+## 最新の実行権限・実測結果（同日追補）
+
+**元の実World起動許可は消費済み。再使用不可。追加の実World起動にはユーザーの新たな明示許可が必要。** この手順書の以下の「許可未消費」記述は**初回実行前の履歴**であり、現在の入場許可を示さない。
+
+2026-10-14実測：S固定HEAD `995eab0a395883c4f5be57ba4515b307cd472437` でJava/Minecraft 1回・Node bridge 1回起動。原consoleは `Running function relayself_v6:install` だったが、実行器は誤って `Executed \\d+ command` を待ちtimeout。first native probe、start install/start_trial、food action、score readbackは未実施。STOP ACKなし。使い捨てWorld cleanup後のR独立監査でJava/Node PID消滅・port再bind、Golden原26ファイル不変を確認。独立R原証拠envelopeは空issuer journalのため不合格。工学World資格 **FAILED/UNDETERMINED**、科学G3/production NO_GO。S capture SHA256 index SHA256 `3d40e9839fe4838f501a9f99a559aee3e825ae7fa6c1c05a7e92e677aa778c2f`、証拠は上書き不可。[S #537原終端報告](https://github.com/rinsakamo/relay-self/issues/537#issuecomment-6169363660)と[R #575原終端報告](https://github.com/rinsakamo/relay-self/issues/575#issuecomment-6169364266)を参照。
+
+後続の `v6_world_qualification.py` と合成/原形式の負対照修正は、**ソース保守・オフライン回帰だけ**。CIが成功しても消費済み許可は復活しない。許可のない `--confirm` 実行、異なるgrantパスを使った再試行、旧clone/旧証拠の追記、再生成、修復を禁止する。
+
+
 **目的：** 認知性能を評価する48本のV6試験ではなく、RSEE Golden #588から作る**使い捨てMinecraft 1.21.8 Worldを1回だけ実行**し、2つの計時Datapackの実パーサ・ロード、初回ネイティブ観測、サーバー原記録、STOP・後片付けを工学的に検証する。
 
 許可：この会話でユーザーが明示的に**資格確認用の実World 1回**を許可。実行先はユーザー自身のWindows 11/WSL2ホスト。ChatGPTのGitHub/API環境は当該ローカルホストとGolden原バイトを操作できないため、**このドキュメントの作成は許可の消費ではない**。実行できるのはホストのLocalCodex等の明示的な操作者だけ。再試行、再起動、fallback、新しいWorldの勝手な代用、V6の本試験への転用は不可。
