@@ -6,8 +6,14 @@ import math
 import pytest
 
 from experiments.metabolism_m01_minecraft import (
-    AdmittedFood, M01Profile, M01Rejected, WorldTickSample, advance,
-    balance_residual, begin, ecological_ratios,
+    AdmittedFood,
+    M01Profile,
+    M01Rejected,
+    WorldTickSample,
+    advance,
+    balance_residual,
+    begin,
+    ecological_ratios,
 )
 
 
