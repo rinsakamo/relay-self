@@ -1108,3 +1108,13 @@ The capture adapter is not yet wired into an admitted physical
 `groundv6` S51 launch. Until R/V have reviewed the emitter and
 server/clone/authenticity conditions, the S51 hard pre-Java STOP and
 48 NOT_ADMITTED World slots remain unchanged.
+
+
+**Pre-start server log capture:** the same passive recorder now accepts
+`session=None` at exclusive original path creation before Java startup,
+writes raw server stdout from the first byte, and binds its session
+identifier **exactly once** from the first native
+`adapter_started` frame with a 1.21.8/4.39.0 source-shaped header.
+All issuer command attempts are blocked until binding. Such binding is
+local provenance continuity, **not** independently authenticated server
+origin. No real start has been authorized/executed by this adapter.

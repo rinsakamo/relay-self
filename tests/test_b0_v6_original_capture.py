@@ -189,3 +189,39 @@ def test_module_import_and_init_never_open_process_or_action(tmp_path):
     assert res["issuer_phases_logged"] == 0
     assert res["physical_execution_authorized"] is False
     assert len(list((tmp_path / "originals").iterdir())) == 3
+
+
+def test_capture_server_startup_before_native_session_is_bound(tmp_path):
+    """Future S51 can allocate originals before Java and later bind Node."""
+    root = tmp_path / "originals"
+    cap = V6OriginalCapture(root, slot=SLOT, nonce=NONCE)
+    cap.on_server_stdout(b"native java21 Minecraft 1.21.8 startup\n")
+    with pytest.raises(V6CaptureRejected, match="not yet bound"):
+        cap.note_issuer_attempt(phase=PHASES[0][0], command=PHASES[0][1])
+    for bad in (
+        {"type": "observation", "session_id": SID, "seq": 0},
+        {"type": "adapter_started", "session_id": SID, "seq": 0},
+        {"type": "adapter_started", "session_id": SID, "seq": 1,
+         "mineflayer_version": "4.39.0", "config": {"version": "1.21.8"}},
+        {"type": "adapter_started", "session_id": SID, "seq": 0,
+         "mineflayer_version": "4.38.0", "config": {"version": "1.21.8"}},
+    ):
+        with pytest.raises(V6CaptureRejected):
+            cap.on_native_stdout(_line(bad))
+    cap.on_native_stdout(_line({
+        "type": "adapter_started", "session_id": SID, "seq": 0,
+        "mineflayer_version": "4.39.0", "config": {"version": "1.21.8"},
+    }))
+    cap.note_issuer_attempt(phase=PHASES[0][0], command=PHASES[0][1])
+    with pytest.raises(V6CaptureRejected):
+        cap.on_native_stdout(_line({
+            "type": "adapter_started", "session_id": "foreign", "seq": 1,
+        }))
+    result = cap.close()
+    assert result["native_session_id"] == SID
+    assert result["issuer_phases_logged"] == 1
+    assert result["classification"] == "S_V6_ORIGINAL_STREAMS_PARTIAL_NOT_QUALIFIED"
+    assert (root / SERVER_NAME).read_bytes() == (
+        b"native java21 Minecraft 1.21.8 startup\n"
+    )
+    assert len((root / NATIVE_NAME).read_bytes().splitlines()) == 1

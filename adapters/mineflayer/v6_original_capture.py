@@ -72,13 +72,16 @@ class V6OriginalCapture:
     """Exclusive source-bytes writer; exact original streams only, no launcher.
 
     The supplier must call on_server_stdout/on_native_stdout with the
-    *unmodified bytes read from its owned actual streams*, and call
+    *unmodified bytes read from its owned actual streams*. The capture may
+    be created before Java startup with session=None; the first original
+    adapter_started frame exclusively binds session when Node later starts.
+    The supplier calls
     note_issuer_attempt only when the EXISTING S51 owner attempts the exact
     server-console command. This component cannot prove supplier authenticity.
     """
 
     def __init__(
-        self, root: Path, *, session: str, slot: str, nonce: str,
+        self, root: Path, *, session: str | None = None, slot: str, nonce: str,
     ) -> None:
         _check(
             isinstance(root, Path) and not root.is_symlink()
@@ -86,7 +89,8 @@ class V6OriginalCapture:
             and not root.parent.is_symlink(),
             "fresh non-aliased capture directory required",
         )
-        _check(type(session) is str and bool(session.strip()), "session required")
+        _check(session is None or (type(session) is str and bool(session.strip())),
+               "invalid claimed session")
         _check(slot in SLOTS and type(slot) is str, "unregistered World slot")
         _check(
             type(nonce) is str and re.fullmatch(r"[0-9a-f]{32}", nonce) is not None,
@@ -125,6 +129,21 @@ class V6OriginalCapture:
         """Only invoke on actual process.stdout.readline() BEFORE decoding."""
         _valid_line(raw, jsonl=True)
         data = json.loads(raw)
+        if self.session is None:
+            # Begin raw SERVER stdout capture before Java startup is known;
+            # bind a unique session only when the exact first native adapter
+            # frame actually arrives. This is not server origin attestation.
+            _check(
+                self._native_seq == -1 and data.get("type") == "adapter_started"
+                and type(data.get("session_id")) is str
+                and bool(data["session_id"].strip())
+                and data.get("mineflayer_version") == "4.39.0"
+                and isinstance(data.get("config"), dict)
+                and data["config"].get("version") == "1.21.8"
+                and type(data.get("seq")) is int and data["seq"] == 0,
+                "unqualified raw first adapter frame for session binding",
+            )
+            self.session = data["session_id"]
         _check(
             data.get("session_id") == self.session
             and type(data.get("seq")) is int
@@ -140,6 +159,7 @@ class V6OriginalCapture:
 
     def note_issuer_attempt(self, *, phase: str, command: str) -> None:
         """Journal a *reported* write attempt, not a successful server effect."""
+        _check(self.session is not None, "native session not yet bound")
         _check(self._phase < len(PHASES), "issuer phase budget exhausted")
         _check(PHASES[self._phase] == (phase, command)
                and phase != "first_native_probe",
@@ -224,6 +244,7 @@ class V6OriginalCapture:
             ),
             "schema": CAPTURE_SCHEMA,
             "original_dir": str(self.root),
+            "native_session_id": self.session,
             "world_start_slot": self.slot,
             "trial_nonce": self.nonce,
             "issuer_phases_logged": self._phase,
