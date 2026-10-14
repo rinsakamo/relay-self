@@ -209,6 +209,48 @@ def review_synthetic_records(
     }
 
 
+def check_preregistered_primary_reachability(
+    protocol: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Conditional algebraic ceiling; never infer actual physical outcomes.
+
+    M0 source values originate in the frozen S-owned B0 reference and
+    must be rechecked independently in a pinned source checkout.
+    Counts include all non-eating WAIT/MOVE ticks. EAT only adds energy;
+    FIGHT is outside this prospective S ground-foraging runner.
+    """
+    d = validate_protocol(protocol if protocol is not None else load_protocol())
+    # S's frozen MetabolismConfig: initial=12, basal=0.5, MOVE extra=0.25.
+    # These are conditional source assertions, not an R-host attestation.
+    initial_energy = 12.0
+    basal_cost = 0.5
+    move_extra_cost = 0.25
+    horizon = d["design"]["horizon_m0_ticks"]
+    max_moves = d["design"]["max_issued_moves"]
+    worst_case_consumption = (
+        horizon * basal_cost + min(horizon, max_moves) * move_extra_cost
+    )
+    min_final_energy = initial_energy - worst_case_consumption
+    require(min_final_energy > 0, "primary survival bound changed; reassess")
+    return {
+        "classification": "V2_PRIMARY_ENDPOINT_STRUCTURALLY_NONDISCRIMINATING",
+        "source": "S_M0_CONFIG_OFFLINE_CONDITIONAL_NOT_PHYSICAL_ATTESTATION",
+        "initial_energy": initial_energy,
+        "horizon_m0_ticks": horizon,
+        "max_total_moves": max_moves,
+        "basal_cost_per_tick": basal_cost,
+        "extra_cost_per_move": move_extra_cost,
+        "max_spend_without_food": worst_case_consumption,
+        "min_end_energy_without_food": min_final_energy,
+        "terminal_reachable_by_registered_actions": False,
+        "terminal_free_ticks_for_all_complete_valid_arms": horizon,
+        "scope": "WAIT_OR_MOVE_ONLY_NONNEGATIVE_INTAKE_SINGLE_ITEM",
+        "real_world_trials": 0,
+        "requires_prospective_redesign_for_terminal_discrimination": True,
+        "science_go": False,
+    }
+
+
 def main() -> int:
     d = load_protocol()
     print(json.dumps({

@@ -72,6 +72,30 @@ def test_masked_is_explicit_bias12_not_unbiased_sensor_removal():
         v2.validate_protocol(d)
 
 
+def test_v2_primary_terminal_endpoint_is_unreachable_under_fixed_m0_budget():
+    result = v2.check_preregistered_primary_reachability()
+    assert result["classification"] == "V2_PRIMARY_ENDPOINT_STRUCTURALLY_NONDISCRIMINATING"
+    assert result["initial_energy"] == 12
+    assert result["horizon_m0_ticks"] == 16
+    assert result["max_total_moves"] == 8
+    assert result["max_spend_without_food"] == 10
+    assert result["min_end_energy_without_food"] == 2
+    assert result["terminal_reachable_by_registered_actions"] is False
+    assert result["terminal_free_ticks_for_all_complete_valid_arms"] == 16
+    assert result["requires_prospective_redesign_for_terminal_discrimination"]
+    assert not result["science_go"] and result["real_world_trials"] == 0
+
+
+def test_v2_ceiling_does_not_silently_rewrite_frozen_manifest():
+    d = v2.load_protocol()
+    before = copy.deepcopy(d)
+    v2.check_preregistered_primary_reachability(d)
+    assert d == before
+    d["design"]["horizon_m0_ticks"] = 24
+    with pytest.raises(v2.V2Rejected):
+        v2.check_preregistered_primary_reachability(d)
+
+
 def test_synthetic_positive_difference_never_means_scientific_gain():
     out = v2.review_synthetic_records(fixture_records())
     assert out["paired_starts"] == 4

@@ -58,3 +58,51 @@ The terminal classification is `V2_S_NONFORCING_OFFLINE_PARITY_WITH_PREREG_MISMA
 **Handoff to S/R:** provide an explicit per-arm *global* M0 16-tick stop/censoring rule (inclusive of pre-item hunger staging and all M0 expenditures), a global maximum of 8 issued MOVE, identical precommitted food timing/World start/exogenous conditions for matched arms, and S/R separately qualified original physical source and nonissued WAIT envelope. Do not silently expand the V study to 24 decision probes, treat early SEEK as a measured food outcome, or call the synthetic cheap baseline test a causal nutrition benefit. After product reference and independent sources are ready, any physical run still requires a **fresh one-shot user authorization per arm**.
 
 **Current:** V source-engineering only, World trials 0, real baseline/reference not qualified, independent original bytes NOT_RUN, `G3_NO_GO`, `NO_PRODUCTION_GO`.
+
+
+## V2 pre-run mathematical non-discrimination gate (2026-10-14)
+
+**Critical new finding, before any real outcomes or physical permissions:**
+V2's frozen primary `M0_TERMINAL_FREE_TICKS_WITH_CENSORING`
+is **structurally unable to distinguish all four legitimate arms** under
+the registered *16 total M0 decision ticks, maximum eight issued MOVE*
+profile. The already specified source-owned M0 physics has initial E12,
+basal spend 0.5 for every WAIT/MOVE decision, plus 0.25 extra per MOVE.
+Without food, its largest possible expenditure under this envelope is
+
+```text
+16 * 0.5 + 8 * 0.25 = 10
+remaining E >= 12 - 10 = 2 > 0
+```
+
+A verified EAT adds energy and cannot cause earlier metabolic death
+under these fixed costs. FIGHT is not part of this bounded single-item
+S ground runner. Therefore every **valid completed 16-tick episode**
+remains M0 alive, and the primary terminal-free count is **16 in every
+arm**, including the sensor-masked arm. An observed primary difference
+would indicate a source/physics/accounting/protocol violation, a
+prematurely stopped/invalid episode or a changed experimental envelope,
+**not** a valid sensor fitness effect. Variation in secondary EAT,
+M0 final E or MOVE count may still be observed and recorded, but
+does not rescue the registered primary contrast.
+
+The V-owned `check_preregistered_primary_reachability()` is a
+source-conditional algebraic *NO-GO* check with negative test coverage,
+not original-byte readback, learned goal evidence, or power estimation.
+Independently reconfirm actual M0 source config at the pinned S SHA
+before any real admission; if true source costs/budget differ, FAIL
+rather than treating this frozen analysis as physical authority.
+
+**Action:** do **not** launch a 4-arm × 4-paired-start physical trial
+expecting the current V2 *primary* to show discrimination. Preserve the
+original V2 manifest and all past evidence unchanged. V may propose a
+**new versioned prospective amendment before any physical outcome**:
+either extend the M0 horizon sufficiently to permit an OFF/no-food
+terminal (24 WAIT ticks are needed under the given E12/basal0.5), or
+register a genuinely informative external nutrition/net-energy primary
+with explicit cheap/sham baselines and cost/World-time controls.
+A longer horizon is not by itself evidence of new cognitive value:
+the cheap native-only baseline may equal or beat sensor-gated ON.
+Any amended design requires its own independent reviewer/CI,
+qualified R World source, exact matched environment and **fresh
+per-run user authorization**. Current `G3_NO_GO` remains unchanged.
