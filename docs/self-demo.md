@@ -909,3 +909,48 @@ experimental opt-in argument is passed. Four independently
 matched freezes, equivalent native World timing, no hidden
 concurrent issuer, R original-byte review and V prereg admission
 remain outstanding. No World authorization and no live V2 trial.
+
+### V6 B0/L0 typed native WAIT source (OFFLINE ONLY)
+
+V #619 paired-World pre-admission, Draft #625 exact head
+`f1a747891e9620e4ab7c86f46f6c8b28e31e5f30`, specifies four
+independent World-start groups x LOW/HIGH initial M0 E12/E20 x six
+arms = 48 *unexecuted* slots, not grants. Food13, single item at
+2.5m, 11 charged M0 WAIT steps, horizon16 and maximum eight issued MOVE.
+Matched elapsed Minecraft-native World ticks at the item opportunity
+within each paired start are R/V admission requirements; they are not
+interchangeable with M0 decision tick or wall time.
+
+S `adapters/mineflayer/b0_v6_source.py` provides
+`new_v6_m0_l0_owner`, `source_only_v6_first_choice`, and the
+`review_v6_native_wait_to_first_choice` typed source-stream checker.
+The latter requires eleven distinct ordered, non-replayed native-shaped
+item-free Mineflayer probes in one session, with complete entity
+coverage and no inventory food, then a new correlated Food13/one-item
+2.5m probe. It performs eleven actual existing M0 WAIT basal charges
+(0.5 per decision) and runs existing S L0 selection without issuing
+Action or minting S51 EAT credit. LOW E6.5 chooses SEEK with ON; HIGH
+E14.5 chooses WAIT; sham, mask, always-SEEK, always-WAIT and equal-info
+cheap retain their pre-registered choices.
+
+These tests operate on typed *synthetic-shaped* source observations,
+NOT independently acquired original real World evidence. A sequence of
+eleven source observations does not prove eleven Minecraft World ticks,
+actual operator-spawn command time or cross-arm native-time parity.
+Source results explicitly attest neither originals nor real S50/S51
+Action, item acquisition, ecological benefit, authorization or V GO.
+Always-WAIT maps to `B0EnergyLedger(forage_policy="no_ground_seek")`
+only in the offline comparator: the existing S51 physical CLI still
+rejects that policy and has no V6 study mode. Equal-info threshold
+parity is expected and allowed for bacteria B0, not evidence for
+advanced learned cognition. Existing groundv2 and all prior frozen
+modes, RSEE Golden, main and historical B0 evidence are unchanged.
+
+Next only after independent native World-clock and Golden source
+qualification: build a separately opt-in physical six-arm S51/RSEE
+controller under S ownership, implement genuine native WAIT/Action
+and verified EAT/cost receipts, then request one fresh permission
+per intended live World session. Do not create a new launcher or
+treat a 48-slot planning grid as permission to execute. Historical
+R #575 B0 58-file/50-index review is complete REVIEW_ONLY; no rerun.
+State: S_V6_SOURCE_STREAM_ONLY / WORLD_TRIALS_0 / G3_NO_GO.
