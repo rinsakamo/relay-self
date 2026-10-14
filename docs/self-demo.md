@@ -1144,3 +1144,20 @@ DEV receiptは常にDEV_ONLY。元S49診断reportのPASS/QUALIFIED表示は元ow
 V6資格runner、V科学runnerを呼ばない。no flagsは従来どおりDRY_RUN。
 QUALIFICATIONは別のR gateと新規preflightを要求し、消費済grantを再利用しない。
 SCIENCEはV事前登録と独立評価に従う。既存科学NO_GO・凍結証拠を変更しない。
+
+### B0 ground/EAT/M0 DEV（既存S51 owner、資格・科学には非昇格）
+
+同じ **既存** `self_demo` CLIで、S51の真正腐肉取得・摂食・M0 ledger・次のL0観測をDEVとして反復できる。上の`native`（S49の3判断・2 Action）とは別の明示的シナリオで、共通Golden #588を使うRSEE資格化とは異なる。新規launcherは設けない。
+
+```bash
+PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m adapters.mineflayer.self_demo \
+  --mode DEV --dev-scenario b0-ground --run-disposable \
+  --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
+  --output-dir /absolute/development-root/fresh-b0-run
+```
+
+前提は既存S49/S51と同じローカルJava21・Node22+・Mineflayer4.39.0、外部ダウンロード/EULA、ポート25565の独占、空の出力先。各回は新run ID、新しい一時Worldを利用し、改修後は別のrootと`--retry-of`で履歴をつなぐ。DEVのEATにはoperatorがWorldで配布する腐肉を使い、ゾンビ自然ドロップ・内発的空腹価値・自律的獲得を証明しない。WorldはS51の既存ownerで開始/停止し、失敗なら原ログと失敗理由を残す。
+
+`native_report.json`（既存S51 owner report）にアイテム取得のsource contrast、真正EAT Action/food delta、M0 ledger入金と次のfresh L0判断を記録する。`dev_receipt.json`には`dev_b0_*`という**DEV限定**の投影結果を残し、`SHA256SUMS`でrunの原始証拠を封印する。生じた`m_energy_credited`はM0実験上のledger eventでありMinecraft本体エネルギーではない。DEV receiptの`m_energy_credited`（資格済み認定）はfalseのまま、`engineering_qualified/science_success/g3_go`もfalse。STOP ACKと実World真正性は別途Rの独立監査なしには認定しない。
+
+資格確認に必要なGolden/R readback、消費済みV6 grant、事前登録済みV #619の科学48試行は**このDEVコマンドから起動できない**。コード/CI上の受入は実World成功の代替ではない。
