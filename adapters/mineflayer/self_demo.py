@@ -383,6 +383,8 @@ def _dev_run(args: argparse.Namespace) -> int:
         "intent": "S49 disposable L0 development; Java/Node, Mojang download and EULA",
         "world_source": "NEW_S49_FLAT_WORLD_NOT_GOLDEN",
         "seed": "SERVER_GENERATED_NOT_ATTESTED",
+        "minecraft_version": "1.21.8", "mineflayer_version": "4.39.0",
+        "world_launch_attempted": False,
         "engineering_qualified": False, "science_success": False,
         "g3_go": False, "m_energy_credited": False,
     }
@@ -446,6 +448,7 @@ def _dev_run(args: argparse.Namespace) -> int:
         tempfile.tempdir = str(world_parent)
         with (root / "dev_receipt.json").open("x") as stream:
             json.dump({**receipt, "status": "RUNNING"}, stream, indent=2)
+        receipt["world_launch_attempted"] = True
         with (root / "host_stdout.log").open("x") as stdout, (
             root / "host_stderr.log"
         ).open("x") as stderr, contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
@@ -458,17 +461,30 @@ def _dev_run(args: argparse.Namespace) -> int:
             reason=native.get("error"), session_id=native.get("session_id"),
             server_exit=native.get("server_exit"), node_exit=native.get("node_exit"),
             native_owner_status=native.get("status"),
+            decisions=len(native.get("decisions", [])),
+            native_actions=len(native.get("actual_native_actions", [])),
+            cleanup_error=native.get("server_cleanup_error") or native.get("node_cleanup_error"),
+            stop_ack="NOT_SEPARATELY_ATTESTED_BY_S49_REPORT",
             source_report="native_report.json",
             source_scope="S49_OWNER_DIAGNOSTIC_NOT_DEV_QUALIFICATION",
         )
     except Exception as exc:
-        receipt.update(status="NOT_RUN" if not (root / "native_report.json").exists()
+        code = 2 if not receipt["world_launch_attempted"] else 1
+        receipt.update(status="NOT_RUN" if not receipt["world_launch_attempted"]
                        else "FAILED", reason=f"{type(exc).__name__}: {exc}")
+        if isinstance(exc, subprocess.CalledProcessError):
+            receipt["preflight_stderr"] = str(exc.stderr)[-8192:]
+            receipt["preflight_stdout"] = str(exc.stdout)[-8192:]
     finally:
         tempfile.tempdir = previous_temp
         receipt["exit_code"] = code
         # Only this run's own mutable receipt is finalized; originals are never rewritten.
         (root / "dev_receipt.json").write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
+        with (root / "SHA256SUMS").open("x") as index:
+            for evidence in sorted(root.iterdir()):
+                if evidence.is_file() and evidence.name != "SHA256SUMS":
+                    index.write(hashlib.sha256(evidence.read_bytes()).hexdigest()
+                                + "  " + evidence.name + "\n")
         print(json.dumps(receipt, sort_keys=True))
     return code
 
