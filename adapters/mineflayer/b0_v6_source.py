@@ -228,3 +228,96 @@ def source_only_v6_first_choice(
         "external_food_command_time_attested": False,
         "v_science_go": False, "physical_execution_authorized": False,
     }
+
+
+def prospective_v6_profile(phase: str, arm: str) -> dict[str, Any]:
+    """Existing L0/M0 parameters, not a permit or physical six-arm study."""
+    owner = new_v6_m0_l0_owner("v6-prospective-only", phase=phase, arm=arm)
+    return {
+        "phase": phase, "arm": arm,
+        "initial_energy": owner.config.initial_energy,
+        "forage_policy": owner.forage_policy,
+        "sensor_gain": owner.sensor.gain, "sensor_bias": owner.sensor.bias,
+        "first_opportunity_m0_tick": V6_FIRST_ITEM_M0_TICK,
+        "horizon_m0_ticks": V6_HORIZON, "max_issued_moves": V6_MAX_MOVES,
+        "action_issuer": "EXISTING_S50_S51_ONLY",
+        "server_summon_effect_age_attested": False,
+        "matched_live_golden_world_attested": False,
+        "physical_execution_authorized": False,
+    }
+
+
+class V6SourceSessionOwner:
+    """Stateful real S M0/L0 source intake, never issues a World Action."""
+
+    def __init__(self, session_id: str, *, phase: str, arm: str) -> None:
+        self.phase, self.arm = phase, arm
+        self.ledger = new_v6_m0_l0_owner(session_id, phase=phase, arm=arm)
+        self._sources: list[MineflayerObservation] = []
+        self._requests: set[str] = set()
+        self._last_seq = -1
+        self._closed = False
+
+    def observe_wait(self, source: MineflayerObservation) -> dict[str, Any]:
+        if self._closed or len(self._sources) >= 11:
+            raise V6SourceRejected("11 WAIT budget exhausted")
+        if (
+            not isinstance(source, MineflayerObservation)
+            or source.session_id != self.ledger.session_id
+            or source.kind != "probe" or not source.request_id
+            or source.request_id in self._requests
+            or source.seq <= self._last_seq
+            or source.provenance.source != "mineflayer"
+            or source.snapshot.inventory
+            or source.snapshot.nearby_entities_coverage.truncated
+            or source.snapshot.nearby_entities_coverage.candidate_count
+            != len(source.snapshot.nearby_entities)
+            or any(e.name == "item" for e in source.snapshot.nearby_entities)
+        ):
+            raise V6SourceRejected("bad pre-food native source")
+        decision = self.ledger.decide(source)
+        if decision.kind != "WAIT":
+            raise V6SourceRejected("native L0 changed before food")
+        charge = self.ledger.step("WAIT")
+        if charge.terminal_now or charge.intake != 0 or charge.expenditure != 0.5:
+            raise V6SourceRejected("bad M0 WAIT charge")
+        self._sources.append(source)
+        self._requests.add(source.request_id)
+        self._last_seq = source.seq
+        return {
+            "probe_seq": source.seq,
+            "l0_kind": decision.kind, "m0_tick": self.ledger.body.tick,
+            "m0_energy": self.ledger.body.energy,
+            "issued_action": False, "native_elapsed_world_tick_attested": False,
+        }
+
+    def observe_first_item(self, item: MineflayerObservation) -> dict[str, Any]:
+        if (
+            self._closed or len(self._sources) != 11
+            or not isinstance(item, MineflayerObservation)
+            or item.seq <= self._last_seq or item.request_id in self._requests
+        ):
+            raise V6SourceRejected("missing original-shaped 11 WAITs")
+        replay = review_v6_native_wait_to_first_choice(
+            tuple(self._sources), item, phase=self.phase, arm=self.arm,
+        )
+        if (
+            self.ledger.body.tick != 11
+            or self.ledger.body.energy != replay["energy_at_item"]
+            or self.ledger.credit_count != 0
+        ):
+            raise V6SourceRejected("real M0 state differs from source replay")
+        decision = self.ledger.decide(item)
+        if decision.kind != replay["l0_first_choice"]:
+            raise V6SourceRejected("actual L0 choice mismatch")
+        self._closed = True
+        return {
+            "phase": self.phase, "arm": self.arm,
+            "kind": decision.kind,
+            "m0_tick": self.ledger.body.tick, "m0_energy": self.ledger.body.energy,
+            "native_session_id": item.session_id, "native_probe_seq": item.seq,
+            "issued_action": False, "m0_credits": self.ledger.credit_count,
+            "r_original_bytes_verified": False,
+            "server_summon_effect_age_verified": False,
+            "physical_execution_authorized": False,
+        }

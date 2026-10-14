@@ -31,6 +31,7 @@ from adapters.mineflayer.b0_rsee import (
     B0RSEERejected,
     verify_b0_rsee,
 )
+from adapters.mineflayer.b0_v6_source import prospective_v6_profile
 from adapters.mineflayer.b0_two_epoch import (
     V2_ARMS,
     run_two_ground_epochs,
@@ -120,12 +121,13 @@ async def qualify(
     b0_forage_policy: str = "native_only",
     b0_sensor: str = "on",
     b0_v2_arm: str | None = None,
+    b0_v6_phase: str | None = None, b0_v6_arm: str | None = None,
 ) -> int:
     if food_item not in ("bread", "rotten_flesh"):
         raise ValueError("only operator-staged bread or rotten_flesh allowed")
-    if food_source not in ("inventory", "ground", "none", "ground2", "ground2observe", "groundv2"):
+    if food_source not in ("inventory", "ground", "none", "ground2", "ground2observe", "groundv2", "groundv6"):
         raise ValueError("unsupported source")
-    if food_source in ("ground", "none", "ground2", "ground2observe", "groundv2") and food_item != "rotten_flesh":
+    if food_source in ("ground", "none", "ground2", "ground2observe", "groundv2", "groundv6") and food_item != "rotten_flesh":
         raise ValueError("ground/none/ground2 B0 mode requires rotten_flesh")
     if (
         b0_forage_policy not in ("native_only", "sensor_gate")
@@ -136,6 +138,12 @@ async def qualify(
         or (b0_sensor == "masked" and b0_forage_policy != "sensor_gate")
     ):
         raise ValueError("sensor contrast is opt-in ground2/sensor_gate only")
+    if food_source == "groundv6":
+        if b0_v2_arm is not None or b0_v6_phase is None or b0_v6_arm is None:
+            raise ValueError("V6 requires one phase/arm without V2 authority")
+        profile = prospective_v6_profile(b0_v6_phase, b0_v6_arm)
+    elif b0_v6_phase is not None or b0_v6_arm is not None:
+        raise ValueError("V6 options only apply to groundv6")
     if food_source == "groundv2":
         if b0_v2_arm not in V2_ARMS or (
             b0_forage_policy != "native_only" or b0_sensor != "on"
@@ -183,6 +191,9 @@ async def qualify(
             "sensor_masked_bias": 12.0 if b0_sensor == "masked" else None,
             "experimental_policy_not_learned": True,
         }
+    if food_source == "groundv6":
+        report["b0_v6_candidate"] = profile
+        report["physical_execution_authorized"] = False
     if food_source == "groundv2":
         report["b0_v2_study"] = {
             "arm": b0_v2_arm, "global_horizon_m0_ticks": 16,
@@ -221,11 +232,22 @@ async def qualify(
                 verify_b0_rsee, rsee,
             )
             report["status"] = "PASS"
-            report["classification"] = "B0_RSEE_READONLY_PREFLIGHT_ONLY"
+            report["classification"] = (
+                "S_V6_RSEE_SOURCE_PREFLIGHT_ONLY_NOT_WORLD_ADMITTED"
+                if food_source == "groundv6"
+                else "B0_RSEE_READONLY_PREFLIGHT_ONLY"
+            )
             report["physical_execution_authorized"] = False
             report["stage"] = "CLOSED"
             rc = 0
             return rc
+        if food_source == "groundv6" and not preflight_only:
+            report["classification"] = "S_V6_WORLD_ADMISSION_BLOCKED_SOURCE_ONLY"
+            report["stage"] = "V6_EXACT_SERVER_COMMAND_EFFECT_CLOCK_MISSING"
+            raise S31ABlocked(
+                "V6 requires independent R source of exact server summon "
+                "effect age, matched live Golden start and V admission"
+            )
         if os.environ.get("S51_REAL_SERVER_CI") != "1":
             raise S31ABlocked("explicit real-survival qualification environment required")
         if food_item == "rotten_flesh":
@@ -673,7 +695,7 @@ def main() -> int:
         "--food-item", choices=("bread", "rotten_flesh"), default="bread",
     )
     parser.add_argument(
-        "--food-source", choices=("inventory", "ground", "none", "ground2", "ground2observe", "groundv2"), default="inventory",
+        "--food-source", choices=("inventory", "ground", "none", "ground2", "ground2observe", "groundv2", "groundv6"), default="inventory",
     )
     parser.add_argument(
         "--b0-forage-policy", choices=("native_only", "sensor_gate"),
@@ -687,6 +709,11 @@ def main() -> int:
         "--b0-v2-arm", choices=tuple(V2_ARMS), default=None,
         help="prospective V2 fixed global 16-tick/8-MOVE single-item arm",
     )
+    parser.add_argument("--b0-v6-phase", choices=("LOW", "HIGH"))
+    parser.add_argument("--b0-v6-arm", choices=(
+        "SENSOR_ON", "SHAM_ON", "SENSOR_MASKED_HIGH", "ALWAYS_SEEK",
+        "ALWAYS_WAIT", "EQUAL_INFO_CHEAP_THRESHOLD",
+    ))
     parser.add_argument("--rsee-checkout", type=Path)
     parser.add_argument("--rsee-jar", type=Path)
     parser.add_argument("--rsee-snapshot", type=Path)
@@ -717,6 +744,7 @@ def main() -> int:
         preflight_only=args.preflight_only,
         b0_forage_policy=args.b0_forage_policy,
         b0_sensor=args.b0_sensor, b0_v2_arm=args.b0_v2_arm,
+        b0_v6_phase=args.b0_v6_phase, b0_v6_arm=args.b0_v6_arm,
     ))
 
 

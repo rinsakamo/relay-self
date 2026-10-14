@@ -240,3 +240,78 @@ def test_v6_typed_wait_source_negative_controls_before_any_effect(
         review_v6_native_wait_to_first_choice(
             waits, item, phase="LOW", arm="V2_UNKNOWN",
         )
+
+
+def test_v6_stateful_owner_and_readonly_physical_intake(one_native_hungry_item):
+    import asyncio
+    import json
+
+    from adapters.mineflayer.b0_v6_source import (
+        V6SourceSessionOwner,
+        prospective_v6_profile,
+    )
+    from adapters.mineflayer.s51_eat_real_ci import qualify
+
+    waits, item = _v6_typed_pre_item_sources(one_native_hungry_item)
+    expected = {
+        "LOW": ("SEEK", "SEEK", "WAIT", "SEEK", "WAIT", "SEEK"),
+        "HIGH": ("WAIT", "WAIT", "WAIT", "SEEK", "WAIT", "WAIT"),
+    }
+    for phase, kinds in expected.items():
+        for arm, kind in zip(V6_ARMS, kinds, strict=True):
+            profile = prospective_v6_profile(phase, arm)
+            assert profile["initial_energy"] == (12 if phase == "LOW" else 20)
+            assert profile["physical_execution_authorized"] is False
+            owner = V6SourceSessionOwner(item.session_id, phase=phase, arm=arm)
+            with pytest.raises(V6SourceRejected):
+                owner.observe_first_item(item)
+            for n, source in enumerate(waits, 1):
+                row = owner.observe_wait(source)
+                assert row["m0_tick"] == n and not row["issued_action"]
+            first = owner.observe_first_item(item)
+            assert first["kind"] == kind and first["m0_tick"] == 11
+            assert first["m0_energy"] == (6.5 if phase == "LOW" else 14.5)
+            assert not first["issued_action"]
+            with pytest.raises(V6SourceRejected):
+                owner.observe_first_item(item)
+
+
+def test_v6_s51_source_profile_denied_before_java(tmp_path, monkeypatch):
+    import asyncio
+    import json
+
+    from adapters.mineflayer.s51_eat_real_ci import qualify
+
+    monkeypatch.setenv("S51_REAL_SERVER_CI", "1")
+    for arm in V6_ARMS:
+        output = tmp_path / f"v6-{arm}.json"
+        server_log = tmp_path / f"v6-{arm}.log"
+        assert asyncio.run(qualify(
+            output, server_log, food_item="rotten_flesh",
+            food_source="groundv6", b0_v6_phase="HIGH", b0_v6_arm=arm,
+        )) == 2
+        data = json.loads(output.read_text(encoding="utf-8"))
+        assert data["status"] == "BLOCKED"
+        assert data["classification"] == "S_V6_WORLD_ADMISSION_BLOCKED_SOURCE_ONLY"
+        assert data["physical_java_started"] is False
+        assert data["grant_consumed"] is False
+        assert data["b0_v6_candidate"]["initial_energy"] == 20
+        assert not server_log.exists()
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"food_source": "groundv6", "b0_v6_phase": "LOW"},
+    {"food_source": "groundv6", "b0_v6_arm": "SENSOR_ON"},
+    {"b0_v6_phase": "HIGH", "b0_v6_arm": "SENSOR_ON"},
+    {"food_source": "groundv6", "b0_v6_phase": "LOW",
+     "b0_v6_arm": "SENSOR_ON", "b0_v2_arm": "SENSOR_ON"},
+])
+def test_v6_s51_invalid_options_fail_without_effect(tmp_path, kwargs):
+    import asyncio
+    from adapters.mineflayer.s51_eat_real_ci import qualify
+    with pytest.raises(ValueError):
+        asyncio.run(qualify(
+            tmp_path / "none.json", tmp_path / "none.log",
+            food_item="rotten_flesh", **kwargs,
+        ))
+    assert not list(tmp_path.iterdir())
