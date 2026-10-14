@@ -153,11 +153,16 @@ def review_original_bundle(
         expected_session=session,
     )
     rows = _lines(native, max_count=200_000)
-    observations = [r for r in rows if r.get("type") == "observation"]
-    _need(bool(observations)
-          and observations[0].get("seq") == first_probe_seq
-          and observations[0].get("request_id") == first_probe_request,
-          "first native observation missing/foreign to issuer")
+    # Spawn/health observations legitimately precede the FIRST issued probe.
+    # Never mistake the first observation for the first native L0 probe.
+    probes = [
+        r for r in rows
+        if r.get("type") == "observation" and r.get("kind") == "probe"
+    ]
+    _need(bool(probes)
+          and probes[0].get("seq") == first_probe_seq
+          and probes[0].get("request_id") == first_probe_request,
+          "first native L0 probe missing/foreign to issuer")
     issued = _review_issuer(
         journal, session=session, first_probe_seq=first_probe_seq,
         first_probe_request=first_probe_request,
