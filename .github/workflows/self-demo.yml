@@ -72,8 +72,8 @@ jobs:
             tests/test_b0_v6_original_capture.py \
             tests/test_b0_v6_six_arm_source.py \
             tests/test_b0_v6_start_marker.py \
-            tests/test_v6_world_qualification.py \
-            tests/test_feature_s51_eat_execution.py
+            tests/test_feature_s51_eat_execution.py \
+            tests/test_v6_world_qualification.py
           )"
           test "$changed" = "$expected"
       - run: python tools/check_repository.py
@@ -85,6 +85,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          # Frozen S V1/V2 producer blob tests require immutable ancestor objects.
+          fetch-depth: 0
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
