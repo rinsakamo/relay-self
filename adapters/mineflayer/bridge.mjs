@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
+import { lstatSync } from 'node:fs'
+import { isAbsolute, join } from 'node:path'
 import readline from 'node:readline'
 
 import {
@@ -20,7 +22,17 @@ import {
 } from './protocol.mjs'
 
 const EXPECTED_MINEFLAYER_VERSION = '4.39.0'
-const require = createRequire(import.meta.url)
+// Same physical external dependency-root contract as frozen RSEE #588.
+const nodeRuntimeRoot = process.env.RELAYSELF_RSEE_NODE_RUNTIME_ROOT
+if (nodeRuntimeRoot &&
+    (!isAbsolute(nodeRuntimeRoot) || lstatSync(nodeRuntimeRoot).isSymbolicLink() ||
+     lstatSync(join(nodeRuntimeRoot, 'node_modules')).isSymbolicLink())) {
+  process.stderr.write('RSEE Node runtime must be an absolute physical directory\n')
+  process.exit(2)
+}
+const require = createRequire(nodeRuntimeRoot
+  ? join(nodeRuntimeRoot, 'package.json')
+  : import.meta.url)
 const mineflayer = require('mineflayer')
 const mineflayerPackage = require('mineflayer/package.json')
 

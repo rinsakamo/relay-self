@@ -37,3 +37,30 @@
 original log・native JSONL・issuer stdin command bytes・source version・元Worldバイトindex・6追加Datapack SHA・原Score readback・報告書を保存し、Rが別プロセス/別checkoutで前後SHA256・session/seq/STOP・元World不変・source-to-effect readbackを監査する。証拠ファイルにmissing/duplicate/alias/自称原証拠しか無い場合は `UNDETERMINED`/ `BLOCKED` とし、改竄や再実行で補完しない。
 
 この1回は**Engineering World load/clock-source qualification**であり、科学的学習や予測の効果、V6 48試験の入場・同一世界経過tick、G3/production GOではない。結果はS #537、R #575、必要に応じV #619へ原証拠SHAを添えて報告する。未実施段階の分類は `S_V6_PHYSICAL_QUALIFICATION_PREPARED_NOT_RUN / ONE_SHOT_GRANT_UNCONSUMED / WORLD_V6_STUDY_0 / G3_NO_GO`。
+
+## Local S dedicated executor (2026-10-14)
+
+`python -m adapters.mineflayer.v6_world_qualification` is the separate
+engineering-only owner. It never invokes S51 `groundv6`. All artifact paths,
+the exact S HEAD, clean R `49592916c141bdcc58b373efeb7f3130351ed641`, both frozen
+producer checkouts, a canonical nonce, a fresh external output directory and a
+persistent exclusive grant path are required. Default only prepares/reviews a
+stopped clone; the explicit `--confirm V6-ENGINEERING-WORLD-ONCE-NO-SCIENCE`
+option makes exactly one Java create call after fresh remote S/R CI and R's
+independent six-file stopped-byte review. A failed/uncertain Java create call
+conservatively consumes the grant too. The grant file is never removed.
+
+The three capture originals are in `originals/`. Additional raw Java stdin,
+Node stdin/stderr, pre-Java admission and terminal report are outside that
+three-file envelope. Exact console writes are limited to the capture contract;
+Node accepts only observation and shutdown. Food is invoked immediately after
+start-score readbacks, with no M0 decision tick or V arm. A separate native
+probe checks the resulting item entity. Host timing never supplies an effect
+tick. The report remains engineering evidence pending independent R readback.
+
+The offline Node import probe imports the actual locked Mineflayer and
+minecraft-protocol graph before Java. It is not a Minecraft bridge/session.
+Cleanup records original owned PID disappearance, exit codes, native STOP ACK
+and port bind separately. Emergency termination preserves failure and never
+starts another process. Failed parser/load/score/native/STOP checks cannot be
+repaired by another World start. Scientific G3 and production remain NO_GO.
