@@ -99,3 +99,31 @@ physical execution. No new issue, alternative launcher or implicit
 World-clock equivalence is infeasible, review a new prospective
 amendment **before any real outcomes**. Never retroactively choose
 the easier M0 tick clock after inspecting results.
+
+## V6 G1: independent R World-age evidence admission gate (2026-10-14)
+
+R #575 source 94c68a97bd25de9e170d067c61894fc21783c5bf now has
+a versioned three-clock source reviewer, not an elapsed-World-age producer.
+V independently pins that exact R checkout and runs original R clock
+tests and the R read-only no-launch plan in its own CI. The V-owned
+v6_r_clock_source_review.py rejects any upgrade from host monotonic
+duration, native day/time_of_day/is_day display clock, or M0 decision
+ticks to genuine monotone Minecraft world-age elapsed ticks.
+
+Even if a projected R twelve-arm block contains equal self-reported
+world_age_tick deltas, it remains a CANDIDATE: no native producer
+authenticity, original command-effect tick, full-life SHA binding,
+exclusive issuing authority, or matched launched Golden source is
+attested. V negative tests reject forged positive flags and
+synthetic observations with altered G3 admission. A stopped-world
+26-file clone SHA pass alone cannot attest later execution time.
+
+Missing these source receipts blocks the entire pre-registered
+48-session design before physical launch, independent of apparent
+policy-choice divergence. R owns any future genuine World-age
+instrumentation and original provenance; S owns real World actions;
+V owns eligibility and must not weaken the frozen V6 clocks after
+outcomes. No physical runs, old R audit repetition or new grants.
+
+Classification: V6_R_THREE_CLOCK_PRODUCER_GAP_CONFIRMED_G0 /
+PAIRED_WORLD_TIME_NOT_ATTESTED / G3_NO_GO.

@@ -31,7 +31,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$CURRENT_HEAD"
           git merge-base --is-ancestor 53d50029da64a95c56bb56c6d48b5d14ce94e84a HEAD
           git diff --name-only 53d50029da64a95c56bb56c6d48b5d14ce94e84a HEAD > "$RUNNER_TEMP/paths"
-          test "$(wc -l < "$RUNNER_TEMP/paths")" -eq 26
+          test "$(wc -l < "$RUNNER_TEMP/paths")" -eq 28
           grep -Fxq ".github/workflows/validation-v2.yml" "$RUNNER_TEMP/paths"
           grep -Fxq "docs/validation-v2-knockdown.md" "$RUNNER_TEMP/paths"
           grep -Fxq "experiments/validation/v2_knockdown_manifest.json" "$RUNNER_TEMP/paths"
@@ -58,6 +58,8 @@ jobs:
           grep -Fxq "experiments/validation/v6_b0_paired_world_plan.py" "$RUNNER_TEMP/paths"
           grep -Fxq "experiments/validation/v6_b0_paired_world_plan.json" "$RUNNER_TEMP/paths"
           grep -Fxq "docs/validation-v6-b0-two-regime.md" "$RUNNER_TEMP/paths"
+          grep -Fxq "experiments/validation/v6_r_clock_source_review.py" "$RUNNER_TEMP/paths"
+          grep -Fxq "tests/test_validation_v6_r_clock_source_review.py" "$RUNNER_TEMP/paths"
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
@@ -67,7 +69,7 @@ jobs:
           PYTHONPATH: 'src:tests:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m pytest -q tests/test_validation_v2_knockdown.py tests/test_validation_v2_s_nonforcing_review.py tests/test_validation_v3_m0_energy.py tests/test_validation_v4_identifiability.py tests/test_validation_v5_b0_l0.py tests/test_validation_v6_b0_two_regime.py tests/test_validation_v6_b0_paired_world_plan.py tests/test_validation_v1.py
+          python -m pytest -q tests/test_validation_v2_knockdown.py tests/test_validation_v2_s_nonforcing_review.py tests/test_validation_v3_m0_energy.py tests/test_validation_v4_identifiability.py tests/test_validation_v5_b0_l0.py tests/test_validation_v6_b0_two_regime.py tests/test_validation_v6_b0_paired_world_plan.py tests/test_validation_v6_r_clock_source_review.py tests/test_validation_v1.py
           python -m experiments.validation.v2_knockdown > "$RUNNER_TEMP/v2-plan.json"
           python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v2-plan.json"))); assert d["classification"]=="V2_PREREGISTRATION_ONLY" and not d["science_go"] and d["new_world_runs"]==0'
           python -m experiments.validation.v3_m0_energy > "$RUNNER_TEMP/v3-plan.json"
@@ -82,6 +84,33 @@ jobs:
           python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v6-paired-plan.json"))); assert d["classification"]=="V6_PAIRED_WORLD_PRE_ADMISSION_PROTOCOL_ONLY" and d["total_unexecuted_session_slots"]==48 and d["number_of_real_world_trials"]==0 and d["science_g3"]=="NO_GO"'
           ruff check src tests experiments adapters observability
           python tools/check_repository.py
+  pinned-r-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 94c68a97bd25de9e170d067c61894fc21783c5bf
+          path: external-r-v6
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Pinned R no-launch clock source and independent V NO-GO admission
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          test "$(git -C external-r-v6 rev-parse HEAD)" = "94c68a97bd25de9e170d067c61894fc21783c5bf"
+          (cd external-r-v6 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_rsee_v6_world_timing.py)
+          (cd external-r-v6 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m experiments.standard_env.v6_world_timing) > "$RUNNER_TEMP/v6-r-no-launch.json"
+          python -c 'import json,os; from pathlib import Path; from experiments.validation.v6_r_clock_source_review import review_json_file; q=review_json_file(Path(os.environ["RUNNER_TEMP"])/"v6-r-no-launch.json"); assert q["classification"]=="V6_R_THREE_CLOCK_PRODUCER_GAP_CONFIRMED_G0" and not q["physical_session_admitted"] and q["science_g3"]=="NO_GO"'
+          test -z "$(git -C external-r-v6 status --porcelain --untracked-files=no)"
   pinned-s-owner:
     runs-on: ubuntu-latest
     timeout-minutes: 12
