@@ -1187,3 +1187,35 @@ native seq146 `shutdown_ack` とseq147 `connection_end` は保存されている
 独立STOP ACK証明を与えない。今後のDEV receiptは `stop_ack=UNATTESTED`
 とscopeを記録する。成功ループ確認後は追加World試験を開始しない。
 R資格PASS・V科学成功への昇格なし、V6科学48試行0、G3/production NO_GO。
+
+
+## B1 initial local adaptation — DEV only
+
+B1 uses the existing S51 disposable World owner (no new launcher), carrying a
+single session and M0 body across two sequential operator-staged ground food
+opportunities. In the first epoch it requests one stone wall between player and
+item via the owned Minecraft console. This is **not** native proof that the
+setblock effect was applied. Only a genuine supervised S50 MOVE with native
+`BLOCKED` consequence can create a source-bounded L1 observational candidate.
+The subsequent same-session source observation is used to propose a bounded
+lateral waypoint through the existing S15/S16 issuer and S50 effect reporter.
+The alternative may fail; there is no forced success, invented terrain result,
+S10 learning authority, S11 Habit, or scientific claim. Both native S51 EATs and
+exactly-once M0 credits must still close for full two-epoch DEV completion.
+
+```bash
+PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m adapters.mineflayer.self_demo \
+  --mode DEV --dev-scenario b1-local-adaptation --b1-retention on \
+  --run-disposable --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
+  --output-dir /absolute/existing-parent/new-b1-dev-run
+```
+
+For a *separate* cheap fixed-turn witness use `--b1-retention off`, always
+with another **fresh** run root. OFF uses a fixed +Z after a native BLOCKED
+Action and retains no Memory; ON stores one source-scoped observation using
+existing Persistent Cognition and proposes -Z. A difference in these
+**unmatched DEV runs is not a causal learning advantage**. Review the S51
+`native_report.json`, `b1_observational_memory.json` (ON only if blocked),
+original native/command JSONL, `dev_receipt.json` and `SHA256SUMS`.
+If the local Java/Node/Minecraft runtime is unavailable: real World `NOT_RUN`.
+Prior RSEE Golden/consumed V6 grants and V science 48 slots remain untouched.
