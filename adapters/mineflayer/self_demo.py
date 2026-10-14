@@ -527,6 +527,29 @@ def _dev_run(args: argparse.Namespace) -> int:
                     root / "native_report.json", root / "minecraft_server.log",
                 ))
         native = json.loads((root / "native_report.json").read_text())
+        if scenario == "b1-local-adaptation":
+            epochs = native.get("two_ground_epochs", [])
+            receipt["dev_b1_epoch_count"] = len(epochs)
+            terminal = native.get("metabolism_terminal")
+            receipt["dev_b1_meals"] = (
+                terminal.get("meals") if isinstance(terminal, dict) else None
+            )
+            receipt["dev_b1_l1_source"] = native.get("b1_local_final", "NOT_ESTABLISHED")
+            receipt["dev_b1_retention_enabled"] = getattr(args, "b1_retention", "on") == "on"
+            receipt["dev_b1_source_status"] = native.get("owner_status")
+            receipt["dev_b1_action_outcomes"] = sum(
+                (len(e["ground_pickup"].get("movement_outcomes", []))
+                 if isinstance(e.get("ground_pickup"), dict) else 0)
+                + int(e.get("eat_action_terminal") == "outcome")
+                for e in epochs if isinstance(e, dict)
+            )
+            receipt["dev_b1_decisions"] = sum(
+                len(e.get("hunger_trace", [])) + len(e.get("eat_gate_trace", []))
+                + (len(e["ground_pickup"].get("l0_ground_seek_trace", []))
+                   if isinstance(e.get("ground_pickup"), dict) else 0)
+                + int(isinstance(e.get("next_l0"), dict))
+                for e in epochs if isinstance(e, dict)
+            )
         if scenario == "b0-ground":
             # Read-only projection of source; NOT independent R qualification.
             acquisition = native.get("ground_pickup")
@@ -567,14 +590,17 @@ def _dev_run(args: argparse.Namespace) -> int:
             server_exit=native.get("server_exit"), node_exit=native.get("node_exit"),
             native_owner_status=native.get("status"),
             decisions=(receipt["dev_b0_decisions"] if scenario == "b0-ground"
+                       else receipt["dev_b1_decisions"] if scenario == "b1-local-adaptation"
                        else len(native.get("decisions", []))),
             native_actions=(receipt["dev_b0_action_outcomes"] if scenario == "b0-ground"
+                            else receipt["dev_b1_action_outcomes"] if scenario == "b1-local-adaptation"
                             else len(native.get("actual_native_actions", []))),
             cleanup_error=native.get("server_cleanup_error") or native.get("node_cleanup_error"),
             stop_ack="UNATTESTED",
             stop_ack_scope="NO_INDEPENDENT_NATIVE_STOP_ATTESTATION",
             source_report="native_report.json",
             source_scope=("S51_OWNER_B0_NOT_DEV_QUALIFICATION" if scenario == "b0-ground"
+                          else "S51_OWNER_B1_DEV_NOT_QUALIFIED" if scenario == "b1-local-adaptation"
                           else "S49_OWNER_DIAGNOSTIC_NOT_DEV_QUALIFICATION"),
         )
     except Exception as exc:
@@ -619,16 +645,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model-timeout", type=float, default=12.0)
     parser.add_argument("--mode", choices=("DEV",),
                         help="DEV_ONLY; never delegates to QUALIFICATION or SCIENCE")
-    parser.add_argument("--dev-scenario", choices=("native", "b0-ground"), default="native",
-                        help="DEV only: existing S49 native or S51 ground/EAT/M0 route")
+    parser.add_argument(
+        "--dev-scenario", choices=("native", "b0-ground", "b1-local-adaptation"),
+        default="native", help="DEV S49 native, S51 B0 or S51 B1 local candidate",
+    )
+    parser.add_argument(
+        "--b1-retention", choices=("on", "off"), default="on",
+        help="B1 only: observational Memory ON or fixed-turn OFF",
+    )
     parser.add_argument("--retry-of", help="prior DEV run ID, informational lineage only")
     args = parser.parse_args(argv)
     if args.mode == "DEV":
         return _dev_run(args)
     if args.retry_of is not None:
         parser.error("--retry-of requires --mode DEV")
-    if args.dev_scenario != "native":
-        parser.error("--dev-scenario b0-ground requires --mode DEV")
+    if args.dev_scenario != "native" or args.b1_retention != "on":
+        parser.error("--dev-scenario/--b1-retention require --mode DEV")
 
     if args.think and args.live_think:
         print(json.dumps(_row(
