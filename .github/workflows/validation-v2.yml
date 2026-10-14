@@ -98,6 +98,37 @@ jobs:
           test "$(git -C external-s-v3 rev-parse HEAD)" = "28cb0f588192ecfe5d03b12b818508352d1a40a8"
           (cd external-s-v3 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_b0_two_epoch.py tests/test_b0_ground_foraging.py)
           (cd external-s-v3 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -c 'from experiments.metabolism_viability import MetabolismConfig; from adapters.mineflayer.b0_two_epoch import V2_HORIZON_M0_TICKS,V2_MAX_ISSUED_MOVES,V2_FIRST_ITEM_TICK,V2_ARMS; c=MetabolismConfig(); assert (c.initial_energy,c.basal_cost,c.move_cost,c.food_energy,c.capacity)==(12,.5,.25,4,20); assert (V2_HORIZON_M0_TICKS,V2_MAX_ISSUED_MOVES,V2_FIRST_ITEM_TICK)==(16,8,11); assert tuple(V2_ARMS)==("SENSOR_ON","SHAM_ON","SENSOR_MASKED","CHEAP_NATIVE")')
+          (cd external-s-v3 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python - <<'PY'
+          from dataclasses import replace
+          from adapters.mineflayer.b0_two_epoch import V2_ARMS
+          from adapters.mineflayer.b0_energy_bridge import (
+              B0EnergyLedger, B0_SENSOR_SEEK_THRESHOLD,
+          )
+          from experiments.metabolism_viability import Interoception
+          from test_b0_ground_foraging import _ground
+          assert B0_SENSOR_SEEK_THRESHOLD == 8.0
+          native = _ground()
+          native = replace(native, snapshot=replace(native.snapshot, food=13.0))
+          results = {}
+          for name, (policy, gain, bias) in V2_ARMS.items():
+              ledger = B0EnergyLedger(
+                  native.session_id, forage_policy=policy,
+                  sensor=Interoception(gain=gain, bias=bias),
+              )
+              for _ in range(11):
+                  ledger.step("WAIT")
+              assert ledger.body.tick == 11
+              assert ledger.body.energy == 6.5
+              decision = ledger.decide(native)
+              results[name] = (decision.kind, decision.sensor_reading)
+          assert results == {
+              "SENSOR_ON": ("SEEK", 6.0),
+              "SHAM_ON": ("SEEK", 6.0),
+              "SENSOR_MASKED": ("WAIT", 12.0),
+              "CHEAP_NATIVE": ("SEEK", 6.0),
+          }, results
+          PY
+          )
           test -z "$(git -C external-s-v3 status --porcelain --untracked-files=no)"
   full-regression:
     runs-on: ubuntu-latest

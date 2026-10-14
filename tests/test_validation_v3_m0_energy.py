@@ -31,6 +31,35 @@ def source_cases():
     return result
 
 
+def test_v3_first_food_opportunity_on_and_cheap_tie_by_design():
+    result = v3.review_fixed_fixture_first_choice()
+    assert result["classification"] == "V3_FIRST_OPPORTUNITY_ON_CHEAP_POLICY_EQUIVALENCE"
+    assert result["fixture_at_m0_tick"] == 11
+    assert result["pre_fixture_wait_charges"] == 11
+    assert result["energy_at_first_fixture"] == 6.5
+    assert result["on_sensor_reading"] == 6
+    assert result["fixed_mask_sensor_reading"] == 12
+    assert result["decisions"] == {
+        "SENSOR_ON": "SEEK", "SHAM_ON": "SEEK",
+        "SENSOR_MASKED": "WAIT", "CHEAP_NATIVE": "SEEK",
+    }
+    assert result["on_cheap_first_choice_equivalent"]
+    assert not result["incremental_on_benefit_over_cheap_identifiable_from_first_choice"]
+    assert result["full_world_trajectory_equivalent"] == "NOT_ATTESTED"
+    assert result["real_world_trials"] == 0 and not result["science_go"]
+
+
+def test_first_opportunity_proof_does_not_mutate_frozen_v3_or_accept_new_threshold():
+    d = v3.load_manifest()
+    original = copy.deepcopy(d)
+    v3.review_fixed_fixture_first_choice(d)
+    assert d == original
+    changed = copy.deepcopy(d)
+    changed["design"]["s_item_opportunity_m0_tick"] = 4
+    with pytest.raises(v3.V3Rejected):
+        v3.review_fixed_fixture_first_choice(changed)
+
+
 def test_new_primary_is_versioned_and_does_not_change_frozen_v2():
     m = v3.load_manifest()
     assert m["predecessor_v2_head"] == v3.PARENT_V2

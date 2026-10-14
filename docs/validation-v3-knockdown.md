@@ -29,3 +29,55 @@ Measure original S50 MOVE outcomes, S51 EAT source/credit, M0 tick count, final 
 - Negative tests and synthetic cheap-equivalence witness in `tests/test_validation_v3_m0_energy.py`. V CI pins latest S source independently and checks its M0 constants, arm map and new opt-in global mode source tests. No physical call.
 
 **Current:** `V3_NEW_PROSPECTIVE_PRIMARY_NOT_RUN / G3_NO_GO / NO_PRODUCTION_GO`. No operator World authorization, Java/Node/GPU or LLM POST, nor actual four-arm World comparison. This is preparation, **not** a promotion of V2 historical results.
+
+
+## V3 G0 policy-discrimination ceiling: ON vs CHEAP (pre-run source audit)
+
+V3 fixed the V2 survival-time primary, but this *particular* single-item
+study still contains a deterministic **mechanism-equivalence** null.
+The only first ground food opportunity is at **M0 decision tick 11**;
+all four arms must have made 11 basal WAIT steps without earlier food.
+With true E0=12 and basal cost0.5, E11=6.5. The unchanged
+`Interoception(gain=1,bias=0,quantum=1)` quantizes 6.5 via
+Python ties-to-even `round` to **6**, below the hand-coded
+`sensor_gate` SEEK threshold of **8**. On the same native hungry
+single-item probe:
+
+| Arm | Readout | Designed L0 choice |
+| --- | ---: | --- |
+| SENSOR_ON | 6 | SEEK |
+| SHAM_ON | 6 | SEEK |
+| SENSOR_MASKED | 12 (fixed high) | WAIT |
+| CHEAP_NATIVE | reading irrelevant | SEEK |
+
+Thus ON and the **strong cheap comparator take the same first
+food-seeking decision by construction**, while ON and MASKED differ.
+If later World observations, initial sources, action success and
+decision-tick updates remain identical, ON and cheap have the
+same subsequent controller trajectory on this one-item protocol:
+the sensor-gate condition has no chance to reject a food opportunity
+that the native-only baseline accepts. This *conditional* policy
+equivalence is **not** attestation that different live Minecraft
+runs have identical trajectories; async movement, server timing and
+source variability remain unknown until R/V inspection.
+
+New `review_fixed_fixture_first_choice()` conservatively reports
+`V3_FIRST_OPPORTUNITY_ON_CHEAP_POLICY_EQUIVALENCE`, NOT a positive
+sensor-value claim. V CI independently imports pinned real S
+`B0EnergyLedger` with the native-shaped one-item fixture, charges
+exactly eleven M0 WAITs, and checks actual L0 outputs for all four
+arms. The positive ON-vs-MASKED difference is therefore an engineered
+policy contrast, **not** evidence of added value versus cheap.
+The versioned V3 end-energy primary is mathematically variable, but
+this *particular* fixture is not a good test of sensor superiority
+over a cheap fixed policy. No V2/V3 frozen manifest update, no
+actual trial, and no change in scientific G3 NO_GO.
+
+For a future valid comparison, V would need a **separately versioned
+prospective scenario where the sensor-gated policy can both accept and
+decline opportunities**, and where accepting a low-value opportunity
+has a measurable energy/opportunity cost for the cheap baseline.
+That design must also avoid building the desired superiority into
+the handcrafted threshold/fixture schedule. No new study/World
+permission is implicitly granted; R's independent on-host
+original audit continues separately.

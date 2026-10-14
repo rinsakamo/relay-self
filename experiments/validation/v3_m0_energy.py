@@ -197,6 +197,60 @@ def review_source_shaped(rows: list[dict[str, Any]], *,
     return result
 
 
+
+def review_fixed_fixture_first_choice(
+    manifest: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Source-conditional policy identifiability at *the* fixed item opportunity.
+
+    The matched first item appears only after 11 M0 basal WAIT charges.
+    ON/SHAM and native_only CHEAP all choose SEEK on the same hungry,
+    single-item native observation; MASKED reads high and chooses WAIT.
+    This is a deterministic G0 mechanism witness, not a World outcome.
+    """
+    m = validate_manifest(manifest if manifest is not None else load_manifest())["design"]
+    e = m["initial_m0_energy"] - (
+        m["s_item_opportunity_m0_tick"] * m["basal_cost_per_m0_tick"]
+    )
+    require(e > 0 and m["s_item_opportunity_m0_tick"] < m["global_m0_ticks"],
+            "invalid before-fixture energy or opportunity")
+    # Exact pinned S Interoception uses round(x / quantum) * quantum,
+    # with the default quantum=1; policy threshold 8 is checked in CI.
+    reading = float(round(e))
+    fixed_mask_reading = 12.0
+    seek_threshold = 8.0
+    decisions = {
+        "SENSOR_ON": "SEEK" if reading <= seek_threshold else "WAIT",
+        "SHAM_ON": "SEEK" if reading <= seek_threshold else "WAIT",
+        "SENSOR_MASKED": (
+            "SEEK" if fixed_mask_reading <= seek_threshold else "WAIT"
+        ),
+        "CHEAP_NATIVE": "SEEK",
+    }
+    require(decisions == {
+        "SENSOR_ON": "SEEK", "SHAM_ON": "SEEK",
+        "SENSOR_MASKED": "WAIT", "CHEAP_NATIVE": "SEEK",
+    }, "first-opportunity choices no longer match source-conditional design")
+    return {
+        "classification": "V3_FIRST_OPPORTUNITY_ON_CHEAP_POLICY_EQUIVALENCE",
+        "fixture_at_m0_tick": m["s_item_opportunity_m0_tick"],
+        "pre_fixture_wait_charges": m["s_item_opportunity_m0_tick"],
+        "energy_at_first_fixture": e,
+        "on_sensor_reading": reading,
+        "fixed_mask_sensor_reading": fixed_mask_reading,
+        "single_item_qualifier": "NATIVE_HUNGRY_FOOD_LT_14_ONE_ITEM_COMPLETE",
+        "decisions": decisions,
+        "on_sham_first_choice_equivalent": True,
+        "on_cheap_first_choice_equivalent": True,
+        "full_world_trajectory_equivalent": "NOT_ATTESTED",
+        "incremental_on_benefit_over_cheap_identifiable_from_first_choice": False,
+        "world_time_equal_across_arms": "NOT_ATTESTED",
+        "source_assumptions": "S_PINNED_M0_AND_B0_L0_CI_ONLY",
+        "real_world_trials": 0,
+        "science_go": False,
+    }
+
+
 def main() -> int:
     d = load_manifest()
     print(json.dumps({
