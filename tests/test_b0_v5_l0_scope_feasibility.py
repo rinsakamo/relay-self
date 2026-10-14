@@ -19,8 +19,9 @@ def _same_hungry_one_item():
 
     original = ground._ground()
     from dataclasses import replace
-    from adapters.mineflayer.b0_ground_foraging import select_ground_target
+
     source = replace(original, snapshot=replace(original.snapshot, food=13.0))
+    from adapters.mineflayer.b0_ground_foraging import select_ground_target
     target = select_ground_target(source)
     assert source.snapshot.inventory == ()
     assert not source.snapshot.nearby_entities_coverage.truncated
