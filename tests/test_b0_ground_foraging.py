@@ -226,6 +226,7 @@ def test_nonforcing_rejects_replay_or_entity_switch_without_extra_charge():
 
 def test_v2_time_bracket_rejects_legacy_or_stale_before_java():
     import asyncio
+
     from adapters.mineflayer.b0_ground_runner import acquire_staged_ground_flesh
 
     p = _ground()
