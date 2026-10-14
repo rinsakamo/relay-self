@@ -108,6 +108,28 @@ jobs:
           PYTHONPATH: 'r3:r3/src'
         run: |
           python -m experiments.standard_env.v6_atomic_admission --s-checkout "$PWD/sv6atomic" | grep -F 'RSEE_V6_ATOMIC_S_SOURCE_PINNED_REVIEW_ONLY'
+      - name: Compare independent R expected pack bytes to pinned S generator output
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONPATH: 'r3:r3/src'
+        run: |
+          python - <<'PY'
+          import runpy
+          from pathlib import Path
+          from experiments.standard_env.v6_atomic_admission import (
+              PACK_DIR, expected_pack_bytes, review_s_atomic_source,
+          )
+          root = Path.cwd() / "sv6atomic"
+          review_s_atomic_source(root)
+          frozen = expected_pack_bytes()
+          producer = runpy.run_path(str(root / "adapters/mineflayer/v6_atomic_fixture.py"))
+          actual = {
+              f"{PACK_DIR}/{rel}": content
+              for rel, content in producer["proposed_datapack_files"]().items()
+          }
+          assert actual == frozen, "pinned S atomic-food pack bytes differ from independent R contract"
+          print("RSEE_V6_S_ATOMIC_SOURCE_BYTES_EQUAL_R_EXPECTATIONS_REVIEW_ONLY")
+          PY
       - name: Frozen S3 to S6 to S7 to S8 to S9 Git ancestry
         run: |
           git -C s7 merge-base --is-ancestor 6f493b7a559dd72ea365998b9eadbd35fd7eb9b4 a6ed8ed6b99dd09edcaa6cc9e5cefc08778aec8f
