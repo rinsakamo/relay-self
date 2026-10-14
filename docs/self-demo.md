@@ -1073,3 +1073,38 @@ may modify original stopped Golden #588 World files. If the server
 clock exceeds int32 scoreboard bounds or has any reset/overflow,
 the study is invalid rather than silently unwrapping timestamps.
 Physical S51 `groundv6` remains BLOCKED pre-Java.
+
+
+### Prospective S original three-stream recorder (2026-10-14, NOT LIVE)
+
+`adapters/mineflayer/v6_original_capture.py` adds a passive,
+exclusive-create original-file capture adapter for future S51 use:
+`server_stdout_original.log` from raw server stdout *before* UTF-8
+decoding; `native_bridge_original.jsonl` from original Node stdout
+*before* Python protocol decoding; and
+`issuer_commands_original.jsonl` describing the S51 owner's
+twelve predeclared, strictly ordered actual write **attempts** and
+a distinct NONISSUED first L0 probe. It records native sequence numbers,
+session/probe correlation, host monotonic ordering, original file bytes
+and SHA256, and leaves incomplete captures in place on failure.
+It is **passive** and cannot invoke the original S51 issuer, start a
+World, install functions, summon food, mint M0 energy or grant V6.
+
+`record_issuer_attempt` is an *issuer-side journal claim*, never a
+server receipt. Because the two setup attempts precede the first L0
+probe, their journal rows are buffered, then assigned the subsequently
+observed first-probe correlation and written once. This provenance
+annotation is retrospective, not an independently timed original
+server acceptance. The produced SHA256 digest is captured *after*
+bytes are written and is not an independently precommitted SHA.
+
+**R protocol mismatch:** the Mineflayer producer emits a native
+`observation(kind=spawn)` before it can produce the first
+`observation(kind=probe)`. The current R synthetic envelope assumes
+the first native observation is already the probe. It must be updated
+to select the first *correlated item-free probe* while preserving earlier
+spawn/other native originals, rather than altering/omitting real bytes.
+The capture adapter is not yet wired into an admitted physical
+`groundv6` S51 launch. Until R/V have reviewed the emitter and
+server/clone/authenticity conditions, the S51 hard pre-Java STOP and
+48 NOT_ADMITTED World slots remain unchanged.
