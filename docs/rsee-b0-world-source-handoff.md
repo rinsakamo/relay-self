@@ -125,3 +125,77 @@ Independently compare path identities and full inventory **before and after** th
 At readback, S owner Draft #545 advanced to exact \`5ac03d4ff0197a2a1e55825da1aed1d6d71f24de\`, CI [#38489893708](https://github.com/rinsakamo/relay-self/actions/runs/38489893708) COMPLETED SUCCESS. This HEAD includes optional \`--food-source groundv2\` with the V arm names, **global 16 M0 decision ticks**, **global 8 issued MOVE cap**, and an operator-fixed item placement at **M0 tick11**. The older \`ground2observe\` (24 opportunities/two epochs) remains distinct, and the old V source-only mismatch remains correct *for that older mode*. Therefore the previous global budget mismatch is **partially resolved by S**; it must not be reported as an outstanding constraint mismatch for the new groundv2 mode.
 
 **Still not resolved:** M0 tick11 is not an independently qualified equal Minecraft World tick/time across four arms, even though nominal external item placement is fixed in M0 time. Golden ability freeze, genuinely matched World-start/exogenous timing, complete capture and qualified nonissued WAIT original bytes, independent original Action/Goal semantics, R on-host admission and V live admission are still absent. R must not convert S's exact-head CI into temporal-world attestation. Every old one-shot permission is consumed. No V science experiment has run. This note updates only interpretation of the newer S source; it does not rewrite historical R6/S9 or B0 ground2 evidence.
+
+## V6 R-side World-start and three-clock independent pre-admission (OFFLINE)
+
+R #575 owns `experiments/standard_env/v6_world_timing.py`. This is an
+independent, **read-only** World-start and clock review; it does not
+change or replay the already completed historical B0 original-byte audit.
+V #619 Draft #625 fixed V6 paired protocol at
+`f1a747891e9620e4ab7c86f46f6c8b28e31e5f30` (CI success):
+4 starts x LOW/HIGH E12/E20 x 6 controls = 48 *unexecuted*
+individual session slots. This is not a grant.
+
+Three DIFFERENT axes must be kept independent:
+
+- M0 decision tick: 0 at initial fresh owner, then 11 **real M0 ledger**
+  WAIT charges at basal0.5, before first Food13 item observation. This
+  is a count of ledger transitions, not elapsed Minecraft or wall time.
+- Host monotonic real time: store a single host-clock domain with
+  monotonic_ns at each native observation. Difference between stamps
+  is a host elapsed duration, affected by stalls and scheduler/bridge
+  delays, not equivalent to Minecraft server ticks.
+- Native Minecraft clock display: frozen RSEE #588 Mineflayer 4.39
+  schema carries `snapshot.time={day,time_of_day,is_day}`.
+  Day/time-of-day change with Minecraft `/time` commands and
+  daylight-cycle rules. `day*24000+time_of_day` is a *display
+  coordinate*, NEVER the independently monotone World-age/elapsed tick.
+  Frozen RSEE bridge/protocol currently do **not emit** the
+  independent `bot.time.age` or a certified server-side World tick.
+
+New R reviewer has two separate entry points; invoke from a clean R
+owner checkout. With no flags it produces
+`RSEE_V6_WORLD_TIME_PRE_ADMISSION_PLAN` and reads no originals.
+`--jar JAR --golden STOPPED_SNAPSHOT --manifest MANIFEST
+--initial-evidence INITIAL --clone EXISTING_UNSTARTED_CLONE`
+reads qualified #588 original Golden byte identity and independently
+verifies every named stopped clone (26-file listing/content hashes
+and NBT seed). It NEVER creates a clone, writes, starts Java or
+attests subsequent runtime state. Any unavailable or changed bytes
+fail closed, exit2, without repair/retry.
+
+`--trace ABSOLUTE_EXISTING_JSON` reviews one **projection** of 13
+ordered native-shaped rows (first observation, eleven no-item L0
+WAIT probes at M0 ticks1..11, then Food13 item at M0 tick11).
+`--paired ABSOLUTE_EXISTING_JSON` reviews all 12 arms in one World
+start set. Projections must carry one session per arm, unique probe
+IDs/sequences, host monotonic nanoseconds, separate M0 tick/energy,
+native day/time-of-day fields and optional independent `world_age_tick`.
+Missing, rewound, forged-looking or unmatched fields fail closed.
+Duplicate JSON keys, symlink paths, oversized input and foreign
+native source are rejected. **A self-consistent projection is not
+independently original-byte authenticated**. Even a supplied
+`world_age_tick` is only a claim until linked to R-verified full
+native/raw originals and a source-qualified monotonic tick producer.
+
+Cross-arm comparison checks equal elapsed World-age **only when**
+every arm supplies a nonnegative tick source; it still returns
+`RSEE_V6_PAIRED_CLOCK_REVIEW_ONLY_NOT_ADMITTED`, not physical GO.
+Without the frozen bridge source for true age the R result MUST be
+`world_age_sample_presence=INCOMPLETE`, not age inferred from day
+or M0 count. The observed summon command's native pre/post bracket
+provides only an interval of possible effect timing, not the exact
+server command-effect tick or inter-World equality. To pass future
+physical parity, S/R must separately qualify raw source-time
+instrumentation and align actual World-start age and food-opportunity
+age in *each* matched start; if impossible, request V prospective
+amendment **before** any real outcome or experiment grant.
+
+Do not conflate snapshot equality-at-rest, World reset parity,
+host-time duration, native displayed time, native World age,
+ledger M0 charges or causal S50/S51 Action/OUTCOME. The source
+review cannot certify independent original SHA, native session
+issuer completeness, field-level command timing, food acquisition
+or V science. Retain `SCIENCE_G3_NO_GO`, `PRODUCTION_NO_GO` and
+`NO_FRESH_WORLD_GRANT`. R source/tests remain a separate owner
+from S implementation and V preregistration.
