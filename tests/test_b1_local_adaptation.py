@@ -95,3 +95,19 @@ def test_foreign_session_and_bad_original_seq_cannot_retain():
         with pytest.raises(B1LocalRejected):
             state.record_blocked(before, bad, after, target)
         assert state.evidence()["retained_observations"] == 0
+
+
+def test_corrupted_retained_observation_cannot_be_used_as_choice():
+    before, effect, after, target = source()
+    l1 = B1LocalCandidate(before.session_id)
+    l1.record_blocked(before, effect, after, target)
+    memory = l1.cognition.memories[0]
+    tampered = json.loads(memory.content)
+    tampered["session_id"] = "foreign-session"
+    l1.cognition = replace(l1.cognition, memories=(
+        replace(memory, content=json.dumps(tampered)),
+    ))
+    fresh = replace(after, seq=after.seq + 1, request_id="fresh")
+    with pytest.raises(B1LocalRejected, match="retained"):
+        l1.next_waypoint(fresh, target)
+    assert l1.evidence()["reused_for_lateral_choice"] == 0
