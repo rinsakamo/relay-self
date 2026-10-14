@@ -31,7 +31,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$CURRENT_HEAD"
           git merge-base --is-ancestor 53d50029da64a95c56bb56c6d48b5d14ce94e84a HEAD
           git diff --name-only 53d50029da64a95c56bb56c6d48b5d14ce94e84a HEAD > "$RUNNER_TEMP/paths"
-          test "$(wc -l < "$RUNNER_TEMP/paths")" -eq 23
+          test "$(wc -l < "$RUNNER_TEMP/paths")" -eq 26
           grep -Fxq ".github/workflows/validation-v2.yml" "$RUNNER_TEMP/paths"
           grep -Fxq "docs/validation-v2-knockdown.md" "$RUNNER_TEMP/paths"
           grep -Fxq "experiments/validation/v2_knockdown_manifest.json" "$RUNNER_TEMP/paths"
@@ -54,6 +54,9 @@ jobs:
           grep -Fxq "experiments/validation/v6_b0_two_regime_manifest.json" "$RUNNER_TEMP/paths"
           grep -Fxq "experiments/validation/v6_b0_two_regime.py" "$RUNNER_TEMP/paths"
           grep -Fxq "tests/test_validation_v6_b0_two_regime.py" "$RUNNER_TEMP/paths"
+          grep -Fxq "tests/test_validation_v6_b0_paired_world_plan.py" "$RUNNER_TEMP/paths"
+          grep -Fxq "experiments/validation/v6_b0_paired_world_plan.py" "$RUNNER_TEMP/paths"
+          grep -Fxq "experiments/validation/v6_b0_paired_world_plan.json" "$RUNNER_TEMP/paths"
           grep -Fxq "docs/validation-v6-b0-two-regime.md" "$RUNNER_TEMP/paths"
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
@@ -64,7 +67,7 @@ jobs:
           PYTHONPATH: 'src:tests:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m pytest -q tests/test_validation_v2_knockdown.py tests/test_validation_v2_s_nonforcing_review.py tests/test_validation_v3_m0_energy.py tests/test_validation_v4_identifiability.py tests/test_validation_v5_b0_l0.py tests/test_validation_v6_b0_two_regime.py tests/test_validation_v1.py
+          python -m pytest -q tests/test_validation_v2_knockdown.py tests/test_validation_v2_s_nonforcing_review.py tests/test_validation_v3_m0_energy.py tests/test_validation_v4_identifiability.py tests/test_validation_v5_b0_l0.py tests/test_validation_v6_b0_two_regime.py tests/test_validation_v6_b0_paired_world_plan.py tests/test_validation_v1.py
           python -m experiments.validation.v2_knockdown > "$RUNNER_TEMP/v2-plan.json"
           python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v2-plan.json"))); assert d["classification"]=="V2_PREREGISTRATION_ONLY" and not d["science_go"] and d["new_world_runs"]==0'
           python -m experiments.validation.v3_m0_energy > "$RUNNER_TEMP/v3-plan.json"
@@ -75,6 +78,8 @@ jobs:
           python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v5-plan.json"))); assert d["classification"]=="V5_B0_L0_ONLY_PROSPECTIVE_NOT_RUN" and not d["equal_information_cheap_beating_required"] and not d["science_go"]'
           python -m experiments.validation.v6_b0_two_regime > "$RUNNER_TEMP/v6-plan.json"
           python -c 'import json,os; x=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v6-plan.json"))); assert x["classification"]=="V6_B0_TWO_REGIME_SOURCE_CHOICES_QUALIFIABLE" and x["new_world_runs"]==0 and not x["science_go"]'
+          python -m experiments.validation.v6_b0_paired_world_plan > "$RUNNER_TEMP/v6-paired-plan.json"
+          python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v6-paired-plan.json"))); assert d["classification"]=="V6_PAIRED_WORLD_PRE_ADMISSION_PROTOCOL_ONLY" and d["total_unexecuted_session_slots"]==48 and d["number_of_real_world_trials"]==0 and d["science_g3"]=="NO_GO"'
           ruff check src tests experiments adapters observability
           python tools/check_repository.py
   pinned-s-owner:
