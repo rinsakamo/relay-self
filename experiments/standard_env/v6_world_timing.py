@@ -236,10 +236,58 @@ def review_paired_start(traces: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _source_json(path: Path) -> Any:
+    """Review a caller-exported projection, never an authenticated original."""
+    from experiments.standard_env.source_handoff import _physical_file, _unique_pairs
+
+    source = _physical_file(path)
+    _need(source.stat().st_size <= 128 * 1024, "source projection too large")
+    with source.open("rb") as f:
+        raw = f.read(128 * 1024 + 1)
+    _need(len(raw) <= 128 * 1024, "source projection too large")
+    return json.loads(raw, object_pairs_hook=_unique_pairs)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.parse_args(argv)
-    print(json.dumps(plan(), sort_keys=True))
+    parser.add_argument("--jar", type=Path)
+    parser.add_argument("--golden", type=Path)
+    parser.add_argument("--manifest", type=Path)
+    parser.add_argument("--initial-evidence", type=Path)
+    parser.add_argument("--clone", type=Path, action="append")
+    parser.add_argument("--trace", type=Path)
+    parser.add_argument("--paired", type=Path)
+    args = parser.parse_args(argv)
+    try:
+        world_args = (args.jar, args.golden, args.manifest,
+                      args.initial_evidence, args.clone)
+        if any(x is not None for x in world_args):
+            _need(all(x is not None for x in world_args)
+                  and args.trace is None and args.paired is None,
+                  "all four independent Golden inputs and clones required")
+            result = check_stopped_clones(
+                args.jar, args.golden, args.manifest,
+                args.initial_evidence, tuple(args.clone),
+            )
+        elif args.trace is not None or args.paired is not None:
+            _need((args.trace is None) != (args.paired is None),
+                  "choose one review projection")
+            d = _source_json(args.trace or args.paired)
+            result = (review_clock_trace(d) if args.trace is not None
+                      else review_paired_start(d))
+        else:
+            result = plan()
+    except (OSError, UnicodeError, TypeError, ValueError) as exc:
+        print(json.dumps({
+            "classification": "RSEE_V6_WORLD_TIME_REVIEW_BLOCKED",
+            "reason": type(exc).__name__ + ": " + str(exc),
+            "world_start_bytes_attested": False,
+            "matched_world_time_attested": False,
+            "physical_execution_authorized": False,
+            "science_g3": "NO_GO",
+        }, sort_keys=True))
+        return 2
+    print(json.dumps(result, sort_keys=True))
     return 0
 
 
