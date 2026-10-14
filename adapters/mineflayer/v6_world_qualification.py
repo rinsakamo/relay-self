@@ -37,6 +37,12 @@ CONFIRM = "V6-ENGINEERING-WORLD-ONCE-NO-SCIENCE"
 R_HEAD = "49592916c141bdcc58b373efeb7f3130351ed641"
 START_HEAD = "2aaff0b921bcbd47a61d563b52d502596f896924"
 FOOD_HEAD = "37f9365d3d16c9bda440ca9a9c8a10be6a32f1fc"
+# The actual 1.21.8 server reply is "Running function <namespace:id>".
+# It acknowledges command dispatch, NEVER the scoreboard side effects.
+INSTALL_DISPATCH_REPLIES = (
+    r"\bRunning function relayself_v6:install(?:\s|$)",
+    r"\bRunning function relayself_v6_start:install(?:\s|$)",
+)
 
 
 class QualificationBlocked(ValueError):
@@ -343,12 +349,8 @@ async def execute(args: argparse.Namespace, run: Path, report: dict) -> None:
         # Actual Minecraft 1.21.8 console output reports "Running function
         # <id>", NOT "Executed N command". This is a dispatch witness only:
         # the subsequent original scoreboard readbacks remain mandatory.
-        await owner.issue(
-            *PHASES[0], r"\bRunning function relayself_v6:install(?:\s|$)",
-        )
-        await owner.issue(
-            *PHASES[1], r"\bRunning function relayself_v6_start:install(?:\s|$)",
-        )
+        await owner.issue(*PHASES[0], INSTALL_DISPATCH_REPLIES[0])
+        await owner.issue(*PHASES[1], INSTALL_DISPATCH_REPLIES[1])
         first = await owner.probe("v6-qualification-first-item-free")
         capture.note_first_native_probe(first)
         await owner.issue(*PHASES[3], "RELAYSELF_V6_TRIAL_START_" + args.slot + "_" + args.nonce + "_NOT_ADMITTED")
