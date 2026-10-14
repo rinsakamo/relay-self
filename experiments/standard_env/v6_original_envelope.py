@@ -14,6 +14,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from experiments.standard_env.v6_atomic_admission import S_ATOMIC_SOURCE_HEAD
 from experiments.standard_env.v6_packet_provenance import (
     MAX_NATIVE_BYTES,
     _safe,
@@ -24,8 +25,7 @@ from experiments.standard_env.v6_start_admission import (
     S_START_SOURCE_HEAD,
     _identity,
 )
-from experiments.standard_env.v6_atomic_admission import S_ATOMIC_SOURCE_HEAD
-
+ 
 SCHEMA = "RSEE_V6_PROSPECTIVE_ORIGINAL_BUNDLE_V1"
 ORIGINAL_NAMES = ("server_stdout_original.log", "issuer_commands_original.jsonl",
                   "native_bridge_original.jsonl")
