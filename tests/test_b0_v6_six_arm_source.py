@@ -13,6 +13,7 @@ from adapters.mineflayer.b0_v6_source import (
     V6_SOURCE_SCHEMA,
     V6SourceRejected,
     source_only_v6_first_choice,
+    review_v6_native_wait_to_first_choice,
 )
 from adapters.mineflayer.python_protocol import MineflayerInventoryItem
 
@@ -137,3 +138,105 @@ def test_v6_cannot_force_blind_world_policy_through_existing_s51_cli(tmp_path):
             b0_v2_arm="SENSOR_ON",
         ))
     assert list(tmp_path.iterdir()) == []
+
+
+def _v6_typed_pre_item_sources(item):
+    """Eleven native-shaped observations with complete item-free coverage."""
+    empty = replace(
+        item.snapshot,
+        nearby_entities=(),
+        nearby_entities_coverage=replace(
+            item.snapshot.nearby_entities_coverage, candidate_count=0,
+        ),
+    )
+    waits = tuple(
+        replace(
+            item, seq=item.seq + i,
+            request_id=f"pre-item-v6-{i:02d}", snapshot=empty,
+        )
+        for i in range(11)
+    )
+    first = replace(
+        item, seq=item.seq + 20, request_id="first-food-v6",
+    )
+    return waits, first
+
+
+@pytest.mark.parametrize("phase,expected_energy,first_choice", [
+    ("LOW", 6.5, ("SEEK", "SEEK", "WAIT", "SEEK", "WAIT", "SEEK")),
+    ("HIGH", 14.5, ("WAIT", "WAIT", "WAIT", "SEEK", "WAIT", "WAIT")),
+])
+def test_v6_11_typed_world_source_wait_then_m0_then_first_choice(
+    one_native_hungry_item, phase, expected_energy, first_choice,
+):
+    waits, item = _v6_typed_pre_item_sources(one_native_hungry_item)
+    for arm, kind in zip(V6_ARMS, first_choice, strict=True):
+        x = review_v6_native_wait_to_first_choice(
+            waits, item, phase=phase, arm=arm,
+        )
+        assert x["classification"] == "S_V6_TYPED_WAIT_TO_FIRST_CHOICE_SOURCE_ONLY"
+        assert x["native_session_id"] == item.session_id
+        assert x["item_probe_seq"] == item.seq
+        assert x["item_entity_id"] == 70
+        assert len(x["pre_item_waits"]) == 11
+        assert [row["native_probe_seq"] for row in x["pre_item_waits"]] == [
+            p.seq for p in waits
+        ]
+        assert [row["m0_tick_after"] for row in x["pre_item_waits"]] == list(
+            range(1, 12)
+        )
+        assert all(
+            row["l0_kind"] == "WAIT" and row["issued_action"] is False
+            and row["world_time_original_attested"] is False
+            for row in x["pre_item_waits"]
+        )
+        assert x["m0_tick_at_item"] == 11
+        assert x["energy_at_item"] == expected_energy
+        assert x["l0_first_choice"] == kind
+        assert x["native_original_bytes_attested"] is False
+        assert x["world_time_across_arms_matched"] is False
+        assert x["world_action_issued"] is False
+        assert x["native_food_pickup_attested"] is False
+        assert x["m0_food_credits"] == 0
+        assert x["r_admission"] is False and x["v_science_go"] is False
+        assert x["physical_execution_authorized"] is False
+
+
+def test_v6_typed_wait_source_negative_controls_before_any_effect(
+    one_native_hungry_item,
+):
+    waits, item = _v6_typed_pre_item_sources(one_native_hungry_item)
+    empty, *_ = waits
+    cases = (
+        waits[:10],
+        waits[:10] + (waits[9],),
+        waits[:3] + (replace(waits[3], session_id="foreign"),) + waits[4:],
+        waits[:3] + (replace(waits[3], request_id=waits[2].request_id),) + waits[4:],
+        waits[:3] + (replace(waits[3], seq=waits[2].seq),) + waits[4:],
+        waits[:3] + (replace(waits[3], snapshot=item.snapshot),) + waits[4:],
+        waits[:3] + (replace(
+            waits[3], snapshot=replace(
+                waits[3].snapshot,
+                inventory=(MineflayerInventoryItem("bread", 1, 4),),
+            ),
+        ),) + waits[4:],
+    )
+    for bad in cases:
+        with pytest.raises(V6SourceRejected):
+            review_v6_native_wait_to_first_choice(
+                bad, item, phase="LOW", arm="SENSOR_ON",
+            )
+    with pytest.raises(V6SourceRejected):
+        review_v6_native_wait_to_first_choice(
+            waits, replace(item, request_id=waits[0].request_id),
+            phase="LOW", arm="SENSOR_ON",
+        )
+    with pytest.raises(V6SourceRejected):
+        review_v6_native_wait_to_first_choice(
+            waits, replace(item, snapshot=empty.snapshot),
+            phase="LOW", arm="SENSOR_ON",
+        )
+    with pytest.raises(V6SourceRejected):
+        review_v6_native_wait_to_first_choice(
+            waits, item, phase="LOW", arm="V2_UNKNOWN",
+        )
