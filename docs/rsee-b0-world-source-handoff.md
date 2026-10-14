@@ -249,3 +249,49 @@ historical readback is complete and MUST NOT be rerun for this.
 Any future command-effect source must be prospective, separately
 versioned, R-qualified, and reviewed by V #619 before requesting
 one explicit user authorization for one real World session.
+
+## V6 atomic food fixture: R source and stopped World-overlay checks
+
+R #575 `experiments.standard_env.v6_atomic_admission` is read-only.
+It pins exact S source HEAD `cf55c118135e2b11243a1a2d1c375998858f5894`
+and blob `b7f0900b27a536c2efa30b6ce8f7a912c4d0378b` for
+`adapters/mineflayer/v6_atomic_fixture.py`. Existing R CI checks out
+this immutable S revision separately. The R module independently
+constructs three expected Java 1.21.8 (format81) candidate datapack
+files; it does not execute S code or install datapacks.
+
+Plan only: `python -m experiments.standard_env.v6_atomic_admission`.
+Source pin: same command plus `--s-checkout ABSOLUTE_CLEAN_DETACHED_S`.
+At-rest World check requires that option plus `--jar ABSOLUTE_JAR`,
+`--golden ABSOLUTE_STOPPED_GOLDEN`, `--manifest ABSOLUTE_MANIFEST`,
+`--initial-evidence ABSOLUTE_INITIAL_EVIDENCE` and
+`--staged-clone ABSOLUTE_EXISTING_CANDIDATE_CLONE`.
+
+The checker verifies frozen #588 Golden's original manifests/bytes,
+then rejects ANY deleted/modified original World file or any extra
+candidate clone file except the three exact source bytes under
+`datapacks/relayself_v6_atomic`. The instrumented clone is therefore
+intentionally not byte-identical to Golden; match to Golden is a
+pre-install original-file property, NOT proof of runtime clock parity.
+No real WSL2 cloned World has been reviewed by this synthetic CI.
+
+The prospective mcfunction records `/time query gametime` into a
+scoreboard, summons one rotten-flesh item and records gametime again.
+`review_score_claim` can reject mismatched, out-of-bounds or ambiguous
+reported scores, a false summon success, replay claims and wrong M0
+tick. It ALWAYS returns CLAIM_REVIEW_ONLY: no source-owned original
+server stdout or loaded function is attested. The source has NO
+single-use guard: subsequent invocation overwrites all three
+scoreboard values. Independently proving exactly one invocation
+remains an admission blocker; a source-only claim of one invocation
+does not close it. The signed 32-bit scoreboard value also needs
+an independently qualified age bound.
+
+Before any future physical World grant, independently qualify
+actual Minecraft 1.21.8 function parsing/loading, original server
+console issuance/readback and command-effect age, exactly one
+invocation, fresh live-World start and elapsed native tick parity,
+and genuine S50/S51 action and M0 credits. All 48 preregistered
+V6 sessions remain NOT_RUN. No Python synthetic PASS is scientific
+GO. Original Golden, RSEE #588, S/V manifests, main and B0 original
+58-file completed review are untouched.
