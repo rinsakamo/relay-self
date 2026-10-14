@@ -144,7 +144,7 @@ async def qualify(
         or b0_v6_arm is not None or b0_forage_policy != "native_only"
         or b0_sensor != "on"
     ):
-        raise ValueError("DEV B0/B1 requires isolated native source, no R/V/grant")
+        raise ValueError("DEV B0 requires isolated native source (B1 opt-in), no R/V/grant")
     if food_item not in ("bread", "rotten_flesh"):
         raise ValueError("only operator-staged bread or rotten_flesh allowed")
     if food_source not in ("inventory", "ground", "none", "ground2", "ground2observe", "groundv2", "groundv6"):
