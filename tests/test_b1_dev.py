@@ -5,8 +5,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from adapters.mineflayer import self_demo as demo
 from adapters.mineflayer import s51_eat_real_ci as s51
+from adapters.mineflayer import self_demo as demo
 
 
 def _args(path):
