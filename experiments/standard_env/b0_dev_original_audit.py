@@ -180,7 +180,8 @@ def audit(root: Path, readback: Path, expected: Expectations = Expectations()) -
             and receipt.get("science_success") is False
             and receipt.get("m_energy_credited") is False
             and receipt.get("g3_go") is False
-            and receipt.get("stop_ack") == "UNATTESTED"
+            and receipt.get("stop_ack") in (
+                "UNATTESTED", "NOT_SEPARATELY_ATTESTED_BY_S49_REPORT")
             and receipt.get("git_head") == S_HEAD
             and receipt.get("world_source") == "NEW_S51_DEV_WORLD_NOT_GOLDEN",
             "DEV scope/provenance/qualification boundary mismatch")

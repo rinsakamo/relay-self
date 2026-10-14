@@ -47,3 +47,30 @@ A prospective run needs fresh and exclusively owned ID/root, exact S/R/Golden HE
 Synthetic negatives must reject false Golden/clone/JAR/manifest/dependency SHA, foreign/gapped native session, pickup-only credit, UNKNOWN EAT, double/foreign M0 Action, forged food and inventory, ACK omission, DEV→QUALIFIED and R→SCIENCE promotions, exhausted V6 grant and overwritten original evidence. Synthetic CI is not an R-host physical admission.
 
 **PREWORLD_READY_NOT_AUTHORIZED** can be assigned only after independent host DEV readback and Golden/environment preflight and exact-head CI succeed. Otherwise retain PREWORLD_BLOCKED and list missing gates. This message does not permit World startup. V6 science 48 trials=0, G3/production NO_GO and historical consumed grants remain unchanged.
+
+## 2026-10-15 fresh R qualification transaction
+
+The user has separately authorized one new B0 engineering qualification World.
+The authorization is consumed at the first Java Minecraft start, regardless of
+result; preworld rejection leaves it unconsumed. No replay, DEV promotion, V6
+grant reuse, science trial, or B1 inclusion is permitted. Source is frozen S B0
+completion HEAD ec02b414d09fb0885eb481b1488f1a861ed73edb, despite subsequent S
+branch development. Original Golden #588 remains unchanged.
+
+R CI now executes full-regression and sibling-readonly on both push and Draft
+PR events. Their existing test bodies and exact source pins remain unchanged.
+A SKIPPED check is not a passed admission gate. Recheck remote R HEAD before
+push and before any physical boundary; results belong only to their exact head.
+
+The pinned original DEV receipt uses the historical STOP label
+NOT_SEPARATELY_ATTESTED_BY_S49_REPORT. The reviewer accepts this only as an
+unattested label, with a regression test preserving independent normal shutdown
+qualification=false. It also accepts the corrected UNATTESTED spelling for
+synthetic records; original hash anchors remain mandatory. The original receipt
+and its zero counters are never rewritten.
+
+Host evidence is stored outside all source/evidence roots at
+/home/rinsa/work/relay-self-r-b0-qualification-evidence-20261015.
+The first rejected review is retained alongside the corrected offline review.
+Current PID absence and a successful bind establish current host state only;
+they cannot retroactively attest the historical DEV shutdown.

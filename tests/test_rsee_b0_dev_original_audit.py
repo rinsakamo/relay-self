@@ -197,3 +197,11 @@ def test_original_symlink_rejected(tmp_path):
 
 def test_cli_incomplete_external_input_stops():
     assert r.main(["--root", "/tmp/fake"]) == 2
+
+
+def test_historical_stop_label_is_unattested_not_qualified(tmp_path):
+    root, rb, expected = fixture(tmp_path, edit=lambda n, c, p, d: d.update(
+        stop_ack="NOT_SEPARATELY_ATTESTED_BY_S49_REPORT"))
+    result = r.audit(root, rb, expected)
+    assert result["independent_normal_shutdown_qualified"] is False
+    assert result["stop_ack_original_frame_present"] is True
