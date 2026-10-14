@@ -122,7 +122,19 @@ async def qualify(
     b0_sensor: str = "on",
     b0_v2_arm: str | None = None,
     b0_v6_phase: str | None = None, b0_v6_arm: str | None = None,
+    dev_only: bool = False,
 ) -> int:
+    # B0 DEV is a separate opt-in on the existing S51 owner, never a
+    # qualification bypass. It uses a fresh unqualified disposable World.
+    if type(dev_only) is not bool:
+        raise ValueError("DEV mode must be explicit boolean")
+    if dev_only and (
+        food_item != "rotten_flesh" or food_source != "ground"
+        or rsee is not None or confirmation is not None or preflight_only
+        or b0_v2_arm is not None or b0_v6_phase is not None
+        or b0_v6_arm is not None
+    ):
+        raise ValueError("DEV B0 requires standalone ground food, no R/V/grant inputs")
     if food_item not in ("bread", "rotten_flesh"):
         raise ValueError("only operator-staged bread or rotten_flesh allowed")
     if food_source not in ("inventory", "ground", "none", "ground2", "ground2observe", "groundv2", "groundv6"):
@@ -177,6 +189,10 @@ async def qualify(
         "food_acquisition_autonomous": False,
         "automatic_goal_selection": False,
         "real_model_calls": 0,
+        "mode": "DEV" if dev_only else "QUALIFICATION_CANDIDATE",
+        "engineering_qualified": False,
+        "science_success": False,
+        "g3_go": False,
     }
     server = collector = session = temp = None
     native_output = command_output = None
@@ -253,11 +269,16 @@ async def qualify(
         if food_item == "rotten_flesh":
             # Not a permission token: physical permission is external and
             # per-run. Never use the legacy unqualified-download B0 path.
-            if rsee is None or confirmation != B0_CONFIRM:
-                raise S31ABlocked("B0 requires pinned RSEE and new one-shot operator confirmation")
-            report["stage"] = "RSEE_ORIGINAL_READONLY_PRELAUNCH_GATE"
-            attestation = await asyncio.to_thread(verify_b0_rsee, rsee)
-            report["rsee_preflight"] = attestation
+            if dev_only:
+                # Explicit isolated DEV has no Golden and NO consumed-grant use.
+                report["stage"] = "DEV_UNQUALIFIED_FRESH_DISPOSABLE_WORLD"
+                report["world_source"] = "NEW_DEV_MOJANG_WORLD_NOT_RSEE_GOLDEN"
+            else:
+                if rsee is None or confirmation != B0_CONFIRM:
+                    raise S31ABlocked("B0 requires pinned RSEE and new one-shot operator confirmation")
+                report["stage"] = "RSEE_ORIGINAL_READONLY_PRELAUNCH_GATE"
+                attestation = await asyncio.to_thread(verify_b0_rsee, rsee)
+                report["rsee_preflight"] = attestation
         elif rsee is not None:
             raise S31ABlocked("RSEE B0 mode only supports rotten_flesh")
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s51-")
@@ -295,7 +316,7 @@ async def qualify(
         report["server_config_sha256"] = hashlib.sha256(
             (root / "server.properties").read_bytes(),
         ).hexdigest()
-        if rsee is not None:
+        if rsee is not None or dev_only:
             # Reserve both originals before Java. Never truncate an old stream.
             native_output = native_path.open("xb")
             command_output = command_path.open("xb")
@@ -306,7 +327,21 @@ async def qualify(
         report["java_start_attempted"] = True
         server, collector, _ = await _ready_server(root, jar, server_log)
         report["java_pid"] = server.pid
-        if rsee is None:
+        if dev_only:
+            # Reuse the exact existing S51 recording owner, NOT a new launcher.
+            # The native source is unqualified DEV even when an outcome exists.
+            session_type = _recording_session_type(native_output, command_output)
+            session = await session_type.launch(
+                MineflayerLaunchConfig(
+                    host=SERVER_HOST, port=SERVER_PORT,
+                    username=BOT_USERNAME, version=MINECRAFT_VERSION,
+                ),
+                bridge_path=Path(__file__).with_name("bridge.mjs"),
+                startup_timeout_s=12,
+            )
+            await _await_spawn(session)
+            report["node_pid"] = session._process.pid
+        elif rsee is None:
             session = await _new_session()
         else:
             # Reuse the verified R-owned bridge and external npm root; S does
@@ -664,7 +699,11 @@ async def qualify(
         report["physical_java_started"] = bool(
             report["java_start_attempted"] and (server is not None or server_log.exists())
         )
-        report["grant_consumed"] = report["physical_java_started"]
+        # DEV never touches a V6 or B0 one-shot grant. Its World launch is
+        # tracked independently and does not certify source identity.
+        report["grant_consumed"] = (report["physical_java_started"] if not dev_only else False)
+        if dev_only:
+            report["dev_world_started"] = report["physical_java_started"]
         for stream in (native_output, command_output):
             if stream is not None:
                 stream.close()
@@ -674,6 +713,14 @@ async def qualify(
             report["status"] = "FAIL"
             report["error"] = "Minecraft server teardown failed"
             rc = 1
+        if dev_only:
+            # The original owner outcome remains visible under owner_status,
+            # but DEV can never emit a QUALIFIED/SCIENCE classification.
+            report["owner_status"] = report["status"]
+            report["classification"] = "DEV_ONLY"
+            report["engineering_qualified"] = False
+            report["science_success"] = False
+            report["g3_go"] = False
         if report_path.exists() or report_path.is_symlink():
             # Never replace an earlier original even if this run was blocked.
             report["status"] = "BLOCKED"
