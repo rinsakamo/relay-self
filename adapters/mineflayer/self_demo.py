@@ -402,6 +402,13 @@ def _dev_run(args: argparse.Namespace) -> int:
             raise DemoRejected("DEV requires a fresh absolute output directory")
         if any(p.is_symlink() for p in (root, *root.parents)):
             raise DemoRejected("symlink output ancestry denied")
+        protected_markers = (
+            ".git", "level.dat", "server.properties", "SHA256SUMS", "FINAL_SHA256SUMS",
+            "grant-consumed.json", "dev_receipt.json",
+        )
+        if any((ancestor / marker).exists()
+               for ancestor in root.parents for marker in protected_markers):
+            raise DemoRejected("output inside repository, existing World or evidence root denied")
         # Exclusive creation in a preexisting parent: never adopt an old World/evidence root.
         if not root.parent.is_dir():
             raise DemoRejected("DEV parent must already exist")

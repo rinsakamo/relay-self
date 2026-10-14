@@ -1138,6 +1138,7 @@ seedはserver生成で未attest。native reportとserver log、DEV receiptを保
 
 修正後は別保存先で再実行できる。`--retry-of PRIOR_DEV_RUN_ID`で履歴を記録する。
 失敗receiptは保存し、既存保存先の再利用・symlink経路は拒否する。
+World、証拠index、grant、DEV receipt、Git checkoutを祖先に持つ保存先も拒否する。
 DEV receiptは常にDEV_ONLY。元S49診断reportのPASS/QUALIFIED表示は元ownerの
 限定診断であり、DEV資格・科学入場の根拠にはしない。DEVはM0 credit、L2、
 V6資格runner、V科学runnerを呼ばない。no flagsは従来どおりDRY_RUN。

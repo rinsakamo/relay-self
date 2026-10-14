@@ -87,3 +87,13 @@ def test_dev_success_keeps_owner_report_but_never_promotes(tmp_path, monkeypatch
     assert row['classification'] == 'DEV_ONLY'
     assert row['engineering_qualified'] is False
     assert not (root / 'observed_memory.json').exists()
+
+
+@pytest.mark.parametrize('marker', ['level.dat', 'SHA256SUMS', 'grant-consumed.json', '.git',
+                                   'dev_receipt.json'])
+def test_existing_world_and_frozen_evidence_ancestry(tmp_path, monkeypatch, marker):
+    monkeypatch.setattr(demo, '_run_disposable', lambda *a: pytest.fail('launched'))
+    (tmp_path / marker).write_text('protected')
+    assert demo._dev_run(args(tmp_path / 'new')) == 2
+    assert not (tmp_path / 'new').exists()
+    assert (tmp_path / marker).read_text() == 'protected'
