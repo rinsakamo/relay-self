@@ -149,6 +149,8 @@ def review_native_original(
         _need(bool(line) and len(line) <= 32768, "malformed native JSONL line")
         try:
             row = json.loads(line, object_pairs_hook=_unique_pairs)
+        except V6PacketRejected:
+            raise  # Preserve the precise duplicate-key refusal.
         except (ValueError, UnicodeError) as exc:
             raise V6PacketRejected("invalid original native JSON") from exc
         _need(type(row) is dict and row.get("session_id") == expected_session
