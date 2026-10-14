@@ -153,7 +153,7 @@ def _epochs(report: dict[str, Any], expected: ExpectedB0) -> dict[str, Any]:
     for n, ep in enumerate(episodes):
         _must(type(ep) is dict and ep.get("epoch") == n
               and ep.get("stage") == "CLOSED"
-              and ep.get("eat_action_terminal") == "OUTCOME",
+              and ep.get("eat_action_terminal") == "outcome",
               "incomplete or duplicated reported epoch")
         aid = ep.get("eat_action_id")
         _must(type(aid) is str and aid == f"b0-multi-e{n}-eat-rotten_flesh"
