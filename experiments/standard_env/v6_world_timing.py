@@ -70,12 +70,15 @@ def check_stopped_clones(
     )
     _need(len({str(p) for p in clones}) == len(clones), "duplicate clone root")
     for path in (jar, golden, manifest, initial_evidence, *clones):
-        _need(
-            isinstance(path, Path) and path.is_absolute()
-            and not path.is_symlink() and path.resolve(strict=True) == path
-            and not any(p.is_symlink() for p in path.parents),
-            "noncanonical/symlinked/unavailable World path",
-        )
+        try:
+            _need(
+                isinstance(path, Path) and path.is_absolute()
+                and not path.is_symlink() and path.resolve(strict=True) == path
+                and not any(p.is_symlink() for p in path.parents),
+                "noncanonical/symlinked/unavailable World path",
+            )
+        except OSError as exc:
+            raise V6ClockRejected("unavailable World original/clone path") from exc
     binding = verify_qualified_world(jar, golden, manifest, initial_evidence)
     _need(binding.manifest_sha256 == GOLDEN_MANIFEST_SHA256, "Golden drift")
     checked = []
