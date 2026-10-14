@@ -48,6 +48,7 @@ jobs:
             adapters/mineflayer/b0_rsee.py \
             adapters/mineflayer/b0_two_epoch.py \
             adapters/mineflayer/b0_v6_source.py \
+            adapters/mineflayer/b1_local_adaptation.py \
             adapters/mineflayer/bridge.mjs \
             adapters/mineflayer/package.json \
             adapters/mineflayer/python_protocol.py \
@@ -73,6 +74,7 @@ jobs:
             tests/test_b0_v6_original_capture.py \
             tests/test_b0_v6_six_arm_source.py \
             tests/test_b0_v6_start_marker.py \
+            tests/test_b1_local_adaptation.py \
             tests/test_feature_s51_eat_execution.py \
             tests/test_self_dev.py \
             tests/test_v6_world_qualification.py
