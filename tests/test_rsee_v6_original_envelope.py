@@ -230,3 +230,10 @@ def test_missing_comparands_cli_blocks_without_creating_paths(tmp_path, capsys):
         "classification"
     ] == "RSEE_V6_ORIGINAL_BUNDLE_BLOCKED"
     assert sorted(tmp_path.iterdir()) == []
+
+
+def test_rejects_extra_original_file_in_capture_root(tmp_path):
+    root, raw = _root(tmp_path)
+    (root / "unexpected.txt").write_text("extra")
+    with pytest.raises(ValueError):
+        review_original_bundle(root, **_kwargs(raw))
