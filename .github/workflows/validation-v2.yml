@@ -31,7 +31,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$CURRENT_HEAD"
           git merge-base --is-ancestor 53d50029da64a95c56bb56c6d48b5d14ce94e84a HEAD
           git diff --name-only 53d50029da64a95c56bb56c6d48b5d14ce94e84a HEAD > "$RUNNER_TEMP/paths"
-          test "$(wc -l < "$RUNNER_TEMP/paths")" -eq 11
+          test "$(wc -l < "$RUNNER_TEMP/paths")" -eq 15
           grep -Fxq ".github/workflows/validation-v2.yml" "$RUNNER_TEMP/paths"
           grep -Fxq "docs/validation-v2-knockdown.md" "$RUNNER_TEMP/paths"
           grep -Fxq "experiments/validation/v2_knockdown_manifest.json" "$RUNNER_TEMP/paths"
@@ -43,6 +43,10 @@ jobs:
           grep -Fxq "experiments/validation/v3_m0_energy_manifest.json" "$RUNNER_TEMP/paths"
           grep -Fxq "tests/test_validation_v3_m0_energy.py" "$RUNNER_TEMP/paths"
           grep -Fxq "docs/validation-v3-knockdown.md" "$RUNNER_TEMP/paths"
+          grep -Fxq "docs/validation-v4-identifiability.md" "$RUNNER_TEMP/paths"
+          grep -Fxq "experiments/validation/v4_identifiability.py" "$RUNNER_TEMP/paths"
+          grep -Fxq "experiments/validation/v4_identifiability_manifest.json" "$RUNNER_TEMP/paths"
+          grep -Fxq "tests/test_validation_v4_identifiability.py" "$RUNNER_TEMP/paths"
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
@@ -52,11 +56,13 @@ jobs:
           PYTHONPATH: 'src:tests:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m pytest -q tests/test_validation_v2_knockdown.py tests/test_validation_v2_s_nonforcing_review.py tests/test_validation_v3_m0_energy.py tests/test_validation_v1.py
+          python -m pytest -q tests/test_validation_v2_knockdown.py tests/test_validation_v2_s_nonforcing_review.py tests/test_validation_v3_m0_energy.py tests/test_validation_v4_identifiability.py tests/test_validation_v1.py
           python -m experiments.validation.v2_knockdown > "$RUNNER_TEMP/v2-plan.json"
           python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v2-plan.json"))); assert d["classification"]=="V2_PREREGISTRATION_ONLY" and not d["science_go"] and d["new_world_runs"]==0'
           python -m experiments.validation.v3_m0_energy > "$RUNNER_TEMP/v3-plan.json"
           python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v3-plan.json"))); assert d["classification"]=="V3_NEW_PROSPECTIVE_PRIMARY_NOT_RUN" and d["real_world_trials"]==0 and not d["science_go"]'
+          python -m experiments.validation.v4_identifiability > "$RUNNER_TEMP/v4-plan.json"
+          python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v4-plan.json"))); assert d["classification"]=="V4_G0_EQUAL_INFORMATION_CHEAP_REPLICATION_BLOCK" and not d["v4_real_s_product_mode_eligible"] and not d["science_go"]'
           ruff check src tests experiments adapters observability
           python tools/check_repository.py
   pinned-s-owner:
@@ -127,6 +133,32 @@ jobs:
               "SENSOR_MASKED": ("WAIT", 12.0),
               "CHEAP_NATIVE": ("SEEK", 6.0),
           }, results
+          PY
+          )
+          (cd external-s-v3 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python - <<'PY'
+          from dataclasses import replace
+          from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+          from experiments.metabolism_viability import Interoception, MetabolismConfig
+          from test_b0_ground_foraging import _ground
+          native = _ground()
+          native = replace(native, snapshot=replace(native.snapshot, food=13.0))
+          probes = ((12, 11, ("SEEK", "SEEK", "WAIT", "SEEK")),
+                    (4, 1, ("SEEK", "SEEK", "WAIT", "SEEK")),
+                    (20, 1, ("WAIT", "WAIT", "WAIT", "SEEK")))
+          for starting_e, waits, expected in probes:
+              actual = []
+              for name in ("SENSOR_ON", "SHAM_ON", "SENSOR_MASKED", "CHEAP_NATIVE"):
+                  policy = "native_only" if name == "CHEAP_NATIVE" else "sensor_gate"
+                  sensor = (Interoception(gain=0, bias=12)
+                            if name == "SENSOR_MASKED" else Interoception())
+                  ledger = B0EnergyLedger(
+                      native.session_id, forage_policy=policy, sensor=sensor,
+                      config=MetabolismConfig(initial_energy=starting_e),
+                  )
+                  for _ in range(waits):
+                      ledger.step("WAIT")
+                  actual.append(ledger.decide(native).kind)
+              assert tuple(actual) == expected, (starting_e, actual)
           PY
           )
           test -z "$(git -C external-s-v3 status --porcelain --untracked-files=no)"
