@@ -16,15 +16,12 @@ from typing import Any
 
 from experiments.standard_env.v6_packet_provenance import (
     MAX_NATIVE_BYTES,
-    PACKET_PRECISION,
-    PACKET_SOURCE,
     _safe,
     _unique_pairs,
     review_native_original,
 )
 from experiments.standard_env.v6_start_admission import (
     S_START_SOURCE_HEAD,
-    START_SLOTS,
     _identity,
 )
 from experiments.standard_env.v6_atomic_admission import S_ATOMIC_SOURCE_HEAD
