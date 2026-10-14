@@ -31,12 +31,12 @@ from adapters.mineflayer.b0_rsee import (
     B0RSEERejected,
     verify_b0_rsee,
 )
-from adapters.mineflayer.b0_v6_source import prospective_v6_profile
 from adapters.mineflayer.b0_two_epoch import (
     V2_ARMS,
     run_two_ground_epochs,
     run_v2_fixed_study,
 )
+from adapters.mineflayer.b0_v6_source import prospective_v6_profile
 from adapters.mineflayer.eat_execution import IssuedEatingExecutor
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig

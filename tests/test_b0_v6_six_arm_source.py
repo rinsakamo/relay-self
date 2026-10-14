@@ -243,14 +243,10 @@ def test_v6_typed_wait_source_negative_controls_before_any_effect(
 
 
 def test_v6_stateful_owner_and_readonly_physical_intake(one_native_hungry_item):
-    import asyncio
-    import json
-
     from adapters.mineflayer.b0_v6_source import (
         V6SourceSessionOwner,
         prospective_v6_profile,
     )
-    from adapters.mineflayer.s51_eat_real_ci import qualify
 
     waits, item = _v6_typed_pre_item_sources(one_native_hungry_item)
     expected = {
@@ -308,6 +304,7 @@ def test_v6_s51_source_profile_denied_before_java(tmp_path, monkeypatch):
 ])
 def test_v6_s51_invalid_options_fail_without_effect(tmp_path, kwargs):
     import asyncio
+
     from adapters.mineflayer.s51_eat_real_ci import qualify
     with pytest.raises(ValueError):
         asyncio.run(qualify(
