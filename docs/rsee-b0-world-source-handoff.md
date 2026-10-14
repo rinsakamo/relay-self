@@ -199,3 +199,53 @@ issuer completeness, field-level command timing, food acquisition
 or V science. Retain `SCIENCE_G3_NO_GO`, `PRODUCTION_NO_GO` and
 `NO_FRESH_WORLD_GRANT`. R source/tests remain a separate owner
 from S implementation and V preregistration.
+
+## V6 opt-in server-age packet: independent R source pin and ORIGINAL byte review
+
+**R independent implementation:** `experiments.standard_env.v6_packet_provenance`.
+Default invocation is no-file/no-launch plan. Pin S experimental producer
+HEAD `67c03400a16d0170264e16884b8d82439e3a3194` to its exact
+`bridge.mjs`, `v6_native_clock.mjs`, `python_protocol.py`, and
+`package.json` Git blobs. The existing Golden #588 bridge is
+**different** and cannot be silently used as the versioned producer.
+Run offline with `--s-checkout ABSOLUTE_CLEAN_DETACHED_S_V6_CHECKOUT`
+to verify exact Git HEAD and byte hashes. The R CI independent sibling
+job checks out this exact S commit, never the mutable S branch tip.
+
+S's opt-in `RELAYSELF_V6_NATIVE_CLOCK_V1=1` listens to Minecraft 1.21.8
+clientbound `update_time` packets and preserves the packet `age`
+(64-bit signed decimal string) separately from packet `time`
+(display-time counter), `tickDayTime`, host monotonic ns, original
+bridge session_id/seq and `command_effect_tick_attested=false`.
+Samples are **sparse** and cannot be interpolated into item spawn tick.
+The existing S51 live runner rejects opt-in until new R/S admission.
+
+With independently precommitted expected SHA256 and native session,
+an R host reviewer may call:
+
+`python -m experiments.standard_env.v6_packet_provenance`
+`--s-checkout ABSOLUTE_PINNED_S_CHECKOUT`
+`--native-original ABSOLUTE_EXISTING_NATIVE_JSONL`
+`--expected-sha256 EXPECTED_SHA256 --expected-session EXPECTED_SESSION`
+
+This is a read-only original-byte review: canonical/non-symlinked source,
+max16MiB bound, independent SHA256 comparand, duplicate JSON keys
+fail-closed, one session, continuous seq0..end, Minecraft 1.21.8
+adapter_started, each native_clock_packet exact source/keys and
+canonical i64 fields, nondecreasing world-age & host clocks, no
+fabricated exact effect flags, inbound STOP ACK before terminal
+connection_end. Requires >=2 independent raw samples.
+SHA and original sequence consistency **do not independently prove**
+that a network packet came from the Minecraft server or that an
+unrelated `/summon` command applied at a specific age.
+
+Even a perfect result remains
+`RSEE_V6_PACKET_BYTES_MATCH_REVIEW_ONLY`: true source-to-server-age
+packet provenance requires independent binary/protocol and
+runtime identity verification; **exact command-effect World age
+and equal cross-arm food opportunity remain blocked**. No current
+physical session has been run. Existing B0 58-file independent
+historical readback is complete and MUST NOT be rerun for this.
+Any future command-effect source must be prospective, separately
+versioned, R-qualified, and reviewed by V #619 before requesting
+one explicit user authorization for one real World session.
