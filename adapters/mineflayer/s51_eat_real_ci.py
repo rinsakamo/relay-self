@@ -123,18 +123,28 @@ async def qualify(
     b0_v2_arm: str | None = None,
     b0_v6_phase: str | None = None, b0_v6_arm: str | None = None,
     dev_only: bool = False,
+    b1_local_adaptation: bool = False, b1_retention: bool = True,
 ) -> int:
     # B0 DEV is a separate opt-in on the existing S51 owner, never a
     # qualification bypass. It uses a fresh unqualified disposable World.
-    if type(dev_only) is not bool:
-        raise ValueError("DEV mode must be explicit boolean")
+    if (
+        type(dev_only) is not bool or type(b1_local_adaptation) is not bool
+        or type(b1_retention) is not bool
+    ):
+        raise ValueError("DEV/B1 mode switches must be explicit boolean")
+    if b1_local_adaptation and not dev_only:
+        raise ValueError("B1 local adaptation is DEV_ONLY")
     if dev_only and (
-        food_item != "rotten_flesh" or food_source != "ground"
+        food_item != "rotten_flesh"
+        or (food_source, b1_local_adaptation) not in (
+            ("ground", False), ("ground2", True),
+        )
         or rsee is not None or confirmation is not None or preflight_only
         or b0_v2_arm is not None or b0_v6_phase is not None
-        or b0_v6_arm is not None
+        or b0_v6_arm is not None or b0_forage_policy != "native_only"
+        or b0_sensor != "on"
     ):
-        raise ValueError("DEV B0 requires standalone ground food, no R/V/grant inputs")
+        raise ValueError("DEV B0/B1 requires isolated native source, no R/V/grant")
     if food_item not in ("bread", "rotten_flesh"):
         raise ValueError("only operator-staged bread or rotten_flesh allowed")
     if food_source not in ("inventory", "ground", "none", "ground2", "ground2observe", "groundv2", "groundv6"):
@@ -453,6 +463,12 @@ async def qualify(
             outcome = await run_two_ground_epochs(
                 session, server, ledger, report["two_ground_epochs"],
                 nonforcing=nonforcing,
+                b1_local_adaptation=b1_local_adaptation,
+                b1_retention=b1_retention,
+                b1_memory_path=(
+                    report_path.parent / "b1_observational_memory.json"
+                    if b1_local_adaptation else None
+                ),
             )
             if nonforcing:
                 if outcome is None:
@@ -460,6 +476,8 @@ async def qualify(
                 report["nonforcing_outcome"] = outcome
             report["status"] = "PASS"
             report["classification"] = (
+                "B1_LOCAL_ADAPTATION_DEV_CANDIDATE_ONLY"
+                if b1_local_adaptation else
                 "B0_NONFORCING_GROUND_OUTCOME_ENGINEERING_ONLY"
                 if nonforcing else
                 "B0_TWO_OPERATOR_STAGED_GROUND_EPOCHS_ENGINEERING_ONLY"
@@ -468,6 +486,15 @@ async def qualify(
                 ledger.credit_count > 0 if nonforcing else ledger.credit_count == 2
             )
             report["metabolism_terminal"] = asdict(ledger.body)
+            if b1_local_adaptation:
+                report["b1_local_final"] = report["two_ground_epochs"][0].get(
+                    "b1_local_final", "NOT_ESTABLISHED",
+                )
+                report["b1_memory_source"] = (
+                    "b1_observational_memory.json" if b1_retention else "OFF"
+                )
+                report["learning_qualified"] = False
+                report["habit_created"] = False
             report["next_l0"] = report["two_ground_epochs"][-1].get(
                 "next_l0", "NOT_ISSUED_TERMINAL_OR_CENSORED",
             )
