@@ -127,3 +127,36 @@ outcomes. No physical runs, old R audit repetition or new grants.
 
 Classification: V6_R_THREE_CLOCK_PRODUCER_GAP_CONFIRMED_G0 /
 PAIRED_WORLD_TIME_NOT_ATTESTED / G3_NO_GO.
+
+## V6 G2 prospective primary scoring rehearsal (2026-10-14)
+
+V now has a second explicitly **synthetic-only** V6 scorer,
+`experiments/validation/v6_b0_synthetic_scoring.py`, which maps the
+pre-existing frozen 48 empty slots to exactly sixteen predeclared
+within-start, within-energy-regime ON-minus-ALWAYS_SEEK or
+ON-minus-ALWAYS_WAIT contrasts. A hypothetical no-food/no-move full
+16-M0-tick cohort scores 16 zero contrasts. It also exercises a
+positive synthetic 3.5-energy ON-minus-always-WAIT and negative
+synthetic -3.5 ON-minus-always-SEEK under assumed food events.
+
+An INVALID or CENSORED case is a nonnumeric / missing contrast,
+not zero energy, and neither its slot nor its start may be dropped
+from the intended 48-case cohort. Unregistered moves, more than
+one assumed food, altered randomized order, source identity or
+claimed raw R/S51 receipts fail closed. Because the registered
+single food first appears only after 11 basal decisions and
+a maximum of one EAT occurs, the arithmetic horizon16
+`E_end = E_initial - 16*0.5 - issued_MOVE*0.25 + EAT*4`
+has no upper-cap saturation even from HIGH initial E20:
+the first possible EAT at M0 tick11 starts no higher than E14.5.
+**This algebra is a conditional feasibility check only**. All
+mocked EAT events are named ASSUMED and UNAUTHENTICATED, not true
+issued EAT receipts. The simulator deliberately rejects any
+claim of actual World/source/clock/grant qualification. G3 stays NO_GO.
+
+This fixes the scoring policy before future data without opening
+a back door around R's monotonic World-age producer gap or S's
+incomplete six-arm physical controller. The current full
+repository regression has an unrelated legacy Node subprocess
+5-second startup TimeoutError in CI; V never modifies/removes
+that test or labels CI PASS while any job remains failed.
