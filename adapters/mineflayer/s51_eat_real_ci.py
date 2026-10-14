@@ -322,8 +322,12 @@ async def qualify(
             command_output = command_path.open("xb")
             report["native_stdout_path"] = str(native_path)
             report["commands_path"] = str(command_path)
-            report["clone_prelaunch_binding"] = copied
-        report["stage"] = "JAVA_START_ONESHOT_BOUNDARY"
+            if rsee is not None:
+                report["clone_prelaunch_binding"] = copied
+        report["stage"] = (
+            "DEV_OWNED_WORLD_JAVA_START" if dev_only
+            else "JAVA_START_ONESHOT_BOUNDARY"
+        )
         report["java_start_attempted"] = True
         server, collector, _ = await _ready_server(root, jar, server_log)
         report["java_pid"] = server.pid
