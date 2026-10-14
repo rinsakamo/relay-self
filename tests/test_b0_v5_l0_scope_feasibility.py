@@ -14,8 +14,9 @@ from adapters.mineflayer.b0_energy_bridge import (
     B0EnergyLedger,
     B0EnergyRejected,
 )
-from adapters.mineflayer.b0_ground_foraging import GroundRejected, select_ground_target
+from adapters.mineflayer.b0_ground_foraging import select_ground_target
 from adapters.mineflayer.b0_two_epoch import V2_ARMS, V2_FIRST_ITEM_TICK
+from adapters.mineflayer.python_protocol import MineflayerAdapterProtocolError
 from experiments.metabolism_viability import Interoception, MetabolismConfig
 
 V5_CONCEPTUAL_ARMS = (
@@ -115,16 +116,19 @@ def test_v5_g0_rejects_foreign_source_and_incomplete_ground_coverage():
     foreign = replace(p, session_id="other-native-session")
     with pytest.raises(B0EnergyRejected, match="fresh World probe"):
         ledger.decide(foreign)
-    incomplete = replace(
-        p, snapshot=replace(
-            p.snapshot,
-            nearby_entities_coverage=replace(
-                p.snapshot.nearby_entities_coverage, truncated=True,
+    # This counterfeit incomplete coverage is rejected at the ORIGINAL
+    # Mineflayer typed source boundary, before L0 is allowed to see it.
+    with pytest.raises(
+        MineflayerAdapterProtocolError, match="truncated nearby entity coverage",
+    ):
+        replace(
+            p, snapshot=replace(
+                p.snapshot,
+                nearby_entities_coverage=replace(
+                    p.snapshot.nearby_entities_coverage, truncated=True,
+                ),
             ),
-        ),
-    )
-    with pytest.raises(GroundRejected):
-        select_ground_target(incomplete)
+        )
     assert ledger.body.energy == 3.5 and ledger.body.tick == 1
     assert ledger.credit_count == 0
 
