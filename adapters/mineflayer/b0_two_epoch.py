@@ -266,7 +266,9 @@ async def _run_two_ground_epochs_body(
             entry["ground_pickup"] = await acquire_staged_ground_flesh(
                 session, server, energy_ledger=ledger, epoch=epoch,
                 nonforcing=nonforcing,
-                b1_local=b1_local,
+                # The one retained episode remains owned, but cannot steer
+                # an unrelated second food target. Epoch 1 runs original L0.
+                b1_local=b1_local if epoch == 0 else None,
                 b1_obstacle=b1_local is not None and epoch == 0,
             )
         except GroundRejected as exc:
