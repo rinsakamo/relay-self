@@ -58,6 +58,7 @@ jobs:
             adapters/mineflayer/v6_original_capture.py \
             adapters/mineflayer/v6_start_marker.py \
             docs/self-demo.md \
+            docs/v6-world-qualification-once.md \
             experiments/metabolism_viability.py \
             src/relay_self/eat_hunger.py \
             tests/test_b0_energy_bridge.py \
