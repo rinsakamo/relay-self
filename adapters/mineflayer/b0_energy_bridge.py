@@ -52,11 +52,11 @@ class B0EnergyLedger:
         *,
         config: MetabolismConfig | None = None,
         sensor: Interoception | None = None,
-        forage_policy: Literal["native_only", "sensor_gate"] = "native_only",
+        forage_policy: Literal["native_only", "sensor_gate", "no_ground_seek"] = "native_only",
     ) -> None:
         if not isinstance(session_id, str) or not session_id:
             raise B0EnergyRejected("nonempty session required")
-        if forage_policy not in ("native_only", "sensor_gate"):
+        if forage_policy not in ("native_only", "sensor_gate", "no_ground_seek"):
             raise B0EnergyRejected("unsupported explicit L0 forage policy")
         if sensor is not None and not isinstance(sensor, Interoception):
             raise B0EnergyRejected("M0 interoception projection required")
@@ -139,11 +139,16 @@ class B0EnergyLedger:
             else:
                 # The native-only cheap baseline preserves all prior B0 behavior.
                 # In the opt-in arm, low *observed* energy admits SEEK; a
-                # sensor masked to a fixed high value does not. This is an
-                # intentionally hand-coded policy, NOT learned motivation.
+                # sensor masked to a fixed high value does not. The strictly
+                # opt-in no_ground_seek reference never issues a ground SEEK,
+                # but retains native inventory EAT and terminal safety.
+                # This is intentionally hand-coded, NOT learned motivation.
                 if (
                     self.forage_policy == "native_only"
-                    or sensor.reading <= B0_SENSOR_SEEK_THRESHOLD
+                    or (
+                        self.forage_policy == "sensor_gate"
+                        and sensor.reading <= B0_SENSOR_SEEK_THRESHOLD
+                    )
                 ):
                     target = candidate
                     kind = "SEEK"
