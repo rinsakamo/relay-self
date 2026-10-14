@@ -59,6 +59,8 @@ def test_retention_off_has_no_memory_and_fixed_cheap_turn():
     result = l1.next_waypoint(probe, target)
     assert result.target.z > after.snapshot.position.z
     assert len(l1.cognition.memories) == 0
+    assert l1.evidence()["reused_for_lateral_choice"] == 0
+    assert l1.evidence()["lateral_choice_count"] == 1
     assert l1.evidence()["learning_qualified"] is False
     assert l1.evidence()["fixed_off_policy"] == "PLUS_Z_AFTER_BLOCKED"
 

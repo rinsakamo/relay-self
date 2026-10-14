@@ -179,7 +179,9 @@ async def acquire_staged_ground_flesh(
     position = origin.snapshot.position
     obstacle_request = None
     if b1_obstacle:
-        bx = math.floor(position.x + 1.5)
+        # Put the collision face before the item's pickup radius. The old
+        # +1.5 wall let the bot collect the item without a BLOCKED Action.
+        bx = math.floor(position.x) + 1
         by = math.floor(position.y)
         bz = math.floor(position.z)
         obstacle_request = {
@@ -295,6 +297,7 @@ async def acquire_staged_ground_flesh(
         # Keep the actual partial native outcomes even if later steps fail.
         progress_trace["movement_outcomes"] = movements
         progress_trace["b1_local_decisions"] = b1_decisions
+        progress_trace["l0_ground_seek_trace"] = l0_trace
         progress_trace["stage"] = "MOVE_SOURCE_IN_PROGRESS"
     for i in range(8):
         read = await _correlated_observe(session, f"{namespace}-ground-step-{i:02d}")
@@ -382,25 +385,30 @@ async def acquire_staged_ground_flesh(
         )
         try:
             effect = await execute_seek_step(session, supervisor, issued, step)
-            if effect.kind is SeekConsequenceKind.BLOCKED and b1_local is None:
-                raise GroundRejected("issued SEEK did not make progress")
             closed = supervisor.record_outcome(
                 issued.action_id, at_ns=14+i*10,
                 provenance=_p(f"closed-{i}"),
             )
             if closed.state is not ActionState.OUTCOME:
                 raise GroundRejected("SEEK not closed with a World consequence")
-            if energy_ledger is not None and energy_ledger.step("MOVE").terminal_now:
-                raise GroundRejected("M0 terminal after issued SEEK")
             movements.append({
                 "action_id": issued.action_id,
                 "before_seq": effect.before_seq,
                 "after_seq": effect.after_seq,
+                "look_seq": effect.look_seq,
+                "forward_seq": effect.forward_seq,
+                "clear_seq": effect.clear_seq,
+                "remaining_m": effect.remaining_m,
+                "action_terminal": closed.state.value,
                 "kind": effect.kind.value,
                 "progress_m": effect.progress_m,
                 "waypoint_id": waypoint.goal_id,
                 "source_outcome_not_goal_success": True,
             })
+            if energy_ledger is not None and energy_ledger.step("MOVE").terminal_now:
+                raise GroundRejected("M0 terminal after issued SEEK")
+            if effect.kind is SeekConsequenceKind.BLOCKED and b1_local is None:
+                raise GroundRejected("issued SEEK did not make progress")
             if b1_local is not None:
                 if waypoint.goal_id == "b1-local-lateral":
                     b1_local.record_alternative_outcome(effect)

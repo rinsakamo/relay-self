@@ -262,7 +262,7 @@ async def _run_two_ground_epochs_body(
         traces.append(entry)  # retain partial original report on failure
         await _stage_hunger(session, server, ledger, epoch, entry)
         entry["stage"] = "NATIVE_L0_SEEK_AND_ISSUED_S50_MOVE"
-        progress = {} if b1_local is not None and epoch == 0 else None
+        progress = {} if b1_local is not None else None
         if progress is not None:
             entry["ground_pickup_attempt"] = progress
         try:
@@ -296,6 +296,16 @@ async def _run_two_ground_epochs_body(
         ):
             raise B0TwoEpochRejected("exactly one fresh item required per epoch")
         await _eat_verified(session, ledger, epoch, entry)
+        if b1_local is not None and epoch == 0:
+            obstacle = entry["ground_pickup"]["b1_obstacle_request"]
+            x, y, z = (obstacle[k] for k in ("x", "y", "z"))
+            # Remove only this DEV fixture after the witnessed first meal.
+            # Epoch 1 uses the original unobstructed B0 route.
+            _command(server, f"fill {x} {y} {z} {x} {y + 1} {z} minecraft:air")
+            await server.stdin.drain()
+            entry["obstacle_removal_request"] = {
+                **obstacle, "effect_attestation": "NOT_NATIVE_ATTESTED",
+            }
     if b1_local is not None and (
         b1_local.blocked_count < 1 or b1_local.reuse_count < 1
         or b1_local.alternative_outcomes < 1

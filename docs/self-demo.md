@@ -1219,3 +1219,19 @@ existing Persistent Cognition and proposes -Z. A difference in these
 original native/command JSONL, `dev_receipt.json` and `SHA256SUMS`.
 If the local Java/Node/Minecraft runtime is unavailable: real World `NOT_RUN`.
 Prior RSEE Golden/consumed V6 grants and V science 48 slots remain untouched.
+
+B1 DEV obstacle fixture uses seed 575 and a two-block-high stone column in the
+next +X block, ahead of the staged item's pickup radius. A console fill request
+is not a BLOCKED witness: only the issued S50 native movement consequence can
+trigger retention. ON reads the retained source-scoped observation for a -Z
+candidate; OFF keeps no Memory and uses the fixed +Z candidate. Both candidates
+use the existing ActionSupervisor. After the first verified meal the owner
+requests removal of its column, so epoch 2 uses the original B0 route.
+
+Partial closed MOVE outcomes (including BLOCKED and terminal M0 steps), effect
+sequence IDs, each epoch's acquisition attempt, final DEV body and credit count
+remain in the original report on failure. OFF lateral choices are counted
+separately from Memory reads. Compare the native initial positions, hunger
+traces, item coordinates and action bounds as well as the fixed seed: random
+spawn and real-time hunger timing are not guaranteed matched, so these DEV
+runs alone are not a causal or scientific ON/OFF comparison.

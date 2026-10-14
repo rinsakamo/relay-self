@@ -244,3 +244,56 @@ def test_v2_time_bracket_rejects_legacy_or_stale_before_java():
     with pytest.raises(GroundRejected, match="prospective global V2 M0 tick/MOVE"):
         asyncio.run(wrong({}, v2=True, limit=7))
     assert ledger.body.tick == ledger.credit_count == 0
+
+
+def test_closed_blocked_move_survives_m0_terminal(monkeypatch):
+    """A real typed source consequence stays visible before a later safety stop."""
+    import asyncio
+    from types import SimpleNamespace
+
+    import adapters.mineflayer.b0_ground_runner as runner
+    from adapters.mineflayer.seek_execution import SeekConsequence, SeekConsequenceKind
+    from relay_self.action import ActionState
+
+    first = _ground()
+    first = replace(first, snapshot=replace(first.snapshot, food=13.0))
+    origin = replace(first, seq=first.seq - 1, snapshot=replace(
+        first.snapshot, nearby_entities=(),
+        nearby_entities_coverage=replace(
+            first.snapshot.nearby_entities_coverage, candidate_count=0,
+        ),
+    ))
+    read = replace(first, seq=first.seq + 1, request_id="move-before")
+    sources = iter((origin, first, read))
+
+    async def observe(*args):
+        return next(sources)
+
+    async def drain():
+        pass
+
+    async def execute(session, supervisor, issued, step):
+        assert supervisor.get(issued.action_id) is issued
+        assert issued.state is ActionState.ISSUED
+        return SeekConsequence(
+            issued.action_id, first.session_id, read.seq, read.seq + 4,
+            0.0, 2.5, SeekConsequenceKind.BLOCKED,
+            read.seq + 1, read.seq + 2, read.seq + 3,
+        )
+
+    monkeypatch.setattr(runner, "_correlated_observe", observe)
+    monkeypatch.setattr(runner, "_command", lambda *args: None)
+    monkeypatch.setattr(runner, "execute_seek_step", execute)
+    ledger = B0EnergyLedger(first.session_id, config=MetabolismConfig(initial_energy=0.5))
+    trace = {}
+    with pytest.raises(GroundRejected, match="M0 terminal after issued SEEK"):
+        asyncio.run(runner.acquire_staged_ground_flesh(
+            None, SimpleNamespace(stdin=SimpleNamespace(drain=drain)),
+            energy_ledger=ledger, progress_trace=trace,
+        ))
+    row, = trace["movement_outcomes"]
+    assert row["kind"] == "BLOCKED"
+    assert row["action_terminal"] == "outcome"
+    assert row["before_seq"] < row["look_seq"] < row["forward_seq"] < row["clear_seq"] < row["after_seq"]
+    assert ledger.body.terminal and ledger.credit_count == 0
+    assert trace["status"] == "INCOMPLETE_NOT_PICKUP"

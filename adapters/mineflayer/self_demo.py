@@ -530,6 +530,10 @@ def _dev_run(args: argparse.Namespace) -> int:
                 ))
         native = json.loads((root / "native_report.json").read_text())
         if scenario == "b1-local-adaptation":
+            receipt["dev_b1_fixture_seed"] = native.get("b1_fixture_seed")
+            if native.get("b1_fixture_seed") is not None:
+                receipt["seed"] = "FIXED_DEV_SEED_NOT_QUALIFIED"
+            receipt["dev_b1_m0_credit_count"] = native.get("dev_m0_credit_count")
             epochs = native.get("two_ground_epochs", [])
             receipt["dev_b1_epoch_count"] = len(epochs)
             terminal = native.get("metabolism_terminal")
@@ -583,10 +587,11 @@ def _dev_run(args: argparse.Namespace) -> int:
             )
             receipt["dev_b1_decisions"] = sum(
                 len(e.get("hunger_trace", [])) + len(e.get("eat_gate_trace", []))
-                + (len(e["ground_pickup"].get("l0_ground_seek_trace", []))
-                   if isinstance(e.get("ground_pickup"), dict) else 0)
+                + (len(pickup.get("l0_ground_seek_trace", []))
+                   if isinstance(pickup, dict) else 0)
                 + int(isinstance(e.get("next_l0"), dict))
-                for e in epochs if isinstance(e, dict)
+                for e, pickup in zip(epochs, pickups)
+                if isinstance(e, dict)
             )
         if scenario == "b0-ground":
             # Read-only projection of source; NOT independent R qualification.

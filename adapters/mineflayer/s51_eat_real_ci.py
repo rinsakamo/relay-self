@@ -205,6 +205,7 @@ async def qualify(
         "g3_go": False,
     }
     server = collector = session = temp = None
+    ledger = None
     native_output = command_output = None
     native_path = report_path.with_suffix(".native.jsonl")
     command_path = report_path.with_suffix(".commands.jsonl")
@@ -322,6 +323,10 @@ async def qualify(
             ))
             _write_config(root)
             jar = root / "minecraft.jar"
+            if b1_local_adaptation:
+                props = root / "server.properties"
+                props.write_text(props.read_text() + "level-seed=575\n")
+                report["b1_fixture_seed"] = 575
         report["disposable_root"] = str(root)
         report["server_config_sha256"] = hashlib.sha256(
             (root / "server.properties").read_bytes(),
@@ -702,6 +707,12 @@ async def qualify(
         print(f"S51 FAIL: {exc}", file=sys.stderr)
         rc = 1
     finally:
+        if dev_only and b1_local_adaptation and ledger is not None:
+            report["metabolism_terminal"] = asdict(ledger.body)
+            report["dev_m0_credit_count"] = ledger.credit_count
+            epochs = report.get("two_ground_epochs", [])
+            if epochs:
+                report["b1_local_final"] = epochs[0].get("b1_local_final")
         if session is not None:
             try:
                 report["node_exit"] = await session.shutdown(timeout_s=10)
