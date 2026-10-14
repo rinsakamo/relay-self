@@ -74,7 +74,7 @@ class B1LocalCandidate:
             or after.provenance.source != "mineflayer"
             or before.seq != effect.before_seq
             or not before.seq < effect.after_seq < after.seq
-            or not (effect.kind is SeekConsequenceKind.BLOCKED)
+            or effect.kind is not SeekConsequenceKind.BLOCKED
             or not math.isfinite(effect.progress_m)
             or effect.progress_m >= 0.05
             or effect.remaining_m <= 0.7
