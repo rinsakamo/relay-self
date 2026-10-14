@@ -2,6 +2,7 @@
 import argparse
 import asyncio
 import json
+import re
 from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
@@ -39,6 +40,64 @@ def test_server_stream_exact_startup_bytes_before_native_session(tmp_path):
         owner.console.close()
         owner.node_stdin.close()
         assert (tmp_path / "originals/server_stdout_original.log").read_bytes() == raw
+    asyncio.run(scenario())
+
+
+
+@pytest.mark.parametrize("phase,reply", [
+    (0, "[22:20:30] [Server thread/INFO]: Running function relayself_v6:install\n"),
+    (1, "[22:20:30] [Server thread/INFO]: Running function relayself_v6_start:install\n"),
+])
+def test_observed_1218_function_dispatch_readback_is_not_effect_success(tmp_path, phase, reply):
+    # Offline frozen response shape seen at the consumed World attempt.
+    # The original runner incorrectly waited for "Executed N command".
+    async def scenario():
+        cap = V6OriginalCapture(
+            tmp_path / "originals", session="offline-only", slot="WORLD_START_A",
+            nonce="e" * 32,
+        )
+        owner = q.OwnedStreams(cap, tmp_path)
+        owner.server = SimpleNamespace(returncode=None)
+        owner.server_lines.append(reply)
+        found = await owner.wait_log(q.INSTALL_DISPATCH_REPLIES[phase])
+        assert found == reply
+        assert re.search(q.INSTALL_DISPATCH_REPLIES[phase], found)
+        assert "Executed 1 command" not in found
+        assert cap._phase == 0  # no issuer attempt or scoreboard effect inferred
+        cap.close()
+        owner.console.close()
+        owner.node_stdin.close()
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("invalid", [
+    "[INFO]: Executed 1 command\n",  # old invented response
+    "[INFO]: Running function relayself_v6:install_impostor\n",
+    "[INFO]: Running function relayself_v6_start:install\n",  # wrong pack
+])
+def test_wrong_install_dispatch_reply_does_not_match(invalid):
+    assert re.search(q.INSTALL_DISPATCH_REPLIES[0], invalid) is None
+
+
+@pytest.mark.parametrize("error", [
+    "[INFO]: Unknown function relayself_v6:install\n",
+    "[ERROR]: Failed to load datapack\n",
+    "[INFO]: Unknown command\n",
+])
+def test_server_command_parser_error_fails_closed_without_world(tmp_path, error):
+    async def scenario():
+        cap = V6OriginalCapture(
+            tmp_path / "originals", session="offline-only", slot="WORLD_START_A",
+            nonce="f" * 32,
+        )
+        owner = q.OwnedStreams(cap, tmp_path)
+        owner.server = SimpleNamespace(returncode=None)
+        owner.server_lines.append(error)
+        with pytest.raises(q.QualificationBlocked, match="original server error"):
+            await owner.wait_log(q.INSTALL_DISPATCH_REPLIES[0], timeout=0.1)
+        cap.close()
+        owner.console.close()
+        owner.node_stdin.close()
     asyncio.run(scenario())
 
 
