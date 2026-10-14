@@ -39,3 +39,22 @@ Freeze one qualified **real product** reference after #537's ability threshold i
 A synthetic ON vs masked difference, even one with a longer simulated ledger lifetime, is explicitly classified `V2_SYNTHETIC_PAIRED_CONTRAST_ONLY / G3_NO_GO` and never qualified as actual World causal impact. Real original-byte verifier, real trial outcomes, genuine ability freeze and sufficient replication are **future independent gates**, not present in this implementation.
 
 **No new World/Java/Node/GPU/LLM, no Action, no consumed-grant replay, no protected main edit or Draft merge.**
+
+## V2 continuation — independent S `ground2observe` source-boundary review
+
+S product Draft #545 subsequently implemented an **opt-in** nonforcing observation path at separately pinned exact HEAD `6f95c34918fbe29fea56bc7284e94c4edce21aff` ([#537 source report](https://github.com/rinsakamo/relay-self/issues/537)). All four arms below are replayed only on S's unchanged `test_b0_ground_foraging._ground()` **source-shaped synthetic fixture** with the same native food13 and visible staged-item target, using actual S `nonforcing_ground_decision`. V computes and enforces its own expected outputs; it never uses the S fixture's expected assertions as the result, executes no issued S Action, and reads no original WSL2 evidence.
+
+| Arm at default M0 E12 | First synthetic decisions | M0 after decisions | Interpretation |
+| --- | --- | --- | --- |
+| Sensor ON | 7 × nonissued WAIT → SEEK on 8th | E8.5, tick7 | quantized sensor: E8.5 rounds to observed 8 |
+| Sham ON | same as ON | E8.5, tick7 | no sham overhead observed from this source-shaped trace |
+| Masked gain0/bias12 | 16 × nonissued WAIT | E4, tick16, **alive/censored** | **not** M0 starvation at V's fixed horizon |
+| Native-only cheap | SEEK on 1st | E12, tick0 | strongest simple baseline already seeks |
+
+Independent V AST source-bound check reads only S source functions and confirms `acquire_staged_ground_flesh` permits **24 opportunity decisions** and **8 issued moves per epoch**, while `run_two_ground_epochs` permits two epochs. This does **not** implement V's frozen **16 global M0 ticks / 8 total MOVE budget**. In addition, S's hunger staging and operator placement are not a precommitted paired exogenous timeline; WAIT costs **per decision**, not actual Minecraft elapsed time. M0 terminal outcome must not be described as Minecraft physiological death.
+
+The terminal classification is `V2_S_NONFORCING_OFFLINE_PARITY_WITH_PREREG_MISMATCH`, **not a G0 live admission**. The V-owned module `v2_s_nonforcing_review.py` and negative tests reject forged real outcomes, an 8-WAIT quantization claim, premature M0 death at tick16, altered source heads or revised move/horizon totals. Read-only pinned S CI tests are executed separately. No S code or frozen V2 preregistration was changed.
+
+**Handoff to S/R:** provide an explicit per-arm *global* M0 16-tick stop/censoring rule (inclusive of pre-item hunger staging and all M0 expenditures), a global maximum of 8 issued MOVE, identical precommitted food timing/World start/exogenous conditions for matched arms, and S/R separately qualified original physical source and nonissued WAIT envelope. Do not silently expand the V study to 24 decision probes, treat early SEEK as a measured food outcome, or call the synthetic cheap baseline test a causal nutrition benefit. After product reference and independent sources are ready, any physical run still requires a **fresh one-shot user authorization per arm**.
+
+**Current:** V source-engineering only, World trials 0, real baseline/reference not qualified, independent original bytes NOT_RUN, `G3_NO_GO`, `NO_PRODUCTION_GO`.

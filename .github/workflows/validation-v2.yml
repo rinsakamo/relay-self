@@ -31,12 +31,14 @@ jobs:
           test "$(git rev-parse HEAD)" = "$CURRENT_HEAD"
           git merge-base --is-ancestor 53d50029da64a95c56bb56c6d48b5d14ce94e84a HEAD
           git diff --name-only 53d50029da64a95c56bb56c6d48b5d14ce94e84a HEAD > "$RUNNER_TEMP/paths"
-          test "$(wc -l < "$RUNNER_TEMP/paths")" -eq 5
+          test "$(wc -l < "$RUNNER_TEMP/paths")" -eq 7
           grep -Fxq ".github/workflows/validation-v2.yml" "$RUNNER_TEMP/paths"
           grep -Fxq "docs/validation-v2-knockdown.md" "$RUNNER_TEMP/paths"
           grep -Fxq "experiments/validation/v2_knockdown_manifest.json" "$RUNNER_TEMP/paths"
           grep -Fxq "experiments/validation/v2_knockdown.py" "$RUNNER_TEMP/paths"
           grep -Fxq "tests/test_validation_v2_knockdown.py" "$RUNNER_TEMP/paths"
+          grep -Fxq "experiments/validation/v2_s_nonforcing_review.py" "$RUNNER_TEMP/paths"
+          grep -Fxq "tests/test_validation_v2_s_nonforcing_review.py" "$RUNNER_TEMP/paths"
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
@@ -46,7 +48,7 @@ jobs:
           PYTHONPATH: 'src:tests:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m pytest -q tests/test_validation_v2_knockdown.py tests/test_validation_v1.py
+          python -m pytest -q tests/test_validation_v2_knockdown.py tests/test_validation_v2_s_nonforcing_review.py tests/test_validation_v1.py
           python -m experiments.validation.v2_knockdown > "$RUNNER_TEMP/v2-plan.json"
           python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v2-plan.json"))); assert d["classification"]=="V2_PREREGISTRATION_ONLY" and not d["science_go"] and d["new_world_runs"]==0'
           ruff check src tests experiments adapters observability
@@ -61,7 +63,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: rinsakamo/relay-self
-          ref: 34cf226e55645f85172317172c37ae6cbd481ae4
+          ref: 6f95c34918fbe29fea56bc7284e94c4edce21aff
           path: external-s
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
@@ -72,8 +74,10 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          test "$(git -C external-s rev-parse HEAD)" = "34cf226e55645f85172317172c37ae6cbd481ae4"
-          (cd external-s && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_b0_energy_bridge.py)
+          test "$(git -C external-s rev-parse HEAD)" = "6f95c34918fbe29fea56bc7284e94c4edce21aff"
+          (cd external-s && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_b0_energy_bridge.py tests/test_b0_ground_foraging.py tests/test_b0_two_epoch.py)
+          PYTHONPATH="external-s/src:external-s/tests:external-s:src:." python -m experiments.validation.v2_s_nonforcing_review --s-root external-s > "$RUNNER_TEMP/v2-s-nonforcing.json"
+          python -c 'import json,os; r=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v2-s-nonforcing.json"))); assert r["classification"]=="V2_S_NONFORCING_OFFLINE_PARITY_WITH_PREREG_MISMATCH" and r["s_opportunity_max_decisions_per_epoch"]==24 and r["v_registered_global_m0_horizon"]==16 and not r["v2_live_trial_admitted"] and not r["science_go"]'
           test -z "$(git -C external-s status --porcelain --untracked-files=no)"
   full-regression:
     runs-on: ubuntu-latest
