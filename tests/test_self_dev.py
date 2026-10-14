@@ -175,3 +175,39 @@ def test_dev_b0_receipt_cannot_promote_forged_s51_qualified(tmp_path, monkeypatc
     assert (root / 'native_report.json').is_file()
     assert (root / 'SHA256SUMS').is_file()
 
+
+
+def test_dev_b0_prelaunch_uses_fresh_world_not_rsee_clone(tmp_path, monkeypatch):
+    from adapters.mineflayer import s51_eat_real_ci as s51
+    monkeypatch.setenv('S51_REAL_SERVER_CI', '1')
+    calls = []
+    def fake_official_server(jar):
+        calls.append('fresh_unqualified_jar')
+        jar.write_bytes(b'offline-fake-jar-no-java')
+        return {'offline_stub': True}
+    def fake_properties(root):
+        (root / 'server.properties').write_text('level-name=s31a-ephemeral\n')
+    async def refuse_java(*args, **kwargs):
+        calls.append('java_admission_reached')
+        raise s51.S51PhysicalFailure('offline-only: no Java launched')
+    monkeypatch.setattr(s51, '_fetch_official_server', fake_official_server)
+    monkeypatch.setattr(s51, '_write_config', fake_properties)
+    monkeypatch.setattr(s51, '_ready_server', refuse_java)
+    report_path, log_path = tmp_path / 'dev-owner.json', tmp_path / 'server.log'
+    assert asyncio.run(s51.qualify(
+        report_path, log_path, food_item='rotten_flesh',
+        food_source='ground', dev_only=True,
+    )) == 1
+    row = json.loads(report_path.read_text())
+    assert calls == ['fresh_unqualified_jar', 'java_admission_reached']
+    assert row['classification'] == 'DEV_ONLY'
+    assert row['world_source'] == 'NEW_DEV_MOJANG_WORLD_NOT_RSEE_GOLDEN'
+    assert 'clone_prelaunch_binding' not in row
+    assert row['physical_java_started'] is False
+    assert row['grant_consumed'] is False
+    assert row['engineering_qualified'] is False
+    assert row['science_success'] is False
+    assert row['g3_go'] is False
+    assert (tmp_path / 'dev-owner.native.jsonl').is_file()
+    assert (tmp_path / 'dev-owner.commands.jsonl').is_file()
+
