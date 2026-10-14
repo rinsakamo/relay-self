@@ -48,11 +48,11 @@ jobs:
             adapters/mineflayer/b0_rsee.py \
             adapters/mineflayer/b0_two_epoch.py \
             adapters/mineflayer/b0_v6_source.py \
-            adapters/mineflayer/v6_atomic_fixture.py \
             adapters/mineflayer/bridge.mjs \
             adapters/mineflayer/package.json \
             adapters/mineflayer/python_protocol.py \
             adapters/mineflayer/s51_eat_real_ci.py \
+            adapters/mineflayer/v6_atomic_fixture.py \
             adapters/mineflayer/v6_native_clock.mjs \
             adapters/mineflayer/v6_native_clock.test.mjs \
             docs/self-demo.md \
