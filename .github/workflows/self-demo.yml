@@ -73,9 +73,12 @@ jobs:
           python -m adapters.mineflayer.self_demo
           python -m adapters.mineflayer.self_demo --smoke
           # Fast DEV contracts: B0/B1 behavior, issued Action, metabolism and isolation.
-          # Full V6/legacy/LLM/UI cases run when the PR is ready for review.
+          # Full V6/legacy/LLM/UI suite runs in review CI; developers can always run it locally.
           python -m pytest -q tests/test_b1_local_adaptation.py tests/test_b1_dev.py tests/test_b0_energy_bridge.py tests/test_b0_ground_foraging.py tests/test_b0_two_epoch.py tests/test_b0_rsee.py tests/test_feature_s51_eat_execution.py tests/test_self_dev.py tests/test_self_demo.py tests/test_self_action_evidence.py
-      - name: Full inherited regression (DEV exact-head admission)
+      - name: Full inherited regression (review / integration only)
+        # User-approved 2026-10-15 policy: do not block repeated DEV iteration
+        # on full historical/LLM/V6 tests. Run them before integration instead.
+        if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
         run: python -m pytest -q
 
   lint:
