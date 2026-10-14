@@ -301,3 +301,82 @@ and genuine S50/S51 action and M0 credits. All 48 preregistered
 V6 sessions remain NOT_RUN. No Python synthetic PASS is scientific
 GO. Original Golden, RSEE #588, S/V manifests, main and B0 original
 58-file completed review are untouched.
+
+
+## R V6 separately versioned server trial-start V1 + atomic food V2 (OFFLINE)
+
+**R owner** #575 / same Draft #610; immutable **start S source** #545 commit
+`2aaff0b921bcbd47a61d563b52d502596f896924`,
+`adapters/mineflayer/v6_start_marker.py` Git blob
+`d1510006dc370d217afe6d4988662ca0f36c5522`.
+**Separate frozen food V2** remains S
+`37f9365d3d16c9bda440ca9a9c8a10be6a32f1fc`
+with blob `ea4f4123e9d43a774f736b519743616115b78ea2`.
+The earlier R three-file **food-only** candidate is not the V6 paired-time trial
+profile. No source file from S/V is merged into R.
+
+R-only module `experiments.standard_env.v6_start_admission` independently
+generates two immutable three-file packs: (1) food V2
+`datapacks/relayself_v6_atomic/`, and (2) start V1
+`datapacks/relayself_v6_start_v1/`. Required start parameters are one
+pre-registered `WORLD_START_A..D` slot and one exact 32 lower-case hexadecimal
+*session correlation* nonce. The nonce must NOT be treated as a signature,
+authorization secret or network source authenticity proof. Food V2 scoreboard
+objective `rs_v6_tick` must be installed before the start V1 functions.
+The start `install.mcfunction` adds missing `#start_attempt` and
+`#start_gametime` scores with `add 0`, not a reset; `start_trial`
+increments the attempt and only the FIRST attempt stores the server
+`time query gametime`. It does not summon food or change frozen food V2.
+These are source properties, not proven server runtime behavior.
+
+**CI:** existing R four-job workflow now checks out the pinned S start/food
+commits independently, recomputes producer file blob hashes, reconstructs six
+R-owned expected pack bytes and checks the *generated S bytes* are
+identical. Negative tests refuse missing or seventh staged file, altered
+Golden, wrong nonce/slot, repeated start/food, unequal/reversed/overflowed
+reported ticks, invalid type and source status escalation. CI is source-only;
+the original Minecraft 1.21.8 Java parser/load is NOT tested by CI.
+
+Read-only dry-run from the current *exact* clean R HEAD:
+
+```bash
+export PYTHONPATH="$PWD/src:$PWD/tests:$PWD"
+export PYTHONDONTWRITEBYTECODE=1
+python -m experiments.standard_env.v6_start_admission
+python -m experiments.standard_env.v6_start_admission \
+  --s-start-checkout /ABSOLUTE/PINNED/S_START_CHECKOUT \
+  --s-food-checkout /ABSOLUTE/PINNED/S_FOOD_V2_CHECKOUT \
+  --slot WORLD_START_A --nonce 0123456789abcdef0123456789abcdef
+```
+
+An **existing, stopped, separately staged and NOT launched** clone may be
+reviewed by adding all five required options `--jar`, `--golden`,
+`--manifest`, `--initial-evidence`, `--staged-clone`. The checker
+binds the original #588 Golden manifest/JAR/source and verifies every original
+World file remains byte-identical and only these six exact pack files have
+been added. `RSEE_V6_TWO_PACK_STOPPED_BYTES_REVIEW_ONLY` means at-rest bytes
+at that read instant, NOT a real World start, installed/loaded command, or
+paired-episode equality. Never edit Golden, stage or reset a clone from R,
+or use R as a second launcher.
+
+S start marker must be associated with the **first qualified, item-free
+same-session L0 original native probe**, but **not presumed to be in the same
+server tick**. Prospective server-owned raw receipts must later bind the exact
+loaded functions, original command issuance, original console scoreboard
+`#start_attempt/#start_gametime/#attempt/#before/#after/#ok`, distinct
+start and food command effects, exclusive/no-reset owner scope, 32-bit bounds,
+ordered source/session/nonce/World-start slot, real native L0 and item
+observations, server-age packet samples and terminal STOP. Only original
+server evidence can warrant the difference
+`T_food - T_start`; M0 tick11, host monotonic ns and Minecraft display
+daytime must remain separate. Neither supplied score JSON nor SHA supplied
+by the same claimant proves server-origin causation. Any missing/ambiguous
+original, alternate command/reset, repeated marker, unqualified World clone,
+or mismatched V6 12-arm server elapsed interval is BLOCKED/INVALID, never
+repaired by interpolation.
+
+**Status:** `R_TWO_PACK_SOURCES_OFFLINE_ONLY / REAL_STAGED_CLONE_NOT_READ /
+SERVER_START_AND_FOOD_ORIGINALS_NOT_READ / V6_WORLD_SESSIONS_0 /
+V_G3_NO_GO / PRODUCTION_NO_GO`. Historical B0 original readback is
+closed and not repeated. All prior permissions consumed; no Java/Node,
+Minecraft, GPU or LLM process starts and no trial grant is inferred.
