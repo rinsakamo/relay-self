@@ -370,7 +370,9 @@ async def run_v2_fixed_study(
     return {
         "outcome": "M0_TERMINAL" if ledger.body.terminal else "HORIZON_CENSORED",
         "source_outcome": status,
-        "m0_terminal_free_ticks": ledger.body.tick,
+        "m0_terminal_free_ticks": (
+            ledger.body.tick - 1 if ledger.body.terminal else ledger.body.tick
+        ),
         "final_m0_energy": ledger.body.energy,
         "net_m0_energy": ledger.body.energy - ledger.config.initial_energy,
         "eats": ledger.body.meals, "credits": ledger.credit_count,
