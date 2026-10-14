@@ -8,15 +8,6 @@ from dataclasses import replace
 
 import pytest
 
-from adapters.mineflayer.b0_energy_bridge import (
-    B0_SENSOR_SEEK_THRESHOLD,
-    B0EnergyLedger,
-    B0EnergyRejected,
-)
-from adapters.mineflayer.b0_ground_foraging import GroundRejected, select_ground_target
-from adapters.mineflayer.b0_two_epoch import V2_ARMS, V2_FIRST_ITEM_TICK
-from experiments.metabolism_viability import Interoception, MetabolismConfig
-
 
 V5_CONCEPTUAL_ARMS = (
     "SENSOR_ON", "SHAM_ON", "MASKED_HIGH",
@@ -29,6 +20,7 @@ def _same_hungry_one_item():
     import test_b0_ground_foraging as ground
 
     original = ground._ground()
+    from adapters.mineflayer.b0_ground_foraging import select_ground_target
     source = replace(original, snapshot=replace(original.snapshot, food=13.0))
     target = select_ground_target(source)
     assert source.snapshot.inventory == ()
@@ -38,6 +30,8 @@ def _same_hungry_one_item():
 
 
 def _fresh_after_one_basal_wait(source, initial, arm):
+    from experiments.metabolism_viability import Interoception, MetabolismConfig
+
     config = MetabolismConfig(initial_energy=initial)
     kwargs = {
         "SENSOR_ON": ("sensor_gate", Interoception()),
@@ -46,6 +40,8 @@ def _fresh_after_one_basal_wait(source, initial, arm):
         "CHEAP_NATIVE": ("native_only", Interoception()),
     }
     policy, sensor = kwargs[arm]
+    from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+
     ledger = B0EnergyLedger(
         source.session_id, config=config, sensor=sensor, forage_policy=policy,
     )
@@ -68,6 +64,8 @@ def test_v5_same_native_source_different_m0_cheap_l0_choices(
     regime, initial, energy, sensed, on_action,
 ):
     """Different independently initialized bodies; NOT a live World comparison."""
+    from adapters.mineflayer.b0_energy_bridge import B0_SENSOR_SEEK_THRESHOLD
+
     assert regime in V5_REGIMES and B0_SENSOR_SEEK_THRESHOLD == 8.0
     p = _same_hungry_one_item()
     ledgers = {
@@ -104,6 +102,8 @@ def test_v5_same_native_source_different_m0_cheap_l0_choices(
         decisions["SENSOR_ON"].kind
     )
     # Pure choice must not invent S16 issuance/OUTCOME or M0 food credit.
+    from adapters.mineflayer.b0_energy_bridge import B0EnergyRejected
+
     for ledger in ledgers.values():
         assert ledger.body.energy == energy
         assert ledger.body.tick == 1
@@ -112,6 +112,8 @@ def test_v5_same_native_source_different_m0_cheap_l0_choices(
 
 
 def test_v5_g0_rejects_foreign_source_and_incomplete_ground_coverage():
+    from adapters.mineflayer.b0_energy_bridge import B0EnergyRejected
+
     p = _same_hungry_one_item()
     ledger = _fresh_after_one_basal_wait(p, 4.0, "SENSOR_ON")
     foreign = replace(p, session_id="other-native-session")
@@ -125,6 +127,8 @@ def test_v5_g0_rejects_foreign_source_and_incomplete_ground_coverage():
             ),
         ),
     )
+    from adapters.mineflayer.b0_ground_foraging import GroundRejected, select_ground_target
+
     with pytest.raises(GroundRejected):
         select_ground_target(incomplete)
     assert ledger.body.energy == 3.5 and ledger.body.tick == 1
@@ -132,6 +136,8 @@ def test_v5_g0_rejects_foreign_source_and_incomplete_ground_coverage():
 
 
 def test_v5_is_not_implemented_as_existing_v2_or_live_permission():
+    from adapters.mineflayer.b0_two_epoch import V2_ARMS, V2_FIRST_ITEM_TICK
+
     # V5's six arms and independently assigned LOW/HIGH energy are neither
     # a hidden alias nor a retroactive change to the frozen V2 study path.
     assert V2_FIRST_ITEM_TICK == 11
