@@ -1118,3 +1118,28 @@ identifier **exactly once** from the first native
 All issuer command attempts are blocked until binding. Such binding is
 local provenance continuity, **not** independently authenticated server
 origin. No real start has been authorized/executed by this adapter.
+
+## DEV / QUALIFICATION / SCIENCE (2026-10-14)
+
+通常開発は既存CLIの明示的DEV入口で反復する。各回、新しい絶対パスを指定する。
+親ディレクトリだけ事前作成し、runの保存先自体は作成しない。
+
+```bash
+PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m adapters.mineflayer.self_demo \
+  --mode DEV --run-disposable --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
+  --output-dir /absolute/development-root/new-run
+```
+
+既存S49 hostがMojang 1.21.8をダウンロードし、使い捨てWorld内でEULAを受諾、
+Java/Nodeを起動する。Goldenや既存Worldは入力にしない。固定loopback port 25565
+競合時は起動前拒否する。既存Action認可・STOP/cleanupはS49に委譲する。
+新規Worldはrun内のowned-worldsに作成され、元hostのcleanupで削除される。
+seedはserver生成で未attest。native reportとserver log、DEV receiptを保存する。
+
+修正後は別保存先で再実行できる。`--retry-of PRIOR_DEV_RUN_ID`で履歴を記録する。
+失敗receiptは保存し、既存保存先の再利用・symlink経路は拒否する。
+DEV receiptは常にDEV_ONLY。元S49診断reportのPASS/QUALIFIED表示は元ownerの
+限定診断であり、DEV資格・科学入場の根拠にはしない。DEVはM0 credit、L2、
+V6資格runner、V科学runnerを呼ばない。no flagsは従来どおりDRY_RUN。
+QUALIFICATIONは別のR gateと新規preflightを要求し、消費済grantを再利用しない。
+SCIENCEはV事前登録と独立評価に従う。既存科学NO_GO・凍結証拠を変更しない。

@@ -11,11 +11,16 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import hashlib
 import json
 import os
 import shutil
+import socket
+import subprocess
 import sys
+import tempfile
+import uuid
 from pathlib import Path
 
 from adapters.mineflayer.self_action_evidence import (
@@ -370,6 +375,104 @@ async def _run_disposable(
             os.environ["S49_REAL_SERVER_CI"] = previous
 
 
+def _dev_run(args: argparse.Namespace) -> int:
+    """DEV uses the unchanged S49 host, with no qualification/admission delegation."""
+    receipt = {
+        "mode": "DEV", "classification": "DEV_ONLY", "status": "NOT_RUN",
+        "run_id": uuid.uuid4().hex, "retry_of": args.retry_of,
+        "intent": "S49 disposable L0 development; Java/Node, Mojang download and EULA",
+        "world_source": "NEW_S49_FLAT_WORLD_NOT_GOLDEN",
+        "seed": "SERVER_GENERATED_NOT_ATTESTED",
+        "engineering_qualified": False, "science_success": False,
+        "g3_go": False, "m_energy_credited": False,
+    }
+    root = args.output_dir
+    try:
+        if args.confirm != CONFIRM or not args.run_disposable:
+            raise DemoRejected("DEV requires disposable opt-in and exact confirmation")
+        if args.think or args.live_think or args.reflect_report or args.smoke:
+            raise DemoRejected("DEV accepts only the existing model-free disposable route")
+        if args.retry_of is not None and (
+            len(args.retry_of) != 32 or any(c not in "0123456789abcdef" for c in args.retry_of)
+        ):
+            raise DemoRejected("retry lineage must be a prior DEV run ID")
+        if root is None or not root.is_absolute() or ".." in root.parts:
+            raise DemoRejected("DEV requires a fresh absolute output directory")
+        if any(p.is_symlink() for p in (root, *root.parents)):
+            raise DemoRejected("symlink output ancestry denied")
+        # Exclusive creation in a preexisting parent: never adopt an old World/evidence root.
+        if not root.parent.is_dir():
+            raise DemoRejected("DEV parent must already exist")
+        root.mkdir(mode=0o700)
+    except (DemoRejected, OSError) as exc:
+        print(json.dumps({**receipt, "reason": str(exc)}, sort_keys=True))
+        return 2
+
+    code = 2
+    previous_temp = tempfile.tempdir
+    try:
+        receipt["git_head"] = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=Path(__file__).resolve().parents[2], text=True,
+        ).strip()
+        receipt["git_dirty"] = bool(subprocess.check_output(
+            ["git", "status", "--porcelain"],
+            cwd=Path(__file__).resolve().parents[2], text=True,
+        ).strip())
+        if os.environ.get("NODE_OPTIONS"):
+            raise DemoRejected("NODE_OPTIONS denied")
+        for tool, flag in (("java", "-version"), ("node", "--version")):
+            executable = shutil.which(tool)
+            if executable is None:
+                raise DemoRejected(tool + " unavailable")
+            result = subprocess.run([executable, flag], capture_output=True, text=True, timeout=10)
+            if result.returncode:
+                raise DemoRejected(tool + " version probe failed")
+            receipt[tool + "_version"] = (result.stdout + result.stderr).strip()
+        # Check both a listener and reserved/busy socket before the original fixed-port host.
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 25565))
+        from adapters.mineflayer import s49_normal_session_real_ci  # noqa: F401
+
+        bridge = Path(__file__).with_name("bridge.mjs")
+        subprocess.run([
+            "node", "--input-type=module", "-e",
+            "import {createRequire} from 'node:module'; "
+            "const r=createRequire(process.argv[1]); "
+            "r('mineflayer'); r('minecraft-protocol');", str(bridge),
+        ], check=True, capture_output=True, timeout=15)
+        world_parent = root / "owned-worlds"
+        world_parent.mkdir()
+        receipt["world_namespace"] = str(world_parent)
+        tempfile.tempdir = str(world_parent)
+        with (root / "dev_receipt.json").open("x") as stream:
+            json.dump({**receipt, "status": "RUNNING"}, stream, indent=2)
+        with (root / "host_stdout.log").open("x") as stdout, (
+            root / "host_stderr.log"
+        ).open("x") as stderr, contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            code = asyncio.run(_run_disposable(
+                root / "native_report.json", root / "minecraft_server.log",
+            ))
+        native = json.loads((root / "native_report.json").read_text())
+        receipt.update(
+            status="COMPLETED" if code == 0 else "FAILED",
+            reason=native.get("error"), session_id=native.get("session_id"),
+            server_exit=native.get("server_exit"), node_exit=native.get("node_exit"),
+            native_owner_status=native.get("status"),
+            source_report="native_report.json",
+            source_scope="S49_OWNER_DIAGNOSTIC_NOT_DEV_QUALIFICATION",
+        )
+    except Exception as exc:
+        receipt.update(status="NOT_RUN" if not (root / "native_report.json").exists()
+                       else "FAILED", reason=f"{type(exc).__name__}: {exc}")
+    finally:
+        tempfile.tempdir = previous_temp
+        receipt["exit_code"] = code
+        # Only this run's own mutable receipt is finalized; originals are never rewritten.
+        (root / "dev_receipt.json").write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
+        print(json.dumps(receipt, sort_keys=True))
+    return code
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="RelaySelf one-command demo: 3 native L0 decisions or an offline S10/S11 smoke",
@@ -389,7 +492,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model-alias", help="explicit pre-existing loopback model alias")
     parser.add_argument("--model-port", type=int, help="existing localhost OpenAI-compatible port")
     parser.add_argument("--model-timeout", type=float, default=12.0)
+    parser.add_argument("--mode", choices=("DEV",),
+                        help="DEV_ONLY; never delegates to QUALIFICATION or SCIENCE")
+    parser.add_argument("--retry-of", help="prior DEV run ID, informational lineage only")
     args = parser.parse_args(argv)
+    if args.mode == "DEV":
+        return _dev_run(args)
+    if args.retry_of is not None:
+        parser.error("--retry-of requires --mode DEV")
 
     if args.think and args.live_think:
         print(json.dumps(_row(
