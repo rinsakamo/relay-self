@@ -11,12 +11,12 @@ from dataclasses import asdict
 from typing import Any
 
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
-from adapters.mineflayer.b1_local_adaptation import B1LocalCandidate
 from adapters.mineflayer.b0_ground_foraging import (
     GroundRejected,
     compare_pickup,
     select_ground_target,
 )
+from adapters.mineflayer.b1_local_adaptation import B1LocalCandidate
 from adapters.mineflayer.s31a_real_server_ci import _command, _correlated_observe
 from adapters.mineflayer.seek_execution import SeekConsequenceKind, execute_seek_step
 from relay_self.action import ActionLifecycle, ActionState
