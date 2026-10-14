@@ -47,9 +47,6 @@ jobs:
         run: python tools/check_repository.py
 
   sibling-readonly:
-    # Preserve independent R qualification/legacy lineage checks for review.
-    # A Draft DEV push is not an independent source qualification.
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -237,9 +234,6 @@ jobs:
           )
 
   full-regression:
-    # Preserve independent R qualification/legacy lineage checks for review.
-    # A Draft DEV push is not an independent source qualification.
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
