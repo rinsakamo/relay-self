@@ -15,7 +15,9 @@ from pathlib import Path
 from typing import Any
 
 from experiments.standard_env.source_handoff import (
-    _physical_file, _physical_receipt_root, _unique_pairs,
+    _physical_file,
+    _physical_receipt_root,
+    _unique_pairs,
 )
 
 S_HEAD = "291417539497f42269af9a15512cea320f375310"
