@@ -22,9 +22,9 @@ from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.eat_hunger import EatCursor, EatStatus
 from relay_self.intent import IntentCommitment
+from relay_self.persistent_cognition import save_persistent_cognition
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillExecution
-from relay_self.persistent_cognition import save_persistent_cognition
 
 
 class B0TwoEpochRejected(RuntimeError):
