@@ -207,6 +207,8 @@ async def qualify(
             path.exists() or path.is_symlink() for path in (native_path, command_path)
         ):
             raise S31ABlocked("fresh native evidence paths required; no overwrite")
+        if os.environ.get("RELAYSELF_V6_NATIVE_CLOCK_V1"):
+            raise S31ABlocked("V6 raw clock producer not R-qualified for S51")
         if os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("Node substitution forbidden")
         if preflight_only:

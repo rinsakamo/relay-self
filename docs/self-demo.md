@@ -954,3 +954,23 @@ per intended live World session. Do not create a new launcher or
 treat a 48-slot planning grid as permission to execute. Historical
 R #575 B0 58-file/50-index review is complete REVIEW_ONLY; no rerun.
 State: S_V6_SOURCE_STREAM_ONLY / WORLD_TRIALS_0 / G3_NO_GO.
+
+
+## Candidate V6 native World age source (2026-10-14, NOT_ADMITTED)
+
+The opt-in `RELAYSELF_V6_NATIVE_CLOCK_V1=1` binds the 1.21.8
+Mineflayer bridge to original clientbound `update_time` packet callbacks.
+It records server world age (raw i64, decimal string), separate raw daytime
+and host monotonic ns, with the original bridge session/seq. No interpolation
+occurs between server packet updates. The feature is disabled by default;
+the existing S51 physical B0 runner **rejects the env flag** until a new
+R-authenticated binary/runtime source and external per-session grant exist.
+The changed bridge itself is NOT the frozen #588 RSEE bridge byte identity.
+
+The raw packet is NOT a timestamp for the server-console `/summon` effect,
+S50 movement, S51 EAT or any actual food acquisition. The server sends
+updates sparsely and display time can jump. Eleven M0 ticks cannot substitute
+for 11 Minecraft World ticks. R must independently qualify server-owned
+effect receipts, exact packet bytes/source producer+SHA, initial Golden
+live World and clock parity before V may admit the frozen V6 paired trial.
+No V6 World or science/production outcome is asserted.

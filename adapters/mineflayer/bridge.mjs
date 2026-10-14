@@ -8,6 +8,7 @@ import {
   entityHurtPayload,
   resolveAttackEntity
 } from './bridge_hooks.mjs'
+import { attachV6NativeClockPackets } from './v6_native_clock.mjs'
 import {
   admitProbeRequestId,
   makeEnvelope,
@@ -39,6 +40,16 @@ try {
   process.exit(2)
 }
 
+// Explicit candidate only: never part of frozen S51 RSEE admission.
+const clockOptIn = process.env.RELAYSELF_V6_NATIVE_CLOCK_V1
+if (clockOptIn !== undefined && !['0', '1'].includes(clockOptIn)) {
+  process.stderr.write('invalid V6 clock opt-in\n')
+  process.exit(2)
+}
+if (clockOptIn === '1' && config.version !== '1.21.8') {
+  process.stderr.write('V6 raw source requires explicit Minecraft 1.21.8\n')
+  process.exit(2)
+}
 const sessionId = randomUUID()
 let seq = 0
 let spawned = false
@@ -92,6 +103,13 @@ emit('adapter_started', {
 })
 
 const bot = mineflayer.createBot(options)
+if (clockOptIn === '1') {
+  attachV6NativeClockPackets(
+    bot,
+    (sample) => emit('native_clock_packet', sample),
+    (error) => emitAdapterError(error)
+  )
+}
 
 attachHealthSynchronizedSpawnListeners(
   bot,
