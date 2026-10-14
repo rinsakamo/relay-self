@@ -51,7 +51,7 @@ def test_atomic_r_no_read_plan_and_pinned_candidate_only(capsys):
     data = json.loads(capsys.readouterr().out)
     assert data == plan()
     assert data["golden_checked"] is False
-    assert data["server_function_single_use"] == "UNGUARDED_SOURCE"
+    assert data["server_function_single_use"] == "GUARDED_IN_SOURCE_ONLY_UNVERIFIED_RUNTIME"
     assert data["physical_execution_authorized"] is False
     assert len(S_ATOMIC_SOURCE_BLOB) == 40
     assert len(S_ATOMIC_SOURCE_HEAD) == 40
@@ -66,17 +66,23 @@ def test_atomic_r_pack_is_independent_fixed_three_files_with_command_order():
     f = expected[
         f"{PACK_DIR}/data/relayself_v6/function/atomic_food.mcfunction"
     ].decode("utf-8").splitlines()
-    assert f[3] == (
+    assert f[0] == "scoreboard players add #attempt rs_v6_tick 1"
+    guard = "execute if score #attempt rs_v6_tick matches 1 run "
+    assert all(line.startswith(guard) for line in f[1:8])
+    assert f[4] == guard + (
         "execute store result score #before rs_v6_tick run time query gametime"
     )
-    assert f[4].startswith(
+    assert f[5].startswith(guard + (
         "execute store success score #ok rs_v6_tick run summon minecraft:item"
-    )
-    assert f[5] == (
+    ))
+    assert f[6] == guard + (
         "execute store result score #after rs_v6_tick run time query gametime"
     )
+    assert "matches 2.. run say RELAYSELF_V6_REPEAT_BLOCKED" in f[-1]
     assert sum("summon minecraft:item" in line for line in f) == 1
-    assert not any("unless score" in line for line in f)  # Replay NOT guarded.
+    assert not any("players set #attempt" in line for line in f)
+    assert not any("players set #attempt" in line for line in
+                   expected[f"{PACK_DIR}/data/relayself_v6/function/install.mcfunction"].decode().splitlines())
 
 
 def test_atomic_r_index_exact_overlay_is_never_qualified_world():
@@ -87,7 +93,8 @@ def test_atomic_r_index_exact_overlay_is_never_qualified_world():
     assert result["added_pack_file_count"] == 3
     assert result["changed_original_bytes"] is False
     assert result["server_function_loaded"] is False
-    assert result["single_use_guard_present"] is False
+    assert result["single_use_guard_present_source_only"] is True
+    assert result["independent_single_use_verified"] is False
     assert result["exact_summon_effect_tick_attested"] is False
     assert result["physical_execution_authorized"] is False
 
@@ -122,6 +129,7 @@ def test_atomic_r_score_claim_consistent_but_explicitly_untrusted():
     assert result["m0_decision_tick"] == 11
     assert result["original_server_command_bytes_verified"] is False
     assert result["independent_single_use_verified"] is False
+    assert result["single_use_guard_present_source_only"] is True
     assert result["true_world_effect_tick_attested"] is False
     assert result["world_start_matched"] is False
     assert result["physical_execution_authorized"] is False
