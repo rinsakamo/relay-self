@@ -95,3 +95,26 @@ export PYTHONDONTWRITEBYTECODE=1
 - **Permission blocker:** every prior B0 grant was consumed. No real S/V experiment until independent admission and fresh user one-shot permission **per run**.
 
 Conclusions remain `B0_R_HOST_ORIGINALS_NOT_READ / R_WAIT_ORIGINAL_NOT_QUALIFIED / RSEE_REUSE_PATH_DOCUMENTED / V_LIVE_NOT_ADMITTED / SCIENCE_NO_GO`. This runbook itself neither certifies code CI nor changes the older R6 S9 result.
+
+
+## R B0 bounded independent checker (added 2026-10-14)
+
+The R-only implementation \`experiments/standard_env/b0_original_audit.py\` is a **read-only, existing-file checker** (not a second launcher, not a retrier). It pins S-operator-reported four original SHA256 digests and the existing 50-entry SHA index, checks the referenced files, source session/seq 0–171, inbound native STOP ACK versus connection-end and outbound shutdown *attempt*, and tests the *reported* two terminal EAT/credit correlations and original RSEE identity claim. It never turns reported source into independent S16 semantics, R1 envelope, complete native item pickup causal certification, or science.
+
+From **clean detached R HEAD** with the preexisting shared Python, after separately inventorying the frozen original root:
+
+\`\`\`bash
+test "$(git rev-parse HEAD)" = <PIN_CURRENT_R_PR_610_HEAD> || exit 2
+test -z "$(git status --porcelain --untracked-files=all)" || exit 2
+BASE=/home/rinsa/.local/share/relay-self/rsee-1.0-20261011
+EVIDENCE=/home/rinsa/evidence/relay-self-b0-ground2-20261014-2c26590-once
+test -x "$BASE/venv/bin/python" && test -d "$EVIDENCE" || exit 2
+export PYTHONPATH="$PWD/src:$PWD/tests:$PWD"
+export PYTHONDONTWRITEBYTECODE=1
+"$BASE/venv/bin/python" -m experiments.standard_env.b0_original_audit
+"$BASE/venv/bin/python" -m experiments.standard_env.b0_original_audit --root "$EVIDENCE"
+\`\`\`
+
+Replace \`<PIN_CURRENT_R_PR_610_HEAD>\` with the **then-current exact, CI-qualified R reviewer commit** before invoking: the runbook deliberately does not invent a future commit. First invocation returns \`RSEE_B0_READONLY_AUDIT_PLAN\` without reading evidence. Second invocation should return \`RSEE_B0_ORIGINAL_BYTES_AND_REPORTED_EPOCHS_REVIEW_ONLY\` only for exact readback; otherwise exit 2 \`RSEE_B0_ORIGINAL_READBACK_BLOCKED\`, STOP without repair or retries. This checker alone does **not** independently verify producer HEAD by inspecting S's on-host clean checkout, full host process history, native metadata collection causation, World time, STOP process/PID/bind or S16 semantics. Verify all such fields separately where physically possible, report unknown otherwise.
+
+Independently compare path identities and full inventory **before and after** the read, storing only the new report, stdout, exit status and checksums in a fresh disjoint report directory. The old B0 root, S/R worktrees, shared Python and Golden RSEE assets are not output destinations. Never use the tool's exit0 as physical admission or a fresh Minecraft execution grant.
