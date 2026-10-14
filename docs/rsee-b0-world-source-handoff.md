@@ -380,3 +380,75 @@ SERVER_START_AND_FOOD_ORIGINALS_NOT_READ / V6_WORLD_SESSIONS_0 /
 V_G3_NO_GO / PRODUCTION_NO_GO`. Historical B0 original readback is
 closed and not repeated. All prior permissions consumed; no Java/Node,
 Minecraft, GPU or LLM process starts and no trial grant is inferred.
+
+
+## R V6 prospective ORIGINAL capture-envelope contract (not an S producer)
+
+R adds `experiments.standard_env.v6_original_envelope` and synthetic-only
+negative tests to existing Draft #610. This is **future-capture tooling only**:
+S #545 has **not** implemented a physical emitter for this proposed versioned
+three-file envelope; never invent the files from existing B0/S9 evidence.
+The intended *disjoint immutable* original root has exactly:
+
+- `server_stdout_original.log`: raw original server output (bounded, LF)
+- `issuer_commands_original.jsonl`: proposed issuer-scoped bounded command
+  chronology, including food/start installs, first nonissued native probe,
+  start and food invocations, their readback *attempts*, and shutdown request
+- `native_bridge_original.jsonl`: session-scope native predecode bridge stream
+  with real native packet-age samples and inbound shutdown ACK
+
+The proposed journal uses **canonical** `session_id`, contiguous `seq`,
+`phase`, exact `issuer_command`, strictly rising `host_monotonic_ns`, and
+`first_probe_native_seq/first_probe_request_id`. It is NOT an S16 issued
+World Action; in particular the `PROBE_NONISSUED` journal marker is expressly
+not a Minecraft command or an invented WAIT outcome. This is only a *draft
+capture-format contract*: **no current S runner emits it**, so no on-host
+original review has been performed with this schema.
+
+`review_original_bundle` requires a separate externally supplied SHA256
+comparison for all three files, exact non-symlink canonical files, bounded
+complete LF source streams, 1 session/contiguous native seq0..STOP, 2+ source
+packet-age samples, first `observation` reference consistency, issuer
+order/duplicate command refusal, and exactly one ordered start-marker/food
+marker line in captured output. It rejects unknown/missing files, duplicate
+JSON keys, mixed sessions, foreign/extra commands, old or forged clock
+precision, trailing stream changes, START/FOOD replay and absent STOP.
+An externally supplied SHA is still **not authenticated server origin**.
+
+Read-only no-I/O plan:
+
+```bash
+python -m experiments.standard_env.v6_original_envelope
+```
+
+Prospective host readback *only after S actually implements and saves real
+originals*, using an **out-of-band** exact precommitted SHA JSON object and
+known source/session identity (do not reconstruct these from a renderer):
+
+```bash
+python -m experiments.standard_env.v6_original_envelope \
+  --root /ABSOLUTE/FROZEN/ORIGINALS_ONLY \
+  --expected-shas-json /SEPARATE/EXTERNAL/EXPECTED_SHA256.json \
+  --session ACTUAL_SESSION \
+  --slot WORLD_START_A --nonce ACTUAL_32_LOWER_HEX_NONCE \
+  --first-probe-seq ACTUAL_NATIVE_SEQ \
+  --first-probe-request ACTUAL_REQUEST_ID
+```
+
+A successful result can say **only**
+`RSEE_V6_THREE_ORIGINAL_BYTES_AND_ORDER_REVIEW_ONLY`.
+Even an original byte match plus unique echoed console markers cannot prove
+that the correct Minecraft JAR parsed/loaded the function, that the output
+was exclusively server-origin, that there was no unlogged privileged score
+reset / alternate summon, that scoreboard numbers are genuine, or that
+`T_food-T_start` is a source-qualified World elapsed interval.
+The source-protocol status therefore remains
+`S_ORIGINAL_EMITTER_MISSING / PHYSICAL_ORIGINALS_NOT_RUN /
+EXACT_SERVER_TIME_UNATTESTED / V6_WORLD_0 / G3_NO_GO`.
+R does not create a producer, a rival launcher, or a new physical grant.
+
+**S next handoff:** implement the original three-stream issuer/source capture
+under existing #545, pinned to an exact new S HEAD, with first L0 and actual
+server stdout/score receipt provenance. R must then independently assess
+whether the raw signals *could* warrant any stronger claim; V #619 retains
+exclusive preregistered matched-arm and science admission.
