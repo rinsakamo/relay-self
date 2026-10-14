@@ -239,8 +239,8 @@ def test_v2_time_bracket_rejects_legacy_or_stale_before_java():
         )
     with pytest.raises(GroundRejected, match="clock bracket"):
         asyncio.run(wrong({"stale": True}, v2=True, limit=8))
-    with pytest.raises(GroundRejected, match="clock bracket"):
+    with pytest.raises(GroundRejected, match="prospective global V2 M0 tick/MOVE"):
         asyncio.run(wrong({}, v2=False, limit=8))
-    with pytest.raises(GroundRejected, match="clock bracket"):
+    with pytest.raises(GroundRejected, match="prospective global V2 M0 tick/MOVE"):
         asyncio.run(wrong({}, v2=True, limit=7))
     assert ledger.body.tick == ledger.credit_count == 0
