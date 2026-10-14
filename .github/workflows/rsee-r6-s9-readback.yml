@@ -91,7 +91,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           path: sv6atomic
-          ref: 'cf55c118135e2b11243a1a2d1c375998858f5894'
+          ref: '37f9365d3d16c9bda440ca9a9c8a10be6a32f1fc'
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
