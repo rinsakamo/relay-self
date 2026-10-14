@@ -1035,3 +1035,41 @@ The exact SHA of the revised mcfunction is intentionally different from
 V1; R must pin/review the new Git blob and verify real server semantics
 before allowing it anywhere near an authorized clone. NO local Minecraft,
 Java, Node or World execution occurred in this source revision.
+
+
+### V6 separate trial-start server timestamp SOURCE V1 (2026-10-14)
+
+`adapters/mineflayer/v6_start_marker.py` is a new, **separate**
+in-memory 1.21.8 datapack generator; it does **not** rewrite the
+independently pinned `v6_atomic_fixture.py` V2 food bytes. A per-session
+32-hex trial nonce and one frozen `WORLD_START_A..D` slot are baked
+into the start function's server `say` line. These are correlation
+labels, **not** authenticators or physical permission.
+
+The new source would install after the V2 food pack creates the shared
+scoreboard objective `rs_v6_tick`, then only `add 0` missing
+`#start_attempt` and `#start_gametime` scores. One call to
+`function relayself_v6_start:start_trial` increments
+`#start_attempt`; only count 1 can record
+`time query gametime` into `#start_gametime` and emit the exact
+slot/nonce marker. Count 2+ cannot overwrite the start receipt.
+The function **never** summons food, changes World time or issues S50.
+The operator would prospectively bind the marker issuance to the
+first *genuine* same-session native L0 probe; it is not assumed that
+the probe and marker occur in the same World tick. Future R original
+command/packet evidence must establish order and source.
+
+The S-only claim readers admit **no physical evidence**: a typed
+first observation plus declared score and matching source SHA can
+produce a `REVIEW_ONLY` start claim; a separately supplied V2 food
+claim permits arithmetic `claimed_T_food - claimed_T_start`. This
+is NOT the V-frozen cross-arm elapsed World tick parity result,
+not an authenticated command execution and not `M0 tick11`.
+R must independently pin BOTH producer Git blobs and the **newly
+versioned six-file, two-pack staged-clone delta**, actual server
+parsing/load, genuine command readback, caller source provenance,
+one-use execution and start/food original timestamps. Neither pack
+may modify original stopped Golden #588 World files. If the server
+clock exceeds int32 scoreboard bounds or has any reset/overflow,
+the study is invalid rather than silently unwrapping timestamps.
+Physical S51 `groundv6` remains BLOCKED pre-Java.
