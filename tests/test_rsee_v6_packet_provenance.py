@@ -148,3 +148,42 @@ def test_r_v6_pinned_candidate_source_rejects_nonexistent_and_wrong_git(tmp_path
     with pytest.raises(V6PacketRejected):
         review_s_clock_source(tmp_path)
     assert main(["--s-checkout", str(tmp_path)]) == 2
+
+
+def test_r_v6_stop_scope_duplicate_start_and_error_events_rejected(tmp_path):
+    """A same-SHA synthetic candidate cannot silently add native authority."""
+    for kind in ("adapter_started", "adapter_error", "command_error",
+                 "arbitrary_foreign_event"):
+        rows = _native_rows()
+        inserted = deepcopy(rows[1])
+        inserted["type"] = kind
+        rows.insert(2, inserted)
+        for i, row in enumerate(rows):
+            row["seq"] = i
+        path, sha = _original(tmp_path, rows)
+        with pytest.raises(V6PacketRejected):
+            review_native_original(
+                path, expected_sha256=sha, expected_session=SESSION,
+            )
+    rows = _native_rows()
+    rows[2], rows[3] = rows[3], rows[2]  # a real packet after STOP ACK
+    for i, row in enumerate(rows):
+        row["seq"] = i
+    path, sha = _original(tmp_path, rows)
+    with pytest.raises(V6PacketRejected, match="after STOP ACK"):
+        review_native_original(path, expected_sha256=sha, expected_session=SESSION)
+
+
+def test_r_v6_original_requires_exact_lf_terminal_and_no_blank_or_crlf(tmp_path):
+    path, _ = _original(tmp_path)
+    good = path.read_bytes()
+    for bad in (
+        good[:-1], good + b"\n", good.replace(b"\n", b"\r\n"),
+        b"\xef\xbb\xbf" + good, good + b"\x00",
+    ):
+        path.write_bytes(bad)
+        sha = hashlib.sha256(bad).hexdigest()
+        with pytest.raises(V6PacketRejected):
+            review_native_original(
+                path, expected_sha256=sha, expected_session=SESSION,
+            )

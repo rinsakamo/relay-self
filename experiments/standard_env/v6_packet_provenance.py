@@ -137,6 +137,9 @@ def review_native_original(
     _need(len(raw) <= MAX_NATIVE_BYTES, "oversize native original")
     digest = hashlib.sha256(raw).hexdigest()
     _need(digest == expected_sha256, "native original SHA256 mismatch")
+    _need(raw.endswith(b"\n") and not raw.startswith(b"\xef\xbb\xbf")
+          and b"\r" not in raw and b"\x00" not in raw,
+          "native original must be LF-terminated canonical JSONL")
     rows = raw.splitlines()
     _need(3 <= len(rows) <= MAX_LINES, "empty/incomplete native original")
     packet_count = 0
@@ -145,6 +148,10 @@ def review_native_original(
     previous_age = previous_host = -1
     ack_seen = False
     ended = False
+    accepted_kinds = {
+        "adapter_started", "native_clock_packet", "observation",
+        "effect_result", "entity_hurt", "shutdown_ack", "connection_end",
+    }
     for seq, line in enumerate(rows):
         _need(bool(line) and len(line) <= 32768, "malformed native JSONL line")
         try:
@@ -164,6 +171,14 @@ def review_native_original(
                   and type(row.get("config")) is dict
                   and row["config"].get("version") == "1.21.8",
                   "not the intended Minecraft 1.21.8 original session")
+        else:
+            _need(kind != "adapter_started", "duplicate adapter_started")
+        _need(kind in accepted_kinds,
+              "unexpected or error-bearing raw bridge event")
+        _need(not ended, "raw native event after connection_end")
+        if ack_seen:
+            _need(kind == "connection_end" and seq == len(rows) - 1,
+                  "source event after STOP ACK or nonterminal end")
         if kind == "native_clock_packet":
             _need(set(row) == {
                 "type", "session_id", "seq", "source", "observation_precision",
