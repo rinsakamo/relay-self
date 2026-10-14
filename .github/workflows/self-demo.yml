@@ -74,6 +74,7 @@ jobs:
             tests/test_b0_v6_original_capture.py \
             tests/test_b0_v6_six_arm_source.py \
             tests/test_b0_v6_start_marker.py \
+            tests/test_b1_dev.py \
             tests/test_b1_local_adaptation.py \
             tests/test_feature_s51_eat_execution.py \
             tests/test_self_dev.py \
