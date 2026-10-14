@@ -267,3 +267,48 @@ def test_b0_sensor_intervention_rejects_unadmitted_modes_before_java(
         ))
     assert not (tmp_path / "unused.json").exists()
     assert not (tmp_path / "unused.log").exists()
+
+
+@pytest.mark.parametrize("kwargs", [
+    {"food_source": "groundv2"},
+    {"food_source": "groundv2", "b0_v2_arm": "UNKNOWN"},
+    {"food_source": "groundv2", "b0_v2_arm": "SENSOR_ON",
+     "b0_forage_policy": "sensor_gate"},
+    {"food_source": "groundv2", "b0_v2_arm": "SENSOR_MASKED",
+     "b0_sensor": "masked"},
+    {"food_source": "ground2observe", "b0_v2_arm": "SENSOR_ON"},
+    {"food_source": "groundv2", "b0_v2_arm": "CHEAP_NATIVE",
+     "food_item": "bread"},
+])
+def test_v2_profiles_invalid_before_any_host_side_effect(
+    tmp_path: Path, kwargs: dict,
+) -> None:
+    output, log = tmp_path / "never-created.json", tmp_path / "never.log"
+    food = kwargs.pop("food_item", "rotten_flesh")
+    with pytest.raises(ValueError):
+        asyncio.run(qualify(
+            output, log, food_item=food, **kwargs,
+        ))
+    assert not output.exists() and not log.exists()
+
+
+@pytest.mark.parametrize("arm", [
+    "SENSOR_ON", "SHAM_ON", "SENSOR_MASKED", "CHEAP_NATIVE",
+])
+def test_v2_named_arm_without_full_rsee_still_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, arm: str,
+) -> None:
+    monkeypatch.setenv("S51_REAL_SERVER_CI", "1")
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    path = tmp_path / "blocked.json"
+    log = tmp_path / "unused.log"
+    rc = asyncio.run(qualify(
+        path, log, food_item="rotten_flesh", food_source="groundv2",
+        b0_v2_arm=arm, confirmation=B0_CONFIRM,
+    ))
+    assert rc == 2
+    report = json.loads(path.read_text(encoding="utf-8"))
+    assert report["status"] == "BLOCKED"
+    assert report["b0_v2_study"]["arm"] == arm
+    assert report["b0_v2_study"]["world_time_matched"] == "NOT_INDEPENDENTLY_ATTESTED"
+    assert not log.exists() and not report.get("session_id")
