@@ -137,17 +137,36 @@ class B1LocalCandidate:
             pos.z - self._blocked_position.z,
         ) > 1.0:
             raise B1LocalRejected("changed local World context cannot reuse blocked memory")
-        if self.retain and not self.cognition.memories:
-            raise B1LocalRejected("retention ON cannot use missing Memory")
+        lateral = self._lateral
+        if self.retain:
+            # Decode the already-retained observation to make the next choice:
+            # an in-memory flag or a preprogrammed preference alone is not reuse.
+            if len(self.cognition.memories) != 1:
+                raise B1LocalRejected("retention ON requires one native Memory")
+            try:
+                record = json.loads(self.cognition.memories[0].content)
+                if (
+                    record["session_id"] != self.session_id
+                    or record["target_entity_id"] != target.entity_id
+                    or record["correlated_followup_seq"] != self._blocked_seq
+                    or record["effect_kind"] != "BLOCKED"
+                ):
+                    raise B1LocalRejected("retained blocked source identity changed")
+                coords = record["lateral_candidate"]
+                lateral = MineflayerPosition(coords["x"], coords["y"], coords["z"])
+            except (KeyError, TypeError, ValueError) as exc:
+                raise B1LocalRejected("retained observation not reusable") from exc
+            if lateral != self._lateral:
+                raise B1LocalRejected("retained candidate differs from source scope")
         if math.hypot(
-            pos.x - self._lateral.x, pos.z - self._lateral.z,
+            pos.x - lateral.x, pos.z - lateral.z,
         ) <= 0.65:
             self._lateral = None
             return target.waypoint()
         self.reuse_count += 1 if self.reuse_count == 0 else 0
         return SeekWaypoint(
             goal_id="b1-local-lateral",
-            target=self._lateral,
+            target=lateral,
             tolerance_m=0.65, max_step_m=1.0,
         )
 
