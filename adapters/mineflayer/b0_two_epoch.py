@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.b0_ground_foraging import GroundRejected
 from adapters.mineflayer.b0_ground_runner import acquire_staged_ground_flesh
+from adapters.mineflayer.b1_local_adaptation import B1LocalCandidate
 from adapters.mineflayer.eat_execution import IssuedEatingExecutor
 from adapters.mineflayer.s31a_real_server_ci import _command, _correlated_observe
 from relay_self.action import ActionLifecycle, ActionState
@@ -22,6 +24,7 @@ from relay_self.eat_hunger import EatCursor, EatStatus
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
 from relay_self.skill import SkillExecution
+from relay_self.persistent_cognition import save_persistent_cognition
 
 
 class B0TwoEpochRejected(RuntimeError):
@@ -207,6 +210,9 @@ async def _eat_verified(
 async def run_two_ground_epochs(
     session: Any, server: Any, ledger: B0EnergyLedger,
     traces: list[dict[str, Any]], *, nonforcing: bool = False,
+    b1_local_adaptation: bool = False,
+    b1_retention: bool = True,
+    b1_memory_path: Path | None = None,
 ) -> dict[str, Any] | None:
     """One owned session with two sequential staged-item EAT outcomes.
 
@@ -219,6 +225,38 @@ async def run_two_ground_epochs(
         or traces or ledger.body.terminal
     ):
         raise B0TwoEpochRejected("fresh live two-epoch body and trace required")
+    if (
+        type(b1_local_adaptation) is not bool or type(b1_retention) is not bool
+        or (b1_local_adaptation and (
+            nonforcing or not isinstance(b1_memory_path, Path)
+            or b1_memory_path.exists() or b1_memory_path.is_symlink()
+            or not b1_memory_path.parent.is_dir()
+        ))
+        or (not b1_local_adaptation and b1_memory_path is not None)
+    ):
+        raise B0TwoEpochRejected("B1 requires fresh isolated DEV Memory destination")
+    b1_local = (
+        B1LocalCandidate(ledger.session_id, retain=b1_retention)
+        if b1_local_adaptation else None
+    )
+    try:
+        return await _run_two_ground_epochs_body(
+            session, server, ledger, traces,
+            nonforcing=nonforcing, b1_local=b1_local,
+        )
+    finally:
+        if b1_local is not None:
+            if traces:
+                traces[0]["b1_local_final"] = b1_local.evidence()
+            if b1_local.cognition.memories:
+                save_persistent_cognition(b1_memory_path, b1_local.cognition)
+
+
+async def _run_two_ground_epochs_body(
+    session: Any, server: Any, ledger: B0EnergyLedger,
+    traces: list[dict[str, Any]], *,
+    nonforcing: bool, b1_local: B1LocalCandidate | None,
+) -> dict[str, Any] | None:
     for epoch in range(2):
         entry: dict[str, Any] = {"epoch": epoch, "stage": "START"}
         traces.append(entry)  # retain partial original report on failure
@@ -228,6 +266,8 @@ async def run_two_ground_epochs(
             entry["ground_pickup"] = await acquire_staged_ground_flesh(
                 session, server, energy_ledger=ledger, epoch=epoch,
                 nonforcing=nonforcing,
+                b1_local=b1_local,
+                b1_obstacle=b1_local is not None and epoch == 0,
             )
         except GroundRejected as exc:
             raise B0TwoEpochRejected("ground fixture/pickup failed") from exc
@@ -249,6 +289,12 @@ async def run_two_ground_epochs(
         ):
             raise B0TwoEpochRejected("exactly one fresh item required per epoch")
         await _eat_verified(session, ledger, epoch, entry)
+    if b1_local is not None and (
+        b1_local.blocked_count < 1 or b1_local.reuse_count < 1
+        or b1_local.alternative_outcomes < 1
+        or b1_local.alternative_progressed < 1
+    ):
+        raise B0TwoEpochRejected("B1 no native BLOCKED-to-alternative OUTCOME witness")
     if ledger.credit_count != 2 or ledger.body.meals != 2 or ledger.body.terminal:
         raise B0TwoEpochRejected("two completed meals did not retain a live body")
     if nonforcing:
