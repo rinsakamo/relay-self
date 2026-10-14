@@ -35,10 +35,15 @@ def _native():
         },
         {
             "type": "observation", "session_id": SID, "seq": 1,
-            "request_id": "native-first-probe", "source": "mineflayer",
+            "kind": "spawn", "source": "mineflayer",
+        },
+        {
+            "type": "observation", "session_id": SID, "seq": 2,
+            "kind": "probe", "request_id": "native-first-probe",
+            "source": "mineflayer",
         },
     ]
-    for i in (2, 3):
+    for i in (3, 4):
         rows.append({
             "type": "native_clock_packet", "session_id": SID, "seq": i,
             "source": "minecraft_1_21_8_clientbound_update_time",
@@ -49,8 +54,8 @@ def _native():
             "command_effect_tick_attested": False,
         })
     rows += [
-        {"type": "shutdown_ack", "session_id": SID, "seq": 4},
-        {"type": "connection_end", "session_id": SID, "seq": 5},
+        {"type": "shutdown_ack", "session_id": SID, "seq": 5},
+        {"type": "connection_end", "session_id": SID, "seq": 6},
     ]
     return rows
 
@@ -60,7 +65,7 @@ def _issuer():
         {
             "seq": i, "session_id": SID, "phase": phase,
             "issuer_command": command, "host_monotonic_ns": 1000 + i * 100,
-            "first_probe_native_seq": 1,
+            "first_probe_native_seq": 2,
             "first_probe_request_id": "native-first-probe",
         }
         for i, (phase, command) in enumerate(ISSUER_PHASES)
@@ -89,7 +94,7 @@ def _kwargs(raw):
     return {
         "expected_shas": {k: hashlib.sha256(v).hexdigest() for k, v in raw.items()},
         "session": SID, "slot": SLOT, "nonce": NONCE,
-        "first_probe_seq": 1, "first_probe_request": "native-first-probe",
+        "first_probe_seq": 2, "first_probe_request": "native-first-probe",
     }
 
 
@@ -108,7 +113,7 @@ def test_synthetic_positive_is_never_original_server_time_or_permission(tmp_path
     assert result["classification"] == (
         "RSEE_V6_THREE_ORIGINAL_BYTES_AND_ORDER_REVIEW_ONLY"
     )
-    assert result["native_rows"] == 6
+    assert result["native_rows"] == 7
     assert result["native_packet_age_samples"] == 2
     assert result["candidate_issuer_rows"] == len(ISSUER_PHASES)
     assert result["server_stdout_marker_order_consistent"] is True
@@ -180,11 +185,11 @@ def test_bounded_issuer_scope_negatives_even_with_recomputed_sha(tmp_path, chang
 @pytest.mark.parametrize("change", [
     lambda rows: rows[0].update(mineflayer_version="4.0.0"),
     lambda rows: rows[1].update(request_id="foreign"),
-    lambda rows: rows[2].update(world_age_ticks="205"),
-    lambda rows: rows[3].update(world_age_ticks="201"),
-    lambda rows: rows[3].update(command_effect_tick_attested=True),
-    lambda rows: rows[4].update(type="adapter_error"),
-    lambda rows: rows.append({"type": "connection_end", "session_id": SID, "seq": 6}),
+    lambda rows: rows[3].update(world_age_ticks="205"),
+    lambda rows: rows[4].update(world_age_ticks="201"),
+    lambda rows: rows[4].update(command_effect_tick_attested=True),
+    lambda rows: rows[5].update(type="adapter_error"),
+    lambda rows: rows.append({"type": "connection_end", "session_id": SID, "seq": 7}),
     lambda rows: rows.pop(),
 ])
 def test_bounded_native_stream_negatives_even_with_recomputed_sha(tmp_path, change):
