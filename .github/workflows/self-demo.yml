@@ -54,8 +54,8 @@ jobs:
             adapters/mineflayer/s51_eat_real_ci.py \
             adapters/mineflayer/v6_atomic_fixture.py \
             adapters/mineflayer/v6_native_clock.mjs \
-            adapters/mineflayer/v6_start_marker.py \
             adapters/mineflayer/v6_native_clock.test.mjs \
+            adapters/mineflayer/v6_start_marker.py \
             docs/self-demo.md \
             experiments/metabolism_viability.py \
             src/relay_self/eat_hunger.py \

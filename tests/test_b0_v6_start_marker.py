@@ -148,7 +148,7 @@ def test_reject_foreign_probe_source_and_wrong_source_bytes():
         {"expected_first_probe_seq": probe.seq + 1},
         {"source_function_sha256": "0" * 64},
         {"first_l0": replace(probe, session_id="foreign")},
-        {"first_l0": replace(probe, kind="death")},
+        {"first_l0": replace(probe, kind="death", request_id=None)},
         {"first_l0": replace(probe, snapshot=replace(
             probe.snapshot, inventory=(ground.MineflayerInventoryItem(
                 "rotten_flesh", 1, 2,
