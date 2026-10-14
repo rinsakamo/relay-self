@@ -375,6 +375,27 @@ async def _run_disposable(
             os.environ["S49_REAL_SERVER_CI"] = previous
 
 
+async def _run_b1_local_dev(
+    report_path: Path, server_log: Path, *, retention: bool = True,
+) -> int:
+    """Delegate B1 only to existing S51 DEV World owner."""
+    from adapters.mineflayer.s51_eat_real_ci import qualify as s51_qualify
+
+    previous = os.environ.get("S51_REAL_SERVER_CI")
+    os.environ["S51_REAL_SERVER_CI"] = "1"
+    try:
+        return await s51_qualify(
+            report_path, server_log, food_item="rotten_flesh",
+            food_source="ground2", dev_only=True,
+            b1_local_adaptation=True, b1_retention=retention,
+        )
+    finally:
+        if previous is None:
+            os.environ.pop("S51_REAL_SERVER_CI", None)
+        else:
+            os.environ["S51_REAL_SERVER_CI"] = previous
+
+
 async def _run_b0_ground_dev(report_path: Path, server_log: Path) -> int:
     """Run the EXISTING S51 owner with fresh DEV World, not the RSEE/V runner."""
     from adapters.mineflayer.s51_eat_real_ci import qualify as s51_qualify
@@ -417,8 +438,12 @@ def _dev_run(args: argparse.Namespace) -> int:
     }
     root = args.output_dir
     try:
-        if scenario not in ("native", "b0-ground"):
-            raise DemoRejected("DEV supports only explicit native or b0-ground owner route")
+        if scenario not in ("native", "b0-ground", "b1-local-adaptation"):
+            raise DemoRejected("DEV requires one S49/S51 owner route")
+        if getattr(args, "b1_retention", "on") not in ("on", "off"):
+            raise DemoRejected("B1 retention must be on or off")
+        if scenario != "b1-local-adaptation" and getattr(args, "b1_retention", "on") != "on":
+            raise DemoRejected("retention OFF is B1 scenario only")
         if args.confirm != CONFIRM or not args.run_disposable:
             raise DemoRejected("DEV requires disposable opt-in and exact confirmation")
         if args.think or args.live_think or args.reflect_report or args.smoke:
@@ -491,6 +516,11 @@ def _dev_run(args: argparse.Namespace) -> int:
             if scenario == "b0-ground":
                 code = asyncio.run(_run_b0_ground_dev(
                     root / "native_report.json", root / "minecraft_server.log",
+                ))
+            elif scenario == "b1-local-adaptation":
+                code = asyncio.run(_run_b1_local_dev(
+                    root / "native_report.json", root / "minecraft_server.log",
+                    retention=getattr(args, "b1_retention", "on") == "on",
                 ))
             else:
                 code = asyncio.run(_run_disposable(
