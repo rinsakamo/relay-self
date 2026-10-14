@@ -247,7 +247,8 @@ def audit(root: Path, readback: Path, expected: Expectations = Expectations()) -
             and outcome.get("count_before") == 1
             and outcome.get("count_after") == 0,
             "forged Minecraft food/rotten_flesh delta")
-    require(credit.get("credited_action_id") == parent
+    require(report.get("m_energy_credited") is True
+            and credit.get("credited_action_id") == parent
             and credit.get("credit_count") == 1
             and credit.get("meals") == 1
             and credit.get("intake") == 4
@@ -281,6 +282,11 @@ def audit(root: Path, readback: Path, expected: Expectations = Expectations()) -
         "reported_s_producer_head": S_HEAD, "s_completion_head": S_COMPLETION_HEAD,
         "golden_head": GOLDEN_HEAD,
         "indexed_files_checked": len(index), "native_rows": len(native),
+        "sha256_index": expected.index_sha,
+        "external_readback_sha256": expected.readback_sha,
+        "legacy_dev_receipt_decisions": receipt.get("decisions"),
+        "legacy_dev_receipt_native_actions": receipt.get("native_actions"),
+        "external_correction_not_written_to_originals": True,
         "native_stop_ack_seq": 146, "native_connection_end_seq": 147,
         "issued_move_reports": len(moves), "eat_parent_outcomes": 1,
         "m0_credits_reported": 1, "minecraft_food_delta": 4,
@@ -297,7 +303,7 @@ def audit(root: Path, readback: Path, expected: Expectations = Expectations()) -
 
 def plan() -> dict[str, Any]:
     return {
-        "classification": "PREWORLD_READY_NOT_AUTHORIZED_PENDING_OFFLINE_REVIEW",
+        "classification": "PREWORLD_BLOCKED_PENDING_OFFLINE_REVIEW",
         "dev_host_originals": "NOT_READ",
         "golden_qualified": False, "engineering_qualified": False,
         "science_go": False, "physical_execution_authorized": False,
