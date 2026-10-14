@@ -6,6 +6,7 @@ drop, native item metadata identity, source-authenticated intake or live proof.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import asdict
 from typing import Any
 
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
@@ -103,6 +104,7 @@ async def acquire_staged_ground_flesh(
     epoch: int = 0, nonforcing: bool = False,
     global_m0_horizon: int | None = None,
     global_move_limit: int | None = None,
+    source_time_bracket: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """One fixture with bounded native L0 nonissuance or issued SEEK."""
     if type(nonforcing) is not bool or (nonforcing and energy_ledger is None):
@@ -114,6 +116,14 @@ async def acquire_staged_ground_flesh(
             or energy_ledger is None or energy_ledger.body.tick >= 16
         ):
             raise GroundRejected("prospective global V2 M0 tick/MOVE bounds required")
+    if source_time_bracket is not None and (
+        type(source_time_bracket) is not dict
+        or source_time_bracket
+        or nonforcing is not True
+        or global_m0_horizon != 16
+        or global_move_limit != 8
+    ):
+        raise GroundRejected("V2 clock bracket requires fresh fixed-budget source")
     if type(epoch) is not int or not 0 <= epoch <= 7:
         raise GroundRejected("bounded ground epoch namespace required")
     namespace = "b0" if epoch == 0 else f"b0-e{epoch}"
@@ -127,6 +137,18 @@ async def acquire_staged_ground_flesh(
         or any(i.name == "rotten_flesh" for i in origin.snapshot.inventory)
     ):
         raise GroundRejected("ground fixture requires item-free initial World")
+    if source_time_bracket is not None:
+        if origin.snapshot.time is None:
+            raise GroundRejected("V2 requires native pre-fixture World clock")
+        source_time_bracket.update({
+            "before_fixture_session_id": origin.session_id,
+            "before_fixture_probe_seq": origin.seq,
+            "before_fixture_request_id": origin.request_id,
+            "before_fixture_native_world_time": asdict(origin.snapshot.time),
+            "before_fixture_m0_tick": energy_ledger.body.tick,
+            "fixture_command_ack": "NOT_NATIVE_ATTESTED",
+            "minecraft_world_elapsed_tick_parity": "NOT_QUALIFIED",
+        })
     # A new operator-summoned ground item; NOT a zombie drop.
     position = origin.snapshot.position
     _command(
@@ -148,6 +170,18 @@ async def acquire_staged_ground_flesh(
             break
     if first is None or target is None:
         raise GroundRejected("single ground item not visible in bounded probes")
+    if source_time_bracket is not None:
+        if first.snapshot.time is None:
+            raise GroundRejected("V2 requires native post-fixture World clock")
+        source_time_bracket.update({
+            "after_visible_session_id": first.session_id,
+            "after_visible_probe_seq": first.seq,
+            "after_visible_request_id": first.request_id,
+            "after_visible_native_world_time": asdict(first.snapshot.time),
+            "after_visible_m0_tick": energy_ledger.body.tick,
+            "observed_item_entity_id": target.entity_id,
+            "world_command_effect_timing": "BRACKET_ONLY_NOT_EXACT",
+        })
 
     # Legacy mode retains its strict SEEK gate. The opt-in mode records
     # genuine nonissued WAIT until L0 elects SEEK, M0 terminal or horizon.

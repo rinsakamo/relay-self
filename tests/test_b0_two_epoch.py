@@ -141,6 +141,15 @@ def test_v2_study_does_not_claim_science_or_allow_m0_horizon_overrun(monkeypatch
         assert kwargs["nonforcing"] is True
         assert kwargs["global_m0_horizon"] == 16
         assert kwargs["global_move_limit"] == 8
+        assert kwargs["source_time_bracket"] == {}
+        kwargs["source_time_bracket"].update({
+            "before_fixture_native_world_time": {
+                "time_of_day": 10, "day": 0, "is_day": True,
+            },
+            "after_visible_native_world_time": {
+                "time_of_day": 13, "day": 0, "is_day": True,
+            },
+        })
         assert ledger.body.tick == 11
         for _ in range(5):
             ledger.step("WAIT")
@@ -161,3 +170,5 @@ def test_v2_study_does_not_claim_science_or_allow_m0_horizon_overrun(monkeypatch
     assert result["final_m0_energy"] == 4
     assert result["v_scientific_admission"] == "NO_GO"
     assert report["predeclared_item_spawn_m0_tick"] == 11
+    assert report["source_time_bracket"]["before_fixture_native_world_time"]["time_of_day"] == 10
+    assert report["source_time_bracket"]["after_visible_native_world_time"]["time_of_day"] == 13

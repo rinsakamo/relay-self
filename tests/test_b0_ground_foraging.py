@@ -222,3 +222,24 @@ def test_nonforcing_rejects_replay_or_entity_switch_without_extra_charge():
     with pytest.raises(GroundRejected, match="changed"):
         nonforcing_ground_decision(ledger, swapped, item)
     assert ledger.body.tick == 1 and ledger.body.energy == 11.5
+
+
+def test_v2_time_bracket_rejects_legacy_or_stale_before_java():
+    import asyncio
+    from adapters.mineflayer.b0_ground_runner import acquire_staged_ground_flesh
+
+    p = _ground()
+    ledger = B0EnergyLedger(p.session_id, forage_policy="sensor_gate")
+    async def wrong(bracket, *, v2, limit):
+        return await acquire_staged_ground_flesh(
+            None, None, energy_ledger=ledger, epoch=0,
+            nonforcing=v2, global_m0_horizon=16 if v2 else None,
+            global_move_limit=limit, source_time_bracket=bracket,
+        )
+    with pytest.raises(GroundRejected, match="clock bracket"):
+        asyncio.run(wrong({"stale": True}, v2=True, limit=8))
+    with pytest.raises(GroundRejected, match="clock bracket"):
+        asyncio.run(wrong({}, v2=False, limit=8))
+    with pytest.raises(GroundRejected, match="clock bracket"):
+        asyncio.run(wrong({}, v2=True, limit=7))
+    assert ledger.body.tick == ledger.credit_count == 0

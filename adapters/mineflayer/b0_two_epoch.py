@@ -319,10 +319,12 @@ async def run_v2_fixed_study(
             "unmatched exogenous first item timing: expected M0 tick 11"
         )
     entry["stage"] = "SINGLE_FIXED_ITEM_OPPORTUNITY"
+    entry["source_time_bracket"] = {}
     entry["ground_pickup"] = await acquire_staged_ground_flesh(
         session, server, energy_ledger=ledger, epoch=0, nonforcing=True,
         global_m0_horizon=V2_HORIZON_M0_TICKS,
         global_move_limit=V2_MAX_ISSUED_MOVES,
+        source_time_bracket=entry["source_time_bracket"],
     )
     pickup = entry["ground_pickup"]
     if pickup["status"] == "M0_TERMINAL_NO_PICKUP":

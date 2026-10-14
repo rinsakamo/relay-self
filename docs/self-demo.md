@@ -879,3 +879,33 @@ horizon with initial E12 and a single opportunity at tick11,
 differences can be relegated to secondary EAT/energy outcomes
 without promoting the primary. Every arm/start needs a fresh
 explicit one-shot user grant, so this mode is **NOT_RUN**.
+
+
+### R/V V2 World-time native source bracket — extra review evidence, not source admission
+
+Only the opt-in S `groundv2` study passes an initially empty
+`source_time_bracket` to the existing ground runner. Before operator
+`/summon`, preserve the original **correlated item-free probe**
+session/seq/request_id and existing Mineflayer
+`snapshot.time={time_of_day,day,is_day}`. After the fresh native
+single-item discovery probe, preserve the matching post-visible
+session/seq/request_id, native time, item entity ID and M0 ticks.
+Missing native time in either observation FAILS CLOSED in this
+prospective mode. These fields reside in the physical original
+report and should be independently compared with the raw stdout
+and command-stream originals by R/V; they do **not** replace raw
+bytes, prove an original Minecraft TCP-level packet, directly
+attest the server console command time or pin equal elapsed
+World time across arms. One asynchronous `/summon` can occur
+anywhere between the two observations; its **exact server tick
+is still UNKNOWN**. Explicit labels prevent promotion:
+`fixture_command_ack=NOT_NATIVE_ATTESTED`,
+`world_command_effect_timing=BRACKET_ONLY_NOT_EXACT`,
+`minecraft_world_elapsed_tick_parity=NOT_QUALIFIED`.
+
+Old product modes and RSEE/Node/Myneflayer protocol retain
+their existing source and action semantics; only the V2
+experimental opt-in argument is passed. Four independently
+matched freezes, equivalent native World timing, no hidden
+concurrent issuer, R original-byte review and V prereg admission
+remain outstanding. No World authorization and no live V2 trial.
