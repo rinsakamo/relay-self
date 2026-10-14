@@ -989,21 +989,27 @@ The prospective operator commands, **NOT authorized by this document**,
 would be `function relayself_v6:install` before trial and
 `execute at RelaySelf run function relayself_v6:atomic_food` when an
 independently qualified R/V experiment requests a first food item.
-Inside a single server-side mcfunction, reset three scoreboard values
-(`#before`, `#after`, `#ok` in `rs_v6_tick`); execute `time query gametime`
-into `#before`; `summon minecraft:item` with one rotten flesh at
-~2.5/~0.2/~; then `time query gametime` into `#after`. R would later
-read scoreboard values and independent original server stdout/command
-and native entity receipts; only an equal before/after plus successful
-summon can become an *atomic same-server-tick candidate*.
+The updated **V2 candidate source** uses a persistent `#attempt` scoreboard.
+The install function initializes missing scores with `add ... 0` rather
+than resetting them. Each call increments `#attempt`; only count 1 is
+allowed to clear receipt fields, read `time query gametime` into
+`#before`, `summon minecraft:item` with one rotten flesh at ~2.5/~0.2/~,
+and read game time into `#after`. A second call increments to 2 but cannot
+repeat the summon or overwrite the first receipts. R must read all four
+scores `#attempt/#before/#after/#ok` from independent *original*
+server stdout/command and native entity receipts. Only attempt=1,
+before=after and success=1 can become an *atomic same-server-tick
+candidate*.
 
 **Not a production protocol yet.** Minecraft datapack parsing, function
 loading, server execution/success output, 32-bit scoreboard overflow
 bounds, and exact effects have NOT been tested against the pinned Java
 binary. The claimed values can be fabricated if not extracted from
-independently verified ORIGINAL server logs. Multiple invocations
-overwrite the scoreboard and must fail independent R single-use
-admission, not be silently ignored. The generator returns an
+independently verified ORIGINAL server logs. Repeated invocations of the proposed command are **blocked from
+resummoning** by the attempt guard, and the surviving attempt count
+invalidates the source claim. Privileged manual score resets or direct
+unqualified commands are not prevented by code alone; these still require
+R original server command logs and independent one-use verification. The generator returns an
 explicit `S_V6_ATOMIC_FOOD_SOURCE_DESIGN_ONLY` and its source-only
 claim parser returns only `S_V6_ATOMIC_SERVER_SCORE_CLAIM_REVIEW_ONLY`,
 never R approval or scientific GO. The S51 physical CLI does not call
@@ -1019,3 +1025,13 @@ samples. Host wall time and display day/time-of-day are never World
 age substitutes. V6 4 starts x 2 energy regimes x 6 arms = 48 slots
 still unexecuted and NOT authorized. Actual end-energy primary
 and original S50/S51 causal outcome admission remain V/R-owned.
+
+
+### V6 atomic candidate V2 — revision authority
+
+Only the S source candidate was revised; V #619's registered 48 slots,
+16-M0-tick endpoint and equal native elapsed tick requirement are unchanged.
+The exact SHA of the revised mcfunction is intentionally different from
+V1; R must pin/review the new Git blob and verify real server semantics
+before allowing it anywhere near an authorized clone. NO local Minecraft,
+Java, Node or World execution occurred in this source revision.

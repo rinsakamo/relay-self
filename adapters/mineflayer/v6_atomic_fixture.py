@@ -2,8 +2,10 @@
 
 Prospective 1.21.8 datapack source. No installation, process launch,
 Golden copy, /summon execution, packet interpolation, approval or science.
-Server-side /function runs ordered commands in one function invocation;
-the pre/post gametime scoreboard can be *claimed* later from original logs.
+Server-side /function runs ordered commands in one invocation. A persistent
+attempt score forbids repeated summon or receipt overwrite within this
+proposed scoreboard state, but privileged command tampering remains R-owned.
+The pre/post gametime scoreboard can be *claimed* later from original logs.
 Only R independent original evidence can review that claim.
 """
 from __future__ import annotations
@@ -11,30 +13,45 @@ from __future__ import annotations
 import json
 from typing import Any
 
-SCHEMA = "S_V6_ATOMIC_FOOD_FUNCTION_SOURCE_V1"
+SCHEMA = "S_V6_ATOMIC_FOOD_FUNCTION_SOURCE_V2_SINGLE_ATTEMPT"
 NAMESPACE = "relayself_v6"
 OBJECTIVE = "rs_v6_tick"
 FUNCTION_ID = f"{NAMESPACE}:atomic_food"
 INSTALL_ID = f"{NAMESPACE}:install"
 MAX_SCORE = 2**31 - 1
 
+# An install may be repeated, but must NOT reset the one-use counter.
+# The score is persisted by the server with the instrumented World.
 INSTALL_LINES = (
     f"scoreboard objectives add {OBJECTIVE} dummy",
-    f"scoreboard players set #before {OBJECTIVE} -1",
-    f"scoreboard players set #after {OBJECTIVE} -1",
-    f"scoreboard players set #ok {OBJECTIVE} 0",
+    f"scoreboard players add #attempt {OBJECTIVE} 0",
+    f"scoreboard players add #before {OBJECTIVE} 0",
+    f"scoreboard players add #after {OBJECTIVE} 0",
+    f"scoreboard players add #ok {OBJECTIVE} 0",
 )
+
+# Every side-effect, including resetting the receipts, is guarded by the
+# monotone #attempt=1 condition. Another invocation increments to 2 and
+# cannot summon food or overwrite the first before/after/ok fields.
+# R must independently attest an actual invocation, original console readback
+# and that no operator reset/forged the scoreboard.
+ONCE = f"execute if score #attempt {OBJECTIVE} matches 1 run "
 ATOMIC_LINES = (
-    f"scoreboard players set #before {OBJECTIVE} -1",
-    f"scoreboard players set #after {OBJECTIVE} -1",
-    f"scoreboard players set #ok {OBJECTIVE} 0",
-    f"execute store result score #before {OBJECTIVE} run time query gametime",
-    f'execute store success score #ok {OBJECTIVE} run summon minecraft:item ~2.5 ~0.2 ~ '
+    f"scoreboard players add #attempt {OBJECTIVE} 1",
+    ONCE + f"scoreboard players set #before {OBJECTIVE} -1",
+    ONCE + f"scoreboard players set #after {OBJECTIVE} -1",
+    ONCE + f"scoreboard players set #ok {OBJECTIVE} 0",
+    ONCE + f"execute store result score #before {OBJECTIVE} run time query gametime",
+    ONCE + 'execute store success score #ok '
+    f'{OBJECTIVE} run summon minecraft:item ~2.5 ~0.2 ~ '
     '{Item:{id:"minecraft:rotten_flesh",count:1}}',
-    f"execute store result score #after {OBJECTIVE} run time query gametime",
-    "say RELAYSELF_V6_ATOMIC_SOURCE_CANDIDATE_NOT_ADMITTED",
+    ONCE + f"execute store result score #after {OBJECTIVE} run time query gametime",
+    ONCE + "say RELAYSELF_V6_FIRST_INVOCATION_SOURCE_NOT_ADMITTED",
+    f"execute if score #attempt {OBJECTIVE} matches 2.. "
+    "run say RELAYSELF_V6_REPEAT_BLOCKED_SOURCE_NOT_ADMITTED",
 )
 READBACK_LINES = (
+    f"scoreboard players get #attempt {OBJECTIVE}",
     f"scoreboard players get #before {OBJECTIVE}",
     f"scoreboard players get #after {OBJECTIVE}",
     f"scoreboard players get #ok {OBJECTIVE}",
@@ -90,6 +107,9 @@ def plan() -> dict[str, Any]:
         "preload_install_command": f"function {INSTALL_ID}",
         "server_scoreboard_readback_commands": list(READBACK_LINES),
         "claimed_age_precision": "ATOMIC_FUNCTION_SAME_SERVER_TICK_IF_EXECUTED",
+        "single_use_guard": "PERSISTENT_NONRESETTING_ATTEMPT_SCORE_ONE",
+        "repeated_attempt_invalidates_source": True,
+        "repeated_invocation_can_resummon": False,
         "score_int32_overflow_risk": "REJECT_WITHOUT_QUALIFIED_BOUND",
         "exact_command_effect_tick_originals_attested": False,
         "server_command_originals_attested": False,
@@ -102,6 +122,7 @@ def plan() -> dict[str, Any]:
 
 def review_reported_scores(
     *, before: int, after: int, summon_succeeded: int,
+    attempt_count: int,
     source_function_sha256: str, expected_function_sha256: str,
 ) -> dict[str, Any]:
     """Only compare independently presented *claims*, never parse fake originals.
@@ -120,6 +141,10 @@ def review_reported_scores(
         and source_function_sha256 == expected_function_sha256 == canonical,
         "source function differs from prospective exact byte plan",
     )
+    _need(
+        type(attempt_count) is int and attempt_count == 1,
+        "exactly one server function invocation required",
+    )
     _need(type(before) is int and type(after) is int
           and 0 <= before <= MAX_SCORE and 0 <= after <= MAX_SCORE,
           "gametime scoreboard must be safe signed 32-bit nonnegative integer")
@@ -130,6 +155,8 @@ def review_reported_scores(
         "classification": "S_V6_ATOMIC_SERVER_SCORE_CLAIM_REVIEW_ONLY",
         "claimed_server_gametime": before,
         "claimed_summon_success": 1,
+        "claimed_atomic_function_attempt_count": attempt_count,
+        "replay_originals_independently_attested": False,
         "mcfunction_sha256": canonical,
         "original_server_console_bytes_attested": False,
         "real_server_function_loaded_attested": False,

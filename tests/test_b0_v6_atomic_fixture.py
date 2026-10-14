@@ -41,23 +41,30 @@ def test_v6_atomic_pack_is_fixed_1_21_8_and_does_not_write_to_world(tmp_path):
     assert all("time set" not in command for command in INSTALL_LINES + ATOMIC_LINES)
     assert all("minecraft:" not in command for command in READBACK_LINES)
     assert OBJECTIVE == "rs_v6_tick"
-    assert ATOMIC_LINES[3] == (
+    assert INSTALL_LINES[1] == "scoreboard players add #attempt rs_v6_tick 0"
+    assert not any("players set #attempt" in row for row in INSTALL_LINES)
+    assert ATOMIC_LINES[0] == "scoreboard players add #attempt rs_v6_tick 1"
+    assert all("matches 1 run " in line for line in ATOMIC_LINES[1:8])
+    assert ATOMIC_LINES[4].endswith(
         "execute store result score #before rs_v6_tick run time query gametime"
     )
-    assert ATOMIC_LINES[4].startswith(
-        "execute store success score #ok rs_v6_tick run summon minecraft:item"
-    )
-    assert ATOMIC_LINES[5] == (
+    assert "run summon minecraft:item" in ATOMIC_LINES[5]
+    assert ATOMIC_LINES[6].endswith(
         "execute store result score #after rs_v6_tick run time query gametime"
     )
-    assert ATOMIC_LINES[-1].startswith("say RELAYSELF_V6_ATOMIC_SOURCE_")
+    assert "matches 2.. run say RELAYSELF_V6_REPEAT_BLOCKED" in ATOMIC_LINES[-1]
+    assert len(READBACK_LINES) == 4
+    assert READBACK_LINES[0] == "scoreboard players get #attempt rs_v6_tick"
     assert list(tmp_path.iterdir()) == before
 
 
 def test_v6_atomic_plan_is_separate_from_golden_and_never_grants_world():
     data = plan()
     assert data["classification"] == "S_V6_ATOMIC_FOOD_SOURCE_DESIGN_ONLY"
-    assert data["schema"] == "S_V6_ATOMIC_FOOD_FUNCTION_SOURCE_V1"
+    assert data["schema"] == "S_V6_ATOMIC_FOOD_FUNCTION_SOURCE_V2_SINGLE_ATTEMPT"
+    assert data["single_use_guard"] == "PERSISTENT_NONRESETTING_ATTEMPT_SCORE_ONE"
+    assert data["repeated_attempt_invalidates_source"] is True
+    assert data["repeated_invocation_can_resummon"] is False
     assert data["target_minecraft_version"] == "1.21.8"
     assert data["datapack_format"] == 81
     assert data["datapack_files_sha256"][FUNCTION_PATH] == _sha()
@@ -75,11 +82,13 @@ def test_v6_atomic_plan_is_separate_from_golden_and_never_grants_world():
 def test_v6_good_claim_still_is_never_original_proof():
     sha = _sha()
     result = review_reported_scores(
-        before=601, after=601, summon_succeeded=1,
+        before=601, after=601, summon_succeeded=1, attempt_count=1,
         source_function_sha256=sha, expected_function_sha256=sha,
     )
     assert result["claimed_server_gametime"] == 601
     assert result["claimed_summon_success"] == 1
+    assert result["claimed_atomic_function_attempt_count"] == 1
+    assert result["replay_originals_independently_attested"] is False
     assert result["classification"] == "S_V6_ATOMIC_SERVER_SCORE_CLAIM_REVIEW_ONLY"
     for k in (
         "original_server_console_bytes_attested",
@@ -110,6 +119,7 @@ def test_v6_claims_fail_closed(before, after, success, sha):
     with pytest.raises(AtomicV6Rejected):
         review_reported_scores(
             before=before, after=after, summon_succeeded=success,
+            attempt_count=1,
             source_function_sha256=expected if sha == "same" else "0" * 64,
             expected_function_sha256=expected,
         )
@@ -120,3 +130,26 @@ def test_v6_no_implicit_host_or_world_action_on_module_plan(capsys):
 
     assert v6_atomic_fixture.plan() == plan()
     assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize("attempt_count", [0, 2, 3, True, 1.0, -1, "1"])
+def test_v6_reexecution_or_forged_attempt_count_rejected(attempt_count):
+    checksum = _sha()
+    with pytest.raises(AtomicV6Rejected, match="exactly one"):
+        review_reported_scores(
+            before=601, after=601, summon_succeeded=1,
+            attempt_count=attempt_count,
+            source_function_sha256=checksum,
+            expected_function_sha256=checksum,
+        )
+
+
+def test_v6_attempt_lock_controls_all_effects_and_keeps_prior_original_scores():
+    # Pure *source* review; real Minecraft scoreboard effect unqualified.
+    assert ATOMIC_LINES[0] == "scoreboard players add #attempt rs_v6_tick 1"
+    for line in ATOMIC_LINES[1:8]:
+        assert line.startswith("execute if score #attempt rs_v6_tick matches 1 run ")
+    assert sum("run summon minecraft:item" in line for line in ATOMIC_LINES) == 1
+    assert not any("players set #attempt" in line for line in INSTALL_LINES)
+    assert not any("players set #attempt" in line for line in ATOMIC_LINES)
+    assert not any("time set" in line for line in ATOMIC_LINES)
