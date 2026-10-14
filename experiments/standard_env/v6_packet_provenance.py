@@ -20,7 +20,7 @@ S_BLOBS = {
     "adapters/mineflayer/bridge.mjs": "f0b73706da1f735b74fa75d3210b4757ed08f62a",
     "adapters/mineflayer/v6_native_clock.mjs": "ceb40b5fc116fe47a7d70c76ac60c58271750c64",
     "adapters/mineflayer/python_protocol.py": "8f05628b4386059e5d219f8ad0bf6a14711f18b8",
-    "adapters/mineflayer/package.json": "bcaea4ca15e4e2ec70b84b7d6f7a9ee70ad9da9",
+    "adapters/mineflayer/package.json": "c903484ecd84bbf2efb017035c9dd09fd2a4f214",
 }
 PACKET_SOURCE = "minecraft_1_21_8_clientbound_update_time"
 PACKET_PRECISION = "SERVER_UPDATE_TIME_PACKET_SAMPLE_ONLY"
