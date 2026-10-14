@@ -180,7 +180,7 @@ def test_bounded_issuer_scope_negatives_even_with_recomputed_sha(tmp_path, chang
 @pytest.mark.parametrize("change", [
     lambda rows: rows[0].update(mineflayer_version="4.0.0"),
     lambda rows: rows[1].update(request_id="foreign"),
-    lambda rows: rows[2].update(world_age_ticks="203"),
+    lambda rows: rows[2].update(world_age_ticks="205"),
     lambda rows: rows[3].update(world_age_ticks="201"),
     lambda rows: rows[3].update(command_effect_tick_attested=True),
     lambda rows: rows[4].update(type="adapter_error"),
