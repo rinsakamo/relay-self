@@ -133,6 +133,8 @@ def review_original_bundle(
           and type(first_probe_request) is str and bool(first_probe_request),
           "unbound original session/first native observation")
     root = _safe(root, directory=True)
+    _need({p.name for p in root.iterdir()} == set(ORIGINAL_NAMES),
+          "original root contains missing, extra, or unindexed paths")
     _need(all((root / p).is_file() for p in ORIGINAL_NAMES),
           "required original is missing")
     _need(len({(root / p).resolve(strict=True) for p in ORIGINAL_NAMES}) == 3,
@@ -229,6 +231,8 @@ def main(argv: list[str] | None = None) -> int:
             _need(all(x is not None for x in inputs),
                   "every precommitted original identity input required")
             file = _safe(args.expected_shas_json, directory=False)
+            _need(not file.is_relative_to(args.root),
+                  "SHA comparands must be outside the claimed original root")
             _need(file.stat().st_size <= 2048, "oversize SHA comparison manifest")
             expected = json.loads(file.read_text("utf-8"), object_pairs_hook=_unique_pairs)
             result = review_original_bundle(
