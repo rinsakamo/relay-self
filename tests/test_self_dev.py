@@ -149,8 +149,11 @@ def test_dev_b0_receipt_cannot_promote_forged_s51_qualified(tmp_path, monkeypatc
             'm_energy_credited': True,
             'metabolism_after_eat': {'credit_count': 1},
             'ground_pickup': {'status': 'PICKUP_SOURCE_CONSISTENT',
-                              'movement_outcomes': [{'kind': 'MOVE'}]},
-            'action_terminal': 'OUTCOME',
+                              'movement_outcomes': [{'kind': 'MOVE'}],
+                              'l0_ground_seek_trace': [{'l0_kind': 'SEEK'}]},
+            'ground_appetite_trace': [{'kind': 'WAIT'}],
+            'hunger_l0_trace': [{'kind': 'EAT'}],
+            'action_terminal': 'outcome',
             'next_l0': {'kind': 'WAIT'},
             'server_exit': 0, 'node_exit': 0,
         }))
@@ -168,6 +171,10 @@ def test_dev_b0_receipt_cannot_promote_forged_s51_qualified(tmp_path, monkeypatc
     assert receipt['dev_b0_m0_credit_count'] == 1
     assert receipt['dev_b0_next_l0_kind'] == 'WAIT'
     assert receipt['dev_b0_move_outcomes'] == 1
+    assert receipt['decisions'] == receipt['dev_b0_decisions'] == 4
+    assert receipt['native_actions'] == receipt['dev_b0_action_outcomes'] == 2
+    assert receipt['source_scope'] == 'S51_OWNER_B0_NOT_DEV_QUALIFICATION'
+    assert receipt['stop_ack'] == 'UNATTESTED'
     assert receipt['engineering_qualified'] is False
     assert receipt['science_success'] is False
     assert receipt['m_energy_credited'] is False

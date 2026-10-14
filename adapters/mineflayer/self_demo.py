@@ -400,7 +400,11 @@ def _dev_run(args: argparse.Namespace) -> int:
         "mode": "DEV", "classification": "DEV_ONLY", "status": "NOT_RUN",
         "scenario": scenario,
         "run_id": uuid.uuid4().hex, "retry_of": args.retry_of,
-        "intent": "S49 disposable L0 development; Java/Node, Mojang download and EULA",
+        "intent": (
+            "S49 disposable L0 development; Java/Node, Mojang download and EULA"
+            if scenario == "native" else
+            "S51 disposable B0 ground/EAT/M0 development; Java/Node, Mojang download and EULA"
+        ),
         "world_source": (
             "NEW_S49_FLAT_WORLD_NOT_GOLDEN" if scenario == "native"
             else "NEW_S51_DEV_WORLD_NOT_GOLDEN"
@@ -514,6 +518,17 @@ def _dev_run(args: argparse.Namespace) -> int:
             receipt["dev_b0_next_l0_kind"] = (
                 next_l0.get("kind") if isinstance(next_l0, dict) else None
             )
+            receipt["dev_b0_decisions"] = (
+                len(native.get("ground_appetite_trace", []))
+                + (len(acquisition.get("l0_ground_seek_trace", []))
+                   if isinstance(acquisition, dict) else 0)
+                + len(native.get("hunger_l0_trace", []))
+                + int(isinstance(next_l0, dict) and bool(next_l0))
+            )
+            receipt["dev_b0_action_outcomes"] = (
+                receipt["dev_b0_move_outcomes"]
+                + int(native.get("action_terminal") == "outcome")
+            )
             # Qualified M0 energy stays false in DEV; these are owner-local
             # measurements on a disposable, non-R-qualified World.
         receipt.update(
@@ -521,12 +536,16 @@ def _dev_run(args: argparse.Namespace) -> int:
             reason=native.get("error"), session_id=native.get("session_id"),
             server_exit=native.get("server_exit"), node_exit=native.get("node_exit"),
             native_owner_status=native.get("status"),
-            decisions=len(native.get("decisions", [])),
-            native_actions=len(native.get("actual_native_actions", [])),
+            decisions=(receipt["dev_b0_decisions"] if scenario == "b0-ground"
+                       else len(native.get("decisions", []))),
+            native_actions=(receipt["dev_b0_action_outcomes"] if scenario == "b0-ground"
+                            else len(native.get("actual_native_actions", []))),
             cleanup_error=native.get("server_cleanup_error") or native.get("node_cleanup_error"),
-            stop_ack="NOT_SEPARATELY_ATTESTED_BY_S49_REPORT",
+            stop_ack="UNATTESTED",
+            stop_ack_scope="NO_INDEPENDENT_NATIVE_STOP_ATTESTATION",
             source_report="native_report.json",
-            source_scope="S49_OWNER_DIAGNOSTIC_NOT_DEV_QUALIFICATION",
+            source_scope=("S51_OWNER_B0_NOT_DEV_QUALIFICATION" if scenario == "b0-ground"
+                          else "S49_OWNER_DIAGNOSTIC_NOT_DEV_QUALIFICATION"),
         )
     except Exception as exc:
         code = 2 if not receipt["world_launch_attempted"] else 1

@@ -1161,3 +1161,29 @@ PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m adapters.mineflayer.self_demo \
 `native_report.json`（既存S51 owner report）にアイテム取得のsource contrast、真正EAT Action/food delta、M0 ledger入金と次のfresh L0判断を記録する。`dev_receipt.json`には`dev_b0_*`という**DEV限定**の投影結果を残し、`SHA256SUMS`でrunの原始証拠を封印する。生じた`m_energy_credited`はM0実験上のledger eventでありMinecraft本体エネルギーではない。DEV receiptの`m_energy_credited`（資格済み認定）はfalseのまま、`engineering_qualified/science_success/g3_go`もfalse。STOP ACKと実World真正性は別途Rの独立監査なしには認定しない。
 
 資格確認に必要なGolden/R readback、消費済みV6 grant、事前登録済みV #619の科学48試行は**このDEVコマンドから起動できない**。コード/CI上の受入は実World成功の代替ではない。
+
+### B0 DEV原証拠の読み戻し（2026-10-15）
+
+HEAD `291417539497f42269af9a15512cea320f375310` の新規DEV run
+`ed76bb71518a4bebbe5639e768c74a79` は同一session
+`0e177abe-88e3-498e-afc5-d850e789dc60` でループを閉じた。
+空腹food 13 → L0 SEEK → MOVE OUTCOME 2件 → item消失と腐肉在庫0→1
+→ 正式EAT OUTCOME 1件（food 13→17、在庫1→0）→
+M0入金1件（energy 5.0→8.5、intake 4.0、cost 0.5）→ fresh seq145 L0 WAIT。
+Java/Node exit 0、owned World削除と25565再bindを読み戻した。
+これはoperator配置食料のDEV_ONLYで、自然ドロップや独立pickup因果認証ではない。
+
+原証拠はホスト上の
+`/home/rinsa/work/relay-self-b0-development-20261015/attempt-01` に保存。
+同ディレクトリで `sha256sum -c SHA256SUMS` を実施する。
+index自体のSHA256は
+`d5446025952d9f4b34619a11a43c2d34cfb1cf5ce87b5e5ae40b262df88b30df`。
+原DEV receiptにはS49用カウンタ流用によるdecisions/native_actions=0が残る。
+原本は修復せず、source report/native JSONLから17判断・3 OUTCOMEを読み戻した。
+本改修では今後のB0 receiptのみS51 trace由来の件数とsource scopeを投影する。
+この投影修正後にWorldを再実行した証拠はない。
+
+native seq146 `shutdown_ack` とseq147 `connection_end` は保存されているが、
+独立STOP ACK証明を与えない。今後のDEV receiptは `stop_ack=UNATTESTED`
+とscopeを記録する。成功ループ確認後は追加World試験を開始しない。
+R資格PASS・V科学成功への昇格なし、V6科学48試行0、G3/production NO_GO。

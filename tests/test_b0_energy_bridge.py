@@ -18,6 +18,7 @@ from relay_self.action import ActionLifecycle
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.eat_hunger import EatingOutcome
 from relay_self.intent import IntentCommitment
+from relay_self.provenance import Provenance
 from relay_self.skill import SkillExecution
 
 
@@ -29,7 +30,7 @@ def _before():
     ))
 
 
-def _receipt(before):
+def _receipt(before, *, unknown=False):
     src = before.provenance
     intent = IntentCommitment()
     intent.commit("test-eat", objective="eat", at_ns=1, provenance=src)
@@ -49,7 +50,8 @@ def _receipt(before):
         authorized, at_ns=5, deadline_ns=200, provenance=src,
     )
     assert issued.action_id == "b0-eat"
-    terminal = supervisor.record_outcome("b0-eat", at_ns=6, provenance=src)
+    terminal = (supervisor.mark_unknown("b0-eat", at_ns=6, provenance=src) if unknown
+                else supervisor.record_outcome("b0-eat", at_ns=6, provenance=src))
     outcome = EatingOutcome(
         before.session_id, "b0-eat", before.snapshot.food, 12.0,
         "rotten_flesh", 2, 1, before.seq + 4, src,
@@ -90,6 +92,8 @@ def test_real_contract_shaped_eat_credit_then_fresh_next_l0():
     {"session_id": "foreign"},
     {"after_probe_seq": -1},
     {"consumed_item": "stone"},
+    {"action_id": "forged-other-action"},
+    {"provenance": Provenance("operator", "forged-outcome")},
 ])
 def test_invalid_eat_never_credit(changes):
     p = _before()
@@ -99,6 +103,25 @@ def test_invalid_eat_never_credit(changes):
     with pytest.raises(B0EnergyRejected):
         ledger.step("WAIT", eating=bad)
     assert ledger.body.tick == ledger.credit_count == ledger.body.meals == 0
+
+
+def test_unknown_eat_never_credits_even_with_claimed_food_delta():
+    before = _before()
+    ledger = B0EnergyLedger(before.session_id)
+    with pytest.raises(B0EnergyRejected):
+        ledger.step("WAIT", eating=_receipt(before, unknown=True))
+    assert ledger.credit_count == ledger.body.meals == ledger.body.tick == 0
+
+
+def test_foreign_and_stale_decision_probes_do_not_advance_l0_or_m0():
+    before = _before()
+    ledger = B0EnergyLedger(before.session_id)
+    with pytest.raises(B0EnergyRejected):
+        ledger.decide(replace(before, session_id="foreign"))
+    assert ledger.decide(before).kind == "EAT"
+    with pytest.raises(B0EnergyRejected):
+        ledger.decide(before)
+    assert ledger.body.tick == ledger.credit_count == 0
 
 
 def test_pickup_and_movement_do_not_count_as_eating():
