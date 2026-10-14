@@ -56,6 +56,7 @@ def fixture(tmp_path, *, edit=lambda n, c, p, d: None):
         "food_item": "rotten_flesh",
         "world_source": "NEW_DEV_MOJANG_WORLD_NOT_RSEE_GOLDEN",
         "engineering_qualified": False, "grant_consumed": False,
+        "m_energy_credited": True,
         "server_exit": 0, "node_exit": 0, "real_model_calls": 0,
         "ground_pickup": {
             "status": "PICKUP_SOURCE_CONSISTENT",
