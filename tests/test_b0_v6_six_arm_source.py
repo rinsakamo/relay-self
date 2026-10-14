@@ -12,8 +12,8 @@ from adapters.mineflayer.b0_v6_source import (
     V6_MAX_MOVES,
     V6_SOURCE_SCHEMA,
     V6SourceRejected,
-    source_only_v6_first_choice,
     review_v6_native_wait_to_first_choice,
+    source_only_v6_first_choice,
 )
 from adapters.mineflayer.python_protocol import MineflayerInventoryItem
 
