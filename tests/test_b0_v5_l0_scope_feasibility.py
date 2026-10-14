@@ -8,7 +8,6 @@ from dataclasses import replace
 
 import pytest
 
-import test_b0_ground_foraging as ground
 from adapters.mineflayer.b0_energy_bridge import (
     B0_SENSOR_SEEK_THRESHOLD,
     B0EnergyLedger,
@@ -27,6 +26,8 @@ V5_REGIMES = ("LOW_ENERGY", "HIGH_ENERGY")
 
 
 def _same_hungry_one_item():
+    import test_b0_ground_foraging as ground
+
     original = ground._ground()
     source = replace(original, snapshot=replace(original.snapshot, food=13.0))
     target = select_ground_target(source)
