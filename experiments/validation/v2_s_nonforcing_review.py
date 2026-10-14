@@ -77,11 +77,11 @@ def review_s_nonforcing(s_root: Path) -> dict[str, Any]:
 
     Run only with PYTHONPATH pointing to separately checked-out exact S HEAD.
     """
+    import test_b0_ground_foraging as s_fixture
     from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
     from adapters.mineflayer.b0_ground_foraging import select_ground_target
     from adapters.mineflayer.b0_ground_runner import nonforcing_ground_decision
     from experiments.metabolism_viability import Interoception
-    import test_b0_ground_foraging as s_fixture
 
     protocol = load_protocol()
     require(protocol["design"]["horizon_m0_ticks"] == 16, "V study changed")
