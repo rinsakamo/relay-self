@@ -1,5 +1,4 @@
 """Passive original-byte emitter: fake in-memory streams, NO World start."""
-import asyncio
 import json
 from dataclasses import replace
 
