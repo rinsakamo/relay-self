@@ -974,3 +974,48 @@ for 11 Minecraft World ticks. R must independently qualify server-owned
 effect receipts, exact packet bytes/source producer+SHA, initial Golden
 live World and clock parity before V may admit the frozen V6 paired trial.
 No V6 World or science/production outcome is asserted.
+
+### V6 prospective server-atomic food/World-age witness (SOURCE ONLY)
+
+An additional S-only pure contract lives in
+`adapters/mineflayer/v6_atomic_fixture.py`. It returns the *bytes* of a
+proposed Minecraft Java 1.21.8 (data pack format 81) `pack.mcmeta`,
+`data/relayself_v6/function/install.mcfunction`, and
+`data/relayself_v6/function/atomic_food.mcfunction`. It does not
+install a datapack, create a clone, start a server, issue a World Action,
+call `/summon`, modify frozen Golden #588 or use prior permissions.
+
+The prospective operator commands, **NOT authorized by this document**,
+would be `function relayself_v6:install` before trial and
+`execute at RelaySelf run function relayself_v6:atomic_food` when an
+independently qualified R/V experiment requests a first food item.
+Inside a single server-side mcfunction, reset three scoreboard values
+(`#before`, `#after`, `#ok` in `rs_v6_tick`); execute `time query gametime`
+into `#before`; `summon minecraft:item` with one rotten flesh at
+~2.5/~0.2/~; then `time query gametime` into `#after`. R would later
+read scoreboard values and independent original server stdout/command
+and native entity receipts; only an equal before/after plus successful
+summon can become an *atomic same-server-tick candidate*.
+
+**Not a production protocol yet.** Minecraft datapack parsing, function
+loading, server execution/success output, 32-bit scoreboard overflow
+bounds, and exact effects have NOT been tested against the pinned Java
+binary. The claimed values can be fabricated if not extracted from
+independently verified ORIGINAL server logs. Multiple invocations
+overwrite the scoreboard and must fail independent R single-use
+admission, not be silently ignored. The generator returns an
+explicit `S_V6_ATOMIC_FOOD_SOURCE_DESIGN_ONLY` and its source-only
+claim parser returns only `S_V6_ATOMIC_SERVER_SCORE_CLAIM_REVIEW_ONLY`,
+never R approval or scientific GO. The S51 physical CLI does not call
+or install these functions.
+
+**World-start accounting:** first compare the untouched 26-file Golden
+to the stopped disposable clone *before* any added instrumentation;
+record instrumented clone modifications separately and require R/V
+approval of a new profile rather than pretending the changed clone
+still matches frozen Golden bytes. Preserve M0 decision tick 11
+separately from server game-time receipt and client `update_time` age
+samples. Host wall time and display day/time-of-day are never World
+age substitutes. V6 4 starts x 2 energy regimes x 6 arms = 48 slots
+still unexecuted and NOT authorized. Actual end-energy primary
+and original S50/S51 causal outcome admission remain V/R-owned.
