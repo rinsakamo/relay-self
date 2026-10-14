@@ -4,8 +4,6 @@ Uses the REAL S B0EnergyLedger / interoception / native-shaped ground source.
 There is no V5 live study profile, World clock qualification, action issue,
 food intake, native cheap-baseline implementation, or scientific admission.
 """
-from dataclasses import replace
-
 import pytest
 
 
@@ -20,6 +18,7 @@ def _same_hungry_one_item():
     import test_b0_ground_foraging as ground
 
     original = ground._ground()
+    from dataclasses import replace
     from adapters.mineflayer.b0_ground_foraging import select_ground_target
     source = replace(original, snapshot=replace(original.snapshot, food=13.0))
     target = select_ground_target(source)
@@ -115,6 +114,8 @@ def test_v5_g0_rejects_foreign_source_and_incomplete_ground_coverage():
     from adapters.mineflayer.b0_energy_bridge import B0EnergyRejected
 
     p = _same_hungry_one_item()
+    from dataclasses import replace
+
     ledger = _fresh_after_one_basal_wait(p, 4.0, "SENSOR_ON")
     foreign = replace(p, session_id="other-native-session")
     with pytest.raises(B0EnergyRejected, match="fresh World probe"):
