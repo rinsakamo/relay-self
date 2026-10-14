@@ -89,7 +89,7 @@ def test_unregistered_admission_or_posthoc_primary_rejected(group, key, value):
     (0, "issued_s16_wait_outcomes", 1),
     (0, "actual_world_action_count", 1),
     (0, "session", "shaped-0-SHAM_ON"),
-    (0, "synthetic_trace_sha256", "0" * 64),
+    (0, "synthetic_trace_sha256", "invalid-digest"),
     (0, "world_start_sha256", "bad-digest"),
 ])
 def test_source_shaped_evidence_injection_or_inconsistent_energy_rejected(index,key,value):
