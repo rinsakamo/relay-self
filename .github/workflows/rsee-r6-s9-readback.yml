@@ -228,7 +228,7 @@ jobs:
               | grep -F 'RSEE_R4_PLAN_ONLY'
             python -m experiments.standard_env.s9_original_audit \
               | grep -F 'RSEE_R6_PLAN_ONLY'\n            python -m experiments.standard_env.b0_dev_original_audit \
-              | grep -F 'PREWORLD_READY_NOT_AUTHORIZED_PENDING_OFFLINE_REVIEW'
+              | grep -F 'PREWORLD_BLOCKED_PENDING_OFFLINE_REVIEW'
           )
 
   full-regression:
