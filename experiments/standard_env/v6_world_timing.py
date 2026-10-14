@@ -8,7 +8,6 @@ provenance; only an R original-readback can bind its claims to native bytes.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -84,8 +83,9 @@ def check_stopped_clones(
         _need(root != golden, "clone must not alias immutable Golden snapshot")
         _need(root.is_dir(), "clone must exist")
         _need(_world_files(root) == binding.files, "clone SHA256/file index differs")
-        _need(_seed_from_level(root / "level.dat") == binding.files_seed
-              if hasattr(binding, "files_seed") else True, "clone seed differs")
+        _need(_seed_from_level(root / "level.dat")
+              == _seed_from_level(golden / "level.dat"),
+              "clone seed differs")
         checked.append({"snapshot": str(root), "verified_files": len(binding.files)})
     return {
         "classification": "RSEE_V6_STOPPED_WORLD_BYTES_MATCH_REVIEW_ONLY",
