@@ -401,7 +401,10 @@ def _dev_run(args: argparse.Namespace) -> int:
         "scenario": scenario,
         "run_id": uuid.uuid4().hex, "retry_of": args.retry_of,
         "intent": "S49 disposable L0 development; Java/Node, Mojang download and EULA",
-        "world_source": "NEW_DEV_MOJANG_WORLD_NOT_GOLDEN",
+        "world_source": (
+            "NEW_S49_FLAT_WORLD_NOT_GOLDEN" if scenario == "native"
+            else "NEW_S51_DEV_WORLD_NOT_GOLDEN"
+        ),
         "seed": "SERVER_GENERATED_NOT_ATTESTED",
         "minecraft_version": "1.21.8", "mineflayer_version": "4.39.0",
         "world_launch_attempted": False,
