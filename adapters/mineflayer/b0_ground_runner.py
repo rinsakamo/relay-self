@@ -6,10 +6,12 @@ drop, native item metadata identity, source-authenticated intake or live proof.
 from __future__ import annotations
 
 import asyncio
+import math
 from dataclasses import asdict
 from typing import Any
 
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+from adapters.mineflayer.b1_local_adaptation import B1LocalCandidate
 from adapters.mineflayer.b0_ground_foraging import (
     GroundRejected,
     compare_pickup,
@@ -105,10 +107,21 @@ async def acquire_staged_ground_flesh(
     global_m0_horizon: int | None = None,
     global_move_limit: int | None = None,
     source_time_bracket: dict[str, Any] | None = None,
+    b1_local: B1LocalCandidate | None = None,
+    b1_obstacle: bool = False,
 ) -> dict[str, Any]:
     """One fixture with bounded native L0 nonissuance or issued SEEK."""
     if type(nonforcing) is not bool or (nonforcing and energy_ledger is None):
         raise GroundRejected("nonforcing needs a real typed M0 owner")
+    if type(b1_obstacle) is not bool or (
+        b1_obstacle and (b1_local is None or nonforcing or epoch != 0)
+    ) or (b1_local is not None and (
+        not isinstance(b1_local, B1LocalCandidate)
+        or energy_ledger is None
+        or b1_local.session_id != energy_ledger.session_id
+        or nonforcing
+    )):
+        raise GroundRejected("B1 local adaptation requires one typed DEV source")
     if global_m0_horizon is not None or global_move_limit is not None:
         if (
             nonforcing is not True
@@ -149,8 +162,23 @@ async def acquire_staged_ground_flesh(
             "fixture_command_ack": "NOT_NATIVE_ATTESTED",
             "minecraft_world_elapsed_tick_parity": "NOT_QUALIFIED",
         })
-    # A new operator-summoned ground item; NOT a zombie drop.
+    # B1 requests a short stone wall across the direct ground-item line.
+    # Console write is NOT independent native block-effect attestation.
     position = origin.snapshot.position
+    obstacle_request = None
+    if b1_obstacle:
+        bx = math.floor(position.x + 1.5)
+        by = math.floor(position.y)
+        bz = math.floor(position.z)
+        obstacle_request = {
+            "x": bx, "y": by, "z": bz,
+            "effect_attestation": "NOT_NATIVE_ATTESTED",
+        }
+        _command(
+            server, f"fill {bx} {by} {bz} {bx} {by + 1} {bz} minecraft:stone",
+        )
+        await server.stdin.drain()
+    # A new operator-summoned ground item; NOT a zombie drop.
     _command(
         server,
         f"summon item {position.x + 2.5:.3f} "
@@ -242,6 +270,7 @@ async def acquire_staged_ground_flesh(
     cursor = SeekCursor(target.session_id)
     movements: list[dict[str, Any]] = []
     picked = None
+    b1_decisions: list[dict[str, Any]] = []
     for i in range(8):
         read = await _correlated_observe(session, f"{namespace}-ground-step-{i:02d}")
         if any(x.name == "rotten_flesh" and x.count > 0 for x in read.snapshot.inventory):
@@ -286,7 +315,20 @@ async def acquire_staged_ground_flesh(
                 continue
         else:
             l0_trace.append(_admit_native_l0_seek(energy_ledger, read, target))
-        step = cursor.plan(read, target.waypoint())
+        waypoint = (
+            b1_local.next_waypoint(read, target)
+            if b1_local is not None else target.waypoint()
+        )
+        if b1_local is not None:
+            b1_decisions.append({
+                "probe_seq": read.seq,
+                "target_entity_id": target.entity_id,
+                "waypoint_id": waypoint.goal_id,
+                "retained_memory_count": len(b1_local.cognition.memories),
+                "l1_candidate_only": True,
+                "issued_action": False,
+            })
+        step = cursor.plan(read, waypoint)
         if step.status is SeekStatus.NEEDS_ROUTE:
             raise GroundRejected("no pathfinding authority for vertical route")
         if step.status is SeekStatus.ARRIVED:
@@ -315,7 +357,7 @@ async def acquire_staged_ground_flesh(
         )
         try:
             effect = await execute_seek_step(session, supervisor, issued, step)
-            if effect.kind is SeekConsequenceKind.BLOCKED:
+            if effect.kind is SeekConsequenceKind.BLOCKED and b1_local is None:
                 raise GroundRejected("issued SEEK did not make progress")
             closed = supervisor.record_outcome(
                 issued.action_id, at_ns=14+i*10,
@@ -331,7 +373,19 @@ async def acquire_staged_ground_flesh(
                 "after_seq": effect.after_seq,
                 "kind": effect.kind.value,
                 "progress_m": effect.progress_m,
+                "waypoint_id": waypoint.goal_id,
+                "source_outcome_not_goal_success": True,
             })
+            if b1_local is not None:
+                if waypoint.goal_id == "b1-local-lateral":
+                    b1_local.record_alternative_outcome(effect)
+                    if effect.kind is SeekConsequenceKind.BLOCKED:
+                        raise GroundRejected("B1 lateral Action also BLOCKED; safe stop")
+                elif effect.kind is SeekConsequenceKind.BLOCKED:
+                    followup = await _correlated_observe(
+                        session, f"{namespace}-b1-blocked-followup-{i:02d}",
+                    )
+                    b1_local.record_blocked(read, effect, followup, target)
         except BaseException:
             if supervisor.get(issued.action_id).state is ActionState.ISSUED:
                 supervisor.mark_unknown(
@@ -368,7 +422,11 @@ async def acquire_staged_ground_flesh(
         "pickup_evidence": picked.evidence_kind,
         "movement_outcomes": movements,
         "l0_ground_seek_trace": l0_trace,
-        "selection_policy": "DESIGNED_NATIVE_L0_SEEK_NOT_LEARNED",
+        "selection_policy": "B1_L1_CANDIDATE_NOT_QUALIFIED" if b1_local
+                            else "DESIGNED_NATIVE_L0_SEEK_NOT_LEARNED",
+        "b1_obstacle_request": obstacle_request,
+        "b1_local_decisions": b1_decisions,
+        "b1_local_evidence": b1_local.evidence() if b1_local else None,
         "item_contents_from_entity_metadata": "UNKNOWN",
         "zombie_drop_observed": False,
         "m_energy_credited": False,
