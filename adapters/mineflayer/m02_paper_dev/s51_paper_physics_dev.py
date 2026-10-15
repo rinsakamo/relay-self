@@ -11,6 +11,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import shutil
 import socket
 import tempfile
@@ -205,16 +206,34 @@ def _read_world_receipts(server_log: Path) -> dict:
     enabled = [x for x in lines if "M02_DEV_ONLY: candidate physics" in x]
     body = [x for x in lines if "M02_DEV_BODY sampled_tick=" in x]
     walk = [x for x in lines if "M02_DEV_EVENT " in x and "reason=WALK " in x]
-    if not enabled or not body or not walk:
-        raise M02DevRejected("Paper plugin startup/basal/WALK event evidence absent")
-    # For unmodified Paper WALK original is 0; plugin must replace with >0.
-    if not any("original=0.0 " in x and "replaced=1.0E-4" in x for x in walk):
-        raise M02DevRejected("Paper did not expose expected 0 -> 1cm walking charge")
+    motion = [x for x in lines if "M02_DEV_MOTION " in x and "reason=WALK " in x]
+    if not enabled or not body or not walk or not motion:
+        raise M02DevRejected("Paper plugin startup/basal/WALK and packet motion absent")
+    if not all("original=0.0 " in x and "replaced=0.0" in x for x in walk):
+        raise M02DevRejected("land WALK native event must be replaced by zero")
+    blocks = 0.0
+    charged = 0.0
+    for line in motion:
+        distance = re.search(r"\\bblocks=([0-9.eE+-]+)", line)
+        cost = re.search(r"\\bbilled=([0-9.eE+-]+)", line)
+        if distance is None or cost is None:
+            raise M02DevRejected("missing typed real packet movement evidence")
+        blocks += float(distance.group(1))
+        charged += float(cost.group(1))
+    if not 0.5 < blocks < 2:
+        raise M02DevRejected("World packet distance is not one bounded physical step")
+    if abs(charged - 0.01 * blocks) > 1e-7:
+        raise M02DevRejected("per-block WALK charge differs from measured path")
     return {
         "plugin_enabled_original_log_lines": enabled,
         "basal_world_tick_samples": body[:8],
-        "walk_exhaustion_original_replacement_samples": walk[:12],
-        "count_walk_logged": len(walk),
+        "walk_native_event_samples": walk[:12],
+        "world_packet_walk_samples": motion[:12],
+        "count_walk_native_events": len(walk),
+        "count_walk_motion_packets": len(motion),
+        "world_measured_walk_blocks": blocks,
+        "world_billed_walk_exhaustion": charged,
+        "expected_rate_exhaustion_per_block": 0.01,
         "native_original_log_available": True,
         "native_event_identity_independently_qualified": False,
     }
