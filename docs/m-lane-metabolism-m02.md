@@ -76,18 +76,28 @@ request less than one block if closer to the target, and a blocked Action may
 move less or not at all. One block is an **action planning resolution/cap, not
 proof that every issued Action produces exactly 1.0m displacement**.
 
-The Paper server retains its native **per-centimeter** movement exhaustion
-accounting. With M0.2 WALK standard `0.01 exhaustion/block`, each **observed**
-1cm WALK exhaustion event contributes `0.0001`; 100 such events total
-`0.01`, and 40 such events total `0.004`. Never round each observed
-centimeter to a whole block, never charge a requested/failed one-block
-distance, and never levy an additional charge for the single Self choice.
-World tick BASAL is charged once per actual tick throughout the action, no
-matter how many native motion events occur.
+**Corrected after actual Paper DEV evidence (2026-10-15):**
+The source `EntityExhaustionEvent.ExhaustionReason.WALK` documentation says
+"one centimeter", but **its event count is NOT a physical centimeter counter**.
+A genuine authorized S50 one-block MOVE progressed **1.042431 blocks** while
+Paper produced only **12 WALK exhaustion events**. Charging
+12 × 0.0001 = 0.0012 would undercharge the observed distance's nominal
+0.0104243 by about 8.7×. This is a verified implementation-level
+discrepancy, not a new ecological calibration.
 
-These are unit-integrity examples rather than direct native-source proof:
-Paper events, locomotion cause transitions and actual traveled distance
-must still be verified in disposable World evidence.
+Consequently, the real Paper adapter must derive the path distance from
+server `PlayerMoveEvent` (`from` → `to`, measured actual block coordinates),
+not infer distance from exhaustion-event count. For numeric land locomotion,
+replace the original pending WALK/CROUCH/SPRINT exhaustion event with **zero**
+and charge `observed_blocks × (standard × multiplier + additional)` from
+the validated motion delta **once**. Walking and sprinting in water are
+temporarily outside this land-calibrated DEV gate. Teleports, large
+unclassified displacements and stale motions must never be silently
+metered as walking. Basal remains once per actual World tick, independently
+of move event count or Self decision count.
+
+Earlier 100-events-per-block text is withdrawn; only `1 block=1m=100cm`
+as a distance **unit conversion** remains true.
 
 ## Future Paper 1.21.8 application contract (S/R-owned)
 
@@ -97,13 +107,15 @@ must still be verified in disposable World evidence.
   automatically pending native expense. Do not also bill these events into an
   independent M0 energy ledger. Other server plugins may alter/cancel the event;
   require isolated dedicated World and a documented event listener priority.
-- **Movement unit conversion:** Paper's `WALK`, `CROUCH`, `SPRINT` and
-  `SWIM` reasons fire per **centimeter**; the profile is per **block**:
-  `quantity_blocks = observed_centimeters / 100`. 1 cm of WALK with
-  standard 0.01 / block => 0.0001 exhaustion, NOT 0.01.
-  `WALK_ON_WATER` / `WALK_UNDERWATER` are also per-centimeter events.
-  Their standard is the original measured per-cm exhaustion, while the
-  editable addition is per block (`native*multiplier + additional/100`).
+- **Movement source correction:** The ExhaustionReason descriptions are not
+  guarantees of 1cm per emitted callback. Numeric land WALK/CROUCH/SPRINT
+  cannot use event counts for physical distance. Use actual validated
+  `PlayerMoveEvent` displacements in blocks, and set original matching
+  exhaustion causes to zero to avoid duplication. The separate pure offline
+  helper `observed_land_motion_cost` mirrors this rule.
+  SWIM and underwater/on-water use source-variable event defaults pending
+  separate original-distance admission; do not claim calibrated per-block
+  control in those regimes.
 - **REGEN:** use native exhaustion per actual REGEN event. The Paper
   exhaustion event does not itself attest HP healed. Never invent that delta.
   A future explicit per-HP profile requires separately qualified measurements.
@@ -152,7 +164,7 @@ python -m pytest -q tests/test_metabolism_m02_exhaustion.py
 
 Scope of checks: profile completeness, deterministic hash, explicit default
 standard values, positive/negative multiplier and additional controls,
-centimeter conversion, native REGEN units, cognition OFF/ON gate, native event
+unit conversion and measured-block land movement, native REGEN units, cognition OFF/ON gate, native event
 passthrough, source-shape fail-closed, consecutive World ticks and exactly-once
 event IDs, duplicate key / nan profile rejection. Ordinary repo CI also
 regresses M0 and M0.1.
