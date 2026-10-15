@@ -46,6 +46,8 @@ jobs:
             test -n "$path" || continue
             case "$path" in
               .github/workflows/self-demo.yml|\
+              .github/workflows/m02-paper-dev-build.yml|\
+              adapters/mineflayer/m02_paper_dev/**|\
               adapters/mineflayer/b0_*.py|\
               adapters/mineflayer/b1_*.py|\
               adapters/mineflayer/bridge.mjs|\
