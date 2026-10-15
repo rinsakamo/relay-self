@@ -13,7 +13,6 @@ import json
 import os
 import shutil
 import socket
-import sys
 import tempfile
 from dataclasses import asdict
 from pathlib import Path
@@ -253,7 +252,6 @@ async def run(
         if not _port_free():
             raise M02DevRejected("existing Minecraft port must not be disturbed")
         output_dir.mkdir()
-        report_path = output_dir / "m02_report.json"
         server_log = output_dir / "paper_server.log"
         native_file = (output_dir / "original_native.jsonl").open("xb")
         commands_file = (output_dir / "owner_commands.jsonl").open("xb")
