@@ -222,6 +222,82 @@ jobs:
           PY
           )
           test -z "$(git -C external-s-v3 status --porcelain --untracked-files=no)"
+  m02-s-profile-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: v7-review
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 27a1dca3d77a7c7887df8a67275127ff0386e709
+          path: s-owned
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Independently compare frozen V7 factors to exact S-owned source bytes
+        env:
+          PYTHONPATH: 'v7-review/src:v7-review:'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C s-owned rev-parse HEAD)" = "27a1dca3d77a7c7887df8a67275127ff0386e709"
+          python - <<'PY'
+          import importlib.util, json, os
+          from pathlib import Path
+          from experiments.validation import v7_m02_physics as v
+          src = Path("s-owned/adapters/mineflayer/m02_paper_dev/v7_paired_config.py")
+          assert src.is_file() and not src.is_symlink()
+          spec = importlib.util.spec_from_file_location("s_v7_paper_profile", src)
+          s = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(s)
+          m = v.load_manifest()
+          assert tuple(s.ARMS) == tuple(m["design"]["arms_order"])
+          assert set(s.EXPECTED_KINDS) == {
+              "BASAL", "WALK", "CROUCH", "SPRINT", "SWIM",
+              "WALK_ON_WATER", "WALK_UNDERWATER", "JUMP",
+              "JUMP_SPRINT", "ATTACK", "DAMAGED", "BLOCK_MINED",
+              "REGEN", "HUNGER_EFFECT", "UNKNOWN", "COGNITION",
+          }
+          assert s.BASELINE_ENABLED_SHA256 == "e9361faa7eac2e3c63bf2f6760765f7f8ae5a4b3631c6819f7ad8ac5c04a540e"
+          original = s.TEMPLATE.read_bytes()
+          values = {a: s.render_arm(original, a) for a in s.ARMS}
+          assert len(values) == 5
+          assert values["BASE_ON"] == values["SHAM_ON"]
+          for arm, (basal, walk) in s.ARMS.items():
+              assert m["rate_arms"][arm] == {
+                  "basal_multiplier": basal, "walk_multiplier": walk,
+              }
+          dir = Path(os.environ["RUNNER_TEMP"]) / "v7-5-arm-dev-only"
+          packet = s.stage_candidate_configs(original, dir)
+          assert packet["real_world_starts"] == 0
+          assert not packet["science_go"] and not packet["qualification_reused"]
+          for arm, content in values.items():
+              assert (dir / arm / "config.yml").read_bytes() == content
+              assert packet["configs"][arm]["sha256"] == s.sha256(content)
+          assert all(a["real_world_starts"] == 0 for a in [packet])
+          print(json.dumps({
+              "classification": "V7_INDEPENDENT_S_SOURCE_FIVE_ARM_PROFILE_MATCH_OFFLINE_ONLY",
+              "source_s_head": "27a1dca3d77a7c7887df8a67275127ff0386e709",
+              "sha256": {name: s.sha256(data) for name, data in values.items()},
+              "real_world_starts": 0, "v_science_go": False,
+              "changed_configuration_profiles_qualified_by_R": False,
+          }, sort_keys=True))
+          PY
+          test -z "$(git -C s-owned status --porcelain --untracked-files=no)"
+          test -z "$(git -C v7-review status --porcelain --untracked-files=no)"
+      - name: Preserve DEV-only prospective arm configs, never a physical original
+        uses: actions/upload-artifact@v4
+        with:
+          name: v7-m02-prospective-five-configs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/v7-5-arm-dev-only/
+          retention-days: 30
+          if-no-files-found: error
+
   full-regression:
     # Full independent cross-owner/scientific pre-merge checks, not per DEV commit.
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
