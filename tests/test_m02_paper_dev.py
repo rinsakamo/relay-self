@@ -36,21 +36,37 @@ def test_original_event_log_must_prove_walk_basal_and_plugin(tmp_path):
     log.write_text(
         "M02_DEV_ONLY: candidate physics, not qualified by R/V\n"
         "M02_DEV_BODY sampled_tick=20 player=RelaySelf food=20 saturation=5 exhaustion=0.02\n"
-        "M02_DEV_EVENT id=1 reason=WALK original=0.0 replaced=1.0E-4\n",
+        "M02_DEV_EVENT id=1 reason=WALK original=0.0 replaced=0.0\n"
+        "M02_DEV_MOTION id=1 reason=WALK blocks=0.6 billed=0.006 "
+        "cumulative_blocks=0.6 cumulative_billed=0.006\n",
         encoding="utf-8",
     )
     report = _read_world_receipts(log)
-    assert report["count_walk_logged"] == 1
+    assert report["count_walk_native_events"] == 1
+    assert report["count_walk_motion_packets"] == 1
+    assert report["world_measured_walk_blocks"] == pytest.approx(0.6)
+    assert report["world_billed_walk_exhaustion"] == pytest.approx(0.006)
     assert report["native_event_identity_independently_qualified"] is False
-    log.write_text("M02_DEV_EVENT id=1 reason=WALK original=0.0 replaced=1.0E-4\n")
+    log.write_text("M02_DEV_EVENT id=1 reason=WALK original=0.0 replaced=0.0\n")
     with pytest.raises(M02DevRejected, match="startup/basal/WALK"):
         _read_world_receipts(log)
     log.write_text(
         "M02_DEV_ONLY: candidate physics, not qualified by R/V\n"
         "M02_DEV_BODY sampled_tick=20\n"
-        "M02_DEV_EVENT id=1 reason=WALK original=0.0 replaced=0.0\n"
+        "M02_DEV_EVENT id=1 reason=WALK original=0.0 replaced=1.0E-4\n"
+        "M02_DEV_MOTION id=1 reason=WALK blocks=0.6 billed=0.006\n",
+        encoding="utf-8",
     )
-    with pytest.raises(M02DevRejected, match="expected"):
+    with pytest.raises(M02DevRejected, match="replaced by zero"):
+        _read_world_receipts(log)
+    log.write_text(
+        "M02_DEV_ONLY: candidate physics, not qualified by R/V\n"
+        "M02_DEV_BODY sampled_tick=20\n"
+        "M02_DEV_EVENT id=1 reason=WALK original=0.0 replaced=0.0\n"
+        "M02_DEV_MOTION id=1 reason=WALK blocks=0.6 billed=0.001\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(M02DevRejected, match="differs from measured path"):
         _read_world_receipts(log)
 
 
