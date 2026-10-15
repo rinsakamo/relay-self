@@ -110,12 +110,11 @@ def test_fake_or_reused_qual_receipt_rejected(tmp_path, monkeypatch, key, value)
 
 def test_native_bytes_and_host_witness_fail_closed(tmp_path, monkeypatch):
     root, assets, witness, _ = synthetic(tmp_path, monkeypatch)
+    original = (root / "original_native.jsonl").read_bytes()
     (root / "original_native.jsonl").write_bytes(b"tampered\n")
     with pytest.raises(q.NotQualified, match="source original changed"):
         verify(root, assets, witness)
-    root, assets, witness, _ = synthetic(tmp_path / "second", monkeypatch) if False else (
-        root, assets, witness, None
-    )
+    (root / "original_native.jsonl").write_bytes(original)
     # Host witness is independently required, even when source digest exists.
     raw = json.loads(witness.read_text())
     raw["java_absent"] = False
