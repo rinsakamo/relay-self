@@ -237,6 +237,24 @@ def cost(
     return value
 
 
+LAND_MOTION_KINDS = frozenset(("WALK", "CROUCH", "SPRINT"))
+
+
+def observed_land_motion_cost(profile: Profile, reason: str, distance_blocks: float) -> float:
+    """Bill actual, source-attested World land displacement; never event count.
+
+    DEV World observed ~1.04 blocks but only 12 native WALK exhaust events.
+    Thus Paper exhaustion events MUST NOT be interpreted as 1 cm each for
+    billing. A PlayerMoveEvent-derived, positive, non-teleport movement path
+    length is required, separate from an operator's requested step size.
+    """
+    if reason not in LAND_MOTION_KINDS:
+        raise M02Rejected("unadmitted land motion reason")
+    if not _nonnegative(distance_blocks):
+        raise M02Rejected("positive finite observed distance required")
+    return cost(profile, reason, distance_blocks)
+
+
 def paper_event_cost(
     profile: Profile,
     reason: str,
@@ -245,11 +263,12 @@ def paper_event_cost(
     distance_centimeters: float | None = None,
     healed_hp: float | None = None,
 ) -> float:
-    """Reference event REPLACEMENT amount for future Paper listener.
+    """Offline event arithmetic, NOT a physical per-cm event-count source.
 
-    Paper movement reasons fire per centimeter. Guard unlike event dimensions
-    so no one accidentally bills 100 times too much by treating cm as blocks.
-    Unsupported/unhandled reasons are not silently coerced into custom costs.
+    Movement requires an *independently measured* distance; the Paper
+    exhaustion event does NOT itself attest 1cm. The deployed land-motion
+    adapter uses observed_land_motion_cost and makes original movement-event
+    billing zero, preventing physical double-counting.
     """
     if reason not in EVENT_REASONS:
         raise M02Rejected("not a supported Paper exhaustion reason")
