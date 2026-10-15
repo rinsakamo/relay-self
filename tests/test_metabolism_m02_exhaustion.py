@@ -238,3 +238,27 @@ def test_canonical_standard_values_and_full_configuration_roundtrip(profile, tmp
     after["actions"]["WALK"]["additional"] = 0.01
     with pytest.raises(M02Rejected):
         parse_profile({**after, "version": "M0.3"})
+
+def test_one_block_is_one_action_distance_not_100_self_decisions(profile):
+    # Paper receives 1 cm movement events, but the S50 planning default
+    # is one capped steering step of 1 Minecraft block (= 1 nominal meter).
+    # M0.2 charges the physical movement segments, not Self choice counts.
+    one_block_events = sum(
+        paper_event_cost(
+            profile, "WALK", native_event_exhaustion=0,
+            distance_centimeters=1,
+        )
+        for _ in range(100)
+    )
+    partial_block_events = sum(
+        paper_event_cost(
+            profile, "WALK", native_event_exhaustion=0,
+            distance_centimeters=1,
+        )
+        for _ in range(40)
+    )
+    assert one_block_events == pytest.approx(cost(profile, "WALK", 1.0))
+    assert partial_block_events == pytest.approx(cost(profile, "WALK", 0.4))
+    # Basal expense depends only on real World ticks, not steering commands.
+    assert cost(profile, "BASAL", 20) == pytest.approx(0.02)
+
