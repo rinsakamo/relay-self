@@ -214,8 +214,8 @@ def _read_world_receipts(server_log: Path) -> dict:
     blocks = 0.0
     charged = 0.0
     for line in motion:
-        distance = re.search(r"\\bblocks=([0-9.eE+-]+)", line)
-        cost = re.search(r"\\bbilled=([0-9.eE+-]+)", line)
+        distance = re.search(r"\bblocks=([0-9.eE+-]+)", line)
+        cost = re.search(r"\bbilled=([0-9.eE+-]+)", line)
         if distance is None or cost is None:
             raise M02DevRejected("missing typed real packet movement evidence")
         blocks += float(distance.group(1))
