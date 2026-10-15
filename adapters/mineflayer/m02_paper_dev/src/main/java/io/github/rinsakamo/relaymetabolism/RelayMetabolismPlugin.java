@@ -38,6 +38,8 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private String target;
     private long appliedTicks = 0;
     private long modifiedEvents = 0;
+    private long observedWalkEvents = 0;
+    private long observedSprintEvents = 0;
 
     private record Rule(String unit, double standard, boolean nativeValue,
                         double multiplier, double additional, boolean enabled) {
@@ -168,13 +170,15 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     getLogger().severe("invalid basal exhaustion; disabling plugin");
                     Bukkit.getPluginManager().disablePlugin(this);
                 }
-                if (appliedTicks % 100 == 0) {
+                if (appliedTicks == 1 || appliedTicks == 20 || appliedTicks % 100 == 0) {
                     getLogger().info("M02_DEV_BODY sampled_tick=" + appliedTicks
                         + " player=" + target + " food=" + p.getFoodLevel()
                         + " saturation=" + p.getSaturation()
                         + " health=" + p.getHealth()
                         + " exhaustion=" + p.getExhaustion()
-                        + " events=" + modifiedEvents);
+                        + " events=" + modifiedEvents
+                        + " walk_events=" + observedWalkEvents
+                        + " sprint_events=" + observedSprintEvents);
                 }
             }, 1L, 1L);
             getLogger().warning("M02_DEV_ONLY: candidate physics, not qualified by R/V");
@@ -197,8 +201,21 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             return;
         }
         try {
-            event.setExhaustion((float) rule.perEvent(event.getExhaustion()));
+            float nativeValue = event.getExhaustion();
+            float applied = (float) rule.perEvent(nativeValue);
+            event.setExhaustion(applied);
             modifiedEvents++;
+            if (event.getExhaustionReason() == EntityExhaustionEvent.ExhaustionReason.WALK) {
+                observedWalkEvents++;
+            }
+            if (event.getExhaustionReason() == EntityExhaustionEvent.ExhaustionReason.SPRINT) {
+                observedSprintEvents++;
+            }
+            if (modifiedEvents <= 300) {
+                getLogger().info("M02_DEV_EVENT id=" + modifiedEvents
+                    + " reason=" + event.getExhaustionReason()
+                    + " original=" + nativeValue + " replaced=" + applied);
+            }
         } catch (RuntimeException ex) {
             getLogger().severe("invalid event; plugin disabled: " + ex.getMessage());
             Bukkit.getPluginManager().disablePlugin(this);
