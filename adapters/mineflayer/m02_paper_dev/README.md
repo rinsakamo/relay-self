@@ -45,6 +45,39 @@ admitted WALK centimeter events. Do not charge the full requested meter
 separately. Basal billing is still by World tick, and nothing bills by
 number of Self decisions. Live original event attestation is NOT_RUN.
 
+## S-owned disposable physical DEV executable
+
+`python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev`
+is an opt-in DEV-only physical characterization runner that **reuses** the
+existing S31A World lifecycle, S50 governed SEEK movement, S51 native
+`IssuedEatingExecutor`, recording Mineflayer session, and Java cleanup.
+It does not change the old S51 Mojang/rotten-flesh path, and it deliberately
+does **not** construct an M0/0.1 virtual energy ledger.
+
+The runner requires fresh absolute output directory, an explicit DEV confirmation
+string, full SHA256 hashes of a specific Paper 1.21.8 official jar and the
+compiled plugin jar, and an unused loopback 25565 port. It creates/removes
+only its owned disposable World; evidence in the separate output directory
+is kept after cleanup. It stages steak and hunger as **operator fixtures**,
+not autonomous food procurement.
+
+New source files:
+`s51_paper_physics_dev.py` and
+`tests/test_m02_paper_dev.py`.
+The **existing** `m02-paper-dev-build.yml` GitHub workflow now has
+`paper-world-dev` in addition to compile-only. It looks up an official
+stable Paper 1.21.8 build, checks the official SHA256 and runs a fresh
+ephemeral Paper server and one native Mineflayer connection. DEV evidence,
+including the plugin log, raw native JSONL and owner commands, is uploaded
+whether success or failure; historical World receipts and Golden cannot
+be reused. A successful compile is not a physical PASS. A physical run
+must independently close and pass its own cause/food/session checks.
+
+**Always maintain DEV_ONLY:** this path is a controlled source
+characterization, not proof of learned Self locomotion, ecology calibration,
+precise pickup causality, starvation-respawn behavior, scientific
+discrimination or production integration.
+
 ## Build the plugin, no World starts
 
 Install **JDK 21 + Maven 3**; build explicitly:
