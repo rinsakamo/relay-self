@@ -112,7 +112,10 @@ def _issue(
                             provenance=_p(action_id + "-issued"))
 
 
-async def _motor_walk(session: MineflayerProcessSession) -> dict:
+async def _motor_walk(session: MineflayerProcessSession, *,
+                      issuer=None, provenance=None) -> dict:
+    issuer = issuer or _issue
+    provenance = provenance or _p
     before = await _correlated_observe(session, "m02-before-walk")
     p = before.snapshot.position
     # Nominal 1-block S50 plan, *not* an exact 1-block outcome guarantee.
@@ -125,14 +128,14 @@ async def _motor_walk(session: MineflayerProcessSession) -> dict:
     if step.status is not SeekStatus.STEER or step.step_distance_m != 1.0:
         raise M02DevRejected("not a valid one-block S50 steering proposal")
     supervisor = ActionSupervisor()
-    issued = _issue(
+    issued = issuer(
         supervisor, "m02-paper-walk-1", "seek-waypoint",
         "m02-walk", "move one nominal block in isolated test World", time_base=10,
     )
     effect = await execute_seek_step(session, supervisor, issued, step)
     closed = supervisor.record_outcome(
         issued.action_id, at_ns=15,
-        provenance=_p("m02-paper-walk-1-outcome"),
+        provenance=provenance("m02-paper-walk-1-outcome"),
     )
     if (closed.state is not ActionState.OUTCOME
             or supervisor.open_actions
@@ -154,7 +157,9 @@ async def _motor_walk(session: MineflayerProcessSession) -> dict:
     }
 
 
-async def _native_steak(session: MineflayerProcessSession, server) -> dict:
+async def _native_steak(session: MineflayerProcessSession, server, *,
+                        issuer=None) -> dict:
+    issuer = issuer or _issue
     if server.stdin is None:
         raise M02DevRejected("owned server console absent")
     _command(server, "give RelaySelf minecraft:cooked_beef 3")
@@ -182,7 +187,7 @@ async def _native_steak(session: MineflayerProcessSession, server) -> dict:
     _command(server, "effect clear RelaySelf minecraft:hunger")
     await server.stdin.drain()
     supervisor = ActionSupervisor()
-    issued = _issue(
+    issued = issuer(
         supervisor, "m02-paper-eat-steak-1", "eat",
         "m02-eat", "eat owned cooked_beef when actually hungry", time_base=100,
     )
