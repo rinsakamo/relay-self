@@ -4,13 +4,12 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+from dataclasses import replace
 
 import pytest
 
 import test_feature_s46_eat as s46
-from dataclasses import replace
 from adapters.mineflayer.m02_paper_dev.native_l0 import PaperL0Rejected, PaperNativeL0
-from adapters.mineflayer.python_protocol import MineflayerEntityFact, MineflayerInventoryItem, MineflayerPosition
 
 from adapters.mineflayer.m02_paper_dev import s51_paper_physics_dev as dev
 from adapters.mineflayer.m02_paper_dev import s51_paper_qualification as q
@@ -26,6 +25,11 @@ from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
     main,
     qualification_asset_preflight,
     run,
+)
+from adapters.mineflayer.python_protocol import (
+    MineflayerEntityFact,
+    MineflayerInventoryItem,
+    MineflayerPosition,
 )
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
@@ -346,7 +350,6 @@ def test_paper_l0_single_ground_seek_is_candidate_not_known_food():
 
 
 def test_paper_l0_ambiguous_or_truncated_target_fails_safe():
-    from dataclasses import replace
     import test_b0_ground_foraging as ground
     source = ground._ground()
     original = source.snapshot.nearby_entities[0]

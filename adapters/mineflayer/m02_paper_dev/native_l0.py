@@ -9,7 +9,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from adapters.mineflayer.b0_ground_foraging import GroundRejected, GroundTarget, select_ground_target
+from adapters.mineflayer.b0_ground_foraging import (
+    GroundRejected,
+    GroundTarget,
+    select_ground_target,
+)
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.eat_hunger import EatChoice, EatCursor, EatStatus
 
