@@ -9,10 +9,9 @@ No M0/M0.1 virtual ledger exists on this path.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import asdict
 from typing import Any, Callable
 
-from adapters.mineflayer.b0_ground_foraging import GroundRejected, GroundTarget
+from adapters.mineflayer.b0_ground_foraging import GroundTarget
 from adapters.mineflayer.m02_paper_dev.native_l0 import PaperNativeL0
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s31a_real_server_ci import _command, _correlated_observe
