@@ -121,7 +121,7 @@ def _java21_runtime() -> dict[str, str]:
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise QualificationBlocked("Java runtime preflight unavailable") from exc
     version_text = (result.stderr + "\n" + result.stdout).strip()
-    parsed = re.search(r'(?:openjdk|java) version "(\\d+)(?:[."]|$)', version_text)
+    parsed = re.search(r'(?:openjdk|java) version "(\d+)(?:[."]|$)', version_text)
     if result.returncode != 0 or parsed is None or parsed.group(1) != "21":
         raise QualificationBlocked("Paper 1.21.8 requires Java 21, not installed PATH Java")
     return {"java_executable": str(Path(executable).resolve()),
