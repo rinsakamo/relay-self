@@ -49,7 +49,7 @@ def test_profile_explicit_complete_standards_and_identity(profile):
     assert profile.rule("BASAL").standard == 0.001
     assert profile.rule("WALK").standard == 0.01
     assert profile.rule("SPRINT").standard == 0.1
-    assert profile.rule("REGEN").standard == 6.0
+    assert profile.rule("REGEN").standard == "native"
     assert profile.rule("COGNITION").enabled is False
     assert len(profile.sha256) == 64
     assert profile.sha256 == parse_profile(profile.canonical_dict()).sha256
@@ -93,8 +93,8 @@ def test_non_movement_events_use_native_exhaustion_as_replacement_not_addition(p
         profile, "BLOCK_MINED", native_event_exhaustion=0.005
     ) == pytest.approx(0.005)
     assert paper_event_cost(
-        profile, "REGEN", native_event_exhaustion=6.0, healed_hp=0.5
-    ) == pytest.approx(3.0)
+        profile, "REGEN", native_event_exhaustion=6.0
+    ) == pytest.approx(6.0)
 
 
 @pytest.mark.parametrize("kind", sorted(NATIVE_REQUIRED))
@@ -103,13 +103,15 @@ def test_variable_native_standard_is_explicit_passthrough(profile, kind):
     assert rule.standard == "native"
     assert rule.multiplier == 1
     assert rule.additional == 0
+    move = kind in ("WALK_ON_WATER", "WALK_UNDERWATER")
+    args = {"distance_centimeters": 1} if move else {}
     assert paper_event_cost(
-        profile, kind, native_event_exhaustion=0.037
+        profile, kind, native_event_exhaustion=0.037, **args
     ) == pytest.approx(0.037)
     raised = mutate(profile, kind, multiplier=2, additional=0.02)
     assert paper_event_cost(
-        raised, kind, native_event_exhaustion=0.037
-    ) == pytest.approx(0.094)
+        raised, kind, native_event_exhaustion=0.037, **args
+    ) == pytest.approx(0.0742 if move else 0.094)
 
 
 def test_cognition_is_off_and_can_be_explicitly_enabled(profile):
@@ -171,7 +173,7 @@ def test_illegal_units_and_numeric_input_reject(profile, kind, quantity):
 
 
 @pytest.mark.parametrize("reason,extra", [
-    ("WALK", {}), ("REGEN", {}), ("JUMP", {"distance_centimeters": 1}),
+    ("WALK", {}), ("REGEN", {"healed_hp": 1}), ("JUMP", {"distance_centimeters": 1}),
     ("ATTACK", {"healed_hp": 1}), ("REGEN", {"healed_hp": 0}),
     ("BASAL", {}), ("NOT_AN_EVENT", {}),
 ])
