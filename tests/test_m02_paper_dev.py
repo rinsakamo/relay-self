@@ -369,3 +369,55 @@ def test_paper_l0_ambiguous_or_truncated_target_fails_safe():
         ),
     ))
     assert PaperNativeL0(source.session_id).decide(truncated).kind == "WAIT"
+
+
+def test_paper_pickup_contrast_uses_real_beef_delta_not_unknown_entity_contents():
+    import test_b0_ground_foraging as ground
+    from adapters.mineflayer.m02_paper_dev.paper_foraging_dev import (
+        PaperForageRejected,
+        paper_pickup_contrast,
+    )
+    source = ground._ground()
+    target = ground.select_ground_target(source)
+    after = replace(
+        source, seq=source.seq + 5, request_id="paper-picked-beef",
+        snapshot=replace(
+            source.snapshot, inventory=(MineflayerInventoryItem("cooked_beef", 1, 4),),
+            nearby_entities=(),
+            nearby_entities_coverage=replace(
+                source.snapshot.nearby_entities_coverage, candidate_count=0,
+            ),
+        ),
+    )
+    match = paper_pickup_contrast(source, after, target)
+    assert match["cooked_beef_inventory_delta"] == 1
+    assert match["strict_player_collect_causality"] == "UNKNOWN"
+    assert match["item_content_from_native_entity_metadata"] == "UNKNOWN"
+    with pytest.raises(PaperForageRejected):
+        paper_pickup_contrast(source, replace(after, session_id="foreign"), target)
+    with pytest.raises(PaperForageRejected):
+        paper_pickup_contrast(
+            source, replace(after, snapshot=replace(
+                after.snapshot, inventory=(MineflayerInventoryItem("rotten_flesh", 1, 4),),
+            )), target,
+        )
+    with pytest.raises(PaperForageRejected):
+        paper_pickup_contrast(
+            source, replace(after, snapshot=replace(
+                after.snapshot, nearby_entities=source.snapshot.nearby_entities,
+                nearby_entities_coverage=source.snapshot.nearby_entities_coverage,
+            )), target,
+        )
+
+
+def test_paper_foraging_requires_fresh_trace_before_owning_world():
+    from adapters.mineflayer.m02_paper_dev.paper_foraging_dev import (
+        PaperForageRejected,
+        paper_ground_forage,
+    )
+    trace = {"old": "foreign"}
+    with pytest.raises(PaperForageRejected):
+        asyncio.run(paper_ground_forage(
+            None, None, issuer=None, provenance=None, trace=trace,
+        ))
+    assert trace == {"old": "foreign"}

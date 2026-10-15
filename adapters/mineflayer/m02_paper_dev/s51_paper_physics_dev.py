@@ -158,13 +158,14 @@ async def _motor_walk(session: MineflayerProcessSession, *,
 
 
 async def _native_steak(session: MineflayerProcessSession, server, *,
-                        issuer=None) -> dict:
+                        issuer=None, preowned: bool = False) -> dict:
     issuer = issuer or _issue
     if server.stdin is None:
         raise M02DevRejected("owned server console absent")
-    _command(server, "give RelaySelf minecraft:cooked_beef 3")
-    _command(server, "effect give RelaySelf minecraft:hunger 25 20 true")
-    await server.stdin.drain()
+    if not preowned:
+        _command(server, "give RelaySelf minecraft:cooked_beef 3")
+        _command(server, "effect give RelaySelf minecraft:hunger 25 20 true")
+        await server.stdin.drain()
     l0 = PaperNativeL0(session.started.session_id, hunger_threshold=14)
     before = choice = None
     seen: list[dict] = []
@@ -221,7 +222,7 @@ async def _native_steak(session: MineflayerProcessSession, server, *,
     }
 
 
-def _read_world_receipts(server_log: Path) -> dict:
+def _read_world_receipts(server_log: Path, *, max_path_blocks: float = 2) -> dict:
     lines = server_log.read_text(encoding="utf-8").splitlines()
     enabled = [x for x in lines if "M02_DEV_ONLY: candidate physics" in x]
     body = [x for x in lines if "M02_DEV_BODY sampled_tick=" in x]
@@ -240,7 +241,7 @@ def _read_world_receipts(server_log: Path) -> dict:
             raise M02DevRejected("missing typed real packet movement evidence")
         blocks += float(distance.group(1))
         charged += float(cost.group(1))
-    if not 0.5 < blocks < 2:
+    if not 0.5 < blocks < max_path_blocks:
         raise M02DevRejected("World packet distance is not one bounded physical step")
     if abs(charged - 0.01 * blocks) > 1e-7:
         raise M02DevRejected("per-block WALK charge differs from measured path")
@@ -365,6 +366,7 @@ def qualification_asset_preflight(asset_root: Path) -> dict:
 async def run(
     output_dir: Path, paper_jar: Path, paper_sha: str,
     plugin_jar: Path, plugin_sha: str, *, confirmation: str,
+    forage_dev: bool = False,
 ) -> int:
     report: dict = {
         "milestone": "M0.2_PAPER_DEV",
@@ -376,6 +378,7 @@ async def run(
         "physical_world": "NOT_RUN",
         "m0_virtual_ledger_used": False,
         "steak": "cooked_beef",
+        "scenario": "PAPER_NATIVE_GROUND_FORAGE" if forage_dev else "PAPER_STEAK_FIXTURE",
         "minecraft_version": MINECRAFT_VERSION,
     }
     root = None
@@ -448,10 +451,25 @@ async def run(
         _command(server, "gamerule doMobSpawning false")
         _command(server, "gamemode survival RelaySelf")
         await server.stdin.drain()
-        report["stage"] = "S50_GOVERNED_ONE_BLOCK_MOVE"
-        report["movement"] = await _motor_walk(session)
-        report["stage"] = "S51_GOVERNED_STEAK_EAT"
-        report["eating"] = await _native_steak(session, server)
+        if forage_dev:
+            from adapters.mineflayer.m02_paper_dev.paper_foraging_dev import (
+                paper_ground_forage,
+            )
+
+            report["stage"] = "PAPER_L0_GROUND_SEEK"
+            progress: dict = {}
+            report["ground_foraging_attempt"] = progress
+            report["ground_foraging"] = await paper_ground_forage(
+                session, server, issuer=_issue, provenance=_p,
+                trace=progress,
+            )
+            report["stage"] = "S51_GOVERNED_PICKED_STEAK_EAT"
+            report["eating"] = await _native_steak(session, server, preowned=True)
+        else:
+            report["stage"] = "S50_GOVERNED_ONE_BLOCK_MOVE"
+            report["movement"] = await _motor_walk(session)
+            report["stage"] = "S51_GOVERNED_STEAK_EAT"
+            report["eating"] = await _native_steak(session, server)
         report["stage"] = "PHYSICAL_SOURCE_COLLECTION"
         report["owner_status"] = "PASS"
         rc = 0
@@ -496,7 +514,9 @@ async def run(
             server_log = output_dir / "paper_server.log"
             if rc == 0:
                 try:
-                    report["paper_native_diagnostics"] = _read_world_receipts(server_log)
+                    report["paper_native_diagnostics"] = _read_world_receipts(
+                        server_log, max_path_blocks=16 if forage_dev else 2,
+                    )
                     report["status"] = "PASS"
                     report["classification"] = "M02_PAPER_DEV_ONLY_PHYSICS_OBSERVED"
                 except Exception as exc:
@@ -523,6 +543,8 @@ async def run(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="M0.2 Paper DEV or OFFLINE qualification asset preflight")
+    parser.add_argument("--forage-dev", action="store_true",
+                        help="new disposable Paper-only L0 SEEK→S50 MOVE→pickup→EAT DEV")
     parser.add_argument("--qualification-preflight", action="store_true",
                         help="read-only four-asset S check; NO World start or qualification")
     parser.add_argument("--asset-root", type=Path,
@@ -538,6 +560,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.asset_root is None or any(v is not None for v in (
             args.output_dir, args.paper_jar, args.paper_sha256, args.plugin_jar,
             args.plugin_sha256, args.confirm,
+            True if args.forage_dev else None,
         )):
             parser.error("qualification preflight accepts ONLY --asset-root; no DEV/World options")
         try:
@@ -563,6 +586,7 @@ def main(argv: list[str] | None = None) -> int:
     return asyncio.run(run(
         args.output_dir, args.paper_jar, args.paper_sha256,
         args.plugin_jar, args.plugin_sha256, confirmation=args.confirm,
+        forage_dev=args.forage_dev,
     ))
 
 

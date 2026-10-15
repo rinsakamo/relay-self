@@ -130,6 +130,28 @@ jobs:
             --plugin-jar "$PWD/$PLUGIN" \
             --plugin-sha256 "$PLUGIN_SHA" \
             --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD
+      - name: M0.2 Paper native L0 SEEK to MOVE to pickup to EAT — separate DEV World
+        env:
+          DEV_FORAGE_EVIDENCE: "/tmp/m02-paper-forage-${{ github.run_id }}-${{ github.run_attempt }}"
+        run: |
+          PLUGIN=adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
+          PLUGIN_SHA="$(sha256sum "$PLUGIN" | awk '{print $1}')"
+          python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev \
+            --forage-dev \
+            --output-dir "$DEV_FORAGE_EVIDENCE" \
+            --paper-jar "${{ steps.paper.outputs.jar }}" \
+            --paper-sha256 "${{ steps.paper.outputs.sha256 }}" \
+            --plugin-jar "$PWD/$PLUGIN" \
+            --plugin-sha256 "$PLUGIN_SHA" \
+            --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD
+      - name: Preserve forage DEV evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m02-paper-forage-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/m02-paper-forage-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: warn
+          retention-days: 7
       - name: Preserve original DEV evidence even if real World failed
         if: always()
         uses: actions/upload-artifact@v4
