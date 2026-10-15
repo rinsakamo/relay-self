@@ -13,7 +13,6 @@ from experiments.metabolism_m02_exhaustion import (
     NATIVE_REQUIRED,
     UNITS,
     M02Rejected,
-    Rate,
     bill_event,
     bill_world_tick,
     cost,
