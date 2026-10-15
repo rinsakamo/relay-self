@@ -237,3 +237,21 @@ def test_native_stop_must_match_single_session_and_seq(tmp_path):
     path.write_text("".join(json.dumps(x)+"\n" for x in lines))
     with pytest.raises(q.QualificationBlocked):
         q._terminal_native(path, "a")
+
+
+def test_qualification_wrong_java_prelaunch_does_not_consume(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+
+    root = _assets(tmp_path, monkeypatch)
+    monkeypatch.setattr(q.shutil, "which", lambda _: "/usr/bin/java")
+    monkeypatch.setattr(q.subprocess, "run", lambda *_a, **_k:
+                        SimpleNamespace(returncode=0, stdout="",
+                                        stderr='openjdk version "17.0.16"'))
+    with pytest.raises(q.QualificationBlocked, match="Java 21"):
+        asyncio.run(q.run(asset_root=root, output_root=tmp_path / "never",
+                          confirm=q.CONFIRM))
+    assert not (tmp_path / "never").exists()
+    monkeypatch.setattr(q.subprocess, "run", lambda *_a, **_k:
+                        SimpleNamespace(returncode=0, stdout="",
+                                        stderr='openjdk version "21.0.9"'))
+    assert q._java21_runtime()["java_major"] == "21"
