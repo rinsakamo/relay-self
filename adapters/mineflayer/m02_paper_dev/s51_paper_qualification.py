@@ -11,9 +11,11 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import secrets
 import shutil
 import socket
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -105,6 +107,27 @@ def check_assets(root: Path) -> dict[str, str]:
     return hashes
 
 
+
+def _java21_runtime() -> dict[str, str]:
+    """Fail before creating a World or consuming a grant on wrong PATH Java."""
+    executable = shutil.which("java")
+    if executable is None:
+        raise QualificationBlocked("Java 21 executable absent from PATH")
+    try:
+        result = subprocess.run(
+            [executable, "-version"], capture_output=True,
+            text=True, timeout=12, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise QualificationBlocked("Java runtime preflight unavailable") from exc
+    version_text = (result.stderr + "\n" + result.stdout).strip()
+    parsed = re.search(r'(?:openjdk|java) version "(\\d+)(?:[."]|$)', version_text)
+    if result.returncode != 0 or parsed is None or parsed.group(1) != "21":
+        raise QualificationBlocked("Paper 1.21.8 requires Java 21, not installed PATH Java")
+    return {"java_executable": str(Path(executable).resolve()),
+            "java_major": "21"}
+
+
 def _port_unused() -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         return sock.connect_ex((SERVER_HOST, SERVER_PORT)) != 0
@@ -168,6 +191,7 @@ async def run(*, asset_root: Path, output_root: Path, confirm: str) -> int:
     if confirm != CONFIRM:
         raise QualificationBlocked("single-run qualifier confirmation absent")
     pins = check_assets(asset_root)
+    receipt["java_runtime_preflight"] = _java21_runtime()
     if (not output_root.is_absolute() or output_root.exists()
             or not output_root.parent.is_dir()
             or output_root.parent.is_symlink()
