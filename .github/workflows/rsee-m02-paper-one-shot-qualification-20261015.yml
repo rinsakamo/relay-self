@@ -105,6 +105,7 @@ jobs:
           PY
       - name: Both S and R read-only preflight must agree before new World
         run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
           PYTHONPATH="r/src:r/tests:r" python -m experiments.standard_env.m02_paper_preworld \
             --asset-root "$RUNNER_TEMP/m02-qual-assets" \
             | tee "$RUNNER_TEMP/m02-qualification/r-preworld.json"
