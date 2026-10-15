@@ -15,11 +15,9 @@ import secrets
 import shutil
 import socket
 import tempfile
-from dataclasses import asdict
 from pathlib import Path
 
 from adapters.mineflayer.m02_paper_dev import s51_paper_physics_dev as dev
-from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
 from adapters.mineflayer.s31a_real_server_ci import (
     BOT_USERNAME, MINECRAFT_VERSION, SERVER_HOST, SERVER_PORT,
