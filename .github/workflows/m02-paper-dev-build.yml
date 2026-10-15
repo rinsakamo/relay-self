@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 20
     env:
       PYTHONPATH: "src:tests:."
-      DEV_EVIDENCE: "${{ runner.temp }}/m02-paper-${{ github.run_id }}-${{ github.run_attempt }}"
+      DEV_EVIDENCE: "/tmp/m02-paper-${{ github.run_id }}-${{ github.run_attempt }}"
     steps:
       - uses: actions/checkout@v4
         with:
