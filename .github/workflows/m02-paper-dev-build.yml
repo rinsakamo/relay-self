@@ -1,0 +1,32 @@
+name: M0.2 Paper DEV plugin compile
+on:
+  push:
+    branches:
+      - self/product-self-one-command-20261010
+    paths:
+      - 'adapters/mineflayer/m02_paper_dev/**'
+      - '.github/workflows/m02-paper-dev-build.yml'
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/m02_paper_dev/**'
+      - '.github/workflows/m02-paper-dev-build.yml'
+permissions:
+  contents: read
+jobs:
+  paper-api-compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: adapters/mineflayer/m02_paper_dev/pom.xml
+      - name: Compile offline Paper API target
+        run: mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+      - name: Verify enabled by default false and no server is started
+        run: |
+          grep -q '^dev-enabled: false' adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml
+          test -f adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
