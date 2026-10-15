@@ -5,14 +5,17 @@ import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityExhaustionEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -40,13 +43,16 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private long modifiedEvents = 0;
     private long observedWalkEvents = 0;
     private long observedSprintEvents = 0;
+    private long observedMotionPackets = 0;
+    private double observedMotionBlocks = 0;
+    private double chargedMotionExhaustion = 0;
 
     private record Rule(String unit, double standard, boolean nativeValue,
                         double multiplier, double additional, boolean enabled) {
         double perEvent(double nativeExhaustion) {
-            // Movement reasons are per centimetre in the Paper event API.
-            // A numeric standard is in exhaustion per block; native baseline
-            // is already the original per-event exhaustion amount.
+            // Source exhaustion event values are NOT evidence of distance.
+            // Numeric land-motion rules use true packet displacement instead;
+            // this method only handles other original native events.
             double q = unit.equals("block") ? 0.01 : 1.0;
             double baseline = nativeValue ? nativeExhaustion : standard * q;
             double extra = additional * q;
@@ -178,13 +184,79 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                         + " exhaustion=" + p.getExhaustion()
                         + " events=" + modifiedEvents
                         + " walk_events=" + observedWalkEvents
-                        + " sprint_events=" + observedSprintEvents);
+                        + " sprint_events=" + observedSprintEvents
+                        + " motion_packets=" + observedMotionPackets
+                        + " motion_blocks=" + observedMotionBlocks
+                        + " motion_charge=" + chargedMotionExhaustion);
                 }
             }, 1L, 1L);
             getLogger().warning("M02_DEV_ONLY: candidate physics, not qualified by R/V");
         } catch (RuntimeException ex) {
             getLogger().severe("M02_DEV_DISABLED: " + ex.getMessage());
             Bukkit.getPluginManager().disablePlugin(this);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onLandMotion(PlayerMoveEvent event) {
+        if (event instanceof PlayerTeleportEvent || event.getTo() == null) {
+            return;
+        }
+        Player player = event.getPlayer();
+        if (!player.getName().equals(target) || player.isDead()
+                || player.getGameMode() != GameMode.SURVIVAL || player.isInWater()) {
+            // Water causes use source-variable native events until qualified.
+            return;
+        }
+        Location from = event.getFrom();
+        Location to = event.getTo();
+        if (from.getWorld() != to.getWorld()) {
+            return;
+        }
+        double dx = to.getX() - from.getX();
+        double dz = to.getZ() - from.getZ();
+        double blocks = Math.hypot(dx, dz);
+        if (!Double.isFinite(blocks) || blocks == 0) {
+            return;
+        }
+        // A single PlayerMoveEvent spanning >1 block could be teleport,
+        // knockback or velocity not caused by deliberate locomotion.
+        // Do NOT silently charge it as WALK.
+        if (blocks > 1.0) {
+            getLogger().warning("M02_DEV_MOTION_UNCLASSIFIED displacement=" + blocks);
+            return;
+        }
+        EntityExhaustionEvent.ExhaustionReason reason =
+            player.isSprinting() ? EntityExhaustionEvent.ExhaustionReason.SPRINT :
+            player.isSneaking() ? EntityExhaustionEvent.ExhaustionReason.CROUCH :
+            EntityExhaustionEvent.ExhaustionReason.WALK;
+        Rule rule = rules.get(reason);
+        if (rule == null) {
+            getLogger().severe("missing movement rule; disabling plugin");
+            Bukkit.getPluginManager().disablePlugin(this);
+            return;
+        }
+        double charge = blocks * (rule.standard * rule.multiplier + rule.additional);
+        if (!Double.isFinite(charge) || charge < 0 || charge > Float.MAX_VALUE) {
+            getLogger().severe("invalid movement billing; disabling plugin");
+            Bukkit.getPluginManager().disablePlugin(this);
+            return;
+        }
+        double after = player.getExhaustion() + charge;
+        if (!Double.isFinite(after) || after > Float.MAX_VALUE) {
+            Bukkit.getPluginManager().disablePlugin(this);
+            return;
+        }
+        player.setExhaustion((float) after);
+        observedMotionPackets++;
+        observedMotionBlocks += blocks;
+        chargedMotionExhaustion += charge;
+        if (observedMotionPackets <= 300) {
+            getLogger().info("M02_DEV_MOTION id=" + observedMotionPackets
+                + " reason=" + reason + " blocks=" + blocks
+                + " billed=" + charge
+                + " cumulative_blocks=" + observedMotionBlocks
+                + " cumulative_billed=" + chargedMotionExhaustion);
         }
     }
 
@@ -202,7 +274,15 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
         }
         try {
             float nativeValue = event.getExhaustion();
-            float applied = (float) rule.perEvent(nativeValue);
+            // Actual Paper move events do not correspond 1:1 to centimetres.
+            // For land locomotion, cancel this event's vanilla charge and
+            // charge measured displacement exactly once in PlayerMoveEvent.
+            // Dynamic water events preserve their original native basis.
+            boolean landMotion = !player.isInWater()
+                && (event.getExhaustionReason() == EntityExhaustionEvent.ExhaustionReason.WALK
+                || event.getExhaustionReason() == EntityExhaustionEvent.ExhaustionReason.CROUCH
+                || event.getExhaustionReason() == EntityExhaustionEvent.ExhaustionReason.SPRINT);
+            float applied = landMotion ? 0.0f : (float) rule.perEvent(nativeValue);
             event.setExhaustion(applied);
             modifiedEvents++;
             if (event.getExhaustionReason() == EntityExhaustionEvent.ExhaustionReason.WALK) {
