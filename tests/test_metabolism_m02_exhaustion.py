@@ -17,6 +17,7 @@ from experiments.metabolism_m02_exhaustion import (
     bill_world_tick,
     cost,
     load_profile,
+    observed_land_motion_cost,
     paper_event_cost,
     parse_profile,
     start_audit,
@@ -262,3 +263,20 @@ def test_one_block_is_one_action_distance_not_100_self_decisions(profile):
     # Basal expense depends only on real World ticks, not steering commands.
     assert cost(profile, "BASAL", 20) == pytest.approx(0.02)
 
+
+def test_physical_paper_event_count_is_not_physical_displacement(profile):
+    # Actual isolated Paper 1.21.8 DEV: S50 MOVE progressed about 1.042
+    # blocks, yet the original Paper exhaust callback had only 12 WALK
+    # events. The source event-count is NOT a centimeter odometer.
+    actual_blocks = 1.0424312164314422
+    billed = observed_land_motion_cost(profile, "WALK", actual_blocks)
+    wrong_event_count_assumption = paper_event_cost(
+        profile, "WALK", native_event_exhaustion=0, distance_centimeters=12
+    )
+    assert billed == pytest.approx(0.010424312164314422)
+    assert wrong_event_count_assumption == pytest.approx(0.0012)
+    assert billed > wrong_event_count_assumption * 8
+    with pytest.raises(M02Rejected, match="unadmitted"):
+        observed_land_motion_cost(profile, "REGEN", actual_blocks)
+    with pytest.raises(M02Rejected, match="positive finite"):
+        observed_land_motion_cost(profile, "WALK", float("inf"))
