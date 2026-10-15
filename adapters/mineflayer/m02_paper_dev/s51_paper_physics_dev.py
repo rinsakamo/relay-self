@@ -256,6 +256,47 @@ def _read_world_receipts(server_log: Path) -> dict:
 
 
 
+async def _save_and_capture_initial_world(
+    server, world: Path, evidence_root: Path,
+) -> dict:
+    """Create a pre-Action immutable raw World seed receipt in isolated DEV/QUAL.
+
+    Paper may not materialize level.dat by the server-ready marker. A flush
+    happens BEFORE the first issued World Action and while S owns the World.
+    """
+    level = world / "s31a-ephemeral" / "level.dat"
+    if (server.returncode is not None or server.stdin is None
+            or not evidence_root.is_dir()
+            or (evidence_root / "initial_world_level.dat").exists()):
+        raise M02DevRejected("not an owned pre-Action World snapshot scope")
+    _command(server, "save-all flush")
+    await server.stdin.drain()
+    for _ in range(100):
+        if level.is_file() and not level.is_symlink():
+            info = level.stat()
+            if 16 <= info.st_size <= 16 * 1024 * 1024:
+                raw = level.read_bytes()
+                after = level.stat()
+                if (len(raw) != info.st_size
+                        or (info.st_ino, info.st_mtime_ns) !=
+                           (after.st_ino, after.st_mtime_ns)):
+                    raise M02DevRejected("initial level.dat changed during read")
+                target = evidence_root / "initial_world_level.dat"
+                with target.open("xb") as output:
+                    output.write(raw)
+                digest = hashlib.sha256(raw).hexdigest()
+                if _sha256(target) != digest:
+                    raise M02DevRejected("snapshot original copy mismatch")
+                return {
+                    "source_world_path": "s31a-ephemeral/level.dat",
+                    "sha256": digest,
+                    "size_bytes": len(raw),
+                    "snapshot_phase": "AFTER_SERVER_READY_SAVE_FLUSH_BEFORE_ACTION",
+                }
+        await asyncio.sleep(0.15)
+    raise M02DevRejected("pre-Action level.dat absent after save-all flush")
+
+
 def qualification_asset_preflight(asset_root: Path) -> dict:
     """Read-only S source admission packet; NEVER launches or authorizes World.
 
@@ -387,6 +428,9 @@ async def run(
         server, collector, _ = await _ready_server(world, jar, server_log)
         report["physical_world"] = "STARTED_NEW_DEV_PAPER"
         report["java_pid"] = server.pid
+        report["stage"] = "INITIAL_WORLD_PREACTION_SOURCE_CHECKPOINT"
+        report["initial_world_receipt"] = await _save_and_capture_initial_world(
+            server, world, output_dir)
         report["stage"] = "S51_EXISTING_RECORDED_SOURCE"
         session_type = _recording_session_type(native_file, commands_file)
         session = await session_type.launch(MineflayerLaunchConfig(
