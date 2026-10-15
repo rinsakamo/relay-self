@@ -7,6 +7,9 @@ on:
     paths:
       - '.github/workflows/rsee-m02-paper-original-readback.yml'
       - 'experiments/standard_env/m02_paper_dev_audit.py'
+      - 'experiments/standard_env/m02_paper_preworld.py'
+      - 'experiments/standard_env/m02_paper_preworld_profile.json'
+      - 'tests/test_rsee_m02_paper_preworld.py'
       - 'tests/test_rsee_m02_paper_dev_audit.py'
       - 'docs/rsee-m02-paper-dev-original-handoff.md'
   pull_request:
@@ -14,6 +17,9 @@ on:
     paths:
       - '.github/workflows/rsee-m02-paper-original-readback.yml'
       - 'experiments/standard_env/m02_paper_dev_audit.py'
+      - 'experiments/standard_env/m02_paper_preworld.py'
+      - 'experiments/standard_env/m02_paper_preworld_profile.json'
+      - 'tests/test_rsee_m02_paper_preworld.py'
       - 'tests/test_rsee_m02_paper_dev_audit.py'
       - 'docs/rsee-m02-paper-dev-original-handoff.md'
 
