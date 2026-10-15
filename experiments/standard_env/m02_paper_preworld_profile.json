@@ -1,0 +1,30 @@
+{
+  "schema": "RSEE_M02_PAPER_PREWORLD_PROFILE_V1",
+  "qualification_status": "NOT_QUALIFIED",
+  "science_status": "NOT_RUN",
+  "production_status": "NO_GO",
+  "minecraft_version": "1.21.8",
+  "server_flavor": "Paper",
+  "source_s_head": "52d9bbf1b4ee2e8ff810d213e36d0caf347652ee",
+  "reference_m_head": "4c2f549c6b9ed3fbe2ee04230526ac5577da8feb",
+  "physical_dev_source_artifact_id": 11942793326,
+  "physical_dev_source_run_id": 38668633950,
+  "physical_dev_r_archive_artifact_id": 11954211513,
+  "source_classification": "RSEE_M02_PAPER_DEV_ORIGINAL_SOURCE_REVIEW_ONLY",
+  "required_jvm_major": 21,
+  "required_node_major": 22,
+  "owner_player": "RelaySelf",
+  "world_mode": "NEW_SEPARATE_ISOLATED_PAPER_CLONE_ONLY",
+  "vanilla_golden_replacement_allowed": false,
+  "virtual_m0_ledger_allowed": false,
+  "cognition_cost_enabled": false,
+  "rates_calibration": "candidate_uncalibrated",
+  "basal_exhaustion_per_world_tick_candidate": 0.001,
+  "walk_exhaustion_per_observed_block_candidate": 0.01,
+  "expected_assets_sha256": {
+    "paper-1.21.8.jar": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "relay-metabolism-paper-dev.jar": "0ed8a00a7ebf577bdbea361e2c6facf7ed4b24001c017d362823da5cb60398e5",
+    "config.yml": "e9361faa7eac2e3c63bf2f6760765f7f8ae5a4b3631c6819f7ad8ac5c04a540e",
+    "server.properties": "11aaf903bae3d92f3b667f464f301a513bee559f04acc33d722c7a2e966d03ae"
+  }
+}
