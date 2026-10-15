@@ -235,9 +235,11 @@ async def run(*, asset_root: Path, output_root: Path, confirm: str) -> int:
             world, world / "paper-1.21.8.jar", output_root / "paper_server.log")
         receipt["new_world"] = "NEW_ISOLATED_PAPER"
         receipt["java_pid"] = java.pid
-        level = world / "s31a-ephemeral" / "level.dat"
-        if level.is_file():
-            receipt["initial_level_dat_sha256"] = _sha(level)
+        receipt["stage"] = "INITIAL_WORLD_CHECKPOINT_BEFORE_ACTION"
+        snapshot = await dev._save_and_capture_initial_world(
+            java, world, output_root)
+        receipt["initial_world_receipt"] = snapshot
+        receipt["initial_level_dat_sha256"] = snapshot["sha256"]
         receipt["stage"] = "ONE_NODE_SESSION"
         receipt["node_session_count"] = 1
         session_type = _recording_session_type(native_file, commands_file)
