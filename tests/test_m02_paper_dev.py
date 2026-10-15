@@ -546,3 +546,49 @@ def test_v7_reject_changed_baseline_unknown_arm_and_unsafe_destination(tmp_path)
     with pytest.raises(v7.V7ProfileRejected):
         v7.stage_candidate_configs(raw, Path("relative-candidate-dir"))
     assert not (tmp_path / "not-absolute").exists()
+
+
+def test_paper_b1_memory_original_is_immediate_append_only(tmp_path):
+    from adapters.mineflayer.m02_paper_dev.paper_foraging_dev import (
+        PaperForageRejected,
+        append_b1_original,
+    )
+    root = tmp_path / "original-b1.jsonl"
+    with root.open("xb") as stream:
+        first = {
+            "event": "BLOCKED_MEMORY_RETAINED", "session_id": "src",
+            "blocked_action_id": "S50-1", "memory": {
+                "memory_id": "m", "content": '{"effect_kind":"BLOCKED"}',
+            },
+        }
+        append_b1_original(stream, first)
+        saved = root.read_bytes()
+        assert len(saved.splitlines()) == 1
+        second = {
+            "event": "LATERAL_ACTION_ISSUED", "session_id": "src",
+            "action_id": "S50-2", "source_probe_seq": 44,
+            "memory_content_sha256": hashlib.sha256(
+                first["memory"]["content"].encode("utf-8"),
+            ).hexdigest(),
+        }
+        append_b1_original(stream, second)
+    rows = [json.loads(x) for x in root.read_text().splitlines()]
+    assert rows == [first, second]
+    assert root.read_bytes().startswith(saved)
+    with pytest.raises(PaperForageRejected):
+        with root.open("ab") as stream:
+            append_b1_original(stream, {
+                "event": "RETROSPECTIVE_MEMORY_FABRICATION",
+            })
+
+
+def test_paper_b1_missing_memory_stream_fails_before_world_use():
+    from adapters.mineflayer.m02_paper_dev.paper_foraging_dev import (
+        PaperForageRejected,
+        paper_ground_forage,
+    )
+    with pytest.raises(PaperForageRejected, match="source|switch|fresh"):
+        asyncio.run(paper_ground_forage(
+            None, None, issuer=None, provenance=None,
+            trace={}, b1_retention=True, b1_memory_original=None,
+        ))

@@ -392,7 +392,7 @@ async def run(
         "minecraft_version": MINECRAFT_VERSION,
     }
     root = None
-    server = collector = session = native_file = commands_file = None
+    server = collector = session = native_file = commands_file = b1_memory_file = None
     rc = 2
     try:
         if confirmation != M02_CONFIRM:
@@ -412,6 +412,8 @@ async def run(
         server_log = output_dir / "paper_server.log"
         native_file = (output_dir / "original_native.jsonl").open("xb")
         commands_file = (output_dir / "owner_commands.jsonl").open("xb")
+        if b1_retention is not None:
+            b1_memory_file = (output_dir / "paper_b1_memory_original.jsonl").open("xb")
         (output_dir / "owned-worlds").mkdir()
         root = tempfile.TemporaryDirectory(prefix="m02-paper-dev-",
                                             dir=str(output_dir / "owned-worlds"))
@@ -475,6 +477,7 @@ async def run(
                 session, server, issuer=_issue, provenance=_p,
                 trace=progress,
                 b1_retention=b1_retention,
+                b1_memory_original=b1_memory_file,
             )
             report["stage"] = "S51_GOVERNED_PICKED_STEAK_EAT"
             report["eating"] = await _native_steak(session, server, preowned=True)
@@ -514,7 +517,7 @@ async def run(
                 report["cleanup_failure"] = "java: " + str(exc)
                 rc = 1
                 report["owner_status"] = "FAIL"
-        for stream in (native_file, commands_file):
+        for stream in (native_file, commands_file, b1_memory_file):
             if stream is not None:
                 stream.close()
         if root is not None:
@@ -544,9 +547,19 @@ async def run(
             log = output_dir / "paper_server.log"
             report["evidence_hashes"] = {
                 x.name: _sha256(x)
-                for x in (raw, log, output_dir / "owner_commands.jsonl")
-                if x.is_file()
+                for x in (
+                    raw, log, output_dir / "owner_commands.jsonl",
+                    output_dir / "paper_b1_memory_original.jsonl",
+                ) if x.is_file()
             }
+            if b1_retention is not None:
+                memory_source = output_dir / "paper_b1_memory_original.jsonl"
+                report["b1_memory_original"] = {
+                    "path": memory_source.name,
+                    "sha256": report["evidence_hashes"].get(memory_source.name),
+                    "source_kind": "S_IMMEDIATE_APPEND_BEFORE_NEXT_MOVE_NOT_R_ATTESTED",
+                    "retention_enabled": b1_retention,
+                }
             (output_dir / "m02_report.json").write_text(
                 json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2)+"\n",
                 encoding="utf-8",

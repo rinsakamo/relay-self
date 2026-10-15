@@ -222,3 +222,25 @@ this **new future-only product bridge** is not automatically R-qualified.
 The full Paper B0/B1 `SEEK → MOVE → pickup → EAT` loop is a subsequent DEV
 integration, not claimed here.
 \n## Paper native ground forage — new isolated DEV scenario\n\nRun the existing Paper DEV CLI with `--forage-dev` and a fresh root to test\n`native World hunger → L0 SEEK → S50 governed MOVE → source-consistent pickup → L0 EAT → S51 governed EAT`.\nThe operator transparently stages one cooked_beef dropped item and induced Hunger,\nnot an autonomous food source. Paper-native physiology is the only actual\nmetabolic source; no B0EnergyLedger, virtual M0 energy or M0/M0.1 credit.\nThe source only proves an item disappearance with a one-item cooked_beef\ninventory increase, **not** playerCollect strict causality or unknown item\nmetadata. If eight bounded MOVE Actions cannot get there, the run fails and\nretains partial outcomes. Default original steak DEV and frozen third R\nqualification issuer are unchanged. New Paper forage remains **DEV_ONLY**.\n\n### Real Paper forage diagnostic correction\n\nA first fresh Paper forage DEV successfully recorded actual L0 SEEK, two\ngoverned S50 MOVE OUTCOMEs, a native inventory+item-disappearance pickup\ncontrast, and one S51 steak EAT. Its final Paper receipt **correctly failed**\nbecause the original one-block check required an `EntityExhaustionEvent(WALK)`\ncallback even when **14 real `PlayerMoveEvent` packets** had metered\n2.1462877746 observed blocks / 0.02146287775 exhaustion and emitted **zero**\nnative WALK callbacks. Native WALK callback count is not a distance or an\nexhaustion source and can genuinely be zero over bounded movement.\n\nOnly the isolated `--forage-dev` multi-MOVE diagnostic now allows zero\nnative WALK callbacks **when** real coordinate packets, bounded positive\ndistance, basal samples, exact 0.01/block billed ratio and plugin activation\nare independently present. Any *observed* native WALK event must still\nbe replacement-zero; missing packets or incorrect billing fails closed.\nThe pre-existing one-step Paper physical verification keeps its original\nstrict callback requirement. This is DEV source acceptance, **not** a\nretrospective upgrade of that failed run or any prior R qualification.\n\n## Paper B1 local adaptation (isolated ON/OFF disposable DEV)\n\nRun `--forage-dev --paper-b1 on` or `--forage-dev --paper-b1 off`,\nwith new, separate absolute output roots and the same explicit disposable DEV\nconfirmation as the Paper-only B0 fixture. A direct 2-block-high stone obstacle\nis requested between an operator-staged single cooked_beef item and the player.\nOnly an actual governed native S50 `SeekConsequence(BLOCKED)`, **not**\nthe operator's `fill` write, counts as evidence. Existing source-scoped\n`B1LocalCandidate` retains and reads a single Memory for ON to select -Z;\nOFF retains no Memory and chooses fixed +Z. Lateral movement and later pickup\ncontinue through the original S50/S51 owners, Paper-native BASAL/WALK rates;\nno virtual M0/M0.1 ledger is involved. Eight total MOVE attempts bounded.\n\nEach run independently requires exactly one authentic BLOCKED, at least one\nprogressing lateral Action, a native source-consistent inventory pickup and\nissued EAT. Without this it is a **failed DEV run**, not a proof by request.\nOFF is a cheaper fixed reflex baseline, not a counterfactual proof: different\nspawn/seed states cannot establish retained Memory's causal advantage.\nThe new DEV artifact remains outside the frozen third R-QUALIFIED scope;\nstrict playerCollect causal evidence, behavior benefit, V science and\nproduction are not implied. The Paper workflow preserves failed-run originals\nfor both retention switches and marks the job FAIL if either is unsuccessful.\n
+
+## Prospective Paper B1 Memory original journal
+
+New disposable `--forage-dev --paper-b1 on|off` runs now create
+`paper_b1_memory_original.jsonl` with **exclusive create** before World
+starts. At the first genuinely governed native BLOCKED the S producer
+immediately persists the actual retained Memory object (id, verbatim content,
+source/integration provenance) or an explicit null for OFF, using append,
+flush, and fsync **before the next MOVE**. Each subsequent lateral Action
+ISSUED also saves the session/native source seq, chosen waypoint, Action id,
+and SHA256 of the retained content (or null for OFF) before executing it.
+A failed run retains partial entries; absent/malformed journal is not
+a qualification. The producer report hashes the journal original alongside
+native, command, and Paper originals, without promoting or rewriting any
+historic R-qualified source. `Memory` is an S/L-owned retained observation,
+not a new Paper physics currency or an automatic science benefit.
+
+This is a **new prospective DEV source emitter**. It cannot retroactively add
+Memory bytes to previous Paper B1 ON/OFF originals, replace strict pickup
+provenance, certify identical World starts, or qualify independent R/V claims.
+R must separately inspect new original bytes, Action provenance, and host
+termination before any new scoped qualification.

@@ -9,8 +9,12 @@ No M0/M0.1 virtual ledger exists on this path.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import math
-from typing import Any, Callable
+import os
+from dataclasses import asdict
+from typing import Any, BinaryIO, Callable
 
 from adapters.mineflayer.b0_ground_foraging import GroundTarget
 from adapters.mineflayer.b1_local_adaptation import B1LocalCandidate
@@ -25,6 +29,24 @@ from relay_self.seek_waypoint import SeekCursor, SeekStatus
 
 class PaperForageRejected(ValueError):
     """A fresh Paper-only source did not close the bounded physical forage."""
+
+
+def append_b1_original(stream: BinaryIO, record: dict[str, Any]) -> None:
+    """Persist original S memory/choice bytes *when observed*, before next MOVE.
+
+    Source evidence only; this is not independent R provenance attestation.
+    """
+    if not isinstance(record, dict) or record.get("event") not in (
+        "BLOCKED_MEMORY_RETAINED", "LATERAL_ACTION_ISSUED",
+    ):
+        raise PaperForageRejected("invalid Paper B1 original journal event")
+    raw = (json.dumps(record, sort_keys=True, ensure_ascii=False, allow_nan=False)
+           + "\n").encode("utf-8")
+    if len(raw) > 32768:
+        raise PaperForageRejected("oversized Paper B1 original journal event")
+    stream.write(raw)
+    stream.flush()
+    os.fsync(stream.fileno())
 
 
 def cooked_beef_count(probe: MineflayerObservation) -> int:
@@ -75,10 +97,13 @@ async def paper_ground_forage(
     trace: dict[str, Any],
     max_actions: int = 8,
     b1_retention: bool | None = None,
+    b1_memory_original: BinaryIO | None = None,
 ) -> dict[str, Any]:
     """Operator-staged item fixture, real hungry L0, no B0 EnergyLedger."""
     if (not isinstance(trace, dict) or trace or max_actions != 8
-            or (b1_retention is not None and type(b1_retention) is not bool)):
+            or (b1_retention is not None and type(b1_retention) is not bool)
+            or (b1_retention is None and b1_memory_original is not None)
+            or (b1_retention is not None and b1_memory_original is None)):
         raise PaperForageRejected("fresh bounded Paper DEV trace and explicit B1 switch required")
     if server.stdin is None:
         raise PaperForageRejected("owned Paper console required")
@@ -196,6 +221,22 @@ async def paper_ground_forage(
             f"m02-paper-forage-intent-{i}", "approach observed single item",
             time_base=200 + i * 20,
         )
+        if b1 is not None and waypoint.goal_id == "b1-local-lateral":
+            memory = b1.cognition.memories[0] if b1.retain else None
+            append_b1_original(b1_memory_original, {
+                "event": "LATERAL_ACTION_ISSUED",
+                "session_id": target.session_id,
+                "action_id": issued.action_id,
+                "source_probe_seq": read.seq,
+                "source_target_entity_id": target.entity_id,
+                "waypoint": {"x": waypoint.target.x, "y": waypoint.target.y,
+                             "z": waypoint.target.z},
+                "memory_content_sha256": (
+                    hashlib.sha256(memory.content.encode("utf-8")).hexdigest()
+                    if memory else None
+                ),
+                "retention_enabled": b1.retain,
+            })
         try:
             effect = await execute_seek_step(session, supervisor, issued, step)
             closed = supervisor.record_outcome(
@@ -225,6 +266,24 @@ async def paper_ground_forage(
                         session, f"m02-paper-b1-blocked-followup-{i:02d}",
                     )
                     b1.record_blocked(read, effect, followup, target)
+                    memory = b1.cognition.memories[0] if b1.retain else None
+                    append_b1_original(b1_memory_original, {
+                        "event": "BLOCKED_MEMORY_RETAINED",
+                        "session_id": target.session_id,
+                        "blocked_action_id": effect.action_id,
+                        "source_before_seq": read.seq,
+                        "effect_after_seq": effect.after_seq,
+                        "correlated_followup_seq": followup.seq,
+                        "source_target_entity_id": target.entity_id,
+                        "memory": (
+                            {"memory_id": memory.memory_id,
+                             "content": memory.content,
+                             "source_provenance": asdict(memory.source_provenance),
+                             "integration_provenance": asdict(memory.integration_provenance)}
+                            if memory else None
+                        ),
+                        "retention_enabled": b1.retain,
+                    })
                 trace["b1_evidence"] = b1.evidence()
             elif effect.kind is SeekConsequenceKind.BLOCKED:
                 raise PaperForageRejected("blocked ground SEEK; B1 route not authorized here")
