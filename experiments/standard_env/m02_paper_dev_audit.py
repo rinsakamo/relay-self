@@ -216,6 +216,20 @@ def inspect(log: bytes, native_raw: bytes, command_raw: bytes,
     first = probe(native, move.get("source_before_seq"))
     last = probe(native, move.get("source_after_seq"))
     require(first["seq"] < last["seq"], "MOVE probe order")
+    appetite = eat.get("appetite_trace")
+    require(type(appetite) is list and appetite
+            and all(type(x) is dict and type(x.get("source_seq")) is int
+                    for x in appetite)
+            and all(appetite[i]["source_seq"] < appetite[i + 1]["source_seq"]
+                    for i in range(len(appetite) - 1)),
+            "missing ordered native appetite observations")
+    appetite_before = probe(native, appetite[-1]["source_seq"])
+    require(appetite_before["seq"] > last["seq"]
+            and appetite_before["snapshot"].get("food") == 13
+            and stock(appetite_before, "cooked_beef") == 3
+            and appetite[-1].get("food") == 13
+            and appetite[-1].get("steak_count") == 3,
+            "no native pre-EAT hunger and steak fixture")
     outcome = eat.get("native_outcome")
     require(type(outcome) is dict
             and outcome.get("action_id") == eat["action_id"]
@@ -228,21 +242,33 @@ def inspect(log: bytes, native_raw: bytes, command_raw: bytes,
             "native EAT report did not show steak/food")
     equip_id = eat["action_id"] + "-equip"
     consume_id = eat["action_id"] + "-consume"
+    child_seq: list[int] = []
     for effect, action_id in [("equip_item", equip_id),
                               ("consume_held", consume_id)]:
+        matches = [n for n in native if n.get("type") == "effect_result"
+                   and n.get("effect") == effect
+                   and n.get("action_id") == action_id
+                   and n.get("result") == "applied"]
         require(sum(c.get("effect") == effect and c.get("action_id") == action_id
                     for c in effects) == 1
-                and sum(n.get("type") == "effect_result"
-                        and n.get("effect") == effect
-                        and n.get("action_id") == action_id
-                        and n.get("result") == "applied" for n in native) == 1,
+                and len(matches) == 1,
                 "missing source-correlated EAT child effect")
+        child_seq.append(matches[0]["seq"])
     after = probe(native, outcome.get("after_probe_seq"))
+    followup = probe(native, eat.get("after_source_seq"))
+    require(appetite_before["seq"] < child_seq[0] < child_seq[1] < after["seq"]
+            <= followup["seq"], "EAT child/probe source order")
     require(after["snapshot"].get("food") == 20
             and stock(after, "cooked_beef") == 2
-            and after["seq"] > last["seq"], "EAT not supported by fresh native")
+            and followup["snapshot"].get("food") == 20
+            and stock(followup, "cooked_beef") == 2
+            and eat.get("food_after_followup") == 20,
+            "EAT not supported by ordered native food and inventory")
     require(finite(eat.get("saturation_after")) >=
             finite(eat.get("saturation_before")), "no saturation recovery")
+    require(math.isclose(finite(eat["saturation_after"]),
+                         finite(followup["snapshot"].get("food_saturation")),
+                         abs_tol=1e-5), "followup saturation not source-matched")
     return {
         "classification": "RSEE_M02_PAPER_DEV_ORIGINAL_SOURCE_REVIEW_ONLY",
         "s_source_head": S_SOURCE_HEAD,
