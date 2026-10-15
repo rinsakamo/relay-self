@@ -65,6 +65,30 @@ measured real-world or production-ready coefficients. The normal baseline for
 vanilla idle/walk is zero. Other numbers match cited gameplay tables, but
 must still be confirmed on the selected version/build and specific Paper source.
 
+## Movement abstraction — 2026-10-15 user-approved
+
+A **Self MOVE/SEEK steering decision is nominally up to one Minecraft block**
+(1 block = 1 nominal meter), NOT one decision or Action per centimeter.
+The existing S50 `SeekWaypoint.max_step_m=1.0` is already the default cap;
+do not change current S49/S50 Action permission/issuance or simulate 100
+individual Action calls to cover one block. A waypoint may intentionally
+request less than one block if closer to the target, and a blocked Action may
+move less or not at all. One block is an **action planning resolution/cap, not
+proof that every issued Action produces exactly 1.0m displacement**.
+
+The Paper server retains its native **per-centimeter** movement exhaustion
+accounting. With M0.2 WALK standard `0.01 exhaustion/block`, each **observed**
+1cm WALK exhaustion event contributes `0.0001`; 100 such events total
+`0.01`, and 40 such events total `0.004`. Never round each observed
+centimeter to a whole block, never charge a requested/failed one-block
+distance, and never levy an additional charge for the single Self choice.
+World tick BASAL is charged once per actual tick throughout the action, no
+matter how many native motion events occur.
+
+These are unit-integrity examples rather than direct native-source proof:
+Paper events, locomotion cause transitions and actual traveled distance
+must still be verified in disposable World evidence.
+
 ## Future Paper 1.21.8 application contract (S/R-owned)
 
 - **One action -> one cost:** For original `EntityExhaustionEvent`, read
