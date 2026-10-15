@@ -18,8 +18,8 @@ from typing import Any
 from experiments.standard_env import m02_paper_dev_audit as source
 from experiments.standard_env import m02_paper_preworld as profile
 
-QUAL_GRANT = "USER_M02_PAPER_QUALIFICATION_20261015_SECOND_ONCE"
-SEED = "2026101502"
+QUAL_GRANT = "USER_M02_PAPER_QUALIFICATION_20261015_THIRD_ONCE"
+SEED = "2026101503"
 NATIVE_NAMES = ("paper_server.log", "original_native.jsonl",
                 "owner_commands.jsonl", "qualification_producer.json",
                 "initial_world_level.dat")
