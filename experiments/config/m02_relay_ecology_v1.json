@@ -41,14 +41,14 @@
       "enabled": true
     },
     "WALK_ON_WATER": {
-      "unit": "event",
+      "unit": "block",
       "standard": "native",
       "multiplier": 1,
       "additional": 0,
       "enabled": true
     },
     "WALK_UNDERWATER": {
-      "unit": "event",
+      "unit": "block",
       "standard": "native",
       "multiplier": 1,
       "additional": 0,
@@ -90,8 +90,8 @@
       "enabled": true
     },
     "REGEN": {
-      "unit": "hp",
-      "standard": 6,
+      "unit": "event",
+      "standard": "native",
       "multiplier": 1,
       "additional": 0,
       "enabled": true
