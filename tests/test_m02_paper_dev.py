@@ -210,6 +210,10 @@ def test_symlink_or_unsafe_output_cannot_start(tmp_path, monkeypatch):
     async def forbidden(*_args, **_kw):
         pytest.fail("physical Java started in offline test")
     monkeypatch.setattr(q, "_ready_server", forbidden)
+    monkeypatch.setattr(
+        q, "_java21_runtime",
+        lambda: {"java_executable": "/synthetic/java21", "java_major": "21"},
+    )
     with pytest.raises(q.QualificationBlocked, match="confirmation"):
         asyncio.run(q.run(
             asset_root=root, output_root=tmp_path / "never",
