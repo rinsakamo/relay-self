@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import json
 
-from experiments.validation import v7_m02_trial_roster as roster
 from experiments.validation import v7_m02_physics as v7
+from experiments.validation import v7_m02_trial_roster as roster
 
 S_RUN = 38819265395
 R_RUN = 38819700537
