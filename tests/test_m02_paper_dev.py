@@ -5,12 +5,14 @@ import asyncio
 import hashlib
 import json
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
 import test_feature_s46_eat as s46
 from adapters.mineflayer.m02_paper_dev import s51_paper_physics_dev as dev
 from adapters.mineflayer.m02_paper_dev import s51_paper_qualification as q
+from adapters.mineflayer.m02_paper_dev import v7_paired_config as v7
 from adapters.mineflayer.m02_paper_dev.native_l0 import PaperL0Rejected, PaperNativeL0
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
     M02_CONFIRM,
@@ -509,3 +511,38 @@ def test_paper_b1_uses_original_retained_source_and_cheap_off_policy():
         assert agent.evidence()["reused_for_lateral_choice"] == int(retention)
         assert agent.evidence()["lateral_choice_count"] == 1
         assert not agent.evidence()["habit_created"]
+
+
+def test_v7_offline_5_arm_candidate_configs_preserve_qualified_baseline(tmp_path):
+    raw = v7.TEMPLATE.read_bytes()
+    configs = {arm: v7.render_arm(raw, arm) for arm in v7.ARMS}
+    assert len(configs) == 5
+    assert configs["BASE_ON"] == configs["SHAM_ON"]
+    assert v7.sha256(configs["BASE_ON"]) == v7.BASELINE_ENABLED_SHA256
+    assert len(set(map(v7.sha256, configs.values()))) == 4
+    assert b"WALK: {unit: block, standard: 0.01, multiplier: 0.0" in configs["WALK_ZERO"]
+    assert b"BASAL: {unit: tick, standard: 0.001, multiplier: 0.0" in configs["BASAL_ZERO"]
+    for data in configs.values():
+        assert b"COGNITION: {unit: work, standard: 0.0, multiplier: 1.0" in data
+        assert b"dev-enabled: true" in data
+    target = tmp_path / "candidate-only"
+    receipt = v7.stage_candidate_configs(raw, target)
+    assert receipt["real_world_starts"] == 0
+    assert receipt["classification"] == "S_V7_M02_FIVE_CANDIDATE_CONFIGS_OFFLINE_ONLY"
+    assert not receipt["science_go"] and not receipt["qualification_reused"]
+    for arm, data in configs.items():
+        assert (target / arm / "config.yml").read_bytes() == data
+    assert set(p.name for p in target.iterdir()) == set(configs) | {"offline-only-manifest.json"}
+    with pytest.raises(v7.V7ProfileRejected):
+        v7.stage_candidate_configs(raw, target)
+
+
+def test_v7_reject_changed_baseline_unknown_arm_and_unsafe_destination(tmp_path):
+    raw = v7.TEMPLATE.read_bytes()
+    with pytest.raises(v7.V7ProfileRejected):
+        v7.render_arm(raw.replace(b"standard: 0.01", b"standard: 0.02"), "BASE_ON")
+    with pytest.raises(v7.V7ProfileRejected):
+        v7.render_arm(raw, "UNREGISTERED")
+    with pytest.raises(v7.V7ProfileRejected):
+        v7.stage_candidate_configs(raw, Path("relative-candidate-dir"))
+    assert not (tmp_path / "not-absolute").exists()
