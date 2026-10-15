@@ -67,6 +67,9 @@ def specimen():
         "eating": {
             "source_session": session, "action_id": "m02-paper-eat-steak-1",
             "action_state": "outcome", "virtual_energy_credit": 0,
+            "appetite_trace": [{"source_seq": 3, "food": 13,
+                                "steak_count": 3, "saturation": 0.0}],
+            "after_source_seq": 7, "food_after_followup": 20,
             "native_outcome": {
                 "action_id": "m02-paper-eat-steak-1", "session_id": session,
                 "consumed_item": "cooked_beef", "count_before": 3,
@@ -106,6 +109,7 @@ def test_source_envelope_independent_arithmetic_and_nonpromotion():
     "native_duplicate", "native_session", "stop_lost",
     "double_shutdown", "eat_child_rejected", "eat_child_duplicate",
     "eat_report_forged", "food_forged", "stock_forged",
+    "hunger_not_present", "bad_eat_child_order", "saturation_forged",
     "movement_billed_low", "movement_cumulative_forged",
     "walk_native_not_zero", "basal_missing", "dev_qualified",
     "virtual_credit", "wrong_world", "bad_move_probe", "unknown_eat",
@@ -126,6 +130,12 @@ def test_fail_closed_critical_inconsistencies(fault):
         s[2].insert(1, dict(s[2][0]))
     elif fault == "eat_report_forged":
         s[3]["eating"]["native_outcome"]["count_after"] = 3
+    elif fault == "hunger_not_present":
+        s[1][3]["snapshot"]["food"] = 20
+    elif fault == "bad_eat_child_order":
+        s[1][4]["effect"] = "consume_held"
+    elif fault == "saturation_forged":
+        s[3]["eating"]["saturation_after"] = 25.0
     elif fault == "food_forged":
         s[1][6]["snapshot"]["food"] = 13
     elif fault == "stock_forged":
