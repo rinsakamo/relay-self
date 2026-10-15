@@ -1,0 +1,114 @@
+name: R V7 five-arm Paper DEV independent original byte readback
+
+on:
+  push:
+    branches:
+      - infra/rsee-r6-s9-native-original-readback-20261012
+    paths:
+      - '.github/workflows/rsee-v7-m02-five-arm-dev-readback.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  independent-v7-originals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      GH_REPO: rinsakamo/relay-self
+      GH_TOKEN: ${{ github.token }}
+      S_V7_DEV_RUN: '38819265395'
+      S_PIN: '944a68ca36f90380ffa5481ba85a6f95ed08ba18'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Read original producer workflow and source provenance; fail closed
+        run: |
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ["GH_REPO"];run=os.environ["S_V7_DEV_RUN"]
+          x=json.loads(subprocess.check_output(["gh","api",f"repos/{repo}/actions/runs/{run}"]))
+          assert x["head_sha"]==os.environ["S_PIN"] and x["conclusion"]=="success"
+          assert x["event"]=="push" and x["run_attempt"]==1
+          jobs=json.loads(subprocess.check_output(["gh","api",f"repos/{repo}/actions/runs/{run}/jobs?per_page=100"]))["jobs"]
+          expected={"five-arm-disposable-dev ("+a+")" for a in (
+              "BASE_ON","SHAM_ON","BASAL_ZERO","WALK_ZERO","BOTH_ZERO")}
+          checks={j["name"]:j["conclusion"] for j in jobs}
+          assert set(checks)==expected and all(checks[a]=="success" for a in expected)
+          print("R_V7_5_REAL_DEV_PRODUCER_RUN_AND_SOURCE_PIN_MATCH_NO_SCIENCE")
+          PY
+      - name: Re-download all five original S DEV artifacts from exact run
+        run: |
+          for ARM in BASE_ON SHAM_ON BASAL_ZERO WALK_ZERO BOTH_ZERO; do
+            mkdir -p "$RUNNER_TEMP/v7-dev-originals/$ARM"
+            gh run download "$S_V7_DEV_RUN" -R "$GH_REPO" \
+              -n "s-v7-paper-dev-61021-$ARM-$S_V7_DEV_RUN" \
+              -D "$RUNNER_TEMP/v7-dev-originals/$ARM"
+          done
+      - name: Independent byte reviewer of all five, never qualifier
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,pathlib
+          from experiments.standard_env import v7_m02_paper_dev_audit as a
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"v7-dev-originals"
+          arms=list(a.ARMS)
+          outcomes={}
+          for arm in arms:
+              # Each downloaded artifact contains exactly one original report.
+              reports=[p for p in (root/arm).rglob("m02_report.json")
+                       if p.is_file() and not p.is_symlink()]
+              assert len(reports)==1, "missing/duplicated authenticated S DEV original: "+arm
+              original_root=reports[0].parent
+              reviewed=a.review(original_root,arm)
+              assert reviewed["classification"]==a.CLASSIFICATION
+              assert not reviewed["r_changed_config_physical_qualified"]
+              assert reviewed["actual_v7_science_trials"]==0
+              assert not reviewed["v_science_go"]
+              outcomes[arm]=reviewed
+              print("R_V7_ONE_ARM_ORIGINAL_BYTES_PASS "+arm+" "+
+                    json.dumps({"packets":reviewed["real_motion_packets"],
+                                "blocks":reviewed["real_motion_path_blocks"],
+                                "walk_debit":reviewed["observed_walk_debit"],
+                                "tick":reviewed["min_player_ticks_reached"]},sort_keys=True))
+          paths=[outcomes[a]["real_motion_path_blocks"] for a in arms]
+          paired=max(paths)-min(paths)<=0.005
+          # Non-matching actual paths are a *descriptive failure* of fixed V7
+          # paired comparison, NOT a reason to drop/replace an arm's originals.
+          summary={
+              "classification":"RSEE_V7_M02_FIVE_ARM_DEV_SOURCE_REVIEW_ONLY",
+              "producer_run":int(os.environ["S_V7_DEV_RUN"]),
+              "s_original_head":a.S_SOURCE_HEAD,
+              "five_arms_readback":5,
+              "all_five_originals_readonly_pass":True,
+              "path_max_minus_min_blocks":max(paths)-min(paths),
+              "paired_path_tolerance_met":paired,
+              "matched_world_seed_independently_qualified":False,
+              "basal_per_tick_cost_directly_attested":False,
+              "r_changed_config_engineering_qualified":False,
+              "v7_science_trials":0,
+              "v7_science_go":False,
+              "ecological_calibration_qualified":False,
+              "production_go":False,
+              "arms":outcomes,
+          }
+          destination=pathlib.Path(os.environ["RUNNER_TEMP"])/"v7-r-review.json"
+          destination.write_text(json.dumps(summary,sort_keys=True,indent=2)+"\n")
+          print("R_V7_FINAL_REVIEW="+json.dumps(summary,sort_keys=True))
+          PY
+      - name: Archive exact S DEV originals plus R independent receipts, read-only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsee-v7-five-arm-real-dev-originals-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/v7-dev-originals/
+            ${{ runner.temp }}/v7-r-review.json
+          retention-days: 90
+          if-no-files-found: warn
