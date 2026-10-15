@@ -28,6 +28,23 @@ NOT_RUN until a disposable Paper World is separately created and executed.
   name or invalid config refuses plugin activation. Do not use personal,
   public or existing qualification Worlds.
 
+## Action size vs. physiological integration resolution
+
+Approved abstraction: **one MOVE/SEEK planning step is up to one block
+(nominally one meter), never one centimeter**. Existing S50
+`SeekWaypoint.max_step_m=1.0` already provides the default local steering
+cap; actual motion can be partial/blocked. No attempt is made to change
+the existing Action authorization, motor timing or source receipts.
+
+This Paper plugin charges native movement exhaustion events at their
+own **1cm source granularity**. The per-block editable standard and
+additional are divided by 100 per actual centimeter event. A typical
+one-block walk costs about 100 events × 0.0001 = 0.01 exhaustion under the
+uncalibrated candidate; a partial 0.4-block walk should cost 0.004 for 40
+admitted WALK centimeter events. Do not charge the full requested meter
+separately. Basal billing is still by World tick, and nothing bills by
+number of Self decisions. Live original event attestation is NOT_RUN.
+
 ## Build the plugin, no World starts
 
 Install **JDK 21 + Maven 3**; build explicitly:
