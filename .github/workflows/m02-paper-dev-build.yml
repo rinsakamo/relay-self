@@ -67,43 +67,52 @@ jobs:
           test -f adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
       - name: Install original Mineflayer bridge dependencies
         run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
-      - name: Fetch official Paper 1.21.8 STABLE build and verify official SHA256
+      - name: Fetch official Paper 1.21.8 STABLE build via current v3 API and verify published SHA256
         id: paper
         run: |
           python - <<'PY'
-          import hashlib, json, os, pathlib, re, urllib.request
-          VERSION="1.21.8"
-          API=f"https://api.papermc.io/v2/projects/paper/versions/{VERSION}/builds"
-          def get(url):
-              assert url.startswith("https://api.papermc.io/v2/projects/paper/")
-              req=urllib.request.Request(url, headers={"User-Agent":"RelaySelf-M02-DEV/0.2 (github.com/rinsakamo/relay-self)"})
-              with urllib.request.urlopen(req, timeout=45) as rsp:
-                  data=rsp.read(2_000_000)
-                  if len(data)==2_000_000: raise ValueError("metadata exceeds bound")
-                  return json.loads(data)
-          items=get(API).get("builds",[])
-          builds=[b for b in items if b.get("channel")=="default" and isinstance(b.get("build"),int)]
-          if not builds: raise ValueError("no official stable Paper 1.21.8 build")
-          build=max(x["build"] for x in builds)
-          detail=get(f"{API}/{build}")
-          download=detail["downloads"]["application"]
-          name=download["name"]
-          digest=download["sha256"]
-          assert name==f"paper-{VERSION}-{build}.jar" and re.fullmatch(r"[0-9a-f]{64}",digest)
-          target=pathlib.Path(os.environ["RUNNER_TEMP"]) / "m02-official-paper-1.21.8.jar"
-          url=f"{API}/{build}/downloads/{name}"
-          req=urllib.request.Request(url, headers={"User-Agent":"RelaySelf-M02-DEV/0.2 (github.com/rinsakamo/relay-self)"})
-          h=hashlib.sha256()
-          count=0
-          with urllib.request.urlopen(req, timeout=120) as inp,target.open("xb") as out:
-              while chunk:=inp.read(1024*1024):
-                  count+=len(chunk)
-                  if count>200_000_000: raise ValueError("server jar exceeds cap")
-                  out.write(chunk);h.update(chunk)
-          assert h.hexdigest()==digest, "official Paper sha256 mismatch"
+          import hashlib, json, os, pathlib, re, urllib.parse, urllib.request
+          VERSION = "1.21.8"
+          API = f"https://fill.papermc.io/v3/projects/paper/versions/{VERSION}/builds"
+          UA = "RelaySelf-M02-DEV/0.2 (https://github.com/rinsakamo/relay-self)"
+          req = urllib.request.Request(API, headers={"User-Agent": UA})
+          with urllib.request.urlopen(req, timeout=50) as rsp:
+              body = rsp.read(3_000_000)
+              if len(body) == 3_000_000: raise ValueError("unbounded Paper builds metadata")
+              builds = json.loads(body)
+          if not isinstance(builds, list): raise ValueError("Paper v3 returns no build list")
+          stable = [b for b in builds if b.get("channel") == "STABLE"
+                    and type(b.get("id")) is int
+                    and isinstance(b.get("downloads"), dict)]
+          if not stable: raise ValueError("no official STABLE 1.21.8 Paper build")
+          selected = max(stable, key=lambda b: b["id"])
+          build = selected["id"]
+          artifact = selected["downloads"]["server:default"]
+          name = artifact["name"]
+          url = artifact["url"]
+          digest = artifact["checksums"]["sha256"]
+          size = artifact["size"]
+          assert name == f"paper-{VERSION}-{build}.jar"
+          assert re.fullmatch("[0-9a-f]{64}", digest)
+          assert type(size) is int and 1_000_000 < size < 200_000_000
+          parsed = urllib.parse.urlparse(url)
+          assert parsed.scheme == "https" and parsed.hostname == "fill-data.papermc.io"
+          assert parsed.path.startswith("/v1/objects/")
+          assert parsed.username is None and parsed.password is None
+          target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "m02-official-paper-1.21.8.jar"
+          download = urllib.request.Request(url, headers={"User-Agent": UA})
+          h = hashlib.sha256()
+          count = 0
+          with urllib.request.urlopen(download, timeout=120) as inp, target.open("xb") as out:
+              while chunk := inp.read(1024 * 1024):
+                  count += len(chunk)
+                  if count > size: raise ValueError("server jar exceeds official size")
+                  out.write(chunk)
+                  h.update(chunk)
+          assert count == size and h.hexdigest() == digest, "official Paper SHA/size mismatch"
           print(f"M02_DEV_PAPER version={VERSION} build={build} bytes={count} sha256={digest}")
-          with open(os.environ["GITHUB_OUTPUT"],"a") as stream:
-              stream.write(f"jar={target}\nsha256={digest}\nbuild={build}\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+              stream.write(f"jar={target}\\nsha256={digest}\\nbuild={build}\\n")
           PY
       - name: M0.2 Paper real DEV — one governed S50 MOVE and S51 cooked_beef EAT
         run: |
