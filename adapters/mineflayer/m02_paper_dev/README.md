@@ -200,3 +200,24 @@ or V science. R remains the independent owner; the historical 2026-10-15
 DEV result and protected Mojang Golden/B0 evidence are immutable.
 The preflight is not a mechanism to bypass the new explicit physical grant.
 
+
+## Native hunger L0 product bridge (future Paper B0/B1)
+
+The Paper-specific `native_l0.py` now provides a *small cheap, designed*
+L0 decision based on real correlated Mineflayer food/inventory/item-entity
+observations: `WAIT` when not hungry or food source absent, `EAT` for an
+observed edible inventory candidate, and `SEEK` for a single observed nearby
+item only while hungry. The item's stack contents are **UNKNOWN**, so SEEK
+is a tentative candidate, never proof of edible pickup. Decisions do not
+issue S15/S16 Actions and do not alter M0.2's Paper exhaustion or build a
+separate M0/M0.1 virtual energy ledger.
+
+The existing S-owned Paper DEV `_native_steak` now requires this explicit
+`EAT` decision before S51's governed food Action. Its appetite trace records
+the L0 kind for each truly observed World probe. Other action, physics and
+source qualification ownership remains unchanged. In particular, the frozen
+R-qualified third one-shot at S HEAD
+`50d3dfe96a37d18cc8fec68334cfc2e0204a996b` remains immutable;
+this **new future-only product bridge** is not automatically R-qualified.
+The full Paper B0/B1 `SEEK → MOVE → pickup → EAT` loop is a subsequent DEV
+integration, not claimed here.

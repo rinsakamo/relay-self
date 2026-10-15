@@ -20,6 +20,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from adapters.mineflayer.eat_execution import IssuedEatingExecutor
+from adapters.mineflayer.m02_paper_dev.native_l0 import PaperNativeL0
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig, MineflayerPosition
 from adapters.mineflayer.s31a_real_server_ci import (
@@ -38,7 +39,6 @@ from adapters.mineflayer.s51_eat_real_ci import _recording_session_type
 from adapters.mineflayer.seek_execution import SeekConsequenceKind, execute_seek_step
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
-from relay_self.eat_hunger import EatCursor, EatStatus
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
 from relay_self.seek_waypoint import SeekCursor, SeekStatus, SeekWaypoint
@@ -165,22 +165,25 @@ async def _native_steak(session: MineflayerProcessSession, server, *,
     _command(server, "give RelaySelf minecraft:cooked_beef 3")
     _command(server, "effect give RelaySelf minecraft:hunger 25 20 true")
     await server.stdin.drain()
-    cursor = EatCursor(session.started.session_id, hunger_threshold=14)
+    l0 = PaperNativeL0(session.started.session_id, hunger_threshold=14)
     before = choice = None
     seen: list[dict] = []
     for i in range(16):
         await asyncio.sleep(2)
         probe = await _correlated_observe(session, f"m02-steak-appetite-{i:02d}")
+        decision = l0.decide(probe)
         seen.append({
             "source_seq": probe.seq,
             "food": probe.snapshot.food,
             "saturation": probe.snapshot.food_saturation,
             "steak_count": sum(x.count for x in probe.snapshot.inventory
                                if x.name == "cooked_beef"),
+            "paper_native_l0_kind": decision.kind,
+            "issued_action": False,
         })
-        candidate = cursor.choose(probe)
-        if candidate.status is EatStatus.CANDIDATE and candidate.item_name == "cooked_beef":
-            before, choice = probe, candidate
+        if (decision.kind == "EAT" and decision.eat_choice is not None
+                and decision.eat_choice.item_name == "cooked_beef"):
+            before, choice = probe, decision.eat_choice
             break
     if before is None or choice is None:
         raise M02DevRejected("no authenticated native hunger+steak observation")
@@ -206,6 +209,7 @@ async def _native_steak(session: MineflayerProcessSession, server, *,
     return {
         "source_session": before.session_id,
         "appetite_trace": seen,
+        "l0_choice": "EAT_FROM_NATIVE_WORLD_FOOD_NOT_VIRTUAL_M0",
         "action_id": issued.action_id,
         "action_state": eating.terminal.state.value,
         "native_outcome": asdict(outcome),

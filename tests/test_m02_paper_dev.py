@@ -7,6 +7,11 @@ import json
 
 import pytest
 
+import test_feature_s46_eat as s46
+from dataclasses import replace
+from adapters.mineflayer.m02_paper_dev.native_l0 import PaperL0Rejected, PaperNativeL0
+from adapters.mineflayer.python_protocol import MineflayerEntityFact, MineflayerInventoryItem, MineflayerPosition
+
 from adapters.mineflayer.m02_paper_dev import s51_paper_physics_dev as dev
 from adapters.mineflayer.m02_paper_dev import s51_paper_qualification as q
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
@@ -291,3 +296,71 @@ def test_initial_world_level_original_is_saved_before_action(tmp_path, monkeypat
     with pytest.raises(dev.M02DevRejected, match="pre-Action World snapshot"):
         asyncio.run(dev._save_and_capture_initial_world(
             StubServer(), world, output_dir))
+
+
+def test_paper_native_l0_hunger_without_virtual_body():
+    first = s46.case()
+    eaten = replace(first, snapshot=replace(first.snapshot, inventory=(
+        MineflayerInventoryItem("cooked_beef", 3, 4),
+    )))
+    l0 = PaperNativeL0(eaten.session_id)
+    wait = replace(eaten, snapshot=replace(eaten.snapshot, food=20.0))
+    result = l0.decide(wait)
+    assert result.kind == "WAIT"
+    assert result.eat_choice is None and result.ground_target is None
+    hungry = replace(eaten, seq=eaten.seq + 1, request_id="paper-next-native")
+    selection = l0.decide(hungry)
+    assert selection.kind == "EAT"
+    assert selection.eat_choice.item_name == "cooked_beef"
+    assert selection.probe_seq == hungry.seq
+    assert not hasattr(l0, "body") and not hasattr(l0, "credit_count")
+    with pytest.raises(Exception):
+        l0.decide(hungry)
+    with pytest.raises(PaperL0Rejected):
+        l0.decide(replace(hungry, seq=hungry.seq + 1, session_id="other"))
+
+
+def test_paper_l0_single_ground_seek_is_candidate_not_known_food():
+    p = s46.case()
+    pos = p.snapshot.position
+    item = MineflayerEntityFact(
+        123, "item", "other", 2.5,
+        MineflayerPosition(pos.x + 2.5, pos.y, pos.z),
+    )
+    source = replace(p, snapshot=replace(
+        p.snapshot, inventory=(),
+        nearby_entities=(item,),
+        nearby_entities_coverage=replace(
+            p.snapshot.nearby_entities_coverage, candidate_count=1,
+            truncated=False,
+        ),
+    ))
+    l0 = PaperNativeL0(source.session_id)
+    candidate = l0.decide(source)
+    assert candidate.kind == "SEEK" and candidate.ground_target.entity_id == 123
+    assert candidate.eat_choice is None
+    assert candidate.ground_target.waypoint().max_step_m == 1.0
+    fed = replace(source, seq=source.seq + 1,
+                  request_id="paper-fed", snapshot=replace(source.snapshot, food=20))
+    assert l0.decide(fed).kind == "WAIT"
+
+
+def test_paper_l0_ambiguous_or_truncated_target_fails_safe():
+    from dataclasses import replace
+    import test_b0_ground_foraging as ground
+    source = ground._ground()
+    original = source.snapshot.nearby_entities[0]
+    ambiguous = replace(source, snapshot=replace(
+        source.snapshot, nearby_entities=(original, original),
+        nearby_entities_coverage=replace(
+            source.snapshot.nearby_entities_coverage, candidate_count=2,
+        ),
+    ))
+    assert PaperNativeL0(source.session_id).decide(ambiguous).kind == "WAIT"
+    truncated = replace(source, snapshot=replace(
+        source.snapshot,
+        nearby_entities_coverage=replace(
+            source.snapshot.nearby_entities_coverage, truncated=True,
+        ),
+    ))
+    assert PaperNativeL0(source.session_id).decide(truncated).kind == "WAIT"
