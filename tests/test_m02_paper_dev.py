@@ -9,9 +9,6 @@ import pytest
 
 from adapters.mineflayer.m02_paper_dev import s51_paper_physics_dev as dev
 from adapters.mineflayer.m02_paper_dev import s51_paper_qualification as q
-from relay_self.action import ActionState
-from relay_self.action_supervision import ActionSupervisor
-
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
     M02_CONFIRM,
     PAPER_PREWORLD_ASSET_PINS,
@@ -25,6 +22,8 @@ from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
     qualification_asset_preflight,
     run,
 )
+from relay_self.action import ActionState
+from relay_self.action_supervision import ActionSupervisor
 
 
 def test_hash_asset_requires_original_bytes(tmp_path):
