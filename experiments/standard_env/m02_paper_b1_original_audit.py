@@ -18,12 +18,12 @@ from experiments.standard_env.m02_paper_dev_audit import (
     BODY,
     EVENT,
     MOVEMENT,
-    Rejected as Rejected,
     decode,
     finite,
     require,
     rows,
 )
+from experiments.standard_env.m02_paper_dev_audit import Rejected as Rejected
 
 S_PRODUCER_HEAD = "8611a4cafef1e1acce4309359e429c8188f103ec"
 PAPER_ARTIFACT_RUN = 38738039907
