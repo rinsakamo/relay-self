@@ -1,0 +1,28 @@
+# DEV ONLY: install in a fresh, disposable Paper 1.21.8 World.
+# This is a candidate, not an ecologically calibrated or R-qualified profile.
+dev-enabled: false
+version: M0.2
+minecraft-version: 1.21.8
+calibration-status: candidate_uncalibrated
+standard-food: cooked_beef
+target-player: RelaySelf
+# Per kind exhaustion = standard * multiplier + additional,
+# scaled by actual action quantity (tick / block / event).
+# Native means the *original event amount*, not a fictitious numeric constant.
+actions:
+  BASAL: {unit: tick, standard: 0.001, multiplier: 1.0, additional: 0.0, enabled: true}
+  WALK: {unit: block, standard: 0.01, multiplier: 1.0, additional: 0.0, enabled: true}
+  CROUCH: {unit: block, standard: 0.0, multiplier: 1.0, additional: 0.0, enabled: true}
+  SPRINT: {unit: block, standard: 0.1, multiplier: 1.0, additional: 0.0, enabled: true}
+  SWIM: {unit: block, standard: 0.01, multiplier: 1.0, additional: 0.0, enabled: true}
+  WALK_ON_WATER: {unit: block, standard: native, multiplier: 1.0, additional: 0.0, enabled: true}
+  WALK_UNDERWATER: {unit: block, standard: native, multiplier: 1.0, additional: 0.0, enabled: true}
+  JUMP: {unit: event, standard: 0.05, multiplier: 1.0, additional: 0.0, enabled: true}
+  JUMP_SPRINT: {unit: event, standard: 0.2, multiplier: 1.0, additional: 0.0, enabled: true}
+  ATTACK: {unit: event, standard: 0.1, multiplier: 1.0, additional: 0.0, enabled: true}
+  DAMAGED: {unit: event, standard: 0.1, multiplier: 1.0, additional: 0.0, enabled: true}
+  BLOCK_MINED: {unit: event, standard: 0.005, multiplier: 1.0, additional: 0.0, enabled: true}
+  REGEN: {unit: event, standard: native, multiplier: 1.0, additional: 0.0, enabled: true}
+  HUNGER_EFFECT: {unit: event, standard: native, multiplier: 1.0, additional: 0.0, enabled: true}
+  UNKNOWN: {unit: event, standard: native, multiplier: 1.0, additional: 0.0, enabled: true}
+  COGNITION: {unit: work, standard: 0.0, multiplier: 1.0, additional: 0.0, enabled: false}
