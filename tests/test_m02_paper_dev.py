@@ -592,3 +592,41 @@ def test_paper_b1_missing_memory_stream_fails_before_world_use():
             None, None, issuer=None, provenance=None,
             trace={}, b1_retention=True, b1_memory_original=None,
         ))
+
+
+def test_v7_physical_paper_log_synthetic_rates_and_real_player_tick_gate(tmp_path):
+    body = (
+        "M02_DEV_BODY sampled_tick=1 player=RelaySelf food=20 saturation=5"
+        " health=20 exhaustion=0.001 motion_blocks=0.0\n"
+        "M02_DEV_MOTION id=1 reason=WALK blocks=1.25 billed=0.0125"
+        " cumulative_blocks=1.25 cumulative_billed=0.0125\n"
+        "M02_DEV_BODY sampled_tick=200 player=RelaySelf food=20 saturation=5"
+        " health=20 exhaustion=0.20 motion_blocks=1.25\n"
+    )
+    log = tmp_path / "paper_server.log"
+    log.write_text(body, encoding="utf-8")
+    result = asyncio.run(dev._v7_wait_source_tick(log, "BASE_ON"))
+    assert result["last_sampled_player_tick"] == 200
+    assert result["observed_motion_packets"] == 1
+    assert result["observed_motion_path_blocks"] == pytest.approx(1.25)
+    assert result["observed_motion_debit"] == pytest.approx(0.0125)
+    assert not result["science_go"]
+    assert result["basal_source_charge_inferred_not_independently_attested"]
+
+    log.write_text(body.replace("billed=0.0125", "billed=0.0"))
+    off = asyncio.run(dev._v7_wait_source_tick(log, "WALK_ZERO"))
+    assert off["observed_motion_debit"] == 0.0
+    with pytest.raises(dev.M02DevRejected, match="charge"):
+        asyncio.run(dev._v7_wait_source_tick(log, "BASE_ON"))
+    with pytest.raises(dev.M02DevRejected, match="unregistered"):
+        asyncio.run(dev._v7_wait_source_tick(log, "UNKNOWN"))
+
+
+def test_v7_original_tick_source_missing_does_not_convert_walltime(tmp_path, monkeypatch):
+    log = tmp_path / "paper_server.log"
+    log.write_text("M02_DEV_BODY sampled_tick=1 exhaustion=0.0 motion_blocks=0.0\n")
+    async def no_wait(_seconds):
+        raise dev.M02DevRejected("no native World tick 200 after real bounded wait")
+    monkeypatch.setattr(dev.asyncio, "sleep", no_wait)
+    with pytest.raises(dev.M02DevRejected, match="native World tick"):
+        asyncio.run(dev._v7_wait_source_tick(log, "BASAL_ZERO"))
