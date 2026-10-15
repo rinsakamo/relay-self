@@ -9,10 +9,9 @@ from dataclasses import replace
 import pytest
 
 import test_feature_s46_eat as s46
-from adapters.mineflayer.m02_paper_dev.native_l0 import PaperL0Rejected, PaperNativeL0
-
 from adapters.mineflayer.m02_paper_dev import s51_paper_physics_dev as dev
 from adapters.mineflayer.m02_paper_dev import s51_paper_qualification as q
+from adapters.mineflayer.m02_paper_dev.native_l0 import PaperL0Rejected, PaperNativeL0
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
     M02_CONFIRM,
     PAPER_PREWORLD_ASSET_PINS,
