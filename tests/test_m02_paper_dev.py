@@ -359,10 +359,13 @@ def test_paper_l0_ambiguous_or_truncated_target_fails_safe():
         ),
     ))
     assert PaperNativeL0(source.session_id).decide(ambiguous).kind == "WAIT"
+    # Adapter-valid truncated source: 16 displayed out of 17 candidates.
     truncated = replace(source, snapshot=replace(
         source.snapshot,
+        nearby_entities=(original,) * 16,
         nearby_entities_coverage=replace(
-            source.snapshot.nearby_entities_coverage, truncated=True,
+            source.snapshot.nearby_entities_coverage,
+            candidate_count=17, truncated=True,
         ),
     ))
     assert PaperNativeL0(source.session_id).decide(truncated).kind == "WAIT"
