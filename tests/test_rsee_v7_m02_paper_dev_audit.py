@@ -1,9 +1,7 @@
 """Adversarial synthetic V7 physical byte packets; never real World evidence."""
 from __future__ import annotations
 
-import copy
 import gzip
-import hashlib
 import json
 
 import pytest
