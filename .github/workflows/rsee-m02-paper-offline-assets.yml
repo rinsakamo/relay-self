@@ -37,6 +37,27 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: s/adapters/mineflayer/package-lock.json
+      - name: Independently verify exact S Mineflayer runtime and code without launching World
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+          npm ci --omit=dev --ignore-scripts --no-audit --no-fund --prefix s/adapters/mineflayer
+          (cd s/adapters/mineflayer && npm run check)
+          node - <<'JS'
+          const { createRequire } = require('node:module');
+          const path = require('node:path');
+          const r = createRequire(path.resolve('s/adapters/mineflayer/package.json'));
+          const p = r('mineflayer/package.json');
+          if (p.version !== '4.39.0') throw Error('Mineflayer source-owned version changed');
+          const m = r('minecraft-protocol/package.json');
+          if (!m.version) throw Error('missing actual minecraft-protocol dependency');
+          console.log('M02_S_ORIGINAL_NODE22_MINEFLAYER_4_39_0_SOURCE_READY protocol='+m.version);
+          JS
+          PYTHONPATH=s/src:s/tests:s python -m pytest -q s/tests/test_m02_paper_dev.py
       - name: Freeze S producer identity and create byte-only scratch directory
         run: |
           test "$(git -C s rev-parse HEAD)" = "$S_PIN"
