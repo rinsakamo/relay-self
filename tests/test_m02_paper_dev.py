@@ -97,8 +97,8 @@ def _synthetic_preworld_assets(root, monkeypatch):
     content = {
         "paper-1.21.8.jar": b"fixture-paper-jar",
         "relay-metabolism-paper-dev.jar": b"fixture-plugin-jar",
-        "config.yml": b"dev-enabled: true\\ntarget-player: RelaySelf\\n",
-        "server.properties": b"online-mode=false\\ngamemode=survival\\n",
+        "config.yml": b"dev-enabled: true\ntarget-player: RelaySelf\n",
+        "server.properties": b"online-mode=false\ngamemode=survival\n",
     }
     hashes = {}
     for name, data in content.items():

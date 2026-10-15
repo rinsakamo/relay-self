@@ -276,8 +276,9 @@ def qualification_asset_preflight(asset_root: Path) -> dict:
             raise M02DevRejected("invalid Paper asset size")
         actual = _sha256(asset)
         after = asset.stat()
-        identity = lambda st: (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns)
-        if identity(before) != identity(after) or actual != digest:
+        if ((before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
+                != (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
+                or actual != digest):
             raise M02DevRejected("changed or non-pinned Paper asset: " + name)
         measured[name] = actual
     config = (asset_root / "config.yml").read_text(encoding="utf-8")
@@ -489,7 +490,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             result = qualification_asset_preflight(args.asset_root)
             status = 0
-        except (OSError, ValueError, UnicodeError) as exc:
+        except (M02DevRejected, OSError, ValueError, UnicodeError) as exc:
             result = {
                 "classification": "S_M02_PAPER_QUALIFICATION_ASSET_PREFLIGHT_BLOCKED",
                 "reason": f"{type(exc).__name__}: {exc}",
