@@ -1,9 +1,11 @@
 # RelaySelf M0.2 Paper DEV plugin — experimental server-side exhaustion
 
-**Status:** Code compiles against Paper **1.21.8**; **NOT** a qualification or
-scientific finding. Plugin is **DISABLED by default** and is not loaded by the
-existing Mojang-vanilla S49/S51 product runner. Java/Paper live validation is
-NOT_RUN until a disposable Paper World is separately created and executed.
+**Status:** An isolated Paper **1.21.8** real-World **DEV-only** run
+completed in [S CI #38668633950](https://github.com/rinsakamo/relay-self/actions/runs/38668633950),
+with corrected coordinate-based walking cost and governed S50 MOVE/S51 steak EAT.
+This is **not R qualification**, calibrated ecology, V science, or a production
+finding. The plugin is **DISABLED by default** and is not loaded by the
+existing Mojang-vanilla S49/S51 product runner.
 
 ## Why this plugin exists
 
@@ -47,9 +49,14 @@ observes `PlayerMoveEvent` horizontal block displacement and bills
 charging the requested Action distance. At WALK standard 0.01/block,
 a fully observed 1.042431-block step should bill about 0.0104243;
 a genuine observed 0.4-block step should bill 0.004.
-The corrected packet-based rate needs **a separate real DEV run** and
-is not yet R-qualified. Water-specific dynamic movement remains outside
-this qualified land-mode claim. Basal is still once per actual World tick.
+The corrected coordinate-path rate **has a separate real DEV confirmation**:
+9 movement packets covered 1.2828913533 observed blocks and charged
+0.01282891353 exhaustion (WALK=0.01/block); this is not the same quantity
+as S50's net goal-direction progress of 1.0424312164 blocks. The earlier
+12 native WALK exhaustion callbacks must not be used as a centimeter counter.
+The result is still **DEV_ONLY / NOT R-QUALIFIED**. Water, sprint and
+unclassified locomotion are outside this bounded land-walk result. Basal
+still charges once per actual World tick.
 
 ## S-owned disposable physical DEV executable
 
@@ -101,7 +108,7 @@ create a World, or run a player. A dedicated GitHub compile workflow is
 part of S's owner Draft #545 and MUST actually complete before claiming it
 builds.
 
-## Separate, manual disposable Paper DEV World (not S51 integration)
+## Optional manual Paper DEV exploration (not a second qualification)
 
 1. Obtain a separately downloaded and SHA-recorded **Paper 1.21.8 server
    jar** from the official PaperMC source. Never replace an existing RSEE
@@ -118,9 +125,10 @@ builds.
    `minecraft-version: 1.21.8`, and all 16 complete rate sections. Capture
    profile and plugin SHA256 BEFORE server start. Never let Self change them.
 4. Operate only a single owned offline Mineflayer player named `RelaySelf`,
-   not a user's survival World. Run staged WAIT, WALK, SPRINT and optionally
-   consume `cooked_beef` using only the existing authorized S-owner Action
-   path once the S51 integration is separately modified and tested.
+   not a user's survival World. For the **already implemented** S-owned
+   disposable runner, use the existing S50 governed MOVE and S51 governed
+   `cooked_beef` EAT path; staged SPRINT or additional movement modes require
+   separate DEV source checks and cannot inherit the WALK result.
 5. Preserve the complete Paper console log, `M02_DEV_BODY` snapshots each
    100 billed ticks, independent Mineflayer snapshots (health/food/saturation),
    World identity, bot observations, plugin jar/config hashes, shutdown ACK,
@@ -130,11 +138,12 @@ builds.
    DEV_ONLY. R must independently qualify a **new** run; V scientists must
    preregister a comparison. No historical B0 run becomes M0.2 proof.
 
-The plugin only logs periodic body state; it does **not** yet record every
-original action/exhaustion frame in a cryptographically attested JSONL stream,
-nor independently prove walking displacement, food consumed or native
-saturation deltas. These are requirements for the NEXT S/R integration stage.
-Paper plugin build success alone does not show any Minecraft physiology.
+The plugin logs sampled body state **and per-event/per-coordinate-motion
+diagnostics**; the existing S DEV runner independently preserves native
+Mineflayer JSONL and S50/S51 owner commands. These streams are not yet a
+cryptographically attested, source-joined R qualification receipt. R must
+review their identity, ordering, motion/food evidence and terminal separately.
+A compile-only result is never a live physiology result.
 
 ## Why source constraints matter
 
