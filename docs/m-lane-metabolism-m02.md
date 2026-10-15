@@ -46,9 +46,9 @@ Reject negative, infinite, NaN, invalid units, missing cause or profile fields.
 | ATTACK | event | 0.1 | Vanilla |
 | DAMAGED | event | 0.1 | Vanilla |
 | BLOCK_MINED | event | 0.005 | Vanilla |
-| REGEN | HP recovered | 6.0 | Vanilla reference; requires HP-delta attestation |
-| WALK_ON_WATER | original native event | native | Dynamic / not safely assumed zero |
-| WALK_UNDERWATER | original native event | native | Dynamic / not safely assumed zero |
+| REGEN | original native event | native | Preserve observed exhaustion; no inferred HP delta |
+| WALK_ON_WATER | block (cm events) | native | Native per-cm amount; editable addition per block |
+| WALK_UNDERWATER | block (cm events) | native | Native per-cm amount; editable addition per block |
 | HUNGER_EFFECT | original native event | native | Dynamic / potion-dependent |
 | UNKNOWN | original native event | native | Dynamic / do not invent source |
 | COGNITION | admitted unit of work | 0.0, disabled | No cognitive energy cost |
@@ -77,13 +77,13 @@ must still be confirmed on the selected version/build and specific Paper source.
   `SWIM` reasons fire per **centimeter**; the profile is per **block**:
   `quantity_blocks = observed_centimeters / 100`. 1 cm of WALK with
   standard 0.01 / block => 0.0001 exhaustion, NOT 0.01.
-  `WALK_ON_WATER` / `WALK_UNDERWATER` are dynamic single-event passthrough
-  until normalized lengths are independently attested. These may later be
-  assigned explicit per-block standards in a **new** version after evidence.
-- **REGEN:** require an authenticated HP recovered by the native event; do
-  not confuse HP damage with exhaustion or silently assume the regen event
-  always restores exactly 1 HP. Other costs are one event per attack/mined
-  block/jump etc. Paper enum does NOT equal Self's Skill/Action taxonomy.
+  `WALK_ON_WATER` / `WALK_UNDERWATER` are also per-centimeter events.
+  Their standard is the original measured per-cm exhaustion, while the
+  editable addition is per block (`native*multiplier + additional/100`).
+- **REGEN:** use native exhaustion per actual REGEN event. The Paper
+  exhaustion event does not itself attest HP healed. Never invent that delta.
+  A future explicit per-HP profile requires separately qualified measurements.
+  Paper event kinds are not the same as Self Action kinds.
 - **BASAL:** an S/R server owner scheduler charges **once per actual World
   tick**, exactly once per participating player, regardless of L0/L1/L2
   decisions, pauses in an agent controller or real wall-clock slowness.
@@ -128,7 +128,7 @@ python -m pytest -q tests/test_metabolism_m02_exhaustion.py
 
 Scope of checks: profile completeness, deterministic hash, explicit default
 standard values, positive/negative multiplier and additional controls,
-centimeter conversion, regen HP units, cognition OFF/ON gate, native event
+centimeter conversion, native REGEN units, cognition OFF/ON gate, native event
 passthrough, source-shape fail-closed, consecutive World ticks and exactly-once
 event IDs, duplicate key / nan profile rejection. Ordinary repo CI also
 regresses M0 and M0.1.
