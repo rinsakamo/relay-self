@@ -47,6 +47,7 @@ jobs:
             case "$path" in
               .github/workflows/self-demo.yml|\
               .github/workflows/m02-paper-dev-build.yml|\
+              .github/workflows/m02-paper-physical-dev.yml|\
               adapters/mineflayer/m02_paper_dev/**|\
               adapters/mineflayer/b0_*.py|\
               adapters/mineflayer/b1_*.py|\
@@ -66,6 +67,7 @@ jobs:
               tests/test_b1_*.py|\
               tests/test_feature_s51_eat_execution.py|\
               tests/test_self_dev.py|\
+              tests/test_m02_paper_dev.py|\
               tests/test_v6_world_qualification.py)
                 ;;
               *)
@@ -107,6 +109,7 @@ jobs:
             tests/test_b1_dev.py \
             tests/test_feature_s51_eat_execution.py \
             tests/test_self_dev.py \
+            tests/test_m02_paper_dev.py \
             tests/test_self_demo.py \
             tests/test_self_action_evidence.py
 
