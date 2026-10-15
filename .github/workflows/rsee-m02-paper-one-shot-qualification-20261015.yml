@@ -36,7 +36,7 @@ jobs:
           repo = os.environ["GH_REPO"]
           # Already completed preflight authority HEADs: no speculative early launch.
           checks = [
-              (38719760605, {"focused", "mineflayer-adapter", "sibling-readonly", "full-regression"}),
+              (38720116203, {"focused", "mineflayer-adapter", "sibling-readonly", "full-regression"}),
               (38719626048, {"lint", "pytest", "mineflayer-adapter", "repository-contracts"}),
           ]
           for run_id, required in checks:
