@@ -147,7 +147,8 @@ def _pid_absent(pid: int | None) -> bool:
 
 def _sha_index(root: Path) -> dict[str, str]:
     names = ("paper_server.log", "original_native.jsonl",
-             "owner_commands.jsonl", "qualification_producer.json")
+             "owner_commands.jsonl", "qualification_producer.json",
+             "initial_world_level.dat")
     values = {}
     for name in names:
         file = root / name
