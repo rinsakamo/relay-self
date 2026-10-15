@@ -1,6 +1,7 @@
 """R one-shot M0.2 qualification: adversarial synthetic evidence envelopes only."""
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 
@@ -18,6 +19,10 @@ def synthetic(tmp_path, monkeypatch):
     (root / "owned-worlds").mkdir()
     assets = tmp_path / "assets"
     assets.mkdir()
+    props = b"server-ip=127.0.0.1\\nonline-mode=false\\n"
+    (assets / "server.properties").write_bytes(props)
+    initial_nbt = gzip.compress(b"\\x0a\\x00\\x00\\x00", mtime=0)
+    initial_digest = hashlib.sha256(initial_nbt).hexdigest()
     witness = tmp_path / "independent-host-witness.json"
     pins = profile.load_manifest()["expected_assets_sha256"]
     report = {
@@ -37,8 +42,15 @@ def synthetic(tmp_path, monkeypatch):
         "java_exit": 0, "node_exit": 0,
         "run_id": "a" * 32, "source_session_id": dev["source_session_id"],
         "java_pid": 10001, "node_pid": 10002,
-        "world_seeded_properties_sha256": "b" * 64,
-        "initial_level_dat_sha256": "a" * 64,
+        "world_seeded_properties_sha256": hashlib.sha256(
+            props + f"level-seed={q.SEED}\\n".encode("ascii")).hexdigest(),
+        "initial_level_dat_sha256": initial_digest,
+        "initial_world_receipt": {
+            "sha256": initial_digest,
+            "size_bytes": len(initial_nbt),
+            "snapshot_phase": "AFTER_SERVER_READY_SAVE_FLUSH_BEFORE_ACTION",
+            "source_world_path": "s31a-ephemeral/level.dat",
+        },
         "source_asset_hashes": pins,
         "native_stop_ack_seq": 8, "native_connection_end_seq": 9,
         "native_rows": 10,
@@ -49,6 +61,7 @@ def synthetic(tmp_path, monkeypatch):
         "original_native.jsonl": b"".join(map(dump, native)),
         "owner_commands.jsonl": b"".join(map(dump, commands)),
         "qualification_producer.json": dump(report),
+        "initial_world_level.dat": initial_nbt,
     }
     for k, v in originals.items():
         (root / k).write_bytes(v)
@@ -120,4 +133,18 @@ def test_native_bytes_and_host_witness_fail_closed(tmp_path, monkeypatch):
     raw["java_absent"] = False
     witness.write_bytes(dump(raw))
     with pytest.raises(q.NotQualified):
+        verify(root, assets, witness)
+
+
+def test_world_seed_and_saved_initial_bytes_are_independently_required(tmp_path, monkeypatch):
+    root, assets, witness, report = synthetic(tmp_path, monkeypatch)
+    (assets / "server.properties").write_bytes(b"altered World config")
+    with pytest.raises(q.NotQualified, match="seed/properties hash"):
+        verify(root, assets, witness)
+
+    (assets / "server.properties").write_bytes(
+        b"server-ip=127.0.0.1\\nonline-mode=false\\n")
+    (root / "initial_world_level.dat").write_bytes(b"wrong original")
+    rewrite(root, report)
+    with pytest.raises(q.NotQualified, match="source bytes"):
         verify(root, assets, witness)
