@@ -13,6 +13,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import socket
 import tempfile
 from dataclasses import asdict
@@ -45,6 +46,16 @@ from relay_self.skill import SkillExecution
 
 PLUGIN_ROOT = Path(__file__).resolve().parent
 M02_CONFIRM = "M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD"
+
+# Mirrors the immutable R #610 M0.2 preworld V1 *input identities*.
+# These digests describe an earlier DEV source candidate; they confer no grant.
+PAPER_PREWORLD_ASSET_PINS = {
+    "paper-1.21.8.jar": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "relay-metabolism-paper-dev.jar": "0ed8a00a7ebf577bdbea361e2c6facf7ed4b24001c017d362823da5cb60398e5",
+    "config.yml": "e9361faa7eac2e3c63bf2f6760765f7f8ae5a4b3631c6819f7ad8ac5c04a540e",
+    "server.properties": "11aaf903bae3d92f3b667f464f301a513bee559f04acc33d722c7a2e966d03ae",
+}
+PAPER_PREWORLD_PROFILE = "RSEE_M02_PAPER_PREWORLD_PROFILE_V1"
 
 
 class M02DevRejected(RuntimeError):
@@ -239,6 +250,67 @@ def _read_world_receipts(server_log: Path) -> dict:
     }
 
 
+
+def qualification_asset_preflight(asset_root: Path) -> dict:
+    """Read-only S source admission packet; NEVER launches or authorizes World.
+
+    The four bytes are already pinned by an independent R preworld profile.
+    Seed/World/STOP/source qualification remains absent even on a full match.
+    """
+    if (not isinstance(asset_root, Path)
+            or not asset_root.is_absolute()
+            or not asset_root.is_dir()
+            or asset_root.is_symlink()
+            or any(parent.is_symlink() for parent in asset_root.parents)):
+        raise M02DevRejected("isolated absolute non-symlink asset root required")
+    if {entry.name for entry in asset_root.iterdir()} != set(PAPER_PREWORLD_ASSET_PINS):
+        raise M02DevRejected("exact four pinned Paper input files required")
+    measured = {}
+    for name, digest in sorted(PAPER_PREWORLD_ASSET_PINS.items()):
+        asset = asset_root / name
+        if not asset.is_file() or asset.is_symlink() or not stat.S_ISREG(asset.lstat().st_mode):
+            raise M02DevRejected("unsafe Paper preworld source asset")
+        before = asset.stat()
+        limit = 200_000_000 if name.endswith(".jar") else 65_536
+        if not 0 < before.st_size <= limit:
+            raise M02DevRejected("invalid Paper asset size")
+        actual = _sha256(asset)
+        after = asset.stat()
+        identity = lambda st: (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns)
+        if identity(before) != identity(after) or actual != digest:
+            raise M02DevRejected("changed or non-pinned Paper asset: " + name)
+        measured[name] = actual
+    config = (asset_root / "config.yml").read_text(encoding="utf-8")
+    props = (asset_root / "server.properties").read_text(encoding="utf-8")
+    if ("dev-enabled: true" not in config
+            or "target-player: RelaySelf" not in config
+            or "online-mode=false" not in props
+            or "gamemode=survival" not in props):
+        raise M02DevRejected("Paper test plugin or World mode does not match")
+    # No validated source grant is possible from four pinned assets alone.
+    return {
+        "classification": "S_M02_PAPER_QUALIFICATION_ASSET_PREFLIGHT_ONLY",
+        "preworld_profile": PAPER_PREWORLD_PROFILE,
+        "pinned_historical_s_producer_head":
+            "52d9bbf1b4ee2e8ff810d213e36d0caf347652ee",
+        "pinned_reference_m_head": "4c2f549c6b9ed3fbe2ee04230526ac5577da8feb",
+        "verified_assets_sha256": measured,
+        "asset_root": str(asset_root),
+        "new_paper_world": "NOT_CREATED",
+        "new_world_snapshot_seed": "NOT_BOUND",
+        "native_originals": "NOT_CAPTURED",
+        "runtime_stop_pid_port": "NOT_ATTESTED",
+        "qualification_physical_start_permission": "NOT_GRANTED",
+        "physical_world_launches": 0,
+        "qualified": False,
+        "science_go": False,
+        "production_go": False,
+        "virtual_m0_ledger_used": False,
+        "cognition_cost_enabled": False,
+        "rates_ecologically_calibrated": False,
+    }
+
+
 async def run(
     output_dir: Path, paper_jar: Path, paper_sha: str,
     plugin_jar: Path, plugin_sha: str, *, confirmation: str,
@@ -395,15 +467,45 @@ async def run(
     return rc
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="M0.2 isolated Paper DEV ONLY")
-    parser.add_argument("--output-dir", type=Path, required=True)
-    parser.add_argument("--paper-jar", type=Path, required=True)
-    parser.add_argument("--paper-sha256", required=True)
-    parser.add_argument("--plugin-jar", type=Path, required=True)
-    parser.add_argument("--plugin-sha256", required=True)
-    parser.add_argument("--confirm", required=True)
-    args = parser.parse_args()
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="M0.2 Paper DEV or OFFLINE qualification asset preflight")
+    parser.add_argument("--qualification-preflight", action="store_true",
+                        help="read-only four-asset S check; NO World start or qualification")
+    parser.add_argument("--asset-root", type=Path,
+                        help="new isolated directory of four R-pinned candidate assets")
+    parser.add_argument("--output-dir", type=Path)
+    parser.add_argument("--paper-jar", type=Path)
+    parser.add_argument("--paper-sha256")
+    parser.add_argument("--plugin-jar", type=Path)
+    parser.add_argument("--plugin-sha256")
+    parser.add_argument("--confirm")
+    args = parser.parse_args(argv)
+    if args.qualification_preflight:
+        if args.asset_root is None or any(v is not None for v in (
+            args.output_dir, args.paper_jar, args.paper_sha256, args.plugin_jar,
+            args.plugin_sha256, args.confirm,
+        )):
+            parser.error("qualification preflight accepts ONLY --asset-root; no DEV/World options")
+        try:
+            result = qualification_asset_preflight(args.asset_root)
+            status = 0
+        except (OSError, ValueError, UnicodeError) as exc:
+            result = {
+                "classification": "S_M02_PAPER_QUALIFICATION_ASSET_PREFLIGHT_BLOCKED",
+                "reason": f"{type(exc).__name__}: {exc}",
+                "physical_world_launches": 0, "qualified": False,
+                "science_go": False, "production_go": False,
+            }
+            status = 2
+        print(json.dumps(result, sort_keys=True, ensure_ascii=False))
+        return status
+    if args.asset_root is not None:
+        parser.error("--asset-root requires --qualification-preflight")
+    if any(v is None for v in (
+        args.output_dir, args.paper_jar, args.paper_sha256,
+        args.plugin_jar, args.plugin_sha256, args.confirm,
+    )):
+        parser.error("DEV requires explicit output, verified jars and confirmation")
     return asyncio.run(run(
         args.output_dir, args.paper_jar, args.paper_sha256,
         args.plugin_jar, args.plugin_sha256, confirmation=args.confirm,

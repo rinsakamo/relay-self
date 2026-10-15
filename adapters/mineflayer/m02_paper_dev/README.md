@@ -166,3 +166,37 @@ V #544 / #619. Design/API sources:
 - https://jd.papermc.io/paper/1.21.8/org/bukkit/event/entity/EntityExhaustionEvent.html
 - https://jd.papermc.io/paper/1.21.8/org/bukkit/event/entity/EntityExhaustionEvent.ExhaustionReason.html
 - https://docs.papermc.io/paper/dev/project-setup/
+
+## S qualification source preparation (offline only)
+
+The **same** S-owned `s51_paper_physics_dev` CLI now exposes a read-only
+`--qualification-preflight` mode. This is **NOT a qualification runner**:
+there is no Java/Node/Minecraft process, World mutation, run grant, S51 Action,
+R acceptance, or V admission. It does not reclassify the historical real DEV run.
+
+Stage exactly the four original **R-pinned candidate** assets in a *new*
+absolute directory (no extra files, symlinks, or shared Golden World) under the
+names `paper-1.21.8.jar`, `relay-metabolism-paper-dev.jar`, `config.yml`,
+`server.properties`. Then run:
+
+```bash
+PYTHONPATH="$PWD/src:$PWD/tests:$PWD" \
+python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev \
+  --qualification-preflight \
+  --asset-root /ABSOLUTE/FRESH/FOUR-PAPER-ASSETS
+```
+
+S independently checks four byte SHA256s against the unchanged R #610
+`RSEE_M02_PAPER_PREWORLD_PROFILE_V1` and validates intended test player
+and survival/loopback settings. A successful response is strictly
+`S_M02_PAPER_QUALIFICATION_ASSET_PREFLIGHT_ONLY`; `qualified=false`,
+`physical_world_launches=0`, `new_world_snapshot_seed=NOT_BOUND`.
+Any mismatch fails closed, including missing or mixed DEV launch parameters.
+
+**Not provided by asset matching:** a new fixed Paper World snapshot/seed,
+fresh per-run QUALIFICATION permission, exact code HEAD and runtime attestation,
+live original receipts, independent STOP/PID/port witness, ecological calibration
+or V science. R remains the independent owner; the historical 2026-10-15
+DEV result and protected Mojang Golden/B0 evidence are immutable.
+The preflight is not a mechanism to bypass the new explicit physical grant.
+

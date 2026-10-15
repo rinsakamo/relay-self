@@ -85,7 +85,10 @@ jobs:
                     and type(b.get("id")) is int
                     and isinstance(b.get("downloads"), dict)]
           if not stable: raise ValueError("no official STABLE 1.21.8 Paper build")
-          selected = max(stable, key=lambda b: b["id"])
+          # Stable id and bytes are pinned to the independent R M0.2 profile;
+          # never silently replace a candidate with a later Paper build.
+          selected = next((b for b in stable if b["id"] == 60), None)
+          if selected is None: raise ValueError("pinned Paper build 60 unavailable")
           build = selected["id"]
           artifact = selected["downloads"]["server:default"]
           name = artifact["name"]
@@ -93,8 +96,8 @@ jobs:
           digest = artifact["checksums"]["sha256"]
           size = artifact["size"]
           assert name == f"paper-{VERSION}-{build}.jar"
-          assert re.fullmatch("[0-9a-f]{64}", digest)
-          assert type(size) is int and 1_000_000 < size < 200_000_000
+          assert digest == "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          assert size == 52_811_717
           parsed = urllib.parse.urlparse(url)
           assert parsed.scheme == "https" and parsed.hostname == "fill-data.papermc.io"
           assert parsed.path.startswith("/v1/objects/")
