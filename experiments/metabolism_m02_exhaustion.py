@@ -264,7 +264,6 @@ class AuditState:
     profile_sha256: str
     session_id: str
     world_tick: int
-    paid_basal_ticks: frozenset[int] = frozenset()
     paid_events: frozenset[str] = frozenset()
     total_exhaustion: float = 0.0
 
@@ -280,12 +279,11 @@ def start_audit(profile: Profile, session_id: str, world_tick: int) -> AuditStat
 def bill_world_tick(profile: Profile, state: AuditState, world_tick: int) -> AuditState:
     if state.profile_sha256 != profile.sha256 or type(world_tick) is not int:
         raise M02Rejected("foreign profile / invalid World time")
-    if world_tick != state.world_tick + 1 or world_tick in state.paid_basal_ticks:
+    if world_tick != state.world_tick + 1:
         raise M02Rejected("missing, duplicate or nonmonotonic World tick")
     charge = cost(profile, "BASAL", 1)
     return replace(
         state, world_tick=world_tick,
-        paid_basal_ticks=state.paid_basal_ticks | {world_tick},
         total_exhaustion=state.total_exhaustion + charge,
     )
 
