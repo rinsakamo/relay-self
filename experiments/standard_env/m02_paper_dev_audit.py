@@ -22,15 +22,15 @@ ORIGINAL_SHA256 = {
     "owner_commands.jsonl": "d81b0242a8ab7a68faf1ba8d6b845c3f27e19598a96716c247d456d2fb0",
 }
 MOVEMENT = re.compile(
-    r"\\bM02_DEV_MOTION id=(\\d+) reason=(\\w+) blocks=([0-9.eE+-]+) "
+    r"\bM02_DEV_MOTION id=(\d+) reason=(\w+) blocks=([0-9.eE+-]+) "
     r"billed=([0-9.eE+-]+) cumulative_blocks=([0-9.eE+-]+) "
     r"cumulative_billed=([0-9.eE+-]+)"
 )
 EVENT = re.compile(
-    r"\\bM02_DEV_EVENT id=(\\d+) reason=(\\w+) "
+    r"\bM02_DEV_EVENT id=(\d+) reason=(\w+) "
     r"original=([0-9.eE+-]+) replaced=([0-9.eE+-]+)"
 )
-BODY = re.compile(r"\\bM02_DEV_BODY sampled_tick=(\\d+) .*exhaustion=([0-9.eE+-]+)")
+BODY = re.compile(r"\bM02_DEV_BODY sampled_tick=(\d+) .*exhaustion=([0-9.eE+-]+)")
 MAX_FILE = 32 * 1024 * 1024
 
 
@@ -89,7 +89,7 @@ def read_original(path: Path) -> bytes:
 
 def rows(raw: bytes) -> list[dict[str, Any]]:
     lines = raw.splitlines(keepends=True)
-    require(0 < len(lines) <= 10000 and all(x.endswith(b"\\n")
+    require(0 < len(lines) <= 10000 and all(x.endswith(b"\n")
             and len(x) < 1_000_000 for x in lines), "truncated JSONL")
     result = [decode(x) for x in lines]
     require(all(type(x) is dict for x in result), "invalid JSONL frame")
