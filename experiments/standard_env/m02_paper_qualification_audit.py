@@ -8,6 +8,7 @@ No scientific, ecological, autonomous food-acquisition or production verdict.
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import re
@@ -20,7 +21,8 @@ from experiments.standard_env import m02_paper_preworld as profile
 QUAL_GRANT = "USER_M02_PAPER_QUALIFICATION_20261015_SECOND_ONCE"
 SEED = "2026101502"
 NATIVE_NAMES = ("paper_server.log", "original_native.jsonl",
-                "owner_commands.jsonl", "qualification_producer.json")
+                "owner_commands.jsonl", "qualification_producer.json",
+                "initial_world_level.dat")
 CLASSIFIED = "S_M02_PAPER_QUALIFICATION_SOURCE_CLOSED_R_REVIEW_REQUIRED"
 PASS = "M02_RSEE_PAPER_CANDIDATE_ENGINEERING_QUALIFIED"
 
@@ -128,6 +130,30 @@ def review(root: Path, *, expected_workflow_run: str,
         "fixed new seed and original initial level.dat evidence absent")
     require(q.get("source_asset_hashes") == profile.load_manifest()[
             "expected_assets_sha256"], "foreign candidate source bytes")
+    expected_world_properties = (
+        source.read_original(admitted_assets / "server.properties") +
+        f"level-seed={SEED}\\n".encode("ascii")
+    )
+    require(q.get("world_seeded_properties_sha256") ==
+            hashlib.sha256(expected_world_properties).hexdigest(),
+            "new World seed/properties hash not reproducible")
+    snapshot = q.get("initial_world_receipt")
+    blob = originals["initial_world_level.dat"]
+    require(type(snapshot) is dict and
+            snapshot.get("snapshot_phase") ==
+            "AFTER_SERVER_READY_SAVE_FLUSH_BEFORE_ACTION" and
+            snapshot.get("source_world_path") == "s31a-ephemeral/level.dat" and
+            snapshot.get("size_bytes") == len(blob) and
+            snapshot.get("sha256") == indexes["initial_world_level.dat"] and
+            q.get("initial_level_dat_sha256") == indexes["initial_world_level.dat"],
+            "initial World source bytes not matched to pre-Action checkpoint")
+    try:
+        decompressed = gzip.decompress(blob)
+    except (OSError, EOFError) as exc:
+        raise NotQualified("invalid initial World level.dat gzip bytes") from exc
+    require(len(decompressed) <= 16 * 1024 * 1024 and
+            len(decompressed) >= 4 and decompressed[0] == 10,
+            "initial World NBT compound source invalid")
     # Never treat the S "producer SOURCE_CLOSED" as an independent verdict.
     witness = parsed(witness_path)
     _check_host_witness(witness, q, expected_workflow_run)
