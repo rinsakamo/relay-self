@@ -285,8 +285,8 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
         samples = []
         for line in content.splitlines():
             match = re.search(
-                r"M02_DEV_BODY sampled_tick=(\\d+).*?exhaustion=([0-9.eE+\\-]+)"
-                r".*?motion_blocks=([0-9.eE+\\-]+)", line,
+                r"M02_DEV_BODY sampled_tick=(\d+).*?exhaustion=([0-9.eE+\-]+)"
+                r".*?motion_blocks=([0-9.eE+\-]+)", line,
             )
             if match:
                 samples.append((int(match.group(1)), float(match.group(2)),
@@ -300,8 +300,8 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
         (float(b.group(1)), float(q.group(1)))
         for line in content.splitlines()
         if "M02_DEV_MOTION " in line and " reason=WALK " in line
-        for b in [re.search(r"\\bblocks=([0-9.eE+\\-]+)", line)]
-        for q in [re.search(r"\\bbilled=([0-9.eE+\\-]+)", line)]
+        for b in [re.search(r"\bblocks=([0-9.eE+\-]+)", line)]
+        for q in [re.search(r"\bbilled=([0-9.eE+\-]+)", line)]
         if b is not None and q is not None
     ]
     total_blocks = sum(x for x, _ in pairs)
