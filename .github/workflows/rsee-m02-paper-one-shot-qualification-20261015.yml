@@ -1,11 +1,7 @@
 name: RSEE M0.2 one-shot Paper physical qualification 20261015
 
 on:
-  push:
-    branches:
-      - infra/rsee-r6-s9-native-original-readback-20261012
-    paths:
-      - '.github/workflows/rsee-m02-paper-one-shot-qualification-20261015.yml'
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,7 +13,7 @@ concurrency:
 
 jobs:
   physical-qualification-once:
-    if: github.run_attempt == 1 && github.event_name == 'push'
+    if: false  # FROZEN: one approved Java start happened, grant CONSUMED
     runs-on: ubuntu-latest
     timeout-minutes: 18
     env:
