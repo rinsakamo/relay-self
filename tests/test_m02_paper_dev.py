@@ -421,3 +421,45 @@ def test_paper_foraging_requires_fresh_trace_before_owning_world():
             None, None, issuer=None, provenance=None, trace=trace,
         ))
     assert trace == {"old": "foreign"}
+
+
+def test_paper_multistep_foraging_accepts_no_native_walk_callbacks_only_when_packets_prove_charge(
+    tmp_path,
+):
+    from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _read_world_receipts
+
+    log = tmp_path / "paper.log"
+    log.write_text(
+        "M02_DEV_ONLY: candidate physics, not qualified by R/V\n"
+        "M02_DEV_BODY sampled_tick=20 player=RelaySelf exhaustion=0.02\n"
+        "M02_DEV_MOTION id=1 reason=WALK blocks=1.1 billed=0.011\n"
+        "M02_DEV_MOTION id=2 reason=WALK blocks=1.05 billed=0.0105\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(M02DevRejected, match="packet motion"):
+        _read_world_receipts(log)
+    result = _read_world_receipts(
+        log, max_path_blocks=16, allow_packet_only_walk=True,
+    )
+    assert result["count_walk_native_events"] == 0
+    assert result["walk_native_callbacks_present"] is False
+    assert result["physical_walk_billing_source"] == "PLAYER_MOVE_EVENT_COORDINATE_PATH"
+    assert result["world_measured_walk_blocks"] == pytest.approx(2.15)
+    assert result["world_billed_walk_exhaustion"] == pytest.approx(0.0215)
+    # Absence of *both* the native callbacks and true movement is not a PASS.
+    log.write_text(
+        "M02_DEV_ONLY: candidate physics, not qualified by R/V\n"
+        "M02_DEV_BODY sampled_tick=20 player=RelaySelf exhaustion=0.02\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(M02DevRejected, match="packet motion"):
+        _read_world_receipts(log, max_path_blocks=16, allow_packet_only_walk=True)
+    # Billed amount must still equal actual moved distance, not issued intent.
+    log.write_text(
+        "M02_DEV_ONLY: candidate physics, not qualified by R/V\n"
+        "M02_DEV_BODY sampled_tick=20 player=RelaySelf exhaustion=0.02\n"
+        "M02_DEV_MOTION id=1 reason=WALK blocks=2.15 billed=0.001\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(M02DevRejected, match="charge differs"):
+        _read_world_receipts(log, max_path_blocks=16, allow_packet_only_walk=True)

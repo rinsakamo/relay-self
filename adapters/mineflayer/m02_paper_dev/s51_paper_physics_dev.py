@@ -222,14 +222,17 @@ async def _native_steak(session: MineflayerProcessSession, server, *,
     }
 
 
-def _read_world_receipts(server_log: Path, *, max_path_blocks: float = 2) -> dict:
+def _read_world_receipts(
+    server_log: Path, *, max_path_blocks: float = 2,
+    allow_packet_only_walk: bool = False,
+) -> dict:
     lines = server_log.read_text(encoding="utf-8").splitlines()
     enabled = [x for x in lines if "M02_DEV_ONLY: candidate physics" in x]
     body = [x for x in lines if "M02_DEV_BODY sampled_tick=" in x]
     walk = [x for x in lines if "M02_DEV_EVENT " in x and "reason=WALK " in x]
     motion = [x for x in lines if "M02_DEV_MOTION " in x and "reason=WALK " in x]
-    if not enabled or not body or not walk or not motion:
-        raise M02DevRejected("Paper plugin startup/basal/WALK and packet motion absent")
+    if not enabled or not body or not motion or (not walk and not allow_packet_only_walk):
+        raise M02DevRejected("Paper plugin startup/basal/physical packet motion absent")
     if not all("original=0.0 " in x and "replaced=0.0" in x for x in walk):
         raise M02DevRejected("land WALK native event must be replaced by zero")
     blocks = 0.0
@@ -251,6 +254,8 @@ def _read_world_receipts(server_log: Path, *, max_path_blocks: float = 2) -> dic
         "walk_native_event_samples": walk[:12],
         "world_packet_walk_samples": motion[:12],
         "count_walk_native_events": len(walk),
+        "walk_native_callbacks_present": bool(walk),
+        "physical_walk_billing_source": "PLAYER_MOVE_EVENT_COORDINATE_PATH",
         "count_walk_motion_packets": len(motion),
         "world_measured_walk_blocks": blocks,
         "world_billed_walk_exhaustion": charged,
@@ -516,6 +521,7 @@ async def run(
                 try:
                     report["paper_native_diagnostics"] = _read_world_receipts(
                         server_log, max_path_blocks=16 if forage_dev else 2,
+                        allow_packet_only_walk=forage_dev,
                     )
                     report["status"] = "PASS"
                     report["classification"] = "M02_PAPER_DEV_ONLY_PHYSICS_OBSERVED"
