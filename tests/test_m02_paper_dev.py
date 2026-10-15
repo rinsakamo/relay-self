@@ -259,3 +259,35 @@ def test_qualification_wrong_java_prelaunch_does_not_consume(tmp_path, monkeypat
                         SimpleNamespace(returncode=0, stdout="",
                                         stderr='openjdk version "21.0.9"'))
     assert q._java21_runtime()["java_major"] == "21"
+
+
+def test_initial_world_level_original_is_saved_before_action(tmp_path, monkeypatch):
+    original = b"level-dat-original-from-controlled-synthetic-world"
+    world = tmp_path / "disposable-world"
+    source_dir = world / "s31a-ephemeral"
+    source_dir.mkdir(parents=True)
+    (source_dir / "level.dat").write_bytes(original)
+    output_dir = tmp_path / "evidence"
+    output_dir.mkdir()
+    issued = []
+
+    class StubStdin:
+        async def drain(self):
+            pass
+
+    class StubServer:
+        returncode = None
+        stdin = StubStdin()
+
+    monkeypatch.setattr(dev, "_command", lambda _server, cmd: issued.append(cmd))
+    result = asyncio.run(dev._save_and_capture_initial_world(
+        StubServer(), world, output_dir))
+    assert issued == ["save-all flush"]
+    assert result["source_world_path"] == "s31a-ephemeral/level.dat"
+    assert result["size_bytes"] == len(original)
+    assert result["sha256"] == hashlib.sha256(original).hexdigest()
+    assert (output_dir / "initial_world_level.dat").read_bytes() == original
+    assert result["snapshot_phase"] == "AFTER_SERVER_READY_SAVE_FLUSH_BEFORE_ACTION"
+    with pytest.raises(dev.M02DevRejected, match="pre-Action World snapshot"):
+        asyncio.run(dev._save_and_capture_initial_world(
+            StubServer(), world, output_dir))
