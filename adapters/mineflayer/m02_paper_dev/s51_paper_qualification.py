@@ -20,8 +20,14 @@ from pathlib import Path
 from adapters.mineflayer.m02_paper_dev import s51_paper_physics_dev as dev
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
 from adapters.mineflayer.s31a_real_server_ci import (
-    BOT_USERNAME, MINECRAFT_VERSION, SERVER_HOST, SERVER_PORT,
-    _await_spawn, _command, _ready_server, _shutdown_server,
+    BOT_USERNAME,
+    MINECRAFT_VERSION,
+    SERVER_HOST,
+    SERVER_PORT,
+    _await_spawn,
+    _command,
+    _ready_server,
+    _shutdown_server,
 )
 from adapters.mineflayer.s51_eat_real_ci import _recording_session_type
 from relay_self.action import ActionLifecycle
