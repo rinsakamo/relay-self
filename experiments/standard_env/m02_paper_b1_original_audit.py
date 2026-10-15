@@ -9,7 +9,6 @@ import argparse
 import hashlib
 import json
 import math
-import re
 import stat
 import zipfile
 from pathlib import Path
@@ -19,7 +18,7 @@ from experiments.standard_env.m02_paper_dev_audit import (
     BODY,
     EVENT,
     MOVEMENT,
-    Rejected,
+    Rejected as Rejected,
     decode,
     finite,
     require,
