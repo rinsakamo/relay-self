@@ -266,6 +266,72 @@ def _read_world_receipts(
 
 
 
+async def _v7_wait_source_tick(server_log: Path, arm: str, *,
+                               minimum_player_basal_ticks: int = 200) -> dict:
+    """Bounded original Paper plugin sample gate; DEV only, not V science.
+
+    Sampled tick counts the plugin's living-player callbacks, not host time,
+    nor an independently time-matched experimental bracket.
+    """
+    from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
+
+    if arm not in ARMS or minimum_player_basal_ticks != 200:
+        raise M02DevRejected("unregistered V7 tick sample")
+    samples: list[tuple[int, float, float]] = []
+    for _ in range(300):
+        if not server_log.is_file():
+            raise M02DevRejected("V7 original Paper source log absent")
+        content = server_log.read_text(encoding="utf-8")
+        samples = []
+        for line in content.splitlines():
+            match = re.search(
+                r"M02_DEV_BODY sampled_tick=(\\d+).*?exhaustion=([0-9.eE+\\-]+)"
+                r".*?motion_blocks=([0-9.eE+\\-]+)", line,
+            )
+            if match:
+                samples.append((int(match.group(1)), float(match.group(2)),
+                                float(match.group(3))))
+        if samples and samples[-1][0] >= minimum_player_basal_ticks:
+            break
+        await asyncio.sleep(0.15)
+    else:
+        raise M02DevRejected("V7 source never reached 200 native player ticks")
+    pairs = [
+        (float(b.group(1)), float(q.group(1)))
+        for line in content.splitlines()
+        if "M02_DEV_MOTION " in line and " reason=WALK " in line
+        for b in [re.search(r"\\bblocks=([0-9.eE+\\-]+)", line)]
+        for q in [re.search(r"\\bbilled=([0-9.eE+\\-]+)", line)]
+        if b is not None and q is not None
+    ]
+    total_blocks = sum(x for x, _ in pairs)
+    total_charge = sum(x for _, x in pairs)
+    if not (0.5 < total_blocks < 2
+            and pairs and all(x > 0 and y >= 0 for x, y in pairs)
+            and abs(total_charge - total_blocks * 0.01 * ARMS[arm][1]) < 1e-7):
+        raise M02DevRejected("V7 source WALK physical path/charge mismatch")
+    if not samples or samples[0][0] != 1:
+        raise M02DevRejected("V7 missing first native player tick sample")
+    if samples[-1][0] < 200 or sorted(t for t, _, _ in samples) != [
+        t for t, _, _ in samples
+    ]:
+        raise M02DevRejected("V7 non-monotone Paper living-player tick")
+    return {
+        "classification": "S_V7_PAPER_DEV_OBSERVED_SOURCE_SHAPE_ONLY",
+        "arm": arm, "physical_java_world": True,
+        "source_player_ticks_minimum": minimum_player_basal_ticks,
+        "last_sampled_player_tick": samples[-1][0],
+        "source_samples": samples,
+        "observed_motion_packets": len(pairs),
+        "observed_motion_path_blocks": total_blocks,
+        "observed_motion_debit": total_charge,
+        "candidate_basal_rate_per_tick": 0.001 * ARMS[arm][0],
+        "candidate_walk_rate_per_path_block": 0.01 * ARMS[arm][1],
+        "basal_source_charge_inferred_not_independently_attested": True,
+        "qualified": False, "science_go": False,
+    }
+
+
 async def _save_and_capture_initial_world(
     server, world: Path, evidence_root: Path,
 ) -> dict:
@@ -373,6 +439,8 @@ async def run(
     plugin_jar: Path, plugin_sha: str, *, confirmation: str,
     forage_dev: bool = False,
     b1_retention: bool | None = None,
+    v7_arm: str | None = None,
+    v7_seed: int | None = None,
 ) -> int:
     report: dict = {
         "milestone": "M0.2_PAPER_DEV",
@@ -385,6 +453,7 @@ async def run(
         "m0_virtual_ledger_used": False,
         "steak": "cooked_beef",
         "scenario": (
+            f"V7_{v7_arm}_PHYSICS_DEV" if v7_arm is not None else
             f"PAPER_B1_{'ON' if b1_retention else 'OFF'}_DEV"
             if b1_retention is not None else
             "PAPER_NATIVE_GROUND_FORAGE" if forage_dev else "PAPER_STEAK_FIXTURE"
@@ -397,6 +466,14 @@ async def run(
     try:
         if confirmation != M02_CONFIRM:
             raise M02DevRejected("explicit disposable-Paper DEV confirmation missing")
+        if v7_arm is not None:
+            from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
+            if (v7_arm not in ARMS or type(v7_seed) is not int
+                    or v7_seed not in (61021, 61022, 61023, 61024)
+                    or forage_dev or b1_retention is not None):
+                raise M02DevRejected("V7 requires registered arm/seed, no food/forage/B1")
+        elif v7_seed is not None:
+            raise M02DevRejected("V7 seed requires a registered arm")
         if b1_retention is not None and (type(b1_retention) is not bool or not forage_dev):
             raise M02DevRejected("Paper B1 requires explicit forage DEV and retention bool")
         if (not output_dir.is_absolute() or output_dir.exists()
@@ -427,6 +504,9 @@ async def run(
                          .replace("gamemode=creative", "gamemode=survival")
                          .replace("motd=RelaySelf S31A disposable loopback qualification",
                                   "motd=RelaySelf M0.2 isolated DEV"), encoding="utf-8")
+        if v7_arm is not None:
+            with props.open("a", encoding="utf-8") as destination:
+                destination.write(f"level-seed={v7_seed}\n")
         plugin_dir = world / "plugins"
         plugin_dir.mkdir()
         shutil.copyfile(plugin_jar, plugin_dir / "relay-metabolism-paper-dev.jar")
@@ -436,7 +516,11 @@ async def run(
         config = source_conf.read_text(encoding="utf-8")
         if config.count("dev-enabled: false") != 1:
             raise M02DevRejected("untrusted default plugin config shape")
-        config = config.replace("dev-enabled: false", "dev-enabled: true")
+        if v7_arm is not None:
+            from adapters.mineflayer.m02_paper_dev.v7_paired_config import render_arm
+            config = render_arm(source_conf.read_bytes(), v7_arm).decode("utf-8")
+        else:
+            config = config.replace("dev-enabled: false", "dev-enabled: true")
         (conf_dir / "config.yml").write_text(config, encoding="utf-8")
         report.update({
             "paper_sha256": paper_sha,
@@ -465,7 +549,30 @@ async def run(
         _command(server, "gamerule doMobSpawning false")
         _command(server, "gamemode survival RelaySelf")
         await server.stdin.drain()
-        if forage_dev:
+        if v7_arm is not None:
+            report["stage"] = "V7_PREMOVE_NATIVE_BASELINE"
+            observed = await _correlated_observe(session, "v7-pre-move")
+            report["v7_initial_body"] = {
+                "food": observed.snapshot.food,
+                "saturation": observed.snapshot.food_saturation,
+                "source_seq": observed.seq,
+            }
+            report["stage"] = "V7_S50_GOVERNED_SINGLE_MOVE_NO_EAT"
+            report["movement"] = await _motor_walk(session)
+            report["stage"] = "V7_SOURCE_WORLD_TICK_200"
+            report["v7_source"] = await _v7_wait_source_tick(
+                server_log, v7_arm, minimum_player_basal_ticks=200)
+            final = await _correlated_observe(session, "v7-final-no-food")
+            report["v7_final_body"] = {
+                "food": final.snapshot.food,
+                "saturation": final.snapshot.food_saturation,
+                "source_seq": final.seq,
+            }
+            report["v7_arm"] = v7_arm
+            report["v7_seed"] = v7_seed
+            report["v7_food_introduced_by_runner"] = False
+            report["v7_real_science_trials"] = 0
+        elif forage_dev:
             from adapters.mineflayer.m02_paper_dev.paper_foraging_dev import (
                 paper_ground_forage,
             )
@@ -530,10 +637,13 @@ async def run(
             server_log = output_dir / "paper_server.log"
             if rc == 0:
                 try:
-                    report["paper_native_diagnostics"] = _read_world_receipts(
-                        server_log, max_path_blocks=16 if forage_dev else 2,
-                        allow_packet_only_walk=forage_dev,
-                    )
+                    if v7_arm is not None:
+                        report["paper_native_diagnostics"] = report["v7_source"]
+                    else:
+                        report["paper_native_diagnostics"] = _read_world_receipts(
+                            server_log, max_path_blocks=16 if forage_dev else 2,
+                            allow_packet_only_walk=forage_dev,
+                        )
                     report["status"] = "PASS"
                     report["classification"] = "M02_PAPER_DEV_ONLY_PHYSICS_OBSERVED"
                 except Exception as exc:
@@ -570,6 +680,9 @@ async def run(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="M0.2 Paper DEV or OFFLINE qualification asset preflight")
+    parser.add_argument("--v7-arm", choices=(
+        "BASE_ON", "SHAM_ON", "BASAL_ZERO", "WALK_ZERO", "BOTH_ZERO"))
+    parser.add_argument("--v7-seed", type=int)
     parser.add_argument("--paper-b1", choices=("on", "off"),
                         help="Paper B1 BLOCKED→Memory/cheap OFF→lateral S50→pickup→EAT DEV")
     parser.add_argument("--forage-dev", action="store_true",
@@ -608,6 +721,12 @@ def main(argv: list[str] | None = None) -> int:
         return status
     if args.asset_root is not None:
         parser.error("--asset-root requires --qualification-preflight")
+    if args.v7_arm is not None and (
+            args.v7_seed not in (61021, 61022, 61023, 61024)
+            or args.forage_dev or args.paper_b1 is not None):
+        parser.error("V7 DEV requires allowed paired seed/arm, no forage or B1")
+    if args.v7_arm is None and args.v7_seed is not None:
+        parser.error("--v7-seed requires --v7-arm")
     if args.paper_b1 is not None and not args.forage_dev:
         parser.error("--paper-b1 requires --forage-dev")
     if any(v is None for v in (
@@ -620,6 +739,7 @@ def main(argv: list[str] | None = None) -> int:
         args.plugin_jar, args.plugin_sha256, confirmation=args.confirm,
         forage_dev=args.forage_dev,
         b1_retention=(args.paper_b1 == "on" if args.paper_b1 is not None else None),
+        v7_arm=args.v7_arm, v7_seed=args.v7_seed,
     ))
 
 
