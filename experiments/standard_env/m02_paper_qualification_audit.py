@@ -132,7 +132,7 @@ def review(root: Path, *, expected_workflow_run: str,
             "expected_assets_sha256"], "foreign candidate source bytes")
     expected_world_properties = (
         source.read_original(admitted_assets / "server.properties") +
-        f"level-seed={SEED}\\n".encode("ascii")
+        f"level-seed={SEED}\n".encode("ascii")
     )
     require(q.get("world_seeded_properties_sha256") ==
             hashlib.sha256(expected_world_properties).hexdigest(),
