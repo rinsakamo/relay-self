@@ -1,0 +1,6 @@
+name: RelayMetabolismDev
+main: io.github.rinsakamo.relaymetabolism.RelayMetabolismPlugin
+version: '0.2.0-dev'
+api-version: '1.21.8'
+description: 'Isolated DEV-only metabolic exhaustion modifier. Disabled by default.'
+load: POSTWORLD
