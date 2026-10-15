@@ -19,9 +19,9 @@ def synthetic(tmp_path, monkeypatch):
     (root / "owned-worlds").mkdir()
     assets = tmp_path / "assets"
     assets.mkdir()
-    props = b"server-ip=127.0.0.1\\nonline-mode=false\\n"
+    props = b"server-ip=127.0.0.1\nonline-mode=false\n"
     (assets / "server.properties").write_bytes(props)
-    initial_nbt = gzip.compress(b"\\x0a\\x00\\x00\\x00", mtime=0)
+    initial_nbt = gzip.compress(b"\x0a\x00\x00\x00", mtime=0)
     initial_digest = hashlib.sha256(initial_nbt).hexdigest()
     witness = tmp_path / "independent-host-witness.json"
     pins = profile.load_manifest()["expected_assets_sha256"]
@@ -43,7 +43,7 @@ def synthetic(tmp_path, monkeypatch):
         "run_id": "a" * 32, "source_session_id": dev["source_session_id"],
         "java_pid": 10001, "node_pid": 10002,
         "world_seeded_properties_sha256": hashlib.sha256(
-            props + f"level-seed={q.SEED}\\n".encode("ascii")).hexdigest(),
+            props + f"level-seed={q.SEED}\n".encode("ascii")).hexdigest(),
         "initial_level_dat_sha256": initial_digest,
         "initial_world_receipt": {
             "sha256": initial_digest,
@@ -143,7 +143,7 @@ def test_world_seed_and_saved_initial_bytes_are_independently_required(tmp_path,
         verify(root, assets, witness)
 
     (assets / "server.properties").write_bytes(
-        b"server-ip=127.0.0.1\\nonline-mode=false\\n")
+        b"server-ip=127.0.0.1\nonline-mode=false\n")
     (root / "initial_world_level.dat").write_bytes(b"wrong original")
     rewrite(root, report)
     with pytest.raises(q.NotQualified, match="source bytes"):
