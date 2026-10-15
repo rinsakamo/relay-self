@@ -144,6 +144,53 @@ jobs:
             --plugin-jar "$PWD/$PLUGIN" \
             --plugin-sha256 "$PLUGIN_SHA" \
             --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD
+      - name: Paper B1 memory ON — new isolated DEV World
+        id: paper_b1_on
+        continue-on-error: true
+        env:
+          DEV_B1_EVIDENCE: "/tmp/m02-paper-b1-on-${{ github.run_id }}-${{ github.run_attempt }}"
+        run: |
+          PLUGIN=adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
+          PLUGIN_SHA="$(sha256sum "$PLUGIN" | awk '{print $1}')"
+          python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev \
+            --forage-dev --paper-b1 on \
+            --output-dir "$DEV_B1_EVIDENCE" \
+            --paper-jar "${{ steps.paper.outputs.jar }}" \
+            --paper-sha256 "${{ steps.paper.outputs.sha256 }}" \
+            --plugin-jar "$PWD/$PLUGIN" \
+            --plugin-sha256 "$PLUGIN_SHA" \
+            --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD
+      - name: Paper B1 memory OFF — new isolated DEV World
+        id: paper_b1_off
+        continue-on-error: true
+        env:
+          DEV_B1_EVIDENCE: "/tmp/m02-paper-b1-off-${{ github.run_id }}-${{ github.run_attempt }}"
+        run: |
+          PLUGIN=adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
+          PLUGIN_SHA="$(sha256sum "$PLUGIN" | awk '{print $1}')"
+          python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev \
+            --forage-dev --paper-b1 off \
+            --output-dir "$DEV_B1_EVIDENCE" \
+            --paper-jar "${{ steps.paper.outputs.jar }}" \
+            --paper-sha256 "${{ steps.paper.outputs.sha256 }}" \
+            --plugin-jar "$PWD/$PLUGIN" \
+            --plugin-sha256 "$PLUGIN_SHA" \
+            --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD
+      - name: Preserve Paper B1 ON/OFF original DEV evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m02-paper-b1-onoff-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            /tmp/m02-paper-b1-on-${{ github.run_id }}-${{ github.run_attempt }}/
+            /tmp/m02-paper-b1-off-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Enforce physical ON and OFF DEV status separately
+        if: always()
+        run: |
+          test "${{ steps.paper_b1_on.outcome }}" = "success"
+          test "${{ steps.paper_b1_off.outcome }}" = "success"
       - name: Preserve forage DEV evidence even on failure
         if: always()
         uses: actions/upload-artifact@v4

@@ -372,6 +372,7 @@ async def run(
     output_dir: Path, paper_jar: Path, paper_sha: str,
     plugin_jar: Path, plugin_sha: str, *, confirmation: str,
     forage_dev: bool = False,
+    b1_retention: bool | None = None,
 ) -> int:
     report: dict = {
         "milestone": "M0.2_PAPER_DEV",
@@ -383,7 +384,11 @@ async def run(
         "physical_world": "NOT_RUN",
         "m0_virtual_ledger_used": False,
         "steak": "cooked_beef",
-        "scenario": "PAPER_NATIVE_GROUND_FORAGE" if forage_dev else "PAPER_STEAK_FIXTURE",
+        "scenario": (
+            f"PAPER_B1_{'ON' if b1_retention else 'OFF'}_DEV"
+            if b1_retention is not None else
+            "PAPER_NATIVE_GROUND_FORAGE" if forage_dev else "PAPER_STEAK_FIXTURE"
+        ),
         "minecraft_version": MINECRAFT_VERSION,
     }
     root = None
@@ -392,6 +397,8 @@ async def run(
     try:
         if confirmation != M02_CONFIRM:
             raise M02DevRejected("explicit disposable-Paper DEV confirmation missing")
+        if b1_retention is not None and (type(b1_retention) is not bool or not forage_dev):
+            raise M02DevRejected("Paper B1 requires explicit forage DEV and retention bool")
         if (not output_dir.is_absolute() or output_dir.exists()
                 or output_dir.is_symlink() or output_dir.parent.is_symlink()
                 or not output_dir.parent.is_dir()
@@ -467,6 +474,7 @@ async def run(
             report["ground_foraging"] = await paper_ground_forage(
                 session, server, issuer=_issue, provenance=_p,
                 trace=progress,
+                b1_retention=b1_retention,
             )
             report["stage"] = "S51_GOVERNED_PICKED_STEAK_EAT"
             report["eating"] = await _native_steak(session, server, preowned=True)
@@ -549,6 +557,8 @@ async def run(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="M0.2 Paper DEV or OFFLINE qualification asset preflight")
+    parser.add_argument("--paper-b1", choices=("on", "off"),
+                        help="Paper B1 BLOCKED→Memory/cheap OFF→lateral S50→pickup→EAT DEV")
     parser.add_argument("--forage-dev", action="store_true",
                         help="new disposable Paper-only L0 SEEK→S50 MOVE→pickup→EAT DEV")
     parser.add_argument("--qualification-preflight", action="store_true",
@@ -567,6 +577,7 @@ def main(argv: list[str] | None = None) -> int:
             args.output_dir, args.paper_jar, args.paper_sha256, args.plugin_jar,
             args.plugin_sha256, args.confirm,
             True if args.forage_dev else None,
+            args.paper_b1,
         )):
             parser.error("qualification preflight accepts ONLY --asset-root; no DEV/World options")
         try:
@@ -584,6 +595,8 @@ def main(argv: list[str] | None = None) -> int:
         return status
     if args.asset_root is not None:
         parser.error("--asset-root requires --qualification-preflight")
+    if args.paper_b1 is not None and not args.forage_dev:
+        parser.error("--paper-b1 requires --forage-dev")
     if any(v is None for v in (
         args.output_dir, args.paper_jar, args.paper_sha256,
         args.plugin_jar, args.plugin_sha256, args.confirm,
@@ -593,6 +606,7 @@ def main(argv: list[str] | None = None) -> int:
         args.output_dir, args.paper_jar, args.paper_sha256,
         args.plugin_jar, args.plugin_sha256, confirmation=args.confirm,
         forage_dev=args.forage_dev,
+        b1_retention=(args.paper_b1 == "on" if args.paper_b1 is not None else None),
     ))
 
 

@@ -463,3 +463,49 @@ def test_paper_multistep_foraging_accepts_no_native_walk_callbacks_only_when_pac
     )
     with pytest.raises(M02DevRejected, match="charge differs"):
         _read_world_receipts(log, max_path_blocks=16, allow_packet_only_walk=True)
+
+
+def test_paper_b1_requires_explicit_forage_and_does_not_reuse_any_grant(tmp_path):
+    with pytest.raises(SystemExit):
+        main(["--paper-b1", "on"])
+    with pytest.raises(SystemExit):
+        main(["--qualification-preflight", "--paper-b1", "off",
+              "--asset-root", str(tmp_path)])
+    assert dev.M02_CONFIRM == M02_CONFIRM
+
+
+def test_paper_b1_foraging_fail_closed_on_bad_switch_or_dirty_trace():
+    from adapters.mineflayer.m02_paper_dev.paper_foraging_dev import (
+        PaperForageRejected,
+        paper_ground_forage,
+    )
+    for retention in ("on", 1):
+        with pytest.raises(PaperForageRejected):
+            asyncio.run(paper_ground_forage(
+                None, None, issuer=None, provenance=None,
+                trace={}, b1_retention=retention,
+            ))
+    with pytest.raises(PaperForageRejected):
+        asyncio.run(paper_ground_forage(
+            None, None, issuer=None, provenance=None,
+            trace={"frozen": True}, b1_retention=True,
+        ))
+
+
+def test_paper_b1_uses_original_retained_source_and_cheap_off_policy():
+    import test_b1_local_adaptation as b1
+    from adapters.mineflayer.b1_local_adaptation import B1LocalCandidate
+
+    before, blocked, followup, target = b1.source()
+    for retention, direction in ((True, -1), (False, 1)):
+        agent = B1LocalCandidate(before.session_id, retain=retention)
+        agent.record_blocked(before, blocked, followup, target)
+        fresh = replace(followup, seq=followup.seq + 1,
+                        request_id="paper-fresh-after-blocked")
+        chosen = agent.next_waypoint(fresh, target)
+        assert chosen.goal_id == "b1-local-lateral"
+        assert (chosen.target.z - followup.snapshot.position.z) * direction > 0
+        assert agent.evidence()["retained_observations"] == int(retention)
+        assert agent.evidence()["reused_for_lateral_choice"] == int(retention)
+        assert agent.evidence()["lateral_choice_count"] == 1
+        assert not agent.evidence()["habit_created"]
