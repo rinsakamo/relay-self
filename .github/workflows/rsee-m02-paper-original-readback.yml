@@ -75,10 +75,12 @@ jobs:
           gh run download "$ORIGINAL_RUN" -R "$GH_REPO" -n "$ORIGINAL_ARTIFACT" \
             -D "$RUNNER_TEMP/m02-archive/originals"
           find "$RUNNER_TEMP/m02-archive/originals" -maxdepth 2 -type f -printf '%P %s bytes\n' | sort
+          ( cd "$RUNNER_TEMP/m02-archive/originals" && sha256sum paper_server.log original_native.jsonl owner_commands.jsonl m02_report.json )
       - name: Independent pinned original-byte and physiological readback
         env:
           M02_ORIGINALS: ${{ runner.temp }}/m02-archive/originals
         run: |
+          set -o pipefail
           python -m experiments.standard_env.m02_paper_dev_audit \
             --original-root "$M02_ORIGINALS" \
             | tee "$RUNNER_TEMP/m02-archive/review/r-source-review.json"
