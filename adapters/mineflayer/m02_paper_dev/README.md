@@ -13,9 +13,11 @@ NOT_RUN until a disposable Paper World is separately created and executed.
   `additional`, `unit`, `enabled` for all 14 Paper
   `EntityExhaustionEvent.ExhaustionReason` types, plus BASAL and COGNITION.
 - Per action: `q × (standard × multiplier + additional)`.
-- The EventListener calls `event.setExhaustion(...)` (**replaces**, does not
-  add on top of the Vanilla pending charge). Movement reasons are **1 cm per
-  event**, so for a per-block numeric standard `q=1/100`.
+- The plugin replaces native exhaustion using `event.setExhaustion(...)`.
+  For land WALK/CROUCH/SPRINT the original movement-event charge is set to
+  zero and `PlayerMoveEvent` gives the **actual distance in blocks**.
+  Charge that distance once via `Player.setExhaustion`, not a second
+  independent ledger. Native nonmovement events retain replacement rules.
 - Some sources (`REGEN`, `HUNGER_EFFECT`, `UNKNOWN`, underwater/water-surface)
   use explicit `standard: native`; the original event amount is the source.
   For native movement the multiplier is applied to the source event amount,
@@ -36,14 +38,18 @@ Approved abstraction: **one MOVE/SEEK planning step is up to one block
 cap; actual motion can be partial/blocked. No attempt is made to change
 the existing Action authorization, motor timing or source receipts.
 
-This Paper plugin charges native movement exhaustion events at their
-own **1cm source granularity**. The per-block editable standard and
-additional are divided by 100 per actual centimeter event. A typical
-one-block walk costs about 100 events × 0.0001 = 0.01 exhaustion under the
-uncalibrated candidate; a partial 0.4-block walk should cost 0.004 for 40
-admitted WALK centimeter events. Do not charge the full requested meter
-separately. Basal billing is still by World tick, and nothing bills by
-number of Self decisions. Live original event attestation is NOT_RUN.
+**Corrected from real 2026-10-15 Paper DEV evidence:** 1.042431 blocks
+of executed S50 motion emitted only **12 WALK exhaustion events**. Therefore
+one event is NOT necessarily one centimeter of physical displacement;
+billing 12 × 0.0001 would undercharge by about 8.7×. The corrected plugin
+observes `PlayerMoveEvent` horizontal block displacement and bills
+`observed_blocks × (standard × multiplier + additional)` once, without
+charging the requested Action distance. At WALK standard 0.01/block,
+a fully observed 1.042431-block step should bill about 0.0104243;
+a genuine observed 0.4-block step should bill 0.004.
+The corrected packet-based rate needs **a separate real DEV run** and
+is not yet R-qualified. Water-specific dynamic movement remains outside
+this qualified land-mode claim. Basal is still once per actual World tick.
 
 ## S-owned disposable physical DEV executable
 
