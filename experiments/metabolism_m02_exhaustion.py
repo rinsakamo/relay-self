@@ -23,22 +23,27 @@ UNITS: dict[str, Unit] = {
     "CROUCH": "block",
     "SPRINT": "block",
     "SWIM": "block",
-    "WALK_ON_WATER": "event",
-    "WALK_UNDERWATER": "event",
+    "WALK_ON_WATER": "block",
+    "WALK_UNDERWATER": "block",
     "JUMP": "event",
     "JUMP_SPRINT": "event",
     "ATTACK": "event",
     "DAMAGED": "event",
     "BLOCK_MINED": "event",
-    "REGEN": "hp",
+    "REGEN": "event",
     "HUNGER_EFFECT": "event",
     "UNKNOWN": "event",
     "COGNITION": "work",
 }
 SYNTHETIC = frozenset(("BASAL", "COGNITION"))
 EVENT_REASONS = frozenset(UNITS) - SYNTHETIC
-PER_CENTIMETER = frozenset(("WALK", "CROUCH", "SPRINT", "SWIM"))
-NATIVE_REQUIRED = frozenset(("WALK_ON_WATER", "WALK_UNDERWATER", "HUNGER_EFFECT", "UNKNOWN"))
+PER_CENTIMETER = frozenset((
+    "WALK", "CROUCH", "SPRINT", "SWIM",
+    "WALK_ON_WATER", "WALK_UNDERWATER",
+))
+NATIVE_REQUIRED = frozenset((
+    "WALK_ON_WATER", "WALK_UNDERWATER", "REGEN", "HUNGER_EFFECT", "UNKNOWN",
+))
 
 
 class M02Rejected(ValueError):
@@ -204,11 +209,19 @@ def cost(
     ):
         raise M02Rejected("tick/event quantity must be an integer")
     if action in NATIVE_REQUIRED:
-        if rate.unit != "event" or quantity != 1:
-            raise M02Rejected("native standard requires one original event")
         if not _nonnegative(native_event_exhaustion):
             raise M02Rejected("finite original native event exhaustion required")
-        base = native_event_exhaustion
+        if action in PER_CENTIMETER:
+            if quantity == 0:
+                raise M02Rejected("native centimeter event requires positive distance")
+            # Native is an observed amount *for this event*, whereas the
+            # editable addition is per block. Dividing by the observed event
+            # distance preserves the uniform q*(S*m+A) law.
+            base = native_event_exhaustion / quantity
+        else:
+            if rate.unit != "event" or quantity != 1:
+                raise M02Rejected("native standard requires one original event")
+            base = native_event_exhaustion
     else:
         if native_event_exhaustion is not None:
             if not _nonnegative(native_event_exhaustion):
@@ -246,11 +259,6 @@ def paper_event_cost(
         if not _nonnegative(distance_centimeters) or healed_hp is not None:
             raise M02Rejected("movement event requires distance in cm only")
         return cost(profile, reason, distance_centimeters / 100.0,
-                    native_event_exhaustion=native_event_exhaustion)
-    if reason == "REGEN":
-        if not _nonnegative(healed_hp) or healed_hp <= 0 or distance_centimeters is not None:
-            raise M02Rejected("REGEN requires observed restored HP")
-        return cost(profile, reason, healed_hp,
                     native_event_exhaustion=native_event_exhaustion)
     if distance_centimeters is not None or healed_hp is not None:
         raise M02Rejected("nonmovement Paper reason cannot charge distance/HP")
