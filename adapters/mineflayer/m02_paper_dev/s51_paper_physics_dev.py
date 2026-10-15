@@ -232,7 +232,7 @@ def _read_world_receipts(
     walk = [x for x in lines if "M02_DEV_EVENT " in x and "reason=WALK " in x]
     motion = [x for x in lines if "M02_DEV_MOTION " in x and "reason=WALK " in x]
     if not enabled or not body or not motion or (not walk and not allow_packet_only_walk):
-        raise M02DevRejected("Paper plugin startup/basal/physical packet motion absent")
+        raise M02DevRejected("Paper plugin startup/basal/WALK and packet motion absent")
     if not all("original=0.0 " in x and "replaced=0.0" in x for x in walk):
         raise M02DevRejected("land WALK native event must be replaced by zero")
     blocks = 0.0
