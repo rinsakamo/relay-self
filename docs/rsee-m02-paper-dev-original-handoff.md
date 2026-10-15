@@ -25,7 +25,7 @@ Original independently published SHA256 digests:
 | --- | --- |
 | `paper_server.log` | `61b5d9ff7505b93cbaf6944365d7959d60f8697b795786141cccdfd5cb3692a6` |
 | `original_native.jsonl` | `e95c8fadf641d37099601e12e9d546d7e581b78601a3ff5c1a90c1984614a7f3` |
-| `owner_commands.jsonl` | `d81b0242a8ab7a68faf1ba8d6b845c3f27e19598a96716c247d456d2fb0` |
+| `owner_commands.jsonl` | `d81b0242a8ab7a68faf1ba8d6b845c3f3bc3f27e19598a96716c247d456d2fb0` |
 
 A separately retained `m02_report.json` is required. It contains
 source session/Action/probe linkage and the producer hash readback; its
