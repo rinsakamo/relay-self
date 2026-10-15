@@ -1,6 +1,7 @@
 """M0.2 Paper DEV source controls; no Minecraft/Java/network in these tests."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 from pathlib import Path
 
@@ -54,14 +55,13 @@ def test_original_event_log_must_prove_walk_basal_and_plugin(tmp_path):
         _read_world_receipts(log)
 
 
-@pytest.mark.asyncio
-async def test_absent_confirmation_prevents_java_and_creation(tmp_path):
+def test_absent_confirmation_prevents_java_and_creation(tmp_path):
     out = tmp_path / "new-world"
-    rc = await run(
+    rc = asyncio.run(run(
         out, tmp_path / "absent.jar", "0" * 64,
         tmp_path / "absent-plugin.jar", "1" * 64,
         confirmation="NOT_AUTHORIZED",
-    )
+    ))
     assert rc == 2
     assert not out.exists()
 
