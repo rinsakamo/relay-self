@@ -5,9 +5,12 @@ This parser does not change historical V7, qualify a new JAR, or start a World.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
+import json
 import math
 import re
+from pathlib import Path
 from typing import Any
 
 CLASSIFICATION = "RSEE_V7_M02_DIRECT_BASAL_DEV_SOURCE_SHAPE_REVIEW_ONLY"
@@ -129,3 +132,53 @@ def review_original_server_log(raw: bytes, arm: str) -> dict[str, Any]:
         "v_science_go": False,
         "production_go": False,
     }
+
+
+def review_original_path(path: Path, arm: str, expected_sha256: str) -> dict[str, Any]:
+    """Read a pinned source file, rejecting aliases and changed bytes.
+
+    A caller-supplied expected digest alone cannot independently attest who
+    produced the file: upstream artifact run/producer identity review is still
+    a separate mandatory R task.
+    """
+    need(isinstance(path, Path) and path.is_absolute() and path.is_file()
+         and not path.is_symlink()
+         and all(not parent.is_symlink() for parent in path.parents),
+         "unsafe or absent absolute Paper original")
+    need(type(expected_sha256) is str
+         and re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is not None,
+         "missing expected Paper source digest")
+    need(0 < path.stat().st_size <= MAX_LOG_BYTES, "original Paper log size")
+    before = path.read_bytes()
+    need(hashlib.sha256(before).hexdigest() == expected_sha256,
+         "source-original hash mismatch")
+    out = review_original_server_log(before, arm)
+    need(path.read_bytes() == before, "original Paper source changed during review")
+    out["self_reported_digest_does_not_authenticate_producer"] = True
+    return out
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--paper-original", required=True, type=Path)
+    parser.add_argument("--arm", required=True)
+    parser.add_argument("--expected-sha256", required=True)
+    args = parser.parse_args()
+    try:
+        result = review_original_path(
+            args.paper_original, args.arm, args.expected_sha256,
+        )
+    except (SourceRejected, OSError) as exc:
+        print(json.dumps({
+            "classification": "RSEE_V7_DIRECT_BASAL_SOURCE_INVALID",
+            "error": f"{type(exc).__name__}: {exc}",
+            "science_trials_credited": 0,
+            "changed_profile_engineering_qualified": False,
+        }, sort_keys=True))
+        return 2
+    print(json.dumps(result, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
