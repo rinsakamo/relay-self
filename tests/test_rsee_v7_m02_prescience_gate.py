@@ -105,6 +105,43 @@ def test_missing_duplicate_or_fake_sham_cannot_be_promoted():
         gate.review(packet)
 
 
+@pytest.mark.parametrize("arm", gate.ARMS)
+def test_source_shaped_repaired_path_and_consistent_delta_still_rejected(arm):
+    packet = _receipt()
+    item = packet["arms"][arm]
+    item["real_motion_path_blocks"] += 0.001
+    walk_factor = 0 if arm in ("WALK_ZERO", "BOTH_ZERO") else 1
+    item["observed_walk_debit"] = item["real_motion_path_blocks"] * .01 * walk_factor
+    paths = [v["real_motion_path_blocks"] for v in packet["arms"].values()]
+    delta = max(paths) - min(paths)
+    packet["path_max_minus_min_blocks"] = delta
+    packet["paired_path_tolerance_met"] = delta <= gate.TOLERANCE_BLOCKS
+    with pytest.raises(gate.NotAdmitted, match="historic independently reviewed"):
+        gate.review(packet)
+
+
+def test_forged_perfect_path_match_even_with_self_consistent_summary_rejected():
+    packet = _receipt()
+    for name, item in packet["arms"].items():
+        item["real_motion_path_blocks"] = 1.2828913533098643
+        item["observed_walk_debit"] = (
+            0 if name in ("WALK_ZERO", "BOTH_ZERO") else
+            item["real_motion_path_blocks"] * .01
+        )
+        item["real_motion_packets"] = 9
+    packet["path_max_minus_min_blocks"] = 0.0
+    packet["paired_path_tolerance_met"] = True
+    with pytest.raises(gate.NotAdmitted, match="historic independently reviewed"):
+        gate.review(packet)
+
+
+def test_forged_native_packet_count_rejected():
+    packet = _receipt()
+    packet["arms"]["BASE_ON"]["real_motion_packets"] = 9
+    with pytest.raises(gate.NotAdmitted, match="historic independently reviewed"):
+        gate.review(packet)
+
+
 def test_matching_paths_by_editing_unqualified_original_is_rejected():
     packet = _receipt()
     packet["arms"]["BASE_ON"]["real_motion_path_blocks"] = 1.2828913533098643
