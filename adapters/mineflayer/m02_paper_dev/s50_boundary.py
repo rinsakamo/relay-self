@@ -226,6 +226,162 @@ def reconcile(content: str, movement: dict, *, walk_rate: float) -> dict:
     }
 
 
+
+def tick_motion_source(content: str, phase: dict, walk_rate: float) -> dict:
+    """Verify the prospective Paper tick-pose WALK writer, not event billing.
+
+    A tick-to-tick chord is a lower bound on continuous movement. The server
+    writes native player exhaustion for EACH observed chord; sub-tick turns
+    remain NOT_ATTESTED. Old event-based profiles are not promoted.
+    """
+    if not isinstance(phase, dict) or not math.isfinite(walk_rate) or walk_rate < 0:
+        raise BoundaryRejected("unregistered tick meter profile")
+    marker = phase["marker_id"]
+    first = phase["ordered_originals"][0]
+    world = None
+    phase_rows = phases(content, marker)
+    if phase_rows[0].get("marker_id") != marker:
+        raise BoundaryRejected("tick ledger phase marker mismatch")
+    world = phase_rows[0].get("world")
+    arm = rows(content, "S50_DEV_TICK_METER_ARM ")
+    if (len(arm) != 1 or arm[0].get("marker_id") != marker
+            or arm[0].get("world") != world
+            or integer(arm[0], "world_full_time")
+            != integer(phase_rows[0], "world_full_time")
+            or math.dist(pose(arm[0]), pose(phase_rows[0])) > 1e-8):
+        raise BoundaryRejected("native tick meter was not armed at PRE_FORWARD")
+    ledger = rows(content, "S50_DEV_TICK_MOTION ")
+    if len(ledger) < 6:
+        raise BoundaryRejected("missing continuous native World-tick motion")
+    previous = pose(arm[0])
+    blocks_sum = charge_sum = 0.0
+    last_tick = integer(arm[0], "world_full_time")
+    by_tick = {}
+    moving_rows = 0
+    for idx, r in enumerate(ledger, 1):
+        tick = integer(r, "world_full_time")
+        if (r.get("marker_id") != marker or r.get("world") != world
+                or integer(r, "id") != idx or tick != last_tick + 1):
+            raise BoundaryRejected("foreign/nonconsecutive native tick meter")
+        start, end = pose(r, "from_"), pose(r, "to_")
+        if math.dist(start, previous) > 1e-8:
+            raise BoundaryRejected("tick meter source discontinuity")
+        blocks = math.hypot(end[0]-start[0], end[2]-start[2])
+        charge = number(r, "billed")
+        if (blocks > 1 or abs(start[1] - end[1]) > 0.5
+                or abs(blocks - number(r, "blocks")) > 1e-8
+                or abs(charge - blocks * walk_rate) > 1e-8):
+            raise BoundaryRejected("native tick ledger distance/debit mismatch")
+        blocks_sum += blocks
+        charge_sum += charge
+        if (abs(number(r, "cumulative_blocks")-blocks_sum) > 1e-7
+                or abs(number(r, "cumulative_billed")-charge_sum) > 1e-7
+                or abs(number(r, "write_target")-
+                       number(r, "write_before")-charge) > 1e-6
+                or abs(number(r, "write_after")-
+                       number(r, "write_target")) > 2e-6):
+            raise BoundaryRejected("native tick exhaustion writer discrepancy")
+        previous, last_tick = end, tick
+        by_tick[tick] = (end, blocks_sum, charge_sum)
+        moving_rows += blocks > 0
+    if moving_rows == 0:
+        raise BoundaryRejected("no physical MOVE progress in tick ledger")
+    samples = rows(content, "S50_DEV_TICK ")
+    if not samples:
+        raise BoundaryRejected("no native tick snapshot with meter counters")
+    for sample in samples:
+        tick = integer(sample, "tick")
+        if (sample.get("world") != world or sample.get("marker_id") != marker
+                or tick not in by_tick):
+            raise BoundaryRejected("snapshot without original tick writer")
+        end, walked, spent = by_tick[tick]
+        if (math.dist(pose(sample), end) > 1e-8
+                or abs(number(sample, "tick_meter_blocks")-walked) > 1e-7
+                or abs(number(sample, "tick_meter_billed")-spent) > 1e-7):
+            raise BoundaryRejected("native tick snapshot/exhaustion drift")
+    return {
+        "source": "PAPER_PER_WORLD_TICK_NATIVE_POSE_AND_EXHAUSTION_WRITES_DEV",
+        "marker_id": marker,
+        "world": world,
+        "source_rows": len(ledger),
+        "first_tick": integer(ledger[0], "world_full_time"),
+        "last_tick": last_tick,
+        "moving_rows": moving_rows,
+        "observed_tick_chord_blocks": blocks_sum,
+        "walk_native_writer_input": charge_sum,
+        "last_pose": dict(zip(("x", "y", "z"), previous)),
+        "unobserved_subtick_path": "NOT_ATTESTED",
+        "native_event_double_billing_prevented": True,
+        "exact_continuous_distance_attested": False,
+        "qualified": False,
+        "science_go": False,
+    }
+
+
+def reconcile_tick_meter(content: str, movement: dict, *, walk_rate: float) -> dict:
+    """S50 DEV-only action→accepted tick writer↔quiet endpoint, no fake OUTCOME."""
+    marker = movement["action_id"] + "-" + movement["source_session"]
+    if movement["v7_phase_marker_id"] != marker:
+        raise BoundaryRejected("foreign tick metering Action/session")
+    quiet = quiet_window(content, marker)
+    if quiet is None:
+        raise BoundaryRejected("tick-meter physical quiet not observed")
+    phase_rows, ticks, window = quiet
+    source = {
+        "marker_id": marker, "ordered_originals": [
+            {"phase": r["phase"]} for r in phase_rows
+        ]
+    }
+    meter = tick_motion_source(content, source, walk_rate)
+    original = movement["native_start_position"]
+    start = tuple(original[k] for k in ("x", "y", "z"))
+    endpoint = pose(window[-1])
+    if (math.dist(pose(phase_rows[0]), start) > 1e-6
+            or math.dist(tuple(meter["last_pose"][a] for a in ("x", "y", "z")),
+                         endpoint) > 1e-7):
+        raise BoundaryRejected("tick writer/Action physical endpoints disagree")
+    events = rows(content, "M02_DEV_MOTION ")
+    if not events or any(
+        r.get("world") != meter["world"] or r.get("marker_id") != marker
+        or integer(r, "id") != i
+        or abs(number(r, "billed")) > 1e-12
+        or abs(number(r, "cumulative_billed")) > 1e-12
+        for i, r in enumerate(events, 1)
+    ):
+        raise BoundaryRejected("legacy event billing still active / foreign")
+    event_distance = sum(number(r, "blocks") for r in events)
+    if event_distance > meter["observed_tick_chord_blocks"] + 1e-7:
+        raise BoundaryRejected("tick lower bound falls short of event path")
+    # Existing motion events remain native observations, not alternative
+    # billable movements; add no after-the-fact debit/credit.
+    target = movement["native_target_position"]
+    remaining = math.hypot(target["x"] - endpoint[0], target["z"] - endpoint[2])
+    initial = math.hypot(target["x"] - start[0], target["z"] - start[2])
+    progress = initial - remaining
+    if abs(progress - movement["observed_progress_blocks"]) > 1e-5:
+        raise BoundaryRejected("physical progress contradicts Action OUTCOME")
+    # The complete tick ledger is checked through its last original,
+    # including its observations AFTER the bounded quiet terminal.
+    # It cannot prove an infinite future absence of motion.
+    return {
+        "classification": "S50_DEV_TICK_CHORD_WALK_SOURCE_RECONCILED_NOT_QUALIFIED",
+        "world": meter["world"],
+        "marker_id": marker,
+        "nominal_requested_blocks": 1.0,
+        "native_horizontal_path_blocks": meter["observed_tick_chord_blocks"],
+        "native_target_progress_blocks": progress,
+        "native_walk_exhaustion": meter["walk_native_writer_input"],
+        "native_event_observed_blocks_not_billed": event_distance,
+        "observed_tick_motion_source": meter,
+        "quiet_observed_from_tick": integer(window[0], "tick"),
+        "quiet_observed_through_tick": integer(window[-1], "tick"),
+        "physical_permanent_stop": "NOT_ATTESTED",
+        "hard_one_block_cap": "NOT_GUARANTEED",
+        "sub_tick_path": "NOT_ATTESTED",
+        "wait_recovery_eligible_ticks": 0,
+    }
+
+
 def verify_native(native: list[dict], commands: list[dict], movement: dict):
     """Recheck original bridge command/ACK/probe identity, not host timestamps."""
     session = movement["source_session"]
