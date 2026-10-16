@@ -94,7 +94,6 @@ class MeteredS60Adapter(LoopbackDisplacementAdapter):
             if (
                 attempt is None or digest is None
                 or digest[0] != attempt.request.work_id
-                or attempt.request.context.session_id != self._owner.context.session_id
                 or not isinstance(digest[1], str)
             ):
                 raise ValueError
