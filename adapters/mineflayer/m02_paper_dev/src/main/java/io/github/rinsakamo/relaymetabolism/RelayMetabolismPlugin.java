@@ -570,6 +570,24 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             }
         }
         Collections.sort(entries);
+        if (entries.size() > 512) {
+            throw new IllegalStateException("WAIT roster explicit source cap exceeded");
+        }
+        // Authoritative for the *sampled loaded chunk set* only.
+        // Preserve one native row per entity rather than only a producer hash.
+        for (int itemIndex = 0; itemIndex < entries.size(); itemIndex++) {
+            String[] fields = entries.get(itemIndex).split(":", -1);
+            if (fields.length != 5) {
+                throw new IllegalStateException("invalid source roster tuple");
+            }
+            getLogger().info("S50_DEV_WAIT_ENTITY marker_id=" + s50Marker
+                + " world=" + subject.getWorld().getUID()
+                + " tick=" + tick + " index=" + index
+                + " roster_index=" + (itemIndex + 1)
+                + " entity_world=" + fields[0]
+                + " chunk_x=" + fields[1] + " chunk_z=" + fields[2]
+                + " uuid=" + fields[3] + " type=" + fields[4]);
+        }
         StringBuilder canonical = new StringBuilder();
         for (String item : entries) {
             canonical.append(item).append('\n');
