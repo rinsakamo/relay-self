@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import replace
 
 import pytest
@@ -10,7 +11,7 @@ from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackTransportConfig,
     TransportUnconfirmed,
 )
-from relay_self.best_effort_displacement import ModelRequest
+from relay_self.best_effort_displacement import BestEffortDisplacement, ModelRequest
 from relay_self.cognitive_fatigue import (
     CognitiveFatigueRejected,
     FatigueProfile,
@@ -209,3 +210,85 @@ def test_natural_completion_without_finish_reason_cannot_settle():
                              "VERIFIED_NATURAL_COMPLETION", facts)
     with pytest.raises(S60FatigueRejected):
         settle_s60_l2(p, active, claim, at_ns=1000)
+
+
+def test_actual_existing_s60_loopback_http_request_uses_l_cf_cap():
+    """Offline fake provider: exercise S60 owner submit -> original HTTP POST."""
+    async def trial():
+        seen = []
+
+        async def fake_provider(reader, writer):
+            try:
+                header = await reader.readuntil(b"\r\n\r\n")
+                length = next(
+                    int(line.partition(b":")[2])
+                    for line in header.split(b"\r\n")
+                    if line.startswith(b"Content-Length:")
+                )
+                request_body = json.loads(await reader.readexactly(length))
+                seen.append(request_body)
+                body = json.dumps({
+                    "model": BASE.model,
+                    "choices": [{
+                        "index": 0,
+                        "finish_reason": "stop",
+                        "message": {"role": "assistant", "content": "non-authorizing"},
+                    }],
+                    "usage": {
+                        "prompt_tokens": 14,
+                        "completion_tokens": 3,
+                        "total_tokens": 17,
+                    },
+                }).encode()
+                writer.write(
+                    b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+                    + f"Content-Length: {len(body)}\r\n".encode()
+                    + b"Connection: close\r\n\r\n" + body
+                )
+                await writer.drain()
+            finally:
+                writer.close()
+                await writer.wait_closed()
+
+        server = await asyncio.start_server(fake_provider, "127.0.0.1", 0)
+        async with server:
+            port = server.sockets[0].getsockname()[1]
+            base = replace(BASE, port=port)
+            p, state = fixture()
+            plan = plan_s60_l2(p, state, base)
+            adapter = make_s60_adapter(
+                plan, lambda req: payload(req, plan.max_output_tokens),
+            )
+            context = CognitionContext("session-a", 1, 1, 1)
+            owner = BestEffortDisplacement(
+                context, "l-cf3-test", adapter.start, adapter.cancel, lambda: 1.0,
+            )
+            adapter.bind(owner)
+            task = owner.admit(
+                context, "L2", 1, 20.0, 5.0,
+                Provenance("l-cf3-test", "probe-1"),
+            )
+            reserved = reserve_s60_l2(
+                p, state, plan, task, at_ns=1_000_000_000,
+                source_receipt_sha256=SHA,
+            )
+            owner.submit(task)
+            await asyncio.wait_for(adapter._attempt.task, 2)
+            result = owner.tick()
+            assert result is not None
+            assert result.request is task
+            assert result.value == "non-authorizing"
+            assert len(seen) == 1
+            assert seen[0]["max_tokens"] == plan.max_output_tokens
+            assert 1 <= seen[0]["max_tokens"] < base.max_tokens
+            # Original S60 exposes text, not attested usage; never infer free
+            # completion or cognitive idle from response alone.
+            assert reserved.active_work_id == task.work_id
+            with pytest.raises(CognitiveFatigueRejected):
+                recover_idle(
+                    p, reserved,
+                    NonL2Interval("session-a", reserved.seq + 1,
+                                  reserved.last_ns, 3_000_000_000, SHA),
+                )
+            await adapter.aclose()
+    asyncio.run(trial())
