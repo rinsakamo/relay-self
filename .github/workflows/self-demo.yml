@@ -77,6 +77,7 @@ jobs:
               tests/test_feature_s51_eat_execution.py|\
               tests/test_self_dev.py|\
               tests/test_m02_paper_dev.py|\
+              tests/test_m02_v8_stopped_world_clone_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
               tests/test_m02_v7_four_arm_qualification.py|\
               tests/test_s50_*.py|\
