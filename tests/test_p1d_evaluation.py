@@ -8,9 +8,20 @@ from dataclasses import replace
 import pytest
 
 from experiments.p1d_evaluation import (
-    ARMS, CLASS, CONTRASTS, SEEDS, CheapRestState, P1DRejected, Trial,
-    candidate, cheap_rest_proposal, describe, load_plan, roster,
-    unrun_roster, validate_plan,
+    ARMS,
+    CLASS,
+    CONTRASTS,
+    SEEDS,
+    CheapRestState,
+    P1DRejected,
+    Trial,
+    candidate,
+    cheap_rest_proposal,
+    describe,
+    load_plan,
+    roster,
+    unrun_roster,
+    validate_plan,
 )
 
 
