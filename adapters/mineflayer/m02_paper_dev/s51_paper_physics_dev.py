@@ -277,10 +277,10 @@ def _v7_direct_basal_write_receipt(content: str, arm: str) -> dict:
         raise M02DevRejected("unregistered V7 basal original source")
     pattern = re.compile(
         r"M02_DEV_BASAL_WRITE id=(\d+) world_full_time=(\d+) "
-        r"before=([0-9.eE+\\-]+) requested=([0-9.eE+\\-]+) "
-        r"write_target=([0-9.eE+\\-]+) "
-        r"observed_after=([0-9.eE+\\-]+) "
-        r"cumulative_requested=([0-9.eE+\\-]+)"
+        r"before=([0-9.eE+\-]+) requested=([0-9.eE+\-]+) "
+        r"write_target=([0-9.eE+\-]+) "
+        r"observed_after=([0-9.eE+\-]+) "
+        r"cumulative_requested=([0-9.eE+\-]+)"
     )
     records = []
     for line in content.splitlines():
@@ -321,7 +321,7 @@ def _v7_direct_basal_write_receipt(content: str, arm: str) -> dict:
         "full_move_action_bracket_attested": False,
     }
 
-async def _v7_wait_source_tick(server_log: Path, arm: str, *
+async def _v7_wait_source_tick(server_log: Path, arm: str, *,
                                minimum_player_basal_ticks: int = 200) -> dict:
     """Bounded original Paper plugin sample gate; DEV only, not V science.
 
