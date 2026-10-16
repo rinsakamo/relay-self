@@ -678,3 +678,41 @@ def test_v7_basal_write_original_200_native_world_ticks_and_zero_knockdown():
             _v7_direct_basal_write_receipt(emit(corrupt=bad), "BASE_ON")
     with pytest.raises(M02DevRejected, match="mismatch"):
         _v7_direct_basal_write_receipt(emit(), "BASAL_ZERO")
+
+
+def test_v7_world_geometry_requires_native_seed_and_typed_corridor():
+    from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
+        _v7_world_geometry_source,
+    )
+    def source(seed=61021, variant=None):
+        cells = [f"{i}:GRASS_BLOCK:1:AIR:1:AIR:1" for i in range(4)]
+        if variant:
+            cells[2] = variant
+        return ("M02_DEV_WORLD_V7_FIRST_TICK "
+                f"seed={seed} full_time=2002 "
+                "x=2.25 y=68.0 z=-3.5 yaw=90.0 pitch=0.0 "
+                "corridor=" + ";".join(cells) + "\n")
+    valid = _v7_world_geometry_source(source(), 61021)
+    assert valid["native_world_seed"] == 61021
+    assert valid["native_first_tick_pose"]["z"] == -3.5
+    assert valid["native_world_full_time"] == 2002
+    assert valid["all_four_columns_ground_solid_and_clear"]
+    assert valid["native_first_tick_pre_move_boundary_proven"] is False
+    blocked = _v7_world_geometry_source(
+        source(variant="2:STONE:1:STONE:0:AIR:1"), 61021,
+    )
+    assert not blocked["all_four_columns_ground_solid_and_clear"]
+    assert blocked["local_plus_x_corridor"][2]["feet"] == "STONE"
+    assert blocked["dynamic_collision_excluded"] is False
+    for bad in (
+        source(seed=61022), source() + source(),
+        source().replace("yaw=90.0", "yaw=nan"),
+        source().replace("x=2.25", "x=Infinity"),
+        source().replace("2:GRASS_BLOCK", "3:GRASS_BLOCK"),
+        source(variant="2:STONE:1:STONE:maybe:AIR:1"),
+        source().replace("corridor=", "unrelated="),
+    ):
+        with pytest.raises(M02DevRejected):
+            _v7_world_geometry_source(bad, 61021)
+    with pytest.raises(M02DevRejected):
+        _v7_world_geometry_source("", 61021)

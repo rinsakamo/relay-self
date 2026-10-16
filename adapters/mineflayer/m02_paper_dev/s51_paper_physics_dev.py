@@ -321,6 +321,67 @@ def _v7_direct_basal_write_receipt(content: str, arm: str) -> dict:
         "full_move_action_bracket_attested": False,
     }
 
+
+def _v7_world_geometry_source(content: str, expected_seed: int) -> dict:
+    """First living-player Paper tick only; no movement-start causal proof."""
+    prefix = "M02_DEV_WORLD_V7_FIRST_TICK "
+    original = [line.split(prefix, 1)[1] for line in content.splitlines()
+                if prefix in line]
+    if len(original) != 1:
+        raise M02DevRejected("missing/duplicate native Paper World first tick")
+    fields = {}
+    for token in original[0].split():
+        if "=" not in token:
+            raise M02DevRejected("malformed World pose/corridor token")
+        name, value = token.split("=", 1)
+        if name in fields or not value:
+            raise M02DevRejected("duplicate/empty native World source")
+        fields[name] = value
+    if set(fields) != {
+        "seed", "full_time", "x", "y", "z", "yaw", "pitch", "corridor",
+    }:
+        raise M02DevRejected("incomplete native World seed/pose/geometry")
+    try:
+        seed, full_time = int(fields["seed"]), int(fields["full_time"])
+        pose = {p: float(fields[p]) for p in ("x", "y", "z", "yaw", "pitch")}
+        if (seed != expected_seed or full_time < 0
+                or not all(math.isfinite(v) for v in pose.values())):
+            raise ValueError("mismatched World seed/time/pose")
+        samples = []
+        for expected_dx, encoded in enumerate(fields["corridor"].split(";")):
+            dx, ground, solid, feet, pass_feet, head, pass_head = encoded.split(":")
+            if (int(dx) != expected_dx
+                    or any(not re.fullmatch("[A-Z0-9_]+", v)
+                           for v in (ground, feet, head))
+                    or any(v not in ("0", "1")
+                           for v in (solid, pass_feet, pass_head))):
+                raise ValueError("invalid native corridor")
+            samples.append({
+                "dx": expected_dx,
+                "ground": ground, "ground_solid": solid == "1",
+                "feet": feet, "feet_passable": pass_feet == "1",
+                "head": head, "head_passable": pass_head == "1",
+            })
+        if len(samples) != 4:
+            raise ValueError("incomplete native corridor")
+    except (ValueError, OverflowError) as exc:
+        raise M02DevRejected("invalid native World seed/pose/corridor source") from exc
+    return {
+        "source": "PAPER_FIRST_LIVING_PLAYER_TICK",
+        "native_world_seed": seed,
+        "native_world_full_time": full_time,
+        "native_first_tick_pose": pose,
+        "local_plus_x_corridor": samples,
+        "all_four_columns_ground_solid_and_clear": all(
+            x["ground_solid"] and x["feet_passable"] and x["head_passable"]
+            for x in samples
+        ),
+        "native_first_tick_pre_move_boundary_proven": False,
+        "dynamic_collision_excluded": False,
+        "paired_same_spawn_and_pose": "NOT_TESTED_ACROSS_ARMS",
+    }
+
+
 async def _v7_wait_source_tick(server_log: Path, arm: str, *,
                                minimum_player_basal_ticks: int = 200) -> dict:
     """Bounded original Paper plugin sample gate; DEV only, not V science.
@@ -372,9 +433,11 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
     ]:
         raise M02DevRejected("V7 non-monotone Paper living-player tick")
     direct = _v7_direct_basal_write_receipt(content, arm)
+    world = _v7_world_geometry_source(content, expected_seed=61021)
     return {
         "classification": "S_V7_PAPER_DEV_OBSERVED_SOURCE_SHAPE_ONLY",
         "direct_basal_source": direct,
+        "native_world_geometry_source": world,
         "arm": arm, "physical_java_world": True,
         "source_player_ticks_minimum": minimum_player_basal_ticks,
         "last_sampled_player_tick": samples[-1][0],

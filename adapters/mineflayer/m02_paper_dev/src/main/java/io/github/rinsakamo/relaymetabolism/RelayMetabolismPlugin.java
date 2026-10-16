@@ -8,6 +8,8 @@ import java.util.Set;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -47,6 +49,28 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private double observedMotionBlocks = 0;
     private double chargedMotionExhaustion = 0;
     private double requestedBasalExhaustion = 0;
+
+    /** Bounded +X first-tick corridor, not proof of collision or paired start. */
+    private static String devCorridor(World world, Location center) {
+        int x = center.getBlockX(), y = center.getBlockY(), z = center.getBlockZ();
+        StringBuilder result = new StringBuilder();
+        for (int dx = 0; dx < 4; dx++) {
+            Block ground = world.getBlockAt(x + dx, y - 1, z);
+            Block feet = world.getBlockAt(x + dx, y, z);
+            Block head = world.getBlockAt(x + dx, y + 1, z);
+            if (dx != 0) {
+                result.append(';');
+            }
+            result.append(dx).append(':')
+                .append(ground.getType().name()).append(':')
+                .append(ground.getType().isSolid() ? '1' : '0').append(':')
+                .append(feet.getType().name()).append(':')
+                .append(feet.isPassable() ? '1' : '0').append(':')
+                .append(head.getType().name()).append(':')
+                .append(head.isPassable() ? '1' : '0');
+        }
+        return result.toString();
+    }
 
     private record Rule(String unit, double standard, boolean nativeValue,
                         double multiplier, double additional, boolean enabled) {
@@ -181,6 +205,15 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     // Bound log volume; a missing tick before 200 fails DEV.
                     if (appliedTicks <= 500) {
                         Location pose = p.getLocation();
+                        if (appliedTicks == 1) {
+                            getLogger().info("M02_DEV_WORLD_V7_FIRST_TICK seed="
+                                + p.getWorld().getSeed()
+                                + " full_time=" + p.getWorld().getFullTime()
+                                + " x=" + pose.getX() + " y=" + pose.getY()
+                                + " z=" + pose.getZ() + " yaw=" + pose.getYaw()
+                                + " pitch=" + pose.getPitch()
+                                + " corridor=" + devCorridor(p.getWorld(), pose));
+                        }
                         getLogger().info("M02_DEV_BASAL_WRITE id=" + appliedTicks
                             + " world_full_time=" + p.getWorld().getFullTime()
                             + " before=" + before + " requested=" + delta

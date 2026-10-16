@@ -245,3 +245,16 @@ provenance, certify identical World starts, or qualify independent R/V claims.
 R must separately inspect new original bytes, Action provenance, and host
 termination before any new scoped qualification.
 \n## Prospective V7 direct BASAL write source — S DEV only\n\nThe new Paper plugin emits bounded `M02_DEV_BASAL_WRITE` source lines at\neach **actual** target-player `setExhaustion` write (id/world full time,\nprevious exhaustion, requested debit, input write target, API readback,\ncumulative requested debit, and native pose/yaw). Genuine `PlayerMoveEvent`\nrecords now also include native from/to coordinates and World time. S validates\nfirst 200 consecutive player callbacks and 200 corresponding consecutive\nWorld full-time ticks, with direct request/rate/cumulative checks; failures\nremain DEV fail-closed. This is **direct write-input evidence**, not the\nindependent downstream effect on hunger/saturation and **not** an exact\nMOVE-bracketed 200-tick trial. S also saves pre/post MOVE native positions\nwith identity-bound probe seq; the Mineflayer snapshot has no yaw and\nWorld geometry/collision coverage is still UNKNOWN.\n\n**No retrospective reinterpretation**: historic V7 five-arm seed61021 DEV\nhas source-review PASS but 0.2438-block paired-path spread vs preregistered\n0.005; comparison FAIL remains unchanged. Newly built plugin JAR SHA differs\nfrom historically R-qualified 0.2 plugin: no R transfer or science admission.\n
+## Prospective V7 native World seed and bounded local terrain
+
+The Paper plugin now emits one `M02_DEV_WORLD_V7_FIRST_TICK` original
+line at the first living-player BASAL callback. It includes the actual
+Paper `World.getSeed()`, full World time, player xyz/yaw/pitch and a
+four-column +X ground/feet/head Bukkit material and passability probe.
+The S V7 reader checks this exact source instead of assuming the
+`level-seed` setting proves World identity. Motion packet sources also
+contain actual from/to coordinates and World time. This is a first-tick
+local sample, **not** guaranteed to be a pre-MOVE snapshot, verified
+collision attribution, matched spawn/pose, identical path, or a
+flat controlled corridor. Old V7 preregistered path gate stays FAIL;
+new DEV plugin is not automatically R qualified or V science.
