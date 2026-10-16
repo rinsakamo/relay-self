@@ -19,11 +19,12 @@ CLASS = "RSEE_V7_M02_PRESCIENCE_MEASUREMENT_NOT_ADMITTED"
 # prospective acceptable path target. A caller-supplied JSON is NOT itself
 # original-byte authentication; the original independent R audit remains required.
 HISTORIC_SOURCE_OBSERVATIONS = {
-    "BASE_ON": (7, 1.039090342887362),
-    "SHAM_ON": (9, 1.2828913533098643),
-    "BASAL_ZERO": (9, 1.2828913533098634),
-    "WALK_ZERO": (9, 1.2828913533098634),
-    "BOTH_ZERO": (9, 1.2828913533098643),
+    # packet count, physical path (blocks), source packet WALK debit, last tick
+    "BASE_ON": (7, 1.039090342887362, 0.010390903428873619, 200),
+    "SHAM_ON": (9, 1.2828913533098643, 0.012828913533098642, 200),
+    "BASAL_ZERO": (9, 1.2828913533098634, 0.012828913533098634, 200),
+    "WALK_ZERO": (9, 1.2828913533098634, 0.0, 200),
+    "BOTH_ZERO": (9, 1.2828913533098643, 0.0, 200),
 }
 
 
@@ -91,11 +92,14 @@ def review(paper_receipt: dict[str, Any]) -> dict[str, Any]:
     # The historic source gate must not accept a caller-edited receipt even
     # when its path delta and paired_path_tolerance_met flag are also edited
     # consistently. New DEV cohorts require a new, separately audited source.
-    for name, (original_packets, original_path) in HISTORIC_SOURCE_OBSERVATIONS.items():
+    for name, (original_packets, original_path,
+               original_walk, original_tick) in HISTORIC_SOURCE_OBSERVATIONS.items():
         observed = summaries[name]
         check(observed["packet_count"] == original_packets
-              and abs(observed["blocks"] - original_path) <= 1e-10,
-              "historic independently reviewed packet/path changed")
+              and observed["player_ticks_min"] == original_tick
+              and abs(observed["blocks"] - original_path) <= 1e-10
+              and abs(observed["walk_debit"] - original_walk) <= 1e-10,
+              "historic independently reviewed source observation changed")
     path_valid = delta <= TOLERANCE_BLOCKS
     direct_basal = all(
         arms[a].get("source_basal_physical_debit_independently_attested") is True
