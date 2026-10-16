@@ -8,12 +8,11 @@ from experiments.standard_env import m02_v7_remaining_profile_preflight as profi
 
 
 def test_exact_four_sha_registrations_and_distinct_grants():
-    assert q.CONFIGS == profile.CONFIGS if hasattr(profile, "CONFIGS") else all(
-        q.CONFIGS[a] == profile.digest(
-            profile.expected_candidate(
-                (Path(__file__).parent / "fixtures" /
-                 "rsee_m02_v7_tick_base_qualified_config.yml").read_bytes(), a))
-        for a in q.ARMS
+    assert all(
+        q.CONFIGS[arm] == profile.digest(profile.expected_candidate(
+            (Path(__file__).parent / "fixtures" /
+             "rsee_m02_v7_tick_base_qualified_config.yml").read_bytes(), arm))
+        for arm in q.ARMS
     )
     assert len(set(q.GRANTS.values())) == 4
     assert "BASE_ON" not in q.ARMS
