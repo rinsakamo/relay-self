@@ -56,7 +56,7 @@ def review_scope(original: str, *, marker: str, world: str,
                 or nums["loaded_worlds"] < 1 or nums["loaded_chunks"] < 1
                 or nums["other_loaded_entities"] > nums["loaded_entities"]
                 or nums["other_online_players"] > nums["loaded_entities"]
-                or nums["teleport_events"] > integer(r, "movement_events")):
+                or integer(r, "teleport_events") > integer(r, "movement_events")):
             raise BoundaryRejected("impossible loaded-chunk census")
         counts = tuple(integer(r, name) for name in COUNTERS)
         if (integer(r, "combat_events") != integer(t, "combat_events")
