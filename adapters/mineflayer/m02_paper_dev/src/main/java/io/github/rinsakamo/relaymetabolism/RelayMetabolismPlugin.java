@@ -46,6 +46,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private long observedMotionPackets = 0;
     private double observedMotionBlocks = 0;
     private double chargedMotionExhaustion = 0;
+    private double requestedBasalExhaustion = 0;
 
     private record Rule(String unit, double standard, boolean nativeValue,
                         double multiplier, double additional, boolean enabled) {
@@ -166,12 +167,30 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     return;
                 }
                 double delta = basal.perEvent(0);
-                double next = p.getExhaustion() + delta;
+                double before = p.getExhaustion();
+                double next = before + delta;
                 // Minecraft exhaustion is internally bounded. The player API
                 // clamps when necessary; never decrease native exhaustion.
                 if (Double.isFinite(next) && next <= Float.MAX_VALUE) {
                     p.setExhaustion((float) next);
                     appliedTicks++;
+                    requestedBasalExhaustion += delta;
+                    // Original source at the actual Paper setExhaustion write.
+                    // observed_after is a readback, not a promise that hunger
+                    // processing never subsequently transfers exhaustion.
+                    // Bound log volume; a missing tick before 200 fails DEV.
+                    if (appliedTicks <= 500) {
+                        Location pose = p.getLocation();
+                        getLogger().info("M02_DEV_BASAL_WRITE id=" + appliedTicks
+                            + " world_full_time=" + p.getWorld().getFullTime()
+                            + " before=" + before + " requested=" + delta
+                            + " write_target=" + next
+                            + " observed_after=" + p.getExhaustion()
+                            + " cumulative_requested=" + requestedBasalExhaustion
+                            + " x=" + pose.getX() + " y=" + pose.getY()
+                            + " z=" + pose.getZ() + " yaw=" + pose.getYaw()
+                            + " pitch=" + pose.getPitch());
+                    }
                 } else {
                     getLogger().severe("invalid basal exhaustion; disabling plugin");
                     Bukkit.getPluginManager().disablePlugin(this);
@@ -256,7 +275,12 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 + " reason=" + reason + " blocks=" + blocks
                 + " billed=" + charge
                 + " cumulative_blocks=" + observedMotionBlocks
-                + " cumulative_billed=" + chargedMotionExhaustion);
+                + " cumulative_billed=" + chargedMotionExhaustion
+                + " from_x=" + from.getX() + " from_y=" + from.getY()
+                + " from_z=" + from.getZ()
+                + " to_x=" + to.getX() + " to_y=" + to.getY()
+                + " to_z=" + to.getZ()
+                + " world_full_time=" + player.getWorld().getFullTime());
         }
     }
 

@@ -10,6 +10,7 @@ import argparse
 import asyncio
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -266,7 +267,61 @@ def _read_world_receipts(
 
 
 
-async def _v7_wait_source_tick(server_log: Path, arm: str, *,
+
+
+def _v7_direct_basal_write_receipt(content: str, arm: str) -> dict:
+    """First 200 actual Paper source-write callbacks, *not* an Action bracket."""
+    from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
+
+    if arm not in ARMS or not isinstance(content, str):
+        raise M02DevRejected("unregistered V7 basal original source")
+    pattern = re.compile(
+        r"M02_DEV_BASAL_WRITE id=(\d+) world_full_time=(\d+) "
+        r"before=([0-9.eE+\\-]+) requested=([0-9.eE+\\-]+) "
+        r"write_target=([0-9.eE+\\-]+) "
+        r"observed_after=([0-9.eE+\\-]+) "
+        r"cumulative_requested=([0-9.eE+\\-]+)"
+    )
+    records = []
+    for line in content.splitlines():
+        if "M02_DEV_BASAL_WRITE " not in line:
+            continue
+        match = pattern.search(line)
+        if match is None:
+            raise M02DevRejected("malformed BASAL source write")
+        idx, world = (int(match.group(1)), int(match.group(2)))
+        values = tuple(float(match.group(i)) for i in range(3, 8))
+        if not all(math.isfinite(v) and v >= 0 for v in values):
+            raise M02DevRejected("nonfinite BASAL original write")
+        records.append((idx, world, *values))
+    if len(records) < 200:
+        raise M02DevRejected("insufficient direct Paper BASAL writes")
+    first200 = records[:200]
+    if ([x[0] for x in first200] != list(range(1, 201))
+            or any(first200[i][1] != first200[i-1][1] + 1
+                   for i in range(1, 200))):
+        raise M02DevRejected("missing/duplicate Paper player tick or World time")
+    total = 0.
+    rate = ARMS[arm][0] * 0.001
+    for _, _, before, requested, write_target, observed_after, cumulative in first200:
+        total += requested
+        if (abs(requested - rate) > 1e-8
+                or abs(write_target - (before + requested)) > 1e-6
+                or abs(cumulative - total) > 1e-6
+                or observed_after > 40):
+            raise M02DevRejected("BASAL source write/rate/cumulative mismatch")
+    return {
+        "source": "ACTUAL_PAPER_SETEXHAUSTION_WRITE_INPUT",
+        "source_write_count": 200,
+        "world_full_time_first": first200[0][1],
+        "world_full_time_200th": first200[-1][1],
+        "cumulative_requested_basal_exhaustion": total,
+        "configured_basal_multiplier": ARMS[arm][0],
+        "requested_not_ecological_effect": True,
+        "full_move_action_bracket_attested": False,
+    }
+
+async def _v7_wait_source_tick(server_log: Path, arm: str, *
                                minimum_player_basal_ticks: int = 200) -> dict:
     """Bounded original Paper plugin sample gate; DEV only, not V science.
 
@@ -316,8 +371,10 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
         t for t, _, _ in samples
     ]:
         raise M02DevRejected("V7 non-monotone Paper living-player tick")
+    direct = _v7_direct_basal_write_receipt(content, arm)
     return {
         "classification": "S_V7_PAPER_DEV_OBSERVED_SOURCE_SHAPE_ONLY",
+        "direct_basal_source": direct,
         "arm": arm, "physical_java_world": True,
         "source_player_ticks_minimum": minimum_player_basal_ticks,
         "last_sampled_player_tick": samples[-1][0],
@@ -327,7 +384,10 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
         "observed_motion_debit": total_charge,
         "candidate_basal_rate_per_tick": 0.001 * ARMS[arm][0],
         "candidate_walk_rate_per_path_block": 0.01 * ARMS[arm][1],
-        "basal_source_charge_inferred_not_independently_attested": True,
+        "basal_source_charge_inferred_not_independently_attested": False,
+        "basal_write_inputs_directly_source_logged": True,
+        "basal_native_food_meter_effect_independently_quantified": False,
+        "exact_200_tick_move_phase_bracket_attested": False,
         "qualified": False, "science_go": False,
     }
 
@@ -556,6 +616,8 @@ async def run(
                 "food": observed.snapshot.food,
                 "saturation": observed.snapshot.food_saturation,
                 "source_seq": observed.seq,
+                "position": asdict(observed.snapshot.position),
+                "yaw_pitch_in_native_snapshot": "NOT_EXPOSED",
             }
             report["stage"] = "V7_S50_GOVERNED_SINGLE_MOVE_NO_EAT"
             report["movement"] = await _motor_walk(session)
@@ -567,7 +629,12 @@ async def run(
                 "food": final.snapshot.food,
                 "saturation": final.snapshot.food_saturation,
                 "source_seq": final.seq,
+                "position": asdict(final.snapshot.position),
+                "yaw_pitch_in_native_snapshot": "NOT_EXPOSED",
             }
+            report["v7_world_geometry_attested"] = False
+            report["v7_collision_explanation"] = "UNKNOWN"
+            report["v7_pairing_005_blocks_proven"] = False
             report["v7_arm"] = v7_arm
             report["v7_seed"] = v7_seed
             report["v7_food_introduced_by_runner"] = False

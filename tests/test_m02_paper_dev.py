@@ -630,3 +630,42 @@ def test_v7_original_tick_source_missing_does_not_convert_walltime(tmp_path, mon
     monkeypatch.setattr(dev.asyncio, "sleep", no_wait)
     with pytest.raises(dev.M02DevRejected, match="native World tick"):
         asyncio.run(dev._v7_wait_source_tick(log, "BASAL_ZERO"))
+
+
+def test_v7_basal_write_original_200_native_world_ticks_and_zero_knockdown():
+    from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
+        _v7_direct_basal_write_receipt,
+    )
+
+    def emit(multiplier=1.0, *, corrupt=None):
+        total = 0.0
+        lines = []
+        for i in range(1, 201):
+            requested = multiplier * 0.001
+            total += requested
+            idx = i if corrupt != "duplicate" or i != 90 else 89
+            target = requested if corrupt != "wrong_charge" or i != 50 else 0.002
+            world = 850 + i + (1 if corrupt == "jump" and i >= 70 else 0)
+            lines.append(
+                f"M02_DEV_BASAL_WRITE id={idx} world_full_time={world} "
+                f"before=0.0 requested={requested} write_target={target} "
+                f"observed_after={requested} cumulative_requested={total} "
+                "x=0.5 y=64.0 z=0.5 yaw=0.0 pitch=0.0"
+            )
+        return "\n".join(lines)
+
+    receipt = _v7_direct_basal_write_receipt(emit(), "BASE_ON")
+    assert receipt["source_write_count"] == 200
+    assert receipt["world_full_time_200th"] - receipt["world_full_time_first"] == 199
+    assert receipt["cumulative_requested_basal_exhaustion"] == pytest.approx(.2)
+    assert not receipt["full_move_action_bracket_attested"]
+    zero = _v7_direct_basal_write_receipt(emit(0), "BASAL_ZERO")
+    assert zero["cumulative_requested_basal_exhaustion"] == 0
+    with pytest.raises(M02DevRejected, match="insufficient"):
+        _v7_direct_basal_write_receipt(emit().split("M02_DEV_BASAL_WRITE")[0], "BASE_ON")
+    for bad, match in (("duplicate", "tick"), ("jump", "time"),
+                       ("wrong_charge", "mismatch")):
+        with pytest.raises(M02DevRejected, match=match):
+            _v7_direct_basal_write_receipt(emit(corrupt=bad), "BASE_ON")
+    with pytest.raises(M02DevRejected, match="mismatch"):
+        _v7_direct_basal_write_receipt(emit(), "BASAL_ZERO")
