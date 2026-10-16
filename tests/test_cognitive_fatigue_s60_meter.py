@@ -15,7 +15,6 @@ import pytest
 from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackDisplacementAdapter,
     LoopbackTransportConfig,
-    TransportUnconfirmed,
 )
 from relay_self.best_effort_displacement import BestEffortDisplacement
 from relay_self.cognitive_fatigue import (
@@ -35,7 +34,6 @@ from relay_self.cognitive_fatigue_s60_meter import MeteredS60Adapter
 from relay_self.interruption_fence import CognitionContext
 from relay_self.provenance import Provenance
 from test_feature_s60b1_adapter import FakeHTTP, envelope, response
-
 
 SOURCE = Provenance("admission", "source-cf4")
 CONTEXT = CognitionContext("cf4-session", 3, 1, 1)
