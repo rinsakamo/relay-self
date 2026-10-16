@@ -41,6 +41,8 @@ jobs:
           git merge-base --is-ancestor "$B0_PARENT" HEAD
           git diff --quiet "$B0_PARENT" HEAD -- adapters/mineflayer/s49_normal_session_real_ci.py
           # Permit ordinary S-owned feature/test growth, not changes in other lanes.
+          # Existing S50 seek_execution remains the sole Action issuer; the
+          # DEV-only phase hook adds observability, not admission authority.
           changed="$(git diff --name-only --diff-filter=ACDMRTUXB "$B0_PARENT" HEAD)"
           while IFS= read -r path; do
             test -n "$path" || continue
@@ -56,6 +58,7 @@ jobs:
               adapters/mineflayer/bridge.mjs|\
               adapters/mineflayer/package.json|\
               adapters/mineflayer/python_protocol.py|\
+              adapters/mineflayer/seek_execution.py|\
               adapters/mineflayer/s51_eat_real_ci.py|\
               adapters/mineflayer/self_demo.py|\
               adapters/mineflayer/v6_*.py|\
