@@ -199,6 +199,33 @@ jobs:
           path: /tmp/m02-paper-forage-${{ github.run_id }}-${{ github.run_attempt }}/
           if-no-files-found: warn
           retention-days: 7
+      - name: V7 BASE_ON actual plugin source BASAL writes — separate disposable DEV World
+        id: v7_basal_source
+        continue-on-error: true
+        env:
+          DEV_V7_EVIDENCE: "/tmp/m02-paper-v7-basal-source-${{ github.run_id }}-${{ github.run_attempt }}"
+        run: |
+          PLUGIN=adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
+          PLUGIN_SHA="$(sha256sum "$PLUGIN" | awk '{print $1}')"
+          python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev \
+            --v7-arm BASE_ON --v7-seed 61021 \
+            --output-dir "$DEV_V7_EVIDENCE" \
+            --paper-jar "${{ steps.paper.outputs.jar }}" \
+            --paper-sha256 "${{ steps.paper.outputs.sha256 }}" \
+            --plugin-jar "$PWD/$PLUGIN" \
+            --plugin-sha256 "$PLUGIN_SHA" \
+            --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD
+      - name: Preserve V7 BASAL source DEV original even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m02-v7-basal-write-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/m02-paper-v7-basal-source-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Enforce independent V7 source meter DEV outcome (NOT R/V admission)
+        if: always()
+        run: test "${{ steps.v7_basal_source.outcome }}" = "success"
       - name: Preserve original DEV evidence even if real World failed
         if: always()
         uses: actions/upload-artifact@v4
