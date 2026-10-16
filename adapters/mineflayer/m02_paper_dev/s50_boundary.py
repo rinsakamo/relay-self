@@ -237,8 +237,6 @@ def tick_motion_source(content: str, phase: dict, walk_rate: float) -> dict:
     if not isinstance(phase, dict) or not math.isfinite(walk_rate) or walk_rate < 0:
         raise BoundaryRejected("unregistered tick meter profile")
     marker = phase["marker_id"]
-    first = phase["ordered_originals"][0]
-    world = None
     phase_rows = phases(content, marker)
     if phase_rows[0].get("marker_id") != marker:
         raise BoundaryRejected("tick ledger phase marker mismatch")
@@ -326,7 +324,7 @@ def reconcile_tick_meter(content: str, movement: dict, *, walk_rate: float) -> d
     quiet = quiet_window(content, marker)
     if quiet is None:
         raise BoundaryRejected("tick-meter physical quiet not observed")
-    phase_rows, ticks, window = quiet
+    phase_rows, _ticks, window = quiet
     source = {
         "marker_id": marker, "ordered_originals": [
             {"phase": r["phase"]} for r in phase_rows
