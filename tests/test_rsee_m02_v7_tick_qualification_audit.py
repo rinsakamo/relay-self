@@ -57,3 +57,18 @@ def test_duplicate_or_noncanonical_credential_never_admitted():
     with pytest.raises(q.NotQualified):
         q.need(False,"wrong physical grant")
     assert q.FAIL.endswith("FAILED_OR_UNDETERMINED")
+
+def test_official_paper_jar_over_20mb_remains_bounded_and_accepted(tmp_path: Path):
+    """Regression: old 20 MiB cap falsely rejected genuine 52,811,717-byte Paper."""
+    jar = tmp_path / "paper-1.21.8.jar"
+    with jar.open("wb") as handle:
+        handle.truncate(52_811_717)
+    assert len(q.original(tmp_path, jar.name)) == 52_811_717
+
+
+def test_non_paper_original_cannot_bypass_20mb_limit(tmp_path: Path):
+    oversized = tmp_path / "source_plugin.jar"
+    with oversized.open("wb") as handle:
+        handle.truncate(20 * 1024 * 1024)
+    with pytest.raises(q.NotQualified, match="oversize"):
+        q.original(tmp_path, oversized.name)
