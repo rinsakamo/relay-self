@@ -33,12 +33,14 @@ Sが所有するDEV専用ツール。RやVの代行ではない。
 5. GitHub Actionsの原ログ、停止証拠、World原本、5クローン、
    S receiptとR readbackをアーティファクトに保存。
 
-使用するworkflowは
+DEV実機workflowの**歴史的固定ソース**はS commit
+`537947b0011620769fd72da5f78320267ea8a614` の
 `.github/workflows/v8-stopped-world-five-clones-dev.yml`。
-commit messageと`run_attempt==1`で限定するため、コードを後から編集しても
-当初のGitHub commitに紐づく生World実行を自動再開しない。
-DEVでは新規隔離Worldによる修正・再実行を認めるが、
-各試行の成功・失敗を別々のActions runとして保持する。
+実行済みGitHub Actions #38976820099と90日原証拠は固定されている。
+Sの通常ブランチは非S所有の`.github/workflows/`新規ファイルを許さないため、
+実行後にこの一時workflowはS Draftの最新HEADから取り除いた。
+実機runを偽装・削除したのではなく、原ソースと実runはGitHub履歴に残る。
+DEVで再実行する場合も、新規隔離実験として別ソース・別runを保全する。
 
 停止済みの既存Worldから複製する場合（Java起動なし）:
 
