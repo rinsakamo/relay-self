@@ -876,7 +876,8 @@ def test_v7_controlled_source_requires_phase_original_not_host_sleep(tmp_path):
 
 def test_v7_scheduled_paper_clock_gate_strict_source_and_claim_ceiling():
     from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
-        _v7_clock_gate_source, _v7_phase_bracket_source,
+        _v7_clock_gate_source,
+        _v7_phase_bracket_source,
     )
     marker = "m02-paper-walk-1-00abc"
     def phase(p, tick):
