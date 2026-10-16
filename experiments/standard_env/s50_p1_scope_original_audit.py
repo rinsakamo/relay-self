@@ -53,6 +53,9 @@ def review(root: Path) -> dict:
             and row.get("coverage") == "LOADED_CHUNK_SAMPLER_ONLY"
             and row.get("client_held_controls") == "NOT_OBSERVED"
             and row.get("entity_lifecycle") == "NOT_ATTESTED"
+            and tickrow.get("marker_id") == base["source_action"]
+            + "-" + base["native_session"]
+            and tickrow.get("world") == base["original_world_uuid"]
             and prior.integer(tickrow, "tick") == now
             and prior.integer(tickrow, "index") == index,
             "foreign scope/World/Action or claimed unsupported source coverage"
