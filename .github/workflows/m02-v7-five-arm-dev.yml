@@ -59,7 +59,7 @@ jobs:
           staged=v7.render_arm(raw,arm)
           print(f"V7_DEV_PREWORLD_SOURCE_READY arm={arm} config_sha256={v7.sha256(staged)}")
           PY
-      - name: Stage exact historical pinned Paper and plugin binaries (not a qualification grant)
+      - name: Re-read historical Paper build only (new plugin is separately unqualified)
         run: |
           mkdir -p "$RUNNER_TEMP/source-four"
           gh run download 38702561454 -R "$GH_REPO" \
@@ -70,16 +70,29 @@ jobs:
           root=pathlib.Path(os.environ["RUNNER_TEMP"])/"source-four"
           candidates={
               "paper-1.21.8.jar":"8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
-              "relay-metabolism-paper-dev.jar":"0ed8a00a7ebf577bdbea361e2c6facf7ed4b24001c017d362823da5cb60398e5",
-              "config.yml":"e9361faa7eac2e3c63bf2f6760765f7f8ae5a4b3631c6819f7ad8ac5c04a540e",
-              "server.properties":"11aaf903bae3d92f3b667f464f301a513bee559f04acc33d722c7a2e966d03ae",
           }
           for n,h in candidates.items():
               found=[x for x in root.rglob(n) if x.is_file() and not x.is_symlink()]
               assert len(found)==1, "missing/ambiguous old pinned DEV byte"
               assert hashlib.sha256(found[0].read_bytes()).hexdigest()==h, n
               shutil.copyfile(found[0],pathlib.Path(os.environ["RUNNER_TEMP"])/n)
-          print("S_V7_FIVE_ARM_DEV_BINARIES_PINNED_QUALIFICATION_NOT_REUSED")
+          print("S_V7_PAPER_SERVER_PINNED_NEW_PLUGIN_NOT_QUALIFIED")
+          PY
+      - name: Build current S HEAD Paper BASAL telemetry plugin, source SHA is DEV-only
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+          python - <<'PY'
+          import hashlib, os, pathlib, shutil
+          java=pathlib.Path("adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/RelayMetabolismPlugin.java")
+          assert "M02_DEV_BASAL_WRITE" in java.read_text()
+          jar=pathlib.Path("adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar")
+          assert jar.is_file() and not jar.is_symlink()
+          dest=pathlib.Path(os.environ["RUNNER_TEMP"])/"relay-metabolism-paper-dev.jar"
+          shutil.copyfile(jar,dest)
+          sha=hashlib.sha256(dest.read_bytes()).hexdigest()
+          with open(os.environ["GITHUB_ENV"],"a",encoding="utf-8") as stream:
+              stream.write("DEV_PLUGIN_SHA256="+sha+"\n")
+          print("S_V7_PROSPECTIVE_DEV_PLUGIN_NOT_R_QUALIFIED SHA256="+sha)
           PY
       - name: Install S native Mineflayer runtime
         run: npm ci --omit=dev --ignore-scripts --no-audit --no-fund --prefix adapters/mineflayer
@@ -94,7 +107,7 @@ jobs:
             --paper-jar "$RUNNER_TEMP/paper-1.21.8.jar" \
             --paper-sha256 8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e \
             --plugin-jar "$RUNNER_TEMP/relay-metabolism-paper-dev.jar" \
-            --plugin-sha256 0ed8a00a7ebf577bdbea361e2c6facf7ed4b24001c017d362823da5cb60398e5 \
+            --plugin-sha256 "$DEV_PLUGIN_SHA256" \
             --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD \
             > "$RUNNER_TEMP/v7-owner-stdout.jsonl" 2>&1
           code=$?
@@ -110,6 +123,7 @@ jobs:
           path: |
             ${{ env.OUTPUT }}/
             ${{ runner.temp }}/v7-owner-stdout.jsonl
+            ${{ runner.temp }}/relay-metabolism-paper-dev.jar
           retention-days: 30
           if-no-files-found: warn
       - name: Never promote DEV to qualification or science
