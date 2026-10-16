@@ -174,8 +174,31 @@ def review(root: Path, assets: Path, witness: Path,
              "native issued control ACK missing/repeated")
         need(len([x for x in commands if x.get("action_id")==aid])==1,
              "unauthorized/duplicate command")
-    need(len([x for x in commands if x.get("type")=="effect"])==3,
-         "extra native motor authority")
+    # S50 MOVE has exactly three motor effects, but this qualification
+    # intentionally includes the subsequent S51 real EAT (equip + consume).
+    # The earlier DEV-only S50 audit rightfully admits only three effects;
+    # this broader QUAL audit must audit *both* sources, not discard S51.
+    eat=q.get("eating")
+    need(type(eat) is dict and type(eat.get("action_id")) is str,
+         "missing S51 action owner")
+    eat_id=eat["action_id"]
+    expected_effects = [
+        (action+"-look", "look"),
+        (action, "set_control"),
+        (action+"-clear", "clear_controls"),
+        (eat_id+"-equip", "equip_item"),
+        (eat_id+"-consume", "consume_held"),
+    ]
+    actual_effects = [(x.get("action_id"),x.get("effect")) for x in commands
+                      if x.get("type")=="effect"]
+    need(actual_effects == expected_effects,
+         "unexpected S50/S51 effect sequence or extra native motor authority")
+    for aid,effect in expected_effects[-2:]:
+        found=[x for x in native if x.get("type")=="effect_result"
+               and x.get("action_id")==aid]
+        need(len(found)==1 and found[0].get("effect")==effect
+             and found[0].get("result")=="applied",
+             "missing/duplicate native S51 equip/consume ACK")
     physical=chord.review_paper_source(raw["paper_server.log"], "BASE_ON",
                                        marker)
     b=basal.review_original_server_log(raw["paper_server.log"],"BASE_ON")
