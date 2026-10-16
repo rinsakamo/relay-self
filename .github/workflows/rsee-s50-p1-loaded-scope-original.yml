@@ -23,7 +23,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
-      - name: R-owned negative controls before reading originals
+      - name: R-owned negative controls after JAR-default resolution, before originals
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
           python -m pytest -q tests/test_rsee_s50_p1_wait_original_audit.py tests/test_rsee_s50_p1_scope_original_audit.py
