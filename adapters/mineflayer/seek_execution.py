@@ -108,8 +108,10 @@ async def execute_seek_step(
         await phase_hook("PRE_FORWARD")
     control_sent = False
     try:
-        await session.send_set_control(issued.action_id, control="forward", state=True)
+        # Mark attempted before the awaited write; a partial transport failure
+        # still triggers the fail-closed clear on this source-bound Action.
         control_sent = True
+        await session.send_set_control(issued.action_id, control="forward", state=True)
         forward = await _effect(session, issued.action_id, "set_control")
         if phase_hook is not None:
             await phase_hook("POST_FORWARD")
