@@ -91,6 +91,7 @@ jobs:
           test "$(git -C s rev-parse HEAD)" = "$S_PIN"
           test "$(git -C r rev-parse HEAD)" = "$R_PIN"
           test "$GITHUB_RUN_ATTEMPT" = "1"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
           PYTHONPATH="s/src:s/tests:s" python -m pytest -q s/tests/test_m02_v7_new_qualification.py
           PYTHONPATH="r/src:r/tests:r" python -m pytest -q r/tests/test_rsee_m02_v7_tick_qualification_audit.py
           PYTHONPATH="s/src:s/tests:s" python - <<'PY'
