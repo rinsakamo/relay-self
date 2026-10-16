@@ -38,7 +38,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
-      - name: Source owner and fixed fail-closed scope preflight (no Minecraft World)
+      - name: Source owner and PLAYER-UUID roster negative preflight (no Minecraft World)
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
           python -m pytest -q tests/test_m02_paper_dev.py tests/test_s50_physical_boundary.py tests/test_s50_p1_wait.py tests/test_s50_p1_scope.py
