@@ -48,3 +48,39 @@ def test_real_r_original_walk_arithmetic_not_matched_path_effect():
     assert x["r_original_review_type"] == "DEV_ORIGINALS_REVIEW_ONLY"
     assert not x["r_changed_profile_qualification"]
     assert not x["scientific_effect_estimated"]
+
+
+def test_actual_walk_cost_per_actual_meter_passes_despite_frozen_pair_failure():
+    packet = real.review_real_dev_metadata()
+    assert packet["walk_rate_source_accounting"] == "CONSISTENT_R_REVIEWED_DEV_ONLY"
+    assert packet["walk_rate_requires_paired_path_match"] is False
+    assert packet["walk_rate_is_scientific_effect"] is False
+    assert packet["paired_paths_eligible"] is False
+    assert packet["causal_comparisons_allowed"] is False
+    for arm, row in packet["originals_by_arm"].items():
+        expected = 0.0 if arm in ("WALK_ZERO", "BOTH_ZERO") else 0.01
+        assert abs(row["observed_walk_exhaustion_per_block"] - expected) < 1e-12
+        assert row["expected_walk_exhaustion_per_block"] == expected
+        assert abs(row["source_observed_walk_exhaustion"] -
+                   expected * row["source_observed_path_blocks"]) < 1e-12
+    assert packet["v7_science_trials"] == 0
+    assert not packet["basal_physical_charge_independently_measured"]
+
+
+def test_historic_rate_metadata_refuses_zero_distance_and_wrong_charge(monkeypatch):
+    arm = "BASE_ON"
+    original = real.SOURCE[arm]
+    monkeypatch.setitem(real.SOURCE, arm, (original[0], 0.0, 0.0))
+    try:
+        real.review_real_dev_metadata()
+    except real.v7.V7Rejected:
+        pass
+    else:
+        raise AssertionError("zero distance cannot be used as a denominator")
+    monkeypatch.setitem(real.SOURCE, arm, (original[0], original[1], 0.02))
+    try:
+        real.review_real_dev_metadata()
+    except real.v7.V7Rejected:
+        pass
+    else:
+        raise AssertionError("nonproportional WALK cost must be rejected")
