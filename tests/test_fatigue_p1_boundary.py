@@ -6,7 +6,6 @@ import pytest
 
 from experiments.fatigue_p1 import FatigueProfile, FatigueRejected, FatigueSensor, initial_state
 from experiments.fatigue_p1_boundary import (
-    BodyPreflight,
     P1BoundaryRejected,
     SActivityRequest,
     SourceBoundTick,
