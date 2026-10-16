@@ -156,6 +156,29 @@ jobs:
               json.dumps(result,sort_keys=True,indent=2)+"\n")
           print("R_V7_NEW_FIVE_DEV_BASAL_SOURCE_REVIEW_ONLY_NO_SCIENCE")
           PY
+      - name: Independently parse genuine serialized World NBT seed and spawn
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          from experiments.standard_env import v7_m02_world_nbt_audit as audit
+          from experiments.standard_env import v7_m02_direct_basal_readback as basal
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"new-basal-originals"
+          sources={}
+          for arm in basal.RATES:
+              found=[p for p in (root/arm).rglob("initial_world_level.dat")
+                     if p.is_file() and not p.is_symlink()
+                     and all(not ancestor.is_symlink() for ancestor in p.parents)]
+              assert len(found)==1,"ambiguous initial World source: "+arm
+              sources[arm]=found[0].read_bytes()
+          result=audit.summarize_worlds(sources)
+          assert result["world_nbt_seeds_identical"] is True
+          assert not result["equal_terrain_and_collision_geometry_attested"]
+          assert result["science_trials_credited"]==0
+          out=pathlib.Path(os.environ["RUNNER_TEMP"])/"r-v7-new-world-nbt-review.json"
+          out.write_text(json.dumps(result,sort_keys=True,indent=2)+"\n")
+          print("R_V7_NEW_PAPER_NBT_WORLD_IDENTITY_REVIEW_ONLY="+
+                json.dumps(result,sort_keys=True))
+          PY
       - name: Archive all original S artifacts plus R read-only receipt
         if: always()
         uses: actions/upload-artifact@v4
@@ -164,5 +187,6 @@ jobs:
           path: |
             ${{ runner.temp }}/new-basal-originals/
             ${{ runner.temp }}/r-v7-new-basal-review.json
+            ${{ runner.temp }}/r-v7-new-world-nbt-review.json
           retention-days: 90
           if-no-files-found: warn
