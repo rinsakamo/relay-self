@@ -40,6 +40,7 @@ def test_shape_only_never_authorizes_or_attests_real_source():
 
 @pytest.mark.parametrize(("field", "bad"), [
     ("grant_id",gate.OLD_SPENT_GRANT),
+    ("grant_id",gate.NEW_SPENT_GRANT),
     ("grant_id",""),
     ("previous_grants_reused",True),
     ("plugin_sha256",gate.OLD_PLUGIN_SHA),
