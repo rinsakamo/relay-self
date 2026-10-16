@@ -73,24 +73,33 @@ def test_missing_original_prevents_wait(bad):
 
 
 @pytest.mark.parametrize("field,replacement", [
+    ("sprint=false", "sprint=true"),
+    ("sneak=false", "sneak=true"),
+    ("swimming=false", "swimming=true"),
+])
+def test_active_motor_flag_is_never_admitted_as_wait(field, replacement):
+    lines = fixture().splitlines()
+    lines[4] = lines[4].replace(field, replacement, 1)
+    result = check("\n".join(lines))
+    assert not result["source_stationary_8_of_8"]
+    assert 44 in result["source_activity_ticks"]
+    assert result["p1_fatigue_recovered"] == 0.0
+    assert result["wait_ticks_admitted"] == 0
+
+
+@pytest.mark.parametrize("field,replacement", [
     ("x=2 y=-60", "x=2.01 y=-60"),
     ("motion_packets=11", "motion_packets=12"),
     ("motion_blocks=1.7", "motion_blocks=1.8"),
     ("tick_meter_blocks=1.71", "tick_meter_blocks=1.8"),
     ("combat_events=0", "combat_events=1"),
     ("swing_events=0", "swing_events=1"),
-    ("sprint=false", "sprint=true"),
-    ("sneak=false", "sneak=true"),
-    ("swimming=false", "swimming=true"),
 ])
-def test_nonidle_tick_reported_but_not_recovered(field, replacement):
+def test_discontinuous_or_regressed_activity_source_rejected(field, replacement):
     lines = fixture().splitlines()
     lines[4] = lines[4].replace(field, replacement, 1)
-    r = check("\n".join(lines))
-    assert r["source_stationary_8_of_8"] is False
-    assert 44 in r["source_activity_ticks"]
-    assert r["p1_fatigue_recovered"] == 0.0
-    assert r["wait_ticks_admitted"] == 0
+    with pytest.raises(BoundaryRejected):
+        check("\n".join(lines))
 
 
 @pytest.mark.parametrize("status", ["issued", "unknown", "aborted", ""])
