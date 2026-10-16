@@ -889,10 +889,12 @@ def test_v7_scheduled_paper_clock_gate_strict_source_and_claim_ceiling():
     )) + "\n"
     bracket = _v7_phase_bracket_source(four, marker)
     gate = ("M02_DEV_S50_CLOCK_GATE "
-            f"marker_id={marker} scheduled_delta=6 base_full_time=101 "
+            f"marker_id={marker} scheduler_delay=7 target_world_delta=6 base_full_time=101 "
             "reached_full_time=107 player_tick=98 x=1.1 y=-60.0 z=0.5\n")
     result = _v7_clock_gate_source(four + gate, marker, bracket)
-    assert result["scheduled_world_ticks"] == 6
+    assert result["target_world_fulltime_delta"] == 6
+    assert result["scheduler_delay_ticks"] == 7
+    assert result["observed_world_fulltime_delta"] == 6
     assert result["phase_pre_clear_lag_ticks"] == 0
     assert result["host_walltime_sleep_replaced"]
     assert not result["cross_arm_identical_actual_motion_attested"]
@@ -901,7 +903,8 @@ def test_v7_scheduled_paper_clock_gate_strict_source_and_claim_ceiling():
         "", gate + gate,
         gate.replace("base_full_time=101", "base_full_time=100"),
         gate.replace("reached_full_time=107", "reached_full_time=108"),
-        gate.replace("scheduled_delta=6", "scheduled_delta=7"),
+        gate.replace("target_world_delta=6", "target_world_delta=7"),
+        gate.replace("scheduler_delay=7", "scheduler_delay=6"),
         gate.replace("player_tick=98", "player_tick=-1"),
         gate.replace("x=1.1", "x=nan"),
         gate.replace("marker_id=" + marker, "marker_id=foreign"),
