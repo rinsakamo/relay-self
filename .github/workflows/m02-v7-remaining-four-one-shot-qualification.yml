@@ -18,7 +18,7 @@ concurrency:
 jobs:
   four-separately-scoped-physical-worlds:
     # One launch commit only. Rerun attempts and all subsequent edits are inert.
-    if: github.run_attempt == 1 && github.event.head_commit.message == 'S QUAL: launch four M0.2 V7 arms once (2026-10-17)'
+    if: "github.run_attempt == 1 && github.event.head_commit.message == 'S QUAL: launch four M0.2 V7 arms once (2026-10-17)'"
     strategy:
       fail-fast: false
       matrix:
