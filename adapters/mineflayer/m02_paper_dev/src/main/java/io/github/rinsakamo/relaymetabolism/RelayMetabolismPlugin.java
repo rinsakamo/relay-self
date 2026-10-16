@@ -44,7 +44,10 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
         new EnumMap<>(EntityExhaustionEvent.ExhaustionReason.class);
     private Rule basal;
     private boolean devActive = false;
-    private static final long S50_CLOCK_GATE_TICKS = 6L;
+    // Bukkit delayed task runs one full-time earlier than its delay argument
+    // in this actual Paper 1.21.8 DEV profile; bracket target by source.
+    private static final long S50_CLOCK_GATE_SCHEDULER_DELAY = 7L;
+    private static final long S50_CLOCK_GATE_TARGET_WORLD_DELTA = 6L;
     private final Set<String> scheduledS50ClockGates = new HashSet<>();
     private String target;
     private long appliedTicks = 0;
@@ -302,13 +305,14 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 }
                 Location now = current.getLocation();
                 getLogger().info("M02_DEV_S50_CLOCK_GATE marker_id=" + markerId
-                    + " scheduled_delta=" + S50_CLOCK_GATE_TICKS
+                    + " scheduler_delay=" + S50_CLOCK_GATE_SCHEDULER_DELAY
+                    + " target_world_delta=" + S50_CLOCK_GATE_TARGET_WORLD_DELTA
                     + " base_full_time=" + phaseWorldTime
                     + " reached_full_time=" + originalWorld.getFullTime()
                     + " player_tick=" + appliedTicks
                     + " x=" + now.getX() + " y=" + now.getY()
                     + " z=" + now.getZ());
-            }, S50_CLOCK_GATE_TICKS);
+            }, S50_CLOCK_GATE_SCHEDULER_DELAY);
         }
         return true;
     }
