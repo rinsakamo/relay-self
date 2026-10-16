@@ -60,6 +60,14 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private double observedMotionBlocks = 0;
     private double chargedMotionExhaustion = 0;
     private double requestedBasalExhaustion = 0;
+    // Separate prospective S50 fixed-pose DEV: World-tick position billing.
+    // False on all historical Paper profiles and non-controlled World runs.
+    private boolean s50TickMeterCandidate = false;
+    private boolean s50TickMeterArmed = false;
+    private Location s50TickMeterLast;
+    private long s50TickMeterRows = 0;
+    private double s50TickMeterBlocks = 0;
+    private double s50TickMeterCharged = 0;
 
     /** Bounded +X first-tick corridor, not proof of collision or paired start. */
     private static String devCorridor(World world, Location center) {
@@ -162,6 +170,11 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                         getConfig().getString("calibration-status"))) {
                 throw new IllegalStateException("unknown or uncalibrated profile shape");
             }
+            if (getConfig().contains("s50-tick-meter-dev")
+                    && !getConfig().isBoolean("s50-tick-meter-dev")) {
+                throw new IllegalStateException("invalid S50 tick meter DEV flag");
+            }
+            s50TickMeterCandidate = getConfig().getBoolean("s50-tick-meter-dev", false);
             target = getConfig().getString("target-player", "");
             if (!target.equals("RelaySelf")) {
                 throw new IllegalStateException("only the owned RelaySelf dev bot is supported");
@@ -202,6 +215,12 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 if (p == null || !p.isOnline() || p.isDead()) {
                     return;
                 }
+                if (s50TickMeterArmed) {
+                    meterS50Tick(p);
+                    if (!devActive) {
+                        return;
+                    }
+                }
                 if (p.getWorld().getFullTime() <= s50ObserveUntil) {
                     Location loc = p.getLocation();
                     getLogger().info("S50_DEV_TICK marker_id=" + s50Marker
@@ -210,6 +229,8 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                         + " packets=" + observedMotionPackets
                         + " blocks=" + observedMotionBlocks
                         + " billed=" + chargedMotionExhaustion
+                        + " tick_meter_blocks=" + s50TickMeterBlocks
+                        + " tick_meter_billed=" + s50TickMeterCharged
                         + " x=" + loc.getX() + " y=" + loc.getY() + " z=" + loc.getZ());
                 }
                 double delta = basal.perEvent(0);
@@ -272,6 +293,74 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     }
 
 
+
+    /**
+     * DEV-only prospective accepted World-state tick displacement lower-bound.
+     * Charged once at the actual native Paper player exhaustion writer.
+     * The segment between two sampled poses cannot establish any sub-tick
+     * turn/loop: it is a lower bound, not a certified exact continuous path.
+     */
+    private void meterS50Tick(Player player) {
+        Location from = s50TickMeterLast;
+        Location to = player.getLocation();
+        if (from == null || from.getWorld() != to.getWorld()
+                || player.isDead() || player.isInWater() || player.isSprinting()
+                || player.isSneaking()) {
+            getLogger().severe("S50_DEV_TICK_METER_REJECT foreign state");
+            devActive = false;
+            Bukkit.getPluginManager().disablePlugin(this);
+            return;
+        }
+        double dx = to.getX() - from.getX(), dz = to.getZ() - from.getZ();
+        double blocks = Math.hypot(dx, dz);
+        if (!Double.isFinite(blocks) || blocks < 0 || blocks > 1.0
+                || !Double.isFinite(to.getY()) || !Double.isFinite(from.getY())
+                || Math.abs(to.getY() - from.getY()) > 0.5) {
+            getLogger().severe("S50_DEV_TICK_METER_REJECT invalid displacement");
+            devActive = false;
+            Bukkit.getPluginManager().disablePlugin(this);
+            return;
+        }
+        Rule rule = rules.get(EntityExhaustionEvent.ExhaustionReason.WALK);
+        if (rule == null) {
+            getLogger().severe("S50_DEV_TICK_METER_REJECT no WALK rule");
+            devActive = false;
+            Bukkit.getPluginManager().disablePlugin(this);
+            return;
+        }
+        double charged = blocks * (rule.standard * rule.multiplier + rule.additional);
+        double before = player.getExhaustion(), next = before + charged;
+        if (!Double.isFinite(charged) || charged < 0 || !Double.isFinite(next)
+                || next > Float.MAX_VALUE) {
+            getLogger().severe("S50_DEV_TICK_METER_REJECT invalid exhaustion");
+            devActive = false;
+            Bukkit.getPluginManager().disablePlugin(this);
+            return;
+        }
+        player.setExhaustion((float) next);
+        s50TickMeterRows++;
+        s50TickMeterBlocks += blocks;
+        s50TickMeterCharged += charged;
+        if (s50TickMeterRows <= 500) {
+            getLogger().info("S50_DEV_TICK_MOTION id=" + s50TickMeterRows
+                + " marker_id=" + s50Marker
+                + " world=" + player.getWorld().getUID()
+                + " world_full_time=" + player.getWorld().getFullTime()
+                + " from_x=" + from.getX() + " from_y=" + from.getY()
+                + " from_z=" + from.getZ()
+                + " to_x=" + to.getX() + " to_y=" + to.getY()
+                + " to_z=" + to.getZ()
+                + " blocks=" + blocks + " billed=" + charged
+                + " cumulative_blocks=" + s50TickMeterBlocks
+                + " cumulative_billed=" + s50TickMeterCharged
+                + " write_before=" + before
+                + " write_target=" + next
+                + " write_after=" + player.getExhaustion());
+        }
+        s50TickMeterLast = to.clone();
+    }
+
+
     /** Server-side timestamp for DEV S50 control-command boundaries only.
      *  No player, R grant, Action authorization or physiology mutation.
      *  Console-only command: the marker cannot assert when server inputs
@@ -298,6 +387,18 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             }
             s50Marker = args[0];
             s50ObserveUntil = p.getWorld().getFullTime() + 100;
+            if (s50TickMeterCandidate) {
+                // PRE_FORWARD is a source observation BEFORE the existing
+                // native client forward command, not a new movement issuer.
+                s50TickMeterLast = p.getLocation().clone();
+                s50TickMeterArmed = true;
+                getLogger().info("S50_DEV_TICK_METER_ARM marker_id=" + s50Marker
+                    + " world=" + p.getWorld().getUID()
+                    + " world_full_time=" + p.getWorld().getFullTime()
+                    + " x=" + s50TickMeterLast.getX()
+                    + " y=" + s50TickMeterLast.getY()
+                    + " z=" + s50TickMeterLast.getZ());
+            }
         } else if (!s50Marker.equals(args[0])) {
             return false;
         }
@@ -380,7 +481,11 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             Bukkit.getPluginManager().disablePlugin(this);
             return;
         }
-        double charge = blocks * (rule.standard * rule.multiplier + rule.additional);
+        // The separate prospective tick-ledger DEV charges physical sampled
+        // displacement in meterS50Tick, so event path is witness-only here.
+        // Never bill a native event AND its tick chord twice.
+        double charge = s50TickMeterArmed ? 0.0
+            : blocks * (rule.standard * rule.multiplier + rule.additional);
         if (!Double.isFinite(charge) || charge < 0 || charge > Float.MAX_VALUE) {
             getLogger().severe("invalid movement billing; disabling plugin");
             Bukkit.getPluginManager().disablePlugin(this);
