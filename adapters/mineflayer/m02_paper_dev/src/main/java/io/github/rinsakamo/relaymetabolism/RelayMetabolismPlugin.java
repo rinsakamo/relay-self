@@ -44,6 +44,8 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
         new EnumMap<>(EntityExhaustionEvent.ExhaustionReason.class);
     private Rule basal;
     private boolean devActive = false;
+    private static final long S50_CLOCK_GATE_TICKS = 6L;
+    private final Set<String> scheduledS50ClockGates = new HashSet<>();
     private String target;
     private long appliedTicks = 0;
     private long modifiedEvents = 0;
@@ -276,10 +278,38 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             return false;
         }
         Location pose = p.getLocation();
+        long phaseWorldTime = p.getWorld().getFullTime();
         getLogger().info("M02_DEV_S50_PHASE marker_id=" + args[0]
             + " phase=" + args[1] + " world_full_time="
-            + p.getWorld().getFullTime() + " player_tick=" + appliedTicks
+            + phaseWorldTime + " player_tick=" + appliedTicks
             + " x=" + pose.getX() + " y=" + pose.getY() + " z=" + pose.getZ());
+        if (args[1].equals("POST_FORWARD")) {
+            // Pure time gate, not a player movement command or Action issuer.
+            // The existing S50 native client clear remains the exclusive clear.
+            // Duplicated marker IDs cannot reschedule a second clock gate.
+            if (!scheduledS50ClockGates.add(args[0])) {
+                return false;
+            }
+            final String markerId = args[0];
+            final World originalWorld = p.getWorld();
+            Bukkit.getScheduler().runTaskLater(this, () -> {
+                Player current = Bukkit.getPlayerExact(target);
+                if (current == null || !current.isOnline() || current.isDead()
+                        || current.getWorld() != originalWorld) {
+                    getLogger().warning("M02_DEV_S50_CLOCK_GATE_INVALID marker_id="
+                        + markerId + " reason=MISSING_OR_FOREIGN_WORLD");
+                    return;
+                }
+                Location now = current.getLocation();
+                getLogger().info("M02_DEV_S50_CLOCK_GATE marker_id=" + markerId
+                    + " scheduled_delta=" + S50_CLOCK_GATE_TICKS
+                    + " base_full_time=" + phaseWorldTime
+                    + " reached_full_time=" + originalWorld.getFullTime()
+                    + " player_tick=" + appliedTicks
+                    + " x=" + now.getX() + " y=" + now.getY()
+                    + " z=" + now.getZ());
+            }, S50_CLOCK_GATE_TICKS);
+        }
         return true;
     }
 
