@@ -6,7 +6,8 @@ import pytest
 
 from experiments.standard_env import m02_v7_remaining_profile_preflight as profile
 from experiments.standard_env import m02_v7_remaining_source_review as r
-from test_rsee_s50_tick_chord_original_audit import MARKER, specimen as movement_source
+from test_rsee_s50_tick_chord_original_audit import MARKER
+from test_rsee_s50_tick_chord_original_audit import specimen as movement_source
 from test_rsee_v7_m02_direct_basal_readback import specimen as basal_source
 
 BASE_FILE = (
