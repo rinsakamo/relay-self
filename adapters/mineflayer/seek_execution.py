@@ -78,6 +78,7 @@ async def execute_seek_step(
     issued: ActionLifecycle,
     step: SeekStep,
     *, phase_hook: Callable[[str], Awaitable[None]] | None = None,
+    tick_gate_hook: Callable[[], Awaitable[None]] | None = None,
 ) -> SeekConsequence:
     if (
         not isinstance(session, MineflayerProcessSession)
@@ -96,6 +97,8 @@ async def execute_seek_step(
         or not 0 < step.step_distance_m <= 2
     ):
         raise SeekExecutionRejected("current issued action and steer-only step required")
+    if tick_gate_hook is not None and phase_hook is None:
+        raise SeekExecutionRejected("DEV tick gate requires source phase observations")
     # Issued, source-scoped action ID is unique; child-effect IDs are not
     # independent action authorization.
     look_id, clear_id = issued.action_id + "-look", issued.action_id + "-clear"
@@ -115,7 +118,12 @@ async def execute_seek_step(
         forward = await _effect(session, issued.action_id, "set_control")
         if phase_hook is not None:
             await phase_hook("POST_FORWARD")
-        await asyncio.sleep(min(0.40, max(0.08, step.step_distance_m * 0.30)))
+        if tick_gate_hook is not None:
+            # Prospective DEV gate follows real Paper World time, not host sleep.
+            # It does not assert the server-effective motion control tick.
+            await tick_gate_hook()
+        else:
+            await asyncio.sleep(min(0.40, max(0.08, step.step_distance_m * 0.30)))
         if phase_hook is not None:
             await phase_hook("PRE_CLEAR")
     finally:
