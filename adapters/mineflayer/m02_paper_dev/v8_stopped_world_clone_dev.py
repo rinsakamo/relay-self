@@ -161,7 +161,8 @@ async def bootstrap_dev(
 ) -> dict[str, Any]:
     """One new Paper Java DEV startup; never a QUAL/SCIENCE attempt."""
     from adapters.mineflayer.s31a_real_server_ci import (
-        _ready_server, _shutdown_server,
+        _ready_server,
+        _shutdown_server,
     )
 
     need(confirm == DEV_CONFIRM and type(seed) is int and seed in SEEDS,
