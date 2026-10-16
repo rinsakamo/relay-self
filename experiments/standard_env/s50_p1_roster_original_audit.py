@@ -81,6 +81,8 @@ def review(root: Path, *, run: int, head: str, artifact: int, jar: str) -> dict:
         roster = []
         seen = set()
         types = Counter()
+        world_types = Counter()
+        local_others = 0
         for number in range(1, count + 1):
             old.need(cursor < len(entity_lines), "truncated source entity list")
             row = entity_lines[cursor]
@@ -111,6 +113,9 @@ def review(root: Path, *, run: int, head: str, artifact: int, jar: str) -> dict:
                 f"{entity_world}:{chunk_x}:{chunk_z}:{entity_uuid}:{category}"
             )
             types[category] += 1
+            world_types[(entity_world, category)] += 1
+            if entity_world == world and entity_uuid != subject:
+                local_others += 1
         old.need(subject in seen and len(seen) == count
                  and roster == sorted(roster),
                  "original roster count/order/subject not established")
