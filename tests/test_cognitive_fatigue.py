@@ -194,3 +194,10 @@ def test_evidence_hash_and_no_reset_via_modified_snapshot():
         recover_idle(p, replace(s, active_work_id=None),
                      NonL2Interval("a", 2, 0, NS, evidence(21)))
     assert s.active_work_id == "task-1"
+
+def test_fixed_comparator_never_uses_non_linear_admission_gate():
+    p = FatigueProfile(mode="FIXED", initial_fatigue=1.0, fixed_max_tokens=24)
+    state = FatigueState.genesis(p, "fixed", 0)
+    assert not state.blocked
+    budget = budget_for_l2(p, state, 96)
+    assert budget.admitted and budget.max_output_tokens == 24
