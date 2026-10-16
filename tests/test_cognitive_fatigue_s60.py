@@ -193,3 +193,20 @@ def test_off_legacy_supplier_can_use_smaller_output_than_ceiling():
         assert b'"max_tokens": 32' in adapter._payload(request())
         assert adapter.config is BASE
     asyncio.run(run())
+
+def test_off_requires_no_extra_fatigue_reservation_or_effect():
+    p, s = fixture("OFF")
+    plan = plan_s60_l2(p, s, BASE)
+    with pytest.raises(S60FatigueRejected):
+        reserve_s60_l2(p, s, plan, request(), at_ns=10, source_receipt_sha256=SHA)
+
+
+def test_natural_completion_without_finish_reason_cannot_settle():
+    p, s = fixture()
+    plan = plan_s60_l2(p, s, BASE)
+    active = reserve_s60_l2(p, s, plan, request(), at_ns=10, source_receipt_sha256=SHA)
+    facts = ProviderCallFacts(plan.max_output_tokens, 20, 5, 25, None)
+    claim = S60ExternalUsage("session-a", "s60-1", "c" * 64,
+                             "VERIFIED_NATURAL_COMPLETION", facts)
+    with pytest.raises(S60FatigueRejected):
+        settle_s60_l2(p, active, claim, at_ns=1000)
