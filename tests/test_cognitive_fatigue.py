@@ -1,9 +1,19 @@
 """L-CF offline negative controls. No provider, World or GPU execution."""
 from dataclasses import replace
+
 import pytest
+
 from relay_self.cognitive_fatigue import (
-    CognitiveFatigueRejected, FatigueProfile, FatigueState, L2Start, L2Usage,
-    NonL2Interval, account_l2, begin_l2, budget_for_l2, recover_idle,
+    CognitiveFatigueRejected,
+    FatigueProfile,
+    FatigueState,
+    L2Start,
+    L2Usage,
+    NonL2Interval,
+    account_l2,
+    begin_l2,
+    budget_for_l2,
+    recover_idle,
     sensory_projection,
 )
 
