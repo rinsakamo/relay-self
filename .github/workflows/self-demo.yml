@@ -79,7 +79,7 @@ jobs:
               tests/test_m02_paper_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
               tests/test_m02_v7_four_arm_qualification.py|\
-              tests/test_s50_physical_boundary.py|\
+              tests/test_s50_*.py|\
               tests/test_s50_p1_wait.py|\
               tests/test_v6_world_qualification.py)
                 ;;
