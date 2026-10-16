@@ -1,0 +1,121 @@
+name: R S50 five-arm tick-chord real Paper originals independent DEV review
+
+on:
+  push:
+    branches:
+      - infra/rsee-r6-s9-native-original-readback-20261012
+    paths:
+      - '.github/workflows/rsee-s50-tick-chord-five-arm-readback.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  independent-five-originals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rinsakamo/relay-self
+      S_RUN: '38899196206'
+      S_HEAD: '45102435ada2ecf2cbe2c8bf2277731122dfbbf4'
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Validate exact new S DEV producer head and five successful one-attempt owners
+        run: |
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ["GH_REPO"];run=os.environ["S_RUN"]
+          got=json.loads(subprocess.check_output(
+              ["gh","api",f"repos/{repo}/actions/runs/{run}"]))
+          assert got["head_sha"]==os.environ["S_HEAD"] and got["event"]=="push"
+          assert got["run_attempt"]==1 and got["conclusion"]=="success"
+          jobs=json.loads(subprocess.check_output(
+              ["gh","api",f"repos/{repo}/actions/runs/{run}/jobs?per_page=100"]))["jobs"]
+          arms=("BASE_ON","SHAM_ON","BASAL_ZERO","WALK_ZERO","BOTH_ZERO")
+          assert {j["name"] for j in jobs}=={
+              f"five-arm-disposable-dev ({a})" for a in arms}
+          assert all(j["conclusion"]=="success" for j in jobs)
+          artifacts=json.loads(subprocess.check_output(
+              ["gh","api",f"repos/{repo}/actions/runs/{run}/artifacts?per_page=100"]))["artifacts"]
+          assert len(artifacts)==5
+          expected={
+              "BASE_ON":("12044573785","sha256:027929bcc72c3ff6ca88d2329ef08269294622bbc20b0c8c960193c3031b4d60"),
+              "SHAM_ON":("12044868239","sha256:c5ee3e7c37644e11adda0035853439f3939392a50668b40871726fab0b0203d1"),
+              "BASAL_ZERO":("12045486950","sha256:5e7eb462542902fbd12eaa2bad43deef8fd89c18392fe4c6cb8692948d5e4113"),
+              "WALK_ZERO":("12044913364","sha256:ee9a92fd5f34bc1f779f6409168e831584829fcbb012c42cef67b1efe0da7c6a"),
+              "BOTH_ZERO":("12045621422","sha256:f5afa71e115d0b51f6ef91745c7e9be797817881bf09fe95954190d1f19cdf39"),
+          }
+          for arm in arms:
+              found=[a for a in artifacts if a["name"]==f"s-v7-fixedpose-dev-61021-{arm}-{run}"]
+              assert len(found)==1,arm
+              assert str(found[0]["id"])==expected[arm][0]
+              assert found[0]["digest"]==expected[arm][1]
+              assert not found[0]["expired"]
+          print("R_S50_PRODUCER_5_SUCCESS_AND_ARCHIVE_METADATA_PINNED_DEV_ONLY")
+          PY
+      - name: Download new source-original five-arm artifacts, never historical V7
+        run: |
+          for ARM in BASE_ON SHAM_ON BASAL_ZERO WALK_ZERO BOTH_ZERO; do
+            mkdir -p "$RUNNER_TEMP/s50-new-tick-originals/$ARM"
+            gh run download "$S_RUN" -R "$GH_REPO" \
+              -n "s-v7-fixedpose-dev-61021-$ARM-$S_RUN" \
+              -D "$RUNNER_TEMP/s50-new-tick-originals/$ARM"
+          done
+      - name: Independently recompute native tick writer versus original Paper / Action
+        run: |
+          python - <<'PY'
+          import json,os,pathlib,math
+          from experiments.standard_env import s50_tick_chord_original_audit as independent
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"s50-new-tick-originals"
+          receipt={}
+          for arm in independent.ARMS:
+              x=independent.review_files(root/arm,arm)
+              assert x["classification"]==independent.CLASS
+              assert not x["event_native_double_billing"]
+              assert x["native_stop_ack"] and x["bounded_quiet_window_observed"]
+              assert not x["engineering_qualified"] and not x["science_go"]
+              assert x["native_tick_rows"] >= 6
+              assert abs(x["source_walk_exhaustion_per_chord_block"]-
+                         independent.ARMS[arm][1]) < 1e-9
+              receipt[arm]=x
+              print("R_S50_NATIVE_TICK_CHORD_DEV_RAW "+arm+" "+json.dumps(x,sort_keys=True))
+          paths=[v["source_tick_chord_blocks_lower_bound"] for v in receipt.values()]
+          data={
+              "classification":"R_S50_FIVE_NEW_PAPER_TICK_CHORD_ORIGINALS_DEV_REVIEW_ONLY",
+              "s_producer_run":int(os.environ["S_RUN"]),
+              "s_head":os.environ["S_HEAD"],
+              "r_head":os.environ["GITHUB_SHA"],
+              "physical_s_source_arms":5,
+              "r_new_world_starts":0,
+              "max_across_arm_chord_spread_blocks":max(paths)-min(paths),
+              "frozen_v7_path_admitted":False,
+              "subtick_continuous_physical_distance_attested":False,
+              "new_jar_engineering_qualified":False,
+              "grant_consumed_by_r_readback":False,
+              "scientific_trials_credited":0,
+              "production_go":False,
+              "arms":receipt,
+          }
+          destination=pathlib.Path(os.environ["RUNNER_TEMP"])/"r-s50-five-tick-original-review.json"
+          destination.write_text(json.dumps(data,sort_keys=True,indent=2)+"\n")
+          print("R_S50_FIVE_TICK_DEV_INDEPENDENT_REVIEW_ONLY_NO_QUALIFICATION")
+          PY
+      - name: Preserve original bytes, all five attempts and R receipt even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsee-s50-five-tick-dev-originals-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/s50-new-tick-originals/
+            ${{ runner.temp }}/r-s50-five-tick-original-review.json
+          retention-days: 90
+          if-no-files-found: warn
