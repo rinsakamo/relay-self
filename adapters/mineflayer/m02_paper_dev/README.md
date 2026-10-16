@@ -258,3 +258,24 @@ local sample, **not** guaranteed to be a pre-MOVE snapshot, verified
 collision attribution, matched spawn/pose, identical path, or a
 flat controlled corridor. Old V7 preregistered path gate stays FAIL;
 new DEV plugin is not automatically R qualified or V science.
+
+
+### Controlled-pose packet World-tick source (prospective S DEV)
+
+Only `--v7-controlled-calibration-dev` requires the complete native
+`M02_DEV_MOTION` packet sequence including server `world_full_time`,
+from/to XYZ, packet ID and cumulative source totals. The S reader checks
+finite values, monotone World ticks, sequential IDs, coordinate-derived
+distance, packet continuity and running distance/charge totals. Its
+`v7_source.native_motion_tick_trace` records the actual packet count and
+per-World-tick histogram; partial or contradictory source fails DEV.
+
+**This is not S50 control-on/off tick attestation.** The client-side
+`set_control` / `clear_controls` acknowledgements have native session
+sequence but no independently matched Paper server-tick acknowledgement.
+The trace therefore explicitly reports both control boundaries and
+cross-arm equal-duration claims as `false`. It cannot yet promote
+fixed-pose DEV calibration to a matched-duration V trial. Next engineering
+step is a prospective cross-source control-phase handshake with source
+World-tick boundaries that does not replace the S50 issuer. Existing
+5-arm V7 science roster remains 0/20; the earlier failed path gate is frozen.
