@@ -38,6 +38,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       S_PIN: ${{ github.sha }}
       R_PIN: 'b93ab8c418157b4bed253fee5faa8db173e35d3a'
+      PLUGIN_SOURCE_PIN: 'd34c1cc613920a2485a581c25a8010f2a47e1bd6'
       R_CI_RUN: '38921124894'
       ARM: ${{ matrix.arm }}
       PAPER_SOURCE_RUN: '38702561454'
@@ -99,6 +100,11 @@ jobs:
           repository: rinsakamo/relay-self
           ref: ${{ env.R_PIN }}
           path: r
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: ${{ env.PLUGIN_SOURCE_PIN }}
+          path: pinned-plugin
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
@@ -115,6 +121,7 @@ jobs:
         run: |
           test "$(git -C s rev-parse HEAD)" = "$S_PIN"
           test "$(git -C r rev-parse HEAD)" = "$R_PIN"
+          test "$(git -C pinned-plugin rev-parse HEAD)" = "$PLUGIN_SOURCE_PIN"
           test "$GITHUB_RUN_ATTEMPT" = "1"
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
           PYTHONPATH="s/src:s/tests:s" python -m pytest -q s/tests/test_m02_v7_four_arm_qualification.py
@@ -142,7 +149,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/m02-v7-qual/archived" "$RUNNER_TEMP/m02-v7-qual/assets"
           gh run download "$PAPER_SOURCE_RUN" -R "$GH_REPO" -n "$PAPER_SOURCE_NAME" \
             -D "$RUNNER_TEMP/m02-v7-qual/archived"
-          mvn -B -ntp -f s/adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+          mvn -B -ntp -f pinned-plugin/adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
           PYTHONPATH="s/src:s/tests:s" python - <<'PY'
           import hashlib,os,pathlib,shutil
           from adapters.mineflayer.m02_paper_dev import v7_paired_config as v7
@@ -154,7 +161,7 @@ jobs:
               matches=[x for x in archive.rglob(name) if x.is_file() and not x.is_symlink()]
               assert len(matches)==1,name
               shutil.copyfile(matches[0],dest/name)
-          jar=pathlib.Path("s/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar")
+          jar=pathlib.Path("pinned-plugin/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar")
           assert jar.is_file() and not jar.is_symlink()
           shutil.copyfile(jar,dest/"relay-metabolism-paper-dev.jar")
           source=v7.TEMPLATE.read_bytes()
@@ -166,7 +173,7 @@ jobs:
           assert hashlib.sha256(enabled).hexdigest()==os.environ["EXPECTED_CONFIG_SHA256"]
           assert hashlib.sha256(jar.read_bytes()).hexdigest()==os.environ["EXPECTED_PLUGIN_SHA256"]
           assert q.check_assets(dest,os.environ["ARM"])==dict(q.ASSET_PINS, **{"config.yml":q.CONFIGS[os.environ["ARM"]]})
-          print("R_S_NEW_JAR_AND_FOUR_ARM_TICK_PROFILE_PINNED",os.environ["ARM"])
+          print("R_S_QUAL_PINNED_HISTORICAL_NEW_JAR_AND_FOUR_ARM_PROFILE",os.environ["ARM"],os.environ["PLUGIN_SOURCE_PIN"])
           PY
       - name: Native dependencies, no Node overrides and unoccupied Minecraft port
         run: |
