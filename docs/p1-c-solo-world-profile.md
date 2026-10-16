@@ -1,0 +1,31 @@
+# P1-C — SOLO_NO_AGENTS research World (offline source-admission contract)
+
+**Owner:** R #575 controls World/profile/attestation; S #537 controls Self/Action and the disposable DEV host; V #619 independently admits SCIENCE. P1 is an **independent temporary implementation series**, not a new permanent semantic owner. **Status:** `P1_C_OFFLINE_SOURCE_CONTRACT_ONLY / SERVER_EMITTER_NOT_INSTALLED / SOLO_WORLD_NOT_QUALIFIED / SCIENCE_NO_GO`.
+
+## Files / scope
+
+- Profile: `experiments/config/p1_solo_no_agents_v1.json` (immutable candidate, Minecraft **1.21.8**, one `RelaySelf` player, overworld, solo profile; *not* prequalified).
+- Pure offline checker: `experiments/solo_p1.py` (`begin`, `advance`, `SoloRejected.classification`).
+- Negative controls: `tests/test_solo_p1.py`.
+- **No edits** to S49/S50, RSEE, M0.2 Paper plugin, B0/S51 food, Zombie engineering profiles or protected original logs. No server start or new launcher.
+
+## What qualifies as `SOLO_NO_AGENTS` evidence shape?
+
+1. **Physics/config precondition:** a new R/S-owned *isolated disposable* server, pinned original server build/profile, verified **readback** of **Minecraft 1.21.8** server property `spawn-monsters=false`; and gamerules `doMobSpawning=false`, `doTraderSpawning=false`, `doPatrolSpawning=false`, `doInsomnia=false`, `doWardenSpawning=false`. **Crucial edition fence:** Mojang removed `spawn-animals` and `spawn-npcs` from `server.properties` in **1.21.2**; inserting them into 1.21.8 cannot be credited as protection. Mojang 1.21.2 notes: https://www.minecraft.net/nl-nl/article/minecraft-java-edition-1-21-2 ; 1.21.8 gamerule identifier witness: https://mcasset.cloud/1.21.8/assets/minecraft/lang/ja_jp.json . These do **not** remove already-present entities or categorically bar spawn eggs, commands, plugins, world load, transformations or joins. No game-rule mutation in P1.
+2. **Baseline and each consecutive *actual World tick*:** dedicated server-authoritative, source-verified census of **all loaded chunks** (including every freshly loaded chunk), one and only one controlling player; complete entity identities/types. Any unknown entity type fails closed; only listed inert `minecraft:*` entities are allowed (items, falling blocks, display items etc.). Passive/neutral animals, villagers, all hostile mobs and other players are **other actors** and invalidate the episode. Nonagent terrain/obstacles remain allowed. A missing tick, incomplete loaded-chunk coverage, partial/truncated list, unrecognized type or uncertain source is **SOLO_SOURCE_UNQUALIFIED**, never an accepted negative assertion.
+3. **Per-tick original lifecycle event stream** covering spawn/load/transform/despawn/unload, with gapless sequence. Detect a transient animal or zombie that appears and disappears *between* tick-end censuses. Input source refs, complete coverage flags and digest values are **descriptors only**: offline `begin/advance` cannot verify that their claims came from the server. R must capture original server evidence, independently verify bytes/census/stream, freeze enrollment against session, head and profile; V must independently audit. Passing unit tests is **not evidence of a live solo World**.
+4. `SoloRejected.classification`: `SOLO_PROFILE_INVALID` for **confirmed** other actors; `SOLO_SOURCE_UNQUALIFIED` for gaps, missing source/readback, ambiguity or inconsistent formats. An invalid solo run is not silently discarded/retried as science; preserve its evidence and keep original trial count under V's preregistration.
+5. **Single-dimension bound:** this contract checks one isolated `minecraft:overworld` and all its server-loaded chunks. R must prohibit other active dimensions, cross-dimension transfers and independent agents outside the enumerated scope before making a server-wide solo claim. Unloaded chunks can become active at any time; they must be censused and lifecycle-audited on load. As coded, `minecraft:overworld` alone is a *scope*, not evidence of isolation.
+
+### Why Mineflayer's existing entity observation is insufficient
+
+`adapters/mineflayer/python_protocol.py` caps native nearby entities at **16m and 16 entries** and identifies `source_scope=mineflayer_entity_registry`. Even when `truncated=false`, that is **only local completeness**, not full-server absence of animals/villagers/zombies or transient spawns. The P1-C validator refuses this source scope. An R-owned server-authoritative (likely Paper) source emitter is still missing; **do not fabricate a global census from this Mineflayer snapshot**.
+
+## Owner handoff
+
+- **R/S:** implement source-verified full loaded-chunk census + per-tick lifecycle emitter in the existing *disposable World path* (not another launcher). Verify actual controls readback and event continuity, isolation, server profile hash, initial entity purge and prevention, and cleanup. Preexisting S49 zombie regression stays on its different World profile. Use R/S original source receipts; profile configuration itself is never source proof.
+- **S:** consume only original source observations and preserve S action grants. Do not infer solo from nearby-entity absence; ensure effective REST can be measured against this profile separately, and keep fixed SEEK/MOVE_AWAY/forage policy inherited from prior work marked as designed baselines.
+- **M:** M0.2 Paper hunger/energy remains its own authority; disabling hostile/passive spawn for solo research must not alter food/energy rules without a separately frozen variant. P1 Fatigue is not Minecraft exhaustion.
+- **V:** before SCIENCE, specify number of independent World seeds/trials, null retention and cleanup, immutable precondition, cheap fixed-rest/L1/L2/Fatigue-OFF arms, stopping rules, and explicit contamination handling. Physics pass, solo provenance qualification and cognitive benefit are **three different outcomes**.
+
+**Stop rule now:** `P1_C_OFFLINE_SOURCE_CONTRACT_PASS` (if offline tests pass) is the **ceiling**. No science run or real zero-Mob World qualification can be claimed from the current implementation.
