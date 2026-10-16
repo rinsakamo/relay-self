@@ -101,9 +101,11 @@ def make_s60_adapter(
     supplier: Callable[[ModelRequest], Mapping[str, Any]],
 ) -> LoopbackDisplacementAdapter:
     """Reuse the original S60 transport and its S-owned verification."""
-    return LoopbackDisplacementAdapter(
-        plan.transport, bind_s60_payload(plan, supplier),
-    )
+    bounded = bind_s60_payload(plan, supplier)
+    if plan.enabled:
+        from relay_self.cognitive_fatigue_s60_meter import MeteredS60Adapter
+        return MeteredS60Adapter(plan.transport, bounded)
+    return LoopbackDisplacementAdapter(plan.transport, bounded)
 
 
 def reserve_s60_l2(
