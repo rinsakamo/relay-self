@@ -142,6 +142,17 @@ def test_forged_native_packet_count_rejected():
         gate.review(packet)
 
 
+@pytest.mark.parametrize(("field", "forgery"), [
+    ("min_player_ticks_reached", 201),
+    ("observed_walk_debit", 0.010390913428873619),
+])
+def test_changed_historic_native_tick_or_small_charge_forgery_rejected(field, forgery):
+    packet = _receipt()
+    packet["arms"]["BASE_ON"][field] = forgery
+    with pytest.raises(gate.NotAdmitted, match="historic independently reviewed"):
+        gate.review(packet)
+
+
 def test_matching_paths_by_editing_unqualified_original_is_rejected():
     packet = _receipt()
     packet["arms"]["BASE_ON"]["real_motion_path_blocks"] = 1.2828913533098643
