@@ -24,9 +24,9 @@ jobs:
     env:
       GH_REPO: rinsakamo/relay-self
       GH_TOKEN: ${{ github.token }}
-      S_PIN: '5abad8ec30b3ee64ddfc1a87a0ae5bc032b9af48'
+      S_PIN: 'd34c1cc613920a2485a581c25a8010f2a47e1bd6'
       R_PIN: '53193a5da376e2832555231df4ada15f063f3b67'
-      S_CI_RUN: '38906473996'
+      S_CI_RUN: '38907041416'
       R_CI_RUN: '38906596693'
       PAPER_SOURCE_RUN: '38702561454'
       PAPER_SOURCE_NAME: 'rsee-m02-paper-four-pinned-assets-38702561454-1'
