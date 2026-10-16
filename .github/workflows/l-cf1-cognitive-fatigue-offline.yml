@@ -40,7 +40,7 @@ jobs:
         env:
           PYTHONPATH: 'src:tests:.'
         run: |
-          python -m pytest -q tests/test_cognitive_fatigue.py tests/test_feature_s47_cognition.py tests/test_feature_s53_concurrent_cognition.py
+          python -m pytest -q tests/test_cognitive_fatigue.py tests/test_cognitive_fatigue_s60.py tests/test_feature_s47_cognition.py tests/test_feature_s53_concurrent_cognition.py tests/test_feature_s60b1_adapter.py
       - name: Full inherited Python regression
         env:
           PYTHONPATH: 'src:tests:.'
