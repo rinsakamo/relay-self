@@ -501,7 +501,9 @@ def review_prospective_tick_bundle(root: Path) -> dict:
     import json
 
     from adapters.mineflayer.m02_paper_dev.v7_paired_config import (
-        ARMS, TEMPLATE, render_arm,
+        ARMS,
+        TEMPLATE,
+        render_arm,
     )
 
     if root.is_symlink() or not root.is_dir():
