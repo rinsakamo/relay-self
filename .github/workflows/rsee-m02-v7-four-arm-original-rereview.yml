@@ -1,0 +1,196 @@
+name: RSEE M0.2 V7 four-arm original independent replay
+
+on:
+  push:
+    branches:
+      - 'infra/rsee-r6-s9-native-original-readback-20261012'
+    paths:
+      - '.github/workflows/rsee-m02-v7-four-arm-original-rereview.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: rsee-m02-v7-four-arm-original-one-off-rereview
+  cancel-in-progress: false
+
+jobs:
+  original-independent-readback:
+    if: "github.run_attempt == 1 && github.event.head_commit.message == 'R audit: read back four V7 original archives once (2026-10-17)'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arm: SHAM_ON
+            artifact_id: '12055677136'
+            artifact_sha: 'sha256:4457a29700577e340c220cafaa6c254a50a43aae58a29fdcca4c585938e832b2'
+          - arm: BASAL_ZERO
+            artifact_id: '12056065364'
+            artifact_sha: 'sha256:c9f67f043f3a9c3175bcde10c477350fcb52a13afa7cec4368cee4f1fd7e7cda'
+          - arm: WALK_ZERO
+            artifact_id: '12055886025'
+            artifact_sha: 'sha256:e06ebb658905e1035051c5413f907bef52f0e108a366ddd2b495dc9732a1b55c'
+          - arm: BOTH_ZERO
+            artifact_id: '12055002431'
+            artifact_sha: 'sha256:f846bde94769bba7abcdc776126f74ad3480daff780096bdc463da4d78e9e9ca'
+    env:
+      GH_REPO: rinsakamo/relay-self
+      GH_TOKEN: ${{ github.token }}
+      S_RUN: '38922286471'
+      S_SOURCE_HEAD: 'deea081c76437d6cc30374b69da4798e69fa8b73'
+      ARM: ${{ matrix.arm }}
+      ARTIFACT_ID: ${{ matrix.artifact_id }}
+      ARTIFACT_SHA: ${{ matrix.artifact_sha }}
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Exact previously completed S four-arm run and artifact identity
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ["GH_REPO"]
+          def obj(route):
+              return json.loads(subprocess.check_output(["gh","api",f"repos/{repo}/{route}"]))
+          source=obj("actions/runs/"+os.environ["S_RUN"])
+          assert (source["run_attempt"]==1 and source["head_sha"]==os.environ["S_SOURCE_HEAD"]
+                  and source["event"]=="push" and source["status"]=="completed"
+                  and source["conclusion"]=="success"),"foreign/incomplete physical source"
+          jobs=obj("actions/runs/"+os.environ["S_RUN"]+"/jobs?per_page=100")["jobs"]
+          arms=("SHAM_ON","BASAL_ZERO","WALK_ZERO","BOTH_ZERO")
+          assert len(jobs)==4 and all(
+              len([j for j in jobs if "(%s, "%arm in j["name"]
+                   and j["status"]=="completed" and j["conclusion"]=="success"])==1
+              for arm in arms),"missing/failed/duplicated physical qualification job"
+          artifacts=obj("actions/runs/"+os.environ["S_RUN"]+"/artifacts?per_page=100")["artifacts"]
+          name=f"rsee-m02-new-tick-{os.environ['ARM']}-qualification-{os.environ['S_RUN']}-1"
+          selected=[x for x in artifacts if x["name"]==name]
+          assert len(selected)==1 and selected[0]["id"]==int(os.environ["ARTIFACT_ID"])
+          assert selected[0]["digest"]==os.environ["ARTIFACT_SHA"]
+          assert not selected[0]["expired"] and selected[0]["workflow_run"]["id"]==int(os.environ["S_RUN"])
+          print("R_ORIGINAL_ARTIFACT_METADATA_FIXED",name,selected[0]["id"],selected[0]["digest"])
+          PY
+      - name: Download exact frozen S original bytes (never start Java/Node)
+        run: |
+          mkdir -p "$RUNNER_TEMP/m02-immutable-original"
+          gh run download "$S_RUN" -R "$GH_REPO" \
+            -n "rsee-m02-new-tick-$ARM-qualification-$S_RUN-1" \
+            -D "$RUNNER_TEMP/m02-immutable-original"
+          test -s "$RUNNER_TEMP/m02-immutable-original/originals/qualification_producer.json"
+          test -s "$RUNNER_TEMP/m02-immutable-original/originals/SHA256SUMS"
+          test -s "$RUNNER_TEMP/m02-immutable-original/independent-host-witness.json"
+      - name: Re-audit independently from archived raw bytes with current R code
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          set -o pipefail
+          python -m experiments.standard_env.m02_v7_four_arm_qualification_audit \
+            --original-root "$RUNNER_TEMP/m02-immutable-original/originals" \
+            --asset-root "$RUNNER_TEMP/m02-immutable-original/assets" \
+            --witness "$RUNNER_TEMP/m02-immutable-original/independent-host-witness.json" \
+            --workflow-run-id "$S_RUN" --arm "$ARM" \
+            | tee "$RUNNER_TEMP/r-audit-$ARM.json"
+      - name: Verify same original R verdict and write independent claim-bounded receipt
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,pathlib
+          from experiments.standard_env import s50_tick_chord_original_audit as chord
+          p=pathlib.Path(os.environ["RUNNER_TEMP"])/"m02-immutable-original"
+          a=os.environ["ARM"]
+          reviewed=json.loads((pathlib.Path(os.environ["RUNNER_TEMP"])/f"r-audit-{a}.json").read_text())
+          original=json.loads((p/"r-independent-qualification.json").read_text())
+          assert original==reviewed,"current independent R verdict diverged from source-run R result"
+          assert reviewed["classification"]==f"R_M02_V7_{a}_TICK_CHORD_ENGINEERING_QUALIFIED_ONLY"
+          assert reviewed["qualified_arm"]==a and reviewed["candidate_engineering_qualified"]
+          assert reviewed["java_launches"]==reviewed["node_sessions"]==1
+          assert reviewed["grant_consumed"] and reviewed["independent_host_pid_port_witness"]
+          assert reviewed["science_trials"]==0 and not reviewed["science_go"]
+          assert not reviewed["production_go"] and not reviewed["continuous_subtick_path_qualified"]
+          producer=json.loads((p/"originals/qualification_producer.json").read_text())
+          assert producer["run_id"]==reviewed["source_run_id"]
+          assert producer["source_session_id"]==reviewed["source_session_id"]
+          original_log=(p/"originals/paper_server.log").read_bytes()
+          marker=producer["movement"]["v7_phase_marker_id"]
+          physical=chord.review_paper_source(original_log,a,marker)
+          assert physical["raw_paper_sha256"]==reviewed["original_sha256"]["paper_server.log"]
+          assert producer["authorization_consumed"] is True and producer["arm"]==a
+          receipt={
+              "classification":"R_M02_V7_FOUR_ARM_INDEPENDENT_OFFLINE_ORIGINAL_REPLAY_ENGINEERING_ONLY",
+              "arm":a,
+              "physical_run_id":os.environ["S_RUN"],
+              "physical_source_sha":os.environ["S_SOURCE_HEAD"],
+              "r_readback_sha":os.environ["GITHUB_SHA"],
+              "artifact_id":int(os.environ["ARTIFACT_ID"]),
+              "artifact_provider_digest":os.environ["ARTIFACT_SHA"],
+              "archive_download_unchanged":True,
+              "same_r_verdict":True,
+              "qualified_arm_only":reviewed["classification"],
+              "source_run_id":reviewed["source_run_id"],
+              "source_session_id":reviewed["source_session_id"],
+              "world_uuid":physical["world"],
+              "original_paper_log_sha256":physical["raw_paper_sha256"],
+              "original_level_dat_sha256":reviewed["original_sha256"]["initial_world_level.dat"],
+              "basal_first200":reviewed["source_basal_first200"],
+              "observed_chord_blocks_lower_bound":reviewed["source_tick_chord_lower_bound_blocks"],
+              "walk_setter_input":reviewed["source_walk_setter_input"],
+              "source_stop_ack_seq":reviewed["source_stop_ack_seq"],
+              "physical_world_starts_in_replay":0,
+              "grant_reused":False,"v_science_trials":0,
+              "science_go":False,"production_go":False,
+          }
+          out=pathlib.Path(os.environ["RUNNER_TEMP"])/f"R-{a}.json"
+          out.write_text(json.dumps(receipt,indent=2,sort_keys=True)+"\n")
+          print("R_FOUR_ARM_IMMUTABLE_ORIGINAL_REPLAY_PASS",json.dumps(receipt,sort_keys=True))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: r-m02-v7-${{ matrix.arm }}-offline-replay-${{ github.run_id }}
+          path: ${{ runner.temp }}/R-${{ matrix.arm }}.json
+          retention-days: 90
+          if-no-files-found: warn
+
+  four-way-identity-check:
+    needs: original-independent-readback
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: r-m02-v7-*-offline-replay-${{ github.run_id }}
+          path: receipts
+          merge-multiple: true
+      - name: Cross-arm original-source session/World non-aliasing and claim ceiling
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          root=pathlib.Path("receipts")
+          arms=("SHAM_ON","BASAL_ZERO","WALK_ZERO","BOTH_ZERO")
+          objects=[json.loads((root/f"R-{a}.json").read_text()) for a in arms]
+          assert [x["arm"] for x in objects]==list(arms)
+          for field in ("source_run_id","source_session_id","world_uuid",
+                        "original_paper_log_sha256","original_level_dat_sha256",
+                        "artifact_id","artifact_provider_digest"):
+              assert len({x[field] for x in objects})==4,field
+          assert len({x["physical_run_id"] for x in objects})==1
+          assert len({x["physical_source_sha"] for x in objects})==1
+          assert [x["basal_first200"] for x in objects]==[0.2,0.,0.2,0.]
+          for x in objects:
+              assert x["observed_chord_blocks_lower_bound"]>0.5
+              expect=0. if x["arm"] in ("WALK_ZERO","BOTH_ZERO") else 0.01*x["observed_chord_blocks_lower_bound"]
+              assert abs(x["walk_setter_input"]-expect)<1e-7
+              assert x["physical_world_starts_in_replay"]==0
+              assert x["same_r_verdict"] and x["archive_download_unchanged"]
+              assert not x["grant_reused"] and not x["science_go"] and not x["production_go"]
+          print("R_M02_V7_FOUR_DISTINCT_PHYSICAL_ORIGINALS_REQUALIFIED_OFFLINE_4_OF_4")
+          PY
