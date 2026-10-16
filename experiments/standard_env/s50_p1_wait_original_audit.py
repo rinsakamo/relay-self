@@ -108,7 +108,9 @@ def pos(row, prefix=""):
     return tuple(number(row, prefix + name) for name in ("x", "y", "z"))
 
 
-def review(root: Path):
+def review(root: Path, *, source_run: int = RUN_ID,
+           source_head: str = S_HEAD, source_artifact: int = ARTIFACT_ID,
+           expected_jar: str = EXPECTED_JAR):
     """Independent original values; no SourceBoundTick(WAIT) is produced."""
     need(root.is_absolute() and root.is_dir() and not root.is_symlink(),
          "untrusted original root")
@@ -121,7 +123,7 @@ def review(root: Path):
          and report.get("science_go") is False
          and report.get("v7_tick_meter_dev") is True
          and report.get("v7_server_clock_calibration_dev") is True
-         and report.get("plugin_sha256") == EXPECTED_JAR
+         and report.get("plugin_sha256") == expected_jar
          and report.get("paper_sha256") == EXPECTED_PAPER
          and report.get("java_exit") == 0
          and report.get("node_exit") == 0
@@ -132,7 +134,7 @@ def review(root: Path):
     need(type(hashes) is dict, "no original SHA index")
     for name, data in raw.items():
         need(sha(data) == hashes.get(name), "original source hash changed " + name)
-    need(sha(original(root, "relay-metabolism-paper-dev.jar")) == EXPECTED_JAR,
+    need(sha(original(root, "relay-metabolism-paper-dev.jar")) == expected_jar,
          "wrong WAIT instrumentation JAR bytes")
     world = original(root, "initial_world_level.dat")
     world_ref = report.get("initial_world_receipt") or {}
@@ -230,9 +232,9 @@ def review(root: Path):
          "producer asserted unqualified WAIT/recovery")
     return {
         "classification": CLASS,
-        "source_run": RUN_ID,
-        "source_head": S_HEAD,
-        "source_artifact": ARTIFACT_ID,
+        "source_run": source_run,
+        "source_head": source_head,
+        "source_artifact": source_artifact,
         "original_paper_sha256": sha(paper),
         "original_world_uuid": uuid,
         "native_session": session,
