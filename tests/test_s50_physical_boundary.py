@@ -507,3 +507,27 @@ def test_dev_tick_meter_negative_controls(bad):
         movement["observed_progress_blocks"] = 1.2
     with pytest.raises(BoundaryRejected):
         reconcile_tick_meter("\n".join(lines), movement, walk_rate=.01)
+
+
+def test_native_tick_writer_can_sample_in_pre_forward_world_tick():
+    """Paper may process PRE_FORWARD command before its own scheduler in same tick."""
+    from adapters.mineflayer.m02_paper_dev.s50_boundary import reconcile_tick_meter
+
+    source, movement = _tick_meter_fixture()
+    converted = []
+    for row in source.splitlines():
+        if row.startswith("S50_DEV_TICK_MOTION "):
+            first = row.split(" ", 2)[1]
+            index = int(first.split("=")[1])
+            row = row.replace("S50_DEV_TICK_MOTION id=" + str(index) + " ",
+                              "S50_DEV_TICK_MOTION id=" + str(index + 1) + " ", 1)
+        converted.append(row)
+    converted.append(
+        "S50_DEV_TICK_MOTION id=1 marker_id=action-session world=world "
+        "world_full_time=10 from_x=0 from_y=0 from_z=0 to_x=0 to_y=0 to_z=0 "
+        "blocks=0 billed=0 cumulative_blocks=0 cumulative_billed=0 "
+        "write_before=0.1 write_target=0.1 write_after=0.1"
+    )
+    result = reconcile_tick_meter("\n".join(converted), movement, walk_rate=0.01)
+    assert result["native_horizontal_path_blocks"] == pytest.approx(1.2088)
+    assert result["observed_tick_motion_source"]["source_rows"] == 18
