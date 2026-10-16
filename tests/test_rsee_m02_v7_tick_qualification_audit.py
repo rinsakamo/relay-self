@@ -24,7 +24,7 @@ def test_absent_physical_source_is_never_qualified(tmp_path: Path):
     assets.mkdir()
     witness=tmp_path/"host.json"
     witness.write_text("{}",encoding="utf-8")
-    with pytest.raises(q.NotQualified,match="candidate admission asset"):
+    with pytest.raises(q.NotQualified,match="missing/aliased original"):
         q.review(root,assets,witness,"38905000000")
 
 
