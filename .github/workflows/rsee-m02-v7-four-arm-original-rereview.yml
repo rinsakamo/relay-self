@@ -17,7 +17,9 @@ concurrency:
 
 jobs:
   original-independent-readback:
-    if: "github.run_attempt == 1 && github.event.head_commit.message == 'R audit: read back four V7 original archives once (2026-10-17)'"
+    # FROZEN after complete offline replay #38923260429; no fresh qualifying claims.
+    # The historical executed R audit code HEAD was 7560538df1cec282e3e8cc3fe4acbf1ca8072eee.
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
