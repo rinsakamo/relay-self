@@ -1,11 +1,18 @@
 package io.github.rinsakamo.relaymetabolism;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -14,13 +21,17 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityExhaustionEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerAnimationEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerVelocityEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -77,6 +88,11 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private Location s50WaitLast;
     private long s50WaitCombatEvents = 0;
     private long s50WaitSwingEvents = 0;
+    private long s50WaitAllMovementEvents = 0;
+    private long s50WaitTeleportEvents = 0;
+    private long s50WaitVelocityEvents = 0;
+    private long s50WaitDamageEvents = 0;
+    private long s50WaitInteractEvents = 0;
 
     /** Bounded +X first-tick corridor, not proof of collision or paired start. */
     private static String devCorridor(World world, Location center) {
@@ -252,6 +268,15 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                             + " sprint=" + p.isSprinting() + " sneak=" + p.isSneaking()
                             + " swimming=" + p.isSwimming()
                             + " basal_ticks=" + appliedTicks);
+                        try {
+                            logS50WaitScope(p, tick, s50WaitSourceRows + 1);
+                        } catch (RuntimeException exc) {
+                            getLogger().severe("S50_DEV_WAIT_SCOPE_REJECT reason="
+                                + exc.getClass().getSimpleName());
+                            devActive = false;
+                            Bukkit.getPluginManager().disablePlugin(this);
+                            return;
+                        }
                         s50WaitSourceRows++;
                         s50WaitLast = where.clone();
                         if (s50WaitSourceRows == 8) {
@@ -510,6 +535,110 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             }, S50_CLOCK_GATE_SCHEDULER_DELAY);
         }
         return true;
+    }
+
+
+    /**
+     * DEV ONLY: enumerate all CURRENTLY loaded chunks across all Paper Worlds.
+     * This is not an entity lifecycle history, a complete World snapshot, or
+     * proof that a mob did not spawn/despawn between consecutive callbacks.
+     */
+    private void logS50WaitScope(Player subject, long tick, int index) {
+        List<String> entries = new ArrayList<>();
+        long loadedChunks = 0;
+        long entityCount = 0;
+        long others = 0;
+        for (World world : Bukkit.getWorlds()) {
+            Chunk[] chunks = world.getLoadedChunks();
+            loadedChunks += chunks.length;
+            if (loadedChunks > 4096) {
+                throw new IllegalStateException("WAIT census loaded-chunk cap exceeded");
+            }
+            for (Chunk chunk : chunks) {
+                for (Entity entity : chunk.getEntities()) {
+                    entityCount++;
+                    if (entityCount > 32768) {
+                        throw new IllegalStateException("WAIT census entity cap exceeded");
+                    }
+                    if (!entity.getUniqueId().equals(subject.getUniqueId())) {
+                        others++;
+                    }
+                    entries.add(world.getUID() + ":" + chunk.getX() + ":"
+                        + chunk.getZ() + ":" + entity.getUniqueId() + ":"
+                        + entity.getType().name());
+                }
+            }
+        }
+        Collections.sort(entries);
+        StringBuilder canonical = new StringBuilder();
+        for (String item : entries) {
+            canonical.append(item).append('\n');
+        }
+        String digest;
+        try {
+            byte[] bits = MessageDigest.getInstance("SHA-256").digest(
+                canonical.toString().getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte bit : bits) {
+                hex.append(String.format("%02x", bit & 0xff));
+            }
+            digest = hex.toString();
+        } catch (NoSuchAlgorithmException exc) {
+            throw new IllegalStateException("SHA256 unavailable", exc);
+        }
+        long otherOnline = Bukkit.getOnlinePlayers().stream()
+            .filter(p -> !p.getUniqueId().equals(subject.getUniqueId())).count();
+        getLogger().info("S50_DEV_WAIT_SCOPE marker_id=" + s50Marker
+            + " world=" + subject.getWorld().getUID()
+            + " tick=" + tick + " index=" + index
+            + " loaded_worlds=" + Bukkit.getWorlds().size()
+            + " loaded_chunks=" + loadedChunks
+            + " loaded_entities=" + entityCount
+            + " other_loaded_entities=" + others
+            + " other_online_players=" + otherOnline
+            + " census_sha256=" + digest
+            + " movement_events=" + s50WaitAllMovementEvents
+            + " teleport_events=" + s50WaitTeleportEvents
+            + " velocity_events=" + s50WaitVelocityEvents
+            + " damage_events=" + s50WaitDamageEvents
+            + " interact_events=" + s50WaitInteractEvents
+            + " combat_events=" + s50WaitCombatEvents
+            + " swing_events=" + s50WaitSwingEvents
+            + " coverage=LOADED_CHUNK_SAMPLER_ONLY"
+            + " client_held_controls=NOT_OBSERVED"
+            + " entity_lifecycle=NOT_ATTESTED");
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onDevWaitAnyMove(PlayerMoveEvent event) {
+        if (s50TickMeterCandidate && event.getPlayer().getName().equals(target)) {
+            s50WaitAllMovementEvents++;
+            if (event instanceof PlayerTeleportEvent) {
+                s50WaitTeleportEvents++;
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onDevWaitVelocity(PlayerVelocityEvent event) {
+        if (s50TickMeterCandidate && event.getPlayer().getName().equals(target)) {
+            s50WaitVelocityEvents++;
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onDevWaitAnyDamage(EntityDamageEvent event) {
+        if (s50TickMeterCandidate && event.getEntity() instanceof Player player
+                && player.getName().equals(target)) {
+            s50WaitDamageEvents++;
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onDevWaitInteract(PlayerInteractEvent event) {
+        if (s50TickMeterCandidate && event.getPlayer().getName().equals(target)) {
+            s50WaitInteractEvents++;
+        }
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
