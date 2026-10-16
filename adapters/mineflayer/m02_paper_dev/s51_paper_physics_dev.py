@@ -536,6 +536,90 @@ async def _v7_source_phase_command(server, server_log: Path, marker_id: str,
     raise M02DevRejected("Paper phase marker not acknowledged by server")
 
 
+
+_V7_GATE_DELTA_TICKS = 6
+
+
+async def _v7_wait_clock_gate_source(server_log: Path, marker_id: str) -> None:
+    """Await an actual scheduled Paper World callback, not host-duration sleep."""
+    if re.fullmatch(r"[A-Za-z0-9_-]{1,128}", marker_id) is None:
+        raise M02DevRejected("unsafe Paper World clock gate marker")
+    prefix = "M02_DEV_S50_CLOCK_GATE "
+    invalid = "M02_DEV_S50_CLOCK_GATE_INVALID "
+    for _ in range(120):
+        if not server_log.is_file():
+            raise M02DevRejected("Paper World clock gate original log missing")
+        content = server_log.read_text(encoding="utf-8")
+        if any(invalid in x and "marker_id=" + marker_id + " " in x
+               for x in content.splitlines()):
+            raise M02DevRejected("Paper World clock gate rejected by server")
+        candidates = [
+            x for x in content.splitlines()
+            if prefix in x and "marker_id=" + marker_id + " " in x
+        ]
+        if len(candidates) > 1:
+            raise M02DevRejected("duplicate Paper clock gate original")
+        if len(candidates) == 1:
+            return
+        await asyncio.sleep(0.05)
+    raise M02DevRejected("scheduled Paper World clock gate missing")
+
+
+def _v7_clock_gate_source(content: str, marker_id: str, phase: dict) -> dict:
+    """Read one server tick gate; control effects remain separately unproven."""
+    prefix = "M02_DEV_S50_CLOCK_GATE "
+    rows = [x.split(prefix, 1)[1] for x in content.splitlines()
+            if prefix in x]
+    if len(rows) != 1:
+        raise M02DevRejected("missing/duplicate Paper clock gate source")
+    fields = {}
+    for token in rows[0].split():
+        if "=" not in token:
+            raise M02DevRejected("malformed Paper clock gate field")
+        key, value = token.split("=", 1)
+        if key in fields or not value:
+            raise M02DevRejected("duplicate Paper clock gate field")
+        fields[key] = value
+    if (set(fields) != {
+            "marker_id", "scheduled_delta", "base_full_time",
+            "reached_full_time", "player_tick", "x", "y", "z"}
+            or fields["marker_id"] != marker_id
+            or marker_id != phase["marker_id"]):
+        raise M02DevRejected("foreign/incomplete Paper clock gate")
+    try:
+        delta = int(fields["scheduled_delta"])
+        base = int(fields["base_full_time"])
+        reached = int(fields["reached_full_time"])
+        player_tick = int(fields["player_tick"])
+        xyz = {a: float(fields[a]) for a in ("x", "y", "z")}
+    except (ValueError, OverflowError) as exc:
+        raise M02DevRejected("invalid Paper clock gate numeric source") from exc
+    phases = phase["server_world_ticks"]
+    if (delta != _V7_GATE_DELTA_TICKS or base < 0
+            or base != phases["POST_FORWARD"]
+            or reached - base != delta or player_tick < 0
+            or not all(math.isfinite(v) for v in xyz.values())
+            or not (phases["POST_FORWARD"] <= reached
+                    <= phases["PRE_CLEAR"])):
+        raise M02DevRejected("Paper clock gate time/phase/source mismatch")
+    return {
+        "source": "PAPER_SCHEDULED_DEV_GATE_ORIGINAL",
+        "marker_id": marker_id,
+        "scheduled_world_ticks": delta,
+        "base_post_forward_world_tick": base,
+        "observed_callback_world_tick": reached,
+        "callback_player_tick": player_tick,
+        "callback_position": xyz,
+        "phase_pre_clear_world_tick": phases["PRE_CLEAR"],
+        "phase_pre_clear_lag_ticks": phases["PRE_CLEAR"] - reached,
+        "host_walltime_sleep_replaced": True,
+        "server_effective_motion_control_stop_attested": False,
+        "cross_arm_identical_actual_motion_attested": False,
+        "qualified": False,
+        "science_go": False,
+    }
+
+
 def _v7_phase_bracket_source(content: str, marker_id: str) -> dict:
     """Verify four actual server markers bracketing S50 *client commands*.
 
