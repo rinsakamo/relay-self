@@ -93,6 +93,8 @@ def review_scope(original: str, *, marker: str, world: str,
                     or re.fullmatch("[A-Z0-9_]{2,80}", e.get("type", "")) is None):
                 raise BoundaryRejected("duplicate/noncanonical entity ID or type")
             seen.add(identity)
+            if identity == subject and e["type"] != "PLAYER":
+                raise BoundaryRejected("Self UUID resolves to non-player entity")
             value = f"{entity_world}:{chunk_x}:{chunk_z}:{identity}:{e['type']}"
             observed.append(value)
             if idx == 1:
