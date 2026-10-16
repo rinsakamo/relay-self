@@ -279,3 +279,35 @@ fixed-pose DEV calibration to a matched-duration V trial. Next engineering
 step is a prospective cross-source control-phase handshake with source
 World-tick boundaries that does not replace the S50 issuer. Existing
 5-arm V7 science roster remains 0/20; the earlier failed path gate is frozen.
+
+
+### S50 control phase / Paper World tick handshake (controlled DEV)
+
+The existing S50 issued Action is still the **only** movement issuer.
+`execute_seek_step(..., phase_hook=...)` makes four observation callbacks,
+strictly ordered around the pre-existing client control commands:
+`PRE_FORWARD` before `set_control(forward)`,
+`POST_FORWARD` after its native applied ACK,
+`PRE_CLEAR` before `clear_controls`, and
+`POST_CLEAR` after its applied ACK. On errors *after* forward was sent,
+the S50 path attempts the original clear in `finally`; it does not
+invent an Action OUTCOME.
+
+The DEV-only Paper plugin now exposes console-only `relaydevphase`
+(received on Paper main server thread). The player cannot issue it.
+Each phase records the requested source Action/session-scoped marker ID,
+actual World full-time, plugin player-tick counter and current XYZ to the
+original `paper_server.log`. S waits for each unique original before
+proceeding. Only the controlled-pose `--v7-controlled-calibration-dev`
+path opts in; default Paper/forage/S50 runs do **not** issue any marker.
+
+`v7_source.s50_server_phase_brackets` verifies the four unique phase
+sources, matching ID, original order, nondecreasing World and player
+tick clocks, and finite XYZ. It includes the World tick intervals when
+**client command issuance/ACK** was bracketed by server callbacks, not
+exact server-effective forward-on/off ticks. The server-effective start
+and stop, cross-arm fixed-duration, whole-motion observation interval,
+and physical matched-path gate all remain **NOT_ATTESTED**.
+Differences in server task latency, packet submission, and coast after
+clear are not silently normalized. No V7 original or science roster is
+reclassified. A changed Paper plugin/JAR needs fresh R owner admission.
