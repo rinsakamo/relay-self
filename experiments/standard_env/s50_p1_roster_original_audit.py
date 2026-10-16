@@ -55,6 +55,8 @@ def review(root: Path, *, run: int, head: str, artifact: int, jar: str) -> dict:
     native_hashes = []
     fingerprints = []
     other_agent_ticks = []
+    same_world_other_ticks = []
+    world_type_snapshots = []
     for ix, (scope, tick) in enumerate(zip(scopes, snapshot), 1):
         clock = start + ix - 1
         old.need(scope.get("marker_id") == marker
