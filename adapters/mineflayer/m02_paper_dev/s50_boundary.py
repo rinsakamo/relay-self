@@ -520,7 +520,7 @@ def review_prospective_tick_bundle(root: Path) -> dict:
             or report.get("port_released_after_shutdown") is not True):
         raise BoundaryRejected("prospective isolated physical S source not PASS")
     configured = render_arm(TEMPLATE.read_bytes(), arm).replace(
-        b"dev-enabled: true", b"dev-enabled: true\\ns50-tick-meter-dev: true", 1
+        b"dev-enabled: true", b"dev-enabled: true\ns50-tick-meter-dev: true", 1
     )
     if hashlib.sha256(configured).hexdigest() != report.get("plugin_config_sha256"):
         raise BoundaryRejected("changed/foreign original World physiology profile")
