@@ -18,7 +18,7 @@ def original_source() -> str:
         f"{world_uuid}:0:0:{mob_uuid}:ZOMBIE",
     ]
     fingerprint = hashlib.sha256(
-        "".join(record + "\\n" for record in roster).encode("utf-8")
+        "".join(record + "\n" for record in roster).encode("utf-8")
     ).hexdigest()
     lines = []
     for i in range(1, 9):
@@ -45,7 +45,7 @@ def original_source() -> str:
             "combat_events=0 swing_events=0 coverage=LOADED_CHUNK_SAMPLER_ONLY "
             "client_held_controls=NOT_OBSERVED entity_lifecycle=NOT_ATTESTED"
         )
-    return "\\n".join(lines)
+    return "\n".join(lines)
 
 
 def review(content: str):
