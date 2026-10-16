@@ -375,8 +375,18 @@ def test_saved_original_hash_mutation_is_rejected(tmp_path):
     for name, text in sources.items():
         (tmp_path / name).write_text(text)
         hashes[name] = hashlib.sha256(text.encode()).hexdigest()
+    from adapters.mineflayer.m02_paper_dev.v7_paired_config import TEMPLATE, render_arm
+
+    config_sha = hashlib.sha256(render_arm(TEMPLATE.read_bytes(), "BASE_ON")).hexdigest()
     (tmp_path / "m02_report.json").write_text(
-        json.dumps(dict(source_session_id="session", v7_arm="BASE_ON", evidence_hashes=hashes))
+        json.dumps(
+            dict(
+                source_session_id="session",
+                v7_arm="BASE_ON",
+                evidence_hashes=hashes,
+                plugin_config_sha256=config_sha,
+            )
+        )
     )
     assert diagnose_bundle(tmp_path)["original_terminal"] == "unknown"
     with (tmp_path / "paper_server.log").open("a") as stream:

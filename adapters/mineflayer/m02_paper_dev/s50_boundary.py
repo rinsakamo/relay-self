@@ -435,10 +435,22 @@ def diagnose_bundle(root: Path) -> dict:
         if any(abs(number(actual, axis) - expected[axis]) > 1e-6 for axis in ("x", "y", "z")):
             raise BoundaryRejected("native probe/World pose mismatch")
     result["native_boundary_seqs"] = movement
-    from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
+    from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS, TEMPLATE, render_arm
 
-    rate = 0.01 * ARMS[report["v7_arm"]][1]
+    # Failed owner reports may stop before the arm label is assigned. Bind to
+    # the saved physical config fingerprint, never infer from a directory name.
+    candidates = [
+        arm
+        for arm in ARMS
+        if hashlib.sha256(render_arm(TEMPLATE.read_bytes(), arm)).hexdigest()
+        == report.get("plugin_config_sha256")
+    ]
+    rates = {0.01 * ARMS[arm][1] for arm in candidates}
+    if len(rates) != 1:
+        raise BoundaryRejected("configured WALK rate NOT_ATTESTED")
+    rate = rates.pop()
     result.update(
+        source_config_candidate_arms=candidates,
         configured_walk_rate=rate,
         walk_debit_shortfall_lower_bound=max(
             0.0,
