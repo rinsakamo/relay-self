@@ -389,9 +389,102 @@ def _v7_world_geometry_source(content: str, expected_seed: int) -> dict:
     }
 
 
+
+def _v7_native_motion_tick_trace(content: str) -> dict:
+    """Validate *observed* Paper movement packets and native World times.
+
+    This does NOT time-attest the Mineflayer control-on/clear commands:
+    server tick observations and client control issuance are distinct sources.
+    Only invoked for new controlled-pose DEV, not old frozen V7 evidence.
+    """
+    prefix = "M02_DEV_MOTION "
+    rows = [line.split(prefix, 1)[1].split()
+            for line in content.splitlines() if prefix in line]
+    if not rows or len(rows) > 300:
+        raise M02DevRejected("missing/excess native tick-stamped motion source")
+    required = {
+        "id", "reason", "blocks", "billed", "cumulative_blocks",
+        "cumulative_billed", "from_x", "from_y", "from_z", "to_x",
+        "to_y", "to_z", "world_full_time",
+    }
+    packets = []
+    for expected_id, row in enumerate(rows, 1):
+        fields = {}
+        for item in row:
+            if "=" not in item:
+                raise M02DevRejected("malformed native motion tick token")
+            key, value = item.split("=", 1)
+            if key in fields or not value:
+                raise M02DevRejected("duplicated native motion tick token")
+            fields[key] = value
+        if set(fields) != required or fields["reason"] != "WALK":
+            raise M02DevRejected("incomplete or non-WALK native motion tick source")
+        try:
+            packet_id = int(fields["id"])
+            world_tick = int(fields["world_full_time"])
+            values = {key: float(fields[key]) for key in (
+                "blocks", "billed", "cumulative_blocks", "cumulative_billed",
+                "from_x", "from_y", "from_z", "to_x", "to_y", "to_z",
+            )}
+        except (ValueError, OverflowError) as exc:
+            raise M02DevRejected("invalid native motion tick number") from exc
+        if (packet_id != expected_id or world_tick < 0
+                or not all(math.isfinite(v) for v in values.values())
+                or min(values["blocks"], values["billed"],
+                       values["cumulative_blocks"],
+                       values["cumulative_billed"]) < 0):
+            raise M02DevRejected("invalid packet ID, World tick or motion values")
+        dist = math.hypot(
+            values["to_x"] - values["from_x"],
+            values["to_z"] - values["from_z"],
+        )
+        if (dist <= 0 or dist > 1 or abs(dist - values["blocks"]) > 1e-8):
+            raise M02DevRejected("native motion distance/coordinate mismatch")
+        if packets:
+            previous = packets[-1]
+            if world_tick < previous["world_tick"]:
+                raise M02DevRejected("regressed native motion World tick")
+            if any(abs(values["from_" + axis] -
+                       previous["to"][axis]) > 1e-6
+                   for axis in ("x", "y", "z")):
+                raise M02DevRejected("discontinuous native motion packet position")
+        packets.append({
+            "id": packet_id,
+            "world_tick": world_tick,
+            "blocks": values["blocks"],
+            "billed": values["billed"],
+            "from": {axis: values["from_" + axis] for axis in ("x", "y", "z")},
+            "to": {axis: values["to_" + axis] for axis in ("x", "y", "z")},
+        })
+        if (abs(values["cumulative_blocks"] -
+                sum(p["blocks"] for p in packets)) > 1e-7
+                or abs(values["cumulative_billed"] -
+                       sum(p["billed"] for p in packets)) > 1e-7):
+            raise M02DevRejected("native motion cumulative source mismatch")
+    counts = {}
+    for packet in packets:
+        tick = str(packet["world_tick"])
+        counts[tick] = counts.get(tick, 0) + 1
+    return {
+        "source": "ACTUAL_PAPER_PLAYER_MOVE_EVENT_WORLD_FULL_TIME",
+        "packet_count": len(packets),
+        "first_motion_world_tick": packets[0]["world_tick"],
+        "last_motion_world_tick": packets[-1]["world_tick"],
+        "world_tick_packet_counts": counts,
+        "packet_trace": packets,
+        "total_horizontal_path_blocks": sum(x["blocks"] for x in packets),
+        "total_walk_exhaustion": sum(x["billed"] for x in packets),
+        "native_control_on_world_tick_attested": False,
+        "native_control_off_world_tick_attested": False,
+        "same_duration_across_arms_attested": False,
+        "observed_server_packet_timing_not_client_control_timing": True,
+    }
+
+
 async def _v7_wait_source_tick(server_log: Path, arm: str, *,
                                minimum_player_basal_ticks: int = 200,
-                               expected_world_seed: int = 61021) -> dict:
+                               expected_world_seed: int = 61021,
+                               require_native_motion_tick_trace: bool = False) -> dict:
     """Bounded original Paper plugin sample gate; DEV only, not V science.
 
     Sampled tick counts the plugin's living-player callbacks, not host time,
@@ -442,9 +535,17 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
         raise M02DevRejected("V7 non-monotone Paper living-player tick")
     direct = _v7_direct_basal_write_receipt(content, arm)
     world = _v7_world_geometry_source(content, expected_seed=expected_world_seed)
+    trace = (_v7_native_motion_tick_trace(content)
+             if require_native_motion_tick_trace else None)
+    if trace is not None and (
+            trace["packet_count"] != len(pairs)
+            or abs(trace["total_horizontal_path_blocks"] - total_blocks) > 1e-7
+            or abs(trace["total_walk_exhaustion"] - total_charge) > 1e-7):
+        raise M02DevRejected("native tick-stamped packet/path mismatch")
     return {
         "classification": "S_V7_PAPER_DEV_OBSERVED_SOURCE_SHAPE_ONLY",
         "direct_basal_source": direct,
+        "native_motion_tick_trace": trace,
         "native_world_geometry_source": world,
         "arm": arm, "physical_java_world": True,
         "source_player_ticks_minimum": minimum_player_basal_ticks,
@@ -726,7 +827,8 @@ async def run(
             report["stage"] = "V7_SOURCE_WORLD_TICK_200"
             report["v7_source"] = await _v7_wait_source_tick(
                 server_log, v7_arm, minimum_player_basal_ticks=200,
-                expected_world_seed=v7_seed)
+                expected_world_seed=v7_seed,
+                require_native_motion_tick_trace=v7_controlled_calibration_dev)
             final = await _correlated_observe(session, "v7-final-no-food")
             report["v7_final_body"] = {
                 "food": final.snapshot.food,
