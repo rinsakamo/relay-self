@@ -17,8 +17,9 @@ concurrency:
 
 jobs:
   first-and-only-physical-qualification:
-    # This must never turn rerun workflow attempts into repeated World sessions.
-    if: github.run_attempt == 1
+    # FROZEN after first physical Java start #38907469772: grant consumed.
+    # No new push/run may start another QUAL World; retain this file as audit.
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 28
     env:
