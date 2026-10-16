@@ -1,0 +1,151 @@
+name: S V8 disposable stopped Paper World five clones DEV ONLY
+on:
+  push:
+    branches: ['self/product-self-one-command-20261010']
+    paths: ['.github/workflows/v8-stopped-world-five-clones-dev.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: s-v8-dev-stopped-world-seed62101-once
+  cancel-in-progress: false
+jobs:
+  stopped-five-clone-dev:
+    if: "github.run_attempt == 1 && github.event.head_commit.message == 'S V8 DEV: launch one stopped Paper World seed62101'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      GH_REPO: rinsakamo/relay-self
+      GH_TOKEN: ${{ github.token }}
+      R_PIN: '6547726d0cb188b1c890ab345ab9c802d091f2b6'
+      R_CI: '38926030377'
+      SOURCE_RUN: '38702561454'
+      SOURCE_NAME: 'rsee-m02-paper-four-pinned-assets-38702561454-1'
+      PAPER_SHA: '8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: s
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.R_PIN }}
+          path: r
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Source and tests first; no World if checks fail
+        run: |
+          set -euo pipefail
+          test "$(git -C s rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C r rev-parse HEAD)" = "$R_PIN"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+          PYTHONPATH="s/src:s/tests:s" python -m pytest -q s/tests/test_m02_v8_stopped_world_clone_dev.py
+          PYTHONPATH="r/src:r/tests:r" python -m pytest -q r/tests/test_rsee_v8_stopped_world_clone_preflight.py
+          ruff check s/adapters/mineflayer/m02_paper_dev/v8_stopped_world_clone_dev.py s/tests/test_m02_v8_stopped_world_clone_dev.py
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ["GH_REPO"]
+          run=json.loads(subprocess.check_output(["gh","api",f"repos/{repo}/actions/runs/{os.environ['R_CI']}"]))
+          assert run["head_sha"]==os.environ["R_PIN"] and run["run_attempt"]==1 and run["conclusion"]=="success"
+          jobs=json.loads(subprocess.check_output(["gh","api",f"repos/{repo}/actions/runs/{os.environ['R_CI']}/jobs?per_page=100"]))["jobs"]
+          required={"focused","full-regression","mineflayer-adapter","sibling-readonly"}
+          assert {x["name"] for x in jobs if x["name"] in required and x["conclusion"]=="success"}==required
+          print("V8_DEV_R_CI_PIN_ACCEPTED_NO_JAVA_YET")
+          PY
+      - name: Stage exact Paper build60 from existing pinned source artifact
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/v8-assets" "$RUNNER_TEMP/v8-source"
+          gh run download "$SOURCE_RUN" -R "$GH_REPO" -n "$SOURCE_NAME" -D "$RUNNER_TEMP/v8-source"
+          python - <<'PY'
+          import hashlib,os,pathlib,shutil
+          tmp=pathlib.Path(os.environ["RUNNER_TEMP"])
+          files=[f for f in (tmp/"v8-source").rglob("paper-1.21.8.jar") if f.is_file() and not f.is_symlink()]
+          assert len(files)==1
+          b=files[0].read_bytes()
+          assert hashlib.sha256(b).hexdigest()==os.environ["PAPER_SHA"]
+          shutil.copyfile(files[0],tmp/"v8-assets/paper.jar")
+          print("V8_DEV_EXACT_PAPER_SHA_ACCEPTED",len(b))
+          PY
+      - name: Run one DEV Paper World then STOP then stage five never-started World copies
+        id: source
+        continue-on-error: true
+        run: |
+          set +e
+          PYTHONPATH="s/src:s/tests:s" python -m adapters.mineflayer.m02_paper_dev.v8_stopped_world_clone_dev \
+            --paper-jar "$RUNNER_TEMP/v8-assets/paper.jar" \
+            --output "$RUNNER_TEMP/v8-dev" \
+            --seed 62101 --confirm V8-DEV-ISOLATED-PAPER-STOPPED-CLONES-ONLY \
+            > "$RUNNER_TEMP/v8-dev-producer.stdout" 2>&1
+          rc=$?
+          set -e
+          cat "$RUNNER_TEMP/v8-dev-producer.stdout"
+          echo "code=$rc" >> "$GITHUB_OUTPUT"
+      - name: Independent R actual bytes plus NBT seed 62101
+        if: steps.source.outputs.code == '0'
+        env:
+          PYTHONPATH: 'r/src:r/tests:r'
+        run: |
+          set -euo pipefail
+          python -m experiments.standard_env.v8_stopped_world_clone_preflight \
+            --seed 62101 --source "$RUNNER_TEMP/v8-dev/isolated-server/world" \
+            --arm-root "BASE_ON=$RUNNER_TEMP/v8-dev/clones/BASE_ON" \
+            --arm-root "SHAM_ON=$RUNNER_TEMP/v8-dev/clones/SHAM_ON" \
+            --arm-root "BASAL_ZERO=$RUNNER_TEMP/v8-dev/clones/BASAL_ZERO" \
+            --arm-root "WALK_ZERO=$RUNNER_TEMP/v8-dev/clones/WALK_ZERO" \
+            --arm-root "BOTH_ZERO=$RUNNER_TEMP/v8-dev/clones/BOTH_ZERO" \
+            > "$RUNNER_TEMP/v8-r-clone-verdict.json"
+          python - <<'PY'
+          import json,os,pathlib
+          from experiments.standard_env.v7_m02_world_nbt_audit import review_level_dat
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])
+          w=review_level_dat((root/"v8-dev/isolated-server/world/level.dat").read_bytes(),62101)
+          r=json.loads((root/"v8-r-clone-verdict.json").read_text())
+          s=json.loads((root/"v8-dev/s-v8-dev-paper-receipt.json").read_text())
+          assert w["world_seed_from_nbt"]==62101
+          assert r["source_and_five_stopped_clones_exact_bytes_equal"] is True
+          assert r["checked_stopped_world_files"]>=2
+          assert s["java_process_count"]==1 and s["java_exit"]==0
+          assert s["localhost_port_released"] and s["native_mineflayer_sessions"]==0
+          assert s["science_trials"]==0 and not s["science_go"] and not r["science_go"]
+          result={"classification":"R_V8_REAL_DEV_STOPPED_ONE_WORLD_FIVE_CLONES_BYTE_MATCH_NOT_QUALIFIED",
+                  "seed_from_real_level_dat":62101,
+                  "source_world_tree_sha256":r["original_world_tree_sha256"],
+                  "level_dat_sha256":w["original_level_dat_sha256"],
+                  "source_file_count":r["checked_stopped_world_files"],
+                  "java_starts":1,"node_sessions":0,"all_five_clones_byte_identical":True,
+                  "start_pose_parity_attested":False,"finite_food_installed":False,
+                  "science_trials":0,"science_go":False,"production_go":False}
+          (root/"v8-r-original-verdict.json").write_text(json.dumps(result,sort_keys=True,indent=2)+"\n")
+          print("R_V8_DEV_REAL_STOPPED_SOURCE_READBACK_ONLY",json.dumps(result,sort_keys=True))
+          PY
+      - name: Preserve new DEV-only source, five clone roots and independent R receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v8-real-stopped-world-five-clones-seed62101-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/v8-dev-producer.stdout
+            ${{ runner.temp }}/v8-r-clone-verdict.json
+            ${{ runner.temp }}/v8-r-original-verdict.json
+            ${{ runner.temp }}/v8-dev/isolated-server/world/
+            ${{ runner.temp }}/v8-dev/isolated-server/server.properties
+            ${{ runner.temp }}/v8-dev/original-paper-console.log
+            ${{ runner.temp }}/v8-dev/s-v8-dev-paper-receipt.json
+            ${{ runner.temp }}/v8-dev/clones/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Fail if not independently reviewed, never promote to SCIENCE
+        if: always()
+        env:
+          PHYSICAL_EXIT: ${{ steps.source.outputs.code }}
+        run: |
+          test "$PHYSICAL_EXIT" = 0
+          test -s "$RUNNER_TEMP/v8-r-original-verdict.json"
+          echo "V8_DEV_ONLY_STOPPED_WORLD_SOURCE_PARITY_NO_SCIENCE"
