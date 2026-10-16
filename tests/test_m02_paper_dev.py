@@ -810,3 +810,65 @@ def test_v7_motion_tick_trace_not_fabricated_from_legacy_packet_summary():
            "cumulative_blocks=0.3 cumulative_billed=0.003\n")
     with pytest.raises(M02DevRejected, match="incomplete"):
         _v7_native_motion_tick_trace(old)
+
+
+def test_v7_native_paper_console_phase_brackets_and_rejection():
+    from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
+        _v7_phase_bracket_source,
+    )
+
+    marker_id = "m02-paper-walk-1-12345678-abcd-45ef-9876-abcdef012345"
+    def record(phase, tick, p_tick, *, x=0.5):
+        return (
+            "M02_DEV_S50_PHASE "
+            f"marker_id={marker_id} phase={phase} "
+            f"world_full_time={tick} player_tick={p_tick} "
+            f"x={x} y=-60.0 z=0.5"
+        )
+    good = "\n".join((
+        record("PRE_FORWARD", 25, 15),
+        record("POST_FORWARD", 26, 16),
+        record("PRE_CLEAR", 32, 22, x=1.2),
+        record("POST_CLEAR", 33, 23, x=1.3),
+    )) + "\n"
+    result = _v7_phase_bracket_source(good, marker_id)
+    assert result["client_forward_command_bracket_world_ticks"] == [25, 26]
+    assert result["client_clear_command_bracket_world_ticks"] == [32, 33]
+    assert result["between_post_forward_and_pre_clear_marker_ticks"] == 6
+    assert result["phase_marker_is_observation_only"]
+    assert not result["server_effective_forward_start_tick_attested"]
+    assert not result["cross_arm_fixed_control_duration_attested"]
+
+    failed = (
+        good.replace("phase=PRE_CLEAR", "phase=PRE_FORWARD"),
+        good + good.splitlines()[0] + "\n",
+        good.replace("world_full_time=32", "world_full_time=24"),
+        good.replace("player_tick=22", "player_tick=11"),
+        good.replace("marker_id=" + marker_id, "marker_id=foreign", 1),
+        good.replace("x=0.5", "x=NaN", 1),
+        good.replace("world_full_time=33", "world_full_time=nan"),
+        good.replace("y=-60.0", "y=-60.0 unknown=1", 1),
+        good.replace("phase=POST_CLEAR", "phase=PRE_CLEAR"),
+        good.replace("M02_DEV_S50_PHASE ", "NON_SOURCE "),
+    )
+    for corrupt in failed:
+        with pytest.raises(M02DevRejected):
+            _v7_phase_bracket_source(corrupt, marker_id)
+    with pytest.raises(M02DevRejected):
+        _v7_phase_bracket_source(good, "invalid marker")
+
+
+def test_v7_controlled_source_requires_phase_original_not_host_sleep(tmp_path):
+    body = (
+        "M02_DEV_MOTION id=1 reason=WALK blocks=0.3 billed=0.003 "
+        "cumulative_blocks=0.3 cumulative_billed=0.003 "
+        "from_x=0.5 from_y=-60.0 from_z=0.5 "
+        "to_x=0.8 to_y=-60.0 to_z=0.5 world_full_time=40\n"
+    )
+    from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
+        _v7_native_motion_tick_trace,
+        _v7_phase_bracket_source,
+    )
+    assert _v7_native_motion_tick_trace(body)["first_motion_world_tick"] == 40
+    with pytest.raises(M02DevRejected, match="phases"):
+        _v7_phase_bracket_source(body, "session-only-phase")
