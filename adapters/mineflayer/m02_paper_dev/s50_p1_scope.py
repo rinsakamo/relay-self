@@ -103,7 +103,7 @@ def review_scope(original: str, *, marker: str, world: str,
                 or observed != sorted(observed)):
             raise BoundaryRejected("native subject/other census or ordering mismatch")
         computed = hashlib.sha256(
-            ("".join(value + "\\n" for value in observed)).encode("utf-8")
+            ("".join(value + "\n" for value in observed)).encode("utf-8")
         ).hexdigest()
         if computed != digest:
             raise BoundaryRejected("native roster SHA disagrees with entity rows")
