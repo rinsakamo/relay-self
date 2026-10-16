@@ -31,6 +31,8 @@ jobs:
           grep -q '^dev-enabled: false' adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml
           test -f adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
   paper-world-dev:
+    # Historical DEV sources remain readable; V8 owns explicit sequential execution.
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:

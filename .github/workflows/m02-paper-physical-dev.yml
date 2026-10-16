@@ -78,6 +78,7 @@ jobs:
           name: v8-five-world-dev-${{ github.run_id }}-${{ github.run_attempt }}
           retention-days: 90
           if-no-files-found: error
+          include-hidden-files: true
           path: |
             ${{ env.V8_ROOT }}/
             !${{ env.V8_ROOT }}/paper.jar
