@@ -10,6 +10,9 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -40,6 +43,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private final Map<EntityExhaustionEvent.ExhaustionReason, Rule> rules =
         new EnumMap<>(EntityExhaustionEvent.ExhaustionReason.class);
     private Rule basal;
+    private boolean devActive = false;
     private String target;
     private long appliedTicks = 0;
     private long modifiedEvents = 0;
@@ -185,6 +189,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 }
             }
             Bukkit.getPluginManager().registerEvents(this, this);
+            devActive = true;
             Bukkit.getScheduler().runTaskTimer(this, () -> {
                 Player p = Bukkit.getPlayerExact(target);
                 if (p == null || !p.isOnline() || p.isDead()) {
@@ -247,6 +252,35 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             getLogger().severe("M02_DEV_DISABLED: " + ex.getMessage());
             Bukkit.getPluginManager().disablePlugin(this);
         }
+    }
+
+
+    /** Server-side timestamp for DEV S50 control-command boundaries only.
+     *  No player, R grant, Action authorization or physiology mutation.
+     *  Console-only command: the marker cannot assert when server inputs
+     *  actually changed, only when a phase boundary was observed on Paper.
+     */
+    @Override
+    public boolean onCommand(CommandSender sender, Command command,
+                             String label, String[] args) {
+        if (!command.getName().equalsIgnoreCase("relaydevphase")
+                || !devActive || !(sender instanceof ConsoleCommandSender)
+                || args.length != 2
+                || !args[0].matches("[A-Za-z0-9_-]{1,128}")
+                || !Set.of("PRE_FORWARD", "POST_FORWARD", "PRE_CLEAR", "POST_CLEAR")
+                    .contains(args[1])) {
+            return false;
+        }
+        Player p = Bukkit.getPlayerExact(target);
+        if (p == null || !p.isOnline() || p.isDead()) {
+            return false;
+        }
+        Location pose = p.getLocation();
+        getLogger().info("M02_DEV_S50_PHASE marker_id=" + args[0]
+            + " phase=" + args[1] + " world_full_time="
+            + p.getWorld().getFullTime() + " player_tick=" + appliedTicks
+            + " x=" + pose.getX() + " y=" + pose.getY() + " z=" + pose.getZ());
+        return true;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
