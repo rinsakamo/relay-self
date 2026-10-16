@@ -722,3 +722,35 @@ def test_v7_world_geometry_requires_native_seed_and_typed_corridor():
             _v7_world_geometry_source(bad, 61021)
     with pytest.raises(M02DevRejected):
         _v7_world_geometry_source("", 61021)
+
+
+def test_v7_controlled_pose_dev_cli_and_missing_world_fail_closed(tmp_path):
+    with pytest.raises(SystemExit):
+        main(["--v7-controlled-calibration-dev"])
+    with pytest.raises(SystemExit):
+        main(["--qualification-preflight", "--asset-root", str(tmp_path),
+              "--v7-controlled-calibration-dev"])
+    from inspect import signature
+    assert signature(dev.run).parameters[
+        "v7_controlled_calibration_dev"
+    ].default is False
+
+
+def test_v7_controlled_move_rejects_pose_drift_before_issuing_action(monkeypatch):
+    from types import SimpleNamespace
+
+    from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _motor_walk
+    from adapters.mineflayer.python_protocol import MineflayerPosition
+
+    class Probe:
+        snapshot = SimpleNamespace(
+            position=MineflayerPosition(0.55, -60, 0.5))
+    async def observe(*_args, **_kwargs):
+        return Probe()
+    monkeypatch.setattr(dev, "_correlated_observe", observe)
+    class Session:
+        pass
+    with pytest.raises(M02DevRejected, match="native pre-MOVE pose drift"):
+        asyncio.run(_motor_walk(
+            Session(),
+            expected_start=MineflayerPosition(0.5, -60, 0.5)))

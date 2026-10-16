@@ -114,11 +114,16 @@ def _issue(
 
 
 async def _motor_walk(session: MineflayerProcessSession, *,
-                      issuer=None, provenance=None) -> dict:
+                      issuer=None, provenance=None,
+                      expected_start: MineflayerPosition | None = None) -> dict:
     issuer = issuer or _issue
     provenance = provenance or _p
     before = await _correlated_observe(session, "m02-before-walk")
     p = before.snapshot.position
+    if expected_start is not None and any(
+            abs(getattr(p, field) - getattr(expected_start, field)) > 1e-3
+            for field in ("x", "y", "z")):
+        raise M02DevRejected("controlled DEV native pre-MOVE pose drift")
     # Nominal 1-block S50 plan, *not* an exact 1-block outcome guarantee.
     waypoint = SeekWaypoint(
         "m02-one-block-forward-goal",
@@ -145,6 +150,8 @@ async def _motor_walk(session: MineflayerProcessSession, *,
         raise M02DevRejected("one authorized S50 walk had no actual World progress")
     return {
         "source_session": effect.session_id,
+        "native_start_position": asdict(p),
+        "controlled_pose_pre_move_verified": expected_start is not None,
         "action_id": issued.action_id,
         "action_state": closed.state.value,
         "requested_max_step_blocks": 1.0,
@@ -383,7 +390,8 @@ def _v7_world_geometry_source(content: str, expected_seed: int) -> dict:
 
 
 async def _v7_wait_source_tick(server_log: Path, arm: str, *,
-                               minimum_player_basal_ticks: int = 200) -> dict:
+                               minimum_player_basal_ticks: int = 200,
+                               expected_world_seed: int = 61021) -> dict:
     """Bounded original Paper plugin sample gate; DEV only, not V science.
 
     Sampled tick counts the plugin's living-player callbacks, not host time,
@@ -433,7 +441,7 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
     ]:
         raise M02DevRejected("V7 non-monotone Paper living-player tick")
     direct = _v7_direct_basal_write_receipt(content, arm)
-    world = _v7_world_geometry_source(content, expected_seed=61021)
+    world = _v7_world_geometry_source(content, expected_seed=expected_world_seed)
     return {
         "classification": "S_V7_PAPER_DEV_OBSERVED_SOURCE_SHAPE_ONLY",
         "direct_basal_source": direct,
@@ -564,6 +572,7 @@ async def run(
     b1_retention: bool | None = None,
     v7_arm: str | None = None,
     v7_seed: int | None = None,
+    v7_controlled_calibration_dev: bool = False,
 ) -> int:
     report: dict = {
         "milestone": "M0.2_PAPER_DEV",
@@ -582,6 +591,8 @@ async def run(
             "PAPER_NATIVE_GROUND_FORAGE" if forage_dev else "PAPER_STEAK_FIXTURE"
         ),
         "minecraft_version": MINECRAFT_VERSION,
+        "v7_calibration_controlled_dev": v7_controlled_calibration_dev,
+        "v7_calibration_not_existing_science_roster": True,
     }
     root = None
     server = collector = session = native_file = commands_file = b1_memory_file = None
@@ -589,6 +600,10 @@ async def run(
     try:
         if confirmation != M02_CONFIRM:
             raise M02DevRejected("explicit disposable-Paper DEV confirmation missing")
+        if type(v7_controlled_calibration_dev) is not bool:
+            raise M02DevRejected("controlled calibration requires bool")
+        if v7_controlled_calibration_dev and v7_arm is None:
+            raise M02DevRejected("controlled calibration requires V7 arm")
         if v7_arm is not None:
             from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
             if (v7_arm not in ARMS or type(v7_seed) is not int
@@ -673,6 +688,29 @@ async def run(
         _command(server, "gamemode survival RelaySelf")
         await server.stdin.drain()
         if v7_arm is not None:
+            controlled_pose = None
+            if v7_controlled_calibration_dev:
+                controlled_pose = MineflayerPosition(0.5, -60.0, 0.5)
+                _command(server, "tp RelaySelf 0.5 -60 0.5 0 0")
+                await server.stdin.drain()
+                for retry in range(24):
+                    probe = await _correlated_observe(
+                        session, f"v7-fixedpose-post-tp-{retry:02d}")
+                    if all(abs(getattr(probe.snapshot.position, field)
+                               - getattr(controlled_pose, field)) <= 1e-3
+                           for field in ("x", "y", "z")):
+                        break
+                    await asyncio.sleep(0.15)
+                else:
+                    raise M02DevRejected("fixedpose tp not native-observed")
+                report["v7_calibration_pose_source"] = {
+                    "operator_command": "tp RelaySelf 0.5 -60 0.5 0 0",
+                    "native_confirmed_position": asdict(probe.snapshot.position),
+                    "native_confirmation_source_seq": probe.seq,
+                    "source_session": probe.session_id,
+                    "native_yaw_after_tp": "NOT_ATTESTED",
+                    "exact_move_tick_phase_attested": False,
+                }
             report["stage"] = "V7_PREMOVE_NATIVE_BASELINE"
             observed = await _correlated_observe(session, "v7-pre-move")
             report["v7_initial_body"] = {
@@ -683,10 +721,12 @@ async def run(
                 "yaw_pitch_in_native_snapshot": "NOT_EXPOSED",
             }
             report["stage"] = "V7_S50_GOVERNED_SINGLE_MOVE_NO_EAT"
-            report["movement"] = await _motor_walk(session)
+            report["movement"] = await _motor_walk(
+                session, expected_start=controlled_pose)
             report["stage"] = "V7_SOURCE_WORLD_TICK_200"
             report["v7_source"] = await _v7_wait_source_tick(
-                server_log, v7_arm, minimum_player_basal_ticks=200)
+                server_log, v7_arm, minimum_player_basal_ticks=200,
+                expected_world_seed=v7_seed)
             final = await _correlated_observe(session, "v7-final-no-food")
             report["v7_final_body"] = {
                 "food": final.snapshot.food,
@@ -813,6 +853,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--v7-arm", choices=(
         "BASE_ON", "SHAM_ON", "BASAL_ZERO", "WALK_ZERO", "BOTH_ZERO"))
     parser.add_argument("--v7-seed", type=int)
+    parser.add_argument("--v7-controlled-calibration-dev", action="store_true",
+                        help="separate fixed-pose Paper DEV, never science")
     parser.add_argument("--paper-b1", choices=("on", "off"),
                         help="Paper B1 BLOCKED→Memory/cheap OFF→lateral S50→pickup→EAT DEV")
     parser.add_argument("--forage-dev", action="store_true",
@@ -834,6 +876,8 @@ def main(argv: list[str] | None = None) -> int:
             args.plugin_sha256, args.confirm,
             True if args.forage_dev else None,
             args.paper_b1,
+            True if args.v7_controlled_calibration_dev else None,
+            args.v7_arm, args.v7_seed,
         )):
             parser.error("qualification preflight accepts ONLY --asset-root; no DEV/World options")
         try:
@@ -857,6 +901,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("V7 DEV requires allowed paired seed/arm, no forage or B1")
     if args.v7_arm is None and args.v7_seed is not None:
         parser.error("--v7-seed requires --v7-arm")
+    if args.v7_controlled_calibration_dev and args.v7_arm is None:
+        parser.error("--v7-controlled-calibration-dev requires --v7-arm")
     if args.paper_b1 is not None and not args.forage_dev:
         parser.error("--paper-b1 requires --forage-dev")
     if any(v is None for v in (
@@ -870,6 +916,7 @@ def main(argv: list[str] | None = None) -> int:
         forage_dev=args.forage_dev,
         b1_retention=(args.paper_b1 == "on" if args.paper_b1 is not None else None),
         v7_arm=args.v7_arm, v7_seed=args.v7_seed,
+        v7_controlled_calibration_dev=args.v7_controlled_calibration_dev,
     ))
 
 
