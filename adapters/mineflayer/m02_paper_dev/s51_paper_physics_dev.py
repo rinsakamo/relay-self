@@ -115,7 +115,8 @@ def _issue(
 
 async def _motor_walk(session: MineflayerProcessSession, *,
                       issuer=None, provenance=None,
-                      expected_start: MineflayerPosition | None = None) -> dict:
+                      expected_start: MineflayerPosition | None = None,
+                      v7_phase_source: tuple | None = None) -> dict:
     issuer = issuer or _issue
     provenance = provenance or _p
     before = await _correlated_observe(session, "m02-before-walk")
@@ -138,7 +139,17 @@ async def _motor_walk(session: MineflayerProcessSession, *,
         supervisor, "m02-paper-walk-1", "seek-waypoint",
         "m02-walk", "move one nominal block in isolated test World", time_base=10,
     )
-    effect = await execute_seek_step(session, supervisor, issued, step)
+    phase_hook = None
+    marker_id = None
+    if v7_phase_source is not None:
+        if expected_start is None or len(v7_phase_source) != 2:
+            raise M02DevRejected("S50 phase markers require controlled DEV source")
+        server, paper_log = v7_phase_source
+        marker_id = issued.action_id + "-" + session.started.session_id
+        async def phase_hook(phase: str) -> None:
+            await _v7_source_phase_command(server, paper_log, marker_id, phase)
+    effect = await execute_seek_step(
+        session, supervisor, issued, step, phase_hook=phase_hook)
     closed = supervisor.record_outcome(
         issued.action_id, at_ns=15,
         provenance=provenance("m02-paper-walk-1-outcome"),
@@ -152,6 +163,7 @@ async def _motor_walk(session: MineflayerProcessSession, *,
         "source_session": effect.session_id,
         "native_start_position": asdict(p),
         "controlled_pose_pre_move_verified": expected_start is not None,
+        "v7_phase_marker_id": marker_id,
         "action_id": issued.action_id,
         "action_state": closed.state.value,
         "requested_max_step_blocks": 1.0,
@@ -481,10 +493,107 @@ def _v7_native_motion_tick_trace(content: str) -> dict:
     }
 
 
+
+_V7_PHASES = ("PRE_FORWARD", "POST_FORWARD", "PRE_CLEAR", "POST_CLEAR")
+
+
+async def _v7_source_phase_command(server, server_log: Path, marker_id: str,
+                                   phase: str) -> None:
+    """One console-only Paper World-tick marker; no new Action authority."""
+    if (phase not in _V7_PHASES
+            or re.fullmatch(r"[A-Za-z0-9_-]{1,128}", marker_id) is None
+            or server.returncode is not None or server.stdin is None):
+        raise M02DevRejected("invalid DEV Paper phase marker host")
+    _command(server, f"relaydevphase {marker_id} {phase}")
+    await server.stdin.drain()
+    prefix = "M02_DEV_S50_PHASE "
+    for _ in range(80):
+        if not server_log.is_file():
+            raise M02DevRejected("Paper phase original server log missing")
+        entries = [
+            x.split(prefix, 1)[1]
+            for x in server_log.read_text(encoding="utf-8").splitlines()
+            if prefix in x
+        ]
+        matching = [
+            x for x in entries
+            if f"marker_id={marker_id} phase={phase} " in x
+        ]
+        if len(matching) > 1:
+            raise M02DevRejected("duplicate Paper phase source marker")
+        if len(matching) == 1:
+            return
+        await asyncio.sleep(0.05)
+    raise M02DevRejected("Paper phase marker not acknowledged by server")
+
+
+def _v7_phase_bracket_source(content: str, marker_id: str) -> dict:
+    """Verify four actual server markers bracketing S50 *client commands*.
+
+    Cross-machine command receipt intervals are not the exact server-effective
+    movement-control intervals. No admission to V7 matched-duration SCIENCE.
+    """
+    if re.fullmatch(r"[A-Za-z0-9_-]{1,128}", marker_id) is None:
+        raise M02DevRejected("unsafe source marker ID")
+    prefix = "M02_DEV_S50_PHASE "
+    events = []
+    for line in content.splitlines():
+        if prefix not in line:
+            continue
+        fields = {}
+        for token in line.split(prefix, 1)[1].split():
+            if "=" not in token:
+                raise M02DevRejected("malformed Paper phase source")
+            key, value = token.split("=", 1)
+            if key in fields or not value:
+                raise M02DevRejected("duplicated Paper phase source field")
+            fields[key] = value
+        if set(fields) != {
+                "marker_id", "phase", "world_full_time", "player_tick",
+                "x", "y", "z"} or fields["marker_id"] != marker_id:
+            raise M02DevRejected("foreign/incomplete Paper phase source")
+        try:
+            tick = int(fields["world_full_time"])
+            player_tick = int(fields["player_tick"])
+            xyz = {p: float(fields[p]) for p in ("x", "y", "z")}
+        except (ValueError, OverflowError) as exc:
+            raise M02DevRejected("invalid Paper phase numeric source") from exc
+        if (tick < 0 or player_tick < 0
+                or not all(math.isfinite(v) for v in xyz.values())):
+            raise M02DevRejected("nonfinite Paper phase World source")
+        events.append({"phase": fields["phase"], "world_tick": tick,
+                       "player_tick": player_tick, "position": xyz})
+    if tuple(x["phase"] for x in events) != _V7_PHASES:
+        raise M02DevRejected("missing/reordered/duplicated Paper S50 phases")
+    if any(events[i]["world_tick"] < events[i-1]["world_tick"]
+           or events[i]["player_tick"] < events[i-1]["player_tick"]
+           for i in range(1, len(events))):
+        raise M02DevRejected("Paper S50 phase World clock regression")
+    ticks = {x["phase"]: x["world_tick"] for x in events}
+    return {
+        "source": "PAPER_CONSOLE_CALLBACK_PHASE_BOUNDARY_WORLD_TICKS",
+        "marker_id": marker_id,
+        "ordered_originals": events,
+        "server_world_ticks": ticks,
+        "client_forward_command_bracket_world_ticks": [
+            ticks["PRE_FORWARD"], ticks["POST_FORWARD"]],
+        "client_clear_command_bracket_world_ticks": [
+            ticks["PRE_CLEAR"], ticks["POST_CLEAR"]],
+        "between_post_forward_and_pre_clear_marker_ticks":
+            ticks["PRE_CLEAR"] - ticks["POST_FORWARD"],
+        "same_world_tick_control_effect_attested": False,
+        "server_effective_forward_start_tick_attested": False,
+        "server_effective_forward_stop_tick_attested": False,
+        "cross_arm_fixed_control_duration_attested": False,
+        "phase_marker_is_observation_only": True,
+    }
+
+
 async def _v7_wait_source_tick(server_log: Path, arm: str, *,
                                minimum_player_basal_ticks: int = 200,
                                expected_world_seed: int = 61021,
-                               require_native_motion_tick_trace: bool = False) -> dict:
+                               require_native_motion_tick_trace: bool = False,
+                               phase_marker_id: str | None = None) -> dict:
     """Bounded original Paper plugin sample gate; DEV only, not V science.
 
     Sampled tick counts the plugin's living-player callbacks, not host time,
@@ -537,6 +646,14 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
     world = _v7_world_geometry_source(content, expected_seed=expected_world_seed)
     trace = (_v7_native_motion_tick_trace(content)
              if require_native_motion_tick_trace else None)
+    phase = (_v7_phase_bracket_source(content, phase_marker_id)
+             if phase_marker_id is not None else None)
+    if require_native_motion_tick_trace and phase is None:
+        raise M02DevRejected("controlled V7 missing S50 phase source")
+    if trace is not None and phase is not None and (
+            trace["first_motion_world_tick"] <
+            phase["server_world_ticks"]["PRE_FORWARD"]):
+        raise M02DevRejected("movement preceded S50 source phase")
     if trace is not None and (
             trace["packet_count"] != len(pairs)
             or abs(trace["total_horizontal_path_blocks"] - total_blocks) > 1e-7
@@ -546,6 +663,7 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
         "classification": "S_V7_PAPER_DEV_OBSERVED_SOURCE_SHAPE_ONLY",
         "direct_basal_source": direct,
         "native_motion_tick_trace": trace,
+        "s50_server_phase_brackets": phase,
         "native_world_geometry_source": world,
         "arm": arm, "physical_java_world": True,
         "source_player_ticks_minimum": minimum_player_basal_ticks,
@@ -823,12 +941,15 @@ async def run(
             }
             report["stage"] = "V7_S50_GOVERNED_SINGLE_MOVE_NO_EAT"
             report["movement"] = await _motor_walk(
-                session, expected_start=controlled_pose)
+                session, expected_start=controlled_pose,
+                v7_phase_source=(server, server_log)
+                if v7_controlled_calibration_dev else None)
             report["stage"] = "V7_SOURCE_WORLD_TICK_200"
             report["v7_source"] = await _v7_wait_source_tick(
                 server_log, v7_arm, minimum_player_basal_ticks=200,
                 expected_world_seed=v7_seed,
-                require_native_motion_tick_trace=v7_controlled_calibration_dev)
+                require_native_motion_tick_trace=v7_controlled_calibration_dev,
+                phase_marker_id=report["movement"]["v7_phase_marker_id"])
             final = await _correlated_observe(session, "v7-final-no-food")
             report["v7_final_body"] = {
                 "food": final.snapshot.food,
