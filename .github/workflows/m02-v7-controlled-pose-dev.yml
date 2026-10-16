@@ -92,6 +92,9 @@ jobs:
           assert "S50_DEV_TICK_MOTION" in java.read_text()
           from adapters.mineflayer.m02_paper_dev import s51_paper_physics_dev as clock
           assert clock._V7_GATE_DELTA_TICKS == 6
+          from adapters.mineflayer.m02_paper_dev import s50_boundary
+          assert callable(s50_boundary.reconcile_tick_meter)
+          assert callable(s50_boundary.tick_motion_source)
           print("S_V7_CLOCK_GATE_NEW_TESTED_SOURCE_ONLY_NOT_QUALIFIED")
           jar=pathlib.Path("adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar")
           assert jar.is_file() and not jar.is_symlink()
