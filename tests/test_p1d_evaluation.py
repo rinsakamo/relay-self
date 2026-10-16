@@ -12,11 +12,11 @@ from experiments.p1d_evaluation import (
     CLASS,
     CONTRASTS,
     SEEDS,
-    CheapRestState,
+    CheapWaitState,
     P1DRejected,
     Trial,
     candidate,
-    cheap_rest_proposal,
+    cheap_wait_proposal,
     describe,
     load_plan,
     roster,
@@ -31,12 +31,12 @@ def plan():
 
 
 def fixture_trial(seed, arm, *, status="HORIZON", start="a" * 64,
-                  source="b" * 64, food=2, rest=0, ticks=2400, **changes):
+                  source="b" * 64, food=2, wait=0, ticks=2400, **changes):
     default = dict(
         seed=seed, arm=arm, status=status, session_id=f"synthetic:{seed}:{arm}",
         world_start_sha256=start, original_source_sha256=source,
         world_ticks_observed=ticks, edible_food_consumed=food,
-        rest_ticks=rest, observed_move_blocks=12.75,
+        wait_ticks=wait, observed_move_blocks=12.75,
         cpu_ms=101.5, llm_tokens=0,
     )
     default.update(changes)
@@ -50,7 +50,7 @@ def replace_slot(records, seed, arm, **changes):
 
 def full_synthetic(records=None):
     records = unrun_roster() if records is None else records
-    return tuple(fixture_trial(t.seed, t.arm, rest=0 if t.arm == "FATIGUE_OFF_L0" else 5,
+    return tuple(fixture_trial(t.seed, t.arm, wait=0 if t.arm == "FATIGUE_OFF_L0" else 5,
                                food=2 if t.arm != "ON_L1" else 3)
                  for t in records)
 
@@ -135,18 +135,18 @@ def test_roster_complete_ordered_deterministic_distinct_and_no_run(plan):
 
 
 def test_fixed_l0_is_world_tick_not_action_count():
-    rests = [t for t in range(100) if cheap_rest_proposal("ON_FIXED_L0_REST", t)[0]]
-    assert rests == [19, 39, 59, 79, 99]
-    assert not any(cheap_rest_proposal("FATIGUE_OFF_L0", t)[0] for t in range(100))
-    assert cheap_rest_proposal("ON_FIXED_L0_REST", 19)[1] == CheapRestState()
+    waits = [t for t in range(100) if cheap_wait_proposal("ON_FIXED_L0_WAIT", t)[0]]
+    assert waits == [19, 39, 59, 79, 99]
+    assert not any(cheap_wait_proposal("FATIGUE_OFF_L0", t)[0] for t in range(100))
+    assert cheap_wait_proposal("ON_FIXED_L0_WAIT", 19)[1] == CheapWaitState()
 
 
 def test_fsm_hysteresis_only_quantized_sensor_not_evaluator_truth():
     sensor = [0.0, .6, .7, .9, .5, .3, .8, .1]
-    state = CheapRestState()
+    state = CheapWaitState()
     proposals = []
     for tick, reading in enumerate(sensor):
-        proposal, state = cheap_rest_proposal("ON_FSM_SENSOR", tick,
+        proposal, state = cheap_wait_proposal("ON_FSM_SENSOR", tick,
                                              sensor_reading=reading, state=state)
         proposals.append(proposal)
     assert proposals == [False, False, True, True, True, False, True, False]
@@ -160,18 +160,18 @@ def test_fsm_hysteresis_only_quantized_sensor_not_evaluator_truth():
     ("ON_FSM_SENSOR", 10, None),
     ("ON_FSM_SENSOR", 10, float("nan")),
     ("ON_FSM_SENSOR", 10, float("inf")),
-    ("ON_FIXED_L0_REST", -1, None),
-    ("ON_FIXED_L0_REST", True, None),
+    ("ON_FIXED_L0_WAIT", -1, None),
+    ("ON_FIXED_L0_WAIT", True, None),
 ])
 def test_no_advanced_policy_or_invalid_world_clock(arm, clock, sensor):
     with pytest.raises(P1DRejected):
-        cheap_rest_proposal(arm, clock, sensor_reading=sensor)
+        cheap_wait_proposal(arm, clock, sensor_reading=sensor)
 
 
 def test_synthetic_complete_arithmetic_is_never_scientific_result(plan):
     r = full_synthetic()
     out = describe(r, plan=plan)
-    contrast = out["contrasts"]["ON_L1_MINUS_ON_FIXED_L0_REST"]
+    contrast = out["contrasts"]["ON_L1_MINUS_ON_FIXED_L0_WAIT"]
     assert contrast["n_paired_arithmetic_only"] == 8
     assert contrast["mean_food_delta_if_observable"] == 1
     assert contrast["mean_survival_fraction_delta_if_observable"] == 0
@@ -187,7 +187,7 @@ def test_valid_death_retained_as_paired_physical_failure(plan):
     r = replace_slot(r, seed, "ON_L1", status="DEATH", world_ticks_observed=400,
                      edible_food_consumed=0)
     out = describe(r, plan=plan)
-    pair = out["contrasts"]["ON_L1_MINUS_ON_FIXED_L0_REST"]
+    pair = out["contrasts"]["ON_L1_MINUS_ON_FIXED_L0_WAIT"]
     assert pair["n_paired_arithmetic_only"] == 8
     assert pair["paired_seed_descriptors"][0]["survival_fraction_difference"] == pytest.approx(
         (400 - 2400) / 2400
@@ -199,7 +199,7 @@ def test_different_world_start_not_a_paired_result(plan):
     r = full_synthetic()
     r = replace_slot(r, SEEDS[0], "ON_L1", world_start_sha256="c" * 64)
     out = describe(r, plan=plan)
-    contrast = out["contrasts"]["ON_L1_MINUS_ON_FIXED_L0_REST"]
+    contrast = out["contrasts"]["ON_L1_MINUS_ON_FIXED_L0_WAIT"]
     assert contrast["n_paired_arithmetic_only"] == 7
     assert contrast["unpaired_reasons"] == {"UNPAIRED_DIFFERENT_NATIVE_WORLD_START": 1}
 
@@ -213,7 +213,7 @@ def test_censored_status_kept_and_never_faked_as_food_zero(plan, status):
     r = tuple(invalid if (x.seed, x.arm) == (seed, "ON_L1") else x for x in r)
     report = describe(r, plan=plan)
     assert report["statuses"][status] == 1
-    contrast = report["contrasts"]["ON_L1_MINUS_ON_FIXED_L0_REST"]
+    contrast = report["contrasts"]["ON_L1_MINUS_ON_FIXED_L0_WAIT"]
     assert contrast["n_paired_arithmetic_only"] == 7
     assert contrast["unpaired_reasons"] == {"UNPAIRED_MISSING_CENSORED_OR_INVALID": 1}
 
@@ -226,8 +226,8 @@ def test_censored_status_kept_and_never_faked_as_food_zero(plan, status):
     {"world_ticks_observed": True},
     {"edible_food_consumed": -1},
     {"edible_food_consumed": 1.5},
-    {"rest_ticks": 2401},
-    {"rest_ticks": True},
+    {"wait_ticks": 2401},
+    {"wait_ticks": True},
     {"observed_move_blocks": -1},
     {"observed_move_blocks": float("nan")},
     {"cpu_ms": float("inf")},
@@ -244,10 +244,12 @@ def test_physical_receipts_strict_on_all_arms(plan, bad):
         describe(r, plan=plan)
 
 
-def test_off_l0_cannot_claim_rest(plan):
-    r = replace_slot(full_synthetic(), SEEDS[0], "FATIGUE_OFF_L0", rest_ticks=1)
-    with pytest.raises(P1DRejected, match="REST"):
-        describe(r, plan=plan)
+def test_off_l0_can_still_physically_wait_without_fatigue_enabled(plan):
+    # WAIT is a Body state, not an ON-only rest Skill.
+    r = replace_slot(full_synthetic(), SEEDS[0], "FATIGUE_OFF_L0", wait_ticks=1)
+    out = describe(r, plan=plan)
+    assert out["statuses"] == {"HORIZON": 48}
+    assert out["science_go"] is False
 
 
 @pytest.mark.parametrize("status", ["INFRA_ABORT", "SOLO_INVALID", "SOURCE_UNQUALIFIED"])
@@ -283,7 +285,7 @@ def test_no_match_on_realized_distance_or_cpu_budget(plan):
     r = replace_slot(full_synthetic(), SEEDS[0], "ON_L1",
                      observed_move_blocks=0, cpu_ms=9000, llm_tokens=550)
     report = describe(r, plan=plan)
-    assert report["contrasts"]["ON_L1_MINUS_ON_FIXED_L0_REST"]["n_paired_arithmetic_only"] == 8
+    assert report["contrasts"]["ON_L1_MINUS_ON_FIXED_L0_WAIT"]["n_paired_arithmetic_only"] == 8
     assert report["science_go"] is False
 
 
