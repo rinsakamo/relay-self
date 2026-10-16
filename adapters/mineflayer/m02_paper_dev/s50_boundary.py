@@ -250,6 +250,9 @@ def verify_native(native: list[dict], commands: list[dict], movement: dict):
             or ack.get("result") != "applied"
         ):
             raise BoundaryRejected("native control ACK missing/foreign/rejected")
+        acks = [r for r in native if r.get("type") == "effect_result" and r.get("action_id") == aid]
+        if len(acks) != 1:
+            raise BoundaryRejected("duplicate native control ACK")
         cmd = [r for r in commands if r.get("action_id") == aid]
         if len(cmd) != 1 or cmd[0].get("effect") != effect:
             raise BoundaryRejected("command missing/duplicated/foreign")
@@ -257,6 +260,13 @@ def verify_native(native: list[dict], commands: list[dict], movement: dict):
             cmd[0].get("control") != "forward" or cmd[0].get("state") is not True
         ):
             raise BoundaryRejected("wrong control command")
+    if (
+        len([r for r in commands if r.get("type") == "effect"]) != 3
+        or len([r for r in native if r.get("type") == "effect_result"]) != 3
+    ):
+        raise BoundaryRejected("extra uncontrolled effect in single-Action boundary")
+    if len([r for r in native if r.get("request_id") == action + "-seek-after"]) != 1:
+        raise BoundaryRejected("duplicate/missing final probe")
     seqs = [
         movement[k]
         for k in ("source_before_seq", "look_seq", "forward_seq", "clear_seq", "source_after_seq")

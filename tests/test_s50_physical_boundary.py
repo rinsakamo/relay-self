@@ -198,6 +198,8 @@ def test_native_ack_chain():
         "no_stop",
         "disconnect",
         "wrong_control",
+        "duplicate_new_seq",
+        "extra_move",
     ],
 )
 def test_native_failures(fault):
@@ -218,6 +220,10 @@ def test_native_failures(fault):
         native[3]["type"] = "connection_end"
     if fault == "wrong_control":
         commands[1]["state"] = False
+    if fault == "duplicate_new_seq":
+        native.append(dict(native[2], seq=len(native)))
+    if fault == "extra_move":
+        commands.append(dict(type="effect", action_id="other-move", effect="set_control"))
     with pytest.raises(BoundaryRejected):
         verify_native(native, commands, move)
 
