@@ -193,17 +193,39 @@ def test_session_and_profile_fences(profile):
 def test_profile_strict_keys_whitelist_and_all_spawn_controls(profile, tmp_path):
     plain = json.loads(_PROFILE.read_text(encoding="utf-8"))
     cases = []
-    variant = dict(plain); variant["science_qualified"] = True; cases.append(variant)
-    variant = dict(plain); variant["world_mode"] = "ALREADY_QUALIFIED"; cases.append(variant)
-    variant = dict(plain); variant["extra"] = 1; cases.append(variant)
-    variant = dict(plain); variant.pop("dimension"); cases.append(variant)
-    variant = json.loads(json.dumps(plain)); variant["server_settings"]["spawn-monsters"] = True; cases.append(variant)
-    variant = json.loads(json.dumps(plain)); variant["gamerules"]["doMobSpawning"] = True; cases.append(variant)
-    variant = json.loads(json.dumps(plain)); variant["gamerules"]["doPatrolSpawning"] = 0; cases.append(variant)
-    variant = json.loads(json.dumps(plain)); variant["gamerules"]["doWardenSpawning"] = True; cases.append(variant)
-    variant = json.loads(json.dumps(plain)); variant["inert_entity_types"].append("minecraft:cow"); cases.append(variant)
-    variant = json.loads(json.dumps(plain)); variant["minecraft_version"] = "1.21.9"; cases.append(variant)
-    variant = json.loads(json.dumps(plain)); variant["server_settings"]["spawn-animals"] = False; cases.append(variant)
+    variant = dict(plain)
+    variant["science_qualified"] = True
+    cases.append(variant)
+    variant = dict(plain)
+    variant["world_mode"] = "ALREADY_QUALIFIED"
+    cases.append(variant)
+    variant = dict(plain)
+    variant["extra"] = 1
+    cases.append(variant)
+    variant = dict(plain)
+    variant.pop("dimension")
+    cases.append(variant)
+    variant = json.loads(json.dumps(plain))
+    variant["server_settings"]["spawn-monsters"] = True
+    cases.append(variant)
+    variant = json.loads(json.dumps(plain))
+    variant["gamerules"]["doMobSpawning"] = True
+    cases.append(variant)
+    variant = json.loads(json.dumps(plain))
+    variant["gamerules"]["doPatrolSpawning"] = 0
+    cases.append(variant)
+    variant = json.loads(json.dumps(plain))
+    variant["gamerules"]["doWardenSpawning"] = True
+    cases.append(variant)
+    variant = json.loads(json.dumps(plain))
+    variant["inert_entity_types"].append("minecraft:cow")
+    cases.append(variant)
+    variant = json.loads(json.dumps(plain))
+    variant["minecraft_version"] = "1.21.9"
+    cases.append(variant)
+    variant = json.loads(json.dumps(plain))
+    variant["server_settings"]["spawn-animals"] = False
+    cases.append(variant)
     for invalid in cases:
         with pytest.raises(SoloRejected):
             parse_profile(invalid)
