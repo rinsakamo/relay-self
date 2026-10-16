@@ -26,7 +26,7 @@ def step(profile, state, activity, **kwargs):
 def test_defaults_are_off_and_legacy_action_effects_identical():
     profile = FatigueProfile()
     current = initial_state(profile, "s")
-    for action in ("WAIT", "REST", "MOVE", "FIGHT"):
+    for action in ("WAIT", "MOVE", "FIGHT"):
         kwargs = {"observed_blocks": 1} if action == "MOVE" else {}
         if action == "FIGHT":
             kwargs = {"observed_fight_events": 1}
@@ -50,35 +50,42 @@ def test_observed_distance_only_and_blockage_not_requested_block():
     assert whole.frame.blocked is False
 
 
-def test_rest_recovers_wait_does_not_and_rest_costs_time():
+def test_wait_recovers_physical_fatigue_every_real_world_tick():
     cfg = FatigueProfile(enabled=True, initial=.8)
     initial = initial_state(cfg, "s")
-    wait = step(cfg, initial, "WAIT")
-    rest = step(cfg, wait.after, "REST")
-    assert wait.after.fatigue == .8
-    assert rest.after.fatigue == pytest.approx(.7)
-    assert rest.after.world_tick == 2
-    assert rest.recovered == pytest.approx(.1)
+    first = step(cfg, initial, "WAIT")
+    second = step(cfg, first.after, "WAIT")
+    assert first.after.fatigue == pytest.approx(.7)
+    assert second.after.fatigue == pytest.approx(.6)
+    assert second.after.world_tick == 2
+    assert first.recovered == pytest.approx(.1)
+    assert second.recovered == pytest.approx(.1)
     empty_cfg = replace(cfg, initial=0)
-    assert step(empty_cfg, initial_state(empty_cfg, "x"), "REST").recovered == 0
+    assert step(empty_cfg, initial_state(empty_cfg, "x"), "WAIT").recovered == 0
 
 
-def test_rest_has_energy_basal_like_wait_m0_independently():
+def test_wait_recovery_keeps_m0_basal_cost_independently():
     mcfg = MetabolismConfig()
-    ec = initial_body(mcfg)
-    # P1 REST maps to an idle World tick at the S integration boundary.
-    rest_energy = metabolism_step(ec, action="WAIT", consumed_food_units=0, config=mcfg)
-    wait_energy = metabolism_step(ec, action="WAIT", consumed_food_units=0, config=mcfg)
-    assert rest_energy == wait_energy
-    assert rest_energy.expenditure == mcfg.basal_cost
+    energy = initial_body(mcfg)
+    after_energy = metabolism_step(energy, action="WAIT", consumed_food_units=0, config=mcfg)
+    assert after_energy.expenditure == mcfg.basal_cost
     profile = FatigueProfile(enabled=True, initial=.5)
-    f = step(profile, initial_state(profile, "m"), "REST")
-    assert f.after.fatigue == pytest.approx(.4)
-    assert rest_energy.after.energy == ec.energy - mcfg.basal_cost
-    assert not hasattr(f.after, "energy")
+    body = step(profile, initial_state(profile, "m"), "WAIT")
+    assert body.after.fatigue == pytest.approx(.4)
+    assert after_energy.after.energy == energy.energy - mcfg.basal_cost
+    assert not hasattr(body.after, "energy")
 
 
-def test_fatigue_impairs_physical_envelope_without_a_rest_policy():
+def test_blocked_move_does_not_recover_just_because_zero_distance():
+    cfg = FatigueProfile(enabled=True, initial=.8)
+    state = initial_state(cfg, "blocked")
+    t = step(cfg, state, "MOVE", observed_blocks=0, blocked=True)
+    assert t.after.fatigue == pytest.approx(.8)
+    assert t.recovered == 0
+    assert step(cfg, t.after, "WAIT").after.fatigue == pytest.approx(.7)
+
+
+def test_fatigue_impairs_physical_envelope_without_any_built_in_wait_policy():
     cfg = FatigueProfile(enabled=True, initial=1.0)
     tired = initial_state(cfg, "s")
     c = capability(cfg, tired)
@@ -87,20 +94,20 @@ def test_fatigue_impairs_physical_envelope_without_a_rest_policy():
     assert c.fight_mechanically_possible is False
     recovered = tired
     for _ in range(7):
-        recovered = step(cfg, recovered, "REST").after
+        recovered = step(cfg, recovered, "WAIT").after
     c2 = capability(cfg, recovered)
     assert c2.max_move_blocks_per_world_tick > c.max_move_blocks_per_world_tick
     assert c2.fight_mechanically_possible
-    assert "REST" not in vars(c2)  # physical envelope does not command an action
+    assert "WAIT" not in vars(c2)  # physical envelope does not command an action
 
 
-def test_rates_modifiable_standard_times_multiplier_plus_addition():
+def test_wait_recovery_rates_modifiable_standard_times_multiplier_plus_addition():
     cfg = FatigueProfile(enabled=True, move_per_block=Rate(.04, 2, .02),
-                         rest_per_world_tick=Rate(.1, 2, .05))
+                         wait_recovery_per_world_tick=Rate(.1, 2, .05))
     state = initial_state(cfg, "s")
     moving = step(cfg, state, "MOVE", observed_blocks=2)
     assert moving.accumulated == pytest.approx(.20)
-    resting = step(cfg, moving.after, "REST")
+    resting = step(cfg, moving.after, "WAIT")
     assert resting.recovered == pytest.approx(.20)  # floor at zero
     assert resting.after.fatigue == 0
     assert cfg.sha256 != FatigueProfile(enabled=True).sha256
@@ -115,7 +122,7 @@ def test_saturate_and_floor_and_deterministic_receipt():
     assert transition.after.fatigue == 1
     repeat = transition.after
     for _ in range(12):
-        repeat = step(cfg, repeat, "REST").after
+        repeat = step(cfg, repeat, "WAIT").after
     assert repeat.fatigue == 0
 
 
@@ -130,8 +137,9 @@ def test_sensor_is_not_true_state_and_gain_zero_is_blind():
 @pytest.mark.parametrize("kwargs", [
     {"activity": "MOVE", "observed_blocks": -1},
     {"activity": "MOVE", "observed_blocks": float("nan")},
-    {"activity": "REST", "observed_blocks": 1},
+    {"activity": "WAIT", "observed_blocks": 1},
     {"activity": "WAIT", "blocked": True},
+    {"activity": "REST"},
     {"activity": "MOVE", "observed_fight_events": 1},
     {"activity": "FIGHT", "observed_fight_events": 1.2},
     {"activity": "FIGHT", "observed_fight_events": True},
@@ -147,14 +155,14 @@ def test_bad_provenance_shapes_fail_closed(kwargs):
 def test_world_time_and_session_cannot_be_derived_from_action_count():
     cfg = FatigueProfile(enabled=True)
     s = initial_state(cfg, "s", world_tick=41)
-    for frame in (FatigueFrame("s", 41, "REST"), FatigueFrame("s", 43, "REST"),
-                  FatigueFrame("other", 42, "REST")):
+    for frame in (FatigueFrame("s", 41, "WAIT"), FatigueFrame("s", 43, "WAIT"),
+                  FatigueFrame("other", 42, "WAIT")):
         with pytest.raises(FatigueRejected):
             advance(cfg, s, frame)
-    after = step(cfg, s, "REST").after
+    after = step(cfg, s, "WAIT").after
     with pytest.raises(FatigueRejected):
         advance(replace(cfg, move_per_block=Rate(.05)), after,
-                FatigueFrame("s", 43, "REST"))
+                FatigueFrame("s", 43, "WAIT"))
 
 
 @pytest.mark.parametrize("constructor,arguments", [
