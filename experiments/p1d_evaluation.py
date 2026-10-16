@@ -16,7 +16,7 @@ from typing import Any
 SCHEMA = "RELAYSELF_P1D_SOLO_FATIGUE_COMPARISON_CANDIDATE_V1"
 CLASS = "P1_D_OFFLINE_CANDIDATE_NOT_V_ADMITTED"
 ARMS = (
-    "FATIGUE_OFF_L0", "ON_FIXED_L0_REST", "ON_FSM_SENSOR", "ON_L1",
+    "FATIGUE_OFF_L0", "ON_FIXED_L0_WAIT", "ON_FSM_SENSOR", "ON_L1",
     "ON_L1_SHAM", "ON_L2",
 )
 SEEDS = tuple(range(73101, 73109))
@@ -27,11 +27,11 @@ STATUSES = (
 PHYSICAL = frozenset(("HORIZON", "DEATH"))
 SHA = "0123456789abcdef"
 CONTRASTS = (
-    ("ON_L1", "ON_FIXED_L0_REST"),
+    ("ON_L1", "ON_FIXED_L0_WAIT"),
     ("ON_L1", "ON_FSM_SENSOR"),
     ("ON_L2", "ON_L1"),
     ("ON_L1", "ON_L1_SHAM"),
-    ("ON_FIXED_L0_REST", "FATIGUE_OFF_L0"),
+    ("ON_FIXED_L0_WAIT", "FATIGUE_OFF_L0"),
 )
 
 
@@ -50,9 +50,9 @@ def candidate() -> dict[str, Any]:
         "world_profile_path": "experiments/config/p1_solo_no_agents_v1.json",
         "world_profile_requirements": [
             "R_SOURCE_ATTESTED_SOLO_NO_AGENTS_PER_TICK",
-            "S_REAL_BODY_MOVEMENT_CAP_AND_REST_INTERVAL_APPLIED",
+            "S_REAL_BODY_MOVEMENT_CAP_AND_WAIT_INTERVAL_APPLIED",
             "S_ACTION_AUTHORIZATION_AND_TRUE_OUTCOMES",
-            "M02_ONE_SERVER_PHYSICS_LEDGER_BASAL_IN_REST",
+            "M02_ONE_SERVER_PHYSICS_LEDGER_BASAL_IN_WAIT",
             "FROZEN_CLONED_CHUNK_WORLD_AND_PLAYER_POSE_PER_SEED",
             "FROZEN_S_GOLDEN_AND_RETAINED_STATE",
             "INDEPENDENT_R_QUALIFICATION_AND_V_APPROVAL",
@@ -73,8 +73,8 @@ def candidate() -> dict[str, Any]:
             "PAIRED_EXOGENOUS_SEED_NOT_PAIRED_REALIZED_PATH",
         ],
         "arm_definition": {
-            "FATIGUE_OFF_L0": "P1_PHYSICS_OFF_UNMODIFIED_L0_NO_REST_CONTROL",
-            "ON_FIXED_L0_REST": "P1_ON_REST_AT_EACH_20TH_WORLD_TICK_FIXED_EXOGENOUS_RULE",
+            "FATIGUE_OFF_L0": "P1_PHYSICS_OFF_UNMODIFIED_L0_NO_WAIT_CONTROL",
+            "ON_FIXED_L0_WAIT": "P1_ON_WAIT_AT_EACH_20TH_WORLD_TICK_FIXED_EXOGENOUS_RULE",
             "ON_FSM_SENSOR": "P1_ON_EQUAL_QUANTIZED_SENSOR_HYSTERESIS_0P7_START_0P3_STOP",
             "ON_L1": "P1_ON_EXISTING_S_L1_ONLY_WHEN_REAL_WORLD_BRIDGE_EXISTS",
             "ON_L1_SHAM": "SAME_L1_OUTPUT_AND_PHYSICS_WITH_NOOP_TOGGLE_PATH",
@@ -84,7 +84,7 @@ def candidate() -> dict[str, Any]:
         "secondary": [
             "ACTUAL_WORLD_SURVIVAL_TICKS_AND_TERMINAL_DEATH",
             "SOURCE_MEASURED_MOVE_BLOCKS_AND_BLOCKED_TICKS",
-            "DISTINCT_EXPLICIT_REST_WORLD_TICKS_AND_BODY_FATIGUE_TRUE_EVALUATOR_ONLY",
+            "DISTINCT_EXPLICIT_WAIT_WORLD_TICKS_AND_BODY_FATIGUE_TRUE_EVALUATOR_ONLY",
             "NATIVE_HUNGER_SATURATION_HEALTH_AND_M02_BASAL",
             "L0_L1_L2_RELATED_COMPUTATION_WALL_CPU_TOKENS_AND_GPU_SEPARATELY",
         ],
@@ -98,7 +98,7 @@ def candidate() -> dict[str, Any]:
         "selection_rule": "NO_POSTHOC_SEED_ARM_REPLACEMENT_OR_POLICY_TUNING",
         "golden_freeze": "NOT_PRESENT",
         "r_source_admission": "NOT_PRESENT",
-        "s_rest_and_l1_l2_action_binding": "NOT_PRESENT",
+        "s_wait_and_l1_l2_action_binding": "NOT_PRESENT",
         "v_final_preregistration": "NOT_APPROVED",
         "science_grant": False,
         "science_trials": 0,
@@ -147,24 +147,24 @@ def roster() -> tuple[tuple[int, str], ...]:
 
 
 @dataclass(frozen=True)
-class CheapRestState:
-    resting: bool = False
+class CheapWaitState:
+    waiting: bool = False
 
 
-def cheap_rest_proposal(arm: str, world_tick: int, *, sensor_reading: float | None = None,
-                        state: CheapRestState = CheapRestState()) -> tuple[bool, CheapRestState]:
-    """Reference-only choice. No S intent/Action/REST interval is created."""
-    if type(world_tick) is not int or world_tick < 0 or not isinstance(state, CheapRestState):
+def cheap_wait_proposal(arm: str, world_tick: int, *, sensor_reading: float | None = None,
+                        state: CheapWaitState = CheapWaitState()) -> tuple[bool, CheapWaitState]:
+    """Reference-only proposal to WAIT, not a generated World Action or interval."""
+    if type(world_tick) is not int or world_tick < 0 or not isinstance(state, CheapWaitState):
         raise P1DRejected("invalid reference World tick or cheap state")
     if arm == "FATIGUE_OFF_L0":
-        return False, CheapRestState()
-    if arm == "ON_FIXED_L0_REST":
-        return world_tick % 20 == 19, CheapRestState()
+        return False, CheapWaitState()
+    if arm == "ON_FIXED_L0_WAIT":
+        return world_tick % 20 == 19, CheapWaitState()
     if arm == "ON_FSM_SENSOR":
         if type(sensor_reading) not in (int, float) or not math.isfinite(sensor_reading):
             raise P1DRejected("FSM sees only a finite quantized Self fatigue reading")
-        next_rest = sensor_reading > 0.3 if state.resting else sensor_reading >= 0.7
-        return next_rest, CheapRestState(next_rest)
+        next_wait = sensor_reading > 0.3 if state.waiting else sensor_reading >= 0.7
+        return next_wait, CheapWaitState(next_wait)
     raise P1DRejected("L1/L2/sham need real S cognition; no evaluator oracle")
 
 
@@ -188,7 +188,7 @@ class Trial:
     original_source_sha256: str = ""
     world_ticks_observed: int | None = None
     edible_food_consumed: int | None = None
-    rest_ticks: int | None = None
+    wait_ticks: int | None = None
     observed_move_blocks: float | None = None
     cpu_ms: float | None = None
     llm_tokens: int | None = None
@@ -200,7 +200,7 @@ def _check_trial(trial: Trial, horizon: int) -> None:
             or trial.arm not in ARMS or trial.status not in STATUSES):
         raise P1DRejected("foreign or invalid trial slot")
     numerical = (trial.world_ticks_observed, trial.edible_food_consumed,
-                 trial.rest_ticks, trial.observed_move_blocks, trial.cpu_ms,
+                 trial.wait_ticks, trial.observed_move_blocks, trial.cpu_ms,
                  trial.llm_tokens)
     if trial.status == "NOT_RUN":
         if any(n is not None for n in numerical) or any((trial.session_id,
@@ -216,21 +216,19 @@ def _check_trial(trial: Trial, horizon: int) -> None:
                 or not 0 < trial.world_ticks_observed <= horizon
                 or type(trial.edible_food_consumed) is not int
                 or trial.edible_food_consumed < 0
-                or type(trial.rest_ticks) is not int
-                or not 0 <= trial.rest_ticks <= trial.world_ticks_observed
+                or type(trial.wait_ticks) is not int
+                or not 0 <= trial.wait_ticks <= trial.world_ticks_observed
                 or not _nonnegative_real(trial.observed_move_blocks)
                 or not _nonnegative_real(trial.cpu_ms)
                 or type(trial.llm_tokens) is not int or trial.llm_tokens < 0):
             raise P1DRejected("invalid physics endpoint/source/cost units")
         if trial.status == "HORIZON" and trial.world_ticks_observed != horizon:
             raise P1DRejected("normal horizon result must reach actual World tick horizon")
-        if trial.arm == "FATIGUE_OFF_L0" and trial.rest_ticks:
-            raise P1DRejected("OFF L0 reference cannot claim explicit REST")
     else:
         # Preserve invalid/aborted original evidence, but prevent incomplete
         # attempts from being reinterpreted as measured physical outcomes.
         if any(x is not None for x in (
-            trial.edible_food_consumed, trial.rest_ticks,
+            trial.edible_food_consumed, trial.wait_ticks,
             trial.observed_move_blocks, trial.cpu_ms, trial.llm_tokens,
         )):
             raise P1DRejected("censored/invalid attempt cannot enter endpoint arithmetic")
@@ -280,7 +278,7 @@ def describe(records: tuple[Trial, ...], *, plan: dict[str, Any]) -> dict[str, A
                 "seed": seed, "edible_food_difference": a.edible_food_consumed - b.edible_food_consumed,
                 "survival_fraction_difference": (
                     a.world_ticks_observed - b.world_ticks_observed) / horizon,
-                "rest_world_ticks_difference": a.rest_ticks - b.rest_ticks,
+                "wait_world_ticks_difference": a.wait_ticks - b.wait_ticks,
             })
         summaries[f"{first}_MINUS_{second}"] = {
             "n_paired_arithmetic_only": len(paired),
