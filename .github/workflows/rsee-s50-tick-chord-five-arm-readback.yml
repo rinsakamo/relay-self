@@ -84,10 +84,17 @@ jobs:
               assert x["native_stop_ack"] and x["bounded_quiet_window_observed"]
               assert not x["engineering_qualified"] and not x["science_go"]
               assert x["native_tick_rows"] >= 6
+              assert x["native_action_acks_source_verified"]==3
+              assert x["world_seed_original_nbt"]==61021
+              assert not x["saved_world_spawn_is_bot_start_proof"]
+              assert abs(x["source_first200_basal_requested"]-
+                         independent.ARMS[arm][0]*200)<1e-8
               assert abs(x["source_walk_exhaustion_per_chord_block"]-
                          independent.ARMS[arm][1]) < 1e-9
               receipt[arm]=x
               print("R_S50_NATIVE_TICK_CHORD_DEV_RAW "+arm+" "+json.dumps(x,sort_keys=True))
+          assert len({v["paper_plugin_source_sha256"]
+                      for v in receipt.values()})==1,"new JAR differs across arms"
           paths=[v["source_tick_chord_blocks_lower_bound"] for v in receipt.values()]
           data={
               "classification":"R_S50_FIVE_NEW_PAPER_TICK_CHORD_ORIGINALS_DEV_REVIEW_ONLY",
@@ -96,6 +103,9 @@ jobs:
               "r_head":os.environ["GITHUB_SHA"],
               "physical_s_source_arms":5,
               "r_new_world_starts":0,
+              "cross_arm_plugin_binary_sha_identical":True,
+              "all_native_action_ack_chains_reconstructed":True,
+              "basal_first200_source_writes_independently_checked":True,
               "max_across_arm_chord_spread_blocks":max(paths)-min(paths),
               "frozen_v7_path_admitted":False,
               "subtick_continuous_physical_distance_attested":False,
