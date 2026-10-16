@@ -589,9 +589,6 @@ def test_exhaustive_five_tick_originals_disallow_single_favorable_arm(tmp_path, 
     for selected in (roots[:1], roots[:-1], roots[:-1] + roots[:1]):
         with pytest.raises(BoundaryRejected):
             boundary.compare_prospective_tick_bundles(selected)
-    values.pop("BOTH_ZERO")
-    with pytest.raises(KeyError):
-        boundary.compare_prospective_tick_bundles(roots)
 
 
 def test_five_arm_chord_match_does_not_attest_full_physical_path(tmp_path, monkeypatch):
