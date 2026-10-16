@@ -89,6 +89,9 @@ jobs:
           assert "M02_DEV_BASAL_WRITE" in java.read_text()
           assert "M02_DEV_WORLD_V7_FIRST_TICK" in java.read_text()
           assert "M02_DEV_S50_CLOCK_GATE" in java.read_text()
+          from adapters.mineflayer.m02_paper_dev import s51_paper_physics_dev as clock
+          assert clock._V7_GATE_DELTA_TICKS == 6
+          print("S_V7_CLOCK_GATE_NEW_TESTED_SOURCE_ONLY_NOT_QUALIFIED")
           jar=pathlib.Path("adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar")
           assert jar.is_file() and not jar.is_symlink()
           dest=pathlib.Path(os.environ["RUNNER_TEMP"])/"relay-metabolism-paper-dev.jar"
