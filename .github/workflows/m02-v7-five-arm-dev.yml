@@ -6,6 +6,8 @@ on:
       - self/product-self-one-command-20261010
     paths:
       - '.github/workflows/m02-v7-five-arm-dev.yml'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/java/**'
+      - 'adapters/mineflayer/m02_paper_dev/s51_paper_physics_dev.py'
 
 permissions:
   contents: read
@@ -85,6 +87,7 @@ jobs:
           import hashlib, os, pathlib, shutil
           java=pathlib.Path("adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/RelayMetabolismPlugin.java")
           assert "M02_DEV_BASAL_WRITE" in java.read_text()
+          assert "M02_DEV_WORLD_V7_FIRST_TICK" in java.read_text()
           jar=pathlib.Path("adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar")
           assert jar.is_file() and not jar.is_symlink()
           dest=pathlib.Path(os.environ["RUNNER_TEMP"])/"relay-metabolism-paper-dev.jar"
