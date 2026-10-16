@@ -1,6 +1,9 @@
 # R #575 — remaining four M0.2 S50 tick-chord configs: offline preworld identity gate
 
 Date: 2026-10-16 JST. Existing R owner: Draft #610; S product #537 / Draft #545; V #619.
+
+> **Historical preworld-design snapshot, superseded for qualification status on 2026-10-17.** The four arms were independently physically qualified in source [#38922286471](https://github.com/rinsakamo/relay-self/actions/runs/38922286471), with read-only R replay [#38923260429](https://github.com/rinsakamo/relay-self/actions/runs/38923260429) **4/4 + four-way identity SUCCESS**. All four one-shot grants are CONSUMED. See the [full qualification receipt](rsee-m02-v7-four-arm-physical-qualification-20261017.md). The shape-only code/verdict described below remains an earlier prospective preflight object and cannot replace the later physical originals, or run another World. V7 science still 0/20.
+
 **This is a read-only SHAPE / PROFILE DIFF gate, not a new engineering qualification,
 science experiment, authorization, or physical re-execution.** No Java/Node/World/GPU start.
 
