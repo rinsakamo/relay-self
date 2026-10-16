@@ -1,0 +1,87 @@
+name: V8 five archived Worlds sequential DEV
+on:
+  push:
+    branches: [self/product-self-one-command-20261010]
+    paths: ['.github/workflows/m02-paper-physical-dev.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  five-world-dev:
+    if: github.run_attempt == 1 && contains(github.event.head_commit.message, '[v8-five-dev]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PYTHONPATH: src:tests:.
+      V8_ROOT: /tmp/v8-five-${{ github.run_id }}-${{ github.run_attempt }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: adapters/mineflayer/m02_paper_dev/pom.xml
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: adapters/mineflayer/package-lock.json
+      - name: Offline source and negative controls before any Java
+        run: |
+          mkdir -p "$V8_ROOT"
+          python -m pip install pytest==9.1.1 ruff
+          python -m pytest -q tests/test_s50_v8_five_world_dev.py tests/test_s50_v8_stopped_world_clone_dev.py tests/test_m02_paper_dev.py | tee "$V8_ROOT/tests.log"
+          ruff check adapters/mineflayer/m02_paper_dev tests/test_s50_v8_five_world_dev.py
+          python tools/check_repository.py
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+      - name: Fetch immutable original archive and pinned official Paper
+        run: |
+          gh api repos/rinsakamo/relay-self/actions/artifacts/12078239418/zip > "$V8_ROOT/source-original.zip"
+          python - <<'PY'
+          import hashlib,json,os,pathlib,urllib.request,zipfile
+          root=pathlib.Path(os.environ['V8_ROOT'])
+          raw=(root/'source-original.zip').read_bytes()
+          assert hashlib.sha256(raw).hexdigest()=='301cc25bae4c796ca7d19fab89cdd0f85f748562abd9f10cffe94ba9daf72200'
+          with zipfile.ZipFile(root/'source-original.zip') as z:
+              assert all(not pathlib.PurePosixPath(x).is_absolute() and '..' not in pathlib.PurePosixPath(x).parts for x in z.namelist())
+              z.extractall(root/'original')
+          url='https://fill-data.papermc.io/v1/objects/8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e/paper-1.21.8-60.jar'
+          req=urllib.request.Request(url,headers={'User-Agent':'RelaySelf-V8-DEV (https://github.com/rinsakamo/relay-self)'})
+          with urllib.request.urlopen(req,timeout=120) as inp: data=inp.read(53_000_000)
+          assert len(data)==52811717 and hashlib.sha256(data).hexdigest()=='8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+          (root/'paper.jar').write_bytes(data)
+          PY
+      - name: Five sequential isolated DEV starts, never science or qualification
+        run: |
+          PLUGIN="$PWD/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar"
+          cp "$PLUGIN" "$V8_ROOT/new-dev-plugin.jar"
+          git rev-parse HEAD > "$V8_ROOT/source-head.txt"
+          java -version 2> "$V8_ROOT/java-version.txt"
+          node --version > "$V8_ROOT/node-version.txt"
+          python -m adapters.mineflayer.m02_paper_dev.v8_five_world_dev \
+            --archive "$V8_ROOT/original" --paper-jar "$V8_ROOT/paper.jar" \
+            --plugin-jar "$PLUGIN" --plugin-sha256 "$(sha256sum "$PLUGIN" | cut -d ' ' -f1)" \
+            --output "$V8_ROOT/results" --confirm V8-FIVE-WORLD-DEV-ONLY \
+            | tee "$V8_ROOT/producer.stdout"
+      - name: Preserve all attempts, raw native logs, saved Worlds and new JAR
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v8-five-world-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 90
+          if-no-files-found: error
+          path: |
+            ${{ env.V8_ROOT }}/
+            !${{ env.V8_ROOT }}/paper.jar
+            !${{ env.V8_ROOT }}/results/*/server/paper-1.21.8.jar
+            !${{ env.V8_ROOT }}/results/*/server/cache/
+            !${{ env.V8_ROOT }}/results/*/server/libraries/
+            !${{ env.V8_ROOT }}/results/*/server/versions/

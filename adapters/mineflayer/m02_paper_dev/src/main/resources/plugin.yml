@@ -13,3 +13,7 @@ commands:
   relaydevwait:
     description: 'Console-only post-S50 World WAIT observation candidate; no P1 recovery'
     usage: '/relaydevwait <marker_id>'
+
+  relaydevsnapshot:
+    description: 'Console-only native V8 DEV body/pose/time observation; no mutations'
+    usage: '/relaydevsnapshot <marker_id>'

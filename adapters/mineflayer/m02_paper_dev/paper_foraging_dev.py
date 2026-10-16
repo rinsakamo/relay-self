@@ -96,6 +96,7 @@ async def paper_ground_forage(
     provenance: Callable[[str], Any],
     trace: dict[str, Any],
     max_actions: int = 8,
+    fixed_food_position: tuple[float, float, float] | None = None,
     b1_retention: bool | None = None,
     b1_memory_original: BinaryIO | None = None,
 ) -> dict[str, Any]:
@@ -105,6 +106,11 @@ async def paper_ground_forage(
             or (b1_retention is None and b1_memory_original is not None)
             or (b1_retention is not None and b1_memory_original is None)):
         raise PaperForageRejected("fresh bounded Paper DEV trace and explicit B1 switch required")
+    if fixed_food_position is not None and (
+            len(fixed_food_position) != 3
+            or not all(type(v) in (int, float) and math.isfinite(v)
+                       for v in fixed_food_position)):
+        raise PaperForageRejected("invalid fixed operator food position")
     if server.stdin is None:
         raise PaperForageRejected("owned Paper console required")
     trace.update({
@@ -150,9 +156,14 @@ async def paper_ground_forage(
             "x": bx, "y": by, "z": bz,
             "effect_attestation": "NOT_NATIVE_ATTESTED",
         }
+    food_xyz = fixed_food_position or (pos.x + 2.5, pos.y + 0.2, pos.z)
+    trace["operator_food_fixture"] = {
+        "item": "cooked_beef", "count": 1, "summon_xyz": list(food_xyz),
+        "placement": "FIXED_ABSOLUTE" if fixed_food_position else "RELATIVE_TO_NATIVE_BODY",
+    }
     _command(
         server,
-        f"summon item {pos.x + 2.5:.3f} {pos.y + 0.2:.3f} {pos.z:.3f} "
+        f"summon item {food_xyz[0]:.3f} {food_xyz[1]:.3f} {food_xyz[2]:.3f} "
         '{Item:{id:"minecraft:cooked_beef",count:1}}',
     )
     await server.stdin.drain()

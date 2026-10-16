@@ -432,6 +432,27 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     @Override
     public boolean onCommand(CommandSender sender, Command command,
                              String label, String[] args) {
+        if (command.getName().equalsIgnoreCase("relaydevsnapshot")) {
+            if (!devActive || !(sender instanceof ConsoleCommandSender)
+                    || args.length != 1 || !args[0].matches("[A-Za-z0-9_-]{1,128}")) {
+                return false;
+            }
+            Player p = Bukkit.getPlayerExact(target);
+            if (p == null || !p.isOnline() || p.isDead()) return false;
+            Location loc = p.getLocation();
+            getLogger().info("S_V8_DEV_SNAPSHOT marker_id=" + args[0]
+                + " world=" + p.getWorld().getUID() + " seed=" + p.getWorld().getSeed()
+                + " full_time=" + p.getWorld().getFullTime()
+                + " player_tick=" + appliedTicks
+                + " x=" + loc.getX() + " y=" + loc.getY() + " z=" + loc.getZ()
+                + " yaw=" + loc.getYaw() + " pitch=" + loc.getPitch()
+                + " food=" + p.getFoodLevel() + " saturation=" + p.getSaturation()
+                + " health=" + p.getHealth() + " exhaustion=" + p.getExhaustion()
+                + " basal_requested=" + requestedBasalExhaustion
+                + " motion_blocks=" + observedMotionBlocks
+                + " motion_billed=" + chargedMotionExhaustion);
+            return true;
+        }
         if (command.getName().equalsIgnoreCase("relaydevwait")) {
             if (!devActive || !s50TickMeterCandidate
                     || !(sender instanceof ConsoleCommandSender)
