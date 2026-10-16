@@ -110,8 +110,9 @@ def pos(row, prefix=""):
 
 def review(root: Path, *, source_run: int = RUN_ID,
            source_head: str = S_HEAD, source_artifact: int = ARTIFACT_ID,
-           expected_jar: str = EXPECTED_JAR):
+           expected_jar: str | None = None):
     """Independent original values; no SourceBoundTick(WAIT) is produced."""
+    expected_jar = EXPECTED_JAR if expected_jar is None else expected_jar
     need(root.is_absolute() and root.is_dir() and not root.is_symlink(),
          "untrusted original root")
     report = obj(original(root, "m02_report.json"))
