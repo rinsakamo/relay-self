@@ -40,6 +40,7 @@ class S60FatiguePlan:
     original: LoopbackTransportConfig
     transport: LoopbackTransportConfig
     max_output_tokens: int
+    enabled: bool
     action_authority: bool = False
 
 
@@ -59,7 +60,7 @@ def plan_s60_l2(
     )
     return S60FatiguePlan(
         state.session_id, state.state_sha256, profile.sha256, base,
-        transport, budget.max_output_tokens,
+        transport, budget.max_output_tokens, profile.mode != "OFF",
     )
 
 
@@ -70,6 +71,11 @@ def bind_s60_payload(
     """Refuse over/under cap before S60 serializes and sends the payload."""
     if not isinstance(plan, S60FatiguePlan) or not callable(supplier):
         raise S60FatigueRejected("typed bound S60 plan and payload required")
+
+    if not plan.enabled:
+        # OFF is byte-for-byte legacy supplier contract: S60 alone validates
+        # any positive caller ceiling <= its original configured maximum.
+        return supplier
 
     def bounded(request: ModelRequest) -> Mapping[str, Any]:
         if (
