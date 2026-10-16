@@ -59,7 +59,10 @@ def original(root: Path, name: str) -> bytes:
     need(path.is_file() and not path.is_symlink(),
          "missing/aliased original: " + name)
     data = path.read_bytes()
-    need(0 < len(data) < 20 * 1024 * 1024, "empty/oversize original: " + name)
+    # The independently pinned Paper 1.21.8 JAR itself is 52,811,717 bytes.
+    # Native text originals remain much smaller; accept the JAR only by digest.
+    maximum = 64 * 1024 * 1024 if name == "paper-1.21.8.jar" else 20 * 1024 * 1024
+    need(0 < len(data) < maximum, "empty/oversize original: " + name)
     return data
 
 
