@@ -7,8 +7,10 @@ from pathlib import Path
 import pytest
 
 from adapters.mineflayer.m02_paper_dev import (
-    s51_paper_v7_new_qualification as q,
     s51_paper_qualification as old,
+)
+from adapters.mineflayer.m02_paper_dev import (
+    s51_paper_v7_new_qualification as q,
 )
 
 
