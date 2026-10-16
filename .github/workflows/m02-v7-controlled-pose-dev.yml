@@ -47,7 +47,7 @@ jobs:
       - name: Source owner and native preflight (no Minecraft World)
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          python -m pytest -q tests/test_m02_paper_dev.py tests/test_s50_physical_boundary.py
+          python -m pytest -q tests/test_m02_paper_dev.py tests/test_s50_physical_boundary.py tests/test_s50_physical_boundary.py
           python - <<'PY'
           import os, socket, subprocess
           from adapters.mineflayer.m02_paper_dev import v7_paired_config as v7
@@ -89,6 +89,7 @@ jobs:
           assert "M02_DEV_BASAL_WRITE" in java.read_text()
           assert "M02_DEV_WORLD_V7_FIRST_TICK" in java.read_text()
           assert "M02_DEV_S50_CLOCK_GATE" in java.read_text()
+          assert "S50_DEV_TICK_MOTION" in java.read_text()
           from adapters.mineflayer.m02_paper_dev import s51_paper_physics_dev as clock
           assert clock._V7_GATE_DELTA_TICKS == 6
           print("S_V7_CLOCK_GATE_NEW_TESTED_SOURCE_ONLY_NOT_QUALIFIED")
@@ -111,6 +112,7 @@ jobs:
           python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev \
             --v7-arm "$DEV_ONLY_ARM" --v7-seed 61021 --v7-controlled-calibration-dev \
             --v7-server-clock-calibration-dev \
+            --v7-tick-meter-dev \
             --output-dir "$OUTPUT" \
             --paper-jar "$RUNNER_TEMP/paper-1.21.8.jar" \
             --paper-sha256 8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e \
