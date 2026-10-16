@@ -1,7 +1,9 @@
 """R independent direct BASAL write source shape — entirely synthetic fixtures."""
 from __future__ import annotations
 
+import hashlib
 import math
+from pathlib import Path
 
 import pytest
 
@@ -112,3 +114,38 @@ def test_wrong_source_and_no_world_are_not_silently_authenticated():
             r.review_original_server_log(raw, "BASE_ON")
     with pytest.raises(r.SourceRejected, match="unknown"):
         r.review_original_server_log(specimen("BASE_ON"), "OTHER")
+
+
+def test_absolute_hash_pinned_original_is_read_only(tmp_path: Path):
+    path = tmp_path / "paper_server.log"
+    raw = specimen("BASE_ON")
+    path.write_bytes(raw)
+    digest = hashlib.sha256(raw).hexdigest()
+    result = r.review_original_path(path, "BASE_ON", digest)
+    assert result["source_log_sha256"] == digest
+    assert result["self_reported_digest_does_not_authenticate_producer"] is True
+    assert path.read_bytes() == raw
+    with pytest.raises(r.SourceRejected, match="hash mismatch"):
+        r.review_original_path(path, "BASE_ON", "0" * 64)
+    with pytest.raises(r.SourceRejected, match="unsafe"):
+        r.review_original_path(Path("relative.log"), "BASE_ON", digest)
+    alias = tmp_path / "alias.log"
+    alias.symlink_to(path)
+    with pytest.raises(r.SourceRejected, match="unsafe"):
+        r.review_original_path(alias, "BASE_ON", digest)
+
+
+def test_source_side_cli_does_not_create_files(tmp_path: Path, monkeypatch, capsys):
+    raw = specimen("BASAL_ZERO")
+    path = tmp_path / "paper_server.log"
+    path.write_bytes(raw)
+    expected = hashlib.sha256(raw).hexdigest()
+    names_before = {x.name for x in tmp_path.iterdir()}
+    monkeypatch.setattr(
+        "sys.argv",
+        ["v7_m02_direct_basal_readback", "--paper-original", str(path),
+         "--arm", "BASAL_ZERO", "--expected-sha256", expected],
+    )
+    assert r.main() == 0
+    assert "RSEE_V7_M02_DIRECT_BASAL_DEV_SOURCE_SHAPE_REVIEW_ONLY" in capsys.readouterr().out
+    assert {x.name for x in tmp_path.iterdir()} == names_before
