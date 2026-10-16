@@ -1,37 +1,27 @@
-# P1-B — S/R owner handoff: Fatigue Body admission and sensor-only view
+# P1-B — Source-correlated physical WAIT / fatigue Body interface (offline)
 
-**Status:** `P1_B_OFFLINE_BOUNDARY_READY / ACTUAL_S50_S49_ACTION_ENFORCEMENT_NOT_INSTALLED / REAL_REST_NOT_ATTESTED / SCIENCE_NO_GO`.
-**Authority:** #620, P1 Draft #626. S #537 owns Action, S45/S50 movement, skill and policy; R #575 owns original World source; M #616/#617 owns metabolism/M0.2 Paper; V #619 independently preregisters science. No owner replacement.
+**Authority:** P1 #620, S #537, R #575, M #616, V #619.
+**Revision:** 2026-10-16. P1 Body **WAIT replaces REST**. No REST choice ref, REST Activity or distinct REST action remains. **Status:** `P1_B_OFFLINE_CORRELATION_CONTRACT / S_R_PHYSICAL_ENFORCEMENT_PENDING / SCIENCE_NO_GO`.
 
-## Contract — not production integration
+## Contract
 
-`experiments/fatigue_p1_boundary.py` is deliberately a standalone **evaluator-only** adapter spec that imports only `experiments.fatigue_p1`, not S/R runtime or Java/Paper. Its source-shape validation is not cryptographic or native attestation. Constructing a `SourceBoundTick` with a string ref cannot prove Minecraft, S Action issuance, or REST execution. S/R must validate genuine immutable source bytes, issuer evidence, native tick, and World outcome **before** constructing the descriptor. No newly minted action grant, controller policy, persistent memory owner or native executor is added.
+`experiments/fatigue_p1_boundary.py` is a pure evaluator-side *shape/correlation* gate, not an Action authorizer or original-source authenticator.
 
-1. `SActivityRequest` is the externally chosen action/intent and its S-proposed `action_ref`. REST requires an **explicit Self choice ref**; WAIT has neither Action nor REST choice. P1 does not invent a REST Skill or choose between WAIT and REST.
-2. `preflight(profile, state, request)` validates exact session, one World-tick envelope, the M-independent Fatigue state/profile, and nominal one-block steering. An ordinary requested MOVE may be reduced to `allowed_blocks`, so **S must use that bound in its already authorized movement mechanism**, otherwise the Body limit is not enforced. High fatigue may make FIGHT mechanically unavailable. Preflight does not authorize/issue/complete any action.
-3. `SourceBoundTick` is a typed **post-observation correlation only**: World session/tick, original World source ref, actual measured traveled blocks, optional blocked outcome, S Action ref, per-tick `action_effect_ref`, optional genuine terminal Action `action_outcome_ref`; REST instead requires the exact Self rest selection ref **and separately validated physical idle interval ref**, and must show zero issued Action/movement/combat. WAIT must have neither. A source ID string can be forged; validating the original bytes/lifecycle belongs strictly to S/R.
-4. `reconcile` recomputes preflight to reject caller-modified caps, demands the exact next World tick, correlates activity and receipts, enforces actual movement within cap (default **zero** tolerance; an explicit ≤0.05 block allowance is possible for measurement discrepancies, *never* an implicit exemption), and calls the unchanged P1-A `advance`. Overrun/unknown/duplicate/missing evidence fails closed and remains a source-side failure to diagnose; P1 never clips original displacement to pretend compliance.
-5. `sensed_for_self` outputs only `{world_tick, reading}` from an independently configured sensor. S must never route private `FatigueState`, `BodyCapability`, `BodyPreflight`, `SourceBoundTick` or `P1ReconciledTick` into L0/L1/L2. A blind sensor (`gain=0`) leaves true state hidden.
+1. `SActivityRequest`: an existing S-proposed `MOVE/FIGHT` action with normal authorization by S; or no-action `WAIT` candidate. WAIT is a **Body state**, not a special Self-ordered REST command. It may follow a deliberate policy, a safety cancellation, or unprompted inactivity. Candidate WAIT without physical evidence is not enough to recover.
+2. `preflight`: returns evaluator-private movement/combat capacity. Limit must be implemented by S **prospectively** per authentic World tick. It is not permission to issue an Action, and does not overwrite an actual excess distance. Exactly the already-issued S Action can span multiple ticks.
+3. `SourceBoundTick`: matches genuine session / consecutive World tick / actual path (not nominal block nor count of Paper exhaustion events). MOVE and FIGHT require existing S Action/effect correlation and optional true terminal OUTCOME. **WAIT must carry an independent `wait_interval_ref`**, standing for the entire tick's no-movement/no-combat source attestation and no issued Action; missing ref or smuggled combat/travel/action fails closed. A source string alone is **not** attestation. Original bytes and lifecycle belong to S/R.
+4. `reconcile`: only after a real verified WAIT tick advances P1 Fatigue with recovery; a blocked or 0-distance MOVE is still MOVE and cannot recover. Wrong state/profile/tick/action, missing WAIT witness, extra MOVE distance, forbidden mixed state and forged caps are rejected. No new REST signal is accepted.
+5. `sensed_for_self`: quantized `FatigueObservation` only, never raw fatigue or evaluator capacity/true source. Fatigue OFF retains legacy behavior with no bonus.
 
-## Important time distinction: one S50 Action is not one World tick
+## Time and M0.2 invariants
 
-Existing S45 `SeekWaypoint.max_step_m=1.0` is a **proposal cap per steering step**. Existing S50 issues an Action using `ActionSupervisor`, `execute_seek_step` and correlated native observations. It can span multiple Minecraft World ticks; `action_id` is not a tick counter. P1-A fatigue math is *per consecutive World tick*. For each actually observed tick while a MOVE is in flight, S/R must admit a tick-local original path displacement and apply the prospective cap on the native movement actuator. The same in-flight Action ref may recur over multiple ticks with fresh tick-specific `action_effect_ref`; `action_outcome_ref` occurs only at real terminal closure. If the current native bridge cannot provide tick-local actions/path controls and authenticated World ticks, P1 integration must **BLOCK**, not substitute one Action=one tick or spread distance evenly after the fact.
+One authenticated **World tick** advances this Body state once. No missing ticks, no replayed tick, no conversion from Action count or process wall clock. P1 WAIT does not suspend Paper-native M0.2 BASAL, and never adds another hunger, exhaustion or energy debit. No special permission, reward or motivation arises merely from the physiological recovery.
 
-Nominal S50 one-block `step_distance_m`, actual observed displacement, actual path distance, and action outcome status are distinct. Existing M0.2 Paper derives **actual land path** from `PlayerMoveEvent`; P1 should consume S/R-attested equivalent traveled blocks without recomputing Minecraft exhaustion. Under obstacles, `blocked=True` with zero movement charges zero distance-related fatigue, while partial motion is billed for its observed blocks. This P1 model does not yet include failed effort, collision energy, flight, teleport, combat effort without an original event, or fatigue-related cognitive cost.
+## Handoff
 
-## Energy & REST
+- **S #537:** expose authentic Body WAIT classification and constrain real MOVE/FIGHT before execution via existing Action control; no new REST action, Skill or forced optimal waiting.
+- **R #575:** source-verify full-tick WAIT inactivity, Action-free interval, session continuity, original native movement, S Action outcomes and RSEE cleanup. Source refs supplied to the pure function are not themselves proofs.
+- **M #616:** M0.2 single live Paper metabolism ledger; BASAL including WAIT; physiological Fatigue separate from energy/cognitive cost.
+- **V #619:** candidate fixed WAIT / sensor-only FSM / actual L1/L2 conditions, all observed WAIT time as outcomes, no outcome-driven equal-distance matching.
 
-- M0.2 controls live Minecraft food, exhaustion, saturation and HP. P1 never updates any of them, and must not layer simulated M0.1 energy over Paper hunger. During REST/WAIT, M0.2 **BASAL** continues once per *actual* World tick, including uninterrupted idle periods.
-- A valid REST tick requires **both** a Self decision selecting REST and external evidence that the actor did not move/act throughout the tick, within a live World clock. An unissued WAIT is not a proof of REST and never recovers fatigue. Neither may be inferred from 20ms wall time, Action count, missing probes or a fabricated S16 OUTCOME.
-- The current S Action/REST issuer has no qualified implemented REST interval. P1-B provides the receiving boundary only. Scientific claims remain NO_GO.
-
-## Owner acceptance before P1-B can become physical
-
-- **S:** existing owner opts in to the P1 preflight limit *before* issued S50 movement and fails closed on non-enforcement. It maps an explicit Self-selected REST to an admissible idle interval without misrepresenting WAIT/issued Action, preserves Action/Memory/L0-L2 ownership, and keeps designed baseline policy distinct from learning.
-- **R:** supplies a source-authenticated consecutive World tick with actual path delta (not Paper exhaustion event count), source and agent session identity, tick-level Action correlation, and original immutable REST interval; validates eligible solo profile and cleanup separately. Unexpected gaps/teleports/entities block solo scientific admission.
-- **M:** existing Paper server stays the sole live energy/saturation/hunger authority with basal charged even in REST; separate non-physical P1 Fatigue ledger is explicitly opt-in and separately hashed.
-- **V:** choose preregistered cheap fixed REST vs L1/L2 + Fatigue OFF controls before independent SCIENCE trials. Engineering tests do not prove behavioral utility, fatigue physiology or a novel cognition mechanism.
-
-## Offline verification
-
-`PYTHONPATH=. python -m pytest -q tests/test_fatigue_p1.py tests/test_fatigue_p1_boundary.py` checks both phases, offline. No remote World, native plugin, S/S50 source change or science run is triggered.
+**Ceiling:** Offline deterministic interface only. No verified Paper/Java/Node real World movement cap or authenticated idle interval or scientific result.
