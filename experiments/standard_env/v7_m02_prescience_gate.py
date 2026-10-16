@@ -78,11 +78,21 @@ def review(paper_receipt: dict[str, Any]) -> dict[str, Any]:
         path, debit = map(finite,
                           (a.get("real_motion_path_blocks"), a.get("observed_walk_debit")))
         multiplier = 0 if name in ("WALK_ZERO", "BOTH_ZERO") else 1
-        check(.5 < path < 2
-              and abs(debit - multiplier * .01 * path) < 1e-7,
-              "actual packet WALK debit not independently recomputable")
-        summaries[name] = {"blocks": path, "walk_debit": debit,
-                           "player_ticks_min": ticks, "packet_count": packets}
+        check(.5 < path < 2, "no positive actual source path for WALK rate")
+        observed_rate = debit / path
+        expected_rate = multiplier * .01
+        # This is a within-arm physical source accounting check; it does NOT
+        # estimate any between-arm treatment effect or require matched paths.
+        rate_matches = abs(observed_rate - expected_rate) <= 1e-7
+        check(rate_matches and abs(debit - expected_rate * path) < 1e-7,
+              "actual packet WALK debit/rate not independently recomputable")
+        summaries[name] = {
+            "blocks": path, "walk_debit": debit,
+            "observed_walk_exhaustion_per_block": observed_rate,
+            "expected_walk_exhaustion_per_block": expected_rate,
+            "within_arm_walk_rate_matches": rate_matches,
+            "player_ticks_min": ticks, "packet_count": packets,
+        }
     paths = [summaries[a]["blocks"] for a in ARMS]
     delta = max(paths) - min(paths)
     reported_delta = finite(paper_receipt.get("path_max_minus_min_blocks"))
@@ -114,6 +124,9 @@ def review(paper_receipt: dict[str, Any]) -> dict[str, Any]:
         "observed_path_max_minus_min_blocks": delta,
         "predeclared_tolerance_blocks": TOLERANCE_BLOCKS,
         "actual_paths_comparable": path_valid,
+        "walk_rate_accounting": "DEV_SOURCE_REVIEW_ONLY_CONSISTENT_WITH_CONFIG",
+        "walk_rate_check_requires_matched_paths": False,
+        "walk_rate_accounting_is_ecological_or_causal_proof": False,
         "historic_observation_shape_pinned": True,
         "original_bytes_authenticated_by_this_json_gate": False,
         "native_source_basal_written_cumulative": "NOT_IN_ORIGINALS",
