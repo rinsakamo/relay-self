@@ -12,7 +12,7 @@ import math
 from dataclasses import asdict, dataclass
 from typing import Literal
 
-Activity = Literal["WAIT", "REST", "MOVE", "FIGHT"]
+Activity = Literal["WAIT", "MOVE", "FIGHT"]
 
 
 class FatigueRejected(ValueError):
@@ -51,7 +51,7 @@ class FatigueProfile:
     initial: float = 0.0
     move_per_block: Rate = Rate(0.04)
     fight_per_event: Rate = Rate(0.20)
-    rest_per_world_tick: Rate = Rate(0.10)
+    wait_recovery_per_world_tick: Rate = Rate(0.10)
     impairment_per_fraction: Rate = Rate(0.70)
     minimum_efficiency: float = 0.20
     nominal_move_limit_blocks: float = 1.0
@@ -65,7 +65,7 @@ class FatigueProfile:
         if not _nonnegative(self.initial) or self.initial > self.capacity:
             raise FatigueRejected("invalid initial fatigue")
         if not all(isinstance(getattr(self, name), Rate) for name in (
-            "move_per_block", "fight_per_event", "rest_per_world_tick",
+            "move_per_block", "fight_per_event", "wait_recovery_per_world_tick",
             "impairment_per_fraction",
         )):
             raise FatigueRejected("invalid rate")
@@ -96,7 +96,7 @@ class FatigueState:
 
 @dataclass(frozen=True)
 class BodyCapability:
-    """Physical capacity envelope, not an instruction to REST or S authorization."""
+    """Physical capacity envelope, not an instruction to WAIT or S authorization."""
 
     efficiency: float
     max_move_blocks_per_world_tick: float
@@ -135,9 +135,9 @@ def _check_state(profile: FatigueProfile, state: FatigueState) -> None:
 
 @dataclass(frozen=True)
 class FatigueFrame:
-    """S/R-supplied outcome for ONE consecutive observed World tick.
+    """S/R-supplied actual Body state for ONE consecutive observed World tick.
 
-    Source authentication is outside this pure module. MOVE is measured actual
+    Source authentication is outside this pure module. WAIT must be verified\n    physically inactive for the whole tick, not inferred from absent commands.\n    MOVE is measured actual
     distance (not requested 1-block steering or Paper WALK event count).
     blocked is an outcome label; zero movement never receives a distance bill.
     """
@@ -164,8 +164,9 @@ class FatigueTransition:
 def advance(profile: FatigueProfile, state: FatigueState, frame: FatigueFrame) -> FatigueTransition:
     """Evaluator-only deterministic physics; one tick, no energy bookkeeping.
 
-    Accumulation and REST recovery do not occur in the same frame. Clipping is
-    exact at [0, capacity]. WAIT performs neither but does not stop M0 basal.
+    Physical WAIT recovers fatigue each verified consecutive World tick;
+    MOVE and FIGHT accumulate it. A blocked MOVE remains MOVE, never WAIT.
+    Recovery clips to [0, capacity] and never suppresses M0 basal.
     """
     _check_state(profile, state)
     if (not isinstance(frame, FatigueFrame)
@@ -173,7 +174,7 @@ def advance(profile: FatigueProfile, state: FatigueState, frame: FatigueFrame) -
             or type(frame.world_tick) is not int
             or frame.world_tick != state.world_tick + 1):
         raise FatigueRejected("foreign session or nonconsecutive World tick")
-    if (frame.activity not in ("WAIT", "REST", "MOVE", "FIGHT")
+    if (frame.activity not in ("WAIT", "MOVE", "FIGHT")
             or not _nonnegative(frame.observed_blocks)
             or type(frame.blocked) is not bool
             or type(frame.observed_fight_events) is not int
@@ -191,8 +192,8 @@ def advance(profile: FatigueProfile, state: FatigueState, frame: FatigueFrame) -
             gain = frame.observed_blocks * profile.move_per_block.value
         elif frame.activity == "FIGHT":
             gain = frame.observed_fight_events * profile.fight_per_event.value
-        elif frame.activity == "REST":
-            recovery = min(state.fatigue, profile.rest_per_world_tick.value)
+        elif frame.activity == "WAIT":
+            recovery = min(state.fatigue, profile.wait_recovery_per_world_tick.value)
     if not math.isfinite(gain):
         raise FatigueRejected("nonfinite fatigue debit")
     gained = min(profile.capacity - state.fatigue, gain)
