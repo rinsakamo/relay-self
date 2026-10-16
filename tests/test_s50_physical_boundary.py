@@ -399,3 +399,111 @@ def test_saved_original_hash_mutation_is_rejected(tmp_path):
         stream.write("changed")
     with pytest.raises(BoundaryRejected, match="hash mismatch"):
         diagnose_bundle(tmp_path)
+
+
+def _tick_meter_fixture():
+    """Synthetic straight +X; event meter misses 0.0088 native displacement."""
+    old, movement = fixture(1.2)
+    marker = "action-session"
+    path = 1.2088
+    lines = []
+    for row in old.splitlines():
+        if "M02_DEV_MOTION " in row:
+            row = row.replace("billed=0.006", "billed=0.0")
+            row = row.replace("cumulative_billed=0.006", "cumulative_billed=0.0")
+            row = row.replace("cumulative_billed=0.012", "cumulative_billed=0.0")
+        if "S50_DEV_TICK " in row:
+            tick = int(row.split("tick=")[1].split()[0])
+            original_x = 0 if tick <= 16 else 0.6 if tick <= 19 else 1.2
+            value = 0 if tick <= 16 else 0.6 if tick <= 19 else path
+            row = row.replace(f" x={original_x} ", f" x={value} ")
+            row = row.replace(f"billed={original_x * .01}", "billed=0.0")
+            row = row.replace("billed=0.006", "billed=0.0")
+            row = row.replace("billed=0.012", "billed=0.0")
+            row += (f" tick_meter_blocks={value}"
+                    f" tick_meter_billed={value * .01}")
+        if "M02_DEV_S50_PHASE " in row:
+            row = row.replace("billed=0.006", "billed=0.0")
+            row = row.replace("billed=0.012", "billed=0.0")
+        lines.append(row)
+    lines.append(
+        "S50_DEV_TICK_METER_ARM marker_id=action-session world=world "
+        "world_full_time=10 x=0 y=0 z=0"
+    )
+    last = 0.0
+    for i, tick in enumerate(range(11, 28), 1):
+        current = 0.0 if tick <= 16 else 0.6 if tick <= 19 else path
+        blocks = current - last
+        charge = blocks * .01
+        lines.append(
+            f"S50_DEV_TICK_MOTION id={i} marker_id={marker} world=world "
+            f"world_full_time={tick} from_x={last} from_y=0 from_z=0 "
+            f"to_x={current} to_y=0 to_z=0 blocks={blocks} billed={charge} "
+            f"cumulative_blocks={current} cumulative_billed={current * .01} "
+            f"write_before=0.1 write_target={0.1 + charge} "
+            f"write_after={0.1 + charge}"
+        )
+        last = current
+    movement["observed_progress_blocks"] = path
+    return "\n".join(lines), movement
+
+
+def test_dev_tick_meter_covers_previous_event_tail_without_double_billing():
+    from adapters.mineflayer.m02_paper_dev.s50_boundary import reconcile_tick_meter
+
+    source, movement = _tick_meter_fixture()
+    result = reconcile_tick_meter(source, movement, walk_rate=.01)
+    assert result["native_horizontal_path_blocks"] == pytest.approx(1.2088)
+    assert result["native_walk_exhaustion"] == pytest.approx(.012088)
+    assert result["native_event_observed_blocks_not_billed"] == pytest.approx(1.2)
+    assert result["observed_tick_motion_source"]["native_event_double_billing_prevented"]
+    assert result["sub_tick_path"] == "NOT_ATTESTED"
+    assert result["wait_recovery_eligible_ticks"] == 0
+
+
+@pytest.mark.parametrize("bad", [
+    "missing-arm", "missing-tick", "duplicate-tick", "bad-id",
+    "foreign-session", "foreign-world", "overbilling", "wrong-pose",
+    "wrong-accumulation", "wrong-writer", "event-double-bill",
+    "truncated-source", "wrong-Action-progress",
+])
+def test_dev_tick_meter_negative_controls(bad):
+    from adapters.mineflayer.m02_paper_dev.s50_boundary import reconcile_tick_meter
+
+    source, movement = _tick_meter_fixture()
+    lines = source.splitlines()
+    if bad == "missing-arm":
+        lines = [x for x in lines if not x.startswith("S50_DEV_TICK_METER_ARM ")]
+    if bad == "missing-tick":
+        lines = [x for x in lines if not ("S50_DEV_TICK_MOTION " in x and "world_full_time=15 " in x)]
+    if bad == "duplicate-tick":
+        lines += [next(x for x in lines if x.startswith("S50_DEV_TICK_MOTION "))]
+    if bad == "bad-id":
+        lines = [x.replace("id=2 ", "id=3 ", 1) if x.startswith("S50_DEV_TICK_MOTION id=2 ") else x for x in lines]
+    if bad == "foreign-session":
+        lines = [x.replace("marker_id=action-session", "marker_id=foreign", 1)
+                 if x.startswith("S50_DEV_TICK_MOTION ") else x for x in lines]
+    if bad == "foreign-world":
+        lines = [x.replace("world=world", "world=foreign", 1)
+                 if x.startswith("S50_DEV_TICK_MOTION ") else x for x in lines]
+    if bad == "overbilling":
+        lines = [x.replace("billed=0.006 ", "billed=0.007 ", 1)
+                 if x.startswith("S50_DEV_TICK_MOTION ") else x for x in lines]
+    if bad == "wrong-pose":
+        lines = [x.replace("to_x=0.6", "to_x=0.7", 1)
+                 if "S50_DEV_TICK_MOTION " in x else x for x in lines]
+    if bad == "wrong-accumulation":
+        lines = [x.replace("cumulative_blocks=0.6", "cumulative_blocks=0.7", 1)
+                 if "S50_DEV_TICK_MOTION " in x else x for x in lines]
+    if bad == "wrong-writer":
+        lines = [x.replace("write_target=0.106", "write_target=0.107", 1)
+                 if "S50_DEV_TICK_MOTION " in x else x for x in lines]
+    if bad == "event-double-bill":
+        lines = [x.replace("billed=0.0 ", "billed=0.006 ", 1)
+                 if x.startswith("M02_DEV_MOTION ") else x for x in lines]
+    if bad == "truncated-source":
+        lines = [x for x in lines if not ("S50_DEV_TICK_MOTION " in x and "world_full_time=27 " in x)]
+    if bad == "wrong-Action-progress":
+        movement["observed_progress_blocks"] = 1.2
+    with pytest.raises(BoundaryRejected):
+        reconcile_tick_meter("\n".join(lines), movement, walk_rate=.01)
