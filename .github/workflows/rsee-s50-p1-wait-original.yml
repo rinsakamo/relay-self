@@ -51,7 +51,20 @@ jobs:
           base = Path(os.environ["RUNNER_TEMP"]) / "r-p1-wait-source"
           candidates = list(base.rglob("m02_report.json"))
           assert len(candidates) == 1, "source missing/ambiguous"
-          receipt = review(candidates[0].parent)
+          root = candidates[0].parent
+          # S's original Actions ZIP contains its Paper sources under OUTPUT
+          # and the true JAR under RUNNER_TEMP; preserve source SHA matching.
+          jar_files = list(base.rglob("relay-metabolism-paper-dev.jar"))
+          assert len(jar_files) == 1, "original JAR missing/ambiguous"
+          import hashlib, shutil
+          from experiments.standard_env.s50_p1_wait_original_audit import EXPECTED_JAR
+          assert hashlib.sha256(jar_files[0].read_bytes()).hexdigest() == EXPECTED_JAR
+          assert jar_files[0].is_file() and not jar_files[0].is_symlink()
+          if jar_files[0].parent != root:
+              dest = root / "relay-metabolism-paper-dev.jar"
+              assert not dest.exists()
+              shutil.copyfile(jar_files[0], dest)
+          receipt = review(root)
           assert receipt["classification"] == CLASS
           assert receipt["sampled_stationary_count"] == 8
           assert receipt["observed_world_ticks"] == [62, 69]
