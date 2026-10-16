@@ -2,7 +2,9 @@
 
 Authority: R #575 / Draft #610 and S #537 / Draft #545. User explicitly authorized **one fresh engineering qualification attempt** on 2026-10-16. This is a *new* authorization, **NOT** the consumed old 2026-10-15 third Paper grant.
 
-## State: AUTHORIZED / NOT_STARTED / NOT_CONSUMED
+> **Historical pre-launch snapshot only.** The text below records the initial qualification-preflight state and must not be read as the current authorization ledger. Later on 2026-10-16, the new `BASE_ON` tick-chord JAR qualification ran **once**, grant `USER_M02_V7_TICK_CHORD_BASE_ON_20261016_ONCE` was **CONSUMED**, and independent R rereview [#38908742143](https://github.com/rinsakamo/relay-self/actions/runs/38908742143) qualified **only** that exact JAR/config. The other four profiles remain NOT_QUALIFIED, V7 SCIENCE 0/20. The active source of truth is [R qualification chronology](rsee-m02-v7-base-on-new-jar-engineering-qualification-20261016.md); this earlier preworld design cannot be used to relaunch the consumed grant. `m02_v7_new_plugin_admission.py` now rejects both spent 2026-10-15 and 2026-10-16 grants, while remaining shape-only.
+
+## Historical state at initial preflight: AUTHORIZED / NOT_STARTED / NOT_CONSUMED
 
 As of this entry the actual new physical qualification has **not** started. The S old `s51_paper_qualification.py` remains bound to `USER_M02_PAPER_QUALIFICATION_20261015_THIRD_ONCE` with **old source assets** and is forbidden for the new JAR. New qualification producer registration failed at the GitHub write safety gate. The GitHub connector currently available does not expose an Actions workflow-dispatch action. Do not call `rerun` or reuse any prior historical one-shot grant. Zero newly authorized QUALIFICATION Java/Node starts; no engineering verdict.
 
