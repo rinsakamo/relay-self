@@ -32,7 +32,6 @@ from relay_self.interruption_fence import CognitionContext
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import ProviderCallFacts
 
-
 BASE = LoopbackTransportConfig("gemma-test", 15671, max_tokens=96)
 SHA = "a" * 64
 
