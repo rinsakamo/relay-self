@@ -397,3 +397,44 @@ billing/coordinate corruption, missing STOP and unsettled/ended World.
 Synthetic controls establish rejection logic only; each new physical run,
 including failures, must retain originals. New JAR is not R-qualified;
 V7 SCIENCE remains 0/20 and historical V7 comparison failure is unchanged.
+
+#### First native attempt: honest boundary stop, not an engineering pass
+
+Producer `cf6cfc38651358541707dadf8b60f9c5237065ef`, controlled DEV
+[#38890045733](https://github.com/rinsakamo/relay-self/actions/runs/38890045733):
+all five arms retained **FAIL**, supervised Action **UNKNOWN**. Every arm
+observed endpoint displacement and tick-sampled chord sum **1.9389928412050272
+blocks**, versus PlayerMoveEvent-metered path **1.930189272171467 blocks**.
+The native post-clear bracket to quiet endpoint displacement was
+**0.25474274790455187 blocks**. Six-tick World gate was retained.
+The final **0.008803569033560166 block** is native server pose movement not
+covered by the event meter. Small moves can update the player location without
+a new PlayerMoveEvent; consecutive World samples and event counters expose
+this. Strict source reconciliation correctly refused to close OUTCOME.
+
+BASE_ON/SHAM_ON/BASAL_ZERO billed `0.01930189272171467` exhaustion,
+WALK_ZERO/BOTH_ZERO billed `0`. For the positive-rate arms the endpoint alone
+implies a debit shortfall lower bound `0.0000880356903356`; zero-rate arms
+have no missing debit but the same incomplete movement-event coverage.
+No costs were adjusted after the run. Tick-sampled chords are not a complete
+sub-tick path source and must never be relabeled invented walking events.
+
+All five had native clear + shutdown ACK, Java/Node exit0, port release.
+These cleanup facts do not convert UNKNOWN to OUTCOME. Obstacles/zero-MOVE,
+ACK loss and disconnect injection have offline controls only; no new physical
+fault injection has been claimed. The next physical integration requires a
+complete accepted-motion metering source under existing S/M ownership and
+independent R review, then a fresh DEV run. This delivery stops the controlled
+physical experiment at the demonstrated billing/source inconsistency.
+
+Read-only diagnosis (keeps the original UNKNOWN and validates saved hashes):
+
+```bash
+PYTHONPATH=src:. python -m adapters.mineflayer.m02_paper_dev.s50_boundary \
+  /absolute/downloaded/arm-output --failed-attempt
+```
+
+It reports native endpoint, tick chords, event meter, actual applied billing,
+release-tail bracket and the source gap separately. Hashes are checked against
+the original report; an independent retained receipt is still needed to attest
+the manifest itself. Successful legacy DEV paths do not override this result.

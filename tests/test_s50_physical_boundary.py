@@ -220,3 +220,166 @@ def test_native_failures(fault):
         commands[1]["state"] = False
     with pytest.raises(BoundaryRejected):
         verify_native(native, commands, move)
+
+
+@pytest.mark.parametrize("failure", ["forward_ack", "gate", "settle", "clear_ack", "none"])
+def test_executor_release_and_outcome_order(failure):
+    from dataclasses import replace
+    from types import SimpleNamespace
+
+    import test_feature_s46_eat as s46
+    from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _issue
+    from adapters.mineflayer.process_session import MineflayerProcessSession
+    from adapters.mineflayer.python_protocol import MineflayerEffectResult, MineflayerPosition
+    from adapters.mineflayer.seek_execution import execute_seek_step
+    from relay_self.action import ActionState
+    from relay_self.action_supervision import ActionSupervisor
+    from relay_self.seek_waypoint import SeekCursor, SeekWaypoint
+
+    before = s46.case()
+    position = before.snapshot.position
+    step = SeekCursor(before.session_id).plan(
+        before, SeekWaypoint("goal", MineflayerPosition(position.x + 2, position.y, position.z))
+    )
+    supervisor = ActionSupervisor()
+    issued = _issue(supervisor, "move", "seek", "intent", "DEV synthetic", time_base=10)
+    events = []
+
+    class Session(MineflayerProcessSession):
+        def __init__(self):
+            self.pending = []
+            self.next_seq = before.seq + 1
+
+        @property
+        def started(self):
+            return SimpleNamespace(session_id=before.session_id)
+
+        @property
+        def process_returncode(self):
+            return None
+
+        async def receive(self):
+            row = self.pending.pop(0)
+            if isinstance(row, Exception):
+                raise row
+            return row
+
+        def ack(self, aid, effect, fail=False):
+            self.pending.append(
+                TimeoutError("lost ACK")
+                if fail
+                else MineflayerEffectResult(
+                    before.session_id, self.next_seq, aid, effect, "applied", None
+                )
+            )
+            self.next_seq += 1
+
+        async def send_look(self, aid, **kwargs):
+            self.ack(aid, "look")
+
+        async def send_set_control(self, aid, **kwargs):
+            events.append("forward")
+            self.ack(aid, "set_control", failure == "forward_ack")
+
+        async def send_clear_controls(self, aid):
+            events.append("clear")
+            self.ack(aid, "clear_controls", failure == "clear_ack")
+
+        async def send_observe(self, rid):
+            events.append("probe")
+            self.pending.append(replace(before, seq=self.next_seq, request_id=rid))
+
+    async def phase(name):
+        events.append(name)
+
+    async def gate():
+        if failure == "gate":
+            raise TimeoutError("lost World gate")
+
+    async def settle():
+        events.append("settle")
+        if failure == "settle":
+            raise BoundaryRejected("no physical quiet")
+
+    work = execute_seek_step(
+        Session(),
+        supervisor,
+        issued,
+        step,
+        phase_hook=phase,
+        tick_gate_hook=gate,
+        settle_hook=settle,
+    )
+    if failure == "none":
+        asyncio.run(work)
+        assert events.index("clear") < events.index("settle") < events.index("probe")
+    else:
+        with pytest.raises((TimeoutError, BoundaryRejected)):
+            asyncio.run(work)
+        assert "probe" not in events
+    assert events.count("forward") == events.count("clear") == 1
+    # Only the caller may close lifecycle, never this motor primitive.
+    assert supervisor.get("move").state is ActionState.ISSUED
+
+
+def test_native_small_tail_is_diagnosed_never_repaired():
+    from adapters.mineflayer.m02_paper_dev.s50_boundary import diagnose_motion
+
+    content, move = fixture()
+    lines = [
+        line.replace(" x=1.2 ", " x=1.2088 ") if "S50_DEV_TICK " in line else line
+        for line in content.splitlines()
+    ]
+    content = "\n".join(lines)
+    result = diagnose_motion(content, move["v7_phase_marker_id"])
+    assert result["event_metered_horizontal_path_blocks"] == 1.2
+    assert result["endpoint_displacement_blocks"] == 1.2088
+    assert result["unmetered_travel_lower_bound_blocks"] == pytest.approx(0.0088)
+    assert result["body_boundary"] == "BLOCKED"
+    with pytest.raises(BoundaryRejected):
+        reconcile(content, move, walk_rate=0.01)
+
+
+def test_saved_original_hash_mutation_is_rejected(tmp_path):
+    import hashlib
+    import json
+
+    from adapters.mineflayer.m02_paper_dev.s50_boundary import diagnose_bundle
+
+    content, _ = fixture()
+    native, commands, _ = native_fixture()
+    native[0]["request_id"] = "m02-before-walk"
+    native[0]["snapshot"] = dict(position=dict(x=0, y=0, z=0))
+    native[4]["snapshot"] = dict(position=dict(x=1.2, y=0, z=0))
+    events = [dict(state=s) for s in ["proposed", "authorized", "issued"]]
+    journal = [
+        dict(action_id="action", session_id="session", state="issued", events=events),
+        dict(
+            action_id="action",
+            session_id="session",
+            state="unknown",
+            events=events + [dict(state="unknown")],
+        ),
+    ]
+
+    def jsonl(items):
+        return "".join(json.dumps(r) + "\n" for r in items)
+
+    sources = {
+        "paper_server.log": content,
+        "s50_action_original.jsonl": jsonl(journal),
+        "original_native.jsonl": jsonl(native),
+        "owner_commands.jsonl": jsonl(commands),
+    }
+    hashes = {}
+    for name, text in sources.items():
+        (tmp_path / name).write_text(text)
+        hashes[name] = hashlib.sha256(text.encode()).hexdigest()
+    (tmp_path / "m02_report.json").write_text(
+        json.dumps(dict(source_session_id="session", v7_arm="BASE_ON", evidence_hashes=hashes))
+    )
+    assert diagnose_bundle(tmp_path)["original_terminal"] == "unknown"
+    with (tmp_path / "paper_server.log").open("a") as stream:
+        stream.write("changed")
+    with pytest.raises(BoundaryRejected, match="hash mismatch"):
+        diagnose_bundle(tmp_path)

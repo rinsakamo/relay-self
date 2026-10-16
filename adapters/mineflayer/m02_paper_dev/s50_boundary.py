@@ -275,7 +275,7 @@ def review_bundle(root: Path) -> dict:
     import hashlib
     import json
 
-    report = json.loads((root / "report.json").read_text())
+    report = json.loads((root / "m02_report.json").read_text())
     required = {
         "original_native.jsonl",
         "owner_commands.jsonl",
@@ -323,11 +323,148 @@ def review_bundle(root: Path) -> dict:
     return result
 
 
+def diagnose_motion(content: str, marker: str) -> dict:
+    """Report native sources separately even when the physical boundary blocks.
+
+    Tick chords are not invented PlayerMoveEvents or proven sub-tick paths.
+    The endpoint is a lower bound on travel; no debit/credit is repaired here.
+    """
+    quiet = quiet_window(content, marker)
+    if quiet is None:
+        raise BoundaryRejected("native quiet interval NOT_ATTESTED")
+    phase, ticks, window = quiet
+    world = phase[0]["world"]
+    packets = rows(content, "M02_DEV_MOTION ")
+    if any(r.get("world") != world or r.get("marker_id") != marker for r in packets):
+        raise BoundaryRejected("foreign motion diagnostics")
+    first, last = pose(phase[0]), pose(window[-1])
+    displacement = math.hypot(last[0] - first[0], last[2] - first[2])
+    event_path = sum(number(r, "blocks") for r in packets)
+    event_charge = sum(number(r, "billed") for r in packets)
+    sampled = [first] + [pose(r) for r in ticks]
+    chord_sum = sum(math.hypot(b[0] - a[0], b[2] - a[2]) for a, b in zip(sampled, sampled[1:]))
+    after = pose(phase[-1])
+    tail = math.hypot(last[0] - after[0], last[2] - after[2])
+    gap = max(0.0, displacement - event_path)
+    return {
+        "classification": "DEV_ONLY_DIAGNOSTIC_NOT_ATTESTATION",
+        "world": world,
+        "marker_id": marker,
+        "native_start_pose": dict(zip(("x", "y", "z"), first)),
+        "native_quiet_pose": dict(zip(("x", "y", "z"), last)),
+        "endpoint_displacement_blocks": displacement,
+        "tick_sampled_horizontal_chords_blocks": chord_sum,
+        "event_metered_horizontal_path_blocks": event_path,
+        "event_billed_walk_exhaustion": event_charge,
+        "unmetered_travel_lower_bound_blocks": gap,
+        "post_clear_bracket_endpoint_displacement_blocks": tail,
+        "post_clear_tick": integer(phase[-1], "world_full_time"),
+        "quiet_interval_start_tick": integer(window[0], "tick"),
+        "quiet_interval_end_tick": integer(window[-1], "tick"),
+        "event_meter_covers_native_endpoint": gap <= 1e-7,
+        "body_boundary": "BLOCKED" if gap > 1e-7 else "NOT_ATTESTED",
+        "sub_tick_path": "NOT_ATTESTED",
+        "wait_recovery_eligible_ticks": 0,
+    }
+
+
+def diagnose_bundle(root: Path) -> dict:
+    """Read-only failed-attempt diagnosis, preserving the original terminal."""
+    import hashlib
+    import json
+
+    report = json.loads((root / "m02_report.json").read_text())
+    for name in (
+        "paper_server.log",
+        "s50_action_original.jsonl",
+        "original_native.jsonl",
+        "owner_commands.jsonl",
+    ):
+        path = root / name
+        if (
+            path.is_symlink()
+            or not path.is_file()
+            or hashlib.sha256(path.read_bytes()).hexdigest()
+            != report.get("evidence_hashes", {}).get(name)
+        ):
+            raise BoundaryRejected("original byte hash mismatch: " + name)
+    journal = [json.loads(x) for x in (root / "s50_action_original.jsonl").read_text().splitlines()]
+    if (
+        len(journal) != 2
+        or journal[0].get("state") != "issued"
+        or journal[1].get("state") != "unknown"
+        or any(r.get("session_id") != report.get("source_session_id") for r in journal)
+        or journal[1].get("action_id") != journal[0].get("action_id")
+        or journal[1]["events"][:-1] != journal[0]["events"]
+    ):
+        raise BoundaryRejected("failed formal Action lineage missing")
+    marker = journal[0]["action_id"] + "-" + journal[0]["session_id"]
+    result = diagnose_motion((root / "paper_server.log").read_text(), marker)
+    native = [json.loads(x) for x in (root / "original_native.jsonl").read_text().splitlines()]
+    commands = [json.loads(x) for x in (root / "owner_commands.jsonl").read_text().splitlines()]
+    action = journal[0]["action_id"]
+
+    def one(predicate):
+        found = [r for r in native if predicate(r)]
+        if len(found) != 1:
+            raise BoundaryRejected("native boundary ACK/probe missing/duplicate")
+        return found[0]["seq"]
+
+    movement = {
+        "action_id": action,
+        "source_session": report["source_session_id"],
+        "source_before_seq": one(lambda r: r.get("request_id") == "m02-before-walk"),
+        "source_after_seq": one(lambda r: r.get("request_id") == action + "-seek-after"),
+        **{
+            key: one(
+                lambda r, aid=aid: r.get("type") == "effect_result" and r.get("action_id") == aid
+            )
+            for key, aid in (
+                ("look_seq", action + "-look"),
+                ("forward_seq", action),
+                ("clear_seq", action + "-clear"),
+            )
+        },
+    }
+    verify_native(native, commands, movement)
+    for key, expected in (
+        ("source_before_seq", result["native_start_pose"]),
+        ("source_after_seq", result["native_quiet_pose"]),
+    ):
+        actual = native[movement[key]].get("snapshot", {}).get("position", {})
+        if any(abs(number(actual, axis) - expected[axis]) > 1e-6 for axis in ("x", "y", "z")):
+            raise BoundaryRejected("native probe/World pose mismatch")
+    result["native_boundary_seqs"] = movement
+    from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
+
+    rate = 0.01 * ARMS[report["v7_arm"]][1]
+    result.update(
+        configured_walk_rate=rate,
+        walk_debit_shortfall_lower_bound=max(
+            0.0,
+            result["endpoint_displacement_blocks"] * rate - result["event_billed_walk_exhaustion"],
+        ),
+        original_terminal=journal[-1]["state"],
+        original_error=report.get("error"),
+        original_status=report.get("status"),
+        native_clear_and_shutdown_ack=True,
+        java_exit=report.get("java_exit"),
+        node_exit=report.get("node_exit"),
+    )
+    return result
+
+
 if __name__ == "__main__":
     import argparse
     import json
 
     parser = argparse.ArgumentParser(description="Read-only S50 DEV original-byte review")
     parser.add_argument("root", type=Path)
+    parser.add_argument("--failed-attempt", action="store_true")
     args = parser.parse_args()
-    print(json.dumps(review_bundle(args.root), indent=2))
+    print(
+        json.dumps(
+            diagnose_bundle(args.root) if args.failed_attempt else review_bundle(args.root),
+            indent=2,
+        )
+    )
