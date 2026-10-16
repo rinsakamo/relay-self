@@ -794,7 +794,7 @@ def test_v7_controlled_native_motion_world_tick_trace_and_negative_sources():
         good.replace("reason=WALK", "reason=SPRINT"),
         good.replace("from_y=-60.0", "from_y=NaN"),
         good.replace("from_x=0.7", "from_x=0.7 duplicate=1"),
-        good.replace("billed=0.002", "billed=NaN"),
+        good.replace("billed=", "billed=NaN-", 1),
         "",
     )
     for bad in corruptions:
