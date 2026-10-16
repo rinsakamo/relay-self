@@ -259,7 +259,9 @@ def tick_motion_source(content: str, phase: dict, walk_rate: float) -> dict:
     for idx, r in enumerate(ledger, 1):
         tick = integer(r, "world_full_time")
         if (r.get("marker_id") != marker or r.get("world") != world
-                or integer(r, "id") != idx or tick != last_tick + 1):
+                or integer(r, "id") != idx
+                or tick not in ((last_tick, last_tick + 1) if idx == 1
+                                else (last_tick + 1,))):
             raise BoundaryRejected("foreign/nonconsecutive native tick meter")
         start, end = pose(r, "from_"), pose(r, "to_")
         if math.dist(start, previous) > 1e-8:
