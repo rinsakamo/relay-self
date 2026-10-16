@@ -754,3 +754,59 @@ def test_v7_controlled_move_rejects_pose_drift_before_issuing_action(monkeypatch
         asyncio.run(_motor_walk(
             Session(),
             expected_start=MineflayerPosition(0.5, -60, 0.5)))
+
+
+def test_v7_controlled_native_motion_world_tick_trace_and_negative_sources():
+    from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
+        _v7_native_motion_tick_trace,
+    )
+
+    def motion(ident, tick, left, right, cumulative):
+        return (
+            f"M02_DEV_MOTION id={ident} reason=WALK "
+            f"blocks={right - left} billed={(right - left) * 0.01} "
+            f"cumulative_blocks={cumulative} cumulative_billed={cumulative * 0.01} "
+            f"from_x={left} from_y=-60.0 from_z=0.5 "
+            f"to_x={right} to_y=-60.0 to_z=0.5 world_full_time={tick}"
+        )
+
+    a = motion(1, 101, 0.5, 0.7, 0.2)
+    b = motion(2, 101, 0.7, 0.9, 0.4)
+    c = motion(3, 102, 0.9, 1.1, 0.6)
+    good = "\n".join((a, b, c)) + "\n"
+    receipt = _v7_native_motion_tick_trace(good)
+    assert receipt["packet_count"] == 3
+    assert receipt["world_tick_packet_counts"] == {"101": 2, "102": 1}
+    assert receipt["total_horizontal_path_blocks"] == pytest.approx(0.6)
+    assert receipt["total_walk_exhaustion"] == pytest.approx(0.006)
+    assert receipt["packet_trace"][2]["to"]["x"] == pytest.approx(1.1)
+    assert not receipt["native_control_on_world_tick_attested"]
+    assert not receipt["native_control_off_world_tick_attested"]
+    assert not receipt["same_duration_across_arms_attested"]
+
+    corruptions = (
+        good.replace("id=2", "id=1"),
+        good.replace("world_full_time=102", "world_full_time=100"),
+        good.replace("from_x=0.9", "from_x=0.95"),
+        good.replace("to_x=0.9", "to_x=1.0"),
+        good.replace("cumulative_blocks=0.4", "cumulative_blocks=0.3"),
+        good.replace("world_full_time=101", "world_full_time=nan"),
+        good.replace("reason=WALK", "reason=SPRINT"),
+        good.replace("from_y=-60.0", "from_y=NaN"),
+        good.replace("from_x=0.7", "from_x=0.7 duplicate=1"),
+        good.replace("billed=0.002", "billed=NaN"),
+        "",
+    )
+    for bad in corruptions:
+        with pytest.raises(M02DevRejected):
+            _v7_native_motion_tick_trace(bad)
+
+
+def test_v7_motion_tick_trace_not_fabricated_from_legacy_packet_summary():
+    from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
+        _v7_native_motion_tick_trace,
+    )
+    old = ("M02_DEV_MOTION id=1 reason=WALK blocks=0.3 billed=0.003 "
+           "cumulative_blocks=0.3 cumulative_billed=0.003\n")
+    with pytest.raises(M02DevRejected, match="incomplete"):
+        _v7_native_motion_tick_trace(old)
