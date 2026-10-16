@@ -2,7 +2,7 @@
 
 This module neither authorizes an S Action nor authenticates a World source.
 S/R must separately validate original S action lifecycle, ordered native World
-source, controlled REST interval, and actual displacement before constructing
+source, full-tick physical WAIT evidence, and actual displacement before constructing
 SourceBoundTick. An identifier here is a correlation key, not authentication.
 """
 
@@ -25,7 +25,7 @@ from experiments.fatigue_p1 import (
     observe,
 )
 
-Activity = Literal["WAIT", "REST", "MOVE", "FIGHT"]
+Activity = Literal["WAIT", "MOVE", "FIGHT"]
 
 
 class P1BoundaryRejected(FatigueRejected):
@@ -48,9 +48,9 @@ def _key(x: object) -> bool:
 class SActivityRequest:
     """Request only, not S's granted Action lifecycle or physical effect.
 
-    REST requires a distinct Self decision reference (not an issued S Action).
-    WAIT is an unissued idle selection. MOVE/FIGHT reference the S-proposed
-    Action, which still needs ordinary S authorization and native outcome.
+    WAIT is a verified physically inactive Body state, not a REST intent.
+    The candidate request alone is never proof of WAIT. MOVE/FIGHT refer to
+    existing S-proposed Actions with independent authorization and outcome.
     """
 
     session_id: str
@@ -58,7 +58,6 @@ class SActivityRequest:
     activity: Activity
     requested_blocks: float = 0.0
     action_ref: str | None = None
-    rest_choice_ref: str | None = None
 
 
 @dataclass(frozen=True)
@@ -76,8 +75,8 @@ class BodyPreflight:
 class SourceBoundTick:
     """Correlated descriptor accepted only after external S/R verification.
 
-    S/R must source-authenticate both `world_source_ref` and action or rest
-    witness. Neither field is a cryptographic proof by its mere existence.
+    S/R must source-authenticate the World source and original full-tick
+    inactivity witness on WAIT. Neither field is a cryptographic proof by its mere existence.
     An S50 MOVE action can span multiple World ticks: action_effect_ref is
     the tick-local observed progress, while action_outcome_ref is optional
     and must only be supplied at the genuine S terminal Action OUTCOME.
@@ -93,10 +92,9 @@ class SourceBoundTick:
     blocked: bool = False
     observed_fight_events: int = 0
     action_ref: str | None = None
-    rest_choice_ref: str | None = None
     action_effect_ref: str | None = None
     action_outcome_ref: str | None = None
-    rest_interval_ref: str | None = None
+    wait_interval_ref: str | None = None
 
 
 @dataclass(frozen=True)
@@ -122,33 +120,27 @@ def preflight(
             or request.session_id != state.session_id
             or type(request.world_tick_before) is not int
             or request.world_tick_before != state.world_tick
-            or request.activity not in ("WAIT", "REST", "MOVE", "FIGHT")
+            or request.activity not in ("WAIT", "MOVE", "FIGHT")
             or not _nonnegative(request.requested_blocks)):
         raise P1BoundaryRejected("wrong session, World time, activity or requested distance")
     if request.activity == "MOVE":
         if (not _positive(request.requested_blocks)
                 or request.requested_blocks > profile.nominal_move_limit_blocks
                 or not _key(request.action_ref)
-                or request.rest_choice_ref is not None):
+):
             raise P1BoundaryRejected("MOVE needs bounded requested distance and S Action ref")
         allowed = min(request.requested_blocks, cap.max_move_blocks_per_world_tick)
         constrained = allowed < request.requested_blocks
     elif request.activity == "FIGHT":
         if (request.requested_blocks != 0 or not _key(request.action_ref)
-                or request.rest_choice_ref is not None):
+):
             raise P1BoundaryRejected("FIGHT requires a proposed S Action, not distance")
         if not cap.fight_mechanically_possible:
             raise P1BoundaryRejected("FIGHT mechanically unavailable at current fatigue")
         allowed, constrained = 0.0, False
-    elif request.activity == "REST":
-        if (request.requested_blocks != 0 or request.action_ref is not None
-                or not _key(request.rest_choice_ref)):
-            raise P1BoundaryRejected("REST requires an explicit Self choice, not WAIT/Action")
-        allowed, constrained = 0.0, False
     else:
-        if (request.requested_blocks != 0 or request.action_ref is not None
-                or request.rest_choice_ref is not None):
-            raise P1BoundaryRejected("unissued WAIT has no action or rest choice")
+        if request.requested_blocks != 0 or request.action_ref is not None:
+            raise P1BoundaryRejected("WAIT cannot smuggle a proposed action")
         allowed, constrained = 0.0, False
     return BodyPreflight(request, profile.sha256, state.world_tick + 1, allowed,
                          constrained)
@@ -194,8 +186,7 @@ def reconcile(
                 or not _key(source.action_effect_ref)
                 or (source.action_outcome_ref is not None
                     and not _key(source.action_outcome_ref))
-                or source.rest_choice_ref is not None
-                or source.rest_interval_ref is not None):
+                or source.wait_interval_ref is not None):
             raise P1BoundaryRejected("S Action and outcome must be source-correlated")
         if source.activity == "MOVE" and (
             source.observed_blocks > prepared.allowed_blocks + movement_tolerance_blocks
@@ -210,12 +201,8 @@ def reconcile(
                 or source.observed_fight_events != 0
                 or source.blocked):
             raise P1BoundaryRejected("idle tick cannot fabricate an issued action/effect")
-        if source.activity == "REST":
-            if (source.rest_choice_ref != proposal.rest_choice_ref
-                    or not _key(source.rest_interval_ref)):
-                raise P1BoundaryRejected("REST requires distinct correlated idle interval")
-        elif source.rest_choice_ref is not None or source.rest_interval_ref is not None:
-            raise P1BoundaryRejected("WAIT cannot silently claim recovery")
+        if not _key(source.wait_interval_ref):
+            raise P1BoundaryRejected("WAIT requires genuine full-tick inactivity witness")
     frame = FatigueFrame(
         source.session_id, source.world_tick, source.activity,
         source.observed_blocks, source.blocked, source.observed_fight_events,
