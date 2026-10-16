@@ -116,7 +116,8 @@ def _issue(
 async def _motor_walk(session: MineflayerProcessSession, *,
                       issuer=None, provenance=None,
                       expected_start: MineflayerPosition | None = None,
-                      v7_phase_source: tuple | None = None) -> dict:
+                      v7_phase_source: tuple | None = None,
+                      v7_clock_gate_dev: bool = False) -> dict:
     issuer = issuer or _issue
     provenance = provenance or _p
     before = await _correlated_observe(session, "m02-before-walk")
@@ -141,6 +142,8 @@ async def _motor_walk(session: MineflayerProcessSession, *,
     )
     phase_hook = None
     marker_id = None
+    if v7_clock_gate_dev and v7_phase_source is None:
+        raise M02DevRejected("source-driven tick gate requires controlled Paper DEV")
     if v7_phase_source is not None:
         if expected_start is None or len(v7_phase_source) != 2:
             raise M02DevRejected("S50 phase markers require controlled DEV source")
@@ -148,8 +151,13 @@ async def _motor_walk(session: MineflayerProcessSession, *,
         marker_id = issued.action_id + "-" + session.started.session_id
         async def phase_hook(phase: str) -> None:
             await _v7_source_phase_command(server, paper_log, marker_id, phase)
+    tick_gate_hook = None
+    if v7_clock_gate_dev:
+        async def tick_gate_hook() -> None:
+            await _v7_wait_clock_gate_source(paper_log, marker_id)
     effect = await execute_seek_step(
-        session, supervisor, issued, step, phase_hook=phase_hook)
+        session, supervisor, issued, step, phase_hook=phase_hook,
+        tick_gate_hook=tick_gate_hook)
     closed = supervisor.record_outcome(
         issued.action_id, at_ns=15,
         provenance=provenance("m02-paper-walk-1-outcome"),
@@ -164,6 +172,7 @@ async def _motor_walk(session: MineflayerProcessSession, *,
         "native_start_position": asdict(p),
         "controlled_pose_pre_move_verified": expected_start is not None,
         "v7_phase_marker_id": marker_id,
+        "v7_clock_gate_dev": v7_clock_gate_dev,
         "action_id": issued.action_id,
         "action_state": closed.state.value,
         "requested_max_step_blocks": 1.0,
@@ -593,7 +602,8 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
                                minimum_player_basal_ticks: int = 200,
                                expected_world_seed: int = 61021,
                                require_native_motion_tick_trace: bool = False,
-                               phase_marker_id: str | None = None) -> dict:
+                               phase_marker_id: str | None = None,
+                               require_paper_clock_gate: bool = False) -> dict:
     """Bounded original Paper plugin sample gate; DEV only, not V science.
 
     Sampled tick counts the plugin's living-player callbacks, not host time,
@@ -650,6 +660,10 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
              if phase_marker_id is not None else None)
     if require_native_motion_tick_trace and phase is None:
         raise M02DevRejected("controlled V7 missing S50 phase source")
+    gate = (_v7_clock_gate_source(content, phase_marker_id, phase)
+            if require_paper_clock_gate and phase is not None else None)
+    if require_paper_clock_gate and gate is None:
+        raise M02DevRejected("controlled V7 native World clock gate missing")
     if trace is not None and phase is not None and (
             trace["first_motion_world_tick"] <
             phase["server_world_ticks"]["PRE_FORWARD"]):
@@ -664,6 +678,7 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
         "direct_basal_source": direct,
         "native_motion_tick_trace": trace,
         "s50_server_phase_brackets": phase,
+        "s50_paper_scheduled_clock_gate": gate,
         "native_world_geometry_source": world,
         "arm": arm, "physical_java_world": True,
         "source_player_ticks_minimum": minimum_player_basal_ticks,
@@ -792,6 +807,7 @@ async def run(
     v7_arm: str | None = None,
     v7_seed: int | None = None,
     v7_controlled_calibration_dev: bool = False,
+    v7_server_clock_calibration_dev: bool = False,
 ) -> int:
     report: dict = {
         "milestone": "M0.2_PAPER_DEV",
@@ -811,6 +827,7 @@ async def run(
         ),
         "minecraft_version": MINECRAFT_VERSION,
         "v7_calibration_controlled_dev": v7_controlled_calibration_dev,
+        "v7_server_clock_calibration_dev": v7_server_clock_calibration_dev,
         "v7_calibration_not_existing_science_roster": True,
     }
     root = None
@@ -823,6 +840,10 @@ async def run(
             raise M02DevRejected("controlled calibration requires bool")
         if v7_controlled_calibration_dev and v7_arm is None:
             raise M02DevRejected("controlled calibration requires V7 arm")
+        if type(v7_server_clock_calibration_dev) is not bool or (
+                v7_server_clock_calibration_dev
+                and not v7_controlled_calibration_dev):
+            raise M02DevRejected("server clock gate requires controlled V7 DEV")
         if v7_arm is not None:
             from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
             if (v7_arm not in ARMS or type(v7_seed) is not int
@@ -943,13 +964,15 @@ async def run(
             report["movement"] = await _motor_walk(
                 session, expected_start=controlled_pose,
                 v7_phase_source=(server, server_log)
-                if v7_controlled_calibration_dev else None)
+                if v7_controlled_calibration_dev else None,
+                v7_clock_gate_dev=v7_server_clock_calibration_dev)
             report["stage"] = "V7_SOURCE_WORLD_TICK_200"
             report["v7_source"] = await _v7_wait_source_tick(
                 server_log, v7_arm, minimum_player_basal_ticks=200,
                 expected_world_seed=v7_seed,
                 require_native_motion_tick_trace=v7_controlled_calibration_dev,
-                phase_marker_id=report["movement"]["v7_phase_marker_id"])
+                phase_marker_id=report["movement"]["v7_phase_marker_id"],
+                require_paper_clock_gate=v7_server_clock_calibration_dev)
             final = await _correlated_observe(session, "v7-final-no-food")
             report["v7_final_body"] = {
                 "food": final.snapshot.food,
@@ -1078,6 +1101,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--v7-seed", type=int)
     parser.add_argument("--v7-controlled-calibration-dev", action="store_true",
                         help="separate fixed-pose Paper DEV, never science")
+    parser.add_argument("--v7-server-clock-calibration-dev", action="store_true",
+                        help="six-Paper-tick gate in controlled V7 DEV; never science")
     parser.add_argument("--paper-b1", choices=("on", "off"),
                         help="Paper B1 BLOCKED→Memory/cheap OFF→lateral S50→pickup→EAT DEV")
     parser.add_argument("--forage-dev", action="store_true",
@@ -1100,6 +1125,7 @@ def main(argv: list[str] | None = None) -> int:
             True if args.forage_dev else None,
             args.paper_b1,
             True if args.v7_controlled_calibration_dev else None,
+            True if args.v7_server_clock_calibration_dev else None,
             args.v7_arm, args.v7_seed,
         )):
             parser.error("qualification preflight accepts ONLY --asset-root; no DEV/World options")
@@ -1126,6 +1152,9 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--v7-seed requires --v7-arm")
     if args.v7_controlled_calibration_dev and args.v7_arm is None:
         parser.error("--v7-controlled-calibration-dev requires --v7-arm")
+    if (args.v7_server_clock_calibration_dev
+            and not args.v7_controlled_calibration_dev):
+        parser.error("--v7-server-clock-calibration-dev requires controlled V7 DEV")
     if args.paper_b1 is not None and not args.forage_dev:
         parser.error("--paper-b1 requires --forage-dev")
     if any(v is None for v in (
@@ -1140,6 +1169,7 @@ def main(argv: list[str] | None = None) -> int:
         b1_retention=(args.paper_b1 == "on" if args.paper_b1 is not None else None),
         v7_arm=args.v7_arm, v7_seed=args.v7_seed,
         v7_controlled_calibration_dev=args.v7_controlled_calibration_dev,
+        v7_server_clock_calibration_dev=args.v7_server_clock_calibration_dev,
     ))
 
 
