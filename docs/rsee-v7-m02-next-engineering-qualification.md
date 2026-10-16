@@ -1,7 +1,9 @@
 # R V7 M0.2 — new BASAL-write plugin: prospective engineering-qualification handoff
 
 2026-10-16. Authority R #575 / Draft #610, S #537 / Draft #545, V #619 / Draft #625.
-**Current status (2026-10-16): new tick-chord plugin BASE_ON alone is R ENGINEERING QUALIFIED; SHAM_ON, BASAL_ZERO, WALK_ZERO and BOTH_ZERO are NOT_QUALIFIED.** Earlier DEV source verification is not a QUALIFICATION for those four profiles.
+> **Current 2026-10-17 status:** all four remaining profiles have now separately passed real isolated Paper engineering QUALIFICATION, with independent R original-byte rereview **4/4** and cross-arm unique World/session/receipt verification. All new grants are CONSUMED and the launch workflow is frozen. Five profiles including prior BASE_ON are engineering-qualified, but V7 SCIENCE remains 0/20, production NO_GO. See [authoritative 2026-10-17 four-arm report](rsee-m02-v7-four-arm-physical-qualification-20261017.md). The detailed procedure below is the 2026-10-16 **historical prospective** state and does not authorize another World.
+
+**Historical status as of 2026-10-16: new tick-chord plugin BASE_ON alone is R ENGINEERING QUALIFIED; SHAM_ON, BASAL_ZERO, WALK_ZERO and BOTH_ZERO are NOT_QUALIFIED.** Earlier DEV source verification is not a QUALIFICATION for those four profiles.
 No old grant may be reused, and this document authorizes no World execution.
 
 ## New, specifically bounded BASE_ON qualification (2026-10-16)
