@@ -83,7 +83,7 @@ def test_existing_or_overlapping_source_or_output_rejected_before_writing(tmp_pa
         )
     output = tmp_path / "occupied"
     output.mkdir()
-    with pytest.raises(s.CloneDevRejected, match="fresh"):
+    with pytest.raises(s.CloneDevRejected, match="new empty"):
         s.clone_stopped_world(original, output, seed=62101,
                               confirm=s.DEV_CONFIRM)
 
