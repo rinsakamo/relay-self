@@ -52,6 +52,7 @@ jobs:
               .github/workflows/m02-v7-five-arm-dev.yml|\
               .github/workflows/m02-v7-controlled-pose-dev.yml|\
               .github/workflows/s50-five-original-meter-screen.yml|\
+              .github/workflows/s50-p1-wait-dev.yml|\
               .github/workflows/m02-v7-new-base-on-one-shot-qualification.yml|\
               .github/workflows/m02-v7-remaining-four-one-shot-qualification.yml|\
               .github/workflows/m02-paper-physical-dev.yml|\
@@ -79,6 +80,7 @@ jobs:
               tests/test_m02_v7_new_qualification.py|\
               tests/test_m02_v7_four_arm_qualification.py|\
               tests/test_s50_physical_boundary.py|\
+              tests/test_s50_p1_wait.py|\
               tests/test_v6_world_qualification.py)
                 ;;
               *)
@@ -124,6 +126,7 @@ jobs:
             tests/test_m02_v7_new_qualification.py \
             tests/test_m02_v7_four_arm_qualification.py \
             tests/test_s50_physical_boundary.py \
+            tests/test_s50_p1_wait.py \
             tests/test_self_demo.py \
             tests/test_self_action_evidence.py
 
