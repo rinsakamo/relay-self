@@ -95,3 +95,16 @@ Vの `v7_m02_seed61021_dev.py` はR独立レビュー済み原観測値から各
 ランダム地形の障害物・移動不能・迂回・歩行距離差は将来の生態・行動研究では実際のWorld結果であり、単純に不合格として消すべきではない。そちらを扱う場合は、**試行開始前**に自然World・初期座標/姿勢/地形・食料・World時間・打ち切り規則・複数seedの対照と評価法を定めて新規登録する。障害物の存在を今回の経路差の原因と断定しない。
 
 V7 SCIENCE=0/20、V6 SCIENCE=0/48。基礎代謝BASALはsource-side書き込み量と累積値が未計測、changed profile工学資格NOT_RUN、G3/production NO_GOのまま。
+
+
+## 2026-10-16 新BASAL原書き込みDEV試行・独立R監査（履歴追加、科学変更なし）
+
+Sは既存の隔離Paper DEV実行器とV7五条件マトリクスを再利用して、現在のBASAL `setExhaustion` 直接書き込みログを含む**新しい**プラグインJARを各使い捨てWorldで使用した。S original [#38850179491](https://github.com/rinsakamo/relay-self/actions/runs/38850179491) （exact S HEAD `5defe85f55068b34d4ddae0ebe93afc892c09c2c`）の5ジョブはSUCCESS。JAR SHA256 `af911877133f54e6a3f4ab2f5a9416daf75259af53cb7b4226f8730da9a8b1fc`、**旧R資格JARとは別物**。5 original artifactsを別IDで保持。
+
+[R independent raw review #38850421003](https://github.com/rinsakamo/relay-self/actions/runs/38850421003) （exact R HEAD `125597a4e8844c48da0db77124bb1307372e2654`）は各S原本・新JAR SHA・config/World初期ファイル・native sequence/STOP・WALK packet path/billing・BASAL直接source-writeを独立照合して5/5 SUCCESS。90日原本・R receipt: [#12024688755](https://github.com/rinsakamo/relay-self/actions/runs/38850421003/artifacts/12024688755)、アーカイブZIP SHA256 `631c8743f82a76dc0371955cbe1a8fd986673cc69bef637f4314a9e470b65431`。分類は **`RSEE_V7_NEW_FIVE_DEV_BASAL_WRITE_ORIGINAL_REVIEW_ONLY`**。
+
+実測の「Paperへ書き込んだBASAL要求量」は、BASE_ON/SHAM_ON/WALK_ZEROの各200連続target-player callbackで0.2 exhaustion、BASAL_ZERO/BOTH_ZEROで0。WALKは実移動距離×倍率別0.01/blockに整合。S request/readbackはnative food/saturationの下流での実効寄与そのものを示さない。5条件とも厳密なMOVE開始〜終了に対応する200tick実験区間の独立証拠を欠き、自然Worldの初期pose/地形/障害物が同一とは認証されていない。
+
+Vの `v7_m02_direct_basal_dev.py` は歴史上の旧DEV5件と今回の新DEV5件を別試行としてprescience rosterに**合計10件**保持し、元の予定20 SCIENCE slotは**全件NOT_RUN**。新しい原証拠が優れているため旧DEV5件を破棄・置換することは禁止。旧V7条件間距離0.005block閾値は凍結したままであり、新5条件も経路差約0.2438 blockが残る。距離あたりWALKとtickあたりBASALのsource accountingは整合しても、旧V7の対応効果推定をPASSにしてはならない。
+
+工学資格の改版、新しい科学対照、適応/生態係数の良否、Cognition/Habitの便益は全て未認定。V7 science 0/20、V6 0/48、G3/production NO_GO。
