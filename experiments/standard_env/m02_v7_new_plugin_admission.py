@@ -10,6 +10,8 @@ from typing import Any
 
 CLASS = "R_M02_V7_NEW_PLUGIN_PREWORLD_SHAPE_ONLY_NOT_ADMITTED"
 OLD_SPENT_GRANT = "USER_M02_PAPER_QUALIFICATION_20261015_THIRD_ONCE"
+NEW_SPENT_GRANT = "USER_M02_V7_TICK_CHORD_BASE_ON_20261016_ONCE"
+SPENT_GRANTS = frozenset({OLD_SPENT_GRANT, NEW_SPENT_GRANT})
 PAPER_SHA = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
 BASE_CONFIG_SHA = "e9361faa7eac2e3c63bf2f6760765f7f8ae5a4b3631c6819f7ad8ac5c04a540e"
 OLD_PLUGIN_SHA = "0ed8a00a7ebf577bdbea361e2c6facf7ed4b24001c017d362823da5cb60398e5"
@@ -55,7 +57,7 @@ def review_candidate(x: dict[str, Any]) -> dict[str, Any]:
           "unregistered Paper binary/arm/config")
     check(type(x["grant_id"]) is str
           and len(x["grant_id"]) <= 128
-          and x["grant_id"] not in ("", OLD_SPENT_GRANT)
+          and x["grant_id"] not in SPENT_GRANTS
           and "20261015" not in x["grant_id"],
           "consumed/undefined grant")
     check(type(x["qualification_run_id"]) is str
