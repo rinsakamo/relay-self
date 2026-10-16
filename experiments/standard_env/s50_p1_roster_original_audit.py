@@ -126,6 +126,14 @@ def review(root: Path, *, run: int, head: str, artifact: int, jar: str) -> dict:
                  "independent native entity digest mismatch")
         native_hashes.append(digest)
         all_types.append(dict(sorted(types.items())))
+        world_type_snapshots.append({
+            wid: dict(sorted((typ, amount)
+                             for (entity_wid, typ), amount in world_types.items()
+                             if entity_wid == wid))
+            for wid in sorted({entity_wid for entity_wid, _ in world_types})
+        })
+        if local_others:
+            same_world_other_ticks.append(clock)
         fingerprints.append(tuple(roster))
         if other_count:
             other_agent_ticks.append(clock)
@@ -153,6 +161,9 @@ def review(root: Path, *, run: int, head: str, artifact: int, jar: str) -> dict:
         "native_roster_digest_per_tick": native_hashes,
         "roster_same_across_8_samples": all(x == fingerprints[0] for x in fingerprints),
         "other_loaded_entity_presence_ticks": other_agent_ticks,
+        "same_world_other_entity_ticks": same_world_other_ticks,
+        "same_world_only_self_at_sample": not same_world_other_ticks,
+        "loaded_entity_types_by_world_per_tick": world_type_snapshots,
         "individual_lifecycle_events": "NOT_ATTESTED",
         "unloaded_chunk_lifecycle": "NOT_ATTESTED",
         "full_tick_input_absence": "NOT_ATTESTED",
