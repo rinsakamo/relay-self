@@ -27,8 +27,8 @@ def source(prepared, **overrides):
     )
     if q.activity in ("MOVE", "FIGHT"):
         values.update(action_ref=q.action_ref, action_effect_ref=f"effect:{q.action_ref}")
-    if q.activity == "REST":
-        values.update(rest_choice_ref=q.rest_choice_ref, rest_interval_ref=f"idle:{q.rest_choice_ref}")
+    if q.activity == "WAIT":
+        values.update(wait_interval_ref=f"world-idle:{q.session_id}:{prepared.admitted_world_tick}")
     values.update(overrides)
     return SourceBoundTick(**values)
 
@@ -70,28 +70,31 @@ def test_partial_blocked_movement_billed_only_actual_motion():
     assert zero.transition.after.fatigue == hit.transition.after.fatigue
 
 
-def test_rest_and_wait_are_distinct_source_observed_world_ticks():
+def test_physical_wait_recovers_without_a_separate_rest_decision():
     p = FatigueProfile(enabled=True, initial=.8)
     s = initial_state(p, "solo")
-    w = preflight(p, s, request(s, "WAIT"))
-    waited = reconcile(p, s, w, source(w))
-    assert waited.transition.after.fatigue == .8
-    s2 = waited.transition.after
-    b = preflight(p, s2, request(s2, "REST", rest_choice_ref="S-rest-decision"))
-    rest = reconcile(p, s2, b, source(b))
-    assert rest.transition.after.fatigue == pytest.approx(.7)
-    assert rest.transition.after.world_tick == s.world_tick + 2
-    assert rest.transition.recovered == pytest.approx(.1)
-    assert not hasattr(rest.transition.after, "energy")
+    b1 = preflight(p, s, request(s, "WAIT"))
+    one = reconcile(p, s, b1, source(b1))
+    assert one.transition.after.fatigue == pytest.approx(.7)
+    s2 = one.transition.after
+    b2 = preflight(p, s2, request(s2, "WAIT"))
+    two = reconcile(p, s2, b2, source(b2))
+    assert two.transition.after.fatigue == pytest.approx(.6)
+    assert two.transition.after.world_tick == s.world_tick + 2
+    assert one.transition.recovered == pytest.approx(.1)
+    assert not hasattr(two.transition.after, "energy")
 
 
-def test_fight_impossible_at_high_fatigue_but_rest_not_selected_for_agent():
+def test_fight_impossible_at_high_fatigue_but_wait_is_not_an_action_grant():
     p = FatigueProfile(enabled=True, initial=1)
     s = initial_state(p, "solo")
     with pytest.raises(P1BoundaryRejected, match="unavailable"):
         preflight(p, s, request(s, "FIGHT", action_ref="strike"))
-    assert preflight(p, s, request(s, "WAIT")).request.activity == "WAIT"
-    assert preflight(p, s, request(s, "REST", rest_choice_ref="choice")).request.activity == "REST"
+    b = preflight(p, s, request(s, "WAIT"))
+    assert b.request.action_ref is None
+    assert not hasattr(b, "authorized")
+    with pytest.raises(P1BoundaryRejected):
+        preflight(p, s, request(s, "REST"))
 
 
 def test_evaluator_projection_never_releases_true_fatigue_or_capability():
@@ -104,26 +107,14 @@ def test_evaluator_projection_never_releases_true_fatigue_or_capability():
 
 @pytest.mark.parametrize("bad", [
     {"action_ref": "fake"},
-    {"rest_choice_ref": "fake"},
     {"requested_blocks": 0.1},
+    {"requested_blocks": -1},
 ])
-def test_wait_rejects_stealth_action_or_rest(bad):
+def test_wait_does_not_invent_action_or_motion(bad):
     p = FatigueProfile(enabled=True)
     s = initial_state(p, "solo")
     with pytest.raises(P1BoundaryRejected):
         preflight(p, s, request(s, "WAIT", **bad))
-
-
-@pytest.mark.parametrize("bad", [
-    {"action_ref": "stealth"},
-    {"requested_blocks": .1},
-    {"rest_choice_ref": ""},
-])
-def test_rest_rejects_stealth_action_and_missing_decision(bad):
-    p = FatigueProfile(enabled=True)
-    s = initial_state(p, "solo")
-    with pytest.raises(P1BoundaryRejected):
-        preflight(p, s, request(s, "REST", **bad))
 
 
 @pytest.mark.parametrize("kind,kw", [
@@ -149,7 +140,7 @@ def test_invalid_proposals_reject(kind, kw):
     {"world_source_ref": ""},
     {"action_ref": "other"},
     {"action_effect_ref": None},
-    {"rest_interval_ref": "forged-rest"},
+    {"wait_interval_ref": "forged-wait"},
     {"observed_fight_events": 1},
     {"observed_blocks": -1},
     {"observed_blocks": 2},
@@ -164,26 +155,36 @@ def test_reconcile_movement_source_is_strict(bad):
 
 
 @pytest.mark.parametrize("bad", [
-    {"rest_interval_ref": None},
-    {"rest_choice_ref": "other"},
+    {"wait_interval_ref": None},
+    {"wait_interval_ref": ""},
     {"action_ref": "sneaky"},
     {"action_effect_ref": "fake"},
     {"action_outcome_ref": "fake"},
     {"observed_blocks": .01},
     {"blocked": True},
+    {"observed_fight_events": 1},
 ])
-def test_rest_source_requires_choice_and_no_world_action(bad):
-    p = FatigueProfile(enabled=True)
+def test_wait_requires_attested_full_tick_of_inactivity(bad):
+    p = FatigueProfile(enabled=True, initial=.5)
     s = initial_state(p, "solo")
-    b = preflight(p, s, request(s, "REST", rest_choice_ref="rest1"))
+    b = preflight(p, s, request(s, "WAIT"))
     with pytest.raises(P1BoundaryRejected):
         reconcile(p, s, b, source(b, **bad))
+
+
+def test_failed_blocked_move_must_not_gain_wait_recovery():
+    p = FatigueProfile(enabled=True, initial=.5)
+    s = initial_state(p, "solo")
+    b = preflight(p, s, request(s, "MOVE", requested_blocks=1, action_ref="blocked"))
+    t = reconcile(p, s, b, source(b, observed_blocks=0, blocked=True)).transition
+    assert t.after.fatigue == .5
+    assert t.recovered == 0
 
 
 def test_previous_preflight_cannot_be_reused_or_edited():
     p = FatigueProfile(enabled=True, initial=.5)
     s = initial_state(p, "solo")
-    b = preflight(p, s, request(s, "REST", rest_choice_ref="r"))
+    b = preflight(p, s, request(s, "WAIT"))
     after = reconcile(p, s, b, source(b)).transition.after
     with pytest.raises(P1BoundaryRejected):
         reconcile(p, after, b, source(b))
