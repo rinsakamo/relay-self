@@ -603,6 +603,12 @@ def test_v7_physical_paper_log_synthetic_rates_and_real_player_tick_gate(tmp_pat
         "M02_DEV_BODY sampled_tick=200 player=RelaySelf food=20 saturation=5"
         " health=20 exhaustion=0.20 motion_blocks=1.25\n"
     )
+    body += "\n".join(
+        f"M02_DEV_BASAL_WRITE id={i} world_full_time={1000 + i} "
+        f"before=0.0 requested=0.001 write_target=0.001 "
+        f"observed_after=0.001 cumulative_requested={i * .001}"
+        for i in range(1, 201)
+    ) + "\n"
     log = tmp_path / "paper_server.log"
     log.write_text(body, encoding="utf-8")
     result = asyncio.run(dev._v7_wait_source_tick(log, "BASE_ON"))
@@ -611,7 +617,10 @@ def test_v7_physical_paper_log_synthetic_rates_and_real_player_tick_gate(tmp_pat
     assert result["observed_motion_path_blocks"] == pytest.approx(1.25)
     assert result["observed_motion_debit"] == pytest.approx(0.0125)
     assert not result["science_go"]
-    assert result["basal_source_charge_inferred_not_independently_attested"]
+    assert result["basal_write_inputs_directly_source_logged"]
+    assert result["direct_basal_source"]["source_write_count"] == 200
+    assert result["direct_basal_source"]["cumulative_requested_basal_exhaustion"] == pytest.approx(.2)
+    assert not result["exact_200_tick_move_phase_bracket_attested"]
 
     log.write_text(body.replace("billed=0.0125", "billed=0.0"))
     off = asyncio.run(dev._v7_wait_source_tick(log, "WALK_ZERO"))
