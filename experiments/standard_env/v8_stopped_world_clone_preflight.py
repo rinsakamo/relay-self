@@ -32,7 +32,7 @@ def require(test: bool, message: str) -> None:
 
 
 def _safe_root(root: Path) -> Path:
-    require(type(root) is Path and root.is_absolute()
+    require(isinstance(root, Path) and root.is_absolute()
             and root.is_dir() and not root.is_symlink()
             and all(not p.is_symlink() for p in root.parents),
             "absent, relative or symlinked stopped World root")
