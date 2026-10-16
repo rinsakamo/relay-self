@@ -251,7 +251,45 @@ def review_files(root: Path, arm: str) -> dict[str, Any]:
          and report.get("node_exit") == 0 and report.get("java_exit") == 0
          and report.get("port_released_after_shutdown") is True,
          "raw Action journal/native STOP or host report fails")
+    # Independent native Action/ACK chain: a source report alone is not proof.
+    for key, aid, effect in (
+        ("look_seq", action + "-look", "look"),
+        ("forward_seq", action, "set_control"),
+        ("clear_seq", action + "-clear", "clear_controls"),
+    ):
+        seq = movement.get(key)
+        need(type(seq) is int and 0 <= seq < len(native)
+             and native[seq].get("type") == "effect_result"
+             and native[seq].get("action_id") == aid
+             and native[seq].get("effect") == effect
+             and native[seq].get("result") == "applied"
+             and len([x for x in native if x.get("type") == "effect_result"
+                      and x.get("action_id") == aid]) == 1
+             and len([x for x in commands if x.get("action_id") == aid]) == 1,
+             "unattested native control/clear Action ACK")
+    need(len([x for x in native if x.get("type") == "effect_result"]) == 3
+         and len([x for x in commands if x.get("type") == "effect"]) == 3
+         and movement["look_seq"] < movement["forward_seq"]
+         < movement["clear_seq"] < movement["source_after_seq"]
+         and native[movement["source_after_seq"]].get("request_id")
+         == action + "-seek-after",
+         "extra motor authority or invalid final probe")
+    forward = next(x for x in commands if x.get("action_id") == action)
+    need(forward.get("control") == "forward"
+         and forward.get("state") is True,
+         "wrong native forward command")
+    # Separate basal writes/World seed use R-owned readers, never S parsers.
+    from experiments.standard_env import v7_m02_direct_basal_readback as basal
+    from experiments.standard_env import v7_m02_world_nbt_audit as nbt
+    direct_basal = basal.review_original_server_log(
+        originals["paper_server.log"], arm)
+    initial_nbt = nbt.review_level_dat(
+        originals["initial_world_level.dat"], expected_seed=61021)
     out = review_paper_source(originals["paper_server.log"], arm, marker)
+    need(close(direct_basal["configured_basal_request_per_tick"], ARMS[arm][0], 1e-9)
+         and direct_basal["first200_source_player_callbacks"] == 200
+         and initial_nbt["world_seed_from_nbt"] == 61021,
+         "source BASAL or initial NBT mismatch")
     need(close(out["source_tick_chord_blocks_lower_bound"],
                (report.get("s50_tick_chord_source") or {}).get(
                    "native_horizontal_path_blocks", -99), 1e-7)
@@ -262,6 +300,12 @@ def review_files(root: Path, arm: str) -> dict[str, Any]:
         "paper_plugin_source_sha256": report["plugin_sha256"],
         "java_node_reported_exit_zero": True,
         "port_release_report_only": True,
+        "native_action_acks_source_verified": 3,
+        "source_first200_basal_requested": (
+            direct_basal["direct_source_requested_basal_cumulative_first200"]),
+        "source_basal_per_player_tick": ARMS[arm][0],
+        "world_seed_original_nbt": initial_nbt["world_seed_from_nbt"],
+        "saved_world_spawn_is_bot_start_proof": False,
         "native_stop_ack": True,
         "source_action_outcome": True,
         "initial_world_source_sha256":
