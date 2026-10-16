@@ -117,7 +117,9 @@ async def _motor_walk(session: MineflayerProcessSession, *,
                       issuer=None, provenance=None,
                       expected_start: MineflayerPosition | None = None,
                       v7_phase_source: tuple | None = None,
-                      v7_clock_gate_dev: bool = False) -> dict:
+                      v7_clock_gate_dev: bool = False,
+                      v7_tick_meter_dev: bool = False,
+                      v7_tick_meter_walk_rate: float | None = None) -> dict:
     issuer = issuer or _issue
     provenance = provenance or _p
     before = await _correlated_observe(session, "m02-before-walk")
@@ -144,6 +146,9 @@ async def _motor_walk(session: MineflayerProcessSession, *,
     marker_id = None
     if v7_clock_gate_dev and v7_phase_source is None:
         raise M02DevRejected("source-driven tick gate requires controlled Paper DEV")
+    if v7_tick_meter_dev and (not v7_clock_gate_dev
+                              or v7_tick_meter_walk_rate not in (0.0, 0.01)):
+        raise M02DevRejected("tick-meter requires known controlled DEV rate")
     if v7_phase_source is not None:
         if expected_start is None or len(v7_phase_source) != 2:
             raise M02DevRejected("S50 phase markers require controlled DEV source")
@@ -179,19 +184,22 @@ async def _motor_walk(session: MineflayerProcessSession, *,
             session, supervisor, issued, step, phase_hook=phase_hook,
             tick_gate_hook=tick_gate_hook, settle_hook=settle_hook)
         if v7_clock_gate_dev:
-            from adapters.mineflayer.m02_paper_dev.s50_boundary import reconcile, rows
+            from adapters.mineflayer.m02_paper_dev.s50_boundary import (
+                reconcile, reconcile_tick_meter, rows,
+            )
             arm_rows = rows(paper_log.read_text(), "M02_DEV_MOTION ")
             # Use the actual per-event source rate; full arm agreement is also
             # checked against the configured arm after server shutdown.
             rate = (float(arm_rows[0]["billed"]) / float(arm_rows[0]["blocks"])
                     if arm_rows else 0.0)
-            reconcile(paper_log.read_text(), {
+            (reconcile_tick_meter if v7_tick_meter_dev else reconcile)(
+                paper_log.read_text(), {
                 "action_id": issued.action_id, "source_session": effect.session_id,
                 "v7_phase_marker_id": marker_id,
                 "native_start_position": asdict(p),
                 "native_target_position": asdict(step.target),
                 "observed_progress_blocks": effect.progress_m,
-            }, walk_rate=rate)
+            }, walk_rate=v7_tick_meter_walk_rate if v7_tick_meter_dev else rate)
     except Exception as exc:
         unknown = supervisor.mark_unknown(
             issued.action_id, at_ns=15, provenance=provenance("s50-unknown"))
@@ -214,6 +222,7 @@ async def _motor_walk(session: MineflayerProcessSession, *,
         "controlled_pose_pre_move_verified": expected_start is not None,
         "v7_phase_marker_id": marker_id,
         "v7_clock_gate_dev": v7_clock_gate_dev,
+        "v7_tick_meter_dev": v7_tick_meter_dev,
         "action_id": issued.action_id,
         "action_state": closed.state.value,
         "requested_max_step_blocks": 1.0,
@@ -734,7 +743,8 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
                                expected_world_seed: int = 61021,
                                require_native_motion_tick_trace: bool = False,
                                phase_marker_id: str | None = None,
-                               require_paper_clock_gate: bool = False) -> dict:
+                               require_paper_clock_gate: bool = False,
+                               require_tick_motion_meter: bool = False) -> dict:
     """Bounded original Paper plugin sample gate; DEV only, not V science.
 
     Sampled tick counts the plugin's living-player callbacks, not host time,
@@ -775,7 +785,8 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
     total_charge = sum(x for _, x in pairs)
     if not (0.5 < total_blocks < 2
             and pairs and all(x > 0 and y >= 0 for x, y in pairs)
-            and abs(total_charge - total_blocks * 0.01 * ARMS[arm][1]) < 1e-7):
+            and abs(total_charge - (0 if require_tick_motion_meter
+                                    else total_blocks * 0.01 * ARMS[arm][1])) < 1e-7):
         raise M02DevRejected("V7 source WALK physical path/charge mismatch")
     if not samples or samples[0][0] != 1:
         raise M02DevRejected("V7 missing first native player tick sample")
@@ -795,6 +806,10 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
             if require_paper_clock_gate and phase is not None else None)
     if require_paper_clock_gate and gate is None:
         raise M02DevRejected("controlled V7 native World clock gate missing")
+    tick_meter = None
+    if require_tick_motion_meter:
+        from adapters.mineflayer.m02_paper_dev.s50_boundary import tick_motion_source
+        tick_meter = tick_motion_source(content, phase, 0.01 * ARMS[arm][1])
     if trace is not None and phase is not None and (
             trace["first_motion_world_tick"] <
             phase["server_world_ticks"]["PRE_FORWARD"]):
@@ -810,6 +825,7 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
         "native_motion_tick_trace": trace,
         "s50_server_phase_brackets": phase,
         "s50_paper_scheduled_clock_gate": gate,
+        "s50_tick_motion_meter": tick_meter,
         "native_world_geometry_source": world,
         "arm": arm, "physical_java_world": True,
         "source_player_ticks_minimum": minimum_player_basal_ticks,
@@ -939,6 +955,7 @@ async def run(
     v7_seed: int | None = None,
     v7_controlled_calibration_dev: bool = False,
     v7_server_clock_calibration_dev: bool = False,
+    v7_tick_meter_dev: bool = False,
 ) -> int:
     report: dict = {
         "milestone": "M0.2_PAPER_DEV",
@@ -959,6 +976,7 @@ async def run(
         "minecraft_version": MINECRAFT_VERSION,
         "v7_calibration_controlled_dev": v7_controlled_calibration_dev,
         "v7_server_clock_calibration_dev": v7_server_clock_calibration_dev,
+        "v7_tick_meter_dev": v7_tick_meter_dev,
         "v7_calibration_not_existing_science_roster": True,
     }
     root = None
@@ -975,6 +993,9 @@ async def run(
                 v7_server_clock_calibration_dev
                 and not v7_controlled_calibration_dev):
             raise M02DevRejected("server clock gate requires controlled V7 DEV")
+        if type(v7_tick_meter_dev) is not bool or (
+                v7_tick_meter_dev and not v7_server_clock_calibration_dev):
+            raise M02DevRejected("tick metering requires server-clock V7 DEV")
         if v7_arm is not None:
             from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
             if (v7_arm not in ARMS or type(v7_seed) is not int
@@ -1030,6 +1051,11 @@ async def run(
             config = render_arm(source_conf.read_bytes(), v7_arm).decode("utf-8")
         else:
             config = config.replace("dev-enabled: false", "dev-enabled: true")
+        if v7_tick_meter_dev:
+            if config.count("dev-enabled: true") != 1:
+                raise M02DevRejected("unexpected DEV config for tick meter")
+            config = config.replace("dev-enabled: true",
+                                    "dev-enabled: true\ns50-tick-meter-dev: true", 1)
         (conf_dir / "config.yml").write_text(config, encoding="utf-8")
         report.update({
             "paper_sha256": paper_sha,
@@ -1096,14 +1122,18 @@ async def run(
                 session, expected_start=controlled_pose,
                 v7_phase_source=(server, server_log)
                 if v7_controlled_calibration_dev else None,
-                v7_clock_gate_dev=v7_server_clock_calibration_dev)
+                v7_clock_gate_dev=v7_server_clock_calibration_dev,
+                v7_tick_meter_dev=v7_tick_meter_dev,
+                v7_tick_meter_walk_rate=0.01 * ARMS[v7_arm][1]
+                if v7_tick_meter_dev else None)
             report["stage"] = "V7_SOURCE_WORLD_TICK_200"
             report["v7_source"] = await _v7_wait_source_tick(
                 server_log, v7_arm, minimum_player_basal_ticks=200,
                 expected_world_seed=v7_seed,
                 require_native_motion_tick_trace=v7_controlled_calibration_dev,
                 phase_marker_id=report["movement"]["v7_phase_marker_id"],
-                require_paper_clock_gate=v7_server_clock_calibration_dev)
+                require_paper_clock_gate=v7_server_clock_calibration_dev,
+                require_tick_motion_meter=v7_tick_meter_dev)
             final = await _correlated_observe(session, "v7-final-no-food")
             report["v7_final_body"] = {
                 "food": final.snapshot.food,
@@ -1194,6 +1224,7 @@ async def run(
                     if v7_server_clock_calibration_dev:
                         from adapters.mineflayer.m02_paper_dev.s50_boundary import (
                             reconcile,
+                            reconcile_tick_meter,
                             verify_native,
                         )
                         from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
@@ -1202,8 +1233,10 @@ async def run(
                             [json.loads(x) for x in (output_dir / "original_native.jsonl").read_text().splitlines()],
                             [json.loads(x) for x in (output_dir / "owner_commands.jsonl").read_text().splitlines()],
                             movement)
-                        report["s50_physical_boundary"] = reconcile(
-                            server_log.read_text(), movement, walk_rate=0.01 * ARMS[v7_arm][1])
+                        report["s50_physical_boundary"] = (
+                            reconcile_tick_meter if v7_tick_meter_dev else reconcile
+                        )(server_log.read_text(), movement,
+                          walk_rate=0.01 * ARMS[v7_arm][1])
                     report["status"] = "PASS"
                     report["classification"] = "M02_PAPER_DEV_ONLY_PHYSICS_OBSERVED"
                 except Exception as exc:
@@ -1248,6 +1281,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="separate fixed-pose Paper DEV, never science")
     parser.add_argument("--v7-server-clock-calibration-dev", action="store_true",
                         help="six-Paper-tick gate in controlled V7 DEV; never science")
+    parser.add_argument("--v7-tick-meter-dev", action="store_true",
+                        help="new isolated World-tick motion-chord WALK writer; DEV only")
     parser.add_argument("--paper-b1", choices=("on", "off"),
                         help="Paper B1 BLOCKED→Memory/cheap OFF→lateral S50→pickup→EAT DEV")
     parser.add_argument("--forage-dev", action="store_true",
@@ -1271,6 +1306,7 @@ def main(argv: list[str] | None = None) -> int:
             args.paper_b1,
             True if args.v7_controlled_calibration_dev else None,
             True if args.v7_server_clock_calibration_dev else None,
+            True if args.v7_tick_meter_dev else None,
             args.v7_arm, args.v7_seed,
         )):
             parser.error("qualification preflight accepts ONLY --asset-root; no DEV/World options")
@@ -1300,6 +1336,8 @@ def main(argv: list[str] | None = None) -> int:
     if (args.v7_server_clock_calibration_dev
             and not args.v7_controlled_calibration_dev):
         parser.error("--v7-server-clock-calibration-dev requires controlled V7 DEV")
+    if args.v7_tick_meter_dev and not args.v7_server_clock_calibration_dev:
+        parser.error("--v7-tick-meter-dev requires --v7-server-clock-calibration-dev")
     if args.paper_b1 is not None and not args.forage_dev:
         parser.error("--paper-b1 requires --forage-dev")
     if any(v is None for v in (
@@ -1315,6 +1353,7 @@ def main(argv: list[str] | None = None) -> int:
         v7_arm=args.v7_arm, v7_seed=args.v7_seed,
         v7_controlled_calibration_dev=args.v7_controlled_calibration_dev,
         v7_server_clock_calibration_dev=args.v7_server_clock_calibration_dev,
+        v7_tick_meter_dev=args.v7_tick_meter_dev,
     ))
 
 
