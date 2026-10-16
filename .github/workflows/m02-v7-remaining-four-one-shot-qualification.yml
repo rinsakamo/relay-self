@@ -17,8 +17,10 @@ concurrency:
 
 jobs:
   four-separately-scoped-physical-worlds:
-    # One launch commit only. Rerun attempts and all subsequent edits are inert.
-    if: "github.run_attempt == 1 && github.event.head_commit.message == 'S QUAL: launch four M0.2 V7 arms once (2026-10-17)'"
+    # FROZEN after physical launch #38922286471 (all 4 new one-shot grants CONSUMED).
+    # Immutable exact launched source HEAD: deea081c76437d6cc30374b69da4798e69fa8b73.
+    # Never restart this workflow, regardless of job failure or later R rereview.
+    if: false
     strategy:
       fail-fast: false
       matrix:
