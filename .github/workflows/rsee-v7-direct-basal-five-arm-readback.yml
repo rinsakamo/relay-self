@@ -179,6 +179,37 @@ jobs:
           print("R_V7_NEW_PAPER_NBT_WORLD_IDENTITY_REVIEW_ONLY="+
                 json.dumps(result,sort_keys=True))
           PY
+      - name: Independently trace each native packet position and World tick
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          from experiments.standard_env import v7_m02_motion_trace_audit as motion
+          from experiments.standard_env import v7_m02_direct_basal_readback as basal
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"new-basal-originals"
+          arms={}
+          for arm in basal.RATES:
+              found=[p for p in (root/arm).rglob("paper_server.log")
+                     if p.is_file() and not p.is_symlink()
+                     and all(not ancestor.is_symlink() for ancestor in p.parents)]
+              assert len(found)==1,"ambiguous original Paper motion: "+arm
+              measured=motion.review(found[0].read_bytes())
+              expect_walk=0.0 if arm in ("WALK_ZERO","BOTH_ZERO") else .01
+              assert abs(measured["observed_charge_per_actual_block"]-expect_walk)<1e-8
+              arms[arm]=measured
+              print("R_V7_ACTUAL_PAPER_MOTION_POSE_DEV_SOURCE "+arm+" "+
+                    json.dumps(measured,sort_keys=True))
+          data={
+              "classification":"RSEE_V7_FIVE_MOTION_POSES_SOURCE_ONLY",
+              "per_arm":arms,
+              "same_world_seed_but_actual_start_pose_may_differ":True,
+              "physical_collision_causality_attested":False,
+              "science_trials_credited":0,
+              "v_science_go":False,
+              "changed_plugin_qualified":False,
+          }
+          path=pathlib.Path(os.environ["RUNNER_TEMP"])/"r-v7-new-motion-pose-review.json"
+          path.write_text(json.dumps(data,sort_keys=True,indent=2)+"\n")
+          PY
       - name: Archive all original S artifacts plus R read-only receipt
         if: always()
         uses: actions/upload-artifact@v4
@@ -188,5 +219,6 @@ jobs:
             ${{ runner.temp }}/new-basal-originals/
             ${{ runner.temp }}/r-v7-new-basal-review.json
             ${{ runner.temp }}/r-v7-new-world-nbt-review.json
+            ${{ runner.temp }}/r-v7-new-motion-pose-review.json
           retention-days: 90
           if-no-files-found: warn
