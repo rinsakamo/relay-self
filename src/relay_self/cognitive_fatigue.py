@@ -7,11 +7,11 @@ This is a deterministic evaluator-side candidate, not a live S integration.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from hashlib import sha256
 import json
 import math
 import re
+from dataclasses import dataclass
+from hashlib import sha256
 
 _TOKEN = re.compile(r"[A-Za-z0-9_.:/-]{1,160}\Z")
 _SHA = re.compile(r"[0-9a-f]{64}\Z")
