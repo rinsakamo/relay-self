@@ -102,6 +102,16 @@ physical session nor a second qualification authorization was performed.
 Preserve the failed R verdicts in audit history rather than deleting or
 calling those failures PASS.
 
+## Irreversible workflow freeze
+
+After the consumed physical run and independent R qualification, S #545
+changed the same one-shot GitHub Actions job to explicit `if: false`
+(**S HEAD `e4d274014fdfe8d05117147463a6013dc38527ec`**).
+The resulting [Actions run #38909128834](https://github.com/rinsakamo/relay-self/actions/runs/38909128834)
+was **SKIPPED**. No second qualification World may be launched from this
+workflow by a push or retry. The pre-freeze original physical run remains
+immutably tied to its own historical S workflow HEAD and artifact.
+
 ## Scope boundaries
 
 - **Qualified:** only the specific M0.2 new JAR + `BASE_ON` tick-chord
