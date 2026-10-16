@@ -14,6 +14,18 @@ ARMS = ("BASE_ON", "SHAM_ON", "BASAL_ZERO", "WALK_ZERO", "BOTH_ZERO")
 TOLERANCE_BLOCKS = 0.005
 CLASS = "RSEE_V7_M02_PRESCIENCE_MEASUREMENT_NOT_ADMITTED"
 
+# Pinned observations from R's independently archived five-arm DEV source readback
+# (workflow 38819700537). These are fixed historical observations, not a
+# prospective acceptable path target. A caller-supplied JSON is NOT itself
+# original-byte authentication; the original independent R audit remains required.
+HISTORIC_SOURCE_OBSERVATIONS = {
+    "BASE_ON": (7, 1.039090342887362),
+    "SHAM_ON": (9, 1.2828913533098643),
+    "BASAL_ZERO": (9, 1.2828913533098634),
+    "WALK_ZERO": (9, 1.2828913533098634),
+    "BOTH_ZERO": (9, 1.2828913533098643),
+}
+
 
 class NotAdmitted(ValueError):
     pass
@@ -76,6 +88,14 @@ def review(paper_receipt: dict[str, Any]) -> dict[str, Any]:
     check(abs(delta - reported_delta) < 1e-9
           and paper_receipt.get("paired_path_tolerance_met") is
           (delta <= TOLERANCE_BLOCKS), "producer R pair-difference mismatch")
+    # The historic source gate must not accept a caller-edited receipt even
+    # when its path delta and paired_path_tolerance_met flag are also edited
+    # consistently. New DEV cohorts require a new, separately audited source.
+    for name, (original_packets, original_path) in HISTORIC_SOURCE_OBSERVATIONS.items():
+        observed = summaries[name]
+        check(observed["packet_count"] == original_packets
+              and abs(observed["blocks"] - original_path) <= 1e-10,
+              "historic independently reviewed packet/path changed")
     path_valid = delta <= TOLERANCE_BLOCKS
     direct_basal = all(
         arms[a].get("source_basal_physical_debit_independently_attested") is True
@@ -90,6 +110,8 @@ def review(paper_receipt: dict[str, Any]) -> dict[str, Any]:
         "observed_path_max_minus_min_blocks": delta,
         "predeclared_tolerance_blocks": TOLERANCE_BLOCKS,
         "actual_paths_comparable": path_valid,
+        "historic_observation_shape_pinned": True,
+        "original_bytes_authenticated_by_this_json_gate": False,
         "native_source_basal_written_cumulative": "NOT_IN_ORIGINALS",
         "direct_basal_source_authenticated": False,
         "all_actual_source_ticks_bounded_to_exact_experiment_interval": False,
