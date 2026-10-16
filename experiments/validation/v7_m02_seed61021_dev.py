@@ -60,10 +60,17 @@ def review_real_dev_metadata() -> dict:
         raise v7.V7Rejected("fixed R original shows a mismatch; unexpected drift")
     if not result["prescience_attempts_preserved"] == {"DEV": 5, "QUALIFICATION": 0}:
         raise v7.V7Rejected("prospective five-arm source metadata incomplete")
+    observed_rates = {}
     for arm, (_, blocks, debit) in SOURCE.items():
         _, walk = v7.MULTIPLIERS[arm]
-        if abs(debit - 0.01 * walk * blocks) >= 1e-7:
-            raise v7.V7Rejected("foreign R Paper original costs")
+        if not (v7.finite(blocks) and blocks > 0 and v7.finite(debit)):
+            raise v7.V7Rejected("invalid physical path/debit for WALK rate")
+        rate = debit / blocks
+        expected_rate = 0.01 * walk
+        if (abs(debit - expected_rate * blocks) >= 1e-7
+                or abs(rate - expected_rate) >= 1e-7):
+            raise v7.V7Rejected("foreign R Paper original WALK rate")
+        observed_rates[arm] = rate
     return {
         "classification": "V7_M02_REAL_DEV_FIVE_ARM_PRESCIENCE_UNMATCHED_PATHS",
         "S_original_run_id": S_RUN, "S_original_head": S_HEAD,
@@ -77,6 +84,10 @@ def review_real_dev_metadata() -> dict:
         "match_path_tolerance_blocks": v7_path,
         "observed_path_max_minus_min_blocks": diff,
         "paired_paths_eligible": False,
+        # Independent descriptive source accounting, NOT a prereg amendment.
+        "walk_rate_source_accounting": "CONSISTENT_R_REVIEWED_DEV_ONLY",
+        "walk_rate_requires_paired_path_match": False,
+        "walk_rate_is_scientific_effect": False,
         "basal_physical_charge_independently_measured": False,
         "mechanism_source_cost_recomputed": True,
         "scientific_effect_estimated": False,
@@ -87,6 +98,9 @@ def review_real_dev_metadata() -> dict:
                 "S_artifact_zip_sha256": v[0],
                 "source_observed_path_blocks": v[1],
                 "source_observed_walk_exhaustion": v[2],
+                "observed_walk_exhaustion_per_block": observed_rates[arm],
+                "expected_walk_exhaustion_per_block":
+                    v7.WALK_RATE * v7.MULTIPLIERS[arm][1],
             } for arm, v in SOURCE.items()
         },
     }
