@@ -116,6 +116,8 @@ def reserve_s60_l2(
     If the provider fails to start, do NOT treat this reservation as idle.
     Request identity is still an S-owner claim; L cannot authenticate it.
     """
+    if profile.mode == "OFF":
+        raise S60FatigueRejected("OFF uses existing S60 flow without fatigue reservation")
     if (
         not isinstance(plan, S60FatiguePlan)
         or plan != plan_s60_l2(profile, state, plan.original)
@@ -168,6 +170,9 @@ def settle_s60_l2(
         or usage.provider_facts.prompt_tokens is None
         or usage.provider_facts.completion_tokens is None
         or usage.provider_facts.total_tokens is None
+        or usage.provider_facts.total_tokens < 1
+        or (usage.source_status == "VERIFIED_NATURAL_COMPLETION"
+            and usage.provider_facts.finish_reason not in ("stop", "length"))
         or usage.provider_facts.total_tokens != (
             usage.provider_facts.prompt_tokens
             + usage.provider_facts.completion_tokens
