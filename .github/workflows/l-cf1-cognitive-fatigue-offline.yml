@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: l-cf1-\${{ github.workflow }}-\${{ github.ref }}
+  group: l-cf1-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -22,11 +22,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: \${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
       - name: Exact L5 ancestry and repository contracts
         env:
-          EXPECTED_HEAD: \${{ github.event.pull_request.head.sha || github.sha }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
           git merge-base --is-ancestor 17c5357fd5625274ee567ad979b780e77bf7b1e7 HEAD
