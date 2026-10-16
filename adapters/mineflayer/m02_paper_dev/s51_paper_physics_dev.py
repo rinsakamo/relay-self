@@ -185,7 +185,9 @@ async def _motor_walk(session: MineflayerProcessSession, *,
             tick_gate_hook=tick_gate_hook, settle_hook=settle_hook)
         if v7_clock_gate_dev:
             from adapters.mineflayer.m02_paper_dev.s50_boundary import (
-                reconcile, reconcile_tick_meter, rows,
+                reconcile,
+                reconcile_tick_meter,
+                rows,
             )
             arm_rows = rows(paper_log.read_text(), "M02_DEV_MOTION ")
             # Use the actual per-event source rate; full arm agreement is also
