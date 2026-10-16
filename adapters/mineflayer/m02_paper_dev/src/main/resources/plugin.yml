@@ -9,3 +9,7 @@ commands:
   relaydevphase:
     description: 'Console-only S DEV Paper tick marker; no Action authorization'
     usage: '/relaydevphase <marker_id> <phase>'
+
+  relaydevwait:
+    description: 'Console-only post-S50 World WAIT observation candidate; no P1 recovery'
+    usage: '/relaydevwait <marker_id>'
