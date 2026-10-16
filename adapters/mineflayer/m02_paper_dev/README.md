@@ -311,3 +311,27 @@ and physical matched-path gate all remain **NOT_ATTESTED**.
 Differences in server task latency, packet submission, and coast after
 clear are not silently normalized. No V7 original or science roster is
 reclassified. A changed Paper plugin/JAR needs fresh R owner admission.
+
+
+### Prospective six-Paper-tick clear-decision calibration (DEV only)
+
+The separate `--v7-controlled-calibration-dev --v7-server-clock-calibration-dev`
+mode retains the same disposable fixed-pose World, native S50 Action issuer,
+and console-only four source phase markers. At the server's
+`POST_FORWARD` callback, Paper schedules **one observation gate after six
+server ticks** (not a movement command), writing
+`M02_DEV_S50_CLOCK_GATE` with the action/session-scoped marker, original
+callback `world_full_time`, player tick and XYZ. S50 awaits that **actual
+source line instead of sleeping 0.30 host seconds**, then uses its existing
+native Mineflayer `clear_controls` issuer; failures still attempt clear.
+
+The original report's `s50_paper_scheduled_clock_gate` must show the
+unique callback `reached_full_time - base_full_time == 6`, the bound
+`POST_FORWARD` original and `POST_FORWARD <= gate <= PRE_CLEAR`.
+Duplicate, missing, wrong source, bad clock, foreign session or nonfinite
+XYZ is rejected. This attests the **server-observed decision gate**, *not*
+the exact server-effective forward-on/off motor control ticks. Client
+transmission delay, post-clear coasting and actual World packet path must
+still be recorded without exclusion. No result counts in V7's historical
+science roster, and changed plugin bytes cannot inherit an R qualification.
+The previously observed five-arm paired-path failures remain frozen.
