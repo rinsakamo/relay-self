@@ -56,7 +56,7 @@ def review_candidate(x: dict[str, Any]) -> dict[str, Any]:
           and x["arm"] == ARM,
           "unregistered Paper binary/arm/config")
     check(type(x["grant_id"]) is str
-          and len(x["grant_id"]) <= 128
+          and 0 < len(x["grant_id"]) <= 128
           and x["grant_id"] not in SPENT_GRANTS
           and "20261015" not in x["grant_id"],
           "consumed/undefined grant")
