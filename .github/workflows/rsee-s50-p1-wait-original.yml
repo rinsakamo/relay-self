@@ -1,0 +1,74 @@
+# R original-only byte audit of an already finished 2026-10-16 S DEV run.
+# Read-only. No Java, Node, Minecraft, consumed grant or source promotion.
+name: R S50 P1 WAIT original source review (offline)
+
+on:
+  push:
+    branches: [infra/rsee-r6-s9-native-original-readback-20261012]
+    paths:
+      - '.github/workflows/rsee-s50-p1-wait-original.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  original-source-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rinsakamo/relay-self
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Independently negative test WAIT full-tick and original shapes
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+          python -m pytest -q tests/test_rsee_s50_p1_wait_original_audit.py
+      - name: Download EXACT one previous S DEV original, no Physical World
+        run: |
+          set -euo pipefail
+          gh api -H 'Accept: application/vnd.github+json' \
+            "/repos/$GH_REPO/actions/artifacts/12055285327" \
+            --jq '.name' | grep -Fx 's-p1-postaction-wait-dev-61021-38921173953'
+          mkdir -p "$RUNNER_TEMP/r-p1-wait-source"
+          gh run download 38921173953 -R "$GH_REPO" \
+            -n s-p1-postaction-wait-dev-61021-38921173953 \
+            -D "$RUNNER_TEMP/r-p1-wait-source"
+      - name: Independent R read-only native WAIT source verdict, not R admission
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from experiments.standard_env.s50_p1_wait_original_audit import review, CLASS
+          base = Path(os.environ["RUNNER_TEMP"]) / "r-p1-wait-source"
+          candidates = list(base.rglob("m02_report.json"))
+          assert len(candidates) == 1, "source missing/ambiguous"
+          receipt = review(candidates[0].parent)
+          assert receipt["classification"] == CLASS
+          assert receipt["sampled_stationary_count"] == 8
+          assert receipt["observed_world_ticks"] == [62, 69]
+          assert receipt["whole_tick_motor_combat_inactivity"] == "NOT_ATTESTED"
+          assert receipt["global_solo_entity_census"] == "NOT_ATTESTED"
+          assert receipt["p1_wait_ticks_admitted"] == 0
+          assert receipt["p1_fatigue_recovered"] == 0
+          assert receipt["science_go"] is False
+          dest = Path(os.environ["RUNNER_TEMP"]) / "r-s50-p1-wait-original-verdict.json"
+          dest.write_text(json.dumps(receipt, sort_keys=True, indent=2)+"\n")
+          print("R_P1_WAIT_8_SAMPLED_STATIONARY_ORIGINALS_REVIEW_ONLY")
+          PY
+      - name: Archive only independent verdict, original retained by S
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r-s50-p1-eight-sample-source-only-${{ github.run_id }}
+          path: ${{ runner.temp }}/r-s50-p1-wait-original-verdict.json
+          retention-days: 90
+          if-no-files-found: warn
