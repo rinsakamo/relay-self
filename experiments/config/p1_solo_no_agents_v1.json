@@ -1,0 +1,33 @@
+{
+  "version": "P1_C_SOLO_V1",
+  "profile_id": "p1-solo-no-agents-1.21.8-candidate",
+  "minecraft_version": "1.21.8",
+  "dimension": "minecraft:overworld",
+  "self_player_id": "RelaySelf",
+  "world_mode": "R_S_ISOLATED_DISPOSABLE",
+  "science_qualified": false,
+  "server_settings": {
+    "spawn-monsters": false
+  },
+  "gamerules": {
+    "doMobSpawning": false,
+    "doTraderSpawning": false,
+    "doPatrolSpawning": false,
+    "doInsomnia": false,
+    "doWardenSpawning": false
+  },
+  "inert_entity_types": [
+    "minecraft:armor_stand",
+    "minecraft:arrow",
+    "minecraft:block_display",
+    "minecraft:experience_orb",
+    "minecraft:falling_block",
+    "minecraft:glow_item_frame",
+    "minecraft:interaction",
+    "minecraft:item",
+    "minecraft:item_display",
+    "minecraft:item_frame",
+    "minecraft:painting",
+    "minecraft:text_display"
+  ]
+}
