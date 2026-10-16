@@ -6,6 +6,8 @@ on:
       - infra/rsee-r6-s9-native-original-readback-20261012
     paths:
       - '.github/workflows/rsee-m02-v7-new-base-qualification-original-replay.yml'
+      - 'experiments/standard_env/m02_v7_tick_qualification_audit.py'
+      - 'tests/test_rsee_m02_v7_tick_qualification_audit.py'
 
 permissions:
   contents: read
