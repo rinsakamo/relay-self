@@ -533,3 +533,83 @@ def test_native_tick_writer_can_sample_in_pre_forward_world_tick():
     result = reconcile_tick_meter("\n".join(converted), movement, walk_rate=0.01)
     assert result["native_horizontal_path_blocks"] == pytest.approx(1.2088)
     assert result["observed_tick_motion_source"]["source_rows"] == 18
+
+
+def test_read_only_tick_original_rejects_fake_scope_before_source_access(tmp_path):
+    import json
+
+    from adapters.mineflayer.m02_paper_dev.s50_boundary import (
+        review_prospective_tick_bundle,
+    )
+
+    (tmp_path / "m02_report.json").write_text(json.dumps({
+        "status": "PASS", "owner_status": "PASS",
+        "v7_arm": "BASE_ON", "v7_calibration_controlled_dev": True,
+        "v7_server_clock_calibration_dev": True, "v7_tick_meter_dev": False,
+        "java_exit": 0, "node_exit": 0, "port_released_after_shutdown": True,
+    }))
+    with pytest.raises(BoundaryRejected, match="prospective isolated"):
+        review_prospective_tick_bundle(tmp_path)
+    with pytest.raises(BoundaryRejected, match="unsafe original"):
+        review_prospective_tick_bundle(tmp_path / "not-an-original-directory")
+
+
+def test_exhaustive_five_tick_originals_disallow_single_favorable_arm(tmp_path, monkeypatch):
+    from adapters.mineflayer.m02_paper_dev import s50_boundary as boundary
+    from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
+
+    roots = [tmp_path / arm for arm in ARMS]
+    for p in roots:
+        p.mkdir()
+    values = {
+        "BASE_ON": 1.9389928412050272,
+        "SHAM_ON": 1.7231471919306607,
+        "BASAL_ZERO": 1.9389928412050272,
+        "WALK_ZERO": 1.9389928412050272,
+        "BOTH_ZERO": 1.7231471919306607,
+    }
+
+    def original_review(path):
+        return {
+            "arm": path.name,
+            "source_native_tick_chord_lower_bound_blocks": values[path.name],
+            "classification": "S50_TICK_CHORD_WALK_LOWER_BOUND_DEV_SOURCE_REVIEW_ONLY",
+            "science_go": False,
+        }
+
+    monkeypatch.setattr(boundary, "review_prospective_tick_bundle", original_review)
+    result = boundary.compare_prospective_tick_bundles(roots)
+    assert result["observed_tick_chord_spread_blocks"] == pytest.approx(
+        0.2158456492743665
+    )
+    assert result["observed_chord_comparable"] is False
+    assert result["scientific_matched_continuous_path"] == "NOT_ATTESTED"
+    assert result["historical_v7_prereg_result_changed"] is False
+    assert result["science_go"] is False
+    for selected in (roots[:1], roots[:-1], roots[:-1] + roots[:1]):
+        with pytest.raises(BoundaryRejected):
+            boundary.compare_prospective_tick_bundles(selected)
+    values.pop("BOTH_ZERO")
+    with pytest.raises(KeyError):
+        boundary.compare_prospective_tick_bundles(roots)
+
+
+def test_five_arm_chord_match_does_not_attest_full_physical_path(tmp_path, monkeypatch):
+    """Even identical observed endpoints admit arbitrarily different sub-tick loops."""
+    from adapters.mineflayer.m02_paper_dev import s50_boundary as boundary
+    from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
+
+    roots = [tmp_path / arm for arm in ARMS]
+    for p in roots:
+        p.mkdir()
+    monkeypatch.setattr(
+        boundary, "review_prospective_tick_bundle",
+        lambda path: {
+            "arm": path.name,
+            "source_native_tick_chord_lower_bound_blocks": 1.0,
+        },
+    )
+    result = boundary.compare_prospective_tick_bundles(roots)
+    assert result["observed_chord_comparable"] is True
+    assert result["scientific_matched_continuous_path"] == "NOT_ATTESTED"
+    assert result["science_go"] is False
