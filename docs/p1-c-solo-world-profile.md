@@ -24,8 +24,9 @@
 ## Owner handoff
 
 - **R/S:** implement source-verified full loaded-chunk census + per-tick lifecycle emitter in the existing *disposable World path* (not another launcher). Verify actual controls readback and event continuity, isolation, server profile hash, initial entity purge and prevention, and cleanup. Preexisting S49 zombie regression stays on its different World profile. Use R/S original source receipts; profile configuration itself is never source proof.
-- **S:** consume only original source observations and preserve S action grants. Do not infer solo from nearby-entity absence; ensure effective REST can be measured against this profile separately, and keep fixed SEEK/MOVE_AWAY/forage policy inherited from prior work marked as designed baselines.
+- **S:** consume only original source observations and preserve S action grants. Do not infer solo from nearby-entity absence; ensure effective WAIT can be measured against this profile separately, and keep fixed SEEK/MOVE_AWAY/forage policy inherited from prior work marked as designed baselines.
 - **M:** M0.2 Paper hunger/energy remains its own authority; disabling hostile/passive spawn for solo research must not alter food/energy rules without a separately frozen variant. P1 Fatigue is not Minecraft exhaustion.
-- **V:** before SCIENCE, specify number of independent World seeds/trials, null retention and cleanup, immutable precondition, cheap fixed-rest/L1/L2/Fatigue-OFF arms, stopping rules, and explicit contamination handling. Physics pass, solo provenance qualification and cognitive benefit are **three different outcomes**.
+- **V:** before SCIENCE, specify number of independent World seeds/trials, null retention and cleanup, immutable precondition, cheap fixed-wait/L1/L2/Fatigue-OFF arms, stopping rules, and explicit contamination handling. Physics pass, solo provenance qualification and cognitive benefit are **three different outcomes**.
 
 **Stop rule now:** `P1_C_OFFLINE_SOURCE_CONTRACT_PASS` (if offline tests pass) is the **ceiling**. No science run or real zero-Mob World qualification can be claimed from the current implementation.
+**P1 Body revision (2026-10-16):** full-tick physical WAIT recovers Fatigue without any separate REST Action. Solo source qualification is independent of Body WAIT classification.
