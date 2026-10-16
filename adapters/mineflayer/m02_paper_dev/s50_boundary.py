@@ -777,12 +777,21 @@ if __name__ == "__main__":
     import json
 
     parser = argparse.ArgumentParser(description="Read-only S50 DEV original-byte review")
-    parser.add_argument("root", type=Path)
+    parser.add_argument("root", type=Path, nargs="?")
     parser.add_argument("--failed-attempt", action="store_true")
+    parser.add_argument("--tick-meter-original", action="store_true")
+    parser.add_argument("--five-tick-meter-originals", type=Path, nargs=5)
     args = parser.parse_args()
-    print(
-        json.dumps(
-            diagnose_bundle(args.root) if args.failed_attempt else review_bundle(args.root),
-            indent=2,
+    if args.five_tick_meter_originals is not None:
+        if args.root is not None or args.failed_attempt or args.tick_meter_original:
+            parser.error("five-arm source mode excludes single-run review")
+        verdict = compare_prospective_tick_bundles(args.five_tick_meter_originals)
+    else:
+        if args.root is None or (args.failed_attempt and args.tick_meter_original):
+            parser.error("one original path and one review mode required")
+        verdict = (
+            diagnose_bundle(args.root) if args.failed_attempt
+            else review_prospective_tick_bundle(args.root)
+            if args.tick_meter_original else review_bundle(args.root)
         )
-    )
+    print(json.dumps(verdict, indent=2, sort_keys=True))
