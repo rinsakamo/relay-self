@@ -119,7 +119,8 @@ async def _motor_walk(session: MineflayerProcessSession, *,
                       v7_phase_source: tuple | None = None,
                       v7_clock_gate_dev: bool = False,
                       v7_tick_meter_dev: bool = False,
-                      v7_tick_meter_walk_rate: float | None = None) -> dict:
+                      v7_tick_meter_walk_rate: float | None = None,
+                      v7_p1_wait_evidence_dev: bool = False) -> dict:
     issuer = issuer or _issue
     provenance = provenance or _p
     before = await _correlated_observe(session, "m02-before-walk")
@@ -149,6 +150,8 @@ async def _motor_walk(session: MineflayerProcessSession, *,
     if v7_tick_meter_dev and (not v7_clock_gate_dev
                               or v7_tick_meter_walk_rate not in (0.0, 0.01)):
         raise M02DevRejected("tick-meter requires known controlled DEV rate")
+    if v7_p1_wait_evidence_dev and not v7_tick_meter_dev:
+        raise M02DevRejected("P1 WAIT source requires native tick-meter DEV")
     if v7_phase_source is not None:
         if expected_start is None or len(v7_phase_source) != 2:
             raise M02DevRejected("S50 phase markers require controlled DEV source")
@@ -212,6 +215,18 @@ async def _motor_walk(session: MineflayerProcessSession, *,
         provenance=provenance("m02-paper-walk-1-outcome"),
     )
     save_lifecycle(closed, consequence=asdict(effect))
+    p1_wait_candidate = None
+    if v7_p1_wait_evidence_dev and closed.state is ActionState.OUTCOME:
+        # Original source starts AFTER genuine S50 terminal/clear, but a
+        # separate R whole-tick activity witness is STILL REQUIRED.
+        await _s50_p1_source_wait_window(server, paper_log, marker_id)
+        from adapters.mineflayer.m02_paper_dev.s50_boundary import phases
+        from adapters.mineflayer.m02_paper_dev.s50_p1_wait import candidate_wait_ticks
+        p1_wait_candidate = candidate_wait_ticks(
+            paper_log.read_text(encoding="utf-8"), marker_id=marker_id,
+            expected_world=phases(paper_log.read_text(encoding="utf-8"), marker_id)[0]["world"],
+            source_action_terminal=closed.state.value,
+        )
     if (closed.state is not ActionState.OUTCOME
             or supervisor.open_actions
             or effect.kind is SeekConsequenceKind.BLOCKED
@@ -225,6 +240,8 @@ async def _motor_walk(session: MineflayerProcessSession, *,
         "v7_phase_marker_id": marker_id,
         "v7_clock_gate_dev": v7_clock_gate_dev,
         "v7_tick_meter_dev": v7_tick_meter_dev,
+        "v7_p1_wait_evidence_dev": v7_p1_wait_evidence_dev,
+        "p1_wait_candidate": p1_wait_candidate,
         "action_id": issued.action_id,
         "action_state": closed.state.value,
         "requested_max_step_blocks": 1.0,
@@ -553,6 +570,31 @@ def _v7_native_motion_tick_trace(content: str) -> dict:
         "observed_server_packet_timing_not_client_control_timing": True,
     }
 
+
+
+async def _s50_p1_source_wait_window(server, paper_log: Path, marker_id: str) -> None:
+    """S-owned post-OUTCOME Paper observation only, NEVER apply P1 recovery."""
+    if (re.fullmatch(r"[A-Za-z0-9_-]{1,128}", marker_id) is None
+            or server.returncode is not None or server.stdin is None):
+        raise M02DevRejected("foreign P1 WAIT window / disconnected Paper")
+    _command(server, f"relaydevwait {marker_id}")
+    await server.stdin.drain()
+    for _ in range(150):
+        if not paper_log.is_file():
+            raise M02DevRejected("missing original Paper WAIT window")
+        original = paper_log.read_text(encoding="utf-8")
+        started = [x for x in original.splitlines()
+                   if "S50_DEV_WAIT_BEGIN " in x and
+                   f"marker_id={marker_id} " in x]
+        frames = [x for x in original.splitlines()
+                  if "S50_DEV_WAIT_TICK " in x and
+                  f"marker_id={marker_id} " in x]
+        if len(started) > 1 or len(frames) > 8:
+            raise M02DevRejected("duplicate/overlong Paper WAIT source")
+        if len(started) == 1 and len(frames) == 8:
+            return
+        await asyncio.sleep(0.05)
+    raise M02DevRejected("8 observed Paper WAIT source ticks missing")
 
 
 _V7_PHASES = ("PRE_FORWARD", "POST_FORWARD", "PRE_CLEAR", "POST_CLEAR")
@@ -958,6 +1000,7 @@ async def run(
     v7_controlled_calibration_dev: bool = False,
     v7_server_clock_calibration_dev: bool = False,
     v7_tick_meter_dev: bool = False,
+    v7_p1_wait_evidence_dev: bool = False,
 ) -> int:
     report: dict = {
         "milestone": "M0.2_PAPER_DEV",
@@ -998,6 +1041,9 @@ async def run(
         if type(v7_tick_meter_dev) is not bool or (
                 v7_tick_meter_dev and not v7_server_clock_calibration_dev):
             raise M02DevRejected("tick metering requires server-clock V7 DEV")
+        if type(v7_p1_wait_evidence_dev) is not bool or (
+                v7_p1_wait_evidence_dev and not v7_tick_meter_dev):
+            raise M02DevRejected("P1 WAIT observation requires tick meter DEV")
         if v7_arm is not None:
             from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
             if (v7_arm not in ARMS or type(v7_seed) is not int
@@ -1127,7 +1173,8 @@ async def run(
                 v7_clock_gate_dev=v7_server_clock_calibration_dev,
                 v7_tick_meter_dev=v7_tick_meter_dev,
                 v7_tick_meter_walk_rate=0.01 * ARMS[v7_arm][1]
-                if v7_tick_meter_dev else None)
+                if v7_tick_meter_dev else None,
+                v7_p1_wait_evidence_dev=v7_p1_wait_evidence_dev)
             report["stage"] = "V7_SOURCE_WORLD_TICK_200"
             report["v7_source"] = await _v7_wait_source_tick(
                 server_log, v7_arm, minimum_player_basal_ticks=200,
@@ -1285,6 +1332,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="six-Paper-tick gate in controlled V7 DEV; never science")
     parser.add_argument("--v7-tick-meter-dev", action="store_true",
                         help="new isolated World-tick motion-chord WALK writer; DEV only")
+    parser.add_argument("--v7-p1-wait-evidence-dev", action="store_true",
+                        help="post-outcome Paper eight-tick inactivity source only; no P1 recovery")
     parser.add_argument("--paper-b1", choices=("on", "off"),
                         help="Paper B1 BLOCKED→Memory/cheap OFF→lateral S50→pickup→EAT DEV")
     parser.add_argument("--forage-dev", action="store_true",
@@ -1340,6 +1389,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--v7-server-clock-calibration-dev requires controlled V7 DEV")
     if args.v7_tick_meter_dev and not args.v7_server_clock_calibration_dev:
         parser.error("--v7-tick-meter-dev requires --v7-server-clock-calibration-dev")
+    if args.v7_p1_wait_evidence_dev and not args.v7_tick_meter_dev:
+        parser.error("--v7-p1-wait-evidence-dev requires --v7-tick-meter-dev")
     if args.paper_b1 is not None and not args.forage_dev:
         parser.error("--paper-b1 requires --forage-dev")
     if any(v is None for v in (
@@ -1356,6 +1407,7 @@ def main(argv: list[str] | None = None) -> int:
         v7_controlled_calibration_dev=args.v7_controlled_calibration_dev,
         v7_server_clock_calibration_dev=args.v7_server_clock_calibration_dev,
         v7_tick_meter_dev=args.v7_tick_meter_dev,
+        v7_p1_wait_evidence_dev=args.v7_p1_wait_evidence_dev,
     ))
 
 
