@@ -872,3 +872,56 @@ def test_v7_controlled_source_requires_phase_original_not_host_sleep(tmp_path):
     assert _v7_native_motion_tick_trace(body)["first_motion_world_tick"] == 40
     with pytest.raises(M02DevRejected, match="phases"):
         _v7_phase_bracket_source(body, "session-only-phase")
+
+
+def test_v7_scheduled_paper_clock_gate_strict_source_and_claim_ceiling():
+    from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import (
+        _v7_clock_gate_source, _v7_phase_bracket_source,
+    )
+    marker = "m02-paper-walk-1-00abc"
+    def phase(p, tick):
+        return ("M02_DEV_S50_PHASE "
+                f"marker_id={marker} phase={p} world_full_time={tick} "
+                f"player_tick={tick - 9} x=0.5 y=-60.0 z=0.5")
+    four = "\n".join((
+        phase("PRE_FORWARD", 100), phase("POST_FORWARD", 101),
+        phase("PRE_CLEAR", 107), phase("POST_CLEAR", 108),
+    )) + "\n"
+    bracket = _v7_phase_bracket_source(four, marker)
+    gate = ("M02_DEV_S50_CLOCK_GATE "
+            f"marker_id={marker} scheduled_delta=6 base_full_time=101 "
+            "reached_full_time=107 player_tick=98 x=1.1 y=-60.0 z=0.5\n")
+    result = _v7_clock_gate_source(four + gate, marker, bracket)
+    assert result["scheduled_world_ticks"] == 6
+    assert result["phase_pre_clear_lag_ticks"] == 0
+    assert result["host_walltime_sleep_replaced"]
+    assert not result["cross_arm_identical_actual_motion_attested"]
+    assert not result["server_effective_motion_control_stop_attested"]
+    for bad in (
+        "", gate + gate,
+        gate.replace("base_full_time=101", "base_full_time=100"),
+        gate.replace("reached_full_time=107", "reached_full_time=108"),
+        gate.replace("scheduled_delta=6", "scheduled_delta=7"),
+        gate.replace("player_tick=98", "player_tick=-1"),
+        gate.replace("x=1.1", "x=nan"),
+        gate.replace("marker_id=" + marker, "marker_id=foreign"),
+        gate.replace("z=0.5", "z=0.5 bogus=1"),
+        gate.replace("reached_full_time=107", "reached_full_time=nan"),
+    ):
+        with pytest.raises(M02DevRejected):
+            _v7_clock_gate_source(four + bad, marker, bracket)
+
+
+def test_v7_server_clock_cli_never_runs_without_registered_fixedpose():
+    with pytest.raises(SystemExit):
+        main(["--v7-server-clock-calibration-dev"])
+    with pytest.raises(SystemExit):
+        main(["--v7-arm", "BASE_ON", "--v7-seed", "61021",
+              "--v7-server-clock-calibration-dev"])
+    with pytest.raises(SystemExit):
+        main(["--qualification-preflight", "--asset-root", "/tmp/nonexistent",
+              "--v7-server-clock-calibration-dev"])
+    from inspect import signature
+    assert signature(dev.run).parameters[
+        "v7_server_clock_calibration_dev"
+    ].default is False
