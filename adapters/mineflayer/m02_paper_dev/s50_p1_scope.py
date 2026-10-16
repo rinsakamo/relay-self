@@ -6,7 +6,9 @@ S cannot issue an authoritative P1 WAIT interval from this evidence.
 """
 from __future__ import annotations
 
+import hashlib
 import re
+import uuid
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import (
     BoundaryRejected,
@@ -32,12 +34,16 @@ def review_scope(original: str, *, marker: str, world: str,
         raise BoundaryRejected("not an eight-tick source candidate")
     samples = rows(original, "S50_DEV_WAIT_SCOPE ")
     ticks = rows(original, "S50_DEV_WAIT_TICK ")
+    entities = rows(original, "S50_DEV_WAIT_ENTITY ")
     if len(samples) != 8 or len(ticks) != 8:
         raise BoundaryRejected("missing/duplicate scope or WAIT snapshots")
     previous = None
     ambiguous = []
     other_online = []
     other_entities = []
+    types = {}
+    roster_digests = []
+    cursor = 0
     for idx, (r, t) in enumerate(zip(samples, ticks), 1):
         stamp = wait_first_tick + idx - 1
         if (r.get("marker_id") != marker or r.get("world") != world
@@ -58,6 +64,50 @@ def review_scope(original: str, *, marker: str, world: str,
                 or nums["other_online_players"] > nums["loaded_entities"]
                 or integer(r, "teleport_events") > integer(r, "movement_events")):
             raise BoundaryRejected("impossible loaded-chunk census")
+        subject = r.get("subject_uuid")
+        try:
+            subject = str(uuid.UUID(subject))
+        except (TypeError, ValueError) as exc:
+            raise BoundaryRejected("no canonical native Self UUID") from exc
+        observed = []
+        seen = set()
+        for entry_index in range(1, nums["loaded_entities"] + 1):
+            if cursor >= len(entities):
+                raise BoundaryRejected("truncated original roster")
+            e = entities[cursor]
+            cursor += 1
+            if (e.get("marker_id") != marker or e.get("world") != world
+                    or integer(e, "tick") != stamp
+                    or integer(e, "index") != idx
+                    or integer(e, "roster_index") != entry_index):
+                raise BoundaryRejected("foreign or reordered native roster")
+            try:
+                identity = str(uuid.UUID(e.get("uuid", "")))
+                entity_world = str(uuid.UUID(e.get("entity_world", "")))
+                chunk_x = int(e["chunk_x"])
+                chunk_z = int(e["chunk_z"])
+            except (ValueError, KeyError, TypeError) as exc:
+                raise BoundaryRejected("invalid native entity locator") from exc
+            if (identity != e.get("uuid") or entity_world != e.get("entity_world")
+                    or identity in seen
+                    or re.fullmatch("[A-Z0-9_]{2,80}", e.get("type", "")) is None):
+                raise BoundaryRejected("duplicate/noncanonical entity ID or type")
+            seen.add(identity)
+            value = f"{entity_world}:{chunk_x}:{chunk_z}:{identity}:{e['type']}"
+            observed.append(value)
+            if idx == 1:
+                types[e["type"]] = types.get(e["type"], 0) + 1
+        if (len(seen) != nums["loaded_entities"]
+                or (subject in seen) is False
+                or len(seen - {subject}) != nums["other_loaded_entities"]
+                or observed != sorted(observed)):
+            raise BoundaryRejected("native subject/other census or ordering mismatch")
+        computed = hashlib.sha256(
+            ("".join(value + "\\n" for value in observed)).encode("utf-8")
+        ).hexdigest()
+        if computed != digest:
+            raise BoundaryRejected("native roster SHA disagrees with entity rows")
+        roster_digests.append(computed)
         counts = tuple(integer(r, name) for name in COUNTERS)
         if (integer(r, "combat_events") != integer(t, "combat_events")
                 or integer(r, "swing_events") != integer(t, "swing_events")):
@@ -71,11 +121,16 @@ def review_scope(original: str, *, marker: str, world: str,
         if nums["other_loaded_entities"] > 0:
             other_entities.append(stamp)
         previous = counts
+    if cursor != len(entities):
+        raise BoundaryRejected("extra or duplicated native roster originals")
     return {
         "classification": "S_P1_LOADED_CHUNK_CENSUS_AND_EVENTS_SAMPLE_ONLY",
         "first_world_tick": wait_first_tick,
         "last_world_tick": wait_last_tick,
         "source_scope_rows": len(samples),
+        "source_entity_rows": len(entities),
+        "first_sample_entity_types": types,
+        "native_roster_digests": roster_digests,
         "activity_counter_changed_after_first_sampler": ambiguous,
         "other_online_players_seen_ticks": other_online,
         "other_loaded_entities_seen_ticks": other_entities,
