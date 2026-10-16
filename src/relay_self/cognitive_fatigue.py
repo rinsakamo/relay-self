@@ -103,7 +103,9 @@ class FatigueState:
         data = dict(session_id=session_id, profile_sha256=profile.sha256,
                     last_ns=at_ns, seq=0, fatigue=initial, total_metered_tokens=0,
                     active_work_id=None, active_cumulative_tokens=0,
-                    active_max_tokens=0, used_work_ids=(), blocked=initial >= profile.block_at,
+                    active_max_tokens=0, used_work_ids=(),
+                    blocked=(profile.mode not in ("OFF", "FIXED")
+                             and initial >= profile.block_at),
                     chain_hash=_hash(["genesis", session_id, profile.sha256, at_ns]),
                     version="L-CF-v1")
         return cls(**data, state_sha256=_hash(data))
