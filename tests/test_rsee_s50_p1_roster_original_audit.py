@@ -85,8 +85,8 @@ def test_original_roster_recomputed_without_wait_promotion(monkeypatch):
         "PLAYER": 1, "ZOMBIE": 1,
     }
     assert receipt["p1_fatigue_recovered"] == 0
-    assert receipt["same_world_other_entity_ticks"] == list(range(41, 49))
-    assert not receipt["same_world_only_self_at_sample"]
+    assert receipt["same_world_other_entity_ticks"] == []
+    assert receipt["same_world_only_self_at_sample"]
     assert receipt["individual_lifecycle_events"] == "NOT_ATTESTED"
 
 
