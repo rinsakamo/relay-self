@@ -184,3 +184,12 @@ def test_l0_owner_remains_completely_outside_l2_gate():
     assert plan_s60_l2(FatigueProfile(mode="OFF"),
                        FatigueState.genesis(FatigueProfile(mode="OFF"), "session-a", 0),
                        BASE).action_authority is False
+
+def test_off_legacy_supplier_can_use_smaller_output_than_ceiling():
+    p, s = fixture("OFF")
+    plan = plan_s60_l2(p, s, BASE)
+    async def run():
+        adapter = make_s60_adapter(plan, lambda req: payload(req, 32))
+        assert b'"max_tokens": 32' in adapter._payload(request())
+        assert adapter.config is BASE
+    asyncio.run(run())
