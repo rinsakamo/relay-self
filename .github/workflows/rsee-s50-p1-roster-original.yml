@@ -23,7 +23,7 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
-      - name: R roster negative controls, before archived source
+      - name: R corrected per-World roster negative controls, before archived source
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
           python -m pytest -q tests/test_rsee_s50_p1_roster_original_audit.py
