@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   stopped-five-clone-dev:
-    if: "github.run_attempt == 1 && github.event.head_commit.message == 'S V8 DEV: launch one stopped Paper World seed62101'"
+    if: "github.run_attempt == 1 && github.event.head_commit.message == 'S V8 DEV: retry one stopped Paper World seed62101 after preflight fix'"
     runs-on: ubuntu-latest
     timeout-minutes: 18
     env:
