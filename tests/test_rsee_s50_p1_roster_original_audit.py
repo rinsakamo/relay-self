@@ -6,7 +6,6 @@ import pytest
 
 from experiments.standard_env import s50_p1_roster_original_audit as audit
 
-
 SOURCE_HEAD = "c1d1004f8b748b2e848b8db6a89ae6c91599891a"
 SELF = "00000000-0000-0000-0000-000000000002"
 MOB = "00000000-0000-0000-0000-000000000003"
