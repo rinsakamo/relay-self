@@ -476,3 +476,60 @@ server tick, permanent quiet, R qualification, science, or P1 WAIT recovery
 is asserted. Blocked MOVE and zero-distance MOVE remain MOVE (not WAIT).
 Physical rates stay unchanged; only their movement quantity source changes
 for the explicitly enabled DEV arm.
+
+
+### Original-only S50 WALK metering scope screen (after R BASE_ON qualification)
+
+A **read-only**, S-owned metering-scope reviewer is available without a
+new Paper build, motor action, expired or reused grant, or extra World run:
+
+```bash
+PYTHONPATH=src:. python -m adapters.mineflayer.m02_paper_dev.s50_boundary \
+  /absolute/unpacked/BASE_ON/output --tick-meter-original
+
+PYTHONPATH=src:. python -m adapters.mineflayer.m02_paper_dev.s50_boundary \
+  --five-tick-meter-originals \
+  /absolute/unpacked/BASE_ON/output \
+  /absolute/unpacked/SHAM_ON/output \
+  /absolute/unpacked/BASAL_ZERO/output \
+  /absolute/unpacked/WALK_ZERO/output \
+  /absolute/unpacked/BOTH_ZERO/output
+```
+
+The checker rejects ordinary old event-only profiles, source-reported
+failure/UNKNOWN, changed exact candidate config SHA, broken local evidence
+hash, missing source-issued Action/OUTCOME/STOP, nonsequential native ACK,
+noncontinuous source-tick writer, source/write mismatch, or missing 200
+requested BASAL writes. It independently recomputes source
+tick-chord distance and native WALK input rather than accepting S's saved
+arithmetic. It treats both source-event WALK charge and post-hoc
+reimbursement as forbidden. The five-arm screen requires **all five
+distinct sources** and preserves the pre-registered 0.005-block gate,
+rather than allowing selection of a favorable subset.
+
+**Scope decision (as of 2026-10-16):**
+- *Candidate source quantity:* native observed horizontal tick chords can
+  be used to verify lower-bound displacement and direct exhaustion-writer
+  *input* in the controlled S50 DEV fixture. They exceed old event-only
+  measured distance for the specific observed traces.
+- *R qualification:* independent R archival review of all five DEV sources
+  is REVIEW_ONLY. A subsequent separate user-authorized, now-consumed
+  **one-shot R engineering QUALIFICATION covers BASE_ON only**, exact
+  pinned JAR/config/source/World/Action/STOP. See R #575 and the sealed
+  verdict in R Draft #610; the S reviewer **never** issues that verdict.
+- *Not admitted:* exact continuous within-tick distance, universal
+  walking energy ledger for Minecraft, human/animal ecological rate,
+  full net hunger/saturation response, full physical WAIT/P1 recovery,
+  other four BASAL/WALK arm qualifications, 1-block hard movement cap,
+  old/new V7 science, or a causal comparison. Identical tick-chord
+  summaries cannot rule out different sub-tick paths or hidden turns.
+- *Live / future:* the experimental Paper flag is still opt-in and the
+  tick writer is S50-controlled-fixture specific. It is **not a validated
+  general metering replacement** for arbitrary mobs, collisions, liquid,
+  forced motion, combat, or indefinite runtime. Do not silently promote it
+  to P1 Body fitness or world-model feedback.
+
+Original source artifacts expire 2026-11-15; R's independent 90-day
+original/verdict archive is the durable independent witness. No new
+QUALIFICATION start or fresh SCIENCE grant is authorized by this section.
+The 6-world-tick gate and frozen old V7 matched-path FAIL are not revised.
