@@ -335,3 +335,65 @@ transmission delay, post-clear coasting and actual World packet path must
 still be recorded without exclusion. No result counts in V7's historical
 science roster, and changed plugin bytes cannot inherit an R qualification.
 The previously observed five-arm paired-path failures remain frozen.
+
+### S50 physical boundary (2026-10-16, new DEV source)
+
+The existing `--v7-server-clock-calibration-dev` now observes a bounded
+post-clear quiet window before probing and closing the supervised Action.
+Paper emits `S50_DEV_TICK` (native World UUID/full time, actual pose,
+monotonic motion count/path/billing) for up to 100 World ticks starting at
+PRE_FORWARD. Phase markers and native PlayerMoveEvent rows carry the same
+World and Action/session composite marker. This is an observer only: no server
+motor command, velocity change, teleport, rollback or new Action grant.
+
+`seek_execution.py` continues to own forward and clear, including clear in
+`finally` on lost ACK/gate failure. A clear ACK means Mineflayer
+`clearControlStates()` returned; it does not mean velocity is zero or identify
+a server-effective control tick. Six World ticks are measured from the
+POST_FORWARD console bracket, not from an invented shared clock.
+The new settle callback requires six consecutive native snapshots spanning
+five quiet intervals (unchanged XYZ, event count, distance and billing).
+A source gap, regression, identity mismatch or timeout leaves UNKNOWN;
+the original issued/terminal lifecycle is saved in `s50_action_original.jsonl`.
+Its `at_ns` values are explicitly synthetic DEV logical ordering, not measured
+host nanoseconds or World ticks. Missing connection or release ACK remains
+unattested; session termination is separate from successful release.
+
+`s50_boundary.reconcile` independently sums the horizontal native event path,
+checks chained XYZ and every snapshot's event prefix, applies the configured
+WALK rate to realized blocks, and compares actual target-directed progress
+with S50's OUTCOME progress. Path length, endpoint displacement and target
+progress are distinct. Overshoot is preserved, including moves away from a
+target. `distance_after_post_clear_world_bracket_blocks` is a conservative
+subset of release-tail movement, not exact clear-ACK-to-motion causality;
+same-tick event ordering cannot be reconstructed from tick numbers alone.
+Further movement after the first quiet window fails final reconciliation.
+The final raw bridge stream must contain the exact command/ACK lineage and
+native shutdown ACK. Raw files and lifecycle are hashed in the final report.
+Hashes detect changes against that saved receipt; self-consistent rewriting
+of both evidence and hashes is not independent provenance (R still required).
+
+**Nominal 1 block remains a request, not a physical cap.** A finite Paper
+clock gate bounds the requested control window, but host scheduling, console
+round trips, client packet scheduling, collision, momentum and transport
+failure prevent a strict distance or release-latency upper guarantee. There
+is no universal distance bound in this implementation. Observed quiet is
+bounded evidence, not a permanent physical-stop guarantee. No assertion,
+coordinate correction, billing refund or alternate server motor hides this.
+The observer is opt-in for this DEV route; legacy S50 consumers have not
+acquired native World attestation or live P1 capacity enforcement.
+
+P1 integration seam: retain World-local path by tick with the in-flight
+MOVE reference. Zero-distance/blocked MOVE and release settling never become
+WAIT recovery. Later no-Action ticks remain UNKNOWN for WAIT: full-tick
+motor/combat inactivity and P1/R source admission are additional requirements.
+P1 #626 latest correction (0ab76b4) supersedes old REST semantics. No P1
+parameters, capability limits, fatigue ownership or M0.2 rates are changed.
+
+Offline controls in `tests/test_s50_physical_boundary.py` cover normal,
+zero/short/overshoot path, release-tail movement, native ACK loss/rejection,
+connection end, wrong identity, missing/regressed/duplicate ticks/events,
+billing/coordinate corruption, missing STOP and unsettled/ended World.
+Synthetic controls establish rejection logic only; each new physical run,
+including failures, must retain originals. New JAR is not R-qualified;
+V7 SCIENCE remains 0/20 and historical V7 comparison failure is unchanged.

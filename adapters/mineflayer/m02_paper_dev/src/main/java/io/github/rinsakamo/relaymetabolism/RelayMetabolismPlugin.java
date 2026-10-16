@@ -50,6 +50,8 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private static final long S50_CLOCK_GATE_TARGET_WORLD_DELTA = 6L;
     private final Set<String> scheduledS50ClockGates = new HashSet<>();
     private String target;
+    private String s50Marker = "NONE";
+    private long s50ObserveUntil = -1;
     private long appliedTicks = 0;
     private long modifiedEvents = 0;
     private long observedWalkEvents = 0;
@@ -200,6 +202,16 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 if (p == null || !p.isOnline() || p.isDead()) {
                     return;
                 }
+                if (p.getWorld().getFullTime() <= s50ObserveUntil) {
+                    Location loc = p.getLocation();
+                    getLogger().info("S50_DEV_TICK marker_id=" + s50Marker
+                        + " world=" + p.getWorld().getUID()
+                        + " tick=" + p.getWorld().getFullTime()
+                        + " packets=" + observedMotionPackets
+                        + " blocks=" + observedMotionBlocks
+                        + " billed=" + chargedMotionExhaustion
+                        + " x=" + loc.getX() + " y=" + loc.getY() + " z=" + loc.getZ());
+                }
                 double delta = basal.perEvent(0);
                 double before = p.getExhaustion();
                 double next = before + delta;
@@ -280,11 +292,23 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
         if (p == null || !p.isOnline() || p.isDead()) {
             return false;
         }
+        if (args[1].equals("PRE_FORWARD")) {
+            if (!s50Marker.equals("NONE")) {
+                return false;
+            }
+            s50Marker = args[0];
+            s50ObserveUntil = p.getWorld().getFullTime() + 100;
+        } else if (!s50Marker.equals(args[0])) {
+            return false;
+        }
         Location pose = p.getLocation();
         long phaseWorldTime = p.getWorld().getFullTime();
         getLogger().info("M02_DEV_S50_PHASE marker_id=" + args[0]
             + " phase=" + args[1] + " world_full_time="
             + phaseWorldTime + " player_tick=" + appliedTicks
+            + " world=" + p.getWorld().getUID()
+            + " packets=" + observedMotionPackets + " blocks=" + observedMotionBlocks
+            + " billed=" + chargedMotionExhaustion
             + " x=" + pose.getX() + " y=" + pose.getY() + " z=" + pose.getZ());
         if (args[1].equals("POST_FORWARD")) {
             // Pure time gate, not a player movement command or Action issuer.
@@ -381,7 +405,9 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 + " from_z=" + from.getZ()
                 + " to_x=" + to.getX() + " to_y=" + to.getY()
                 + " to_z=" + to.getZ()
-                + " world_full_time=" + player.getWorld().getFullTime());
+                + " world_full_time=" + player.getWorld().getFullTime()
+                + " world=" + player.getWorld().getUID()
+                + " marker_id=" + s50Marker);
         }
     }
 

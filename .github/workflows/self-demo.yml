@@ -73,6 +73,7 @@ jobs:
               tests/test_feature_s51_eat_execution.py|\
               tests/test_self_dev.py|\
               tests/test_m02_paper_dev.py|\
+              tests/test_s50_physical_boundary.py|\
               tests/test_v6_world_qualification.py)
                 ;;
               *)

@@ -1,0 +1,333 @@
+"""S-owned DEV source reconciliation; correlation is not independent attestation.
+
+No control, physiology writes, WAIT recovery or authorization lives here.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import math
+from pathlib import Path
+
+
+class BoundaryRejected(ValueError):
+    """Missing, foreign, duplicated or inconsistent original source."""
+
+
+def rows(content: str, prefix: str) -> list[dict]:
+    result = []
+    for line in content.splitlines():
+        if prefix not in line:
+            continue
+        pairs = [token.split("=", 1) for token in line.split(prefix, 1)[1].split()]
+        if any(len(p) != 2 for p in pairs) or len(dict(pairs)) != len(pairs):
+            raise BoundaryRejected("malformed or duplicate source fields")
+        result.append(dict(pairs))
+    return result
+
+
+def number(row, key):
+    try:
+        value = float(row[key])
+    except (KeyError, ValueError) as exc:
+        raise BoundaryRejected("missing/invalid source number") from exc
+    if not math.isfinite(value):
+        raise BoundaryRejected("nonfinite source number")
+    return value
+
+
+def integer(row, key):
+    value = number(row, key)
+    if value < 0 or value != int(value):
+        raise BoundaryRejected("invalid source counter")
+    return int(value)
+
+
+def pose(row, prefix=""):
+    return tuple(number(row, prefix + a) for a in ("x", "y", "z"))
+
+
+def phases(content, marker):
+    found = rows(content, "M02_DEV_S50_PHASE ")
+    if (
+        len(found) != 4
+        or [r.get("phase") for r in found]
+        != ["PRE_FORWARD", "POST_FORWARD", "PRE_CLEAR", "POST_CLEAR"]
+        or any(r.get("marker_id") != marker for r in found)
+    ):
+        raise BoundaryRejected("missing/foreign/duplicate phase source")
+    if any(
+        integer(b, "world_full_time") < integer(a, "world_full_time")
+        for a, b in zip(found, found[1:])
+    ):
+        raise BoundaryRejected("regressed phase World time")
+    return found
+
+
+def quiet_window(content, marker):
+    """Six native snapshots spanning five complete observed quiet intervals."""
+    phase = phases(content, marker)
+    world = phase[0].get("world")
+    if not world or any(r.get("world") != world for r in phase):
+        raise BoundaryRejected("foreign/missing World")
+    ticks = rows(content, "S50_DEV_TICK ")
+    for i, row in enumerate(ticks):
+        if row.get("world") != world or row.get("marker_id") != marker:
+            raise BoundaryRejected("foreign tick source")
+        if i and integer(row, "tick") != integer(ticks[i - 1], "tick") + 1:
+            raise BoundaryRejected("missing/duplicate/regressed World tick")
+        pose(row)
+        if i and (
+            integer(row, "packets") < integer(ticks[i - 1], "packets")
+            or number(row, "blocks") < number(ticks[i - 1], "blocks")
+            or number(row, "billed") < number(ticks[i - 1], "billed")
+        ):
+            raise BoundaryRejected("regressed movement counters")
+    after = [r for r in ticks if integer(r, "tick") > integer(phase[-1], "world_full_time")]
+    for i in range(5, len(after)):
+        window = after[i - 5 : i + 1]
+        if all(
+            (integer(r, "packets"), pose(r), number(r, "blocks"), number(r, "billed"))
+            == (
+                integer(window[0], "packets"),
+                pose(window[0]),
+                number(window[0], "blocks"),
+                number(window[0], "billed"),
+            )
+            for r in window
+        ):
+            return phase, ticks, window
+    return None
+
+
+async def await_quiet(log: Path, marker: str):
+    for _ in range(100):
+        if not log.is_file():
+            raise BoundaryRejected("World source disappeared")
+        if quiet_window(log.read_text(), marker) is not None:
+            return
+        await asyncio.sleep(0.05)
+    raise BoundaryRejected("no bounded native quiet interval; physical end NOT_ATTESTED")
+
+
+def reconcile(content: str, movement: dict, *, walk_rate: float) -> dict:
+    marker = movement["action_id"] + "-" + movement["source_session"]
+    if movement["v7_phase_marker_id"] != marker:
+        raise BoundaryRejected("Action/session mismatch")
+    quiet = quiet_window(content, marker)
+    if quiet is None:
+        raise BoundaryRejected("quiet boundary NOT_ATTESTED")
+    phase, ticks, window = quiet
+    world = phase[0]["world"]
+    packets = rows(content, "M02_DEV_MOTION ")
+    start = pose(phase[0])
+    previous = start
+    distance = charge = 0.0
+    last_tick = integer(phase[0], "world_full_time")
+    post_clear = 0.0
+    per_tick = {}
+    for i, row in enumerate(packets, 1):
+        tick = integer(row, "world_full_time")
+        if (
+            integer(row, "id") != i
+            or row.get("marker_id") != marker
+            or row.get("world") != world
+            or row.get("reason") != "WALK"
+            or not last_tick <= tick <= integer(window[-1], "tick")
+        ):
+            raise BoundaryRejected("foreign/late/duplicate/regressed motion")
+        frm, to = pose(row, "from_"), pose(row, "to_")
+        if math.dist(frm, previous) > 1e-7:
+            raise BoundaryRejected("native coordinate discontinuity")
+        blocks = math.hypot(to[0] - frm[0], to[2] - frm[2])
+        billed = number(row, "billed")
+        if (
+            not 0 < blocks <= 1
+            or abs(blocks - number(row, "blocks")) > 1e-8
+            or abs(billed - blocks * walk_rate) > 1e-8
+        ):
+            raise BoundaryRejected("distance/billing mismatch")
+        distance += blocks
+        charge += billed
+        if (
+            abs(distance - number(row, "cumulative_blocks")) > 1e-7
+            or abs(charge - number(row, "cumulative_billed")) > 1e-7
+        ):
+            raise BoundaryRejected("cumulative source mismatch")
+        if tick > integer(phase[-1], "world_full_time"):
+            post_clear += blocks
+        per_tick[tick] = per_tick.get(tick, 0.0) + blocks
+        previous, last_tick = to, tick
+    if (
+        math.dist(previous, pose(window[-1])) > 1e-7
+        or integer(window[-1], "packets") != len(packets)
+        or abs(number(window[-1], "blocks") - distance) > 1e-7
+        or abs(number(window[-1], "billed") - charge) > 1e-7
+    ):
+        raise BoundaryRejected("missing motion or final pose mismatch")
+    # Snapshot counters identify the already-observed event prefix even when
+    # scheduler and movement callbacks share one World tick (ordering differs).
+    for snap in phase + ticks:
+        count = integer(snap, "packets")
+        if count > len(packets):
+            raise BoundaryRejected("snapshot refers to missing event")
+        prefix = packets[:count]
+        expected_pose = pose(prefix[-1], "to_") if prefix else start
+        if (
+            math.dist(pose(snap), expected_pose) > 1e-7
+            or abs(number(snap, "blocks") - sum(number(p, "blocks") for p in prefix)) > 1e-7
+            or abs(number(snap, "billed") - sum(number(p, "billed") for p in prefix)) > 1e-7
+        ):
+            raise BoundaryRejected("snapshot/event prefix mismatch")
+    # All later observed ticks must remain quiet; a temporary pause is not an end.
+    if any(
+        (integer(r, "packets") != len(packets) or math.dist(pose(r), previous) > 1e-7)
+        for r in ticks
+        if integer(r, "tick") >= integer(window[-1], "tick")
+    ):
+        raise BoundaryRejected("motion resumed after quiet boundary")
+    original_start = tuple(movement["native_start_position"][a] for a in ("x", "y", "z"))
+    if math.dist(start, original_start) > 1e-6:
+        raise BoundaryRejected("pre-Action drift")
+    target = movement["native_target_position"]
+    remaining = math.hypot(target["x"] - previous[0], target["z"] - previous[2])
+    initial = math.hypot(target["x"] - start[0], target["z"] - start[2])
+    progress = initial - remaining
+    if abs(progress - movement["observed_progress_blocks"]) > 1e-5:
+        raise BoundaryRejected("Action OUTCOME contradicts physical progress")
+    return {
+        "classification": "DEV_ONLY_SOURCE_RECONCILED_NOT_R_ATTESTED",
+        "world": world,
+        "marker_id": marker,
+        "nominal_requested_blocks": 1.0,
+        "native_horizontal_path_blocks": distance,
+        "native_target_progress_blocks": progress,
+        "native_walk_exhaustion": charge,
+        "distance_after_post_clear_world_bracket_blocks": post_clear,
+        "clear_ack_to_world_exact_tick": "NOT_ATTESTED",
+        "quiet_observed_from_tick": integer(window[0], "tick"),
+        "quiet_observed_through_tick": integer(ticks[-1], "tick"),
+        "physical_permanent_stop": "NOT_ATTESTED",
+        "hard_one_block_cap": "NOT_GUARANTEED",
+        "tick_classes": [
+            dict(
+                world_tick=integer(r, "tick"),
+                action_id=movement["action_id"],
+                distance=per_tick.get(integer(r, "tick"), 0.0),
+                kind=(
+                    "MOVE_OBSERVATION_NO_WAIT_RECOVERY"
+                    if integer(r, "tick") <= integer(window[-1], "tick")
+                    else "NO_ACTION_UNKNOWN_NO_WAIT_RECOVERY"
+                ),
+            )
+            for r in ticks
+        ],
+        "wait_recovery_eligible_ticks": 0,
+    }
+
+
+def verify_native(native: list[dict], commands: list[dict], movement: dict):
+    """Recheck original bridge command/ACK/probe identity, not host timestamps."""
+    session = movement["source_session"]
+    if (
+        not native
+        or any(r.get("session_id") != session for r in native)
+        or [r.get("seq") for r in native] != list(range(len(native)))
+    ):
+        raise BoundaryRejected("missing/duplicate/foreign native stream")
+    action = movement["action_id"]
+    for key, aid, effect in [
+        ("look_seq", action + "-look", "look"),
+        ("forward_seq", action, "set_control"),
+        ("clear_seq", action + "-clear", "clear_controls"),
+    ]:
+        index = movement[key]
+        ack = native[index] if 0 <= index < len(native) else {}
+        if (
+            ack.get("type") != "effect_result"
+            or ack.get("action_id") != aid
+            or ack.get("effect") != effect
+            or ack.get("result") != "applied"
+        ):
+            raise BoundaryRejected("native control ACK missing/foreign/rejected")
+        cmd = [r for r in commands if r.get("action_id") == aid]
+        if len(cmd) != 1 or cmd[0].get("effect") != effect:
+            raise BoundaryRejected("command missing/duplicated/foreign")
+        if effect == "set_control" and (
+            cmd[0].get("control") != "forward" or cmd[0].get("state") is not True
+        ):
+            raise BoundaryRejected("wrong control command")
+    seqs = [
+        movement[k]
+        for k in ("source_before_seq", "look_seq", "forward_seq", "clear_seq", "source_after_seq")
+    ]
+    if seqs != sorted(set(seqs)):
+        raise BoundaryRejected("native ACK chronology")
+    after = native[movement["source_after_seq"]]
+    if after.get("request_id") != action + "-seek-after":
+        raise BoundaryRejected("missing correlated final probe")
+    if len([r for r in native if r.get("type") == "shutdown_ack"]) != 1:
+        raise BoundaryRejected("STOP ACK NOT_ATTESTED")
+
+
+def review_bundle(root: Path) -> dict:
+    """Read-only replay of reconciliation against saved receipt byte hashes."""
+    import hashlib
+    import json
+
+    report = json.loads((root / "report.json").read_text())
+    required = {
+        "original_native.jsonl",
+        "owner_commands.jsonl",
+        "paper_server.log",
+        "s50_action_original.jsonl",
+    }
+    for name in required:
+        path = root / name
+        expected = report.get("evidence_hashes", {}).get(name)
+        if (
+            path.is_symlink()
+            or not path.is_file()
+            or hashlib.sha256(path.read_bytes()).hexdigest() != expected
+        ):
+            raise BoundaryRejected("original byte hash mismatch/missing: " + name)
+    movement = report["movement"]
+    journal = [json.loads(x) for x in (root / "s50_action_original.jsonl").read_text().splitlines()]
+    if (
+        len(journal) != 2
+        or [r.get("state") for r in journal] != ["issued", "outcome"]
+        or any(
+            r.get("action_id") != movement["action_id"]
+            or r.get("session_id") != movement["source_session"]
+            for r in journal
+        )
+        or [e["state"] for e in journal[0]["events"]] != ["proposed", "authorized", "issued"]
+        or journal[1]["events"][:-1] != journal[0]["events"]
+        or journal[1]["events"][-1]["state"] != "outcome"
+    ):
+        raise BoundaryRejected("formal issued/outcome journal mismatch")
+    verify_native(
+        [json.loads(x) for x in (root / "original_native.jsonl").read_text().splitlines()],
+        [json.loads(x) for x in (root / "owner_commands.jsonl").read_text().splitlines()],
+        movement,
+    )
+    from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
+
+    result = reconcile(
+        (root / "paper_server.log").read_text(),
+        movement,
+        walk_rate=0.01 * ARMS[report["v7_arm"]][1],
+    )
+    if report.get("java_exit") != 0 or report.get("node_exit") != 0:
+        raise BoundaryRejected("session cleanup not confirmed")
+    return result
+
+
+if __name__ == "__main__":
+    import argparse
+    import json
+
+    parser = argparse.ArgumentParser(description="Read-only S50 DEV original-byte review")
+    parser.add_argument("root", type=Path)
+    args = parser.parse_args()
+    print(json.dumps(review_bundle(args.root), indent=2))

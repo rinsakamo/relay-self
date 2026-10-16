@@ -47,7 +47,7 @@ jobs:
       - name: Source owner and native preflight (no Minecraft World)
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          python -m pytest -q tests/test_m02_paper_dev.py
+          python -m pytest -q tests/test_m02_paper_dev.py tests/test_s50_physical_boundary.py
           python - <<'PY'
           import os, socket, subprocess
           from adapters.mineflayer.m02_paper_dev import v7_paired_config as v7

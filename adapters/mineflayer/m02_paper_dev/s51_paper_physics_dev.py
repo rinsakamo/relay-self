@@ -155,13 +155,53 @@ async def _motor_walk(session: MineflayerProcessSession, *,
     if v7_clock_gate_dev:
         async def tick_gate_hook() -> None:
             await _v7_wait_clock_gate_source(paper_log, marker_id)
-    effect = await execute_seek_step(
-        session, supervisor, issued, step, phase_hook=phase_hook,
-        tick_gate_hook=tick_gate_hook)
+    journal = (paper_log.parent / "s50_action_original.jsonl"
+               if v7_phase_source is not None else None)
+    def save_lifecycle(lifecycle, **extra):
+        if journal is not None:
+            with journal.open("a", encoding="utf-8") as stream:
+                stream.write(json.dumps({
+                    "action_id": lifecycle.action_id,
+                    "session_id": session.started.session_id,
+                    "clock": "SYNTHETIC_DEV_LOGICAL_ORDER_NOT_WORLD_TIME",
+                    "state": lifecycle.state.value,
+                    "events": [asdict(e) for e in lifecycle.events],
+                    **extra,
+                }) + "\n")
+    save_lifecycle(issued)
+    settle_hook = None
+    if v7_clock_gate_dev:
+        from adapters.mineflayer.m02_paper_dev.s50_boundary import await_quiet
+        async def settle_hook():
+            await await_quiet(paper_log, marker_id)
+    try:
+        effect = await execute_seek_step(
+            session, supervisor, issued, step, phase_hook=phase_hook,
+            tick_gate_hook=tick_gate_hook, settle_hook=settle_hook)
+        if v7_clock_gate_dev:
+            from adapters.mineflayer.m02_paper_dev.s50_boundary import reconcile, rows
+            arm_rows = rows(paper_log.read_text(), "M02_DEV_MOTION ")
+            # Use the actual per-event source rate; full arm agreement is also
+            # checked against the configured arm after server shutdown.
+            rate = (float(arm_rows[0]["billed"]) / float(arm_rows[0]["blocks"])
+                    if arm_rows else 0.0)
+            reconcile(paper_log.read_text(), {
+                "action_id": issued.action_id, "source_session": effect.session_id,
+                "v7_phase_marker_id": marker_id,
+                "native_start_position": asdict(p),
+                "native_target_position": asdict(step.target),
+                "observed_progress_blocks": effect.progress_m,
+            }, walk_rate=rate)
+    except Exception as exc:
+        unknown = supervisor.mark_unknown(
+            issued.action_id, at_ns=15, provenance=provenance("s50-unknown"))
+        save_lifecycle(unknown, error=repr(exc), physical_outcome="NOT_ATTESTED")
+        raise
     closed = supervisor.record_outcome(
         issued.action_id, at_ns=15,
         provenance=provenance("m02-paper-walk-1-outcome"),
     )
+    save_lifecycle(closed, consequence=asdict(effect))
     if (closed.state is not ActionState.OUTCOME
             or supervisor.open_actions
             or effect.kind is SeekConsequenceKind.BLOCKED
@@ -170,6 +210,7 @@ async def _motor_walk(session: MineflayerProcessSession, *,
     return {
         "source_session": effect.session_id,
         "native_start_position": asdict(p),
+        "native_target_position": asdict(step.target),
         "controlled_pose_pre_move_verified": expected_start is not None,
         "v7_phase_marker_id": marker_id,
         "v7_clock_gate_dev": v7_clock_gate_dev,
@@ -438,7 +479,7 @@ def _v7_native_motion_tick_trace(content: str) -> dict:
             if key in fields or not value:
                 raise M02DevRejected("duplicated native motion tick token")
             fields[key] = value
-        if set(fields) != required or fields["reason"] != "WALK":
+        if set(fields) not in (required, required | {"world", "marker_id"}) or fields["reason"] != "WALK":
             raise M02DevRejected("incomplete or non-WALK native motion tick source")
         try:
             packet_id = int(fields["id"])
@@ -647,7 +688,9 @@ def _v7_phase_bracket_source(content: str, marker_id: str) -> dict:
             fields[key] = value
         if set(fields) != {
                 "marker_id", "phase", "world_full_time", "player_tick",
-                "x", "y", "z"} or fields["marker_id"] != marker_id:
+                "x", "y", "z"} and set(fields) != {
+                "marker_id", "phase", "world_full_time", "player_tick",
+                "x", "y", "z", "world", "packets", "blocks", "billed"} or fields["marker_id"] != marker_id:
             raise M02DevRejected("foreign/incomplete Paper phase source")
         try:
             tick = int(fields["world_full_time"])
@@ -1148,6 +1191,19 @@ async def run(
                             server_log, max_path_blocks=16 if forage_dev else 2,
                             allow_packet_only_walk=forage_dev,
                         )
+                    if v7_server_clock_calibration_dev:
+                        from adapters.mineflayer.m02_paper_dev.s50_boundary import (
+                            reconcile,
+                            verify_native,
+                        )
+                        from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
+                        movement = report["movement"]
+                        verify_native(
+                            [json.loads(x) for x in (output_dir / "original_native.jsonl").read_text().splitlines()],
+                            [json.loads(x) for x in (output_dir / "owner_commands.jsonl").read_text().splitlines()],
+                            movement)
+                        report["s50_physical_boundary"] = reconcile(
+                            server_log.read_text(), movement, walk_rate=0.01 * ARMS[v7_arm][1])
                     report["status"] = "PASS"
                     report["classification"] = "M02_PAPER_DEV_ONLY_PHYSICS_OBSERVED"
                 except Exception as exc:
@@ -1163,6 +1219,7 @@ async def run(
                 x.name: _sha256(x)
                 for x in (
                     raw, log, output_dir / "owner_commands.jsonl",
+                    output_dir / "s50_action_original.jsonl",
                     output_dir / "paper_b1_memory_original.jsonl",
                 ) if x.is_file()
             }

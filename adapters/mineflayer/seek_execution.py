@@ -49,6 +49,8 @@ class SeekConsequence:
 async def _effect(session, action_id: str, effect: str):
     for _ in range(100):
         frame = await asyncio.wait_for(session.receive(), timeout=8)
+        if getattr(frame, "session_id", None) != session.started.session_id:
+            raise SeekExecutionRejected("foreign native SEEK session")
         if isinstance(frame, MineflayerEffectResult):
             if frame.action_id == action_id and frame.effect == effect:
                 if frame.result != "applied":
@@ -79,6 +81,7 @@ async def execute_seek_step(
     step: SeekStep,
     *, phase_hook: Callable[[str], Awaitable[None]] | None = None,
     tick_gate_hook: Callable[[], Awaitable[None]] | None = None,
+    settle_hook: Callable[[], Awaitable[None]] | None = None,
 ) -> SeekConsequence:
     if (
         not isinstance(session, MineflayerProcessSession)
@@ -97,7 +100,7 @@ async def execute_seek_step(
         or not 0 < step.step_distance_m <= 2
     ):
         raise SeekExecutionRejected("current issued action and steer-only step required")
-    if tick_gate_hook is not None and phase_hook is None:
+    if (tick_gate_hook is not None or settle_hook is not None) and phase_hook is None:
         raise SeekExecutionRejected("DEV tick gate requires source phase observations")
     # Issued, source-scoped action ID is unique; child-effect IDs are not
     # independent action authorization.
@@ -133,6 +136,9 @@ async def execute_seek_step(
             clear = await _effect(session, clear_id, "clear_controls")
     if phase_hook is not None:
         await phase_hook("POST_CLEAR")
+    if settle_hook is not None:
+        # Observation only: no extra motor authority or position correction.
+        await settle_hook()
     request_id = issued.action_id + "-seek-after"
     await session.send_observe(request_id)
     after = await _probe(session, request_id)
