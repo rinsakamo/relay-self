@@ -61,6 +61,41 @@ def test_physical_source_observed_does_not_admit_original():
     assert receipt == original
 
 
+def test_walk_source_rate_matches_even_when_paired_world_path_does_not():
+    result = gate.review(_receipt())
+    assert result["walk_rate_accounting"] == (
+        "DEV_SOURCE_REVIEW_ONLY_CONSISTENT_WITH_CONFIG"
+    )
+    assert result["walk_rate_check_requires_matched_paths"] is False
+    assert not result["walk_rate_accounting_is_ecological_or_causal_proof"]
+    assert result["actual_paths_comparable"] is False
+    for arm, reported in result["arms"].items():
+        expected = 0.0 if arm in ("WALK_ZERO", "BOTH_ZERO") else 0.01
+        assert reported["within_arm_walk_rate_matches"] is True
+        assert reported["expected_walk_exhaustion_per_block"] == expected
+        assert reported["observed_walk_exhaustion_per_block"] == pytest.approx(
+            expected, abs=1e-12,
+        )
+        assert reported["walk_debit"] == pytest.approx(
+            reported["blocks"] * expected, abs=1e-12,
+        )
+    assert result["science_trials_credited"] == 0
+    assert not result["direct_basal_source_authenticated"]
+
+
+def test_walk_rate_division_rejects_zero_distance_or_fake_rate_source():
+    packet = _receipt()
+    packet["arms"]["BASE_ON"]["real_motion_path_blocks"] = 0.0
+    with pytest.raises(gate.NotAdmitted):
+        gate.review(packet)
+    packet = _receipt()
+    packet["arms"]["BASE_ON"]["observed_walk_debit"] = (
+        packet["arms"]["BASE_ON"]["real_motion_path_blocks"] * .02
+    )
+    with pytest.raises(gate.NotAdmitted):
+        gate.review(packet)
+
+
 @pytest.mark.parametrize(("field", "value"), [
     ("classification", "RSEE_V7_M02_SCIENCE_PASS"),
     ("producer_run", 38819265396),
