@@ -94,3 +94,65 @@ SCIENCE 0/20 and V6 0/48, and G3/production NO_GO. Ecological random-map
 failure/collision is a measured World outcome, not a reason to edit WALK
 cost or normalize different lengths after observing them. The R qualification
 of a mechanism is not evidence that a causal treatment improved survival.
+
+
+## Independent dual native-source reader (2026-10-16 R continuation)
+
+`experiments/standard_env/m02_v7_remaining_source_review.py` is an
+additional read-only, source-shape-only gate for prospective S logs. For any
+of the four unqualified arms, it independently combines three R-owned
+checks, **without importing S producer code**:
+
+1. Exact byte-for-byte profile-delta admission from
+   `m02_v7_remaining_profile_preflight.py`, with the pinned qualified
+   BASE_ON config reference and JAR/Paper/properties identity.
+2. Original Paper source reconstruction by
+   `s50_tick_chord_original_audit.review_paper_source`: Action/session
+   marker, Paper World UUID, consecutive tick-to-tick position chords,
+   native WALK setter inputs, zero duplicate event billing, positive
+   physical movement and bounded quiet observation.
+3. Independent BASAL-write reconstruction by
+   `v7_m02_direct_basal_readback.review_original_server_log`: first 200
+   consecutive target player callbacks, exact requested BASAL cost and
+   native immediate readback / source checkpoints.
+
+It requires an exact SHA256 comparator for the complete original
+`paper_server.log` and rejects an absent, aliased or changed local source.
+**A matching caller-supplied SHA does not independently authenticate the
+GitHub producer, native Action authority or host identity.** The original
+BASAL logger and tick-chord logger also do not establish a single synchronized
+World-tick Action bracket. A zero WALK cost with positive observed movement
+is valid for WALK_ZERO/BOTH_ZERO, not a cost-free general action.
+
+The only success classification is
+`R_M02_V7_REMAINING_ARM_BASAL_WALK_ORIGINAL_SHAPE_REVIEW_ONLY`.
+All `candidate_arm_engineering_qualified`,
+`native_terminal_action_or_eat_attested`,
+`native_pid_or_port_stop_attested`,
+`fresh_qualification_grant_issued`, `science_go` and `production_go`
+remain `false`. Tests
+`tests/test_rsee_m02_v7_remaining_source_review.py` exercise all four
+arms, cross-arm source substitution, loss or mutation of either stream,
+positive WALK debit in a zero-cost arm, false identities, and CLI immutability.
+
+Example using **prospective** (never frozen original-mutating) source:
+
+```sh
+PYTHONPATH=src:tests:. python -m experiments.standard_env.m02_v7_remaining_source_review \
+  --base-config-original "$PWD/tests/fixtures/rsee_m02_v7_tick_base_qualified_config.yml" \
+  --candidate-config /ABSOLUTE/PATH/SHAM_ON/config.yml \
+  --paper-original /ABSOLUTE/PATH/SHAM_ON/paper_server.log \
+  --paper-original-sha256 <64_character_independently_compared_original_digest> \
+  --arm SHAM_ON --action-marker <original_action_id>-<original_session_id> \
+  --plugin-sha256 a43afa4d0a1fdaf01c633efd2543ed24b6b53b12ee38ed62a33594057e701e8f \
+  --paper-binary-sha256 8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e \
+  --server-properties-sha256 11aaf903bae3d92f3b667f464f301a513bee559f04acc33d722c7a2e966d03ae
+```
+
+**Next independent qualification reviewer** remains distinct: S must first
+capture a new physically authorized original bundle (Action journal,
+native commands/ACK, actual JAR/config and initial World NBT, one-shot
+grant and process/STOP witnesses). R then needs a new, separately scoped
+complete original-bundle audit; this joint log reader alone cannot
+declare QUALIFIED. Repeated or failed starts under an already consumed grant
+remain prohibited. Frozen V7 paired scientific entry still fails.
