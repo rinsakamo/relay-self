@@ -522,7 +522,9 @@ def test_native_tick_writer_can_sample_in_pre_forward_world_tick():
             row = row.replace("S50_DEV_TICK_MOTION id=" + str(index) + " ",
                               "S50_DEV_TICK_MOTION id=" + str(index + 1) + " ", 1)
         converted.append(row)
-    converted.append(
+    converted.insert(
+        next(i for i, row in enumerate(converted)
+             if row.startswith("S50_DEV_TICK_MOTION ")),
         "S50_DEV_TICK_MOTION id=1 marker_id=action-session world=world "
         "world_full_time=10 from_x=0 from_y=0 from_z=0 to_x=0 to_y=0 to_z=0 "
         "blocks=0 billed=0 cumulative_blocks=0 cumulative_billed=0 "
