@@ -438,3 +438,41 @@ It reports native endpoint, tick chords, event meter, actual applied billing,
 release-tail bracket and the source gap separately. Hashes are checked against
 the original report; an independent retained receipt is still needed to attest
 the manifest itself. Successful legacy DEV paths do not override this result.
+
+
+
+### S50 candidate native World-tick WALK meter (prospective DEV only)
+
+The **new**, explicit `--v7-controlled-calibration-dev
+--v7-server-clock-calibration-dev --v7-tick-meter-dev` candidate stages a
+disposable Paper config with `s50-tick-meter-dev: true`, **only for this
+new DEV run**. The original M0.2 config template, five registered baseline
+renderings, former V7 originals, consumed permits and R qualifications remain
+unchanged. New plugin JAR and new config SHA require independent R admission.
+
+On `PRE_FORWARD`, the Paper plugin records a native player pose. On every
+subsequent living-player World tick it observes the next real Paper pose,
+computes the **horizontal chord between two actually sampled XYZ** and
+requests `Player.setExhaustion` once using the configured WALK
+`standard × multiplier + additional`, multiplied by that chord's blocks.
+Each call records before/requested/target/readback and cumulative blocks/debit
+in `S50_DEV_TICK_MOTION`. The original `M02_DEV_MOTION` PlayerMoveEvent is
+**still recorded**, but its own WALK write is zero to prevent double billing.
+Native land exhaustion event replacement remains zero as previously.
+
+The fail-closed reviewer `s50_boundary.reconcile_tick_meter` requires
+consecutive original World ticks, one event-independent native writer row per
+observed tick, finite continuous XYZ, billed amounts and accumulated readback,
+no concurrent event billing, snapshot identity, terminal native position,
+genuine S50 issued Action and already-existing native clear/STOP lineage.
+In the prospective tick profile, a missing or foreign meter source is
+`BLOCKED`, never a synthetic path or after-the-fact debit.
+
+**Claim ceiling:** The charge covers observed tick-to-tick *horizontal
+displacement lower bound*, **not** an independently measured full sub-tick
+path. World-tick sampling cannot establish loops or turns occurring entirely
+inside one server tick. No hard 1-block cap, exact client-control start/end
+server tick, permanent quiet, R qualification, science, or P1 WAIT recovery
+is asserted. Blocked MOVE and zero-distance MOVE remain MOVE (not WAIT).
+Physical rates stay unchanged; only their movement quantity source changes
+for the explicitly enabled DEV arm.
