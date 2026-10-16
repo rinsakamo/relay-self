@@ -489,6 +489,146 @@ def review_bundle(root: Path) -> dict:
     return result
 
 
+
+def review_prospective_tick_bundle(root: Path) -> dict:
+    """Read-only S source accounting; NEVER R qualification / physics admission.
+
+    Recomputes the prospective tick writer from original bytes, rather than
+    accepting source report values. It deliberately cannot certify sub-tick
+    continuous distance, exact physical WALK cost, or other V7 arm admission.
+    """
+    import hashlib
+    import json
+
+    from adapters.mineflayer.m02_paper_dev.v7_paired_config import (
+        ARMS, TEMPLATE, render_arm,
+    )
+
+    if root.is_symlink() or not root.is_dir():
+        raise BoundaryRejected("unsafe original source directory")
+    report_path = root / "m02_report.json"
+    if not report_path.is_file() or report_path.is_symlink():
+        raise BoundaryRejected("missing original producer report")
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    arm = report.get("v7_arm")
+    if (arm not in ARMS or report.get("status") != "PASS"
+            or report.get("owner_status") != "PASS"
+            or report.get("v7_calibration_controlled_dev") is not True
+            or report.get("v7_server_clock_calibration_dev") is not True
+            or report.get("v7_tick_meter_dev") is not True
+            or report.get("java_exit") != 0 or report.get("node_exit") != 0
+            or report.get("port_released_after_shutdown") is not True):
+        raise BoundaryRejected("prospective isolated physical S source not PASS")
+    configured = render_arm(TEMPLATE.read_bytes(), arm).replace(
+        b"dev-enabled: true", b"dev-enabled: true\\ns50-tick-meter-dev: true", 1
+    )
+    if hashlib.sha256(configured).hexdigest() != report.get("plugin_config_sha256"):
+        raise BoundaryRejected("changed/foreign original World physiology profile")
+    sources = {}
+    for name in (
+        "paper_server.log",
+        "s50_action_original.jsonl",
+        "original_native.jsonl",
+        "owner_commands.jsonl",
+    ):
+        path = root / name
+        if (path.is_symlink() or not path.is_file()
+                or hashlib.sha256(path.read_bytes()).hexdigest()
+                != report.get("evidence_hashes", {}).get(name)):
+            raise BoundaryRejected("original source hash missing/altered: " + name)
+        sources[name] = path.read_text(encoding="utf-8")
+    move = report.get("movement")
+    if (not isinstance(move, dict) or move.get("action_state") != "outcome"
+            or move.get("v7_tick_meter_dev") is not True
+            or move.get("source_session") != report.get("source_session_id")):
+        raise BoundaryRejected("prospective S50 formal Action OUTCOME missing")
+    journal = [json.loads(r) for r in
+               sources["s50_action_original.jsonl"].splitlines()]
+    if (len(journal) != 2 or [r.get("state") for r in journal] != ["issued", "outcome"]
+            or any(r.get("action_id") != move["action_id"]
+                   or r.get("session_id") != move["source_session"] for r in journal)
+            or [e.get("state") for e in journal[0].get("events", [])]
+            != ["proposed", "authorized", "issued"]
+            or journal[1]["events"][:-1] != journal[0]["events"]
+            or journal[1]["events"][-1]["state"] != "outcome"):
+        raise BoundaryRejected("unbound prospective issued-to-outcome evidence")
+    native = [json.loads(r) for r in sources["original_native.jsonl"].splitlines()]
+    commands = [json.loads(r) for r in sources["owner_commands.jsonl"].splitlines()]
+    verify_native(native, commands, move)
+    rate = 0.01 * ARMS[arm][1]
+    receipt = reconcile_tick_meter(sources["paper_server.log"], move, walk_rate=rate)
+    claimed = report.get("s50_physical_boundary") or {}
+    for field, value in (
+        ("native_horizontal_path_blocks", receipt["native_horizontal_path_blocks"]),
+        ("native_walk_exhaustion", receipt["native_walk_exhaustion"]),
+        ("native_event_observed_blocks_not_billed",
+         receipt["native_event_observed_blocks_not_billed"]),
+    ):
+        if abs(number(claimed, field) - value) > 1e-8:
+            raise BoundaryRejected("saved producer accounting contradicts originals")
+    # The original 200 BASAL inputs are direct requested native writes, not
+    # the eventual change in saturation, health or net Hunger.
+    basal = rows(sources["paper_server.log"], "M02_DEV_BASAL_WRITE ")
+    if len(basal) < 200:
+        raise BoundaryRejected("200 original living-player BASAL inputs absent")
+    basal_rate = 0.001 * ARMS[arm][0]
+    for i, row in enumerate(basal[:200], 1):
+        if (integer(row, "id") != i
+                or abs(number(row, "requested")-basal_rate) > 1e-8
+                or abs(number(row, "cumulative_requested") -
+                       i * basal_rate) > 1e-7):
+            raise BoundaryRejected("Paper BASAL native source inconclusive")
+    return {
+        "classification": "S50_TICK_CHORD_WALK_LOWER_BOUND_DEV_SOURCE_REVIEW_ONLY",
+        "arm": arm,
+        "marker_id": receipt["marker_id"],
+        "walk_rate_per_observed_tick_chord_block": rate,
+        "source_native_tick_chord_lower_bound_blocks":
+            receipt["native_horizontal_path_blocks"],
+        "source_native_walk_setter_input_exhaustion":
+            receipt["native_walk_exhaustion"],
+        "native_unbilled_event_witness_blocks":
+            receipt["native_event_observed_blocks_not_billed"],
+        "basal_first200_requested_input": basal_rate * 200,
+        "body_metering_scope": "OBSERVED_TICK_CHORD_ONLY",
+        "full_continuous_subtick_distance": "NOT_ATTESTED",
+        "unobserved_distance_upper_bound": "UNKNOWN",
+        "native_food_satiety_net_effect": "NOT_ATTESTED",
+        "one_block_physical_cap": "NOT_GUARANTEED",
+        "whole_world_wait_tick": "NOT_ATTESTED",
+        "r_engineering_qualification": "EXTERNAL_R_AUTHORITY_REQUIRED",
+        "scientific_causal_efficacy": "NOT_ATTESTED",
+        "physics_coefficients_calibrated": False,
+        "source_sha_only_not_independent_signature": True,
+        "science_go": False,
+    }
+
+
+def compare_prospective_tick_bundles(roots: list[Path]) -> dict:
+    """Exhaustive DEV five-arm source comparison; never repair V7's failed gate."""
+    from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
+
+    if len(roots) != len(ARMS) or len({str(p.resolve()) for p in roots}) != len(ARMS):
+        raise BoundaryRejected("five separate original arm directories required")
+    receipts = [review_prospective_tick_bundle(p) for p in roots]
+    names = [r["arm"] for r in receipts]
+    if set(names) != set(ARMS) or len(set(names)) != len(ARMS):
+        raise BoundaryRejected("missing/duplicated prospective five-arm sources")
+    distances = [r["source_native_tick_chord_lower_bound_blocks"] for r in receipts]
+    spread = max(distances) - min(distances)
+    return {
+        "classification": "S_V7_FIVE_ARM_DEV_SOURCE_SCREEN_NOT_SCIENCE",
+        "arm_receipts": {r["arm"]: r for r in receipts},
+        "observed_tick_chord_spread_blocks": spread,
+        "pre_registered_v7_path_tolerance_blocks": 0.005,
+        "observed_chord_comparable": spread <= 0.005,
+        "scientific_matched_continuous_path": "NOT_ATTESTED",
+        "historical_v7_prereg_result_changed": False,
+        "r_profile_qualifications": "NOT_EVALUATED_BY_S",
+        "science_go": False,
+    }
+
+
 def diagnose_motion(content: str, marker: str) -> dict:
     """Report native sources separately even when the physical boundary blocks.
 
