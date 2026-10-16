@@ -126,14 +126,12 @@ def preflight(
     if request.activity == "MOVE":
         if (not _positive(request.requested_blocks)
                 or request.requested_blocks > profile.nominal_move_limit_blocks
-                or not _key(request.action_ref)
-):
+                or not _key(request.action_ref)):
             raise P1BoundaryRejected("MOVE needs bounded requested distance and S Action ref")
         allowed = min(request.requested_blocks, cap.max_move_blocks_per_world_tick)
         constrained = allowed < request.requested_blocks
     elif request.activity == "FIGHT":
-        if (request.requested_blocks != 0 or not _key(request.action_ref)
-):
+        if (request.requested_blocks != 0 or not _key(request.action_ref)):
             raise P1BoundaryRejected("FIGHT requires a proposed S Action, not distance")
         if not cap.fight_mechanically_possible:
             raise P1BoundaryRejected("FIGHT mechanically unavailable at current fatigue")
