@@ -1,0 +1,72 @@
+{
+  "schema": "RELAYSELF_V5_B0_L0_PROSPECTIVE_1",
+  "issue": 619,
+  "parent_v4_head": "4c5de5fd111fd35c29bf5431eb681e87220035f7",
+  "s_source_head": "28cb0f588192ecfe5d03b12b818508352d1a40a8",
+  "status": "B0_CONCEPTUAL_SCOPE_OFFLINE_ONLY",
+  "required_mechanisms": [
+    "L0_NATIVE_OBSERVE_DECIDE",
+    "M0_ENERGY_AND_SENSOR",
+    "WORLD_ACTION_OUTCOME",
+    "SAME_BODY_MULTIEPOCH_CONTINUITY"
+  ],
+  "not_required_at_b0": [
+    "L1",
+    "L2",
+    "LEARNING",
+    "MEMORY_HABIT",
+    "REPRODUCTION",
+    "EVOLUTION"
+  ],
+  "scientific_targets": {
+    "t1": "STATE_CONDITIONAL_SEEK_WAIT_FROM_INTEROCEPTION",
+    "t2": "WORLD_VERIFIED_NET_VIABILITY_VERSUS_ENERGY_BLIND_CONTROLS",
+    "t3": "EXTRA_COMPLEX_COGNITION_VERSUS_EQUAL_INFORMATION_CHEAP_NOT_REQUIRED",
+    "higher_cognition_equal_information_cheap_null_preserved": true
+  },
+  "prospective": {
+    "regimes": [
+      "LOW_ENERGY",
+      "HIGH_ENERGY"
+    ],
+    "controls": [
+      "SENSOR_ON",
+      "SHAM_ON",
+      "MASKED_HIGH",
+      "ALWAYS_SEEK",
+      "ALWAYS_WAIT",
+      "EQUAL_INFORMATION_THRESHOLD"
+    ],
+    "primary_candidate": "REAL_WORLD_NET_M0_ENERGY_WITH_TERMINAL_AND_CENSORING",
+    "fixed_threshold": 8,
+    "fixed_quantum": 1,
+    "masked_gain": 0,
+    "masked_bias": 12,
+    "initial_energy_for_existing_b0": 12,
+    "capacity": 20,
+    "basal": 0.5,
+    "move_extra": 0.25,
+    "verified_eat_credit": 4,
+    "external_food_and_hazard_schedule": "REQUIRED_BEFORE_OUTCOMES",
+    "source_matched_native_world_time": "REQUIRED_BY_R",
+    "no_posthoc_optimization": true,
+    "cheap_information_equivalence_allowed_for_b0": true,
+    "learn_train_holdout_required_for_b0": false,
+    "train_holdout_required_for_future_learning_claim": true
+  },
+  "admission": {
+    "physical_multiregime_s_implemented": false,
+    "real_world_source_clock_qualified": false,
+    "original_b0_r_readback": "REVIEW_ONLY_58_FILES_50_OF_50",
+    "new_world_trials": 0,
+    "new_user_grants": false,
+    "ecological_effect": "UNTESTED",
+    "science_go": false,
+    "production_go": false
+  },
+  "frozen": [
+    "V2",
+    "V3",
+    "V4"
+  ]
+}

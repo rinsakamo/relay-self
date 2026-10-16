@@ -1,0 +1,52 @@
+{
+  "schema": "RELAYSELF_V6_B0_TWO_REGIME_G0_1",
+  "issue": 619,
+  "parent_v5_head": "b8162ea1d2824de366b15ddaea505d31db6b671c",
+  "s_source_head": "28cb0f588192ecfe5d03b12b818508352d1a40a8",
+  "state": "SOURCE_ONLY_G0_NOT_LIVE",
+  "source": {
+    "world_food": 13,
+    "one_native_item_type": "UNKNOWN",
+    "operator_item": "rotten_flesh",
+    "distance_m": 2.5,
+    "wait_m0_ticks": 11,
+    "horizon_m0_ticks": 16,
+    "max_move": 8,
+    "initial_energy_low": 12,
+    "initial_energy_high": 20,
+    "capacity": 20,
+    "basal": 0.5,
+    "move_extra": 0.25,
+    "verified_eat_credit": 4
+  },
+  "controls": [
+    "SENSOR_ON",
+    "SHAM_ON",
+    "SENSOR_MASKED_HIGH",
+    "ALWAYS_SEEK",
+    "ALWAYS_WAIT",
+    "EQUAL_INFO_CHEAP_THRESHOLD"
+  ],
+  "endpoints": {
+    "primary": "NATIVE_QUALIFIED_FIRST_ITEM_L0_CHOICE_CONDITIONAL_ON_TRUE_M0_ENERGY",
+    "secondary": "TRUE_M0_END_ENERGY_AND_VERIFIED_S51_EAT_WITH_CENSORING",
+    "cheap_info_tie_b0_allowed": true,
+    "complex_cognition_claim": false,
+    "ecological_value_unproven": true
+  },
+  "admission": {
+    "s_six_arm_live_mode": false,
+    "s_high_energy_live_mode": false,
+    "r_native_clock_matched": false,
+    "world_golden_qualified": false,
+    "user_per_run_grant": false,
+    "new_real_world_trials": 0,
+    "scientific_g3": "NO_GO"
+  },
+  "frozen": [
+    "V2",
+    "V3",
+    "V4",
+    "V5"
+  ]
+}

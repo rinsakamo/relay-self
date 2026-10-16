@@ -1,0 +1,322 @@
+name: V Lane V2 knockdown offline science gates
+
+on:
+  push:
+    branches:
+      - 'validation/v2-knockdown-*'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - 'validation/v1-independent-evaluation-20261012'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v2-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Exact V1 ancestry and isolated V-only files
+        env:
+          CURRENT_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$CURRENT_HEAD"
+          git merge-base --is-ancestor 53d50029da64a95c56bb56c6d48b5d14ce94e84a HEAD
+          # DEV/PR hygiene checks ownership, not a frozen count of filenames.
+          # Preregistered science manifests are still tested below; immutable
+          # scientific evidence is never reinterpreted by this path fence.
+          git diff --name-only --diff-filter=ACDMRTUXB 53d50029da64a95c56bb56c6d48b5d14ce94e84a HEAD > "$RUNNER_TEMP/paths"
+          while IFS= read -r changed; do
+            case "$changed" in
+              .github/workflows/validation-v2.yml|docs/validation-*.md|experiments/validation/*|tests/test_validation_*.py) ;;
+              *) echo "Out-of-owner change: $changed" >&2; exit 1 ;;
+            esac
+          done < "$RUNNER_TEMP/paths"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+      - name: V2 negative and V1 inherited focused tests
+        env:
+          PYTHONPATH: 'src:tests:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m pytest -q tests/test_validation_v2_knockdown.py tests/test_validation_v2_s_nonforcing_review.py tests/test_validation_v3_m0_energy.py tests/test_validation_v4_identifiability.py tests/test_validation_v5_b0_l0.py tests/test_validation_v6_b0_two_regime.py tests/test_validation_v6_b0_paired_world_plan.py tests/test_validation_v6_r_clock_source_review.py tests/test_validation_v6_b0_synthetic_scoring.py tests/test_validation_v7_m02_physics.py tests/test_validation_v7_m02_seed61021_dev.py tests/test_validation_v7_m02_direct_basal_dev.py tests/test_validation_v8_m02_ecology_candidate.py tests/test_validation_v8_m02_admission_bridge.py tests/test_validation_v1.py
+          python -m experiments.validation.v7_m02_seed61021_dev > "$RUNNER_TEMP/v7-dev-original-readback.json"
+          python -c 'import json,os; x=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v7-dev-original-readback.json"))); assert x["classification"]=="V7_M02_REAL_DEV_FIVE_ARM_PRESCIENCE_UNMATCHED_PATHS" and x["actual_dev_worlds"]==5 and not x["paired_paths_eligible"] and x["v7_science_trials"]==0'
+          python -m experiments.validation.v7_m02_physics > "$RUNNER_TEMP/v7-m02-plan.json"
+          python -m experiments.validation.v8_m02_admission_bridge > "$RUNNER_TEMP/v8-admission-bridge.json"
+          python -c 'import json,os; q=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v8-admission-bridge.json"))); assert q["roster"]["classification"]=="V8_CANDIDATE_ROSTER_ONLY_SCIENCE_NOT_ADMITTED" and q["roster"]["proposed_slots"]==40 and q["roster"]["executed_trials"]==0 and not q["roster"]["science_go"] and q["r_handoff"]["mechanism_engineering_profiles_total"]==5 and q["r_handoff"]["v7_frozen_matched_path_gate"]=="FAIL" and not q["r_handoff"]["v8_science_go"]'
+          python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v7-m02-plan.json"))); assert d["classification"]=="V7_M02_SYNTHETIC_INSTRUMENT_ARITHMETIC_ONLY" and d["synthetic_rows"]==20 and d["actual_world_starts"]==0 and not d["v_science_go"] and not d["ecological_calibration_qualified"]'
+          python -m experiments.validation.v2_knockdown > "$RUNNER_TEMP/v2-plan.json"
+          python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v2-plan.json"))); assert d["classification"]=="V2_PREREGISTRATION_ONLY" and not d["science_go"] and d["new_world_runs"]==0'
+          python -m experiments.validation.v3_m0_energy > "$RUNNER_TEMP/v3-plan.json"
+          python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v3-plan.json"))); assert d["classification"]=="V3_NEW_PROSPECTIVE_PRIMARY_NOT_RUN" and d["real_world_trials"]==0 and not d["science_go"]'
+          python -m experiments.validation.v4_identifiability > "$RUNNER_TEMP/v4-plan.json"
+          python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v4-plan.json"))); assert d["classification"]=="V4_G0_EQUAL_INFORMATION_CHEAP_REPLICATION_BLOCK" and not d["v4_real_s_product_mode_eligible"] and not d["science_go"]'
+          python -m experiments.validation.v5_b0_l0 > "$RUNNER_TEMP/v5-plan.json"
+          python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v5-plan.json"))); assert d["classification"]=="V5_B0_L0_ONLY_PROSPECTIVE_NOT_RUN" and not d["equal_information_cheap_beating_required"] and not d["science_go"]'
+          python -m experiments.validation.v6_b0_two_regime > "$RUNNER_TEMP/v6-plan.json"
+          python -c 'import json,os; x=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v6-plan.json"))); assert x["classification"]=="V6_B0_TWO_REGIME_SOURCE_CHOICES_QUALIFIABLE" and x["new_world_runs"]==0 and not x["science_go"]'
+          python -m experiments.validation.v6_b0_paired_world_plan > "$RUNNER_TEMP/v6-paired-plan.json"
+          python -c 'import json,os; d=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v6-paired-plan.json"))); assert d["classification"]=="V6_PAIRED_WORLD_PRE_ADMISSION_PROTOCOL_ONLY" and d["total_unexecuted_session_slots"]==48 and d["number_of_real_world_trials"]==0 and d["science_g3"]=="NO_GO"'
+          python -m experiments.validation.v6_b0_synthetic_scoring > "$RUNNER_TEMP/v6-score.json"
+          python -c 'import json,os; o=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v6-score.json"))); assert o["classification"]=="V6_SYNTHETIC_PREOUTCOME_SCORING_REHEARSAL_ONLY" and o["computed_complete_primary_pairs"]==16 and o["real_world_trials"]==0 and o["science_g3"]=="NO_GO"'
+          ruff check src tests experiments adapters observability
+          python tools/check_repository.py
+  pinned-r-owner:
+    # Full independent cross-owner/scientific pre-merge checks, not per DEV commit.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 94c68a97bd25de9e170d067c61894fc21783c5bf
+          path: external-r-v6
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Pinned R no-launch clock source and independent V NO-GO admission
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          test "$(git -C external-r-v6 rev-parse HEAD)" = "94c68a97bd25de9e170d067c61894fc21783c5bf"
+          (cd external-r-v6 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_rsee_v6_world_timing.py)
+          (cd external-r-v6 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m experiments.standard_env.v6_world_timing) > "$RUNNER_TEMP/v6-r-no-launch.json"
+          python -c 'import json,os; from pathlib import Path; from experiments.validation.v6_r_clock_source_review import review_json_file; q=review_json_file(Path(os.environ["RUNNER_TEMP"])/"v6-r-no-launch.json"); assert q["classification"]=="V6_R_THREE_CLOCK_PRODUCER_GAP_CONFIRMED_G0" and not q["physical_session_admitted"] and q["science_g3"]=="NO_GO"'
+          test -z "$(git -C external-r-v6 status --porcelain --untracked-files=no)"
+  pinned-s-owner:
+    # Full independent cross-owner/scientific pre-merge checks, not per DEV commit.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 6f95c34918fbe29fea56bc7284e94c4edce21aff
+          path: external-s
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 28cb0f588192ecfe5d03b12b818508352d1a40a8
+          path: external-s-v3
+          persist-credentials: false
+      - name: Execute original S sensor-gate tests without merging S
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-s rev-parse HEAD)" = "6f95c34918fbe29fea56bc7284e94c4edce21aff"
+          (cd external-s && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_b0_energy_bridge.py tests/test_b0_ground_foraging.py tests/test_b0_two_epoch.py)
+          PYTHONPATH="external-s/src:external-s/tests:external-s:src:." python -m experiments.validation.v2_s_nonforcing_review --s-root external-s > "$RUNNER_TEMP/v2-s-nonforcing.json"
+          python -c 'import json,os; r=json.load(open(os.path.join(os.environ["RUNNER_TEMP"],"v2-s-nonforcing.json"))); assert r["classification"]=="V2_S_NONFORCING_OFFLINE_PARITY_WITH_PREREG_MISMATCH" and r["s_opportunity_max_decisions_per_epoch"]==24 and r["v_registered_global_m0_horizon"]==16 and not r["v2_live_trial_admitted"] and not r["science_go"]'
+          test -z "$(git -C external-s status --porcelain --untracked-files=no)"
+      - name: Independent pinned S new global study & physics source qualification
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C external-s-v3 rev-parse HEAD)" = "28cb0f588192ecfe5d03b12b818508352d1a40a8"
+          (cd external-s-v3 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -m pytest -q tests/test_b0_two_epoch.py tests/test_b0_ground_foraging.py)
+          (cd external-s-v3 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python -c 'from experiments.metabolism_viability import MetabolismConfig; from adapters.mineflayer.b0_two_epoch import V2_HORIZON_M0_TICKS,V2_MAX_ISSUED_MOVES,V2_FIRST_ITEM_TICK,V2_ARMS; c=MetabolismConfig(); assert (c.initial_energy,c.basal_cost,c.move_cost,c.food_energy,c.capacity)==(12,.5,.25,4,20); assert (V2_HORIZON_M0_TICKS,V2_MAX_ISSUED_MOVES,V2_FIRST_ITEM_TICK)==(16,8,11); assert tuple(V2_ARMS)==("SENSOR_ON","SHAM_ON","SENSOR_MASKED","CHEAP_NATIVE")')
+          (cd external-s-v3 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python - <<'PY'
+          from dataclasses import replace
+          from adapters.mineflayer.b0_two_epoch import V2_ARMS
+          from adapters.mineflayer.b0_energy_bridge import (
+              B0EnergyLedger, B0_SENSOR_SEEK_THRESHOLD,
+          )
+          from experiments.metabolism_viability import Interoception
+          from test_b0_ground_foraging import _ground
+          assert B0_SENSOR_SEEK_THRESHOLD == 8.0
+          native = _ground()
+          native = replace(native, snapshot=replace(native.snapshot, food=13.0))
+          results = {}
+          for name, (policy, gain, bias) in V2_ARMS.items():
+              ledger = B0EnergyLedger(
+                  native.session_id, forage_policy=policy,
+                  sensor=Interoception(gain=gain, bias=bias),
+              )
+              for _ in range(11):
+                  ledger.step("WAIT")
+              assert ledger.body.tick == 11
+              assert ledger.body.energy == 6.5
+              decision = ledger.decide(native)
+              results[name] = (decision.kind, decision.sensor_reading)
+          assert results == {
+              "SENSOR_ON": ("SEEK", 6.0),
+              "SHAM_ON": ("SEEK", 6.0),
+              "SENSOR_MASKED": ("WAIT", 12.0),
+              "CHEAP_NATIVE": ("SEEK", 6.0),
+          }, results
+          PY
+          )
+          (cd external-s-v3 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python - <<'PY'
+          from dataclasses import replace
+          from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+          from experiments.metabolism_viability import Interoception, MetabolismConfig
+          from test_b0_ground_foraging import _ground
+          native = _ground()
+          native = replace(native, snapshot=replace(native.snapshot, food=13.0))
+          probes = ((12, 11, ("SEEK", "SEEK", "WAIT", "SEEK")),
+                    (4, 1, ("SEEK", "SEEK", "WAIT", "SEEK")),
+                    (20, 1, ("WAIT", "WAIT", "WAIT", "SEEK")))
+          for starting_e, waits, expected in probes:
+              actual = []
+              for name in ("SENSOR_ON", "SHAM_ON", "SENSOR_MASKED", "CHEAP_NATIVE"):
+                  policy = "native_only" if name == "CHEAP_NATIVE" else "sensor_gate"
+                  sensor = (Interoception(gain=0, bias=12)
+                            if name == "SENSOR_MASKED" else Interoception())
+                  ledger = B0EnergyLedger(
+                      native.session_id, forage_policy=policy, sensor=sensor,
+                      config=MetabolismConfig(initial_energy=starting_e),
+                  )
+                  for _ in range(waits):
+                      ledger.step("WAIT")
+                  actual.append(ledger.decide(native).kind)
+              assert tuple(actual) == expected, (starting_e, actual)
+          PY
+          )
+          (cd external-s-v3 && PYTHONPATH="$PWD/src:$PWD/tests:$PWD" python - <<'PY'
+          from dataclasses import replace
+          from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+          from adapters.mineflayer.b0_two_epoch import V2_ARMS
+          from experiments.metabolism_viability import MetabolismConfig, Interoception
+          from test_b0_ground_foraging import _ground
+          native = _ground()
+          native = replace(native, snapshot=replace(native.snapshot, food=13.0))
+          for start, expected in ((12, ("SEEK", "SEEK", "WAIT", "SEEK")),
+                                  (20, ("WAIT", "WAIT", "WAIT", "SEEK"))):
+              got = []
+              for arm, (policy, gain, bias) in V2_ARMS.items():
+                  ledger = B0EnergyLedger(
+                      native.session_id, forage_policy=policy,
+                      sensor=Interoception(gain=gain, bias=bias),
+                      config=MetabolismConfig(initial_energy=start),
+                  )
+                  for _ in range(11):
+                      ledger.step("WAIT")
+                  got.append(ledger.decide(native).kind)
+                  assert ledger.body.energy == start - 5.5
+                  assert ledger.credit_count == ledger.body.meals == 0
+              assert tuple(got) == expected, (start, got)
+          PY
+          )
+          test -z "$(git -C external-s-v3 status --porcelain --untracked-files=no)"
+  m02-s-profile-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: v7-review
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: 27a1dca3d77a7c7887df8a67275127ff0386e709
+          path: s-owned
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Independently compare frozen V7 factors to exact S-owned source bytes
+        env:
+          PYTHONPATH: 'v7-review/src:v7-review:'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git -C s-owned rev-parse HEAD)" = "27a1dca3d77a7c7887df8a67275127ff0386e709"
+          python - <<'PY'
+          import importlib.util, json, os
+          from pathlib import Path
+          from experiments.validation import v7_m02_physics as v
+          src = Path("s-owned/adapters/mineflayer/m02_paper_dev/v7_paired_config.py")
+          assert src.is_file() and not src.is_symlink()
+          spec = importlib.util.spec_from_file_location("s_v7_paper_profile", src)
+          s = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(s)
+          m = v.load_manifest()
+          assert tuple(s.ARMS) == tuple(m["design"]["arms_order"])
+          assert set(s.EXPECTED_KINDS) == {
+              "BASAL", "WALK", "CROUCH", "SPRINT", "SWIM",
+              "WALK_ON_WATER", "WALK_UNDERWATER", "JUMP",
+              "JUMP_SPRINT", "ATTACK", "DAMAGED", "BLOCK_MINED",
+              "REGEN", "HUNGER_EFFECT", "UNKNOWN", "COGNITION",
+          }
+          assert s.BASELINE_ENABLED_SHA256 == "e9361faa7eac2e3c63bf2f6760765f7f8ae5a4b3631c6819f7ad8ac5c04a540e"
+          original = s.TEMPLATE.read_bytes()
+          values = {a: s.render_arm(original, a) for a in s.ARMS}
+          assert len(values) == 5
+          assert values["BASE_ON"] == values["SHAM_ON"]
+          for arm, (basal, walk) in s.ARMS.items():
+              assert m["rate_arms"][arm] == {
+                  "basal_multiplier": basal, "walk_multiplier": walk,
+              }
+          dir = Path(os.environ["RUNNER_TEMP"]) / "v7-5-arm-dev-only"
+          packet = s.stage_candidate_configs(original, dir)
+          assert packet["real_world_starts"] == 0
+          assert not packet["science_go"] and not packet["qualification_reused"]
+          for arm, content in values.items():
+              assert (dir / arm / "config.yml").read_bytes() == content
+              assert packet["configs"][arm]["sha256"] == s.sha256(content)
+          assert all(a["real_world_starts"] == 0 for a in [packet])
+          print(json.dumps({
+              "classification": "V7_INDEPENDENT_S_SOURCE_FIVE_ARM_PROFILE_MATCH_OFFLINE_ONLY",
+              "source_s_head": "27a1dca3d77a7c7887df8a67275127ff0386e709",
+              "sha256": {name: s.sha256(data) for name, data in values.items()},
+              "real_world_starts": 0, "v_science_go": False,
+              "changed_configuration_profiles_qualified_by_R": False,
+          }, sort_keys=True))
+          PY
+          test -z "$(git -C s-owned status --porcelain --untracked-files=no)"
+          test -z "$(git -C v7-review status --porcelain --untracked-files=no)"
+      - name: Preserve DEV-only prospective arm configs, never a physical original
+        uses: actions/upload-artifact@v4
+        with:
+          name: v7-m02-prospective-five-configs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/v7-5-arm-dev-only/
+          retention-days: 30
+          if-no-files-found: error
+
+  full-regression:
+    # Full independent cross-owner/scientific pre-merge checks, not per DEV commit.
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: All inherited pure Python tests, no physical work
+        env:
+          PYTHONPATH: 'src:tests:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -m pytest -q

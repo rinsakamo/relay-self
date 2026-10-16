@@ -1,0 +1,51 @@
+{
+  "schema": "RELAYSELF_V3_M0_NET_ENERGY_PROSPECTIVE_1",
+  "issue": 619,
+  "predecessor_v2_head": "920d5742692d920987d1c321138893cb63c3de8d",
+  "s_groundv2_source_head": "28cb0f588192ecfe5d03b12b818508352d1a40a8",
+  "status": "PROSPECTIVE_EXPLORATORY_UNRUN",
+  "design": {
+    "target": "HAND_CODED_SENSOR_GATED_FORAGING_EXPRESSION_NOT_LEARNING",
+    "primary": "M0_END_ENERGY_AT_GLOBAL_TICK_16",
+    "explanation": "E16=12-16*0.5-0.25*issued_moves+4*qualified_meals",
+    "initial_m0_energy": 12,
+    "basal_cost_per_m0_tick": 0.5,
+    "move_extra_cost": 0.25,
+    "food_energy_per_qualified_eat": 4,
+    "capacity": 20,
+    "global_m0_ticks": 16,
+    "total_issued_move_budget": 8,
+    "externally_staged_item_count": 1,
+    "s_item_opportunity_m0_tick": 11,
+    "minimum_independent_matched_world_starts": 4,
+    "arms": [
+      "SENSOR_ON",
+      "SHAM_ON",
+      "SENSOR_MASKED",
+      "CHEAP_NATIVE"
+    ],
+    "baseline": "STRENGTH_MATCHED_NATIVE_ONLY_FOOD_SELECTOR",
+    "predeclared_pairwise_contrasts": [
+      "ON_MINUS_SHAM",
+      "ON_MINUS_MASKED",
+      "ON_MINUS_CHEAP"
+    ],
+    "source_budget": "FIXED_WORLD_START_AND_EXOGENOUS_NATIVE_CLOCK_REQUIRED",
+    "preliminary_interpretation": "MECHANISTIC_SENSOR_POLICY_CONTRAST_ONLY",
+    "cheap_equivalent_if": "CHEAP_EQUAL_OR_BETTER_THAN_ON_AT_MATCHED_BUDGET",
+    "no_positive_science_from_mechanistic_lesion": true,
+    "pair_floor_is_power_claim": false
+  },
+  "boundaries": {
+    "operator_staged_food_only": true,
+    "original_world_clock_pairing_qualified": false,
+    "actual_host_original_bytes_verified": false,
+    "actual_world_trials": 0,
+    "scientific_g3": "NO_GO",
+    "real_execution_authorized": false,
+    "sensor_learned": false,
+    "no_s_file_changes": true,
+    "nonissued_wait_not_s16": true,
+    "no_s11_habit_grant": true
+  }
+}

@@ -1,0 +1,96 @@
+{
+  "schema": "RELAYSELF_V6_B0_PAIRED_WORLD_PRE_ADMISSION_1",
+  "issue": 619,
+  "parent_v6_head": "7e11d82b9039c5b752b28e84d10168e586329d1a",
+  "s_source_head": "28cb0f588192ecfe5d03b12b818508352d1a40a8",
+  "scope": "ONE_COHERENT_PROSPECTIVE_S_R_HANDOFF_NO_WORLD_RUN",
+  "intent": "B0_L0_FUNCTIONAL_STATE_DEPENDENCE_NOT_LEARNED_COGNITION",
+  "design": {
+    "source": "OPERATOR_STAGED_SINGLE_ITEM_NOT_NATURAL_ZOMBIE_DROP",
+    "independent_world_start_slots": [
+      "WORLD_START_A",
+      "WORLD_START_B",
+      "WORLD_START_C",
+      "WORLD_START_D"
+    ],
+    "regimes": [
+      {
+        "id": "LOW",
+        "initial_m0_energy": 12
+      },
+      {
+        "id": "HIGH",
+        "initial_m0_energy": 20
+      }
+    ],
+    "arms": [
+      "SENSOR_ON",
+      "SHAM_ON",
+      "SENSOR_MASKED_HIGH",
+      "ALWAYS_SEEK",
+      "ALWAYS_WAIT",
+      "EQUAL_INFO_CHEAP_THRESHOLD"
+    ],
+    "total_planned_world_sessions": 48,
+    "first_opportunity_m0_tick": 11,
+    "fixed_global_horizon_m0_ticks": 16,
+    "max_issued_move_per_session": 8,
+    "per_tick_basal_cost": 0.5,
+    "per_issued_move_extra": 0.25,
+    "verified_eat_credit": 4,
+    "initial_native_food": 13,
+    "item_count": 1,
+    "item": "rotten_flesh",
+    "item_initial_distance_m": 2.5,
+    "pre_item_m0_waits": 11,
+    "exogenous_food_schedule": "SAME_NATIVE_ELAPSED_WORLD_TICK_ACROSS_ARMS_WITHIN_EACH_WORLD_START_OR_INVALID",
+    "native_world_start": "IDENTICAL_R_QUALIFIED_GOLDEN_CLONES_PER_START_REQUIRED",
+    "treatment_only": "M0_INITIAL_ENERGY_AND_L0_SENSOR_POLICY_WITH_UNMODIFIED_ACTION_AUTHORITY",
+    "learning_training": "NOT_APPLICABLE_B0",
+    "clock": "M0_DECISION_TICKS_NOT_WORLD_TICKS",
+    "ordering": "DETERMINISTIC_PERMUTATION_FIXED_BEFORE_PHYSICAL_OUTCOMES",
+    "no_retry_or_fallback": true,
+    "new_explicit_permission_per_session": true
+  },
+  "endpoints": {
+    "first_choice": "NATIVE_OBSERVED_ISSUED_SEEK_OR_NONISSUED_WAIT_UNDER_MATCHED_FOOD13",
+    "primary": "TRUE_M0_FINAL_ENERGY_AT_GLOBAL_TICK16_WITH_VALID_TERMINAL_AND_CENSORING",
+    "primary_contrasts": [
+      "ON_MINUS_ALWAYS_SEEK_BY_REGIME",
+      "ON_MINUS_ALWAYS_WAIT_BY_REGIME"
+    ],
+    "additional_controls": [
+      "ON_MINUS_SHAM_BY_REGIME",
+      "ON_MINUS_MASKED_BY_REGIME",
+      "ON_MINUS_EQUAL_INFO_CHEAP_BY_REGIME"
+    ],
+    "secondary": [
+      "GENUINE_ISSUED_S51_EAT_COUNT",
+      "ISSUED_S50_MOVE_COUNT",
+      "M0_TERMINAL_OR_CENSORED",
+      "NATIVE_WORLD_TIME_INTERVAL",
+      "WALL_AND_CPU_COST"
+    ],
+    "status": "NO_SIGN_OF_ECOLOGICAL_EFFECT_PRECOMMITTED",
+    "null": "ENERGY_BLIND_POLICY_MAY_OUTPERFORM_ON_OR_TIE",
+    "higher_cognition": "EQUAL_INFO_CHEAP_EXPECTED_TO_TIE_ON_NOT_AN_ADVANCED_COGNITION_RESULT",
+    "feasibility_floor_not_power_calculation": true,
+    "require_complete_including_failures": true,
+    "invalid_not_zero": "ANY_MISSING_WORLD_CLOCK_SOURCE_ACTION_OR_IMBALANCED_OPPORTUNITY"
+  },
+  "admission": {
+    "source_supported_only": true,
+    "six_arm_s_real_controller": false,
+    "high_energy_s_real_config": false,
+    "world_time_exogenous_parity": false,
+    "same_world_reset_r_attested": false,
+    "physical_action_outcome_r_attested": false,
+    "native_nonissued_wait_r_attested": false,
+    "golden_reference_frozen": false,
+    "prospective_real_trial_authorized": false,
+    "actual_world_trials": 0,
+    "actual_efficacy_results": 0,
+    "b0_science_g3": "NO_GO",
+    "production_go": false
+  }
+}

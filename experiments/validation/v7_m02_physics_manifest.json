@@ -1,0 +1,115 @@
+{
+  "schema": "RELAYSELF_V7_M02_PHYSICS_IDENTIFIABILITY_PREREG_V1",
+  "authority_issue": 619,
+  "status": "PROSPECTIVE_OFFLINE_ONLY",
+  "question": "CAN_PAPER_BASAL_AND_WALK_CHARGES_BE_SEPARATELY_IDENTIFIED_UNDER_MATCHED_WORLD_TICKS_AND_OBSERVED_MOTION",
+  "source_qualification": {
+    "classification": "M02_RSEE_PAPER_CANDIDATE_ENGINEERING_QUALIFIED",
+    "original_physical_run": 38730925452,
+    "original_artifact_id": 11970775361,
+    "s_producer_head": "50d3dfe96a37d18cc8fec68334cfc2e0204a996b",
+    "r_independent_head": "0d2c57a4112389e9612fefa306d9abbc131b5d25",
+    "m_engine_head": "4c2f549c6b9ed3fbe2ee04230526ac5577da8feb",
+    "qualification_scope": "BASAL_WALK_S50_MOVE_S51_EAT_ONLY_NOT_ECOLOGY_OR_SCIENCE"
+  },
+  "design": {
+    "cohort": "FOUR_INDEPENDENT_WORLD_SEEDS_FIVE_PAIRED_ARMS",
+    "independent_seeds": [
+      61021,
+      61022,
+      61023,
+      61024
+    ],
+    "arms_order": [
+      "BASE_ON",
+      "SHAM_ON",
+      "BASAL_ZERO",
+      "WALK_ZERO",
+      "BOTH_ZERO"
+    ],
+    "trials_per_seed": 5,
+    "total_planned_trials": 20,
+    "world_minecraft_version": "1.21.8",
+    "server": "Paper_build_60",
+    "java_major": 21,
+    "duration_world_ticks": 200,
+    "walk_nominal_step_blocks": 1,
+    "max_observed_path_blocks": 2,
+    "matched_path_tolerance_blocks": 0.005,
+    "initial_food": 20,
+    "initial_saturation": 5,
+    "no_food_introduction": true,
+    "no_hunger_effect": true,
+    "no_damage": true,
+    "player": "RelaySelf",
+    "primary": "ORIGINAL_SOURCE_BILLED_EXHAUSTION_SEPARATED_BY_BASAL_WORLD_TICK_AND_WALK_PLAYER_MOVE_PACKET",
+    "secondary": [
+      "NATIVE_FOOD_SATURATION_HEALTH",
+      "WALK_EVENT_REPLACEMENT_ZERO",
+      "BODY_TICK_MONOTONICITY",
+      "HOST_CPU_WALL_VRAM_SEPARATE"
+    ],
+    "contrasts": [
+      "BASE_ON_MINUS_SHAM_ON",
+      "BASE_ON_MINUS_BASAL_ZERO",
+      "BASE_ON_MINUS_WALK_ZERO",
+      "ADD_INTERACTION_FOUR_CELL"
+    ],
+    "cost_rule": "q_times_standard_multiplier_plus_additional",
+    "statistical_claim": "DESCRIPTIVE_PAIRED_MECHANISM_FEASIBILITY_NOT_POWERED_OR_ECOLOGICAL_CALIBRATION",
+    "decision_rule": "PREDECLARED_PER_SEED_NO_DROPPED_TRIALS_REPORT_INVALID_SEPARATELY_NO_POSTHOC_TUNING",
+    "stop_rule": "EACH_SLOT_STOP_AFTER_200_REAL_WORLD_TICKS_OR_TERMINAL_PRESERVE_ALL_ATTEMPTS",
+    "source_rule": "NEW_S_OWNED_EPISODE_AND_INDEPENDENT_R_V_ORIGINAL_BILLING_WORLD_TICK_PATH_AND_PROCESS_WITNESS",
+    "clock_rule": "WORLD_SERVER_TICKS_NOT_M0_LEDGER_NOT_HOST_ELAPSED_SECONDS",
+    "cheap_null_rule": "ON_VERSUS_SHAM_MUST_BE_NULL_TO_WITHIN_SOURCE_NUMERIC_TOLERANCE",
+    "unit": "Minecraft_exhaustion"
+  },
+  "rate_arms": {
+    "BASE_ON": {
+      "basal_multiplier": 1,
+      "walk_multiplier": 1
+    },
+    "SHAM_ON": {
+      "basal_multiplier": 1,
+      "walk_multiplier": 1
+    },
+    "BASAL_ZERO": {
+      "basal_multiplier": 0,
+      "walk_multiplier": 1
+    },
+    "WALK_ZERO": {
+      "basal_multiplier": 1,
+      "walk_multiplier": 0
+    },
+    "BOTH_ZERO": {
+      "basal_multiplier": 0,
+      "walk_multiplier": 0
+    }
+  },
+  "invariants": {
+    "basal_standard": 0.001,
+    "walk_standard": 0.01,
+    "additional": 0,
+    "all_16_action_entries_preserved": true,
+    "non_cognition_enabled_bools_unchanged": true,
+    "cognition_still_off": true,
+    "m0_virtual_energy_ledger_forbidden": true,
+    "only_basal_and_walk_multiplier_change": true,
+    "paper_source_qualification_NOT_reused_for_changed_configs": true,
+    "separate_S_DEV_exploration_allowed": true,
+    "qualification_originals_never_changed": true,
+    "v2_v6_frozen_studies_not_reinterpreted": true
+  },
+  "boundaries": {
+    "r_physical_arm_admission": "NOT_RUN",
+    "s_paired_arm_runner": "NOT_IMPLEMENTED",
+    "actual_20_science_world_trials": 0,
+    "third_qualification_grant_consumed": true,
+    "science_execution_authorized": false,
+    "world_launches_by_v7": 0,
+    "v_science_go": false,
+    "ecological_calibration_qualified": false,
+    "cognition_benefit_qualified": false,
+    "production_go": false
+  }
+}
