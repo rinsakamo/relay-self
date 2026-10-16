@@ -581,13 +581,15 @@ def _v7_clock_gate_source(content: str, marker_id: str, phase: dict) -> dict:
             raise M02DevRejected("duplicate Paper clock gate field")
         fields[key] = value
     if (set(fields) != {
-            "marker_id", "scheduled_delta", "base_full_time",
+            "marker_id", "scheduler_delay", "target_world_delta",
+            "base_full_time",
             "reached_full_time", "player_tick", "x", "y", "z"}
             or fields["marker_id"] != marker_id
             or marker_id != phase["marker_id"]):
         raise M02DevRejected("foreign/incomplete Paper clock gate")
     try:
-        delta = int(fields["scheduled_delta"])
+        delay = int(fields["scheduler_delay"])
+        delta = int(fields["target_world_delta"])
         base = int(fields["base_full_time"])
         reached = int(fields["reached_full_time"])
         player_tick = int(fields["player_tick"])
@@ -595,7 +597,7 @@ def _v7_clock_gate_source(content: str, marker_id: str, phase: dict) -> dict:
     except (ValueError, OverflowError) as exc:
         raise M02DevRejected("invalid Paper clock gate numeric source") from exc
     phases = phase["server_world_ticks"]
-    if (delta != _V7_GATE_DELTA_TICKS or base < 0
+    if (delay != 7 or delta != _V7_GATE_DELTA_TICKS or base < 0
             or base != phases["POST_FORWARD"]
             or reached - base != delta or player_tick < 0
             or not all(math.isfinite(v) for v in xyz.values())
@@ -605,7 +607,9 @@ def _v7_clock_gate_source(content: str, marker_id: str, phase: dict) -> dict:
     return {
         "source": "PAPER_SCHEDULED_DEV_GATE_ORIGINAL",
         "marker_id": marker_id,
-        "scheduled_world_ticks": delta,
+        "scheduler_delay_ticks": delay,
+        "target_world_fulltime_delta": delta,
+        "observed_world_fulltime_delta": reached - base,
         "base_post_forward_world_tick": base,
         "observed_callback_world_tick": reached,
         "callback_player_tick": player_tick,
