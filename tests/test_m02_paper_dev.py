@@ -609,6 +609,12 @@ def test_v7_physical_paper_log_synthetic_rates_and_real_player_tick_gate(tmp_pat
         f"observed_after=0.001 cumulative_requested={i * .001}"
         for i in range(1, 201)
     ) + "\n"
+    body += (
+        "M02_DEV_WORLD_V7_FIRST_TICK seed=61021 full_time=1001 "
+        "x=0.5 y=70.0 z=0.5 yaw=0.0 pitch=0.0 "
+        "corridor=0:STONE:1:AIR:1:AIR:1;1:STONE:1:AIR:1:AIR:1;"
+        "2:STONE:1:AIR:1:AIR:1;3:STONE:1:AIR:1:AIR:1\n"
+    )
     log = tmp_path / "paper_server.log"
     log.write_text(body, encoding="utf-8")
     result = asyncio.run(dev._v7_wait_source_tick(log, "BASE_ON"))
