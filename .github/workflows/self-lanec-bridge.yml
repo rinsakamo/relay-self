@@ -1,0 +1,99 @@
+name: Self product x Lane C C15 source-bound integration
+
+on:
+  push:
+    branches:
+      - 'self/product-lanec-spatial-link-*'
+  pull_request:
+    branches:
+      - 'self/product-self-one-command-*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: self-lanec-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Exact inherited Self and frozen C15 source identity
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -eu
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor f1f908d68c46f1315230171737fb9d8cb08f6df3 HEAD
+          for file in \
+            adapters/mineflayer/goal_witness.py \
+            experiments/ac_c_c15_manifest.json \
+            tests/test_ac_c_c15_goal_witness.py
+          do
+            test "$(git rev-parse HEAD:"$file")" = \
+              "$(git rev-parse 5e738596b805522d8516b43fa1b7ee001bfc5b2b:"$file")"
+          done
+          # Product timeline is also copied byte-identically from #545 later
+          # product HEAD, never reimplemented or retroactively signed here.
+          test "$(git rev-parse HEAD:adapters/mineflayer/self_timeline.py)" = \
+            "$(git rev-parse 4edac0b139d2d49b0169ffaad7c5892bed7fa2d1:adapters/mineflayer/self_timeline.py)"
+          test -z "$(git diff --name-only --diff-filter=CDMRTUXB \
+            f1f908d68c46f1315230171737fb9d8cb08f6df3 HEAD)"
+      - run: python tools/check_repository.py
+
+  focused-and-full-pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: C15 original and source-linked Self integration, offline only
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          python -m pytest -q tests/test_ac_c_c15_goal_witness.py tests/test_self_lane_c_witness.py tests/test_self_lane_c_timeline.py tests/test_self_action_evidence.py
+      - name: Full inherited regression
+        run: python -m pytest -q
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'ruff==0.16.7'
+      - run: ruff check src tests experiments adapters observability
+
+  mineflayer-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - run: npm run check --prefix adapters/mineflayer
