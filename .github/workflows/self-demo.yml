@@ -51,6 +51,7 @@ jobs:
               .github/workflows/m02-paper-dev-build.yml|\
               .github/workflows/m02-v7-five-arm-dev.yml|\
               .github/workflows/m02-v7-controlled-pose-dev.yml|\
+              .github/workflows/m02-v7-new-base-on-one-shot-qualification.yml|\
               .github/workflows/m02-paper-physical-dev.yml|\
               adapters/mineflayer/m02_paper_dev/**|\
               adapters/mineflayer/b0_*.py|\
