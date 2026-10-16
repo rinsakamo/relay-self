@@ -9,7 +9,9 @@ from __future__ import annotations
 import re
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import (
-    BoundaryRejected, integer, rows,
+    BoundaryRejected,
+    integer,
+    rows,
 )
 
 COUNTERS = (
