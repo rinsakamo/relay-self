@@ -1,4 +1,4 @@
-name: S/P1 loaded-chunk WAIT activity source DEV (not science)
+name: S/P1 full entity roster WAIT DEV (not science)
 
 on:
   push:
@@ -86,6 +86,7 @@ jobs:
           assert "S50_DEV_TICK_MOTION" in java.read_text()
           assert "S50_DEV_WAIT_TICK" in java.read_text()
           assert "S50_DEV_WAIT_SCOPE" in java.read_text()
+          assert "S50_DEV_WAIT_ENTITY" in java.read_text()
           from adapters.mineflayer.m02_paper_dev import s51_paper_physics_dev as clock
           assert clock._V7_GATE_DELTA_TICKS == 6
           from adapters.mineflayer.m02_paper_dev import s50_boundary
@@ -103,7 +104,7 @@ jobs:
           PY
       - name: Install S native Mineflayer runtime
         run: npm ci --omit=dev --ignore-scripts --no-audit --no-fund --prefix adapters/mineflayer
-      - name: Fresh BASE_ON only loaded-chunk and activity extended WAIT source DEV World
+      - name: Fresh BASE_ON native entity UUID/type roster source DEV World
         id: physical
         continue-on-error: true
         run: |
@@ -145,4 +146,4 @@ jobs:
             echo "::error::V7 Paper DEV arm failed/blocked; originals retained; no SCIENCE retries/promotions"
             exit 1
           fi
-          echo 'S_P1_WAIT_CHUNK_CENSUS_SAMPLED_DEV_RECOVERY_ZERO_NO_QUALIFICATION'
+          echo 'S_P1_WAIT_FULL_ROSTER_DEV_RECOVERY_ZERO_NO_QUALIFICATION'
