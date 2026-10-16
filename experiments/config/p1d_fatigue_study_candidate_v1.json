@@ -1,0 +1,101 @@
+{
+  "schema": "RELAYSELF_P1D_SOLO_FATIGUE_COMPARISON_CANDIDATE_V1",
+  "authority_issue": 619,
+  "research_index_issue": 620,
+  "status": "UNAPPROVED_PROSPECTIVE_PROPOSAL_OFFLINE_ONLY",
+  "p1c_parent_head": "3bfadb10315494eb71fba6e851f9d190124257d8",
+  "world_profile_path": "experiments/config/p1_solo_no_agents_v1.json",
+  "world_profile_requirements": [
+    "R_SOURCE_ATTESTED_SOLO_NO_AGENTS_PER_TICK",
+    "S_REAL_BODY_MOVEMENT_CAP_AND_REST_INTERVAL_APPLIED",
+    "S_ACTION_AUTHORIZATION_AND_TRUE_OUTCOMES",
+    "M02_ONE_SERVER_PHYSICS_LEDGER_BASAL_IN_REST",
+    "FROZEN_CLONED_CHUNK_WORLD_AND_PLAYER_POSE_PER_SEED",
+    "FROZEN_S_GOLDEN_AND_RETAINED_STATE",
+    "INDEPENDENT_R_QUALIFICATION_AND_V_APPROVAL"
+  ],
+  "world_ticks_max_candidate": 2400,
+  "independent_seed_ids_candidate": [
+    73101,
+    73102,
+    73103,
+    73104,
+    73105,
+    73106,
+    73107,
+    73108
+  ],
+  "arms_order": [
+    "FATIGUE_OFF_L0",
+    "ON_FIXED_L0_REST",
+    "ON_FSM_SENSOR",
+    "ON_L1",
+    "ON_L1_SHAM",
+    "ON_L2"
+  ],
+  "slots_candidate": 48,
+  "world_task": "SAME_PER_SEED_FINITE_OPERATOR_STAGED_FOOD_AND_OBSTACLE_WAYPOINTS_NO_ACTOR",
+  "same_before_action_conditions": [
+    "FULL_TERRAIN_CHUNK_CLONE_AND_SOURCE_WORLD_SEED",
+    "EXACT_NATIVE_START_XYZ_YAW_PITCH",
+    "FOOD_SATURATION_HEALTH_AND_ITEM_INVENTORY",
+    "WEATHER_TIME_DIFFICULTY_WORLD_TICK_PHASE",
+    "IDENTICAL_EXTERNAL_FOOD_STAGING_SCHEDULE",
+    "SAME_M02_BASAL_AND_WALK_RATES_ACROSS_ARMS",
+    "SAME_ACTION_AND_SAFETY_GRANTS",
+    "PAIRED_EXOGENOUS_SEED_NOT_PAIRED_REALIZED_PATH"
+  ],
+  "arm_definition": {
+    "FATIGUE_OFF_L0": "P1_PHYSICS_OFF_UNMODIFIED_L0_NO_REST_CONTROL",
+    "ON_FIXED_L0_REST": "P1_ON_REST_AT_EACH_20TH_WORLD_TICK_FIXED_EXOGENOUS_RULE",
+    "ON_FSM_SENSOR": "P1_ON_EQUAL_QUANTIZED_SENSOR_HYSTERESIS_0P7_START_0P3_STOP",
+    "ON_L1": "P1_ON_EXISTING_S_L1_ONLY_WHEN_REAL_WORLD_BRIDGE_EXISTS",
+    "ON_L1_SHAM": "SAME_L1_OUTPUT_AND_PHYSICS_WITH_NOOP_TOGGLE_PATH",
+    "ON_L2": "P1_ON_S_L2_AVAILABLE_SAME_SENSOR_AND_AUTHORIZED_ACTIONS"
+  },
+  "primary": "VERIFIED_EDIBLE_FOOD_CONSUMED_BY_WORLD_TICK_HORIZON",
+  "secondary": [
+    "ACTUAL_WORLD_SURVIVAL_TICKS_AND_TERMINAL_DEATH",
+    "SOURCE_MEASURED_MOVE_BLOCKS_AND_BLOCKED_TICKS",
+    "DISTINCT_EXPLICIT_REST_WORLD_TICKS_AND_BODY_FATIGUE_TRUE_EVALUATOR_ONLY",
+    "NATIVE_HUNGER_SATURATION_HEALTH_AND_M02_BASAL",
+    "L0_L1_L2_RELATED_COMPUTATION_WALL_CPU_TOKENS_AND_GPU_SEPARATELY"
+  ],
+  "contrasts": [
+    [
+      "ON_L1",
+      "ON_FIXED_L0_REST"
+    ],
+    [
+      "ON_L1",
+      "ON_FSM_SENSOR"
+    ],
+    [
+      "ON_L2",
+      "ON_L1"
+    ],
+    [
+      "ON_L1",
+      "ON_L1_SHAM"
+    ],
+    [
+      "ON_FIXED_L0_REST",
+      "FATIGUE_OFF_L0"
+    ]
+  ],
+  "minimum_practical_food_difference_candidate": 1.0,
+  "minimum_independent_seed_replications_for_interpretation": 8,
+  "statistics": "PAIRED_SEED_DESCRIPTIVE_ONLY_V_MUST_CHOOSE_POWER_AND_INFERENCE",
+  "stopping_rule": "TRUE_WORLD_TICK_HORIZON_OR_DEATH_OR_ABORT_KEEP_EVERY_ATTEMPT",
+  "invalid_rule": "INVALID_AND_CENSORED_TRIALS_RETAINED_NOT_CONVERTED_TO_ZERO_OR_DEATH",
+  "pair_rule": "MATCH_WORLD_START_NOT_REALIZED_DISTANCE_OR_FOOD_PATH",
+  "selection_rule": "NO_POSTHOC_SEED_ARM_REPLACEMENT_OR_POLICY_TUNING",
+  "golden_freeze": "NOT_PRESENT",
+  "r_source_admission": "NOT_PRESENT",
+  "s_rest_and_l1_l2_action_binding": "NOT_PRESENT",
+  "v_final_preregistration": "NOT_APPROVED",
+  "science_grant": false,
+  "science_trials": 0,
+  "power_claim": false,
+  "production_go": false
+}
