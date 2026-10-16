@@ -227,6 +227,14 @@ async def _motor_walk(session: MineflayerProcessSession, *,
             expected_world=phases(paper_log.read_text(encoding="utf-8"), marker_id)[0]["world"],
             source_action_terminal=closed.state.value,
         )
+        from adapters.mineflayer.m02_paper_dev.s50_p1_scope import review_scope
+        p1_wait_candidate["source_scope"] = review_scope(
+            paper_log.read_text(encoding="utf-8"),
+            marker=marker_id, world=p1_wait_candidate["world"],
+            wait_first_tick=p1_wait_candidate["first_world_tick"],
+            wait_last_tick=p1_wait_candidate["last_world_tick"],
+            original_outcome=closed.state.value,
+        )
     if (closed.state is not ActionState.OUTCOME
             or supervisor.open_actions
             or effect.kind is SeekConsequenceKind.BLOCKED
