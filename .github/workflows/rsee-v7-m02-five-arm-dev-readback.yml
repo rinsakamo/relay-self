@@ -102,6 +102,32 @@ jobs:
           destination.write_text(json.dumps(summary,sort_keys=True,indent=2)+"\n")
           print("R_V7_FINAL_REVIEW="+json.dumps(summary,sort_keys=True))
           PY
+      - name: Separately report real-distance WALK rate; do not promote matched pairing
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          from experiments.standard_env import v7_m02_prescience_gate as gate
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])
+          source=json.loads((root/"v7-r-review.json").read_text())
+          result=gate.review(source)
+          assert result["walk_rate_accounting"]=="DEV_SOURCE_REVIEW_ONLY_CONSISTENT_WITH_CONFIG"
+          assert result["walk_rate_check_requires_matched_paths"] is False
+          assert result["actual_paths_comparable"] is False
+          assert result["science_trials_credited"]==0
+          assert result["original_bytes_authenticated_by_this_json_gate"] is False
+          assert result["direct_basal_source_authenticated"] is False
+          for arm,row in result["arms"].items():
+              assert row["within_arm_walk_rate_matches"] is True
+              print("R_V7_ORIGINAL_WALK_RATE_REVIEW_ONLY "+arm+" "+
+                    json.dumps({"actual_blocks":row["blocks"],
+                                "source_walk_debit":row["walk_debit"],
+                                "exhaustion_per_block":
+                                    row["observed_walk_exhaustion_per_block"]},
+                               sort_keys=True))
+          (root/"v7-r-walk-rate-review.json").write_text(
+              json.dumps(result,sort_keys=True,indent=2)+"\n")
+          print("R_V7_PER_ARM_WALK_ACCOUNTING_REVIEW_ONLY_PAIRED_PATHS_FAILED")
+          PY
       - name: Archive exact S DEV originals plus R independent receipts, read-only
         if: always()
         uses: actions/upload-artifact@v4
@@ -110,5 +136,6 @@ jobs:
           path: |
             ${{ runner.temp }}/v7-dev-originals/
             ${{ runner.temp }}/v7-r-review.json
+            ${{ runner.temp }}/v7-r-walk-rate-review.json
           retention-days: 90
           if-no-files-found: warn
