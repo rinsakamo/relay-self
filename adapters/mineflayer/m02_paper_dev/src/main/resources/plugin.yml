@@ -4,3 +4,8 @@ version: '0.2.0-dev'
 api-version: '1.21.8'
 description: 'Isolated DEV-only metabolic exhaustion modifier. Disabled by default.'
 load: POSTWORLD
+
+commands:
+  relaydevphase:
+    description: 'Console-only S DEV Paper tick marker; no Action authorization'
+    usage: '/relaydevphase <marker_id> <phase>'
