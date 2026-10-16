@@ -19,6 +19,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityExhaustionEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -68,6 +70,13 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private long s50TickMeterRows = 0;
     private double s50TickMeterBlocks = 0;
     private double s50TickMeterCharged = 0;
+    private boolean s50ClearObserved = false;
+    private boolean s50WaitObserveActive = false;
+    private int s50WaitSourceRows = 0;
+    private long s50WaitStartWorldTick = -1;
+    private Location s50WaitLast;
+    private long s50WaitCombatEvents = 0;
+    private long s50WaitSwingEvents = 0;
 
     /** Bounded +X first-tick corridor, not proof of collision or paired start. */
     private static String devCorridor(World world, Location center) {
@@ -221,6 +230,35 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                         return;
                     }
                 }
+                if (s50WaitObserveActive && s50WaitSourceRows < 8) {
+                    Location where = p.getLocation();
+                    long tick = p.getWorld().getFullTime();
+                    // The first callback may occur in the same World tick as
+                    // command acknowledgement. That incomplete tick is not WAIT.
+                    if (tick > s50WaitStartWorldTick) {
+                        Location from = s50WaitLast;
+                        getLogger().info("S50_DEV_WAIT_TICK marker_id=" + s50Marker
+                            + " world=" + p.getWorld().getUID()
+                            + " tick=" + tick + " index=" + (s50WaitSourceRows + 1)
+                            + " from_x=" + from.getX() + " from_y=" + from.getY()
+                            + " from_z=" + from.getZ()
+                            + " x=" + where.getX() + " y=" + where.getY()
+                            + " z=" + where.getZ()
+                            + " motion_packets=" + observedMotionPackets
+                            + " motion_blocks=" + observedMotionBlocks
+                            + " tick_meter_blocks=" + s50TickMeterBlocks
+                            + " combat_events=" + s50WaitCombatEvents
+                            + " swing_events=" + s50WaitSwingEvents
+                            + " sprint=" + p.isSprinting() + " sneak=" + p.isSneaking()
+                            + " swimming=" + p.isSwimming()
+                            + " basal_ticks=" + appliedTicks);
+                        s50WaitSourceRows++;
+                        s50WaitLast = where.clone();
+                        if (s50WaitSourceRows == 8) {
+                            s50WaitObserveActive = false;
+                        }
+                    }
+                }
                 if (p.getWorld().getFullTime() <= s50ObserveUntil) {
                     Location loc = p.getLocation();
                     getLogger().info("S50_DEV_TICK marker_id=" + s50Marker
@@ -369,6 +407,35 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     @Override
     public boolean onCommand(CommandSender sender, Command command,
                              String label, String[] args) {
+        if (command.getName().equalsIgnoreCase("relaydevwait")) {
+            if (!devActive || !s50TickMeterCandidate
+                    || !(sender instanceof ConsoleCommandSender)
+                    || args.length != 1 || !args[0].matches("[A-Za-z0-9_-]{1,128}")
+                    || !s50ClearObserved || s50WaitObserveActive
+                    || s50WaitSourceRows != 0 || !s50Marker.equals(args[0])) {
+                return false;
+            }
+            Player waiting = Bukkit.getPlayerExact(target);
+            if (waiting == null || !waiting.isOnline() || waiting.isDead()) {
+                return false;
+            }
+            Location where = waiting.getLocation();
+            s50WaitStartWorldTick = waiting.getWorld().getFullTime();
+            s50WaitLast = where.clone();
+            s50WaitObserveActive = true;
+            getLogger().info("S50_DEV_WAIT_BEGIN marker_id=" + s50Marker
+                + " world=" + waiting.getWorld().getUID()
+                + " tick=" + s50WaitStartWorldTick
+                + " packets=" + observedMotionPackets
+                + " blocks=" + observedMotionBlocks
+                + " tick_meter_blocks=" + s50TickMeterBlocks
+                + " combat_events=" + s50WaitCombatEvents
+                + " swing_events=" + s50WaitSwingEvents
+                + " basal_ticks=" + appliedTicks
+                + " x=" + where.getX() + " y=" + where.getY()
+                + " z=" + where.getZ());
+            return true;
+        }
         if (!command.getName().equalsIgnoreCase("relaydevphase")
                 || !devActive || !(sender instanceof ConsoleCommandSender)
                 || args.length != 2
@@ -401,6 +468,9 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             }
         } else if (!s50Marker.equals(args[0])) {
             return false;
+        }
+        if (args[1].equals("POST_CLEAR")) {
+            s50ClearObserved = true;
         }
         Location pose = p.getLocation();
         long phaseWorldTime = p.getWorld().getFullTime();
@@ -440,6 +510,21 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             }, S50_CLOCK_GATE_SCHEDULER_DELAY);
         }
         return true;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onDevWaitCombat(EntityDamageByEntityEvent event) {
+        if (s50TickMeterCandidate && event.getDamager() instanceof Player p
+                && p.getName().equals(target)) {
+            s50WaitCombatEvents++;
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onDevWaitSwing(PlayerAnimationEvent event) {
+        if (s50TickMeterCandidate && event.getPlayer().getName().equals(target)) {
+            s50WaitSwingEvents++;
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
