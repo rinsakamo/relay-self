@@ -10,6 +10,7 @@ import asyncio
 import math
 from dataclasses import dataclass
 from enum import Enum
+from typing import Awaitable, Callable
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import (
@@ -76,6 +77,7 @@ async def execute_seek_step(
     supervisor: ActionSupervisor,
     issued: ActionLifecycle,
     step: SeekStep,
+    *, phase_hook: Callable[[str], Awaitable[None]] | None = None,
 ) -> SeekConsequence:
     if (
         not isinstance(session, MineflayerProcessSession)
@@ -99,11 +101,28 @@ async def execute_seek_step(
     look_id, clear_id = issued.action_id + "-look", issued.action_id + "-clear"
     await session.send_look(look_id, yaw=step.yaw, pitch=0)
     looked = await _effect(session, look_id, "look")
-    await session.send_set_control(issued.action_id, control="forward", state=True)
-    forward = await _effect(session, issued.action_id, "set_control")
-    await asyncio.sleep(min(0.40, max(0.08, step.step_distance_m * 0.30)))
-    await session.send_clear_controls(clear_id)
-    clear = await _effect(session, clear_id, "clear_controls")
+    # Optional DEV observability only. No phase hook may grant or issue Action.
+    # Capture the control command's before/after server clock *brackets*.
+    # The actual server-effective control tick is NOT asserted from these ACKs.
+    if phase_hook is not None:
+        await phase_hook("PRE_FORWARD")
+    control_sent = False
+    try:
+        await session.send_set_control(issued.action_id, control="forward", state=True)
+        control_sent = True
+        forward = await _effect(session, issued.action_id, "set_control")
+        if phase_hook is not None:
+            await phase_hook("POST_FORWARD")
+        await asyncio.sleep(min(0.40, max(0.08, step.step_distance_m * 0.30)))
+        if phase_hook is not None:
+            await phase_hook("PRE_CLEAR")
+    finally:
+        # Even a DEV marker timeout must not leave the real bot walking.
+        if control_sent:
+            await session.send_clear_controls(clear_id)
+            clear = await _effect(session, clear_id, "clear_controls")
+    if phase_hook is not None:
+        await phase_hook("POST_CLEAR")
     request_id = issued.action_id + "-seek-after"
     await session.send_observe(request_id)
     after = await _probe(session, request_id)
