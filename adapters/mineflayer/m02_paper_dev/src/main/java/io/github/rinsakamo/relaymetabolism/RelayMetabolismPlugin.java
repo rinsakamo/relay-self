@@ -612,6 +612,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             + " loaded_worlds=" + Bukkit.getWorlds().size()
             + " loaded_chunks=" + loadedChunks
             + " loaded_entities=" + entityCount
+            + " subject_uuid=" + subject.getUniqueId()
             + " other_loaded_entities=" + others
             + " other_online_players=" + otherOnline
             + " census_sha256=" + digest
