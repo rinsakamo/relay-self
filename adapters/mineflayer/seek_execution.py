@@ -108,10 +108,13 @@ async def execute_seek_step(
     # Issued, source-scoped action ID is unique; child-effect IDs are not
     # independent action authorization.
     look_id, clear_id = issued.action_id + "-look", issued.action_id + "-clear"
-    await session.send_look(
-        look_id, yaw=step.yaw, pitch=0,
-        force_server=p1_flat_force_paper_look,
-    )
+    if p1_flat_force_paper_look:
+        await session.send_look(
+            look_id, yaw=step.yaw, pitch=0, force_server=True,
+        )
+    else:
+        # Preserve the exact legacy call signature and command bytes.
+        await session.send_look(look_id, yaw=step.yaw, pitch=0)
     looked = await _effect(session, look_id, "look")
     # Optional DEV observability only. No phase hook may grant or issue Action.
     # Capture the control command's before/after server clock *brackets*.
