@@ -62,8 +62,12 @@ def preserve_stopped_flat_dimensions(server_root: Path, output_root: Path,
          "Paper STOP and distinct absolute source/output roots are required")
     source = server_root.resolve()
     output = output_root.resolve()
-    need(source != output and source not in output.parents
-         and output not in source.parents, "World evidence source/output alias")
+    destination = output / "saved_flat_dimensions_original"
+    # The CLI owns a temporary server below output/owned-worlds. Check the
+    # actual archive destination, which must remain outside that server tree.
+    need(source != output and source != destination
+         and source not in destination.parents
+         and destination not in source.parents, "World evidence source/output alias")
     present = [name for name in WORLD_NAMES if (server_root / name).exists()]
     need("world" in present, "original overworld missing")
     need(not (output_root / "saved_flat_dimensions_original").exists(),

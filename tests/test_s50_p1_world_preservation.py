@@ -86,3 +86,14 @@ def test_byte_mutation_after_copy_detectable(tmp_path):
     copied = output / "saved_flat_dimensions_original/world_nether"
     (copied / "level.dat").write_bytes(b"modified")
     assert tree_index(copied) != proof["world_original_file_indices"]["world_nether"]
+
+
+def test_cli_nested_temporary_world_preserved_before_cleanup(tmp_path):
+    source, output = _world(tmp_path)
+    nested = output / "owned-worlds" / "m02-paper-dev-test"
+    nested.parent.mkdir()
+    shutil.move(source, nested)
+    proof = preserve_stopped_flat_dimensions(nested, output, paper_stopped=True)
+    shutil.rmtree(nested)
+    for name, expected in proof["world_original_file_indices"].items():
+        assert tree_index(output / "saved_flat_dimensions_original" / name) == expected
