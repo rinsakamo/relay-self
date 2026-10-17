@@ -178,3 +178,34 @@ def test_opt_in_s50_node_wrapper_has_valid_node_syntax():
         capture_output=True, text=True, timeout=15, check=False,
     )
     assert run.returncode == 0, run.stderr
+
+def test_exact_client_callback_clock_detects_missing_tick_even_with_rebased_rows():
+    rows, native, movement = fixture()
+    # A forged aggregate may be sequential at the source-row level but omit
+    # the physical callback with client physics tick == 2.
+    rows[5]["client_physics_tick"] = 3
+    rows[6]["client_physics_tick"] = 3
+    rows[7]["client_physics_tick"] = 4
+    rows[8]["client_physics_tick"] = 4
+    with pytest.raises(BoundaryRejected):
+        review((rows, native, movement))
+
+
+def test_no_duplicate_json_field_or_second_start_record_accepted():
+    rows, native, movement = fixture()
+    raw = "\\n".join(json.dumps(x) for x in rows)
+    assert '"ordinal": 1' in raw
+    injected = raw.replace('"ordinal": 1', '"ordinal": 1, "ordinal": 1', 1)
+    with pytest.raises(BoundaryRejected):
+        review_native_controls(injected, native, movement)
+    rows[3]["kind"] = "SESSION_START"
+    with pytest.raises(BoundaryRejected):
+        review((rows, native, movement))
+
+
+def test_physics_row_must_not_impersonate_native_ack():
+    rows, native, movement = fixture()
+    rows[5]["native_seq"] = 4
+    with pytest.raises(BoundaryRejected):
+        review((rows, native, movement))
+
