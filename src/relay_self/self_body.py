@@ -125,6 +125,7 @@ class SelfBodyView:
     hypotheses: tuple[BodyHypothesis, ...]
     predictions: tuple[BodyPrediction, ...]
     outcome: ActionOutcomeInterpretation | None
+    self_id: str | None = None  # Optional legacy; required for SelfWorld join.
 
     def observed(self, key: str) -> BodyReading:
         """Only admitted native Present may populate OBSERVATION (never PRD)."""
@@ -191,6 +192,7 @@ def compose_self_body_view(
     outcome: ActionOutcomeInterpretation | None = None,
     minimum_native_seq: int = 0,
     seen_observation_refs: tuple[str, ...] = (),
+    self_id: str | None = None,
 ) -> SelfBodyView:
     """Fail closed across session, freshness, origin, and branch boundaries.
 
@@ -199,6 +201,8 @@ def compose_self_body_view(
     """
     _token("session_id", session_id)
     _token("epoch_id", epoch_id)
+    if self_id is not None:
+        _token("self_id", self_id)
     _seq("minimum_native_seq", minimum_native_seq)
     if not isinstance(seen_observation_refs, tuple) or not all(
         isinstance(s, str) and s for s in seen_observation_refs
@@ -246,7 +250,10 @@ def compose_self_body_view(
     for item in predictions:
         if by_id.get(item.hypothesis_id) != item.result.source_state:
             raise InvalidSelfBodyData("PRD result not bound to matching body hypothesis")
-    return SelfBodyView(session_id, epoch_id, observation, beliefs, hypotheses, predictions, outcome)
+    return SelfBodyView(
+        session_id, epoch_id, observation, beliefs, hypotheses, predictions,
+        outcome, self_id,
+    )
 
 
 def _token(name: str, value: object) -> None:
