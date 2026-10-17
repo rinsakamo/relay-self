@@ -99,9 +99,22 @@ def review(root: Path, *, expected_sha: dict[str, str] | None = None,
                 "real native motor ACK is missing/changed")
     require(len([row for row in commands if row.get("type") == "shutdown"]) == 1,
             "shutdown command omitted/duplicated")
-    require(any(row.get("state") == "issued" for row in action)
-            and any(row.get("state") == "outcome" for row in action),
+    issued = [row for row in action if row.get("state") == "issued"]
+    outcomes = [row for row in action if row.get("state") == "outcome"]
+    require(len(issued) == len(outcomes) == 1
+            and issued[0].get("action_id") == outcomes[0].get("action_id")
+            and issued[0].get("session_id") == expected_session
+            and outcomes[0].get("session_id") == expected_session,
             "S Action ISSUED/OUTCOME originals incomplete")
+    consequence = outcomes[0].get("consequence")
+    require(type(consequence) is dict
+            and consequence.get("kind") == "BLOCKED"
+            and consequence.get("action_id") == issued[0]["action_id"]
+            and consequence.get("session_id") == expected_session
+            and type(consequence.get("progress_m")) in (float, int)
+            and math.isclose(consequence["progress_m"], -0.3363737550662047,
+                             abs_tol=1e-8, rel_tol=0),
+            "S source BLOCKED consequence was changed/promoted")
     require(not any(row.get("status") == "PASS"
                     or row.get("physical_outcome") == "PASS" for row in action),
             "retroactive PASS promotion of source BLOCKED")
