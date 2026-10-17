@@ -264,9 +264,13 @@ async function handleEffect (command) {
     }
 
     if (command.effect === 'look') {
-      // Explicitly opt-in only for the FLAT P1 DEV look-before-FORWARD
-      // proof. All historical/default LOOK commands keep old behavior.
-      await bot.look(command.yaw, command.pitch, command.force_server === true)
+      // S-owned disposable FLAT P1 launch can request immediate server
+      // yaw synchronization without adding fields to the frozen protocol.
+      // All historical/default LOOK effects retain the prior behavior.
+      await bot.look(
+        command.yaw, command.pitch,
+        process.env.RELAY_S50_P1_FLAT_FORCE_SERVER_LOOK_DEV === '1'
+      )
       emitEffectResult(command, 'applied')
       return
     }
