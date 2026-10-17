@@ -147,6 +147,13 @@ def test_source_freshness_duplicate_and_cross_session_rejected():
                                seen_observation_refs=("same", "same"))
 
 
+def test_adapter_rejects_source_reference_alias_or_forgery():
+    reading = present()
+    with pytest.raises(InvalidSelfBodyData, match="session and native seq"):
+        project_body_present(replace(reading, provenance=prov("T:8", "mineflayer")))
+    with pytest.raises(InvalidSelfBodyData, match="mineflayer Present provenance"):
+        project_body_present(replace(reading, provenance=prov("S:8", "invented")))
+
 def test_belief_keeps_fallibility_and_provenance_not_physical_truth():
     proposition = PropositionKey("body", "self", "can_fly")
     assessment = assess_belief((BeliefEvidence(
