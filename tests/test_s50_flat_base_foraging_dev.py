@@ -87,7 +87,7 @@ def test_rejects_archived_changed_stopped_world(tmp_path, monkeypatch):
     a, paper, plugin, output = fixture(tmp_path)
     inject_asset_probes(monkeypatch)
     (a / subject.FLAT_SOURCE / "region/r.0.0.mca").write_bytes(b"changed")
-    with pytest.raises(ValueError, match="receipt"):
+    with pytest.raises(ValueError, match="not attested"):
         subject.preflight(a, paper, plugin, subject.PLUGIN_SHA, output, subject.CONFIRM)
 
 
