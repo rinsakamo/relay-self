@@ -13,10 +13,15 @@ import math
 from pathlib import Path
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import (
-    BoundaryRejected, integer, number, rows,
+    BoundaryRejected,
+    integer,
+    number,
+    rows,
 )
 from adapters.mineflayer.m02_paper_dev.v7_paired_config import (
-    ARMS, TEMPLATE, render_arm,
+    ARMS,
+    TEMPLATE,
+    render_arm,
 )
 
 MOTION_PREFIX = "M02_DEV_MOTION "
