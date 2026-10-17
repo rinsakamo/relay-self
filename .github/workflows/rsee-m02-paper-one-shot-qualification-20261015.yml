@@ -1,0 +1,214 @@
+name: RSEE M0.2 one-shot Paper physical qualification 20261015
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: rsee-m02-qual-user-20261015-once
+  cancel-in-progress: false
+
+jobs:
+  physical-qualification-once:
+    if: false  # FROZEN: one approved Java start happened, grant CONSUMED
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rinsakamo/relay-self
+      S_PIN: '9ecd34615679a66b6130a9a67f61b4378a2234d5'
+      R_PIN: 'de349508399cb75cdaef097a9ba26160500f30c1'
+      SOURCE_ARTIFACT_RUN: '38702561454'
+      SOURCE_ARTIFACT_NAME: 'rsee-m02-paper-four-pinned-assets-38702561454-1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Offline start-admission — exact source and full R/S CI, no World
+        run: |
+          python - <<'PY'
+          import json, os, subprocess, time
+          repo = os.environ["GH_REPO"]
+          # Already completed preflight authority HEADs: no speculative early launch.
+          checks = [
+              (38720116203, {"focused", "mineflayer-adapter", "sibling-readonly", "full-regression"}),
+              (38719626048, {"lint", "pytest", "mineflayer-adapter", "repository-contracts"}),
+          ]
+          for run_id, required in checks:
+              for _ in range(16):
+                  raw = subprocess.check_output([
+                      "gh", "api", f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100"])
+                  jobs = json.loads(raw)["jobs"]
+                  selected = {j["name"]: j["conclusion"] for j in jobs if j["name"] in required}
+                  if set(selected) == required and all(x == "success" for x in selected.values()):
+                      break
+                  if any(x in {"failure", "cancelled", "skipped", "timed_out"} for x in selected.values()):
+                      raise SystemExit(f"PREWORLD_BLOCKED: source CI not qualified {run_id}: {selected}")
+                  time.sleep(10)
+              else:
+                  raise SystemExit(f"PREWORLD_BLOCKED: CI incomplete {run_id}")
+              print(f"M02_CI_IDENTITY_PREFLIGHT_PASS run={run_id}")
+          PY
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: r
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: s
+          ref: '9ecd34615679a66b6130a9a67f61b4378a2234d5'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: s/adapters/mineflayer/package-lock.json
+      - name: Pin R and S source, no inherited Golden/grant
+        run: |
+          test "$(git -C s rev-parse HEAD)" = "$S_PIN"
+          git -C r merge-base --is-ancestor "$R_PIN" HEAD
+          git -C r diff --quiet "$R_PIN" HEAD -- experiments/standard_env/m02_paper_qualification_audit.py experiments/standard_env/m02_paper_dev_audit.py experiments/standard_env/m02_paper_preworld.py
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('s/adapters/mineflayer/package.json')
+          obj=json.loads(p.read_text())
+          assert obj['dependencies']['mineflayer']=='4.39.0'
+          print('M02_QUAL_S_SOURCE_AND_NODE_DEPS_PINNED')
+          PY
+      - name: Obtain fixed four-asset candidate archive, no Paper startup
+        run: |
+          mkdir -p "$RUNNER_TEMP/m02-archived-assets" "$RUNNER_TEMP/m02-qual-assets" "$RUNNER_TEMP/m02-qualification"
+          gh run download "$SOURCE_ARTIFACT_RUN" -R "$GH_REPO" \
+            -n "$SOURCE_ARTIFACT_NAME" -D "$RUNNER_TEMP/m02-archived-assets"
+          python - <<'PY'
+          import os, pathlib, shutil
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])
+          archive=root/"m02-archived-assets"
+          dest=root/"m02-qual-assets"
+          names=["paper-1.21.8.jar","relay-metabolism-paper-dev.jar",
+                 "config.yml","server.properties"]
+          for name in names:
+              match=[p for p in archive.rglob(name) if p.is_file() and not p.is_symlink()]
+              assert len(match)==1, "missing/ambiguous pinned artifact source: "+name
+              shutil.copyfile(match[0],dest/name)
+          assert set(p.name for p in dest.iterdir())==set(names)
+          print('M02_PINNED_ARCHIVE_FOUR_FILES_STAGED')
+          PY
+      - name: Both S and R read-only preflight must agree before new World
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+          PYTHONPATH="r/src:r/tests:r" python -m experiments.standard_env.m02_paper_preworld \
+            --asset-root "$RUNNER_TEMP/m02-qual-assets" \
+            | tee "$RUNNER_TEMP/m02-qualification/r-preworld.json"
+          PYTHONPATH="s/src:s/tests:s" python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev \
+            --qualification-preflight --asset-root "$RUNNER_TEMP/m02-qual-assets" \
+            | tee "$RUNNER_TEMP/m02-qualification/s-preworld.json"
+          python - <<'PY'
+          import json,os,pathlib
+          d=pathlib.Path(os.environ["RUNNER_TEMP"])/"m02-qualification"
+          r=json.loads((d/"r-preworld.json").read_text())
+          s=json.loads((d/"s-preworld.json").read_text())
+          assert r["classification"]=="M02_PAPER_ASSETS_PINNED_PREWORLD_REVIEW_ONLY"
+          assert s["classification"]=="S_M02_PAPER_QUALIFICATION_ASSET_PREFLIGHT_ONLY"
+          assert r["new_physical_qualification_authorized"] is False
+          assert s["qualified"] is False
+          print('M02_S_R_INDEPENDENT_PREWORLD_PASS_ONE_SHOT_USER_GRANT_SEPARATE')
+          PY
+      - name: Native Node adapter dependency and loopback port ownership gate
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix s/adapters/mineflayer
+          python - <<'PY'
+          import os,socket
+          assert os.environ.get("NODE_OPTIONS") is None
+          with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as s:
+              assert s.connect_ex(("127.0.0.1",25565)) != 0
+          print('M02_QUAL_OWNED_PAPER_WORLD_PRELAUNCH_GATE_PASS')
+          PY
+      - name: Run physically exactly once — user M0.2 QUAL grant consumed at Java start
+        id: run_once
+        run: |
+          set +e
+          PYTHONPATH="s/src:s/tests:s" python -m adapters.mineflayer.m02_paper_dev.s51_paper_qualification \
+            --asset-root "$RUNNER_TEMP/m02-qual-assets" \
+            --output-root "$RUNNER_TEMP/m02-qualification/originals" \
+            --confirm M02-PAPER-QUALIFICATION-ONE-JAVA-NO-RETRY \
+            > "$RUNNER_TEMP/m02-qualification/s-producer-stdout.log" 2>&1
+          result=$?
+          set -e
+          echo "exit=$result" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/m02-qualification/s-producer-stdout.log"
+          echo "S_QUALIFICATION_PROCESS_EXIT=$result"
+          # NEVER retry the physical producer, even if it fails.
+      - name: Independent post-exit host witness — read only and no retries
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,os,pathlib,socket
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"m02-qualification"
+          path=root/"originals/qualification_producer.json"
+          if not path.is_file():
+              print("M02_QUAL_NO_PRODUCER_SOURCE_TO_ATTEST")
+              raise SystemExit(0)
+          q=json.loads(path.read_text())
+          def dead(pid):
+              if type(pid) is not int or pid<=0: return False
+              try: os.kill(pid,0)
+              except ProcessLookupError: return True
+              except PermissionError: return False
+              return False
+          with socket.socket(socket.AF_INET,socket.SOCK_STREAM) as sock:
+              free=sock.connect_ex(("127.0.0.1",25565))!=0
+          w={
+              "github_run_id":str(os.environ["GITHUB_RUN_ID"]),
+              "github_run_attempt":int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "java_pid":q.get("java_pid"),"node_pid":q.get("node_pid"),
+              "java_absent":dead(q.get("java_pid")),
+              "node_absent":dead(q.get("node_pid")),
+              "loopback_port_released":free,
+          }
+          (root/"independent-host-witness.json").write_text(
+              json.dumps(w,sort_keys=True,indent=2)+"\n")
+          print("M02_R_INDEPENDENT_HOST_PID_PORT_WITNESS="+json.dumps(w,sort_keys=True))
+          PY
+      - name: R independently qualifies one actual new Paper session, or fail closed
+        if: steps.run_once.outputs.exit == '0'
+        env:
+          PYTHONPATH: r/src:r/tests:r
+        run: |
+          set -o pipefail
+          python -m experiments.standard_env.m02_paper_qualification_audit \
+            --original-root "$RUNNER_TEMP/m02-qualification/originals" \
+            --asset-root "$RUNNER_TEMP/m02-qual-assets" \
+            --witness "$RUNNER_TEMP/m02-qualification/independent-host-witness.json" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            | tee "$RUNNER_TEMP/m02-qualification/r-independent-verdict.json"
+          python - <<'PY'
+          import json,os,pathlib
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"m02-qualification"
+          v=json.loads((root/"r-independent-verdict.json").read_text())
+          assert v["classification"]=="M02_RSEE_PAPER_CANDIDATE_ENGINEERING_QUALIFIED"
+          assert v["grant_consumed"] and not v["science_go"] and not v["production_go"]
+          print("M02_QUALIFICATION_ENGINEERING_CANDIDATE_PASS_NOT_V_SCIENCE")
+          PY
+      - name: Preserve original physical evidence and independent R receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsee-m02-paper-qual-once-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/m02-qualification/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Fail blocked/failed producer without another physical start
+        if: always()
+        env:
+          PHYSICAL_EXIT: ${{ steps.run_once.outputs.exit }}
+        run: |
+          if [ "$PHYSICAL_EXIT" != "0" ]; then
+            echo "::error::M02 one-shot QUALIFICATION blocked/failed; no retry; inspect retained originals. If Java was launched, grant consumed."
+            exit 1
+          fi

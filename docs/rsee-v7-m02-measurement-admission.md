@@ -1,0 +1,64 @@
+# V7 M0.2 — R independent pre-science measurement admission
+
+Authority: V #619, R #575, S #537. Latest source of five-arm 1-seed DEV originals: S run `38819265395` at exact S HEAD `944a68ca36f90380ffa5481ba85a6f95ed08ba18`; R byte reviewer run `38819700537`. Original R archive artifact `12012577361`. Existing qualified M0.2 one-shot run `38730925452` remains unaffected.
+
+## Status and exact limits
+
+R has independently verified each of five original DEV World snapshots and the per-packet WALK cost, with old Paper JAR+plugin/config hashes. This is `RSEE_V7_M02_FIVE_ARM_DEV_SOURCE_REVIEW_ONLY`, NOT engineering qualification of changed multipliers and NOT V science.
+
+The V7 predeclared 0.005-block across-arm path-match tolerance is violated:
+`BASE_ON=1.039090342887362`; the other four observed paths are approximately `1.282891353309864`, giving `0.24380101042250235` blocks spread. The true difference must remain visible; neither normalize by requested one-block step nor change the 0.005 tolerance after results. A single arm cannot be replaced/discarded retroactively.
+
+Paper logger samples `sampled_tick=1,20,100,200` from the plugin's target-player scheduler; that establishes at least 200 player callbacks, but **not** a rigorously synchronized 200-tick observation bracket starting before movement. The baseline BASAL 0.001/tick is read from the pinned plugin config and was mathematically inferred. **The old plugin does not log BASAL per-tick charge write or cumulative actual requested debit separately.** Food/saturation/exhaustion snapshots can be affected by native thresholding and other reasons and cannot substitute for separated source charges.
+
+New R `v7_m02_prescience_gate.py` reads the unmodified *source-review-only* R receipt and returns `RSEE_V7_M02_PRESCIENCE_MEASUREMENT_NOT_ADMITTED`. Negative tests explicitly refuse passing the original despite intact native STOP/Paper motion proof, and refuse forged science/qualification, native 200-tick and physical path reports. All generated results are READ_ONLY and carry `science_trials_credited:0`.
+
+## Historic five-arm receipt tamper resistance (R-only)
+
+The read-only `v7_m02_prescience_gate.py` now pins the **independently observed historical** per-arm native movement packet counts (BASE_ON 7; other arms 9), last observed Paper player callback (200 per arm), source packet WALK debit, and exact source-derived paths (BASE_ON 1.039090342887362; SHAM_ON/BOTH_ZERO 1.2828913533098643; BASAL_ZERO/WALK_ZERO 1.2828913533098634). A caller cannot rewrite the per-arm paths, WALK debits, aggregate spread and paired-path flag into an internally consistent false pass. Focused negatives explicitly exercise a single changed arm, forged packet count, and all-five perfectly matched paths with forged aggregate metadata.
+
+This numeric freeze does **not** cryptographically authenticate an arbitrary JSON input. The original R source-review workflow and its pinned GitHub producer run/archived original bytes are the independent evidence. The JSON gate returns `original_bytes_authenticated_by_this_json_gate=false`; it is a read-only historical consistency classifier, not a replacement for original-byte review or a future engineering qualification. New instrumentation or new cohorts must use a new R source verifier and fixed prospective admissions, never edit or widen the five frozen historical values. V7 remains NOT_ADMITTED, even when its source shape is intact.
+
+## Two distinct analysis gates: per-distance WALK accounting vs paired comparisons
+
+**Within-arm WALK accounting (DEV REVIEW_ONLY)** does not require matched travel distances. For each arm with positive observed native `PlayerMoveEvent` horizontal packet path `d > 0` and directly recorded source-side WALK debit `C_WALK`, compute `r_observed = C_WALK / d` in exhaustion per actual block. Compare against `r_expected = 0.01 × WALK_multiplier` (the current profiles have additional=0); verify native WALK event's zero replacement and absence of unclassified motion/double charge. The five independently archived seed61021 arms are source-accounting consistent for expected `0.01` or `0`, despite their 0.243801-block physical path spread. A stationary/zero-distance arm has **undefined** `C/d`, not 0 or automatic PASS; unclassified, missing or nonfinite path/cost must fail closed. The R gate reports per-arm `observed_walk_exhaustion_per_block`, `expected_walk_exhaustion_per_block`, and `within_arm_walk_rate_matches` while retaining `science_trials_credited=0`, `original_bytes_authenticated_by_this_json_gate=false`, and `independent_changed_config_qualification=false`. This is a consistency check against configured accounting, not external ecological correctness or proof of native accepted full delta.
+
+**Paired V7 contrasts are a different gate.** Existing V7 preregistered matched-path maximum `0.005` still fails for the historic 5 DEV sessions; do not rewrite that preregistration, pair arms post hoc, transform unequal `BASE_ON–SHAM_ON` total differences into treatment effects, or silently reuse a spent grant. A future independently preregistered trial may specify another causal design with full terrain/pose/tick/obstacle controls, but it is not this frozen V7 outcome. For natural random maps, collision, inability to move, detours and failure to eat are legitimate ecological outcomes; do not impose equal physical path length as a universal survival-science validity condition. A controlled unobstructed corridor may be useful for precise mechanism experiments, but natural terrain remains appropriate for separately preregistered behavioral/viability experiments.
+
+**BASAL remains absent:** direct cumulative write per synchronized player tick is required to isolate BASAL, regardless of whether per-block WALK accounting passes. The current Paper body/food meter does not supply that source write; subtracting guessed basal cost from a total would be invalid.
+
+## Prospective DEV improvement gate
+
+To test genuine BASAL source billing independently, S should first modify **only new DEV instrumentation** to log source-time `BASAL` quantities at the Paper write boundary. At each applied target player tick, accumulate the exact input `delta` associated with `p.setExhaustion` while separately recording the resulting native meter state. Emit source-authenticated `tick index`, `BASAL multiplier`, and `cumulative written/debited value` at baseline, tick20, tick100, tick200, and terminal checkpoint. Explicitly label commanded/write-side billing versus observed native food-meter effect; do not claim that a saturated/clamped meter accepted the full write solely from the command. Preserve log bytes and plugin JAR hash. For `BASAL_ZERO` and `BOTH_ZERO`, expected cumulative direct source billing is exactly zero, while `BASE_ON`, `SHAM_ON`, and `WALK_ZERO` have candidate 0.001/tick.
+
+Also define and preserve a source-tick phase boundary **before** the governed S50 MOVE, followed by the exact 200 target-player-tick experimental interval. Set all food/forage to OFF for these source-only DEV World trials. Save pre-Action `level.dat`, unique source session, initial native food/saturation, original World seed/properties and all process/STOP witnesses. Never reuse the old three spent QUALIFICATION grants; never reinterpret historical source in place.
+
+For matched walking distances, define any active runtime control (physical steering and stop strategy) **before** starting the new five-arm batch; preserve all actual native packet paths. The current S50 `SeekCursor` nominal `max_step_m=1.0` does not promise 1.0 block physical path. No post-hoc outcome selection, path equalization on paper, or per-arm recentering toward a target after inspecting other arms. A predeclared engineering DEV feasibility target can test revised native stop/steering controls with multiple batches; the first five physical DEV attempts remain historically original. Scientific cohort uses independently specified rules and entry gates, not these DEV retries.
+
+## Admission is strictly layered
+
+1. S isolated DEV: new Paper plugin instrumentation, explicit original config/JAR hashes, true World tick, packet path, no-food initial World, STOP and process cleanup.
+2. R offline readback: independently recompute Paper-source per-tick BASAL and packet-WALK charge against raw originals and require session/config identity. Mark source-shape vs matched-arm comparison separately, including failure.
+3. R separate engineering qualification of changed config/JAR + World identity, if later explicitly authorized.
+4. V prospective SCIENCE pre-registration/explicit separate authorization for 20 physical independent trials, only after S/R admissible source. The 20 V slots remain `NOT_RUN`.
+
+Neither BASAL/WALK numerical rates nor cognitive benefits/foraging/pickup/survival fitness are ecologically qualified by this gate. V7 science=0/20, V6 science=0/48; production NO_GO. Freeze all prior original evidence.
+
+
+## Prospective new S direct-BASAL emitter — independent R offline parser
+
+S Draft #545 introduced an **additional future-only** Paper plugin source record at the actual `Player.setExhaustion` write: `M02_DEV_BASAL_WRITE` with its monotonically numbered `id`, server `world_full_time`, `before`, `requested`, `write_target`, immediate `observed_after`, running `cumulative_requested` and player pose. It is a *new plugin JAR*, not the historical plugin SHA `0ed8a00a…`. Historical V7 run #38819265395 has **no such write lines** and must never be accepted by the new parser.
+
+R adds `experiments/standard_env/v7_m02_direct_basal_readback.py` with independent source parsing (no imports from S), plus focused adversarial fixtures. `review_original_server_log(raw, arm)` validates exact five-factor identity; at least 200 actual write records starting with id1; consecutive unique source ids and +1 `world_full_time`; per-write `requested = 0.001 × BASAL multiplier`, `write_target ≈ before + requested`, cumulatives from each original source row, and four native body checkpoints (1/20/100/200) matched to immediate source-readback. It rejects malformed, missing/duplicate, non-finite, wrong-factor or changed-body evidence. Its output `RSEE_V7_M02_DIRECT_BASAL_DEV_SOURCE_SHAPE_REVIEW_ONLY` separately reports source-requested cost / tick.
+
+For a **new independently sourced** S DEV paper log, run only the read-only R parser against its unmodified absolute path, with the *externally compared* original SHA256:
+
+```sh
+PYTHONPATH=src:tests:. python -m experiments.standard_env.v7_m02_direct_basal_readback \
+  --paper-original /ABSOLUTE/NEW-S-DEV-ORIGINAL/paper_server.log \
+  --arm BASE_ON --expected-sha256 FULL_64_CHARACTER_ORIGINAL_SHA256
+```
+
+The SHA argument is a comparison guard, **not** origin authentication by itself. Wrong hash, relative/symlink path, missing, duplicate or forged source lines fail closed. Never pass the historical V7 plugin stdout; it did not emit these records. This is **not** authenticating an arbitrary source log, independently qualified binary, observed food-meter causality or a synchronized 200-tick MOVE experiment. The parser never starts a World, and has no historical V7 reclassification authority.
+
+**Future required handoff:** obtain a **new** S-owned disposable Paper DEV run producing native originals and the built plugin JAR/config hashes; independently verify S HEAD/workflow run, exact original artifact SHA and source log from genuine producer against the new R parser. Independently attest World/seed/start identity and process STOP separately. Only after that may changed-profile R engineering qualification be considered. No V7 20-slot or old 0.005-block paired admission changes occur; per-block WALK consistency and BASAL per-tick write-source consistency remain different metrics. `SCIENCE=0/20`, `PRODUCTION=NO_GO`.

@@ -1,0 +1,224 @@
+name: R V7 new Paper BASAL direct-write 5-DEV independent original readback
+
+on:
+  push:
+    branches:
+      - infra/rsee-r6-s9-native-original-readback-20261012
+    paths:
+      - '.github/workflows/rsee-v7-direct-basal-five-arm-readback.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  five-arm-basal-originals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      GH_REPO: rinsakamo/relay-self
+      GH_TOKEN: ${{ github.token }}
+      S_PRODUCER_RUN: '38850179491'
+      S_PRODUCER_HEAD: '5defe85f55068b34d4ddae0ebe93afc892c09c2c'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Original S workflow head, run count, success and single attempt
+        run: |
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ["GH_REPO"];run=os.environ["S_PRODUCER_RUN"]
+          obj=json.loads(subprocess.check_output(
+              ["gh","api",f"repos/{repo}/actions/runs/{run}"]))
+          assert obj["head_sha"]==os.environ["S_PRODUCER_HEAD"]
+          assert obj["event"]=="push" and obj["conclusion"]=="success"
+          assert obj["run_attempt"]==1
+          jobs=json.loads(subprocess.check_output(
+              ["gh","api",f"repos/{repo}/actions/runs/{run}/jobs?per_page=100"]))["jobs"]
+          expected={"five-arm-disposable-dev ("+arm+")" for arm in
+                    ("BASE_ON","SHAM_ON","BASAL_ZERO","WALK_ZERO","BOTH_ZERO")}
+          assert {j["name"] for j in jobs}==expected
+          assert all(j["conclusion"]=="success" for j in jobs)
+          print("R_V7_NEW_BASAL_S_PRODUCER_EXACT_5_DEV_SUCCESS_NOT_QUALIFIED")
+          PY
+      - name: Download all five fresh, never historical V7, S DEV artifacts
+        run: |
+          for ARM in BASE_ON SHAM_ON BASAL_ZERO WALK_ZERO BOTH_ZERO; do
+            mkdir -p "$RUNNER_TEMP/new-basal-originals/$ARM"
+            gh run download "$S_PRODUCER_RUN" -R "$GH_REPO" \
+              -n "s-v7-paper-dev-61021-$ARM-$S_PRODUCER_RUN" \
+              -D "$RUNNER_TEMP/new-basal-originals/$ARM"
+          done
+      - name: Independently reconstruct original BASAL requests, WALK path and STOP
+        run: |
+          python - <<'PY'
+          import hashlib,json,os,pathlib,math
+          from experiments.standard_env import v7_m02_direct_basal_readback as basal
+          from experiments.standard_env import v7_m02_paper_dev_audit as historical
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"new-basal-originals"
+          summary={}
+          for arm in basal.RATES:
+              base=root/arm
+              def exact(name):
+                  hits=[p for p in base.rglob(name) if p.is_file() and not p.is_symlink()]
+                  assert len(hits)==1, f"missing or duplicate S original {arm} {name}"
+                  assert all(not ancestor.is_symlink() for ancestor in hits[0].parents)
+                  return hits[0]
+              report=json.loads(exact("m02_report.json").read_bytes())
+              server=exact("paper_server.log")
+              raw=server.read_bytes()
+              source=basal.review_original_path(
+                  server,arm,hashlib.sha256(raw).hexdigest())
+              native_bytes=exact("original_native.jsonl").read_bytes()
+              commands_bytes=exact("owner_commands.jsonl").read_bytes()
+              world_bytes=exact("initial_world_level.dat").read_bytes()
+              plugin_bytes=exact("relay-metabolism-paper-dev.jar").read_bytes()
+              assert report["classification"]=="M02_PAPER_DEV_ONLY_PHYSICS_OBSERVED"
+              assert report["owner_status"]=="PASS" and report["status"]=="PASS"
+              assert report["v7_arm"]==arm and report["v7_seed"]==61021
+              assert report["v7_real_science_trials"]==0
+              assert report["qualified"] is False and report["science_go"] is False
+              assert report["production_go"] is False
+              assert report["m0_virtual_ledger_used"] is False
+              assert report["v7_food_introduced_by_runner"] is False
+              assert report["java_exit"]==0 and report["node_exit"]==0
+              assert report["port_released_after_shutdown"] is True
+              assert report["paper_sha256"]==historical.PAPER_SHA
+              assert report["plugin_config_sha256"]==historical.ARMS[arm][2]
+              assert report["plugin_sha256"]==hashlib.sha256(plugin_bytes).hexdigest()
+              # No historical R plugin SHA is reused for this newly built DEV JAR.
+              assert report["plugin_sha256"]!=historical.PLUGIN_SHA
+              for name,original in (("paper_server.log",raw),
+                                    ("original_native.jsonl",native_bytes),
+                                    ("owner_commands.jsonl",commands_bytes)):
+                  assert report["evidence_hashes"][name]==hashlib.sha256(original).hexdigest()
+              assert report["initial_world_receipt"]["sha256"]==hashlib.sha256(world_bytes).hexdigest()
+              native=[json.loads(row) for row in native_bytes.splitlines()]
+              commands=[json.loads(row) for row in commands_bytes.splitlines()]
+              sid=report["source_session_id"]
+              assert sid and all(x["session_id"]==sid and x["seq"]==i
+                                 for i,x in enumerate(native))
+              assert native[0]["type"]=="adapter_started"
+              assert native[-2]["type"]=="shutdown_ack"
+              assert native[-1]["type"]=="connection_end"
+              assert len([x for x in commands if x["type"]=="shutdown"])==1
+              assert commands[-1]["type"]=="shutdown"
+              walk=historical.parse_logs(raw,arm)
+              claim=report["v7_source"]
+              claimed_basal=claim["direct_basal_source"]
+              assert claim["basal_write_inputs_directly_source_logged"] is True
+              assert claim["exact_200_tick_move_phase_bracket_attested"] is False
+              assert math.isclose(claimed_basal["cumulative_requested_basal_exhaustion"],
+                                  source["direct_source_requested_basal_cumulative_first200"],
+                                  abs_tol=1e-8)
+              assert claimed_basal["source_write_count"]==200
+              assert source["configured_basal_request_per_tick"]==basal.RATES[arm]
+              assert math.isclose(
+                  walk["real_motion_path_blocks"],
+                  claim["observed_motion_path_blocks"],abs_tol=1e-7)
+              summary[arm]={
+                  "classification":source["classification"],
+                  "new_dev_plugin_sha256":report["plugin_sha256"],
+                  "original_log_sha256":source["source_log_sha256"],
+                  "world_original_sha256":hashlib.sha256(world_bytes).hexdigest(),
+                  "source_player_callbacks":source["first200_source_player_callbacks"],
+                  "source_basal_requested_200":source["direct_source_requested_basal_cumulative_first200"],
+                  "world_full_time_first":source["first_world_full_time"],
+                  "world_full_time_at_200th":source["world_full_time_at_200th"],
+                  "walk_actual_packet_blocks":walk["real_motion_path_blocks"],
+                  "walk_source_debit":walk["observed_walk_debit"],
+                  "native_stop_ack":True,
+                  "science_go":False,"engineering_qualification":False,
+              }
+              print("R_NEW_BASAL_ARM_DEV_ORIGINALS_REVIEW_ONLY "+arm+" "+
+                    json.dumps(summary[arm],sort_keys=True))
+          result={
+              "classification":"RSEE_V7_NEW_FIVE_DEV_BASAL_WRITE_ORIGINAL_REVIEW_ONLY",
+              "s_original_run":int(os.environ["S_PRODUCER_RUN"]),
+              "s_original_head":os.environ["S_PRODUCER_HEAD"],
+              "source_reviewed_arms":5,
+              "source_basal_writes_consistent":True,
+              "changed_plugin_engineering_qualified":False,
+              "exact_move_bracket_attested":False,
+              "native_meter_ecology_attested":False,
+              "paired_v7_paths_requalified":False,
+              "science_trials_credited":0,"v_science_go":False,
+              "production_go":False,
+              "arms":summary,
+          }
+          (pathlib.Path(os.environ["RUNNER_TEMP"])/"r-v7-new-basal-review.json").write_text(
+              json.dumps(result,sort_keys=True,indent=2)+"\n")
+          print("R_V7_NEW_FIVE_DEV_BASAL_SOURCE_REVIEW_ONLY_NO_SCIENCE")
+          PY
+      - name: Independently parse genuine serialized World NBT seed and spawn
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          from experiments.standard_env import v7_m02_world_nbt_audit as audit
+          from experiments.standard_env import v7_m02_direct_basal_readback as basal
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"new-basal-originals"
+          sources={}
+          for arm in basal.RATES:
+              found=[p for p in (root/arm).rglob("initial_world_level.dat")
+                     if p.is_file() and not p.is_symlink()
+                     and all(not ancestor.is_symlink() for ancestor in p.parents)]
+              assert len(found)==1,"ambiguous initial World source: "+arm
+              sources[arm]=found[0].read_bytes()
+          result=audit.summarize_worlds(sources)
+          assert result["world_nbt_seeds_identical"] is True
+          assert not result["equal_terrain_and_collision_geometry_attested"]
+          assert result["science_trials_credited"]==0
+          out=pathlib.Path(os.environ["RUNNER_TEMP"])/"r-v7-new-world-nbt-review.json"
+          out.write_text(json.dumps(result,sort_keys=True,indent=2)+"\n")
+          print("R_V7_NEW_PAPER_NBT_WORLD_IDENTITY_REVIEW_ONLY="+
+                json.dumps(result,sort_keys=True))
+          PY
+      - name: Independently trace each native packet position and World tick
+        run: |
+          python - <<'PY'
+          import json,os,pathlib
+          from experiments.standard_env import v7_m02_motion_trace_audit as motion
+          from experiments.standard_env import v7_m02_direct_basal_readback as basal
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"new-basal-originals"
+          arms={}
+          for arm in basal.RATES:
+              found=[p for p in (root/arm).rglob("paper_server.log")
+                     if p.is_file() and not p.is_symlink()
+                     and all(not ancestor.is_symlink() for ancestor in p.parents)]
+              assert len(found)==1,"ambiguous original Paper motion: "+arm
+              measured=motion.review(found[0].read_bytes())
+              expect_walk=0.0 if arm in ("WALK_ZERO","BOTH_ZERO") else .01
+              assert abs(measured["observed_charge_per_actual_block"]-expect_walk)<1e-8
+              arms[arm]=measured
+              print("R_V7_ACTUAL_PAPER_MOTION_POSE_DEV_SOURCE "+arm+" "+
+                    json.dumps(measured,sort_keys=True))
+          data={
+              "classification":"RSEE_V7_FIVE_MOTION_POSES_SOURCE_ONLY",
+              "per_arm":arms,
+              "same_world_seed_but_actual_start_pose_may_differ":True,
+              "physical_collision_causality_attested":False,
+              "science_trials_credited":0,
+              "v_science_go":False,
+              "changed_plugin_qualified":False,
+          }
+          path=pathlib.Path(os.environ["RUNNER_TEMP"])/"r-v7-new-motion-pose-review.json"
+          path.write_text(json.dumps(data,sort_keys=True,indent=2)+"\n")
+          PY
+      - name: Archive all original S artifacts plus R read-only receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsee-v7-new-basal-five-dev-originals-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/new-basal-originals/
+            ${{ runner.temp }}/r-v7-new-basal-review.json
+            ${{ runner.temp }}/r-v7-new-world-nbt-review.json
+            ${{ runner.temp }}/r-v7-new-motion-pose-review.json
+          retention-days: 90
+          if-no-files-found: warn

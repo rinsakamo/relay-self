@@ -1,0 +1,70 @@
+name: R FLAT four independent original archive audit offline
+on:
+  push:
+    branches: ['infra/rsee-r6-s9-native-original-readback-20261012']
+    paths: ['.github/workflows/rsee-flat-four-original-audit.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r-flat-four-original-audit-38994504183
+  cancel-in-progress: false
+jobs:
+  original-evidence-review:
+    if: "github.run_attempt == 1 && github.event.head_commit.message == 'R FLAT four: one independent original archive audit'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: 'src:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      S_ARTIFACT: '12086324331'
+      S_DIGEST: '6bd9d446eefb0a27a7599cdc4d1b79837bff3ef14d6c12ef6361435a9ea69ca6'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Independent exact R source preflight, Java and Node never started
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+          python -m pytest -q tests/test_rsee_s50_flat_four_original_audit.py tests/test_rsee_s50_flat_base_original_audit.py tests/test_rsee_v7_m02_world_nbt_audit.py
+          ruff check experiments/standard_env/s50_flat_four_original_audit.py experiments/standard_env/s50_flat_four_archive_fetch.py tests/test_rsee_s50_flat_four_original_audit.py
+          python tools/check_repository.py
+          mkdir -p "$RUNNER_TEMP/r-review"
+      - name: Preserve exact immutable FLAT source ZIP and independently hash provider bytes
+        run: |
+          python -m experiments.standard_env.s50_flat_four_archive_fetch \
+            --repo rinsakamo/relay-self --run-id 38989215391 \
+            --head 09f4dc238ee338d3fa421c6e1bf055b49a93ad8d \
+            --artifact 12084531180 \
+            --sha256 df981ff1d3eb064e78602ff785984a03a22d78943569b8c14dd9591675b103f7 \
+            --destination "$RUNNER_TEMP/r-review/source"
+      - name: Preserve new S four-arm ZIP and independently hash provider bytes
+        run: |
+          python -m experiments.standard_env.s50_flat_four_archive_fetch \
+            --repo rinsakamo/relay-self --run-id 38994504183 \
+            --head 9cb7a009b392ea8127528c310171d804251c90ec \
+            --artifact "$S_ARTIFACT" --sha256 "$S_DIGEST" \
+            --destination "$RUNNER_TEMP/r-review/run"
+      - name: Independently read native World Action pickup EAT metabolism and all saved bytes
+        run: |
+          python -m experiments.standard_env.s50_flat_four_original_audit \
+            --source "$RUNNER_TEMP/r-review/source/extracted" \
+            --run "$RUNNER_TEMP/r-review/run/extracted" \
+            --output "$RUNNER_TEMP/r-review/r-flat-four-original-audit.json"
+      - name: Preserve R result and transport receipts including failure terminal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r-flat-four-original-review-${{ github.run_id }}-1
+          path: |
+            ${{ runner.temp }}/r-review/r-flat-four-original-audit.json
+            ${{ runner.temp }}/r-review/source/r-transport.json
+            ${{ runner.temp }}/r-review/run/r-transport.json
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 90

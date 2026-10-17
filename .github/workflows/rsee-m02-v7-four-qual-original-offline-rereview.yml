@@ -1,0 +1,135 @@
+name: RSEE M0.2 V7 four QUAL original-byte rereview offline
+on:
+  push:
+    branches: ['infra/rsee-r6-s9-native-original-readback-*']
+    paths: ['.github/workflows/rsee-m02-v7-four-qual-original-offline-rereview.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: rsee-v7-four-qualified-archives-20261017
+  cancel-in-progress: false
+jobs:
+  four-originals-rereview:
+    if: "github.run_attempt == 1 && github.event.head_commit.message == 'R REREVIEW FIX: four V7 QUAL originals 20261017 offline'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arm: SHAM_ON
+            artifact: '12055677136'
+            zip_digest: '4457a29700577e340c220cafaa6c254a50a43aae58a29fdcca4c585938e832b2'
+          - arm: BASAL_ZERO
+            artifact: '12056065364'
+            zip_digest: 'c9f67f043f3a9c3175bcde10c477350fcb52a13afa7cec4368cee4f1fd7e7cda'
+          - arm: WALK_ZERO
+            artifact: '12055886025'
+            zip_digest: 'e06ebb658905e1035051c5413f907bef52f0e108a366ddd2b495dc9732a1b55c'
+          - arm: BOTH_ZERO
+            artifact: '12055002431'
+            zip_digest: 'f846bde94769bba7abcdc776126f74ad3480daff780096bdc463da4d78e9e9ca'
+    env:
+      GH_REPO: rinsakamo/relay-self
+      GH_TOKEN: ${{ github.token }}
+      QUAL_RUN: '38922286471'
+      R_PIN: 'b93ab8c418157b4bed253fee5faa8db173e35d3a'
+      R_CI: '38921124894'
+      ARM: ${{ matrix.arm }}
+      ARTIFACT: ${{ matrix.artifact }}
+      EXPECTED_ZIP: ${{ matrix.zip_digest }}
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: ${{ env.R_PIN }}
+          path: r
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Authenticate archived physical run and pinned R test source
+        run: |
+          test "$(git -C r rev-parse HEAD)" = "$R_PIN"
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ["GH_REPO"]
+          def get(route):
+              return json.loads(subprocess.check_output(["gh","api",f"repos/{repo}/{route}"]))
+          rr=get(f"actions/runs/{os.environ['R_CI']}")
+          pr=get(f"actions/runs/{os.environ['QUAL_RUN']}")
+          assert rr["head_sha"]==os.environ["R_PIN"] and rr["run_attempt"]==1 and rr["conclusion"]=="success"
+          assert pr["head_sha"]=="deea081c76437d6cc30374b69da4798e69fa8b73"
+          assert pr["run_attempt"]==1 and pr["conclusion"]=="success"
+          a=get(f"actions/artifacts/{os.environ['ARTIFACT']}")
+          assert a["name"]==f"rsee-m02-new-tick-{os.environ['ARM']}-qualification-{os.environ['QUAL_RUN']}-1"
+          assert a["workflow_run"]["id"]==int(os.environ["QUAL_RUN"]) and not a["expired"]
+          assert a["digest"]=="sha256:"+os.environ["EXPECTED_ZIP"]
+          print("R_V7_FOUR_ORIGINALS_PRODUCER_RUN_AND_ARCHIVE_PINNED_READ_ONLY",os.environ["ARM"])
+          PY
+      - name: Fetch GitHub-hosted original bytes with supported Actions artifact transport
+        run: |
+          mkdir -p "$RUNNER_TEMP/r-review/source"
+          # The GitHub CLI validates its own archive transport; R independently
+          # validates every original source SHA256 and compares the old verdict.
+          gh run download "$QUAL_RUN" -R "$GH_REPO" \
+            -n "rsee-m02-new-tick-$ARM-qualification-$QUAL_RUN-1" \
+            -D "$RUNNER_TEMP/r-review/source"
+          python - <<'PY'
+          import json,os,pathlib
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"r-review"
+          for rel in (
+              "assets/config.yml","assets/relay-metabolism-paper-dev.jar",
+              "originals/SHA256SUMS","originals/qualification_producer.json",
+              "originals/paper_server.log","originals/original_native.jsonl",
+              "independent-host-witness.json","r-independent-qualification.json"):
+              assert (root/"source"/rel).is_file(),rel
+          receipt={
+              "classification":"R_M02_V7_GITHUB_ARTIFACT_IDENTITY_PINNED_SOURCE_READ_ONLY",
+              "arm":os.environ["ARM"],"source_run":os.environ["QUAL_RUN"],
+              "artifact_id":int(os.environ["ARTIFACT"]),
+              "registered_archive_zip_sha256":os.environ["EXPECTED_ZIP"],
+              "zip_bytes_independently_reread":False,
+              "internal_original_sha256_independently_reread_by_next_R_step":True,
+              "new_world_starts":0,"science_go":False,"production_go":False}
+          (root/"zip-original-identity.json").write_text(json.dumps(receipt,sort_keys=True,indent=2)+"\\n")
+          print("R_FOUR_ARM_GITHUB_ARTIFACT_IDENTITY_RETRIEVED_OFFLINE",os.environ["ARM"])
+          PY
+      - name: Independently recompute identical archived original qualification
+        env:
+          PYTHONPATH: 'r/src:r/tests:r'
+        run: |
+          python -m experiments.standard_env.m02_v7_four_arm_qualification_audit \
+            --original-root "$RUNNER_TEMP/r-review/source/originals" \
+            --asset-root "$RUNNER_TEMP/r-review/source/assets" \
+            --witness "$RUNNER_TEMP/r-review/source/independent-host-witness.json" \
+            --workflow-run-id "$QUAL_RUN" --arm "$ARM" \
+            > "$RUNNER_TEMP/r-review/rereview-verdict.json"
+          python - <<'PY'
+          import json,os,pathlib
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"r-review"
+          original=json.loads((root/"source/r-independent-qualification.json").read_text())
+          audited=json.loads((root/"rereview-verdict.json").read_text())
+          assert audited==original,"archived independent R verdict changed"
+          assert audited["classification"]==f"R_M02_V7_{os.environ['ARM']}_TICK_CHORD_ENGINEERING_QUALIFIED_ONLY"
+          assert audited["grant_consumed"] is True
+          assert audited["candidate_engineering_qualified"] is True
+          assert audited["independent_host_pid_port_witness"] is True
+          assert audited["java_launches"]==audited["node_sessions"]==1
+          assert audited["actual_tick_writer_rows"]==500
+          assert audited["science_go"] is False and audited["production_go"] is False
+          print("R_FOUR_ARM_ARCHIVED_QUALIFICATION_INDEPENDENTLY_RECONFIRMED",
+                os.environ["ARM"],audited["source_tick_chord_lower_bound_blocks"],
+                audited["source_basal_first200"],audited["source_walk_setter_input"])
+          PY
+      - name: Preserve separate R source-only receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r-v7-four-${{ matrix.arm }}-offline-original-rereview-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/r-review/zip-original-identity.json
+            ${{ runner.temp }}/r-review/rereview-verdict.json
+          if-no-files-found: warn
+          retention-days: 90

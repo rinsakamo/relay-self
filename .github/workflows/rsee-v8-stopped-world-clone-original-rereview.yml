@@ -1,0 +1,125 @@
+name: R V8 stopped Paper seed62101 five-clone original offline rereview
+on:
+  push:
+    branches: ['infra/rsee-r6-s9-native-original-readback-*']
+    paths: ['.github/workflows/rsee-v8-stopped-world-clone-original-rereview.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r-v8-stopped-world-clones-seed62101-originals-20261017
+  cancel-in-progress: false
+jobs:
+  independent-stopped-world-source:
+    if: "github.run_attempt == 1 && github.event.head_commit.message == 'R V8 DEV: independent stopped World archive readback 20261017'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      GH_REPO: rinsakamo/relay-self
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN: '38976820099'
+      SOURCE_SHA: '537947b0011620769fd72da5f78320267ea8a614'
+      ORIGINAL_ARTIFACT: '12078239418'
+      ORIGINAL_ARTIFACT_DIGEST: '301cc25bae4c796ca7d19fab89cdd0f85f748562abd9f10cffe94ba9daf72200'
+      R_REVIEWER_SHA: '6547726d0cb188b1c890ab345ab9c802d091f2b6'
+      R_REVIEWER_CI: '38926030377'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.R_REVIEWER_SHA }}
+          path: r
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Verify immutable S original producer identity and independent R source CI
+        run: |
+          set -euo pipefail
+          test "$(git -C r rev-parse HEAD)" = "$R_REVIEWER_SHA"
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ["GH_REPO"]
+          def api(path):
+              return json.loads(subprocess.check_output(["gh","api",f"repos/{repo}/{path}"]))
+          s=api("actions/runs/"+os.environ["SOURCE_RUN"])
+          r=api("actions/runs/"+os.environ["R_REVIEWER_CI"])
+          artifact=api("actions/artifacts/"+os.environ["ORIGINAL_ARTIFACT"])
+          assert s["head_sha"]==os.environ["SOURCE_SHA"] and s["run_attempt"]==1 and s["conclusion"]=="success"
+          assert r["head_sha"]==os.environ["R_REVIEWER_SHA"] and r["run_attempt"]==1 and r["conclusion"]=="success"
+          assert artifact["workflow_run"]["id"]==int(os.environ["SOURCE_RUN"])
+          assert not artifact["expired"]
+          assert artifact["name"]=="v8-real-stopped-world-five-clones-seed62101-dev-38976820099-1"
+          assert artifact["digest"]=="sha256:"+os.environ["ORIGINAL_ARTIFACT_DIGEST"]
+          print("R_V8_SEPARATE_REVIEW_SOURCE_AND_ARTIFACT_METADATA_PINNED")
+          PY
+      - name: Redownload S original source archive into independent R runner
+        run: |
+          mkdir -p "$RUNNER_TEMP/v8-original"
+          gh run download "$SOURCE_RUN" -R "$GH_REPO" \
+            -n "v8-real-stopped-world-five-clones-seed62101-dev-38976820099-1" \
+            -D "$RUNNER_TEMP/v8-original"
+      - name: Independent R full stopped tree and real NBT contents review
+        env:
+          PYTHONPATH: 'r/src:r/tests:r'
+        run: |
+          set -euo pipefail
+          python -m experiments.standard_env.v8_stopped_world_clone_preflight \
+            --seed 62101 --source "$RUNNER_TEMP/v8-original/v8-dev/isolated-server/world" \
+            --arm-root "BASE_ON=$RUNNER_TEMP/v8-original/v8-dev/clones/BASE_ON" \
+            --arm-root "SHAM_ON=$RUNNER_TEMP/v8-original/v8-dev/clones/SHAM_ON" \
+            --arm-root "BASAL_ZERO=$RUNNER_TEMP/v8-original/v8-dev/clones/BASAL_ZERO" \
+            --arm-root "WALK_ZERO=$RUNNER_TEMP/v8-original/v8-dev/clones/WALK_ZERO" \
+            --arm-root "BOTH_ZERO=$RUNNER_TEMP/v8-original/v8-dev/clones/BOTH_ZERO" \
+            > "$RUNNER_TEMP/v8-original/r-offline-clone-review.json"
+          python - <<'PY'
+          import hashlib,json,os,pathlib
+          from experiments.standard_env.v7_m02_world_nbt_audit import review_level_dat
+          top=pathlib.Path(os.environ["RUNNER_TEMP"])/"v8-original"
+          w=top/"v8-dev/isolated-server/world"
+          paper=(top/"v8-dev/original-paper-console.log").read_bytes()
+          assert 0<len(paper)<10000000 and b"Done (" in paper
+          raw=(w/"level.dat").read_bytes()
+          nbt=review_level_dat(raw,expected_seed=62101)
+          r=json.loads((top/"r-offline-clone-review.json").read_text())
+          old=json.loads((top/"v8-r-original-verdict.json").read_text())
+          s=json.loads((top/"v8-dev/s-v8-dev-paper-receipt.json").read_text())
+          assert r["classification"]=="R_V8_STOPPED_WORLD_CLONE_BYTE_PARITY_ONLY_NOT_QUALIFIED"
+          assert r["source_and_five_stopped_clones_exact_bytes_equal"] is True
+          assert r["checked_stopped_world_files"]==12
+          assert r["original_world_tree_sha256"]==old["source_world_tree_sha256"]
+          assert nbt["original_level_dat_sha256"]==old["level_dat_sha256"]
+          assert nbt["world_seed_from_nbt"]==old["seed_from_real_level_dat"]==62101
+          assert s["java_process_count"]==1 and s["java_exit"]==0
+          assert s["native_mineflayer_sessions"]==0 and s["localhost_port_released"] is True
+          assert s["science_trials"]==0 and not s["science_go"]
+          out={
+              "classification":"R_V8_DEV_REAL_STOPPED_WORLD_ARCHIVED_BYTES_REREAD_ONLY",
+              "source_run":int(os.environ["SOURCE_RUN"]),
+              "source_sha":os.environ["SOURCE_SHA"],
+              "artifact_id":int(os.environ["ORIGINAL_ARTIFACT"]),
+              "github_archive_digest_metadata":os.environ["ORIGINAL_ARTIFACT_DIGEST"],
+              "archive_zip_bytes_independently_hashed":False,
+              "seed_nbt":nbt["world_seed_from_nbt"],
+              "world_tree_sha256":r["original_world_tree_sha256"],
+              "world_level_dat_sha256":hashlib.sha256(raw).hexdigest(),
+              "paper_original_log_sha256":hashlib.sha256(paper).hexdigest(),
+              "source_world_file_count":r["checked_stopped_world_files"],
+              "all_five_stopped_copy_bytes_match":True,
+              "source_claimed_java_starts":1,
+              "fresh_java_or_node_starts_in_R":0,
+              "native_start_pose_or_tick_attested":False,
+              "finite_food_opportunity_attested":False,
+              "v8_science_trials_credited":0,"science_go":False,"production_go":False}
+          (top/"r-independent-rereview.json").write_text(json.dumps(out,sort_keys=True,indent=2)+"\n")
+          print("R_V8_SEPARATE_ORIGINAL_STOPPED_WORLD_REREVIEW_PASS",json.dumps(out,sort_keys=True))
+          PY
+      - name: Save only separate R source readback receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r-v8-stopped-world-seed62101-original-rereview-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/v8-original/r-offline-clone-review.json
+            ${{ runner.temp }}/v8-original/r-independent-rereview.json
+          if-no-files-found: warn
+          retention-days: 90

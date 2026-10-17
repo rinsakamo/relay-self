@@ -1,0 +1,82 @@
+# R independent one-shot replay of S already-finished DEV originals, no physical start.
+name: R S50 P1 entity roster original source review (offline)
+on:
+  push:
+    branches: [infra/rsee-r6-s9-native-original-readback-20261012]
+    paths: ['.github/workflows/rsee-s50-p1-roster-original.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  original-roster:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rinsakamo/relay-self
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: R corrected per-World roster negative controls, before archived source
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+          python -m pytest -q tests/test_rsee_s50_p1_roster_original_audit.py
+      - name: Independently download exact immutable S physical DEV original
+        run: |
+          set -euo pipefail
+          gh api "/repos/$GH_REPO/actions/runs/38978685310" --jq '.head_sha' | grep -Fx 'c1d1004f8b748b2e848b8db6a89ae6c91599891a'
+          gh api "/repos/$GH_REPO/actions/runs/38978685310" --jq '.run_attempt' | grep -Fx '1'
+          gh api "/repos/$GH_REPO/actions/runs/38978685310" --jq '.conclusion' | grep -Fx 'success'
+          gh api "/repos/$GH_REPO/actions/artifacts/12080510466" --jq '.name' | grep -Fx 's-p1-postaction-wait-dev-61021-38978685310'
+          mkdir -p "$RUNNER_TEMP/r-p1-roster"
+          gh run download 38978685310 -R "$GH_REPO" \
+            -n s-p1-postaction-wait-dev-61021-38978685310 \
+            -D "$RUNNER_TEMP/r-p1-roster"
+      - name: R independently recomputes roster and source physical boundaries
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, shutil
+          from pathlib import Path
+          from experiments.standard_env.s50_p1_roster_original_audit import review, CLASS
+          root=Path(os.environ['RUNNER_TEMP'])/'r-p1-roster'
+          original=list(root.rglob('m02_report.json'))
+          jars=list(root.rglob('relay-metabolism-paper-dev.jar'))
+          assert len(original)==1 and len(jars)==1
+          out=original[0].parent
+          jar_sha='51a1d76405e69c77b9d59e39a6e00dc3dc3b953382f1196cfc1e1f6bf3b9df54'
+          assert jars[0].is_file() and not jars[0].is_symlink()
+          assert hashlib.sha256(jars[0].read_bytes()).hexdigest()==jar_sha
+          if jars[0].parent != out:
+              assert not (out/'relay-metabolism-paper-dev.jar').exists()
+              shutil.copyfile(jars[0],out/'relay-metabolism-paper-dev.jar')
+          result=review(out,run=38978685310,
+                        head='c1d1004f8b748b2e848b8db6a89ae6c91599891a',
+                        artifact=12080510466,jar=jar_sha)
+          assert result['classification']==CLASS
+          assert result['native_roster_rows']==96
+          assert result['sampled_type_histogram_per_tick'][0]=={
+              'END_CRYSTAL':10,'PLAYER':1,'STRIDER':1}
+          assert result['same_world_other_entity_ticks']==[]
+          assert result['same_world_only_self_at_sample'] is True
+          assert result['roster_same_across_8_samples'] is True
+          assert result['p1_fatigue_recovered']==0
+          assert result['s_true_wait_admitted']==0
+          assert result['full_server_actor_solo']=='NOT_ATTESTED'
+          dest=Path(os.environ['RUNNER_TEMP'])/'r-p1-roster-independent-verdict.json'
+          dest.write_text(json.dumps(result,sort_keys=True,indent=2)+'\n')
+          print('R_P1_ENTITY_UUID_TYPE_PER_WORLD_SAMPLED_ROSTER_REVIEW_ONLY')
+          PY
+      - name: Preserve R reviewer receipt; never overwrite S original
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r-p1-entity-roster-original-only-${{ github.run_id }}
+          path: ${{ runner.temp }}/r-p1-roster-independent-verdict.json
+          retention-days: 90
+          if-no-files-found: warn

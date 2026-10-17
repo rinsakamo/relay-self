@@ -1,0 +1,101 @@
+name: RSEE Paper B1 historical DEV independent original audit
+on:
+  push:
+    branches:
+      - 'infra/rsee-r6-s9-native-original-readback-*'
+    paths:
+      - '.github/workflows/rsee-paper-b1-original-readback.yml'
+      - 'experiments/standard_env/m02_paper_b1_original_audit.py'
+      - 'tests/test_rsee_m02_paper_b1_original_audit.py'
+      - 'docs/rsee-paper-b1-historical-original-review.md'
+  pull_request:
+    paths:
+      - '.github/workflows/rsee-paper-b1-original-readback.yml'
+      - 'experiments/standard_env/m02_paper_b1_original_audit.py'
+      - 'tests/test_rsee_m02_paper_b1_original_audit.py'
+      - 'docs/rsee-paper-b1-historical-original-review.md'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  independent-historical-readback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_REPO: rinsakamo/relay-self
+      GH_TOKEN: ${{ github.token }}
+      PAPER_B1_RUN: '38738039907'
+      PAPER_B1_ARTIFACT: '11974134396'
+      PAPER_B1_S_PIN: '8611a4cafef1e1acce4309359e429c8188f103ec'
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Focused independent R negative controls, no Minecraft
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+          ruff check experiments/standard_env/m02_paper_b1_original_audit.py tests/test_rsee_m02_paper_b1_original_audit.py
+          python -m pytest -q tests/test_rsee_m02_paper_b1_original_audit.py
+      - name: Authenticate immutable S historical DEV GitHub producer run
+        run: |
+          gh api "repos/$GH_REPO/actions/artifacts/$PAPER_B1_ARTIFACT" > "$RUNNER_TEMP/b1-artifact-metadata.json"
+          gh api "repos/$GH_REPO/actions/runs/$PAPER_B1_RUN" > "$RUNNER_TEMP/b1-run-metadata.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          t = Path(os.environ['RUNNER_TEMP'])
+          a = json.loads((t / 'b1-artifact-metadata.json').read_text())
+          w = json.loads((t / 'b1-run-metadata.json').read_text())
+          assert a['id'] == int(os.environ['PAPER_B1_ARTIFACT'])
+          assert a['name'] == f"m02-paper-b1-onoff-dev-{os.environ['PAPER_B1_RUN']}-1"
+          assert a['expired'] is False
+          assert a['workflow_run']['id'] == w['id'] == int(os.environ['PAPER_B1_RUN'])
+          assert a['workflow_run']['head_sha'] == w['head_sha'] == os.environ['PAPER_B1_S_PIN']
+          assert w['conclusion'] == 'success' and w['status'] == 'completed'
+          assert w['repository']['full_name'] == os.environ['GH_REPO']
+          print('R_PAPER_B1_HISTORICAL_GITHUB_PROVENANCE_MATCH_NOT_QUALIFICATION')
+          PY
+      - name: Obtain exact historical original ZIP without launching World
+        run: |
+          curl --fail --silent --show-error --location --retry 0 --max-time 60 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/$GH_REPO/actions/artifacts/$PAPER_B1_ARTIFACT/zip" \
+            -o "$RUNNER_TEMP/paper-b1-original.zip"
+          test -s "$RUNNER_TEMP/paper-b1-original.zip"
+          sha256sum "$RUNNER_TEMP/paper-b1-original.zip"
+      - name: R independent native World and S50-S51 source review, no grant
+        run: |
+          set -o pipefail
+          python -m experiments.standard_env.m02_paper_b1_original_audit \
+            --original-zip "$RUNNER_TEMP/paper-b1-original.zip" \
+            | tee "$RUNNER_TEMP/paper-b1-r-review.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p=Path(os.environ['RUNNER_TEMP'])/'paper-b1-r-review.json'
+          obj=json.loads(p.read_text())
+          assert obj['classification']=='RSEE_PAPER_B1_HISTORICAL_DEV_ORIGINAL_REVIEW_ONLY'
+          assert obj['world_and_spawn_matched'] is False
+          assert obj['new_source_r_engineering_qualified'] is False
+          assert obj['original_retained_memory_bytes_qualified'] is False
+          assert obj['v_science_admitted'] is False
+          assert obj['physical_world_launches_by_reviewer']==0
+          print('R_PAPER_B1_ORIGINALS_SOURCE_REVIEW_ONLY_NO_R_OR_V_PROMOTION')
+          PY
+      - name: Preserve independent R review receipt only (originals stay external)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsee-paper-b1-historical-readback-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/b1-artifact-metadata.json
+            ${{ runner.temp }}/b1-run-metadata.json
+            ${{ runner.temp }}/paper-b1-r-review.json
+          if-no-files-found: warn
+          retention-days: 30

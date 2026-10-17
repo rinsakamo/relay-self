@@ -1,0 +1,165 @@
+name: RSEE M0.2 Paper exact offline candidate assets
+
+on:
+  push:
+    branches:
+      - 'infra/rsee-r6-s9-native-original-readback-*'
+    paths:
+      - '.github/workflows/rsee-m02-paper-offline-assets.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      S_PIN: '52d9bbf1b4ee2e8ff810d213e36d0caf347652ee'
+      PAPER_PIN: '8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+      PLUGIN_PIN: '0ed8a00a7ebf577bdbea361e2c6facf7ed4b24001c017d362823da5cb60398e5'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: r
+          ref: ${{ github.sha }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: s
+          ref: '52d9bbf1b4ee2e8ff810d213e36d0caf347652ee'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: s/adapters/mineflayer/m02_paper_dev/pom.xml
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: s/adapters/mineflayer/package-lock.json
+      - name: Independently verify exact S Mineflayer runtime and code without launching World
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+          npm ci --omit=dev --ignore-scripts --no-audit --no-fund --prefix s/adapters/mineflayer
+          (cd s/adapters/mineflayer && npm run check)
+          node - <<'JS'
+          const { createRequire } = require('node:module');
+          const path = require('node:path');
+          const r = createRequire(path.resolve('s/adapters/mineflayer/package.json'));
+          const p = r('mineflayer/package.json');
+          if (p.version !== '4.39.0') throw Error('Mineflayer source-owned version changed');
+          const m = r('minecraft-protocol/package.json');
+          if (!m.version) throw Error('missing actual minecraft-protocol dependency');
+          console.log('M02_S_ORIGINAL_NODE22_MINEFLAYER_4_39_0_SOURCE_READY protocol='+m.version);
+          JS
+          PYTHONPATH=s/src:s/tests:s python -m pytest -q s/tests/test_m02_paper_dev.py
+      - name: Freeze S producer identity and create byte-only scratch directory
+        run: |
+          test "$(git -C s rev-parse HEAD)" = "$S_PIN"
+          mkdir -p "$RUNNER_TEMP/m02-pinned-assets"
+          printf '%s\n' 'OFFLINE_ASSET_RECONSTRUCTION_ONLY_NO_JAVA_WORLD_LAUNCH'
+      - name: Build S-pinned M0.2 plugin from exact source (no Paper server launch)
+        run: |
+          mvn -B -ntp -f s/adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+          cp s/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar \
+            "$RUNNER_TEMP/m02-pinned-assets/relay-metabolism-paper-dev.jar"
+          echo "REBUILT_PLUGIN_SHA256=$(sha256sum "$RUNNER_TEMP/m02-pinned-assets/relay-metabolism-paper-dev.jar" | cut -d ' ' -f1)"
+          test "$(sha256sum "$RUNNER_TEMP/m02-pinned-assets/relay-metabolism-paper-dev.jar" | cut -d ' ' -f1)" = "$PLUGIN_PIN"
+      - name: Obtain and independently verify exact official Paper 1.21.8 build 60
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, re, urllib.parse, urllib.request
+          base = "https://fill.papermc.io/v3/projects/paper/versions/1.21.8/builds"
+          headers = {"User-Agent": "RelaySelf-RSEE-M02-AssetReview/0.2"}
+          with urllib.request.urlopen(urllib.request.Request(base,headers=headers),timeout=50) as resp:
+              raw = resp.read(3_000_001)
+          assert len(raw)<3_000_001, "unbounded official metadata"
+          builds = json.loads(raw)
+          assert isinstance(builds,list)
+          matches = [b for b in builds if type(b.get("id")) is int
+                     and b.get("id")==60 and b.get("channel")=="STABLE"]
+          assert len(matches)==1, "the pinned Paper STABLE build is unavailable"
+          obj=matches[0]["downloads"]["server:default"]
+          assert obj["name"]=="paper-1.21.8-60.jar"
+          digest=obj["checksums"]["sha256"]
+          assert digest==os.environ["PAPER_PIN"] and re.fullmatch("[0-9a-f]{64}",digest)
+          size=obj["size"]
+          assert type(size) is int and 1_000_000<size<200_000_000
+          u=urllib.parse.urlparse(obj["url"])
+          assert u.scheme=="https" and u.hostname=="fill-data.papermc.io"
+          assert u.path.startswith("/v1/objects/") and not u.username and not u.password
+          path=pathlib.Path(os.environ["RUNNER_TEMP"])/"m02-pinned-assets/paper-1.21.8.jar"
+          h=hashlib.sha256();count=0
+          with urllib.request.urlopen(urllib.request.Request(obj["url"],headers=headers),timeout=120) as inp, path.open("xb") as out:
+              while chunk:=inp.read(1<<20):
+                  count+=len(chunk)
+                  assert count<=size
+                  out.write(chunk);h.update(chunk)
+          assert count==size and h.hexdigest()==digest
+          print(f"PAPER_FIXED_OFFLINE_SOURCE_BYTES_MATCH build=60 bytes={count} sha256={digest}")
+          PY
+      - name: Independently reconstruct DEV source config and isolated World settings as bytes
+        run: |
+          python - <<'PY'
+          import hashlib, os
+          from pathlib import Path
+          root=Path(os.environ["RUNNER_TEMP"])/"m02-pinned-assets"
+          conf=Path("s/adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml").read_text()
+          assert conf.count("dev-enabled: false")==1
+          actual=conf.replace("dev-enabled: false","dev-enabled: true")
+          assert "target-player: RelaySelf" in actual and "minecraft-version: 1.21.8" in actual
+          (root/"config.yml").write_text(actual)
+          # Independent source-matched S31A + S M0.2 override, no _write_config/
+          # EULA, java process, World folder, or other S-owned side effects.
+          settings={
+              "server-ip":"127.0.0.1","server-port":"25565","online-mode":"false",
+              "max-players":"2","level-type":"minecraft:flat",
+              "level-name":"s31a-ephemeral","gamemode":"survival",
+              "force-gamemode":"true","difficulty":"easy",
+              "spawn-protection":"0","simulation-distance":"4",
+              "view-distance":"4","enable-rcon":"false",
+              "enforce-secure-profile":"false","white-list":"false",
+              "allow-flight":"true","motd":"RelaySelf M0.2 isolated DEV",
+          }
+          props="".join(f"{k}={v}\n" for k,v in settings.items())
+          (root/"server.properties").write_text(props)
+          for name,digest in {
+              "config.yml":"e9361faa7eac2e3c63bf2f6760765f7f8ae5a4b3631c6819f7ad8ac5c04a540e",
+              "server.properties":"11aaf903bae3d92f3b667f464f301a513bee559f04acc33d722c7a2e966d03ae",
+          }.items():
+              h=hashlib.sha256((root/name).read_bytes()).hexdigest()
+              print(f"M02_OFFLINE_{name}_SHA256={h}")
+              assert h==digest,"fixture source parity mismatch"
+          PY
+      - name: Independent R asset admission (asset scope only, no execution grant)
+        env:
+          PYTHONPATH: r/src:r/tests:r
+        run: |
+          python -m experiments.standard_env.m02_paper_preworld \
+            --asset-root "$RUNNER_TEMP/m02-pinned-assets" \
+            | tee "$RUNNER_TEMP/m02-asset-review.json"
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          x=json.loads((Path(os.environ["RUNNER_TEMP"])/"m02-asset-review.json").read_text())
+          assert x["classification"]=="M02_PAPER_ASSETS_PINNED_PREWORLD_REVIEW_ONLY"
+          assert x["qualified"] is False and x["science_go"] is False
+          assert x["new_physical_qualification_authorized"] is False
+          assert x["physical_world_launches_by_review"]==0
+          print("M02_PAPER_CANDIDATE_ASSETS_RECONSTRUCTED_REVIEW_ONLY")
+          PY
+      - name: Preserve source-matched candidate bytes (90-day offline archive)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsee-m02-paper-four-pinned-assets-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/m02-pinned-assets/
+            ${{ runner.temp }}/m02-asset-review.json
+          retention-days: 90
+          if-no-files-found: error

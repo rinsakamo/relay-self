@@ -1,0 +1,267 @@
+name: RSEE R6 S9 source-native raw readback offline
+
+on:
+  push:
+    branches:
+      - 'infra/rsee-r6-s9-native-original-readback-*'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - 'infra/rsee-r5-pinned-s3-lineage-*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rsee-r6-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - name: Exact R5 ancestry, without merging sibling branches
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor 364f4cc66fbe393717d31adce22747be17446dd8 HEAD
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+      - name: Negative tests for source identity and handoff
+        env:
+          PYTHONPATH: 'src:tests:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m pytest -q tests/test_rsee_v6_original_envelope.py tests/test_rsee_v6_start_admission.py tests/test_rsee_v6_atomic_admission.py tests/test_rsee_v6_packet_provenance.py tests/test_rsee_v6_world_timing.py tests/test_rsee_b0_existing_audit.py tests/test_rsee_b0_dev_original_audit.py tests/test_rsee_m02_paper_dev_audit.py tests/test_rsee_m02_paper_preworld.py tests/test_rsee_m02_paper_qualification_audit.py tests/test_rsee_m02_v7_new_plugin_admission.py tests/test_rsee_m02_v7_tick_qualification_audit.py tests/test_rsee_m02_v7_remaining_profile_preflight.py tests/test_rsee_m02_v7_remaining_source_review.py tests/test_rsee_m02_v7_four_arm_qualification_audit.py tests/test_rsee_v8_stopped_world_clone_preflight.py tests/test_rsee_s50_tick_chord_original_audit.py tests/test_rsee_s50_p1_wait_original_audit.py tests/test_rsee_s50_p1_scope_original_audit.py tests/test_rsee_s50_p1_roster_original_audit.py tests/test_rsee_v7_m02_paper_dev_audit.py tests/test_rsee_v7_m02_prescience_gate.py tests/test_rsee_v7_m02_direct_basal_readback.py tests/test_rsee_v7_m02_world_nbt_audit.py tests/test_rsee_v7_m02_motion_trace_audit.py tests/test_rsee_s9_original_audit.py tests/test_rsee_s3_v_projection.py tests/test_rsee_lane_compat.py tests/test_rsee_source_handoff.py tests/test_rsee_shared_runtime.py tests/test_rsee_s50_p1_flat_blocked_original_audit.py
+      - name: Ruff
+        run: ruff check src tests experiments adapters observability
+      - name: Repository contracts
+        run: python tools/check_repository.py
+
+  sibling-readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: r3
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: r2
+          ref: '0ab360375a797141e8bc0f2a9c04188a2db9e650'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: s3
+          ref: '6f493b7a559dd72ea365998b9eadbd35fd7eb9b4'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: s4
+          ref: '7c2818c940f94f0112035dadc88101bee84c8cc7'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: s7
+          ref: 'd23378d0c2d8271997389f6296a9bd018e488327'
+          fetch-depth: 0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: s9
+          ref: '916814742567f8ff396b5c078d22f897d8418927'
+          fetch-depth: 0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: l1
+          ref: '40db58d548ea31c4a70acabcc71b0954c7b6ce42'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: v1
+          ref: 'fc76b89638487eadda752e61e9bd7913e67088e5'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: sv6
+          ref: '67c03400a16d0170264e16884b8d82439e3a3194'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: sv6atomic
+          ref: '37f9365d3d16c9bda440ca9a9c8a10be6a32f1fc'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: sv6start
+          ref: '2aaff0b921bcbd47a61d563b52d502596f896924'
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Source-pin S opt-in 1.21.8 packet producer, no World launch
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONPATH: 'r3:r3/src'
+        run: |
+          python -m experiments.standard_env.v6_packet_provenance --s-checkout "$PWD/sv6" | grep -F 'RSEE_V6_EXPERIMENTAL_CLOCK_SOURCE_PINNED_REVIEW_ONLY'
+      - name: Pin server-atomic datapack S source without executing it
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONPATH: 'r3:r3/src'
+        run: |
+          python -m experiments.standard_env.v6_atomic_admission --s-checkout "$PWD/sv6atomic" | grep -F 'RSEE_V6_ATOMIC_S_SOURCE_PINNED_REVIEW_ONLY'
+      - name: Compare independent R expected pack bytes to pinned S generator output
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONPATH: 'r3:r3/src'
+        run: |
+          python - <<'PY'
+          import runpy
+          from pathlib import Path
+          from experiments.standard_env.v6_atomic_admission import (
+              PACK_DIR, expected_pack_bytes, review_s_atomic_source,
+          )
+          root = Path.cwd() / "sv6atomic"
+          review_s_atomic_source(root)
+          frozen = expected_pack_bytes()
+          producer = runpy.run_path(str(root / "adapters/mineflayer/v6_atomic_fixture.py"))
+          actual = {
+              f"{PACK_DIR}/{rel}": content
+              for rel, content in producer["proposed_datapack_files"]().items()
+          }
+          assert actual == frozen, "pinned S atomic-food pack bytes differ from independent R contract"
+          print("RSEE_V6_S_ATOMIC_SOURCE_BYTES_EQUAL_R_EXPECTATIONS_REVIEW_ONLY")
+          PY
+      - name: Independent start-marker V1 and food V2 six-file byte parity
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONPATH: 'r3:r3/src'
+        run: |
+          python - <<'PY'
+          import runpy
+          import sys
+          from pathlib import Path
+          from experiments.standard_env.v6_start_admission import (
+              START_PACK_DIR, expected_start_pack_bytes,
+              expected_combined_pack_bytes, review_s_start_source,
+          )
+          from experiments.standard_env.v6_atomic_admission import (
+              expected_pack_bytes, review_s_atomic_source,
+          )
+          start = Path.cwd() / "sv6start"
+          food = Path.cwd() / "sv6atomic"
+          slot = "WORLD_START_A"
+          nonce = "0123456789abcdef0123456789abcdef"
+          review_s_start_source(start, slot=slot, nonce=nonce)
+          review_s_atomic_source(food)
+          sys.path.insert(0, str(start))
+          source = runpy.run_path(str(start / "adapters/mineflayer/v6_start_marker.py"))
+          actual = {
+              f"{START_PACK_DIR}/{rel}": data
+              for rel, data in source["proposed_start_pack"](slot, nonce).items()
+          }
+          assert actual == expected_start_pack_bytes(slot, nonce)
+          assert {**expected_pack_bytes(), **actual} == expected_combined_pack_bytes(slot, nonce)
+          print("RSEE_V6_TWO_S_PRODUCERS_EXACT_SIX_FILE_SOURCE_BYTES_MATCH_REVIEW_ONLY")
+          PY
+      - name: Frozen S3 to S6 to S7 to S8 to S9 Git ancestry
+        run: |
+          git -C s7 merge-base --is-ancestor 6f493b7a559dd72ea365998b9eadbd35fd7eb9b4 a6ed8ed6b99dd09edcaa6cc9e5cefc08778aec8f
+          git -C s7 merge-base --is-ancestor a6ed8ed6b99dd09edcaa6cc9e5cefc08778aec8f d23378d0c2d8271997389f6296a9bd018e488327
+          git -C s9 merge-base --is-ancestor d23378d0c2d8271997389f6296a9bd018e488327 eac08081d497b11f8386edd1229704c816d1a78d
+          git -C s9 merge-base --is-ancestor eac08081d497b11f8386edd1229704c816d1a78d 916814742567f8ff396b5c078d22f897d8418927
+      - name: Exact source identity and common RSEE manifests (read only)
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PYTHONPATH: 'r3:r3/src'
+        run: |
+          PYTHONPATH="r3:r3/src" python -m experiments.standard_env.lane_compat --verify \
+            --r-root "$PWD/r2" --s-root "$PWD/s3" \
+            --l-root "$PWD/l1" --v-root "$PWD/v1"
+      - name: S3, S4, S7, S9, L1, V1 source owners (isolated)
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          (
+            cd s3
+            export PYTHONPATH="src:tests:."
+            python -m adapters.mineflayer.self_s1_runtime | grep -F 'S1_DRY_RUN_NO_EFFECTS'
+            python -m pytest -q tests/test_self_s3_experience.py tests/test_experience_bridge.py
+          )
+          (
+            cd s4
+            export PYTHONPATH="src:tests:."
+            python -m pytest -q tests/test_self_s4_observation.py
+          )
+          (
+            cd s7
+            export PYTHONPATH="src:tests:."
+            python -m adapters.mineflayer.self_s7_native_trial | grep -F 'S7_NATIVE_ORIGINALS_DRY_RUN_NO_EFFECTS'
+            python -m pytest -q tests/test_self_s7_native_originals.py
+          )
+          (
+            cd s9
+            export PYTHONPATH="src:tests:."
+            python -m adapters.mineflayer.self_s8_trial | grep -F 'S8_DRY_RUN_NO_EFFECTS'
+            python -m pytest -q tests/test_self_s9_failure_receipts.py tests/test_self_s8_two_epoch.py
+          )
+          (
+            cd l1
+            export PYTHONPATH="src:tests:."
+            python -m pytest -q tests/test_experience_bridge.py
+          )
+          (
+            cd v1
+            export PYTHONPATH="src:tests:."
+            python -m experiments.validation.v1 | grep -F 'NOT_RUN'
+            python -m pytest -q tests/test_validation_v1.py tests/test_validation_l1_oracle.py
+          )
+          (
+            cd r3
+            export PYTHONPATH="src:tests:."
+            python -m experiments.standard_env.source_handoff --from-lane S --to-lane V \
+              | grep -F 'RSEE_R2_PLAN_ONLY'
+            python -m experiments.standard_env.s3_v_projection \
+              | grep -F 'RSEE_R4_PLAN_ONLY'
+            python -m experiments.standard_env.s9_original_audit \
+              | grep -F 'RSEE_R6_PLAN_ONLY'
+            python -m experiments.standard_env.b0_dev_original_audit \
+              | grep -F 'PREWORLD_BLOCKED_PENDING_OFFLINE_REVIEW'
+          )
+
+  full-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Full inherited offline Python regression
+        env:
+          PYTHONPATH: 'src:tests:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -m pytest -q
+
+  mineflayer-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - run: npm ci --ignore-scripts --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - run: npm run check --prefix adapters/mineflayer

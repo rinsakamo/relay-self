@@ -1,0 +1,138 @@
+name: RSEE M0.2 pinned Paper DEV originals offline preservation and review
+
+on:
+  push:
+    branches:
+      - 'infra/rsee-r6-s9-native-original-readback-*'
+    paths:
+      - '.github/workflows/rsee-m02-paper-original-readback.yml'
+      - 'experiments/standard_env/m02_paper_dev_audit.py'
+      - 'experiments/standard_env/m02_paper_preworld.py'
+      - 'experiments/standard_env/m02_paper_preworld_profile.json'
+      - 'tests/test_rsee_m02_paper_preworld.py'
+      - 'tests/test_rsee_m02_paper_dev_audit.py'
+      - 'docs/rsee-m02-paper-dev-original-handoff.md'
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/rsee-m02-paper-original-readback.yml'
+      - 'experiments/standard_env/m02_paper_dev_audit.py'
+      - 'experiments/standard_env/m02_paper_preworld.py'
+      - 'experiments/standard_env/m02_paper_preworld_profile.json'
+      - 'tests/test_rsee_m02_paper_preworld.py'
+      - 'tests/test_rsee_m02_paper_dev_audit.py'
+      - 'docs/rsee-m02-paper-dev-original-handoff.md'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: rsee-m02-paper-original-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  review-and-preserve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      ORIGINAL_RUN: '38668633950'
+      ORIGINAL_ARTIFACT_ID: '11942793326'
+      ORIGINAL_ARTIFACT: 'm02-paper-original-dev-38668633950-1'
+      ORIGINAL_HEAD: '52d9bbf1b4ee2e8ff810d213e36d0caf347652ee'
+      GH_REPO: 'rinsakamo/relay-self'
+      GH_TOKEN: ${{ github.token }}
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Create new independent readback root (no physical World)
+        run: mkdir -p "$RUNNER_TEMP/m02-archive/originals" "$RUNNER_TEMP/m02-archive/review"
+      - name: Read GitHub Actions authenticated original provenance
+        run: |
+          gh api "repos/$GH_REPO/actions/artifacts/$ORIGINAL_ARTIFACT_ID" > "$RUNNER_TEMP/m02-archive/review/artifact-api.json"
+          gh api "repos/$GH_REPO/actions/runs/$ORIGINAL_RUN" > "$RUNNER_TEMP/m02-archive/review/workflow-api.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"]) / "m02-archive/review"
+          a = json.loads((root / "artifact-api.json").read_text())
+          w = json.loads((root / "workflow-api.json").read_text())
+          expected_sha = os.environ["ORIGINAL_HEAD"]
+          assert a["id"] == int(os.environ["ORIGINAL_ARTIFACT_ID"])
+          assert a["name"] == os.environ["ORIGINAL_ARTIFACT"]
+          assert a["workflow_run"]["head_sha"] == expected_sha
+          assert a["workflow_run"]["id"] == int(os.environ["ORIGINAL_RUN"])
+          assert a["digest"] == "sha256:e4c0da1afc8a105c5780d09f0d93a5bfb8a7dafe401a69d3b1a815dc0701c5c2"
+          assert a["expired"] is False
+          assert w["head_sha"] == expected_sha
+          assert w["id"] == int(os.environ["ORIGINAL_RUN"])
+          assert w["conclusion"] == "success" and w["status"] == "completed"
+          assert w["repository"]["full_name"] == os.environ["GH_REPO"]
+          print("M02_ORIGINAL_GITHUB_PROVENANCE_PINNED_REVIEW_ONLY")
+          PY
+      - name: Authenticated download of exact S original run artifact
+        run: |
+          gh run download "$ORIGINAL_RUN" -R "$GH_REPO" -n "$ORIGINAL_ARTIFACT" \
+            -D "$RUNNER_TEMP/m02-archive/originals"
+          find "$RUNNER_TEMP/m02-archive/originals" -maxdepth 2 -type f -printf '%P %s bytes\n' | sort
+          ( cd "$RUNNER_TEMP/m02-archive/originals" && sha256sum paper_server.log original_native.jsonl owner_commands.jsonl m02_report.json )
+      - name: Independent pinned original-byte and physiological readback
+        env:
+          M02_ORIGINALS: ${{ runner.temp }}/m02-archive/originals
+        run: |
+          set -o pipefail
+          python -m experiments.standard_env.m02_paper_dev_audit \
+            --original-root "$M02_ORIGINALS" \
+            | tee "$RUNNER_TEMP/m02-archive/review/r-source-review.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path(os.environ["RUNNER_TEMP"]) / "m02-archive/review/r-source-review.json"
+          result = json.loads(p.read_text())
+          assert result["classification"] == "RSEE_M02_PAPER_DEV_ORIGINAL_SOURCE_REVIEW_ONLY"
+          assert result["engineering_qualified"] is False
+          assert result["science_go"] is False
+          assert result["physical_world_launches_by_reviewer"] == 0
+          print("M02_PAPER_PINNED_DEV_ORIGINALS_SOURCE_REVIEW_ACCEPTED_NOT_QUALIFIED")
+          PY
+      - name: Seal readback manifest without modifying original files
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, stat
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"]) / "m02-archive"
+          originals = root / "originals"
+          info = []
+          for p in sorted(originals.iterdir()):
+              if not p.is_file() or p.is_symlink() or not stat.S_ISREG(p.lstat().st_mode):
+                  raise ValueError("nonregular original in archive")
+              data = p.read_bytes()
+              info.append({"path": p.name, "size_bytes": len(data),
+                           "sha256": hashlib.sha256(data).hexdigest()})
+          m = {"scope": "DEV_ORIGINAL_ARCHIVAL_NOT_R_QUALIFICATION",
+               "original_run_id": int(os.environ["ORIGINAL_RUN"]),
+               "original_head": os.environ["ORIGINAL_HEAD"],
+               "original_artifact_id": int(os.environ["ORIGINAL_ARTIFACT_ID"]),
+               "original_artifact_name": os.environ["ORIGINAL_ARTIFACT"],
+               "physical_world_launches_by_archiver": 0,
+               "science_go": False, "engineering_qualified": False,
+               "files": info}
+          (root / "review/seal-manifest.json").write_text(
+              json.dumps(m, sort_keys=True, indent=2) + "\n")
+          print("M02_DEV_ORIGINALS_SEALED_FOR_HISTORICAL_REVIEW")
+          PY
+      - name: Retain byte-for-byte original files plus independent reviewer records
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsee-m02-paper-dev-originals-archive-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/m02-archive/
+          retention-days: 90
+          if-no-files-found: error
