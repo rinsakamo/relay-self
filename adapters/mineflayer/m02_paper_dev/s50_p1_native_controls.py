@@ -12,10 +12,7 @@ import os
 from pathlib import Path
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
-from adapters.mineflayer.process_session import (
-    MineflayerProcessSession,
-    MineflayerProcessStartError,
-)
+from adapters.mineflayer.process_session import MineflayerProcessStartError
 from adapters.mineflayer.python_protocol import MineflayerAdapterStarted
 from adapters.mineflayer.s51_eat_real_ci import _recording_session_type
 
