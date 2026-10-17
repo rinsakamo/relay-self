@@ -9,20 +9,25 @@ from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.m02_paper_dev.s50_p1_scope import review_scope
 
 
-def original_source() -> str:
+def original_source(*, mob_elsewhere: bool = False,
+                    self_world_switch_tick: int | None = None) -> str:
     world_uuid = "00000000-0000-0000-0000-000000000001"
+    other_world_uuid = "00000000-0000-0000-0000-000000000004"
     self_uuid = "00000000-0000-0000-0000-000000000002"
     mob_uuid = "00000000-0000-0000-0000-000000000003"
-    roster = [
-        f"{world_uuid}:0:0:{self_uuid}:PLAYER",
-        f"{world_uuid}:0:0:{mob_uuid}:ZOMBIE",
-    ]
-    fingerprint = hashlib.sha256(
-        "".join(record + "\n" for record in roster).encode("utf-8")
-    ).hexdigest()
     lines = []
     for i in range(1, 9):
         stamp = 40 + i
+        self_world = (other_world_uuid if self_world_switch_tick is not None
+                      and stamp >= self_world_switch_tick else world_uuid)
+        mob_world = other_world_uuid if mob_elsewhere else world_uuid
+        roster = sorted([
+            f"{self_world}:0:0:{self_uuid}:PLAYER",
+            f"{mob_world}:0:0:{mob_uuid}:ZOMBIE",
+        ])
+        fingerprint = hashlib.sha256(
+            "".join(record + "\n" for record in roster).encode("utf-8")
+        ).hexdigest()
         lines.append(
             f"S50_DEV_WAIT_TICK marker_id=action-session world=world "
             f"tick={stamp} index={i} combat_events=0 swing_events=0"
@@ -61,6 +66,10 @@ def test_scope_candidate_cannot_certify_world_or_wait():
     assert r["p1_fatigue_recovered"] == 0
     assert r["other_loaded_entities_seen_ticks"] == list(range(41, 49))
     assert r["source_entity_rows"] == 16
+    assert r["same_world_other_loaded_entities_seen_ticks"] == list(range(41, 49))
+    assert r["same_world_other_loaded_entities_by_tick"] == [1] * 8
+    assert r["same_world_only_self_at_all_samples"] is False
+    assert r["full_tick_solo_no_agents"] == "NOT_ATTESTED"
     assert r["first_sample_entity_types"] == {"PLAYER": 1, "ZOMBIE": 1}
     assert r["unloaded_entity_lifecycle"] == "NOT_ATTESTED"
     assert r["held_motor_control_absence"] == "NOT_ATTESTED"
@@ -121,3 +130,21 @@ def test_negative_controls_cannot_upgrade_to_p1():
     assert not receipt["independent_R_qualification"]
     assert receipt["whole_tick_all_activity_absence"] == "NOT_ATTESTED"
     assert receipt["science_go"] is False
+
+
+def test_other_world_mob_does_not_imply_self_world_occupied():
+    # Same global counts and native Paper digest, different entity World UUID.
+    r = review(original_source(mob_elsewhere=True))
+    assert r["other_loaded_entities_seen_ticks"] == list(range(41, 49))
+    assert r["same_world_other_loaded_entities_seen_ticks"] == []
+    assert r["same_world_other_loaded_entities_by_tick"] == [0] * 8
+    assert r["same_world_only_self_at_all_samples"] is True
+    assert r["full_tick_solo_no_agents"] == "NOT_ATTESTED"
+    assert r["wait_ticks_admitted"] == 0
+    assert r["p1_fatigue_recovered"] == 0
+
+
+def test_self_world_drift_rejected_even_with_recomputed_native_roster_digest():
+    # A sample-world switch cannot be hidden in otherwise valid Paper rows.
+    with pytest.raises(BoundaryRejected, match="Self UUID/World identity"):
+        review(original_source(self_world_switch_tick=48))
