@@ -8,11 +8,11 @@ import pytest
 
 from adapters.mineflayer.m02_paper_dev import s50_flat_p1_tick_lineage as subject
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
+from adapters.mineflayer.m02_paper_dev.s50_flat_p1_motion import screen_motion
 from adapters.mineflayer.m02_paper_dev.s50_flat_p1_pure_preview import (
     replay_p1_motion_only_preview,
 )
 from test_s50_flat_p1_motion import source
-from adapters.mineflayer.m02_paper_dev.s50_flat_p1_motion import screen_motion
 
 
 def fixture(arm="SHAM_ON"):
