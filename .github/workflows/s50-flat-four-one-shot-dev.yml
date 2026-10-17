@@ -53,7 +53,7 @@ jobs:
             s/tests/test_s50_flat_base_foraging_dev.py \
             s/tests/test_s50_flat_ground_dev.py \
             s/tests/test_s50_v8_five_world_dev.py
-          PYTHONPATH="s/src:s/tests:s" python -m pytest -q s/tests
+          (cd s && PYTHONPATH="src:tests:." python -m pytest -q)
           (cd s && python tools/check_repository.py)
           ruff check s/src s/tests s/experiments s/adapters s/observability
           cd s/adapters/mineflayer
@@ -165,3 +165,5 @@ jobs:
             test -s "$RUNNER_TEMP/flat-four-results/$arm/original_native.jsonl"
           done
           echo "S50_FLAT_FOUR_WORLDS_DEV_EXECUTED_WITH_ORIGINALS_NOT_SCIENCE"
+
+# Explicit DEV transaction: remaining four only; historical BASE_ON is excluded.
