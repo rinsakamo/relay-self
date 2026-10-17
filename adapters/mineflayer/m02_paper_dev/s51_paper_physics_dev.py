@@ -203,8 +203,7 @@ async def _motor_walk(session: MineflayerProcessSession, *,
     try:
         effect = await execute_seek_step(
             session, supervisor, issued, step, phase_hook=phase_hook,
-            tick_gate_hook=tick_gate_hook, settle_hook=settle_hook,
-            p1_flat_force_paper_look=p1_flat_look_gate_dev)
+            tick_gate_hook=tick_gate_hook, settle_hook=settle_hook)
         if v7_clock_gate_dev:
             from adapters.mineflayer.m02_paper_dev.s50_boundary import (
                 reconcile,
