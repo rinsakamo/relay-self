@@ -135,3 +135,29 @@ def test_no_paper_yaw_never_proceeds_to_motor_control(tmp_path, monkeypatch):
         ))
     assert len(commands) == subject.MAX_SNAPSHOTS
     assert all(cmd.startswith("relaydevsnapshot ") for cmd in commands)
+
+def test_flat_p1_look_is_child_only_and_cleaned_up(monkeypatch):
+    monkeypatch.delenv(subject.FLAT_LOOK_ENV, raising=False)
+    with subject.single_flat_p1_child_look_launch(eligible=True):
+        assert subject.FLAT_LOOK_ENV in __import__("os").environ
+        assert __import__("os").environ[subject.FLAT_LOOK_ENV] == "1"
+        with pytest.raises(BoundaryRejected):
+            with subject.single_flat_p1_child_look_launch(eligible=True):
+                pass
+    assert subject.FLAT_LOOK_ENV not in __import__("os").environ
+    with pytest.raises(BoundaryRejected):
+        with subject.single_flat_p1_child_look_launch(eligible=False):
+            pass
+    monkeypatch.setenv(subject.FLAT_LOOK_ENV, "FOREIGN")
+    with pytest.raises(BoundaryRejected):
+        with subject.single_flat_p1_child_look_launch(eligible=True):
+            pass
+    assert __import__("os").environ[subject.FLAT_LOOK_ENV] == "FOREIGN"
+
+
+def test_failed_child_launch_always_unsets_force_flag(monkeypatch):
+    monkeypatch.delenv(subject.FLAT_LOOK_ENV, raising=False)
+    with pytest.raises(RuntimeError, match="spawn failed"):
+        with subject.single_flat_p1_child_look_launch(eligible=True):
+            raise RuntimeError("spawn failed")
+    assert subject.FLAT_LOOK_ENV not in __import__("os").environ
