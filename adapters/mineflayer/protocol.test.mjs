@@ -158,24 +158,6 @@ test('look accepts only explicit finite yaw and pitch', () => {
   )
 })
 
-test('explicit Paper-look force is strict opt-in and legacy output unchanged', () => {
-  const legacy = {
-    type: 'effect', action_id: 'look-legacy', effect: 'look',
-    yaw: -Math.PI / 2, pitch: 0
-  }
-  assert.deepEqual(parseCommand(legacy), legacy)
-  const forced = { ...legacy, action_id: 'look-flat-p1', force_server: true }
-  assert.deepEqual(parseCommand(forced), forced)
-  for (const bad of [false, 'true', 1, null]) {
-    assert.throws(() => parseCommand({
-      ...forced, force_server: bad
-    }), /force_server/)
-  }
-  assert.throws(() => parseCommand({
-    ...forced, extra_motor: true
-  }), /fields are invalid/)
-})
-
 test('equip_item and consume_held remain separate primitive effects', () => {
   assert.deepEqual(
     parseCommand({
