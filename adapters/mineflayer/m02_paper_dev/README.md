@@ -668,3 +668,46 @@ registries. `paper_effective_input_release_tick=NOT_ATTESTED`,
 prospective standalone physical test and independent R inspection
 before P1 can consider a source-bound physical WAIT interval.
 
+### S50/P1 FLAT seed63101 source DEV (new isolated copy only)
+
+The existing V7 S50→P1 eight-tick evidence collector supports an **explicitly
+separate** `--s50-p1-flat-archive <absolute-directory>` input only when ALL
+of these are set together:
+
+`--v7-arm BASE_ON --v7-seed 63101 --v7-controlled-calibration-dev
+--v7-server-clock-calibration-dev --v7-tick-meter-dev
+--v7-p1-wait-evidence-dev`.
+
+Unlike the existing V7 natural seed roster, 63101 is accepted **only** for
+this direct held-control DEV source mode. It cannot silently participate in
+V7 paired natural conditions or scientific comparisons. The archive must
+be the recorded stopped FLAT original from S source
+`38989215391` (containing `flat-source/server/world/`,
+`flat-source/paper_console.log`,
+`flat-source/flat_dev_receipt.json`). The S preflight independently checks
+the full stopped-World index, pinned original `level.dat` SHA, original
+Paper 25/25 ground+air native markers, receipt, source properties and no
+symlinks/overlapping output roots. The original World must remain unmodified;
+only an exact byte-for-byte copy may be launched. This is *not* a new
+independent World UUID; an original copied World retaining its UUID is
+expected. Paper loads `level-name=world`, not the default S31A world. The
+controlled Self body pose remains `0.5,-60,0.5` as attested by native
+Paper and Mineflayer observations.
+
+After STOP and child cleanup, the runner verifies the frozen source's
+unchanged byte index, preserves a complete stopped
+`saved_flat_world_original/` tree plus the canonical index, and retains
+`s50_p1_native_controls_original.jsonl`, original native bridge bytes,
+formal S50 Action transitions, Paper lifecycle + eight candidate WAIT tick
+samples, plugin/config digests and source identity. The runner may reject a
+physical run even if MOVE progressed, if source coverage or control
+readback is incomplete. It never retroactively changes original archives
+or upgrades DEV results to R QUALIFICATION or V SCIENCE.
+
+This is a **provisioned CLI path**, not proof it has already been physically
+executed. A new explicit one-shot operator/LocalCodex invocation is
+required, with a fresh output directory, pinned Paper SHA, freshly
+compiled DEV plugin SHA and a new independent R original readback. Native
+client `physicsTick` remains distinct from Paper World tick. Still
+`wait_ticks_admitted=0`, `p1_fatigue_recovered=0`, production NO_GO.
+
