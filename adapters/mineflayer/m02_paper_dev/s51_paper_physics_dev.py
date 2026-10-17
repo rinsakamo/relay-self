@@ -1269,6 +1269,13 @@ async def run(
                 if v7_tick_meter_dev else None,
                 v7_p1_wait_evidence_dev=v7_p1_wait_evidence_dev,
                 p1_flat_look_gate_dev=flat_expected is not None)
+            if flat_expected is not None:
+                source_look = report["movement"].get("p1_flat_look_before_forward")
+                report["p1_flat_look_paper_yaw_source"] = source_look
+                report["p1_flat_look_paper_yaw_verified"] = (
+                    isinstance(source_look, dict)
+                    and source_look.get("orientation_matches") is True
+                )
             report["stage"] = "V7_SOURCE_WORLD_TICK_200"
             report["v7_source"] = await _v7_wait_source_tick(
                 server_log, v7_arm, minimum_player_basal_ticks=200,
