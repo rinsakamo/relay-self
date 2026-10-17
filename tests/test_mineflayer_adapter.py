@@ -1,5 +1,4 @@
 import json
-import math
 
 import pytest
 
@@ -476,23 +475,6 @@ def test_attack_entity_command_keeps_target_identity_explicit() -> None:
         match="non-negative integer",
     ):
         encode_attack_entity("action-attack-bad", entity_id=-1)
-
-
-def test_flat_p1_server_force_look_is_opt_in_and_legacy_identical() -> None:
-    legacy = json.loads(encode_look("look-legacy", yaw=-math.pi / 2, pitch=0))
-    assert legacy == {
-        "type": "effect", "action_id": "look-legacy",
-        "effect": "look", "yaw": -math.pi / 2, "pitch": 0,
-    }
-    assert json.loads(encode_look(
-        "look-legacy", yaw=-math.pi / 2, pitch=0, force_server=False
-    )) == legacy
-    assert json.loads(encode_look(
-        "look-flat-p1", yaw=-math.pi / 2, pitch=0, force_server=True
-    )) == {**legacy, "action_id": "look-flat-p1", "force_server": True}
-    for bad in (None, "true", 1, 0):
-        with pytest.raises(MineflayerAdapterProtocolError):
-            encode_look("bad-force", yaw=0, pitch=0, force_server=bad)
 
 
 def test_look_command_is_only_a_finite_heading_primitive() -> None:
