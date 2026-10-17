@@ -1,0 +1,130 @@
+name: S50 P1 FLAT Paper yaw preforward one-shot DEV
+on:
+  push:
+    branches: ['self/product-self-one-command-20261010']
+    paths: ['.github/workflows/s50-p1-flat-yaw-one-shot-dev.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: s50-p1-flat-yaw-unique-dev-one-shot
+  cancel-in-progress: false
+jobs:
+  single-disposable-flat:
+    if: "github.run_attempt == 1 && github.event.head_commit.message == 'S50 P1 FLAT: one native Paper yaw-before-forward disposable DEV execution'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 32
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rinsakamo/relay-self
+      PYTHONDONTWRITEBYTECODE: '1'
+      FLAT_RUN: '38989215391'
+      FLAT_HEAD: '09f4dc238ee338d3fa421c6e1bf055b49a93ad8d'
+      FLAT_ART: '12084531180'
+      FLAT_DIGEST: 'df981ff1d3eb064e78602ff785984a03a22d78943569b8c14dd9591675b103f7'
+      PAPER_SHA: '8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+      CI_APPROVED_PARENT: '66cc94ddc67a48b03477b88f8e2ca6144b20da8b'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          path: s
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Admit HEAD and previous exact-head passing CI, no Java yet
+        run: |
+          set -euo pipefail
+          test "$(git -C s rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C s rev-parse HEAD^)" = "$CI_APPROVED_PARENT"
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+          PYTHONPATH=s/src:s/tests:s python -m pytest -q             s/tests/test_s50_p1_flat_look.py             s/tests/test_s50_p1_flat_source.py             s/tests/test_s50_p1_wait.py             s/tests/test_s50_p1_native_controls.py             s/tests/test_s50_p1_control_action.py
+          ruff check s/adapters/mineflayer/m02_paper_dev/s50_p1_flat_look.py             s/tests/test_s50_p1_flat_look.py             s/adapters/mineflayer/m02_paper_dev/s51_paper_physics_dev.py
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ["GH_REPO"]
+          sha=os.environ["CI_APPROVED_PARENT"]
+          for id in (39004501695,39004499146):
+              run=json.loads(subprocess.check_output(["gh","api",f"repos/{repo}/actions/runs/{id}"]))
+              assert run["head_sha"]==sha and run["conclusion"]=="success"
+          print("S50_P1_FLAT_PARENT_FAST_CI_COMPLETED_SUCCESS")
+          PY
+      - name: Retain immutable flat source identity before physical launch
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ["GH_REPO"]
+          def api(p):return json.loads(subprocess.check_output(["gh","api",f"repos/{repo}/{p}"]))
+          run=api("actions/runs/"+os.environ["FLAT_RUN"])
+          art=api("actions/artifacts/"+os.environ["FLAT_ART"])
+          assert run["head_sha"]==os.environ["FLAT_HEAD"] and run["run_attempt"]==1
+          assert run["conclusion"]=="failure"
+          assert art["workflow_run"]["id"]==run["id"] and not art["expired"]
+          assert art["digest"]=="sha256:"+os.environ["FLAT_DIGEST"]
+          print("S50_P1_FLAT_ORIGINAL_PROVIDER_PIN_PASS")
+          PY
+      - name: Download source and compile exact DEV plugin, no qualification
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/flat-original" "$RUNNER_TEMP/dev-assets"
+          gh api "repos/$GH_REPO/actions/artifacts/$FLAT_ART/zip" > "$RUNNER_TEMP/flat-original.zip"
+          echo "$FLAT_DIGEST  $RUNNER_TEMP/flat-original.zip" | sha256sum -c -
+          python - <<'PY'
+          import pathlib,zipfile,os
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])
+          with zipfile.ZipFile(root/"flat-original.zip") as z:
+              assert all(not pathlib.PurePosixPath(n).is_absolute()
+                         and ".." not in pathlib.PurePosixPath(n).parts
+                         for n in z.namelist())
+              z.extractall(root/"flat-original")
+          PY
+          cp "$RUNNER_TEMP/flat-original/flat-source/server/paper-1.21.8.jar"              "$RUNNER_TEMP/dev-assets/paper.jar"
+          echo "$PAPER_SHA  $RUNNER_TEMP/dev-assets/paper.jar" | sha256sum -c -
+          (cd s/adapters/mineflayer/m02_paper_dev && mvn -B -ntp -q -DskipTests package)
+          cp s/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar              "$RUNNER_TEMP/dev-assets/actual-dev-plugin.jar"
+          sha256sum "$RUNNER_TEMP/dev-assets/actual-dev-plugin.jar" > "$RUNNER_TEMP/dev-assets/plugin-sha256.txt"
+          (cd s/adapters/mineflayer && npm ci --ignore-scripts --no-audit --no-fund)
+          (cd s/adapters/mineflayer && node -e "require.resolve('mineflayer');require.resolve('minecraft-protocol')")
+          echo "S50_P1_FLAT_SOURCE_JARS_NODE_READY_NOT_QUALIFIED"
+      - name: Single new FLAT Java + Node session; do not retry on behavioral BLOCKED
+        id: physical
+        continue-on-error: true
+        run: |
+          set +e
+          PLUGIN_SHA="$(sha256sum "$RUNNER_TEMP/dev-assets/actual-dev-plugin.jar" | awk '{print $1}')"
+          PYTHONPATH="s/src:s/tests:s" python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev             --v7-arm BASE_ON --v7-seed 63101             --v7-controlled-calibration-dev             --v7-server-clock-calibration-dev --v7-tick-meter-dev             --v7-p1-wait-evidence-dev             --s50-p1-flat-archive "$RUNNER_TEMP/flat-original"             --output-dir "$RUNNER_TEMP/s50-p1-flat-yaw-world-001"             --paper-jar "$RUNNER_TEMP/dev-assets/paper.jar"             --paper-sha256 "$PAPER_SHA"             --plugin-jar "$RUNNER_TEMP/dev-assets/actual-dev-plugin.jar"             --plugin-sha256 "$PLUGIN_SHA"             --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD             > "$RUNNER_TEMP/s50-p1-flat-yaw-stdout.jsonl" 2>&1
+          code=$?
+          set -e
+          tail -c 12000 "$RUNNER_TEMP/s50-p1-flat-yaw-stdout.jsonl" || true
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+      - name: Archive native Action and STOP originals even when test is BLOCKED
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s50-p1-flat-yaw-source-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/s50-p1-flat-yaw-world-001/
+            ${{ runner.temp }}/s50-p1-flat-yaw-stdout.jsonl
+            ${{ runner.temp }}/dev-assets/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 90
+          compression-level: 6
+      - name: Keep behavioral outcome separate from successful archive transfer
+        if: always()
+        env:
+          PHYSICAL_EXIT: ${{ steps.physical.outputs.code }}
+        run: |
+          test -s "$RUNNER_TEMP/s50-p1-flat-yaw-stdout.jsonl"
+          echo "S50_P1_FLAT_YAW_ONE_DEV_ATTEMPT_SAVED_NOT_SCIENCE"
+          test "$PHYSICAL_EXIT" = 0
