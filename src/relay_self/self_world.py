@@ -9,7 +9,7 @@ import math
 from dataclasses import dataclass
 from enum import Enum
 
-from relay_self.belief import BeliefAssessment
+from relay_self.belief import BeliefAssessment, BeliefStatus
 from relay_self.persistent_cognition import Memory, PersistentCognition
 from relay_self.prediction import PredictionResult, PredictionState, PredictionStatus
 from relay_self.provenance import Provenance
@@ -138,7 +138,7 @@ class WorldForecast:
 @dataclass(frozen=True, slots=True)
 class WorldReading:
     origin: WorldOrigin
-    value: WorldEntityObservation | Memory | bool | int | str | None
+    value: WorldEntityObservation | Memory | BeliefAssessment | bool | int | str | None
     source_refs: tuple[str, ...]
     source_provenance: tuple[Provenance, ...]
 
@@ -188,6 +188,19 @@ class SelfWorldView:
             if b.proposition.subject == target_ref
             and b.proposition.predicate == predicate
         )
+
+    def inferred(self, target_ref: str, predicate: str) -> WorldReading:
+        """Existing BLF assessment, never measured World state."""
+        matches = self.beliefs_about(target_ref, predicate)
+        if len(matches) == 1:
+            item = matches[0]
+            if item.status in {BeliefStatus.SUPPORTED, BeliefStatus.UNSUPPORTED}:
+                return WorldReading(
+                    WorldOrigin.INFERRED, item,
+                    tuple(f"belief-evidence:{e.evidence_id}" for e in item.evidence),
+                    tuple(e.provenance for e in item.evidence),
+                )
+        return WorldReading(WorldOrigin.UNKNOWN, None, (), ())
 
     def hypothetical(self, scenario_id: str, key: str) -> WorldReading:
         _token("scenario_id", scenario_id)
