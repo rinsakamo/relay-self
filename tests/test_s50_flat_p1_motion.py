@@ -11,7 +11,9 @@ import pytest
 from adapters.mineflayer.m02_paper_dev import s50_flat_p1_motion as bridge
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.m02_paper_dev.v7_paired_config import (
-    ARMS, TEMPLATE, render_arm,
+    ARMS,
+    TEMPLATE,
+    render_arm,
 )
 
 
