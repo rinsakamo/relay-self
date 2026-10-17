@@ -10,7 +10,10 @@ from pathlib import Path
 import pytest
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
-from adapters.mineflayer.m02_paper_dev.s50_p1_packet_trace import review_s50_packet_trace
+from adapters.mineflayer.m02_paper_dev.s50_p1_packet_trace import (
+    reconcile_packet_native_original,
+    review_s50_packet_trace,
+)
 
 SESSION = "s50-native-session-001"
 PACKET_SOURCE = "S50_DEV_PASSIVE_PACKET_V1"
@@ -146,3 +149,49 @@ def test_direct_node_packet_forwarding_negative_controls():
         text=True, timeout=30, check=False,
     )
     assert run.returncode == 0, run.stdout + run.stderr
+    wrapper = test_file.with_name("s50_p1_readback_bridge.mjs")
+    syntax = subprocess.run(
+        [executable, "--check", str(wrapper)], capture_output=True,
+        text=True, timeout=15, check=False,
+    )
+    assert syntax.returncode == 0, syntax.stdout + syntax.stderr
+
+
+def native():
+    frames = [
+        {"session_id": SESSION, "seq": i, "type": "observation"}
+        for i in range(8)
+    ]
+    frames[0]["type"] = "adapter_started"
+    frames[5] = {
+        "session_id": SESSION, "seq": 5, "type": "effect_result",
+        "effect": "look", "action_id": "move-1-look", "result": "applied",
+    }
+    frames[7]["type"] = "shutdown_ack"
+    return frames
+
+
+def test_native_stdout_cross_reference_never_promotes_world_packet_authenticity():
+    packet_lines = "\n".join(json.dumps(row) for row in rows())
+    report = reconcile_packet_native_original(packet_lines, native())
+    assert report["native_effect_and_shutdown_projection_reconciled"]
+    assert report["independent_original_authenticity"] is False
+    assert report["paper_effective_yaw_attested"] is False
+    assert report["self_feedback_delivered"] is False
+
+
+@pytest.mark.parametrize("change", ["effect_action", "effect_seq", "shutdown", "session"])
+def test_native_packet_bijection_wrong_original_fail_closed(change):
+    frames = native()
+    if change == "effect_action":
+        frames[5]["action_id"] = "other"
+    elif change == "effect_seq":
+        frames[5]["seq"] = 99
+    elif change == "shutdown":
+        frames[7]["type"] = "observation"
+    else:
+        frames[4]["session_id"] = "foreign"
+    with pytest.raises(BoundaryRejected):
+        reconcile_packet_native_original(
+            "\n".join(json.dumps(row) for row in rows()), frames
+        )
