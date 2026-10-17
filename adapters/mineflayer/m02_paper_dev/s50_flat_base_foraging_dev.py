@@ -74,7 +74,8 @@ def preflight(archive: Path, paper: Path, plugin: Path, plugin_sha: str,
     need(len(flat.extract_native_witnesses(log)) == 25,
          "original native grass and clearance markers missing")
     properties = (archive / "flat-source/server/server.properties").read_bytes()
-    need(b"level-seed=63101" in properties and b"minecraft:flat" in properties,
+    need(b"level-seed=63101" in properties and b"level-type=" in properties
+         and b"flat" in properties and b"normal" not in properties,
          "archived World profile was not superflat")
     source = original.resolve()
     dest = output.resolve(strict=False)
