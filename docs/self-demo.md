@@ -1548,3 +1548,53 @@ Historical physical-run-001 remains BLOCKED; physical-run-002 remains
 LOOK_GATE_FAILED / ACTION_UNKNOWN / FORWARD_NOT_ISSUED. This patch performed
 no Java/Node/World run, no original recovery and no science trial.
 `SourceBoundTick(WAIT)=0`, P1 recovery 0 and production NO_GO remain.
+
+## S50 #627 — passive client packet correction recorder (2026-10-17)
+
+Existing one-child FLAT/P1 opt-in DEV runtime now creates a **separate fresh
+original** `s50_p1_packet_trace_original.jsonl` via the unchanged S51 launch
+authority and existing Mineflayer readback wrapper. The original controls
+sidecar and native adapter stdout source retain their distinct identities.
+The recorder is in `s50_p1_packet_trace.mjs`; observer-only inbound
+`position` / `player_rotation` BEFORE and AFTER callback pairs, outbound
+`look` / `position_look` / `teleport_confirm` sender calls, actual native
+effect ACKs and client `physicsTick` are ordered in one bounded sidecar.
+It includes selected packet fields, current client yaw/pitch (radians),
+client physics tick and a serial source ordinal. The wrapper delegates each
+outbound packet to the original `client.write` **exactly once**, unmodified,
+with its original receiver and arguments. It never re-LOOKs, moves, clears
+or teleports for monitoring, and does not synthesize an ACK.
+
+The new sidecar is FLAT-P1-child-only; other S50/V7/normal bridge runs do
+not inherit the packet tracing environment. The opt-in rejects a missing,
+overlapping or preexisting sidecar path and inherited trace env. The source
+recorder uses exclusive-create, synchronous append and a fixed row cap
+(failure is not silently promoted to valid data).
+
+`s50_p1_packet_trace.py` provides a separate read-only offline shape
+checker for unique original JSON fields, session, ordinal, client callback
+counter, inbound BEFORE/AFTER pairing, native effect identity and forbidden
+packet-name/field mutation. Its `correction_callbacks` include client pose
+on both sides and optional teleport id. `tests/test_s50_packet_trace.py`
+and `s50_p1_packet_trace.test.mjs` test fake server corrections, callback
+ordering, exact-once forwarding and invalid trace rejection. FAST CI runs
+both Python source tests and Node tests via the Python test.
+
+**Attestation ceiling:** This observes calls and client callback state, NOT
+the raw encrypted network bytes or independent Paper packet reception.
+The inbound AFTER means after known Mineflayer listener order, not proof
+of every asynchronous correction completing. Teleport confirmation
+**sender invocation** is not Paper ACK. Client physics ticks are not Paper
+World ticks. The passive trace alone cannot authorize setup→Self handoff,
+assume no pending server correction, assert a server-effective yaw or input
+release tick, or mint a P1 WAIT/learning/science success.
+
+**Next physical gate:** before new World DEV, implement read-only
+source-binding with original Paper pose snapshots and explicit
+SETUP→Self ownership transfer; do not claim correction settlement solely
+from a quiet bounded window. Then route formal S16 terminal consequences
+plus their source references into existing Self feedback in an explicit
+next epoch. Prior physical-run-001 BLOCKED and physical-run-002
+LOOK_GATE_FAILED / ACTION_UNKNOWN stay immutable. This commit itself
+launches no Minecraft World and changes no frozen grant, M/P1/R/V code
+or inherited Action dispatcher.
