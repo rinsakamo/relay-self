@@ -120,7 +120,8 @@ async def _motor_walk(session: MineflayerProcessSession, *,
                       v7_clock_gate_dev: bool = False,
                       v7_tick_meter_dev: bool = False,
                       v7_tick_meter_walk_rate: float | None = None,
-                      v7_p1_wait_evidence_dev: bool = False) -> dict:
+                      v7_p1_wait_evidence_dev: bool = False,
+    p1_flat_look_gate_dev: bool = False) -> dict:
     issuer = issuer or _issue
     provenance = provenance or _p
     before = await _correlated_observe(session, "m02-before-walk")
@@ -145,6 +146,7 @@ async def _motor_walk(session: MineflayerProcessSession, *,
     )
     phase_hook = None
     marker_id = None
+    p1_flat_look_witness = None
     if v7_clock_gate_dev and v7_phase_source is None:
         raise M02DevRejected("source-driven tick gate requires controlled Paper DEV")
     if v7_tick_meter_dev and (not v7_clock_gate_dev
@@ -152,12 +154,28 @@ async def _motor_walk(session: MineflayerProcessSession, *,
         raise M02DevRejected("tick-meter requires known controlled DEV rate")
     if v7_p1_wait_evidence_dev and not v7_tick_meter_dev:
         raise M02DevRejected("P1 WAIT source requires native tick-meter DEV")
+    if p1_flat_look_gate_dev and (not v7_p1_wait_evidence_dev
+                                 or v7_phase_source is None
+                                 or expected_start != MineflayerPosition(0.5, -60.0, 0.5)):
+        raise M02DevRejected("P1 FLAT look-before-forward requires controlled original pose")
     if v7_phase_source is not None:
         if expected_start is None or len(v7_phase_source) != 2:
             raise M02DevRejected("S50 phase markers require controlled DEV source")
         server, paper_log = v7_phase_source
         marker_id = issued.action_id + "-" + session.started.session_id
         async def phase_hook(phase: str) -> None:
+            nonlocal p1_flat_look_witness
+            if phase == "PRE_FORWARD" and p1_flat_look_gate_dev:
+                from adapters.mineflayer.m02_paper_dev.s50_p1_flat_look import (
+                    await_paper_look_before_forward,
+                )
+                # LOOK ACK is not evidence that Paper saw the orientation.
+                # Poll actual Paper snapshots BEFORE the existing governed
+                # FORWARD is issued; no extra motor/action owner is created.
+                p1_flat_look_witness = await await_paper_look_before_forward(
+                    server, paper_log, marker=marker_id,
+                    expected_yaw_rad=step.yaw,
+                )
             await _v7_source_phase_command(server, paper_log, marker_id, phase)
     tick_gate_hook = None
     if v7_clock_gate_dev:
@@ -261,6 +279,7 @@ async def _motor_walk(session: MineflayerProcessSession, *,
         "v7_tick_meter_dev": v7_tick_meter_dev,
         "v7_p1_wait_evidence_dev": v7_p1_wait_evidence_dev,
         "p1_wait_candidate": p1_wait_candidate,
+        "p1_flat_look_before_forward": p1_flat_look_witness,
         "action_id": issued.action_id,
         "action_state": closed.state.value,
         "requested_max_step_blocks": 1.0,
@@ -1236,7 +1255,8 @@ async def run(
                 v7_tick_meter_dev=v7_tick_meter_dev,
                 v7_tick_meter_walk_rate=0.01 * ARMS[v7_arm][1]
                 if v7_tick_meter_dev else None,
-                v7_p1_wait_evidence_dev=v7_p1_wait_evidence_dev)
+                v7_p1_wait_evidence_dev=v7_p1_wait_evidence_dev,
+                p1_flat_look_gate_dev=flat_expected is not None)
             report["stage"] = "V7_SOURCE_WORLD_TICK_200"
             report["v7_source"] = await _v7_wait_source_tick(
                 server_log, v7_arm, minimum_player_basal_ticks=200,
