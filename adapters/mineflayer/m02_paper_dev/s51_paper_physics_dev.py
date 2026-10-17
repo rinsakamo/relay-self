@@ -908,14 +908,16 @@ async def _v7_wait_source_tick(server_log: Path, arm: str, *,
 
 
 async def _save_and_capture_initial_world(
-    server, world: Path, evidence_root: Path,
+    server, world: Path, evidence_root: Path, *, level_name: str = "s31a-ephemeral",
 ) -> dict:
     """Create a pre-Action immutable raw World seed receipt in isolated DEV/QUAL.
 
     Paper may not materialize level.dat by the server-ready marker. A flush
     happens BEFORE the first issued World Action and while S owns the World.
     """
-    level = world / "s31a-ephemeral" / "level.dat"
+    if level_name not in ("s31a-ephemeral", "world"):
+        raise M02DevRejected("unsupported DEV World level name")
+    level = world / level_name / "level.dat"
     if (server.returncode is not None or server.stdin is None
             or not evidence_root.is_dir()
             or (evidence_root / "initial_world_level.dat").exists()):
@@ -939,7 +941,7 @@ async def _save_and_capture_initial_world(
                 if _sha256(target) != digest:
                     raise M02DevRejected("snapshot original copy mismatch")
                 return {
-                    "source_world_path": "s31a-ephemeral/level.dat",
+                    "source_world_path": level_name + "/level.dat",
                     "sha256": digest,
                     "size_bytes": len(raw),
                     "snapshot_phase": "AFTER_SERVER_READY_SAVE_FLUSH_BEFORE_ACTION",
@@ -1020,6 +1022,7 @@ async def run(
     v7_server_clock_calibration_dev: bool = False,
     v7_tick_meter_dev: bool = False,
     v7_p1_wait_evidence_dev: bool = False,
+    s50_p1_flat_archive: Path | None = None,
 ) -> int:
     report: dict = {
         "milestone": "M0.2_PAPER_DEV",
@@ -1044,6 +1047,7 @@ async def run(
         "v7_calibration_not_existing_science_roster": True,
     }
     root = None
+    flat_expected = None
     server = collector = session = native_file = commands_file = b1_memory_file = None
     rc = 2
     try:
@@ -1063,10 +1067,24 @@ async def run(
         if type(v7_p1_wait_evidence_dev) is not bool or (
                 v7_p1_wait_evidence_dev and not v7_tick_meter_dev):
             raise M02DevRejected("P1 WAIT observation requires tick meter DEV")
+        if s50_p1_flat_archive is not None:
+            if (v7_arm != "BASE_ON" or v7_seed != 63101
+                    or not v7_p1_wait_evidence_dev
+                    or not v7_controlled_calibration_dev
+                    or not v7_server_clock_calibration_dev
+                    or not v7_tick_meter_dev
+                    or forage_dev or b1_retention is not None):
+                raise M02DevRejected("FLAT readback requires isolated P1-only BASE_ON profile")
+            from adapters.mineflayer.m02_paper_dev.s50_p1_flat_source import (
+                admit_flat_original,
+            )
+            flat_expected = admit_flat_original(s50_p1_flat_archive, output_dir)
         if v7_arm is not None:
             from adapters.mineflayer.m02_paper_dev.v7_paired_config import ARMS
+            allowed_seeds = ((63101,) if s50_p1_flat_archive is not None
+                             else (61021, 61022, 61023, 61024))
             if (v7_arm not in ARMS or type(v7_seed) is not int
-                    or v7_seed not in (61021, 61022, 61023, 61024)
+                    or v7_seed not in allowed_seeds
                     or forage_dev or b1_retention is not None):
                 raise M02DevRejected("V7 requires registered arm/seed, no food/forage/B1")
         elif v7_seed is not None:
@@ -1095,13 +1113,27 @@ async def run(
         jar = world / "paper-1.21.8.jar"
         shutil.copyfile(paper_jar, jar)
         _write_config(world)
+        if flat_expected is not None:
+            from adapters.mineflayer.m02_paper_dev import s50_flat_base_foraging_dev as flat_base
+            from adapters.mineflayer.m02_paper_dev import s50_flat_ground_dev as flat
+            from adapters.mineflayer.m02_paper_dev.s50_p1_flat_source import verify_copy
+            source = s50_p1_flat_archive / flat_base.FLAT_SOURCE
+            shutil.copytree(source, world / "world")
+            report["flat_world_original_copy"] = verify_copy(
+                source, world / "world", flat_expected,
+            )
+            # Unlike default s31a-ephemeral, load only this stopped flat copy.
+            (world / "server.properties").write_bytes(flat.properties())
+            report["flat_world_input_source"] = str(flat_base.FLAT_SOURCE)
+            report["flat_world_seed"] = flat.FLAT_DEV_SEED
+            report["flat_world_new_original_qualification"] = False
         # Override generic S31A creative settings for real food/exhaustion.
         props = world / "server.properties"
         props.write_text(props.read_text(encoding="utf-8")
                          .replace("gamemode=creative", "gamemode=survival")
                          .replace("motd=RelaySelf S31A disposable loopback qualification",
                                   "motd=RelaySelf M0.2 isolated DEV"), encoding="utf-8")
-        if v7_arm is not None:
+        if v7_arm is not None and flat_expected is None:
             with props.open("a", encoding="utf-8") as destination:
                 destination.write(f"level-seed={v7_seed}\n")
         plugin_dir = world / "plugins"
@@ -1137,7 +1169,9 @@ async def run(
         report["java_pid"] = server.pid
         report["stage"] = "INITIAL_WORLD_PREACTION_SOURCE_CHECKPOINT"
         report["initial_world_receipt"] = await _save_and_capture_initial_world(
-            server, world, output_dir)
+            server, world, output_dir,
+            level_name="world" if flat_expected is not None else "s31a-ephemeral",
+        )
         report["stage"] = "S51_EXISTING_RECORDED_SOURCE"
         if v7_p1_wait_evidence_dev:
             from adapters.mineflayer.m02_paper_dev.s50_p1_native_controls import (
@@ -1282,6 +1316,31 @@ async def run(
             if stream is not None:
                 stream.close()
         if root is not None:
+            if flat_expected is not None and world is not None:
+                try:
+                    from adapters.mineflayer.m02_paper_dev import (
+                        s50_flat_base_foraging_dev as flat_base,
+                    )
+                    from adapters.mineflayer.m02_paper_dev.v8_stopped_world_clone_dev import (
+                        world_index,
+                    )
+                    original = s50_p1_flat_archive / flat_base.FLAT_SOURCE
+                    report["flat_source_unchanged_after"] = (
+                        world_index(original) == flat_expected
+                    )
+                    if not report["flat_source_unchanged_after"]:
+                        raise M02DevRejected("archived FLAT original was modified")
+                    saved = world / "world"
+                    if saved.is_dir() and server is not None and server.returncode == 0:
+                        shutil.copytree(saved, output_dir / "saved_flat_world_original")
+                        report["saved_flat_world_index"] = world_index(
+                            output_dir / "saved_flat_world_original")
+                    else:
+                        raise M02DevRejected("stopped FLAT DEV world unavailable")
+                except Exception as exc:
+                    report["flat_world_preservation_error"] = repr(exc)
+                    report["owner_status"] = "FAIL"
+                    rc = 1
             root.cleanup()
         report["port_released_after_shutdown"] = _port_free()
         if not report["port_released_after_shutdown"] and server is not None:
@@ -1393,6 +1452,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="new isolated World-tick motion-chord WALK writer; DEV only")
     parser.add_argument("--v7-p1-wait-evidence-dev", action="store_true",
                         help="post-outcome Paper eight-tick inactivity source only; no P1 recovery")
+    parser.add_argument("--s50-p1-flat-archive", type=Path,
+                        help="frozen 63101 native FLAT original for isolated P1 source DEV ONLY")
     parser.add_argument("--paper-b1", choices=("on", "off"),
                         help="Paper B1 BLOCKED→Memory/cheap OFF→lateral S50→pickup→EAT DEV")
     parser.add_argument("--forage-dev", action="store_true",
@@ -1435,10 +1496,18 @@ def main(argv: list[str] | None = None) -> int:
         return status
     if args.asset_root is not None:
         parser.error("--asset-root requires --qualification-preflight")
-    if args.v7_arm is not None and (
-            args.v7_seed not in (61021, 61022, 61023, 61024)
+    if args.s50_p1_flat_archive is not None and (
+            args.v7_arm != "BASE_ON" or args.v7_seed != 63101
+            or not args.v7_controlled_calibration_dev
+            or not args.v7_server_clock_calibration_dev
+            or not args.v7_tick_meter_dev or not args.v7_p1_wait_evidence_dev
             or args.forage_dev or args.paper_b1 is not None):
-        parser.error("V7 DEV requires allowed paired seed/arm, no forage or B1")
+        parser.error("FLAT P1 DEV requires BASE_ON 63101 and all P1 source flags")
+    if args.v7_arm is not None and (
+            args.v7_seed not in ((63101,) if args.s50_p1_flat_archive is not None
+                                 else (61021, 61022, 61023, 61024))
+            or args.forage_dev or args.paper_b1 is not None):
+        parser.error("V7 DEV requires registered seed/arm, no forage or B1")
     if args.v7_arm is None and args.v7_seed is not None:
         parser.error("--v7-seed requires --v7-arm")
     if args.v7_controlled_calibration_dev and args.v7_arm is None:
@@ -1467,6 +1536,7 @@ def main(argv: list[str] | None = None) -> int:
         v7_server_clock_calibration_dev=args.v7_server_clock_calibration_dev,
         v7_tick_meter_dev=args.v7_tick_meter_dev,
         v7_p1_wait_evidence_dev=args.v7_p1_wait_evidence_dev,
+        s50_p1_flat_archive=args.s50_p1_flat_archive,
     ))
 
 
