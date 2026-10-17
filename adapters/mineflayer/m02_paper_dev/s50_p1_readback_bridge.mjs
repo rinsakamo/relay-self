@@ -2,6 +2,7 @@
 // Reads all seven Mineflayer getControlState values directly; never claims
 // Paper-effective motor state or derives a shared clock from this client source.
 import { createRequire } from 'node:module'
+import { attachPassiveS50PacketTrace, clientPose } from './s50_p1_packet_trace.mjs'
 import { closeSync, lstatSync, openSync, writeSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 
@@ -33,6 +34,32 @@ const MAX_ROWS = 8192
 // Capture native bot.entity orientation only for the opt-in FLAT/P1 child.
 // This is a client-local radian snapshot at source emission, never Paper yaw.
 const captureFlatPose = process.env.RELAY_S50_P1_FLAT_FORCE_SERVER_LOOK_DEV === '1'
+const packetTracePath = process.env.RELAYSELF_S50_PACKET_TRACE_FILE
+if (captureFlatPose !== Boolean(packetTracePath)) {
+  throw new Error('S50 FLAT packet trace source opt-in must match native pose opt-in')
+}
+if (packetTracePath && (!isAbsolute(packetTracePath) ||
+    packetTracePath === path || packetTracePath.length > 4096)) {
+  throw new Error('S50 packet trace requires a distinct absolute fresh evidence file')
+}
+const packetFd = packetTracePath ? openSync(packetTracePath, 'wx', 0o600) : null
+if (packetFd !== null) process.on('exit', () => closeSync(packetFd))
+let packetOrdinal = 0
+const MAX_PACKET_ROWS = 16384
+function packetRecord (record) {
+  if (packetFd === null) return
+  packetOrdinal++
+  if (packetOrdinal > MAX_PACKET_ROWS) {
+    throw new Error('S50 passive packet source exceeded bounded original cap')
+  }
+  writeSync(packetFd, JSON.stringify({
+    source: 'S50_DEV_PASSIVE_PACKET_V1',
+    ordinal: packetOrdinal,
+    session_id: sessionId,
+    client_physics_tick: physicsTick,
+    ...record
+  }) + '\\n')
+}
 
 function write (record) {
   ordinal += 1
@@ -91,9 +118,15 @@ const originalCreateBot = mineflayer.createBot
 mineflayer.createBot = function (...args) {
   if (bot !== null) throw new Error('readback permits only one Mineflayer bot')
   bot = originalCreateBot.apply(this, args)
+  if (packetFd !== null) {
+    attachPassiveS50PacketTrace(bot, packetRecord)
+  }
   bot.on('physicsTick', () => {
     physicsTick += 1
     readAll('PHYSICS_TICK')
+    if (packetFd !== null) {
+      packetRecord({ kind: 'CLIENT_PHYSICS_TICK', ...clientPose(bot) })
+    }
   })
   return bot
 }
@@ -109,15 +142,22 @@ process.stdout.write = function (chunk, encoding, callback) {
       if (frame.type === 'adapter_started' && typeof frame.session_id === 'string') {
         sessionId = frame.session_id
         write({ kind: 'SESSION_START', native_seq: frame.seq })
+        packetRecord({ kind: 'SESSION_START', native_seq: frame.seq })
       } else if (frame.session_id === sessionId &&
         frame.type === 'effect_result') {
         readAll('EFFECT_ACK', frame.seq, frame.action_id)
+        packetRecord({
+          kind: 'NATIVE_EFFECT_ACK', native_seq: frame.seq,
+          native_action_id: frame.action_id,
+          effect: frame.effect, result: frame.result, ...clientPose(bot)
+        })
       } else if (frame.session_id === sessionId &&
         frame.type === 'observation' && frame.kind === 'probe') {
         readAll('PROBE', frame.seq, frame.request_id)
       } else if (frame.session_id === sessionId &&
         frame.type === 'shutdown_ack') {
         readAll('SHUTDOWN_ACK', frame.seq)
+        packetRecord({ kind: 'SHUTDOWN_ACK', native_seq: frame.seq, ...clientPose(bot) })
       }
     } catch (error) {
       write({ kind: 'NATIVE_FRAME_PARSE_ERROR', error: String(error.message || error) })
