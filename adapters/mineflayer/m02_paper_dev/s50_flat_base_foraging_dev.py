@@ -168,6 +168,9 @@ async def arm_run(archive: Path, output: Path, arm: str, paper: Path,
         spawn = await _await_spawn(session)
         report["native_spawn"] = asdict(spawn)
         report["initial_server_marker"] = await marker(server, log, "INITIAL_" + arm)
+        start = report["initial_server_marker"]
+        need(tuple(float(start[k]) for k in ("x", "y", "z")) == (0.5, -60.0, 0.5),
+             "unexpected initial native FLAT spawn")
         probe = await _correlated_observe(session, "v8-initial-" + arm)
         report["initial_probe"] = asdict(probe)
         progress = {}
@@ -202,7 +205,10 @@ async def arm_run(archive: Path, output: Path, arm: str, paper: Path,
                 report["node_cleanup_error"] = repr(exc)
                 await session.terminate()
         if server is not None:
-            await _shutdown_server(server, collector)
+            try:
+                await _shutdown_server(server, collector)
+            except Exception as exc:
+                report["java_cleanup_error"] = repr(exc)
             report["java_exit"] = server.returncode
         for stream in (native, commands):
             if stream is not None:

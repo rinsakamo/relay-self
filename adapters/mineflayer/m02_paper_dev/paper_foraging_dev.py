@@ -167,6 +167,13 @@ async def paper_ground_forage(
         '{Item:{id:"minecraft:cooked_beef",count:1}}',
     )
     await server.stdin.drain()
+    # Explicit operator fixture: preserve the first native item pose and its
+    # pose after free fall, plus Self feet, before issuing any movement.
+    initial_item = await _correlated_observe(session, "m02-paper-item-initial")
+    trace["food_initial_native"] = asdict(initial_item)
+    await asyncio.sleep(0.75)
+    settled_item = await _correlated_observe(session, "m02-paper-item-after-fall")
+    trace["food_after_fall_native"] = asdict(settled_item)
     l0 = PaperNativeL0(session.started.session_id)
     first = target = None
     for i in range(12):
