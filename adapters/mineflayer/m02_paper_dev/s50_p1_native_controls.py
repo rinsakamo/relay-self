@@ -21,12 +21,19 @@ SOURCE = "S50_DEV_NATIVE_READBACK_V1"
 MAX_ROWS = 8192
 
 
-def readback_session_type(native_output, command_output, sidecar: Path):
+def readback_session_type(native_output, command_output, sidecar: Path, *,
+                          packet_trace: Path | None = None):
     """Opt-in isolated process only: no global environment mutation."""
     if (not sidecar.is_absolute() or sidecar.exists()
             or not sidecar.parent.is_dir() or sidecar.is_symlink()
             or sidecar.parent.is_symlink()):
         raise BoundaryRejected("S50 readback requires a fresh absolute sidecar")
+    if packet_trace is not None and (
+            not packet_trace.is_absolute() or packet_trace.exists()
+            or packet_trace.is_symlink() or packet_trace.parent.is_symlink()
+            or packet_trace.parent != sidecar.parent
+            or packet_trace == sidecar):
+        raise BoundaryRejected("S50 packet trace requires separate fresh original path")
     base = _recording_session_type(native_output, command_output)
 
     class RecordedReadbackSession(base):
@@ -43,6 +50,12 @@ def readback_session_type(native_output, command_output, sidecar: Path):
             if "RELAYSELF_S50_P1_READBACK_FILE" in env:
                 raise MineflayerProcessStartError("preexisting readback source env")
             env["RELAYSELF_S50_P1_READBACK_FILE"] = str(sidecar)
+            if "RELAYSELF_S50_PACKET_TRACE_FILE" in env:
+                raise MineflayerProcessStartError("inherited/foreign packet trace path")
+            if packet_trace is not None:
+                if env.get("RELAY_S50_P1_FLAT_FORCE_SERVER_LOOK_DEV") != "1":
+                    raise MineflayerProcessStartError("packet tracing limited to FLAT child")
+                env["RELAYSELF_S50_PACKET_TRACE_FILE"] = str(packet_trace)
             try:
                 process = await asyncio.create_subprocess_exec(
                     *config.argv(bridge, node_executable=node_executable),
