@@ -99,3 +99,14 @@ def test_valid_synthetic_shape_cannot_issue_science(tmp_path, monkeypatch):
     assert not output.exists()  # Source-only preflight
     assert flat.FLAT_DEV_SEED == 63101
     assert subject.ARM == "BASE_ON"
+
+
+def test_accepts_paper_normalized_flat_properties_after_native_attestation(
+        tmp_path, monkeypatch):
+    archive, paper, plugin, output = fixture(tmp_path)
+    inject_asset_probes(monkeypatch)
+    properties = archive / "flat-source/server/server.properties"
+    properties.write_bytes(flat.properties().replace(b"minecraft:flat", b"flat"))
+    assert len(subject.preflight(archive, paper, plugin, subject.PLUGIN_SHA,
+                                 output, subject.CONFIRM)) == 2
+    assert not output.exists()
