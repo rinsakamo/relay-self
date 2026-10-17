@@ -43,6 +43,10 @@ def review_scope(original: str, *, marker: str, world: str,
     other_entities = []
     types = {}
     roster_digests = []
+    subject_identity = None
+    subject_world_identity = None
+    same_world_other_counts = []
+    same_world_other_ticks = []
     cursor = 0
     for idx, (r, t) in enumerate(zip(samples, ticks), 1):
         stamp = wait_first_tick + idx - 1
@@ -71,6 +75,7 @@ def review_scope(original: str, *, marker: str, world: str,
             raise BoundaryRejected("no canonical native Self UUID") from exc
         observed = []
         seen = set()
+        entity_worlds = {}
         for entry_index in range(1, nums["loaded_entities"] + 1):
             if cursor >= len(entities):
                 raise BoundaryRejected("truncated original roster")
@@ -93,6 +98,7 @@ def review_scope(original: str, *, marker: str, world: str,
                     or re.fullmatch("[A-Z0-9_]{2,80}", e.get("type", "")) is None):
                 raise BoundaryRejected("duplicate/noncanonical entity ID or type")
             seen.add(identity)
+            entity_worlds[identity] = entity_world
             if identity == subject and e["type"] != "PLAYER":
                 raise BoundaryRejected("Self UUID resolves to non-player entity")
             value = f"{entity_world}:{chunk_x}:{chunk_z}:{identity}:{e['type']}"
@@ -110,6 +116,23 @@ def review_scope(original: str, *, marker: str, world: str,
         if computed != digest:
             raise BoundaryRejected("native roster SHA disagrees with entity rows")
         roster_digests.append(computed)
+        # The marker's World name is not a Bukkit UUID. Ground the subject
+        # World's identity in the native PLAYER row at every sampled tick.
+        # Identity/world drift may not be silently interpreted as solo WAIT.
+        sample_subject_world = entity_worlds[subject]
+        if idx == 1:
+            subject_identity = subject
+            subject_world_identity = sample_subject_world
+        elif (subject != subject_identity
+              or sample_subject_world != subject_world_identity):
+            raise BoundaryRejected("Self UUID/World identity changed in WAIT window")
+        same_world_others = sum(
+            identity != subject and located_world == sample_subject_world
+            for identity, located_world in entity_worlds.items()
+        )
+        same_world_other_counts.append(same_world_others)
+        if same_world_others:
+            same_world_other_ticks.append(stamp)
         counts = tuple(integer(r, name) for name in COUNTERS)
         if (integer(r, "combat_events") != integer(t, "combat_events")
                 or integer(r, "swing_events") != integer(t, "swing_events")):
@@ -136,6 +159,12 @@ def review_scope(original: str, *, marker: str, world: str,
         "activity_counter_changed_after_first_sampler": ambiguous,
         "other_online_players_seen_ticks": other_online,
         "other_loaded_entities_seen_ticks": other_entities,
+        "self_uuid": subject_identity,
+        "self_entity_world_uuid": subject_world_identity,
+        "same_world_other_loaded_entities_by_tick": same_world_other_counts,
+        "same_world_other_loaded_entities_seen_ticks": same_world_other_ticks,
+        "same_world_only_self_at_all_samples": not same_world_other_ticks,
+        "full_tick_solo_no_agents": "NOT_ATTESTED",
         "scope": "ALL_CURRENTLY_LOADED_CHUNKS_PER_SAMPLER",
         "unloaded_entity_lifecycle": "NOT_ATTESTED",
         "held_motor_control_absence": "NOT_ATTESTED",
