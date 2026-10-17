@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   r-independent-original:
-    if: "github.run_attempt == 1 && github.event.head_commit.message == 'R FLAT BASE: independent archived S50 pickup EAT readback once'"
+    if: "github.run_attempt == 1 && github.event.head_commit.message == 'R FLAT BASE: independent S50 pickup EAT readback after negative-fixture fix'"
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
