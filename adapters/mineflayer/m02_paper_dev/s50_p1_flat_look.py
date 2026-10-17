@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import math
+import os
 import re
+from contextlib import contextmanager
 from pathlib import Path
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
@@ -20,6 +22,26 @@ MAX_SNAPSHOTS = 12
 MAX_WAIT_POLLS = 60
 MAX_YAW_DIFF_DEGREES = 5.0
 MAX_PITCH_DIFF_DEGREES = 5.0
+
+FLAT_LOOK_ENV = "RELAY_S50_P1_FLAT_FORCE_SERVER_LOOK_DEV"
+
+
+@contextmanager
+def single_flat_p1_child_look_launch(*, eligible: bool):
+    """Opt in only for the FLAT/P1 launch; never affect later subprocesses.
+
+    No other owner protocol or Action signature is modified. Child inherits
+    this flag at spawn; the parent restores its original environment immediately.
+    """
+    if type(eligible) is not bool or not eligible:
+        raise BoundaryRejected("unqualified FLAT P1 server-sync LOOK launch")
+    if FLAT_LOOK_ENV in os.environ:
+        raise BoundaryRejected("inherited/foreign FLAT LOOK environment forbidden")
+    os.environ[FLAT_LOOK_ENV] = "1"
+    try:
+        yield
+    finally:
+        os.environ.pop(FLAT_LOOK_ENV, None)
 
 
 def _number(row: dict, field: str) -> float:
