@@ -5,6 +5,7 @@ server-effective input tick, approve P1 WAIT, or change old V7 PASS admissions.
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import math
@@ -195,3 +196,27 @@ def review(root: Path) -> dict:
     return _review_sources(
         root, expected_sha=SOURCE_SHA256, expected_session=SOURCE_SESSION,
     )
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="R standalone read-only S50/P1 FLAT BLOCKED original-byte reviewer",
+    )
+    parser.add_argument("--original-root", required=True, type=Path)
+    args = parser.parse_args()
+    try:
+        result = review(args.original_root)
+    except (ValueError, OSError, UnicodeError) as exc:
+        print(json.dumps({
+            "classification": "R_S50_P1_FLAT_BLOCKED_SOURCE_REJECTED",
+            "reason": type(exc).__name__ + ": " + str(exc),
+            "physical_world_runs": 0,
+            "R_qualified": False, "wait_ticks_admitted": 0,
+            "p1_fatigue_recovered": 0.0, "science_go": False,
+        }, sort_keys=True))
+        return 2
+    print(json.dumps(result, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
