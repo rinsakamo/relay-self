@@ -33,7 +33,7 @@ def project_self_world_present(
         raise InvalidSelfWorldData("incomplete entity coverage")
     entities = tuple(
         WorldEntityObservation(
-            entity_ref=f"minecraft:entity:{entity.entity_id}",
+            entity_ref=f"entity-{entity.entity_id}",
             label=entity.name,
             position=entity.position,
             distance_m=entity.distance_m,
