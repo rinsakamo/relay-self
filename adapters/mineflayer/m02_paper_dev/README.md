@@ -695,8 +695,12 @@ controlled Self body pose remains `0.5,-60,0.5` as attested by native
 Paper and Mineflayer observations.
 
 After STOP and child cleanup, the runner verifies the frozen source's
-unchanged byte index, preserves a complete stopped
-`saved_flat_world_original/` tree plus the canonical index, and retains
+unchanged byte index and (in the new prospective runner) preserves every
+present Paper dimension at `saved_flat_dimensions_original/{world,world_nether,
+world_the_end}/` with independent source/copy SHA256 indices and explicitly
+records absent dimensions. The historical first FLAT P1 run preserved only
+17 Overworld files; its missing Nether/End bytes are NOT retroactively filled.
+The runner also retains
 `s50_p1_native_controls_original.jsonl`, original native bridge bytes,
 formal S50 Action transitions, Paper lifecycle + eight candidate WAIT tick
 samples, plugin/config digests and source identity. The runner may reject a
@@ -704,10 +708,13 @@ physical run even if MOVE progressed, if source coverage or control
 readback is incomplete. It never retroactively changes original archives
 or upgrades DEV results to R QUALIFICATION or V SCIENCE.
 
-This is a **provisioned CLI path**, not proof it has already been physically
-executed. A new explicit one-shot operator/LocalCodex invocation is
-required, with a fresh output directory, pinned Paper SHA, freshly
-compiled DEV plugin SHA and a new independent R original readback. Native
-client `physicsTick` remains distinct from Paper World tick. Still
+The **first** explicit FLAT P1 LocalCodex run completed as
+`DEV_ONLY / BLOCKED / R_PENDING / WAIT_NOT_ATTESTED`, rather than a
+successful MOVE. S execution HEAD `4ba9846`, final report `07ce089`,
+frozen bundle SHA `8f372041c08f5743f3e0c936fd045c112f4d3b6e48f6eb6444c8d8cccd3f27a7`.
+Existing native-client `physicsTick` remains distinct from Paper World tick.
+The prospective post-STOP all-dimension capture and look readback gate
+require **new isolated DEV evidence** before any claim about their live
+behavior. Historical report and archive stay immutable. Still
 `wait_ticks_admitted=0`, `p1_fatigue_recovered=0`, production NO_GO.
 
