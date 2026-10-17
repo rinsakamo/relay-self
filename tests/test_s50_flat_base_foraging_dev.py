@@ -1,6 +1,7 @@
 """FLAT-DEV one-arm forensic foraging: no science and archive immutable."""
 from __future__ import annotations
 
+import asyncio
 import json
 
 import pytest
@@ -110,3 +111,29 @@ def test_accepts_paper_normalized_flat_properties_after_native_attestation(
     assert len(subject.preflight(archive, paper, plugin, subject.PLUGIN_SHA,
                                  output, subject.CONFIRM)) == 2
     assert not output.exists()
+
+
+def test_native_flat_marker_accepts_63101_and_rejects_old_v8_seed(
+        tmp_path, monkeypatch):
+    import types
+
+    commands = []
+    monkeypatch.setattr(subject, "_command",
+                        lambda server, cmd: commands.append(cmd))
+
+    async def drain():
+        return None
+
+    server = types.SimpleNamespace(stdin=types.SimpleNamespace(drain=drain))
+    logfile = tmp_path / "native.log"
+    name = "INITIAL_BASE_ON"
+    def content(seed):
+        return (f"[Server thread/INFO]: S_V8_DEV_SNAPSHOT "
+                f"marker_id={name} seed={seed} full_time=10 x=0 z=0\\n")
+    logfile.write_text(content(63101))
+    result = asyncio.run(subject.marker(server, logfile, name))
+    assert result["seed"] == "63101"
+    assert commands == ["relaydevsnapshot " + name]
+    logfile.write_text(content(62101))
+    with pytest.raises(ValueError, match="native FLAT World seed mismatch"):
+        asyncio.run(subject.marker(server, logfile, name))
