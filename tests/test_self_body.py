@@ -36,6 +36,7 @@ from relay_self.self_body import (
     compose_self_body_view,
 )
 
+
 def prov(ref: str, source: str = "offline") -> Provenance:
     return Provenance(source=source, reference=ref)
 
