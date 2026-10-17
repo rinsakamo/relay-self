@@ -159,17 +159,24 @@ export function parseCommand (raw) {
     }
 
     if (value.effect === 'look') {
+      const forced = Object.hasOwn(value, 'force_server')
       requireExactKeys(
         'look command',
         value,
-        ['type', 'action_id', 'effect', 'yaw', 'pitch']
+        forced
+          ? ['type', 'action_id', 'effect', 'yaw', 'pitch', 'force_server']
+          : ['type', 'action_id', 'effect', 'yaw', 'pitch']
       )
+      if (forced && value.force_server !== true) {
+        throw new Error('LOOK force_server must be exactly true when present')
+      }
       return Object.freeze({
         type: 'effect',
         action_id: value.action_id,
         effect: value.effect,
         yaw: requireFiniteNumber('yaw', value.yaw),
-        pitch: requireFiniteNumber('pitch', value.pitch)
+        pitch: requireFiniteNumber('pitch', value.pitch),
+        ...(forced ? { force_server: true } : {})
       })
     }
 
