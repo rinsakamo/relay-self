@@ -81,7 +81,7 @@ async def execute_seek_step(
     step: SeekStep,
     *, phase_hook: Callable[[str], Awaitable[None]] | None = None,
     tick_gate_hook: Callable[[], Awaitable[None]] | None = None,
-    settle_hook: Callable[[], Awaitable[None]] | None = None,
+    settle_hook: Callable[[], Awaitable[None]] | None = None,\n    look_barrier_hook: Callable[[float], Awaitable[None]] | None = None,
 ) -> SeekConsequence:
     if (
         not isinstance(session, MineflayerProcessSession)
@@ -107,7 +107,7 @@ async def execute_seek_step(
     look_id, clear_id = issued.action_id + "-look", issued.action_id + "-clear"
     await session.send_look(look_id, yaw=step.yaw, pitch=0)
     looked = await _effect(session, look_id, "look")
-    # Optional DEV observability only. No phase hook may grant or issue Action.
+    if look_barrier_hook is not None:\n        await look_barrier_hook(step.yaw)\n    # Optional DEV observability only. No phase hook may grant or issue Action.
     # Capture the control command's before/after server clock *brackets*.
     # The actual server-effective control tick is NOT asserted from these ACKs.
     if phase_hook is not None:
