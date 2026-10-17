@@ -58,11 +58,18 @@ def fixture(tmp_path: Path):
     for tick in range(8, 31):
         rows.append(controls_row("PHYSICS_TICK", len(rows)+1, tick))
     rows.append(controls_row("SHUTDOWN_ACK", len(rows)+1, 30, seq=26))
-    paper = ["Paper S50_DEV_WAIT_BEGIN marker_id=m world=w tick=43"]
+    pose = "x=0.5 y=-60.0 z=1.707742656099451"
+    prior = "from_x=0.5 from_y=-60.0 from_z=1.707742656099451"
+    counters = ("combat_events=0 swing_events=0 tick_meter_blocks=0 "
+                "sprint=false sneak=false swimming=false")
+    paper = ["Paper S50_DEV_WAIT_BEGIN marker_id=m world=w tick=43 "
+             + pose + " packets=0 blocks=0 basal_ticks=28 " + counters]
     for idx, tick in enumerate(range(44, 52), 1):
         paper.append("Paper S50_DEV_WAIT_TICK "
                      f"marker_id=m world=w tick={tick} index={idx} "
-                     "x=0.5 y=-60.0 z=1.707742656099451")
+                     + pose + " " + prior + " motion_packets=0 "
+                     "motion_blocks=0 basal_ticks=" + str(28 + idx)
+                     + " " + counters)
 
     files = {
         "original_native.jsonl": "\n".join(map(json.dumps, native))+"\n",
