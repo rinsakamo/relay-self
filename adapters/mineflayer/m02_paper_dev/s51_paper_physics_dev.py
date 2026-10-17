@@ -1479,6 +1479,7 @@ def main(argv: list[str] | None = None) -> int:
             True if args.v7_server_clock_calibration_dev else None,
             True if args.v7_tick_meter_dev else None,
             args.v7_arm, args.v7_seed,
+            args.s50_p1_flat_archive,
         )):
             parser.error("qualification preflight accepts ONLY --asset-root; no DEV/World options")
         try:
