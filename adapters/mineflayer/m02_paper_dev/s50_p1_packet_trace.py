@@ -177,3 +177,66 @@ def review_s50_packet_trace(original: str) -> dict:
         "P1_SourceBoundTick_WAIT": 0,
         "science_go": False,
     }
+
+
+def reconcile_packet_native_original(
+    packet_original: str, native_frames: list[dict],
+) -> dict:
+    """Check packet-sidecar ACK identity against separate original Node stdout.
+
+    Same-session source shape only; not a signed or R-qualified original.
+    """
+    result = review_s50_packet_trace(packet_original)
+    if not isinstance(native_frames, list) or not 2 <= len(native_frames) <= 8192:
+        raise BoundaryRejected("missing/unbounded native bridge originals")
+    session = result["session_id"]
+    seen = set()
+    expected_acks = []
+    shutdown = []
+    for i, frame in enumerate(native_frames):
+        if (not isinstance(frame, dict)
+                or frame.get("session_id") != session
+                or type(frame.get("seq")) is not int or frame["seq"] != i):
+            raise BoundaryRejected("native packet/source foreign session or seq")
+        if frame.get("type") == "effect_result":
+            if (not isinstance(frame.get("action_id"), str)
+                    or not frame["action_id"]
+                    or frame.get("result") not in {"applied", "rejected"}):
+                raise BoundaryRejected("invalid original effect")
+            expected_acks.append({
+                "native_seq": i, "action_id": frame["action_id"],
+                "effect": frame.get("effect"), "result": frame["result"],
+            })
+        elif frame.get("type") == "shutdown_ack":
+            shutdown.append(i)
+        seen.add(i)
+    observed_acks = result["native_effect_acks"]
+    if (len(observed_acks) != len(expected_acks)
+            or [
+                {k: ack[k] for k in ("native_seq", "action_id", "effect", "result")}
+                for ack in observed_acks
+            ] != expected_acks):
+        raise BoundaryRejected("native effect receipts missing/altered in packet trace")
+    if len(shutdown) != int(result["shutdown_ack_seen"]):
+        raise BoundaryRejected("native shutdown ACK mismatch")
+    if shutdown:
+        try:
+            source_rows = [
+                json.loads(line, object_pairs_hook=_unique)
+                for line in packet_original.splitlines()
+            ]
+        except (ValueError, TypeError) as exc:
+            raise BoundaryRejected("changed packet originals on repeated read") from exc
+        if not any(
+            row.get("kind") == "SHUTDOWN_ACK"
+            and row.get("native_seq") == shutdown[0]
+            for row in source_rows
+        ):
+            raise BoundaryRejected("foreign/missing native shutdown source")
+    return {
+        **result,
+        "native_effect_and_shutdown_projection_reconciled": True,
+        "independent_original_authenticity": False,
+        "paper_effective_yaw_attested": False,
+        "self_feedback_delivered": False,
+    }
