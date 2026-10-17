@@ -203,7 +203,7 @@ def compose_self_body_view(
     if not isinstance(seen_observation_refs, tuple) or not all(
         isinstance(s, str) and s for s in seen_observation_refs
     ) or len(set(seen_observation_refs)) != len(seen_observation_refs):
-        raise InvalidSelfBodyData("seen source refs must be unique structured refs")
+        raise InvalidSelfBodyData("duplicate or malformed seen source refs")
     for name, values, cls in (
         ("beliefs", beliefs, BeliefAssessment),
         ("hypotheses", hypotheses, BodyHypothesis),
