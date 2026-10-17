@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   one-actual-flat-base-world:
-    if: "github.run_attempt == 1 && github.event.head_commit.message == 'S50 FLAT DEV: launch fresh BASE_ON forage after negative-test correction'"
+    if: "github.run_attempt == 1 && github.event.head_commit.message == 'S50 FLAT DEV: fresh BASE_ON after Paper flat normalization fix'"
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
