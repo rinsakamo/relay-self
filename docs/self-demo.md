@@ -1382,3 +1382,96 @@ R先行監査run38990943990 / artifact12085376143 SHA
 | BASAL_ZERO | 38994504183 | `7c397570-c5df-43e8-ace0-cd8da2ba146e` | `260e3b14e7f536ff7416dffc8ed713397e6f324af1074e80af296856a84cd2c0` |
 | WALK_ZERO | 38994504183 | `6a48583a-0fee-4607-80ba-e17dd1e7fc02` | `f7d7c5ec9c94d95bbaf13af07ac25c518c3fe71e74216df2bfd2600c15b4bb40` |
 | BOTH_ZERO | 38994504183 | `377c7096-56f5-4931-83f1-1f7b23c375f4` | `b8c5991f4e1c5b60e487747696b329e8d7d079c7d1090baccda99566410103cb` |
+
+### S50/P1 FLAT native readback — LocalCodex初回DEV（2026-10-17）
+
+S #537 / #627、既存Draft #545上の実行。`DEV_ONLY / BLOCKED / R_PENDING /
+WAIT_RECOVERY_NOT_ATTESTED`。成功MOVE、P1身体的WAIT資格、疲労回復、科学的成功は認定しない。
+新workflow・新PR・新Action・REST・別代謝ledgerは追加しない。
+
+- 実行HEAD `4ba9846f73dc34faf92c315d5304eae587c5d75c`。Local run ID
+  `s50-p1-flat-native-20261017/physical-run-001`、Java 1回、Mineflayer 1セッション、
+  正式S50 MOVE 1件、retry 0。session `be9aa263-afac-4b17-945b-09eef6c47126`。
+  実行器は既存`s51_paper_physics_dev.py`、BASE_ON / seed63101、controlled / server-clock /
+  tick-meter / P1-wait各DEVフラグと`s50-p1-flat-archive`を指定した。
+- 原World生成run38989215391 / 原R読査38989400399、artifact12084531180。
+  ZIP SHA256 `df981ff1d3eb064e78602ff785984a03a22d78943569b8c14dd9591675b103f7`、
+  level.dat `1cd714e9607a8015ca37918f11717ab92f2e0d44718c439d7d83a9a36dac1845`。
+  原archive190ファイル、World13ファイル、native地表/空間25/25を検証。
+  原Worldを起動せず、Java直前の新コピー13/13完全一致を保存した。
+  実行中94回の原World索引検査と前後の全archive索引が不変。
+  Self初期native座標 `(0.5,-60,0.5)`、地表Y=-61。
+- Paper SHA256 `8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e`。
+  今回HEADからJDK21で新ビルドした未資格DEV plugin SHA256
+  `3297fbef728df3a745123e206ca2fb4a0a541b4d1d1c17a5c4948c4382d64000`。
+  実config SHA256 `939c2da60ed4ce2f5afb5609c1f784886e3b021104c28a83658c17b744159b16`、
+  properties `f36dde79b6313a659589672f54977de9900bda5c04454d32b8e194e7c3d4604c`。
+  元config/係数・M/P1/R/L/V所有ソース・main・過去証拠・消費grantは変更しない。
+
+**原操作と身体は別判定。** Native seqは0〜27の28 frame。
+LOOK / FORWARD / CLEAR commandは各1件、applied ACKはseq7 / 8 / 17。
+実`getControlState()`はFORWARD ACK時にforward ON、CLEAR ACK時に全7入力OFF。
+全30 client physicsTickが連番で、CLEAR後の23 callbackに再活性化なし。
+shutdown ACK seq26も全OFF、connection_end seq27を保存。
+Paper phaseのfull_timeはPRE_FORWARD21 / POST_FORWARD22 / PRE_CLEAR30 / POST_CLEAR31。
+これらをclient physicsTickやサーバー実効入力解除tickへ変換しない。
+
+正式S15/S16 journalはISSUED→OUTCOMEだがconsequenceは`BLOCKED`、
+目標進捗 `-0.3363737550662047` block。身体は+Z方向に
+`1.207742656099451` block動いたため「移動0」とはしない。
+LOOK要求yawは`-pi/2`、PaperのBASAL pose行のyawは0であり、
+LOOK ACKだけから要求方向の実効成立を断言できない。原因の時計/姿勢競合は未確定。
+原実行器の`one authorized S50 walk had no actual World progress`で停止し、
+原reportのBLOCKEDとmovement欄欠落を保持した。
+別の派生readbackが原Action journalからID/seqを読み、原reportを補修せず再計算する。
+
+**WAIT候補:** WAIT_BEGIN tick43、候補tick44〜51の8/8で
+座標 `(0.5,-60,1.707742656099451)`、移動・combat・swingカウンタが不変。
+BASAL counterは28→36で8回増加し、この区間の要求値は0.008 exhaustion。
+停止までBASAL原writer39行、累積要求値0.039。失敗停止のため200-tick判定には未到達。
+WALKはnative tick chord累積1.207742656099451 × 0.01 =
+0.012077426560994512 exhaustion、従来event witnessは1.1705705848537995 blockで
+event直接請求0、二重請求なし。POST_CLEAR後にも約0.247019704873124 blockの変位あり。
+請求/setter入力・float読戻しとnet Food/Saturation変化は区別し、sub-tick全軌道を主張しない。
+
+各候補sampleでloaded World3、Entity21（Self1、他WorldのEntity20）、
+同一Worldの他loaded Entity0、他online player0。Entity/Chunk lifecycleは45 callback。
+同一World内の無活動が全tick期間で証明されたとは扱わない。
+未loaded actor、callback以後、全Action issuer、サーバー実効入力解除tickはNOT_ATTESTED。
+BLOCKED MOVEや8点の静止をP1 WAITへ変換せず、`SourceBoundTick(WAIT)=0`、
+P1身体的疲労回復tick0、回復量0、P1 advance0。認知疲労は評価しない。
+
+**停止・保存:** shutdown ACKとconnection_end、Node/Java exit0、原PID171949/171843消滅、
+loopback25565解放後の実bind成功を確認。全dimensionのsave終了を原Paper logに保存。
+停止後overworld17ファイルを`saved_flat_world_original/`へ保存し全hashを照合した。
+追加生成Nether/EndのWorldバイトは既存helperの保存対象外で、削除済temporary runtimeから
+回復できない。そのdimensionのsaveログ・census・lifecycle原行は保存している。
+mainと既存他worktree63件のHEAD/追跡差分も前後不変。
+
+**検証:** 初期source snapshotのfull pytest2492 PASS、最終実行treeのS50/P1重点238 PASS、
+実記録に対するメモリ内改変負対照10/10 PASS。Ruff、repository-contracts、
+Node22.23.3/Mineflayer4.39.0 locked依存・実import・Node36 tests、Paper API build PASS。
+実行直前同HEADのpush CI39003606699 / PR CI39003610595必須4jobsとPaper compile SUCCESS。
+Draft full-regressionと凍結paper-world-devのSKIPPEDは成功数に含めない。
+準備段階のJDK compiler欠落、tests import用PYTHONPATH不足、npm依存文書の契約走査失敗、
+並行HEADのlint/owner-contract失敗と修正ログも保存。これらでWorldは起動していない。
+
+**独立読戻しとR境界:** 別R worktreeのHEAD
+`81d43400f8cba489744b001da345085f930e8817`で、S readerをimportせずRの原byte parserを用いた
+補助readerがhash・native seq/session・正式Action・7入力・8候補tick/BASAL・STOPを再計算し一致。
+ただし既存R正式readerは歴史的seed61021/PASSを固定し、この新seed63101/BLOCKED profileを拒否。
+pinや原reportを改変して通さず、**R_PENDING**として#575へ引き渡す。
+補助再計算PASSはR qualificationでも新plugin資格でもない。
+
+**固定証拠:** LocalCodex root
+`/home/rinsa/work/s50-p1-flat-native-evidence-20261017/`。
+原`physical-run-001/`は読取専用化し、94 data files + manifest + SHA256SUMSを
+`sealed-run-001.tar.gz`に保存。SHA256
+`8f372041c08f5743f3e0c936fd045c112f4d3b6e48f6eb6444c8d8cccd3f27a7`。
+原FLAT ZIPは別保存・前掲provider digestで固定し、新bundleは参照と全原索引を含む。
+SHA256SUMSはindexディレクトリから全件再照合PASS。
+
+最小の残課題は、LOOK要求と実native姿勢/teleport完了のprospectiveな結合、
+失敗MOVEの原診断を保ったR readerの新profile読査、全World tick不活動/Action全issuerのsource closure。
+再試行で今回のBLOCKEDを上書きしない。DEVをQUALIFICATION/SCIENCEへ昇格せず、科学試験0、
+WAIT資格0、疲労回復0、production NO_GOを維持する。
