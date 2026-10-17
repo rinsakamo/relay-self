@@ -1350,13 +1350,21 @@ async def run(
                     )
                     if not report["flat_source_unchanged_after"]:
                         raise M02DevRejected("archived FLAT original was modified")
-                    saved = world / "world"
-                    if saved.is_dir() and server is not None and server.returncode == 0:
-                        shutil.copytree(saved, output_dir / "saved_flat_world_original")
-                        report["saved_flat_world_index"] = world_index(
-                            output_dir / "saved_flat_world_original")
-                    else:
-                        raise M02DevRejected("stopped FLAT DEV world unavailable")
+                    # Preserve every dimension which Paper actually created;
+                    # do not discard Nether/End bytes at TemporaryDirectory cleanup.
+                    from adapters.mineflayer.m02_paper_dev.s50_p1_world_preservation import (
+                        preserve_stopped_flat_dimensions,
+                    )
+                    report["saved_flat_dimensions"] = preserve_stopped_flat_dimensions(
+                        world, output_dir,
+                        paper_stopped=server is not None and server.returncode == 0,
+                    )
+                    # Compatibility receipt for the historical overworld index;
+                    # no additional byte copy or second source interpretation.
+                    saved = output_dir / "saved_flat_dimensions_original" / "world"
+                    report["saved_flat_world_index"] = world_index(saved)
+                    report["saved_flat_world_original_path"] = str(
+                        saved.relative_to(output_dir))
                 except Exception as exc:
                     report["flat_world_preservation_error"] = repr(exc)
                     report["owner_status"] = "FAIL"
