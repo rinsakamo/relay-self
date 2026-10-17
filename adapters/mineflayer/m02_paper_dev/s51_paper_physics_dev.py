@@ -1305,6 +1305,22 @@ async def run(
                             reconcile_tick_meter if v7_tick_meter_dev else reconcile
                         )(server_log.read_text(), movement,
                           walk_rate=0.01 * ARMS[v7_arm][1])
+                    if v7_p1_wait_evidence_dev:
+                        # Complete original command/native/Action ledgers exist
+                        # only after STOP; no client→Paper tick interpolation.
+                        from adapters.mineflayer.m02_paper_dev.s50_p1_control_action import (
+                            review_control_action,
+                        )
+                        report["s50_p1_control_action_source"] = review_control_action(
+                            server_log.read_text(encoding="utf-8"),
+                            [json.loads(x) for x in (output_dir / "original_native.jsonl")
+                             .read_text(encoding="utf-8").splitlines()],
+                            [json.loads(x) for x in (output_dir / "owner_commands.jsonl")
+                             .read_text(encoding="utf-8").splitlines()],
+                            [json.loads(x) for x in (output_dir / "s50_action_original.jsonl")
+                             .read_text(encoding="utf-8").splitlines()],
+                            report["movement"],
+                        )
                     report["status"] = "PASS"
                     report["classification"] = "M02_PAPER_DEV_ONLY_PHYSICS_OBSERVED"
                 except Exception as exc:
