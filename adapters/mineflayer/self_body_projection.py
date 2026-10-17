@@ -16,6 +16,8 @@ def project_body_present(present: MinecraftPresent) -> BodyObservation:
         raise InvalidSelfBodyData("requires existing MinecraftPresent")
     if present.provenance.source != "mineflayer":
         raise InvalidSelfBodyData("requires mineflayer Present provenance")
+    if present.provenance.reference != f"{present.session_id}:{present.seq}":
+        raise InvalidSelfBodyData("Present provenance must match session and native seq")
     x, y, z = present.body_position
     return BodyObservation(
         session_id=present.session_id,
@@ -53,7 +55,8 @@ def project_body_action_readback(
             or consequence.binding_id != outcome.binding_id
             or consequence.action_ref != outcome.action_ref
             or consequence.session_id != outcome.session_id
-            or consequence.provenance != outcome.world_provenance):
+            or consequence.provenance != outcome.world_provenance
+            or outcome.source_status != consequence.status.value):
         raise InvalidSelfBodyData("Action readback lacks exact executed S15/S16 match")
     before = consequence.before_observation
     after = consequence.after_observation
@@ -62,6 +65,8 @@ def project_body_action_readback(
             or after.session_id != outcome.session_id
             or before.seq >= after.seq):
         raise InvalidSelfBodyData("missing, foreign, or unordered native before/after")
+    # Validate the native before-probe provenance too; do not accept a forged bracket.
+    project_body_present(project_mineflayer_present(before))
     present = project_mineflayer_present(after)
     observation = project_body_present(present)
     return BodyObservation(
