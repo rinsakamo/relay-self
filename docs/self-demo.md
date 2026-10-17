@@ -1235,3 +1235,43 @@ separately from Memory reads. Compare the native initial positions, hunger
 traces, item coordinates and action bounds as well as the fixed seed: random
 spawn and real-time hunger timing are not guaranteed matched, so these DEV
 runs alone are not a causal or scientific ON/OFF comparison.
+
+### S50 FLAT remaining-four DEV (2026-10-17)
+
+`python -m adapters.mineflayer.m02_paper_dev.s50_flat_four_foraging_dev`
+uses the existing `s50_flat_base_foraging_dev.arm_run` / S31A lifecycle,
+S50 issuance and S51 EAT owners. Supply absolute `--archive`, `--paper-jar`,
+`--plugin-jar`, fresh `--output`, the pinned `--plugin-sha256`, and
+`--confirm S50-FLAT-FOUR-WORLD-DEV-ONLY`. This deliberately starts Java/Node
+and accepts the disposable Paper EULA; source-only tests mock launches.
+The dedicated workflow installs locked dependencies, runs full source tests,
+contracts and Ruff, and waits for completed SUCCESS on required exact-head
+S checks before starting Java. Its fixed commit-message/attempt guard prevents
+ordinary pushes or reruns from starting these Worlds.
+
+The order is SHAM_ON (1,1), BASAL_ZERO (0,1), WALK_ZERO (1,0), BOTH_ZERO (0,0).
+Each copies the same stopped seed63101 FLAT World and verifies its initial
+file bytes. BASE_ON run38990613628 is historical and never included.
+The source artifact12084531180 ZIP SHA is
+`df981ff1d3eb064e78602ff785984a03a22d78943569b8c14dd9591675b103f7`;
+Paper build60 SHA is
+`8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e`;
+DEV plugin artifact12079968941 `new-dev-plugin.jar` SHA is
+`d620935f6f03f3239cebbef0b931ba97482f596e5457feec9b680fe2e14da486`.
+This plugin is not the historically qualified JAR.
+
+One cooked_beef and Hunger effect are operator fixtures. Food summon position,
+first native item observation, its observation after 0.75 seconds of free fall,
+and Self feet are retained before movement. No terrain/body/food correction
+is made after seeing an outcome. Initial full_time and pose are observed,
+not synchronized across runs. Item disappearance plus inventory increase is
+source-consistent pickup contrast; strict playerCollect causality stays UNKNOWN.
+
+Behavioral FAIL is retained even when workflow cleanup succeeds. Incomplete
+STOP/PID/port/save evidence or a lifecycle exception stops subsequent arms,
+which stay NOT_RUN. Each arm saves its report, issued Actions, original native
+JSONL, server log, initial/saved World indices and bounded historical hash index.
+The top-level `saved_files_sha256.json` additionally hashes every retained file,
+including Paper, caches and hidden remapped plugins. Uploads include hidden files.
+R independently reads original bytes from a separate source/runner; S checks
+are not R PASS. All results remain DEV_ONLY, V8 SCIENCE=0, production NO_GO.
