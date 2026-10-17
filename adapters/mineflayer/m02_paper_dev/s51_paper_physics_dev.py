@@ -188,6 +188,20 @@ async def _motor_walk(session: MineflayerProcessSession, *,
                     expected_yaw_rad=step.yaw,
                 )
             await _v7_source_phase_command(server, paper_log, marker_id, phase)
+    look_barrier_hook = None
+    if v7_p1_wait_evidence_dev and v7_seed == 63101:
+        from adapters.mineflayer.m02_paper_dev.s50_p1_flat_look import (
+            await_paper_look_before_forward,
+        )
+        async def look_barrier_hook(yaw: float) -> None:
+            witness = await await_paper_look_before_forward(
+                server, paper_log, marker=marker_id,
+                expected_yaw_rad=yaw,
+            )
+            with (paper_log.parent / "s50_p1_flat_look_receipt.json").open(
+                "w", encoding="utf-8",
+            ) as out:
+                json.dump(witness, out, sort_keys=True)
     tick_gate_hook = None
     if v7_clock_gate_dev:
         async def tick_gate_hook() -> None:
@@ -214,7 +228,7 @@ async def _motor_walk(session: MineflayerProcessSession, *,
     try:
         effect = await execute_seek_step(
             session, supervisor, issued, step, phase_hook=phase_hook,
-            tick_gate_hook=tick_gate_hook, settle_hook=settle_hook)
+            tick_gate_hook=tick_gate_hook, settle_hook=settle_hook,\n            look_barrier_hook=look_barrier_hook)
         if v7_clock_gate_dev:
             from adapters.mineflayer.m02_paper_dev.s50_boundary import (
                 reconcile,
