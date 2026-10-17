@@ -81,7 +81,7 @@ def scenario() -> tuple[WorldScenario, WorldForecast]:
         (StateVariable("monster_present", False), StateVariable("distance_band", "near")),
         prov("imagined"),
     )
-    hyp = WorldScenario("h1", "A", "minecraft:entity:42", state)
+    hyp = WorldScenario("h1", "A", "entity-42", state)
     result = predict_transition(
         state, TransitionRule(
             "monster-away", (StateVariable("distance_band", "near"),),
@@ -93,16 +93,16 @@ def scenario() -> tuple[WorldScenario, WorldForecast]:
 
 def test_observed_entity_is_bounded_and_missing_is_unknown_not_safe():
     a = view(present_value=present())
-    reading = a.observed_entity("minecraft:entity:42")
+    reading = a.observed_entity("entity-42")
     assert reading.origin is WorldOrigin.OBSERVED
     assert reading.value.position == (4.0, 64.0, 2.0)
     assert reading.source_refs == ("present:s-A:8:probe-8",)
-    assert a.observed_entity("minecraft:entity:99").origin is WorldOrigin.UNKNOWN
+    assert a.observed_entity("entity-99").origin is WorldOrigin.UNKNOWN
     empty = view(present_value=present(entity_id=None, truncated=False))
     assert empty.observation.coverage_candidates == 0
-    assert empty.observed_entity("minecraft:entity:42").origin is WorldOrigin.UNKNOWN
+    assert empty.observed_entity("entity-42").origin is WorldOrigin.UNKNOWN
     truncated = view(present_value=present(entity_id=None, truncated=True))
-    assert truncated.observed_entity("minecraft:entity:42").origin is WorldOrigin.UNKNOWN
+    assert truncated.observed_entity("entity-42").origin is WorldOrigin.UNKNOWN
     assert truncated.observation.coverage_truncated
     assert not hasattr(a, "world_truth")
     assert not hasattr(a, "authorize_action")
@@ -112,13 +112,13 @@ def test_two_selves_same_world_are_information_asymmetric_and_have_no_shared_sta
     # One synthetic World with one monster; only Self A gets source visibility.
     a = view(present_value=present())
     b = view("B", present_value=present(session="s-B", entity_id=None))
-    assert a.observed_entity("minecraft:entity:42").origin is WorldOrigin.OBSERVED
-    assert b.observed_entity("minecraft:entity:42").origin is WorldOrigin.UNKNOWN
+    assert a.observed_entity("entity-42").origin is WorldOrigin.OBSERVED
+    assert b.observed_entity("entity-42").origin is WorldOrigin.UNKNOWN
     # A's refreshed observation is immutable and does not magically update B.
     a2 = view(present_value=present(seq=9, entity_id=None))
-    assert a2.observed_entity("minecraft:entity:42").origin is WorldOrigin.UNKNOWN
-    assert a.observed_entity("minecraft:entity:42").origin is WorldOrigin.OBSERVED
-    assert b.observed_entity("minecraft:entity:42").origin is WorldOrigin.UNKNOWN
+    assert a2.observed_entity("entity-42").origin is WorldOrigin.UNKNOWN
+    assert a.observed_entity("entity-42").origin is WorldOrigin.OBSERVED
+    assert b.observed_entity("entity-42").origin is WorldOrigin.UNKNOWN
     with pytest.raises(FrozenInstanceError):
         a.self_id = "B"
 
@@ -130,7 +130,7 @@ def test_other_self_external_location_is_not_private_body_or_memory():
         ),
     )
     a = view(present_value=other_visible)
-    b_public = a.observed_entity("minecraft:entity:7").value
+    b_public = a.observed_entity("entity-7").value
     assert b_public.label == "B" and b_public.position == (3.0, 64.0, 2.0)
     assert not hasattr(b_public, "memory")
     assert not hasattr(b_public, "intent")
@@ -147,7 +147,7 @@ def test_explicit_own_retained_memory_is_not_current_observation_or_shareable():
     recalled = a.remembered("seen-monster-yesterday")
     assert recalled.origin is WorldOrigin.REMEMBERED
     assert recalled.value.content.startswith("A:personal-experience")
-    assert a.observed_entity("minecraft:entity:42").origin is WorldOrigin.UNKNOWN
+    assert a.observed_entity("entity-42").origin is WorldOrigin.UNKNOWN
     with pytest.raises(InvalidSelfWorldData, match="retained snapshot"):
         view(memory_ids=("seen-monster-yesterday",))
     with pytest.raises(InvalidSelfWorldData, match="unknown or foreign"):
@@ -157,17 +157,17 @@ def test_explicit_own_retained_memory_is_not_current_observation_or_shareable():
 
 
 def test_existing_belief_is_inferred_never_measured_and_not_mutated():
-    proposition = PropositionKey("entity", "minecraft:entity:42", "dangerous")
+    proposition = PropositionKey("entity", "entity-42", "dangerous")
     b = assess_belief(
         (BeliefEvidence("ev1", proposition, EvidenceRelation.SUPPORT, prov("source")),),
         BeliefCriterion("danger-belief", proposition),
     )
     a = view(beliefs=(b,))
-    assert a.inferred("minecraft:entity:42", "dangerous").origin is WorldOrigin.INFERRED
-    assert a.observed_entity("minecraft:entity:42").origin is WorldOrigin.UNKNOWN
+    assert a.inferred("entity-42", "dangerous").origin is WorldOrigin.INFERRED
+    assert a.observed_entity("entity-42").origin is WorldOrigin.UNKNOWN
     no_evidence = assess_belief((), BeliefCriterion("undetermined", proposition))
     assert view(beliefs=(no_evidence,)).inferred(
-        "minecraft:entity:42", "dangerous"
+        "entity-42", "dangerous"
     ).origin is WorldOrigin.UNKNOWN
     wrong_domain = assess_belief(
         (), BeliefCriterion("private", PropositionKey("body", "self", "healthy")),
@@ -179,12 +179,12 @@ def test_existing_belief_is_inferred_never_measured_and_not_mutated():
 def test_hypothetical_and_predicted_world_never_override_observation():
     hyp, forecast = scenario()
     a = view(present_value=present(), scenarios=(hyp,), forecasts=(forecast,))
-    assert a.observed_entity("minecraft:entity:42").origin is WorldOrigin.OBSERVED
+    assert a.observed_entity("entity-42").origin is WorldOrigin.OBSERVED
     assert a.hypothetical("h1", "monster_present").value is False
     assert a.hypothetical("h1", "monster_present").origin is WorldOrigin.HYPOTHETICAL
     assert a.predicted("h1", "distance_band").value == "far"
     assert a.predicted("h1", "distance_band").origin is WorldOrigin.PREDICTED
-    assert a.observed_entity("minecraft:entity:42").value.label == "zombie"
+    assert a.observed_entity("entity-42").value.label == "zombie"
     assert not hasattr(a, "commit_memory") and not hasattr(a, "execute_action")
     with pytest.raises(InvalidSelfWorldData, match="foreign Self counterfactual"):
         view(scenarios=(replace(hyp, owner_id="B"),))
@@ -220,7 +220,7 @@ def test_selfbody_requires_exact_self_id_session_epoch_and_native_source():
     )
     combined = view(present_value=present_a, self_body=body)
     assert combined.self_body is body
-    assert combined.observed_entity("minecraft:entity:42").origin is WorldOrigin.OBSERVED
+    assert combined.observed_entity("entity-42").origin is WorldOrigin.OBSERVED
     with pytest.raises(InvalidSelfWorldData, match="SelfBody owner"):
         view(present_value=present_a, self_body=replace(body, self_id="B"))
     with pytest.raises(InvalidSelfWorldData, match="SelfBody owner"):
@@ -238,7 +238,7 @@ def test_selfbody_requires_exact_self_id_session_epoch_and_native_source():
 
 def test_action_memory_ownership_and_initial_l0_are_unchanged():
     initial = compose_self_world_view(self_id="A", session_id="s-A", epoch_id="initial")
-    assert initial.observed_entity("minecraft:entity:42").origin is WorldOrigin.UNKNOWN
+    assert initial.observed_entity("entity-42").origin is WorldOrigin.UNKNOWN
     assert "self_world" not in inspect.signature(ReactiveL0.decide).parameters
     assert "self_world" not in inspect.signature(ReactiveL0.__init__).parameters
     import relay_self.self_world as module
