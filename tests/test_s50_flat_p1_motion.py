@@ -91,7 +91,7 @@ def test_positive_motion_is_only_an_unadmitted_p1_candidate(arm):
     lambda c, r: (c.replace("id=2 ", "id=1 "), r),
     lambda c, r: (c.replace("world_full_time=21", "world_full_time=19"), r),
     lambda c, r: (c.replace("cumulative_blocks=0.7", "cumulative_blocks=0.9"), r),
-    lambda c, r: (c.replace("billed=0.002", "billed=0.020"), r),
+    lambda c, r: (c.replace(" billed=", " billed=0.2", 1), r),
     lambda c, r: (c.replace("to_x=1.2", "to_x=1.9"), r),
     lambda c, r: (c.replace("reason=WALK", "reason=SPRINT"), r),
     lambda c, r: (c.replace("world_full_time=20", "world_full_time=200"), r),
