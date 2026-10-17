@@ -46,7 +46,7 @@ def fixture(tmp_path: Path):
             data["native_seq"] = seq
         return data
 
-    rows = [controls_row("SESSION_START", 1, 0),
+    rows = [controls_row("SESSION_START", 1, 0, seq=0),
             controls_row("EFFECT_ACK", 2, 0, seq=7),
             controls_row("EFFECT_ACK", 3, 0, seq=8, forward=True)]
     rows[1]["native_action_id"] = action_id + "-look"
