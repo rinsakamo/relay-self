@@ -175,14 +175,12 @@ class MineflayerProcessSession:
         *,
         yaw: float,
         pitch: float,
-        force_server: bool = False,
     ) -> None:
         await self._send(
             encode_look(
                 action_id,
                 yaw=yaw,
                 pitch=pitch,
-                force_server=force_server,
             )
         )
 
