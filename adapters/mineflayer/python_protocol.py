@@ -749,8 +749,11 @@ def encode_look(
     *,
     yaw: float,
     pitch: float,
+    force_server: bool = False,
 ) -> str:
     _require_text("action_id", action_id)
+    if type(force_server) is not bool:
+        raise MineflayerProtocolRejected("LOOK server force flag must be boolean")
     _require_number("yaw", yaw)
     _require_number("pitch", pitch)
     return _encode_command(
@@ -760,6 +763,7 @@ def encode_look(
             "effect": "look",
             "yaw": yaw,
             "pitch": pitch,
+            **({"force_server": True} if force_server else {}),
         }
     )
 
