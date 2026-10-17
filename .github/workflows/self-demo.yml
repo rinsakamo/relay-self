@@ -66,6 +66,10 @@ jobs:
               adapters/mineflayer/seek_execution.py|\
               adapters/mineflayer/s51_eat_real_ci.py|\
               adapters/mineflayer/self_demo.py|\
+              adapters/mineflayer/self_body_projection.py|\
+              src/relay_self/self_body.py|\
+              docs/selfbody-v0.md|\
+              tests/test_self_body.py|\
               adapters/mineflayer/v6_*.py|\
               adapters/mineflayer/v6_*.mjs|\
               adapters/mineflayer/v6_*.test.mjs|\
@@ -134,7 +138,8 @@ jobs:
             tests/test_s50_p1_wait.py \
             tests/test_s50_p1_scope.py \
             tests/test_self_demo.py \
-            tests/test_self_action_evidence.py
+            tests/test_self_action_evidence.py \
+            tests/test_self_body.py
 
   lint:
     runs-on: ubuntu-latest
