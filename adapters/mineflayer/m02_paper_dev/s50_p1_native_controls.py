@@ -77,6 +77,15 @@ def _state(row: dict) -> dict[str, bool]:
     return state
 
 
+def _reject_duplicate_source_keys(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise BoundaryRejected("duplicate original native readback field")
+        value[key] = item
+    return value
+
+
 def review_native_controls(
     lines: str, native: list[dict], movement: dict,
 ) -> dict:
@@ -88,7 +97,8 @@ def review_native_controls(
     if not isinstance(session, str) or not session or not isinstance(action, str) or not action:
         raise BoundaryRejected("missing readback session/Action ID")
     try:
-        source = [json.loads(line) for line in lines.splitlines()]
+        source = [json.loads(line, object_pairs_hook=_reject_duplicate_source_keys)
+                  for line in lines.splitlines()]
     except (ValueError, TypeError) as exc:
         raise BoundaryRejected("bad native control original JSONL") from exc
     if not (5 <= len(source) <= MAX_ROWS):
@@ -116,6 +126,7 @@ def review_native_controls(
     if not (ack_indexes["forward"] < ack_indexes["clear"] < ack_indexes["after"]):
         raise BoundaryRejected("invalid source seq ordering")
     previous_client_tick = 0
+    observed_physics_ticks = 0
     for i, row in enumerate(source, 1):
         if (not isinstance(row, dict)
                 or row.get("source") != SOURCE
@@ -123,14 +134,28 @@ def review_native_controls(
                 or type(row.get("ordinal")) is not int
                 or row["ordinal"] != i
                 or type(row.get("client_physics_tick")) is not int
-                or row["client_physics_tick"] < previous_client_tick):
+                or row["client_physics_tick"] < previous_client_tick
+                or row["client_physics_tick"] > MAX_ROWS):
             raise BoundaryRejected("missing/foreign/unordered getControlState original")
-        previous_client_tick = row["client_physics_tick"]
-        if row.get("kind") not in {
+        kind = row.get("kind")
+        if kind not in {
             "SESSION_START", "PHYSICS_TICK", "EFFECT_ACK", "PROBE", "SHUTDOWN_ACK",
         }:
             raise BoundaryRejected("native direct control source incomplete/error")
-        if row.get("kind") != "SESSION_START":
+        if kind == "SESSION_START":
+            if i != 1 or row["client_physics_tick"] != 0:
+                raise BoundaryRejected("duplicate or delayed source-session begin")
+        elif kind == "PHYSICS_TICK":
+            observed_physics_ticks += 1
+            if (row["client_physics_tick"] != previous_client_tick + 1
+                    or row["client_physics_tick"] != observed_physics_ticks
+                    or row.get("native_seq") is not None
+                    or row.get("native_action_id") is not None):
+                raise BoundaryRejected("lost/forged client physicsTick callback")
+        elif row["client_physics_tick"] != observed_physics_ticks:
+            raise BoundaryRejected("client physicsTick counter is inconsistent")
+        previous_client_tick = row["client_physics_tick"]
+        if kind != "SESSION_START":
             _state(row)
 
     if source[0].get("kind") != "SESSION_START" or source[0].get("native_seq") != 0:
