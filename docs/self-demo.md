@@ -1475,3 +1475,76 @@ SHA256SUMSはindexディレクトリから全件再照合PASS。
 失敗MOVEの原診断を保ったR readerの新profile読査、全World tick不活動/Action全issuerのsource closure。
 再試行で今回のBLOCKEDを上書きしない。DEVをQUALIFICATION/SCIENCEへ昇格せず、科学試験0、
 WAIT資格0、疲労回復0、production NO_GOを維持する。
+
+## S50 #627 — Self / Executor / World control-loop single-writer audit (2026-10-17)
+
+**Authority:** S product #537, S physical boundary #627, existing Draft #545.
+This entry is an offline audit/prospective safety contract, **not** a new
+Minecraft, R qualification, P1 recovery, or V science execution.
+
+### Physical writer and observer census (source paths, not a global absence proof)
+
+| Existing path | Physical effect / evidence | Scoped authority |
+| --- | --- | --- |
+| `s51_paper_physics_dev.py` operator setup | Paper console `tp RelaySelf 0.5 -60 0.5 0 0`; survival/gamerule setup | SETUP only, before Self-issued S50; currently xyz-probe completion is insufficient for yaw / pending correction settlement |
+| `seek_execution.py` | Existing supervised S50 LOOK → FORWARD ON → CLEAR → readback | One issued S15 Action, one serial `MineflayerProcessSession`; no new issuer |
+| `process_session.py` and `bridge.mjs` | Single Node command queue forwards `look`, `setControlState`, `clearControlStates`; shutdown clears controls | Executor motor transport; native `applied` acknowledges local API, **not** Paper-effective packet |
+| `s50_p1_readback_bridge.mjs` | Client `getControlState`, client yaw/physicsTick and native-ACK sidecar | Passive client observation, no extra controller |
+| `s50_p1_flat_look.py` / `s50_p1_flat_look_bracket.py` | Paper `relaydevsnapshot` read request / yaw and PRE_FORWARD original-log bracket | Source request/readback; must never set motor, teleport, or grant Action |
+| `s50_p1_native_pose.py` | Native client ACK yaw (radians) gate | Read-only; does not establish server yaw or whole-tick stability |
+| M0.2 Paper writer / P1 / R | World-tick metabolic writes, Body candidate observation, independent audit | Never motor authority or alternate Self-facing ExecutionResult |
+
+**Loop:** Self decision → existing ActionSupervisor / EXEC_BIND → sole Executor
+→ Mineflayer/Paper physical effects → sole Executor source readback →
+S16 Action OUTCOME/UNKNOWN/TIMEOUT → Self appraisal/Memory/feedback → new
+explicit decision epoch. Self does not read raw Paper/Node files directly as
+an alternate authority. An `OUTCOME` is a *known consequence*, not necessarily
+an ARRIVED or successful move. Client ACK, Paper pose, physical progress, and
+Self's assessment remain separate facts and separate clocks.
+
+### New limited offline contract
+
+`adapters/mineflayer/m02_paper_dev/s50_control_loop_order.py` defines
+`audit_control_loop_order` for one bounded synthetic/source-reference trace.
+It checks a single setup `tp`, an explicit setup→Self reference handoff,
+one in-flight supervised Action, ordered Executor LOOK/FORWARD/CLEAR,
+only-Executor result, no post-STOP activity and absence of observer motor
+writes. For an early LOOK-gate failure, UNKNOWN with a source reference is
+allowed without fabricating a FORWARD, CLEAR, or physical OUTCOME. All records
+must have consecutive ordinals, the same native session, and bounded source
+references. `tests/test_s50_control_loop_order.py` supplies positive shapes
+and adverse source/order/writer/terminal mutations; FAST CI runs these tests.
+
+**Proof ceiling:** the checker confirms only *internal order and reference
+presence*. It cannot authenticate the originals, derive real packet delivery,
+prove an actual `teleport_confirm`, exclude pending delayed server position
+corrections, attest effective ON/OFF ticks, establish whole-tick absence, or
+prove Self actually consumed feedback. Its result explicitly reports
+`source_references_authenticated=false`,
+`pending_server_corrections_excluded=false`, and
+`self_feedback_delivered=false`. It is **not wired to live Action issuance**
+and must not be used as a successful preworld handoff gate.
+
+### Next prospective DEV gate (not executed here)
+
+1. Capture bounded **passive** clientbound `position` / `player_rotation`,
+   outbound `look` / `position_look` / `teleport_confirm`, native bot yaw
+   before/after and client physicsTick. Instrument only the existing opt-in
+   FLAT child; never change or duplicate packet writes. Fail closed on
+   truncation, missing ids, duplicates, unsolicited effects or unexpected
+   independent motor writers.
+2. Independently correlate original native packet order and Paper original
+   snapshot sequence to qualify SETUP `tp` settlement, client and server
+   pose and owner handoff **before S50 ISSUED**. Do not equate clocks. No
+   positive handoff without a source-explained packet correction boundary.
+3. Reuse `execute_seek_step` as the only serial effect dispatcher and deliver
+   a structured source-bound Executor result through existing S16/S17
+   interfaces, including explicit UNKNOWN and BLOCKED. Test feedback
+   availability without emitting a new motor command or granting an
+   implicit learning event. New World DEV only after offline gate and
+   exact-HEAD CI; preserve all original failures, new run ID and R handoff.
+
+Historical physical-run-001 remains BLOCKED; physical-run-002 remains
+LOOK_GATE_FAILED / ACTION_UNKNOWN / FORWARD_NOT_ISSUED. This patch performed
+no Java/Node/World run, no original recovery and no science trial.
+`SourceBoundTick(WAIT)=0`, P1 recovery 0 and production NO_GO remain.
