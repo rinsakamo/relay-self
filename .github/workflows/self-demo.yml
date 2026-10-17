@@ -129,6 +129,7 @@ jobs:
             tests/test_m02_v7_new_qualification.py \
             tests/test_m02_v7_four_arm_qualification.py \
             tests/test_s50_physical_boundary.py \
+            tests/test_s50_control_loop_order.py \
             tests/test_s50_p1_wait.py \
             tests/test_s50_p1_scope.py \
             tests/test_self_demo.py \
