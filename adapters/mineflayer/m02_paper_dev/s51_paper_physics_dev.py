@@ -147,6 +147,7 @@ async def _motor_walk(session: MineflayerProcessSession, *,
     phase_hook = None
     marker_id = None
     p1_flat_look_witness = None
+    p1_flat_client_look_witness = None
     if v7_clock_gate_dev and v7_phase_source is None:
         raise M02DevRejected("source-driven tick gate requires controlled Paper DEV")
     if v7_tick_meter_dev and (not v7_clock_gate_dev
@@ -164,8 +165,18 @@ async def _motor_walk(session: MineflayerProcessSession, *,
         server, paper_log = v7_phase_source
         marker_id = issued.action_id + "-" + session.started.session_id
         async def phase_hook(phase: str) -> None:
-            nonlocal p1_flat_look_witness
+            nonlocal p1_flat_look_witness, p1_flat_client_look_witness
             if phase == "PRE_FORWARD" and p1_flat_look_gate_dev:
+                from adapters.mineflayer.m02_paper_dev.s50_p1_native_pose import (
+                    read_client_look_pose,
+                )
+                # The client-local pose must match the LOOK ACK before Paper
+                # yaw is checked. No extra LOOK, MOVE, or Action is issued.
+                p1_flat_client_look_witness = read_client_look_pose(
+                    paper_log.parent / "s50_p1_native_controls_original.jsonl",
+                    session_id=session.started.session_id,
+                    action_id=issued.action_id, requested_yaw_rad=step.yaw,
+                )
                 from adapters.mineflayer.m02_paper_dev.s50_p1_flat_look import (
                     await_paper_look_before_forward,
                 )
@@ -280,6 +291,7 @@ async def _motor_walk(session: MineflayerProcessSession, *,
         "v7_p1_wait_evidence_dev": v7_p1_wait_evidence_dev,
         "p1_wait_candidate": p1_wait_candidate,
         "p1_flat_look_before_forward": p1_flat_look_witness,
+        "p1_flat_client_look_before_forward": p1_flat_client_look_witness,
         "action_id": issued.action_id,
         "action_state": closed.state.value,
         "requested_max_step_blocks": 1.0,
@@ -1271,6 +1283,34 @@ async def run(
                 p1_flat_look_gate_dev=flat_expected is not None)
             if flat_expected is not None:
                 source_look = report["movement"].get("p1_flat_look_before_forward")
+                client_look = report["movement"].get(
+                    "p1_flat_client_look_before_forward")
+                from adapters.mineflayer.m02_paper_dev.s50_p1_native_pose import (
+                    read_client_look_pose,
+                )
+                # Repeat source read from the original sidecar without
+                # trusting the earlier in-memory S receipt. Only stable
+                # ACK identity/pose fields are compared; row count naturally
+                # grows after FORWARD and STOP.
+                client_again = read_client_look_pose(
+                    output_dir / "s50_p1_native_controls_original.jsonl",
+                    session_id=session.started.session_id,
+                    action_id=report["movement"]["action_id"],
+                    requested_yaw_rad=-math.pi / 2,
+                )
+                stable = (
+                    "source_session", "action_id", "look_ack_native_seq",
+                    "look_ack_client_physics_tick", "native_client_yaw_radians",
+                    "native_client_pitch_radians", "requested_yaw_radians",
+                    "requested_pitch_radians", "yaw_gap_radians",
+                    "pitch_gap_radians",
+                )
+                if not isinstance(client_look, dict) or any(
+                        client_look.get(key) != client_again[key]
+                        for key in stable):
+                    raise M02DevRejected(
+                        "original native client LOOK source differs from live gate")
+                report["p1_flat_client_look_source"] = client_again
                 report["p1_flat_look_paper_yaw_source"] = source_look
                 report["p1_flat_look_paper_yaw_verified"] = (
                     isinstance(source_look, dict)
