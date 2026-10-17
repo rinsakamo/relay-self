@@ -597,3 +597,33 @@ same-World entity callbacks, `wait_ticks_admitted=0`,
 audit the exact prospective JAR/config, original event scope and source
 coverage before any engineering qualifier; V science stays separate.
 
+### Prospective S50/P1 S15/S16 Action and commanded-control source cross-check
+
+The existing S-owned controlled S50 Paper DEV route, when `--v7-p1-wait-evidence-dev`
+is explicitly selected, now also verifies after the owned Node shutdown and
+source capture:
+
+- Exact one S15/S16 source Action `issued → outcome` in
+  `s50_action_original.jsonl` (the journal has **synthetic logical order**,
+  never a server World clock).
+- One session-scoped, strictly sequential native `look → set_control(forward)
+  → clear_controls` effect and applied ACK each; an independently matched
+  after-probe and STOP ACK in `original_native.jsonl`, plus the original
+  `owner_commands.jsonl` command stream. Extra/unknown effects fail closed.
+- Paper `PRE_FORWARD → POST_FORWARD → PRE_CLEAR → POST_CLEAR` brackets,
+  then `WAIT_BEGIN`, then eight ordered source tick samples in the same
+  action/session marker and Paper World. Paper bracket ordering is proven;
+  no client-to-server clock conversion is inferred.
+
+The bounded S reader `s50_p1_control_action.review_control_action` records
+`native_commanded_control_after_clear=CLEARED_BY_APPLIED_COMMAND_ACK` **only**.
+The Mineflayer bridge has not independently exposed `getControlState()`
+for all controls. Therefore `native_held_controls_readback=NOT_ATTESTED`,
+`all_other_action_issuers_absent=NOT_ATTESTED`, and
+`client_server_effective_tick_mapping=NOT_ATTESTED`. This S50 fixture proves
+only its own supervised issued/outcome pair and three observed client commands;
+it cannot prove no other owner issued an Action elsewhere. There is no physical
+WAIT admission, Body fatigue recovery, new primitive, World launch, R transfer
+or V science evidence from this source-only cross-check. Prospective native
+held-control readback is a separate adapter/protocol owner change, and must
+not be fabricated from a successful clear ACK.
