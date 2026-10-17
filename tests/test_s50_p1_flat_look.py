@@ -10,7 +10,6 @@ import pytest
 from adapters.mineflayer.m02_paper_dev import s50_p1_flat_look as subject
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 
-
 MARKER = "m02-paper-walk-1-session-P1LOOK-01"
 WORLD = "bba420a8-7943-465f-997e-e857e7587b93"
 
