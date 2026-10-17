@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   four-sequential-flat-worlds:
-    if: "github.run_attempt == 1 && github.event.head_commit.message == 'S50 FLAT DEV: execute remaining four sequential arms once'"
+    if: false # Frozen after original run38994504183; never replay these DEV copies.
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:

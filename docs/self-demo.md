@@ -1275,3 +1275,110 @@ The top-level `saved_files_sha256.json` additionally hashes every retained file,
 including Paper, caches and hidden remapped plugins. Uploads include hidden files.
 R independently reads original bytes from a separate source/runner; S checks
 are not R PASS. All results remain DEV_ONLY, V8 SCIENCE=0, production NO_GO.
+
+### S50 FLAT remaining-four DEV 実行結果・独立監査（2026-10-17）
+
+**4条件とも採食・cleanup PASS、R別runner原証拠監査 PASS。**
+既存BASE_ONを含むFLAT 5条件の機構動作確認がDEVの範囲で成立した。
+BASE_ONは歴史的runを参照しただけで、物理再実行0。科学的成功・新JARの資格には昇格しない。
+
+- 実行S HEAD `9cb7a009b392ea8127528c310171d804251c90ec`、
+  [S run38994504183](https://github.com/rinsakamo/relay-self/actions/runs/38994504183)
+  attempt1 / terminal SUCCESS。全条件はこの1つのworkflow内で固定順に実行。
+  各条件Java1/Node1、計Java4/Node4、retry0、NOT_RUN0。
+- 実行前の同一HEADでfocused54・full pytest2454、Ruff、repository-contracts、
+  locked Node/MineflayerがPASS。S必須CIの全job completed/SUCCESSをJava前に確認。
+  `full-regression`のDraft skipやdisabled `paper-world-dev`は成功件数に含めない。
+- S原artifact [12086324331](https://github.com/rinsakamo/relay-self/actions/runs/38994504183/artifacts/12086324331)、
+  930867038 bytes、ZIP SHA256 `6bd9d446eefb0a27a7599cdc4d1b79837bff3ef14d6c12ef6361435a9ea69ca6`。
+  hidden filesを含む全保存。元実行report/summaryのR=PENDINGは原本のまま保持し、R判定は別receiptに保存。
+- R独立HEAD `81d43400f8cba489744b001da345085f930e8817`、
+  [R run38995296570](https://github.com/rinsakamo/relay-self/actions/runs/38995296570)
+  attempt1 / terminal SUCCESS、`R_FLAT_FOUR_ORIGINAL_READBACK_DEV_ONLY` / PASS。
+  S readerをimportせず別ソース・別runnerで原ZIP SHAと内部SHAを再計算。
+  R artifact [12085879575](https://github.com/rinsakamo/relay-self/actions/runs/38995296570/artifacts/12085879575)、
+  ZIP SHA256 `94fee8438323c6a698dfa3f5f3a85180465d17ed39ea8aba15c0d527370eb85b`。
+  R側の新World/Java/Minecraft用Node起動0。
+
+| 条件 | BASAL倍率 | WALK倍率 | MOVE | PICKUP | EAT | Cleanup | 初期full_time | 初期native XYZ | nativeイベント積算距離block | BASAL累積要求値 | WALK累積請求値 | 終端Food | 終端Health |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| BASE_ON | 1 | 1 | PASS 2件 | source一致 | PASS | PASS | 16 | (0.5,-60,0.5) | 2.361869373354 | 0.591 | 0.023618693734 | 20 | 20.0 |
+| SHAM_ON | 1 | 1 | PASS 2件 | source一致 | PASS | PASS | 20 | (0.5,-60,0.5) | 2.361869373354 | 0.603 | 0.023618693734 | 20 | 20.0 |
+| BASAL_ZERO | 0 | 1 | PASS 2件 | source一致 | PASS | PASS | 21 | (0.5,-60,0.5) | 2.361869373354 | 0.000 | 0.023618693734 | 20 | 20.0 |
+| WALK_ZERO | 1 | 0 | PASS 2件 | source一致 | PASS | PASS | 20 | (0.5,-60,0.5) | 2.361869373354 | 0.602 | 0.000000000000 | 20 | 20.0 |
+| BOTH_ZERO | 0 | 0 | PASS 2件 | source一致 | PASS | PASS | 21 | (0.5,-60,0.5) | 2.146287774561 | 0.000 | 0.000000000000 | 20 | 20.0 |
+
+全新条件の初期yaw/pitchは0/0、Health/Food/Saturationは20/20/5。
+終端Saturationは12.8。各条件MOVEはPROGRESSED→ARRIVED、
+元item entity消失とcooked_beef inventory 0→1、S51 EATでinventory 1→0とFood増を原native照合。
+全条件STOP ACK、connection_end、Java/Node exit0、原host PID消滅、保存完了、
+port解放/rebind witnessが一致し、元停止World不変。
+同じWorldバイトからのコピーなのでWorld UUID継承は正常で、独立root/sessionを検査した。
+
+BASALはnative terminal markerの累積**要求値**で、ログ500行合計とは区別する。
+全armのBASAL row cap500に到達し、SHAM_ON/WALK_ZEROのログ合計は各0.5、
+terminal累積はそれぞれ0.603/0.602。WALKの原motion rowは各14行でcap300未到達。
+表の距離はPaper nativeイベント積算で、連続軌道の完全な物理距離証明や
+Action OUTCOMEの目標進捗値との同一視はしない。
+開始full_timeとBOTH_ZERO距離は不一致のまま保持し、事後同期や地形/食料/身体補正なし。
+
+**食料の原native観測と即時probeの空を区別する。** 各armでoperator summon XYZ=(3,-59.8,0.5)、
+配置直後probe seq56のnative_itemsは空配列。
+全armの原JSONLには次の`entities` frame seq57が保存されており、
+最初の実item44 nativeXYZ=(3,-59.8,0.5)、Self足元=(0.5,-60,0.5)を確認した。
+原ZIPの該当memberを範囲取得し、別R runner全体照合時のper-file SHAと4/4一致確認。
+この初回実entity観測はseq56の空を置換する値ではなく別の原frameである。
+Rも自身の全815file manifestと原JSONL4件のSHAを照合して独立decodeした。
+このローカル補足receipt SHAは
+`46f5ee0888d3e5890b3a875a38614ad7503e8ab7107f17f33dd9f6e2cefda358`。
+補足receiptは別の派生readbackで、GitHub原R artifact本体には追記・改変していない。
+別のafter-fall probe（SHAM61 / BASAL59 / WALK61 / BOTH59）では
+item44 XYZ=(3,-60,0.5)、Self足元=(0.5,-60,0.5)を全条件確認。
+即時probeの空を後続値で埋めず、summon要求座標をnative出現位置と呼ばない。
+新4条件は明示的0.75秒の落下観測を追加しており、歴史的BASE_ONと同一の開始tick/時系列ではない。
+
+R検査範囲はsource全190ファイル/原World13、S全815ファイルpre/post hash、
+各armの従来manifest80・保存World17、actual Paper/plugin/config、原session/seq、
+Action発行とACK/OUTCOME、native pickup/EAT contrast、代謝row/cumulative counters。
+原copy-before-Javaはproducer時点indexを原World13ファイルと照合した証拠であり、
+Rが過去のコピー現物やPID/portをlive再観測したとの主張ではない。
+
+失敗履歴：ローカル全回帰はNode未配置で2444 PASS/9 FAIL/1 SKIP。
+旧ログを保持し、公式SHA照合済みNode22隔離配置後に該当失敗を含む11 tests PASS。
+GitHubのNode22環境ではfull2454 PASS。今回物理4条件はFAIL0、未保存のmanifest対象0、
+並行P1変更e3ac1aeをrebaseで保持し、mainと他レーン所有ソースは未変更。
+過去のFLAT生成run38989215391後段FAIL、BASE_ON各旧失敗、V8自然地形World、消費grantは不変。
+今回の実行器はrun後に`if:false`で凍結し、過去実行の再生を防止した。
+
+追加の採食修正・新物理runは不要。任意の最小改善候補は、fresh DEVのfixture summaryで
+即時probeが空の場合にfirst actual entity frameを別欄へ出すこと。
+必要な原native seq57は今回すでに保存済みで、原証拠の補修・再実行はしない。
+VにはこのDEV結果と不一致・欠落を引き渡す。自然食料発見、自然飢餓、適応、
+生存進化、strict playerCollect因果、統制済み科学比較は認定しない。
+V8 SCIENCE=0、production NO_GOを維持する。
+
+変更ファイル（S owner 7件）:
+`adapters/mineflayer/m02_paper_dev/s50_flat_four_foraging_dev.py`、
+`tests/test_s50_flat_four_foraging_dev.py`、
+`s50_flat_base_foraging_dev.py`、`paper_foraging_dev.py`（同ディレクトリ）、
+`.github/workflows/s50-flat-four-one-shot-dev.yml`、
+`.github/workflows/self-demo.yml`、`docs/self-demo.md`。
+新Action owner/代謝系/仮想EnergyLedgerの追加なし。
+
+固定原資産：FLAT source run38989215391 / artifact12084531180 / ZIP SHA
+`df981ff1d3eb064e78602ff785984a03a22d78943569b8c14dd9591675b103f7`、
+level.dat SHA `1cd714e9607a8015ca37918f11717ab92f2e0d44718c439d7d83a9a36dac1845`。
+Paper build60 SHA `8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e`、
+DEV plugin run38978751455 / artifact12079968941 / `new-dev-plugin.jar` SHA
+`d620935f6f03f3239cebbef0b931ba97482f596e5457feec9b680fe2e14da486`。
+BASE_ON歴史的原artifact12084378433 ZIP SHA
+`0e2d4f45a35de6f101bd409274122fd87a37805422b6e72cb7f13920265b0fb4`、
+R先行監査run38990943990 / artifact12085376143 SHA
+`9395435856861fd97ae6c8ee8c1152fb6574c80a89932d6401b7669e12c6f3ec`。
+
+| arm | 新S run ID | native session ID | config SHA256 |
+| --- | --- | --- | --- |
+| SHAM_ON | 38994504183 | `6c2f0ed8-3ee9-4bd1-baf4-35b1db749a43` | `e9361faa7eac2e3c63bf2f6760765f7f8ae5a4b3631c6819f7ad8ac5c04a540e` |
+| BASAL_ZERO | 38994504183 | `7c397570-c5df-43e8-ace0-cd8da2ba146e` | `260e3b14e7f536ff7416dffc8ed713397e6f324af1074e80af296856a84cd2c0` |
+| WALK_ZERO | 38994504183 | `6a48583a-0fee-4607-80ba-e17dd1e7fc02` | `f7d7c5ec9c94d95bbaf13af07ac25c518c3fe71e74216df2bfd2600c15b4bb40` |
+| BOTH_ZERO | 38994504183 | `377c7096-56f5-4931-83f1-1f7b23c375f4` | `b8c5991f4e1c5b60e487747696b329e8d7d079c7d1090baccda99566410103cb` |
