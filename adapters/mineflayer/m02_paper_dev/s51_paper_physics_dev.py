@@ -1139,7 +1139,16 @@ async def run(
         report["initial_world_receipt"] = await _save_and_capture_initial_world(
             server, world, output_dir)
         report["stage"] = "S51_EXISTING_RECORDED_SOURCE"
-        session_type = _recording_session_type(native_file, commands_file)
+        if v7_p1_wait_evidence_dev:
+            from adapters.mineflayer.m02_paper_dev.s50_p1_native_controls import (
+                readback_session_type,
+            )
+            session_type = readback_session_type(
+                native_file, commands_file,
+                output_dir / "s50_p1_native_controls_original.jsonl",
+            )
+        else:
+            session_type = _recording_session_type(native_file, commands_file)
         session = await session_type.launch(MineflayerLaunchConfig(
             host=SERVER_HOST, port=SERVER_PORT,
             username=BOT_USERNAME, version=MINECRAFT_VERSION,
@@ -1306,6 +1315,20 @@ async def run(
                         )(server_log.read_text(), movement,
                           walk_rate=0.01 * ARMS[v7_arm][1])
                     if v7_p1_wait_evidence_dev:
+                        from adapters.mineflayer.m02_paper_dev.s50_p1_native_controls import (
+                            review_native_controls,
+                        )
+                        control_source = (
+                            output_dir / "s50_p1_native_controls_original.jsonl"
+                        )
+                        if control_source.is_symlink() or not control_source.is_file():
+                            raise M02DevRejected("missing S50 direct native readback original")
+                        report["s50_p1_native_controls_source"] = review_native_controls(
+                            control_source.read_text(encoding="utf-8"),
+                            [json.loads(x) for x in (output_dir / "original_native.jsonl")
+                             .read_text(encoding="utf-8").splitlines()],
+                            report["movement"],
+                        )
                         # Complete original command/native/Action ledgers exist
                         # only after STOP; no client→Paper tick interpolation.
                         from adapters.mineflayer.m02_paper_dev.s50_p1_control_action import (
@@ -1337,6 +1360,7 @@ async def run(
                 for x in (
                     raw, log, output_dir / "owner_commands.jsonl",
                     output_dir / "s50_action_original.jsonl",
+                    output_dir / "s50_p1_native_controls_original.jsonl",
                     output_dir / "paper_b1_memory_original.jsonl",
                 ) if x.is_file()
             }
