@@ -99,7 +99,8 @@ async def marker(server, log: Path, name: str) -> dict:
         need(len(found) <= 1, "duplicate native start marker")
         if found:
             fields = dict(x.split("=", 1) for x in found[0].split())
-            need(fields["seed"] == "62101", "native World seed mismatch")
+            need(fields["seed"] == str(flat.FLAT_DEV_SEED),
+                 "native FLAT World seed mismatch")
             return fields
         await asyncio.sleep(.05)
     raise RuntimeError("server-side native snapshot not acknowledged")
