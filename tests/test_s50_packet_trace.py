@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
+from adapters.mineflayer.m02_paper_dev.s50_p1_native_controls import readback_session_type
 from adapters.mineflayer.m02_paper_dev.s50_p1_packet_trace import (
     reconcile_packet_native_original,
     review_s50_packet_trace,
@@ -194,4 +195,30 @@ def test_native_packet_bijection_wrong_original_fail_closed(change):
     with pytest.raises(BoundaryRejected):
         reconcile_packet_native_original(
             "\n".join(json.dumps(row) for row in rows()), frames
+        )
+
+
+def test_child_trace_requires_fresh_disjoint_absolute_source(tmp_path):
+    sidecar = tmp_path / "control-original.jsonl"
+    packet = tmp_path / "packet-original.jsonl"
+    session_type = readback_session_type(
+        tmp_path / "native.jsonl", tmp_path / "commands.jsonl",
+        sidecar, packet_trace=packet,
+    )
+    assert session_type is not None
+    with pytest.raises(BoundaryRejected):
+        readback_session_type(
+            tmp_path / "native.jsonl", tmp_path / "commands.jsonl",
+            sidecar, packet_trace=sidecar,
+        )
+    packet.write_text("occupied", encoding="utf-8")
+    with pytest.raises(BoundaryRejected):
+        readback_session_type(
+            tmp_path / "native.jsonl", tmp_path / "commands.jsonl",
+            sidecar, packet_trace=packet,
+        )
+    with pytest.raises(BoundaryRejected):
+        readback_session_type(
+            tmp_path / "native.jsonl", tmp_path / "commands.jsonl",
+            sidecar, packet_trace=Path("relative-original.jsonl"),
         )
