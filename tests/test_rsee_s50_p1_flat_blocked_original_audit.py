@@ -19,9 +19,14 @@ def fixture(tmp_path: Path):
     native[0]["type"] = "adapter_started"
     native[26]["type"] = "shutdown_ack"
     native[27]["type"] = "connection_end"
-    for i, effect in ((7, "look"), (8, "set_control"), (17, "clear_controls")):
+    action_id = "m02-paper-walk-1"
+    for i, effect, suffix in (
+        (7, "look", "-look"),
+        (8, "set_control", ""),
+        (17, "clear_controls", "-clear"),
+    ):
         native[i].update({"type": "effect_result", "effect": effect,
-                          "result": "applied"})
+                          "action_id": action_id + suffix, "result": "applied"})
     action = [
         {"state": "issued", "action_id": "m02-paper-walk-1", "session_id": session},
         {"state": "outcome", "action_id": "m02-paper-walk-1",
@@ -42,10 +47,14 @@ def fixture(tmp_path: Path):
         return data
 
     rows = [controls_row("SESSION_START", 1, 0),
-            controls_row("EFFECT_ACK", 2, 0, seq=8, forward=True)]
+            controls_row("EFFECT_ACK", 2, 0, seq=7),
+            controls_row("EFFECT_ACK", 3, 0, seq=8, forward=True)]
+    rows[1]["native_action_id"] = action_id + "-look"
+    rows[2]["native_action_id"] = action_id
     for tick in range(1, 8):
         rows.append(controls_row("PHYSICS_TICK", len(rows)+1, tick, forward=True))
     rows.append(controls_row("EFFECT_ACK", len(rows)+1, 7, seq=17))
+    rows[-1]["native_action_id"] = action_id + "-clear"
     for tick in range(8, 31):
         rows.append(controls_row("PHYSICS_TICK", len(rows)+1, tick))
     rows.append(controls_row("SHUTDOWN_ACK", len(rows)+1, 30, seq=26))
@@ -57,7 +66,15 @@ def fixture(tmp_path: Path):
 
     files = {
         "original_native.jsonl": "\n".join(map(json.dumps, native))+"\n",
-        "owner_commands.jsonl": json.dumps({"type": "shutdown"})+"\n",
+        "owner_commands.jsonl": "\n".join(map(json.dumps, [
+            {"type": "effect", "action_id": action_id + "-look",
+             "effect": "look"},
+            {"type": "effect", "action_id": action_id,
+             "effect": "set_control", "control": "forward", "state": True},
+            {"type": "effect", "action_id": action_id + "-clear",
+             "effect": "clear_controls"},
+            {"type": "shutdown"},
+        ]))+"\n",
         "paper_server.log": "\n".join(paper)+"\n",
         "s50_action_original.jsonl": "\n".join(map(json.dumps, action))+"\n",
         "s50_p1_native_controls_original.jsonl": "\n".join(map(json.dumps, rows))+"\n",
@@ -114,7 +131,7 @@ def test_forged_promoted_or_incomplete_original_rejected(tmp_path, damage):
         action[1]["consequence"]["progress_m"] = 0.5
         write_jsonl(root, "s50_action_original.jsonl", action)
     elif damage == "forward_not_on":
-        rows[1]["controls"]["forward"] = False
+        rows[2]["controls"]["forward"] = False
         write_jsonl(root, "s50_p1_native_controls_original.jsonl", rows)
     elif damage == "clear_reactivated":
         next(x for x in rows if x.get("native_seq") == 17)["controls"]["forward"] = True
