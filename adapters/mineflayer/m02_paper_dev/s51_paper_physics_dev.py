@@ -1202,10 +1202,22 @@ async def run(
             )
         else:
             session_type = _recording_session_type(native_file, commands_file)
-        session = await session_type.launch(MineflayerLaunchConfig(
+        child_config = MineflayerLaunchConfig(
             host=SERVER_HOST, port=SERVER_PORT,
             username=BOT_USERNAME, version=MINECRAFT_VERSION,
-        ), startup_timeout_s=12)
+        )
+        if flat_expected is not None:
+            from adapters.mineflayer.m02_paper_dev.s50_p1_flat_look import (
+                single_flat_p1_child_look_launch,
+            )
+            # Exactly one permitted FLAT-P1 child inherits server-synced LOOK.
+            # The S50 Action/JSONL protocol is otherwise byte-compatible.
+            with single_flat_p1_child_look_launch(eligible=True):
+                session = await session_type.launch(child_config, startup_timeout_s=12)
+            report["p1_flat_look_child_env_requested"] = True
+            report["p1_flat_look_paper_yaw_verified"] = False
+        else:
+            session = await session_type.launch(child_config, startup_timeout_s=12)
         await _await_spawn(session)
         report["node_pid"] = session._process.pid
         report["source_session_id"] = session.started.session_id
