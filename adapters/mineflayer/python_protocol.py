@@ -753,7 +753,7 @@ def encode_look(
 ) -> str:
     _require_text("action_id", action_id)
     if type(force_server) is not bool:
-        raise MineflayerProtocolRejected("LOOK server force flag must be boolean")
+        raise MineflayerAdapterProtocolError("LOOK server force flag must be boolean")
     _require_number("yaw", yaw)
     _require_number("pitch", pitch)
     return _encode_command(
