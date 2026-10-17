@@ -61,6 +61,8 @@ def audit_control_loop_order(events: Sequence[Mapping[str, object]]) -> dict:
             raise ControlLoopOrderRejected("foreign/unclassified control event")
         if writer not in {"setup", "executor", "supervisor", "observer"}:
             raise ControlLoopOrderRejected("unknown control writer")
+        if phase == "STOPPED":
+            raise ControlLoopOrderRejected("source after terminal STOP")
         if kind == "OBSERVE":
             if writer not in {"executor", "observer"} or row.get("effect") is not None:
                 raise ControlLoopOrderRejected("observer attempted physical mutation")
@@ -88,6 +90,7 @@ def audit_control_loop_order(events: Sequence[Mapping[str, object]]) -> dict:
                 raise ControlLoopOrderRejected("second or unauthorized in-flight Action")
             phase = "SELF_ACTIVE"
             action_id = aid
+            effect_stage = 0
         elif kind in _EFFECTS:
             if phase != "SELF_ACTIVE" or writer != "executor" or aid != action_id:
                 raise ControlLoopOrderRejected("foreign/second motor writer")
