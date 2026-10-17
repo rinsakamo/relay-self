@@ -8,7 +8,6 @@ import pytest
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.m02_paper_dev.s50_p1_control_action import review_control_action
 
-
 ACTION = "m02-paper-walk-1"
 SESSION = "11111111-2222-4333-8444-555555555555"
 MARKER = ACTION + "-" + SESSION
