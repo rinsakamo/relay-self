@@ -11,6 +11,8 @@ import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import com.destroystokyo.paper.event.entity.EntityAddToWorldEvent;
+import com.destroystokyo.paper.event.entity.EntityRemoveFromWorldEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
@@ -34,6 +36,8 @@ import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerVelocityEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.event.world.ChunkLoadEvent;
+import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -93,6 +97,12 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private long s50WaitVelocityEvents = 0;
     private long s50WaitDamageEvents = 0;
     private long s50WaitInteractEvents = 0;
+    // DEV-only prospective callback-bounded entity/chunk lifecycle witness.
+    // Explicitly NOT a proof of all packets or of an entire World tick.
+    private static final long S50_WAIT_LIFECYCLE_MAX_EVENTS = 256;
+    private long s50WaitLifecycleEvents = 0;
+    private boolean s50WaitLifecycleOverflow = false;
+    private volatile boolean s50WaitLifecycleAsync = false;
 
     /** Bounded +X first-tick corridor, not proof of collision or paired start. */
     private static String devCorridor(World world, Location center) {
@@ -270,6 +280,13 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                             + " basal_ticks=" + appliedTicks);
                         try {
                             logS50WaitScope(p, tick, s50WaitSourceRows + 1);
+                            getLogger().info("S50_DEV_WAIT_LIFECYCLE_SAMPLE marker_id="
+                                + s50Marker + " world=" + p.getWorld().getUID()
+                                + " tick=" + tick + " index=" + (s50WaitSourceRows + 1)
+                                + " event_count=" + s50WaitLifecycleEvents
+                                + " overflow=" + s50WaitLifecycleOverflow
+                                + " async_seen=" + s50WaitLifecycleAsync
+                                + " coverage=CALLBACK_PREFIX_TO_SAMPLE_ONLY");
                         } catch (RuntimeException exc) {
                             getLogger().severe("S50_DEV_WAIT_SCOPE_REJECT reason="
                                 + exc.getClass().getSimpleName());
@@ -469,6 +486,14 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             s50WaitStartWorldTick = waiting.getWorld().getFullTime();
             s50WaitLast = where.clone();
             s50WaitObserveActive = true;
+            s50WaitLifecycleEvents = 0;
+            s50WaitLifecycleOverflow = false;
+            s50WaitLifecycleAsync = false;
+            getLogger().info("S50_DEV_WAIT_LIFECYCLE_BEGIN marker_id=" + s50Marker
+                + " world=" + waiting.getWorld().getUID()
+                + " tick=" + s50WaitStartWorldTick
+                + " subject_uuid=" + waiting.getUniqueId()
+                + " event_count=0 coverage=CALLBACK_PREFIX_TO_SAMPLE_ONLY");
             getLogger().info("S50_DEV_WAIT_BEGIN marker_id=" + s50Marker
                 + " world=" + waiting.getWorld().getUID()
                 + " tick=" + s50WaitStartWorldTick
@@ -647,6 +672,70 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             + " coverage=LOADED_CHUNK_SAMPLER_ONLY"
             + " client_held_controls=NOT_OBSERVED"
             + " entity_lifecycle=NOT_ATTESTED");
+    }
+
+    /** Prospective Paper callback ledger; never confers P1 WAIT admission. */
+    private void logS50WaitLifecycle(String kind, World eventWorld, String entityId,
+                                     String type, int chunkX, int chunkZ) {
+        if (!s50WaitObserveActive || s50WaitSourceRows >= 8) {
+            return;
+        }
+        if (!Bukkit.isPrimaryThread()) {
+            s50WaitLifecycleAsync = true;
+            return;
+        }
+        Player subject = Bukkit.getPlayerExact(target);
+        if (subject == null || !subject.isOnline() || subject.isDead()) {
+            s50WaitLifecycleOverflow = true;
+            return;
+        }
+        s50WaitLifecycleEvents++;
+        if (s50WaitLifecycleEvents > S50_WAIT_LIFECYCLE_MAX_EVENTS) {
+            s50WaitLifecycleOverflow = true;
+            return;
+        }
+        getLogger().info("S50_DEV_WAIT_LIFECYCLE_EVENT marker_id=" + s50Marker
+            + " world=" + subject.getWorld().getUID()
+            + " tick=" + subject.getWorld().getFullTime()
+            + " seq=" + s50WaitLifecycleEvents
+            + " kind=" + kind
+            + " entity_world=" + eventWorld.getUID()
+            + " entity_tick=" + eventWorld.getFullTime()
+            + " uuid=" + entityId + " type=" + type
+            + " chunk_x=" + chunkX + " chunk_z=" + chunkZ
+            + " coverage=PAPER_CALLBACK_ONLY");
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onDevWaitEntityAdded(EntityAddToWorldEvent event) {
+        Entity entity = event.getEntity();
+        Location where = entity.getLocation();
+        logS50WaitLifecycle("ENTITY_ADD", event.getWorld(),
+            entity.getUniqueId().toString(), entity.getType().name(),
+            where.getBlockX() >> 4, where.getBlockZ() >> 4);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onDevWaitEntityRemoved(EntityRemoveFromWorldEvent event) {
+        Entity entity = event.getEntity();
+        Location where = entity.getLocation();
+        // Removal must use event.getWorld(), not entity.getWorld(): Paper
+        // may already have updated the entity's world on removal.
+        logS50WaitLifecycle("ENTITY_REMOVE", event.getWorld(),
+            entity.getUniqueId().toString(), entity.getType().name(),
+            where.getBlockX() >> 4, where.getBlockZ() >> 4);
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onDevWaitChunkLoad(ChunkLoadEvent event) {
+        logS50WaitLifecycle("CHUNK_LOAD", event.getWorld(), "NONE", "CHUNK",
+            event.getChunk().getX(), event.getChunk().getZ());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onDevWaitChunkUnload(ChunkUnloadEvent event) {
+        logS50WaitLifecycle("CHUNK_UNLOAD", event.getWorld(), "NONE", "CHUNK",
+            event.getChunk().getX(), event.getChunk().getZ());
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
