@@ -9,6 +9,7 @@ import argparse
 import json
 import math
 import re
+import uuid
 from pathlib import Path
 
 from experiments.standard_env.s50_flat_base_original_audit import (
@@ -95,6 +96,16 @@ def audit_arm(root: Path, arm: str, source_index: list[dict]) -> dict:
     if paper_present:
         require(digest(read_bytes(paper, 100 * 1024 * 1024)) == PAPER_SHA,
                 "installed actual Paper JAR differs")
+    properties = dict(line.split("=", 1) for line in
+                      read_bytes(root / "server/server.properties").decode().splitlines()
+                      if line and not line.startswith("#") and "=" in line)
+    require(all(properties.get(k) == v for k, v in {
+        "server-ip": "127.0.0.1", "server-port": "25565", "gamemode": "survival",
+        "difficulty": "hard", "level-seed": "63101"}.items()),
+        "actual saved Paper runtime environment differs")
+    require(properties.get("level-type", "").replace("\\:", ":") == "minecraft:flat",
+            "saved actual Paper profile is not flat")
+    require(report["L1"] == report["L2"] == "OFF", "unapproved higher layer enabled")
     config = validate_config(read_bytes(root / "server/plugins/RelayMetabolismDev/config.yml"), arm)
     require(config == report["config_sha256"], "reported config SHA mismatch")
     log = read_bytes(root / "paper_server.log").decode()
@@ -145,8 +156,16 @@ def audit_arm(root: Path, arm: str, source_index: list[dict]) -> dict:
         a, b = before["snapshot"]["position"], after["snapshot"]["position"]
         distance = math.dist([a[k] for k in ("x", "y", "z")],
                              [b[k] for k in ("x", "y", "z")])
-        require(move["progress_blocks"] >= 0 or move["kind"] == "BLOCKED",
-                "invalid formal MOVE progress")
+        origin = by_seq[trace["discovery_seq"]]["snapshot"]
+        targets = [e for e in origin["nearby_entities"] if e["id"] == trace["item_entity_id"]]
+        require(len(targets) == 1, "MOVE original target entity missing")
+        target = targets[0]["position"]
+        remaining = math.hypot(target["x"] - b["x"], target["z"] - b["z"])
+        progress = math.hypot(target["x"] - a["x"], target["z"] - a["z"]) - remaining
+        kind = ("ARRIVED" if remaining <= 0.7 else
+                "PROGRESSED" if progress >= 0.05 else "BLOCKED")
+        require(math.isclose(progress, move["progress_blocks"], abs_tol=1e-7)
+                and move["kind"] == kind, "formal MOVE outcome differs from native target geometry")
         distances.append(distance)
     fixture_native = {}
     for key in ("food_initial_native", "food_after_fall_native"):
@@ -209,13 +228,32 @@ def audit_arm(root: Path, arm: str, source_index: list[dict]) -> dict:
         require(math.isclose(value, report["metabolism_source"][key], abs_tol=1e-8),
                 "reported metabolism totals differ from original Paper rows")
     terminal = [x for x in markers if x.get("marker_id") == "TERMINAL_" + arm]
-    return {"arm": arm, "behavioral_status": report["status"], "S_error": report.get("error"),
+    if terminal:
+        require(terminal[0] == report["terminal_server_marker"]
+                and terminal[0]["world"] == start["world"], "terminal World identity mismatch")
+        if PROFILES[arm][0] == 0:
+            require(float(terminal[0]["basal_requested"]) == 0, "BASAL_ZERO native charge nonzero")
+        if PROFILES[arm][1] == 0:
+            require(float(terminal[0]["motion_billed"]) == 0, "WALK_ZERO native charge nonzero")
+    return {"arm": arm, "R_original_readback": "PASS",
+            "behavioral_status": report["status"], "S_error": report.get("error"),
             "native_session_id": native[0]["session_id"], "original_files_checked": count,
             "saved_world_files_checked": len(saved), "config_sha256": config,
             "actual_paper_jar_archived": paper_present, "initial_native_marker": start,
             "terminal_native_marker": terminal[0] if len(terminal) == 1 else None,
             "native_frames": len(native), "move_outcomes": len(moves),
-            "food_fixture_original_native": fixture_native, "L0_decisions": decisions,
+            "move_kinds": [x["kind"] for x in moves],
+            "move_progress_blocks": [x["progress_blocks"] for x in moves],
+            "cleanup_source_fields": {k: report.get(k) for k in (
+                "shutdown_ack", "connection_end", "java_exit", "node_exit",
+                "java_pid_absent", "node_pid_absent", "java_stop_saved",
+                "port_released", "port_rebind_witness", "cleanup_complete")},
+            "food_fixture_original_native": fixture_native,
+            "food_fixture_positions": {key: {
+                "seq": value["seq"], "feet_xyz": value["snapshot"]["position"],
+                "native_items": [e for e in value["snapshot"]["nearby_entities"]
+                                 if e["name"] == "item"]
+            } for key, value in fixture_native.items()}, "L0_decisions": decisions,
             "move_endpoint_displacements": distances, "continuous_path_attested": False,
             "pickup_native_source_seq_pairs": pickup_pairs, "strict_playerCollect": "UNKNOWN",
             "S51_eat_native_contrast": eat_native, "metabolism_original_log_totals": source,
@@ -254,19 +292,32 @@ def audit(source: Path, run: Path) -> dict:
     require(summary["arm_order"] == list(ARMS) and summary["science_trials"] == 0
             and not summary["engineering_qualified"] and not summary["science_go"],
             "wrong arm roster or DEV ceiling")
+    not_run = summary["not_run"]
+    require(not_run == list(ARMS[len(ARMS) - len(not_run):]),
+            "NOT_RUN is not the ordered remaining arm suffix")
     reviews = []
     for arm in ARMS:
         if arm in summary["not_run"]:
             require(not (results / arm).exists(), "NOT_RUN hides existing physical arm")
             reviews.append({"arm": arm, "behavioral_status": "NOT_RUN"})
             continue
-        reviews.append(audit_arm(results / arm, arm, before))
+        review = audit_arm(results / arm, arm, before)
+        reviews.append(review)
+        if not review["host_cleanup_archived_witness"]:
+            require(list(ARMS[ARMS.index(arm) + 1:]) == not_run,
+                    "later arm executed despite incomplete previous STOP")
+    uid = original / "uid.dat"
+    if uid.exists():
+        expected_uuid = str(uuid.UUID(bytes=read_bytes(uid)))
+        require(all(x["initial_native_marker"]["world"] == expected_uuid
+                    for x in reviews if "initial_native_marker" in x),
+                "native World UUID differs from cloned original uid.dat")
     sessions = [x["native_session_id"] for x in reviews if "native_session_id" in x]
     require(len(sessions) == len(set(sessions)), "cross-arm native session reuse")
     require(independent_index(original) == before, "R review changed source originals")
     require(archive_hashes(source) == before_source and archive_hashes(run) == before_run,
             "original archive bytes changed during independent review")
-    return {"classification": "R_FLAT_FOUR_ORIGINAL_READBACK_DEV_ONLY",
+    return {"classification": "R_FLAT_FOUR_ORIGINAL_READBACK_DEV_ONLY", "audit_status": "PASS",
             "entire_source_archive_files_checked": len(before_source),
             "entire_run_archive_files_checked": len(before_run),
             "entire_run_archive_sha256": before_run,
@@ -274,7 +325,8 @@ def audit(source: Path, run: Path) -> dict:
             "source_world_level_sha256": SOURCE_LEVEL_SHA,
             "R_java_node_starts": 0, "science_trials": 0,
             "engineering_qualified": False, "science_go": False, "production_go": False,
-            "limits": ["host PID/port cleanup is archived producer witness, not live R observation",
+            "limits": ["initial cloned bytes are producer-time index witnesses matched to original source",
+                       "host PID/port cleanup is archived producer witness, not live R observation",
                        "formal Action OUTCOME journal cross-checked with native ACK/endpoints",
                        "native sparse endpoint distance is not continuous physical path",
                        "operator hunger and food fixtures; no natural discovery/adaptation credit"]}
@@ -286,11 +338,28 @@ def main() -> int:
     parser.add_argument("--run", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    result = audit(args.source, args.run)
+    exit_code = 0
+    try:
+        result = audit(args.source, args.run)
+    except Exception as exc:
+        result = {"classification": "R_FLAT_FOUR_ORIGINAL_AUDIT_REJECTED",
+                  "error": f"{type(exc).__name__}: {exc}", "R_java_node_starts": 0,
+                  "science_go": False, "engineering_qualified": False}
+        exit_code = 1
     with args.output.open("x") as stream:
         stream.write(json.dumps(result, indent=2, sort_keys=True) + "\n")
-    print(json.dumps(result, sort_keys=True))
-    return 0
+    compact = [{k: arm.get(k) for k in (
+        "arm", "behavioral_status", "S_error", "original_files_checked",
+        "saved_world_files_checked", "initial_native_marker", "terminal_native_marker",
+        "move_kinds", "move_progress_blocks", "move_endpoint_displacements", "food_fixture_positions",
+        "pickup_native_source_seq_pairs", "S51_eat_native_contrast", "cleanup_source_fields",
+        "metabolism_original_log_totals", "basal_log_cap_reached", "motion_log_cap_reached")
+    } for arm in result.get("arms", [])]
+    print("R_FLAT_FOUR_COMPARISON_JSON " + json.dumps(compact, sort_keys=True))
+    print("R_FLAT_FOUR_REVIEW " + json.dumps({
+        k: v for k, v in result.items() if k not in ("arms", "entire_run_archive_sha256")
+    }, sort_keys=True))
+    return exit_code
 
 
 if __name__ == "__main__":

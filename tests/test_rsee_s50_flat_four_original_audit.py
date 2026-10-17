@@ -99,3 +99,21 @@ def test_transport_rejects_wrong_head_before_download(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="identity"):
         transport.fetch("o/r", 1, "head", 2, "0" * 64, tmp_path / "transport")
     assert not (tmp_path / "transport").exists()
+
+
+def test_failed_review_persists_rejection_without_pass(tmp_path, monkeypatch):
+    import sys
+
+    out = tmp_path / "r-failure.json"
+    monkeypatch.setattr(sys, "argv", ["audit", "--source", str(tmp_path),
+                                     "--run", str(tmp_path), "--output", str(out)])
+
+    def reject(source, run):
+        raise FlatBaseAuditRejected("missing original bytes")
+
+    monkeypatch.setattr(r, "audit", reject)
+    assert r.main() == 1
+    result = json.loads(out.read_text())
+    assert result["classification"] == "R_FLAT_FOUR_ORIGINAL_AUDIT_REJECTED"
+    assert result["R_java_node_starts"] == 0
+    assert not result["science_go"]
