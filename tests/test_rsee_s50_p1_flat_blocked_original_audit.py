@@ -171,3 +171,42 @@ def test_symlinked_original_is_rejected(tmp_path):
     file.symlink_to(data)
     with pytest.raises(ValueError, match="missing/unbounded"):
         check(root, hashes)
+
+@pytest.mark.parametrize("damage", [
+    "ack_action_id", "extra_effect_command", "missing_look_sidecar",
+    "sidecar_clear_ack_id", "postclear_stop_reactivation",
+    "fabricated_physics_seq", "duplicate_native_readback_seq",
+])
+def test_native_ack_sidecar_bijection_rejects_forgery(tmp_path, damage):
+    root, _, native, action, rows, _ = fixture(tmp_path)
+    if damage == "ack_action_id":
+        native[8]["action_id"] = "unrelated"
+        write_jsonl(root, "original_native.jsonl", native)
+    elif damage == "extra_effect_command":
+        cmd = [json.loads(line) for line in (
+            root / "owner_commands.jsonl").read_text().splitlines()]
+        cmd.insert(2, {"type": "effect", "effect": "look",
+                       "action_id": "foreign"})
+        write_jsonl(root, "owner_commands.jsonl", cmd)
+    elif damage == "missing_look_sidecar":
+        rows.pop(1)
+        for idx, row in enumerate(rows, 1):
+            row["ordinal"] = idx
+        write_jsonl(root, "s50_p1_native_controls_original.jsonl", rows)
+    elif damage == "sidecar_clear_ack_id":
+        clear = next(x for x in rows if x.get("native_seq") == 17)
+        clear["native_action_id"] = "unrelated-clear"
+        write_jsonl(root, "s50_p1_native_controls_original.jsonl", rows)
+    elif damage == "postclear_stop_reactivation":
+        rows[-1]["controls"]["sprint"] = True
+        write_jsonl(root, "s50_p1_native_controls_original.jsonl", rows)
+    elif damage == "fabricated_physics_seq":
+        tick = next(x for x in rows if x["kind"] == "PHYSICS_TICK")
+        tick["native_seq"] = 8
+        write_jsonl(root, "s50_p1_native_controls_original.jsonl", rows)
+    elif damage == "duplicate_native_readback_seq":
+        clear = next(x for x in rows if x.get("native_seq") == 17)
+        clear["native_seq"] = 8
+        write_jsonl(root, "s50_p1_native_controls_original.jsonl", rows)
+    with pytest.raises(ValueError):
+        check(root, updated_hashes(root))
