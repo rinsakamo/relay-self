@@ -1,30 +1,40 @@
 """#632 offline negative controls; never launches World, Node or an action issuer."""
 from __future__ import annotations
 
+import inspect
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
+from adapters.mineflayer.execution import WorldConsequence, WorldConsequenceStatus
 from adapters.mineflayer.present_projection import MinecraftPresent
 from adapters.mineflayer.self_body_projection import (
     project_body_action_readback,
     project_body_present,
 )
-from adapters.mineflayer.execution import WorldConsequence, WorldConsequenceStatus
 from relay_self.action_outcome import (
     ActionOutcomeDisposition,
     ActionOutcomeInterpretation,
 )
 from relay_self.belief import (
-    BeliefCriterion, BeliefEvidence, EvidenceRelation, PropositionKey, assess_belief,
+    BeliefCriterion,
+    BeliefEvidence,
+    EvidenceRelation,
+    PropositionKey,
+    assess_belief,
 )
 from relay_self.prediction import PredictionState, StateVariable, TransitionRule, predict_transition
 from relay_self.provenance import Provenance
+from relay_self.reactive_l0 import ReactiveL0
 from relay_self.self_body import (
-    BodyField, BodyHypothesis, BodyObservation, BodyOrigin, BodyPrediction,
-    InvalidSelfBodyData, compose_self_body_view,
+    BodyField,
+    BodyHypothesis,
+    BodyObservation,
+    BodyOrigin,
+    BodyPrediction,
+    InvalidSelfBodyData,
+    compose_self_body_view,
 )
-
 
 def prov(ref: str, source: str = "offline") -> Provenance:
     return Provenance(source=source, reference=ref)
@@ -174,8 +184,6 @@ def test_no_body_model_is_allowed_and_cannot_mint_m_or_p1_resources():
     assert imaginary.observed("energy").origin is BodyOrigin.UNKNOWN
     assert imaginary.observed("physical_fatigue").origin is BodyOrigin.UNKNOWN
     # L0 remains independent: its constructor/decide API gains no SelfBody argument.
-    from relay_self.reactive_l0 import ReactiveL0
-    import inspect
     assert "self_body" not in inspect.signature(ReactiveL0.decide).parameters
 
 
