@@ -1,0 +1,173 @@
+{
+  "version": "AC-C-C15-MINEFLAYER-SPATIAL-WITNESS-v1",
+  "authority": {
+    "issue": 522,
+    "lane": 432,
+    "coord": 426,
+    "base_head": "4348a614900c1d0828581a8eec2c523ba5ae237f",
+    "base_tree": "7816055966dd520b6690de7662a267047e57ccc0",
+    "c14_frozen_head": "0dda549fd5a3e0d70c58e4ad894f28b2eaec08c3"
+  },
+  "actual_source": {
+    "decoder": "adapters.mineflayer.python_protocol.MineflayerStreamDecoder",
+    "position": "MineflayerObservation.snapshot.position",
+    "ack": "MineflayerEffectResult",
+    "probe_kind": "probe",
+    "effects": [
+      "set_control",
+      "clear_controls"
+    ],
+    "adapter_version": "4.39.0",
+    "no_new_protocol_types": true
+  },
+  "qualification_contract": {
+    "preprobe_required": true,
+    "set_ack_applied_required": true,
+    "clear_ack_applied_required": true,
+    "post_stop_probe_count": 2,
+    "ordered_source_seq_and_one_session_required": true,
+    "probe_tolerance_xyz": 0.05,
+    "strict_box_interior_margin": 0.05,
+    "region_interbox_gap_min": 0.2,
+    "baseline_must_be_outside_both_regions": true,
+    "probe_position_finite": true,
+    "accept_only_explicitly_distinct_action_ids": true,
+    "observed_before_after_displacement_min": 0.05,
+    "forbidden_kinds": [
+      "forcedMove",
+      "death",
+      "respawn"
+    ],
+    "forbidden_messages": [
+      "connection_end",
+      "adapter_error",
+      "command_error"
+    ],
+    "unknown_position_policy": "UNDETERMINED",
+    "unknown_causal_policy": "NO_SIGNED_ACTION_LABEL",
+    "no_learning_or_skill_completion": true
+  },
+  "fixture_geometry": {
+    "session": "c15-fixture-session",
+    "goal_bounds": {
+      "low": [
+        4,
+        63,
+        0
+      ],
+      "high": [
+        6,
+        66,
+        2
+      ]
+    },
+    "alternative_bounds": {
+      "low": [
+        -6,
+        63,
+        0
+      ],
+      "high": [
+        -4,
+        66,
+        2
+      ]
+    },
+    "baseline": [
+      0,
+      64,
+      1
+    ],
+    "goal_center": [
+      5,
+      64,
+      1
+    ],
+    "alternative_center": [
+      -5,
+      64,
+      1
+    ],
+    "outside": [
+      0.5,
+      64,
+      1
+    ],
+    "edge": [
+      4.01,
+      64,
+      1
+    ],
+    "unstable_second": [
+      5.2,
+      64,
+      1
+    ],
+    "control_action_id": "c15-control-on",
+    "stop_action_id": "c15-controls-stop",
+    "seq_schema": "started:0,pre_probe:1,set_applied:2,clear_applied:3,post_probe_a:4,post_probe_b:5"
+  },
+  "fixture_matrix": {
+    "positive": [
+      "in_goal_stable_two_post_stop_probes",
+      "in_alternative_stable_two_post_stop_probes"
+    ],
+    "unknown": [
+      "no_terminal_probe",
+      "only_one_terminal_probe",
+      "outside_both_regions",
+      "on_goal_boundary",
+      "unstable_position",
+      "terminal_probes_in_disagreeing_regions",
+      "preexisting_goal",
+      "preexisting_alternative",
+      "no_displacement",
+      "probe_before_stop_only",
+      "missing_control_ack",
+      "missing_stop_ack",
+      "rejected_control_ack",
+      "rejected_stop_ack",
+      "wrong_control_action_id",
+      "wrong_stop_action_id",
+      "interleaved_forcedMove",
+      "interleaved_respawn",
+      "interleaved_death",
+      "nonprobe_after_stop",
+      "poststop_before_clear_ack",
+      "duplicate_stop_ack",
+      "duplicate_probe_evidence",
+      "session_change",
+      "sequence_gap",
+      "position_nan_or_nonfinite",
+      "overlapping_or_too_close_regions",
+      "duplicate_call"
+    ],
+    "fail_closed_required": true
+  },
+  "output": {
+    "qualified_spatial_values": [
+      "GOAL_REGION_OBSERVED",
+      "ALTERNATIVE_REGION_OBSERVED",
+      "UNDETERMINED"
+    ],
+    "never_emit": [
+      "EXACT_Z",
+      "NEGATIVE_Z",
+      "LRN_UPDATE",
+      "HABIT_PROMOTION",
+      "SKILL_SUCCESS"
+    ],
+    "live_goal_attestation": "NOT_RUN",
+    "physical_source_qualification": "NOT_RUN",
+    "signed_negative_action_label": "BLOCKED_UNDERDETERMINED"
+  },
+  "acceptance": {
+    "two_positive_spatial_endpoint_cases": true,
+    "unknown_cases_all_fail_closed": true,
+    "zero_false_positive_endpoints": true,
+    "all_repo_CI_jobs_success": 4,
+    "main_unchanged": true,
+    "draft_unmerged": true
+  },
+  "scope": "Exact typed Mineflayer 4.39.0 decoder fixture-based non-generative static qualification, no real Minecraft server, physical Action, energy measurements, coordinator, or automatic learning."
+}

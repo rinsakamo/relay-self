@@ -1,0 +1,169 @@
+name: S50 FLAT four sequential native foraging DEV only
+on:
+  push:
+    branches: ['self/product-self-one-command-20261010']
+    paths: ['.github/workflows/s50-flat-four-one-shot-dev.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: s50-flat-four-sequential-worlds-once-only
+  cancel-in-progress: false
+jobs:
+  four-sequential-flat-worlds:
+    if: false # Frozen after original run38994504183; never replay these DEV copies.
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rinsakamo/relay-self
+      FLAT_SOURCE_RUN: '38989215391'
+      FLAT_SOURCE_ART: 's50-flat-ground-native-world-seed63101-38989215391-1'
+      FLAT_SOURCE_HEAD: '09f4dc238ee338d3fa421c6e1bf055b49a93ad8d'
+      FLAT_SOURCE_DIGEST: 'df981ff1d3eb064e78602ff785984a03a22d78943569b8c14dd9591675b103f7'
+      DEV_PLUGIN_RUN: '38978751455'
+      DEV_PLUGIN_ART: 'v8-five-world-dev-38978751455-1'
+      DEV_PLUGIN_SHA: 'd620935f6f03f3239cebbef0b931ba97482f596e5457feec9b680fe2e14da486'
+      PAPER_SHA: '8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          path: s
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned native Mineflayer dependencies and preflight before Java
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test "$(git -C s rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+          PYTHONPATH="s/src:s/tests:s" python -m pytest -q \
+            s/tests/test_s50_flat_four_foraging_dev.py \
+            s/tests/test_s50_flat_base_foraging_dev.py \
+            s/tests/test_s50_flat_ground_dev.py \
+            s/tests/test_s50_v8_five_world_dev.py
+          (cd s && PYTHONPATH="src:tests:." python -m pytest -q)
+          (cd s && python tools/check_repository.py)
+          ruff check s/src s/tests s/experiments s/adapters s/observability
+          cd s/adapters/mineflayer
+          npm ci --ignore-scripts --no-audit --no-fund
+          node -e "require.resolve('mineflayer');require.resolve('minecraft-protocol')"
+          npm run check
+      - name: Require completed SUCCESS on exact HEAD S CI before Java
+        run: |
+          python - <<'PY'
+          import json,os,subprocess,time
+          required={"repository-contracts","pytest","lint","mineflayer-adapter","paper-api-compile"}
+          for attempt in range(90):
+              data=json.loads(subprocess.check_output(["gh","api",f"repos/{os.environ['GH_REPO']}/commits/{os.environ['GITHUB_SHA']}/check-runs?per_page=100"]))
+              selected=[x for x in data["check_runs"] if x["name"] in required]
+              if required <= {x["name"] for x in selected} and all(x["status"]=="completed" and x["conclusion"]=="success" for x in selected):
+                  print("EXACT_HEAD_REQUIRED_S_CI_ALL_COMPLETED_SUCCESS",os.environ["GITHUB_SHA"])
+                  break
+              if any(x["status"]=="completed" and x["conclusion"] not in ("success",) for x in selected):
+                  raise RuntimeError("exact HEAD required CI failed; no Java")
+              time.sleep(10)
+          else:
+              raise RuntimeError("exact HEAD required CI incomplete; no Java")
+          PY
+      - name: Pin archived flat original and historical V8 DEV plugin evidence, before download
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ["GH_REPO"]
+          def api(part): return json.loads(subprocess.check_output(["gh","api",f"repos/{repo}/{part}"]))
+          run=api("actions/runs/"+os.environ["FLAT_SOURCE_RUN"])
+          assert run["head_sha"]==os.environ["FLAT_SOURCE_HEAD"] and run["run_attempt"]==1
+          assert run["conclusion"]=="failure" # Original remained failed after source success
+          arts=api("actions/runs/"+os.environ["FLAT_SOURCE_RUN"]+"/artifacts")["artifacts"]
+          matches=[a for a in arts if a["name"]==os.environ["FLAT_SOURCE_ART"]]
+          assert len(matches)==1 and not matches[0]["expired"]
+          assert matches[0]["digest"]=="sha256:"+os.environ["FLAT_SOURCE_DIGEST"]
+          other=api("actions/runs/"+os.environ["DEV_PLUGIN_RUN"])
+          assert other["run_attempt"]==1 and other["conclusion"]=="success"
+          print("S50_FLAT_PINS_VERIFIED_PRE_JAVA")
+          PY
+      - name: Download stopped original flat World and immutable DEV plugin artifact
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/flat-original" "$RUNNER_TEMP/v8-original" "$RUNNER_TEMP/flat-assets"
+          gh api "repos/$GH_REPO/actions/artifacts/12084531180/zip" > "$RUNNER_TEMP/flat-source-original.zip"
+          echo "$FLAT_SOURCE_DIGEST  $RUNNER_TEMP/flat-source-original.zip" | sha256sum -c -
+          gh api "repos/$GH_REPO/actions/artifacts/12079968941/zip" > "$RUNNER_TEMP/plugin-original.zip"
+          python - <<'PY'
+          import os,pathlib,zipfile
+          top=pathlib.Path(os.environ["RUNNER_TEMP"])
+          for name,dest in (("flat-source-original.zip","flat-original"),("plugin-original.zip","v8-original")):
+              with zipfile.ZipFile(top/name) as z:
+                  assert all(not pathlib.PurePosixPath(n).is_absolute() and ".." not in pathlib.PurePosixPath(n).parts for n in z.namelist())
+                  z.extractall(top/dest)
+          PY
+          python - <<'PY'
+          import hashlib,os,pathlib,shutil
+          top=pathlib.Path(os.environ["RUNNER_TEMP"])
+          paper=top/"flat-original/flat-source/server/paper-1.21.8.jar"
+          plugin=top/"v8-original/new-dev-plugin.jar"
+          sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+          assert paper.is_file() and not paper.is_symlink()
+          assert plugin.is_file() and not plugin.is_symlink()
+          assert sha(paper)==os.environ["PAPER_SHA"]
+          assert sha(plugin)==os.environ["DEV_PLUGIN_SHA"]
+          shutil.copyfile(paper,top/"flat-assets/paper.jar")
+          shutil.copyfile(plugin,top/"flat-assets/plugin.jar")
+          print("S50_FLAT_SOURCE_PAPER_PLUGIN_ACTUAL_BYTES_PINNED")
+          PY
+      - name: Four fresh FLAT copies in fixed order, one physical attempt each
+        id: physical
+        continue-on-error: true
+        run: |
+          set +e
+          PYTHONPATH="s/src:s/tests:s" python -m adapters.mineflayer.m02_paper_dev.s50_flat_four_foraging_dev \
+            --archive "$RUNNER_TEMP/flat-original" \
+            --paper-jar "$RUNNER_TEMP/flat-assets/paper.jar" \
+            --plugin-jar "$RUNNER_TEMP/flat-assets/plugin.jar" \
+            --plugin-sha256 "$DEV_PLUGIN_SHA" \
+            --output "$RUNNER_TEMP/flat-four-results" \
+            --confirm S50-FLAT-FOUR-WORLD-DEV-ONLY \
+            > "$RUNNER_TEMP/flat-four-producer-stdout.jsonl" 2>&1
+          code=$?
+          set -e
+          tail -c 13000 "$RUNNER_TEMP/flat-four-producer-stdout.jsonl" || true
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+      - name: Retain all source and new World/action evidence (including hidden remapped plugin)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s50-flat-four-native-forage-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/flat-four-producer-stdout.jsonl
+            ${{ runner.temp }}/flat-four-results/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 90
+          compression-level: 6
+      - name: Preserve behavioral verdict distinct from workflow completion and never SCIENCE
+        if: always()
+        env:
+          ORIGINAL_EXIT: ${{ steps.physical.outputs.code }}
+        run: |
+          test "$ORIGINAL_EXIT" = 0
+          test -s "$RUNNER_TEMP/flat-four-results/summary.json"
+          for arm in SHAM_ON BASAL_ZERO WALK_ZERO BOTH_ZERO; do
+            test -s "$RUNNER_TEMP/flat-four-results/$arm/report.json"
+            test -s "$RUNNER_TEMP/flat-four-results/$arm/original_native.jsonl"
+          done
+          echo "S50_FLAT_FOUR_WORLDS_DEV_EXECUTED_WITH_ORIGINALS_NOT_SCIENCE"
+
+# Explicit DEV transaction: remaining four only; historical BASE_ON is excluded.

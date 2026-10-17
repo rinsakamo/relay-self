@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
+import { lstatSync } from 'node:fs'
+import { isAbsolute, join } from 'node:path'
 import readline from 'node:readline'
 
 import {
@@ -8,6 +10,7 @@ import {
   entityHurtPayload,
   resolveAttackEntity
 } from './bridge_hooks.mjs'
+import { attachV6NativeClockPackets } from './v6_native_clock.mjs'
 import {
   admitProbeRequestId,
   makeEnvelope,
@@ -19,7 +22,17 @@ import {
 } from './protocol.mjs'
 
 const EXPECTED_MINEFLAYER_VERSION = '4.39.0'
-const require = createRequire(import.meta.url)
+// Same physical external dependency-root contract as frozen RSEE #588.
+const nodeRuntimeRoot = process.env.RELAYSELF_RSEE_NODE_RUNTIME_ROOT
+if (nodeRuntimeRoot &&
+    (!isAbsolute(nodeRuntimeRoot) || lstatSync(nodeRuntimeRoot).isSymbolicLink() ||
+     lstatSync(join(nodeRuntimeRoot, 'node_modules')).isSymbolicLink())) {
+  process.stderr.write('RSEE Node runtime must be an absolute physical directory\n')
+  process.exit(2)
+}
+const require = createRequire(nodeRuntimeRoot
+  ? join(nodeRuntimeRoot, 'package.json')
+  : import.meta.url)
 const mineflayer = require('mineflayer')
 const mineflayerPackage = require('mineflayer/package.json')
 
@@ -39,6 +52,16 @@ try {
   process.exit(2)
 }
 
+// Explicit candidate only: never part of frozen S51 RSEE admission.
+const clockOptIn = process.env.RELAYSELF_V6_NATIVE_CLOCK_V1
+if (clockOptIn !== undefined && !['0', '1'].includes(clockOptIn)) {
+  process.stderr.write('invalid V6 clock opt-in\n')
+  process.exit(2)
+}
+if (clockOptIn === '1' && config.version !== '1.21.8') {
+  process.stderr.write('V6 raw source requires explicit Minecraft 1.21.8\n')
+  process.exit(2)
+}
 const sessionId = randomUUID()
 let seq = 0
 let spawned = false
@@ -92,6 +115,13 @@ emit('adapter_started', {
 })
 
 const bot = mineflayer.createBot(options)
+if (clockOptIn === '1') {
+  attachV6NativeClockPackets(
+    bot,
+    (sample) => emit('native_clock_packet', sample),
+    (error) => emitAdapterError(error)
+  )
+}
 
 attachHealthSynchronizedSpawnListeners(
   bot,
@@ -234,7 +264,13 @@ async function handleEffect (command) {
     }
 
     if (command.effect === 'look') {
-      await bot.look(command.yaw, command.pitch)
+      // S-owned disposable FLAT P1 launch can request immediate server
+      // yaw synchronization without adding fields to the frozen protocol.
+      // All historical/default LOOK effects retain the prior behavior.
+      await bot.look(
+        command.yaw, command.pitch,
+        process.env.RELAY_S50_P1_FLAT_FORCE_SERVER_LOOK_DEV === '1'
+      )
       emitEffectResult(command, 'applied')
       return
     }

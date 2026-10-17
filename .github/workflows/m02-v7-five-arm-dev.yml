@@ -1,0 +1,143 @@
+name: S V7 M0.2 five-arm Paper DEV feasibility (not science)
+
+on:
+  push:
+    branches:
+      - self/product-self-one-command-20261010
+    paths:
+      - '.github/workflows/m02-v7-five-arm-dev.yml'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/java/**'
+      - 'adapters/mineflayer/m02_paper_dev/s51_paper_physics_dev.py'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  five-arm-disposable-dev:
+    # Historical DEV sources remain readable; V8 owns explicit sequential execution.
+    if: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    strategy:
+      fail-fast: false
+      matrix:
+        arm: [BASE_ON, SHAM_ON, BASAL_ZERO, WALK_ZERO, BOTH_ZERO]
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rinsakamo/relay-self
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DEV_ONLY_ARM: ${{ matrix.arm }}
+      OUTPUT: /tmp/v7-paper-dev-${{ github.run_id }}-${{ matrix.arm }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: adapters/mineflayer/package-lock.json
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Source owner and native preflight (no Minecraft World)
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+          python -m pytest -q tests/test_m02_paper_dev.py
+          python - <<'PY'
+          import os, socket, subprocess
+          from adapters.mineflayer.m02_paper_dev import v7_paired_config as v7
+          arm=os.environ["DEV_ONLY_ARM"]
+          assert arm in v7.ARMS
+          with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+              assert s.connect_ex(("127.0.0.1",25565)) != 0, "port in use"
+          assert "21." in subprocess.run(["java","-version"],capture_output=True,
+                                         text=True,check=True).stderr
+          raw=v7.TEMPLATE.read_bytes()
+          staged=v7.render_arm(raw,arm)
+          print(f"V7_DEV_PREWORLD_SOURCE_READY arm={arm} config_sha256={v7.sha256(staged)}")
+          PY
+      - name: Re-read historical Paper build only (new plugin is separately unqualified)
+        run: |
+          mkdir -p "$RUNNER_TEMP/source-four"
+          gh run download 38702561454 -R "$GH_REPO" \
+            -n rsee-m02-paper-four-pinned-assets-38702561454-1 \
+            -D "$RUNNER_TEMP/source-four"
+          python - <<'PY'
+          import hashlib, os, pathlib, shutil
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"source-four"
+          candidates={
+              "paper-1.21.8.jar":"8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+          }
+          for n,h in candidates.items():
+              found=[x for x in root.rglob(n) if x.is_file() and not x.is_symlink()]
+              assert len(found)==1, "missing/ambiguous old pinned DEV byte"
+              assert hashlib.sha256(found[0].read_bytes()).hexdigest()==h, n
+              shutil.copyfile(found[0],pathlib.Path(os.environ["RUNNER_TEMP"])/n)
+          print("S_V7_PAPER_SERVER_PINNED_NEW_PLUGIN_NOT_QUALIFIED")
+          PY
+      - name: Build current S HEAD Paper BASAL telemetry plugin, source SHA is DEV-only
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+          python - <<'PY'
+          import hashlib, os, pathlib, shutil
+          java=pathlib.Path("adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/RelayMetabolismPlugin.java")
+          assert "M02_DEV_BASAL_WRITE" in java.read_text()
+          assert "M02_DEV_WORLD_V7_FIRST_TICK" in java.read_text()
+          jar=pathlib.Path("adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar")
+          assert jar.is_file() and not jar.is_symlink()
+          dest=pathlib.Path(os.environ["RUNNER_TEMP"])/"relay-metabolism-paper-dev.jar"
+          shutil.copyfile(jar,dest)
+          sha=hashlib.sha256(dest.read_bytes()).hexdigest()
+          with open(os.environ["GITHUB_ENV"],"a",encoding="utf-8") as stream:
+              stream.write("DEV_PLUGIN_SHA256="+sha+"\n")
+          print("S_V7_PROSPECTIVE_DEV_PLUGIN_NOT_R_QUALIFIED SHA256="+sha)
+          PY
+      - name: Install S native Mineflayer runtime
+        run: npm ci --omit=dev --ignore-scripts --no-audit --no-fund --prefix adapters/mineflayer
+      - name: One disposable V7 DEV Paper World per arm, seed 61021, no food
+        id: physical
+        continue-on-error: true
+        run: |
+          set +e
+          python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev \
+            --v7-arm "$DEV_ONLY_ARM" --v7-seed 61021 \
+            --output-dir "$OUTPUT" \
+            --paper-jar "$RUNNER_TEMP/paper-1.21.8.jar" \
+            --paper-sha256 8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e \
+            --plugin-jar "$RUNNER_TEMP/relay-metabolism-paper-dev.jar" \
+            --plugin-sha256 "$DEV_PLUGIN_SHA256" \
+            --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD \
+            > "$RUNNER_TEMP/v7-owner-stdout.jsonl" 2>&1
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/v7-owner-stdout.jsonl"
+          echo "status_code=$code" >> "$GITHUB_OUTPUT"
+          echo "S_V7_DEV_ONE_WORLD_ATTEMPT_ENDED arm=$DEV_ONLY_ARM rc=$code"
+      - name: Independently preserve each original before verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s-v7-paper-dev-61021-${{ matrix.arm }}-${{ github.run_id }}
+          path: |
+            ${{ env.OUTPUT }}/
+            ${{ runner.temp }}/v7-owner-stdout.jsonl
+            ${{ runner.temp }}/relay-metabolism-paper-dev.jar
+          retention-days: 30
+          if-no-files-found: warn
+      - name: Never promote DEV to qualification or science
+        if: always()
+        env:
+          OWNER_EXIT: ${{ steps.physical.outputs.status_code }}
+        run: |
+          if [ "$OWNER_EXIT" != "0" ]; then
+            echo "::error::V7 Paper DEV arm failed/blocked; originals retained; no SCIENCE retries/promotions"
+            exit 1
+          fi
+          echo 'V7_PAPER_DEV_ONLY_QUALIFICATION_FALSE_SCIENCE_TRIALS_ZERO'

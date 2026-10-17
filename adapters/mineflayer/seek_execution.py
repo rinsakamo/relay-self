@@ -10,6 +10,7 @@ import asyncio
 import math
 from dataclasses import dataclass
 from enum import Enum
+from typing import Awaitable, Callable
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import (
@@ -48,6 +49,8 @@ class SeekConsequence:
 async def _effect(session, action_id: str, effect: str):
     for _ in range(100):
         frame = await asyncio.wait_for(session.receive(), timeout=8)
+        if getattr(frame, "session_id", None) != session.started.session_id:
+            raise SeekExecutionRejected("foreign native SEEK session")
         if isinstance(frame, MineflayerEffectResult):
             if frame.action_id == action_id and frame.effect == effect:
                 if frame.result != "applied":
@@ -76,6 +79,9 @@ async def execute_seek_step(
     supervisor: ActionSupervisor,
     issued: ActionLifecycle,
     step: SeekStep,
+    *, phase_hook: Callable[[str], Awaitable[None]] | None = None,
+    tick_gate_hook: Callable[[], Awaitable[None]] | None = None,
+    settle_hook: Callable[[], Awaitable[None]] | None = None,
 ) -> SeekConsequence:
     if (
         not isinstance(session, MineflayerProcessSession)
@@ -94,16 +100,45 @@ async def execute_seek_step(
         or not 0 < step.step_distance_m <= 2
     ):
         raise SeekExecutionRejected("current issued action and steer-only step required")
+    if (tick_gate_hook is not None or settle_hook is not None) and phase_hook is None:
+        raise SeekExecutionRejected("DEV tick gate requires source phase observations")
     # Issued, source-scoped action ID is unique; child-effect IDs are not
     # independent action authorization.
     look_id, clear_id = issued.action_id + "-look", issued.action_id + "-clear"
     await session.send_look(look_id, yaw=step.yaw, pitch=0)
     looked = await _effect(session, look_id, "look")
-    await session.send_set_control(issued.action_id, control="forward", state=True)
-    forward = await _effect(session, issued.action_id, "set_control")
-    await asyncio.sleep(min(0.40, max(0.08, step.step_distance_m * 0.30)))
-    await session.send_clear_controls(clear_id)
-    clear = await _effect(session, clear_id, "clear_controls")
+    # Optional DEV observability only. No phase hook may grant or issue Action.
+    # Capture the control command's before/after server clock *brackets*.
+    # The actual server-effective control tick is NOT asserted from these ACKs.
+    if phase_hook is not None:
+        await phase_hook("PRE_FORWARD")
+    control_sent = False
+    try:
+        # Mark attempted before the awaited write; a partial transport failure
+        # still triggers the fail-closed clear on this source-bound Action.
+        control_sent = True
+        await session.send_set_control(issued.action_id, control="forward", state=True)
+        forward = await _effect(session, issued.action_id, "set_control")
+        if phase_hook is not None:
+            await phase_hook("POST_FORWARD")
+        if tick_gate_hook is not None:
+            # Prospective DEV gate follows real Paper World time, not host sleep.
+            # It does not assert the server-effective motion control tick.
+            await tick_gate_hook()
+        else:
+            await asyncio.sleep(min(0.40, max(0.08, step.step_distance_m * 0.30)))
+        if phase_hook is not None:
+            await phase_hook("PRE_CLEAR")
+    finally:
+        # Even a DEV marker timeout must not leave the real bot walking.
+        if control_sent:
+            await session.send_clear_controls(clear_id)
+            clear = await _effect(session, clear_id, "clear_controls")
+    if phase_hook is not None:
+        await phase_hook("POST_CLEAR")
+    if settle_hook is not None:
+        # Observation only: no extra motor authority or position correction.
+        await settle_hook()
     request_id = issued.action_id + "-seek-after"
     await session.send_observe(request_id)
     after = await _probe(session, request_id)

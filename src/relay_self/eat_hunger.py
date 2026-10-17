@@ -16,7 +16,9 @@ from adapters.mineflayer.python_protocol import (
 from relay_self.provenance import Provenance
 
 # One explicit controlled Minecraft food inventory, not a general nutrition API.
-ALLOWED_FOODS = ("cooked_beef", "bread", "baked_potato", "apple")
+# Rotten flesh is deliberately last: a lower-priority fallback. Eating it
+# can impose Hunger; an observed meal is not evidence of net energy benefit.
+ALLOWED_FOODS = ("cooked_beef", "bread", "baked_potato", "apple", "rotten_flesh")
 
 
 class EatRejected(ValueError):

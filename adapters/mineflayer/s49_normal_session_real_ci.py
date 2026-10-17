@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import tempfile
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +46,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     _native_threat,
     _new_session,
 )
+from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.execution_binding import (
@@ -114,7 +116,10 @@ def source(tag: str) -> Provenance:
     return Provenance("s49-independent-operator", tag)
 
 
-async def qualify(report_path: Path, server_log: Path) -> int:
+async def qualify(
+    report_path: Path, server_log: Path, *,
+    live_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
+) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
         "classification": "PENDING_REAL_NATIVE_EVIDENCE",
@@ -164,6 +169,11 @@ async def qualify(report_path: Path, server_log: Path) -> int:
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
             reading = await _correlated_observe(session, request_id)
             probes[reading.seq] = reading
+            if live_probe is not None:
+                # Product-only observer sees an already received native probe.
+                # Original S49 L0 selection, Action ownership and receipt
+                # collection run exactly as before and never await L2 inference.
+                await live_probe(reading)
             report.setdefault("source_pair_trace", []).append({
                 "event_seq": frame.seq,
                 "event_kind": frame.kind,
@@ -251,6 +261,12 @@ async def qualify(report_path: Path, server_log: Path) -> int:
                 "movement_m": receipt.consequence.movement_distance,
                 "event_seq": step.event_seq,
                 "probe_seq": step.choice.probe_seq,
+                # Decoded original before/after observations and exact effect
+                # receipts, captured BEFORE the immutable consequence is lost.
+                # Legacy reports have no such field and remain EVIDENCE_PARTIAL.
+                "execution_evidence": capture_native_action_evidence(
+                    receipt.consequence
+                ),
             })
 
         async def stage_world():

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Union
@@ -329,6 +330,38 @@ class MineflayerObservation(MineflayerMessage):
 
 
 @dataclass(frozen=True, slots=True)
+class MineflayerNativeClockPacket(MineflayerMessage):
+    """Original-shaped clientbound time sample, not command-effect authority."""
+
+    source: str
+    observation_precision: str
+    world_age_ticks: str
+    world_day_time_raw_ticks: str
+    tick_day_time: bool
+    host_monotonic_ns: str
+    command_effect_tick_attested: bool
+
+    def __post_init__(self) -> None:
+        MineflayerMessage.__post_init__(self)
+        if (
+            self.source != "minecraft_1_21_8_clientbound_update_time"
+            or self.observation_precision != "SERVER_UPDATE_TIME_PACKET_SAMPLE_ONLY"
+            or type(self.world_age_ticks) is not str
+            or re.fullmatch(r"(0|[1-9][0-9]*)", self.world_age_ticks) is None
+            or int(self.world_age_ticks) >= 2**63
+            or type(self.world_day_time_raw_ticks) is not str
+            or re.fullmatch(r"(0|-?[1-9][0-9]*)", self.world_day_time_raw_ticks) is None
+            or abs(int(self.world_day_time_raw_ticks)) >= 2**63
+            or type(self.tick_day_time) is not bool
+            or type(self.host_monotonic_ns) is not str
+            or re.fullmatch(r"[1-9][0-9]*", self.host_monotonic_ns) is None
+            or type(self.command_effect_tick_attested) is not bool
+            or self.command_effect_tick_attested
+        ):
+            raise MineflayerAdapterProtocolError("unqualified native V6 clock packet")
+
+
+@dataclass(frozen=True, slots=True)
 class MineflayerEntityHurt(MineflayerMessage):
     entity_id: int
     source_entity_id: int | None
@@ -413,6 +446,7 @@ class MineflayerShutdownAck(MineflayerMessage):
 MineflayerDecodedMessage = Union[
     MineflayerAdapterStarted,
     MineflayerObservation,
+    MineflayerNativeClockPacket,
     MineflayerEntityHurt,
     MineflayerEffectResult,
     MineflayerConnectionEnd,
@@ -518,6 +552,27 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
             kind=_decoded_text("observation kind", payload["kind"]),
             snapshot=_decode_snapshot(payload["snapshot"]),
             request_id=payload.get("request_id"),
+        )
+
+    if message_type == "native_clock_packet":
+        _require_exact_keys(
+            "native_clock_packet", payload,
+            {
+                "type", "session_id", "seq", "source",
+                "observation_precision", "world_age_ticks",
+                "world_day_time_raw_ticks", "tick_day_time",
+                "host_monotonic_ns", "command_effect_tick_attested",
+            },
+        )
+        return MineflayerNativeClockPacket(
+            session_id=session_id, seq=seq,
+            source=payload["source"],
+            observation_precision=payload["observation_precision"],
+            world_age_ticks=payload["world_age_ticks"],
+            world_day_time_raw_ticks=payload["world_day_time_raw_ticks"],
+            tick_day_time=payload["tick_day_time"],
+            host_monotonic_ns=payload["host_monotonic_ns"],
+            command_effect_tick_attested=payload["command_effect_tick_attested"],
         )
 
     if message_type == "entity_hurt":
