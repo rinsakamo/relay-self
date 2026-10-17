@@ -28,7 +28,7 @@ inter-Self transport, or Action issuing takes place.
 | UNKNOWN | no qualified input, missing target, unqualified inference | ignorance, not evidence of physical absence |
 
 The target-specific adapter `adapters/mineflayer/self_world_projection.py`
-projects native-observable entity identifier, label, 3D position and distance.
+projects native-observable entity identifier (as BLF-compatible `entity-N`), label, 3D position and distance. The native numeric ID is session-local, not a universal entity identity.
 Optional visible Action is representable but not invented if absent. It does
 **not** project other Self's cognition, intent, body resource, memory or secret
 attributes. Core code never imports Mineflayer packets.
