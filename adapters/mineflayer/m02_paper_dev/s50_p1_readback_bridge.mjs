@@ -58,7 +58,7 @@ function packetRecord (record) {
     session_id: sessionId,
     client_physics_tick: physicsTick,
     ...record
-  }) + '\\n')
+  }) + '\n')
 }
 
 function write (record) {
