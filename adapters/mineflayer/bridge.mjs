@@ -264,7 +264,9 @@ async function handleEffect (command) {
     }
 
     if (command.effect === 'look') {
-      await bot.look(command.yaw, command.pitch)
+      // Explicitly opt-in only for the FLAT P1 DEV look-before-FORWARD
+      // proof. All historical/default LOOK commands keep old behavior.
+      await bot.look(command.yaw, command.pitch, command.force_server === true)
       emitEffectResult(command, 'applied')
       return
     }
