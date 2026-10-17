@@ -82,6 +82,7 @@ async def execute_seek_step(
     *, phase_hook: Callable[[str], Awaitable[None]] | None = None,
     tick_gate_hook: Callable[[], Awaitable[None]] | None = None,
     settle_hook: Callable[[], Awaitable[None]] | None = None,
+    p1_flat_force_paper_look: bool = False,
 ) -> SeekConsequence:
     if (
         not isinstance(session, MineflayerProcessSession)
@@ -98,6 +99,8 @@ async def execute_seek_step(
         or step.yaw is None
         or not math.isfinite(step.yaw)
         or not 0 < step.step_distance_m <= 2
+        or type(p1_flat_force_paper_look) is not bool
+        or (p1_flat_force_paper_look and phase_hook is None)
     ):
         raise SeekExecutionRejected("current issued action and steer-only step required")
     if (tick_gate_hook is not None or settle_hook is not None) and phase_hook is None:
@@ -105,7 +108,10 @@ async def execute_seek_step(
     # Issued, source-scoped action ID is unique; child-effect IDs are not
     # independent action authorization.
     look_id, clear_id = issued.action_id + "-look", issued.action_id + "-clear"
-    await session.send_look(look_id, yaw=step.yaw, pitch=0)
+    await session.send_look(
+        look_id, yaw=step.yaw, pitch=0,
+        force_server=p1_flat_force_paper_look,
+    )
     looked = await _effect(session, look_id, "look")
     # Optional DEV observability only. No phase hook may grant or issue Action.
     # Capture the control command's before/after server clock *brackets*.
