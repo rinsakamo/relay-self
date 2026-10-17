@@ -193,7 +193,7 @@ def test_exact_client_callback_clock_detects_missing_tick_even_with_rebased_rows
 
 def test_no_duplicate_json_field_or_second_start_record_accepted():
     rows, native, movement = fixture()
-    raw = "\\n".join(json.dumps(x) for x in rows)
+    raw = "\n".join(json.dumps(x) for x in rows)
     assert '"ordinal": 1' in raw
     injected = raw.replace('"ordinal": 1', '"ordinal": 1, "ordinal": 1', 1)
     with pytest.raises(BoundaryRejected):
