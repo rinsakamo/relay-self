@@ -627,3 +627,44 @@ WAIT admission, Body fatigue recovery, new primitive, World launch, R transfer
 or V science evidence from this source-only cross-check. Prospective native
 held-control readback is a separate adapter/protocol owner change, and must
 not be fabricated from a successful clear ACK.
+
+### S50/P1 direct Mineflayer getControlState DEV sidecar
+
+For explicit `--v7-p1-wait-evidence-dev` ONLY, S launches its own
+`s50_p1_readback_bridge.mjs` process wrapper instead of modifying the
+shared `bridge.mjs` or Python/Node production protocol. The wrapper imports
+the **unchanged** standard bridge and reads `bot.getControlState()`
+for all seven native controls (`forward/back/left/right/jump/sprint/sneak`).
+A private fresh `s50_p1_native_controls_original.jsonl` sidecar is
+written synchronously by Node, with the bridge session/seq on
+`effect_result`, probe observations, and STOP ACK. It also samples all
+seven controls on Mineflayer client `physicsTick` callbacks and has an
+8192-record overflow boundary. No `setControlState` or
+`clearControlStates` implementation is replaced.
+
+The S-only subprocess uses a child-local environment variable for its
+exclusive original sidecar; no process-global environment mutation or
+new physical action issuer. After STOP, the S runner reads and SHA256-indexes
+the original alongside `owner_commands.jsonl`, `original_native.jsonl`,
+`s50_action_original.jsonl`, and the Paper source log.
+`review_native_controls` requires direct forward=true after its
+source ACK, all seven controls false after the clear ACK and after
+the correlated source probe, a subsequent client physics tick showing
+all controls false, no later recorded reactivation, and an original STOP.
+Missing/malformed/extra/foreign/duplicate/unbounded readbacks fail closed.
+The report records these **sampled client states only** under
+`s50_p1_native_controls_source`.
+
+**Not a shared clock:** Client `physicsTick` has no established 1:1
+mapping to Paper `world_full_time`; a direct `getControlState`
+readback does NOT show that input release was effective on the server
+at any particular World tick. Nor does it prove physical stillness
+between sampled callbacks, unseen packet states, or all Action issuer
+registries. `paper_effective_input_release_tick=NOT_ATTESTED`,
+`continuous_held_controls_absence=NOT_ATTESTED`,
+`all_S15_S16_issuers_absent=NOT_ATTESTED`,
+`wait_ticks_admitted=0`, `p1_fatigue_recovered=0`,
+`science_go=false`. This is a new DEV source profile requiring
+prospective standalone physical test and independent R inspection
+before P1 can consider a source-bound physical WAIT interval.
+
