@@ -74,10 +74,10 @@ def fields(line: str, prefix: str) -> dict[str, str]:
     return dict(pairs)
 
 
-def review(root: Path, *, expected_sha: dict[str, str] | None = None,
-           expected_session: str = SOURCE_SESSION) -> dict:
-    """Reject foreign bytes and falsified PASS; preserve BLOCKED interpretation."""
-    raw = originals(root, SOURCE_SHA256 if expected_sha is None else expected_sha)
+def _review_sources(root: Path, *, expected_sha: dict[str, str],
+                    expected_session: str) -> dict:
+    """Testable pure checker. Public entrypoint below always enforces frozen pins."""
+    raw = originals(root, expected_sha)
     native = jsonl(raw["original_native.jsonl"])
     action = jsonl(raw["s50_action_original.jsonl"])
     controls = jsonl(raw["s50_p1_native_controls_original.jsonl"])
@@ -189,3 +189,9 @@ def review(root: Path, *, expected_sha: dict[str, str] | None = None,
         "p1_fatigue_recovered": 0.0,
         "science_go": False,
     }
+
+def review(root: Path) -> dict:
+    """Only admit the exact first sealed BLOCKED S50/P1 FLAT originals."""
+    return _review_sources(
+        root, expected_sha=SOURCE_SHA256, expected_session=SOURCE_SESSION,
+    )
