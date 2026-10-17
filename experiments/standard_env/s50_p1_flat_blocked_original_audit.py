@@ -221,11 +221,56 @@ def _review_sources(root: Path, *, expected_sha: dict[str, str],
             and [int(x["tick"]) for x in samples] == list(range(44, 52)),
             "Paper WAIT candidate samples invalid")
     marker, world = starts[0]["marker_id"], starts[0]["world"]
-    require(all(row.get("marker_id") == marker and row.get("world") == world
-                and float(row["x"]) == 0.5
-                and float(row["z"]) == 1.707742656099451
-                and math.isfinite(float(row["y"])) for row in samples),
-            "foreign or altered Paper native body snapshots")
+    def finite(row, field):
+        try:
+            v = float(row[field])
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ValueError("missing/invalid Paper native WAIT number") from exc
+        require(math.isfinite(v), "nonfinite Paper native WAIT value")
+        return v
+
+    def count(row, field):
+        v = finite(row, field)
+        require(v >= 0 and v.is_integer(), "invalid Paper WAIT source counter")
+        return int(v)
+
+    def pose(row, prefix=""):
+        return tuple(finite(row, prefix + axis) for axis in ("x", "y", "z"))
+
+    initial_pose = pose(starts[0])
+    require(initial_pose == (0.5, -60.0, 1.707742656099451),
+            "unexpected post-MOVE WAIT begin pose")
+    previous_pose = initial_pose
+    previous_counters = (
+        count(starts[0], "packets"),
+        finite(starts[0], "blocks"),
+        finite(starts[0], "tick_meter_blocks"),
+        count(starts[0], "combat_events"),
+        count(starts[0], "swing_events"),
+        count(starts[0], "basal_ticks"),
+    )
+    for i, row in enumerate(samples, 1):
+        require(row.get("marker_id") == marker and row.get("world") == world
+                and count(row, "index") == i,
+                "foreign Paper WAIT native record")
+        current_pose = pose(row)
+        counters = (
+            count(row, "motion_packets"),
+            finite(row, "motion_blocks"),
+            finite(row, "tick_meter_blocks"),
+            count(row, "combat_events"),
+            count(row, "swing_events"),
+            count(row, "basal_ticks"),
+        )
+        require(pose(row, "from_") == previous_pose
+                and current_pose == initial_pose
+                and counters[:5] == previous_counters[:5]
+                and counters[5] == previous_counters[5] + 1
+                and all(row.get(k) == "false"
+                        for k in ("sprint", "sneak", "swimming")),
+                "Paper sampled activity / basal continuity does not support WAIT candidate")
+        previous_pose = current_pose
+        previous_counters = counters
     return {
         "classification": CLASS,
         "source_session": expected_session,
