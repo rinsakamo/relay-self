@@ -1,0 +1,129 @@
+name: R FLAT BASE_ON original source failure triage offline
+on:
+  push:
+    branches: ['infra/rsee-r6-s9-native-original-readback-20261012']
+    paths: ['.github/workflows/rsee-flat-base-original-failure-triage.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: r-flat-base-original-failure-triage-38990369268
+  cancel-in-progress: false
+jobs:
+  original-evidence-review:
+    if: "github.run_attempt == 1 && github.event.head_commit.message == 'R FLAT BASE_ON: one independent archive failure triage offline'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      GH_REPO: rinsakamo/relay-self
+      GH_TOKEN: ${{ github.token }}
+      S_RUN: '38990369268'
+      S_HEAD: '2a0b1c7daa6dcba7166b3fe6300c13f3e4264d5e'
+      S_ART_ID: '12084239894'
+      S_ART_DIGEST: 'f7d15001386b6440ef5e1ce298931c3a1c82bd8ea0454d2bf6f631fc052da5b2'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Pin original physical run and exact source archive digest
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ["GH_REPO"]
+          def api(path):return json.loads(subprocess.check_output(["gh","api",f"repos/{repo}/{path}"]))
+          r=api("actions/runs/"+os.environ["S_RUN"])
+          a=api("actions/artifacts/"+os.environ["S_ART_ID"])
+          assert r["head_sha"]==os.environ["S_HEAD"] and r["run_attempt"]==1
+          assert r["conclusion"]=="success"
+          assert a["workflow_run"]["id"]==r["id"] and not a["expired"]
+          assert a["digest"]=="sha256:"+os.environ["S_ART_DIGEST"]
+          print("R_FLAT_BASE_ARCHIVE_EXACT_SOURCE_METADATA_PINNED")
+          PY
+      - name: Download full immutable S original into separate R runner
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/original"
+          gh run download "$S_RUN" -R "$GH_REPO" \
+            -n "s50-flat-base-on-native-forage-38990369268-1" \
+            -D "$RUNNER_TEMP/original"
+      - name: Independent read-only failure staging, action and STOP witness
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,os,pathlib
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"original"
+          base=root/"flat-base-results/BASE_ON"
+          report=json.loads((base/"report.json").read_text())
+          summary=json.loads((root/"flat-base-results/summary.json").read_text())
+          native=(base/"original_native.jsonl").read_bytes()
+          source=(base/"paper_server.log").read_bytes()
+          index=json.loads((base/"sha256.json").read_text())
+          h=lambda x:hashlib.sha256(x).hexdigest()
+          assert summary["classification"]=="S50_FLAT_BASE_ON_L0_FORENSIC_DEV_ONLY"
+          assert summary["arm"]=="BASE_ON" and summary["behavioral_status"]=="FAIL"
+          assert report["arm"]=="BASE_ON" and report["status"]=="FAIL"
+          assert summary["cleanup_complete"] and report["cleanup_complete"]
+          assert summary["initial_original_bytes_retained"]
+          assert report["java_launch_attempts"]==1 and report["node_launch_attempts"]==1
+          assert report["java_exit"]==0 and report["node_exit"]==0
+          assert report["port_released"] and report["port_rebind_witness"]
+          assert report["shutdown_ack"] and report["connection_end"]
+          assert report["java_pid_absent"] and report["node_pid_absent"]
+          assert b"Done (" in source and b"All dimensions are saved" in source
+          assert report["science_trials"]==0 and not report["engineering_qualified"]
+          mismatch=[]
+          missing=[]
+          for rel,digest in index.items():
+              p=base/rel
+              if not p.is_file():
+                  missing.append(rel)
+              elif h(p.read_bytes())!=digest:
+                  mismatch.append(rel)
+          # Hidden/remapped paths MUST be retained or called out explicitly.
+          known={
+              "original_native.jsonl":h(native),
+              "paper_server.log":h(source),
+              "report.json":h((base/"report.json").read_bytes()),
+          }
+          frames=[json.loads(x) for x in native.splitlines() if x.strip()]
+          kinds={}
+          for f in frames:
+              k=f.get("type","NONE")
+              kinds[k]=kinds.get(k,0)+1
+          out={
+              "classification":"R_FLAT_BASE_ORIGINAL_BEHAVIORAL_FAILURE_SOURCE_REVIEW_ONLY",
+              "s_original_run":int(os.environ["S_RUN"]),
+              "source_sha":os.environ["S_HEAD"],
+              "source_artifact":int(os.environ["S_ART_ID"]),
+              "java_started":1,"node_started":1,"new_R_world_starts":0,
+              "S_report_error":report.get("error"),
+              "S_report_stage":report.get("stage"),
+              "S_foraging_status":report.get("foraging",{}).get("status"),
+              "S_foraging":report.get("foraging"),
+              "S_initial_server_marker":report.get("initial_server_marker"),
+              "S_initial_probe_present":"initial_probe" in report,
+              "native_frame_kinds":kinds,
+              "S_move_count":len(report.get("foraging",{}).get("movement_outcomes",[])),
+              "S_eat_exists":"eating" in report,
+              "S_cleanup_true":report["cleanup_complete"],
+              "archived_hashed_files":len(index),
+              "archived_missing_paths":missing,
+              "archived_mismatch_paths":mismatch,
+              "source_digest_metadata":os.environ["S_ART_DIGEST"],
+              "source_zip_independently_hashed":False,
+              "immutable_dev_only":True,"science_trials":0,
+              "engineering_qualified":False,"science_go":False}
+          assert not mismatch
+          (root/"r-flat-base-forensic.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print("R_FLAT_BASE_FORENSIC_ORIGINAL_REVIEW",json.dumps(out,sort_keys=True))
+          PY
+      - name: Preserve R-only independent failure receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r-flat-base-on-failure-original-${{ github.run_id }}
+          path: ${{ runner.temp }}/original/r-flat-base-forensic.json
+          if-no-files-found: warn
+          retention-days: 90
