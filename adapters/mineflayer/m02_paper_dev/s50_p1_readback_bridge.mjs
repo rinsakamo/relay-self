@@ -30,6 +30,9 @@ let ordinal = 0
 let physicsTick = 0
 let capped = false
 const MAX_ROWS = 8192
+// Capture native bot.entity orientation only for the opt-in FLAT/P1 child.
+// This is a client-local radian snapshot at source emission, never Paper yaw.
+const captureFlatPose = process.env.RELAY_S50_P1_FLAT_FORCE_SERVER_LOOK_DEV === '1'
 
 function write (record) {
   ordinal += 1
@@ -65,8 +68,18 @@ function readAll (kind, nativeSeq = null, nativeAction = null) {
       if (typeof value !== 'boolean') throw new Error('not_boolean_' + control)
       state[control] = value
     }
+    const pose = {}
+    if (captureFlatPose) {
+      if (!bot.entity ||
+          !Number.isFinite(bot.entity.yaw) ||
+          !Number.isFinite(bot.entity.pitch)) {
+        throw new Error('missing_finite_native_entity_orientation')
+      }
+      pose.client_yaw_radians = bot.entity.yaw
+      pose.client_pitch_radians = bot.entity.pitch
+    }
     write({ kind, native_seq: nativeSeq,
-      native_action_id: nativeAction, controls: state })
+      native_action_id: nativeAction, controls: state, ...pose })
   } catch (error) {
     write({ kind: 'READBACK_ERROR', native_seq: nativeSeq,
       native_action_id: nativeAction, error: String(error.message || error) })
