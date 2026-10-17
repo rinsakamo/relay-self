@@ -708,6 +708,27 @@ physical run even if MOVE progressed, if source coverage or control
 readback is incomplete. It never retroactively changes original archives
 or upgrades DEV results to R QUALIFICATION or V SCIENCE.
 
+**Prospective native→Paper LOOK evidence (S-owned, FLAT only):** The
+opt-in `s50_p1_readback_bridge.mjs` now writes
+`client_yaw_radians` / `client_pitch_radians` directly from the
+Mineflayer entity at its actual native ACK and callback source rows.
+`s50_p1_native_pose.py` reads the original sidecar after the existing
+LOOK ACK and refuses to proceed if the client yaw/pitch do not match
+the governed target. Only then does `s50_p1_flat_look.py` verify
+the independently observed Paper yaw, before `PRE_FORWARD` and the
+original governed FORWARD. `s50_p1_flat_look_bracket.py` separately
+checks the saved Paper log phase order. The runner rereads the native
+LOOK sidecar on the success path and compares the immutable ACK
+identity and pose, not the naturally growing row count.
+
+The **client yaw is in radians**; the Paper yaw in its snapshot is
+**degrees**. Matching both snapshots is evidence at two different
+observation points, not proof of a common clock, teleport completion,
+uninterrupted orientation, all issuers absent, or whole-tick WAIT.
+Native pose is added to **future** S50/P1 FLAT DEV originals only.
+The older first-run sidecar has no such readback, is never modified,
+and remains BLOCKED. There is no new Action issuer or physics ledger.
+
 The **first** explicit FLAT P1 LocalCodex run completed as
 `DEV_ONLY / BLOCKED / R_PENDING / WAIT_NOT_ATTESTED`, rather than a
 successful MOVE. S execution HEAD `4ba9846`, final report `07ce089`,
