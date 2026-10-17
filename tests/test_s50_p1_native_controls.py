@@ -3,6 +3,9 @@ from __future__ import annotations
 
 import copy
 import json
+import shutil
+import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -160,3 +163,18 @@ def test_bad_json_and_non_list_native_fail_closed():
     with pytest.raises(BoundaryRejected):
         review_native_controls("\n".join(json.dumps(x) for x in rows),
                                "not-list", movement)
+
+
+def test_opt_in_s50_node_wrapper_has_valid_node_syntax():
+    """Offline-only syntax test; not a Native World execution witness."""
+    executable = shutil.which("node")
+    if executable is None:
+        pytest.skip("Node is unavailable on this development host")
+    wrapper = (Path(__file__).resolve().parents[1] / "adapters" /
+               "mineflayer" / "m02_paper_dev" / "s50_p1_readback_bridge.mjs")
+    assert wrapper.is_file()
+    run = subprocess.run(
+        [executable, "--check", str(wrapper)],
+        capture_output=True, text=True, timeout=15, check=False,
+    )
+    assert run.returncode == 0, run.stderr
