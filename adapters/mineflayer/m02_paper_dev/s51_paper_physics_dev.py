@@ -1211,6 +1211,8 @@ async def run(
             session_type = readback_session_type(
                 native_file, commands_file,
                 output_dir / "s50_p1_native_controls_original.jsonl",
+                packet_trace=(output_dir / "s50_p1_packet_trace_original.jsonl")
+                if flat_expected is not None else None,
             )
         else:
             session_type = _recording_session_type(native_file, commands_file)
