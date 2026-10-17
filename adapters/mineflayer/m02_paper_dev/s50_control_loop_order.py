@@ -42,6 +42,7 @@ def audit_control_loop_order(events: Sequence[Mapping[str, object]]) -> dict:
     phase = "SETUP"
     setup_seen = False
     action_id = None
+    binding_ref = None
     effect_stage = 0
     terminal = None
     has_world_evidence = False
@@ -57,9 +58,9 @@ def audit_control_loop_order(events: Sequence[Mapping[str, object]]) -> dict:
         kind = row.get("kind")
         writer = row.get("writer")
         aid = row.get("action_id")
-        if kind not in _SOURCE_EVENTS | {"OBSERVE"}:
+        if not isinstance(kind, str) or kind not in _SOURCE_EVENTS | {"OBSERVE"}:
             raise ControlLoopOrderRejected("foreign/unclassified control event")
-        if writer not in {"setup", "executor", "supervisor", "observer"}:
+        if not isinstance(writer, str) or writer not in {"setup", "executor", "supervisor", "observer"}:
             raise ControlLoopOrderRejected("unknown control writer")
         if phase == "STOPPED":
             raise ControlLoopOrderRejected("source after terminal STOP")
@@ -86,10 +87,12 @@ def audit_control_loop_order(events: Sequence[Mapping[str, object]]) -> dict:
                     raise ControlLoopOrderRejected("setup handoff original source incomplete")
             phase = "SELF_READY"
         elif kind == "ACTION_ISSUED":
-            if phase != "SELF_READY" or writer != "supervisor" or not _identifier(aid):
+            if (phase != "SELF_READY" or writer != "supervisor"
+                    or not _identifier(aid) or not _identifier(row.get("binding_ref"))):
                 raise ControlLoopOrderRejected("second or unauthorized in-flight Action")
             phase = "SELF_ACTIVE"
             action_id = aid
+            binding_ref = row["binding_ref"]
             effect_stage = 0
         elif kind in _EFFECTS:
             if phase != "SELF_ACTIVE" or writer != "executor" or aid != action_id:
@@ -99,8 +102,9 @@ def audit_control_loop_order(events: Sequence[Mapping[str, object]]) -> dict:
                 raise ControlLoopOrderRejected("duplicated or out-of-order motor effect")
             effect_stage += 1
         elif kind == "EXECUTOR_RESULT":
-            if phase != "SELF_ACTIVE" or writer != "executor" or aid != action_id:
-                raise ControlLoopOrderRejected("result was not from sole Executor")
+            if (phase != "SELF_ACTIVE" or writer != "executor"
+                    or aid != action_id or row.get("binding_ref") != binding_ref):
+                raise ControlLoopOrderRejected("result was not from sole bound Executor")
             if row.get("terminal") not in {"OUTCOME", "UNKNOWN", "TIMEOUT"}:
                 raise ControlLoopOrderRejected("result not a supported Action terminal")
             if effect_stage not in {0, 3}:
