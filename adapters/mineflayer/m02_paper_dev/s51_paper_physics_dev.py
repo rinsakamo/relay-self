@@ -1276,6 +1276,21 @@ async def run(
                     isinstance(source_look, dict)
                     and source_look.get("orientation_matches") is True
                 )
+                from adapters.mineflayer.m02_paper_dev.s50_p1_flat_look_bracket import (
+                    screen_paper_look_forward_bracket,
+                )
+                # Cross-check the returned producer witness against the
+                # ORIGINAL Paper log and the genuine S50 PRE_FORWARD phase.
+                # This does not prove continuous World-tick inactivity or
+                # issue any P1 WAIT SourceBoundTick.
+                report["p1_flat_look_phase_source"] = (
+                    screen_paper_look_forward_bracket(
+                        server_log.read_text(encoding="utf-8"),
+                        marker=report["movement"]["v7_phase_marker_id"],
+                        requested_yaw_rad=-math.pi / 2,
+                        producer_look_witness=source_look,
+                    )
+                )
             report["stage"] = "V7_SOURCE_WORLD_TICK_200"
             report["v7_source"] = await _v7_wait_source_tick(
                 server_log, v7_arm, minimum_player_basal_ticks=200,
