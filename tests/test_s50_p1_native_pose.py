@@ -160,6 +160,9 @@ def test_paper_and_native_pose_gates_are_sequential(tmp_path):
         "await_paper_look_before_forward(")
     assert phase.index("await_paper_look_before_forward(") < phase.index(
         "_v7_source_phase_command(")
+    # A second barrier reuses P1LOOK-01 and bypasses the client-first order.
+    assert source.count("await await_paper_look_before_forward(") == 1
+    assert "look_barrier_hook" not in source
     assert "p1_flat_client_look_before_forward" in source
     wrapper = (root / "adapters" / "mineflayer" / "m02_paper_dev" /
                "s50_p1_readback_bridge.mjs").read_text()
