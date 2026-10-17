@@ -1,4 +1,5 @@
 import json
+import math
 
 import pytest
 
@@ -489,8 +490,6 @@ def test_flat_p1_server_force_look_is_opt_in_and_legacy_identical() -> None:
     assert json.loads(encode_look(
         "look-flat-p1", yaw=-math.pi / 2, pitch=0, force_server=True
     )) == {**legacy, "action_id": "look-flat-p1", "force_server": True}
-    from adapters.mineflayer.python_protocol import MineflayerAdapterProtocolError
-
     for bad in (None, "true", 1, 0):
         with pytest.raises(MineflayerAdapterProtocolError):
             encode_look("bad-force", yaw=0, pitch=0, force_server=bad)
