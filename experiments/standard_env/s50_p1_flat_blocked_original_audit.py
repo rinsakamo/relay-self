@@ -124,38 +124,92 @@ def _review_sources(root: Path, *, expected_sha: dict[str, str],
             and controls[0].get("kind") == "SESSION_START"
             and controls[-1].get("kind") == "SHUTDOWN_ACK",
             "client native direct-control boundary incomplete")
+    action_id = issued[0]["action_id"]
+    effect_requests = [row for row in commands if row.get("type") == "effect"]
+    require([(x.get("action_id"), x.get("effect")) for x in effect_requests] == [
+        (action_id + "-look", "look"),
+        (action_id, "set_control"),
+        (action_id + "-clear", "clear_controls"),
+    ], "original owner motor command set changed")
+    require(effect_requests[1].get("control") == "forward"
+            and effect_requests[1].get("state") is True,
+            "original owner did not request FORWARD ON")
+    acknowledgments = [x for x in native if x.get("type") == "effect_result"]
+    require([(x.get("action_id"), x.get("effect"), x.get("result"))
+             for x in acknowledgments] == [
+        (action_id + "-look", "look", "applied"),
+        (action_id, "set_control", "applied"),
+        (action_id + "-clear", "clear_controls", "applied"),
+    ], "original native motor ACK lineage changed")
+
+    # Reconstruct original native-frame/sidecar bijection independently of S
+    # reader. Probe/ACK/STOP readbacks must map to each exact native seq.
+    required_frames = {
+        i for i, frame in enumerate(native)
+        if frame.get("type") in ("effect_result", "shutdown_ack")
+        or (frame.get("type") == "observation" and frame.get("kind") == "probe")
+    }
     client_tick = 0
     count_after = 0
     clear_seen = False
     forward_seen = False
+    matched_frames = set()
+    previous_native_seq = -1
     for ordinal, row in enumerate(controls, 1):
+        kind = row.get("kind")
         require(row.get("source") == "S50_DEV_NATIVE_READBACK_V1"
                 and row.get("session_id") == expected_session
-                and row.get("ordinal") == ordinal,
+                and type(row.get("ordinal")) is int
+                and row["ordinal"] == ordinal,
                 "readback foreign/duplicate source order")
-        if row.get("kind") == "PHYSICS_TICK":
+        require(kind in ("SESSION_START", "PHYSICS_TICK",
+                         "EFFECT_ACK", "PROBE", "SHUTDOWN_ACK"),
+                "unexpected direct client readback class")
+        if kind == "PHYSICS_TICK":
             client_tick += 1
-        require(row.get("client_physics_tick") == client_tick,
+            require(row.get("native_seq") is None
+                    and row.get("native_action_id") is None,
+                    "client physics tick forged an ACK")
+        require(type(row.get("client_physics_tick")) is int
+                and row["client_physics_tick"] == client_tick,
                 "original client physicsTick gap/nonsequenced callback")
-        if row["kind"] == "SESSION_START":
-            require(ordinal == 1, "repeated native session start")
+        if kind == "SESSION_START":
+            require(ordinal == 1 and row.get("native_seq") == 0,
+                    "repeated/foreign native session begin")
             continue
         state = row.get("controls")
         require(isinstance(state, dict) and set(state) == set(CONTROLS)
                 and all(type(v) is bool for v in state.values()),
                 "incomplete or nonboolean native control state")
-        if row.get("kind") == "EFFECT_ACK":
-            if row.get("native_seq") == 8:
+        if kind in ("EFFECT_ACK", "PROBE", "SHUTDOWN_ACK"):
+            seq = row.get("native_seq")
+            require(type(seq) is int and seq in required_frames
+                    and seq not in matched_frames
+                    and seq > previous_native_seq,
+                    "duplicate/missing/out-of-order source native seq")
+            frame = native[seq]
+            require((kind == "EFFECT_ACK" and frame.get("type") == "effect_result"
+                     and row.get("native_action_id") == frame.get("action_id"))
+                    or (kind == "PROBE" and frame.get("type") == "observation"
+                        and frame.get("kind") == "probe"
+                        and row.get("native_action_id") == frame.get("request_id"))
+                    or (kind == "SHUTDOWN_ACK" and frame.get("type") == "shutdown_ack"),
+                    "direct readback not tied to native frame identity")
+            previous_native_seq = seq
+            matched_frames.add(seq)
+            if seq == 8:
                 require(state["forward"], "forward not directly observed ON")
                 forward_seen = True
-            if row.get("native_seq") == 17:
+            if seq == 17:
                 require(not any(state.values()), "clear failed to release input")
                 clear_seen = True
-        if clear_seen and row.get("kind") == "PHYSICS_TICK":
-            require(not any(state.values()), "client controls reactivated")
-            count_after += 1
-    require(forward_seen and clear_seen and client_tick == 30
-            and count_after >= 23, "missing physical callback continuity")
+        if clear_seen:
+            require(not any(state.values()), "post-clear client controls reactivated")
+            if kind == "PHYSICS_TICK":
+                count_after += 1
+    require(matched_frames == required_frames
+            and forward_seen and clear_seen and client_tick == 30
+            and count_after >= 23, "missing native/callback source continuity")
 
     paper = raw["paper_server.log"].decode("utf-8")
     starts = [fields(x, "S50_DEV_WAIT_BEGIN ") for x in paper.splitlines()
