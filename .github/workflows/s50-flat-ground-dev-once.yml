@@ -1,0 +1,141 @@
+name: S50 one superflat ground DEV native witness ONLY
+on:
+  push:
+    branches: ['self/product-self-one-command-20261010']
+    paths: ['.github/workflows/s50-flat-ground-dev-once.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: s50-flat-ground-paper-dev-seed63101-separate
+  cancel-in-progress: false
+jobs:
+  one-paper-superflat-dev:
+    if: "github.run_attempt == 1 && github.event.head_commit.message == 'S50 FLAT DEV: one real Paper superflat native ground witness'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_REPO: rinsakamo/relay-self
+      GH_TOKEN: ${{ github.token }}
+      R_PIN: '6547726d0cb188b1c890ab345ab9c802d091f2b6'
+      SOURCE_RUN: '38702561454'
+      SOURCE_NAME: 'rsee-m02-paper-four-pinned-assets-38702561454-1'
+      PAPER_SHA: '8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: s
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.R_PIN }}
+          path: r
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Exact source and focused S source preflight before Java
+        run: |
+          set -euo pipefail
+          test "$GITHUB_RUN_ATTEMPT" = "1"
+          test "$(git -C s rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C r rev-parse HEAD)" = "$R_PIN"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+          PYTHONPATH="s/src:s/tests:s" python -m pytest -q s/tests/test_s50_flat_ground_dev.py
+          ruff check s/adapters/mineflayer/m02_paper_dev/s50_flat_ground_dev.py s/tests/test_s50_flat_ground_dev.py
+      - name: Fetch and verify unchanged official Paper 1.21.8 build60
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/paper-src" "$RUNNER_TEMP/paper-input"
+          gh run download "$SOURCE_RUN" -R "$GH_REPO" -n "$SOURCE_NAME" -D "$RUNNER_TEMP/paper-src"
+          python - <<'PY'
+          import hashlib,os,pathlib,shutil
+          t=pathlib.Path(os.environ["RUNNER_TEMP"])
+          files=[p for p in (t/"paper-src").rglob("paper-1.21.8.jar") if p.is_file() and not p.is_symlink()]
+          assert len(files)==1
+          sha=lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+          assert sha(files[0])==os.environ["PAPER_SHA"]
+          shutil.copyfile(files[0],t/"paper-input/paper.jar")
+          assert sha(t/"paper-input/paper.jar")==os.environ["PAPER_SHA"]
+          print("FLAT_DEV_PAPER_PIN_VERIFIED",len(files[0].read_bytes()))
+          PY
+      - name: Start exactly one isolated flat Paper DEV World, native 25 source witnesses, graceful stop
+        id: physical
+        continue-on-error: true
+        run: |
+          set +e
+          PYTHONPATH="s/src:s/tests:s" python -m adapters.mineflayer.m02_paper_dev.s50_flat_ground_dev \
+            --paper-jar "$RUNNER_TEMP/paper-input/paper.jar" \
+            --output "$RUNNER_TEMP/flat-source" \
+            --confirm S50-FLAT-GROUND-DIAGNOSTIC-DEV-ONLY \
+            > "$RUNNER_TEMP/flat-producer-stdout.jsonl" 2>&1
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/flat-producer-stdout.jsonl"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+      - name: R separate checkout reads real saved seed and S original native surface witnesses
+        if: steps.physical.outputs.code == '0'
+        env:
+          PYTHONPATH: r/src:r/tests:r
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,json,os,pathlib
+          from experiments.standard_env.v7_m02_world_nbt_audit import review_level_dat
+          top=pathlib.Path(os.environ["RUNNER_TEMP"])/"flat-source"
+          report=json.loads((top/"flat_dev_receipt.json").read_text())
+          paper=(top/"paper_console.log").read_text()
+          properties=(top/"server/server.properties").read_bytes()
+          level=(top/"server/world/level.dat").read_bytes()
+          native=review_level_dat(level,expected_seed=63101)
+          assert report["status"]=="FLAT_GROUND_NATIVE_WITNESSED_DEV_ONLY"
+          assert report["native_surface_witnesses"]==25
+          assert report["java_launch_attempts"]==1 and report["java_exit"]==0
+          assert report["port_released"] is True and report["mineflayer_sessions"]==0
+          assert b"level-type=minecraft:flat" in properties
+          for x in (-4,-2,0,2,4):
+              for z in (-4,-2,0,2,4):
+                  marker=f"S50_FLAT_DEV_GROUND_X{x}_Z{z}"
+                  assert f"[Server] {marker}" in paper
+          assert native["world_seed_from_nbt"]==63101
+          assert any(i["relative_path"].endswith(".mca") for i in report["stopped_world_index"])
+          assert report["food_placed"] is False
+          assert report["v8_science_trials"]==0 and not report["science_go"]
+          out={
+            "classification":"R_S50_FLAT_DEV_REAL_WORLD_NATIVE_GROUND_SOURCE_ONLY",
+            "seed_from_nbt":63101,
+            "level_sha256":hashlib.sha256(level).hexdigest(),
+            "properties_sha256":hashlib.sha256(properties).hexdigest(),
+            "paper_console_sha256":hashlib.sha256(paper.encode()).hexdigest(),
+            "native_5_by_5_grass_and_air_witness_count":25,
+            "new_world_java_count":1,"new_world_node_count":0,
+            "initial_player_pose_attested":False,
+            "cooked_beef_pickup_or_eat_attested":False,
+            "science_grant_issued":False,"science_trials":0,
+            "r_qualification":False,"production_go":False}
+          (top/"r-flat-source-check.json").write_text(json.dumps(out,indent=2,sort_keys=True)+"\n")
+          print("R_FLAT_DEV_NATIVE_GROUND_SOURCE_ONLY",json.dumps(out,sort_keys=True))
+          PY
+      - name: Preserve immutable stopped flat World and all original bytes including hidden
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s50-flat-ground-native-world-seed63101-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/flat-producer-stdout.jsonl
+            ${{ runner.temp }}/flat-source/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Require independent source readback, not a science result
+        if: always()
+        env:
+          PHYSICAL_EXIT: ${{ steps.physical.outputs.code }}
+        run: |
+          test "$PHYSICAL_EXIT" = 0
+          test -s "$RUNNER_TEMP/flat-source/r-flat-source-check.json"
+          echo "S50_FLAT_DEV_NATIVE_GROUND_AND_AIR_ONLY_NO_SCIENCE"
