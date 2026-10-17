@@ -1,0 +1,141 @@
+name: S FLAT P1 actual-owner candidate World tick replay offline
+on:
+  push:
+    branches: ['self/product-self-one-command-20261010']
+    paths: ['.github/workflows/s50-flat-p1-tick-lineage-once.yml']
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: s-flat-p1-world-tick-candidate-original-once
+  cancel-in-progress: false
+jobs:
+  source-p1-draft-preview:
+    if: "github.run_attempt == 1 && github.event.head_commit.message == 'S FLAT P1: one pinned offline original World tick and P1 owner preview'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rinsakamo/relay-self
+      S_RUN: '38994504183'
+      S_HEAD: '9cb7a009b392ea8127528c310171d804251c90ec'
+      S_ART: '12086324331'
+      S_DIGEST: '6bd9d446eefb0a27a7599cdc4d1b79837bff3ef14d6c12ef6361435a9ea69ca6'
+      P1_HEAD: '0ab76b4e46efd914877e543a65de58b6cfc71326'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          path: s
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 0ab76b4e46efd914877e543a65de58b6cfc71326
+          path: p1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Exact source / pinned P1 owner / all negative controls
+        run: |
+          set -euo pipefail
+          test "$(git -C s rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C p1 rev-parse HEAD)" = "$P1_HEAD"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+          PYTHONPATH=p1:s/src:s/tests:s python -m pytest -q             s/tests/test_s50_flat_p1_motion.py             s/tests/test_s50_flat_p1_tick_lineage.py             p1/tests/test_fatigue_p1.py             p1/tests/test_fatigue_p1_boundary.py
+          ruff check s/adapters/mineflayer/m02_paper_dev/s50_flat_p1_motion.py             s/adapters/mineflayer/m02_paper_dev/s50_flat_p1_tick_lineage.py             s/adapters/mineflayer/m02_paper_dev/s50_flat_p1_pure_preview.py             s/tests/test_s50_flat_p1_motion.py s/tests/test_s50_flat_p1_tick_lineage.py
+      - name: Authenticate original run and archive before reading source
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,os,subprocess
+          repo=os.environ["GH_REPO"]
+          def api(path):
+              return json.loads(subprocess.check_output(["gh","api",f"repos/{repo}/{path}"]))
+          run=api("actions/runs/"+os.environ["S_RUN"])
+          art=api("actions/artifacts/"+os.environ["S_ART"])
+          assert run["head_sha"]==os.environ["S_HEAD"]
+          assert run["run_attempt"]==1 and run["conclusion"]=="success"
+          assert art["workflow_run"]["id"]==run["id"] and not art["expired"]
+          assert art["digest"]=="sha256:"+os.environ["S_DIGEST"]
+          print("S_FLAT_P1_TICK_SOURCE_PRE_ADMISSION_PIN_PASS")
+          PY
+      - name: Download original old S World evidence with no Java or Node launch
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/flat-original"
+          gh api "repos/$GH_REPO/actions/artifacts/$S_ART/zip" > "$RUNNER_TEMP/flat-original.zip"
+          echo "$S_DIGEST  $RUNNER_TEMP/flat-original.zip" | sha256sum -c -
+          python - <<'PY'
+          import os,pathlib,zipfile
+          top=pathlib.Path(os.environ["RUNNER_TEMP"])
+          with zipfile.ZipFile(top/"flat-original.zip") as z:
+              assert all(not pathlib.PurePosixPath(n).is_absolute()
+                         and ".." not in pathlib.PurePosixPath(n).parts
+                         for n in z.namelist())
+              z.extractall(top/"flat-original")
+          print("S_FLAT_P1_TICK_ORIGINAL_ZIP_SHA_MATCH")
+          PY
+      - name: Compare four real Paper tick streams with independently pinned P1 physics without WAIT
+        env:
+          PYTHONPATH: p1:s/src:s/tests:s
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json,os,pathlib
+          from experiments import fatigue_p1 as real_p1
+          from adapters.mineflayer.m02_paper_dev.s50_flat_p1_motion import read_archived_original
+          from adapters.mineflayer.m02_paper_dev.s50_flat_p1_tick_lineage import movement_tick_ledger
+          from adapters.mineflayer.m02_paper_dev.s50_flat_p1_pure_preview import replay_p1_motion_only_preview
+          top=pathlib.Path(os.environ["RUNNER_TEMP"])
+          base=top/"flat-original/flat-four-results"
+          arms=("SHAM_ON","BASAL_ZERO","WALK_ZERO","BOTH_ZERO")
+          result={}
+          for arm in arms:
+              original=read_archived_original(base/arm,arm=arm)
+              ticks=movement_tick_ledger(original)
+              preview=replay_p1_motion_only_preview(ticks,p1=real_p1)
+              assert preview["P1_authoritative_state_advanced"] is False
+              assert preview["P1_wait_recovery"]==0.0
+              assert preview["cap_conflicts"]==0
+              assert ticks["unclassified_ticks"]>0
+              assert ticks["SourceBoundTick_WAIT_issued"]==0
+              assert sum(x["candidate_ticks_replayed"] for x in preview["windows"])==ticks["move_observed_ticks"]
+              result[arm]={"source":original,"tick_lineage":ticks,"P1_preview":preview}
+          receipt={
+            "classification":"S_FLAT_P1_CROSS_BRANCH_REAL_ORIGINAL_TICK_PREVIEW_DEV_ONLY",
+            "S_producer_head":os.environ["GITHUB_SHA"],
+            "S_physical_original_head":os.environ["S_HEAD"],
+            "S_physical_original_run":int(os.environ["S_RUN"]),
+            "S_artifact_zip_sha256":os.environ["S_DIGEST"],
+            "P1_owner_commit":os.environ["P1_HEAD"],
+            "arms":result,
+            "source_activity_full_tick_qualified":False,
+            "P1_SourceBoundTick_issued":0,
+            "P1_actual_body_state_advanced":False,
+            "P1_WAIT_recovery":0.0,
+            "unknown_ticks_NOT_WAIT":True,
+            "R_independent_review":"PENDING",
+            "World_or_Action_writes":0,
+            "new_Java_starts":0,"new_Node_starts":0,
+            "science_trials":0,"production_go":False
+          }
+          output=top/"s-flat-p1-tick-lineage-preview.json"
+          output.write_text(json.dumps(receipt,indent=2,sort_keys=True,allow_nan=False)+"\n")
+          print("S_FLAT_P1_CROSS_BRANCH_REAL_P1_PREVIEW_DEV_ONLY",
+                json.dumps({arm:{
+                    "original_move_blocks":result[arm]["tick_lineage"]["native_observed_horizontal_blocks"],
+                    "move_observed_ticks":result[arm]["tick_lineage"]["move_observed_ticks"],
+                    "unknown_ticks":result[arm]["tick_lineage"]["unclassified_ticks"],
+                    "contiguous_motion_windows":len(result[arm]["P1_preview"]["windows"]),
+                    "cap_conflicts":result[arm]["P1_preview"]["cap_conflicts"],
+                    "P1_RECOVERY":0.0
+                } for arm in arms},sort_keys=True))
+          PY
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s-flat-p1-pinned-owner-world-tick-preview-${{ github.run_id }}
+          path: ${{ runner.temp }}/s-flat-p1-tick-lineage-preview.json
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 90
