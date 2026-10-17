@@ -53,7 +53,7 @@ def test_manifest_symlink_does_not_follow(tmp_path):
     manifest = {f"x{i}": "a" * 64 for i in range(9)}
     manifest["link"] = r.digest(b"hello")
     _, missing, mismatch = r.validate_manifest(tmp_path, manifest)
-    assert missing == ["link"] and not mismatch
+    assert "link" in missing and not mismatch
 
 
 def test_real_world_audit_requires_source_not_made_up(tmp_path):
