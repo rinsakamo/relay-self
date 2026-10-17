@@ -235,6 +235,17 @@ async def _motor_walk(session: MineflayerProcessSession, *,
             wait_last_tick=p1_wait_candidate["last_world_tick"],
             original_outcome=closed.state.value,
         )
+        from adapters.mineflayer.m02_paper_dev.s50_p1_lifecycle import review_lifecycle
+        sampled_scope = p1_wait_candidate["source_scope"]
+        p1_wait_candidate["entity_lifecycle_source"] = review_lifecycle(
+            paper_log.read_text(encoding="utf-8"),
+            marker=marker_id,
+            world=p1_wait_candidate["world"],
+            self_uuid=sampled_scope["self_uuid"],
+            self_entity_world_uuid=sampled_scope["self_entity_world_uuid"],
+            wait_first_tick=p1_wait_candidate["first_world_tick"],
+            wait_last_tick=p1_wait_candidate["last_world_tick"],
+        )
     if (closed.state is not ActionState.OUTCOME
             or supervisor.open_actions
             or effect.kind is SeekConsequenceKind.BLOCKED
