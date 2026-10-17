@@ -563,18 +563,18 @@ by this offline reader update.
 ### Prospective S50/P1 Paper entity/chunk lifecycle callback ledger (DEV)
 
 When the existing controlled S50 DEV mode enters its post-OUTCOME
-\`relaydevwait\` source window, the **same** Paper plugin logs
-\`S50_DEV_WAIT_LIFECYCLE_BEGIN\`, bounded
-\`S50_DEV_WAIT_LIFECYCLE_EVENT\` and eight
-\`S50_DEV_WAIT_LIFECYCLE_SAMPLE\` records. Event kinds:
-\`ENTITY_ADD\`, \`ENTITY_REMOVE\`, \`CHUNK_LOAD\`, \`CHUNK_UNLOAD\`.
+`relaydevwait` source window, the **same** Paper plugin logs
+`S50_DEV_WAIT_LIFECYCLE_BEGIN`, bounded
+`S50_DEV_WAIT_LIFECYCLE_EVENT` and eight
+`S50_DEV_WAIT_LIFECYCLE_SAMPLE` records. Event kinds:
+`ENTITY_ADD`, `ENTITY_REMOVE`, `CHUNK_LOAD`, `CHUNK_UNLOAD`.
 The entity callbacks come from Paper AddTo/RemoveFromWorld events, not just
 creature spawn/death; removal uses the event's source World because the entity's
 current World may already have changed. Every callback records the subject
 World tick and **separately** its own entity World/tick/UUID/type/chunk identity.
 Other dimensions may legitimately contain entities and events.
 
-The new S reader \`s50_p1_lifecycle.review_lifecycle\` demands an exact
+The new S reader `s50_p1_lifecycle.review_lifecycle` demands an exact
 session-scoped begin, eight consecutive server sampling ticks, 1–256
 sequential events with exact cumulative original counts, and a consistent
 native entity/World identity. Missing, reordered, duplicated, foreign,
@@ -585,15 +585,15 @@ receipt to the WAIT candidate when it uses a newly compiled plugin.
 Historical archives without these new prospective rows remain unchanged
 and cannot acquire this claim after the fact.
 
-**Proof limit:** Events are observed from the \`relaydevwait\` begin
+**Proof limit:** Events are observed from the `relaydevwait` begin
 through each scheduler callback; the 8th sampling callback immediately ends
 collection. Other Paper event families, unobserved packets, unloaded data,
 possible late events in the 8th tick, Mineflayer held controls and every
-source of concurrent physical Action remain \`NOT_ATTESTED\`. This is
-\`S_P1_PAPER_CALLBACK_PREFIX_SCREEN_ONLY\`, **not**
-\`SourceBoundTick(WAIT)\` or P1 fatigue recovery. Even if there are zero
-same-World entity callbacks, \`wait_ticks_admitted=0\`,
-\`p1_fatigue_recovered=0\`, \`science_go=false\`. R must independently
+source of concurrent physical Action remain `NOT_ATTESTED`. This is
+`S_P1_PAPER_CALLBACK_PREFIX_SCREEN_ONLY`, **not**
+`SourceBoundTick(WAIT)` or P1 fatigue recovery. Even if there are zero
+same-World entity callbacks, `wait_ticks_admitted=0`,
+`p1_fatigue_recovered=0`, `science_go=false`. R must independently
 audit the exact prospective JAR/config, original event scope and source
 coverage before any engineering qualifier; V science stays separate.
 
