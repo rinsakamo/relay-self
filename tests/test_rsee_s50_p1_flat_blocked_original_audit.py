@@ -217,3 +217,29 @@ def test_native_ack_sidecar_bijection_rejects_forgery(tmp_path, damage):
         write_jsonl(root, "s50_p1_native_controls_original.jsonl", rows)
     with pytest.raises(ValueError):
         check(root, updated_hashes(root))
+
+@pytest.mark.parametrize("alteration", [
+    "y_move", "from_pose_gap", "basal_not_incrementing",
+    "unexpected_motion_packet", "combat_counter", "swimming_true",
+])
+def test_paper_sampled_idle_candidate_rejects_hidden_activity(tmp_path, alteration):
+    root, _, _, _, _, paper = fixture(tmp_path)
+    bad = paper.copy()
+    line = bad[3]
+    if alteration == "y_move":
+        line = line.replace("y=-60.0", "y=-59.0", 1)
+    elif alteration == "from_pose_gap":
+        line = line.replace("from_z=1.707742656099451", "from_z=2.0")
+    elif alteration == "basal_not_incrementing":
+        line = line.replace("basal_ticks=31", "basal_ticks=30")
+    elif alteration == "unexpected_motion_packet":
+        line = line.replace("motion_packets=0", "motion_packets=1")
+    elif alteration == "combat_counter":
+        line = line.replace("combat_events=0", "combat_events=1")
+    elif alteration == "swimming_true":
+        line = line.replace("swimming=false", "swimming=true")
+    assert line != bad[3]
+    bad[3] = line
+    (root / "paper_server.log").write_text("\n".join(bad)+"\n")
+    with pytest.raises(ValueError):
+        check(root, updated_hashes(root))
