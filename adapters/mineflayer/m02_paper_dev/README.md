@@ -533,3 +533,29 @@ Original source artifacts expire 2026-11-15; R's independent 90-day
 original/verdict archive is the durable independent witness. No new
 QUALIFICATION start or fresh SCIENCE grant is authorized by this section.
 The 6-world-tick gate and frozen old V7 matched-path FAIL are not revised.
+
+### S50/P1 WAIT same-World loaded-entity separation (DEV source, 2026-10-17)
+
+`s50_p1_scope.review_scope` reads the original eight `S50_DEV_WAIT_SCOPE`,
+`S50_DEV_WAIT_TICK` and all explicit `S50_DEV_WAIT_ENTITY` rows. The
+sampled subject `PLAYER` UUID and its entity World UUID must remain identical
+throughout the bracket; a different subject or World between callbacks now
+fails closed, even if each per-tick SHA256 roster is internally consistent.
+The reader distinguishes `other_loaded_entities_seen_ticks` (entities across
+**all** loaded Paper Worlds) from `same_world_other_loaded_entities_seen_ticks`
+and per-tick counts (only subjects in the **same entity World UUID** as Self).
+A Strider in a different World or an End Crystal elsewhere is not an actor in
+Self's World. The distinction is tested against digest-consistent cross-World
+and subject-World-drift negative fixtures.
+
+`same_world_only_self_at_all_samples=true` proves **only** the eight sampled
+loaded-chunk rosters and **not** all World ticks, not unloaded chunks, and not
+complete entity creation/removal or forced-movement provenance. In particular,
+`full_tick_solo_no_agents=NOT_ATTESTED`, `held_motor_control_absence=
+NOT_ATTESTED`, `wait_ticks_admitted=0` and `p1_fatigue_recovered=0` remain
+non-negotiable. The current native Paper emitter, client-side clear-control
+ACK and S50 Action OUTCOME do not span an independent whole-tick no-input/no-
+action source. R must independently qualify any prospective broader source
+before P1 can consume a `SourceBoundTick(WAIT)`. No new Minecraft run,
+physiology change, JAR qualification, P1 grant or V science inference is made
+by this offline reader update.
