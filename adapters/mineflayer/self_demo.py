@@ -411,6 +411,7 @@ async def _run_disposable(
     self_world_live: bool = False,
     self_world_prospective: bool = False,
     self_world_typed_closure: bool = False,
+    self_world_retained_handoff: bool = False,
 ) -> int:
     # Existing exact S49 host is the *only* issuer. No duplicated event loop,
     # no new Game Action code or arbitrary LLM output -> Action mapping.
@@ -433,6 +434,12 @@ async def _run_disposable(
             StageNNativeClosureObserver,
         )
         stage_n = StageNNativeClosureObserver(StageNDeclaredPolicy())
+    stage_o = None
+    if self_world_retained_handoff:
+        if not self_world_typed_closure:
+            raise DemoRejected("Stage O requires Stage N typed S17 source")
+        from adapters.mineflayer.self_world_owner_handoff import StageOOwnerReadback
+        stage_o = StageOOwnerReadback()
     witness = None
     if self_world_prospective:
         if live_observer is None or not self_world_live:
@@ -441,6 +448,11 @@ async def _run_disposable(
         witness = ProspectiveWitnessWriter(report_path.parent / "stage_l_prospective.jsonl")
 
     async def observed_source(reading):
+        if stage_o is not None:
+            try:
+                stage_o.observe_existing_probe(reading)
+            except (TypeError, ValueError) as exc:
+                stage_o.record_error("source", exc)
         if stage_n is not None:
             try:
                 stage_n.observe_existing_probe(reading)
@@ -463,7 +475,10 @@ async def _run_disposable(
             return await qualify(report_path, server_log)
         if stage_n is None:
             return await qualify(report_path, server_log, live_probe=observed_source)
-        from adapters.mineflayer.normal_action import observe_closed_native_actions
+        from adapters.mineflayer.normal_action import (
+            observe_closed_native_actions,
+            observe_original_retained_owner,
+        )
 
         def on_closed(original):
             try:
@@ -474,9 +489,20 @@ async def _run_disposable(
 
         # Same event-loop context, original S49 issuer; callback receives only
         # an already-closed Action and never controls the physical outcome.
-        with observe_closed_native_actions(on_closed):
-            return await qualify(report_path, server_log, live_probe=observed_source)
+        if stage_o is None:
+            with observe_closed_native_actions(on_closed):
+                return await qualify(report_path, server_log, live_probe=observed_source)
+        # Readback only: L0 retains original owner object; callback never
+        # supplies S10 authority and cannot mutate the original owner.
+        with observe_original_retained_owner(stage_o.receive_original_owner):
+            with observe_closed_native_actions(on_closed):
+                return await qualify(report_path, server_log, live_probe=observed_source)
     finally:
+        if stage_o is not None:
+            _write_trace(
+                report_path.parent / "stage_o_retained_owner.jsonl",
+                (stage_o.summary(),),
+            )
         if stage_n is not None:
             _write_trace(
                 report_path.parent / "stage_n_native_feedback.jsonl",
@@ -569,6 +595,11 @@ def _dev_run(args: argparse.Namespace) -> int:
         live_selfworld = scenario == "native-selfworld"
         prospective = getattr(args, "self_world_prospective", False)
         typed_closure = getattr(args, "self_world_typed_closure", False)
+        retained_handoff = getattr(args, "self_world_retained_handoff", False)
+        if type(retained_handoff) is not bool or (
+            retained_handoff and (not typed_closure or not live_selfworld)
+        ):
+            raise DemoRejected("Stage O retained source requires Stage N DEV")
         if type(typed_closure) is not bool or (
             typed_closure and (not prospective or not live_selfworld)
         ):
@@ -677,6 +708,8 @@ def _dev_run(args: argparse.Namespace) -> int:
                     extra["self_world_prospective"] = True
                 if typed_closure:
                     extra["self_world_typed_closure"] = True
+                if retained_handoff:
+                    extra["self_world_retained_handoff"] = True
                 code = asyncio.run(_run_disposable(
                     root / "native_report.json", root / "minecraft_server.log",
                     live_model=(args.model_alias, args.model_port, args.model_timeout),
@@ -1025,6 +1058,60 @@ def _dev_run(args: argparse.Namespace) -> int:
                     receipt["dev_self_world_stage_n_incomplete"] = (
                         "TYPED_ACTION_READBACK_NOT_PROVEN"
                     )
+            if retained_handoff:
+                owner_path = root / "stage_o_retained_owner.jsonl"
+                if (not owner_path.is_file() or owner_path.is_symlink()
+                        or owner_path.stat().st_size > 65536):
+                    raise DemoRejected("Stage O original L0 owner readback missing")
+                owner_lines = owner_path.read_text(encoding="utf-8").splitlines()
+                if len(owner_lines) != 1:
+                    raise DemoRejected("Stage O expects one owner readback summary")
+                owner = json.loads(owner_lines[0])
+                actual = native.get("source_pair_trace", [])
+                reads = owner.get("same_owner_source_reads")
+                certified = (
+                    owner.get("kind") == "stage_o_original_owner_readback"
+                    and owner.get("session_id") == native["session_id"]
+                    and owner.get("intent_id") == "escape-threat"
+                    and owner.get("captured_original_l0_retained_identity") is True
+                    and owner.get("original_owner_target") == "risk_weight"
+                    and owner.get("original_owner_value") == 4
+                    and owner.get("original_owner_revision") == 1
+                    and owner.get("source_read_count") == 3
+                    and isinstance(reads, list) and len(reads) == len(actual) == 3
+                    and all(
+                        x.get("source_probe_seq") == y.get("probe_seq")
+                        and x.get("source_request_id") ==
+                        f"s49-actual:{native['session_id']}:event-{y['event_seq']}"
+                        and x.get("source_session") == native["session_id"]
+                        and x.get("retained_target") == "risk_weight"
+                        and x.get("retained_revision") == 1
+                        and x.get("retained_value") == 4
+                        and x.get("exact_original_owner_identity") is True
+                        and x.get("read_only") is True
+                        for x, y in zip(reads, actual, strict=True)
+                    )
+                    and owner.get("observer_errors") == []
+                    and owner.get("s10_update_authority") is False
+                    and owner.get("s10_commits") == 0
+                    and owner.get("s49_l0_retained_mutated") is False
+                    and owner.get("next_epoch_learned_action") is False
+                    and owner.get("additional_native_actions") == 0
+                )
+                receipt.update(
+                    dev_self_world_stage_o="ORIGINAL_OWNER_READ_ONLY"
+                    if certified else "NOT_CERTIFIED",
+                    dev_self_world_stage_o_read_count=len(reads)
+                    if isinstance(reads, list) else 0,
+                    dev_self_world_stage_o_s10_authorized=False,
+                    dev_self_world_stage_o_s10_commits=0,
+                    dev_self_world_stage_o_source="stage_o_retained_owner.jsonl",
+                )
+                if code == 0 and not certified:
+                    code = 1
+                    receipt["dev_self_world_stage_o_incomplete"] = (
+                        "EXACT_L0_OWNER_SOURCE_HANDOFF_NOT_PROVEN"
+                    )
             # Existing S49 may finish without enough positive target probes.
             # Preserve its raw source report but do not certify Stage J input.
             if code == 0 and not qualified_input:
@@ -1098,6 +1185,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="DEV-only pre-Action sealed SelfWorld forecast, no new Action owner")
     parser.add_argument("--self-world-typed-closure", action="store_true",
                         help="DEV-only S49 original S16 typed terminal readback and S17 HOLD")
+    parser.add_argument("--self-world-retained-handoff", action="store_true",
+                        help="DEV-only original S49 L0 retained owner identity readback")
     parser.add_argument("--model-alias", help="explicit pre-existing loopback model alias")
     parser.add_argument("--model-port", type=int, help="existing localhost OpenAI-compatible port")
     parser.add_argument("--model-timeout", type=float, default=12.0)
@@ -1120,7 +1209,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.dev_scenario != "native" or args.b1_retention != "on":
         parser.error("--dev-scenario/--b1-retention require --mode DEV")
 
-    if (args.self_world_prospective or args.self_world_typed_closure) and not args.mode:
+    if (args.self_world_prospective or args.self_world_typed_closure
+            or args.self_world_retained_handoff) and not args.mode:
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="PROSPECTIVE_REQUIRES_EXPLICIT_DEV",
             model_calls=0, actual_actions=0,
