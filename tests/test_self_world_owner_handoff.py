@@ -261,7 +261,14 @@ def test_stage_o_hold_preview_negative_controls(kind):
             ),
         )
     elif kind == "foreign_outcome_ref":
-        typed = replace(typed, outcome_ref="action-outcome:counterfeit")
+        # Maintain S17 type invariants so the Stage O source gate, not
+        # the S17 dataclass constructor, rejects the forged outcome.
+        typed = replace(
+            typed, outcome_ref="action-outcome:counterfeit",
+            feedback=replace(
+                typed.feedback, consequence_ref="action-outcome:counterfeit",
+            ),
+        )
     elif kind == "scalar_reward_attempt":
         typed = replace(
             typed, feedback=replace(
