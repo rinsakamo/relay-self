@@ -173,10 +173,13 @@ def test_stage_p_offline_denies_missing_source_or_permission(case):
             args["next_probe"], kind="entities", request_id=None,
         )
     elif case == "forged_source":
-        args["next_probe"] = replace(
-            args["next_probe"],
-            provenance=Provenance("not-mineflayer", "forged"),
-        )
+        # MineflayerObservation.provenance is computed from source identity;
+        # an untyped forged dict must not impersonate that observation.
+        args["next_probe"] = {
+            "session_id": args["original_session_id"],
+            "seq": args["next_probe"].seq,
+            "kind": "probe",
+        }
     elif case == "wrong_request":
         args["next_probe"] = replace(args["next_probe"], request_id="user-defined")
     elif case == "sham_feedback":
