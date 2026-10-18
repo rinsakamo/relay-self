@@ -73,6 +73,10 @@ def stage_q_dev_joint_choice_admission(
             or previous_s14_owner is not previous
             or l0 is not current
             or s14 is not current
+            or stage_p.l0_read.revision != current.revision
+            or stage_p.s14_read.revision != current.revision
+            or stage_p.l0_read.last_update is not current.last_update
+            or stage_p.s14_read.last_update is not current.last_update
             or current is previous
             or current.last_update is not committed.record
             or previous.target_id != "risk_weight"
