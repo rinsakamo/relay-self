@@ -15,7 +15,16 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     NativeThreat,
     _native_threat,
 )
-from relay_self.learning import LearningCommitResult, LearningPreferenceState
+from relay_self.action_feedback import (
+    LearningFeedbackInterpretation,
+    LearningFeedbackInterpretationStatus,
+)
+from relay_self.learning import (
+    FeedbackDirection,
+    LearningCommitResult,
+    LearningPreferenceState,
+    LearningProposalStatus,
+)
 from relay_self.planning import (
     PlanCandidate,
     PlanFeature,
@@ -114,6 +123,104 @@ def select_stage_q_dev_committed_world_choice(
     )
 
 
+def verify_stage_t_dev_directional_commit(
+    commit: LearningCommitResult,
+    original_owner: LearningPreferenceState,
+    typed_s17: LearningFeedbackInterpretation,
+) -> LearningPreferenceState:
+    """DEV-only exact non-HOLD outcome→S17→S10 lineage, NOT issuer attestation.
+
+    Only the predeclared Stage S same-target separation feedback and a
+    one-step, bounded S10 successor are accepted. No command is authorized.
+    """
+    if (
+        not isinstance(commit, LearningCommitResult)
+        or not isinstance(original_owner, LearningPreferenceState)
+        or not isinstance(typed_s17, LearningFeedbackInterpretation)
+        or typed_s17.status is not LearningFeedbackInterpretationStatus.PRODUCED
+        or typed_s17.feedback is None
+        or typed_s17.feedback is not commit.proposal.feedback
+        or typed_s17.feedback.direction not in (
+            FeedbackDirection.INCREASE, FeedbackDirection.DECREASE
+        )
+        or typed_s17.feedback.target_id != "risk_weight"
+        or typed_s17.target_id != "risk_weight"
+        or typed_s17.outcome_reason != "observed_execution"
+        or typed_s17.action_ref != "MOVE_BACKWARD"
+        or typed_s17.criterion_provenance.source
+        != "stage-s-dev-preregistered-outcome-separation"
+        or not typed_s17.criterion_id.startswith(
+            "stage-s-same-target-separation-v0:"
+        )
+        or typed_s17.feedback.consequence_ref != typed_s17.outcome_ref
+        or commit.previous_state is not original_owner
+        or commit.new_state is original_owner
+        or commit.new_state.last_update is not commit.record
+        or commit.proposal.expected_revision != original_owner.revision
+        or commit.proposal.expected_value != original_owner.value
+        or commit.proposal.target_id != "risk_weight"
+        or commit.proposal.expected_minimum != original_owner.minimum
+        or commit.proposal.expected_maximum != original_owner.maximum
+        or commit.proposal.rule.rule_id != "stage-t-dev-risk-weight-one-step"
+        or commit.proposal.rule.version != 1
+        or commit.proposal.rule.step != 1
+        or commit.proposal.status is not LearningProposalStatus.UPDATED
+        or commit.record.status is not LearningProposalStatus.UPDATED
+        or commit.record.rule_id != commit.proposal.rule.rule_id
+        or commit.record.rule_version != commit.proposal.rule.version
+        or commit.record.feedback_id != typed_s17.feedback.feedback_id
+        or commit.record.previous_revision != original_owner.revision
+        or commit.record.committed_revision != commit.new_state.revision
+        or commit.record.previous_value != original_owner.value
+        or commit.record.resulting_value != commit.new_state.value
+        or original_owner.target_id != "risk_weight"
+        or original_owner.revision != 1
+        or original_owner.value != 4
+        or commit.new_state.revision != 2
+        or commit.new_state.target_id != "risk_weight"
+        or commit.proposal.proposed_value != commit.new_state.value
+        or commit.new_state.value != (
+            5 if typed_s17.feedback.direction is FeedbackDirection.INCREASE else 3
+        )
+    ):
+        raise WorldChoiceRejected("Stage T exact directional S17/S10 successor required")
+    return commit.new_state
+
+
+def select_stage_t_dev_directional_world_choice(
+    native: NativeThreat,
+    retained: LearningPreferenceState,
+    *,
+    commit: LearningCommitResult,
+    original_owner: LearningPreferenceState,
+    typed_s17: LearningFeedbackInterpretation,
+    expected_session_id: str,
+    expected_entity_id: int,
+) -> WorldConditionedChoice:
+    """Explicit alternative DEV policy; preserves original S42 default guard.
+
+    Near-target WAIT can win at retained=3. It remains no-Action, and any
+    MOVE requires the original independent S49 Action authorization.
+    """
+    successor = verify_stage_t_dev_directional_commit(
+        commit, original_owner, typed_s17,
+    )
+    if retained is not successor:
+        raise WorldChoiceRejected("Stage T L0 must consume exact committed owner")
+    if native.observation.session_id != typed_s17.feedback.provenance.reference.split(":")[0]:
+        # Stage S provenance is sid:action; no cross-session transfer.
+        raise WorldChoiceRejected("Stage T feedback native session mismatch")
+    return _select_world_conditioned_choice(
+        native, retained,
+        expected_session_id=expected_session_id,
+        expected_entity_id=expected_entity_id,
+        required_revision=successor.revision,
+        required_value=successor.value,
+        allow_near_wait=True,
+        criterion_id="stage-t-dev-retained-cost-v0",
+    )
+
+
 def _select_world_conditioned_choice(
     native: NativeThreat,
     retained: LearningPreferenceState,
@@ -122,6 +229,8 @@ def _select_world_conditioned_choice(
     expected_entity_id: int,
     required_revision: int,
     required_value: int,
+    allow_near_wait: bool = False,
+    criterion_id: str = "s42-fixed-native-distance-comparison",
 ) -> WorldConditionedChoice:
     """One frozen projection of real distance onto original finite PLAN.
 
@@ -163,7 +272,7 @@ def _select_world_conditioned_choice(
     )
     move_score = 7
     criterion = PlanningCriterion(
-        "s42-fixed-native-distance-comparison", "comparison_score",
+        criterion_id, "comparison_score",
         PlanningDirection.MINIMIZE,
     )
     # Source attestation is attached to BOTH candidates, not a mere label
@@ -194,6 +303,13 @@ def _select_world_conditioned_choice(
     if (
         (native.distance_m < MAX_GOAL_DISTANCE_M)
         != (selection is WorldChoiceKind.MOVE_AWAY)
+        and not (
+            allow_near_wait
+            and native.distance_m < MAX_GOAL_DISTANCE_M
+            and selection is WorldChoiceKind.WAIT
+            and retained.value == 3
+            and criterion_id == "stage-t-dev-retained-cost-v0"
+        )
     ):
         raise WorldChoiceRejected("World geometry did not determine required route")
     return WorldConditionedChoice(
