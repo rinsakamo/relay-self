@@ -1434,10 +1434,10 @@ def test_cognition_review_requires_replay_of_exact_prior_forecast():
             current, selection, request, review=assessed,
             prior=revised_prior, max_native_seq_gap=10,
         )
-    with pytest.raises(InvalidSelfWorldData, match="forged or mismatched"):
+    with pytest.raises(InvalidSelfWorldData, match="positive integer"):
         bind_self_world_to_cognition_request(
             current, selection, request, review=assessed,
-            prior=prior, max_native_seq_gap=1,
+            prior=prior, max_native_seq_gap=0,
         )
     # No native source or owner state is mutated by the failed bindings.
     assert current.observation.source_ref == assessed.later_observation_ref
