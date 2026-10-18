@@ -169,6 +169,7 @@ class StageRDevSingleWriter:
         self._committed: LearningCommitResult | None = None
         self._last_native_seq = -1
         self._operator_grants = 0
+        self._commit_source: dict[str, Any] | None = None
         self._closed_action_ids: set[str] = set()
 
     @property
@@ -241,6 +242,16 @@ class StageRDevSingleWriter:
         )
         self._current = result.new_state
         self._committed = result
+        self._commit_source = {
+            "terminal_action_id": action,
+            "terminal_after_native_seq": pending.after_native_seq,
+            "next_source_probe_seq": probe.seq,
+            "next_source_request_id": probe.request_id,
+            "feedback_id": pending.proposal.feedback.feedback_id,
+            "s10_authority_id": authority.authority_id,
+            "s10_authority_source": authority.provenance.source,
+            "s10_commit_revision": result.new_state.revision,
+        }
         self._operator_grants += 1
         self._pending = None
 
@@ -324,6 +335,7 @@ class StageRDevSingleWriter:
             "current_value": self._current.value,
             "joint_l0_s14_owner_identity": self._host.retained is self._current,
             "operator_s10_grants": self._operator_grants,
+            "commit_source": dict(self._commit_source) if self._commit_source else None,
             "s10_hold_commits": int(self._committed is not None),
             "original_action_closures": len(self._closed_action_ids),
             "pending_unsealed_or_unknown": self._pending is not None,
