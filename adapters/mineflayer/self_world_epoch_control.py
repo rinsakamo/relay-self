@@ -92,8 +92,8 @@ def stage_q_dev_joint_choice_admission(
             or native.observation.kind != "probe"
             or native.observation.provenance.source != "mineflayer"
             or not isinstance(intent, IntentCommitment)
-            or intent.current is None
-            or intent.current.intent_id != "escape-threat"):
+            or intent.current_intent is None
+            or intent.current_intent.intent_id != "escape-threat"):
         raise StageQDevBoundaryRejected("exact subsequent original native/intent missing")
     choice = select_stage_q_dev_committed_world_choice(
         native, current, commit=committed, original_owner=previous,
