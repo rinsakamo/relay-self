@@ -28,7 +28,6 @@ from relay_self.reactive_l0 import L0ActionGrant, ReactiveL0Rejected
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
     WorldChoiceRejected,
-    verify_stage_t_dev_directional_commit,
 )
 
 
