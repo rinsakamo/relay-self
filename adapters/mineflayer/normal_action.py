@@ -123,6 +123,7 @@ class NormalWorldL0(ReactiveL0):
     def bind_stage_r_dev_owner(self, *, token: object) -> None:
         """Explicit opt-in from sole S49 runner; no default learning authority."""
         if (self._stage_r_dev_token is not None
+                or self._stage_t_dev_token is not None
                 or self._stage_r_dev_commit is not None
                 or type(token) is not object
                 or self.events != 0 or self.action_requests != 0
