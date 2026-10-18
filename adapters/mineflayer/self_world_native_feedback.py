@@ -61,6 +61,13 @@ class StageNNativeClosureObserver:
         """Record already received native probe, never issue another one."""
         if not isinstance(reading, MineflayerObservation):
             raise TypeError("exact native source probe required")
+        prefix = f"s49-actual:{reading.session_id}:event-"
+        if (reading.kind != "probe"
+                or reading.provenance.source != "mineflayer"
+                or not isinstance(reading.request_id, str)
+                or not reading.request_id.startswith(prefix)
+                or not reading.request_id[len(prefix):].isdecimal()):
+            raise ValueError("original correlated S49 native probe required")
         if self._session is not None and self._session != reading.session_id:
             raise ValueError("foreign session in Stage N")
         if self._latest_native_seq is not None and reading.seq <= self._latest_native_seq:
