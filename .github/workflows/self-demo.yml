@@ -78,6 +78,7 @@ jobs:
               adapters/mineflayer/self_world_learning_gate.py|\
               adapters/mineflayer/self_world_native_feedback.py|\
               adapters/mineflayer/self_world_owner_handoff.py|\
+              adapters/mineflayer/self_world_epoch_handoff.py|\
               src/relay_self/self_world.py|\
               docs/selfworld-v0.md|\
               tests/test_self_world.py|\
@@ -98,6 +99,7 @@ jobs:
               tests/test_self_world_learning_gate.py|\
               tests/test_self_world_native_feedback.py|\
               tests/test_self_world_owner_handoff.py|\
+              tests/test_self_world_epoch_handoff.py|\
               tests/test_m02_paper_dev.py|\
               tests/test_m02_v8_stopped_world_clone_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
@@ -161,6 +163,7 @@ jobs:
             tests/test_self_world_learning_gate.py \
             tests/test_self_world_native_feedback.py \
             tests/test_self_world_owner_handoff.py \
+            tests/test_self_world_epoch_handoff.py \
             tests/test_self_body.py \
             tests/test_self_world.py
 
