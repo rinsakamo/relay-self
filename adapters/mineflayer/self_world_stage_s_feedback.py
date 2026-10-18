@@ -144,6 +144,8 @@ def assess_stage_s_original_separation(
             or outcome.binding_id != f"s49-binding-{event}"
             or outcome.action_ref != "MOVE_BACKWARD"
             or outcome.reason_code != "observed_execution"
+            or outcome.world_provenance != world.provenance
+            or outcome.source_status != world.status.value
             or outcome.disposition is not ActionOutcomeDisposition.OUTCOME
             or terminal.state is not ActionState.OUTCOME
             or world.status.value != "executed"
