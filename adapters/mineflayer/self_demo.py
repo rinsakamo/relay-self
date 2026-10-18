@@ -481,9 +481,11 @@ async def _run_disposable(
         os.environ["S49_STAGE_R_DEV_ONLY"] = "1"
     try:
         if live_observer is None:
-            return await qualify(
-                report_path, server_log, stage_r_dev=stage_r_dev,
-            )
+            if stage_r_dev:
+                return await qualify(
+                    report_path, server_log, stage_r_dev=True,
+                )
+            return await qualify(report_path, server_log)
         if stage_n is None:
             return await qualify(report_path, server_log, live_probe=observed_source)
         from adapters.mineflayer.normal_action import (
@@ -754,10 +756,15 @@ def _dev_run(args: argparse.Namespace) -> int:
                     **extra,
                 ))
             else:
-                code = asyncio.run(_run_disposable(
-                    root / "native_report.json", root / "minecraft_server.log",
-                    stage_r_dev=stage_r,
-                ))
+                if stage_r:
+                    code = asyncio.run(_run_disposable(
+                        root / "native_report.json", root / "minecraft_server.log",
+                        stage_r_dev=True,
+                    ))
+                else:
+                    code = asyncio.run(_run_disposable(
+                        root / "native_report.json", root / "minecraft_server.log",
+                    ))
         native = json.loads((root / "native_report.json").read_text())
         if scenario == "b1-local-adaptation":
             receipt["dev_b1_fixture_seed"] = native.get("b1_fixture_seed")
