@@ -20,6 +20,7 @@ from relay_self.action_outcome import (
     ActionOutcomeDisposition,
     ActionOutcomeInterpretation,
 )
+from relay_self.provenance import Provenance
 from relay_self.self_world import (
     InvalidSelfWorldData,
     SelfWorldView,
@@ -30,7 +31,6 @@ from relay_self.self_world import (
     review_self_world_prediction,
 )
 
-from relay_self.provenance import Provenance
 
 def project_self_world_present(
     present: MinecraftPresent,
