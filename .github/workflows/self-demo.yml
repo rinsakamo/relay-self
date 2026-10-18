@@ -507,3 +507,106 @@ jobs:
             ${{ runner.temp }}/selfworld-stage-l-cli.log
           if-no-files-found: warn
           retention-days: 30
+
+  selfworld-stage-m-source-gate-once:
+    # Pure read-only Stage L physical source audit: explicitly BLOCK S17/S10
+    # without a typed Action lifecycle, explicit criterion and owner authority.
+    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-m-source-gate-once]') }}
+    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    env:
+      PYTHONPATH: 'src:tests:.'
+      GH_TOKEN: ${{ github.token }}
+      STAGE_M_ROOT: /tmp/selfworld-stage-m-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Read original Stage L evidence bytes without launching a World
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$STAGE_M_ROOT"
+          gh api repos/rinsakamo/relay-self/actions/artifacts/12129387412/zip > "$STAGE_M_ROOT/stage-l-original.zip"
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import zipfile
+
+          from adapters.mineflayer.self_world_learning_gate import (
+              audit_stage_l_physical_learning_readiness,
+          )
+
+          root = pathlib.Path(os.environ["STAGE_M_ROOT"])
+          payload = (root / "stage-l-original.zip").read_bytes()
+          sha = hashlib.sha256(payload).hexdigest()
+          assert sha == "3993d389617bd32fd2e24030cbf6fa3434f609ff5473a56dcf3405a7efa58216", (
+              "original immutable Stage L Artifact checksum differs"
+          )
+          with zipfile.ZipFile(root / "stage-l-original.zip") as archive:
+              members = archive.infolist()
+              assert 3 <= len(members) <= 25
+              assert all(
+                  not pathlib.PurePosixPath(item.filename).is_absolute()
+                  and ".." not in pathlib.PurePosixPath(item.filename).parts
+                  and not item.is_dir() and item.file_size <= 2_000_000
+                  for item in members
+              )
+              def source(name):
+                  hits = [z for z in members
+                          if pathlib.PurePosixPath(z.filename).name == name]
+                  assert len(hits) == 1, f"one original {name} required"
+                  return archive.read(hits[0])
+              native = json.loads(source("native_report.json"))
+              receipt = json.loads(source("dev_receipt.json"))
+              witness = source("stage_l_prospective.jsonl")
+              manifest = source("SHA256SUMS").decode()
+              for name in ("native_report.json", "dev_receipt.json",
+                           "stage_l_prospective.jsonl"):
+                  expected = [line.split("  ", 1)[0] for line in manifest.splitlines()
+                              if line.endswith("  " + name)]
+                  assert len(expected) == 1
+                  assert hashlib.sha256(source(name)).hexdigest() == expected[0]
+          assert receipt["git_head"] == "4f9e4d56fbaf2227c267daf457a5e1ec2b07382e"
+          assert receipt["run_id"] == "e5654ddea28444649bb7b474f6a0c525"
+          assert receipt["classification"] == "DEV_ONLY"
+          assert receipt["status"] == "COMPLETED"
+          assert receipt["session_id"] == native["session_id"]
+          assert receipt["dev_self_world_prospective_positive_count"] == 2
+          audit = audit_stage_l_physical_learning_readiness(native, witness)
+          assert audit["learning_gate"] == "BLOCKED_MISSING_TYPED_S17_AND_S10_AUTHORITY"
+          assert audit["positive_predictions"] == 2
+          assert audit["s17_feedback_created"] == 0
+          assert audit["s10_learning_committed"] == 0
+          result = {
+              "source_artifact_id": 12129387412,
+              "source_artifact_sha256": sha,
+              "source_workflow_run": 39108409463,
+              "original_git_head": receipt["git_head"],
+              "new_world_launches": 0, "new_native_actions": 0,
+              "qualification": "DEV_ONLY_SOURCE_NOT_LIVE_LEARNING",
+              **audit,
+          }
+          (root / "stage-m-gate.json").write_text(
+              json.dumps(result, sort_keys=True, indent=2) + "\n"
+          )
+          print("STAGE_M_SOURCE_AUDIT", json.dumps(result, sort_keys=True))
+          PY
+      - name: Retain immutable source-audit receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selfworld-stage-m-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.STAGE_M_ROOT }}/stage-l-original.zip
+            ${{ env.STAGE_M_ROOT }}/stage-m-gate.json
+          if-no-files-found: warn
+          retention-days: 30
