@@ -119,7 +119,7 @@ def test_t_exact_original_l0_and_original_s14_joint_directional_preview(
     assert result.retained_value == target
     assert result.original_l0_candidate == "MOVE_AWAY"
     assert result.new_l0_candidate == candidate
-    assert result.original_s14_candidate == candidate
+    assert result.new_s14_candidate == candidate
     assert result.s14_admission == "admitted"
     assert result.l0_and_s14_same_owner_identity
     assert result.policy_choice_changed is changed
