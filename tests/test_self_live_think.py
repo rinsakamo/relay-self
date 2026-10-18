@@ -174,3 +174,127 @@ def test_explicit_live_mode_uses_original_s49_owner_and_retains_one_sidecar(
 
     asyncio.run(asyncio.wait_for(scenario(), 6))
     assert "l2_live_observer" in capsys.readouterr().out
+
+
+# SelfWorld #633 Stage I: opt-in native live-probe -> read-only L1/HABIT and
+# existing S60 single-attempt L2. All native probes in these tests are synthetic.
+
+
+def scoped_world_probe(seq: int, *, label: str = "zombie", entity_id: int = 42):
+    source = native_probe(seq, 4.0)
+    fact = replace(
+        source.snapshot.nearby_entities[0], entity_id=entity_id, name=label,
+    )
+    return replace(source, snapshot=replace(
+        source.snapshot, nearby_entities=(fact,),
+    ))
+
+
+def test_live_selfworld_prediction_mismatch_is_read_by_l1_and_l2_but_not_action():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            assert observer.model_attempts == 0
+            assert server.requests == 0
+            # Same native entity ID, changed positive observed label. A
+            # deterministic persistence hypothesis can be contradicted.
+            await observer.observe(scoped_world_probe(19, label="skeleton"))
+            await asyncio.sleep(.12)
+            assert observer.model_attempts == 1
+            assert server.requests == 1
+            payload = server.posts[0]["messages"][1]["content"]
+            assert '"status": "mismatch"' in payload
+            assert '"observed_value": "skeleton"' in payload
+            assert '"predicted_value": "zombie"' in payload
+            assert '"preconfigured_l1_cognitive_candidate": "RECHECK"' in payload
+            # Later native source invalidates a previously admitted L2 reply.
+            await observer.observe(scoped_world_probe(47, label="skeleton"))
+            receipt = await observer.close()
+            assert receipt["self_world_live"] is True
+            assert receipt["self_world_review_status"] == "mismatch"
+            assert receipt["self_world_review_reason"] == "observed_prediction_mismatch"
+            assert receipt["self_world_prior_source"] == "present:s15-session:8:s49-actual:s15-session:event-7"
+            assert receipt["self_world_after_source"] == "present:s15-session:19:s49-actual:s15-session:event-18"
+            assert receipt["preconfigured_l1_cognitive_candidate"] == "RECHECK"
+            assert receipt["self_world_l2_input_bound"] is True
+            assert receipt["model_attempts"] == 1
+            assert receipt["text_current"] is False
+            assert receipt["authorized_actions"] == 0
+            assert receipt["l2_used_as_action"] is False
+            assert receipt["learning_updates"] == 0
+            assert receipt["habit_grants"] == 0
+            assert receipt["l0_blocked_on_l2"] is False
+
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_live_selfworld_unseen_target_is_undetermined_not_absent():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            missing = scoped_world_probe(19)
+            missing = replace(missing, snapshot=replace(
+                missing.snapshot, nearby_entities=(),
+                nearby_entities_coverage=replace(
+                    missing.snapshot.nearby_entities_coverage,
+                    candidate_count=0, truncated=True,
+                ),
+            ))
+            await observer.observe(missing)
+            await asyncio.sleep(.12)
+            assert server.requests == 1
+            receipt = await observer.close()
+            assert receipt["self_world_review_status"] == "undetermined"
+            assert receipt["self_world_review_reason"] == "target_or_property_unobserved"
+            assert receipt["preconfigured_l1_cognitive_candidate"] is None
+            assert receipt["self_world_l2_input_bound"] is True
+            assert receipt["authorized_actions"] == 0
+            prompt = server.posts[0]["messages"][1]["content"]
+            assert '"observed_value": null' in prompt
+            assert '"coverage_truncated": true' in prompt
+            assert '"status": "undetermined"' in prompt
+
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_live_selfworld_no_second_owner_or_cross_session_replay():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=1,
+                self_world_live=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            with pytest.raises(ValueError, match="foreign/replayed"):
+                await observer.observe(scoped_world_probe(8))
+            foreign = replace(scoped_world_probe(19), session_id="foreign")
+            with pytest.raises(ValueError, match="foreign/replayed"):
+                await observer.observe(foreign)
+            assert observer.model_attempts == 0
+            await observer.observe(scoped_world_probe(19))
+            await asyncio.sleep(.12)
+            receipt = await observer.close()
+            assert server.requests == 1
+            assert receipt["self_world_review_status"] == "match"
+            assert receipt["preconfigured_l1_cognitive_candidate"] == "OBSERVE"
+            assert receipt["authorized_actions"] == 0
+            assert receipt["learning_updates"] == 0
+
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_selfworld_live_mode_requires_explicit_native_l2_opt_in(capsys):
+    assert self_demo.main(["--self-world-live"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "SELF_WORLD_REQUIRES_LIVE_L2"
+    assert self_demo.main(["--smoke", "--self-world-live"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "SELF_WORLD_REQUIRES_LIVE_L2"
+    assert self_demo.main(["--live-think", "--self-world-live"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "LIVE_L2_REQUIRES_NATIVE_WORLD"
