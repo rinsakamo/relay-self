@@ -6,6 +6,7 @@ explicit DEV World run could attest the physical terminal/source/issuer.
 from __future__ import annotations
 
 from dataclasses import replace
+from unittest.mock import PropertyMock, patch
 
 import pytest
 
@@ -102,7 +103,9 @@ def test_stage_r_s49_single_writer_uses_later_source_and_keeps_one_action_owner(
     assert host.retained.value == 4  # HOLD, no positive reward
     assert operator.committed.record.feedback_id == operator.committed.proposal.feedback.feedback_id
     assert operator.committed.record.authority_provenance.source == "s49-dev-learning-owner"
-    assert operator.require_joint_admission_owner(step) is not host.retained if False else True
+    # The previous Action step cannot be admitted against the new owner.
+    with pytest.raises(StageRDevRejected):
+        operator.require_joint_admission_owner(step)
     summary = operator.summary()
     assert summary["joint_l0_s14_owner_identity"]
     assert summary["operator_s10_grants"] == 1
@@ -158,9 +161,16 @@ def test_stage_r_denies_missing_terminal_or_correlated_future_source(case):
     elif case == "swapped_l0_owner":
         host.retained = replace(host.retained)
     elif case == "open_action":
-        # A nonempty open-actions set from the original Action supervisor
-        # must block owner transition before any S10 mutation.
-        executor.supervisor._open_actions = {"counterfeit": object()}
+        # Simulate an incomplete ORIGINAL supervisor terminal, not another
+        # Action issuer; the Stage R owner must reject its open tuple.
+        with patch.object(
+            type(executor.supervisor), "open_actions",
+            new_callable=PropertyMock, return_value=(object(),),
+        ):
+            with pytest.raises((StageRDevRejected, ValueError)):
+                operator.observe_original_probe(next_probe)
+        assert operator.committed is None
+        return
     with pytest.raises((StageRDevRejected, ValueError)):
         operator.observe_original_probe(next_probe)
     assert operator.committed is None
