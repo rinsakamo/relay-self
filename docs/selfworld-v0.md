@@ -572,3 +572,45 @@ the S feature branch, after all four required FAST jobs succeed, with a new
 unique disposable World/evidence root. Success and failures preserve a new
 original evidence artifact; previous Stage J/K/L/M runs, grants and
 receipts remain untouched.
+
+## Stage O — original S49 L0 retained owner identity handoff (DEV_ONLY)
+
+Stage N confirmed the actual typed S16 Action/OUTCOME -> S17 HOLD path in one
+new disposable World, **without** granting S10 updates. The original S49
+host's `NormalWorldL0` retains a particular immutable
+`LearningPreferenceState` constructed from frozen S19 (value 4/rev1), not
+a value reconstructed from a native-report JSON file. The S10 contract
+requires *object identity*, exact owner/target/revision, and independently
+supplied learning-update authority.
+
+Stage O adds an OFF-by-default, context-local
+`observe_original_retained_owner` tap at construction of the existing
+`NormalWorldL0`. It forwards exactly the original `self.retained` object
+to a typed read-only `NormalRetainedOwnerReadback`; it does not overwrite
+the host's retained snapshot, subscribe to a second executor, change
+S49 decision logic or call `commit_learning_update`. Stage O product code
+`StageOOwnerReadback` uses the original
+`read_retained_preference(owner, owner, ...)` identity check for each
+already-correlated future S49 probe. Replayed/foreign sources, owner copies,
+denied/no S10 update authority and duplicate handoffs have negative
+controls. An observer failure is isolated from the original L0 owner,
+and any missing live witness causes DEV receipt rejection.
+
+The explicit `--self-world-retained-handoff` requires the full Stage
+L/N native-selfworld DEV source/typed-closure flags. The one-shot
+`[selfworld-stage-o-owner-once]` marker causes **one new independent
+disposable DEV World** only after exact-head FAST 4/4 gates pass. It
+records the original S49 owner value/revision and every existing epoch
+probe in `stage_o_retained_owner.jsonl`. The expected development witness
+is exact original owner identity, `risk_weight` 4/rev1, all 3 native
+probes, and unchanged original L0 policy and Action owner. S17 typed
+readback remains available from the separate Stage N sidecar.
+
+This is only an owner **read handoff**, NOT learning. In particular an
+observer does not receive a physical Action grant, current S10 update
+authority, ownership transfer, permitted mutation of original S49 L0, or
+a genuine learned policy. S10 commits remain 0. A later, separately
+governed Stage P must establish a real predeclared learning direction and
+authoritative commit/next-epoch owner transfer with ON/OFF/sham controls;
+a manufactured equal-looking copy or a preconfigured cognitive threshold
+does not count.
