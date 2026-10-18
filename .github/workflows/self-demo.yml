@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: self-demo-${{ github.workflow }}-${{ github.ref }}
@@ -256,6 +257,103 @@ jobs:
             ${{ env.DEV_ROOT }}/host_stderr.log
             ${{ env.DEV_ROOT }}/live_l2.jsonl
             ${{ runner.temp }}/selfworld-stage-j-cli.log
+          if-no-files-found: warn
+          retention-days: 30
+
+  selfworld-stage-k-source-replay-once:
+    # Pure read-only replay of immutable prior Stage J artifact, NO Java/World.
+    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-k-replay-once]') }}
+    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'src:tests:.'
+      GH_TOKEN: ${{ github.token }}
+      STAGE_K_ROOT: /tmp/relay-self-stage-k-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - name: Read original immutable Stage J native source (no game)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$STAGE_K_ROOT"
+          gh api repos/rinsakamo/relay-self/actions/artifacts/12128397812/zip \
+            > "$STAGE_K_ROOT/stage-j-original.zip"
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import zipfile
+
+          from adapters.mineflayer.self_demo import review_s49_action_self_world_report
+
+          root = pathlib.Path(os.environ["STAGE_K_ROOT"])
+          raw = (root / "stage-j-original.zip").read_bytes()
+          source_sha = hashlib.sha256(raw).hexdigest()
+          expected = "3b127778a8a6a2483a8f30649edbb3334229fb2f2f92cba720f084f36dfc467e"
+          assert source_sha == expected, "immutable original artifact digest differs"
+          with zipfile.ZipFile(root / "stage-j-original.zip") as archive:
+              members = archive.infolist()
+              assert len(members) <= 30
+              assert all(
+                  not pathlib.PurePosixPath(item.filename).is_absolute()
+                  and ".." not in pathlib.PurePosixPath(item.filename).parts
+                  and item.file_size < 2_000_000
+                  and not item.is_dir()
+                  for item in members
+              )
+              def once(basename):
+                  matches = [item for item in members
+                             if pathlib.PurePosixPath(item.filename).name == basename]
+                  assert len(matches) == 1, f"one {basename} required"
+                  return json.loads(archive.read(matches[0]))
+              dev = once("dev_receipt.json")
+              native = once("native_report.json")
+          assert dev["git_head"] == "2e75a56d66c9dd32046719d5d1b9f6ff7cd539cc"
+          assert dev["run_id"] == "e7d91ef52b7a462bb622a844f8a942f7"
+          assert dev["status"] == "COMPLETED"
+          assert dev["classification"] == "DEV_ONLY"
+          assert dev["session_id"] == native["session_id"]
+          assert dev["dev_self_world_input"] == "SOURCE_BOUND"
+          assert dev["dev_self_world_review"] == "undetermined"
+          results = review_s49_action_self_world_report(native)
+          assert len(results) == 2
+          summary = {
+              "classification": "DEV_ONLY_RETROSPECTIVE_NO_NEW_WORLD",
+              "source_run": 39105927208,
+              "source_artifact_id": 12128397812,
+              "source_artifact_sha256": source_sha,
+              "source_session": native["session_id"],
+              "source_action_count": len(native["actual_native_actions"]),
+              "retrospective_reviews": results,
+              "new_world_starts": 0,
+              "additional_actions": 0,
+              "prospective_live_prediction_attested": False,
+              "s17_feedback_granted": False,
+              "s10_learning_committed": False,
+              "r_qualified": False,
+              "v_science": False,
+          }
+          (root / "stage-k-result.json").write_text(
+              json.dumps(summary, indent=2, sort_keys=True) + "\n"
+          )
+          print(json.dumps(summary, sort_keys=True))
+          # Outcome UNKNOWN is a valid conservative evidence classification;
+          # do not turn it into MATCH for a green workflow.
+          assert any(r["status"] in ("match", "mismatch") for r in results), (
+              "source replay valid, but no positive same-target successor"
+          )
+          PY
+      - name: Preserve retrospective results, including incomplete and failed
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selfworld-stage-k-source-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.STAGE_K_ROOT }}/stage-k-result.json
           if-no-files-found: warn
           retention-days: 30
 
