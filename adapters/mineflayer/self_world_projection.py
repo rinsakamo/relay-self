@@ -5,6 +5,8 @@ This adapter does not peek at other Self memory, intentions or prediction.
 """
 from __future__ import annotations
 
+from dataclasses import replace
+
 import json
 from dataclasses import replace
 
@@ -18,6 +20,8 @@ from adapters.mineflayer.present_projection import (
     MinecraftPresent,
     project_mineflayer_present,
 )
+from adapters.mineflayer.python_protocol import _decode_snapshot
+from adapters.mineflayer.self_action_evidence import verify_native_action_evidence
 from relay_self.action import ActionLifecycle
 from relay_self.action_feedback import (
     ActionFeedbackCriterion,
@@ -27,6 +31,12 @@ from relay_self.action_feedback import (
 from relay_self.action_outcome import (
     ActionOutcomeDisposition,
     ActionOutcomeInterpretation,
+)
+from relay_self.prediction import (
+    PredictionState,
+    StateVariable,
+    TransitionRule,
+    predict_transition,
 )
 from relay_self.prediction import (
     PredictionState,
@@ -45,6 +55,9 @@ from relay_self.self_world import (
     compose_self_world_view,
     WorldPredictionReview,
     WorldPredictionReviewStatus,
+    WorldForecast,
+    WorldScenario,
+    compose_self_world_view,
     review_self_world_prediction,
 )
 
@@ -281,4 +294,104 @@ def review_self_world_s15_action_frames(
     return review_self_world_prediction(
         before, after, scenario_id=scenario.scenario_id,
         variable_key="entity_label", max_native_seq_gap=64,
+    )
+
+
+def review_saved_s16_action_self_world(
+    evidence: dict[str, object], *,
+    action_id: str,
+    session_id: str,
+    movement_m: float,
+    target_entity_id: int,
+    observer_id: str = "self-demo-live-observer",
+    max_native_seq_gap: int = 64,
+) -> WorldPredictionReview:
+    """Review two ALREADY captured S16 native before/after frames; no World IO.
+
+    A one-step fixed entity-label hypothesis is made retrospectively, not
+    proven to have been predicted prior to physical execution. No causality,
+    reward, learning, or live L2 competence is inferred from MATCH/MISMATCH.
+    The 's16-evidence-...' refs identify receipt fields, NOT a native
+    request_id on the original Action-internal observations.
+    """
+    verify_native_action_evidence(
+        evidence, action_id=action_id, session_id=session_id, movement_m=movement_m,
+    )
+    if type(target_entity_id) is not int or target_entity_id < 0:
+        raise InvalidSelfWorldData("exact externally selected entity ID required")
+
+    def native_world(frame_name: str) -> SelfWorldView:
+        frame = evidence[frame_name]
+        raw = frame["snapshot"]
+        # Original S16 asdict uses entity_id/entity_type whereas canonical
+        # protocol decoder uses id/type; do not invent any entity or fact.
+        native = _decode_snapshot({
+            **raw,
+            "nearby_entities": [
+                {
+                    "id": e["entity_id"], "name": e["name"],
+                    "type": e["entity_type"], "distance": e["distance"],
+                    "position": e["position"],
+                }
+                for e in raw["nearby_entities"]
+            ],
+        })
+        seq = frame["seq"]
+        entities = tuple(
+            WorldEntityObservation(
+                entity_ref=f"entity-{e.entity_id}", label=e.name,
+                position=(e.position.x, e.position.y, e.position.z),
+                distance_m=e.distance,
+            )
+            for e in native.nearby_entities
+        )
+        coverage = native.nearby_entities_coverage
+        observed = WorldObservation(
+            observer_id=observer_id, session_id=session_id,
+            native_seq=seq,
+            request_id=f"s16-evidence-{action_id}-{frame_name}",
+            entities=entities,
+            coverage_scope=coverage.source_scope,
+            coverage_radius_m=coverage.max_distance,
+            coverage_cap=coverage.max_entities,
+            coverage_candidates=coverage.candidate_count,
+            coverage_truncated=coverage.truncated,
+            provenance=Provenance("mineflayer", f"{session_id}:{seq}"),
+        )
+        return compose_self_world_view(
+            self_id=observer_id, session_id=session_id,
+            epoch_id=f"s16-{action_id}-{frame_name}-{seq}",
+            observation=observed,
+        )
+
+    before = native_world("before_observation")
+    after = native_world("after_observation")
+    entity_ref = f"entity-{target_entity_id}"
+    first = before.observed_entity(entity_ref).value
+    if (not isinstance(first, WorldEntityObservation)
+            or first.label != "zombie"):
+        raise InvalidSelfWorldData("no positive S16 pre-action zombie witness")
+    assert before.observation is not None
+    source = before.observation
+    state = PredictionState(
+        f"s16-label-{action_id}",
+        (StateVariable("entity_label", first.label),),
+        Provenance("selfworld-s16-declared-hypothesis", source.source_ref),
+        source_refs=(source.source_ref, f"target:{entity_ref}"),
+        source_provenance=(source.provenance,),
+    )
+    rule = TransitionRule(
+        "s16-fixed-label-persistence",
+        (StateVariable("entity_label", first.label),),
+        (StateVariable("entity_label", first.label),),
+        Provenance("selfworld-s16-declared-rule", "hypothesis-not-native-law"),
+    )
+    scenario = WorldScenario("s16-label-persistence", observer_id, entity_ref, state)
+    before = replace(
+        before, scenarios=(scenario,),
+        forecasts=(WorldForecast(scenario.scenario_id, predict_transition(state, rule)),),
+    )
+    return review_self_world_prediction(
+        before, after, scenario_id=scenario.scenario_id,
+        variable_key="entity_label", max_native_seq_gap=max_native_seq_gap,
     )
