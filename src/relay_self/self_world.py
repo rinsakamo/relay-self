@@ -495,6 +495,8 @@ def bind_self_world_to_cognition_request(
     request: BoundedChoiceRequest | OpenCognitionRequest,
     *,
     review: WorldPredictionReview | None = None,
+    prior: SelfWorldView | None = None,
+    max_native_seq_gap: int | None = None,
     retained_owner_self_id: str | None = None,
     owner_snapshot: LearningPreferenceState | None = None,
     retained_read: RetainedPreferenceRead | None = None,
@@ -548,6 +550,8 @@ def bind_self_world_to_cognition_request(
             ], provenance,
         ),
     ]
+    if review is None and (prior is not None or max_native_seq_gap is not None):
+        raise InvalidSelfWorldData("unpaired prior prediction-review parameters")
     if review is not None:
         if not isinstance(review, WorldPredictionReview):
             raise InvalidSelfWorldData("prediction review must be typed")
@@ -560,6 +564,20 @@ def bind_self_world_to_cognition_request(
             or review.observation_provenance != source.provenance
         ):
             raise InvalidSelfWorldData("stale, foreign or unbound prediction review")
+        # A review is a caller-provided value, not a capability token. Recompute
+        # it from the earlier forecast and the exact current source before
+        # exposing even read-only mismatch claims to bounded/L2 cognition.
+        if prior is None or max_native_seq_gap is None:
+            raise InvalidSelfWorldData(
+                "prediction review requires prior view and native seq bound"
+            )
+        verified = review_self_world_prediction(
+            prior, view, scenario_id=review.scenario_id,
+            variable_key=review.variable_key,
+            max_native_seq_gap=max_native_seq_gap,
+        )
+        if review != verified:
+            raise InvalidSelfWorldData("forged or mismatched prediction review")
         items.append(CognitionDatum.from_value(
             "self_world_prediction_review",
             {
