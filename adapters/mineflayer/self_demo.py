@@ -826,6 +826,17 @@ def _dev_run(args: argparse.Namespace) -> int:
         if stage_r:
             owner = native.get("stage_r_owner")
             trace = native.get("stage_r_decision_revisions")
+            sources = native.get("source_pair_trace")
+            actions = native.get("actual_native_actions")
+            commit = owner.get("commit_source") if isinstance(owner, dict) else None
+            original = (
+                actions[0] if isinstance(actions, list) and len(actions) == 2
+                else None
+            )
+            next_source = (
+                sources[2] if isinstance(sources, list) and len(sources) == 3
+                else None
+            )
             certified = (
                 code == 0
                 and native.get("status") == "PASS"
@@ -839,6 +850,21 @@ def _dev_run(args: argparse.Namespace) -> int:
                 and owner.get("joint_l0_s14_owner_identity") is True
                 and owner.get("operator_s10_grants") == 1
                 and owner.get("s10_hold_commits") == 1
+                and isinstance(commit, dict)
+                and isinstance(original, dict)
+                and isinstance(next_source, dict)
+                and commit.get("terminal_action_id") == original.get("action")
+                and commit.get("terminal_after_native_seq") ==
+                original.get("execution_evidence", {}).get(
+                    "after_observation", {},
+                ).get("seq")
+                and commit.get("next_source_probe_seq") == next_source.get("probe_seq")
+                and commit.get("next_source_request_id") ==
+                f"s49-actual:{native.get('session_id')}:event-{next_source.get('event_seq')}"
+                and commit.get("s10_commit_revision") == 2
+                and commit.get("s10_authority_source") == "s49-dev-learning-owner"
+                and isinstance(commit.get("feedback_id"), str)
+                and commit["feedback_id"] != ""
                 and owner.get("original_action_closures") == 2
                 and owner.get("pending_unsealed_or_unknown") is False
                 and owner.get("grant_independent_external_attestation") is False
