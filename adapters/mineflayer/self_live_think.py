@@ -20,9 +20,8 @@ from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackDisplacementAdapter,
     LoopbackTransportConfig,
 )
-from relay_self.best_effort_displacement import BestEffortDisplacement
-from relay_self.interruption_fence import CognitionContext
 from relay_self.attention import AttentionCriterion
+from relay_self.best_effort_displacement import BestEffortDisplacement
 from relay_self.habit import (
     CueFeature,
     HabitCue,
@@ -30,6 +29,7 @@ from relay_self.habit import (
     HabitRule,
     select_habit,
 )
+from relay_self.interruption_fence import CognitionContext
 from relay_self.prediction import (
     PredictionState,
     StateVariable,
