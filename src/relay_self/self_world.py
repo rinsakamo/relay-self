@@ -17,7 +17,12 @@ from relay_self.attention import (
 )
 from relay_self.belief import BeliefAssessment, BeliefStatus
 from relay_self.persistent_cognition import Memory, PersistentCognition
-from relay_self.prediction import PredictionResult, PredictionState, PredictionStatus
+from relay_self.prediction import (
+    PredictionResult,
+    PredictionState,
+    PredictionStatus,
+    predict_transition,
+)
 from relay_self.provenance import Provenance
 from relay_self.self_body import SelfBodyView
 
@@ -315,6 +320,152 @@ def _observed_attention_candidates(
             ),
         )
         for item in observation.entities
+    )
+
+
+
+class WorldPredictionReviewStatus(str, Enum):
+    MATCH = "match"
+    MISMATCH = "mismatch"
+    UNDETERMINED = "undetermined"
+
+
+@dataclass(frozen=True, slots=True)
+class WorldPredictionReview:
+    """Read-only comparison witness. Not a reward, LRN proposal or BLF update."""
+
+    self_id: str
+    session_id: str
+    prior_epoch_id: str
+    later_epoch_id: str
+    scenario_id: str
+    target_ref: str
+    variable_key: str
+    status: WorldPredictionReviewStatus
+    reason_code: str
+    predicted_value: bool | int | str | None
+    observed_value: bool | int | str | None
+    prior_observation_ref: str
+    later_observation_ref: str
+    prediction_source_provenance: tuple[Provenance, ...]
+    observation_provenance: Provenance
+
+
+def review_self_world_prediction(
+    before: SelfWorldView,
+    after: SelfWorldView,
+    *,
+    scenario_id: str,
+    variable_key: str,
+    max_native_seq_gap: int,
+) -> WorldPredictionReview:
+    """Compare a bounded PRD claim to a *later positive source observation*.
+
+    Only source-attested observables are comparable: entity_visible (True when
+    the target is positively present), entity_label and visible_action. A target
+    omitted by native limited coverage is UNKNOWN, never visible=False.
+    The caller owns timestamp authentication and max-seq-gap qualification.
+    This does not prove that a predicted Action caused the observed result.
+    """
+    if not isinstance(before, SelfWorldView) or not isinstance(
+        after, SelfWorldView
+    ):
+        raise InvalidSelfWorldData("review requires two typed SelfWorld views")
+    _token("scenario_id", scenario_id)
+    _token("variable_key", variable_key)
+    if variable_key not in {"entity_visible", "entity_label", "visible_action"}:
+        raise InvalidSelfWorldData("variable is not an observable exterior field")
+    if type(max_native_seq_gap) is not int or max_native_seq_gap <= 0:
+        raise InvalidSelfWorldData("max_native_seq_gap must be positive integer")
+    if before.self_id != after.self_id or before.session_id != after.session_id:
+        raise InvalidSelfWorldData("foreign observer or session in prediction review")
+    if before.epoch_id == after.epoch_id:
+        raise InvalidSelfWorldData("review requires distinct decision epochs")
+    prior, later = before.observation, after.observation
+    if not isinstance(prior, WorldObservation) or not isinstance(
+        later, WorldObservation
+    ):
+        raise InvalidSelfWorldData("both epochs require typed native Present")
+    if (prior.observer_id != before.self_id
+            or later.observer_id != after.self_id
+            or prior.session_id != before.session_id
+            or later.session_id != after.session_id
+            or prior.provenance.source != later.provenance.source
+            or prior.provenance.source != "mineflayer"):
+        raise InvalidSelfWorldData("foreign observation source lineage")
+    if later.native_seq <= prior.native_seq or prior.source_ref == later.source_ref:
+        raise InvalidSelfWorldData("stale or replayed successor observation")
+    if (prior.observed_at_ns is not None
+            and later.observed_at_ns is not None
+            and later.observed_at_ns < prior.observed_at_ns):
+        raise InvalidSelfWorldData("nonmonotonic observation timestamps")
+
+    cases = tuple(x for x in before.scenarios if x.scenario_id == scenario_id)
+    forecasts = tuple(x for x in before.forecasts if x.scenario_id == scenario_id)
+    if len(cases) != 1 or len(forecasts) != 1:
+        raise InvalidSelfWorldData("requires one explicit matching PRD forecast")
+    scenario, forecast = cases[0], forecasts[0]
+    result = forecast.prediction
+    if (scenario.owner_id != before.self_id
+            or result.source_state != scenario.state
+            or result != predict_transition(scenario.state, result.rule)
+            or prior.source_ref not in scenario.state.source_refs
+            or f"target:{scenario.target_ref}" not in scenario.state.source_refs):
+        raise InvalidSelfWorldData("unbound or counterfeit prediction source")
+    if not scenario.target_ref.startswith("entity-"):
+        raise InvalidSelfWorldData("prediction must target external entity ref")
+
+    predicted = None
+    if result.status is PredictionStatus.PREDICTED:
+        assert result.predicted_state is not None
+        variable = result.predicted_state.variable(variable_key)
+        if variable is not None:
+            predicted = variable.value
+
+    observed = None
+    entity = next(
+        (x for x in later.entities if x.entity_ref == scenario.target_ref), None
+    )
+    if entity is not None:
+        if variable_key == "entity_visible":
+            observed = True
+        elif variable_key == "entity_label":
+            observed = entity.label
+        else:
+            observed = entity.visible_action
+
+    gap = later.native_seq - prior.native_seq
+    if gap > max_native_seq_gap:
+        status = WorldPredictionReviewStatus.UNDETERMINED
+        reason = "source_gap_beyond_explicit_bound"
+    elif predicted is None:
+        status = WorldPredictionReviewStatus.UNDETERMINED
+        reason = "prediction_unavailable_or_key_missing"
+    elif observed is None:
+        status = WorldPredictionReviewStatus.UNDETERMINED
+        reason = "target_or_property_unobserved"
+    elif type(predicted) is not type(observed):
+        status = WorldPredictionReviewStatus.UNDETERMINED
+        reason = "incommensurate_prediction_and_observation"
+    else:
+        status = (
+            WorldPredictionReviewStatus.MATCH
+            if predicted == observed else WorldPredictionReviewStatus.MISMATCH
+        )
+        reason = "observed_prediction_match" if (
+            status is WorldPredictionReviewStatus.MATCH
+        ) else "observed_prediction_mismatch"
+
+    return WorldPredictionReview(
+        before.self_id, before.session_id, before.epoch_id, after.epoch_id,
+        scenario_id, scenario.target_ref, variable_key, status, reason,
+        predicted, observed, prior.source_ref, later.source_ref,
+        (
+            scenario.state.provenance,
+            result.rule.provenance,
+            *(scenario.state.source_provenance),
+        ),
+        later.provenance,
     )
 
 
