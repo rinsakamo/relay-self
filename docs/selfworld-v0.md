@@ -354,7 +354,10 @@ existing SelfWorld review / L1 / read-only L2 **input boundary**, not whether
 a real LLM reasoned correctly or changed an action.
 
 The DEV receipt remains `DEV_ONLY` regardless of the native report's
-classification text and records prior/later source refs, review status,
+classification text and cross-checks both prior/later SelfWorld source refs
+against the original S49 `source_pair_trace` (exact event/probe seq + request
+ID), in advancing native order. A forged sidecar cannot qualify merely by
+claiming a valid SelfWorld status. The receipt records review status,
 preconfigured L1 cognitive suggestion, model-attempt count, and source-bound
 input qualification. It fails with `NOT_OBSERVED` if no two-source bounded
 review was established; missing or cross-session sidecar, Action authority,
