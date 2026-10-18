@@ -412,3 +412,16 @@ physical DEV artifact #12128397812, without rerunning the world, after
 focused CI and artifact-byte integrity checks. A verified physical-source
 review can motivate a *separate* future prospective live prediction test.
 The existing Stage J original results and qualification limits are immutable.
+
+### Stage K archive readback — one-shot diagnostic run (2026-10-18)
+
+`[selfworld-stage-k-archive-once]` permits exactly one push-triggered,
+same-HEAD, FAST-CI-gated, read-only review of immutable Stage J artifact
+`12128397812` (upload ZIP SHA256
+`3b127778a8a6a2483a8f30649edbb3334229fb2f2f92cba720f084f36dfc467e`).
+The job uses only saved original `native_report.json` /
+`dev_receipt.json`, never starts Java/Node/Minecraft, and keeps the
+retrospective comparison separate from Stage J's prior-live UNDETERMINED.
+A label-persistence agreement is a **retrospective deterministic source
+comparison**, not evidence of prospective inference, genuine model skill,
+reward, S10 update, or physical causation.
