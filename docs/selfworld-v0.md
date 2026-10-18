@@ -526,3 +526,49 @@ current S10 owner grant and a subsequent real World epoch. Its ON/OFF/sham
 control and stop/cleanup must be separately attested before any R or V
 claim. Do not merge existing PR #634 or rewrite Stage J/K/L evidence merely
 because synthetic Stage M tests passed.
+
+
+## Stage N — original typed S49 closure, read-only S17 (DEV)
+
+Stage M demonstrated the S17->S10->next-epoch dependency ONLY with a
+synthetic Action/Outcome and a fixed test provider. The original physical
+Stage L artifact must not be rewritten as live S17 authority.
+
+Stage N adds an explicitly opt-in `--self-world-typed-closure` that requires
+`--mode DEV --dev-scenario native-selfworld --live-think
+--self-world-live --self-world-prospective`. The normal S49
+`NormalSessionActionExecutor` retains the **only** physical Action
+grant/issuer and original immutable S16 closure. An off-by-default
+context-local observer is called only **after** its existing
+`ActionSupervisor` has reached terminal state. The observer receives
+the original typed `ActionLifecycle`, `ActionOutcomeInterpretation`,
+`WorldConsequence` and correlated original native probe. No report
+is deserialized into Action capabilities, and no second executor is created.
+A failed observer cannot stop L0; its failure is retained and denies Stage N
+DEV certification.
+
+The DEV operator's narrow `StageNDeclaredPolicy` must be fixed before
+World startup: exact native `MOVE_BACKWARD`, observed `OUTCOME` and
+`observed_execution` qualify an existing S17 **HOLD** feedback for
+`risk_weight`. The target/action/binding/session are then bound to the
+actual independently closed Action. The direction is NOT inferred from
+forecast MATCH/MISMATCH, survival success, or reward. The original S17
+`interpret_action_outcome_as_learning_feedback` owns interpretation,
+not the Stage N observer. The source probe is not reissued. Optional errors
+and typed result refs are saved in `stage_n_native_feedback.jsonl`.
+The next read-only native source is observed only via original S49 probes;
+no learned behavior is fed into Action or L0.
+
+There is **no** automatic S10 owner grant, proposal/commit, new learned
+Habit, selected new Action, or real adaptive-effect proof. A HOLD feedback
+is deliberately conservative (it does not alter the retained scalar);
+it demonstrates live *qualified Action-feedback wiring*, not a discovered
+training signal. R qualification, V science, independent STOP ACK and L2
+model-identity attestation remain separate.
+
+The new `selfworld-stage-n-typed-closure-once` GitHub job runs only on a
+new single-use `[selfworld-stage-n-typed-closure-once]` marker commit on
+the S feature branch, after all four required FAST jobs succeed, with a new
+unique disposable World/evidence root. Success and failures preserve a new
+original evidence artifact; previous Stage J/K/L/M runs, grants and
+receipts remain untouched.
