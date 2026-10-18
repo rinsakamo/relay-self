@@ -412,6 +412,7 @@ async def _run_disposable(
     self_world_prospective: bool = False,
     self_world_typed_closure: bool = False,
     self_world_retained_handoff: bool = False,
+    stage_r_dev: bool = False,
 ) -> int:
     # Existing exact S49 host is the *only* issuer. No duplicated event loop,
     # no new Game Action code or arbitrary LLM output -> Action mapping.
@@ -435,6 +436,11 @@ async def _run_disposable(
         )
         stage_n = StageNNativeClosureObserver(StageNDeclaredPolicy())
     stage_o = None
+    if stage_r_dev and (
+        live_model is not None or self_world_live or self_world_prospective
+        or self_world_typed_closure or self_world_retained_handoff
+    ):
+        raise DemoRejected("Stage R original S49 owner DEV uses model-free native only")
     if self_world_retained_handoff:
         if not self_world_typed_closure:
             raise DemoRejected("Stage O requires Stage N typed S17 source")
@@ -469,10 +475,15 @@ async def _run_disposable(
         await live_observer.observe(reading)
 
     previous = os.environ.get("S49_REAL_SERVER_CI")
+    previous_r = os.environ.get("S49_STAGE_R_DEV_ONLY")
     os.environ["S49_REAL_SERVER_CI"] = "1"
+    if stage_r_dev:
+        os.environ["S49_STAGE_R_DEV_ONLY"] = "1"
     try:
         if live_observer is None:
-            return await qualify(report_path, server_log)
+            return await qualify(
+                report_path, server_log, stage_r_dev=stage_r_dev,
+            )
         if stage_n is None:
             return await qualify(report_path, server_log, live_probe=observed_source)
         from adapters.mineflayer.normal_action import (
@@ -528,6 +539,10 @@ async def _run_disposable(
             # host model calls=0 or infer a new native Action permission.
             live_row = await live_observer.close()
             _write_trace(report_path.parent / "live_l2.jsonl", (live_row,))
+        if previous_r is None:
+            os.environ.pop("S49_STAGE_R_DEV_ONLY", None)
+        else:
+            os.environ["S49_STAGE_R_DEV_ONLY"] = previous_r
         if previous is None:
             os.environ.pop("S49_REAL_SERVER_CI", None)
         else:
@@ -609,6 +624,15 @@ def _dev_run(args: argparse.Namespace) -> int:
         prospective = getattr(args, "self_world_prospective", False)
         typed_closure = getattr(args, "self_world_typed_closure", False)
         retained_handoff = getattr(args, "self_world_retained_handoff", False)
+        stage_r = getattr(args, "self_world_stage_r_dev", False)
+        if type(stage_r) is not bool or (
+            stage_r and (
+                scenario != "native" or prospective or typed_closure
+                or retained_handoff or args.live_think or args.think
+                or getattr(args, "self_world_live", False)
+            )
+        ):
+            raise DemoRejected("Stage R requires exclusive model-free native DEV scenario")
         if type(retained_handoff) is not bool or (
             retained_handoff and (not typed_closure or not live_selfworld)
         ):
@@ -732,6 +756,7 @@ def _dev_run(args: argparse.Namespace) -> int:
             else:
                 code = asyncio.run(_run_disposable(
                     root / "native_report.json", root / "minecraft_server.log",
+                    stage_r_dev=stage_r,
                 ))
         native = json.loads((root / "native_report.json").read_text())
         if scenario == "b1-local-adaptation":
@@ -798,6 +823,43 @@ def _dev_run(args: argparse.Namespace) -> int:
                 for e, pickup in zip(epochs, pickups)
                 if isinstance(e, dict)
             )
+        if stage_r:
+            owner = native.get("stage_r_owner")
+            trace = native.get("stage_r_decision_revisions")
+            certified = (
+                code == 0
+                and native.get("status") == "PASS"
+                and native.get("classification") == "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
+                and native.get("learning_in_world") is True
+                and isinstance(owner, dict)
+                and owner.get("original_session_id") == native.get("session_id")
+                and owner.get("initial_revision") == 1
+                and owner.get("current_revision") == 2
+                and owner.get("current_value") == 4
+                and owner.get("joint_l0_s14_owner_identity") is True
+                and owner.get("operator_s10_grants") == 1
+                and owner.get("s10_hold_commits") == 1
+                and owner.get("original_action_closures") == 2
+                and owner.get("pending_unsealed_or_unknown") is False
+                and owner.get("grant_independent_external_attestation") is False
+                and owner.get("hold_reward_or_policy_gain") is False
+                and owner.get("additional_action_issuer") is False
+                and isinstance(trace, list)
+                and [r.get("retained_revision") for r in trace] == [1, 1, 2]
+                and [r.get("retained_value") for r in trace] == [4, 4, 4]
+                and [r.get("selected") for r in trace] == ["WAIT", "MOVE_AWAY", "MOVE_AWAY"]
+            )
+            receipt["dev_stage_r_owner"] = (
+                "S49_ONE_WRITER_HOLD_REV2" if certified else "NOT_CERTIFIED"
+            )
+            receipt["dev_stage_r_s10_commits"] = (
+                owner.get("s10_hold_commits") if isinstance(owner, dict) else None
+            )
+            receipt["dev_stage_r_issuer_independently_attested"] = False
+            receipt["dev_stage_r_policy_adaptation_proven"] = False
+            receipt["dev_stage_r_native_trace"] = "native_report.json"
+            if not certified:
+                code = 1
         if scenario == "b0-ground":
             # Read-only projection of source; NOT independent R qualification.
             acquisition = native.get("ground_pickup")
@@ -1200,6 +1262,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="DEV-only S49 original S16 typed terminal readback and S17 HOLD")
     parser.add_argument("--self-world-retained-handoff", action="store_true",
                         help="DEV-only original S49 L0 retained owner identity readback")
+    parser.add_argument("--self-world-stage-r-dev", action="store_true",
+                        help="model-free native DEV ONLY: original S49 single-writer S10 HOLD")
     parser.add_argument("--model-alias", help="explicit pre-existing loopback model alias")
     parser.add_argument("--model-port", type=int, help="existing localhost OpenAI-compatible port")
     parser.add_argument("--model-timeout", type=float, default=12.0)
@@ -1223,7 +1287,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--dev-scenario/--b1-retention require --mode DEV")
 
     if (args.self_world_prospective or args.self_world_typed_closure
-            or args.self_world_retained_handoff) and not args.mode:
+            or args.self_world_retained_handoff or args.self_world_stage_r_dev
+    ) and not args.mode:
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="PROSPECTIVE_REQUIRES_EXPLICIT_DEV",
             model_calls=0, actual_actions=0,
