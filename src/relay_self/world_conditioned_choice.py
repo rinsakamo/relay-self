@@ -15,7 +15,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     NativeThreat,
     _native_threat,
 )
-from relay_self.learning import LearningPreferenceState
+from relay_self.learning import LearningCommitResult, LearningPreferenceState
 from relay_self.planning import (
     PlanCandidate,
     PlanFeature,
@@ -62,6 +62,67 @@ def select_world_conditioned_choice(
     expected_session_id: str,
     expected_entity_id: int,
 ) -> WorldConditionedChoice:
+    """S42/S49 frozen rev1/value4 entry point; deliberately unchanged."""
+    return _select_world_conditioned_choice(
+        native, retained,
+        expected_session_id=expected_session_id,
+        expected_entity_id=expected_entity_id,
+        required_revision=1, required_value=4,
+    )
+
+
+def select_stage_q_dev_committed_world_choice(
+    native: NativeThreat,
+    retained: LearningPreferenceState,
+    *,
+    commit: LearningCommitResult,
+    original_owner: LearningPreferenceState,
+    expected_session_id: str,
+    expected_entity_id: int,
+) -> WorldConditionedChoice:
+    """DEV/OFFLINE: run SAME S42 scoring on exact S10-committed successor.
+
+    This doesn't authorize an Action, replace the frozen original L0's owner,
+    independently authenticate an authority issuer, or admit an S14 execution.
+    """
+    if (
+        not isinstance(commit, LearningCommitResult)
+        or not isinstance(original_owner, LearningPreferenceState)
+        or commit.previous_state is not original_owner
+        or commit.new_state is not retained
+        or commit.new_state is original_owner
+        or commit.new_state.last_update is not commit.record
+        or commit.proposal.expected_revision != original_owner.revision
+        or commit.proposal.expected_value != original_owner.value
+        or commit.proposal.proposed_value != retained.value
+        or commit.proposal.feedback.feedback_id != commit.record.feedback_id
+        or commit.record.previous_revision != original_owner.revision
+        or commit.record.committed_revision != retained.revision
+        or retained.target_id != original_owner.target_id
+        or retained.revision != original_owner.revision + 1
+        or original_owner.target_id != "risk_weight"
+        or original_owner.revision != 1
+        or original_owner.value != 4
+    ):
+        raise WorldChoiceRejected("unqualified Stage Q exact S10 owner successor")
+    return _select_world_conditioned_choice(
+        native, retained,
+        expected_session_id=expected_session_id,
+        expected_entity_id=expected_entity_id,
+        required_revision=retained.revision,
+        required_value=retained.value,
+    )
+
+
+def _select_world_conditioned_choice(
+    native: NativeThreat,
+    retained: LearningPreferenceState,
+    *,
+    expected_session_id: str,
+    expected_entity_id: int,
+    required_revision: int,
+    required_value: int,
+) -> WorldConditionedChoice:
     """One frozen projection of real distance onto original finite PLAN.
 
     WORLD distance is the only varying comparison input: close WAIT cost
@@ -84,8 +145,8 @@ def select_world_conditioned_choice(
         or native.distance_m <= 0
         or native.distance_m > 16
         or retained.target_id != "risk_weight"
-        or retained.revision != 1
-        or retained.value != 4
+        or retained.revision != required_revision
+        or retained.value != required_value
     ):
         raise WorldChoiceRejected("exact live probe and frozen governed rev1 required")
     # Validate complete registry, exact request and real positional geometry
