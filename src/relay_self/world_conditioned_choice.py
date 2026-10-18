@@ -211,8 +211,16 @@ def select_stage_t_dev_directional_world_choice(
         typed_s17.provenance.reference
         != f"{native.observation.session_id}:{typed_s17.action_id}"
         or typed_s17.feedback.provenance != typed_s17.provenance
-        or typed_s17.action_id.removeprefix("s49-native-move-")
-        != typed_s17.criterion_id.split(":")[-1].split("-")[-1]
+        or typed_s17.criterion_id.split(":")[1]
+        != native.observation.session_id
+        or typed_s17.criterion_id.split(":")[2]
+        != typed_s17.action_id.removeprefix("s49-native-move-")
+        or typed_s17.criterion_id.split(":")[3]
+        != (
+            "separation_increased"
+            if typed_s17.feedback.direction is FeedbackDirection.INCREASE
+            else "separation_decreased"
+        )
     ):
         raise WorldChoiceRejected("Stage T feedback native session mismatch")
     return _select_world_conditioned_choice(
