@@ -11,11 +11,11 @@ from typing import Any
 
 from adapters.mineflayer.normal_action import NormalRetainedOwnerReadback
 from adapters.mineflayer.python_protocol import MineflayerObservation
-from relay_self.epoch_continuation import read_retained_preference
 from relay_self.action_feedback import (
     LearningFeedbackInterpretation,
     LearningFeedbackInterpretationStatus,
 )
+from relay_self.epoch_continuation import read_retained_preference
 from relay_self.learning import (
     FeedbackDirection,
     LearningPreferenceState,
