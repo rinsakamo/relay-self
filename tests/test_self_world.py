@@ -675,13 +675,13 @@ def test_s17_explicit_feedback_from_mismatch_cannot_commit_learning():
         interpret_self_world_mismatch_as_s17_feedback,
     )
     from relay_self.action_feedback import LearningFeedbackInterpretationStatus
-    from relay_self.self_world import WorldPredictionReviewStatus
     from relay_self.learning import (
         FeedbackDirection,
         MissingLearningAuthority,
         commit_learning_update,
         propose_learning_update,
     )
+    from relay_self.self_world import WorldPredictionReviewStatus
 
     s17, prior, current, action, outcome, consequence = synthetic_s17_world_review_chain()
     original = s17.learning_state()
