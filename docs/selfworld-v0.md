@@ -425,3 +425,51 @@ retrospective comparison separate from Stage J's prior-live UNDETERMINED.
 A label-persistence agreement is a **retrospective deterministic source
 comparison**, not evidence of prospective inference, genuine model skill,
 reward, S10 update, or physical causation.
+
+## Stage L — prospectively sealed S49 native observation -> S16 review
+
+Stage K reconstructed the label-persistence baseline AFTER physical execution. It
+must never be used to assert prospective capability. Stage L supplies a new,
+explicitly opt-in `--self-world-prospective` flag for the existing
+`--mode DEV --dev-scenario native-selfworld --live-think --self-world-live`.
+The flag is disallowed for non-DEV and non-SelfWorld scenarios. It never
+changes S49, grants an Action or creates a second observation/LLM route.
+
+The existing S49 `live_probe` receives an already-correlated native
+`MineflayerObservation` **before the S49 host selects/executes an Action**.
+A product-only source observer builds an existing typed `SelfWorldView` and
+`PredictionState/TransitionRule` for the one positively observed zombie.
+The fixed, deliberately weak rule is `entity_label: zombie -> zombie`; this
+rule is **not learned** and it does not encode Action effects. Its original
+observer/session/event/probe/request/target IDs, original bounded coverage,
+source ref and predicted value are appended to a fresh exclusive
+`stage_l_prospective.jsonl` with hash chaining and an `fsync` **before the
+callback returns to S49**. Failure of this optional product recorder is
+contained and cannot veto L0. Ordinary Stage J mode does not create it.
+
+Only after S49 has finished can `verify_prospective_native_reviews`
+compare those sealed source claims to independently saved S49 event/probe
+source pairs, original decision target/issued flag, and S16 native
+before/dispatch/cleanup/after observations. S16 evidence is validated with
+the existing strict `verify_native_action_evidence`. It rejects forged
+hashes, reordered/missing prior records, wrong session/target, invented
+pre-Action source order, and mismatch between the original before snapshot
+and earlier observed subject. The **actual later** bounded observation
+produces MATCH, MISMATCH, or UNDETERMINED using the existing
+`review_self_world_prediction` contract. An unseen target remains
+UNDETERMINED. The existing Stage J L2 model attempt is independent; an
+unreachable model remains UNCONFIRMED, not a failure of source projection.
+
+Source files, checksums, receipts, provider status and the forecast witness
+remain **DEV_ONLY**. A local hash-chain plus a sequential callback is strong
+development evidence of pre-Action software ordering, but is not an
+independent trusted timestamp or native protocol attestation and cannot
+demonstrate that the Self learned an effective model, acted because of a
+prediction, or deserved S17 reward. S17 Feedback, S10 commit, retained Habit,
+other-Self private data and R/V privileges are all absent.
+
+A prospective one-shot job is gated by same-HEAD FAST 4/4 CI and commit
+marker `[selfworld-stage-l-dev-once]`. It uses one NEW isolated disposable
+Minecraft World and preserves the complete Stage L original evidence on
+success or failure; it does not reuse the consumed Stage J physical grant.
+No SCIENCE status can be inferred from this development check.
