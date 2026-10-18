@@ -114,7 +114,7 @@ def test_stage_r_s49_single_writer_uses_later_source_and_keeps_one_action_owner(
     assert not summary["grant_independent_external_attestation"]
     assert not summary["hold_reward_or_policy_gain"]
     assert not summary["additional_action_issuer"]
-    assert executor.supervisor.open_actions == {}
+    assert executor.supervisor.open_actions == ()
     assert host.action_requests == 1
 
 
