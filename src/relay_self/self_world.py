@@ -391,7 +391,9 @@ def review_self_world_prediction(
             or prior.session_id != before.session_id
             or later.session_id != after.session_id
             or prior.provenance.source != later.provenance.source
-            or prior.provenance.source != "mineflayer"):
+            or prior.provenance.source != "mineflayer"
+            or prior.provenance.reference != f"{prior.session_id}:{prior.native_seq}"
+            or later.provenance.reference != f"{later.session_id}:{later.native_seq}"):
         raise InvalidSelfWorldData("foreign observation source lineage")
     if later.native_seq <= prior.native_seq or prior.source_ref == later.source_ref:
         raise InvalidSelfWorldData("stale or replayed successor observation")
