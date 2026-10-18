@@ -257,8 +257,8 @@ def test_stage_j_dev_requires_explicit_mode_and_source_scoped_flags(tmp_path, mo
     assert not a.output_dir.exists()
 
 
-@pytest.mark.parametrize("qualified", (True, False))
-def test_stage_j_dev_is_read_only_and_never_elevates_owner(tmp_path, monkeypatch, qualified):
+@pytest.mark.parametrize(("qualified", "forged"), ((True, False), (False, False), (True, True)))
+def test_stage_j_dev_is_read_only_and_never_elevates_owner(tmp_path, monkeypatch, qualified, forged):
     monkeypatch.setattr(demo.shutil, "which", lambda _: "/tool")
     monkeypatch.setattr(
         demo.subprocess, "run",
@@ -289,8 +289,10 @@ def test_stage_j_dev_is_read_only_and_never_elevates_owner(tmp_path, monkeypatch
             "l0_blocked_on_l2": False,
             "model_attempts": 1 if qualified else 0,
             "self_world_l2_input_bound": qualified,
-            "self_world_prior_source":
-                "present:s-native-j:8:s49-actual:s-native-j:event-7",
+            "self_world_prior_source": (
+                "present:s-native-j:8:s49-actual:s-native-j:event-999"
+                if forged else "present:s-native-j:8:s49-actual:s-native-j:event-7"
+            ),
             "self_world_after_source":
                 "present:s-native-j:19:s49-actual:s-native-j:event-18"
             if qualified else None,
@@ -305,8 +307,11 @@ def test_stage_j_dev_is_read_only_and_never_elevates_owner(tmp_path, monkeypatch
         return 0
 
     monkeypatch.setattr(demo, "_run_disposable", existing_s49)
-    root = tmp_path / ("qualified-input" if qualified else "incomplete-input")
-    assert demo._dev_run(_stage_j_args(root)) == (0 if qualified else 1)
+    root = tmp_path / (
+        "forged-source" if forged else
+        "qualified-input" if qualified else "incomplete-input"
+    )
+    assert demo._dev_run(_stage_j_args(root)) == (0 if qualified and not forged else 1)
     assert calls == [(("stage-j-backend-not-attested", 16559, 1.0), True)]
     receipt = json.loads((root / "dev_receipt.json").read_text())
     assert receipt["mode"] == "DEV"
@@ -320,11 +325,11 @@ def test_stage_j_dev_is_read_only_and_never_elevates_owner(tmp_path, monkeypatch
     assert receipt["source_scope"] == "S49_OWNER_DIAGNOSTIC_NOT_DEV_QUALIFICATION"
     assert receipt["native_actions"] == 2
     assert receipt["dev_self_world_input"] == (
-        "SOURCE_BOUND" if qualified else "NOT_OBSERVED"
+        "SOURCE_BOUND" if qualified and not forged else "NOT_OBSERVED"
     )
-    assert receipt["dev_self_world_native_pair_verified"] is qualified
+    assert receipt["dev_self_world_native_pair_verified"] is (qualified and not forged)
     assert receipt["dev_self_world_model_identity_verified"] is False
-    assert receipt["status"] == ("COMPLETED" if qualified else "FAILED")
+    assert receipt["status"] == ("COMPLETED" if qualified and not forged else "FAILED")
     assert (root / "native_report.json").is_file()
     assert (root / "live_l2.jsonl").is_file()
     assert (root / "SHA256SUMS").is_file()
