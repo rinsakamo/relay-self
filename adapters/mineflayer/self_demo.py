@@ -346,6 +346,7 @@ def _write_trace(path: Path | None, rows: tuple[dict[str, object], ...]) -> None
 async def _run_disposable(
     report_path: Path, server_log: Path, *,
     live_model: tuple[str, int, float] | None = None,
+    self_world_live: bool = False,
 ) -> int:
     # Existing exact S49 host is the *only* issuer. No duplicated event loop,
     # no new Game Action code or arbitrary LLM output -> Action mapping.
@@ -357,6 +358,7 @@ async def _run_disposable(
 
         live_observer = LiveL2Observer(
             model=live_model[0], port=live_model[1], timeout_s=live_model[2],
+            self_world_live=self_world_live,
         )
     previous = os.environ.get("S49_REAL_SERVER_CI")
     os.environ["S49_REAL_SERVER_CI"] = "1"
@@ -447,7 +449,7 @@ def _dev_run(args: argparse.Namespace) -> int:
             raise DemoRejected("retention OFF is B1 scenario only")
         if args.confirm != CONFIRM or not args.run_disposable:
             raise DemoRejected("DEV requires disposable opt-in and exact confirmation")
-        if args.think or args.live_think or args.reflect_report or args.smoke:
+        if args.think or args.live_think or args.reflect_report or args.smoke or args.self_world_live:
             raise DemoRejected("DEV accepts only the existing model-free disposable route")
         if args.retry_of is not None and (
             len(args.retry_of) != 32 or any(c not in "0123456789abcdef" for c in args.retry_of)
@@ -687,6 +689,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="one L2 commentary AFTER a completed real native run, never an Action")
     parser.add_argument("--live-think", action="store_true",
                         help="one L2 model attempt DURING native World; L0 remains independent")
+    parser.add_argument("--self-world-live", action="store_true",
+                        help="opt-in two-source SelfWorld L1/L2 read-only live sidecar")
     parser.add_argument("--model-alias", help="explicit pre-existing loopback model alias")
     parser.add_argument("--model-port", type=int, help="existing localhost OpenAI-compatible port")
     parser.add_argument("--model-timeout", type=float, default=12.0)
@@ -709,6 +713,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.dev_scenario != "native" or args.b1_retention != "on":
         parser.error("--dev-scenario/--b1-retention require --mode DEV")
 
+    if args.self_world_live and not args.live_think:
+        print(json.dumps(_row(
+            "blocked", "NO_WORLD_USED", reason="SELF_WORLD_REQUIRES_LIVE_L2",
+            model_calls=0, actual_actions=0,
+        ), sort_keys=True))
+        return 2
     if args.think and args.live_think:
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="TWO_MODEL_ATTEMPTS_DENIED",
@@ -867,6 +877,7 @@ def main(argv: list[str] | None = None) -> int:
                 code = asyncio.run(_run_disposable(
                     report_file, server_log,
                     live_model=(args.model_alias, args.model_port, args.model_timeout),
+                    self_world_live=args.self_world_live,
                 ))
             else:
                 code = asyncio.run(_run_disposable(report_file, server_log))
@@ -891,7 +902,12 @@ def main(argv: list[str] | None = None) -> int:
                         or row.get("session") != trace[0]["session"]
                         or row.get("model_attempts") not in (0, 1)
                         or row.get("authorized_actions") != 0
-                        or row.get("l2_used_as_action") is not False):
+                        or row.get("l2_used_as_action") is not False
+                        or row.get("self_world_live") is not args.self_world_live
+                        or (args.self_world_live and (
+                            row.get("self_world_l2_input_bound") is True
+                            and row.get("model_attempts") != 1
+                        ))):
                     raise DemoRejected("live L2 receipt contradicts original S49")
                 trace = (*trace, row)
             if args.think:
