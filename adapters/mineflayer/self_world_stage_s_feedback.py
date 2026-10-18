@@ -81,15 +81,22 @@ class StageSSeparationAssessment:
     claimed_survival_gain: bool = False
 
 
+def _require_complete_registry(
+    reading: MineflayerObservation, rule: StageSPredeclaredSeparationRule,
+) -> None:
+    coverage = reading.snapshot.nearby_entities_coverage
+    if (coverage.truncated or coverage.source_scope != rule.source_scope
+            or coverage.candidate_count != len(reading.snapshot.nearby_entities)
+            or coverage.max_distance != 16):
+        raise StageSFeedbackRejected("native registry scope or completeness lost")
+
+
 def _distance_to_target(
     reading: MineflayerObservation, entity_id: int, rule: StageSPredeclaredSeparationRule,
 ) -> float | None:
+    _require_complete_registry(reading, rule)
     snap = reading.snapshot
     coverage = snap.nearby_entities_coverage
-    if (coverage.truncated or coverage.source_scope != rule.source_scope
-            or coverage.candidate_count != len(snap.nearby_entities)
-            or coverage.max_distance != 16):
-        raise StageSFeedbackRejected("native registry scope or completeness lost")
     candidates = [e for e in snap.nearby_entities
                   if e.entity_id == entity_id and e.name == "zombie"]
     if len(candidates) > 1:
@@ -147,11 +154,17 @@ def assess_stage_s_original_separation(
         raise StageSFeedbackRejected("genuine terminal/S16 execution lineage absent")
     before, after = world.before_observation, world.after_observation
     if (before.session_id != sid or after.session_id != sid
-            or not original.seq < after.seq
-            or not before.seq < after.seq
+            or not original.seq < before.seq < after.seq
             or before.provenance.source != "mineflayer"
             or after.provenance.source != "mineflayer"):
         raise StageSFeedbackRejected("foreign or noncausal native execution frames")
+    _require_complete_registry(original, rule)
+    _require_complete_registry(before, rule)
+    _require_complete_registry(after, rule)
+    old_pos, new_pos = before.snapshot.position, after.snapshot.position
+    observed_motion = math.hypot(new_pos.x - old_pos.x, new_pos.z - old_pos.z)
+    if not math.isclose(observed_motion, world.movement_distance, rel_tol=0, abs_tol=1e-6):
+        raise StageSFeedbackRejected("claimed movement differs from native positions")
     target = [e for e in original.snapshot.nearby_entities if e.name == "zombie"]
     if len(target) != 1 or target[0].entity_id < 0:
         return StageSSeparationAssessment(
