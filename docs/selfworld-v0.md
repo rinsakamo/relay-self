@@ -369,3 +369,14 @@ reporting code**, not physical execution. Physical DEV must additionally
 attest server/client cleanup, source continuity and native probe receipts.
 Independent R qualification and V science remain separate gates; real
 S17/S10 causally retained updating is not part of this Stage J check.
+
+### Prospective one-shot DEV run gate (2026-10-18)
+
+The one-time push marker `[selfworld-stage-j-dev-once]` is admitted only on
+`self/product-self-one-command-selfbody-20261018`, `github.run_attempt == 1`,
+and *after* all four same-HEAD FAST jobs succeed. The job operates within a
+unique runner-local absolute output root and uploads unchanged DEV receipts,
+native report, logs and sidecar even if the run fails. This is not a reusable
+qualification grant; no rerun is assumed, and the first result controls the
+run's recorded DEV outcome. The model port is explicitly unverified, so
+this run measures native-source input binding rather than model inference.
