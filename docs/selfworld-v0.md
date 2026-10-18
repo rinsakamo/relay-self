@@ -202,6 +202,44 @@ subsequent epoch reuse, independent R physical qualification, and V
 pre-registered adaptive-effect comparison. Existing L0 native
 probe/Action-grant loop remains unmodified.
 
+## Stage G — existing L1 Habit / L2 PRD consumption (offline)
+
+`project_self_world_l1_l2_inputs(prior, current, retained, memory_ids,
+scenario_id, variable_key, max_native_seq_gap)` rechecks the **exact
+source-bound** Stage F prediction review. It projects that already-qualified
+MATCH/MISMATCH/UNDETERMINED and the explicitly selected **own retained**
+memory identities into the two *existing* input types:
+
+- `HabitCue` / `CueFeature`: caller's preexisting `select_habit` may
+  match explicit rules for observation/error/memory. SelfWorld does not
+  invent salience, action or habitual preferences, or write new repertoire.
+- `PredictionState` / `StateVariable`: caller's existing PRD
+  `predict_transition` can apply explicit rules to the same source state.
+  Trace retains exact prior/current observation source refs, target ref,
+  PRD rule provenance, and selected Memory's source and integration provenance.
+
+The joined `PersistentCognition.identity.self_id` must equal the current
+observer, every requested `memory_id` must belong to that snapshot and be
+present **identically** in the current `SelfWorldView.memories` selection.
+Memory free text is **not** automatically parsed into a physical claim,
+rule, cognition reward or event. A missing target is represented as
+`observed_target=False` meaning *not positively seen in the bounded probe*,
+not *absent in the World*. `observed_value` is omitted entirely when missing.
+
+Synthetic tests exercise the **actual** existing `select_habit` and
+`predict_transition` operations: mismatch vs match produces distinct
+read-only outcomes under caller-supplied rules; a private retained Memory
+changes which explicit habit/PRD rule matches; without that exact private
+Memory there is no such selection. Another Self's memory, spoofed view,
+stale/replayed epochs, and UNKNOWN-as-error fail closed.
+
+This is L1-/L2-**mechanism reuse, not live cognition orchestration**.
+It does not plug into the native L0+L2 executor's active asynchronous
+decision loop, allocate real provider calls, commit LRN, create a route,
+admit/authorize an Action, prove an earned habit or show real-world learning.
+The present retained memory must originate from separately governed owner
+updates: SelfWorld cannot write or elevate it.
+
 ## Tests and limits
 
 `tests/test_self_world.py` uses offline synthetic fixtures for two observers
