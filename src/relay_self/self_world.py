@@ -9,6 +9,12 @@ import math
 from dataclasses import dataclass
 from enum import Enum
 
+from relay_self.attention import (
+    AttentionCandidate,
+    AttentionCriterion,
+    AttentionSelection,
+    select_attention,
+)
 from relay_self.belief import BeliefAssessment, BeliefStatus
 from relay_self.persistent_cognition import Memory, PersistentCognition
 from relay_self.prediction import PredictionResult, PredictionState, PredictionStatus
@@ -232,6 +238,84 @@ class SelfWorldView:
                         )
                 break
         return WorldReading(WorldOrigin.UNKNOWN, None, (), ())
+
+
+
+def select_self_world_attention(
+    view: SelfWorldView,
+    criterion: AttentionCriterion,
+) -> AttentionSelection:
+    """Existing ATT over actually observed exterior targets, never simulated facts.
+
+    Target-specific Present does not certify a global census. ATT never reads
+    SelfBody, private Memory, BLF claims, counterfactuals or forecast state.
+    It selects a subset of already visible source refs; it cannot authorize
+    a physical Action or decide whether an unseen target physically exists.
+    """
+    if not isinstance(view, SelfWorldView):
+        raise InvalidSelfWorldData("requires a typed SelfWorldView")
+    if not isinstance(criterion, AttentionCriterion):
+        raise InvalidSelfWorldData("requires existing ATT criterion")
+    return select_attention(_observed_attention_candidates(view), criterion)
+
+
+def resolve_self_world_attention(
+    view: SelfWorldView,
+    selection: AttentionSelection,
+) -> tuple[WorldReading, ...]:
+    """Resolve ATT references ONLY against their exact current view source.
+
+    A stolen A selection, earlier epoch result, or fabricated hypothetical
+    cannot masquerade as B's own observed World. No source payload is stored
+    in ATT, and missing selection matches fail closed.
+    """
+    if not isinstance(view, SelfWorldView) or not isinstance(
+        selection, AttentionSelection
+    ):
+        raise InvalidSelfWorldData("requires typed SelfWorld and ATT selection")
+    allowed = _observed_attention_candidates(view)
+    if selection.considered_count != len(allowed):
+        raise InvalidSelfWorldData("ATT source candidate count mismatch")
+    by_id = {item.candidate_id: item for item in allowed}
+    seen: set[str] = set()
+    result: list[WorldReading] = []
+    for selected in selection.selected:
+        if (selected.candidate_id in seen
+                or by_id.get(selected.candidate_id) != selected):
+            raise InvalidSelfWorldData("foreign, stale or invented ATT source")
+        seen.add(selected.candidate_id)
+        reading = view.observed_entity(selected.payload_ref)
+        if (reading.origin is not WorldOrigin.OBSERVED
+                or view.observation is None
+                or reading.source_provenance != (view.observation.provenance,)):
+            raise InvalidSelfWorldData("ATT result not a current observed entity")
+        result.append(reading)
+    return tuple(result)
+
+
+def _observed_attention_candidates(
+    view: SelfWorldView,
+) -> tuple[AttentionCandidate, ...]:
+    observation = view.observation
+    if observation is None:
+        return ()
+    return tuple(
+        AttentionCandidate(
+            candidate_id=(
+                f"{view.self_id}:{view.session_id}:{view.epoch_id}:"
+                f"{observation.source_ref}:{item.entity_ref}"
+            ),
+            payload_ref=item.entity_ref,
+            provenance=observation.provenance,
+            # Priority is neutral: no invented threat score or salience.
+            priority=0,
+            focus_keys=(
+                "observed", "world-entity", item.entity_ref,
+                *((f"name:{item.label}",) if item.label is not None else ()),
+            ),
+        )
+        for item in observation.entities
+    )
 
 
 def compose_self_world_view(
