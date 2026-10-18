@@ -169,9 +169,15 @@ def test_q_joint_rejects_identity_source_or_intent_confounds(case):
     elif case == "next_wait":
         n = kwargs["native"]
         entity = n.observation.snapshot.nearby_entities[0]
+        origin = n.observation.snapshot.position
+        far_position = replace(
+            entity.position, x=origin.x + 10.0, y=origin.y, z=origin.z,
+        )
         snapshot = replace(
             n.observation.snapshot,
-            nearby_entities=(replace(entity, distance=10.0),),
+            nearby_entities=(
+                replace(entity, distance=10.0, position=far_position),
+            ),
         )
         changed_probe = replace(n.observation, snapshot=snapshot)
         kwargs["stage_p"] = replace(
