@@ -380,3 +380,35 @@ native report, logs and sidecar even if the run fails. This is not a reusable
 qualification grant; no rerun is assumed, and the first result controls the
 run's recorded DEV outcome. The model port is explicitly unverified, so
 this run measures native-source input binding rather than model inference.
+
+## Stage K — retrospective same-target native S16 before/after replay
+
+The three live S49 stimulus identities are **deliberately distinct**; a
+Stage J first/next S49 L0 event pair cannot be promoted to same-entity PRD
+verification. Stage K therefore reuses the original decoded **S16 before +
+after native Action snapshots** already captured in each closed S49 Action
+receipt. This does not send any Minecraft probe or modify the frozen S49
+Action owner. The fixed `entity_label` persistence hypothesis is reconstructed
+**after the run** from a positively observed pre-Action zombie and compared to
+a later source with the exact same native entity ID.
+
+The adapter `review_saved_s16_action_self_world` re-verifies the original
+S16 frame sequence, dispatch, cleanup and horizontal movement against the
+unchanged action evidence; it decodes both snapshots with the canonical native
+snapshot parser. `review_s49_action_self_world_report` separately checks the
+original completed S49 event/action binding. Result statuses may be MATCH,
+MISMATCH or UNDETERMINED; not seeing the same target after the Action is
+**UNDETERMINED**, never presumed absence, death or goal success. The
+`s16-evidence-...` strings are explicitly **local receipt locators**, not
+native wire request IDs.
+
+Crucially, because the hypothesis was reconstructed retrospectively, a
+MATCH or MISMATCH only tests typed evidence comparison. It **cannot** attest
+prospective cognition, actual in-World prediction issued before Action,
+causation, learned S11 Habit, S17 Feedback or S10 learning authority.
+
+First apply this read-only replay to the separately preserved Stage J
+physical DEV artifact #12128397812, without rerunning the world, after
+focused CI and artifact-byte integrity checks. A verified physical-source
+review can motivate a *separate* future prospective live prediction test.
+The existing Stage J original results and qualification limits are immutable.
