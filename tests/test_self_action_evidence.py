@@ -14,6 +14,9 @@ import pytest
 import test_action_feedback_qualification as s17
 import test_self_demo as demo_test
 from adapters.mineflayer import self_demo
+from adapters.mineflayer.self_world_projection import (
+    review_self_world_s15_action_frames,
+)
 from adapters.mineflayer.self_action_evidence import (
     EVIDENCE_SCHEMA,
     NativeEvidenceRejected,
@@ -179,3 +182,101 @@ def test_s49_only_uses_existing_closed_consequence_no_new_probe_or_action():
     text = Path(s49.__file__).read_text(encoding="utf-8")
     assert "capture_native_action_evidence(" in text
     assert '"execution_evidence": capture_native_action_evidence(' in text
+
+
+# Stage K — genuine S15 SOURCE PAIR shape, entirely synthetic here.
+# The only physical instance must be attested by S49's existing Action frames.
+
+
+def _stage_k_evidence(*, later_label="zombie", target_after=True):
+    source = _source()
+    evidence = capture_native_action_evidence(source)
+    for name, label in (("before_observation", "zombie"),
+                        ("after_observation", later_label)):
+        frame = evidence[name]
+        target = {
+            "entity_id": 42, "name": label, "entity_type": "mob",
+            "distance": 2.0, "position": {"x": 2.0, "y": 64, "z": 0.0},
+        }
+        if name == "after_observation" and not target_after:
+            frame["snapshot"]["nearby_entities"] = []
+            frame["snapshot"]["nearby_entities_coverage"]["candidate_count"] = 0
+        else:
+            frame["snapshot"]["nearby_entities"] = [target]
+            frame["snapshot"]["nearby_entities_coverage"]["candidate_count"] = 1
+    return evidence, source
+
+
+@pytest.mark.parametrize(
+    ("later_label", "target_after", "status", "reason"),
+    (
+        ("zombie", True, "match", "observed_prediction_match"),
+        ("skeleton", True, "mismatch", "observed_prediction_mismatch"),
+        ("zombie", False, "undetermined", "target_or_property_unobserved"),
+    ),
+)
+def test_stage_k_existing_s15_native_frame_pair_is_source_bounded(
+    later_label, target_after, status, reason,
+):
+    evidence, source = _stage_k_evidence(
+        later_label=later_label, target_after=target_after,
+    )
+    review = review_self_world_s15_action_frames(
+        evidence, action_id=source.action_id,
+        session_id=source.session_id,
+        movement_m=source.movement_distance,
+        target_entity_id=42, preceding_s49_probe_seq=0,
+    )
+    assert review is not None
+    assert review.status.value == status
+    assert review.reason_code == reason
+    assert review.predicted_value == "zombie"
+    assert review.observed_value == (later_label if target_after else None)
+    assert review.target_ref == "entity-42"
+    assert review.prior_observation_ref != review.later_observation_ref
+    assert review.prior_observation_ref.startswith(
+        f"present:{source.session_id}:1:s15-evidence-{source.action_id}-before"
+    )
+    # These S15 evidence handles are explicitly NOT physical request IDs.
+    assert review.later_observation_ref.endswith(f"{source.action_id}-after")
+
+
+@pytest.mark.parametrize("change", (
+    "foreign_session", "forged_action", "replayed_source",
+    "wrong_target", "missing_before", "wrong_provenance",
+    "invalid_later_snapshot",
+))
+def test_stage_k_forged_or_noncomparable_s15_evidence_denied(change):
+    evidence, source = _stage_k_evidence()
+    target_id, prior_seq = 42, 0
+    if change == "foreign_session":
+        evidence["session_id"] = "other"
+    elif change == "forged_action":
+        evidence["action_id"] = "fake"
+    elif change == "replayed_source":
+        prior_seq = evidence["before_observation"]["seq"]
+    elif change == "wrong_target":
+        target_id = 99
+    elif change == "missing_before":
+        frame = evidence["before_observation"]["snapshot"]
+        frame["nearby_entities"] = []
+        frame["nearby_entities_coverage"]["candidate_count"] = 0
+    elif change == "wrong_provenance":
+        evidence["after_observation"]["provenance"]["reference"] = "alien:5"
+    else:
+        evidence["after_observation"]["snapshot"]["nearby_entities"][0][
+            "entity_id"
+        ] = -1
+    try:
+        review = review_self_world_s15_action_frames(
+            evidence, action_id=source.action_id,
+            session_id=source.session_id,
+            movement_m=source.movement_distance,
+            target_entity_id=target_id,
+            preceding_s49_probe_seq=prior_seq,
+        )
+    except ValueError:
+        assert change not in ("wrong_target", "missing_before")
+    else:
+        assert change in ("wrong_target", "missing_before")
+        assert review is None
