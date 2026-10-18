@@ -86,6 +86,7 @@ def stage_q_dev_joint_choice_admission(
         raise StageQDevBoundaryRejected("different owner, unqualified rev2 or live promotion")
     if (not isinstance(native, NativeThreat)
             or not isinstance(native.observation, MineflayerObservation)
+            or native.observation is not stage_p.following_native_observation
             or native.observation.seq != stage_p.following_native_seq
             or native.request_id != stage_p.following_request_id
             or native.observation.request_id != stage_p.following_request_id
