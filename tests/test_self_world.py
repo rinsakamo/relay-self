@@ -609,3 +609,185 @@ def test_positive_visibility_does_not_imply_global_absence():
     )
     assert unseen.status is WorldPredictionReviewStatus.UNDETERMINED
     assert unseen.observed_value is None
+
+
+def synthetic_s17_world_review_chain():
+    """Re-use the qualified S17 offline Action fixture; no Java/Node I/O."""
+    from adapters.mineflayer.action_outcome import interpret_world_consequence
+    from adapters.mineflayer.present_projection import project_mineflayer_present
+    from adapters.mineflayer.self_world_projection import project_self_world_present
+    from adapters.mineflayer.python_protocol import (
+        MineflayerEntityFact,
+        MineflayerPosition,
+    )
+    import test_action_feedback_qualification as s17
+
+    chain = s17.executed_closed_chain()
+    binding, action, consequence = chain[15], chain[-1], chain[-3]
+    # Supply a complete synthetic native after-probe that actually observes
+    # the target. Re-run existing S16 interpretation, not a free-form result.
+    native_after = consequence.after_observation
+    fact = MineflayerEntityFact(
+        42, "zombie", "mob", 3.0,
+        MineflayerPosition(x=3.0, y=64.0, z=0.2),
+    )
+    snapshot = replace(
+        native_after.snapshot,
+        nearby_entities=(fact,),
+        nearby_entities_coverage=replace(
+            native_after.snapshot.nearby_entities_coverage,
+            candidate_count=1,
+        ),
+    )
+    native_after = replace(native_after, snapshot=snapshot)
+    consequence = replace(consequence, after_observation=native_after)
+    outcome = interpret_world_consequence(
+        chain[-4], binding, consequence,
+        provenance=prov("S16-source-bound-interpretation"),
+    )
+
+    old_present = present(session="s15-session", seq=0)
+    old_observation = project_self_world_present(
+        old_present, observer_id="A", observed_at_ns=100,
+    )
+    old_view = compose_self_world_view(
+        self_id="A", session_id="s15-session", epoch_id="e1",
+        observation=old_observation,
+    )
+    hyp, forecast = anchored_forecast(
+        old_view, "creeper", action_id=action.action_id,
+    )
+    prior = replace(old_view, scenarios=(hyp,), forecasts=(forecast,))
+    after_present = project_mineflayer_present(native_after)
+    current = compose_self_world_view(
+        self_id="A", session_id="s15-session", epoch_id="e2",
+        observation=project_self_world_present(
+            after_present, observer_id="A", observed_at_ns=120,
+        ),
+    )
+    return s17, prior, current, action, outcome, consequence
+
+
+def test_s17_explicit_feedback_from_mismatch_cannot_commit_learning():
+    from adapters.mineflayer.self_world_projection import (
+        interpret_self_world_mismatch_as_s17_feedback,
+    )
+    from relay_self.action_feedback import LearningFeedbackInterpretationStatus
+    from relay_self.self_world import WorldPredictionReviewStatus
+    from relay_self.learning import FeedbackDirection
+
+    s17, prior, current, action, outcome, consequence = synthetic_s17_world_review_chain()
+    original = s17.learning_state()
+    criterion = s17.feedback_criterion(direction=FeedbackDirection.HOLD)
+    review, feedback = interpret_self_world_mismatch_as_s17_feedback(
+        prior, current, scenario_id="source-bound-future",
+        variable_key="entity_label", max_native_seq_gap=10,
+        action=action, outcome=outcome, consequence=consequence,
+        criterion=criterion, provenance=prov("S17-selfworld-interpretation"),
+    )
+    assert review.status is WorldPredictionReviewStatus.MISMATCH
+    assert feedback.status is LearningFeedbackInterpretationStatus.PRODUCED
+    assert feedback.feedback.direction is FeedbackDirection.HOLD
+    assert feedback.feedback.target_id == original.target_id
+    assert original.value == 3 and original.revision == 0
+    assert not hasattr(review, "learning_authority")
+    # Even with actual feedback, existing S10 proposal/commit remain explicit.
+    with pytest.raises(Exception):
+        from relay_self.learning import commit_learning_update
+        commit_learning_update(
+            original, None, None, provenance=prov("cannot-bypass-LRN"),
+        )
+
+
+def test_s17_mismatch_bridge_fails_closed_without_exact_native_lineage():
+    from adapters.mineflayer.self_world_projection import (
+        interpret_self_world_mismatch_as_s17_feedback,
+    )
+    from relay_self.action_outcome import ActionOutcomeDisposition
+
+    s17, prior, current, action, outcome, consequence = synthetic_s17_world_review_chain()
+    args = dict(
+        scenario_id="source-bound-future", variable_key="entity_label",
+        max_native_seq_gap=10, action=action, outcome=outcome,
+        consequence=consequence, criterion=s17.feedback_criterion(),
+        provenance=prov("S17-exact-gate"),
+    )
+
+    matched = replace(prior, forecasts=(
+        WorldForecast(
+            "source-bound-future",
+            predict_transition(
+                prior.scenarios[0].state,
+                replace(
+                    prior.forecasts[0].prediction.rule,
+                    assignments=(StateVariable("entity_label", "zombie"),),
+                ),
+            ),
+        ),
+    ))
+    with pytest.raises(InvalidSelfWorldData, match="only observed mismatch"):
+        interpret_self_world_mismatch_as_s17_feedback(matched, current, **args)
+
+    with pytest.raises(InvalidSelfWorldData, match="unqualified executed"):
+        interpret_self_world_mismatch_as_s17_feedback(
+            prior, current,
+            **{**args, "outcome": replace(
+                outcome, disposition=ActionOutcomeDisposition.UNKNOWN,
+            )},
+        )
+    with pytest.raises(InvalidSelfWorldData, match="lineage mismatch"):
+        interpret_self_world_mismatch_as_s17_feedback(
+            prior, current,
+            **{**args, "outcome": replace(outcome, session_id="other-session")},
+        )
+    with pytest.raises(InvalidSelfWorldData, match="exact Action readback"):
+        interpret_self_world_mismatch_as_s17_feedback(
+            prior,
+            replace(
+                current,
+                observation=replace(
+                    current.observation, coverage_radius_m=12.0,
+                ),
+            ),
+            **args,
+        )
+    with pytest.raises(InvalidSelfWorldData, match="not bound to this Action"):
+        unbound_state = replace(
+            prior.scenarios[0].state,
+            source_refs=(
+                prior.observation.source_ref,
+                "target:entity-42",
+            ),
+        )
+        unbound_scenario = replace(prior.scenarios[0], state=unbound_state)
+        unbound_forecast = WorldForecast(
+            "source-bound-future",
+            predict_transition(
+                unbound_state, prior.forecasts[0].prediction.rule,
+            ),
+        )
+        interpret_self_world_mismatch_as_s17_feedback(
+            replace(
+                prior, scenarios=(unbound_scenario,), forecasts=(unbound_forecast,),
+            ),
+            current, **args,
+        )
+
+
+def test_s17_criterion_not_matched_stays_not_applicable_no_reward_defaults():
+    from adapters.mineflayer.self_world_projection import (
+        interpret_self_world_mismatch_as_s17_feedback,
+    )
+    from relay_self.action_feedback import LearningFeedbackInterpretationStatus
+
+    s17, prior, current, action, outcome, consequence = synthetic_s17_world_review_chain()
+    review, result = interpret_self_world_mismatch_as_s17_feedback(
+        prior, current, scenario_id="source-bound-future",
+        variable_key="entity_label", max_native_seq_gap=10,
+        action=action, outcome=outcome, consequence=consequence,
+        criterion=s17.feedback_criterion(action_ref="DIFFERENT_ACTION"),
+        provenance=prov("S17-unmatched-criterion"),
+    )
+    assert review.reason_code == "observed_prediction_mismatch"
+    assert result.status is LearningFeedbackInterpretationStatus.NOT_APPLICABLE
+    assert result.feedback is None
