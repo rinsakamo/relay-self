@@ -84,6 +84,7 @@ jobs:
               adapters/mineflayer/self_world_epoch_control.py|\
               adapters/mineflayer/self_world_stage_r_owner.py|\
               adapters/mineflayer/self_world_stage_s_feedback.py|\
+              adapters/mineflayer/self_world_stage_t_policy.py|\
               adapters/mineflayer/s49_normal_session_real_ci.py|\
               src/relay_self/self_world.py|\
               src/relay_self/world_conditioned_choice.py|\
@@ -110,6 +111,7 @@ jobs:
               tests/test_self_world_epoch_control.py|\
               tests/test_self_world_stage_r_owner.py|\
               tests/test_self_world_stage_s_feedback.py|\
+              tests/test_self_world_stage_t_policy.py|\
               tests/test_m02_paper_dev.py|\
               tests/test_m02_v8_stopped_world_clone_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
@@ -177,6 +179,7 @@ jobs:
             tests/test_self_world_epoch_control.py \
             tests/test_self_world_stage_r_owner.py \
             tests/test_self_world_stage_s_feedback.py \
+            tests/test_self_world_stage_t_policy.py \
             tests/test_feature_s49_normal_runtime.py \
             tests/test_self_body.py \
             tests/test_self_world.py
