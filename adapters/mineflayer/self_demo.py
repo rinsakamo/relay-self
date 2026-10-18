@@ -409,6 +409,7 @@ async def _run_disposable(
     report_path: Path, server_log: Path, *,
     live_model: tuple[str, int, float] | None = None,
     self_world_live: bool = False,
+    self_world_prospective: bool = False,
 ) -> int:
     # Existing exact S49 host is the *only* issuer. No duplicated event loop,
     # no new Game Action code or arbitrary LLM output -> Action mapping.
@@ -422,13 +423,32 @@ async def _run_disposable(
             model=live_model[0], port=live_model[1], timeout_s=live_model[2],
             self_world_live=self_world_live,
         )
+    witness = None
+    if self_world_prospective:
+        if live_observer is None or not self_world_live:
+            raise DemoRejected("Stage L requires existing SelfWorld live observer")
+        from adapters.mineflayer.self_world_prospective import ProspectiveWitnessWriter
+        witness = ProspectiveWitnessWriter(report_path.parent / "stage_l_prospective.jsonl")
+
+    async def observed_source(reading):
+        if witness is not None:
+            try:
+                # Source is sealed on disk before original S49 can select/issue.
+                witness.record(reading)
+            except (OSError, ValueError, TypeError) as exc:
+                # Advisory record failure must NEVER veto sole L0/Action owner.
+                witness.error = type(exc).__name__
+        await live_observer.observe(reading)
+
     previous = os.environ.get("S49_REAL_SERVER_CI")
     os.environ["S49_REAL_SERVER_CI"] = "1"
     try:
         if live_observer is None:
             return await qualify(report_path, server_log)
-        return await qualify(report_path, server_log, live_probe=live_observer.observe)
+        return await qualify(report_path, server_log, live_probe=observed_source)
     finally:
+        if witness is not None:
+            witness.close()
         if live_observer is not None:
             # Separate product-side L2 receipt, never misstate original S49
             # host model calls=0 or infer a new native Action permission.
@@ -512,6 +532,9 @@ def _dev_run(args: argparse.Namespace) -> int:
         if args.confirm != CONFIRM or not args.run_disposable:
             raise DemoRejected("DEV requires disposable opt-in and exact confirmation")
         live_selfworld = scenario == "native-selfworld"
+        prospective = getattr(args, "self_world_prospective", False)
+        if prospective and (not live_selfworld or type(prospective) is not bool):
+            raise DemoRejected("Stage L prospective forecast requires SelfWorld DEV")
         if live_selfworld:
             if (args.think or args.reflect_report or args.smoke
                     or not getattr(args, "self_world_live", False)
@@ -609,10 +632,12 @@ def _dev_run(args: argparse.Namespace) -> int:
                     retention=getattr(args, "b1_retention", "on") == "on",
                 ))
             elif scenario == "native-selfworld":
+                extra = {"self_world_prospective": True} if prospective else {}
                 code = asyncio.run(_run_disposable(
                     root / "native_report.json", root / "minecraft_server.log",
                     live_model=(args.model_alias, args.model_port, args.model_timeout),
                     self_world_live=True,
+                    **extra,
                 ))
             else:
                 code = asyncio.run(_run_disposable(
@@ -843,6 +868,38 @@ def _dev_run(args: argparse.Namespace) -> int:
                 len(action_reviews) == 2
                 and receipt["dev_self_world_s15_positive_comparisons"] >= 1
             )
+            if prospective:
+                from adapters.mineflayer.self_world_prospective import (
+                    verify_prospective_native_reviews,
+                )
+                path = root / "stage_l_prospective.jsonl"
+                if (not path.is_file() or path.is_symlink()
+                        or path.stat().st_size > 65536):
+                    raise DemoRejected("Stage L pre-Action forecast file missing")
+                # This read happens only after S49 has completed: original
+                # fsynced pre-Action lines + independent typed S16 readback.
+                prospective_reviews = verify_prospective_native_reviews(
+                    native, path.read_bytes(),
+                )
+                positive_count = sum(
+                    r["status"] in ("match", "mismatch")
+                    for r in prospective_reviews
+                )
+                receipt.update(
+                    dev_self_world_prospective="SOURCE_BOUND"
+                    if positive_count > 0 else "UNDETERMINED",
+                    dev_self_world_prospective_witness="stage_l_prospective.jsonl",
+                    dev_self_world_prospective_reviews=prospective_reviews,
+                    dev_self_world_prospective_positive_count=positive_count,
+                    dev_self_world_prospective_s17_feedback=0,
+                    dev_self_world_prospective_s10_commits=0,
+                    dev_self_world_prospective_actions_issued=0,
+                )
+                if code == 0 and positive_count == 0:
+                    code = 1
+                    receipt["dev_self_world_prospective_incomplete"] = (
+                        "NO_POSITIVE_SAME_TARGET_SUCCESSOR_SOURCE"
+                    )
             # Existing S49 may finish without enough positive target probes.
             # Preserve its raw source report but do not certify Stage J input.
             if code == 0 and not qualified_input:
@@ -912,6 +969,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="one L2 model attempt DURING native World; L0 remains independent")
     parser.add_argument("--self-world-live", action="store_true",
                         help="opt-in two-source SelfWorld L1/L2 read-only live sidecar")
+    parser.add_argument("--self-world-prospective", action="store_true",
+                        help="DEV-only pre-Action sealed SelfWorld forecast, no new Action owner")
     parser.add_argument("--model-alias", help="explicit pre-existing loopback model alias")
     parser.add_argument("--model-port", type=int, help="existing localhost OpenAI-compatible port")
     parser.add_argument("--model-timeout", type=float, default=12.0)
@@ -934,6 +993,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.dev_scenario != "native" or args.b1_retention != "on":
         parser.error("--dev-scenario/--b1-retention require --mode DEV")
 
+    if args.self_world_prospective and not args.mode:
+        print(json.dumps(_row(
+            "blocked", "NO_WORLD_USED", reason="PROSPECTIVE_REQUIRES_EXPLICIT_DEV",
+            model_calls=0, actual_actions=0,
+        ), sort_keys=True))
+        return 2
     if args.self_world_live and not args.live_think:
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="SELF_WORLD_REQUIRES_LIVE_L2",
