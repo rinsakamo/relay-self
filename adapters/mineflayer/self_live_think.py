@@ -15,11 +15,11 @@ from typing import Any
 
 from adapters.mineflayer.present_projection import project_mineflayer_present
 from adapters.mineflayer.python_protocol import MineflayerObservation
-from adapters.mineflayer.self_world_projection import project_self_world_present
 from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackDisplacementAdapter,
     LoopbackTransportConfig,
 )
+from adapters.mineflayer.self_world_projection import project_self_world_present
 from relay_self.attention import AttentionCriterion
 from relay_self.best_effort_displacement import BestEffortDisplacement
 from relay_self.habit import (
