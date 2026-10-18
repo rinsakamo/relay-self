@@ -204,7 +204,7 @@ jobs:
     env:
       PYTHONPATH: 'src:tests:.'
       PYTHONDONTWRITEBYTECODE: '1'
-      DEV_ROOT: ${{ runner.temp }}/selfworld-stage-j-${{ github.run_id }}-${{ github.run_attempt }}
+      DEV_ROOT: /tmp/selfworld-stage-j-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
