@@ -307,6 +307,8 @@ that validated context through its existing single S60 model lease. This is
 L2 **input consumption**, not a RelayEngine choice/Action run. The original
 non-SelfWorld live mode behaves as before.
 
+Malformed or unqualified optional SelfWorld source projection is rejected with `SELF_WORLD_INPUT_UNQUALIFIED` and **does not interrupt the existing S49 L0 owner**. This is an observer-side failure, not an L0 or Action veto.
+
 Any newer native probe fences the earlier L2 reply using the existing S60
 owner, including when the provider returns after World advanced. Model
 output is never parsed into `Action`, `LearningFeedback`, S10 commit or
