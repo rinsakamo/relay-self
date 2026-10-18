@@ -658,7 +658,11 @@ def synthetic_s17_world_review_chain():
             candidate_count=1,
         ),
     )
-    native_after = replace(native_after, snapshot=snapshot)
+    # S17's historical fixture lacks a correlated request ID; SelfWorld
+    # must only accept an explicitly correlated native after-probe.
+    native_after = replace(
+        native_after, snapshot=snapshot, request_id="readback-4",
+    )
     consequence = replace(consequence, after_observation=native_after)
     outcome = interpret_world_consequence(
         issued, binding, consequence,
