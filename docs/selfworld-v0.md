@@ -829,3 +829,79 @@ The offline FAST check for the pre-trigger implementation completed 4/4 at
 checks of the marker itself must all pass before one fresh disposable S49
 World can run. Any World success/failure belongs exclusively to the new
 attempt receipt; no earlier J–Q evidence is rewritten or promoted.
+
+## Stage S — prospective separation-based S17 feedback, offline DEV only
+
+**Qualification target:** distinguish *observed physical separation from one
+verified zombie* from mere Action execution and SelfWorld prediction agreement.
+Do not infer survival utility or cognitive adaptation from a signed distance.
+
+The fixed, immutable `StageSPredeclaredSeparationRule` in
+`adapters/mineflayer/self_world_stage_s_feedback.py` is a **candidate
+future-trial criterion**, not a claim that the Stage R trial was
+preregistered. An original S49 `NormalActionClosedReadback` must contain
+a true terminal S16 OUTCOME and `MOVE_BACKWARD/observed_execution`;
+its original S49 request ID, session, action/binding, and native typed
+before and after World observations must agree. Exactly one original
+zombie is required; the **same entity ID** must be observable in the
+original, executor-before and executor-after registered entities.
+All native coverage must be complete and nontruncated; the recorded
+entity.distance must match its reported 3D positions to 1e-6 m.
+Foreign sessions, repeated/scrambled seq, fabricated distance, swapped
+Action/binding, incomplete coverage and duplicate target identities are
+rejected. Missing target in a complete frame → **UNDETERMINED**,
+not HOLD and not a fabricated reward.
+
+The frozen prospective rule computes
+`delta = exact_same_zombie_distance_after - distance_before`:
+- `delta >= +0.100 m`: `SEPARATION_INCREASED → INCREASE` risk_weight.
+- `delta <= -0.100 m`: `SEPARATION_DECREASED → DECREASE` risk_weight.
+- otherwise `NO_RESOLVED_CHANGE → HOLD`.
+Each qualified outcome is passed through the existing *S17 typed*
+`interpret_action_outcome_as_learning_feedback` with full original
+Action/S16/binding lineage. No S10 issuer/commit or Action issuer exists
+in this module. These are local distance/candidate scalar preferences,
+not biological reward, ultimate fitness, independent causal
+consequences, or grounds for SelfWorld prediction-as-reward.
+Threshold 10 cm is a **new heuristic requiring calibration**, not an
+empirically validated effect size. Additional standards must pre-register
+calibration, observation precision and missingness before SCIENCE.
+
+**Historical Stage R artifact retrospective replay only:** the
+unchanged [Stage R artifact #12139674420](https://github.com/rinsakamo/relay-self/actions/runs/39136472105/artifacts/12139674420)
+(the original ZIP digest begins `a7e43d79`; archived files SHA256
+5/5) includes the following exact source-native measurements:
+- `s49-native-move-19`, same zombie ID 3: distance
+  `2.000000000 → 2.166266053 m`, delta `+0.166266053 m`, hence
+  retrospective `INCREASE` under the **new** Stage S criterion.
+- `s49-native-move-48`, same zombie ID 5: distance
+  `2.000000000 → 2.095951300 m`, delta `+0.095951300 m`, hence
+  retrospective `HOLD` under that criterion.
+These observations were collected **BEFORE the Stage S criterion was
+declared**. They are post hoc calibration illustrations, **not**
+prospective Stage S feedback delivered by S17 or any new S10 commit.
+Do not retroactively change Stage R's sole authorized HOLD update,
+relabel its artifact as preregistered, or turn its movement into reward.
+
+The focused synthetic ON/OFF/sham tests require separately supplied
+test-only `LearningUpdateAuthority`; absent grants abort. Original
+rev1/value4 retains identity in OFF. Typed positive candidate with
+synthetic S10 produces rev2/value5, but both old and new near-threat
+choice are still `MOVE_AWAY`; **a changed scalar is NOT a changed
+Action**. A negative-separation candidate proposes rev2/value3, and
+original S42 `World geometry did not determine required route` rejects
+its WAIT near-threat choice. This is a legitimate admission obstacle:
+do not silently bypass S42's frozen near-MOVE invariant, let S14
+admit contradictory Actions, or mint extra Action authority. A fake
+feedback_id can pass S10's *structural* proposal check, so actual Stage
+S deployment additionally requires independent typed S17 evidence and
+an authentic learning issuer: `LearningUpdateAuthority` by itself
+is not an external issuer proof.
+
+**Stage S qualification:** interface/negative-control OFFLINE tests
+may PASS; external learning-grant issuer qualification, physically
+preregistered non-HOLD feedback, policy admitting a changed action,
+causal ON/OFF/sham efficacy, independent R/V Science, and STOP ACK
+attestation **remain unproven**. Keep current #634 Draft open and
+protect historical Stage R runs; no new physical World is necessary
+merely to replay this archive.
