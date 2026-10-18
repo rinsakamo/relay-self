@@ -892,7 +892,8 @@ def test_next_decision_reuses_explicitly_committed_feedback():
     )
     before_req = bind_self_world_to_cognition_request(
         current, choice, _bounded_world_request("before-learning"),
-        review=review, retained_owner_self_id="A",
+        review=review, prior=prior, max_native_seq_gap=10,
+        retained_owner_self_id="A",
         owner_snapshot=old_owner, retained_read=old_read,
     )
 
@@ -912,7 +913,8 @@ def test_next_decision_reuses_explicitly_committed_feedback():
     )
     after_req = bind_self_world_to_cognition_request(
         current, choice, _bounded_world_request("after-learning"),
-        review=review, retained_owner_self_id="A",
+        review=review, prior=prior, max_native_seq_gap=10,
+        retained_owner_self_id="A",
         owner_snapshot=new_owner, retained_read=new_read,
     )
 
@@ -1360,3 +1362,83 @@ def test_self_world_cognition_projection_is_independent_of_l0_and_s17_commit():
     assert review.status.value == "mismatch"
     assert state.provenance.source == "relay_self.self_world.l1_l2_projection"
     assert retained.memories == ()
+
+
+def test_cognition_review_requires_replay_of_exact_prior_forecast():
+    """A matching after-probe alone cannot certify caller-supplied PRD status."""
+    import json
+
+    from relay_self.attention import AttentionCriterion
+    from relay_self.self_world import (
+        WorldPredictionReviewStatus,
+        bind_self_world_to_cognition_request,
+        review_self_world_prediction,
+        select_self_world_attention,
+    )
+
+    prior, current, _ = review_fixture()
+    assessed = review_self_world_prediction(
+        prior, current, scenario_id="source-bound-future",
+        variable_key="entity_label", max_native_seq_gap=10,
+    )
+    assert assessed.status is WorldPredictionReviewStatus.MISMATCH
+    selection = select_self_world_attention(
+        current, AttentionCriterion("review-bound-probe"),
+    )
+    request = _bounded_world_request("review-bound-1")
+
+    qualified = bind_self_world_to_cognition_request(
+        current, selection, request, review=assessed,
+        prior=prior, max_native_seq_gap=10,
+    )
+    bound = {
+        d.key: json.loads(d.value_json) for d in qualified.context
+    }["self_world_prediction_review"]
+    assert bound["status"] == "mismatch"
+    assert bound["prior_source"] == prior.observation.source_ref
+    assert bound["later_source"] == current.observation.source_ref
+    assert bound["action_success"] is None
+
+    with pytest.raises(InvalidSelfWorldData, match="requires prior view"):
+        bind_self_world_to_cognition_request(
+            current, selection, request, review=assessed,
+        )
+    with pytest.raises(InvalidSelfWorldData, match="unpaired prior"):
+        bind_self_world_to_cognition_request(
+            current, selection, request, prior=prior,
+        )
+    forged = replace(
+        assessed, status=WorldPredictionReviewStatus.MATCH,
+        reason_code="observed_prediction_match",
+    )
+    with pytest.raises(InvalidSelfWorldData, match="forged or mismatched"):
+        bind_self_world_to_cognition_request(
+            current, selection, request, review=forged,
+            prior=prior, max_native_seq_gap=10,
+        )
+    # Replacing the original prediction with a different valid forecast must
+    # not let a stale mismatch witness cross into the current cognition path.
+    different_rule = replace(
+        prior.forecasts[0].prediction.rule,
+        assignments=(StateVariable("entity_label", "zombie"),),
+    )
+    revised_prior = replace(
+        prior,
+        forecasts=(WorldForecast(
+            "source-bound-future",
+            predict_transition(prior.scenarios[0].state, different_rule),
+        ),),
+    )
+    with pytest.raises(InvalidSelfWorldData, match="forged or mismatched"):
+        bind_self_world_to_cognition_request(
+            current, selection, request, review=assessed,
+            prior=revised_prior, max_native_seq_gap=10,
+        )
+    with pytest.raises(InvalidSelfWorldData, match="forged or mismatched"):
+        bind_self_world_to_cognition_request(
+            current, selection, request, review=assessed,
+            prior=prior, max_native_seq_gap=1,
+        )
+    # No native source or owner state is mutated by the failed bindings.
+    assert current.observation.source_ref == assessed.later_observation_ref
+    assert prior.forecasts[0].prediction != revised_prior.forecasts[0].prediction
