@@ -619,6 +619,7 @@ def test_positive_visibility_does_not_imply_global_absence():
 def synthetic_s17_world_review_chain():
     """Re-use the qualified S17 offline Action fixture; no Java/Node I/O."""
     import asyncio
+
     import test_action_feedback_qualification as s17
     from adapters.mineflayer.action_outcome import interpret_world_consequence
     from adapters.mineflayer.execution import (
