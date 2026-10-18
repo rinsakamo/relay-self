@@ -482,10 +482,23 @@ async def _run_disposable(
 
         def on_closed(original):
             try:
-                stage_n.observe_closed(original)
+                typed_feedback = stage_n.observe_closed(original)
             except (TypeError, ValueError) as exc:
                 # Keep real terminal; retain observer rejection for DEV receipt.
                 stage_n.record_observer_error("closed", exc)
+                return
+            if stage_o is not None:
+                try:
+                    from relay_self.learning import LearningUpdateRule
+
+                    # HOLD-only *proposal*: no authority, S10 commit or owner
+                    # reassignment; original S49 retains the exact rev1 object.
+                    stage_o.prepare_original_hold(
+                        typed_feedback,
+                        LearningUpdateRule("stage-o-dev-hold-preview", 1, 1),
+                    )
+                except (TypeError, ValueError) as exc:
+                    stage_o.record_error("s17-to-s10-proposal", exc)
 
         # Same event-loop context, original S49 issuer; callback receives only
         # an already-closed Action and never controls the physical outcome.
