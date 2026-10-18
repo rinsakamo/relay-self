@@ -119,6 +119,7 @@ def source(tag: str) -> Provenance:
 async def qualify(
     report_path: Path, server_log: Path, *,
     live_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
+    stage_r_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -134,10 +135,13 @@ async def qualify(
         "auto_crash_recovery": False,
     }
     server = collector = session = staging = temp = None
+    stage_r = None
     rc = 2
     try:
         if os.environ.get("S49_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
+        if stage_r_dev and os.environ.get("S49_STAGE_R_DEV_ONLY") != "1":
+            raise S31ABlocked("Stage R requires separate explicit DEV-only operator gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -163,12 +167,25 @@ async def qualify(
             sid, "escape-threat", retained, max_events=3, max_action_requests=2,
         )
         executor = NormalSessionActionExecutor(sid, intent)
+        if stage_r_dev:
+            # Explicit S49-owned extension; never install a read-only
+            # observer as a new Action issuer or as an S10 authority.
+            from adapters.mineflayer.self_world_stage_r_owner import (
+                StageRDevSingleWriter,
+            )
+
+            stage_r = StageRDevSingleWriter(host, executor, intent)
+            report["stage_r_dev_enabled"] = True
         probes = {}
 
         async def reprobe(frame):
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
             reading = await _correlated_observe(session, request_id)
             probes[reading.seq] = reading
+            if stage_r is not None:
+                # Single writer commits only after prior terminal and this
+                # NEW original-session native probe, before next L0._check.
+                stage_r.observe_original_probe(reading)
             if live_probe is not None:
                 # Product-only observer sees an already received native probe.
                 # Original S49 L0 selection, Action ownership and receipt
@@ -218,9 +235,13 @@ async def qualify(
             )
             if native.distance_m >= 4:
                 raise S49PhysicalFailure("actual Action without a close zombie")
+            owner = (
+                stage_r.require_joint_admission_owner(step)
+                if stage_r is not None else retained
+            )
             values, epoch = _native_epoch_two(
-                ActionSupervisor(), intent, retained, retained,
-                expected_revision=1, native=native,
+                ActionSupervisor(), intent, owner, owner,
+                expected_revision=owner.revision, native=native,
             )
             if (
                 epoch.cognition_requested
@@ -242,11 +263,26 @@ async def qualify(
                 intent, values["policies"][-2], binding,
                 provenance=source(f"admitted-{step.event_seq}"),
             )
-            receipt = await executor.execute(
-                session, step, bound, probe,
-                authorize(step, NormalActionStage.PROPOSE),
-                authorize(step, NormalActionStage.ISSUE),
-            )
+            if stage_r is None:
+                receipt = await executor.execute(
+                    session, step, bound, probe,
+                    authorize(step, NormalActionStage.PROPOSE),
+                    authorize(step, NormalActionStage.ISSUE),
+                )
+            else:
+                from adapters.mineflayer.normal_action import (
+                    observe_closed_native_actions,
+                )
+
+                # Original sole Action issuer, after full S14 admission.
+                # Terminal callback is NOT permission. A separate S49 DEV
+                # owner examines it, and commits only on later native probe.
+                with observe_closed_native_actions(stage_r.observe_original_closed):
+                    receipt = await executor.execute(
+                        session, step, bound, probe,
+                        authorize(step, NormalActionStage.PROPOSE),
+                        authorize(step, NormalActionStage.ISSUE),
+                    )
             if (
                 receipt.terminal.state is not ActionState.OUTCOME
                 or receipt.consequence.status is not WorldConsequenceStatus.EXECUTED
@@ -254,6 +290,8 @@ async def qualify(
                 or receipt.consequence.movement_distance < 0.05
             ):
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
+            if stage_r is not None:
+                stage_r.seal_original_action(step, receipt)
             report["actual_native_actions"].append({
                 "action": receipt.terminal.action_id,
                 "terminal": receipt.terminal.state.value,
@@ -321,8 +359,22 @@ async def qualify(
             or host.events != 3
         ):
             raise S49PhysicalFailure("not three unattended decisions and two real closures")
+        if stage_r is not None:
+            if (
+                stage_r.committed is None
+                or stage_r.current is not host.retained
+                or stage_r.current.revision != 2
+                or stage_r.current.value != 4
+            ):
+                raise S49PhysicalFailure("no authentic Stage R single-writer commit")
+            report["stage_r_owner"] = stage_r.summary()
+            report["learning_in_world"] = True  # HOLD revision, NOT gain
         report["status"] = "PASS"
-        report["classification"] = "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
+        report["classification"] = (
+            "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
+            if stage_r is not None
+            else "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
+        )
         report["stage"] = "CLOSED"
         rc = 0
     except (S31ABlocked, OSError) as exc:
@@ -336,6 +388,8 @@ async def qualify(
         print("S49 FAIL: " + str(exc), file=sys.stderr)
         rc = 1
     finally:
+        if stage_r is not None:
+            report["stage_r_owner"] = stage_r.summary()
         if staging is not None:
             staging.cancel()
             try:
