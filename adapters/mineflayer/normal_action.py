@@ -22,6 +22,7 @@ from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
 from relay_self.action import ActionLifecycle, ActionState
+from relay_self.action_feedback import LearningFeedbackInterpretation
 from relay_self.action_outcome import (
     ActionOutcomeDisposition,
     ActionOutcomeInterpretation,
@@ -33,7 +34,6 @@ from relay_self.execution_binding import (
     start_and_propose_bound_execution,
 )
 from relay_self.intent import IntentCommitment
-from relay_self.action_feedback import LearningFeedbackInterpretation
 from relay_self.learning import LearningCommitResult, LearningPreferenceState
 from relay_self.provenance import Provenance
 from relay_self.reactive_l0 import (
