@@ -103,7 +103,7 @@ def test_stage_o_fails_closed_foreign_owner_or_native_source(mode):
         assert holder.summary()["source_read_count"] == 0
         return
     if mode == "foreign_intent":
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             holder.receive_original_owner(object())
         return
     if mode == "wrong_target":
