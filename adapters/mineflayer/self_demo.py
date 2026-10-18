@@ -28,8 +28,8 @@ from adapters.mineflayer.self_action_evidence import (
     NativeEvidenceRejected,
     verify_native_action_evidence,
 )
-from adapters.mineflayer.self_world_projection import review_saved_s16_action_self_world
 from adapters.mineflayer.self_world_projection import (
+    review_saved_s16_action_self_world,
     review_self_world_s15_action_frames,
 )
 from relay_self.habit import (
