@@ -298,3 +298,36 @@ def test_selfworld_live_mode_requires_explicit_native_l2_opt_in(capsys):
     assert json.loads(capsys.readouterr().out)["reason"] == "SELF_WORLD_REQUIRES_LIVE_L2"
     assert self_demo.main(["--live-think", "--self-world-live"]) == 2
     assert json.loads(capsys.readouterr().out)["reason"] == "LIVE_L2_REQUIRES_NATIVE_WORLD"
+
+
+def test_live_selfworld_unqualified_optional_projection_never_interrupts_l0():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=1,
+                self_world_live=True,
+            )
+            malformed = scoped_world_probe(8)
+            malformed = replace(malformed, snapshot=replace(
+                malformed.snapshot,
+                nearby_entities_coverage=replace(
+                    malformed.snapshot.nearby_entities_coverage,
+                    candidate_count=0,
+                ),
+            ))
+            # Optional L2 sidecar rejects malformed coverage, but the single
+            # real S49 L0 owner need not wait on an advisory model.
+            await observer.observe(malformed)
+            assert observer.model_attempts == 0
+            resumed = []
+            async def owned_l0_step():
+                resumed.append("L0_UNCHANGED")
+            await asyncio.wait_for(owned_l0_step(), .1)
+            receipt = await observer.close()
+            assert resumed == ["L0_UNCHANGED"]
+            assert receipt["status"] == "SELF_WORLD_INPUT_UNQUALIFIED"
+            assert server.requests == 0
+            assert receipt["authorized_actions"] == 0
+            assert receipt["learning_updates"] == 0
+
+    asyncio.run(asyncio.wait_for(scenario(), 6))
