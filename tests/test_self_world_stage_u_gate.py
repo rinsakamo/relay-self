@@ -248,7 +248,14 @@ def test_u_rejects_synthetic_sham_original_action_or_next_source(case):
     else:
         with pytest.raises((StageUDevRejected, ValueError, StopIteration)):
             issuer.commit_once(**inputs)
-    assert host.retained is original
+    if case == "cross_host_owner":
+        # This negative deliberately replaces the host reference itself.
+        # The issuer must reject and leave that copy uncommitted.
+        assert host.retained is not original
+        assert host.retained.revision == original.revision
+        assert host.retained.value == original.value
+    else:
+        assert host.retained is original
     assert host._stage_t_dev_commit is None
 
 
