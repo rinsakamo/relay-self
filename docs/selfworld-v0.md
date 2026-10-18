@@ -905,3 +905,58 @@ causal ON/OFF/sham efficacy, independent R/V Science, and STOP ACK
 attestation **remain unproven**. Keep current #634 Draft open and
 protect historical Stage R runs; no new physical World is necessary
 merely to replay this archive.
+
+## Stage T — original L0 + native S14 directional-policy OFFLINE DEV preview
+
+This stage is an **explicit alternative policy**, not a silent relaxation of
+S42's original near-threat MOVE guard. Default `select_world_conditioned_choice`
+still requires rev1/value4, and Stage Q / Stage R's original HOLD path retains
+its frozen near-threat invariant. An opt-in Stage T entrypoint instead
+accepts a *typed* Stage S directional S17 feedback, an exact same-object
+S10 `LearningCommitResult`, `stage-t-dev-risk-weight-one-step` v1 step1,
+and original rev1/value4 owner. It checks feedback identity against the
+commit proposal, genuine Stage S criterion identifier/provenance, session,
+original S49 Action event suffix, S16 observed-execution reason, S10
+revision and record lineage. It accepts only bounded rev2/value3
+(DECREASE) or rev2/value5 (INCREASE); HOLD or fabricated/duplicate owners
+are denied. **This proves structural source lineage, not independently
+authenticated S10 issuer identity.**
+
+Under the separate, explicitly labeled policy
+`stage-t-dev-retained-cost-v0`, the **same** S42 PLAN scoring is reused:
+near zombie WAIT cost `2*risk_weight`, MOVE cost 7.
+At value3, WAIT cost6 wins versus MOVE7; at value5, MOVE cost7 wins
+against WAIT10. The existing near→MOVE invariant is changed **only**
+for the non-HOLD Stage T DEV branch, and only when the exact typed
+decrease shows value3. Far-distance WAIT remains the safe default.
+
+`NormalWorldL0` has an independently guarded offline preview binding
+(`bind_stage_t_dev_preview` /`install_stage_t_dev_preview`) accepting
+exactly one matching previously requested S49 Action and the exact
+S10 successor/typed S17. It is mutually exclusive with Stage R's live
+owner token. **Original S49 `qualify` never calls these preview methods,
+and the DEV CLI has no Stage T live flag**; the single original physical
+Action issuer is unchanged. `self_world_stage_t_policy.py` invokes
+the *original host's* `_check` and the *existing* native
+`_native_epoch_two` ATT/BLF/CNC/PRD/PLAN/ROUTE/ADMISSION
+against the SAME immutable retained snapshot/next native observation.
+The preview mutates neither original Action supervisor, World nor
+the next L0 cursor. A WAIT result is non-Action, whereas MOVE still
+requires a **separate original L0 Action grant**, and subsequent
+PROPOSE/ISSUE controls if physically executed.
+
+Synthetic OFFLINE negative controls target copied old/new owner,
+unauthorized or duplicate install, fake typed criterion/feedback,
+foreign session/source, stale sequence, altered entity ID, missing
+Intent, Stage R cross-bind and an unqualified Action grant. The ON
+candidate (value3) can make original next L0 choose WAIT rather than
+the OFF frozen value4→MOVE; the independent original S14 plan must
+also select/admit WAIT. The value5 path still selects/admit MOVE, and
+without a fresh Action grant it cannot be requested.
+**No Minecraft run, physical non-HOLD commit or causal ON/OFF/sham
+improvement is claimed.** Synthetic grants are not independent
+issuer attestation, Stage S's 10cm threshold remains provisional,
+and physically changing behavior requires a separately reviewed
+original S49 operator grant and one-shot DEV preflight. Do not
+equate selecting WAIT with an actual survival advantage. No
+SCIENCE or R qualification promotion is permitted.
