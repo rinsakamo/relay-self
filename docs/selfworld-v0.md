@@ -653,3 +653,9 @@ construction in a sidecar is not proof of rightful physical authority.
 Only after a real owner-issued handoff and ON/OFF/sham controls should a
 new disposable World be launched; HOLD commits would prove revision
 bookkeeping, not a learned policy difference or causal adaptive effect.
+
+Stage O typed-proposal physical DEV note (2026-10-18): the next
+`selfworld-stage-o-owner-once` attempt is a new, disposable,
+CI-gated World run for typed-S17-to-S10 **HOLD proposal only**.
+No S10 grant, revision commit, policy update, or adapted Action is
+expected; all earlier Stage N/O original artifacts remain immutable.
