@@ -87,6 +87,11 @@ def prepare_stage_p_offline_dual_read(
             )
             or not next_probe.request_id.split("event-", 1)[-1].isdecimal()):
         raise StagePEpochRejected("newer same-session correlated native probe missing")
+    # An event-number string is not a qualified later source if it refers
+    # to an earlier Action or even a future event after this probe.
+    following_event_seq = int(next_probe.request_id.rsplit("event-", 1)[-1])
+    if not after_action_native_seq < following_event_seq < next_probe.seq:
+        raise StagePEpochRejected("next native event/probe ordering not causal")
     if (not isinstance(interpretation, LearningFeedbackInterpretation)
             or interpretation.status is not LearningFeedbackInterpretationStatus.PRODUCED
             or interpretation.feedback is None
@@ -107,6 +112,17 @@ def prepare_stage_p_offline_dual_read(
                 f":{original_session_id}:observed_execution"
             )):
         raise StagePEpochRejected("original typed S17 HOLD source/proposal mismatch")
+    suffix = interpretation.action_id.removeprefix("s49-native-move-")
+    if (not suffix.isdecimal()
+            or interpretation.binding_id != f"s49-binding-{suffix}"
+            or interpretation.criterion_provenance != Provenance(
+                "stage-n-dev-predeclared", "actual-move-execution-only",
+            )
+            or interpretation.outcome_ref != (
+                f"action-outcome:{interpretation.action_id}:"
+                f"s49-binding-{suffix}:{original_session_id}:observed_execution"
+            )):
+        raise StagePEpochRejected("foreign S49 binding or S17 evaluation policy")
     if not isinstance(provenance, Provenance):
         raise StagePEpochRejected("audit provenance required")
     committed = commit_learning_update(
