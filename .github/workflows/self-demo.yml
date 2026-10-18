@@ -765,3 +765,62 @@ jobs:
             ${{ runner.temp }}/selfworld-stage-o-cli.log
           if-no-files-found: warn
           retention-days: 30
+
+  selfworld-stage-r-dev-once:
+    # Exactly one fresh disposable original S49 single-owner DEV experiment.
+    # Marker must be in the final HEAD; required FAST gates run first.
+    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-r-dev-once]') }}
+    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DEV_ROOT: /tmp/selfworld-stage-r-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify one owner, exact HEAD and original native dependencies
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test ! -e "$DEV_ROOT"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+          java -version
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if(require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
+      - name: One real S49 terminal then S10 HOLD at newer native probe
+        shell: bash
+        run: |
+          set -o pipefail
+          python -B -m adapters.mineflayer.self_demo \
+            --mode DEV --dev-scenario native --run-disposable \
+            --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
+            --output-dir "$DEV_ROOT" --self-world-stage-r-dev \
+            | tee "${{ runner.temp }}/selfworld-stage-r-cli.log"
+      - name: Preserve DEV receipts and raw native evidence on fail or pass
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selfworld-stage-r-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.DEV_ROOT }}/dev_receipt.json
+            ${{ env.DEV_ROOT }}/SHA256SUMS
+            ${{ env.DEV_ROOT }}/native_report.json
+            ${{ env.DEV_ROOT }}/minecraft_server.log
+            ${{ env.DEV_ROOT }}/host_stdout.log
+            ${{ env.DEV_ROOT }}/host_stderr.log
+            ${{ runner.temp }}/selfworld-stage-r-cli.log
+          if-no-files-found: warn
+          retention-days: 30
