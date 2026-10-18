@@ -824,3 +824,298 @@ def test_s17_criterion_not_matched_stays_not_applicable_no_reward_defaults():
     assert review.reason_code == "observed_prediction_mismatch"
     assert result.status is LearningFeedbackInterpretationStatus.NOT_APPLICABLE
     assert result.feedback is None
+
+
+# Stage G — existing bounded/THINK/OPEN cognition consumes the current SelfWorld,
+# but only governed S10 retained snapshots may influence a later input.
+
+
+def _bounded_world_request(request_id: str):
+    from relay_self.relay_engine import BoundedChoice, BoundedChoiceRequest
+
+    return BoundedChoiceRequest(
+        request_id=request_id,
+        instruction="Select one explicitly available cognitive next step",
+        intent_id="survive", focus="entity-42",
+        choices=(
+            BoundedChoice("WAIT", "No new cognitive check"),
+            BoundedChoice("RECHECK", "Request further bounded cognition"),
+        ),
+        context=(),
+    )
+
+
+def test_next_decision_reuses_explicitly_committed_feedback():
+    import json
+
+    from adapters.mineflayer.self_world_projection import (
+        interpret_self_world_mismatch_as_s17_feedback,
+    )
+    from relay_self.attention import AttentionCriterion
+    from relay_self.cognitive_allocation import (
+        AllocationPath,
+        CognitionBudget,
+        allocate_cognition,
+    )
+    from relay_self.epoch_continuation import read_retained_preference
+    from relay_self.learning import (
+        FeedbackDirection,
+        commit_learning_update,
+        propose_learning_update,
+    )
+    from relay_self.relay_engine import (
+        CognitionMode,
+        DecisionStatus,
+        ProviderDecision,
+        RelayEngine,
+    )
+    from relay_self.self_world import (
+        bind_self_world_to_cognition_request,
+        select_self_world_attention,
+    )
+
+    s17, prior, current, action, outcome, consequence = synthetic_s17_world_review_chain()
+    review, interpreted = interpret_self_world_mismatch_as_s17_feedback(
+        prior, current, scenario_id="source-bound-future",
+        variable_key="entity_label", max_native_seq_gap=10,
+        action=action, outcome=outcome, consequence=consequence,
+        criterion=s17.feedback_criterion(direction=FeedbackDirection.INCREASE),
+        provenance=prov("s17-stage-g-feedback"),
+    )
+    old_owner = s17.learning_state()
+    old_read = read_retained_preference(
+        old_owner, old_owner, required_target_id="risk_weight",
+        expected_revision=0, provenance=prov("rev0-owner-read"),
+    )
+    choice = select_self_world_attention(
+        current, AttentionCriterion("focus-zombie", focus_key="entity-42"),
+    )
+    before_req = bind_self_world_to_cognition_request(
+        current, choice, _bounded_world_request("before-learning"),
+        review=review, retained_owner_self_id="A",
+        owner_snapshot=old_owner, retained_read=old_read,
+    )
+
+    proposal = propose_learning_update(
+        old_owner, interpreted.feedback, s17.learning_rule(),
+    )
+    committed = commit_learning_update(
+        old_owner, proposal, s17.learning_authority(),
+        provenance=prov("explicit-s10-owner-commit"),
+    )
+    new_owner = committed.new_state
+    assert old_owner.revision == 0 and old_owner.value == 3
+    assert new_owner.revision == 1 and new_owner.value == 4
+    new_read = read_retained_preference(
+        new_owner, new_owner, required_target_id="risk_weight",
+        expected_revision=1, provenance=prov("rev1-owner-read"),
+    )
+    after_req = bind_self_world_to_cognition_request(
+        current, choice, _bounded_world_request("after-learning"),
+        review=review, retained_owner_self_id="A",
+        owner_snapshot=new_owner, retained_read=new_read,
+    )
+
+    # The fixed offline provider makes a *known* dependency measurable.
+    # No claim of learned real model policy, emergent improvement or Action.
+    inputs = []
+
+    def synthetic_provider(request, *, mode):
+        inputs.append((request.request_id, mode))
+        fields = {d.key: json.loads(d.value_json) for d in request.context}
+        assert fields["self_world_observer"]["self_id"] == "A"
+        assert fields["self_world_prediction_review"]["status"] == "mismatch"
+        assert fields["self_world_observed"][0]["origin"] == "observed"
+        assert fields["self_world_retained_preference"]["origin"] == (
+            "governed-retained-read"
+        )
+        retained = fields["self_world_retained_preference"]
+        selected = "RECHECK" if retained["value"] >= 4 else "WAIT"
+        return ProviderDecision(DecisionStatus.RESOLVED, selected, "synthetic policy")
+
+    engine = RelayEngine(synthetic_provider)
+    old_choice = allocate_cognition(
+        budget=CognitionBudget(1), bounded=before_req, engine=engine,
+    )
+    new_choice = allocate_cognition(
+        budget=CognitionBudget(1), bounded=after_req, engine=engine,
+    )
+    assert old_choice.path is new_choice.path is AllocationPath.BOUNDED
+    assert old_choice.choice_id == "WAIT"
+    assert new_choice.choice_id == "RECHECK"
+    assert inputs == [
+        ("before-learning", CognitionMode.BOUNDED),
+        ("after-learning", CognitionMode.BOUNDED),
+    ]
+    assert old_choice.model_calls == new_choice.model_calls == 1
+    assert new_owner.revision == 1 and old_owner.revision == 0
+    assert not hasattr(new_choice, "action_grant")
+
+
+def test_bound_selfworld_request_supports_existing_think_and_open_but_no_action():
+    import json
+
+    from relay_self.attention import AttentionCriterion
+    from relay_self.cognitive_allocation import (
+        AllocationPath,
+        CognitionBudget,
+        allocate_cognition,
+    )
+    from relay_self.relay_engine import (
+        CognitionMode,
+        DecisionStatus,
+        OpenCognitionRequest,
+        ProviderDecision,
+        ProviderExpression,
+        RelayEngine,
+    )
+    from relay_self.self_world import (
+        bind_self_world_to_cognition_request,
+        select_self_world_attention,
+    )
+
+    a = view(present_value=present())
+    focus = select_self_world_attention(
+        a, AttentionCriterion("current-observation"),
+    )
+    bounded = bind_self_world_to_cognition_request(
+        a, focus, _bounded_world_request("think-on-observation"),
+    )
+    open_req = bind_self_world_to_cognition_request(
+        a, focus, OpenCognitionRequest(
+            "open-if-still-uncertain", "Generate a hypothesis only",
+            "survive", "entity-42", (),
+        ),
+    )
+    modes = []
+
+    def provider(request, *, mode):
+        modes.append(mode)
+        observed = next(
+            d for d in request.context if d.key == "self_world_observed"
+        )
+        assert json.loads(observed.value_json)[0]["entity_ref"] == "entity-42"
+        if mode is CognitionMode.OPEN:
+            return ProviderExpression("hypothetical further investigation", prov("model"))
+        if mode is CognitionMode.THINK:
+            return ProviderDecision(DecisionStatus.RESOLVED, "RECHECK", "synthetic")
+        return ProviderDecision(DecisionStatus.UNRESOLVED, None, "synthetic")
+
+    outcome = allocate_cognition(
+        budget=CognitionBudget(3, allow_think=True, allow_open=True),
+        bounded=bounded, open_request=open_req, engine=RelayEngine(provider),
+    )
+    assert outcome.path is AllocationPath.THINK
+    assert outcome.choice_id == "RECHECK"
+    assert modes == [CognitionMode.BOUNDED, CognitionMode.THINK]
+    assert outcome.model_calls == 2
+    assert not hasattr(outcome, "execute_action")
+    # OPEN is explicitly permitted but cannot silently become a choice.
+    modes.clear()
+    def unresolved(request, *, mode):
+        modes.append(mode)
+        if mode is CognitionMode.OPEN:
+            return ProviderExpression("maybe", prov("hypothesis"))
+        return ProviderDecision(DecisionStatus.UNRESOLVED, None, "none")
+
+    opened = allocate_cognition(
+        budget=CognitionBudget(2, allow_open=True),
+        bounded=bounded, open_request=open_req, engine=RelayEngine(unresolved),
+    )
+    assert opened.path is AllocationPath.OPEN
+    assert opened.choice_id is None and opened.open_result.text == "maybe"
+
+
+def test_cognition_view_refuses_stale_foreign_or_invented_inputs():
+    from relay_self.attention import AttentionCriterion
+    from relay_self.epoch_continuation import read_retained_preference
+    from relay_self.relay_engine import CognitionDatum
+    from relay_self.self_world import (
+        bind_self_world_to_cognition_request,
+        review_self_world_prediction,
+        select_self_world_attention,
+    )
+
+    a = view(present_value=present())
+    choice_a = select_self_world_attention(a, AttentionCriterion("att-a"))
+    b = view("B", present_value=present(session="s-B"))
+    with pytest.raises(InvalidSelfWorldData, match="foreign, stale"):
+        bind_self_world_to_cognition_request(
+            b, choice_a, _bounded_world_request("foreign-att"),
+        )
+    with pytest.raises(InvalidSelfWorldData, match="typed SelfWorld"):
+        bind_self_world_to_cognition_request(a, choice_a, object())
+
+    old, new, _ = review_fixture()
+    mismatch = review_self_world_prediction(
+        old, new, scenario_id="source-bound-future",
+        variable_key="entity_label", max_native_seq_gap=10,
+    )
+    with pytest.raises(InvalidSelfWorldData, match="stale, foreign"):
+        bind_self_world_to_cognition_request(
+            a, choice_a, _bounded_world_request("wrong-review"), review=mismatch,
+        )
+    owner = __import__(
+        "test_action_feedback_qualification"
+    ).learning_state()
+    read = read_retained_preference(
+        owner, owner, required_target_id="risk_weight",
+        expected_revision=owner.revision, provenance=prov("retained-read"),
+    )
+    with pytest.raises(InvalidSelfWorldData, match="foreign, missing"):
+        bind_self_world_to_cognition_request(
+            a, choice_a, _bounded_world_request("other-self-retained"),
+            retained_owner_self_id="B",
+            owner_snapshot=owner, retained_read=read,
+        )
+    with pytest.raises(InvalidSelfWorldData, match="foreign, missing"):
+        bind_self_world_to_cognition_request(
+            a, choice_a, _bounded_world_request("missing-read"),
+            retained_owner_self_id="A", owner_snapshot=owner,
+        )
+    duplicate_owner = replace(owner)
+    with pytest.raises(InvalidSelfWorldData, match="foreign, missing"):
+        bind_self_world_to_cognition_request(
+            a, choice_a, _bounded_world_request("not-owner-instance"),
+            retained_owner_self_id="A", owner_snapshot=duplicate_owner,
+            retained_read=read,
+        )
+    tampered = replace(read, revision=17)
+    with pytest.raises(Exception):
+        bind_self_world_to_cognition_request(
+            a, choice_a, _bounded_world_request("tampered-revision"),
+            retained_owner_self_id="A", owner_snapshot=owner,
+            retained_read=tampered,
+        )
+    request = replace(
+        _bounded_world_request("overwrite"),
+        context=(CognitionDatum.from_value(
+            "self_world_observed", [{"entity_ref": "entity-99"}], prov("forged"),
+        ),),
+    )
+    with pytest.raises(InvalidSelfWorldData, match="overwrite"):
+        bind_self_world_to_cognition_request(a, choice_a, request)
+
+
+def test_no_present_uses_explicit_unknown_with_zero_action_or_memory_write():
+    import json
+
+    from relay_self.attention import AttentionCriterion
+    from relay_self.self_world import (
+        bind_self_world_to_cognition_request,
+        select_self_world_attention,
+    )
+
+    a = view()
+    criterion = AttentionCriterion("no-present")
+    selected = select_self_world_attention(a, criterion)
+    assert selected.selected == () and selected.considered_count == 0
+    request = bind_self_world_to_cognition_request(
+        a, selected, _bounded_world_request("unknown-source"),
+    )
+    fields = {d.key: json.loads(d.value_json) for d in request.context}
+    assert fields["self_world_observer"]["status"] == "unknown"
+    assert fields["self_world_observer"]["source_ref"] is None
+    assert fields["self_world_observed"] == []
+    assert "self_world_retained_preference" not in fields
+    assert len(request.context) == 2
