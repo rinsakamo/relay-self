@@ -5,6 +5,9 @@ from planning. Uses frozen S14/S15/S16 owners, never replays uncertain effects.
 """
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from enum import Enum
 
@@ -21,6 +24,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_outcome import (
     ActionOutcomeDisposition,
+    ActionOutcomeInterpretation,
     record_interpreted_action_outcome,
 )
 from relay_self.action_supervision import ActionSupervisor
@@ -133,6 +137,37 @@ class NormalActionReceipt:
     terminal: ActionLifecycle
     consequence: WorldConsequence
     source: Provenance
+
+
+@dataclass(frozen=True, slots=True)
+class NormalActionClosedReadback:
+    """Typed S16 closure delivered after original ActionSupervisor terminal."""
+
+    terminal: ActionLifecycle
+    interpretation: ActionOutcomeInterpretation
+    consequence: WorldConsequence
+    original_probe: MineflayerObservation
+
+
+# Context-local, disabled by default. It is NOT an Action/LRN authority.
+# The optional observer may inspect the already-closed original Action only.
+_READ_ONLY_CLOSURE: ContextVar[
+    Callable[[NormalActionClosedReadback], None] | None
+] = ContextVar("normal_action_read_only_closure", default=None)
+
+
+@contextmanager
+def observe_closed_native_actions(
+    callback: Callable[[NormalActionClosedReadback], None],
+) -> Iterator[None]:
+    """Product-owned DEV tap. Never grants, cancels or alters Action issuance."""
+    if not callable(callback):
+        raise NormalActionRejected("typed closure observer required")
+    token = _READ_ONLY_CLOSURE.set(callback)
+    try:
+        yield
+    finally:
+        _READ_ONLY_CLOSURE.reset(token)
 
 
 class NormalSessionActionExecutor:
@@ -261,6 +296,16 @@ class NormalSessionActionExecutor:
                 terminal = record_interpreted_action_outcome(
                     self.supervisor, interpretation, at_ns=t + 3,
                 )
+            observer = _READ_ONLY_CLOSURE.get()
+            if observer is not None:
+                # Only AFTER genuine terminal outcome closure; callback
+                # failure cannot veto a dispatched/completed World Action.
+                try:
+                    observer(NormalActionClosedReadback(
+                        terminal, interpretation, consequence, probe,
+                    ))
+                except Exception:
+                    pass
             return NormalActionReceipt(terminal, consequence, probe.provenance)
         except BaseException:
             if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
