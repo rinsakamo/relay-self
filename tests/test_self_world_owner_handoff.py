@@ -66,6 +66,7 @@ def test_stage_o_tap_optin_and_failure_cannot_veto_original_l0():
     holder = StageOOwnerReadback()
     with observe_original_retained_owner(lambda reading: calls.append(reading)):
         host = NormalWorldL0("s49", "escape-threat", original)
+    assert host.retained is original
     assert len(calls) == 1
     assert calls[0].owner_snapshot is original
     # Outside the scope, there is no observer or hidden owner-sharing channel.
