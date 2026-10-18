@@ -33,6 +33,7 @@ from relay_self.execution_binding import (
     start_and_propose_bound_execution,
 )
 from relay_self.intent import IntentCommitment
+from relay_self.learning import LearningPreferenceState
 from relay_self.provenance import Provenance
 from relay_self.reactive_l0 import (
     L0Step,
@@ -51,6 +52,34 @@ class NormalActionRejected(ValueError):
 
 
 
+@dataclass(frozen=True, slots=True)
+class NormalRetainedOwnerReadback:
+    """Unmodified exact L0 owner-held S10 state reference at constructor time."""
+
+    session_id: str
+    intent_id: str
+    owner_snapshot: LearningPreferenceState
+
+
+_OWNER_READ_ONLY: ContextVar[
+    Callable[[NormalRetainedOwnerReadback], None] | None
+] = ContextVar("normal_l0_retained_owner_read_only", default=None)
+
+
+@contextmanager
+def observe_original_retained_owner(
+    callback: Callable[[NormalRetainedOwnerReadback], None],
+) -> Iterator[None]:
+    """S-only, opt-in DEV owner-identity tap; no write or learning grant."""
+    if not callable(callback):
+        raise NormalActionRejected("retained owner observer required")
+    token = _OWNER_READ_ONLY.set(callback)
+    try:
+        yield
+    finally:
+        _OWNER_READ_ONLY.reset(token)
+
+
 class NormalWorldL0(ReactiveL0):
     """S49 target-specific admission for one zombie amid other native entities.
 
@@ -59,6 +88,27 @@ class NormalWorldL0(ReactiveL0):
     The original untruncated native snapshots stay intact. This operator
     selects exactly one *zombie* witness, never infers a safe empty World.
     """
+
+    def __init__(
+        self, session_id: str, intent_id: str,
+        retained: LearningPreferenceState, *, max_events: int = 8,
+        max_action_requests: int = 3,
+    ) -> None:
+        super().__init__(
+            session_id, intent_id, retained, max_events=max_events,
+            max_action_requests=max_action_requests,
+        )
+        # The SAME exact object is still owned by original L0, and is never
+        # replaced by the observer or reconstructed from JSON.
+        callback = _OWNER_READ_ONLY.get()
+        if callback is not None:
+            try:
+                callback(NormalRetainedOwnerReadback(
+                    self.session_id, self.intent_id, self.retained,
+                ))
+            except Exception:
+                # Passive witness failures cannot veto original S49 owner.
+                pass
 
     def _check(self, event, probe):
         if (
