@@ -160,6 +160,48 @@ comparison and S17 output do not imply predicted Action causality. Real-world
 matching of predicted physics to independently attested World time, R
 qualification and V scientific effects are still open.
 
+## Stage G — actual S47 bounded/THINK/OPEN request consumption and S10 readback (offline)
+
+`bind_self_world_to_cognition_request(view, attention, request, ...)` projects
+only source-qualified, selected OBSERVED exterior entities (plus explicit
+UNKNOWN metadata) to existing `CognitionDatum` entries on an existing
+`BoundedChoiceRequest` or `OpenCognitionRequest`. It **does not invoke** a
+model, allocate cognition, change candidate choices or focus, authorize Action,
+read private B cognition, infer safety, or commit any retained state. All keys
+are reserved and non-overwritable; stale/foreign ATT results and past-epoch
+review are rejected. Typed PRD review is separately tagged with the original
+forecast, later observation, and MATCH/MISMATCH/UNDETERMINED status, **never**
+as measured Action success.
+
+An optional governed S10 read requires an explicit
+`retained_owner_self_id == view.self_id`, exact currently supplied
+`LearningPreferenceState` object identity, and
+`RetainedPreferenceRead` accepted again by the existing
+`read_retained_preference` check, including revision and commit metadata.
+The **caller** must authenticate which current S10 owner belongs to which
+Self: S10's scalar state has no native Self ID, and this binding makes no
+unearned claim of cryptographic or autonomous cross-Self authorization.
+Absent owner qualification means omit the retained datum entirely.
+
+An offline fixture now exercises the entire existing S17 (source-qualified
+Action outcome with explicit INCREASE criterion) -> existing S10
+`propose_learning_update` -> explicit `LearningUpdateAuthority` ->
+`commit_learning_update` -> exact next-epoch read -> existing
+S47 `allocate_cognition` with a deterministic fake `RelayEngine` provider.
+The fake provider demonstrably *consults* governed `risk_weight` (3/rev0
+vs 4/rev1) and selects different bounded choices (WAIT vs RECHECK). This is
+a **known synthetic policy dependency**, not autonomous policy learning,
+LLM improvement or physical action. Existing THINK and OPEN budgeted paths
+also consume the same qualified context without a second engine or writer.
+
+Outstanding before live S/L activation: certify the actual caller-owned
+current scalar owner/Self identity mapping; source-clock/tick correspondence
+and temporal relevance; hard-bound cognition budgets, provider sanitation
+and request provenance; real L1/L2 consumer wiring, owner-qualified
+subsequent epoch reuse, independent R physical qualification, and V
+pre-registered adaptive-effect comparison. Existing L0 native
+probe/Action-grant loop remains unmodified.
+
 ## Tests and limits
 
 `tests/test_self_world.py` uses offline synthetic fixtures for two observers
