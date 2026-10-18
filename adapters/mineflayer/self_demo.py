@@ -28,6 +28,9 @@ from adapters.mineflayer.self_action_evidence import (
     NativeEvidenceRejected,
     verify_native_action_evidence,
 )
+from adapters.mineflayer.self_world_projection import (
+    review_self_world_s15_action_frames,
+)
 from relay_self.habit import (
     CueFeature,
     HabitCue,
@@ -723,6 +726,60 @@ def _dev_run(args: argparse.Namespace) -> int:
                 dev_self_world_model_attempts=sidecar.get("model_attempts"),
                 dev_self_world_model_identity_verified=False,
                 dev_self_world_sidecar="live_l2.jsonl",
+            )
+            # Stage K reuses the already CLOSED S15/S16 native before/after
+            # frames from each Action. No new probe, L2 lease or movement.
+            # This differs from S49's intentionally different zombies across
+            # decision epochs and does not imply learning or Action causality.
+            action_reviews: list[dict[str, object]] = []
+            decisions_by_event = {
+                d["event_seq"]: d for d in native.get("decisions", [])
+                if isinstance(d, dict) and type(d.get("event_seq")) is int
+            }
+            for action in native.get("actual_native_actions", []):
+                decision = decisions_by_event.get(action.get("event_seq"))
+                if (decision is None
+                        or decision.get("probe_seq") != action.get("probe_seq")
+                        or decision.get("entity_id") is None):
+                    raise DemoRejected("S15 Action missing S49 source-decision lineage")
+                evidence = action.get("execution_evidence")
+                if evidence is None:
+                    action_reviews.append({
+                        "action_id": action.get("action"),
+                        "status": "unavailable", "reason": "original_frames_not_saved",
+                    })
+                    continue
+                reviewed = review_self_world_s15_action_frames(
+                    evidence, action_id=action["action"],
+                    session_id=native["session_id"],
+                    movement_m=action["movement_m"],
+                    target_entity_id=decision["entity_id"],
+                    preceding_s49_probe_seq=decision["probe_seq"],
+                )
+                if reviewed is None:
+                    action_reviews.append({
+                        "action_id": action["action"],
+                        "status": "unavailable",
+                        "reason": "initial_target_not_positive",
+                    })
+                else:
+                    action_reviews.append({
+                        "action_id": action["action"],
+                        "status": reviewed.status.value,
+                        "reason": reviewed.reason_code,
+                        "target_ref": reviewed.target_ref,
+                        "before_source_ref": reviewed.prior_observation_ref,
+                        "after_source_ref": reviewed.later_observation_ref,
+                        "predicted": reviewed.predicted_value,
+                        "observed": reviewed.observed_value,
+                    })
+            receipt["dev_self_world_s15_action_reviews"] = action_reviews
+            receipt["dev_self_world_s15_positive_comparisons"] = sum(
+                row["status"] in ("match", "mismatch") for row in action_reviews
+            )
+            receipt["dev_self_world_s15_positive_source_certified"] = (
+                len(action_reviews) == 2
+                and receipt["dev_self_world_s15_positive_comparisons"] >= 1
             )
             # Existing S49 may finish without enough positive target probes.
             # Preserve its raw source report but do not certify Stage J input.
