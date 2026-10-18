@@ -22,12 +22,14 @@ from relay_self.attention import (
     AttentionSelection,
     select_attention,
 )
+from relay_self.habit import CueFeature, HabitCue
 from relay_self.belief import BeliefAssessment, BeliefStatus
 from relay_self.persistent_cognition import Memory, PersistentCognition
 from relay_self.prediction import (
     PredictionResult,
     PredictionState,
     PredictionStatus,
+    StateVariable,
     predict_transition,
 )
 from relay_self.provenance import Provenance
@@ -617,6 +619,103 @@ def bind_self_world_to_cognition_request(
             ),
         ))
     return replace(request, context=(*request.context, *items))
+
+
+
+def project_self_world_l1_l2_inputs(
+    prior: SelfWorldView,
+    current: SelfWorldView,
+    retained: PersistentCognition,
+    *,
+    memory_ids: tuple[str, ...],
+    scenario_id: str,
+    variable_key: str,
+    max_native_seq_gap: int,
+) -> tuple[HabitCue, PredictionState, WorldPredictionReview]:
+    """Project an assessed World discrepancy into EXISTING L1/L2 input types.
+
+    This is NOT a route selector, Action instruction, BLF update or learning
+    commit. HABIT and PRD owners still decide separately and require their own
+    caller-supplied rules. No meaning is inferred from Memory's free text.
+    """
+    review = review_self_world_prediction(
+        prior, current, scenario_id=scenario_id,
+        variable_key=variable_key, max_native_seq_gap=max_native_seq_gap,
+    )
+    if not isinstance(retained, PersistentCognition):
+        raise InvalidSelfWorldData("requires qualified retained owner snapshot")
+    if retained.identity.self_id != current.self_id:
+        raise InvalidSelfWorldData("cross-Self private retained memory")
+    _tokens("memory_ids", memory_ids)
+    by_id = {item.memory_id: item for item in retained.memories}
+    if any(memory_id not in by_id for memory_id in memory_ids):
+        raise InvalidSelfWorldData("unknown or foreign Memory selection")
+    memories = tuple(by_id[memory_id] for memory_id in memory_ids)
+    if current.memories != memories:
+        raise InvalidSelfWorldData("memory selection is not the current SelfWorld view")
+    if current.observation is None:
+        raise InvalidSelfWorldData("missing current source observation")
+    if review.later_observation_ref != current.observation.source_ref:
+        raise InvalidSelfWorldData("review not linked to current observation")
+
+    evidence = Provenance(
+        "relay_self.self_world.l1_l2_projection",
+        f"{current.self_id}|{current.session_id}|{current.epoch_id}|"
+        f"{review.later_observation_ref}|{scenario_id}|{variable_key}",
+    )
+    cue_features = (
+        CueFeature("review_status", review.status.value),
+        CueFeature("target_ref", review.target_ref),
+        CueFeature("observed_target", review.observed_value is not None),
+        CueFeature("retained_count", len(memories)),
+        *(CueFeature(f"memory_{index}", m.memory_id)
+          for index, m in enumerate(memories)),
+    )
+    state_variables = (
+        StateVariable("review_status", review.status.value),
+        StateVariable("target_ref", review.target_ref),
+        StateVariable("observed_target", review.observed_value is not None),
+        StateVariable("retained_count", len(memories)),
+        *(StateVariable(f"memory_{index}", m.memory_id)
+          for index, m in enumerate(memories)),
+    )
+    # UNKNOWN is strictly a report about epistemic availability. It cannot
+    # become a claim that an entity is physically absent. Observed values
+    # remain an explicitly qualified separate field, never copied from PRD.
+    if review.predicted_value is not None:
+        state_variables += (
+            StateVariable("predicted_value", review.predicted_value),
+        )
+    if review.observed_value is not None:
+        state_variables += (
+            StateVariable("observed_value", review.observed_value),
+        )
+    return (
+        HabitCue(
+            cue_id=f"selfworld:{current.self_id}:{current.session_id}:"
+                   f"{current.epoch_id}:{scenario_id}",
+            features=cue_features, provenance=evidence,
+        ),
+        PredictionState(
+            state_id=f"selfworld:{current.self_id}:{current.session_id}:"
+                     f"{current.epoch_id}:{scenario_id}",
+            variables=state_variables,
+            provenance=evidence,
+            source_refs=(
+                review.prior_observation_ref,
+                review.later_observation_ref,
+                f"target:{review.target_ref}",
+                *(f"memory:{m.memory_id}" for m in memories),
+            ),
+            source_provenance=(
+                *review.prediction_source_provenance,
+                review.observation_provenance,
+                *(m.source_provenance for m in memories),
+                *(m.integration_provenance for m in memories),
+            ),
+        ),
+        review,
+    )
 
 
 def compose_self_world_view(
