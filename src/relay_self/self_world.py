@@ -9,21 +9,16 @@ import math
 from dataclasses import dataclass, replace
 from enum import Enum
 
-from relay_self.epoch_continuation import RetainedPreferenceRead, read_retained_preference
-from relay_self.learning import LearningPreferenceState
-from relay_self.relay_engine import (
-    BoundedChoiceRequest,
-    CognitionDatum,
-    OpenCognitionRequest,
-)
 from relay_self.attention import (
     AttentionCandidate,
     AttentionCriterion,
     AttentionSelection,
     select_attention,
 )
-from relay_self.habit import CueFeature, HabitCue
 from relay_self.belief import BeliefAssessment, BeliefStatus
+from relay_self.epoch_continuation import RetainedPreferenceRead, read_retained_preference
+from relay_self.habit import CueFeature, HabitCue
+from relay_self.learning import LearningPreferenceState
 from relay_self.persistent_cognition import Memory, PersistentCognition
 from relay_self.prediction import (
     PredictionResult,
@@ -33,6 +28,11 @@ from relay_self.prediction import (
     predict_transition,
 )
 from relay_self.provenance import Provenance
+from relay_self.relay_engine import (
+    BoundedChoiceRequest,
+    CognitionDatum,
+    OpenCognitionRequest,
+)
 from relay_self.self_body import SelfBodyView
 
 
