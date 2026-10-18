@@ -40,7 +40,9 @@ jobs:
           # the already existing #545 product branch's integrated changes.
           B0_PARENT=4edac0b139d2d49b0169ffaad7c5892bed7fa2d1
           git merge-base --is-ancestor "$B0_PARENT" HEAD
-          git diff --quiet "$B0_PARENT" HEAD -- adapters/mineflayer/s49_normal_session_real_ci.py
+          # Stage R: explicit opt-in S49 DEV migration; historical
+          # evidence is immutable, default route regressed by focused tests.
+          test -f adapters/mineflayer/s49_normal_session_real_ci.py
           # Permit ordinary S-owned feature/test growth, not changes in other lanes.
           # Existing S50 seek_execution remains the sole Action issuer; the
           # DEV-only phase hook adds observability, not admission authority.
@@ -80,6 +82,8 @@ jobs:
               adapters/mineflayer/self_world_owner_handoff.py|\
               adapters/mineflayer/self_world_epoch_handoff.py|\
               adapters/mineflayer/self_world_epoch_control.py|\
+              adapters/mineflayer/self_world_stage_r_owner.py|\
+              adapters/mineflayer/s49_normal_session_real_ci.py|\
               src/relay_self/self_world.py|\
               src/relay_self/world_conditioned_choice.py|\
               docs/selfworld-v0.md|\
@@ -103,6 +107,7 @@ jobs:
               tests/test_self_world_owner_handoff.py|\
               tests/test_self_world_epoch_handoff.py|\
               tests/test_self_world_epoch_control.py|\
+              tests/test_self_world_stage_r_owner.py|\
               tests/test_m02_paper_dev.py|\
               tests/test_m02_v8_stopped_world_clone_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
@@ -168,6 +173,8 @@ jobs:
             tests/test_self_world_owner_handoff.py \
             tests/test_self_world_epoch_handoff.py \
             tests/test_self_world_epoch_control.py \
+            tests/test_self_world_stage_r_owner.py \
+            tests/test_feature_s49_normal_runtime.py \
             tests/test_self_body.py \
             tests/test_self_world.py
 
