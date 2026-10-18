@@ -255,3 +255,23 @@ explicit L1/L2 runtime consumer, S17/LRN learning from failed predictions,
 source-warranted other-Self action observations, authorized communication
 and social/coordination experiments, Paper tick/control attribution and
 R/V qualifications. Only future source-warranted integration may address them.
+
+
+## Stage H — verify cognition-bound review before decision admission
+
+When an optional `WorldPredictionReview` is included in
+`bind_self_world_to_cognition_request`, the caller **must additionally supply**
+the exact prior `SelfWorldView` and a positive `max_native_seq_gap`.
+The binder reruns `review_self_world_prediction` against that prior and the
+current observer-local view, then requires **full equality** of the caller
+witness with the recomputed result. Missing, replaced, stale, counterfeit,
+or gap-inconsistent witnesses fail closed. Supplying unmatched prior/gap
+without a review also fails closed.
+
+This hardens read-only L1/L2 cognition *inputs*, not S17's authority gate.
+It does not make a forecast a reward, cause an LRN write, grant physical
+actions, authenticate caller-controlled source bytes, or prove a live
+adaptive effect. Tests cover a valid mismatch, missing earlier source,
+forged MATCH status, substituted but internally valid earlier forecast,
+and an insufficient native-seq window. The S49 native observation/Action
+owner remains unmodified. Physical/qualification/science execution: none.
