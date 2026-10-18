@@ -33,6 +33,7 @@ from relay_self.execution_binding import (
     start_and_propose_bound_execution,
 )
 from relay_self.intent import IntentCommitment
+from relay_self.action_feedback import LearningFeedbackInterpretation
 from relay_self.learning import LearningCommitResult, LearningPreferenceState
 from relay_self.provenance import Provenance
 from relay_self.reactive_l0 import (
@@ -43,7 +44,9 @@ from relay_self.reactive_l0 import (
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
     select_stage_q_dev_committed_world_choice,
+    select_stage_t_dev_directional_world_choice,
     select_world_conditioned_choice,
+    verify_stage_t_dev_directional_commit,
 )
 
 
@@ -101,6 +104,10 @@ class NormalWorldL0(ReactiveL0):
         )
         self._stage_r_dev_token: object | None = None
         self._stage_r_dev_commit: LearningCommitResult | None = None
+        # Stage T is explicit synthetic OFFLINE rehearsal, NOT S49 live path.
+        self._stage_t_dev_token: object | None = None
+        self._stage_t_dev_commit: LearningCommitResult | None = None
+        self._stage_t_dev_s17: LearningFeedbackInterpretation | None = None
         # The SAME exact object is still owned by original L0, and is never
         # replaced by the observer or reconstructed from JSON.
         callback = _OWNER_READ_ONLY.get()
@@ -130,6 +137,7 @@ class NormalWorldL0(ReactiveL0):
     ) -> None:
         """One synchronous, terminal-bound owner handoff (not Action issuance)."""
         if (self._stage_r_dev_token is None
+                or self._stage_t_dev_token is not None
                 or token is not self._stage_r_dev_token
                 or self._stage_r_dev_commit is not None
                 or not isinstance(commit, LearningCommitResult)
@@ -142,6 +150,50 @@ class NormalWorldL0(ReactiveL0):
             raise NormalActionRejected("no exact single-use Stage R owner transition")
         self.retained = commit.new_state
         self._stage_r_dev_commit = commit
+
+    def bind_stage_t_dev_preview(self, *, token: object) -> None:
+        """Opt-in offline original-host policy rehearsal; no issuer or Action."""
+        if (
+            type(token) is not object
+            or self._stage_r_dev_token is not None
+            or self._stage_t_dev_token is not None
+            or self.events != 0 or self.action_requests != 0
+            or self.retained.target_id != "risk_weight"
+            or self.retained.revision != 1 or self.retained.value != 4
+        ):
+            raise NormalActionRejected("Stage T requires unused original rev1 owner")
+        self._stage_t_dev_token = token
+
+    def install_stage_t_dev_preview(
+        self, *, token: object, commit: LearningCommitResult,
+        typed_s17: LearningFeedbackInterpretation,
+    ) -> None:
+        """DEV/OFFLINE: one exact Stage S S17→S10 successor, no live runner.
+
+        The real S49 qualify() does NOT call this method. Source-authenticated
+        S10 issuer and physical admission remain separate qualification work.
+        """
+        if (
+            self._stage_t_dev_token is None
+            or token is not self._stage_t_dev_token
+            or self._stage_r_dev_token is not None
+            or self._stage_t_dev_commit is not None
+            or self._stage_t_dev_s17 is not None
+            or not isinstance(commit, LearningCommitResult)
+            or commit.previous_state is not self.retained
+            or not isinstance(typed_s17, LearningFeedbackInterpretation)
+            or typed_s17.action_id not in self._used_action_ids
+            or self.action_requests < 1
+            or self.events < 1
+        ):
+            raise NormalActionRejected("Stage T exact original-host preview denied")
+        successor = verify_stage_t_dev_directional_commit(
+            commit, self.retained, typed_s17,
+        )
+        # No asynchronous window between preview owner and its evidence.
+        self.retained = successor
+        self._stage_t_dev_commit = commit
+        self._stage_t_dev_s17 = typed_s17
 
     def _check(self, event, probe):
         if (
@@ -174,6 +226,16 @@ class NormalWorldL0(ReactiveL0):
         native = _native_threat(
             probe, probe.request_id, expected_entity_id=after[0].entity_id,
         )
+        if self._stage_t_dev_commit is not None:
+            assert self._stage_t_dev_s17 is not None
+            return select_stage_t_dev_directional_world_choice(
+                native, self.retained,
+                commit=self._stage_t_dev_commit,
+                original_owner=self._stage_t_dev_commit.previous_state,
+                typed_s17=self._stage_t_dev_s17,
+                expected_session_id=self.session_id,
+                expected_entity_id=native.entity_id,
+            )
         if self._stage_r_dev_commit is not None:
             return select_stage_q_dev_committed_world_choice(
                 native, self.retained,
