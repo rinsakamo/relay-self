@@ -819,3 +819,13 @@ fresh one-shot run with independently readable original
 `native_report.json`, owner/Action/callback order and cleanup evidence
 has succeeded, with every failed run preserved. This is not a
 retroactive qualification of earlier Stage O evidence.
+
+### Stage R one-shot DEV activation
+
+The offline FAST check for the pre-trigger implementation completed 4/4 at
+`e395c27859aa6f68a18a112df3b399d52b0b3463` (workflow
+`39136131977`). The following marker commit is the distinct
+**single-use**, **DEV_ONLY** physical attempt gate. The exact-head FAST
+checks of the marker itself must all pass before one fresh disposable S49
+World can run. Any World success/failure belongs exclusively to the new
+attempt receipt; no earlier J–Q evidence is rewritten or promoted.
