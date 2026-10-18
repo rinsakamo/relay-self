@@ -10,11 +10,11 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from adapters.mineflayer.execution import WorldConsequence
-from adapters.mineflayer.self_world_prospective import (
-    verify_prospective_native_reviews,
-)
 from adapters.mineflayer.self_world_projection import (
     interpret_self_world_mismatch_as_s17_feedback,
+)
+from adapters.mineflayer.self_world_prospective import (
+    verify_prospective_native_reviews,
 )
 from relay_self.action import ActionLifecycle
 from relay_self.action_feedback import (
