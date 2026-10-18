@@ -244,7 +244,13 @@ class LiveL2Observer:
         if self._model_attempts:
             raise ValueError("one model attempt per owned World session")
         if self.self_world_live:
-            prompt = self._live_self_world_prompt(reading)
+            try:
+                prompt = self._live_self_world_prompt(reading)
+            except (ValueError, TypeError):
+                # An optional observer must not interrupt S49's existing
+                # single-owner L0 loop when its evidence is unsuitable.
+                self._phase = "SELF_WORLD_INPUT_UNQUALIFIED"
+                return
             if prompt is None:
                 return
         else:
