@@ -418,7 +418,7 @@ async def _run_b0_ground_dev(report_path: Path, server_log: Path) -> int:
 
 
 def _dev_run(args: argparse.Namespace) -> int:
-    """Two opt-in existing owner routes; both persist DEV_ONLY without elevation."""
+    """Existing S49/S51 disposable owners; all output remains DEV_ONLY."""
     scenario = getattr(args, "dev_scenario", "native")
     receipt = {
         "mode": "DEV", "classification": "DEV_ONLY", "status": "NOT_RUN",
@@ -426,11 +426,11 @@ def _dev_run(args: argparse.Namespace) -> int:
         "run_id": uuid.uuid4().hex, "retry_of": args.retry_of,
         "intent": (
             "S49 disposable L0 development; Java/Node, Mojang download and EULA"
-            if scenario == "native" else
+            if scenario in ("native", "native-selfworld") else
             "S51 disposable B0 ground/EAT/M0 development; Java/Node, Mojang download and EULA"
         ),
         "world_source": (
-            "NEW_S49_FLAT_WORLD_NOT_GOLDEN" if scenario == "native"
+            "NEW_S49_FLAT_WORLD_NOT_GOLDEN" if scenario in ("native", "native-selfworld")
             else "NEW_S51_DEV_WORLD_NOT_GOLDEN"
         ),
         "seed": "SERVER_GENERATED_NOT_ATTESTED",
@@ -441,7 +441,7 @@ def _dev_run(args: argparse.Namespace) -> int:
     }
     root = args.output_dir
     try:
-        if scenario not in ("native", "b0-ground", "b1-local-adaptation"):
+        if scenario not in ("native", "native-selfworld", "b0-ground", "b1-local-adaptation"):
             raise DemoRejected("DEV requires one S49/S51 owner route")
         if getattr(args, "b1_retention", "on") not in ("on", "off"):
             raise DemoRejected("B1 retention must be on or off")
@@ -449,9 +449,25 @@ def _dev_run(args: argparse.Namespace) -> int:
             raise DemoRejected("retention OFF is B1 scenario only")
         if args.confirm != CONFIRM or not args.run_disposable:
             raise DemoRejected("DEV requires disposable opt-in and exact confirmation")
-        if (args.think or args.live_think or args.reflect_report or args.smoke
+        live_selfworld = scenario == "native-selfworld"
+        if live_selfworld:
+            if (args.think or args.reflect_report or args.smoke
+                    or not getattr(args, "self_world_live", False)
+                    or not args.live_think):
+                raise DemoRejected("native-selfworld DEV requires explicit live flags")
+            from adapters.mineflayer.s60b1_loopback_adapter import (
+                LoopbackTransportConfig,
+            )
+            # A reachable model is NOT assumed or certified. The DEV can
+            # retain source/PRD/L1/L2 input receipts even if backend is absent.
+            LoopbackTransportConfig(
+                model=args.model_alias, port=args.model_port, slots=1,
+                max_tokens=96, connect_s=min(3.0, args.model_timeout),
+                read_s=args.model_timeout, whole_s=args.model_timeout,
+            )
+        elif (args.think or args.live_think or args.reflect_report or args.smoke
                 or getattr(args, "self_world_live", False)):
-            raise DemoRejected("DEV accepts only the existing model-free disposable route")
+            raise DemoRejected("ordinary DEV accepts only existing model-free routes")
         if args.retry_of is not None and (
             len(args.retry_of) != 32 or any(c not in "0123456789abcdef" for c in args.retry_of)
         ):
@@ -526,6 +542,12 @@ def _dev_run(args: argparse.Namespace) -> int:
                 code = asyncio.run(_run_b1_local_dev(
                     root / "native_report.json", root / "minecraft_server.log",
                     retention=getattr(args, "b1_retention", "on") == "on",
+                ))
+            elif scenario == "native-selfworld":
+                code = asyncio.run(_run_disposable(
+                    root / "native_report.json", root / "minecraft_server.log",
+                    live_model=(args.model_alias, args.model_port, args.model_timeout),
+                    self_world_live=True,
                 ))
             else:
                 code = asyncio.run(_run_disposable(
@@ -630,6 +652,56 @@ def _dev_run(args: argparse.Namespace) -> int:
             )
             # Qualified M0 energy stays false in DEV; these are owner-local
             # measurements on a disposable, non-R-qualified World.
+        if scenario == "native-selfworld":
+            sidecar_file = root / "live_l2.jsonl"
+            if (not sidecar_file.is_file() or sidecar_file.is_symlink()
+                    or sidecar_file.stat().st_size > 65536):
+                raise DemoRejected("native-selfworld DEV sidecar missing/invalid")
+            rows = sidecar_file.read_text(encoding="utf-8").splitlines()
+            if len(rows) != 1:
+                raise DemoRejected("native-selfworld DEV requires one sidecar record")
+            sidecar = json.loads(rows[0])
+            if (sidecar.get("kind") != "l2_live_observer"
+                    or sidecar.get("session") != native.get("session_id")
+                    or sidecar.get("self_world_live") is not True
+                    or sidecar.get("native_l0_action_owner") != "S49_NATIVE_EXISTING"
+                    or sidecar.get("authorized_actions") != 0
+                    or sidecar.get("l2_used_as_action") is not False
+                    or sidecar.get("learning_updates") != 0
+                    or sidecar.get("habit_grants") != 0
+                    or sidecar.get("l0_blocked_on_l2") is not False
+                    or sidecar.get("model_attempts") not in (0, 1)):
+                raise DemoRejected("native-selfworld DEV sidecar violates owner boundary")
+            qualified_input = (
+                sidecar.get("self_world_l2_input_bound") is True
+                and sidecar.get("self_world_review_status")
+                in ("match", "mismatch", "undetermined")
+                and isinstance(sidecar.get("self_world_prior_source"), str)
+                and isinstance(sidecar.get("self_world_after_source"), str)
+                and sidecar["self_world_prior_source"] != sidecar["self_world_after_source"]
+                and sidecar.get("model_attempts") == 1
+            )
+            receipt.update(
+                dev_self_world_input="SOURCE_BOUND" if qualified_input else "NOT_OBSERVED",
+                dev_self_world_review=sidecar.get("self_world_review_status"),
+                dev_self_world_review_reason=sidecar.get("self_world_review_reason"),
+                dev_self_world_prior_source=sidecar.get("self_world_prior_source"),
+                dev_self_world_after_source=sidecar.get("self_world_after_source"),
+                dev_self_world_l1_cognitive_candidate=sidecar.get(
+                    "preconfigured_l1_cognitive_candidate"
+                ),
+                dev_self_world_provider_status=sidecar.get("status"),
+                dev_self_world_model_attempts=sidecar.get("model_attempts"),
+                dev_self_world_model_identity_verified=False,
+                dev_self_world_sidecar="live_l2.jsonl",
+            )
+            # Existing S49 may finish without enough positive target probes.
+            # Preserve its raw source report but do not certify Stage J input.
+            if code == 0 and not qualified_input:
+                code = 1
+                receipt["dev_self_world_incomplete"] = (
+                    "NATIVE_OWNER_FINISHED_BUT_TWO_SOURCE_COGNITION_NOT_ESTABLISHED"
+                )
         receipt.update(
             status="COMPLETED" if code == 0 else "FAILED",
             reason=native.get("error"), session_id=native.get("session_id"),
@@ -698,7 +770,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--mode", choices=("DEV",),
                         help="DEV_ONLY; never delegates to QUALIFICATION or SCIENCE")
     parser.add_argument(
-        "--dev-scenario", choices=("native", "b0-ground", "b1-local-adaptation"),
+        "--dev-scenario", choices=("native", "native-selfworld", "b0-ground", "b1-local-adaptation"),
         default="native", help="DEV S49 native, S51 B0 or S51 B1 local candidate",
     )
     parser.add_argument(
