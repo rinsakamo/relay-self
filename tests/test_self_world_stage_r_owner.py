@@ -19,6 +19,7 @@ from adapters.mineflayer.normal_action import (
     NormalWorldL0,
 )
 from adapters.mineflayer.self_world_stage_r_owner import (
+    StageRDevOperatorLearningIssuer,
     StageRDevRejected,
     StageRDevSingleWriter,
 )
@@ -45,7 +46,8 @@ def _prepared():
         sid, "escape-threat", owner, max_events=3, max_action_requests=2,
     )
     executor = NormalSessionActionExecutor(sid, intent)
-    operator = StageRDevSingleWriter(host, executor, intent)
+    issuer = StageRDevOperatorLearningIssuer(host, executor, intent)
+    operator = StageRDevSingleWriter(host, executor, intent, issuer)
     frame = replace(
         event, session_id=sid, seq=8,
         snapshot=near.observation.snapshot,
