@@ -85,6 +85,38 @@ remains distinct from source observation, BLF update and LRN commit.
 No new controller, FLY, message channel, intent issuer, or communication
 protocol exists in this work.
 
+## Stage E — bounded ATT observation consumption (offline)
+
+A read-only **consumer path** now uses the existing ATT owner:
+`select_self_world_attention(SelfWorldView, AttentionCriterion)` generates
+only neutral-priority `AttentionCandidate` references for entities explicitly
+present in that observer's bounded `WorldObservation`; existing
+`select_attention` does the selection. `resolve_self_world_attention(view,
+selection)` looks up selected entities in **the exact view** and returns
+`WorldReading(origin=OBSERVED)` without any new authority.
+
+ATT candidate identities incorporate observer ID, session ID, decision epoch,
+native observation source reference and entity ID. Selected items and the
+reported considered count must match the exact view on resolution; forged
+payloads, replayed selections from previous epoch/probe or another Self,
+and invented candidates are rejected. No implicit priority for a Zombie,
+no automatic expansion to unobserved records, and no mutation of Memory/BLF
+or World is possible. Empty/UNKNOWN Present produces an empty selection,
+not a claim that the World is safe. ATT does not consume imagined/forecast
+states as OBSERVED.
+
+A's observed external position of B can be attended to. A's own conjecture
+about *what B perceives* remains A-owned HYPOTHETICAL, and is never B's own
+SelfWorld. Direct B Memory/SelfBody/knowledge access is excluded by typed
+projection. Such estimates do not imply actual communication.
+
+**Important scope:** This is actual consumption through the existing
+`AttentionSelection` contract in synthetic/offline tests; the active
+`ReactiveL0` native source + separate Action grant loop is **unchanged**.
+There is no new L1/L2 live decision or controller wiring yet. Physical
+execution must not begin depending on SelfWorld or ATT availability until
+separate source/authority qualifications.
+
 ## Tests and limits
 
 `tests/test_self_world.py` uses offline synthetic fixtures for two observers
