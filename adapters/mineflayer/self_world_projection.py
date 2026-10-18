@@ -7,15 +7,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-import json
-from dataclasses import replace
-
 from adapters.mineflayer.execution import WorldConsequence, WorldConsequenceStatus
-from adapters.mineflayer.python_protocol import (
-    MineflayerObservation,
-    parse_mineflayer_line,
-)
-from adapters.mineflayer.self_action_evidence import verify_native_action_evidence
 from adapters.mineflayer.present_projection import (
     MinecraftPresent,
     project_mineflayer_present,
@@ -38,24 +30,15 @@ from relay_self.prediction import (
     TransitionRule,
     predict_transition,
 )
-from relay_self.prediction import (
-    PredictionState,
-    StateVariable,
-    TransitionRule,
-    predict_transition,
-)
 from relay_self.provenance import Provenance
 from relay_self.self_world import (
     InvalidSelfWorldData,
     SelfWorldView,
-    WorldForecast,
-    WorldScenario,
     WorldEntityObservation,
+    WorldForecast,
     WorldObservation,
-    compose_self_world_view,
     WorldPredictionReview,
     WorldPredictionReviewStatus,
-    WorldForecast,
     WorldScenario,
     compose_self_world_view,
     review_self_world_prediction,
@@ -213,25 +196,28 @@ def review_self_world_s15_action_frames(
         raw = evidence[f"{slot}_observation"]
         if not isinstance(raw, dict) or raw.get("kind") != "probe":
             raise InvalidSelfWorldData("S15 frame must be an original native probe")
-        # The saved decoded frame has source provenance, not an artificial
-        # native request_id; parse its snapshot through the genuine decoder.
-        packet = {
-            "type": "observation", "session_id": raw["session_id"],
-            "seq": raw["seq"], "kind": raw["kind"],
-            "snapshot": raw["snapshot"],
-        }
-        if raw.get("request_id") is not None:
-            packet["request_id"] = raw["request_id"]
-        decoded = parse_mineflayer_line(json.dumps(packet, allow_nan=False))
-        if not isinstance(decoded, MineflayerObservation):
-            raise InvalidSelfWorldData("S15 frame not decoded to native observation")
-        snap, coverage = decoded.snapshot, decoded.snapshot.nearby_entities_coverage
+        # S15 preserved decoded Python frame fields, not the canonical
+        # JSON protocol's id/type spelling. Normalize ONLY their field
+        # names, then call the existing strict native snapshot decoder.
+        snapshot = raw["snapshot"]
+        snap = _decode_snapshot({
+            **snapshot,
+            "nearby_entities": [
+                {
+                    "id": entry["entity_id"], "name": entry["name"],
+                    "type": entry["entity_type"], "distance": entry["distance"],
+                    "position": entry["position"],
+                }
+                for entry in snapshot["nearby_entities"]
+            ],
+        })
+        coverage = snap.nearby_entities_coverage
         # This token identifies a verified immutable evidence frame, never an
         # actual Mineflayer request ID from the source.
         observations.append(WorldObservation(
             observer_id=observer_id,
-            session_id=decoded.session_id,
-            native_seq=decoded.seq,
+            session_id=raw["session_id"],
+            native_seq=raw["seq"],
             request_id=f"s15-evidence-{action_id}-{slot}",
             entities=tuple(
                 WorldEntityObservation(
@@ -246,7 +232,7 @@ def review_self_world_s15_action_frames(
             coverage_cap=coverage.max_entities,
             coverage_candidates=coverage.candidate_count,
             coverage_truncated=coverage.truncated,
-            provenance=decoded.provenance,
+            provenance=Provenance("mineflayer", f"{session_id}:{raw['seq']}"),
         ))
     before_obs, after_obs = observations
     if (before_obs.native_seq <= preceding_s49_probe_seq
