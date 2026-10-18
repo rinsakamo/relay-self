@@ -14,14 +14,14 @@ import pytest
 import test_action_feedback_qualification as s17
 import test_self_demo as demo_test
 from adapters.mineflayer import self_demo
-from adapters.mineflayer.self_world_projection import (
-    review_self_world_s15_action_frames,
-)
 from adapters.mineflayer.self_action_evidence import (
     EVIDENCE_SCHEMA,
     NativeEvidenceRejected,
     capture_native_action_evidence,
     verify_native_action_evidence,
+)
+from adapters.mineflayer.self_world_projection import (
+    review_self_world_s15_action_frames,
 )
 
 
