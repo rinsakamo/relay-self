@@ -274,6 +274,10 @@ def test_stage_j_dev_is_read_only_and_never_elevates_owner(tmp_path, monkeypatch
             "session_id": "s-native-j", "server_exit": 0, "node_exit": 0,
             "decisions": [{}, {}, {}],
             "actual_native_actions": [{}, {}],
+            "source_pair_trace": [
+                {"event_seq": 7, "probe_seq": 8},
+                {"event_seq": 18, "probe_seq": 19},
+            ],
         }))
         sidecar = {
             "kind": "l2_live_observer",
@@ -285,8 +289,10 @@ def test_stage_j_dev_is_read_only_and_never_elevates_owner(tmp_path, monkeypatch
             "l0_blocked_on_l2": False,
             "model_attempts": 1 if qualified else 0,
             "self_world_l2_input_bound": qualified,
-            "self_world_prior_source": "present:s-native-j:8:probe-8",
-            "self_world_after_source": "present:s-native-j:19:probe-19"
+            "self_world_prior_source":
+                "present:s-native-j:8:s49-actual:s-native-j:event-7",
+            "self_world_after_source":
+                "present:s-native-j:19:s49-actual:s-native-j:event-18"
             if qualified else None,
             "self_world_review_status": "match" if qualified else None,
             "self_world_review_reason": (
@@ -316,6 +322,7 @@ def test_stage_j_dev_is_read_only_and_never_elevates_owner(tmp_path, monkeypatch
     assert receipt["dev_self_world_input"] == (
         "SOURCE_BOUND" if qualified else "NOT_OBSERVED"
     )
+    assert receipt["dev_self_world_native_pair_verified"] is qualified
     assert receipt["dev_self_world_model_identity_verified"] is False
     assert receipt["status"] == ("COMPLETED" if qualified else "FAILED")
     assert (root / "native_report.json").is_file()
