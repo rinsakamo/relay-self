@@ -360,6 +360,15 @@ async def qualify(
         ):
             raise S49PhysicalFailure("not three unattended decisions and two real closures")
         if stage_r is not None:
+            report["stage_r_decision_revisions"] = [
+                {"event_seq": step.event_seq,
+                 "retained_revision": step.choice.retained_revision,
+                 "retained_value": step.choice.retained_value,
+                 "selected": step.choice.selection.value}
+                for step in trace
+            ]
+            if [step.choice.retained_revision for step in trace] != [1, 1, 2]:
+                raise S49PhysicalFailure("Stage R owner did not bind next L0 epoch")
             if (
                 stage_r.committed is None
                 or stage_r.current is not host.retained
