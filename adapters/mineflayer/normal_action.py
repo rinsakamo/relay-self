@@ -42,8 +42,8 @@ from relay_self.reactive_l0 import (
 )
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
-    select_world_conditioned_choice,
     select_stage_q_dev_committed_world_choice,
+    select_world_conditioned_choice,
 )
 
 
