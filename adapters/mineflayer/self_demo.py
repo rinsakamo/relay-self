@@ -442,7 +442,11 @@ async def _run_disposable(
 
     async def observed_source(reading):
         if stage_n is not None:
-            stage_n.observe_existing_probe(reading)
+            try:
+                stage_n.observe_existing_probe(reading)
+            except (TypeError, ValueError) as exc:
+                # Failed advisory tap is evidence, never L0 admission failure.
+                stage_n.record_observer_error("source", exc)
         if witness is not None:
             try:
                 # Source is sealed on disk before original S49 can select/issue.
@@ -460,9 +464,17 @@ async def _run_disposable(
         if stage_n is None:
             return await qualify(report_path, server_log, live_probe=observed_source)
         from adapters.mineflayer.normal_action import observe_closed_native_actions
+
+        def on_closed(original):
+            try:
+                stage_n.observe_closed(original)
+            except (TypeError, ValueError) as exc:
+                # Keep real terminal; retain observer rejection for DEV receipt.
+                stage_n.record_observer_error("closed", exc)
+
         # Same event-loop context, original S49 issuer; callback receives only
         # an already-closed Action and never controls the physical outcome.
-        with observe_closed_native_actions(stage_n.observe_closed):
+        with observe_closed_native_actions(on_closed):
             return await qualify(report_path, server_log, live_probe=observed_source)
     finally:
         if stage_n is not None:
@@ -963,7 +975,8 @@ def _dev_run(args: argparse.Namespace) -> int:
                     for p in native.get("source_pair_trace", [])
                 }
                 certified = (
-                    len(closures) == stage_n.get("typed_s17_feedback_count") == 2
+                    stage_n.get("observer_errors") == []
+                    and len(closures) == stage_n.get("typed_s17_feedback_count") == 2
                     and len(original) == 2
                     and len(subsequent) >= 1
                     and all(
@@ -1001,6 +1014,7 @@ def _dev_run(args: argparse.Namespace) -> int:
                     dev_self_world_stage_n="TYPED_S17_READ_ONLY"
                     if certified else "NOT_CERTIFIED",
                     dev_self_world_stage_n_closures=len(closures),
+                    dev_self_world_stage_n_observer_errors=stage_n.get("observer_errors"),
                     dev_self_world_stage_n_future_sources=len(subsequent),
                     dev_self_world_stage_n_s10_authorized=False,
                     dev_self_world_stage_n_s10_commits=0,
