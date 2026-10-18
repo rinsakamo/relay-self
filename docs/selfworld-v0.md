@@ -275,3 +275,54 @@ adaptive effect. Tests cover a valid mismatch, missing earlier source,
 forged MATCH status, substituted but internally valid earlier forecast,
 and an insufficient native-seq window. The S49 native observation/Action
 owner remains unmodified. Physical/qualification/science execution: none.
+
+## Stage I — optional live S49 observation -> existing L1/L2 advisory sidecar
+
+The S49 native host still owns **all** real probes, L0 decisions, routing and
+the sole physical Action issuer. Its existing `live_probe` callback is the only
+input to `LiveL2Observer`. The new **opt-in**
+`self_demo --run-disposable --live-think --self-world-live` mode feeds those
+already-acquired native probes through the existing `MinecraftPresent`
+projection and `SelfWorldView`/ATT/PRD/HABIT/RelayEngine input datatypes.
+No additional Minecraft probe, movement, executor, or second model caller is
+introduced.
+
+At the first probe containing exactly one positively observed zombie, an
+ephemeral, source-bound **hypothesis** is created: the same native entity's
+observed label will persist. This is a fixed baseline PRD rule, **not** learned
+dynamics or expected physical truth. The following probe in the same session
+yields MATCH, MISMATCH or UNDETERMINED using the existing strict review
+(64-sequence maximum, not wall clock or World tick). An entity missing from
+bounded/truncated coverage yields UNDETERMINED, never false absence/safety.
+There is no forced L2 call if no qualifying initial probe arrives.
+
+The existing `select_habit` reads a newly supplied **preconfigured cognitive
+repertoire** with two rules: mismatch -> cognitive `RECHECK`, match ->
+cognitive `OBSERVE`. Unknown leads to NO_MATCH. These refs are **neither**
+movement commands nor retained learned Habits. The existing
+`bind_self_world_to_cognition_request` revalidates the exact prior PRD
+witness and produces a source-constrained `BoundedChoiceRequest`; the
+`LiveL2Observer` submits a *read-only natural-language question* incorporating
+that validated context through its existing single S60 model lease. This is
+L2 **input consumption**, not a RelayEngine choice/Action run. The original
+non-SelfWorld live mode behaves as before.
+
+Any newer native probe fences the earlier L2 reply using the existing S60
+owner, including when the provider returns after World advanced. Model
+output is never parsed into `Action`, `LearningFeedback`, S10 commit or
+persistent Habit. A sidecar receipt records the observer-local prior/later
+Present refs, review status and reason, preconfigured L1 cognitive candidate,
+and L2 input-bound flag. No private other-Self Memory is exposed.
+
+Synthetic offline `tests/test_self_live_think.py` covers a delayed single
+model attempt, an observed label mismatch with identical native entity ID,
+matching label, unobserved/truncated target, foreign-session/replayed probe,
+and subsequent stale L2 output. No Java, Minecraft World, R qualification,
+V science, energy accounting, actual learning or adaptive effectiveness is
+certified. This is an opt-in product **DEV_ONLY** interface; `--self-world-live`
+requires both the existing native opt-in and `--live-think`.
+
+The next gate is an explicitly authorized disposable physical DEV check of
+native input and sidecar receipts, followed separately by governed retained
+Memory/S17/S10 causality and V pre-registered controls. No SCIENCE inference
+from these synthetic unit tests.
