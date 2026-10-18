@@ -614,3 +614,42 @@ governed Stage P must establish a real predeclared learning direction and
 authoritative commit/next-epoch owner transfer with ON/OFF/sham controls;
 a manufactured equal-looking copy or a preconfigured cognitive threshold
 does not count.
+
+
+### Stage O follow-up — live typed S17 to owner-bound S10 HOLD *proposal* (DEV gate)
+
+The existing original S49 owner remains the only L0 policy/Action issuer.
+The Stage N typed terminal observer now returns its original in-memory
+`LearningFeedbackInterpretation` after the S16/Action and S17 checks.
+The opt-in Stage O owner sidecar composes this with the SAME exact S49
+retained owner and the already-correlated native probe to call existing
+`propose_learning_update` for the independently predeclared conservative
+HOLD rule. It never deserializes a JSON authority, constructs a S10 grant,
+invokes `commit_learning_update` in the live World, or replaces
+`NormalWorldL0.retained`. All feedback proposals are tagged
+`s10_commit_attempted=false`; the additional source counts are advisory
+DEV evidence and are not learning. A missing/foreign/duplicate/stale
+source, mismatched Action/binding/session, sham S17 result, or attempted
+directional reward fails closed.
+
+The offline tests separately show that a **synthetic test-only grant** can
+commit an unchanged HOLD state with a +1 revision in S10. A missing grant
+is rejected, a replay is rejected, and the resulting new object is NOT
+automatically the original physical L0 owner's current snapshot.
+This offline test does not qualify a genuine S49/S10 authority source.
+The frozen S49 runner stores `retained` as an independent local rev1
+variable and its native S14 admission is explicitly anchored to revision
+1; changing the host's L0 snapshot in an observer callback would create
+a split owner/admission and is therefore prohibited.
+
+**Physical Stage O2/O3/O4 remain BLOCKED.** A future owner-controlled
+DEV-only epoch boundary must simultaneously transfer a legitimate
+non-observer S10 update authority and the resulting exact immutable
+snapshot to BOTH L0 choice and S14 admission, without silently
+rewriting frozen S49 or issuing an extra Action. The current S10
+`LearningUpdateAuthority` dataclass validates target/granted/provenance
+but does not itself attest live-session issuer/owner identity: arbitrary
+construction in a sidecar is not proof of rightful physical authority.
+Only after a real owner-issued handoff and ON/OFF/sham controls should a
+new disposable World be launched; HOLD commits would prove revision
+bookkeeping, not a learned policy difference or causal adaptive effect.
