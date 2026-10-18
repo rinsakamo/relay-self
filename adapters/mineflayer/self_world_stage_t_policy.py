@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from adapters.mineflayer.normal_action import NormalWorldL0
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s34_native_world_cognition_ci import (
+    S34EvidenceFailure,
     _native_epoch_two,
     _native_threat,
 )
@@ -71,22 +72,30 @@ def preview_stage_t_joint_original_owner(
     if host.retained is not state:
         raise StageTDevJointRejected("original L0 and S10 successor diverged")
     before_events, before_actions = host.events, host.action_requests
-    actual = _native_threat(
-        probe, probe.request_id, expected_entity_id=next(
-            e.entity_id for e in probe.snapshot.nearby_entities
-            if e.name == "zombie"
-        ),
-    )
-    l0 = host._check(event, probe)
-    original = select_world_conditioned_choice(
-        actual, commit.previous_state,
-        expected_session_id=host.session_id,
-        expected_entity_id=actual.entity_id,
-    )
-    values, epoch = _native_epoch_two(
-        ActionSupervisor(), intent, state, state,
-        expected_revision=state.revision, native=actual,
-    )
+    target_ids = [
+        e.entity_id for e in probe.snapshot.nearby_entities
+        if e.name == "zombie"
+    ]
+    if len(target_ids) != 1 or not isinstance(probe.request_id, str):
+        raise StageTDevJointRejected("exact one correlated native zombie required")
+    try:
+        actual = _native_threat(
+            probe, probe.request_id, expected_entity_id=target_ids[0],
+        )
+        l0 = host._check(event, probe)
+        original = select_world_conditioned_choice(
+            actual, commit.previous_state,
+            expected_session_id=host.session_id,
+            expected_entity_id=actual.entity_id,
+        )
+        values, epoch = _native_epoch_two(
+            ActionSupervisor(), intent, state, state,
+            expected_revision=state.revision, native=actual,
+        )
+    except (S34EvidenceFailure, ValueError, AssertionError) as exc:
+        raise StageTDevJointRejected(
+            "original native evidence or S14 admission rejected"
+        ) from exc
     plan, admission, read = values["plan"], values["admission"], values["read"]
     if (epoch.cognition_requested
             or read.snapshot is not state
