@@ -246,3 +246,149 @@ def test_action_memory_ownership_and_initial_l0_are_unchanged():
         "ActionSupervisor", "WorldConsequence", "MineflayerCommand",
         "save_persistent_cognition",
     ))
+
+
+# #633 follow-up: existing ATT consumer, without L0 motor/BLF/MEM ownership.
+
+
+def test_attention_reads_only_observed_source_and_never_broadcasts():
+    from relay_self.attention import AttentionCriterion
+    from relay_self.self_world import (
+        resolve_self_world_attention, select_self_world_attention,
+    )
+
+    criterion = AttentionCriterion("look-zombie", focus_key="name:zombie", top_k=1)
+    a = view(present_value=present())
+    b = view("B", present_value=present(session="s-B", entity_id=None))
+    selected_a = select_self_world_attention(a, criterion)
+    selected_b = select_self_world_attention(b, criterion)
+    assert selected_a.considered_count == 1 and len(selected_a.selected) == 1
+    assert selected_b.considered_count == 0 and not selected_b.selected
+    assert resolve_self_world_attention(a, selected_a)[0].origin is WorldOrigin.OBSERVED
+    assert resolve_self_world_attention(b, selected_b) == ()
+    assert b.observed_entity("entity-42").origin is WorldOrigin.UNKNOWN
+    with pytest.raises(InvalidSelfWorldData, match="count mismatch"):
+        resolve_self_world_attention(b, selected_a)
+
+
+def test_attention_selection_cannot_be_replayed_across_epoch_session_or_self():
+    from relay_self.attention import AttentionCriterion
+    from relay_self.self_world import (
+        resolve_self_world_attention, select_self_world_attention,
+    )
+
+    a = view(present_value=present())
+    sel = select_self_world_attention(a, AttentionCriterion("choose-visible"))
+    assert len(resolve_self_world_attention(a, sel)) == 1
+
+    # Same observer but newer native source: old attention snapshot is invalid.
+    new_a = view(present_value=present(seq=9))
+    with pytest.raises(InvalidSelfWorldData, match="foreign, stale"):
+        resolve_self_world_attention(new_a, sel)
+    new_epoch = compose_self_world_view(
+        self_id="A", session_id="s-A", epoch_id="e2",
+        observation=a.observation,
+    )
+    with pytest.raises(InvalidSelfWorldData, match="foreign, stale"):
+        resolve_self_world_attention(new_epoch, sel)
+    foreign = view("B", present_value=present(session="s-B"))
+    with pytest.raises(InvalidSelfWorldData, match="foreign, stale"):
+        resolve_self_world_attention(foreign, sel)
+
+
+def test_attention_rejects_counterfeit_payload_or_candidate_and_empty_hypothesis():
+    from relay_self.attention import AttentionCriterion
+    from relay_self.self_world import (
+        resolve_self_world_attention, select_self_world_attention,
+    )
+
+    a = view(present_value=present())
+    selected = select_self_world_attention(a, AttentionCriterion("visible"))
+    forged = replace(
+        selected, selected=(
+            replace(selected.selected[0], payload_ref="entity-999"),
+        ),
+    )
+    with pytest.raises(InvalidSelfWorldData, match="invented"):
+        resolve_self_world_attention(a, forged)
+    forged_count = replace(selected, considered_count=8)
+    with pytest.raises(InvalidSelfWorldData, match="count mismatch"):
+        resolve_self_world_attention(a, forged_count)
+    repeated = replace(
+        selected, selected=(selected.selected[0], selected.selected[0]),
+        considered_count=2,
+    )
+    # ATT selection's count is inconsistent with this single-entity view.
+    with pytest.raises(InvalidSelfWorldData, match="count mismatch"):
+        resolve_self_world_attention(a, repeated)
+
+    hyp, forecast = scenario()
+    imaginary = view(scenarios=(hyp,), forecasts=(forecast,))
+    assert imaginary.hypothetical("h1", "monster_present").origin is WorldOrigin.HYPOTHETICAL
+    assert select_self_world_attention(
+        imaginary, AttentionCriterion("visible-only")
+    ).selected == ()
+
+
+def test_attention_can_read_public_other_self_position_without_private_mind():
+    from relay_self.attention import AttentionCriterion
+    from relay_self.self_world import (
+        resolve_self_world_attention, select_self_world_attention,
+    )
+
+    other = MinecraftEntityPresent(7, "B", 2.0, (3.0, 64.0, 2.0))
+    src = replace(present(), observed_entities=(other,))
+    a = view(present_value=src)
+    selected = select_self_world_attention(
+        a, AttentionCriterion("visible-B", focus_key="entity-7"),
+    )
+    observed_b = resolve_self_world_attention(a, selected)
+    assert len(observed_b) == 1
+    assert observed_b[0].origin is WorldOrigin.OBSERVED
+    assert observed_b[0].value.position == (3.0, 64.0, 2.0)
+    assert not hasattr(observed_b[0].value, "memory")
+    assert not hasattr(observed_b[0].value, "intent")
+
+    # A's estimate of B's subjective field is not B's own observation.
+    imagined = PredictionState(
+        "a-guess-about-b",
+        (StateVariable("B_sees_zombie", True),), prov("a-private-guess"),
+    )
+    guess = WorldScenario("guess-b-world", "A", "entity-7", imagined)
+    a_guess = view(present_value=src, scenarios=(guess,))
+    assert a_guess.hypothetical(
+        "guess-b-world", "B_sees_zombie",
+    ).origin is WorldOrigin.HYPOTHETICAL
+    assert a_guess.observed_entity("entity-42").origin is WorldOrigin.UNKNOWN
+    b = view("B", present_value=present(session="s-B", entity_id=None))
+    assert b.observed_entity("entity-42").origin is WorldOrigin.UNKNOWN
+    with pytest.raises(InvalidSelfWorldData, match="foreign Self counterfactual"):
+        view(present_value=src, scenarios=(replace(guess, owner_id="B"),))
+
+
+def test_att_selects_only_bounded_observed_subset_without_salience_or_action():
+    from relay_self.attention import AttentionCriterion
+    from relay_self.self_world import (
+        resolve_self_world_attention, select_self_world_attention,
+    )
+
+    p = replace(
+        present(),
+        observed_entities=(
+            MinecraftEntityPresent(42, "zombie", 3.0, (4.0, 64.0, 2.0)),
+            MinecraftEntityPresent(7, "B", 2.0, (3.0, 64.0, 2.0)),
+        ),
+        coverage_candidates=2, coverage_truncated=True,
+    )
+    a = view(present_value=p)
+    picked = select_self_world_attention(
+        a, AttentionCriterion("one-visible", top_k=1),
+    )
+    assert picked.considered_count == 2
+    assert len(picked.selected) == 1
+    assert picked.selected[0].priority == 0  # no invented danger ranking
+    assert resolve_self_world_attention(a, picked)[0].value.entity_ref == "entity-42"
+    assert a.observed_entity("entity-999").origin is WorldOrigin.UNKNOWN
+    assert a.observation.coverage_truncated
+    assert not hasattr(picked, "execute_action")
+    assert not hasattr(picked, "grant_action")
