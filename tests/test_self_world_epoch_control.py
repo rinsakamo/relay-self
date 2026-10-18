@@ -148,7 +148,7 @@ def test_q_joint_rejects_identity_source_or_intent_confounds(case):
     elif case == "tampered_value":
         kwargs["stage_p"] = replace(
             p, committed=replace(
-                p.committed, new_state=replace(current, value=3),
+                p.committed, new_state=replace(current, value=3, last_update=None),
             ),
         )
     elif case == "missing_provenance":
