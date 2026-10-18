@@ -51,6 +51,72 @@ class _PendingTerminal:
     sealed: bool = False
 
 
+class StageRDevOperatorLearningIssuer:
+    """Original S49 operator's single-use DEV permission, NOT Action authority.
+
+    This separates S10 grant construction from the S17 interpreter and
+    commit owner. Local operator grant is not externally authenticated.
+    """
+
+    def __init__(
+        self, host: NormalWorldL0,
+        executor: NormalSessionActionExecutor,
+        intent: IntentCommitment,
+    ) -> None:
+        if (not isinstance(host, NormalWorldL0)
+                or not isinstance(executor, NormalSessionActionExecutor)
+                or not isinstance(intent, IntentCommitment)
+                or executor.intent is not intent
+                or executor.session_id != host.session_id
+                or intent.current_intent is None
+                or intent.current_intent.intent_id != host.intent_id
+                or host.retained.target_id != "risk_weight"
+                or host.retained.revision != 1
+                or host.retained.value != 4):
+            raise StageRDevRejected("S49 DEV operator issuer requires exact owners")
+        self._host = host
+        self._executor = executor
+        self._intent = intent
+        self._initial = host.retained
+        self._issued = False
+
+    def authorize_once(
+        self, *,
+        original: NormalActionClosedReadback,
+        proposal: LearningUpdateProposal,
+        later_probe: MineflayerObservation,
+    ) -> LearningUpdateAuthority:
+        if (
+            self._issued
+            or not isinstance(original, NormalActionClosedReadback)
+            or not isinstance(proposal, LearningUpdateProposal)
+            or not isinstance(later_probe, MineflayerObservation)
+            or original.terminal.state is not ActionState.OUTCOME
+            or original.original_probe.session_id != self._host.session_id
+            or later_probe.session_id != self._host.session_id
+            or original.consequence.after_observation is None
+            or later_probe.seq <= original.consequence.after_observation.seq
+            or proposal.target_id != self._initial.target_id
+            or proposal.expected_revision != self._initial.revision
+            or proposal.expected_value != self._initial.value
+            or self._executor.supervisor.open_actions
+            or self._intent.current_intent is None
+            or self._intent.current_intent.intent_id != self._host.intent_id
+            or proposal.feedback.consequence_ref is None
+        ):
+            raise StageRDevRejected("S49 DEV issuer rejects unsealed or replayed grant")
+        self._issued = True  # single-use even if later S10 fails
+        action = original.terminal.action_id
+        return LearningUpdateAuthority(
+            f"s49-dev-operator-s10-once:{later_probe.session_id}:{action}",
+            self._initial.target_id,
+            Provenance(
+                "s49-dev-learning-owner",
+                f"{later_probe.session_id}:{action}:{proposal.feedback.feedback_id}",
+            ),
+        )
+
+
 class StageRDevSingleWriter:
     """S49-attached owner, NOT a second action runner or an observer grant.
 
@@ -64,9 +130,14 @@ class StageRDevSingleWriter:
         self, host: NormalWorldL0,
         executor: NormalSessionActionExecutor,
         intent: IntentCommitment,
+        issuer: StageRDevOperatorLearningIssuer,
     ) -> None:
         if (
-            not isinstance(host, NormalWorldL0)
+            not isinstance(issuer, StageRDevOperatorLearningIssuer)
+            or issuer._host is not host
+            or issuer._executor is not executor
+            or issuer._intent is not intent
+            or not isinstance(host, NormalWorldL0)
             or not isinstance(executor, NormalSessionActionExecutor)
             or not isinstance(intent, IntentCommitment)
             or executor.intent is not intent
@@ -86,6 +157,7 @@ class StageRDevSingleWriter:
         self._host = host
         self._executor = executor
         self._intent = intent
+        self._issuer = issuer
         self._initial: LearningPreferenceState = host.retained
         self._current: LearningPreferenceState = host.retained
         self._stage_n = StageNNativeClosureObserver(StageNDeclaredPolicy())
@@ -145,13 +217,8 @@ class StageRDevSingleWriter:
         # to the exact already-sealed original Action. This is not a grant
         # from S17 itself, and does not provide cross-run authentication.
         action = original.terminal.action_id
-        authority = LearningUpdateAuthority(
-            f"s49-dev-operator-s10-once:{probe.session_id}:{action}",
-            self._current.target_id,
-            Provenance(
-                "s49-dev-learning-owner",
-                f"{probe.session_id}:{action}:{pending.proposal.feedback.feedback_id}",
-            ),
+        authority = self._issuer.authorize_once(
+            original=original, proposal=pending.proposal, later_probe=probe,
         )
         result = commit_learning_update(
             self._current, pending.proposal, authority,
