@@ -43,6 +43,7 @@ class StagePOfflineDualRead:
     s14_read: RetainedPreferenceRead
     following_native_seq: int
     following_request_id: str
+    following_native_observation: MineflayerObservation
     offline_only: bool = True
     real_world_commit_attested: bool = False
     installed_in_original_s49: bool = False
@@ -150,4 +151,5 @@ def prepare_stage_p_offline_dual_read(
         committed=committed, l0_read=l0, s14_read=s14,
         following_native_seq=next_probe.seq,
         following_request_id=next_probe.request_id,
+        following_native_observation=next_probe,
     )
