@@ -332,3 +332,94 @@ def test_live_selfworld_unqualified_optional_projection_never_interrupts_l0():
             assert receipt["learning_updates"] == 0
 
     asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+# Stage K replays S49's existing S16 Action snapshots read-only, unlike
+# Stage J's three different stimulus IDs. No extra World probe/Action.
+def _saved_s16_source_pair(*, after_label="zombie"):
+    import copy
+
+    import test_action_feedback_qualification as s17
+    from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
+
+    evidence = copy.deepcopy(capture_native_action_evidence(s17.executed_closed_chain()[-3]))
+    target = {
+        "entity_id": 42, "name": "zombie", "entity_type": "mob",
+        "distance": 2.0, "position": {"x": 2.0, "y": 64.0, "z": 0.0},
+    }
+    for key, label in (("before_observation", "zombie"), ("after_observation", after_label)):
+        frame = evidence[key]["snapshot"]
+        frame["nearby_entities"] = [{**target, "name": label}] if label else []
+        frame["nearby_entities_coverage"]["candidate_count"] = int(bool(label))
+    return evidence
+
+
+@pytest.mark.parametrize(("after_label", "status", "reason"), [
+    ("zombie", "match", "observed_prediction_match"),
+    ("skeleton", "mismatch", "observed_prediction_mismatch"),
+    (None, "undetermined", "target_or_property_unobserved"),
+])
+def test_stage_k_original_s16_same_target_before_after_review(
+    after_label, status, reason,
+):
+    from adapters.mineflayer.self_world_projection import review_saved_s16_action_self_world
+
+    evidence = _saved_s16_source_pair(after_label=after_label)
+    review = review_saved_s16_action_self_world(
+        evidence, action_id=evidence["action_id"],
+        session_id=evidence["session_id"], movement_m=evidence["movement_m"],
+        target_entity_id=42,
+    )
+    assert review.status.value == status
+    assert review.reason_code == reason
+    assert review.target_ref == "entity-42"
+    assert review.predicted_value == "zombie"
+    assert review.observed_value == after_label
+    assert review.prior_observation_ref != review.later_observation_ref
+    assert "s16-evidence-" in review.later_observation_ref
+
+
+def test_stage_k_rejects_unbound_or_forged_native_action_evidence():
+    import copy
+
+    from adapters.mineflayer.self_world_projection import review_saved_s16_action_self_world
+
+    source = _saved_s16_source_pair()
+    for mutation in ("bad_session", "no_before_target", "wrong_id", "changed_movement",
+                     "bad_order", "spoofed_provenance", "no_dispatch", "too_old"):
+        e = copy.deepcopy(source)
+        bound = 64
+        target = 42
+        sid = e["session_id"]
+        if mutation == "bad_session":
+            sid = "other-session"
+        elif mutation == "no_before_target":
+            e["before_observation"]["snapshot"]["nearby_entities"] = []
+            e["before_observation"]["snapshot"]["nearby_entities_coverage"]["candidate_count"] = 0
+        elif mutation == "wrong_id":
+            target = 999
+        elif mutation == "changed_movement":
+            e["movement_m"] += 1
+        elif mutation == "bad_order":
+            e["after_observation"]["seq"] = e["before_observation"]["seq"]
+        elif mutation == "spoofed_provenance":
+            e["after_observation"]["provenance"]["reference"] = "other:invalid"
+        elif mutation == "no_dispatch":
+            e["dispatch_receipt"]["result"] = "rejected"
+        else:
+            bound = 1
+        if mutation == "too_old":
+            review = review_saved_s16_action_self_world(
+                e, action_id=e["action_id"], session_id=sid,
+                movement_m=e["movement_m"], target_entity_id=target,
+                max_native_seq_gap=bound,
+            )
+            assert review.status.value == "undetermined"
+            assert review.reason_code == "source_gap_beyond_explicit_bound"
+        else:
+            with pytest.raises(ValueError):
+                review_saved_s16_action_self_world(
+                    e, action_id=e["action_id"], session_id=sid,
+                    movement_m=e["movement_m"], target_entity_id=target,
+                    max_native_seq_gap=bound,
+                )
