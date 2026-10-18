@@ -6,9 +6,16 @@ No native Minecraft imports, mutable registry, communication or actuator interfa
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
+from relay_self.epoch_continuation import RetainedPreferenceRead, read_retained_preference
+from relay_self.learning import LearningPreferenceState
+from relay_self.relay_engine import (
+    BoundedChoiceRequest,
+    CognitionDatum,
+    OpenCognitionRequest,
+)
 from relay_self.attention import (
     AttentionCandidate,
     AttentionCriterion,
@@ -469,6 +476,147 @@ def review_self_world_prediction(
         ),
         later.provenance,
     )
+
+
+
+_SELF_WORLD_COGNITION_KEYS = frozenset({
+    "self_world_observer",
+    "self_world_observed",
+    "self_world_prediction_review",
+    "self_world_retained_preference",
+})
+
+
+def bind_self_world_to_cognition_request(
+    view: SelfWorldView,
+    selection: AttentionSelection,
+    request: BoundedChoiceRequest | OpenCognitionRequest,
+    *,
+    review: WorldPredictionReview | None = None,
+    retained_owner_self_id: str | None = None,
+    owner_snapshot: LearningPreferenceState | None = None,
+    retained_read: RetainedPreferenceRead | None = None,
+) -> BoundedChoiceRequest | OpenCognitionRequest:
+    """Opt-in input to existing RelayEngine BOUNDED/THINK/OPEN; no issuer.
+
+    No route, Action authorization or model invocation is performed here.
+    Current owner snapshot and observer binding must be supplied by caller;
+    this projection cannot authenticate that caller's owner registry.
+    """
+    if not isinstance(view, SelfWorldView) or not isinstance(
+        request, (BoundedChoiceRequest, OpenCognitionRequest)
+    ):
+        raise InvalidSelfWorldData("typed SelfWorld and existing cognition request required")
+    if any(datum.key in _SELF_WORLD_COGNITION_KEYS for datum in request.context):
+        raise InvalidSelfWorldData("caller attempted to overwrite SelfWorld context")
+    if len({datum.key for datum in request.context}) != len(request.context):
+        raise InvalidSelfWorldData("duplicate external cognition datum keys")
+    selected = resolve_self_world_attention(view, selection)
+    source = view.observation
+    provenance = (
+        source.provenance if source is not None
+        else Provenance("relay_self.self_world", f"{view.self_id}:{view.epoch_id}:unknown")
+    )
+    items = [
+        CognitionDatum.from_value(
+            "self_world_observer",
+            {
+                "self_id": view.self_id,
+                "session_id": view.session_id,
+                "epoch_id": view.epoch_id,
+                "status": "observed" if source is not None else "unknown",
+                "source_ref": source.source_ref if source is not None else None,
+                "coverage_truncated": (
+                    source.coverage_truncated if source is not None else None
+                ),
+            }, provenance,
+        ),
+        CognitionDatum.from_value(
+            "self_world_observed",
+            [
+                {
+                    "entity_ref": reading.value.entity_ref,
+                    "label": reading.value.label,
+                    "position": reading.value.position,
+                    "distance_m": reading.value.distance_m,
+                    "visible_action": reading.value.visible_action,
+                    "origin": reading.origin.value,
+                }
+                for reading in selected
+            ], provenance,
+        ),
+    ]
+    if review is not None:
+        if not isinstance(review, WorldPredictionReview):
+            raise InvalidSelfWorldData("prediction review must be typed")
+        if (
+            source is None
+            or review.self_id != view.self_id
+            or review.session_id != view.session_id
+            or review.later_epoch_id != view.epoch_id
+            or review.later_observation_ref != source.source_ref
+            or review.observation_provenance != source.provenance
+        ):
+            raise InvalidSelfWorldData("stale, foreign or unbound prediction review")
+        items.append(CognitionDatum.from_value(
+            "self_world_prediction_review",
+            {
+                "status": review.status.value,
+                "reason": review.reason_code,
+                "scenario_id": review.scenario_id,
+                "target_ref": review.target_ref,
+                "variable_key": review.variable_key,
+                "predicted_value": review.predicted_value,
+                "observed_value": review.observed_value,
+                "prior_source": review.prior_observation_ref,
+                "later_source": review.later_observation_ref,
+                # A prediction error is evidence of mismatch, not failure reward.
+                "action_success": None,
+            }, source.provenance,
+        ))
+    retain_supplied = (
+        retained_owner_self_id is not None
+        or owner_snapshot is not None or retained_read is not None
+    )
+    if retain_supplied:
+        if (
+            retained_owner_self_id != view.self_id
+            or not isinstance(owner_snapshot, LearningPreferenceState)
+            or not isinstance(retained_read, RetainedPreferenceRead)
+            or retained_read.snapshot is not owner_snapshot
+        ):
+            raise InvalidSelfWorldData("foreign, missing or stale retained owner read")
+        read = read_retained_preference(
+            owner_snapshot, retained_read.snapshot,
+            required_target_id=owner_snapshot.target_id,
+            expected_revision=retained_read.revision,
+            provenance=retained_read.read_provenance,
+        )
+        if (
+            read.last_update is not retained_read.last_update
+            or read.origin_provenance != retained_read.origin_provenance
+        ):
+            raise InvalidSelfWorldData("counterfeit retained read metadata")
+        items.append(CognitionDatum.from_value(
+            "self_world_retained_preference",
+            {
+                "owner_self_id": view.self_id,
+                "target_id": read.snapshot.target_id,
+                "revision": read.revision,
+                "value": read.snapshot.value,
+                "committed_feedback_ref": (
+                    read.last_update.feedback_id
+                    if read.last_update is not None else None
+                ),
+                "origin": "governed-retained-read",
+            },
+            (
+                read.last_update.update_provenance
+                if read.last_update is not None
+                else read.origin_provenance
+            ),
+        ))
+    return replace(request, context=(*request.context, *items))
 
 
 def compose_self_world_view(
