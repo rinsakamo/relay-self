@@ -1122,3 +1122,241 @@ def test_no_present_uses_explicit_unknown_with_zero_action_or_memory_write():
     assert fields["self_world_observed"] == []
     assert "self_world_retained_preference" not in fields
     assert len(request.context) == 2
+
+
+# #633 Stage G: existing L1 HABIT + L2 PRD consumers reuse one source-grounded view.
+
+
+def _l1_l2_sources(
+    predicted_label="creeper", *, memory_ids=(), retained=None, later_present=None,
+):
+    from relay_self.self_world import project_self_world_l1_l2_inputs
+
+    prior, after, _ = review_fixture(
+        predicted_label=predicted_label, later_present=later_present,
+    )
+    owner = retained if retained is not None else owned("A", *memory_ids)
+    if memory_ids:
+        by_id = {m.memory_id: m for m in owner.memories}
+        after = replace(after, memories=tuple(by_id[m] for m in memory_ids))
+    inputs = project_self_world_l1_l2_inputs(
+        prior, after, owner, memory_ids=memory_ids,
+        scenario_id="source-bound-future", variable_key="entity_label",
+        max_native_seq_gap=10,
+    )
+    return prior, after, owner, inputs
+
+
+def test_l1_habit_and_l2_prediction_consume_same_review():
+    from relay_self.habit import (
+        CueFeature,
+        HabitRepertoire,
+        HabitRule,
+        HabitSelectionStatus,
+        select_habit,
+    )
+    from relay_self.prediction import PredictionStatus
+    from relay_self.self_world import WorldPredictionReviewStatus
+
+    _, _, retained, (cue, state, discrepancy) = _l1_l2_sources(
+        predicted_label="creeper",
+    )
+    assert discrepancy.status is WorldPredictionReviewStatus.MISMATCH
+    assert cue.feature("review_status").value == "mismatch"
+    assert state.variable("review_status").value == "mismatch"
+    assert state.variable("observed_value").value == "zombie"
+    assert state.variable("predicted_value").value == "creeper"
+
+    # Existing HABIT owner makes a read-only L1-like selection using an
+    # explicitly supplied rule, NOT a new preference inferred by SelfWorld.
+    repertoire = HabitRepertoire(
+        "explicit-review-habits", 0, (
+            HabitRule("reuse-when-confirmed", (
+                CueFeature("review_status", "match"),
+            ), "REUSE", 1, prov("rule-reuse")),
+            HabitRule("reconsider-when-wrong", (
+                CueFeature("review_status", "mismatch"),
+            ), "RECONSIDER", 1, prov("rule-reconsider")),
+        ), prov("owned-rules"),
+    )
+    habit = select_habit(repertoire, cue)
+    assert habit.status is HabitSelectionStatus.SELECTED
+    assert habit.selected_candidate_ref == "RECONSIDER"
+
+    # Existing PRD does an L2-like conditional transition. SelfWorld does
+    # not choose an Action or generate a reward from the same mismatch.
+    rule = TransitionRule(
+        "reconsider-on-error",
+        (StateVariable("review_status", "mismatch"),),
+        (StateVariable("evaluation", "needs-reconsideration"),),
+        prov("conditional-cognition-rule"),
+    )
+    result = predict_transition(state, rule)
+    assert result.status is PredictionStatus.PREDICTED
+    assert result.predicted_state.variable("evaluation").value == "needs-reconsideration"
+    assert retained.memories == ()
+    assert not hasattr(cue, "authorize_action")
+    assert not hasattr(result, "execute_action")
+
+    _, _, _, (matching_cue, matching_state, matching_review) = _l1_l2_sources(
+        predicted_label="zombie",
+    )
+    assert matching_review.status is WorldPredictionReviewStatus.MATCH
+    assert select_habit(repertoire, matching_cue).selected_candidate_ref == "REUSE"
+    assert predict_transition(
+        matching_state, rule,
+    ).status is PredictionStatus.NO_TRANSITION
+
+
+def test_retained_own_memory_is_reusable_l1_l2_input_not_world_fact():
+    from relay_self.habit import (
+        CueFeature,
+        HabitRepertoire,
+        HabitRule,
+        HabitSelectionStatus,
+        select_habit,
+    )
+    from relay_self.prediction import PredictionStatus
+
+    a = owned("A", "past-failed-prediction")
+    _, current, _, (cue, state, review) = _l1_l2_sources(
+        predicted_label="creeper",
+        memory_ids=("past-failed-prediction",), retained=a,
+    )
+    assert current.remembered("past-failed-prediction").origin is WorldOrigin.REMEMBERED
+    assert current.observed_entity("entity-42").origin is WorldOrigin.OBSERVED
+    assert cue.feature("memory_0").value == "past-failed-prediction"
+    assert state.variable("memory_0").value == "past-failed-prediction"
+    assert state.variable("retained_count").value == 1
+    assert "memory:past-failed-prediction" in state.source_refs
+    assert a.memories[0].source_provenance in state.source_provenance
+    assert a.memories[0].integration_provenance in state.source_provenance
+    assert review.status.value == "mismatch"
+
+    repertoire = HabitRepertoire(
+        "use-explicit-retained-identity", 1, (
+            HabitRule(
+                "memory-based-review",
+                (CueFeature("review_status", "mismatch"),
+                 CueFeature("memory_0", "past-failed-prediction")),
+                "REVISIT_EVIDENCE", 1, prov("preconfigured-memory-rule"),
+            ),
+        ), prov("preconfigured-repertoire"),
+    )
+    assert select_habit(repertoire, cue).selected_candidate_ref == "REVISIT_EVIDENCE"
+    # With no owned Memory, no implicit B Memory, and no invented prior
+    # learning, this preconfigured rule cannot fire.
+    _, _, _, (cold_cue, cold_state, _) = _l1_l2_sources(
+        predicted_label="creeper",
+    )
+    assert select_habit(repertoire, cold_cue).status is HabitSelectionStatus.NO_MATCH
+    rule = TransitionRule(
+        "use-explicit-memory",
+        (StateVariable("memory_0", "past-failed-prediction"),),
+        (StateVariable("review_strategy", "inspect-prior-evidence"),),
+        prov("explicit-memory-transition"),
+    )
+    assert predict_transition(state, rule).status is PredictionStatus.PREDICTED
+    assert predict_transition(cold_state, rule).status is PredictionStatus.UNDETERMINED
+
+
+def test_l1_l2_projection_rejects_foreign_missing_spoofed_or_cross_epoch_memory():
+    from relay_self.self_world import project_self_world_l1_l2_inputs
+
+    before, current, retained, _ = _l1_l2_sources()
+    args = dict(
+        memory_ids=(), scenario_id="source-bound-future",
+        variable_key="entity_label", max_native_seq_gap=10,
+    )
+    with pytest.raises(InvalidSelfWorldData, match="cross-Self"):
+        project_self_world_l1_l2_inputs(
+            before, current, owned("B", "private-B-memory"), **args,
+        )
+    with pytest.raises(InvalidSelfWorldData, match="unknown or foreign"):
+        project_self_world_l1_l2_inputs(
+            before, current, retained,
+            **{**args, "memory_ids": ("private-B-memory",)},
+        )
+    with pytest.raises(InvalidSelfWorldData, match="memory selection"):
+        project_self_world_l1_l2_inputs(
+            before, replace(
+                current, memories=owned("B", "private-B-memory").memories,
+            ),
+            retained, **args,
+        )
+    with pytest.raises(InvalidSelfWorldData, match="memory selection"):
+        project_self_world_l1_l2_inputs(
+            before, current, owned("A", "existing-A-memory"),
+            **{**args, "memory_ids": ("existing-A-memory",)},
+        )
+    with pytest.raises(InvalidSelfWorldData, match="distinct decision epochs"):
+        project_self_world_l1_l2_inputs(before, before, retained, **args)
+    with pytest.raises(InvalidSelfWorldData, match="foreign observer"):
+        project_self_world_l1_l2_inputs(
+            before, view("B", present_value=present(session="s-B", seq=9)),
+            retained, **args,
+        )
+
+
+def test_l1_l2_unknown_cue_does_not_invent_entity_absence_or_learn():
+    from relay_self.habit import (
+        CueFeature,
+        HabitRepertoire,
+        HabitRule,
+        HabitSelectionStatus,
+        select_habit,
+    )
+    from relay_self.prediction import PredictionStatus
+
+    _, current, owner, (cue, state, review) = _l1_l2_sources(
+        predicted_label="creeper",
+        later_present=present(seq=9, entity_id=None, truncated=True),
+    )
+    assert review.status.value == "undetermined"
+    assert review.observed_value is None
+    assert cue.feature("review_status").value == "undetermined"
+    assert cue.feature("observed_target").value is False
+    assert state.variable("observed_target").value is False
+    assert state.variable("observed_value") is None
+    assert current.observed_entity("entity-42").origin is WorldOrigin.UNKNOWN
+
+    habit = select_habit(
+        HabitRepertoire(
+            "no-inferred-safety", 0, (
+                HabitRule(
+                    "only-genuine-mismatch",
+                    (CueFeature("review_status", "mismatch"),),
+                    "RECONSIDER", 1, prov("no-unknown-to-error"),
+                ),
+            ), prov("bounded-habit"),
+        ),
+        cue,
+    )
+    assert habit.status is HabitSelectionStatus.NO_MATCH
+    inference = predict_transition(
+        state, TransitionRule(
+            "no-safety-inference",
+            (StateVariable("review_status", "mismatch"),),
+            (StateVariable("decision", "reconsider"),),
+            prov("no-unknown-to-reward"),
+        ),
+    )
+    assert inference.status is PredictionStatus.NO_TRANSITION
+    assert owner.memories == ()
+
+
+def test_self_world_cognition_projection_is_independent_of_l0_and_s17_commit():
+    import inspect
+
+    from relay_self.self_world import project_self_world_l1_l2_inputs
+
+    assert "self_world" not in inspect.signature(ReactiveL0.decide).parameters
+    assert "self_world" not in inspect.signature(ReactiveL0.__init__).parameters
+    assert "learning_authority" not in inspect.signature(
+        project_self_world_l1_l2_inputs,
+    ).parameters
+    assert "action" not in inspect.signature(project_self_world_l1_l2_inputs).parameters
+    _, _, retained, (_, state, review) = _l1_l2_sources()
+    assert review.status.value == "mismatch"
+    assert state.provenance.source == "relay_self.self_world.l1_l2_projection"
+    assert retained.memories == ()
