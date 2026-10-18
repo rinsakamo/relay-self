@@ -712,3 +712,45 @@ the frozen S49 revision and admission coupling, with provenance/identity
 proof and single-writer Actions. Such a migration requires separate
 contract review; adding a sidecar that merely flips `host.retained`
 would be incorrect. No automatic R/V promotion.
+
+## Stage Q — joint original choice/S14 offline DEV successor
+
+**No new real World run or independent S10 authority**. Stage P preserves
+the exact next native `MineflayerObservation` object (not merely a seq/request
+string). Stage Q exposes a separate, opt-in
+`select_stage_q_dev_committed_world_choice` in
+`src/relay_self/world_conditioned_choice.py`. The historical
+`select_world_conditioned_choice` still requires the frozen
+`risk_weight=4/rev1`; the DEV entrypoint requires the exact
+`LearningCommitResult` and same `LearningPreferenceState` object with
+a legitimate *structural* S10 successor record, then executes **the
+identical internal S42 selection/PLAN algorithm**, not a copied policy.
+This guards against simply relaxing the old revision check.
+
+`adapters/mineflayer/self_world_epoch_control.py` calls the original
+`_native_epoch_two` (ATT/BLF/CNC/PRD/PLAN/ROUTE/ADMISSION) with
+`expected_revision=current.revision` and both S14 owner arguments set to
+the same Stage P committed object. It requires exactly the next native
+observation object and precommit L0/S14 owner identity, an active
+`escape-threat` intent, preexisting rev1/value4 source, value-preserving
+rev2 HOLD, original near-threat MOVE selection, and agreement between
+S42 and S14 candidate selection. It returns a **nonexecuting** readback
+whose fields make the limitations explicit: no Action issued, no original
+S49 owner installed, no independently attested S10 issuer, no evidence of
+causal learning. Synthetic negative controls reject copied owners,
+reconstructed successors, foreign source/intent, stale revisions,
+sham feedback lineage and non-MOVE admission.
+
+**Critical remaining physical blocker:** `NormalWorldL0._check` still
+uses the frozen S42 entrypoint, and original S49 `on_action` still closes
+over its initial rev1 snapshot. Stage Q shows both existing calculations
+can be coupled on a successor without creating a second Action issuer;
+it deliberately does not mutate either original live object or claim the
+physical S49 host used the DEV function. To become runnable Stage R must
+add one explicit, reviewed, single-writer owner transition at a terminal
+Action/epoch boundary **inside the original S49 owner** and route both
+original L0 and native S14 through that same owner. Any independently
+supplied `LearningUpdateAuthority` must be authenticated by the actual
+learning-authority owner; the synthetic test object is NOT that proof.
+HOLD increments revision but provides no policy improvement or changed
+Action evidence. DEV/QUALIFICATION/SCIENCE remain separate; no auto-upgrade.
