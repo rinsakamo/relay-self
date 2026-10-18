@@ -77,6 +77,7 @@ jobs:
               adapters/mineflayer/self_world_prospective.py|\
               adapters/mineflayer/self_world_learning_gate.py|\
               adapters/mineflayer/self_world_native_feedback.py|\
+              adapters/mineflayer/self_world_owner_handoff.py|\
               src/relay_self/self_world.py|\
               docs/selfworld-v0.md|\
               tests/test_self_world.py|\
@@ -96,6 +97,7 @@ jobs:
               tests/test_self_world_prospective.py|\
               tests/test_self_world_learning_gate.py|\
               tests/test_self_world_native_feedback.py|\
+              tests/test_self_world_owner_handoff.py|\
               tests/test_m02_paper_dev.py|\
               tests/test_m02_v8_stopped_world_clone_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
@@ -158,6 +160,7 @@ jobs:
             tests/test_self_world_prospective.py \
             tests/test_self_world_learning_gate.py \
             tests/test_self_world_native_feedback.py \
+            tests/test_self_world_owner_handoff.py \
             tests/test_self_body.py \
             tests/test_self_world.py
 
@@ -679,5 +682,72 @@ jobs:
             ${{ env.DEV_ROOT }}/host_stderr.log
             ${{ env.DEV_ROOT }}/live_l2.jsonl
             ${{ runner.temp }}/selfworld-stage-n-cli.log
+          if-no-files-found: warn
+          retention-days: 30
+
+  selfworld-stage-o-owner-once:
+    # One NEW isolated S49 DEV World: read exact L0 original retained owner,
+    # no learning authority, physical Action controls or new native probe.
+    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-o-owner-once]') }}
+    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DEV_ROOT: /tmp/selfworld-stage-o-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Original S49 World dependencies and immutable head
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test ! -e "$DEV_ROOT"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+          java -version
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if(require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
+      - name: Original S49 L0 retained object identity and next real native sources
+        shell: bash
+        run: |
+          set -o pipefail
+          python -B -m adapters.mineflayer.self_demo \
+            --mode DEV --dev-scenario native-selfworld --run-disposable \
+            --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
+            --output-dir "$DEV_ROOT" \
+            --live-think --self-world-live --self-world-prospective \
+            --self-world-typed-closure --self-world-retained-handoff \
+            --model-alias stage-o-backend-not-attested --model-port 16559 \
+            --model-timeout 1 \
+            | tee "${{ runner.temp }}/selfworld-stage-o-cli.log"
+      - name: Retain exact DEV evidence on both pass and failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selfworld-stage-o-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.DEV_ROOT }}/dev_receipt.json
+            ${{ env.DEV_ROOT }}/SHA256SUMS
+            ${{ env.DEV_ROOT }}/stage_o_retained_owner.jsonl
+            ${{ env.DEV_ROOT }}/stage_n_native_feedback.jsonl
+            ${{ env.DEV_ROOT }}/stage_l_prospective.jsonl
+            ${{ env.DEV_ROOT }}/native_report.json
+            ${{ env.DEV_ROOT }}/minecraft_server.log
+            ${{ env.DEV_ROOT }}/host_stdout.log
+            ${{ env.DEV_ROOT }}/host_stderr.log
+            ${{ env.DEV_ROOT }}/live_l2.jsonl
+            ${{ runner.temp }}/selfworld-stage-o-cli.log
           if-no-files-found: warn
           retention-days: 30
