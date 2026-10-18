@@ -245,7 +245,7 @@ def test_live_selfworld_unseen_target_is_undetermined_not_absent():
                 missing.snapshot, nearby_entities=(),
                 nearby_entities_coverage=replace(
                     missing.snapshot.nearby_entities_coverage,
-                    candidate_count=0, truncated=True,
+                    candidate_count=0, truncated=False,
                 ),
             ))
             await observer.observe(missing)
@@ -259,7 +259,7 @@ def test_live_selfworld_unseen_target_is_undetermined_not_absent():
             assert receipt["authorized_actions"] == 0
             prompt = server.posts[0]["messages"][1]["content"]
             assert '"observed_value": null' in prompt
-            assert '"coverage_truncated": true' in prompt
+            assert '"coverage_truncated": false' in prompt
             assert '"status": "undetermined"' in prompt
 
     asyncio.run(asyncio.wait_for(scenario(), 6))
@@ -308,12 +308,13 @@ def test_live_selfworld_unqualified_optional_projection_never_interrupts_l0():
                 self_world_live=True,
             )
             malformed = scoped_world_probe(8)
+            # Valid native packet text can still fail stricter SelfWorld
+            # token validation. The native-only observer must not veto L0.
+            fact = replace(
+                malformed.snapshot.nearby_entities[0], name="zombie invalid",
+            )
             malformed = replace(malformed, snapshot=replace(
-                malformed.snapshot,
-                nearby_entities_coverage=replace(
-                    malformed.snapshot.nearby_entities_coverage,
-                    candidate_count=0,
-                ),
+                malformed.snapshot, nearby_entities=(fact,),
             ))
             # Optional L2 sidecar rejects malformed coverage, but the single
             # real S49 L0 owner need not wait on an advisory model.
