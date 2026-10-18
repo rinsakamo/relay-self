@@ -1028,7 +1028,10 @@ def test_bound_selfworld_request_supports_existing_think_and_open_but_no_action(
 
 def test_cognition_view_refuses_stale_foreign_or_invented_inputs():
     from relay_self.attention import AttentionCriterion
-    from relay_self.epoch_continuation import read_retained_preference
+    from relay_self.epoch_continuation import (
+        StaleRetainedSnapshot,
+        read_retained_preference,
+    )
     from relay_self.relay_engine import CognitionDatum
     from relay_self.self_world import (
         bind_self_world_to_cognition_request,
@@ -1081,7 +1084,7 @@ def test_cognition_view_refuses_stale_foreign_or_invented_inputs():
             retained_read=read,
         )
     tampered = replace(read, revision=17)
-    with pytest.raises(Exception):
+    with pytest.raises(StaleRetainedSnapshot):
         bind_self_world_to_cognition_request(
             a, choice_a, _bounded_world_request("tampered-revision"),
             retained_owner_self_id="A", owner_snapshot=owner,
