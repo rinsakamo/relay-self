@@ -397,3 +397,215 @@ def test_att_selects_only_bounded_observed_subset_without_salience_or_action():
     assert a.observation.coverage_truncated
     assert not hasattr(picked, "execute_action")
     assert not hasattr(picked, "grant_action")
+
+
+# #633 Stage F: a discrepancy is read-only evidence, never a learning grant.
+
+
+def anchored_forecast(
+    old_view,
+    predicted_label: str,
+    *,
+    action_id: str | None = None,
+    target: str = "entity-42",
+):
+    refs = (old_view.observation.source_ref, f"target:{target}")
+    if action_id is not None:
+        refs += (f"action:{action_id}",)
+    state = PredictionState(
+        "anchored-entity-label",
+        (StateVariable("entity_label", "zombie"),), prov("owner-A-assumption"),
+        source_refs=refs,
+        source_provenance=(old_view.observation.provenance,),
+    )
+    hyp = WorldScenario("source-bound-future", old_view.self_id, target, state)
+    forecast = WorldForecast(
+        hyp.scenario_id,
+        predict_transition(
+            state,
+            TransitionRule(
+                "one-step-change",
+                (StateVariable("entity_label", "zombie"),),
+                (StateVariable("entity_label", predicted_label),),
+                prov("owner-A-rule"),
+            ),
+        ),
+    )
+    return hyp, forecast
+
+
+def review_fixture(
+    *,
+    predicted_label: str = "creeper",
+    later_present=None,
+    max_gap: int = 10,
+):
+    from relay_self.self_world import review_self_world_prediction
+
+    before = view(present_value=present(seq=8))
+    hypothesis, forecast = anchored_forecast(before, predicted_label)
+    prior = view(
+        present_value=present(seq=8),
+        scenarios=(hypothesis,), forecasts=(forecast,),
+    )
+    after = view(present_value=(
+        later_present if later_present is not None else present(seq=9)
+    ))
+    result = review_self_world_prediction(
+        prior, after, scenario_id=hypothesis.scenario_id,
+        variable_key="entity_label", max_native_seq_gap=max_gap,
+    )
+    return prior, after, result
+
+
+def test_cross_epoch_prediction_mismatch_is_not_learning():
+    from relay_self.self_world import WorldPredictionReviewStatus
+
+    prior, after, result = review_fixture(predicted_label="creeper")
+    assert result.status is WorldPredictionReviewStatus.MISMATCH
+    assert result.predicted_value == "creeper"
+    assert result.observed_value == "zombie"
+    assert result.reason_code == "observed_prediction_mismatch"
+    assert result.prior_observation_ref == prior.observation.source_ref
+    assert result.later_observation_ref == after.observation.source_ref
+    assert result.observation_provenance == after.observation.provenance
+    assert result.prediction_source_provenance
+    assert not hasattr(result, "feedback")
+    assert not hasattr(result, "commit_learning_update")
+    assert prior.observed_entity("entity-42").value.label == "zombie"
+
+
+def test_match_never_grants_feedback_and_missing_is_unknown():
+    from relay_self.self_world import WorldPredictionReviewStatus
+
+    _, _, match = review_fixture(predicted_label="zombie")
+    assert match.status is WorldPredictionReviewStatus.MATCH
+    _, _, absent = review_fixture(
+        later_present=present(seq=9, entity_id=None, truncated=False),
+    )
+    assert absent.status is WorldPredictionReviewStatus.UNDETERMINED
+    assert absent.observed_value is None
+    assert absent.reason_code == "target_or_property_unobserved"
+    _, _, truncated = review_fixture(
+        later_present=present(seq=9, entity_id=None, truncated=True),
+    )
+    assert truncated.status is WorldPredictionReviewStatus.UNDETERMINED
+    _, _, expired = review_fixture(later_present=present(seq=99), max_gap=4)
+    assert expired.status is WorldPredictionReviewStatus.UNDETERMINED
+    assert expired.reason_code == "source_gap_beyond_explicit_bound"
+
+
+def test_cross_epoch_review_rejects_foreign_replay_and_bad_limits():
+    from relay_self.self_world import review_self_world_prediction
+
+    prior, after, _ = review_fixture()
+    arg = dict(
+        scenario_id="source-bound-future",
+        variable_key="entity_label", max_native_seq_gap=10,
+    )
+    with pytest.raises(InvalidSelfWorldData, match="foreign observer"):
+        review_self_world_prediction(
+            prior, view("B", present_value=present(session="s-B", seq=9)), **arg,
+        )
+    with pytest.raises(InvalidSelfWorldData, match="stale or replayed"):
+        review_self_world_prediction(prior, view(present_value=present(seq=8)), **arg)
+    with pytest.raises(InvalidSelfWorldData, match="distinct decision"):
+        review_self_world_prediction(prior, prior, **arg)
+    with pytest.raises(InvalidSelfWorldData, match="positive integer"):
+        review_self_world_prediction(
+            prior, after, **{**arg, "max_native_seq_gap": False},
+        )
+    with pytest.raises(InvalidSelfWorldData, match="observable exterior"):
+        review_self_world_prediction(
+            prior, after, **{**arg, "variable_key": "energy"},
+        )
+    forged = replace(after.observation, provenance=prov("s-A:999", "mineflayer"))
+    with pytest.raises(InvalidSelfWorldData, match="source lineage"):
+        review_self_world_prediction(
+            prior, replace(after, observation=forged), **arg,
+        )
+    with pytest.raises(InvalidSelfWorldData, match="nonmonotonic"):
+        review_self_world_prediction(
+            prior,
+            replace(
+                after, observation=replace(after.observation, observed_at_ns=90),
+            ),
+            **arg,
+        )
+
+
+def test_unbound_forged_or_unavailable_forecast_cannot_mint_mismatch():
+    from relay_self.self_world import review_self_world_prediction
+
+    before, after, _ = review_fixture()
+    kwargs = dict(
+        scenario_id="source-bound-future", variable_key="entity_label",
+        max_native_seq_gap=10,
+    )
+    scenario0 = before.scenarios[0]
+    no_ancestor = replace(
+        scenario0.state, source_refs=("target:entity-42",),
+    )
+    fake_scenario = replace(scenario0, state=no_ancestor)
+    fake_forecast = WorldForecast(
+        "source-bound-future",
+        predict_transition(no_ancestor, before.forecasts[0].prediction.rule),
+    )
+    tampered = replace(
+        before, scenarios=(fake_scenario,), forecasts=(fake_forecast,),
+    )
+    with pytest.raises(InvalidSelfWorldData, match="unbound"):
+        review_self_world_prediction(tampered, after, **kwargs)
+    with pytest.raises(InvalidSelfWorldData, match="one explicit matching"):
+        review_self_world_prediction(
+            replace(before, forecasts=()), after, **kwargs,
+        )
+    with pytest.raises(InvalidSelfWorldData, match="unbound"):
+        review_self_world_prediction(
+            replace(before, scenarios=(replace(scenario0, owner_id="B"),)),
+            after, **kwargs,
+        )
+    # No invented predicted external property from unavailable PRD variable.
+    missing_key = review_self_world_prediction(
+        before, after,
+        scenario_id="source-bound-future",
+        variable_key="entity_visible", max_native_seq_gap=10,
+    )
+    from relay_self.self_world import WorldPredictionReviewStatus
+
+    assert missing_key.status is WorldPredictionReviewStatus.UNDETERMINED
+
+
+def test_positive_visibility_does_not_imply_global_absence():
+    from relay_self.self_world import review_self_world_prediction
+    from relay_self.self_world import WorldPredictionReviewStatus
+
+    before = view(present_value=present(seq=8))
+    state = PredictionState(
+        "possible-monster-presence",
+        (StateVariable("entity_visible", False),), prov("counterfactual"),
+        source_refs=(before.observation.source_ref, "target:entity-42"),
+    )
+    rule = TransitionRule(
+        "remain-unobserved", (StateVariable("entity_visible", False),),
+        (StateVariable("entity_visible", False),), prov("possible"),
+    )
+    hyp = WorldScenario("visible-claim", "A", "entity-42", state)
+    forecast = WorldForecast("visible-claim", predict_transition(state, rule))
+    prior = replace(before, scenarios=(hyp,), forecasts=(forecast,))
+    observed_after = view(present_value=present(seq=9))
+    seen = review_self_world_prediction(
+        prior, observed_after, scenario_id="visible-claim",
+        variable_key="entity_visible", max_native_seq_gap=10,
+    )
+    assert seen.status is WorldPredictionReviewStatus.MISMATCH
+    assert seen.observed_value is True
+    unobserved_after = view(
+        present_value=present(seq=9, entity_id=None),
+    )
+    unseen = review_self_world_prediction(
+        prior, unobserved_after, scenario_id="visible-claim",
+        variable_key="entity_visible", max_native_seq_gap=10,
+    )
+    assert unseen.status is WorldPredictionReviewStatus.UNDETERMINED
+    assert unseen.observed_value is None
