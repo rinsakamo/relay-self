@@ -328,3 +328,41 @@ The next gate is an explicitly authorized disposable physical DEV check of
 native input and sidecar receipts, followed separately by governed retained
 Memory/S17/S10 causality and V pre-registered controls. No SCIENCE inference
 from these synthetic unit tests.
+
+
+## Stage J — physical DEV entry, prospective / no automatic promotion
+
+The product CLI now admits one additional **DEV_ONLY** scenario:
+
+```bash
+# Prepare a NEW absolute evidence root under a pre-existing unprotected parent.
+PYTHONPATH=src:tests:. python -m adapters.mineflayer.self_demo \
+  --mode DEV --dev-scenario native-selfworld --run-disposable \
+  --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
+  --output-dir /tmp/unique-stage-j-dev-root \
+  --live-think --self-world-live \
+  --model-alias stage-j-backend-not-attested --model-port 16559 \
+  --model-timeout 1
+```
+
+This uses the **original S49** source World and single issuer, plus the
+existing `LiveL2Observer` and S60 single-attempt loopback client. The model
+alias/port are explicitly supplied but **do not certify a running L2 backend**:
+an unavailable loopback model is an allowed `UNCONFIRMED` provider outcome.
+This entry qualifies only whether genuine native probe sources reached the
+existing SelfWorld review / L1 / read-only L2 **input boundary**, not whether
+a real LLM reasoned correctly or changed an action.
+
+The DEV receipt remains `DEV_ONLY` regardless of the native report's
+classification text and records prior/later source refs, review status,
+preconfigured L1 cognitive suggestion, model-attempt count, and source-bound
+input qualification. It fails with `NOT_OBSERVED` if no two-source bounded
+review was established; missing or cross-session sidecar, Action authority,
+or bogus owner invariants fail closed. Raw owner reports and failed receipts
+are retained; no existing run or grant is replaced.
+
+An offline test with a fabricated native report proves only **the gating and
+reporting code**, not physical execution. Physical DEV must additionally
+attest server/client cleanup, source continuity and native probe receipts.
+Independent R qualification and V science remain separate gates; real
+S17/S10 causally retained updating is not part of this Stage J check.
