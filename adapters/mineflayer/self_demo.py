@@ -28,6 +28,7 @@ from adapters.mineflayer.self_action_evidence import (
     NativeEvidenceRejected,
     verify_native_action_evidence,
 )
+from adapters.mineflayer.self_world_projection import review_saved_s16_action_self_world
 from adapters.mineflayer.self_world_projection import (
     review_self_world_s15_action_frames,
 )
@@ -269,6 +270,64 @@ def project_native_report(report: dict[str, object]) -> tuple[dict[str, object],
     ))
     return tuple(rows)
 
+
+
+def review_s49_action_self_world_report(
+    report: dict[str, object],
+) -> tuple[dict[str, object], ...]:
+    """Read-only Stage K review of existing S49 CLOSED Action native frames.
+
+    Require the actual decoded S16 witness, original S49 action/target link
+    and positive pre-action entity source. Do not invent an earlier prediction
+    or infer prediction caused movement. This is a retrospective baseline.
+    """
+    project_native_report(report)
+    decisions = {
+        decision["event_seq"]: decision
+        for decision in report["decisions"]
+    }
+    items = []
+    for action in report["actual_native_actions"]:
+        if "execution_evidence" not in action:
+            raise DemoRejected("Stage K requires original S16 decoded Action frames")
+        decision = decisions[action["event_seq"]]
+        if (decision["probe_seq"] != action["probe_seq"]
+                or decision["selected"] != "MOVE_AWAY"
+                or decision["issued"] is not True):
+            raise DemoRejected("Stage K Action lacks original native decision")
+        evidence = action["execution_evidence"]
+        before = evidence["before_observation"]
+        if before["seq"] <= action["probe_seq"]:
+            raise DemoRejected("Stage K pre-action snapshot not after S49 decision")
+        from relay_self.self_world import InvalidSelfWorldData
+
+        try:
+            review = review_saved_s16_action_self_world(
+                evidence, action_id=action["action"],
+                session_id=report["session_id"],
+                movement_m=action["movement_m"],
+                target_entity_id=decision["entity_id"],
+            )
+        except (InvalidSelfWorldData, TypeError, KeyError, ValueError) as exc:
+            raise DemoRejected("Stage K S16 target source unavailable/invalid") from exc
+        items.append({
+            "kind": "s16_saved_world_review",
+            "classification": "DEV_ONLY_RETROSPECTIVE_NOT_PRIOR_LIVE_PREDICTION",
+            "session": review.session_id,
+            "action_id": action["action"],
+            "target_ref": review.target_ref,
+            "status": review.status.value,
+            "reason_code": review.reason_code,
+            "predicted_value": review.predicted_value,
+            "observed_value": review.observed_value,
+            "prior_source": review.prior_observation_ref,
+            "later_source": review.later_observation_ref,
+            "actual_native_actions_added": 0,
+            "s17_feedback_created": False,
+            "s10_learning_committed": False,
+            "habit_learned": False,
+        })
+    return tuple(items)
 
 
 def retain_native_observations(
