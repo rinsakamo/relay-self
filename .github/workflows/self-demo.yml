@@ -73,6 +73,7 @@ jobs:
               docs/selfbody-v0.md|\
               tests/test_self_body.py|\
               adapters/mineflayer/self_world_projection.py|\
+              adapters/mineflayer/self_world_prospective.py|\
               src/relay_self/self_world.py|\
               docs/selfworld-v0.md|\
               tests/test_self_world.py|\
@@ -89,6 +90,7 @@ jobs:
               tests/test_self_dev.py|\
               tests/test_self_live_think.py|\
               tests/test_self_action_evidence.py|\
+              tests/test_self_world_prospective.py|\
               tests/test_m02_paper_dev.py|\
               tests/test_m02_v8_stopped_world_clone_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
@@ -148,6 +150,7 @@ jobs:
             tests/test_self_demo.py \
             tests/test_self_live_think.py \
             tests/test_self_action_evidence.py \
+            tests/test_self_world_prospective.py \
             tests/test_self_body.py \
             tests/test_self_world.py
 
@@ -436,5 +439,68 @@ jobs:
           path: |
             ${{ runner.temp }}/stage-k/original.zip
             ${{ runner.temp }}/stage-k/review.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  selfworld-stage-l-dev-once:
+    # Explicit NEW disposable DEV run. Not the Stage J grant nor QUALIFICATION.
+    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-l-dev-once]') }}
+    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DEV_ROOT: /tmp/selfworld-stage-l-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Exact head and standard original S49 dependencies
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test ! -e "$DEV_ROOT"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+          java -version
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if(require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
+      - name: Single disposable World with fsynced pre-Action PRD
+        shell: bash
+        run: |
+          set -o pipefail
+          python -B -m adapters.mineflayer.self_demo \
+            --mode DEV --dev-scenario native-selfworld --run-disposable \
+            --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
+            --output-dir "$DEV_ROOT" \
+            --live-think --self-world-live --self-world-prospective \
+            --model-alias stage-l-backend-not-attested --model-port 16559 \
+            --model-timeout 1 \
+            | tee "${{ runner.temp }}/selfworld-stage-l-cli.log"
+      - name: Always preserve this one DEV source/forecast witness
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selfworld-stage-l-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.DEV_ROOT }}/dev_receipt.json
+            ${{ env.DEV_ROOT }}/SHA256SUMS
+            ${{ env.DEV_ROOT }}/stage_l_prospective.jsonl
+            ${{ env.DEV_ROOT }}/native_report.json
+            ${{ env.DEV_ROOT }}/minecraft_server.log
+            ${{ env.DEV_ROOT }}/host_stdout.log
+            ${{ env.DEV_ROOT }}/host_stderr.log
+            ${{ env.DEV_ROOT }}/live_l2.jsonl
+            ${{ runner.temp }}/selfworld-stage-l-cli.log
           if-no-files-found: warn
           retention-days: 30
