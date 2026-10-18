@@ -529,6 +529,8 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
+      - name: Install S49 typing test fixture import dependency
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
       - name: Read original Stage L evidence bytes without launching a World
         run: |
           set -euo pipefail
