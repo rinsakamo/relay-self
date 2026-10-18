@@ -460,11 +460,14 @@ def _dev_run(args: argparse.Namespace) -> int:
             )
             # A reachable model is NOT assumed or certified. The DEV can
             # retain source/PRD/L1/L2 input receipts even if backend is absent.
-            LoopbackTransportConfig(
-                model=args.model_alias, port=args.model_port, slots=1,
-                max_tokens=96, connect_s=min(3.0, args.model_timeout),
-                read_s=args.model_timeout, whole_s=args.model_timeout,
-            )
+            try:
+                LoopbackTransportConfig(
+                    model=args.model_alias, port=args.model_port, slots=1,
+                    max_tokens=96, connect_s=min(3.0, args.model_timeout),
+                    read_s=args.model_timeout, whole_s=args.model_timeout,
+                )
+            except (TypeError, ValueError, AttributeError) as exc:
+                raise DemoRejected("invalid explicit SelfWorld loopback bounds") from exc
         elif (args.think or args.live_think or args.reflect_report or args.smoke
                 or getattr(args, "self_world_live", False)):
             raise DemoRejected("ordinary DEV accepts only existing model-free routes")
