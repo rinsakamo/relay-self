@@ -19,6 +19,7 @@ from relay_self.learning import (
     InvalidLearningAuthority,
     MissingLearningAuthority,
 )
+from relay_self.prediction import StateVariable, predict_transition
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     BoundedChoice,
@@ -33,7 +34,6 @@ from relay_self.self_world import (
     WorldPredictionReviewStatus,
     compose_self_world_view,
 )
-from relay_self.prediction import StateVariable, predict_transition
 from test_self_world import synthetic_s17_world_review_chain
 
 
