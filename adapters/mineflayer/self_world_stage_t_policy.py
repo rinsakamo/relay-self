@@ -34,7 +34,7 @@ class StageTDevJointPreview:
     retained_value: int
     original_l0_candidate: str
     new_l0_candidate: str
-    original_s14_candidate: str
+    new_s14_candidate: str
     s14_admission: str
     l0_and_s14_same_owner_identity: bool
     policy_choice_changed: bool
@@ -108,7 +108,7 @@ def preview_stage_t_joint_original_owner(
         retained_value=state.value,
         original_l0_candidate=original.selection.value,
         new_l0_candidate=l0.selection.value,
-        original_s14_candidate=plan.selected.candidate_id,
+        new_s14_candidate=plan.selected.candidate_id,
         s14_admission=admission.status.value,
         l0_and_s14_same_owner_identity=True,
         policy_choice_changed=original.selection is not l0.selection,
