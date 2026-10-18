@@ -659,3 +659,56 @@ Stage O typed-proposal physical DEV note (2026-10-18): the next
 CI-gated World run for typed-S17-to-S10 **HOLD proposal only**.
 No S10 grant, revision commit, policy update, or adapted Action is
 expected; all earlier Stage N/O original artifacts remain immutable.
+
+## Stage P — S10 dual-consumer next-epoch *offline rehearsal*
+
+Fresh audit of S49 at Stage O final HEAD showed two **independent frozen
+revision-1 assumptions** that prevent real-world post-commit adaptation:
+
+1. `adapters/mineflayer/s49_normal_session_real_ci.py` builds
+   `NormalWorldL0(..., retained)` from S19's synthetic rev1/value4
+   and separately closes over that SAME initial `retained` for
+   `_native_epoch_two(..., expected_revision=1)` inside `on_action`.
+   Updating the host's L0 snapshot alone would split Action admission.
+2. `relay_self.world_conditioned_choice.select_world_conditioned_choice`
+   itself only accepts `risk_weight` 4/rev1. A legitimate S10 **HOLD**
+   commit advances rev1 to rev2 (even with unchanged value4), so the L0
+   chooser rejects the newly committed input *before any native decision*.
+
+These are intentional frozen S49 contracts, not authority defects to bypass.
+Stage P does NOT loosen them, patch the pinned S49 runner, or fabricate an
+independent physical Action issuer.
+
+The new S-only
+`adapters/mineflayer/self_world_epoch_handoff.py`
+`prepare_stage_p_offline_dual_read` is an **OFFLINE-only pure rehearsal**:
+it requires the identical pre-commit owner object for both L0 and S14
+consumers, original typed S17 HOLD/proposal provenance, a later correlated
+same-session native probe (synthetic in focused tests), and caller-supplied
+`LearningUpdateAuthority`; it invokes existing S10
+`commit_learning_update`, then existing `read_retained_preference` TWICE
+against the SAME exact new `LearningPreferenceState`. The returned frozen
+`StagePOfflineDualRead` explicitly says no original S49 owner installation,
+no real-world commit attestation and no adaptive Action. It does not claim
+the caller-provided authority was issued by the legitimate live S49 owner:
+existing S10 authority validates target/granted/provenance but carries no
+independent current-session issuer proof. The positive test grant is
+**synthetic and test-only**.
+
+Focused tests compare absent/denied/wrong-target grants, stale proposal,
+forged S17/action/next native source, next-source absence, source replay,
+split or reconstructed initial owner references, sham/non-HOLD, and
+feedback-instance substitution. A separate frozen-contract negative test
+proves even a correctly S10-committed HOLD **rev2/value4** read is rejected
+by current S49 `select_world_conditioned_choice`. These are development
+interface checks, not a physical/causal learning demonstration.
+
+**Qualification:** Stage P offline common-owner/dual-read contract only.
+Live S49 S10 issuer authorization: **BLOCKED**; physical S10 commit: **0**;
+post-commit native L0 and S14 both consuming rev2: **NOT PROVEN**;
+learned ON/OFF/sham action effect: **NOT PROVEN**. To advance safely, S
+must first obtain an explicit owner-controlled, DEV-only replacement for
+the frozen S49 revision and admission coupling, with provenance/identity
+proof and single-writer Actions. Such a migration requires separate
+contract review; adding a sidecar that merely flips `host.retained`
+would be incorrect. No automatic R/V promotion.
