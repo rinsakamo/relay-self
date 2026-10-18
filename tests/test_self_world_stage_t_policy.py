@@ -110,7 +110,8 @@ def test_t_exact_original_l0_and_original_s14_joint_directional_preview(
     assert host.retained.revision == 1 and host.action_requests == 1
     assert host._stage_t_dev_commit is None
     host.install_stage_t_dev_preview(
-        token=token, commit=commit, typed_s17=assessment.typed_s17,
+        token=token, commit=commit, s10_owner_state=commit.new_state,
+        typed_s17=assessment.typed_s17,
     )
     assert host.retained is commit.new_state
     result = preview_stage_t_joint_original_owner(**kwargs)
@@ -149,6 +150,7 @@ def test_t_exact_original_l0_and_original_s14_joint_directional_preview(
 def test_t_policy_rejects_unauthorized_sham_or_wrong_owner(case):
     host, token, assessment, commit, kwargs = _fixture(increase=False)
     typed = assessment.typed_s17
+    independently_held_s10_state = commit.new_state
     assert typed is not None and typed.feedback is not None
     if case == "no_predecessor":
         host._used_action_ids.clear()
@@ -185,14 +187,20 @@ def test_t_policy_rejects_unauthorized_sham_or_wrong_owner(case):
         with pytest.raises((NormalActionRejected, WorldChoiceRejected)):
             if case != "double_install":
                 host.install_stage_t_dev_preview(
-                    token=token, commit=commit, typed_s17=typed,
+                    token=token, commit=commit,
+                    s10_owner_state=independently_held_s10_state,
+                    typed_s17=typed,
                 )
             else:
                 host.install_stage_t_dev_preview(
-                    token=token, commit=commit, typed_s17=typed,
+                    token=token, commit=commit,
+                    s10_owner_state=independently_held_s10_state,
+                    typed_s17=typed,
                 )
                 host.install_stage_t_dev_preview(
-                    token=token, commit=commit, typed_s17=typed,
+                    token=token, commit=commit,
+                    s10_owner_state=independently_held_s10_state,
+                    typed_s17=typed,
                 )
     finally:
         if case != "double_install":
@@ -207,7 +215,8 @@ def test_t_policy_rejects_unauthorized_sham_or_wrong_owner(case):
 def test_t_post_install_joint_native_and_s14_cannot_accept_confound(case):
     host, token, assessment, commit, kwargs = _fixture(increase=False)
     host.install_stage_t_dev_preview(
-        token=token, commit=commit, typed_s17=assessment.typed_s17,
+        token=token, commit=commit, s10_owner_state=commit.new_state,
+        typed_s17=assessment.typed_s17,
     )
     if case == "stale_native":
         kwargs["probe"] = replace(kwargs["probe"], seq=kwargs["event"].seq)
@@ -241,7 +250,8 @@ def test_t_off_baseline_does_not_adopt_synthetic_commit_without_opt_in():
     assert host.retained is state
     with pytest.raises(NormalActionRejected):
         host.install_stage_t_dev_preview(
-            token=object(), commit=None, typed_s17=None,
+            token=object(), commit=None, s10_owner_state=None,
+            typed_s17=None,
         )
     assert host._stage_t_dev_commit is None
     assert host._stage_r_dev_token is None
