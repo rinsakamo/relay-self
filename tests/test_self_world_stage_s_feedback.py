@@ -110,6 +110,7 @@ def test_stage_s_qualified_original_s17_directional_feedback(dx, dz, kind, direc
     "forged_after_distance", "truncated_registry", "wrong_action_binding",
     "wrong_original_request", "foreign_original_session",
     "world_action_swap", "target_duplicate", "bad_world_disposition",
+    "bad_world_provenance", "forged_motion_distance",
 ))
 def test_stage_s_rejects_sham_or_invalid_native_source(case):
     w = _synthetic_targeted_witness()
@@ -180,6 +181,15 @@ def test_stage_s_rejects_sham_or_invalid_native_source(case):
                     nearby_entities_coverage=new_cov,
                 ),
             ),
+        ))
+    elif case == "bad_world_provenance":
+        w = replace(w, interpretation=replace(
+            w.interpretation,
+            world_provenance=Provenance("stage-s-sham", "fake-world"),
+        ))
+    elif case == "forged_motion_distance":
+        w = replace(w, consequence=replace(
+            w.consequence, movement_distance=0.6,
         ))
     else:
         w = replace(w, interpretation=replace(
