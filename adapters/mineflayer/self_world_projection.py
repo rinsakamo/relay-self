@@ -5,7 +5,15 @@ This adapter does not peek at other Self memory, intentions or prediction.
 """
 from __future__ import annotations
 
+import json
+from dataclasses import replace
+
 from adapters.mineflayer.execution import WorldConsequence, WorldConsequenceStatus
+from adapters.mineflayer.python_protocol import (
+    MineflayerObservation,
+    parse_mineflayer_line,
+)
+from adapters.mineflayer.self_action_evidence import verify_native_action_evidence
 from adapters.mineflayer.present_projection import (
     MinecraftPresent,
     project_mineflayer_present,
@@ -20,12 +28,21 @@ from relay_self.action_outcome import (
     ActionOutcomeDisposition,
     ActionOutcomeInterpretation,
 )
+from relay_self.prediction import (
+    PredictionState,
+    StateVariable,
+    TransitionRule,
+    predict_transition,
+)
 from relay_self.provenance import Provenance
 from relay_self.self_world import (
     InvalidSelfWorldData,
     SelfWorldView,
+    WorldForecast,
+    WorldScenario,
     WorldEntityObservation,
     WorldObservation,
+    compose_self_world_view,
     WorldPredictionReview,
     WorldPredictionReviewStatus,
     review_self_world_prediction,
@@ -148,3 +165,120 @@ def interpret_self_world_mismatch_as_s17_feedback(
         action, outcome, criterion, provenance=provenance,
     )
     return review, interpretation
+
+
+def review_self_world_s15_action_frames(
+    evidence: dict[str, object],
+    *,
+    action_id: str,
+    session_id: str,
+    movement_m: float,
+    target_entity_id: int,
+    preceding_s49_probe_seq: int,
+    observer_id: str = "self-demo-live-observer",
+) -> WorldPredictionReview | None:
+    """Review an *existing* executed S15 before/after frame pair.
+
+    Original S49 deliberately replaces zombies between separate decisions.
+    S15's already-captured before/after native frames, from ONE actual Action,
+    are the only eligible source here. No new observe or Action request occurs.
+    The adapter-generated request_id is explicitly an evidence-frame handle,
+    NOT a claim that S15 originated a correlated request_id.
+    """
+    if (type(target_entity_id) is not int or target_entity_id < 0
+            or type(preceding_s49_probe_seq) is not int
+            or preceding_s49_probe_seq < 0
+            or not isinstance(observer_id, str) or not observer_id):
+        raise InvalidSelfWorldData("invalid S49 target/source attribution")
+    verify_native_action_evidence(
+        evidence, action_id=action_id, session_id=session_id,
+        movement_m=movement_m,
+    )
+
+    observations = []
+    for slot in ("before", "after"):
+        raw = evidence[f"{slot}_observation"]
+        if not isinstance(raw, dict) or raw.get("kind") != "probe":
+            raise InvalidSelfWorldData("S15 frame must be an original native probe")
+        # The saved decoded frame has source provenance, not an artificial
+        # native request_id; parse its snapshot through the genuine decoder.
+        packet = {
+            "type": "observation", "session_id": raw["session_id"],
+            "seq": raw["seq"], "kind": raw["kind"],
+            "snapshot": raw["snapshot"],
+        }
+        if raw.get("request_id") is not None:
+            packet["request_id"] = raw["request_id"]
+        decoded = parse_mineflayer_line(json.dumps(packet, allow_nan=False))
+        if not isinstance(decoded, MineflayerObservation):
+            raise InvalidSelfWorldData("S15 frame not decoded to native observation")
+        snap, coverage = decoded.snapshot, decoded.snapshot.nearby_entities_coverage
+        # This token identifies a verified immutable evidence frame, never an
+        # actual Mineflayer request ID from the source.
+        observations.append(WorldObservation(
+            observer_id=observer_id,
+            session_id=decoded.session_id,
+            native_seq=decoded.seq,
+            request_id=f"s15-evidence-{action_id}-{slot}",
+            entities=tuple(
+                WorldEntityObservation(
+                    entity_ref=f"entity-{e.entity_id}", label=e.name,
+                    position=(e.position.x, e.position.y, e.position.z),
+                    distance_m=e.distance,
+                )
+                for e in snap.nearby_entities
+            ),
+            coverage_scope=coverage.source_scope,
+            coverage_radius_m=coverage.max_distance,
+            coverage_cap=coverage.max_entities,
+            coverage_candidates=coverage.candidate_count,
+            coverage_truncated=coverage.truncated,
+            provenance=decoded.provenance,
+        ))
+    before_obs, after_obs = observations
+    if (before_obs.native_seq <= preceding_s49_probe_seq
+            or after_obs.native_seq <= before_obs.native_seq):
+        raise InvalidSelfWorldData("S15 frames not after admitted S49 source")
+    target = next(
+        (entity for entity in before_obs.entities
+         if entity.entity_ref == f"entity-{target_entity_id}"),
+        None,
+    )
+    if target is None or target.label is None:
+        # No initial positively observed subject: cannot create a forecast.
+        return None
+    before = compose_self_world_view(
+        self_id=observer_id, session_id=session_id,
+        epoch_id=f"s15-{action_id}-before", observation=before_obs,
+    )
+    after = compose_self_world_view(
+        self_id=observer_id, session_id=session_id,
+        epoch_id=f"s15-{action_id}-after", observation=after_obs,
+    )
+    state = PredictionState(
+        state_id=f"s15-label-state-{action_id}",
+        variables=(StateVariable("entity_label", target.label),),
+        provenance=Provenance("selfworld-s15-explicit-hypothesis", action_id),
+        source_refs=(before_obs.source_ref, f"target:entity-{target_entity_id}"),
+        source_provenance=(before_obs.provenance,),
+    )
+    rule = TransitionRule(
+        rule_id="s15-label-persistence",
+        preconditions=(StateVariable("entity_label", target.label),),
+        assignments=(StateVariable("entity_label", target.label),),
+        provenance=Provenance("selfworld-s15-rule", "fixed-label-persistence"),
+    )
+    scenario = WorldScenario(
+        scenario_id="s15-label-persistence", owner_id=observer_id,
+        target_ref=f"entity-{target_entity_id}", state=state,
+    )
+    before = replace(
+        before,
+        scenarios=(scenario,),
+        forecasts=(WorldForecast(scenario.scenario_id,
+                                 predict_transition(state, rule)),),
+    )
+    return review_self_world_prediction(
+        before, after, scenario_id=scenario.scenario_id,
+        variable_key="entity_label", max_native_seq_gap=64,
+    )
