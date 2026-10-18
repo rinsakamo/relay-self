@@ -675,8 +675,34 @@ def _dev_run(args: argparse.Namespace) -> int:
                     or sidecar.get("l0_blocked_on_l2") is not False
                     or sidecar.get("model_attempts") not in (0, 1)):
                 raise DemoRejected("native-selfworld DEV sidecar violates owner boundary")
+            # Cross-check the observer-local refs against the ORIGINAL S49
+            # correlated native probes, not only against the sidecar's claims.
+            # Native event seq, probe seq and logical decision epoch differ.
+            paired = native.get("source_pair_trace")
+            valid_pair_refs: list[str] = []
+            if isinstance(paired, list):
+                for pair in paired:
+                    if not isinstance(pair, dict):
+                        continue
+                    event, seq = pair.get("event_seq"), pair.get("probe_seq")
+                    if (type(event) is int and event >= 0
+                            and type(seq) is int and seq >= 0):
+                        valid_pair_refs.append(
+                            f"present:{native['session_id']}:{seq}:"
+                            f"s49-actual:{native['session_id']}:event-{event}"
+                        )
+            prior_ref = sidecar.get("self_world_prior_source")
+            after_ref = sidecar.get("self_world_after_source")
+            actual_source_pair = (
+                prior_ref in valid_pair_refs
+                and after_ref in valid_pair_refs
+                and valid_pair_refs.index(prior_ref) < valid_pair_refs.index(after_ref)
+                and len(set(valid_pair_refs)) == len(valid_pair_refs)
+            )
+            receipt["dev_self_world_native_pair_verified"] = actual_source_pair
             qualified_input = (
-                sidecar.get("self_world_l2_input_bound") is True
+                actual_source_pair
+                and sidecar.get("self_world_l2_input_bound") is True
                 and sidecar.get("self_world_review_status")
                 in ("match", "mismatch", "undetermined")
                 and isinstance(sidecar.get("self_world_prior_source"), str)
