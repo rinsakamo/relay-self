@@ -150,3 +150,125 @@ def test_stage_o_equal_looking_owner_copy_and_missing_grant_are_not_authority():
     assert host.retained is owner
     assert host.retained.revision == 0
     assert holder.summary()["s10_commits"] == 0
+
+
+def test_stage_o_typed_s17_hold_prepares_only_then_s10_synthetic_authority():
+    """Offline fixture: proposal != commit != original L0 owner transfer."""
+    import test_self_world_native_feedback as n_fixture
+    from adapters.mineflayer.self_world_native_feedback import (
+        StageNDeclaredPolicy,
+        StageNNativeClosureObserver,
+    )
+    from relay_self.learning import (
+        LearningUpdateAuthority,
+        ReplayLearningFeedback,
+    )
+
+    witness = n_fixture._synthetic_native_closed()
+    sid = witness.original_probe.session_id
+    state = s17.learning_state()
+    holder = StageOOwnerReadback()
+    with observe_original_retained_owner(holder.receive_original_owner):
+        host = NormalWorldL0(sid, "escape-threat", state)
+
+    n = StageNNativeClosureObserver(StageNDeclaredPolicy())
+    n.observe_existing_probe(witness.original_probe)
+    holder.observe_existing_probe(witness.original_probe)
+    typed = n.observe_closed(witness)
+    assert typed.feedback is not None
+    rule = s17.learning_rule()
+    proposal = holder.prepare_original_hold(typed, rule)
+    assert proposal.expected_revision == state.revision == 0
+    assert proposal.proposed_value == state.value == 3
+    assert holder.summary()["typed_hold_proposal_count"] == 1
+    assert holder.summary()["proposals_are_commits"] is False
+
+    # Neither the typed S17 result nor a proposal owns S10 authorization.
+    with pytest.raises(MissingLearningAuthority):
+        commit_learning_update(
+            state, proposal, None,
+            provenance=Provenance("stage-o-offline", "missing-permission"),
+        )
+    # Only in this SYNTHETIC negative/positive comparison does the test
+    # supply an explicitly synthetic, independently predeclared S10 grant.
+    granted = LearningUpdateAuthority(
+        "synthetic-test-authority-not-world", "risk_weight",
+        Provenance("stage-o-offline", "synthetic-authority"),
+    )
+    accepted = commit_learning_update(
+        state, proposal, granted,
+        provenance=Provenance("stage-o-offline", "synthetic-commit"),
+    )
+    assert accepted.new_state is not state
+    assert accepted.new_state.revision == 1
+    assert accepted.new_state.value == state.value  # HOLD is not improvement
+    # No owner transfer: original physical L0 continues using rev0.
+    assert host.retained is state
+    assert host.retained.revision == 0
+    with pytest.raises(StaleRetainedSnapshot):
+        read_retained_preference(
+            accepted.new_state, host.retained, required_target_id="risk_weight",
+            expected_revision=1,
+            provenance=Provenance("stage-o-offline", "stale-l0-input"),
+        )
+    with pytest.raises(ReplayLearningFeedback):
+        propose_learning_update(accepted.new_state, typed.feedback, rule)
+    with pytest.raises(ValueError, match="replayed"):
+        holder.prepare_original_hold(typed, rule)
+    assert holder.summary()["s10_commits"] == 0
+    assert holder.summary()["additional_native_actions"] == 0
+
+
+@pytest.mark.parametrize("kind", (
+    "no_original_owner", "no_native_probe", "sham_feedback",
+    "wrong_action", "foreign_s17_source", "foreign_outcome_ref",
+    "scalar_reward_attempt",
+))
+def test_stage_o_hold_preview_negative_controls(kind):
+    """No forged source, replay, sham or arbitrary scalar learning policy."""
+    import test_self_world_native_feedback as n_fixture
+    from adapters.mineflayer.self_world_native_feedback import (
+        StageNDeclaredPolicy,
+        StageNNativeClosureObserver,
+    )
+    from relay_self.action_feedback import LearningFeedbackInterpretationStatus
+    from relay_self.learning import LearningUpdateRule
+
+    witness = n_fixture._synthetic_native_closed()
+    sid = witness.original_probe.session_id
+    holder = StageOOwnerReadback()
+    if kind != "no_original_owner":
+        with observe_original_retained_owner(holder.receive_original_owner):
+            NormalWorldL0(sid, "escape-threat", s17.learning_state())
+    if kind != "no_native_probe":
+        holder.observe_existing_probe(witness.original_probe) if (
+            kind != "no_original_owner"
+        ) else None
+    n = StageNNativeClosureObserver(StageNDeclaredPolicy())
+    n.observe_existing_probe(witness.original_probe)
+    typed = n.observe_closed(witness)
+    if kind == "sham_feedback":
+        typed = replace(
+            typed, status=LearningFeedbackInterpretationStatus.NOT_APPLICABLE,
+            feedback=None,
+        )
+    elif kind == "wrong_action":
+        typed = replace(typed, action_id="s49-native-move-999")
+    elif kind == "foreign_s17_source":
+        typed = replace(
+            typed, provenance=Provenance(
+                "stage-n-native-typed-closure", f"foreign:{typed.action_id}",
+            ),
+        )
+    elif kind == "foreign_outcome_ref":
+        typed = replace(typed, outcome_ref="action-outcome:counterfeit")
+    elif kind == "scalar_reward_attempt":
+        typed = replace(
+            typed, feedback=replace(
+                typed.feedback, direction=s17.FeedbackDirection.INCREASE,
+            ),
+        )
+    with pytest.raises((TypeError, ValueError)):
+        holder.prepare_original_hold(typed, LearningUpdateRule("hold-rule", 1, 1))
+    assert holder.summary()["typed_hold_proposal_count"] == 0
+    assert holder.summary()["s10_commits"] == 0
