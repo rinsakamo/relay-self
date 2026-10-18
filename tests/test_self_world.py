@@ -254,7 +254,8 @@ def test_action_memory_ownership_and_initial_l0_are_unchanged():
 def test_attention_reads_only_observed_source_and_never_broadcasts():
     from relay_self.attention import AttentionCriterion
     from relay_self.self_world import (
-        resolve_self_world_attention, select_self_world_attention,
+        resolve_self_world_attention,
+        select_self_world_attention,
     )
 
     criterion = AttentionCriterion("look-zombie", focus_key="name:zombie", top_k=1)
@@ -274,7 +275,8 @@ def test_attention_reads_only_observed_source_and_never_broadcasts():
 def test_attention_selection_cannot_be_replayed_across_epoch_session_or_self():
     from relay_self.attention import AttentionCriterion
     from relay_self.self_world import (
-        resolve_self_world_attention, select_self_world_attention,
+        resolve_self_world_attention,
+        select_self_world_attention,
     )
 
     a = view(present_value=present())
@@ -299,7 +301,8 @@ def test_attention_selection_cannot_be_replayed_across_epoch_session_or_self():
 def test_attention_rejects_counterfeit_payload_or_candidate_and_empty_hypothesis():
     from relay_self.attention import AttentionCriterion
     from relay_self.self_world import (
-        resolve_self_world_attention, select_self_world_attention,
+        resolve_self_world_attention,
+        select_self_world_attention,
     )
 
     a = view(present_value=present())
@@ -333,7 +336,8 @@ def test_attention_rejects_counterfeit_payload_or_candidate_and_empty_hypothesis
 def test_attention_can_read_public_other_self_position_without_private_mind():
     from relay_self.attention import AttentionCriterion
     from relay_self.self_world import (
-        resolve_self_world_attention, select_self_world_attention,
+        resolve_self_world_attention,
+        select_self_world_attention,
     )
 
     other = MinecraftEntityPresent(7, "B", 2.0, (3.0, 64.0, 2.0))
@@ -369,7 +373,8 @@ def test_attention_can_read_public_other_self_position_without_private_mind():
 def test_att_selects_only_bounded_observed_subset_without_salience_or_action():
     from relay_self.attention import AttentionCriterion
     from relay_self.self_world import (
-        resolve_self_world_attention, select_self_world_attention,
+        resolve_self_world_attention,
+        select_self_world_attention,
     )
 
     p = replace(
