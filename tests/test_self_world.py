@@ -577,8 +577,10 @@ def test_unbound_forged_or_unavailable_forecast_cannot_mint_mismatch():
 
 
 def test_positive_visibility_does_not_imply_global_absence():
-    from relay_self.self_world import review_self_world_prediction
-    from relay_self.self_world import WorldPredictionReviewStatus
+    from relay_self.self_world import (
+        WorldPredictionReviewStatus,
+        review_self_world_prediction,
+    )
 
     before = view(present_value=present(seq=8))
     state = PredictionState(
@@ -613,14 +615,14 @@ def test_positive_visibility_does_not_imply_global_absence():
 
 def synthetic_s17_world_review_chain():
     """Re-use the qualified S17 offline Action fixture; no Java/Node I/O."""
+    import test_action_feedback_qualification as s17
     from adapters.mineflayer.action_outcome import interpret_world_consequence
     from adapters.mineflayer.present_projection import project_mineflayer_present
-    from adapters.mineflayer.self_world_projection import project_self_world_present
     from adapters.mineflayer.python_protocol import (
         MineflayerEntityFact,
         MineflayerPosition,
     )
-    import test_action_feedback_qualification as s17
+    from adapters.mineflayer.self_world_projection import project_self_world_present
 
     chain = s17.executed_closed_chain()
     binding, action, consequence = chain[15], chain[-1], chain[-3]
@@ -674,7 +676,12 @@ def test_s17_explicit_feedback_from_mismatch_cannot_commit_learning():
     )
     from relay_self.action_feedback import LearningFeedbackInterpretationStatus
     from relay_self.self_world import WorldPredictionReviewStatus
-    from relay_self.learning import FeedbackDirection
+    from relay_self.learning import (
+        FeedbackDirection,
+        MissingLearningAuthority,
+        commit_learning_update,
+        propose_learning_update,
+    )
 
     s17, prior, current, action, outcome, consequence = synthetic_s17_world_review_chain()
     original = s17.learning_state()
@@ -692,10 +699,12 @@ def test_s17_explicit_feedback_from_mismatch_cannot_commit_learning():
     assert original.value == 3 and original.revision == 0
     assert not hasattr(review, "learning_authority")
     # Even with actual feedback, existing S10 proposal/commit remain explicit.
-    with pytest.raises(Exception):
-        from relay_self.learning import commit_learning_update
+    proposed = propose_learning_update(
+        original, feedback.feedback, s17.learning_rule(),
+    )
+    with pytest.raises(MissingLearningAuthority):
         commit_learning_update(
-            original, None, None, provenance=prov("cannot-bypass-LRN"),
+            original, proposed, None, provenance=prov("cannot-bypass-LRN"),
         )
 
 
