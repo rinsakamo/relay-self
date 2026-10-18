@@ -55,6 +55,7 @@ class StageNNativeClosureObserver:
         self._seen: set[str] = set()
         self._next_observations: list[dict[str, Any]] = []
         self._latest_native_seq: int | None = None
+        self._observer_errors: list[str] = []
 
     def observe_existing_probe(self, reading: MineflayerObservation) -> None:
         """Record already received native probe, never issue another one."""
@@ -79,6 +80,10 @@ class StageNNativeClosureObserver:
                     "same_native_session": True,
                     "action_issued_from_feedback": False,
                 })
+
+    def record_observer_error(self, phase: str, exc: Exception) -> None:
+        """Capture optional observer failure while preserving S49 Action owner."""
+        self._observer_errors.append(f"{phase}:{type(exc).__name__}")
 
     def observe_closed(self, witness: NormalActionClosedReadback) -> None:
         """Synchronous pure S17 classification from original typed closed Action."""
@@ -169,4 +174,5 @@ class StageNNativeClosureObserver:
             "s10_learning_commits": 0,
             "real_next_epoch_learned_policy": False,
             "native_actions_added": 0,
+            "observer_errors": list(self._observer_errors),
         }
