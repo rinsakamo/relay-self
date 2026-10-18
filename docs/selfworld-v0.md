@@ -754,3 +754,68 @@ supplied `LearningUpdateAuthority` must be authenticated by the actual
 learning-authority owner; the synthetic test object is NOT that proof.
 HOLD increments revision but provides no policy improvement or changed
 Action evidence. DEV/QUALIFICATION/SCIENCE remain separate; no auto-upgrade.
+
+## Stage R — opt-in S49 single-writer terminal → S10 HOLD → next epoch (DEV)
+
+The **original** S49 `qualify` and `NormalWorldL0` now have
+**default-off** `stage_r_dev` extensions, in an isolated Draft.
+The previously frozen S49 test evidence/commit is not rewritten;
+however, the *working S49 source on this Draft* has intentionally changed.
+It cannot be described as bit-identical to the frozen original.
+
+The change keeps S49 as the **sole** physical Action issuer:
+`NormalSessionActionExecutor.execute` still requires the original
+L0/S14, independently sourced PROPOSE and ISSUE grants. When explicitly
+enabled *and* `S49_STAGE_R_DEV_ONLY=1`, S49 constructs exactly one
+`StageRDevSingleWriter` bound to the same live `NormalWorldL0`,
+`NormalSessionActionExecutor` and `IntentCommitment`.
+
+The DEV transition has two separate phases. The existing
+`observe_closed_native_actions` callback passes the **typed, already
+terminal** original S16/S17 source to Stage N's predeclared
+`MOVE_BACKWARD / observed_execution → HOLD` criterion; Stage O
+proposes against the exact original S49 owner. The callback is NOT
+learning authority. Only after S49's original `execute` returned a
+verified OUTCOME, the same original S49 `on_action` seals that
+witness against the executor receipt. No state changes at Action ISSUE
+time, unknown outcome, or during a pending Action. At an independent
+later original-session native probe (never invented or re-requested),
+a separately scoped **S49 DEV operator-local** S10 HOLD authority is
+created with the exact original Action ID/session/feedback. Existing
+S10 `commit_learning_update` advances `risk_weight=4 rev1→rev2`
+without scalar gain, and a synchronous token-guarded single-use
+publication switches the **same original L0 host** to that immutable
+successor. The original `on_action` obtains its S14 owner through the
+same Stage R getter, not a captured initial snapshot; its
+`_native_epoch_two` reads the owner's real revision. The default,
+Stage-R-disabled path keeps the rev1 frozen selector, old snapshot and
+normal Action admission. There is never a second S49 runner or a
+new physical action loop.
+
+**Important limits:** The separate S49 DEV learning permission comes
+from the explicitly opted-in local operator role in this one process.
+It is NOT cryptographically or externally independently attested.
+The original S10 `LearningUpdateAuthority` dataclass validates
+scoped fields, but does not prove a cross-run issuer. A PASS here would
+be a **DEV-only owner-bound S10 HOLD update**; it is NOT evidence of
+value learning, reward inference, new habit, better behavior, a
+causal ON/OFF/sham result, or qualification for R/V. External issuer
+qualification and non-HOLD adaptive criteria remain separate work.
+
+CI includes synthetic terminal/owner/probe identity and stale/replay/
+foreign/native-source and open-Action negative controls, plus direct
+frozen-default regression. S49 emits original decision revisions and
+requires the three decisions to read `[1,1,2]` and two real
+closed Actions. The `self_demo` explicit
+`--mode DEV --dev-scenario native --self-world-stage-r-dev` path
+cross-checks these native readbacks and keeps engineering/science
+claims false. A new GHA one-shot job is conditioned on the exact
+`[selfworld-stage-r-dev-once]` marker, exact branch/head,
+FAST four gates, fresh isolated root and pre-existing explicit
+disposable-World consent. Registration alone does not execute it.
+
+Stage R code must not be called an actual Minecraft PASS until a
+fresh one-shot run with independently readable original
+`native_report.json`, owner/Action/callback order and cleanup evidence
+has succeeded, with every failed run preserved. This is not a
+retroactive qualification of earlier Stage O evidence.
