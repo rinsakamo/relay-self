@@ -960,3 +960,68 @@ and physically changing behavior requires a separately reviewed
 original S49 operator grant and one-shot DEV preflight. Do not
 equate selecting WAIT with an actual survival advantage. No
 SCIENCE or R qualification promotion is permitted.
+
+## Stage U — original S49 terminal-owner S10 issuer gate and near-WAIT safety split
+
+**Scope: local, OFFLINE, DEV only.** This is NOT an independently
+authenticated external S10 authority; it is independent of the S17
+interpreter in-process, and only validates the *original* Action executor
+state and exact terminal object identities. No Stage U live mode or
+physical one-shot trigger is wired into S49.
+
+`adapters/mineflayer/self_world_stage_u_gate.py` adds
+`StageUDevOriginalExecutorIssuer`. It is constructed with the original
+`NormalWorldL0`, its original `NormalSessionActionExecutor` and
+the same `IntentCommitment`, plus the explicitly bound Stage T offline
+preview token. It refuses Stage R mixed control and enforces an exact
+initial S19 rev1/value4 owner. To issue its **one single-use local S10
+authority**, it requires the actual original executor supervisor
+`get(action_id)` object to be **identical** to the Action terminal in
+both the closed S16 callback and the returned original receipt.
+The same action must already have consumed its independent L0 Action
+grant and be recorded in `executor._dispatched`; no issued Action may
+remain open, terminal must be an OUTCOME, the original probe and
+intent/session must agree, and its native after-observation must precede
+a fresh, correlated later original native entities-event and probe.
+An independently recomputed Stage S geometry-qualified, *directional*
+typed S17 separation result is required. Unresolved/neutral or
+prediction-only evidence is rejected without producing a grant.
+
+When all evidence is consistent, the operator-local grant is consumed
+before invoking the existing S10 `propose_learning_update` /
+`commit_learning_update`. Only that exact immutable S10 successor
+is installed for a **non-executing Stage T preview** on the original
+L0 host, with original native S14 PLAN/ROUTE/ADMISSION reading the
+same state; the return type contains all readbacks and explicit
+`external_issuer_attested=False`,
+`minecraft_session_started=False`, and
+`on_off_sham_causal_gain_attested=False` flags. One-use prevents
+duplicate terminal replay. This local in-process check DOES NOT
+authenticate the host process itself, defeat a malicious host, or
+replace an independent signed/qualified cross-process issuer.
+
+**Crucial distinction:** S14 `WAIT admitted` is a **formal
+PLAN/admission** decision, not a World safety qualification.
+For a zombie inside the near-threat threshold, the Stage U disposition
+is `NEAR_WAIT_READ_ONLY_NO_ACTION`: no new Action is issued, and
+`physical_wait_permitted=False`,
+`near_wait_safety_attested=False` without independently measured
+damage/health/survival constraints and prior eligibility rules.
+This read-only preview MUST NOT be wired into the live S49 WAIT path
+merely because it is legal under the candidate allowlist.
+The alternative MOVE choice is
+`MOVE_NEEDS_SEPARATE_ACTION_GRANTS`: it still cannot issue a physical
+action without the original distinct PROPOSE and ISSUE permissions.
+
+Synthetic tests insert *explicitly synthetic* terminal snapshots into
+the original executor supervisor and mark dispatch as synthetic.
+They exercise object identity, closure/receipt equality, action
+ownership and one-use, original native source ordering, typed
+separation vs forged World/outcome, owner/Intent cross-swap, and
+non-executing L0/S14 candidate agreement. The test-only primed
+supervisor is **not** proof that the physical original executor
+actually issued those actions. Future physical SCIENCE requires an
+independently verifiable grant issuer, a preregistered meaningful
+outcome metric, a safe-WAIT rule backed by World consequences,
+controlled ON/OFF/sham assignment and independent analysis. Historical
+Stage R evidence is left frozen and cannot be retrospectively promoted.
