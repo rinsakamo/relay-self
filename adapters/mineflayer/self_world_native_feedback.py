@@ -16,6 +16,7 @@ from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.action import ActionState
 from relay_self.action_feedback import (
     ActionFeedbackCriterion,
+    LearningFeedbackInterpretation,
     LearningFeedbackInterpretationStatus,
     interpret_action_outcome_as_learning_feedback,
 )
@@ -92,7 +93,9 @@ class StageNNativeClosureObserver:
         """Capture optional observer failure while preserving S49 Action owner."""
         self._observer_errors.append(f"{phase}:{type(exc).__name__}")
 
-    def observe_closed(self, witness: NormalActionClosedReadback) -> None:
+    def observe_closed(
+        self, witness: NormalActionClosedReadback,
+    ) -> LearningFeedbackInterpretation:
         """Synchronous pure S17 classification from original typed closed Action."""
         if not isinstance(witness, NormalActionClosedReadback):
             raise TypeError("exact S49 Action readback type required")
@@ -166,6 +169,9 @@ class StageNNativeClosureObserver:
             "predicted_label_used_as_reward": False,
             "action_issued_by_stage_n": False,
         })
+        # Return the SAME typed in-memory S17 result. Never deserialize a
+        # saved JSON receipt into a purported learning capability.
+        return interpreted
 
     def summary(self) -> dict[str, Any]:
         return {
