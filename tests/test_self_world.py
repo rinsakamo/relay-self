@@ -448,9 +448,9 @@ def review_fixture(
         present_value=present(seq=8),
         scenarios=(hypothesis,), forecasts=(forecast,),
     )
-    after = view(present_value=(
+    after = replace(view(present_value=(
         later_present if later_present is not None else present(seq=9)
-    ))
+    )), epoch_id="e2")
     result = review_self_world_prediction(
         prior, after, scenario_id=hypothesis.scenario_id,
         variable_key="entity_label", max_native_seq_gap=max_gap,
@@ -508,7 +508,10 @@ def test_cross_epoch_review_rejects_foreign_replay_and_bad_limits():
             prior, view("B", present_value=present(session="s-B", seq=9)), **arg,
         )
     with pytest.raises(InvalidSelfWorldData, match="stale or replayed"):
-        review_self_world_prediction(prior, view(present_value=present(seq=8)), **arg)
+        review_self_world_prediction(
+            prior, replace(view(present_value=present(seq=8)), epoch_id="e2"),
+            **arg,
+        )
     with pytest.raises(InvalidSelfWorldData, match="distinct decision"):
         review_self_world_prediction(prior, prior, **arg)
     with pytest.raises(InvalidSelfWorldData, match="positive integer"):
@@ -595,15 +598,15 @@ def test_positive_visibility_does_not_imply_global_absence():
     hyp = WorldScenario("visible-claim", "A", "entity-42", state)
     forecast = WorldForecast("visible-claim", predict_transition(state, rule))
     prior = replace(before, scenarios=(hyp,), forecasts=(forecast,))
-    observed_after = view(present_value=present(seq=9))
+    observed_after = replace(view(present_value=present(seq=9)), epoch_id="e2")
     seen = review_self_world_prediction(
         prior, observed_after, scenario_id="visible-claim",
         variable_key="entity_visible", max_native_seq_gap=10,
     )
     assert seen.status is WorldPredictionReviewStatus.MISMATCH
     assert seen.observed_value is True
-    unobserved_after = view(
-        present_value=present(seq=9, entity_id=None),
+    unobserved_after = replace(
+        view(present_value=present(seq=9, entity_id=None)), epoch_id="e2",
     )
     unseen = review_self_world_prediction(
         prior, unobserved_after, scenario_id="visible-claim",
@@ -615,8 +618,13 @@ def test_positive_visibility_does_not_imply_global_absence():
 
 def synthetic_s17_world_review_chain():
     """Re-use the qualified S17 offline Action fixture; no Java/Node I/O."""
+    import asyncio
     import test_action_feedback_qualification as s17
     from adapters.mineflayer.action_outcome import interpret_world_consequence
+    from adapters.mineflayer.execution import (
+        build_mineflayer_command,
+        execute_mineflayer_command,
+    )
     from adapters.mineflayer.present_projection import project_mineflayer_present
     from adapters.mineflayer.python_protocol import (
         MineflayerEntityFact,
@@ -624,8 +632,16 @@ def synthetic_s17_world_review_chain():
     )
     from adapters.mineflayer.self_world_projection import project_self_world_present
 
-    chain = s17.executed_closed_chain()
-    binding, action, consequence = chain[15], chain[-1], chain[-3]
+    # Use a CURRENT ISSUED snapshot to perform S15/S16, then obtain
+    # the existing Action owner's terminal OUTCOME. Old ISSUED is stale
+    # immediately after terminal transition and cannot be replayed.
+    chain = s17.issued_chain()
+    binding, supervisor, issued = chain[-4], chain[-2], chain[-1]
+    command = build_mineflayer_command(issued, binding)
+    consequence = asyncio.run(execute_mineflayer_command(
+        s17.successful_session(command), command,
+        provenance=s17.provenance("selfworld-synthetic-world-consequence"),
+    ))
     # Supply a complete synthetic native after-probe that actually observes
     # the target. Re-run existing S16 interpretation, not a free-form result.
     native_after = consequence.after_observation
@@ -644,8 +660,11 @@ def synthetic_s17_world_review_chain():
     native_after = replace(native_after, snapshot=snapshot)
     consequence = replace(consequence, after_observation=native_after)
     outcome = interpret_world_consequence(
-        chain[-4], binding, consequence,
+        issued, binding, consequence,
         provenance=prov("S16-source-bound-interpretation"),
+    )
+    action = s17.record_interpreted_action_outcome(
+        supervisor, outcome, at_ns=20,
     )
 
     old_present = present(session="s15-session", seq=0)
