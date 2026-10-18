@@ -17,6 +17,7 @@ from adapters.mineflayer.normal_action import (
     NormalWorldL0,
 )
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.s34_native_world_cognition_ci import S34EvidenceFailure
 from adapters.mineflayer.self_world_stage_s_feedback import (
     StageSFeedbackRejected,
     StageSPredeclaredSeparationRule,
@@ -39,7 +40,7 @@ from relay_self.learning import (
     propose_learning_update,
 )
 from relay_self.provenance import Provenance
-from relay_self.reactive_l0 import L0Step
+from relay_self.reactive_l0 import L0Step, ReactiveL0Rejected
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
     verify_stage_t_dev_directional_commit,
@@ -189,6 +190,13 @@ class StageUDevOriginalExecutorIssuer:
             or next_native_event.snapshot.nearby_entities_coverage.truncated
         ):
             raise StageUDevRejected("original later native source cannot be correlated")
+        # Preflight the future original L0 native pair BEFORE minting any
+        # S10 authority. A malformed next probe must not leave a committed
+        # learning update behind after a later S14 failure.
+        try:
+            self._host._check(next_native_event, next_native_probe)
+        except (ReactiveL0Rejected, S34EvidenceFailure, ValueError) as exc:
+            raise StageUDevRejected("next original L0 pair not qualified") from exc
         try:
             assessment = assess_stage_s_original_separation(
                 original_closed, StageSPredeclaredSeparationRule(),
