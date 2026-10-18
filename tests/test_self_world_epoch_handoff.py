@@ -57,7 +57,8 @@ def _rehearsal():
         witness.original_probe,
         seq=witness.consequence.after_observation.seq + 3,
         request_id=(
-            f"s49-actual:{witness.original_probe.session_id}:event-47"
+            f"s49-actual:{witness.original_probe.session_id}:"
+            f"event-{witness.consequence.after_observation.seq + 1}"
         ),
     )
     permission = LearningUpdateAuthority(
@@ -145,6 +146,7 @@ def test_stage_p_frozen_s49_choice_rejects_even_valid_new_revision():
     "wrong_native_kind", "forged_source", "wrong_request",
     "sham_feedback", "foreign_s17", "directional_reward",
     "mismatched_feedback_instance", "stale_proposal_revision",
+    "wrong_binding", "wrong_criterion", "future_event_number",
 ))
 def test_stage_p_offline_denies_missing_source_or_permission(case):
     host, args = _rehearsal()
@@ -202,6 +204,25 @@ def test_stage_p_offline_denies_missing_source_or_permission(case):
         )
     elif case == "stale_proposal_revision":
         args["proposal"] = replace(args["proposal"], expected_revision=99)
+    elif case == "wrong_binding":
+        args["interpretation"] = replace(
+            typed, binding_id="s49-binding-counterfeit",
+        )
+    elif case == "wrong_criterion":
+        args["interpretation"] = replace(
+            typed,
+            criterion_provenance=Provenance(
+                "stage-n-dev-predeclared", "not-fixed-criterion",
+            ),
+        )
+    elif case == "future_event_number":
+        args["next_probe"] = replace(
+            args["next_probe"],
+            request_id=(
+                f"s49-actual:{args['original_session_id']}:"
+                f"event-{args['next_probe'].seq + 1}"
+            ),
+        )
     with pytest.raises((
         StagePEpochRejected,
         MissingLearningAuthority,
