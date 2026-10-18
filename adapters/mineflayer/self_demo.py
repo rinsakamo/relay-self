@@ -449,7 +449,8 @@ def _dev_run(args: argparse.Namespace) -> int:
             raise DemoRejected("retention OFF is B1 scenario only")
         if args.confirm != CONFIRM or not args.run_disposable:
             raise DemoRejected("DEV requires disposable opt-in and exact confirmation")
-        if args.think or args.live_think or args.reflect_report or args.smoke or args.self_world_live:
+        if (args.think or args.live_think or args.reflect_report or args.smoke
+                or getattr(args, "self_world_live", False)):
             raise DemoRejected("DEV accepts only the existing model-free disposable route")
         if args.retry_of is not None and (
             len(args.retry_of) != 32 or any(c not in "0123456789abcdef" for c in args.retry_of)
