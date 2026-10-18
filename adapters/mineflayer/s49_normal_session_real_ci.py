@@ -171,10 +171,14 @@ async def qualify(
             # Explicit S49-owned extension; never install a read-only
             # observer as a new Action issuer or as an S10 authority.
             from adapters.mineflayer.self_world_stage_r_owner import (
+                StageRDevOperatorLearningIssuer,
                 StageRDevSingleWriter,
             )
 
-            stage_r = StageRDevSingleWriter(host, executor, intent)
+            # The original S49 operator issues a separate single-use S10
+            # DEV grant; S17 feedback and the commit owner cannot mint it.
+            learning_issuer = StageRDevOperatorLearningIssuer(host, executor, intent)
+            stage_r = StageRDevSingleWriter(host, executor, intent, learning_issuer)
             report["stage_r_dev_enabled"] = True
         probes = {}
 
