@@ -66,6 +66,7 @@ jobs:
               adapters/mineflayer/seek_execution.py|\
               adapters/mineflayer/s51_eat_real_ci.py|\
               adapters/mineflayer/self_demo.py|\
+              adapters/mineflayer/self_live_think.py|\
               adapters/mineflayer/self_body_projection.py|\
               src/relay_self/self_body.py|\
               docs/selfbody-v0.md|\
@@ -85,6 +86,7 @@ jobs:
               tests/test_b1_*.py|\
               tests/test_feature_s51_eat_execution.py|\
               tests/test_self_dev.py|\
+              tests/test_self_live_think.py|\
               tests/test_m02_paper_dev.py|\
               tests/test_m02_v8_stopped_world_clone_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
@@ -142,6 +144,7 @@ jobs:
             tests/test_s50_p1_wait.py \
             tests/test_s50_p1_scope.py \
             tests/test_self_demo.py \
+            tests/test_self_live_think.py \
             tests/test_self_action_evidence.py \
             tests/test_self_body.py \
             tests/test_self_world.py
