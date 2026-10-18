@@ -10,6 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from adapters.mineflayer.execution import WorldConsequence
+from adapters.mineflayer.self_world_prospective import (
+    verify_prospective_native_reviews,
+)
 from adapters.mineflayer.self_world_projection import (
     interpret_self_world_mismatch_as_s17_feedback,
 )
@@ -151,3 +154,54 @@ def evaluate_governed_stage_m(
         review, feedback, owner, next_owner, baseline, following,
         next_owner is not owner,
     )
+
+
+def audit_stage_l_physical_learning_readiness(
+    native_report: dict[str, object], pre_action_witness: bytes,
+) -> dict[str, object]:
+    """Source-only reality check, never a S17 permission or S10 commit.
+
+    S49 stores physical S16 observation/effect receipts, but NOT the
+    authorized in-memory ActionLifecycle/OutcomeInterpretation objects,
+    independently declared S17 evaluation criterion, nor a current S10
+    owner authority. A saved PRD MATCH cannot supply any of those.
+    """
+    if (not isinstance(native_report, dict)
+            or native_report.get("milestone") != "S49"
+            or native_report.get("status") != "PASS"
+            or native_report.get("learning_in_world") is not False
+            or native_report.get("real_model_calls") != 0):
+        raise InvalidSelfWorldData("Stage M requires unchanged S49 source-only run")
+    checked = verify_prospective_native_reviews(
+        native_report, pre_action_witness,
+    )
+    if len(checked) != 2:
+        raise InvalidSelfWorldData("missing existing S49 native Action proof")
+    # Explicitly do not attempt to deserialize a typed S17 permission
+    # from a retrospective JSON document. It was never emitted by S49.
+    return {
+        "classification": "DEV_ONLY_SOURCE_AUDIT",
+        "stage": "M",
+        "source_session": native_report["session_id"],
+        "prospective_action_results": [
+            {
+                "action_id": row["action_id"],
+                "status": row["status"],
+                "prior_source": row["prior_source"],
+                "later_source": row["later_source"],
+            }
+            for row in checked
+        ],
+        "positive_predictions": sum(
+            row["status"] in ("match", "mismatch") for row in checked
+        ),
+        "learning_gate": "BLOCKED_MISSING_TYPED_S17_AND_S10_AUTHORITY",
+        "action_lifecycle_verified_for_s17": False,
+        "independent_s17_criterion_verified": False,
+        "current_s10_authority_verified": False,
+        "s17_feedback_created": 0,
+        "s10_learning_committed": 0,
+        "new_world_sessions": 0,
+        "new_actions": 0,
+        "real_next_epoch_adaptive_effect": False,
+    }
