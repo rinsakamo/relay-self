@@ -423,3 +423,72 @@ def test_stage_k_rejects_unbound_or_forged_native_action_evidence():
                     movement_m=e["movement_m"], target_entity_id=target,
                     max_native_seq_gap=bound,
                 )
+
+
+def _stage_k_completed_native_report():
+    import test_self_action_evidence as old
+
+    report = old._fixture_evidence()
+    for action in report["actual_native_actions"]:
+        decision = next(
+            d for d in report["decisions"] if d["event_seq"] == action["event_seq"]
+        )
+        original = action["execution_evidence"]
+        target = {
+            "entity_id": decision["entity_id"], "name": "zombie",
+            "entity_type": "mob", "distance": 2.0,
+            "position": {"x": 2.0, "y": 64.0, "z": 0.0},
+        }
+        for name, label in (("before_observation", "zombie"),
+                            ("after_observation", "zombie")):
+            frame = original[name]
+            frame["snapshot"]["nearby_entities"] = [{**target, "name": label}]
+            frame["snapshot"]["nearby_entities_coverage"]["candidate_count"] = 1
+        for offset, name in enumerate((
+            "before_observation", "dispatch_receipt",
+            "cleanup_receipt", "after_observation",
+        ), start=1):
+            frame = original[name]
+            frame["seq"] = decision["probe_seq"] + offset
+            frame["provenance"]["reference"] = (
+                f'{report["session_id"]}:{frame["seq"]}'
+            )
+    return report
+
+
+def test_stage_k_s49_report_two_saved_actions_replay_only():
+    from adapters.mineflayer.self_demo import review_s49_action_self_world_report
+
+    report = _stage_k_completed_native_report()
+    rows = review_s49_action_self_world_report(report)
+    assert len(rows) == 2
+    assert [r["status"] for r in rows] == ["match", "match"]
+    assert len({r["target_ref"] for r in rows}) == 2
+    assert all(r["actual_native_actions_added"] == 0
+               and r["s17_feedback_created"] is False
+               and r["s10_learning_committed"] is False
+               and r["habit_learned"] is False for r in rows)
+    report["actual_native_actions"][0]["execution_evidence"][
+        "after_observation"]["snapshot"]["nearby_entities"][0]["name"] = "skeleton"
+    rows = review_s49_action_self_world_report(report)
+    assert [r["status"] for r in rows] == ["mismatch", "match"]
+
+
+def test_stage_k_report_rejects_uncorrelated_original_action_and_absent_prior():
+    from adapters.mineflayer.self_demo import DemoRejected, review_s49_action_self_world_report
+
+    report = _stage_k_completed_native_report()
+    report["actual_native_actions"][0]["execution_evidence"][
+        "before_observation"]["snapshot"]["nearby_entities"] = []
+    report["actual_native_actions"][0]["execution_evidence"][
+        "before_observation"]["snapshot"]["nearby_entities_coverage"][
+            "candidate_count"
+        ] = 0
+    with pytest.raises(DemoRejected):
+        review_s49_action_self_world_report(report)
+    report = _stage_k_completed_native_report()
+    report["actual_native_actions"][0]["execution_evidence"][
+        "before_observation"]["seq"
+    ] = report["actual_native_actions"][0]["probe_seq"]
+    with pytest.raises(DemoRejected):
+        review_s49_action_self_world_report(report)
