@@ -410,6 +410,7 @@ async def _run_disposable(
     live_model: tuple[str, int, float] | None = None,
     self_world_live: bool = False,
     self_world_prospective: bool = False,
+    self_world_typed_closure: bool = False,
 ) -> int:
     # Existing exact S49 host is the *only* issuer. No duplicated event loop,
     # no new Game Action code or arbitrary LLM output -> Action mapping.
@@ -423,6 +424,15 @@ async def _run_disposable(
             model=live_model[0], port=live_model[1], timeout_s=live_model[2],
             self_world_live=self_world_live,
         )
+    stage_n = None
+    if self_world_typed_closure:
+        if not self_world_prospective:
+            raise DemoRejected("Stage N requires pre-Action Stage L witness")
+        from adapters.mineflayer.self_world_native_feedback import (
+            StageNDeclaredPolicy,
+            StageNNativeClosureObserver,
+        )
+        stage_n = StageNNativeClosureObserver(StageNDeclaredPolicy())
     witness = None
     if self_world_prospective:
         if live_observer is None or not self_world_live:
@@ -431,6 +441,8 @@ async def _run_disposable(
         witness = ProspectiveWitnessWriter(report_path.parent / "stage_l_prospective.jsonl")
 
     async def observed_source(reading):
+        if stage_n is not None:
+            stage_n.observe_existing_probe(reading)
         if witness is not None:
             try:
                 # Source is sealed on disk before original S49 can select/issue.
@@ -445,8 +457,19 @@ async def _run_disposable(
     try:
         if live_observer is None:
             return await qualify(report_path, server_log)
-        return await qualify(report_path, server_log, live_probe=observed_source)
+        if stage_n is None:
+            return await qualify(report_path, server_log, live_probe=observed_source)
+        from adapters.mineflayer.normal_action import observe_closed_native_actions
+        # Same event-loop context, original S49 issuer; callback receives only
+        # an already-closed Action and never controls the physical outcome.
+        with observe_closed_native_actions(stage_n.observe_closed):
+            return await qualify(report_path, server_log, live_probe=observed_source)
     finally:
+        if stage_n is not None:
+            _write_trace(
+                report_path.parent / "stage_n_native_feedback.jsonl",
+                (stage_n.summary(),),
+            )
         if witness is not None:
             witness.close()
         if live_observer is not None:
@@ -533,6 +556,11 @@ def _dev_run(args: argparse.Namespace) -> int:
             raise DemoRejected("DEV requires disposable opt-in and exact confirmation")
         live_selfworld = scenario == "native-selfworld"
         prospective = getattr(args, "self_world_prospective", False)
+        typed_closure = getattr(args, "self_world_typed_closure", False)
+        if type(typed_closure) is not bool or (
+            typed_closure and (not prospective or not live_selfworld)
+        ):
+            raise DemoRejected("Stage N typed readback requires prospective SelfWorld DEV")
         if prospective and (not live_selfworld or type(prospective) is not bool):
             raise DemoRejected("Stage L prospective forecast requires SelfWorld DEV")
         if live_selfworld:
@@ -632,7 +660,11 @@ def _dev_run(args: argparse.Namespace) -> int:
                     retention=getattr(args, "b1_retention", "on") == "on",
                 ))
             elif scenario == "native-selfworld":
-                extra = {"self_world_prospective": True} if prospective else {}
+                extra = {}
+                if prospective:
+                    extra["self_world_prospective"] = True
+                if typed_closure:
+                    extra["self_world_typed_closure"] = True
                 code = asyncio.run(_run_disposable(
                     root / "native_report.json", root / "minecraft_server.log",
                     live_model=(args.model_alias, args.model_port, args.model_timeout),
@@ -900,6 +932,85 @@ def _dev_run(args: argparse.Namespace) -> int:
                     receipt["dev_self_world_prospective_incomplete"] = (
                         "NO_POSITIVE_SAME_TARGET_SUCCESSOR_SOURCE"
                     )
+            if typed_closure:
+                stage_n_path = root / "stage_n_native_feedback.jsonl"
+                if (not stage_n_path.is_file() or stage_n_path.is_symlink()
+                        or stage_n_path.stat().st_size > 65536):
+                    raise DemoRejected("Stage N original typed closure sidecar missing")
+                stage_n_rows = stage_n_path.read_text(encoding="utf-8").splitlines()
+                if len(stage_n_rows) != 1:
+                    raise DemoRejected("Stage N expects one typed closure summary")
+                stage_n = json.loads(stage_n_rows[0])
+                closures = stage_n.get("source_closures")
+                subsequent = stage_n.get("post_closure_source_observations")
+                if (stage_n.get("kind") != "stage_n_typed_s16_closed_readback"
+                        or stage_n.get("source_session") != native["session_id"]
+                        or stage_n.get("declared_policy") != "actual-move-execution-only"
+                        or stage_n.get("declared_feedback_direction") != "hold"
+                        or stage_n.get("s10_authority_attested") is not False
+                        or stage_n.get("s10_learning_commits") != 0
+                        or stage_n.get("native_actions_added") != 0
+                        or not isinstance(closures, list)
+                        or not isinstance(subsequent, list)):
+                    raise DemoRejected("Stage N must not mint S10 or Action authority")
+                actions = native.get("actual_native_actions", [])
+                original = {a["action"]: a for a in actions}
+                native_source_probes = {
+                    p["probe_seq"]: (
+                        p["event_seq"],
+                        f"s49-actual:{native['session_id']}:event-{p['event_seq']}",
+                    )
+                    for p in native.get("source_pair_trace", [])
+                }
+                certified = (
+                    len(closures) == stage_n.get("typed_s17_feedback_count") == 2
+                    and len(original) == 2
+                    and len(subsequent) >= 1
+                    and all(
+                        c.get("action_id") in original
+                        and c.get("source_probe_seq") ==
+                        original[c["action_id"]]["probe_seq"]
+                        and c.get("source_probe_seq") in native_source_probes
+                        and c.get("source_probe_request_id") ==
+                        native_source_probes[c["source_probe_seq"]][1]
+                        and c.get("after_native_seq") ==
+                        original[c["action_id"]]["execution_evidence"][
+                            "after_observation"]["seq"]
+                        and c.get("original_terminal") == "outcome"
+                        and c.get("original_outcome_reason") == "observed_execution"
+                        and c.get("feedback_direction") == "hold"
+                        and c.get("s17_interpretation") == "produced"
+                        and c.get("s10_update_committed") is False
+                        and c.get("action_issued_by_stage_n") is False
+                        for c in closures
+                    )
+                    and all(
+                        row.get("after_action_id") in original
+                        and row.get("next_native_seq") in native_source_probes
+                        and row.get("next_native_seq") >
+                        original[row["after_action_id"]]["execution_evidence"][
+                            "after_observation"]["seq"]
+                        and row.get("next_native_request_id") ==
+                        native_source_probes[row["next_native_seq"]][1]
+                        and row.get("same_native_session") is True
+                        and row.get("action_issued_from_feedback") is False
+                        for row in subsequent
+                    )
+                )
+                receipt.update(
+                    dev_self_world_stage_n="TYPED_S17_READ_ONLY"
+                    if certified else "NOT_CERTIFIED",
+                    dev_self_world_stage_n_closures=len(closures),
+                    dev_self_world_stage_n_future_sources=len(subsequent),
+                    dev_self_world_stage_n_s10_authorized=False,
+                    dev_self_world_stage_n_s10_commits=0,
+                    dev_self_world_stage_n_source="stage_n_native_feedback.jsonl",
+                )
+                if code == 0 and not certified:
+                    code = 1
+                    receipt["dev_self_world_stage_n_incomplete"] = (
+                        "TYPED_ACTION_READBACK_NOT_PROVEN"
+                    )
             # Existing S49 may finish without enough positive target probes.
             # Preserve its raw source report but do not certify Stage J input.
             if code == 0 and not qualified_input:
@@ -971,6 +1082,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="opt-in two-source SelfWorld L1/L2 read-only live sidecar")
     parser.add_argument("--self-world-prospective", action="store_true",
                         help="DEV-only pre-Action sealed SelfWorld forecast, no new Action owner")
+    parser.add_argument("--self-world-typed-closure", action="store_true",
+                        help="DEV-only S49 original S16 typed terminal readback and S17 HOLD")
     parser.add_argument("--model-alias", help="explicit pre-existing loopback model alias")
     parser.add_argument("--model-port", type=int, help="existing localhost OpenAI-compatible port")
     parser.add_argument("--model-timeout", type=float, default=12.0)
@@ -993,7 +1106,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.dev_scenario != "native" or args.b1_retention != "on":
         parser.error("--dev-scenario/--b1-retention require --mode DEV")
 
-    if args.self_world_prospective and not args.mode:
+    if (args.self_world_prospective or args.self_world_typed_closure) and not args.mode:
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="PROSPECTIVE_REQUIRES_EXPLICIT_DEV",
             model_calls=0, actual_actions=0,
