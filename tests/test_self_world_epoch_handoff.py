@@ -169,7 +169,9 @@ def test_stage_p_offline_denies_missing_source_or_permission(case):
             args["next_probe"], seq=args["after_action_native_seq"],
         )
     elif case == "wrong_native_kind":
-        args["next_probe"] = replace(args["next_probe"], kind="entities")
+        args["next_probe"] = replace(
+            args["next_probe"], kind="entities", request_id=None,
+        )
     elif case == "forged_source":
         args["next_probe"] = replace(
             args["next_probe"],
