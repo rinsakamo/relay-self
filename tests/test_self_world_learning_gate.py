@@ -11,7 +11,10 @@ from dataclasses import replace
 import pytest
 
 import test_action_feedback_qualification as s17
-from adapters.mineflayer.self_world_learning_gate import evaluate_governed_stage_m
+from adapters.mineflayer.self_world_learning_gate import (
+    audit_stage_l_physical_learning_readiness,
+    evaluate_governed_stage_m,
+)
 from relay_self.action_feedback import LearningFeedbackInterpretationStatus
 from relay_self.epoch_continuation import read_retained_preference
 from relay_self.learning import (
@@ -35,6 +38,7 @@ from relay_self.self_world import (
     compose_self_world_view,
 )
 from test_self_world import synthetic_s17_world_review_chain
+from test_self_world_prospective import _sealed_fixture
 
 
 def _context():
@@ -225,3 +229,32 @@ def test_stage_m_readback_rejects_reconstructed_owner_and_feedback_bypass():
     assert result.next_owner.last_update.authority_id == (
         args["authority"].authority_id
     )
+
+
+def test_stage_m_real_source_only_does_not_synthesize_s17_or_lrn(tmp_path):
+    native, witness = _sealed_fixture(tmp_path)
+    audit = audit_stage_l_physical_learning_readiness(native, witness)
+    assert audit["classification"] == "DEV_ONLY_SOURCE_AUDIT"
+    assert audit["learning_gate"] == "BLOCKED_MISSING_TYPED_S17_AND_S10_AUTHORITY"
+    assert audit["positive_predictions"] == 2
+    assert [x["status"] for x in audit["prospective_action_results"]] == [
+        "match", "match",
+    ]
+    assert audit["action_lifecycle_verified_for_s17"] is False
+    assert audit["independent_s17_criterion_verified"] is False
+    assert audit["current_s10_authority_verified"] is False
+    assert audit["s17_feedback_created"] == audit["s10_learning_committed"] == 0
+    assert audit["new_world_sessions"] == audit["new_actions"] == 0
+    assert audit["real_next_epoch_adaptive_effect"] is False
+
+
+def test_stage_m_source_audit_rejects_fake_historical_learning(tmp_path):
+    native, witness = _sealed_fixture(tmp_path)
+    native["learning_in_world"] = True
+    with pytest.raises(InvalidSelfWorldData, match="source-only"):
+        audit_stage_l_physical_learning_readiness(native, witness)
+    native["learning_in_world"] = False
+    tampered = bytearray(witness)
+    tampered[25] = ord("q")
+    with pytest.raises(ValueError):
+        audit_stage_l_physical_learning_readiness(native, bytes(tampered))
