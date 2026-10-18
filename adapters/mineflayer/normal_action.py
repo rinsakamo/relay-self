@@ -167,6 +167,7 @@ class NormalWorldL0(ReactiveL0):
 
     def install_stage_t_dev_preview(
         self, *, token: object, commit: LearningCommitResult,
+        s10_owner_state: LearningPreferenceState,
         typed_s17: LearningFeedbackInterpretation,
     ) -> None:
         """DEV/OFFLINE: one exact Stage S S17→S10 successor, no live runner.
@@ -181,6 +182,8 @@ class NormalWorldL0(ReactiveL0):
             or self._stage_t_dev_commit is not None
             or self._stage_t_dev_s17 is not None
             or not isinstance(commit, LearningCommitResult)
+            or not isinstance(s10_owner_state, LearningPreferenceState)
+            or commit.new_state is not s10_owner_state
             or commit.previous_state is not self.retained
             or not isinstance(typed_s17, LearningFeedbackInterpretation)
             or typed_s17.action_id not in self._used_action_ids
