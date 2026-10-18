@@ -207,8 +207,13 @@ def select_stage_t_dev_directional_world_choice(
     )
     if retained is not successor:
         raise WorldChoiceRejected("Stage T L0 must consume exact committed owner")
-    if native.observation.session_id != typed_s17.feedback.provenance.reference.split(":")[0]:
-        # Stage S provenance is sid:action; no cross-session transfer.
+    if (
+        typed_s17.provenance.reference
+        != f"{native.observation.session_id}:{typed_s17.action_id}"
+        or typed_s17.feedback.provenance != typed_s17.provenance
+        or typed_s17.action_id.removeprefix("s49-native-move-")
+        != typed_s17.criterion_id.split(":")[-1].split("-")[-1]
+    ):
         raise WorldChoiceRejected("Stage T feedback native session mismatch")
     return _select_world_conditioned_choice(
         native, retained,
