@@ -473,3 +473,56 @@ marker `[selfworld-stage-l-dev-once]`. It uses one NEW isolated disposable
 Minecraft World and preserves the complete Stage L original evidence on
 success or failure; it does not reuse the consumed Stage J physical grant.
 No SCIENCE status can be inferred from this development check.
+
+
+## Stage M — governed evaluation / retained next-epoch controls
+
+A forecast outcome alone is **not** an S17 reward, S10 learning event,
+retained Habit, or Action authority. In particular Stage L's two prospective
+`entity_label` MATCH witnesses only establish a weak fixed-rules
+source comparison. This does not satisfy the separately owned S17
+`ActionLifecycle`, `ActionOutcomeInterpretation`, explicit
+`ActionFeedbackCriterion` and current S10 owner authority.
+
+The pure, opt-in
+`adapters/mineflayer/self_world_learning_gate.py`
+`evaluate_governed_stage_m` composes the **existing** source-bound SelfWorld
+review, S17 bridge, `propose_learning_update`,
+`commit_learning_update`, exact-owner `read_retained_preference`,
+ATT and one-call existing `RelayEngine` bounded cognition. It requires
+a *newer same-self/session native observation* as the next epoch.
+Positive observed MISMATCH + matched explicit S17 criterion + granted
+current S10 authority are the only permitted learning branch.
+MATCH, UNDETERMINED, feedback OFF, unmatched criterion, LRN OFF, denied
+authority, stale owner and forged source cannot commit. The resulting
+read-only cognition cannot issue Minecraft Actions.
+
+The **synthetic** S17 source chain and deterministic threshold provider in
+`tests/test_self_world_learning_gate.py` yield ON
+`risk_weight:3/rev0 -> 4/rev1` and next cognitive `WAIT -> RECHECK`.
+OFF, learning OFF and mismatched-criterion sham keep rev0/value3 and WAIT;
+missing or denied authority fails closed. This measures the **interface
+dependency** with a fixed test provider; it does NOT demonstrate Self
+learning, real model reasoning, causal behavioral improvement, fatigue
+adaptation, or any new World attempt.
+
+The separately retained Stage L physical DEV artifact
+`12129387412` is a valid source of original pre-Action prediction and
+S16 readback, but is **not** a portable S17/10 permission. The source-only
+readback function `audit_stage_l_physical_learning_readiness` verifies
+the exact Stage L source and leaves the result
+`BLOCKED_MISSING_TYPED_S17_AND_S10_AUTHORITY`; it refuses to fabricate
+typed Action lifecycle, criterion, owner snapshot or update grant from a
+JSON report. An exact-archive read-only GitHub job
+`[selfworld-stage-m-source-gate-once]` checks immutable ZIP SHA-256
+`3993d389617bd32fd2e24030cbf6fa3434f609ff5473a56dcf3405a7efa58216`,
+original DEV receipt identity and internal SHA256SUMS, and stores a
+separate *DEV_ONLY* blocked/not-qualified audit output. It runs no Java,
+Minecraft, Node, Action, L2 provider or learning state transition.
+
+A future **actual physical adaptive** Stage N requires a prospective,
+authorized S17 Action/outcome receipt and criterion source, with a
+current S10 owner grant and a subsequent real World epoch. Its ON/OFF/sham
+control and stop/cleanup must be separately attested before any R or V
+claim. Do not merge existing PR #634 or rewrite Stage J/K/L evidence merely
+because synthetic Stage M tests passed.
