@@ -143,17 +143,27 @@ def test_stage_s_rejects_sham_or_invalid_native_source(case):
             ),
         ))
     elif case == "truncated_registry":
-        # A genuinely truncated Mineflayer registry must have more
-        # candidates than max_entities, and as many emitted entities as
-        # the cap. Keep the protocol fixture valid before Stage S rejects it.
+        # Preserve the immutable Mineflayer registry limit. A genuine
+        # truncated observation emits exactly max_entities facts while
+        # candidate_count is greater than that limit.
+        original_cov = after.snapshot.nearby_entities_coverage
+        target = after.snapshot.nearby_entities[0]
+        facts = (target,) + tuple(
+            replace(
+                target, entity_id=target.entity_id + i,
+                name="item", entity_type="other",
+            )
+            for i in range(1, original_cov.max_entities)
+        )
         cov = replace(
-            after.snapshot.nearby_entities_coverage,
-            truncated=True, max_entities=1, candidate_count=2,
+            original_cov, truncated=True,
+            candidate_count=original_cov.max_entities + 1,
         )
         w = replace(w, consequence=replace(
             w.consequence, after_observation=replace(
                 after, snapshot=replace(
-                    after.snapshot, nearby_entities_coverage=cov,
+                    after.snapshot, nearby_entities=facts,
+                    nearby_entities_coverage=cov,
                 ),
             ),
         ))
