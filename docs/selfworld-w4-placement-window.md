@@ -255,3 +255,40 @@ staging or starts the host receive loop, while guaranteeing all unsolicted
 Node events and original admission frames remain accounted for. Tests
 for the new port are synthetic and do not attest that these conditions
 are satisfied in a physical Minecraft session. W4/NH1 remains NO_GO.
+
+## W4-PREHOST — loss-accounted, original-session preprobe (2026-10-20)
+
+The original `_correlated_observe()` in S31A receives from the native
+session and **discards every unsolicited observation until the matching
+probe**. Reusing it directly for W4 pre-staging could lose world events,
+silently changing the evidence used by the original host. This is a
+distinct causal problem from just avoiding a second reader.
+
+New `W4PrehostOwnerBridge` accepts an already-owned session-like
+`send_observe/receive` port and a single owner token. It issues one
+correlated observe BEFORE the host/World startup, reads the same stream
+serially, checks all session IDs and strictly increasing seq, and retains
+all interleaved nonhostile entity events / entity-hurt messages as a
+bounded **pre-World evidence ledger**. Hostile zombies, unexpected message
+kinds, wrong/stale probes, task cancellation and frame overflow fail
+closed. Pre-World frames are **not replayed later as new post-placement L0
+stimuli**, which would change their causal meaning. The ledger must be
+taken exactly once before the bridge considers the phase handed off.
+The bridge calls the existing W4-PREPROBE and W4-OWNER contracts for its
+candidate plan; it adds no Java, Node, second reader, Action, or S10
+issuance path.
+
+The code is a connector *interface*, not connected to the original S49
+`qualify()` or to actual Mineflayer. The original S49 runner still uses
+unmodified `_new_session()`, `stage_world()` and `host.run_session()`.
+Its claimed single-reader status remains **unattested**, and no
+physical-run grant can be derived from matching observations. A future
+separate guarded DEV runner must bind this bridge to the original session
+and review the handling of all unsolicited pre-host observations without
+mutating the historical S49 result or borrowing spent grants.
+
+**CI maintenance:** A preceding exact HEAD's FAST pytest job exceeded
+its former 10-minute job limit at about 88% completed and was cancelled,
+rather than reporting an assertion failure. The existing pytest selection
+is unchanged and this workflow raises only its time budget to 20 minutes.
+SKIPPED full/physical jobs remain SKIPPED, not PASS.
