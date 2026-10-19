@@ -9,7 +9,10 @@ from pathlib import Path
 import pytest
 
 import test_mineflayer_process_session as fixture
-from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.process_session import (
+    MineflayerProcessIOError,
+    MineflayerProcessSession,
+)
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
 from adapters.mineflayer.self_world_stage_w3_capture import (
     W3CaptureRejected,
@@ -138,7 +141,7 @@ def test_w3_bad_stream_fails_closed_and_retains_raw_evidence(
                 MineflayerLaunchConfig(), bridge_path=bridge,
                 raw_capture_root=tmp_path,
             )
-            with pytest.raises((ValueError, UnicodeError)):
+            with pytest.raises((ValueError, MineflayerProcessIOError)):
                 await session.shutdown()
             if session.raw_capture_receipt is None:
                 await session.terminate()
