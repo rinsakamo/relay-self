@@ -94,6 +94,7 @@ jobs:
               adapters/mineflayer/self_world_stage_w2_ledger_worker.py|\
               adapters/mineflayer/self_world_stage_w2_local_preflight.py|\
               adapters/mineflayer/self_world_stage_w3_capture.py|\
+              adapters/mineflayer/self_world_stage_w4_preflight.py|\
               adapters/mineflayer/s49_normal_session_real_ci.py|\
               adapters/mineflayer/s34_native_world_cognition_ci.py|\
               src/relay_self/self_world.py|\
@@ -132,6 +133,7 @@ jobs:
               tests/test_self_world_stage_w_gate.py|\
               tests/test_self_world_stage_w2_local.py|\
               tests/test_self_world_stage_w3_capture.py|\
+              tests/test_self_world_stage_w4.py|\
               tests/test_m02_paper_dev.py|\
               tests/test_m02_v8_stopped_world_clone_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
@@ -206,6 +208,7 @@ jobs:
             tests/test_self_world_stage_w_gate.py \
             tests/test_self_world_stage_w2_local.py \
             tests/test_self_world_stage_w3_capture.py \
+            tests/test_self_world_stage_w4.py \
             tests/test_mineflayer_process_session.py \
             tests/test_feature_s49_normal_runtime.py \
             tests/test_self_body.py \

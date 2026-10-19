@@ -37,3 +37,65 @@
 - [ ] One explicitly permitted disposable DEV one-shot invocation, no automatic retry of its grant. Failure is preserved as failure. Qualification or science execution still requires their own authority.
 
 **Status at preregistration:** `W4_NH1_DESIGN_PREDECLARED / IMPLEMENTATION_NOT_YET_QUALIFIED / PHYSICAL_NOT_RUN / S10_NO_GO`. Freezing this protocol is not an instruction for GitHub Actions to start a new World run. If code changes the scenario definition or endpoints, stop and record a separately versioned prospective amendment **before execution**; never silently edit this original record after outcome inspection.
+
+## Prospective implementation readout / manual runbook (2026-10-19)
+
+Study ID and endpoints above remain frozen. Current continuation status:
+**OFFLINE_GEOMETRY_IMPLEMENTED / LIVE_SCENARIO_UNQUALIFIED /
+PREWORLD_BLOCKED / PHYSICAL_NOT_RUN / W4_EXTERNAL_TRUST_NO_GO**.
+
+Read-only owner audit: original `NormalSessionActionExecutor` retains
+MOVE_BACKWARD through `back=true`, duration 0.20s and original S14/S15/S16.
+Original `stage_world` uses `execute at RelaySelf run summon ... ~2 ~ ~`:
+world +X irrespective of orientation. No Action owner or original default
+scenario was edited. Native `snapshotFromBot` / `MineflayerSnapshot` contains
+position, health and registry but **no yaw/pitch**. LOOK command/ACK does not
+provide an independently sourced pre-action player orientation.
+
+`self_world_stage_w4_preflight.py` implements an explicit **synthetic/offline**
+scenario planner. Mineflayer yaw radians have horizontal forward vector
+`(-sin(yaw), 0, -cos(yaw))`, inverse of existing `mineflayer_yaw_to_target`.
+Near slots 1/2 use exactly `p + 2*forward`, with same Y and no pitch-based
+shortening; slot 0 retains original +X 10m WAIT baseline. Cardinal/oblique
+angles and foreign/missing/nonfinite/stale orientation are tested. Generated
+commands only summon World zombies; they cannot move or rotate the avatar.
+The planner labels its orientation synthetic and always returns
+`physical_run_permitted=false`. It is **not a live orientation acquisition
+implementation**. `require_native_nh1_orientation` explicitly rejects current
+native inputs. No CLI flag launches an unqualified substitute scenario.
+
+Manual runbook before any future attempt (all mandatory, in order):
+
+1. Obtain independently administered archivist identity, external immutable
+   storage, signing policy, acquisition/transfer procedure and public pin via
+   an independent trusted channel **before acquisition**. Obtain separate
+   issuer/consumer/S49 principal authorization and key-access audit; unsigned
+   local handoff and same-UID TEST keys cannot satisfy this step.
+2. Implement and qualify an opt-in source-bound native yaw/pitch acquisition
+   before staging. Record exact source session/seq/time/position/orientation,
+   deterministic transform, staging command and observed actual zombie ID/XYZ.
+   Preserve original 10m/5s then 2m/8s, 2m/8s, interstage 2s and three decisions /
+   at most two Actions. Source mismatch, no yaw, registry truncation, missing
+   Action terminal or near WAIT stops with preserved UNKNOWN/failure. Never
+   infer orientation from Action displacement or choose geometry after outcome.
+3. Pin reviewed clean execution HEAD, committed prereg SHA, scenario, new
+   absolute unused root, distinct new one-shot DEV grant and complete final
+   argv in the external acquisition contract. Require exact-head FAST 4/4
+   completed/SUCCESS. Current ordinary native/W3 CLI is **not NH1**; do not
+   execute it as a replacement. No executable NH1 argv is approved at this HEAD.
+4. Only after those independent gates pass, add/review the opt-in wiring into
+   original S49 staging, preserving sole issuer and W3 raw capture before
+   decode/post-exit receipt. Record grant consumption before launch and retain
+   stdout/stderr, partial files, exit codes and all two prespecified slots.
+   No auto-retry, no success-based early stop, no threshold rounding/change.
+5. Independently transfer bytes and seal signed immutable custody manifest;
+   audit original same-ID native 3D before/after using unchanged Stage S.
+   Primary denominator stays two prespecified near slots; no issued Action is
+   `NO_ISSUED_ACTION`, missing source is UNKNOWN. Archive Node/Java exits,
+   cleanup and STOP ACK separately. No S10/next-epoch handoff/near-WAIT/science
+   promotion follows from a directional DEV candidate.
+
+This runbook intentionally cannot be reduced to a runnable command while
+orientation and independent acquisition trust are absent. Physical NH1
+sessions=0, NH1 Actions=0, NH1 OUTCOMEs=0; no NH1 delta or non-HOLD rate is
+available. W3's two HOLD observations stay outside this study's denominator.

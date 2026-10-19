@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import stat
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -66,12 +67,29 @@ class StageWPersistentGrantLedger:
         ):
             raise StageWGateRejected("pre-provisioned absolute ledger path required")
         self._path = database_path
+        self._identity = self._checked_identity()
+
+    def _checked_identity(self) -> tuple[int, int]:
+        """Reject symlink ancestors/replacement; not a malicious-UID sandbox."""
+        try:
+            for part in (self._path, *self._path.parents):
+                if part.is_symlink():
+                    raise StageWGateRejected("ledger symlink boundary rejected")
+            info = self._path.stat()
+            if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
+                    or stat.S_IMODE(info.st_mode) != 0o600 or info.st_nlink != 1):
+                raise StageWGateRejected("ledger owner/mode/link boundary rejected")
+            return info.st_dev, info.st_ino
+        except OSError as exc:
+            raise StageWGateRejected("ledger identity unavailable") from exc
 
     @classmethod
     def provision_new(cls, database_path: Path) -> StageWPersistentGrantLedger:
         """DEV-only first initialization: refuse path overwrite."""
         if not isinstance(database_path, Path) or not database_path.is_absolute():
             raise StageWGateRejected("absolute preselected ledger path required")
+        if any(part.is_symlink() for part in database_path.parents):
+            raise StageWGateRejected("ledger symlink parent rejected")
         try:
             fd = os.open(str(database_path), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
             os.close(fd)
@@ -108,6 +126,8 @@ class StageWPersistentGrantLedger:
         """Consume before delivery; no retry or rollback after successful COMMIT."""
         if not isinstance(request, StageVGrantRequest):
             raise StageWGateRejected("typed signed request required")
+        if self._checked_identity() != self._identity:
+            raise StageWGateRejected("ledger replaced since admission")
         try:
             conn = sqlite3.connect(
                 self._path.as_uri() + "?mode=rw", uri=True,
@@ -127,6 +147,8 @@ class StageWPersistentGrantLedger:
                     request.evidence_sha256,
                 ),
             )
+            if self._checked_identity() != self._identity:
+                raise StageWGateRejected("ledger replaced during reservation")
             conn.execute("COMMIT")
         except sqlite3.Error as exc:
             try:

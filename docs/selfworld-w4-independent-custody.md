@@ -61,3 +61,55 @@ Neither `distinct Python process` nor `different keypair` nor `different UID in 
 ## Distinct future non-HOLD physical trial
 
 See `docs/selfworld-w4-nonhold-prereg.md` for a **new prospectively registered DEV scenario**. Stage S `delta_m=0.100` and motion minimum `0.050` remain fixed. W3 observed 9.595 cm cannot be re-scored by threshold tuning or retroactive new geometry. Do not start the separate trial until its implementation, exact source HEAD, scenario/geometry, controls, stop conditions and independent receipt plan have been frozen and reviewed. This W4 handoff does **not** authorize a physical run.
+
+## 2026-10-19 local continuation: explicit external-trust NO_GO
+
+The continuation adds **OFFLINE** W4 tests and a non-authorizing inventory in
+`self_world_stage_w4_preflight.py`. No caller-supplied identity, UID, TEST key,
+boolean or copied receipt can qualify independent custody. The original W1
+consumer still returns `external_issuer_identity_qualified=false` and
+`real_s10_commit_permitted=false`; it has no live S10 bridge.
+
+Local observation: consumer uid/gid 1000, supplementary groups include sudo
+and docker. `sudo -n -l` requires a password. `getfacl` is unavailable. No
+separately administered archivist, immutable external destination, private-key
+principal/path, signer process authentication/policy, or independently
+published advance pin was supplied. No existing key was searched/read. With no
+independent principal/key subject, UID/gid/groups/ACL/parent traversal,
+mount/bind/symlink and privileged-access key isolation cannot be qualified.
+A password prompt does not prove absence of privileged access, especially with
+docker group membership. No daemon, sudo configuration, user, ACL or host OS
+configuration was changed. Result: **W4_EXTERNAL_TRUST_NO_GO**.
+
+| Predicate | Continuation disposition |
+|---|---|
+| W3 ZIP/raw expected digest and 7-file SHA manifest | PASS, local content integrity only |
+| W3 61 frames, original session, 3 event/probe decisions, 2 Action S16/effect/geometry pairings | PASS, 31 named content checks; no independent witness identity |
+| W3 original same-target Stage S | HOLD twice, unchanged delta +0.09595129995869334m |
+| Independent archivist identity/storage/acquisition contract | BLOCKED, no external principal/store contract |
+| Archivist signature / advance external public pin | BLOCKED, no signature or independent pin provided |
+| Signer key custody, process authentication and real signing policy | BLOCKED, subject and independent administrative evidence absent |
+| Signed physical evidence ↔ external archive pin | BLOCKED, synthetic checks cannot substitute for a physical signed manifest |
+| Node emission completeness / Minecraft wire provenance | NOT_TESTED / NOT_ATTESTED |
+| S49 source/Action identity | PASS for frozen report/raw correspondence only; external process authentication BLOCKED |
+| S17 source / S10 owner-issued permission | Synthetic source negatives PASS; genuine external permission BLOCKED |
+| Same disposable DB concurrent processes and fresh-process replay | DEV tests only, exactly one reservation; no S10 permission |
+| Symlink, parent symlink, replaced inode, hardlink, mode, missing DB, lock | Rejection covered by new local/CI controls |
+| Disposable process crash before COMMIT | DEV rollback/integrity test; no host power-loss claim |
+| Disposable cloned pre-spend DB | Same grant accepted in both copies: demonstrated global single-use FAIL; qualification BLOCKED |
+| WSL2 forced reboot / power loss / cross-host rollback resistance | NOT_TESTED; no host disruption |
+
+Ledger admission now checks owner/mode 0600, single link, symlink ancestors and
+stable device/inode before each reservation and before COMMIT. These checks do
+not sandbox a malicious same-UID/root process or eliminate every filesystem
+TOCTOU race. An externally monotonic spent-grant authority remains necessary
+for global single-use; SQLite FULL and the new checks do not establish it.
+
+`prepare_unsigned_custody_handoff` validates the W3 receipt and inventories
+unaltered raw bytes/hash/session/seq/window and local transfer observation.
+It deliberately leaves capture wall times, external identity, signature and
+public pin absent. This is a **candidate for external receipt**, not an
+append-only independent signed manifest. Historical W3 cannot gain an
+acquisition-time witness from this later readback. No historical Stage R/W3
+receipt is changed. Local evidence is retained outside the repo at
+`/home/rinsa/w4-dev-20261019`; no private keys are published.
