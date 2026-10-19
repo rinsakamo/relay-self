@@ -1326,6 +1326,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--retry-of", help="prior DEV run ID, informational lineage only")
     args = parser.parse_args(argv)
+    if args.self_world_w3_raw_capture and args.mode != "DEV":
+        parser.error("--self-world-w3-raw-capture requires --mode DEV")
     if args.mode == "DEV":
         return _dev_run(args)
     if args.retry_of is not None:
