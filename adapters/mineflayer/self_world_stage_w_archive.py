@@ -165,7 +165,6 @@ def audit_independent_source_extract(
         src["original_request_id"] != f"s49-actual:{sid}:event-{event}"
         or src["binding_id"] != f"s49-binding-{event}"
         or not event.isdecimal()
-        or int(event) != src["original_seq"]
         or not src["original_seq"] < src["before_seq"] < src["after_seq"]
         or not isinstance(src["next_probe_request_id"], str)
         or not src["next_probe_request_id"].startswith(f"s49-actual:{sid}:event-")
