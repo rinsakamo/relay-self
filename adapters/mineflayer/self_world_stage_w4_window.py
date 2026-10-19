@@ -70,7 +70,7 @@ _EVENTS = (
 
 def build_w4_window_commands(
     placement: W4OfflinePlacement, *, one_time_token: str,
-    seen_tokens: frozenset[str] = frozenset(),
+    seen_tokens: frozenset[str] | None = None,
 ) -> W4PlacementCommands:
     """Prepare conditional *tagged* summon and server-console readiness marker.
 
@@ -89,6 +89,7 @@ def build_w4_window_commands(
         or type(one_time_token) is not str
         or not _TOKEN.fullmatch(one_time_token)
         or type(seen_tokens) is not frozenset
+        or any(type(token) is not str for token in seen_tokens)
         or one_time_token in seen_tokens
     ):
         raise W4PreworldBlocked("W4-WIN requires typed near-slot plan and safe token")
@@ -129,7 +130,7 @@ def reconcile_w4_window_offline(
     slot: int,
     one_time_token: str,
     events: tuple[W4WindowEvent, ...],
-    seen_tokens: frozenset[str] = frozenset(),
+    seen_tokens: frozenset[str] | None = None,
 ) -> dict:
     """Correlate producer-content only; preserve independent physical NO_GO.
 
@@ -251,7 +252,7 @@ def join_w4_window_and_s16_offline(
     expected_session: str, before_request_id: str,
     minimum_seq: int, slot: int, one_time_token: str,
     events: tuple[W4WindowEvent, ...],
-    seen_tokens: frozenset[str] = frozenset(),
+    seen_tokens: frozenset[str] | None = None,
 ) -> dict:
     """Join World-window candidate to ORIGINAL S16 + frozen Stage S readback.
 
