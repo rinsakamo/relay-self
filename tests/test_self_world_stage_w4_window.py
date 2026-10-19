@@ -237,7 +237,11 @@ def test_window_token_is_per_slot_and_no_cross_slot_reuse():
         expected_request_id=before.request_id, before_seq=after.seq, slot=2,
     )
     a = build_w4_window_commands(slot1, one_time_token=TOKEN)
-    b = build_w4_window_commands(slot2, one_time_token=TOKEN)
+    spent = frozenset({TOKEN})
+    with pytest.raises(W4PreworldBlocked):
+        build_w4_window_commands(slot2, one_time_token=TOKEN, seen_tokens=spent)
+    second_token = "ff12cd34ef56ab12cd34ef56"
+    b = build_w4_window_commands(slot2, one_time_token=second_token, seen_tokens=spent)
     assert a.marker_tag != b.marker_tag
     assert a.confirmation_marker != b.confirmation_marker
     assert a.summon_command != b.summon_command
@@ -280,3 +284,24 @@ def test_offline_window_rejects_swapped_original_s16_probe():
             minimum_seq=kwargs["minimum_seq"], slot=kwargs["slot"],
             one_time_token=kwargs["one_time_token"], events=kwargs["events"],
         )
+
+
+@pytest.mark.parametrize("component", ("window", "join"))
+def test_repeated_window_token_rejected(component):
+    before, after, _, kwargs, closed = _sample()
+    kwargs["seen_tokens"] = frozenset({TOKEN})
+    with pytest.raises(W4PreworldBlocked):
+        if component == "window":
+            reconcile_w4_window_offline(before, after, **kwargs)
+        else:
+            from adapters.mineflayer.self_world_stage_w4_window import (
+                join_w4_window_and_s16_offline,
+            )
+
+            join_w4_window_and_s16_offline(
+                before, closed, expected_session=kwargs["expected_session"],
+                before_request_id=kwargs["before_request_id"],
+                minimum_seq=kwargs["minimum_seq"], slot=kwargs["slot"],
+                one_time_token=kwargs["one_time_token"], events=kwargs["events"],
+                seen_tokens=kwargs["seen_tokens"],
+            )
