@@ -99,3 +99,45 @@ This runbook intentionally cannot be reduced to a runnable command while
 orientation and independent acquisition trust are absent. Physical NH1
 sessions=0, NH1 Actions=0, NH1 OUTCOMEs=0; no NH1 delta or non-HOLD rate is
 available. W3's two HOLD observations stay outside this study's denominator.
+
+## Subsequent Stage W4-O DEV-only orientation transport (2026-10-19)
+
+This is an **implementation-readiness update**, not a change to the frozen
+prospective scenario, metric, two near slots, or 10cm Stage S threshold. Previous
+`PREWORLD_BLOCKED` reports remain accurate for the HEAD/run they audited.
+
+- Node `snapshotFromBot(bot, { includeNativeOrientation: true })` now samples
+  `bot.entity.yaw` and `bot.entity.pitch` **in the same read-only observation
+  snapshot** as bot position, session and seq. It adds a typed
+  `native_orientation: {source:"mineflayer_bot_entity",yaw_rad,pitch_rad}`
+  field only for an explicit DEV child opt-in. Unset mode retains the previous
+  exact snapshot JSON keys, single Action owner, and legacy behavior. No `look`,
+  `set_control`, teleport, second entity reader or external issuer is created.
+- `MineflayerProcessSession.launch(...,w4_native_orientation_dev=True)`
+  requires Minecraft 1.21.8, strips inherited opt-in env from default
+  children and scopes `RELAYSELF_W4_NH1_ORIENTATION_V0=1` exclusively to an
+  expressly opted-in new child. No ordinary S49 or prior W3 entrypoint passes
+  this switch; original W3 is immutable.
+- Python `MineflayerNativeOrientation` is optional in the strict snapshot
+  decoder, which continues to accept the unchanged legacy schema. Opt-in
+  values require exact source name, finite angles, bounded pitch and no extra
+  fields. `require_native_nh1_orientation` requires one exact, prior,
+  same-session, source-bound probe/request/seq; the read-only
+  `plan_native_nh1_placement` reuses the frozen scenario geometry without
+  claiming producer/TCP/archivist authenticity.
+- Source-qualified in this module means **only typed within a Node bridge
+  observation/probe**; it is not an external archivist signature or verified
+  native packet source. `physical_run_permitted=false` remains hardcoded,
+  even with a valid orientation. No acquisition-ready opt-in NH1 S49 staging
+  runner, reviewed physical run command, grant, external custody principal,
+  external issuer, ledger global monotonic authority, or S10 live commit
+  is supplied by this change. This cannot be counted as a physical result.
+- NH1 remains **PREWORLD_BLOCKED** for execution until the World-side
+  opt-in staging hook is reviewed with actual source timing/coordinates,
+  exact HEAD FAST tests pass, external pre-acquisition custody is qualified,
+  and an independent new disposable DEV grant and immutable run config are
+  checked. Default S49/W3 jobs must not be repurposed to run NH1.
+
+The Node bridge observation authenticates *nothing outside its process*:
+malicious producers or failed emit completeness remain independent W4
+qualification blockers. No legacy Action/grant/threshold change is permitted.
