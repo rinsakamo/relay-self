@@ -37,7 +37,9 @@ def _sample():
         staging, expected_session=staging.session_id,
         expected_request_id=staging.request_id, before_seq=after.seq, slot=1,
     )
-    commands = build_w4_window_commands(planned, one_time_token=TOKEN)
+    commands = build_w4_window_commands(
+        planned, one_time_token=TOKEN, seen_tokens=frozenset(),
+    )
     names = (
         "native_before_probe", "server_summon_write",
         "server_summon_drain", "server_confirm_write",
@@ -67,7 +69,7 @@ def _sample():
         before_request_id=staging.request_id,
         after_request_id=after.request_id,
         minimum_seq=staging.seq, slot=1,
-        one_time_token=TOKEN, events=events,
+        one_time_token=TOKEN, events=events, seen_tokens=frozenset(),
     )
     return staging, after, commands, kwargs, closed
 
@@ -236,12 +238,14 @@ def test_window_token_is_per_slot_and_no_cross_slot_reuse():
         before, expected_session=before.session_id,
         expected_request_id=before.request_id, before_seq=after.seq, slot=2,
     )
-    a = build_w4_window_commands(slot1, one_time_token=TOKEN)
+    a = build_w4_window_commands(slot1, one_time_token=TOKEN,
+                                 seen_tokens=frozenset())
     spent = frozenset({TOKEN})
     with pytest.raises(W4PreworldBlocked):
         build_w4_window_commands(slot2, one_time_token=TOKEN, seen_tokens=spent)
     second_token = "ff12cd34ef56ab12cd34ef56"
-    b = build_w4_window_commands(slot2, one_time_token=second_token, seen_tokens=spent)
+    b = build_w4_window_commands(slot2, one_time_token=second_token,
+                                 seen_tokens=spent)
     assert a.marker_tag != b.marker_tag
     assert a.confirmation_marker != b.confirmation_marker
     assert a.summon_command != b.summon_command
@@ -260,6 +264,7 @@ def test_offline_window_joins_original_s16_and_frozen_stage_s_without_grant():
         before_request_id=kwargs["before_request_id"],
         minimum_seq=kwargs["minimum_seq"], slot=kwargs["slot"],
         one_time_token=kwargs["one_time_token"], events=kwargs["events"],
+        seen_tokens=kwargs["seen_tokens"],
     )
     assert result["original_s16_stage_s"]["stage_s_direction"] == "hold"
     assert result["window"]["after_source"] == after.provenance.reference
@@ -283,6 +288,7 @@ def test_offline_window_rejects_swapped_original_s16_probe():
             before_request_id=kwargs["before_request_id"],
             minimum_seq=kwargs["minimum_seq"], slot=kwargs["slot"],
             one_time_token=kwargs["one_time_token"], events=kwargs["events"],
+            seen_tokens=kwargs["seen_tokens"],
         )
 
 
@@ -305,3 +311,21 @@ def test_repeated_window_token_rejected(component):
                 one_time_token=kwargs["one_time_token"], events=kwargs["events"],
                 seen_tokens=kwargs["seen_tokens"],
             )
+
+
+def test_missing_token_ledger_is_a_hard_block():
+    before, after, _, kwargs, closed = _sample()
+    del kwargs["seen_tokens"]
+    with pytest.raises(W4PreworldBlocked):
+        reconcile_w4_window_offline(before, after, **kwargs)
+    from adapters.mineflayer.self_world_stage_w4_window import (
+        join_w4_window_and_s16_offline,
+    )
+
+    with pytest.raises(W4PreworldBlocked):
+        join_w4_window_and_s16_offline(
+            before, closed, expected_session=kwargs["expected_session"],
+            before_request_id=kwargs["before_request_id"],
+            minimum_seq=kwargs["minimum_seq"], slot=kwargs["slot"],
+            one_time_token=kwargs["one_time_token"], events=kwargs["events"],
+        )
