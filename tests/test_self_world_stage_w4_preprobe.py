@@ -7,10 +7,10 @@ from dataclasses import asdict, replace
 
 import pytest
 
+from adapters.mineflayer.self_world_stage_w4_preflight import W4PreworldBlocked
 from adapters.mineflayer.self_world_stage_w4_preprobe import (
     W4OwnerPreworldProbePort,
 )
-from adapters.mineflayer.self_world_stage_w4_preflight import W4PreworldBlocked
 from test_self_world_stage_w4_window import TOKEN, _sample
 
 
