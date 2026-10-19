@@ -95,6 +95,7 @@ jobs:
               adapters/mineflayer/self_world_stage_w2_local_preflight.py|\
               adapters/mineflayer/self_world_stage_w3_capture.py|\
               adapters/mineflayer/s49_normal_session_real_ci.py|\
+              adapters/mineflayer/s34_native_world_cognition_ci.py|\
               src/relay_self/self_world.py|\
               src/relay_self/world_conditioned_choice.py|\
               docs/selfworld-v0.md|\
