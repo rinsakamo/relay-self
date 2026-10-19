@@ -1165,3 +1165,38 @@ restore and integrity failure policy. Record independent evidence,
 cleanup and exact commits. Do NOT wire the receipt to S10 or authorize
 near-threat WAIT until those gates and explicit physical safety
 measurements qualify. No SCIENCE success should be inferred from DEV.
+
+## Stage W2 — LocalCodex isolation execution boundary (prepared, NOT executed here)
+
+The W2 operator playbook is [`docs/selfworld-w2-localcodex.md`](selfworld-w2-localcodex.md).
+Two isolated **offline** command-line utilities were added:
+
+- `self_world_stage_w2_ledger_worker.py`: one W1 receipt reservation per
+  actual consumer OS process, public-key-only; explicit arguments for
+  separately pinned signed request, public PEM, archived extract and
+  pre-provisioned SQLite ledger, plus exclusive-create evidence receipt.
+  No private key, physical action or real S10 update input exists.
+- `self_world_stage_w2_local_preflight.py`: read-only Linux/WSL2
+  filesystem/identity observation. Checks pinned public + raw-file hashes,
+  SQLite owner/mode/read-only integrity, process UID separation assertion,
+  and whether the consumer can open the issuer's private key. It **never
+  reads private PEM contents** and cannot attest ACL/privilege isolation,
+  trusted authority, raw source provenance, stream completeness or
+  crash/rollback durability. Any unmet check is BLOCKED; if all metadata
+  checks pass the result is `W2_LOCAL_FILESYSTEM_PRECHECK_ONLY`.
+  Its durable receipt is exclusive-create to avoid overwriting evidence.
+
+Dedicated synthetic CI tests spawn real separate consumer Python processes
+to demonstrate exactly one SQLite reservation, resumed-process replay
+denial, altered public/source pin denial, and preflight BLOCKED when
+a supposedly separated private PEM can still be opened by the consumer.
+These tests have NO real WSL2 host privileges or Minecraft raw stream.
+
+The existing original S49 report's parsed `execution_evidence` is
+insufficient to prove continuous *raw* original Mineflayer receipt
+provenance. The raw-input hash in W2 preflight is only a file integrity
+predicate, NOT proof its contents are authentic original native frames.
+Therefore **full W2 LocalCodex QUALIFICATION is pending local execution,
+and raw-stream attestation is blocked until a genuinely independent
+unchanged native stream is available**. W1 offline and previous DEV
+evidence MUST NOT be retrospectively relabelled as physical SCIENCE.
