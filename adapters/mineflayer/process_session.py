@@ -147,8 +147,15 @@ class MineflayerProcessSession:
             self._raw_capture.append_before_decode(line)
         try:
             text = line.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            if self._raw_capture is not None:
+                self._raw_capture.mark_decode_failure()
+            raise MineflayerProcessIOError(
+                "Mineflayer bridge emitted non-UTF-8 stdout"
+            ) from exc
+        try:
             message = self._decoder.decode(text)
-        except (UnicodeDecodeError, ValueError):
+        except ValueError:
             if self._raw_capture is not None:
                 self._raw_capture.mark_decode_failure()
             raise
