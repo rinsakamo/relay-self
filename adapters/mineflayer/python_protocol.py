@@ -199,6 +199,23 @@ class MineflayerNearbyEntitiesCoverage:
 
 
 @dataclass(frozen=True, slots=True)
+class MineflayerNativeOrientation:
+    """Optional opt-in read-only bot.entity sample; not issuer/World attestation."""
+
+    source: str
+    yaw_rad: float
+    pitch_rad: float
+
+    def __post_init__(self) -> None:
+        if self.source != "mineflayer_bot_entity":
+            raise MineflayerAdapterProtocolError("unrecognized orientation source")
+        _require_number("orientation.yaw_rad", self.yaw_rad)
+        _require_number("orientation.pitch_rad", self.pitch_rad)
+        if abs(self.pitch_rad) > math.pi / 2:
+            raise MineflayerAdapterProtocolError("orientation pitch outside native bound")
+
+
+@dataclass(frozen=True, slots=True)
 class MineflayerSnapshot:
     health: float
     food: float
@@ -209,6 +226,7 @@ class MineflayerSnapshot:
     inventory: tuple[MineflayerInventoryItem, ...]
     nearby_entities: tuple[MineflayerEntityFact, ...]
     nearby_entities_coverage: MineflayerNearbyEntitiesCoverage
+    native_orientation: MineflayerNativeOrientation | None = None
 
     def __post_init__(self) -> None:
         _require_non_negative_number("health", self.health)
@@ -245,6 +263,9 @@ class MineflayerSnapshot:
                 "snapshot nearby_entities_coverage must be "
                 "MineflayerNearbyEntitiesCoverage"
             )
+        if (self.native_orientation is not None
+                and not isinstance(self.native_orientation, MineflayerNativeOrientation)):
+            raise MineflayerAdapterProtocolError("optional native orientation type invalid")
         coverage = self.nearby_entities_coverage
         observed_count = len(self.nearby_entities)
         if observed_count > coverage.max_entities:
@@ -817,11 +838,8 @@ def _decode_launch_config(value: object) -> MineflayerLaunchConfig:
 
 def _decode_snapshot(value: object) -> MineflayerSnapshot:
     payload = _require_mapping("snapshot", value)
-    _require_exact_keys(
-        "snapshot",
-        payload,
-        {
-            "health",
+    keys = {
+        "health",
             "food",
             "food_saturation",
             "oxygen_level",
@@ -830,8 +848,10 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
             "inventory",
             "nearby_entities",
             "nearby_entities_coverage",
-        },
-    )
+    }
+    if "native_orientation" in payload:
+        keys.add("native_orientation")
+    _require_exact_keys("snapshot", payload, keys)
     position = _decode_position("position", payload["position"])
     time_value = payload["time"]
     time = None if time_value is None else _decode_time(time_value)
@@ -869,6 +889,20 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
         inventory=inventory,
         nearby_entities=nearby_entities,
         nearby_entities_coverage=nearby_entities_coverage,
+        native_orientation=(
+            _decode_native_orientation(payload["native_orientation"])
+            if "native_orientation" in payload else None
+        ),
+    )
+
+
+def _decode_native_orientation(value: object) -> MineflayerNativeOrientation:
+    payload = _require_mapping("native orientation", value)
+    _require_exact_keys("native orientation", payload, {"source", "yaw_rad", "pitch_rad"})
+    return MineflayerNativeOrientation(
+        source=_decoded_text("native orientation source", payload["source"]),
+        yaw_rad=_decoded_number("orientation.yaw_rad", payload["yaw_rad"]),
+        pitch_rad=_decoded_number("orientation.pitch_rad", payload["pitch_rad"]),
     )
 
 
