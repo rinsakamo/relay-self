@@ -88,7 +88,11 @@ def test_v_separate_signer_process_matches_pinned_public_and_replay_denial(
     request, envelope, public = signed_original
     verifier = _verifier(public)
     accepted = verifier.verify_once(envelope, expected=request)
-    assert accepted is request
+    # A signed JSON request round-tripped through ANOTHER process is
+    # a distinct immutable Python object; only canonical value+signature
+    # equivalence is meaningful across this trust boundary.
+    assert accepted == request
+    assert accepted is not request
     assert accepted.expected_revision == 1
     assert accepted.expected_value == 4
     assert accepted.proposed_value == 3
