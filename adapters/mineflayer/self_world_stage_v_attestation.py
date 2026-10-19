@@ -141,6 +141,15 @@ def request_from_existing_world(
         or following_probe.snapshot.nearby_entities_coverage.truncated
     ):
         raise StageVAttestationRejected("correlated later native probe required")
+    next_prefix = f"s49-actual:{closed.original_probe.session_id}:event-"
+    if not following_probe.request_id.startswith(next_prefix):
+        raise StageVAttestationRejected("later probe not from original S49 event")
+    later_event = following_probe.request_id.removeprefix(next_prefix)
+    if (
+        not later_event.isdecimal()
+        or not after.seq < int(later_event) < following_probe.seq
+    ):
+        raise StageVAttestationRejected("later original event/native order mismatch")
     source = {
         "session_id": closed.original_probe.session_id,
         "original_seq": closed.original_probe.seq,
