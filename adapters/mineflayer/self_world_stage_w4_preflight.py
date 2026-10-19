@@ -55,6 +55,8 @@ class W4OfflinePlacement:
     command: str
     physical_run_permitted: bool = False
     source_orientation_qualified: bool = False
+    source_probe_request_id: str | None = None
+    source_reference: str | None = None
 
 
 def _placement_from_orientation(
@@ -85,6 +87,8 @@ def _placement_from_orientation(
         slot, distance, spawn, command,
         physical_run_permitted=False,
         source_orientation_qualified=source_bound,
+        source_probe_request_id=(orientation.request_id if source_bound else None),
+        source_reference=(orientation.source_reference if source_bound else None),
     )
 
 
