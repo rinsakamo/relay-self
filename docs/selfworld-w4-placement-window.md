@@ -184,3 +184,39 @@ external S10 signing, near-WAIT safety or any physical trial. Its receipt is
 runner and Stage S criterion remain unchanged. A future guarded live
 adapter must establish actual S49-host/native lease and active server
 collector ownership before attempting any new disposable DEV World.
+
+## W4-OWNER: original-reader pre-world observation authority gap
+
+The audited original S49
+`s49_normal_session_real_ci.qualify()` runs `stage_world()` concurrently
+with `host.run_session(...probe=reprobe,...)`. The existing `reprobe`
+callback is invoked only **after an event has already entered the original
+host loop** (in particular, after the staged zombie exists). It is not a
+pre-world native source. A passive `live_probe` called from that callback
+cannot supply the required orientation before its own World placement.
+Recategorizing that post-event probe as PREWORLD would be fabrication.
+
+To make the missing admission boundary explicit, the new **offline-only**
+`W4OwnerHandoffGate` defines:
+- `before_world` accepts the original owner token and a genuinely earlier,
+  session/request/source-bound oriented probe identified as
+  `s49_original_owner_pre_world` in synthetic test data; it does **not**
+  acquire such a real reading itself.
+- `observe_existing_collector_marker` requires exactly one marker from
+  the already-sealed cursor/collector candidate, in the permitted phase.
+- `after_world` requires a newer, separate request in the same session
+  from that *same in-process owner token*; duplicate reference, reused
+  token, wrong order, unsolicited owner substitution and post-as-pre
+  are rejected. A failure latches `BLOCKED`.
+- The owner token is merely an in-process testing capability; it is **not
+  evidence of the real native session's single-reader lease**, a filesystem
+  principal, or a source signature. Every successful receipt explicitly
+  marks `owner_attested=false`, `trusted_world_tick=false`,
+  `physical_run_permitted=false`, and `s10_permission=false`.
+
+The implementation does not import or change the frozen S49 runtime.
+**Real use still requires a reviewed, opt-in owner-mediated native probe
+before staged World changes**, without adding any competing consumer to the
+native stream. This issue remains PREWORLD_BLOCKED until implemented and
+independently witnessed. Do not infer a live admission from synthetic
+`origin` strings or a passing CI result.
