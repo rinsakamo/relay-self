@@ -314,12 +314,25 @@ function nearbyEntityObservation (bot) {
   }
 }
 
-export function snapshotFromBot (bot) {
+export function snapshotFromBot (bot, { includeNativeOrientation = false } = {}) {
   if (!bot || !bot.entity || !bot.entity.position) {
     throw new Error('bot position is unavailable before spawn')
   }
 
+  if (typeof includeNativeOrientation !== 'boolean') {
+    throw new Error('native orientation opt-in must be boolean')
+  }
   const nearby = nearbyEntityObservation(bot)
+  const orientation = includeNativeOrientation
+    ? {
+        source: 'mineflayer_bot_entity',
+        yaw_rad: requireFiniteNumber('bot.entity.yaw', bot.entity.yaw),
+        pitch_rad: requireFiniteNumber('bot.entity.pitch', bot.entity.pitch)
+      }
+    : null
+  if (orientation && Math.abs(orientation.pitch_rad) > Math.PI / 2) {
+    throw new Error('native orientation pitch outside bound')
+  }
   return {
     health: requireFiniteNumber('bot.health', bot.health),
     food: requireFiniteNumber('bot.food', bot.food),
@@ -336,7 +349,8 @@ export function snapshotFromBot (bot) {
     time: timeSnapshot(bot),
     inventory: inventorySnapshot(bot),
     nearby_entities: nearby.entities,
-    nearby_entities_coverage: nearby.coverage
+    nearby_entities_coverage: nearby.coverage,
+    ...(orientation ? { native_orientation: orientation } : {})
   }
 }
 
