@@ -854,7 +854,7 @@ async def _new_session(
             username=BOT_USERNAME, version=MINECRAFT_VERSION,
         ),
         startup_timeout_s=12,
-        raw_capture_root=raw_capture_root,
+        **({"raw_capture_root": raw_capture_root} if raw_capture_root is not None else {}),
     )
     await _await_spawn(session)
     return session
