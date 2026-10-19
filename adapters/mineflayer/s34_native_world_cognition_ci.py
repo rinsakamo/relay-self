@@ -845,13 +845,16 @@ async def _observe_native_threat(
     raise S34EvidenceFailure("bounded native zombie observation unavailable")
 
 
-async def _new_session() -> MineflayerProcessSession:
+async def _new_session(
+    *, raw_capture_root: Path | None = None,
+) -> MineflayerProcessSession:
     session = await MineflayerProcessSession.launch(
         MineflayerLaunchConfig(
             host=SERVER_HOST, port=SERVER_PORT,
             username=BOT_USERNAME, version=MINECRAFT_VERSION,
         ),
         startup_timeout_s=12,
+        raw_capture_root=raw_capture_root,
     )
     await _await_spawn(session)
     return session
