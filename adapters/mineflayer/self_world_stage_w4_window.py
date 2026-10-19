@@ -70,6 +70,7 @@ _EVENTS = (
 
 def build_w4_window_commands(
     placement: W4OfflinePlacement, *, one_time_token: str,
+    seen_tokens: frozenset[str] = frozenset(),
 ) -> W4PlacementCommands:
     """Prepare conditional *tagged* summon and server-console readiness marker.
 
@@ -87,6 +88,8 @@ def build_w4_window_commands(
         or not placement.source_reference
         or type(one_time_token) is not str
         or not _TOKEN.fullmatch(one_time_token)
+        or type(seen_tokens) is not frozenset
+        or one_time_token in seen_tokens
     ):
         raise W4PreworldBlocked("W4-WIN requires typed near-slot plan and safe token")
     base = placement.command
@@ -126,6 +129,7 @@ def reconcile_w4_window_offline(
     slot: int,
     one_time_token: str,
     events: tuple[W4WindowEvent, ...],
+    seen_tokens: frozenset[str] = frozenset(),
 ) -> dict:
     """Correlate producer-content only; preserve independent physical NO_GO.
 
@@ -155,7 +159,9 @@ def reconcile_w4_window_offline(
         raise W4PreworldBlocked("preplacement source older than owner cursor")
     if after.seq <= before.seq:
         raise W4PreworldBlocked("postplacement probe is not newer")
-    commands = build_w4_window_commands(plan, one_time_token=one_time_token)
+    commands = build_w4_window_commands(
+        plan, one_time_token=one_time_token, seen_tokens=seen_tokens,
+    )
     if any(type(e) is not W4WindowEvent for e in events):
         raise W4PreworldBlocked("invalid step receipt type")
     if tuple(e.name for e in events) != _EVENTS:
@@ -245,6 +251,7 @@ def join_w4_window_and_s16_offline(
     expected_session: str, before_request_id: str,
     minimum_seq: int, slot: int, one_time_token: str,
     events: tuple[W4WindowEvent, ...],
+    seen_tokens: frozenset[str] = frozenset(),
 ) -> dict:
     """Join World-window candidate to ORIGINAL S16 + frozen Stage S readback.
 
@@ -267,6 +274,7 @@ def join_w4_window_and_s16_offline(
         after_request_id=after.request_id,
         minimum_seq=minimum_seq, slot=slot,
         one_time_token=one_time_token, events=events,
+        seen_tokens=seen_tokens,
     )
     s16 = readback_nh1_slot(
         before, closed, slot=slot, expected_session=expected_session,
