@@ -7,8 +7,9 @@ from dataclasses import replace
 
 import pytest
 
-from adapters.mineflayer.self_world_stage_w4_prehost import W4PrehostOwnerBridge
 from adapters.mineflayer.self_world_stage_w4_preflight import W4PreworldBlocked
+from adapters.mineflayer.self_world_stage_w4_prehost import W4PrehostOwnerBridge
+from test_self_world_stage_w4 import _oriented_closed
 from test_self_world_stage_w4_window import TOKEN, _sample
 
 
@@ -90,12 +91,8 @@ def test_prehost_fail_closed_and_never_relabels_stale_frames(corruption):
     elif corruption == "other_probe":
         source.frames = deque([replace(pre, request_id="other")])
     elif corruption == "wrong_target":
-        zombie = pre.snapshot.nearby_entities
-        if not zombie:
-            _other, closed = __import__(
-                "test_self_world_stage_w4", fromlist=["_oriented_closed"]
-            )._oriented_closed()
-            zombie = closed.original_probe.snapshot.nearby_entities
+        _other, closed = _oriented_closed()
+        zombie = closed.original_probe.snapshot.nearby_entities
         bad = replace(entity, snapshot=replace(
             entity.snapshot, nearby_entities=zombie,
             nearby_entities_coverage=replace(
@@ -141,7 +138,8 @@ def test_ledger_transfer_is_single_use_and_other_owner_cannot_steal_it():
 
 
 def test_no_real_second_reader_or_minecraft_process_is_spawned():
-    pre, owner, source, bridge = _build([pre])
+    pre, owner, source, bridge = _build()
+    source.frames = deque([pre])
 
     async def run():
         await _capture(bridge, owner, pre)
