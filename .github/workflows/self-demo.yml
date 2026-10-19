@@ -107,6 +107,7 @@ jobs:
               docs/selfworld-w3-native-capture.md|\
               docs/selfworld-w4-independent-custody.md|\
               docs/selfworld-w4-nonhold-prereg.md|\
+              docs/selfworld-w4-placement-window.md|\
               tests/test_self_world.py|\
               adapters/mineflayer/v6_*.py|\
               adapters/mineflayer/v6_*.mjs|\
