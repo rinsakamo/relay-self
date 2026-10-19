@@ -1089,3 +1089,79 @@ these new signer or WAIT safety routines. No new Minecraft, Model,
 Action or real S10 commit is undertaken by Stage V. The preregistration
 here is for future experiments; retrospective Stage R movement is
 never promoted into a preregistered Stage V result.
+
+## Stage W1 — separately pinned source audit + durable replay reservation (OFFLINE DEV)
+
+Stage W1 does **not** wire the Stage V signature mechanism into live
+`LearningUpdateAuthority`, `NormalSessionActionExecutor`, or Minecraft.
+It adds two standalone opt-in modules:
+
+- `self_world_stage_w_archive.py`: read a canonical
+  `stage-w1-source-extract-v0` JSON **extraction** held separately from
+  the signed request. The verifier's expected SHA256 of the *whole*
+  extracted document is supplied out of band; it is NEVER read from
+  the untrusted grant envelope. Reconstruct the **original Stage V
+  signed evidence digest** from the source subrecord and independently
+  check original S49 session/action/binding, source event and native
+  seq order; strict Action OUTCOME / S16 observed execution; nontruncated
+  entity-registry claim; real 3D bot/target positions vs declared
+  distance and horizontal motion; Stage S fixed +/-10cm criterion;
+  exact S17 feedback ID and original action-outcome reference. The
+  source digest must equal the exact already-signed grant request.
+  A changed archive, fake source, alternate run or missing native
+  geometry must fail even if its attacker recomputes the archive hash.
+  **The extraction is NOT the untouched Minecraft raw native stream.**
+  Claiming to be a native observation via JSON, or providing a
+  requester's own source hash or a self-minted archive pin, does NOT
+  qualify physical ground truth. A separately authorized archivist and
+  immutable raw stream receipts are still W2 work.
+- `self_world_stage_w_gate.py`: `StageWPersistentGrantLedger`
+  provisions a **new-only**, absolute-path SQLite ledger with
+  `journal_mode=DELETE` and `synchronous=FULL`. The W1 offline
+  consumer verifies the separately pinned RSA public key/issuer
+  fingerprint, the above source evidence, the Stage V canonical
+  signature/exact request and run ID, then issues a SQLite
+  `BEGIN IMMEDIATE` / unique insert / `COMMIT` **BEFORE**
+  returning a read-only reservation receipt. Constraints include
+  unique `(run,session,action)`, `(run,feedback)` and
+  `(run,evidence hash)`. After restart a new verifier cannot consume
+  the same signed Action; concurrent consumers receive only one
+  success. Missing, corrupt, locked or tampered ledgers fail closed.
+  Ledger deletion, rollback from backup, cloning across hosts,
+  privilege separation, file/directory permission controls and
+  crash/power-loss durability on the actual WSL2 filesystem require
+  W2 physical execution and are NOT asserted by CI.
+
+There are **two independent operator pins**: trusted issuer public PEM
+fingerprint and an independently obtained SHA256 of an immutable source
+extraction. Merely passing both pins as caller-owned strings does not
+create a trust anchor. No trusted signer identity or independent
+source archive custodian has yet been provisioned. The receipt
+explicitly sets external issuer qualification, real S10 commit
+permission, physical WAIT permission and scientific qualification
+to **false**. The one-use ledger is *a durable reservation*, not an
+Action issuer or a license for S10 commits.
+
+FAST regression includes separate-issuer-subprocess synthetic RSA
+signature and pinned offline extraction replay, new-process/-object
+restart, concurrent ledger reservation, missing and malformed ledger,
+changed/foreign grant, changed archive/hash, spoofed bot/zombie
+coordinates and distances, altered S16 state and S17 feedback, stale
+native seq, HOLD and noncanonical evidence. The synthetic test
+harness explicitly mints its own disposable issuer key and archive
+pin. This is an engineering test of the verification contract,
+**not independent authority or actual World verification**.
+
+### W2 LocalCodex handoff (not executed by W1)
+
+On isolated WSL2: provision a public-key trust root **separately** from
+the signer/key custody; seal original Minecraft/Node source records
+and create externally pinned immutable SHA receipts; compare the
+W1 extracted source against the native raw stream in an independent
+auditor; restrict signer process and private key; instantiate a
+dedicated persistent SQLite database with tested ownership/permissions,
+restart/crash/concurrent consumers and malicious replay; check backup
+restore and integrity failure policy. Record independent evidence,
+cleanup and exact commits. Do NOT wire the receipt to S10 or authorize
+near-threat WAIT until those gates and explicit physical safety
+measurements qualify. No SCIENCE success should be inferred from DEV.
