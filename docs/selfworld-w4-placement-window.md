@@ -220,3 +220,38 @@ before staged World changes**, without adding any competing consumer to the
 native stream. This issue remains PREWORLD_BLOCKED until implemented and
 independently witnessed. Do not infer a live admission from synthetic
 `origin` strings or a passing CI result.
+
+## W4-PREPROBE: one-shot owner-mediated source acquisition interface
+
+Prior W4-OWNER implemented only admission *after an observation already
+exists*. The new `W4OwnerPreworldProbePort` supplies a DEV-only, abstract,
+single-shot async acquisition interface for the existing original reader:
+the caller injects one already owned `async native_probe(request_id)`
+coroutine, and must call it before the S49 host event loop or World staging
+starts. The port does not construct/launch Mineflayer, server processes,
+Node, a second receive loop, World commands, Action issuer or S10 grants.
+
+The port sets `PROBE_IN_FLIGHT` *before awaiting* the callback; it binds
+the calling asyncio task, rejects reentrant or concurrent invocation,
+foreign owner tokens, wrong session/request ID, stale/non-probe/raw
+unoriented observations, and any caller-admitted started host/World stage.
+Errors, task cancellation and failed receipt attempts latch `BLOCKED`
+without retry. Successful `W4OwnerPreworldProbePort.capture_pre_world`
+passes the typed original-shaped observation to the existing
+`W4OwnerHandoffGate.before_world` and yields a candidate World-only
+command with `physical_run_permitted=false`. It does **not** run that
+command. Source provenance is local typed Node observation, not an
+independent issuer or network attestation.
+
+Important authority limitation: injected callbacks, in-process owner
+objects and boolean `host_loop_started/stage_world_started` are
+**caller statements**, not source-authenticated runtime proofs. The
+original S49 `_new_session()` currently launches without W4 native
+orientation opt-in, and the original `stage_world()` begins concurrently
+with `host.run_session()`. Neither original routine is changed by this
+increment. To truly connect W4-NH1 later, the original S49 owner must
+explicitly acquire the pre-World oriented probe before it schedules
+staging or starts the host receive loop, while guaranteeing all unsolicted
+Node events and original admission frames remain accounted for. Tests
+for the new port are synthetic and do not attest that these conditions
+are satisfied in a physical Minecraft session. W4/NH1 remains NO_GO.
