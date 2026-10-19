@@ -152,7 +152,10 @@ async def qualify(
             root, root / "minecraft.jar", server_log,
         )
         report["stage"] = "AUTHENTIC_NATIVE_SELF_SESSION"
-        session = await _new_session(raw_capture_root=raw_capture_root)
+        session = await (
+            _new_session() if raw_capture_root is None
+            else _new_session(raw_capture_root=raw_capture_root)
+        )
         sid = session.started.session_id
         report["session_id"] = sid
         _, committed, _, _, _, _ = await asyncio.to_thread(s19._epoch_one)
