@@ -52,7 +52,7 @@ class W4CollectorMarker:
 
 
 def _open_original_log(path: Path) -> tuple[int, os.stat_result]:
-    if type(path) is not Path or not path.is_absolute():
+    if not isinstance(path, Path) or not path.is_absolute():
         raise W4PreworldBlocked("W4 collector log must be explicit absolute Path")
     # Avoid path alias/inode replacement. POSIX O_NOFOLLOW applies to final link;
     # ancestor aliases are also denied rather than assuming directory custody.
