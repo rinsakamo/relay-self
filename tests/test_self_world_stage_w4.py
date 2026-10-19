@@ -1,6 +1,7 @@
 """W4 TEST-only geometry and isolated ledger attacks; no external trust."""
 from __future__ import annotations
 
+import json
 import math
 import shutil
 import sqlite3
@@ -9,11 +10,17 @@ from dataclasses import replace
 import pytest
 
 import test_self_world_stage_s_feedback as sf
-from adapters.mineflayer.python_protocol import MineflayerPosition, mineflayer_yaw_to_target
+from adapters.mineflayer.python_protocol import (
+    MineflayerAdapterProtocolError,
+    MineflayerPosition,
+    mineflayer_yaw_to_target,
+    parse_mineflayer_line,
+)
 from adapters.mineflayer.self_world_stage_w4_preflight import (
     W4PreworldBlocked,
     W4SyntheticOrientation,
     external_trust_readout,
+    plan_native_nh1_placement,
     plan_synthetic_nh1_placement,
     require_native_nh1_orientation,
 )
@@ -217,3 +224,102 @@ def test_disposable_in_place_rollback_demonstrates_monotonic_authority_gap(sampl
     shutil.copyfile(pristine, path)
     reserve(ledger, sample)
     assert external_trust_readout()["global_ledger_single_use"] == "BLOCKED"
+
+
+def _w4_wire_probe(*, orientation=True):
+    from test_mineflayer_process_session import observation_line
+
+    payload = json.loads(observation_line())
+    payload["kind"] = "probe"
+    payload["request_id"] = "w4-preregistered-probe-01"
+    if orientation:
+        payload["snapshot"]["native_orientation"] = {
+            "source": "mineflayer_bot_entity",
+            "yaw_rad": math.pi / 2,
+            "pitch_rad": 0.25,
+        }
+    return payload
+
+
+def test_native_orientation_requires_exact_source_same_sample():
+    payload = _w4_wire_probe()
+    reading = parse_mineflayer_line(json.dumps(payload))
+    sample = require_native_nh1_orientation(
+        reading, expected_session="session-1",
+        expected_request_id="w4-preregistered-probe-01", before_seq=2,
+    )
+    assert sample.observation is reading
+    assert sample.source_reference == "session-1:1"
+    assert sample.yaw_rad == math.pi / 2
+    plan = plan_native_nh1_placement(
+        reading, expected_session="session-1",
+        expected_request_id="w4-preregistered-probe-01", before_seq=2, slot=1,
+    )
+    assert plan.spawn.x == pytest.approx(-1)
+    assert plan.spawn.z == pytest.approx(2)
+    assert plan.horizontal_distance_m == 2
+    assert plan.source_orientation_qualified
+    assert not plan.physical_run_permitted
+
+
+@pytest.mark.parametrize("attack", (
+    "missing", "foreign_session", "foreign_probe", "replay", "event",
+    "missing_expected_id", "missing_expected_session", "absent_seq_bound",
+))
+def test_native_orientation_source_binding_rejects(attack):
+    payload = _w4_wire_probe(orientation=attack != "missing")
+    if attack == "event":
+        payload["kind"] = "entities"
+        del payload["request_id"]
+    reading = parse_mineflayer_line(json.dumps(payload))
+    kwargs = dict(expected_session="session-1",
+                  expected_request_id="w4-preregistered-probe-01", before_seq=2)
+    if attack == "foreign_session":
+        kwargs["expected_session"] = "session-other"
+    elif attack == "foreign_probe":
+        kwargs["expected_request_id"] = "w4-other"
+    elif attack == "replay":
+        kwargs["before_seq"] = 1
+    elif attack == "missing_expected_id":
+        kwargs["expected_request_id"] = None
+    elif attack == "missing_expected_session":
+        kwargs["expected_session"] = None
+    elif attack == "absent_seq_bound":
+        kwargs["before_seq"] = None
+    with pytest.raises(W4PreworldBlocked):
+        require_native_nh1_orientation(reading, **kwargs)
+
+
+@pytest.mark.parametrize("attack", (
+    "nan", "inf", "pitch", "bool", "wrong_source", "null", "extra",
+))
+def test_raw_native_orientation_field_rejected(attack):
+    payload = _w4_wire_probe()
+    o = payload["snapshot"]["native_orientation"]
+    if attack == "nan":
+        o["yaw_rad"] = math.nan
+    elif attack == "inf":
+        o["yaw_rad"] = math.inf
+    elif attack == "pitch":
+        o["pitch_rad"] = math.pi
+    elif attack == "bool":
+        o["yaw_rad"] = True
+    elif attack == "wrong_source":
+        o["source"] = "operator-inferred-yaw"
+    elif attack == "null":
+        payload["snapshot"]["native_orientation"] = None
+    else:
+        o["grant"] = True
+    with pytest.raises(MineflayerAdapterProtocolError):
+        parse_mineflayer_line(json.dumps(payload))
+
+
+def test_legacy_wire_has_no_orientation_and_is_not_w4_eligible():
+    payload = _w4_wire_probe(orientation=False)
+    reading = parse_mineflayer_line(json.dumps(payload))
+    assert reading.snapshot.native_orientation is None
+    with pytest.raises(W4PreworldBlocked):
+        plan_native_nh1_placement(
+            reading, expected_session="session-1",
+            expected_request_id="w4-preregistered-probe-01", before_seq=2, slot=1,
+        )
