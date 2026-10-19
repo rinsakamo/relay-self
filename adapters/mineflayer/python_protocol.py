@@ -840,14 +840,14 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
     payload = _require_mapping("snapshot", value)
     keys = {
         "health",
-            "food",
-            "food_saturation",
-            "oxygen_level",
-            "position",
-            "time",
-            "inventory",
-            "nearby_entities",
-            "nearby_entities_coverage",
+        "food",
+        "food_saturation",
+        "oxygen_level",
+        "position",
+        "time",
+        "inventory",
+        "nearby_entities",
+        "nearby_entities_coverage",
     }
     if "native_orientation" in payload:
         keys.add("native_orientation")
