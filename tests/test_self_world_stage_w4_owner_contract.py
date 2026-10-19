@@ -37,7 +37,7 @@ def _mark(gate, owner, commands):
 
     cursor = W4CollectorCursor(Path("/synthetic/log"), 1, 2, 100)
     line = f"[19:00] [Server thread/INFO]: {commands.expected_log_suffix}"
-    raw = (line + "\\n").encode("utf-8")
+    raw = (line + "\n").encode("utf-8")
     marker = W4CollectorMarker(
         cursor, line,
         100, 100 + len(raw), hashlib.sha256(raw).hexdigest(), 200,
@@ -158,7 +158,7 @@ def test_reject_mutated_existing_collector_marker(tamper):
     commands = _before(gate, owner, pre)
     cursor = W4CollectorCursor(__import__("pathlib").Path("/synthetic/log"), 1, 2, 100)
     line = f"[19:00] [Server thread/INFO]: {commands.expected_log_suffix}"
-    raw = (line + "\\n").encode("utf-8")
+    raw = (line + "\n").encode("utf-8")
     marker = W4CollectorMarker(
         cursor, line, 100, 100 + len(raw),
         hashlib.sha256(raw).hexdigest(), 200,

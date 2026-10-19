@@ -136,10 +136,10 @@ class W4OwnerHandoffGate:
             or marker.log_line.count(commands.confirmation_marker) != 1
             or not marker.log_line.endswith(commands.expected_log_suffix)
             or marker.raw_line_sha256 != hashlib.sha256(
-                (marker.log_line + "\\n").encode("utf-8")
+                (marker.log_line + "\n").encode("utf-8")
             ).hexdigest()
             or marker.end_byte - marker.start_byte != len(
-                (marker.log_line + "\\n").encode("utf-8")
+                (marker.log_line + "\n").encode("utf-8")
             )
             or marker.start_byte < marker.cursor.start_byte
             or marker.end_byte <= marker.start_byte
