@@ -235,3 +235,43 @@ def test_window_token_is_per_slot_and_no_cross_slot_reuse():
     assert a.confirmation_marker != b.confirmation_marker
     assert a.summon_command != b.summon_command
     assert not a.physical_run_permitted and not b.physical_run_permitted
+
+
+def test_offline_window_joins_original_s16_and_frozen_stage_s_without_grant():
+    from adapters.mineflayer.self_world_stage_w4_window import (
+        join_w4_window_and_s16_offline,
+    )
+
+    before, after, _, kwargs = _sample()
+    _, closed = _oriented_closed()
+    assert closed.original_probe == after
+    result = join_w4_window_and_s16_offline(
+        before, closed, expected_session=kwargs["expected_session"],
+        before_request_id=kwargs["before_request_id"],
+        minimum_seq=kwargs["minimum_seq"], slot=kwargs["slot"],
+        one_time_token=kwargs["one_time_token"], events=kwargs["events"],
+    )
+    assert result["original_s16_stage_s"]["stage_s_direction"] == "hold"
+    assert result["window"]["after_source"] == after.provenance.reference
+    assert result["placement_window"] == "UNATTESTED_PREWORLD_BLOCKED"
+    assert not result["s10_permission"]
+    assert not result["physical_run_permitted"]
+
+
+def test_offline_window_rejects_swapped_original_s16_probe():
+    from adapters.mineflayer.self_world_stage_w4_window import (
+        join_w4_window_and_s16_offline,
+    )
+
+    before, _, _, kwargs = _sample()
+    _, closed = _oriented_closed()
+    corrupt = replace(closed, original_probe=replace(
+        closed.original_probe, seq=closed.original_probe.seq + 9,
+    ))
+    with pytest.raises(W4PreworldBlocked):
+        join_w4_window_and_s16_offline(
+            before, corrupt, expected_session=kwargs["expected_session"],
+            before_request_id=kwargs["before_request_id"],
+            minimum_seq=kwargs["minimum_seq"], slot=kwargs["slot"],
+            one_time_token=kwargs["one_time_token"], events=kwargs["events"],
+        )
