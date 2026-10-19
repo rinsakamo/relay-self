@@ -43,9 +43,9 @@ def _build(frames=None):
     return pre, owner, source, bridge
 
 
-def _capture(bridge, owner, pre, **overrides):
+def _capture(bridge, default_owner, pre, **overrides):
     kwargs = dict(
-        owner=owner, request_id=pre.request_id, slot=1, token=TOKEN,
+        owner=default_owner, request_id=pre.request_id, slot=1, token=TOKEN,
     )
     kwargs.update(overrides)
     return bridge.capture(**kwargs)
