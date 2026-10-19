@@ -11,7 +11,6 @@ import math
 import shutil
 import sqlite3
 import subprocess
-import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, replace
 
@@ -23,7 +22,6 @@ from adapters.mineflayer.self_world_stage_v_attestation import (
     request_from_existing_world,
 )
 from adapters.mineflayer.self_world_stage_w_archive import (
-    StageWArchiveRejected,
     audit_independent_source_extract,
     canonical,
 )
