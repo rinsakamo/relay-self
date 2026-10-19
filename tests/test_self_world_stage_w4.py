@@ -51,6 +51,8 @@ def test_geometry(yaw, slot):
         assert result.spawn == MineflayerPosition(10, 64, 0)
     assert result.command.startswith("summon minecraft:zombie ")
     assert not result.physical_run_permitted and not result.source_orientation_qualified
+    assert result.source_probe_request_id is None
+    assert result.source_reference is None
 
 
 @pytest.mark.parametrize("case", ("absent", "foreign", "replayed", "nan", "pitch", "slot"))
@@ -259,6 +261,8 @@ def test_native_orientation_requires_exact_source_same_sample():
     assert plan.spawn.z == pytest.approx(2)
     assert plan.horizontal_distance_m == 2
     assert plan.source_orientation_qualified
+    assert plan.source_probe_request_id == "w4-preregistered-probe-01"
+    assert plan.source_reference == "session-1:1"
     assert not plan.physical_run_permitted
 
 
