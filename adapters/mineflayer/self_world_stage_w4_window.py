@@ -238,3 +238,63 @@ def reconcile_w4_window_offline(
         "s10_permission": False,
         "science_qualified": False,
     }
+
+
+def join_w4_window_and_s16_offline(
+    before: MineflayerObservation, closed, *,
+    expected_session: str, before_request_id: str,
+    minimum_seq: int, slot: int, one_time_token: str,
+    events: tuple[W4WindowEvent, ...],
+) -> dict:
+    """Join World-window candidate to ORIGINAL S16 + frozen Stage S readback.
+
+    This never upgrades an untrusted console marker into signed/qualified
+    execution evidence or learning. One original native probe is shared
+    between the window and S49 closure; no second adapter reader is added.
+    """
+    from adapters.mineflayer.normal_action import NormalActionClosedReadback
+    from adapters.mineflayer.self_world_stage_w4_preflight import readback_nh1_slot
+
+    if type(closed) is not NormalActionClosedReadback:
+        raise W4PreworldBlocked("original sole S49 closure required")
+    after = closed.original_probe
+    if after.request_id is None:
+        raise W4PreworldBlocked("original probe must have correlated request ID")
+    window = reconcile_w4_window_offline(
+        before, after,
+        expected_session=expected_session,
+        before_request_id=before_request_id,
+        after_request_id=after.request_id,
+        minimum_seq=minimum_seq, slot=slot,
+        one_time_token=one_time_token, events=events,
+    )
+    s16 = readback_nh1_slot(
+        before, closed, slot=slot, expected_session=expected_session,
+        expected_request_id=before_request_id, minimum_seq=minimum_seq,
+    )
+    pair = s16["source_pair_trace"]
+    if (
+        s16["placement"]["source_reference"] != window["before_source"]
+        or pair["probe_seq"] != after.seq
+        or pair["session_id"] != expected_session
+        or s16["observed_zombie_id"] != window["observed_zombie_id"]
+        or s16["observed_zombie_position"] != window["observed_xyz"]
+        or s16["placement"]["spawn"] != asdict(
+            plan_native_nh1_placement(
+                before, expected_session=expected_session,
+                expected_request_id=before_request_id,
+                before_seq=after.seq, slot=slot,
+            ).spawn
+        )
+    ):
+        raise W4PreworldBlocked("window/native Action target is not one source lineage")
+    return {
+        "schema": "W4_WIN_S16_STAGE_S_DEV_READBACK_V0",
+        "window": window,
+        "original_s16_stage_s": s16,
+        "assessment": "DEV_OFFLINE_CONTENT_ONLY",
+        "placement_window": "UNATTESTED_PREWORLD_BLOCKED",
+        "physical_run_permitted": False,
+        "external_source_qualified": False,
+        "s10_permission": False,
+    }
