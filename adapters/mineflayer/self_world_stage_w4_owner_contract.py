@@ -7,6 +7,7 @@ S49 ownership or external authorization.
 """
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 
 from adapters.mineflayer.python_protocol import (
@@ -134,6 +135,12 @@ class W4OwnerHandoffGate:
             or commands is None
             or marker.log_line.count(commands.confirmation_marker) != 1
             or not marker.log_line.endswith(commands.expected_log_suffix)
+            or marker.raw_line_sha256 != hashlib.sha256(
+                (marker.log_line + "\\n").encode("utf-8")
+            ).hexdigest()
+            or marker.end_byte - marker.start_byte != len(
+                (marker.log_line + "\\n").encode("utf-8")
+            )
             or marker.start_byte < marker.cursor.start_byte
             or marker.end_byte <= marker.start_byte
             or not marker.producer_content_only
@@ -160,6 +167,10 @@ class W4OwnerHandoffGate:
             or request_id == pre.request_id
             or observation.seq <= pre.seq
             or observation.provenance.reference in self._source_refs
+            or observation.provenance.source != "mineflayer"
+            or observation.provenance.reference != (
+                f"{self._session}:{observation.seq}"
+            )
             or not isinstance(observation.snapshot, MineflayerOrientedSnapshot)
         ):
             self._deny("native after-probe lacks exact sole-owner lineage")
