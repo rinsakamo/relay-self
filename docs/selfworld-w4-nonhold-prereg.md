@@ -141,3 +141,21 @@ prospective scenario, metric, two near slots, or 10cm Stage S threshold. Previou
 The Node bridge observation authenticates *nothing outside its process*:
 malicious producers or failed emit completeness remain independent W4
 qualification blockers. No legacy Action/grant/threshold change is permitted.
+
+### Stage W4-O legacy receipt compatibility (source audit refinement)
+
+Legacy `MineflayerSnapshot` remains the same dataclass with the same fields:
+`dataclasses.asdict(legacy_snapshot)` has **no new `native_orientation` key**.
+Only a separately opted-in `MineflayerOrientedSnapshot` subclass carries
+`native_orientation`. This matters because existing S49 original Action
+evidence serializes typed observations via `asdict`; an always-present
+nullable field would silently change original S49 evidence bytes. Synthetic
+negative controls now explicitly verify legacy serialization and reject
+legacy snapshots as an NH1 geometry source. The opt-in geometry receipt also
+retains the exact `source_probe_request_id` and `source_reference`.
+
+**Outstanding:** opt-in oriented observations have not been qualified through
+a live S49 S16 serialized Action evidence round trip. No NH1 physical staging
+entrypoint exists. External archivist/issuer independence, global grant
+spend-once, physical near-WAIT and R/V science remain NO_GO. This documentation
+does not amend the locked W4-NH1 Stage S threshold or authorize a new run.
