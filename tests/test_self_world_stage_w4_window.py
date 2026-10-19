@@ -69,11 +69,11 @@ def _sample():
         minimum_seq=staging.seq, slot=1,
         one_time_token=TOKEN, events=events,
     )
-    return staging, after, commands, kwargs
+    return staging, after, commands, kwargs, closed
 
 
 def test_two_command_handshake_only_world_staging_and_readback():
-    before, after, commands, kwargs = _sample()
+    before, after, commands, kwargs, _closed = _sample()
     assert commands.slot == 1
     assert commands.marker_tag in commands.summon_command
     assert 'Tags:["w4nh1_' in commands.summon_command
@@ -113,7 +113,7 @@ def test_two_command_handshake_only_world_staging_and_readback():
     "wrong_slot", "fake_event", "non_tuple_events", "missing_clock",
 ))
 def test_offline_window_content_negative_controls(attack):
-    before, after, _commands, kwargs = _sample()
+    before, after, _commands, kwargs, _closed = _sample()
     events = list(kwargs["events"])
     if attack == "missing_log":
         events[5] = replace(events[5], content="")
@@ -227,7 +227,7 @@ def test_offline_window_content_negative_controls(attack):
 
 
 def test_window_token_is_per_slot_and_no_cross_slot_reuse():
-    before, after, _, kwargs = _sample()
+    before, after, _, kwargs, closed = _sample()
     slot1 = plan_native_nh1_placement(
         before, expected_session=before.session_id,
         expected_request_id=before.request_id, before_seq=after.seq, slot=1,
@@ -249,8 +249,7 @@ def test_offline_window_joins_original_s16_and_frozen_stage_s_without_grant():
         join_w4_window_and_s16_offline,
     )
 
-    before, after, _, kwargs = _sample()
-    _, closed = _oriented_closed()
+    before, after, _, kwargs, closed = _sample()
     assert closed.original_probe == after
     result = join_w4_window_and_s16_offline(
         before, closed, expected_session=kwargs["expected_session"],
@@ -270,8 +269,7 @@ def test_offline_window_rejects_swapped_original_s16_probe():
         join_w4_window_and_s16_offline,
     )
 
-    before, _, _, kwargs = _sample()
-    _, closed = _oriented_closed()
+    before, _, _, kwargs, closed = _sample()
     corrupt = replace(closed, original_probe=replace(
         closed.original_probe, seq=closed.original_probe.seq + 9,
     ))
