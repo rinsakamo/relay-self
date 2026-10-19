@@ -8,7 +8,11 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from adapters.mineflayer.python_protocol import MineflayerObservation, MineflayerPosition
+from adapters.mineflayer.python_protocol import (
+    MineflayerObservation,
+    MineflayerOrientedSnapshot,
+    MineflayerPosition,
+)
 
 PREREG_ID = "SELFWORLD-W4-NH1-DEV-PROSPECTIVE-20261019-v0"
 SCENARIO = "w4-nh1-forward-horizontal-2m-v0"
@@ -124,7 +128,7 @@ def require_native_nh1_orientation(
         or reading.seq >= before_seq
         or reading.provenance.source != "mineflayer"
         or reading.provenance.reference != f"{expected_session}:{reading.seq}"
-        or reading.snapshot.native_orientation is None
+        or not isinstance(reading.snapshot, MineflayerOrientedSnapshot)
         or reading.snapshot.native_orientation.source != "mineflayer_bot_entity"
     ):
         raise W4PreworldBlocked(
