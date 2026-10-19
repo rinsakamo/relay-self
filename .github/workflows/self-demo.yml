@@ -64,6 +64,8 @@ jobs:
               adapters/mineflayer/b0_*.py|\
               adapters/mineflayer/b1_*.py|\
               adapters/mineflayer/bridge.mjs|\
+              adapters/mineflayer/protocol.mjs|\
+              adapters/mineflayer/protocol.test.mjs|\
               adapters/mineflayer/package.json|\
               adapters/mineflayer/python_protocol.py|\
               adapters/mineflayer/process_session.py|\
