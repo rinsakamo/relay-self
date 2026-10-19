@@ -251,6 +251,9 @@ def test_native_orientation_requires_exact_source_same_sample():
         expected_request_id="w4-preregistered-probe-01", before_seq=2,
     )
     assert sample.observation is reading
+    from dataclasses import asdict
+
+    assert asdict(reading.snapshot)["native_orientation"]["yaw_rad"] == math.pi / 2
     assert sample.source_reference == "session-1:1"
     assert sample.yaw_rad == math.pi / 2
     plan = plan_native_nh1_placement(
@@ -321,7 +324,10 @@ def test_raw_native_orientation_field_rejected(attack):
 def test_legacy_wire_has_no_orientation_and_is_not_w4_eligible():
     payload = _w4_wire_probe(orientation=False)
     reading = parse_mineflayer_line(json.dumps(payload))
-    assert reading.snapshot.native_orientation is None
+    from dataclasses import asdict
+
+    assert not hasattr(reading.snapshot, "native_orientation")
+    assert "native_orientation" not in asdict(reading.snapshot)
     with pytest.raises(W4PreworldBlocked):
         plan_native_nh1_placement(
             reading, expected_session="session-1",
