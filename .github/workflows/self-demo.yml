@@ -235,6 +235,30 @@ jobs:
             tests/test_self_body.py \
             tests/test_self_world.py
 
+
+  w4-prehost-focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: W4 PREHOST focused source-order and cancellation regression (offline only)
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          python -m pytest -q \
+            tests/test_self_world_stage_w4_prehost.py \
+            tests/test_self_world_stage_w4_preprobe.py \
+            tests/test_self_world_stage_w4_owner_contract.py \
+            tests/test_self_world_stage_w4_handoff.py \
+            tests/test_self_world_stage_w4_logtap.py \
+            tests/test_self_world_stage_w4_window.py
+
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 10
