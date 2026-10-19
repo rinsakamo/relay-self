@@ -338,9 +338,9 @@ def test_legacy_wire_has_no_orientation_and_is_not_w4_eligible():
 def test_node_launch_flag_is_child_scoped_and_defaults_off(monkeypatch, tmp_path):
     import asyncio
 
-    from test_mineflayer_process_session import FakeProcess, started_line
     from adapters.mineflayer.process_session import MineflayerProcessSession
     from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
+    from test_mineflayer_process_session import FakeProcess, started_line
 
     bridge = tmp_path / "bridge.mjs"
     bridge.write_text("// test fixture", encoding="utf-8")
@@ -372,7 +372,8 @@ def test_node_orientation_opt_in_rejects_wrong_version_before_spawn(tmp_path):
     import asyncio
 
     from adapters.mineflayer.process_session import (
-        MineflayerProcessSession, MineflayerProcessStartError,
+        MineflayerProcessSession,
+        MineflayerProcessStartError,
     )
     from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
 
@@ -383,3 +384,226 @@ def test_node_orientation_opt_in_rejects_wrong_version_before_spawn(tmp_path):
             MineflayerLaunchConfig(), bridge_path=bridge,
             w4_native_orientation_dev=True,
         ))
+
+
+def test_native_orientation_caller_cursor_rejects_stale_and_duplicate():
+    reading = parse_mineflayer_line(json.dumps(_w4_wire_probe()))
+    kwargs = dict(expected_session=reading.session_id, expected_request_id=reading.request_id,
+                  before_seq=10)
+    for cursor in ({'minimum_seq': 2}, {'seen_source_refs': frozenset({'session-1:1'})}):
+        with pytest.raises(W4PreworldBlocked):
+            require_native_nh1_orientation(reading, **kwargs, **cursor)
+
+
+def _oriented_closed():
+    from dataclasses import fields
+
+    from adapters.mineflayer.python_protocol import (
+        MineflayerNativeOrientation,
+        MineflayerOrientedSnapshot,
+        MineflayerSnapshot,
+    )
+
+    w = sf._synthetic_targeted_witness(0, .2)  # S16 executes but Stage S stays HOLD.
+    def orient(o, yaw):
+        return replace(o, snapshot=MineflayerOrientedSnapshot(
+            **{f.name: getattr(o.snapshot, f.name) for f in fields(MineflayerSnapshot)},
+            native_orientation=MineflayerNativeOrientation('mineflayer_bot_entity', yaw, .2),
+        ))
+    w = replace(w, original_probe=replace(orient(w.original_probe, -math.pi/2), seq=2))
+    world = w.consequence
+    shift = 3
+    world = replace(world,
+        before_observation=replace(orient(world.before_observation, -.4),
+                                   seq=world.before_observation.seq+shift),
+        after_observation=replace(orient(world.after_observation, .9),
+                                  seq=world.after_observation.seq+shift),
+        dispatch_receipt=replace(world.dispatch_receipt, seq=world.dispatch_receipt.seq+shift),
+        cleanup_receipt=replace(world.cleanup_receipt, seq=world.cleanup_receipt.seq+shift))
+    w = replace(w, consequence=world)
+    staging = replace(w.original_probe, seq=1, request_id='nh1-staging-1')
+    return staging, w
+
+
+def test_oriented_s16_roundtrip_and_nh1_readonly_receipt():
+    from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
+    from adapters.mineflayer.self_world_stage_w4_preflight import (
+        capture_w4_oriented_evidence,
+        readback_nh1_slot,
+        verify_w4_oriented_evidence,
+    )
+
+    staging, w = _oriented_closed()
+    evidence = capture_w4_oriented_evidence(w.consequence)
+    reread = json.loads(json.dumps(evidence))
+    verify_w4_oriented_evidence(reread, consequence=w.consequence)
+    assert reread['decoded_action'] == capture_native_action_evidence(w.consequence)
+    assert reread['decoded_action']['before_observation']['snapshot']['native_orientation'][
+        'yaw_rad'] == -.4
+    assert reread['decoded_action']['after_observation']['snapshot']['native_orientation'][
+        'yaw_rad'] == .9
+    receipt = readback_nh1_slot(staging, w, slot=1, expected_session=staging.session_id,
+                                expected_request_id=staging.request_id, minimum_seq=1)
+    assert receipt['stage_s_direction'] == 'hold'
+    assert receipt['observed_zombie_id'] == w.original_probe.snapshot.nearby_entities[0].entity_id
+    assert receipt['physical_run_permitted'] is False
+    assert receipt['source_pair_trace']['probe_seq'] == w.original_probe.seq
+    assert receipt['source_pair_trace']['orientation_seq'] == staging.seq
+    assert not receipt['signed_evidence']
+
+
+@pytest.mark.parametrize('attack', ('post_attached', 'before_after_swap', 'foreign', 'legacy',
+                                   'probe_swap', 'bad_angle', 'extra_trust'))
+def test_oriented_evidence_extension_denies_tampering(attack):
+    import copy
+
+    from adapters.mineflayer.self_world_stage_w4_preflight import (
+        capture_w4_oriented_evidence,
+        verify_w4_oriented_evidence,
+    )
+
+    _, w = _oriented_closed()
+    e = copy.deepcopy(capture_w4_oriented_evidence(w.consequence))
+    before = e['decoded_action']['before_observation']
+    if attack == 'post_attached':
+        before['snapshot']['native_orientation'] = e['decoded_action'][
+            'after_observation']['snapshot']['native_orientation']
+    elif attack == 'before_after_swap':
+        before['seq'] = e['decoded_action']['after_observation']['seq']
+    elif attack == 'foreign':
+        before['session_id'] = 'foreign'
+    elif attack == 'legacy':
+        del before['snapshot']['native_orientation']
+    elif attack == 'probe_swap':
+        before['request_id'] = 'foreign-probe'
+    elif attack == 'bad_angle':
+        before['snapshot']['native_orientation']['pitch_rad'] = math.inf
+    else:
+        e['signed_evidence'] = True
+    with pytest.raises(W4PreworldBlocked):
+        verify_w4_oriented_evidence(e, consequence=w.consequence)
+
+
+@pytest.mark.parametrize('attack', ('after_orientation', 'foreign', 'wrong_probe',
+                                   'wrong_target_position', 'duplicate', 'near_wait'))
+def test_nh1_staging_source_or_near_wait_denied(attack):
+    from adapters.mineflayer.self_world_stage_w4_preflight import readback_nh1_slot
+
+    staging, w = _oriented_closed()
+    kwargs = dict(slot=1, expected_session=staging.session_id,
+                  expected_request_id=staging.request_id, minimum_seq=1)
+    if attack == 'after_orientation':
+        staging = replace(staging, seq=w.consequence.after_observation.seq)
+    elif attack == 'foreign':
+        staging = replace(staging, session_id='foreign')
+    elif attack == 'wrong_probe':
+        kwargs['expected_request_id'] = 'wrong'
+    elif attack == 'wrong_target_position':
+        staging = replace(staging, snapshot=replace(staging.snapshot,
+                          position=MineflayerPosition(99, 64, 99)))
+    elif attack == 'duplicate':
+        kwargs['seen_source_refs'] = frozenset({staging.provenance.reference})
+    else:
+        w = None
+    with pytest.raises(W4PreworldBlocked):
+        readback_nh1_slot(staging, w, **kwargs)
+
+
+def test_all_two_slots_retained_and_no_physical_entry():
+    from adapters.mineflayer.self_world_stage_w4_preflight import nh1_preflight_inventory
+
+    report = nh1_preflight_inventory(dev_opt_in=True)
+    assert [row['slot'] for row in report['near_slots']] == [1, 2]
+    assert all(row['status'] == 'PREWORLD_BLOCKED' for row in report['near_slots'])
+    assert not report['physical_run_permitted']
+    for kwargs in ({}, {'dev_opt_in': True, 'run_physical': True}):
+        with pytest.raises(W4PreworldBlocked):
+            nh1_preflight_inventory(**kwargs)
+
+
+@pytest.mark.parametrize('oriented', (False, True))
+def test_original_executor_s16_preserves_schema_selected_before_action(monkeypatch, oriented):
+    from dataclasses import fields
+
+    import test_action_feedback_qualification as s17
+    from adapters.mineflayer.python_protocol import (
+        MineflayerNativeOrientation,
+        MineflayerOrientedSnapshot,
+        MineflayerSnapshot,
+    )
+    from adapters.mineflayer.self_action_evidence import (
+        capture_native_action_evidence,
+        verify_native_action_evidence,
+    )
+    from adapters.mineflayer.self_world_stage_w4_preflight import capture_w4_oriented_evidence
+
+    original_observation = s17.observation
+    def observe(seq, x, z):
+        o = original_observation(seq, x, z)
+        if not oriented:
+            return o
+        return replace(o, snapshot=MineflayerOrientedSnapshot(
+            **{f.name: getattr(o.snapshot, f.name) for f in fields(MineflayerSnapshot)},
+            native_orientation=MineflayerNativeOrientation('mineflayer_bot_entity', seq/10, .1)))
+    monkeypatch.setattr(s17, 'observation', observe)
+    *_, world, interpretation, terminal = s17.executed_closed_chain()
+    assert terminal.state.value == 'outcome'
+    assert interpretation.reason_code == 'observed_execution'
+    e = json.loads(json.dumps(capture_native_action_evidence(world)))
+    verify_native_action_evidence(e, action_id=world.action_id, session_id=world.session_id,
+                                  movement_m=world.movement_distance)
+    for key in ('before_observation', 'after_observation'):
+        assert ('native_orientation' in e[key]['snapshot']) is oriented
+    if oriented:
+        assert capture_w4_oriented_evidence(world)['decoded_action'] == e
+    else:
+        with pytest.raises(W4PreworldBlocked):
+            capture_w4_oriented_evidence(world)
+
+
+@pytest.mark.parametrize('attack', ('duplicate', 'session', 'missing'))
+def test_oriented_stream_decoder_denies_duplicate_foreign_and_gap(attack):
+    from adapters.mineflayer.python_protocol import MineflayerStreamDecoder
+    from test_mineflayer_process_session import started_line
+
+    decoder = MineflayerStreamDecoder()
+    decoder.decode(started_line().decode())
+    payload = _w4_wire_probe()
+    decoder.decode(json.dumps(payload))
+    if attack == 'session':
+        payload.update(session_id='other', seq=2)
+    elif attack == 'missing':
+        payload['seq'] = 3
+    with pytest.raises(MineflayerAdapterProtocolError):
+        decoder.decode(json.dumps(payload))
+
+
+@pytest.mark.parametrize('yaw', (0, math.pi, -math.pi, 2*math.pi, -2*math.pi, 1e10))
+@pytest.mark.parametrize('pitch', (-math.pi/2, math.pi/2))
+def test_horizontal_geometry_at_pitch_and_yaw_boundaries(yaw, pitch):
+    payload = _w4_wire_probe()
+    payload['snapshot']['native_orientation'].update(yaw_rad=yaw, pitch_rad=pitch)
+    reading = parse_mineflayer_line(json.dumps(payload))
+    plan = plan_native_nh1_placement(reading, expected_session=reading.session_id,
+                                   expected_request_id=reading.request_id, before_seq=2, slot=2)
+    p = reading.snapshot.position
+    assert math.hypot(plan.spawn.x-p.x, plan.spawn.z-p.z) == pytest.approx(2)
+    assert plan.spawn.y == p.y
+
+
+def test_w4_oriented_probe_survives_original_w3_byte_capture(monkeypatch, tmp_path):
+    from adapters.mineflayer.self_world_stage_w3_capture import audit_w3_sealed_stdout
+    from test_mineflayer_process_session import started_line
+    from test_self_world_stage_w3_capture import _ack, _launch
+
+    payload = _w4_wire_probe()
+    lines = [started_line(), (json.dumps(payload)+'\n').encode(), _ack()]
+    session, _ = _launch(monkeypatch, tmp_path, lines)
+    raw = (tmp_path / 'w3-node-stdout.raw.jsonl').read_bytes()
+    assert raw == b''.join(lines)
+    assert audit_w3_sealed_stdout(tmp_path) == session.raw_capture_receipt
+    reading = parse_mineflayer_line(raw.splitlines()[1].decode())
+    assert require_native_nh1_orientation(
+        reading, expected_session='session-1', expected_request_id=payload['request_id'],
+        before_seq=2).yaw_rad == math.pi/2
+    assert session.raw_capture_receipt['external_source_independence_attested'] is False

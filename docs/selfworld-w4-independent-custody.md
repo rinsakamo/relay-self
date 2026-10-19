@@ -113,3 +113,24 @@ append-only independent signed manifest. Historical W3 cannot gain an
 acquisition-time witness from this later readback. No historical Stage R/W3
 receipt is changed. Local evidence is retained outside the repo at
 `/home/rinsa/w4-dev-20261019`; no private keys are published.
+
+## W4-O / NH1 continuation trust disposition (2026-10-19)
+
+Typed orientation and the W4 DEV S16 readback are source-content checks only.
+No independent archivist/acquisition-before-run contract, external immutable
+store, signed receipt/separately controlled advance pin, independent signer
+identity/key isolation/policy, or global monotonic spend authority has been
+provided in this continuation. **W4_EXTERNAL_TRUST_NO_GO** remains terminal for
+physical launch. No TEST key, same-UID process or local SQLite result changes it.
+Existing isolated clone and in-place rollback tests intentionally demonstrate
+that the same grant can be consumed again from restored storage; these passing
+regressions document a failed global single-use property.
+
+The smallest next external step is a separately administered acquisition and
+signer contract with authenticated principals and key custody, not another
+local keypair. For global spending, an independently monotonic log needs an
+atomic admission decision; a bare append-only audit log records duplication
+without necessarily preventing concurrent spends. A single independently
+controlled authority service with a transaction unique constraint can serialize
+admission, but its own rollback/backup policy and availability become trust
+requirements. No new authority service is implemented here.

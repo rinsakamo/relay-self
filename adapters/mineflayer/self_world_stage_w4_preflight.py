@@ -112,6 +112,7 @@ def plan_synthetic_nh1_placement(
 def require_native_nh1_orientation(
     reading: MineflayerObservation, *, expected_session: str | None = None,
     expected_request_id: str | None = None, before_seq: int | None = None,
+    minimum_seq: int = 0, seen_source_refs: frozenset[str] = frozenset(),
 ) -> W4NativeOrientation:
     """Require same-sample bot entity orientation and exact caller-bound probe.
 
@@ -125,6 +126,9 @@ def require_native_nh1_orientation(
         or reading.session_id != expected_session
         or reading.kind != "probe"
         or reading.request_id != expected_request_id
+        or type(minimum_seq) is not int or minimum_seq < 0
+        or reading.seq < minimum_seq
+        or reading.provenance.reference in seen_source_refs
         or reading.seq >= before_seq
         or reading.provenance.source != "mineflayer"
         or reading.provenance.reference != f"{expected_session}:{reading.seq}"
@@ -222,4 +226,145 @@ def prepare_unsigned_custody_handoff(capture_root, *, received_at_utc: str) -> d
         "signature": None,
         "independent_custody_qualified": False,
         "s10_permission": False,
+    }
+
+
+def capture_w4_oriented_evidence(consequence) -> dict:
+    """Explicit DEV envelope around unmodified S16 decoded evidence.
+
+    Legacy V1 accepts opt-in subtype serialization already. Its permissive
+    validator does not qualify orientation. This extension requires BOTH
+    original oriented samples and compares the complete retained S16 source.
+    No signature, physical authenticity or retrospective enrichment is added.
+    """
+    from adapters.mineflayer.execution import WorldConsequence
+    from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
+
+    if (type(consequence) is not WorldConsequence
+            or consequence.before_observation is None
+            or consequence.after_observation is None
+            or any(type(o.snapshot) is not MineflayerOrientedSnapshot for o in (
+                consequence.before_observation, consequence.after_observation))):
+        raise W4PreworldBlocked("original oriented S16 pair required; no legacy enrichment")
+    return {
+        "schema": "W4_ORIENTED_S16_DEV_V0",
+        "decoded_action": capture_native_action_evidence(consequence),
+        "signed_evidence": False,
+        "physical_run_permitted": False,
+    }
+
+
+def verify_w4_oriented_evidence(value, *, consequence) -> None:
+    """Independent serialization readback against retained original S16 objects.
+
+    This detects changed fields relative to that source, not a malicious source
+    owner forging both objects. External custody and signer remain mandatory.
+    """
+    from adapters.mineflayer.self_action_evidence import (
+        NativeEvidenceRejected,
+        verify_native_action_evidence,
+    )
+
+    try:
+        expected = capture_w4_oriented_evidence(consequence)
+        if (not isinstance(value, dict)
+                or value.get("signed_evidence") is not False
+                or value.get("physical_run_permitted") is not False
+                or value != expected):
+            raise W4PreworldBlocked("oriented evidence differs from original S16 source")
+        verify_native_action_evidence(
+            value["decoded_action"], action_id=consequence.action_id,
+            session_id=consequence.session_id, movement_m=consequence.movement_distance,
+        )
+    except (NativeEvidenceRejected, TypeError, KeyError) as exc:
+        raise W4PreworldBlocked("oriented S16 readback rejected") from exc
+
+
+def readback_nh1_slot(
+    staging: MineflayerObservation, closed, *, slot: int,
+    expected_session: str, expected_request_id: str, minimum_seq: int,
+    seen_source_refs: frozenset[str] = frozenset(),
+) -> dict:
+    """OFFLINE linkage, never dispatch: staging source -> target -> S16 -> S.
+
+    Actual command dispatch/ACK and its placement window are NOT attested by
+    this readback. No live wiring can safely infer that window from seq alone.
+    """
+    from dataclasses import asdict
+
+    from adapters.mineflayer.normal_action import NormalActionClosedReadback
+    from adapters.mineflayer.self_world_stage_s_feedback import (
+        StageSPredeclaredSeparationRule,
+        assess_stage_s_original_separation,
+    )
+
+    if (type(closed) is not NormalActionClosedReadback
+            or type(slot) is not int or slot not in (1, 2)):
+        raise W4PreworldBlocked("near WAIT/no issued Action is not an eligible S49 closure")
+    original = closed.original_probe
+    require_native_nh1_orientation(
+        staging, expected_session=expected_session, expected_request_id=expected_request_id,
+        before_seq=original.seq, minimum_seq=minimum_seq, seen_source_refs=seen_source_refs,
+    )
+    placement = plan_native_nh1_placement(
+        staging, expected_session=expected_session, expected_request_id=expected_request_id,
+        before_seq=original.seq, slot=slot,
+    )
+    if original.session_id != expected_session:
+        raise W4PreworldBlocked("foreign original S49 probe")
+    evidence = capture_w4_oriented_evidence(closed.consequence)
+    if type(original.snapshot) is not MineflayerOrientedSnapshot:
+        raise W4PreworldBlocked("original Action probe must retain its own orientation")
+    assessment = assess_stage_s_original_separation(closed, StageSPredeclaredSeparationRule())
+    targets = [e for e in original.snapshot.nearby_entities
+               if e.entity_id == assessment.entity_id and e.name == "zombie"]
+    if len(targets) != 1 or not all(
+        math.isclose(getattr(targets[0].position, axis), getattr(placement.spawn, axis),
+                     rel_tol=0, abs_tol=1e-6) for axis in ("x", "y", "z")
+    ):
+        raise W4PreworldBlocked("observed target does not match planned World placement")
+    return {
+        "schema": "W4_NH1_SLOT_OFFLINE_READBACK_V0",
+        "placement": asdict(placement),
+        "observed_zombie_id": assessment.entity_id,
+        "observed_zombie_position": asdict(targets[0].position),
+        "source_pair_trace": {
+            "session_id": expected_session, "orientation_seq": staging.seq,
+            "orientation_request_id": expected_request_id,
+            "probe_seq": original.seq, "probe_request_id": original.request_id,
+            "before_seq": closed.consequence.before_observation.seq,
+            "after_seq": closed.consequence.after_observation.seq,
+        },
+        "orientation_observation": _w4_frame(staging),
+        "original_probe": _w4_frame(original),
+        "s16_evidence": evidence,
+        "stage_s_direction": assessment.direction.value if assessment.direction else None,
+        "stage_s_delta_m": assessment.distance_delta_m,
+        "criterion": asdict(StageSPredeclaredSeparationRule()),
+        "command_dispatch_attested": False,
+        "placement_window": "UNATTESTED_PREWORLD_BLOCKED",
+        "signed_evidence": False,
+        "physical_run_permitted": False,
+        "s10_permission": False,
+    }
+
+
+def _w4_frame(observation) -> dict:
+    import json
+    from dataclasses import asdict
+
+    return json.loads(json.dumps({**asdict(observation),
+                                 "provenance": asdict(observation.provenance)}, allow_nan=False))
+
+
+def nh1_preflight_inventory(*, dev_opt_in: bool = False, run_physical: bool = False) -> dict:
+    """Default dry-run only; no launcher, grant consumer or near-WAIT entry."""
+    if dev_opt_in is not True or run_physical is not False:
+        raise W4PreworldBlocked("explicit DEV opt-in required; physical NH1 entry unavailable")
+    return {
+        "prereg_id": PREREG_ID, "classification": "PREWORLD_BLOCKED",
+        "near_slots": [{"slot": slot, "status": "PREWORLD_BLOCKED",
+                        "action_id": None, "outcome": None} for slot in (1, 2)],
+        "trust": external_trust_readout(),
+        "physical_run_permitted": False,
     }

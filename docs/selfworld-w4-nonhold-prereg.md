@@ -159,3 +159,56 @@ a live S49 S16 serialized Action evidence round trip. No NH1 physical staging
 entrypoint exists. External archivist/issuer independence, global grant
 spend-once, physical near-WAIT and R/V science remain NO_GO. This documentation
 does not amend the locked W4-NH1 Stage S threshold or authorize a new run.
+
+## W4-O / NH1 local continuation — offline connection (2026-10-19)
+
+The W4-O opt-in decoder **does** retain native position/yaw/pitch from one
+synchronous Node snapshot. The earlier implementation readout above describes
+the pre-W4-O state. Legacy `MineflayerSnapshot/asdict` and the original S49
++X staging, Action/retained owners, S14/S15/S16 and Stage S blobs stay unchanged.
+
+Local continuation adds to the existing W4 module only:
+
+- Caller-owned `minimum_seq` and `seen_source_refs` checks at native admission.
+  These are source sequence freshness/replay cursors, not World timestamps,
+  independent authentication or a globally persistent ledger. The stream
+  decoder independently rejects duplicate/gapped seq and foreign sessions.
+- `capture_w4_oriented_evidence` / `verify_w4_oriented_evidence`: explicit DEV
+  envelope around unmodified V1 decoded S16 evidence. V1 already accepts both
+  legacy and oriented serialization; its acceptance alone does not validate
+  orientation. The extension requires original oriented before **and** after
+  objects and compares every serialized field against retained S16 source.
+  A legacy result cannot be enriched. Changed before yaw, foreign request,
+  after-to-before substitution and claimed signatures are rejected. This is
+  local source consistency, not an independently authenticated witness.
+- `readback_nh1_slot`: read-only offline connection from a prior staging probe
+  to computed 2m World summon command, later original S49 probe/observed zombie
+  ID/XYZ, original typed closure, S16 evidence and unchanged Stage S. It retains
+  distinct source seq/request/provenance, all source orientation samples and
+  exact distance delta. An executed S16 can still produce HOLD. No observation
+  or placement command creates an Action, retained update or S10 authority.
+- `nh1_preflight_inventory(dev_opt_in=True)`: default dry-run inventory retains
+  both near slots 1/2 as PREWORLD_BLOCKED, with no claimed Action or outcome.
+  Missing opt-in and every physical invocation are rejected. No new launcher,
+  CLI grant, workflow or existing one-shot job calls this path.
+
+**Specific live blocker:** original S49 `stage_world` runs as a concurrent task,
+issues server stdin commands, and sleeps; source seq does not acknowledge the
+server command's effective tick or tie its execution window to a designated
+pre-placement probe. Absolute summon coordinates and a subsequently matching
+zombie do not prove when the command took effect. The offline receipt therefore
+sets `command_dispatch_attested=false` and
+`placement_window=UNATTESTED_PREWORLD_BLOCKED`. Before live wiring, the existing
+World experimenter must supply an independently recorded command/window and
+actual post-staging target identity without adding a concurrent session reader
+or moving/rotating the avatar. No executable NH1 argv is approved.
+
+Synthetic tests use legacy and opt-in samples **before** the original executor
+runs through S16 OUTCOME, then serialize/read back. Additional original-shaped
+NH1 fixtures exercise read-only linkage only; their orientations/coordinates
+are explicitly synthetic. W3 raw-byte capture is also tested with the opt-in
+probe; this does not establish Minecraft TCP provenance or producer completeness.
+
+Study ID, 10m far WAIT, two 2m near slots, 5/8/8s holds, interstage 2s,
+`delta_m=0.100`, `min_motion_m=0.050` and historical W3 HOLD×2 remain fixed.
+Physical NH1 runs/Actions/OUTCOMEs/S10 commits all remain **0**.
