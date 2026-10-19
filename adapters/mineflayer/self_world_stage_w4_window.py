@@ -143,15 +143,15 @@ def reconcile_w4_window_offline(
         or not isinstance(after.snapshot, MineflayerOrientedSnapshot)
         or after.snapshot.nearby_entities_coverage.truncated
         or after.snapshot.nearby_entities_coverage.source_scope != "mineflayer_entity_registry"
-        or len(events) != len(_EVENTS)
         or not isinstance(events, tuple)
+        or len(events) != len(_EVENTS)
     ):
         raise W4PreworldBlocked("after probe or event cardinality invalid")
     plan = plan_native_nh1_placement(
         before, expected_session=expected_session,
         expected_request_id=before_request_id, before_seq=after.seq, slot=slot,
     )
-    if before.seq < minimum_seq or type(minimum_seq) is not int or minimum_seq < 0:
+    if type(minimum_seq) is not int or minimum_seq < 0 or before.seq < minimum_seq:
         raise W4PreworldBlocked("preplacement source older than owner cursor")
     if after.seq <= before.seq:
         raise W4PreworldBlocked("postplacement probe is not newer")
@@ -178,7 +178,8 @@ def reconcile_w4_window_offline(
         raise W4PreworldBlocked("native read did not use the original reader")
     server_steps = events[1:-1]
     if (
-        any(e.source != "existing_server_console_collector" for e in server_steps)
+        any(e.source != "existing_world_experimenter" for e in server_steps[:4])
+        or server_steps[4].source != "existing_server_console_collector"
         or any(type(e.server_pid) is not int or e.server_pid <= 0
                for e in server_steps)
         or len({e.server_pid for e in server_steps}) != 1
