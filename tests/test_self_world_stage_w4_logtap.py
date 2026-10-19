@@ -176,3 +176,17 @@ def test_unsafe_marker_conversion_rejected(tmp_path):
         marker_as_w4_window_event(marker, order=True, server_pid=1234)
     with pytest.raises(W4PreworldBlocked):
         marker_as_w4_window_event(marker, order=6, server_pid=0)
+
+
+def test_old_unterminated_log_line_cannot_prefix_future_marker(tmp_path):
+    _, _, commands, _, _ = _sample()
+    path = tmp_path / "existing-collector.log"
+    path.write_bytes(b"[19:00:00] [Server thread/INFO]: attacker prefix")
+    with pytest.raises(W4PreworldBlocked, match="unfinished line"):
+        capture_w4_collector_cursor(path)
+    # Complete previous unrelated logs are admissible, but never old markers.
+    path.write_bytes(b"[19:00:00] [Server thread/INFO]: old unrelated\\n".replace(
+        b"\\n", b"\n",
+    ))
+    cursor = capture_w4_collector_cursor(path)
+    assert cursor.start_byte == path.stat().st_size

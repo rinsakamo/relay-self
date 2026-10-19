@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import tempfile
 import time
-from dataclasses import asdict
 from pathlib import Path
 
 from adapters.mineflayer.python_protocol import MineflayerObservation
@@ -169,7 +168,17 @@ async def simulate_w4_handoff(
         "java_stdout_consumers": 0,
         "physical_server_commands_sent": 0,
         "synthetic_server_write_records": 2,
-        "captured_marker": asdict(marker),
+        "captured_marker": {
+            "cursor_start_byte": marker.cursor.start_byte,
+            "log_line": marker.log_line,
+            "start_byte": marker.start_byte,
+            "end_byte": marker.end_byte,
+            "raw_line_sha256": marker.raw_line_sha256,
+            "read_monotonic_ns": marker.read_monotonic_ns,
+            "producer_content_only": True,
+            "external_source_qualified": False,
+            "physical_run_permitted": False,
+        },
         "world_window": window,
         "original_s16_stage_s_join": joined,
         "evidence_scope": "SYNTHETIC_OFFLINE_ONLY",

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from dataclasses import replace
 
 import pytest
@@ -30,6 +31,9 @@ def _run(*, marker_mode="normal", seen_tokens=frozenset(), closed=True, **overri
 def test_fake_single_reader_write_marker_after_probe_s16_join():
     result = _run()
     assert result["schema"] == "W4_WIN_HANDOFF_SYNTHETIC_DEV_V0"
+    # No ephemeral filesystem Path or fake-private identity leaks into receipts.
+    assert json.loads(json.dumps(result, allow_nan=False)) == result
+    assert "path" not in result["captured_marker"]
     assert result["native_probe_deliveries"] == 2
     assert result["native_reader_owners"] == 1
     assert result["java_stdout_consumers"] == 0
