@@ -77,7 +77,11 @@ def _open_original_log(path: Path) -> tuple[int, os.stat_result]:
 def capture_w4_collector_cursor(log_path: Path) -> W4CollectorCursor:
     """Capture end-of-file before original experimenter sends World commands."""
     fd, st = _open_original_log(log_path)
-    os.close(fd)
+    try:
+        if st.st_size and os.pread(fd, 1, st.st_size - 1) != b"\n":
+            raise W4PreworldBlocked("pre-dispatch collector log has unfinished line")
+    finally:
+        os.close(fd)
     return W4CollectorCursor(
         path=log_path, device=st.st_dev, inode=st.st_ino,
         start_byte=st.st_size,

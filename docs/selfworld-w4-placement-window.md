@@ -153,3 +153,34 @@ World-command acknowledgment, server tick, authenticated Minecraft TCP
 source or independent archivist evidence. Thus
 `W4_EXTERNAL_TRUST_NO_GO / NH1 PREWORLD_BLOCKED` remain; 0 physical
 World/Action/S16 OUTCOME/S10 changes and no science qualification.
+
+## W4-HANDOFF (2026-10-19): isolated async owner sequencing
+
+`self_world_stage_w4_handoff.py` now exercises the prescribed causal
+handoff end to end, but **only with internal synthetic ports**. The caller
+passes two already-built original-shaped native observation fixtures and
+optionally an original-shaped closed S16 witness; the routine creates its
+*own disposable temporary log file*, simulates the original experimenter's
+command-write/drain evidence, appends a fake conditional console marker from
+an asyncio task, uses the W4-WIN-LOG byte-offset reader, and only then
+delivers the simulated post-probe into W4-WIN and the original S16/Stage S
+reconciler. It never receives a Java process, session object, World writer
+callback, physical server log path, or Action issuer. No second native reader,
+server stdout consumer, or World command is launched.
+
+Its result records 2 synthetic native probe deliveries, one conceptual
+native-reader owner, 0 Java stdout consumers, 0 physical server commands,
+and exact seven-event order. The marker timeout, duplicate/partial/foreign
+marker, stale source, replay token, wrong slot, reversed post-probe and
+foreign original S16 closure are negative controls. A local log cursor
+now refuses a **pre-existing unterminated partial line** so a later appended
+marker cannot inherit its forged prefix.
+
+**This does not implement or attest a live handoff.** It does not qualify
+World timing, producer authenticity, closed-loop single-reader leasing, OS
+process/file provenance, independent archive custody, global single-use,
+external S10 signing, near-WAIT safety or any physical trial. Its receipt is
+`SYNTHETIC_OFFLINE_ONLY / UNATTESTED_PREWORLD_BLOCKED`; the original S49
+runner and Stage S criterion remain unchanged. A future guarded live
+adapter must establish actual S49-host/native lease and active server
+collector ownership before attempting any new disposable DEV World.
