@@ -30,8 +30,12 @@ experimenter move or rotate the avatar.
    before-position/source.
 2. The experimenter fixes the preregistered 2m horizontal forward position
    from that source. Generate a fresh per-run/slot restricted token
-   (24–48 lower-case ASCII hex-like characters), pre-registered before
-   sending the command. Attach a unique tag to *that* zombie's summon NBT;
+   (24–48 lower-case ASCII alphanumeric characters), pre-registered before
+   sending the command. The caller must also pass an explicit immutable
+   `seen_tokens` ledger to the offline command/window validator. Reusing a
+   token in either slot is rejected, including when slot labels differ;
+   missing ledger input fails closed. This local caller-held set is **not** a
+   global monotonic cross-host single-use authority. Attach a unique tag to *that* zombie's summon NBT;
    keep the original entity type, position, NoAI/Silent/Persistence/Invulnerable
    flags unchanged. Tagging is an instrumentation amendment, not a new
    favorable geometry, intervention, endpoint or Stage S threshold.
