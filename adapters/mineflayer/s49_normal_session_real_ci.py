@@ -120,6 +120,7 @@ async def qualify(
     report_path: Path, server_log: Path, *,
     live_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
     stage_r_dev: bool = False,
+    raw_capture_root: Path | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -151,7 +152,7 @@ async def qualify(
             root, root / "minecraft.jar", server_log,
         )
         report["stage"] = "AUTHENTIC_NATIVE_SELF_SESSION"
-        session = await _new_session()
+        session = await _new_session(raw_capture_root=raw_capture_root)
         sid = session.started.session_id
         report["session_id"] = sid
         _, committed, _, _, _, _ = await asyncio.to_thread(s19._epoch_one)
@@ -415,6 +416,15 @@ async def qualify(
             except Exception as exc:
                 report["node_cleanup_error"] = str(exc)
                 await session.terminate()
+            if raw_capture_root is not None:
+                report["w3_node_stdout_capture"] = session.raw_capture_receipt
+                if (
+                    session.raw_capture_receipt is None
+                    or session.raw_capture_receipt.get("status") != "COMPLETE_NODE_STDOUT"
+                ):
+                    report["status"] = "FAIL"
+                    report["error"] = "W3 raw Node stdout capture incomplete"
+                    rc = 1
         try:
             await _shutdown_server(server, collector)
         except Exception as exc:
