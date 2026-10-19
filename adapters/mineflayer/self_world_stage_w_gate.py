@@ -10,7 +10,6 @@ qualified separately by W2 LocalCodex; tests use only disposable local files.
 """
 from __future__ import annotations
 
-import hashlib
 import os
 import sqlite3
 from dataclasses import dataclass
