@@ -413,6 +413,7 @@ async def _run_disposable(
     self_world_typed_closure: bool = False,
     self_world_retained_handoff: bool = False,
     stage_r_dev: bool = False,
+    raw_capture_root: Path | None = None,
 ) -> int:
     # Existing exact S49 host is the *only* issuer. No duplicated event loop,
     # no new Game Action code or arbitrary LLM output -> Action mapping.
@@ -485,7 +486,10 @@ async def _run_disposable(
                 return await qualify(
                     report_path, server_log, stage_r_dev=True,
                 )
-            return await qualify(report_path, server_log)
+            return await qualify(
+                report_path, server_log,
+                **({"raw_capture_root": raw_capture_root} if raw_capture_root is not None else {}),
+            )
         if stage_n is None:
             return await qualify(report_path, server_log, live_probe=observed_source)
         from adapters.mineflayer.normal_action import (
@@ -627,6 +631,13 @@ def _dev_run(args: argparse.Namespace) -> int:
         typed_closure = getattr(args, "self_world_typed_closure", False)
         retained_handoff = getattr(args, "self_world_retained_handoff", False)
         stage_r = getattr(args, "self_world_stage_r_dev", False)
+        stage_w3 = getattr(args, "self_world_w3_raw_capture", False)
+        if type(stage_w3) is not bool or (stage_w3 and (
+            scenario != "native" or stage_r or args.live_think or args.think
+            or getattr(args, "self_world_live", False) or prospective
+            or typed_closure or retained_handoff
+        )):
+            raise DemoRejected("Stage W3 raw source requires exclusive model-free native DEV")
         if type(stage_r) is not bool or (
             stage_r and (
                 scenario != "native" or prospective or typed_closure
@@ -764,6 +775,7 @@ def _dev_run(args: argparse.Namespace) -> int:
                 else:
                     code = asyncio.run(_run_disposable(
                         root / "native_report.json", root / "minecraft_server.log",
+                        **({"raw_capture_root": root} if stage_w3 else {}),
                     ))
         native = json.loads((root / "native_report.json").read_text())
         if scenario == "b1-local-adaptation":
@@ -1297,6 +1309,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="DEV-only original S49 L0 retained owner identity readback")
     parser.add_argument("--self-world-stage-r-dev", action="store_true",
                         help="model-free native DEV ONLY: original S49 single-writer S10 HOLD")
+    parser.add_argument("--self-world-w3-raw-capture", action="store_true",
+                        help="DEV-only source bytes capture for original S49 model-free scenario; no grant")
     parser.add_argument("--model-alias", help="explicit pre-existing loopback model alias")
     parser.add_argument("--model-port", type=int, help="existing localhost OpenAI-compatible port")
     parser.add_argument("--model-timeout", type=float, default=12.0)
