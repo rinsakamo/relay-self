@@ -112,3 +112,44 @@ accepted as remotely authenticated just because they match.
   coordination, new disposable one-shot grant/root and final reviewed argv
   must be locked and admitted separately. Do not infer authorization from
   passing these offline tests.
+
+## W4-WIN-LOG: existing collector's log cursor (subsequent DEV implementation)
+
+A new **non-executing** helper,
+`adapters/mineflayer/self_world_stage_w4_logtap.py`, closes part of the
+source acquisition interface without changing the original S49 or
+`s31a_real_server_ci.py` code:
+
+- `capture_w4_collector_cursor(log_path)` records the current byte offset
+  and original device/inode for an existing, absolute, non-symlink,
+  single-hardlink regular log file **before** prospective World commands.
+- `wait_for_w4_collector_marker(cursor,commands)` polls exclusively the
+  existing collector's **file**, never the Java stdout pipe. It examines
+  only complete, newline-delimited UTF-8 lines **appended after that
+  offset**. It rejects replaced/truncated log files, symlinks, excessive
+  data, duplicate/incomplete markers, mismatched marker content, and
+  bounded timeouts.
+- `marker_as_w4_window_event` converts the content witness to the
+  prior typed W4-WIN event vocabulary. Its `server_pid` is *caller
+  supplied*, not independently authenticated by the file; timestamp is
+  the local **read** monotonic timestamp, not a server execution tick.
+- Synthetic concurrent log appends, partial writes, prior marker replay,
+  marker spoofing, log path replacement/truncation and multiple target
+  W4-WIN/source/S16 content checks are in
+  `tests/test_self_world_stage_w4_logtap.py`.
+
+This is explicitly **not yet hooked into a live S49 session**. The
+original `_ready_server()` stdout collector remains the only owner of
+the Java stdout pipe. Future wiring must additionally show *how* the
+existing World experimenter and native reader coordinate the
+preplacement cursor, conditional marker receipt and postplacement
+probe on exactly one reader lease. Do not start a new native consumer
+to implement the handoff or silently delay the original S49 stage-world
+task.
+
+A matching local log line is an improvement over treating
+`stdin.drain()` as World completion, but it is **not** authoritative
+World-command acknowledgment, server tick, authenticated Minecraft TCP
+source or independent archivist evidence. Thus
+`W4_EXTERNAL_TRUST_NO_GO / NH1 PREWORLD_BLOCKED` remain; 0 physical
+World/Action/S16 OUTCOME/S10 changes and no science qualification.
