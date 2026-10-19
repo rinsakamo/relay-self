@@ -192,7 +192,7 @@ class StageWOfflineConsumer:
                 archive_sha256=source.archive_sha256,
             )
         except (StageWArchiveRejected, ValueError) as exc:
-            raise StageWGateRejected("signed source or spend check rejected") from exc
+            raise StageWGateRejected("signed source rejected or grant already spent") from exc
         return StageWOfflineReceipt(
             run_id=request.run_id, session_id=request.session_id,
             action_id=request.action_id, feedback_id=request.feedback_id,
