@@ -66,6 +66,7 @@ jobs:
               adapters/mineflayer/bridge.mjs|\
               adapters/mineflayer/package.json|\
               adapters/mineflayer/python_protocol.py|\
+              adapters/mineflayer/process_session.py|\
               adapters/mineflayer/normal_action.py|\
               adapters/mineflayer/seek_execution.py|\
               adapters/mineflayer/s51_eat_real_ci.py|\
@@ -92,11 +93,13 @@ jobs:
               adapters/mineflayer/self_world_stage_w_gate.py|\
               adapters/mineflayer/self_world_stage_w2_ledger_worker.py|\
               adapters/mineflayer/self_world_stage_w2_local_preflight.py|\
+              adapters/mineflayer/self_world_stage_w3_capture.py|\
               adapters/mineflayer/s49_normal_session_real_ci.py|\
               src/relay_self/self_world.py|\
               src/relay_self/world_conditioned_choice.py|\
               docs/selfworld-v0.md|\
               docs/selfworld-w2-localcodex.md|\
+              docs/selfworld-w3-native-capture.md|\
               tests/test_self_world.py|\
               adapters/mineflayer/v6_*.py|\
               adapters/mineflayer/v6_*.mjs|\
@@ -125,6 +128,7 @@ jobs:
               tests/test_self_world_stage_v_wait_safety.py|\
               tests/test_self_world_stage_w_gate.py|\
               tests/test_self_world_stage_w2_local.py|\
+              tests/test_self_world_stage_w3_capture.py|\
               tests/test_m02_paper_dev.py|\
               tests/test_m02_v8_stopped_world_clone_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
@@ -198,6 +202,8 @@ jobs:
             tests/test_self_world_stage_v_wait_safety.py \
             tests/test_self_world_stage_w_gate.py \
             tests/test_self_world_stage_w2_local.py \
+            tests/test_self_world_stage_w3_capture.py \
+            tests/test_mineflayer_process_session.py \
             tests/test_feature_s49_normal_runtime.py \
             tests/test_self_body.py \
             tests/test_self_world.py
