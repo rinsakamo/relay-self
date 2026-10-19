@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 
 from adapters.mineflayer.python_protocol import (
@@ -65,6 +66,7 @@ class MineflayerProcessSession:
         node_executable: str = "node",
         startup_timeout_s: float = 10.0,
         raw_capture_root: Path | None = None,
+        w4_native_orientation_dev: bool = False,
     ) -> "MineflayerProcessSession":
         """Launch exactly one bridge process and consume its startup attestation."""
 
@@ -79,12 +81,23 @@ class MineflayerProcessSession:
                 f"Mineflayer bridge does not exist: {bridge}"
             )
 
+        if type(w4_native_orientation_dev) is not bool:
+            raise MineflayerProcessStartError("W4 orientation requires explicit boolean opt-in")
+        # Suppress inherited environment opt-in in every default S49/R/V launch.
+        child_env = os.environ.copy()
+        child_env.pop("RELAYSELF_W4_NH1_ORIENTATION_V0", None)
+        if w4_native_orientation_dev:
+            if config.version != "1.21.8":
+                raise MineflayerProcessStartError("W4 orientation requires pinned Minecraft 1.21.8")
+            child_env["RELAYSELF_W4_NH1_ORIENTATION_V0"] = "1"
+
         try:
             process = await asyncio.create_subprocess_exec(
                 *config.argv(bridge, node_executable=node_executable),
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=None,
+                env=child_env,
             )
         except OSError as exc:
             raise MineflayerProcessStartError(
