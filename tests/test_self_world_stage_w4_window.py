@@ -227,7 +227,7 @@ def test_offline_window_content_negative_controls(attack):
 
 
 def test_window_token_is_per_slot_and_no_cross_slot_reuse():
-    before, after, _, kwargs, closed = _sample()
+    before, after, _, _kwargs, _closed = _sample()
     slot1 = plan_native_nh1_placement(
         before, expected_session=before.session_id,
         expected_request_id=before.request_id, before_seq=after.seq, slot=1,
