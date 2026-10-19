@@ -23,6 +23,7 @@ from adapters.mineflayer.self_world_stage_w2_local_preflight import (
     inspect_w2_local_environment,
 )
 from adapters.mineflayer.self_world_stage_w_gate import StageWPersistentGrantLedger
+
 pytest_plugins = ("test_self_world_stage_w_gate",)
 
 
