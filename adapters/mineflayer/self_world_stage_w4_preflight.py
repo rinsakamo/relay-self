@@ -30,6 +30,20 @@ class W4SyntheticOrientation:
 
 
 @dataclass(frozen=True, slots=True)
+class W4NativeOrientation:
+    """Single typed pre-action probe, not independent producer attestation."""
+
+    observation: MineflayerObservation
+    session_id: str
+    seq: int
+    request_id: str
+    position: MineflayerPosition
+    yaw_rad: float
+    pitch_rad: float
+    source_reference: str
+
+
+@dataclass(frozen=True, slots=True)
 class W4OfflinePlacement:
     prereg_id: str
     scenario: str
@@ -43,17 +57,11 @@ class W4OfflinePlacement:
     source_orientation_qualified: bool = False
 
 
-def plan_synthetic_nh1_placement(
-    orientation: W4SyntheticOrientation, *, expected_session: str,
-    before_seq: int, slot: int,
+def _placement_from_orientation(
+    orientation: W4SyntheticOrientation | W4NativeOrientation, *,
+    expected_session: str, before_seq: int, slot: int, source_bound: bool,
 ) -> W4OfflinePlacement:
-    """Mineflayer radians: forward=(-sin(yaw), 0, -cos(yaw)).
-
-    Pitch does not shorten the preregistered *horizontal* 2m. No motor
-    commands are produced. First slot retains the original +X 10m baseline.
-    This pure TEST planner cannot attest provenance or launch a World.
-    """
-    if (type(orientation) is not W4SyntheticOrientation
+    if (type(orientation) not in (W4SyntheticOrientation, W4NativeOrientation)
             or not expected_session or orientation.session_id != expected_session
             or type(orientation.seq) is not int or orientation.seq < 0
             or type(before_seq) is not int or orientation.seq >= before_seq
@@ -75,19 +83,75 @@ def plan_synthetic_nh1_placement(
     return W4OfflinePlacement(
         PREREG_ID, SCENARIO, orientation.session_id, orientation.seq,
         slot, distance, spawn, command,
+        physical_run_permitted=False,
+        source_orientation_qualified=source_bound,
     )
 
 
-def require_native_nh1_orientation(reading: MineflayerObservation) -> None:
-    """Explicit STOP: frozen native schema has no yaw/pitch/source binding.
+def plan_synthetic_nh1_placement(
+    orientation: W4SyntheticOrientation, *, expected_session: str,
+    before_seq: int, slot: int,
+) -> W4OfflinePlacement:
+    """Pure TEST planning. This does NOT authenticate a source or permit World."""
+    if type(orientation) is not W4SyntheticOrientation:
+        raise W4PreworldBlocked("synthetic orientation type required")
+    return _placement_from_orientation(
+        orientation, expected_session=expected_session, before_seq=before_seq,
+        slot=slot, source_bound=False,
+    )
 
-    Never infer yaw from displacement, LOOK ACK, W3 outcomes or a caller's
-    synthetic orientation. A future opt-in authenticated acquisition path
-    requires implementation and qualification before any physical runner.
+
+def require_native_nh1_orientation(
+    reading: MineflayerObservation, *, expected_session: str | None = None,
+    expected_request_id: str | None = None, before_seq: int | None = None,
+) -> W4NativeOrientation:
+    """Require same-sample bot entity orientation and exact caller-bound probe.
+
+    Source bound means *within the Node bridge observation*; not authenticated
+    Minecraft TCP truth, independent archivist custody, or S10 issuer authority.
     """
-    raise W4PreworldBlocked(
-        "PREWORLD_BLOCKED: native snapshot has no source-bound yaw/pitch; "
-        "NH1 live scenario not qualified; W4 external custody contract required"
+    if (
+        type(reading) is not MineflayerObservation
+        or not expected_session or not expected_request_id
+        or type(before_seq) is not int
+        or reading.session_id != expected_session
+        or reading.kind != "probe"
+        or reading.request_id != expected_request_id
+        or reading.seq >= before_seq
+        or reading.provenance.source != "mineflayer"
+        or reading.provenance.reference != f"{expected_session}:{reading.seq}"
+        or reading.snapshot.native_orientation is None
+        or reading.snapshot.native_orientation.source != "mineflayer_bot_entity"
+    ):
+        raise W4PreworldBlocked(
+            "PREWORLD_BLOCKED: native source-bound yaw/pitch with exact "
+            "session/probe/seq required"
+        )
+    sample = reading.snapshot.native_orientation
+    return W4NativeOrientation(
+        observation=reading,
+        session_id=reading.session_id,
+        seq=reading.seq,
+        request_id=reading.request_id,
+        position=reading.snapshot.position,
+        yaw_rad=sample.yaw_rad,
+        pitch_rad=sample.pitch_rad,
+        source_reference=reading.provenance.reference,
+    )
+
+
+def plan_native_nh1_placement(
+    reading: MineflayerObservation, *, expected_session: str,
+    expected_request_id: str, before_seq: int, slot: int,
+) -> W4OfflinePlacement:
+    """Read-only source-bound geometry; never a World launcher or Action grant."""
+    native = require_native_nh1_orientation(
+        reading, expected_session=expected_session,
+        expected_request_id=expected_request_id, before_seq=before_seq,
+    )
+    return _placement_from_orientation(
+        native, expected_session=expected_session, before_seq=before_seq,
+        slot=slot, source_bound=True,
     )
 
 
