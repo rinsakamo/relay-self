@@ -185,8 +185,15 @@ def test_offline_window_content_negative_controls(attack):
         ))
     elif attack == "truncated_registry":
         cov = after.snapshot.nearby_entities_coverage
+        target = after.snapshot.nearby_entities[0]
+        others = tuple(
+            replace(target, entity_id=target.entity_id + i, name="item",
+                    entity_type="other")
+            for i in range(1, cov.max_entities)
+        )
         after = replace(after, snapshot=replace(
             after.snapshot,
+            nearby_entities=(target,) + others,
             nearby_entities_coverage=replace(
                 cov, candidate_count=cov.max_entities + 1,
                 truncated=True,
