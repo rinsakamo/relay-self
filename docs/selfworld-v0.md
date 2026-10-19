@@ -1200,3 +1200,21 @@ Therefore **full W2 LocalCodex QUALIFICATION is pending local execution,
 and raw-stream attestation is blocked until a genuinely independent
 unchanged native stream is available**. W1 offline and previous DEV
 evidence MUST NOT be retrospectively relabelled as physical SCIENCE.
+
+## Stage W3 — pre-decode Node stdout original-bytes capture (DEV opt-in)
+
+See [`docs/selfworld-w3-native-capture.md`](selfworld-w3-native-capture.md).
+The opt-in original S49 model-free DEV flow creates an exclusive binary
+JSONL transcript at the **Node bridge stdout → Python readline** boundary,
+before decoder and S49 host frame filtering, plus an exclusive 0600 sealed
+receipt with full raw SHA256, session/seq order, ACK/EOF and exit status.
+Missing/untrusted/invalid frames remain `INCOMPLETE_UNQUALIFIED`, not
+forensically repaired. The existing default S49 route never enables it.
+
+This captures original Node stdout received by Python, NOT original
+Minecraft TCP network packets; Node bridge emission completeness and
+externally trusted archivist are not proven. W3 cannot retroactively
+qualify the original Stage R artifact, cannot create real S10 authority,
+cannot permit near-zombie WAIT, and cannot turn DEV into SCIENCE.
+No physical DEV is started by importing/testing this addition; a fresh
+World needs the separate explicit `--self-world-w3-raw-capture` DEV grant.
