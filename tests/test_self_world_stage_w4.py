@@ -323,3 +323,53 @@ def test_legacy_wire_has_no_orientation_and_is_not_w4_eligible():
             reading, expected_session="session-1",
             expected_request_id="w4-preregistered-probe-01", before_seq=2, slot=1,
         )
+
+
+def test_node_launch_flag_is_child_scoped_and_defaults_off(monkeypatch, tmp_path):
+    import asyncio
+
+    from test_mineflayer_process_session import FakeProcess, started_line
+    from adapters.mineflayer.process_session import MineflayerProcessSession
+    from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
+
+    bridge = tmp_path / "bridge.mjs"
+    bridge.write_text("// test fixture", encoding="utf-8")
+    captured = []
+
+    async def fake_launch(*_args, **kwargs):
+        captured.append(kwargs)
+        return FakeProcess([started_line()])
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_launch)
+    # Inherited opt-in MUST be removed from default S49/R/V launch.
+    monkeypatch.setenv("RELAYSELF_W4_NH1_ORIENTATION_V0", "1")
+
+    async def exercise():
+        await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(version="1.21.8"), bridge_path=bridge,
+        )
+        await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(version="1.21.8"), bridge_path=bridge,
+            w4_native_orientation_dev=True,
+        )
+
+    asyncio.run(exercise())
+    assert "RELAYSELF_W4_NH1_ORIENTATION_V0" not in captured[0]["env"]
+    assert captured[1]["env"]["RELAYSELF_W4_NH1_ORIENTATION_V0"] == "1"
+
+
+def test_node_orientation_opt_in_rejects_wrong_version_before_spawn(tmp_path):
+    import asyncio
+
+    from adapters.mineflayer.process_session import (
+        MineflayerProcessSession, MineflayerProcessStartError,
+    )
+    from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
+
+    bridge = tmp_path / "bridge.mjs"
+    bridge.write_text("// test fixture", encoding="utf-8")
+    with pytest.raises(MineflayerProcessStartError, match="pinned Minecraft"):
+        asyncio.run(MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(), bridge_path=bridge,
+            w4_native_orientation_dev=True,
+        ))
