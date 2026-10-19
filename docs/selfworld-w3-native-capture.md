@@ -94,3 +94,17 @@ Also rerun `tests/test_mineflayer_process_session.py`.
 
 Existing Stage R ZIP from W2 is historical and remains
 `RAW_NATIVE_SOURCE_NOT_ATTESTED`; W3 does not retroactively repair it.
+
+## One-shot disposable DEV pre-registration (GitHub Actions)
+
+Exactly one branch push with commit marker
+`[selfworld-stage-w3-capture-dev-once]` can invoke the gated
+`selfworld-stage-w3-capture-dev-once` job, **only** after all four FAST
+jobs succeed on that exact source HEAD, and only on first workflow
+attempt. It uses a fresh `/tmp/selfworld-stage-w3-<run>-1` and original
+model-free S49 DEV Action owner. Archive `native_report.json`, existing
+DEV receipt and original bytes/receipt even if the job fails. Stop without
+automatic retry after any incomplete evidence; new independent trial
+must not reuse any prior grant, run ID, evidence root or historical World.
+Physical capture remains DEV, and raw Node stdout does not establish
+original Minecraft wire-packet identity or a trusted external archivist.
