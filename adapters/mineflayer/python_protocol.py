@@ -226,7 +226,6 @@ class MineflayerSnapshot:
     inventory: tuple[MineflayerInventoryItem, ...]
     nearby_entities: tuple[MineflayerEntityFact, ...]
     nearby_entities_coverage: MineflayerNearbyEntitiesCoverage
-    native_orientation: MineflayerNativeOrientation | None = None
 
     def __post_init__(self) -> None:
         _require_non_negative_number("health", self.health)
@@ -263,9 +262,6 @@ class MineflayerSnapshot:
                 "snapshot nearby_entities_coverage must be "
                 "MineflayerNearbyEntitiesCoverage"
             )
-        if (self.native_orientation is not None
-                and not isinstance(self.native_orientation, MineflayerNativeOrientation)):
-            raise MineflayerAdapterProtocolError("optional native orientation type invalid")
         coverage = self.nearby_entities_coverage
         observed_count = len(self.nearby_entities)
         if observed_count > coverage.max_entities:
@@ -288,6 +284,18 @@ class MineflayerSnapshot:
             raise MineflayerAdapterProtocolError(
                 "non-truncated nearby entity coverage must include every candidate"
             )
+
+
+@dataclass(frozen=True, slots=True)
+class MineflayerOrientedSnapshot(MineflayerSnapshot):
+    """DEV-only opt-in schema. Legacy MineflayerSnapshot/asdict is unchanged."""
+
+    native_orientation: MineflayerNativeOrientation
+
+    def __post_init__(self) -> None:
+        MineflayerSnapshot.__post_init__(self)
+        if not isinstance(self.native_orientation, MineflayerNativeOrientation):
+            raise MineflayerAdapterProtocolError("W4 native orientation type required")
 
 
 @dataclass(frozen=True, slots=True)
@@ -869,7 +877,7 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
     nearby_entities_coverage = _decode_nearby_entities_coverage(
         payload["nearby_entities_coverage"]
     )
-    return MineflayerSnapshot(
+    fields = dict(
         health=_decoded_non_negative_number("health", payload["health"]),
         food=_decoded_non_negative_number("food", payload["food"]),
         food_saturation=_decoded_non_negative_number(
@@ -889,11 +897,12 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
         inventory=inventory,
         nearby_entities=nearby_entities,
         nearby_entities_coverage=nearby_entities_coverage,
-        native_orientation=(
-            _decode_native_orientation(payload["native_orientation"])
-            if "native_orientation" in payload else None
-        ),
     )
+    if "native_orientation" in payload:
+        return MineflayerOrientedSnapshot(
+            **fields, native_orientation=_decode_native_orientation(payload["native_orientation"]),
+        )
+    return MineflayerSnapshot(**fields)
 
 
 def _decode_native_orientation(value: object) -> MineflayerNativeOrientation:
