@@ -165,7 +165,8 @@ def test_v_valid_signature_not_sufficient_for_source_truth_or_live_grant(
 
 @pytest.mark.parametrize("change", (
     "no_future_probe", "foreign_future_probe", "stale_future_probe",
-    "missing_future_request", "hold_outcome", "foreign_direction",
+    "missing_future_request", "wrong_future_event", "future_event_after_probe",
+    "hold_outcome", "foreign_direction",
 ))
 def test_v_original_source_shape_denies_unsupported_grant_request(change):
     w = s_fixture._synthetic_targeted_witness(0.5, 0.0)
@@ -183,6 +184,13 @@ def test_v_original_source_shape_denies_unsupported_grant_request(change):
         probe = replace(probe, seq=after.seq)
     elif change == "missing_future_request":
         probe = replace(probe, request_id=None)
+    elif change == "wrong_future_event":
+        probe = replace(probe, request_id="forged-event-from-other-owner")
+    elif change == "future_event_after_probe":
+        probe = replace(
+            probe,
+            request_id=f"s49-actual:{w.original_probe.session_id}:event-{probe.seq+1}",
+        )
     elif change == "hold_outcome":
         w = s_fixture._synthetic_targeted_witness(0.0, 0.2)
     else:
