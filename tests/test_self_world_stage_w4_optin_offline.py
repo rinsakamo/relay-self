@@ -755,6 +755,8 @@ def test_s49_candidate_rejects_type_or_status_inconsistency(status, rc):
 @pytest.mark.parametrize("failure", (
     "exit_7", "shutdown_exception", "terminate_exception",
     "java_exit_8", "java_exception", "clean",
+    "w3_clean", "w3_missing_ack", "w3_foreign_session",
+    "w3_process_exit_7",
 ))
 def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, failure):
     """Proposed owner-only cleanup fix, exercised via fake Java/Node ports."""
@@ -812,6 +814,24 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
     class FakeNodeSession:
         started = NS(session_id=sid)
 
+        @property
+        def raw_capture_receipt(self):
+            return {
+                "status": "COMPLETE_NODE_STDOUT",
+                "session_id": (
+                    "foreign-session" if failure == "w3_foreign_session"
+                    else sid
+                ),
+                "eof_observed": True,
+                "shutdown_ack_count": (
+                    0 if failure == "w3_missing_ack" else 1
+                ),
+                "process_exit_code": (
+                    7 if failure == "w3_process_exit_7" else 0
+                ),
+                "capture_fault": None,
+            }
+
         async def shutdown(self, *, timeout_s):
             assert timeout_s == 10
             if failure in {"shutdown_exception", "terminate_exception"}:
@@ -823,7 +843,11 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
                 raise OSError("synthetic-node-terminate-exception")
             return 7
 
-    async def new_session():
+    async def new_session(**kwargs):
+        if failure.startswith("w3_"):
+            assert kwargs["raw_capture_root"] == tmp_path / "w3-fake"
+        else:
+            assert not kwargs
         return FakeNodeSession()
 
     monkeypatch.setattr(s49, "_new_session", new_session)
@@ -895,16 +919,24 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
 
     monkeypatch.setattr(s49, "NormalWorldL0", FakeL0)
     out = tmp_path / "original-s49-fake.json"
-    original_rc = asyncio.run(s49.qualify(out, tmp_path / "fake-java.log"))
+    original_rc = asyncio.run(s49.qualify(
+        out, tmp_path / "fake-java.log",
+        raw_capture_root=(tmp_path / "w3-fake" if failure.startswith("w3_") else None),
+    ))
     report = json.loads(out.read_text(encoding="utf-8"))
     assert len(report["decisions"]) == 3
     assert len(report["actual_native_actions"]) == 2
-    assert original_rc == (0 if failure == "clean" else 1)
-    assert report["status"] == ("PASS" if failure == "clean" else "FAIL")
+    is_success = failure in {"clean", "w3_clean"}
+    assert original_rc == (0 if is_success else 1)
+    assert report["status"] == ("PASS" if is_success else "FAIL")
     assert report["classification"] == (
         "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
-        if failure == "clean" else "S49_SESSION_NOT_QUALIFIED"
+        if is_success else "S49_SESSION_NOT_QUALIFIED"
     )
+    if failure.startswith("w3_"):
+        assert report["w3_node_stdout_capture"] == FakeNodeSession().raw_capture_receipt
+        if failure != "w3_clean":
+            assert "w3_node_stdout_capture" in report["error"]
     if failure == "exit_7":
         assert report["node_exit"] == 7
     elif failure in {"shutdown_exception", "terminate_exception"}:
