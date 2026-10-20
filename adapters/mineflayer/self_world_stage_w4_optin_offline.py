@@ -217,3 +217,117 @@ def seal_w4_s49_optin_offline(
         "s10_permission": False,
         "science_qualified": False,
     }
+
+
+def audit_original_s49_cleanup_claim_offline(*, report: dict) -> dict:
+    """Fail-closed readback of the *reported* S49 Node/Java cleanup.
+
+    Neither S49's earlier Action PASS nor an unverified W3 receipt can
+    authorize W4. This examines producer-supplied claims only: it is not
+    independent raw evidence, OS custody, or a replacement for original
+    S49 finalization. No subprocess, World or action can be launched here.
+    """
+    if type(report) is not dict:
+        raise W4PreworldBlocked("S49 cleanup claim must be a report object")
+    if (
+        report.get("milestone") != "S49"
+        or report.get("stage") != "CLOSED"
+        or report.get("status") != "PASS"
+        or type(report.get("node_exit")) is not int
+        or report["node_exit"] != 0
+        or type(report.get("server_exit")) is not int
+        or report["server_exit"] != 0
+        or any(key in report for key in (
+            "node_cleanup_error", "server_cleanup_error", "error",
+        ))
+        or not isinstance(report.get("session_id"), str)
+        or not report["session_id"]
+    ):
+        raise W4PreworldBlocked("S49 Action PASS does not attest clean Node/Java exit")
+
+    # Baseline original S49 need not capture Node shutdown ACK at all.
+    # Consequently an old baseline PASS is NEVER sufficient for a W4
+    # source/STOP gate. Even a well-formed W3 local receipt is not external.
+    capture = report.get("w3_node_stdout_capture")
+    if (
+        type(capture) is not dict
+        or capture.get("schema") != "relay-self-w3-node-stdout-v0"
+        or capture.get("scope") != "NODE_BRIDGE_STDOUT_JSONL_BYTES_NOT_MINECRAFT_TCP"
+        or capture.get("session_id") != report["session_id"]
+        or capture.get("status") != "COMPLETE_NODE_STDOUT"
+        or capture.get("eof_observed") is not True
+        or type(capture.get("shutdown_ack_count")) is not int
+        or capture["shutdown_ack_count"] != 1
+        or type(capture.get("process_exit_code")) is not int
+        or capture["process_exit_code"] != 0
+        or capture.get("seal_reason") != "clean_shutdown"
+        or capture.get("capture_fault") is not None
+        or any(capture.get(key) is not False for key in (
+            "minecraft_tcp_packets_attested",
+            "external_source_independence_attested",
+            "s10_commit_permitted", "physical_wait_permitted",
+            "science_qualified",
+        ))
+    ):
+        raise W4PreworldBlocked("S49 producer STOP/EOF claim is missing or incomplete")
+
+    return {
+        "schema": "W4_S49_CLEANUP_CLAIM_OFFLINE_V0",
+        "session_id": report["session_id"],
+        "node_exit_code": 0,
+        "server_exit_code": 0,
+        "producer_claimed_stop_ack": 1,
+        "evidence_scope": "UNTRUSTED_REPORT_CONTENT_ONLY",
+        "raw_stdout_independently_replayed": False,
+        "live_owner_attested": False,
+        "external_custody_qualified": False,
+        "physical_run_permitted": False,
+        "s10_permission": False,
+        "science_qualified": False,
+    }
+
+
+def review_w4_s49_phase_b_optin_offline(
+    *, selected_mode: str, explicit_opt_in: bool, closed_composition: dict,
+    cleanup_claim: dict,
+) -> dict:
+    """Review an explicit W4 *offline* branch; never select a live owner.
+
+    Deliberately accepts no session factory, shell command, native stream,
+    actual W4 grant, or callback. Physical opt-in is not wired or authorized.
+    """
+    if (
+        selected_mode != "W4_S49_SYNTHETIC_OFFLINE_REVIEW"
+        or explicit_opt_in is not True
+        or type(closed_composition) is not dict
+        or closed_composition.get("schema")
+           != "W4_S49_OPTIN_COMPOSITION_OFFLINE_CLOSED_V0"
+        or closed_composition.get("local_shutdown_completed") is not True
+        or type(closed_composition.get("node_exit_code")) is not int
+        or closed_composition["node_exit_code"] != 0
+        or closed_composition.get("evidence_scope") != "SYNTHETIC_DEV_ONLY"
+        or type(cleanup_claim) is not dict
+        or cleanup_claim.get("schema") != "W4_S49_CLEANUP_CLAIM_OFFLINE_V0"
+        or closed_composition.get("session_id") != cleanup_claim.get("session_id")
+        or any(obj.get(key) is not False
+               for obj in (closed_composition, cleanup_claim)
+               for key in (
+                   "live_owner_attested", "external_custody_qualified",
+                   "physical_run_permitted", "s10_permission",
+                   "science_qualified",
+               ))
+    ):
+        raise W4PreworldBlocked("W4 Phase B live opt-in is not authorized")
+
+    return {
+        "schema": "W4_S49_PHASE_B_OPTIN_OFFLINE_REVIEW_V0",
+        "selected_mode": selected_mode,
+        "scope": "SYNTHETIC_AND_UNTRUSTED_S49_REPORT_ONLY",
+        "original_s49_qualify_wired": False,
+        "live_original_owner_permitted": False,
+        "physical_run_permitted": False,
+        "external_custody_qualified": False,
+        "s10_permission": False,
+        "science_qualified": False,
+        "next_gate": "W4_EXTERNAL_TRUST_NO_GO_PREWORLD_BLOCKED",
+    }
