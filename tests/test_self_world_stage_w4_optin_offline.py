@@ -625,6 +625,7 @@ def _s49_cleanup_candidate_fixture():
         "milestone": "S49", "status": "PASS", "stage": "CLOSED",
         "session_id": "fixture-session", "node_exit": 0,
         "server_exit": 0,
+        "classification": "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED",
     }
 
 
@@ -636,6 +637,8 @@ def test_s49_finalization_candidate_clean_normal_s49_without_claimed_ack():
     )
     assert result["candidate_final_status"] == "PASS"
     assert result["candidate_rc"] == 0
+    assert result["candidate_final_classification"] == report["classification"]
+    assert result["candidate_classification_scope"] == "UNTRUSTED_PRODUCER_REPORT_ONLY"
     assert result["reported_cleanup_consistent"]
     assert not result["raw_stdout_independently_replayed"]
     assert not result["external_custody_qualified"]
@@ -657,6 +660,10 @@ def test_s49_finalization_candidate_clean_normal_s49_without_claimed_ack():
     ("premature_rc", "PREMATURE_PASS"),
     ("w3_capture_missing_ack", "W3_CAPTURE_INCOMPLETE"),
     ("w3_capture_wrong_session", "W3_CAPTURE_INCOMPLETE"),
+    ("qualified_label_missing", "PROVISIONAL_CLASSIFICATION_INVALID"),
+    ("unrecognized_label", "PROVISIONAL_CLASSIFICATION_INVALID"),
+    ("dev_label_without_stage_r", "PROVISIONAL_CLASSIFICATION_INVALID"),
+    ("stage_r_standard_label", "PROVISIONAL_CLASSIFICATION_INVALID"),
 ))
 def test_s49_finalization_candidate_vetoes_false_pass(attack, reason):
     report = _s49_cleanup_candidate_fixture()
@@ -681,6 +688,14 @@ def test_s49_finalization_candidate_vetoes_false_pass(attack, reason):
         report["stage"] = "UNATTENDED_NATIVE_EVENT_LOOP"
     elif attack == "premature_rc":
         rc = 1
+    elif attack == "qualified_label_missing":
+        report.pop("classification")
+    elif attack == "unrecognized_label":
+        report["classification"] = "PENDING_REAL_NATIVE_EVIDENCE"
+    elif attack == "dev_label_without_stage_r":
+        report["classification"] = "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
+    elif attack == "stage_r_standard_label":
+        report["stage_r_dev_enabled"] = True
     elif attack in {"w3_capture_missing_ack", "w3_capture_wrong_session"}:
         report["w3_node_stdout_capture"] = {
             "status": "COMPLETE_NODE_STDOUT",
@@ -702,6 +717,8 @@ def test_s49_finalization_candidate_vetoes_false_pass(attack, reason):
     assert report == initial
     assert result["candidate_final_status"] == "FAIL"
     assert result["candidate_rc"] == 1
+    assert result["candidate_final_classification"] == "S49_SESSION_NOT_QUALIFIED"
+    assert result["candidate_classification_scope"] == "UNTRUSTED_PRODUCER_REPORT_ONLY"
     assert reason in result["veto_reasons"]
     assert not result["physical_run_permitted"]
 
@@ -715,6 +732,7 @@ def test_s49_candidate_never_upgrades_prior_nonpass(status, rc):
     )
     assert result["candidate_final_status"] == status
     assert result["candidate_rc"] == rc
+    assert result["candidate_final_classification"] == "S49_SESSION_NOT_QUALIFIED"
     assert not result["reported_cleanup_consistent"]
 
 
@@ -881,5 +899,31 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
     )
     assert prospective["candidate_final_status"] == "FAIL"
     assert prospective["candidate_rc"] == 1
+    assert prospective["candidate_final_classification"] == "S49_SESSION_NOT_QUALIFIED"
+    assert report["classification"] == "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
     assert not prospective["reported_cleanup_consistent"]
     assert not prospective["physical_run_permitted"]
+
+
+def test_s49_finalization_candidate_stage_r_classification_is_dev_only():
+    report = _s49_cleanup_candidate_fixture()
+    report["stage_r_dev_enabled"] = True
+    report["classification"] = "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
+    verdict = review_s49_cleanup_finalization_candidate(
+        report=report, provisional_rc=0,
+    )
+    assert verdict["candidate_final_status"] == "PASS"
+    assert verdict["candidate_final_classification"] == report["classification"]
+    assert verdict["candidate_classification_scope"] == "UNTRUSTED_PRODUCER_REPORT_ONLY"
+    assert not verdict["science_qualified"]
+
+
+def test_s49_nonpass_with_stale_qualified_label_always_demotes():
+    report = _s49_cleanup_candidate_fixture()
+    report["status"] = "FAIL"
+    verdict = review_s49_cleanup_finalization_candidate(
+        report=report, provisional_rc=1,
+    )
+    assert report["classification"].endswith("_QUALIFIED")
+    assert verdict["candidate_final_classification"] == "S49_SESSION_NOT_QUALIFIED"
+    assert verdict["candidate_rc"] == 1

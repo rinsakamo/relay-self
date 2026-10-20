@@ -416,6 +416,8 @@ def review_s49_cleanup_finalization_candidate(
             "previous_status": previous_status,
             "candidate_final_status": previous_status,
             "candidate_rc": expected_rc,
+            "candidate_final_classification": "S49_SESSION_NOT_QUALIFIED",
+            "candidate_classification_scope": "UNTRUSTED_PRODUCER_REPORT_ONLY",
             "reported_cleanup_consistent": False,
             "veto_reasons": ["PRIOR_NONPASS"],
             "original_report_mutated": False,
@@ -427,6 +429,14 @@ def review_s49_cleanup_finalization_candidate(
         }
 
     vetoes: list[str] = []
+    classification = report.get("classification")
+    expected_class = (
+        "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
+        if report.get("stage_r_dev_enabled") is True
+        else "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
+    )
+    if classification != expected_class:
+        vetoes.append("PROVISIONAL_CLASSIFICATION_INVALID")
     if report.get("stage") != "CLOSED" or provisional_rc != 0:
         vetoes.append("PREMATURE_PASS")
     if type(report.get("node_exit")) is not int or report["node_exit"] != 0:
@@ -462,6 +472,10 @@ def review_s49_cleanup_finalization_candidate(
         "previous_status": previous_status,
         "candidate_final_status": "FAIL" if vetoes else "PASS",
         "candidate_rc": 1 if vetoes else 0,
+        "candidate_final_classification": (
+            "S49_SESSION_NOT_QUALIFIED" if vetoes else expected_class
+        ),
+        "candidate_classification_scope": "UNTRUSTED_PRODUCER_REPORT_ONLY",
         "reported_cleanup_consistent": not vetoes,
         "veto_reasons": vetoes,
         "original_report_mutated": False,

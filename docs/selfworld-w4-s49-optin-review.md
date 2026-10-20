@@ -314,3 +314,24 @@ Node/Java exitの**内部整合性**だけを示す。`cleanup_verified` とい�
 真正証明に読める名称は使用しない。候補出力の
 `raw_stdout_independently_replayed=false` /
 `external_custody_qualified=false` は常時固定である。
+
+
+## 13. S49 ownerへ引渡す分類と終了の原子性（2026-10-21）
+
+Original `qualify()` は cleanup前に status=PASS, rc=0 と同時に
+`classification=REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED`
+（Stage Rでは `DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2`）を設定する。
+このため単に終了status/rcをFAILに変えても、資格ラベルだけ残存する。
+W4の候補最終化判定は status、rc、**candidate_final_classification** を
+同時に計算する。Node/Java cleanup異常、分類欠損、通常/Stage Rラベル不一致、
+事前にFAIL/BLOCKEDのいずれかなら分類は
+`S49_SESSION_NOT_QUALIFIED` とする。真正に観測していない通常S49の
+STOP ACKは推定しない。入力reportは不変とし、候補分類も
+`UNTRUSTED_PRODUCER_REPORT_ONLY` に制限。
+
+**S49 ownerの原本修正に必要:** `finally` で両processの終了、cleanup異常、
+W3捕捉scopeを全回収し、その後で status/rc/classification の3要素を
+1つの最終判定としてレポート書出し。異常な `terminate()` の再例外が
+Java cleanup/原report書出しを妨害しないこと、旧FAIL/BLOCKEDを
+PASSへ昇格させないこと、3決定/2 ActionとStage Rの正常baselineは維持。
+これは**修正候補/テストだけ**で、original S49, 19 protected原本は未変更。
