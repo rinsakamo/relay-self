@@ -140,3 +140,52 @@ Phase Aの成功でも実`qualify()`のW4 leaseは依然として
 実OS級のexclusive custody、Minecraft TCP由来性、
 Java server tick真正性、global spent-once、独立外部署名が不十分な間は
 Minecraft Java/Nodeを起動せず、`QUALIFICATION/SCIENCE`へ昇格しない。
+
+
+## 8. Phase B 接続前監査 — 原 S49 順序と Phase-A close-out（2026-10-20）
+
+**現行原本照合:** `s49_normal_session_real_ci.qualify()` は先に
+`_fetch_official_server → _ready_server → s34._new_session()` を行い、
+同じ関数内で旧 `stage_world()` を起動しながら
+`host.run_session(NativeObservationOnly(session),...)` を開始する。
+`s34._new_session()` は通常の `MineflayerProcessSession.launch()` を呼び、
+`_await_spawn()` まで行う。W4 lease はこの経路に接続していない。
+この関数の元の3決定/2 Action の期待結果と W4 の向き依存2m配置は別の契約。
+
+**判定:** 「引数だけで opt-in」「session subclass を直接入替」
+「起動済み host に preworld probe を挿入」はいずれも **NO_GO**。
+PREWORLD ledger より前にステージング・host reader・Action issuer が動く経路、
+元の `stage_world()` と新しい W4 command window の同時実行、
+元プローブを過去に遡ってpreworldと呼び替えることを禁止。
+
+**Phase-A close-out の追加条件:** 合成 readback を生成しただけではなく、
+元sessionの正常 `QUIESCE → SHUTDOWN → CLOSED` と Node exit 0、
+元 lease の `OPEN(SHUTDOWN)` / `OPEN(CLOSED)`、発行済みreadの消滅と
+decode/deliver数一致、BLOCKED/ABORT/DENYなしを最後に別関数で照合する。
+`seal_w4_s49_optin_offline()` は外部の署名やログ原本とは無関係の
+**local synthetic close-out** であり、同名のプロセスに対する OS 排他証明ではない。
+途中 close-out receipt の再利用・汚染を拒否する負対照を増やす。
+exact HEAD CIが確定するまでこの追加資格を PASS と呼ばない。
+
+**Phase B の将来候補（実装・物理開始はこのレビューで許可しない）:**
+1. 元 S49 標準CLI・環境・default session・3イベント2Action・stage_r分岐を
+   完全不変更とし、既存 S owner内に **明示的かつ非既定の W4 DEV-only 分岐**を
+   別途設計する。新しい独立的 Action/World owner は作らない。
+2. 本物のWorldへアクセスできる入口を組み込む前に、W2実OS custody、
+   external native source/tick、独立issuer、原本の取得前固定と
+   global monotonic spend-onceが検証・認可されていることを別レビューで確認。
+   未充足なら実装はoffline fake portで停止する。
+3. 事前pose→ledger→W4 source-XYZ/yawで配置計画→単一Java collector
+   marker→新規native event/probe→原L0/原S16→STOP ACK/Node・Java
+   quiescence→最終receiptの順序を前向きに固定する。
+   `drain()` やmarker文字列は物理適用時刻・server tick署名でない。
+4. 原 S49 旧三イベントscripted試験と W4 単独ターゲット試験を分離し、
+   旧3/2の成功をW4 1/1へ、あるいは逆に再ラベルしない。
+   World外のfake stdoutが自動でpostworld frameを先読み供給する経路は不可。
+5. 取消・reader Task競合・shutdown未完了・変化したWorld epochは
+   fail-closedの新runとして証拠保持し、失敗したrunを補修して成功扱いしない。
+
+**現時点の gate:** `W4_S49_ORIGINAL_OWNER_LIVE_LEASE_UNDETERMINED` /
+`W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED` を維持。
+今回の新規 World 起動、物理Action、実OUTCOME、S10 update、
+QUALIFICATION/SCIENCE = すべて **0**。
