@@ -84,8 +84,14 @@ async def _one_original_owner(monkeypatch, tmp_path, *, broken=None, tamper=None
     # fixture construction from this already-running joint asyncio event loop.
     retained, _near, _far, _, _ = await asyncio.to_thread(s42._pair)
     pre, post, basic = _offline_lines()
-    action_id = "w4-offline-action-4"
-    incoming = basic + _action_frames(pre.session_id, post, action_id)
+    # This new fake source uses the ORIGINAL S49 event-seq naming rule:
+    # entity event 4 -> correlated request event-4 -> native move/binding 4.
+    # Never rewrite a previously captured original/frozen receipt.
+    post = replace(post, request_id=f"s49-actual:{pre.session_id}:event-4")
+    action_id = "s49-native-move-4"
+    incoming = basic[:5] + (_wire(post, 5),) + _action_frames(
+        pre.session_id, post, action_id,
+    )
     session, owner, native_process, _ = await launch(monkeypatch, lines=incoming)
     receipt, ledger = await preworld(session, owner, pre)
     commands = receipt.candidate_commands
@@ -196,7 +202,7 @@ async def _one_original_owner(monkeypatch, tmp_path, *, broken=None, tamper=None
                 expected_revision=1, native=native,
             )
             binding = ExecutionBinding(
-                "fixture-binding", "MOVE_AWAY", "escape-threat",
+                "s49-binding-4", "MOVE_AWAY", "escape-threat",
                 "fixture-skill", "escape-movement", action_id,
                 "MOVE_BACKWARD", Provenance("fixture-operator", "binding"),
             )
