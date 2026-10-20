@@ -6,8 +6,14 @@ or S10 path. Producer-provided evidence never becomes physical authority.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 from adapters.mineflayer.normal_action import NormalActionClosedReadback
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.self_world_stage_w3_capture import (
+    W3CaptureRejected,
+    audit_w3_sealed_stdout,
+)
 from adapters.mineflayer.self_world_stage_w4_lease import W4DevLeasedSession
 from adapters.mineflayer.self_world_stage_w4_preflight import W4PreworldBlocked
 from adapters.mineflayer.self_world_stage_w4_prehost import (
@@ -287,9 +293,53 @@ def audit_original_s49_cleanup_claim_offline(*, report: dict) -> dict:
     }
 
 
+
+def replay_original_s49_cleanup_stdout_offline(
+    *, report: dict, archive_root: Path,
+) -> dict:
+    """Replay local W3 raw frames, binding source files to the S49 report.
+
+    Existing independent decoder replay validates W3 raw bytes and receipt.
+    The producer and its local archive are NOT an independent external source.
+    No live Node, Java, TCP, Action, grant, or S10 API is accessible here.
+    """
+    claim = audit_original_s49_cleanup_claim_offline(report=report)
+    if (
+        not isinstance(archive_root, Path)
+        or not archive_root.is_absolute()
+        or not archive_root.is_dir()
+        or archive_root.is_symlink()
+        or any(parent.is_symlink() for parent in archive_root.parents)
+    ):
+        raise W4PreworldBlocked("W3 local replay requires an existing real directory")
+    try:
+        replayed = audit_w3_sealed_stdout(archive_root)
+    except (W3CaptureRejected, OSError, ValueError) as exc:
+        raise W4PreworldBlocked("W3 local raw receipt replay rejected") from exc
+    if (
+        replayed != report["w3_node_stdout_capture"]
+        or replayed["session_id"] != claim["session_id"]
+        or replayed["process_exit_code"] != claim["node_exit_code"]
+    ):
+        raise W4PreworldBlocked("W3 replay and original S49 report diverged")
+    return {
+        **claim,
+        "schema": "W4_S49_CLEANUP_RAW_REPLAY_OFFLINE_V0",
+        "raw_stdout_independently_replayed": True,
+        "evidence_scope": "LOCAL_W3_RAW_REPLAY_NOT_EXTERNAL_CUSTODY",
+        "node_stdout_sha256": replayed["stdout_sha256"],
+        "node_stdout_frame_count": replayed["frame_count"],
+        "live_owner_attested": False,
+        "external_custody_qualified": False,
+        "physical_run_permitted": False,
+        "s10_permission": False,
+        "science_qualified": False,
+    }
+
+
 def review_w4_s49_phase_b_optin_offline(
     *, selected_mode: str, explicit_opt_in: bool, closed_composition: dict,
-    cleanup_claim: dict,
+    report: dict, archive_root: Path,
 ) -> dict:
     """Review an explicit W4 *offline* branch; never select a live owner.
 
@@ -306,18 +356,23 @@ def review_w4_s49_phase_b_optin_offline(
         or type(closed_composition.get("node_exit_code")) is not int
         or closed_composition["node_exit_code"] != 0
         or closed_composition.get("evidence_scope") != "SYNTHETIC_DEV_ONLY"
-        or type(cleanup_claim) is not dict
-        or cleanup_claim.get("schema") != "W4_S49_CLEANUP_CLAIM_OFFLINE_V0"
-        or closed_composition.get("session_id") != cleanup_claim.get("session_id")
-        or any(obj.get(key) is not False
-               for obj in (closed_composition, cleanup_claim)
-               for key in (
-                   "live_owner_attested", "external_custody_qualified",
-                   "physical_run_permitted", "s10_permission",
-                   "science_qualified",
-               ))
+        or any(closed_composition.get(key) is not False for key in (
+            "live_owner_attested", "external_custody_qualified",
+            "physical_run_permitted", "s10_permission", "science_qualified",
+        ))
     ):
         raise W4PreworldBlocked("W4 Phase B live opt-in is not authorized")
+
+    # Re-run the actual on-disk decoder/replay at the review boundary:
+    # passing a caller-constructed "replayed" dict is insufficient.
+    cleanup_claim = replay_original_s49_cleanup_stdout_offline(
+        report=report, archive_root=archive_root,
+    )
+    if (
+        closed_composition["session_id"] != cleanup_claim["session_id"]
+        or cleanup_claim["raw_stdout_independently_replayed"] is not True
+    ):
+        raise W4PreworldBlocked("W4 offline review source identity mismatch")
 
     return {
         "schema": "W4_S49_PHASE_B_OPTIN_OFFLINE_REVIEW_V0",

@@ -35,6 +35,7 @@ from adapters.mineflayer.self_world_stage_w4_logtap import (
 from adapters.mineflayer.self_world_stage_w4_optin_offline import (
     audit_original_s49_cleanup_claim_offline,
     reconcile_w4_s49_optin_offline,
+    replay_original_s49_cleanup_stdout_offline,
     review_w4_s49_phase_b_optin_offline,
     seal_w4_s49_optin_offline,
 )
@@ -412,7 +413,7 @@ def test_final_seal_rejects_dirty_or_forged_shutdown(monkeypatch, tmp_path):
 
 def _w4_s49_report_claim():
     """Only untrusted local report contents; never an actual S49 evidence run."""
-    sid = "fixture-no-live-session"
+    sid = "session-1"
     return {
         "milestone": "S49", "stage": "CLOSED", "status": "PASS",
         "session_id": sid, "node_exit": 0, "server_exit": 0,
@@ -434,7 +435,7 @@ def _w4_s49_report_claim():
 def _w4_s49_closed_claim():
     return {
         "schema": "W4_S49_OPTIN_COMPOSITION_OFFLINE_CLOSED_V0",
-        "session_id": "fixture-no-live-session",
+        "session_id": "session-1",
         "local_shutdown_completed": True,
         "node_exit_code": 0,
         "evidence_scope": "SYNTHETIC_DEV_ONLY",
@@ -444,20 +445,87 @@ def _w4_s49_closed_claim():
     }
 
 
-def test_s49_cleanup_report_gate_is_only_a_report_claim():
+def _local_w3_synthetic_archive(tmp_path):
+    # No process launch: build exactly the W3 local capture format and
+    # let the existing independent W3 decoder verify saved raw JSONL.
+    from adapters.mineflayer.self_world_stage_w3_capture import W3RawNodeStdoutCapture
+    from test_self_world_stage_w3_capture import _fixture_lines
+
+    capture = W3RawNodeStdoutCapture(tmp_path)
+    for raw in _fixture_lines():
+        frame = json.loads(raw)
+        capture.append_before_decode(raw)
+        capture.after_decoder(
+            session_id=frame["session_id"], seq=frame["seq"],
+            message_type=frame["type"],
+        )
+    capture.mark_eof()
+    result = capture.seal(exit_code=0, reason="clean_shutdown")
+    assert result["status"] == "COMPLETE_NODE_STDOUT"
+    return result
+
+
+def test_s49_report_only_claim_cannot_enter_phase_b_offline_review(tmp_path):
     report = _w4_s49_report_claim()
     claim = audit_original_s49_cleanup_claim_offline(report=report)
     assert claim["producer_claimed_stop_ack"] == 1
     assert not claim["raw_stdout_independently_replayed"]
+    # No raw files: plausible producer report alone is not replay.
+    with pytest.raises(W4PreworldBlocked):
+        review_w4_s49_phase_b_optin_offline(
+            selected_mode="W4_S49_SYNTHETIC_OFFLINE_REVIEW",
+            explicit_opt_in=True, closed_composition=_w4_s49_closed_claim(),
+            report=report, archive_root=tmp_path,
+        )
+
+
+def test_w3_raw_file_and_s49_report_replayed_for_offline_only(tmp_path):
+    report = _w4_s49_report_claim()
+    report["w3_node_stdout_capture"] = _local_w3_synthetic_archive(tmp_path)
+    verified = replay_original_s49_cleanup_stdout_offline(
+        report=report, archive_root=tmp_path,
+    )
+    assert verified["raw_stdout_independently_replayed"]
+    assert verified["node_stdout_frame_count"] == 3
+    assert verified["evidence_scope"] == "LOCAL_W3_RAW_REPLAY_NOT_EXTERNAL_CUSTODY"
+    assert not verified["external_custody_qualified"]
     result = review_w4_s49_phase_b_optin_offline(
         selected_mode="W4_S49_SYNTHETIC_OFFLINE_REVIEW",
         explicit_opt_in=True, closed_composition=_w4_s49_closed_claim(),
-        cleanup_claim=claim,
+        report=report, archive_root=tmp_path,
     )
     assert not result["original_s49_qualify_wired"]
     assert not result["live_original_owner_permitted"]
     assert not result["physical_run_permitted"]
     assert result["next_gate"] == "W4_EXTERNAL_TRUST_NO_GO_PREWORLD_BLOCKED"
+
+
+@pytest.mark.parametrize("fault", (
+    "report_sha", "report_frame_count", "raw_extra_bytes",
+    "receipt_missing", "archive_symlink", "foreign_session",
+))
+def test_w3_raw_local_replay_rejects_producer_mismatch(tmp_path, fault):
+    report = _w4_s49_report_claim()
+    report["w3_node_stdout_capture"] = _local_w3_synthetic_archive(tmp_path)
+    root = tmp_path
+    if fault == "report_sha":
+        report["w3_node_stdout_capture"]["stdout_sha256"] = "0" * 64
+    elif fault == "report_frame_count":
+        report["w3_node_stdout_capture"]["frame_count"] = 99
+    elif fault == "raw_extra_bytes":
+        file = tmp_path / "w3-node-stdout.raw.jsonl"
+        file.write_bytes(file.read_bytes() + b"forged\\n")
+    elif fault == "receipt_missing":
+        (tmp_path / "w3-node-stdout-receipt.json").unlink()
+    elif fault == "archive_symlink":
+        root = tmp_path / "linked"
+        root.symlink_to(tmp_path, target_is_directory=True)
+    elif fault == "foreign_session":
+        report["session_id"] = "foreign"
+    with pytest.raises(W4PreworldBlocked):
+        replay_original_s49_cleanup_stdout_offline(
+            report=report, archive_root=root,
+        )
 
 
 @pytest.mark.parametrize("fault", (
@@ -520,13 +588,12 @@ def test_s49_cleanup_report_vetoes_all_unreliable_status_claims(fault):
     "open_session", "nonzero_exit", "fake_live_scope",
     "claim_fake_live_scope", "missing_claim",
 ))
-def test_phase_b_mode_gate_blocks_implicit_or_live_wiring(fault):
+def test_phase_b_mode_gate_blocks_implicit_or_live_wiring(tmp_path, fault):
     selected_mode = "W4_S49_SYNTHETIC_OFFLINE_REVIEW"
     explicit_opt_in = True
     closed = _w4_s49_closed_claim()
-    claim = audit_original_s49_cleanup_claim_offline(
-        report=_w4_s49_report_claim(),
-    )
+    report = _w4_s49_report_claim()
+    report["w3_node_stdout_capture"] = _local_w3_synthetic_archive(tmp_path)
     if fault == "default_mode":
         selected_mode = "S49"
     elif fault == "live_mode":
@@ -534,7 +601,7 @@ def test_phase_b_mode_gate_blocks_implicit_or_live_wiring(fault):
     elif fault == "no_optin":
         explicit_opt_in = False
     elif fault == "wrong_session":
-        claim["session_id"] = "foreign"
+        report["session_id"] = "foreign"
     elif fault == "open_session":
         closed["local_shutdown_completed"] = False
     elif fault == "nonzero_exit":
@@ -542,11 +609,11 @@ def test_phase_b_mode_gate_blocks_implicit_or_live_wiring(fault):
     elif fault == "fake_live_scope":
         closed["physical_run_permitted"] = True
     elif fault == "claim_fake_live_scope":
-        claim["external_custody_qualified"] = True
+        report["w3_node_stdout_capture"]["external_source_independence_attested"] = True
     elif fault == "missing_claim":
-        claim = {}
+        report.pop("w3_node_stdout_capture")
     with pytest.raises(W4PreworldBlocked):
         review_w4_s49_phase_b_optin_offline(
             selected_mode=selected_mode, explicit_opt_in=explicit_opt_in,
-            closed_composition=closed, cleanup_claim=claim,
+            closed_composition=closed, report=report, archive_root=tmp_path,
         )

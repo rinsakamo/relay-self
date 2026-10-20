@@ -243,3 +243,31 @@ W3 HOLD×2やStage Sの10cm基準は不変更。
 | Original S49 live opt-in + W4 XYZ/yaw staging | 未実装・未資格 |
 | 外部custody / TCP / Java tick / issuer / spend-once | NO_GO |
 | 実World / S10 / R/V / SCIENCE | 実行も昇格も禁止 |
+
+
+## 10. W3 raw stdout independent *local* replay join (offline only)
+
+The Phase-B review now requires the existing `audit_w3_sealed_stdout(root)`
+independently to decode the W3 raw JSONL file and reconcile it with the
+stored W3 receipt, and then compare **the entire stored receipt** against
+`S49.report["w3_node_stdout_capture"]`. The earlier report-only claim
+remains available for diagnosing failures but can no longer satisfy the
+explicit offline Phase-B review without the raw file. The caller passes
+`report` and `archive_root`, **not** an asserted `replayed=true` dict.
+
+This is independent *replay of local bytes*, **NOT independent source custody**.
+An attacker who controls both original raw bytes and the report may rewrite
+both: neither the fixture nor the replay proves Minecraft TCP authenticity,
+external OS identity, physical ordering, World causation, trustworthy timestamps,
+independent action authorization, or globally monotonic token spending.
+A symlinked archive root, missing receipt, changed bytes, divergent SHA256,
+frame count or session is rejected by the offline gate. The existing
+`audit_w3_sealed_stdout` is reused unmodified; the original S49/Node/R/V
+launch paths and 19 protected blobs remain byte-identical.
+
+Only `W4_S49_CLEANUP_RAW_REPLAY_OFFLINE_V0` is produced; scope
+`LOCAL_W3_RAW_REPLAY_NOT_EXTERNAL_CUSTODY` and all live/physical/S10/science
+permissions remain **false**. The original S49 `finally` bug still requires
+its own independent protected-owner review and prospective correction.
+**Neither a local raw replay nor exact-HEAD CI success clears
+`W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED`.**
