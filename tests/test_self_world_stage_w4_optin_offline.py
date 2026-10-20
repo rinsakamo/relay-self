@@ -726,3 +726,160 @@ def test_s49_candidate_rejects_type_or_status_inconsistency(status, rc):
         review_s49_cleanup_finalization_candidate(
             report=report, provisional_rc=rc,
         )
+
+
+@pytest.mark.parametrize("failure", ("exit_7", "shutdown_exception"))
+def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, failure):
+    """Original protected S49 false-PASS witness; no real Minecraft process."""
+    from types import SimpleNamespace as NS
+
+    import adapters.mineflayer.s49_normal_session_real_ci as s49
+    from adapters.mineflayer.execution import WorldConsequenceStatus
+    from relay_self.action import ActionState
+    from relay_self.world_conditioned_choice import WorldChoiceKind
+
+    sid = "fake-only-s49-native-session"
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    monkeypatch.setattr(s49, "_fetch_official_server", lambda path: {})
+    monkeypatch.setattr(s49, "_write_config", lambda root: None)
+    monkeypatch.setattr(s49, "_command", lambda *args: None)
+    monkeypatch.setattr(s49, "capture_native_action_evidence", lambda c: {})
+    monkeypatch.setattr(s49, "ExecutionBinding", lambda **kwargs: kwargs)
+    monkeypatch.setattr(s49, "resolve_execution_binding", lambda *a, **kw: object())
+    monkeypatch.setattr(s49, "_native_threat", lambda *a, **kw: NS(distance_m=2))
+    monkeypatch.setattr(
+        s49, "_native_epoch_two",
+        lambda *a, **kw: (
+            {"plan": NS(selected=NS(candidate_id="MOVE_AWAY")),
+             "admission": NS(status=NS(value="admitted")),
+             "control": object(), "route": object(),
+             "policies": [object(), object()]},
+            NS(cognition_requested=False),
+        ),
+    )
+    monkeypatch.setattr(
+        s49.s19, "_epoch_one",
+        lambda: (None, NS(new_state=NS(
+            target_id="risk_weight", revision=1, value=4,
+        )), None, None, None, None),
+    )
+
+    class FakeStdin:
+        async def drain(self):
+            return None
+
+    server = NS(stdin=FakeStdin(), returncode=0)
+
+    async def ready(*args):
+        return server, None, None
+
+    async def stop(*args):
+        server.returncode = 0
+
+    monkeypatch.setattr(s49, "_ready_server", ready)
+    monkeypatch.setattr(s49, "_shutdown_server", stop)
+
+    class FakeNodeSession:
+        started = NS(session_id=sid)
+
+        async def shutdown(self, *, timeout_s):
+            assert timeout_s == 10
+            if failure == "shutdown_exception":
+                raise OSError("synthetic-node-shutdown-exception")
+            return 7
+
+        async def terminate(self):
+            return 7
+
+    async def new_session():
+        return FakeNodeSession()
+
+    monkeypatch.setattr(s49, "_new_session", new_session)
+
+    async def read_probe(session, request_id):
+        seq = int(request_id.rsplit("-", 1)[1])
+        return NS(
+            seq=seq + 1, request_id=request_id,
+            snapshot=NS(nearby_entities=(NS(
+                name="zombie", entity_id=seq, distance=2.0,
+            ),)),
+        )
+
+    monkeypatch.setattr(s49, "_correlated_observe", read_probe)
+
+    class FakeExecutor:
+        def __init__(self, session, intent):
+            self.supervisor = NS(
+                open_actions=(),
+                get=lambda aid: NS(state=ActionState.OUTCOME),
+            )
+
+        async def execute(self, session, step, bound, probe, *auth):
+            return NS(
+                terminal=NS(state=ActionState.OUTCOME, action_id=step.action_request_id),
+                consequence=NS(
+                    status=WorldConsequenceStatus.EXECUTED,
+                    movement_distance=0.2, session_id=sid,
+                ),
+            )
+
+    monkeypatch.setattr(s49, "NormalSessionActionExecutor", FakeExecutor)
+
+    class FakeL0:
+        events = 3
+        action_requests = 2
+
+        def __init__(self, *a, **kw):
+            pass
+
+        async def run_session(
+            self, source, *, probe, grant, on_action_request, max_frames,
+        ):
+            assert max_frames == 320
+            result = []
+            for i, event_seq in enumerate((1, 3, 5)):
+                entity = NS(name="zombie", entity_id=event_seq, distance=2.0)
+                frame = NS(
+                    seq=event_seq, kind="entities",
+                    snapshot=NS(nearby_entities=(entity,)),
+                )
+                reading = await probe(frame)
+                choice = NS(
+                    selection=WorldChoiceKind.WAIT if i == 0
+                    else WorldChoiceKind.MOVE_AWAY,
+                    probe_seq=reading.seq, entity_id=event_seq,
+                    distance_m=10 if i == 0 else 2,
+                )
+                aid = f"s49-native-move-{event_seq}" if i else None
+                step = NS(
+                    event_seq=event_seq, choice=choice,
+                    asks_for_action=i != 0, action_request_id=aid,
+                )
+                if i:
+                    assert grant(choice, event_seq).action_id == aid
+                    await on_action_request(step)
+                result.append(step)
+            return tuple(result)
+
+    monkeypatch.setattr(s49, "NormalWorldL0", FakeL0)
+    out = tmp_path / "original-s49-fake.json"
+    original_rc = asyncio.run(s49.qualify(out, tmp_path / "fake-java.log"))
+    report = json.loads(out.read_text(encoding="utf-8"))
+    assert len(report["decisions"]) == 3
+    assert len(report["actual_native_actions"]) == 2
+    # Document the EXISTING defect; once original S49 is corrected, invert
+    # this expected witness to require original FAIL. Never call it qualified.
+    assert original_rc == 0
+    assert report["status"] == "PASS"
+    if failure == "exit_7":
+        assert report["node_exit"] == 7
+    else:
+        assert "synthetic-node-shutdown-exception" in report["node_cleanup_error"]
+    prospective = review_s49_cleanup_finalization_candidate(
+        report=report, provisional_rc=original_rc,
+    )
+    assert prospective["candidate_final_status"] == "FAIL"
+    assert prospective["candidate_rc"] == 1
+    assert not prospective["reported_cleanup_consistent"]
+    assert not prospective["physical_run_permitted"]
