@@ -37,7 +37,7 @@ World 行動・S16・学習の別 owner を設ける設計、元 S49 既定経�
 | execution read | `execution._receive_until()` | `await asyncio.wait_for(adapter.receive(), timeout)` を繰り返す。**毎回子 Task**が読める | 明示された S16 実行区間内で one-at-a-time read を委譲。Task ID 一個への生涯固定は不可 |
 | cleanup | `S49.finally` / `session.shutdown()` | staging cancel/await → Node shutdown（raw capture 時には EOF まで read）→ Java shutdown/collector | host/action read 完了・キャンセル閉鎖を確認してから shutdown reader に移譲。失敗後に再利用不可 |
 
-**重大な罠:** `asyncio.wait_for` は別 Task で coroutine を実行し得る。
+**既存オフライン試験との相違:** `W4OfflineS49Owner.run_host()` は `host.run_session()` を直接 `await` する。原 `S49.qualify()` の `asyncio.wait_for(host.run_session(...), timeout=95)` による Task 境界は再現していない。この差が、今回のオフラインPASSを元 S49 lease 資格へ昇格させられない具体的理由の一つである。\n\n**重大な罠:** `asyncio.wait_for` は別 Task で coroutine を実行し得る。
 単に `asyncio.current_task() == first_owner_task` とする lease では、
 正常な `host.run_session` や S16 `_receive_until` を拒否する。
 逆に、`ContextVar` が継承されるという理由だけで読取可能にすると、
