@@ -77,7 +77,9 @@ def _action_frames(session_id, post, action_id):
 async def _one_original_owner(monkeypatch, tmp_path, *, broken=None, tamper=None):
     import test_postmain_s42_world_contrast as s42
 
-    retained, _near, _far, _, _ = s42._pair()
+    # S42's deterministic S19 fixture internally runs asyncio.run(); isolate
+    # fixture construction from this already-running joint asyncio event loop.
+    retained, _near, _far, _, _ = await asyncio.to_thread(s42._pair)
     pre, post, basic = _offline_lines()
     action_id = "w4-offline-action-4"
     incoming = basic + _action_frames(pre.session_id, post, action_id)
