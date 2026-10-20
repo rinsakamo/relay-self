@@ -707,3 +707,27 @@ def test_process_exit_revokes_reader_before_buffered_stdout(monkeypatch, ending)
             s.receive()
         assert len(p.stdout.reads) == 4 and s.phase == 'BLOCKED'
     asyncio.run(run())
+
+
+def test_host_callback_cannot_suppress_cancellation_into_success(monkeypatch):
+    async def run():
+        s, owner, p, pre = await launch(monkeypatch)
+        op, _ = await host_ready(s, owner, pre)
+        entered = asyncio.Event()
+        async def suppressing_callback():
+            entered.set()
+            try:
+                await asyncio.Future()
+            except asyncio.CancelledError:
+                return 'ignored cancellation'
+        task = asyncio.create_task(s.delegate(owner=owner, operation=op,
+                                               invoke=suppressing_callback))
+        await entered.wait()
+        task.cancel()
+        with pytest.raises(W4PreworldBlocked):
+            await task
+        assert task.done() and s.phase == 'BLOCKED' and s._delegated == 0
+        assert len(p.stdout.reads) == 4
+        with pytest.raises(W4PreworldBlocked):
+            s.advance(owner=owner, phase='QUIESCE', binding='reuse')
+    asyncio.run(run())

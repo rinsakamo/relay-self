@@ -233,8 +233,8 @@ class W4DevLeasedSession(MineflayerProcessSession):
             self._actor = task
             try:
                 result = await invoke()
-                if self._blocked or self._pending is not None:
-                    self._deny("delegated operation incomplete/blocked")
+                if self._blocked or self._pending is not None or task.cancelling():
+                    self._deny("delegated operation incomplete/blocked/cancelled")
                 return result
             except BaseException:
                 self._blocked = True
