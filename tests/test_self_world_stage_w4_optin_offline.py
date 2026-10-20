@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import time
 from dataclasses import asdict, replace
 from types import SimpleNamespace
@@ -52,12 +53,22 @@ def _action_frames(session_id, post, action_id):
     def native(seq, dx):
         # Prepare typed orientation in the RAW synthetic native producer frame,
         # before the unchanged decoder/S16 sees it; never patch old outcomes.
+        position = replace(
+            post.snapshot.position, x=post.snapshot.position.x + dx,
+        )
+        original_target = post.snapshot.nearby_entities[0]
+        native_distance = math.dist(
+            (position.x, position.y, position.z),
+            (original_target.position.x, original_target.position.y,
+             original_target.position.z),
+        )
+        # Derive the native synthetic registry distance from *this* source
+        # frame's position+target, not from a previously captured result.
+        target = replace(original_target, distance=native_distance)
         oriented = replace(
             post, seq=seq, request_id=None,
             snapshot=replace(
-                post.snapshot, position=replace(
-                    post.snapshot.position, x=post.snapshot.position.x + dx,
-                ),
+                post.snapshot, position=position, nearby_entities=(target,),
             ),
         )
         record = json.loads(_wire(oriented, seq))
