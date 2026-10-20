@@ -36,8 +36,8 @@ from adapters.mineflayer.self_world_stage_w4_optin_offline import (
     audit_original_s49_cleanup_claim_offline,
     reconcile_w4_s49_optin_offline,
     replay_original_s49_cleanup_stdout_offline,
-    review_w4_s49_phase_b_optin_offline,
     review_s49_cleanup_finalization_candidate,
+    review_w4_s49_phase_b_optin_offline,
     seal_w4_s49_optin_offline,
 )
 from adapters.mineflayer.self_world_stage_w4_preflight import W4PreworldBlocked
@@ -636,7 +636,9 @@ def test_s49_finalization_candidate_clean_normal_s49_without_claimed_ack():
     )
     assert result["candidate_final_status"] == "PASS"
     assert result["candidate_rc"] == 0
-    assert result["cleanup_verified"]
+    assert result["reported_cleanup_consistent"]
+    assert not result["raw_stdout_independently_replayed"]
+    assert not result["external_custody_qualified"]
     assert report == original
     assert not result["original_qualify_modified"]
     assert not result["physical_run_permitted"]
@@ -713,7 +715,7 @@ def test_s49_candidate_never_upgrades_prior_nonpass(status, rc):
     )
     assert result["candidate_final_status"] == status
     assert result["candidate_rc"] == rc
-    assert not result["cleanup_verified"]
+    assert not result["reported_cleanup_consistent"]
 
 
 @pytest.mark.parametrize("status,rc", (("PASS", True), ("FAIL", 0), ("BLOCKED", 1)))

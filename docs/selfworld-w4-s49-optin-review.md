@@ -308,3 +308,9 @@ W3欠損／foreign、FAIL/BLOCKED非昇格を synthetic negativeで検査。
 original runner自体の修正資格・外部custody・live opt-inは未成立。
 
 `W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED` は不変。
+
+**用語補足:** `reported_cleanup_consistent` は、producer自己申告による
+Node/Java exitの**内部整合性**だけを示す。`cleanup_verified` という
+真正証明に読める名称は使用しない。候補出力の
+`raw_stdout_independently_replayed=false` /
+`external_custody_qualified=false` は常時固定である。
