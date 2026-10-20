@@ -33,7 +33,9 @@ from adapters.mineflayer.self_world_stage_w4_logtap import (
     wait_for_w4_collector_marker,
 )
 from adapters.mineflayer.self_world_stage_w4_optin_offline import (
+    audit_original_s49_cleanup_claim_offline,
     reconcile_w4_s49_optin_offline,
+    review_w4_s49_phase_b_optin_offline,
     seal_w4_s49_optin_offline,
 )
 from adapters.mineflayer.self_world_stage_w4_preflight import W4PreworldBlocked
@@ -406,3 +408,145 @@ def test_final_seal_rejects_dirty_or_forged_shutdown(monkeypatch, tmp_path):
         monkeypatch, tmp_path, close_tamper="all_close_negatives",
     ))
     assert sealed["local_shutdown_completed"]
+
+
+def _w4_s49_report_claim():
+    """Only untrusted local report contents; never an actual S49 evidence run."""
+    sid = "fixture-no-live-session"
+    return {
+        "milestone": "S49", "stage": "CLOSED", "status": "PASS",
+        "session_id": sid, "node_exit": 0, "server_exit": 0,
+        "w3_node_stdout_capture": {
+            "schema": "relay-self-w3-node-stdout-v0",
+            "scope": "NODE_BRIDGE_STDOUT_JSONL_BYTES_NOT_MINECRAFT_TCP",
+            "session_id": sid, "status": "COMPLETE_NODE_STDOUT",
+            "eof_observed": True, "shutdown_ack_count": 1,
+            "process_exit_code": 0, "seal_reason": "clean_shutdown",
+            "capture_fault": None,
+            "minecraft_tcp_packets_attested": False,
+            "external_source_independence_attested": False,
+            "s10_commit_permitted": False, "physical_wait_permitted": False,
+            "science_qualified": False,
+        },
+    }
+
+
+def _w4_s49_closed_claim():
+    return {
+        "schema": "W4_S49_OPTIN_COMPOSITION_OFFLINE_CLOSED_V0",
+        "session_id": "fixture-no-live-session",
+        "local_shutdown_completed": True,
+        "node_exit_code": 0,
+        "evidence_scope": "SYNTHETIC_DEV_ONLY",
+        "live_owner_attested": False, "external_custody_qualified": False,
+        "physical_run_permitted": False, "s10_permission": False,
+        "science_qualified": False,
+    }
+
+
+def test_s49_cleanup_report_gate_is_only_a_report_claim():
+    report = _w4_s49_report_claim()
+    claim = audit_original_s49_cleanup_claim_offline(report=report)
+    assert claim["producer_claimed_stop_ack"] == 1
+    assert not claim["raw_stdout_independently_replayed"]
+    result = review_w4_s49_phase_b_optin_offline(
+        selected_mode="W4_S49_SYNTHETIC_OFFLINE_REVIEW",
+        explicit_opt_in=True, closed_composition=_w4_s49_closed_claim(),
+        cleanup_claim=claim,
+    )
+    assert not result["original_s49_qualify_wired"]
+    assert not result["live_original_owner_permitted"]
+    assert not result["physical_run_permitted"]
+    assert result["next_gate"] == "W4_EXTERNAL_TRUST_NO_GO_PREWORLD_BLOCKED"
+
+
+@pytest.mark.parametrize("fault", (
+    "node_missing", "node_nonzero", "node_bool", "node_cleanup_error",
+    "server_missing", "server_nonzero", "server_cleanup_error",
+    "status_blocked", "stage_not_closed", "capture_missing",
+    "ack_missing", "ack_duplicate", "eof_missing", "bad_capture_status",
+    "capture_other_session", "capture_node_nonzero", "capture_error",
+    "fake_tcp_attested", "s10_promoted", "science_promoted",
+))
+def test_s49_cleanup_report_vetoes_all_unreliable_status_claims(fault):
+    report = _w4_s49_report_claim()
+    capture = report["w3_node_stdout_capture"]
+    if fault == "node_missing":
+        report.pop("node_exit")
+    elif fault == "node_nonzero":
+        report["node_exit"] = 1
+    elif fault == "node_bool":
+        report["node_exit"] = False
+    elif fault == "node_cleanup_error":
+        report["node_cleanup_error"] = "timeout"
+    elif fault == "server_missing":
+        report.pop("server_exit")
+    elif fault == "server_nonzero":
+        report["server_exit"] = -9
+    elif fault == "server_cleanup_error":
+        report["server_cleanup_error"] = "cancelled"
+    elif fault == "status_blocked":
+        report["status"] = "BLOCKED"
+    elif fault == "stage_not_closed":
+        report["stage"] = "UNATTENDED_NATIVE_EVENT_LOOP"
+    elif fault == "capture_missing":
+        report.pop("w3_node_stdout_capture")
+    elif fault == "ack_missing":
+        capture["shutdown_ack_count"] = 0
+    elif fault == "ack_duplicate":
+        capture["shutdown_ack_count"] = 2
+    elif fault == "eof_missing":
+        capture["eof_observed"] = False
+    elif fault == "bad_capture_status":
+        capture["status"] = "INCOMPLETE_UNQUALIFIED"
+    elif fault == "capture_other_session":
+        capture["session_id"] = "foreign"
+    elif fault == "capture_node_nonzero":
+        capture["process_exit_code"] = 1
+    elif fault == "capture_error":
+        capture["capture_fault"] = "bad_frame"
+    elif fault == "fake_tcp_attested":
+        capture["minecraft_tcp_packets_attested"] = True
+    elif fault == "s10_promoted":
+        capture["s10_commit_permitted"] = True
+    elif fault == "science_promoted":
+        capture["science_qualified"] = True
+    with pytest.raises(W4PreworldBlocked):
+        audit_original_s49_cleanup_claim_offline(report=report)
+
+
+@pytest.mark.parametrize("fault", (
+    "default_mode", "live_mode", "no_optin", "wrong_session",
+    "open_session", "nonzero_exit", "fake_live_scope",
+    "claim_fake_live_scope", "missing_claim",
+))
+def test_phase_b_mode_gate_blocks_implicit_or_live_wiring(fault):
+    selected_mode = "W4_S49_SYNTHETIC_OFFLINE_REVIEW"
+    explicit_opt_in = True
+    closed = _w4_s49_closed_claim()
+    claim = audit_original_s49_cleanup_claim_offline(
+        report=_w4_s49_report_claim(),
+    )
+    if fault == "default_mode":
+        selected_mode = "S49"
+    elif fault == "live_mode":
+        selected_mode = "W4_S49_LIVE"
+    elif fault == "no_optin":
+        explicit_opt_in = False
+    elif fault == "wrong_session":
+        claim["session_id"] = "foreign"
+    elif fault == "open_session":
+        closed["local_shutdown_completed"] = False
+    elif fault == "nonzero_exit":
+        closed["node_exit_code"] = 1
+    elif fault == "fake_live_scope":
+        closed["physical_run_permitted"] = True
+    elif fault == "claim_fake_live_scope":
+        claim["external_custody_qualified"] = True
+    elif fault == "missing_claim":
+        claim = {}
+    with pytest.raises(W4PreworldBlocked):
+        review_w4_s49_phase_b_optin_offline(
+            selected_mode=selected_mode, explicit_opt_in=explicit_opt_in,
+            closed_composition=closed, cleanup_claim=claim,
+        )
