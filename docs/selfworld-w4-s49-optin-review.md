@@ -218,7 +218,7 @@ OS外部保管、独立issuer、server tick署名の代替ではない。
 
 同じ新moduleの
 `review_w4_s49_phase_b_optin_offline(selected_mode,
-explicit_opt_in,closed_composition,cleanup_claim)` は、
+explicit_opt_in,closed_composition,report,archive_root)` は、
 `W4_S49_SYNTHETIC_OFFLINE_REVIEW` + 明示 true + 合成CLOSED seal
 + S49 cleanup claimの同一session一致だけを受け付ける、
 **process-launch / session factory / World writer / issuerを一切受け取らない
