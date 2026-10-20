@@ -392,3 +392,24 @@ class W4OfflineS49Owner:
             raise
         finally:
             self._reader_scope.reset(scope)
+
+
+def join_w4_prehost_s16_offline(before, closed, **window_options):
+    """Require closure-native target continuity before unchanged W4/S16 readback.
+
+    Stage S can legitimately return HOLD for missing target geometry. Such a
+    HOLD cannot qualify a prehost placement/closure identity join.
+    """
+    from adapters.mineflayer.normal_action import NormalActionClosedReadback
+    from adapters.mineflayer.self_world_stage_w4_window import join_w4_window_and_s16_offline
+
+    if type(closed) is not NormalActionClosedReadback:
+        raise W4PreworldBlocked("original S16 closure required")
+    frames = (closed.original_probe, closed.consequence.before_observation,
+              closed.consequence.after_observation)
+    targets = [tuple(e.entity_id for e in frame.snapshot.nearby_entities if e.name == "zombie")
+               for frame in frames]
+    if (len(targets[0]) != 1 or any(ids != targets[0] for ids in targets[1:])
+            or any(frame.session_id != before.session_id for frame in frames)):
+        raise W4PreworldBlocked("original S16 native target identity is not continuous")
+    return join_w4_window_and_s16_offline(before, closed, **window_options)

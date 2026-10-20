@@ -1301,3 +1301,11 @@ marker barrier, shutdown/cancellation protocol and independent native source
 qualification; physical execution needs separate authority. W3's two
 `+0.09595129995869334m` results stay HOLD; Stage S `delta_m=0.100m` and
 `min_motion_m=0.050m` remain fixed. R/V qualification is unchanged.
+
+The explicit target-substitution negative exposed an existing readback gap:
+Stage S returns HOLD when the original target is absent from consequence-native
+before/after, and the old W4 join did not treat that HOLD as an identity veto.
+`join_w4_prehost_s16_offline` therefore requires one identical zombie ID across
+the original probe and both native consequence observations before delegating
+to the unchanged window/S16/Stage S readback. The original HOLD definition and
+protected files are unchanged; missing identity now blocks this DEV join.

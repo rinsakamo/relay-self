@@ -387,10 +387,12 @@ def test_offline_original_server_collector_and_world_command_window(monkeypatch,
         marker_as_w4_window_event,
         wait_for_w4_collector_marker,
     )
-    from adapters.mineflayer.self_world_stage_w4_prehost import W4OfflineS49Owner
+    from adapters.mineflayer.self_world_stage_w4_prehost import (
+        W4OfflineS49Owner,
+        join_w4_prehost_s16_offline,
+    )
     from adapters.mineflayer.self_world_stage_w4_window import (
         W4WindowEvent,
-        join_w4_window_and_s16_offline,
         reconcile_w4_window_offline,
     )
 
@@ -482,7 +484,7 @@ def test_offline_original_server_collector_and_world_command_window(monkeypatch,
                              "dispatch_receipt", "cleanup_receipt")
             })
             synthetic_closed = replace(synthetic_closed, original_probe=after, consequence=shifted)
-            joined = join_w4_window_and_s16_offline(
+            joined = join_w4_prehost_s16_offline(
                 before, synthetic_closed, expected_session=pre.session_id,
                 before_request_id=pre.request_id, minimum_seq=3, slot=1,
                 one_time_token=TOKEN, events=tuple(events), seen_tokens=frozenset(),
@@ -537,3 +539,23 @@ def test_offline_handoff_requires_original_gate_marker(marker):
         assert len(seam.audit) == 4
 
     asyncio.run(run())
+
+
+def test_offline_window_rejects_original_s16_target_id_substitution():
+    from adapters.mineflayer.self_world_stage_w4_prehost import join_w4_prehost_s16_offline
+
+    before, _, _, kwargs, closed = _sample()
+    probe = closed.original_probe
+    target = probe.snapshot.nearby_entities[0]
+    corrupt_probe = replace(probe, snapshot=replace(
+        probe.snapshot, nearby_entities=(replace(target, entity_id=target.entity_id + 100),),
+    ))
+    with pytest.raises(W4PreworldBlocked):
+        join_w4_prehost_s16_offline(
+            before, replace(closed, original_probe=corrupt_probe),
+            expected_session=kwargs["expected_session"],
+            before_request_id=kwargs["before_request_id"],
+            minimum_seq=kwargs["minimum_seq"], slot=kwargs["slot"],
+            one_time_token=kwargs["one_time_token"], events=kwargs["events"],
+            seen_tokens=kwargs["seen_tokens"],
+        )
