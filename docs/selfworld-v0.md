@@ -1218,3 +1218,86 @@ qualify the original Stage R artifact, cannot create real S10 authority,
 cannot permit near-zombie WAIT, and cannot turn DEV into SCIENCE.
 No physical DEV is started by importing/testing this addition; a fresh
 World needs the separate explicit `--self-world-w3-raw-capture` DEV grant.
+
+## W4 PREHOST original-component DEV integration (2026-10-20)
+
+Scope: offline JSONL/fake transport only; `W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED`
+remains mandatory. The original S49 runner, Action issuer/executor, S16, Stage S,
+S10 authority and all physical launch defaults are unchanged.
+
+### Source ownership audit
+
+- `_new_session()` in `s34_native_world_cognition_ci.py` awaits
+  `MineflayerProcessSession.launch()` (which consumes `adapter_started`), then
+  `_await_spawn()` before returning. Spawn is an observed frame, not a sleep.
+- S49 constructs `NormalWorldL0` and `NormalSessionActionExecutor` once. Its
+  staging task changes only World entities. It is scheduled immediately before
+  `host.run_session(NativeObservationOnly(session), ...)`. This is concurrent
+  scheduling, not proof of placement completion.
+- The foreground host calls its observation source, then awaits `reprobe()`
+  only after an entity stimulus. That callback and the executor share the
+  original session; the original sequential callback contract supplies their
+  ordering. `_correlated_observe()` consumes interleaved frames without
+  returning them. It cannot be substituted for a loss-accounted preworld read.
+- S31A `_ready_server()` owns the only Java stdout `collect()` task. W4 logtap
+  tails that task's flushed file; it never reads Java stdout. The local marker
+  establishes content/order only, not an independent World tick or authenticity.
+- S49 cancels/awaits staging, then shuts down/terminates the session, then
+  shuts down the server/collector. Session shutdown itself can receive until
+  EOF. A future live integration must finish/revoke the host reader before
+  shutdown; this offline seam makes no live cleanup qualification claim.
+- Original `_new_session()` does not opt into W4 orientation. Original runner
+  startup remains unchanged. No W4 live launcher or real command entry is added.
+
+### Implemented seam and evidence boundaries
+
+`W4OfflineS49Owner` constructs the existing `MineflayerProcessSession` directly
+around internally created fixture pipes, sharing its decoder and observe writer.
+It accepts only a tuple of JSONL bytes, not a live session, process, collector,
+executor or issuer. Startup uses the original spawn waiter. A context-local
+receive scope, one in-flight read, one calling task/owner and terminal phases
+separate startup, prehost, evidence transfer, staging and original host access.
+An unauthorized/competing read poisons the lease. Cancellation, timeout, EOF and
+protocol rejection prevent reuse. Public phase metadata cannot grant a reader
+scope. The original process session remains a private implementation detail;
+this is a cooperative in-process ownership contract, not protection against
+arbitrary Python code accessing private attributes.
+
+Prehost delegates to the existing bridge/port/handoff gate. Its ledger includes
+all accepted preworld frames (including the correlated source), while
+`buffered_frames` contains the unsolicited evidence only. Contiguous seq,
+session and request checks fail closed. Raw consumed fixture bytes (including
+malformed input/EOF) and decoded `(phase, frame)` records are separate from
+frames actually returned by the original native filter to the host. Preworld
+frames are never re-enqueued into the postworld stream. Ledger transfer is once
+only and requires the capturing owner task. This ledger grants no live source
+qualification or physical permission.
+
+Tests execute the original `NativeObservationOnly`, `_correlated_observe()` and
+`NormalWorldL0.run_session()` WAIT path. MOVE cannot execute: the seam installs
+no grant/executor and its Action callback rejects. The placement-window test
+also executes the unmodified `_ready_server()` collector closure and `_command()`
+with a patched subprocess factory that always returns fake pipes. A real
+collector cursor/marker and W4 window reconcile the pre/post decoded probes,
+command bytes hashes and zombie identity/XYZ. A NEW synthetic S16 fixture is
+aligned to this test's sequence namespace and read through the unchanged
+S16/Stage S join; it remains HOLD and is not a physical S16 creation. No frozen
+receipt is edited or substituted.
+
+The handoff also requires the bridge's original handoff gate to accept a typed
+collector marker. Unit tests supply explicit synthetic markers; the complete
+collector test obtains it through the original collector. These checks do not
+independently attest a real server or authorize a live integration. Existing
+owner/window/logtap negative controls remain required alongside these tests.
+
+### Qualification ceiling and next boundary
+
+This engineering result establishes reuse of original implementation components
+under offline transports. It does not establish the live `_new_session()`
+orientation path, external custody, independent marker truth, World tick,
+physical yaw, physical Action/S16, or S10 permission. The next minimal step is
+review of an owner-local DEV launch proposal and its explicit reader lease,
+marker barrier, shutdown/cancellation protocol and independent native source
+qualification; physical execution needs separate authority. W3's two
+`+0.09595129995869334m` results stay HOLD; Stage S `delta_m=0.100m` and
+`min_motion_m=0.050m` remain fixed. R/V qualification is unchanged.
