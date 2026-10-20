@@ -254,7 +254,8 @@ class W4DevLeasedSession(MineflayerProcessSession):
         issuer = asyncio.current_task()
         if (self._blocked or self._handoff_pending is not None or issuer is not self._actor
                 or self.phase not in {"STARTUP", "PREWORLD", "HOST", "ACTION_READ", "SHUTDOWN"}
-                or self._pending is not None or self._active):
+                or self._pending is not None or self._active
+                or (self.process_returncode is not None and self.phase != "SHUTDOWN")):
             self._deny("unauthorized or competing receive")
         op = self._operation
         ticket = object()
@@ -326,7 +327,8 @@ class W4DevLeasedSession(MineflayerProcessSession):
         command = payload.get("effect") if payload.get("type") == "effect" else payload.get("type")
         if command == "observe":
             if self.phase not in {"PREWORLD", "HOST", "ACTION_READ"} or (
-                self.phase != "ACTION_READ" and payload.get("request_id") != self._probe
+                (self.phase != "ACTION_READ" and payload.get("request_id") != self._probe)
+                or (self.phase == "ACTION_READ" and payload.get("request_id") is not None)
             ):
                 self._deny("unbound probe send")
         elif command == "shutdown":
@@ -353,6 +355,11 @@ class W4DevLeasedSession(MineflayerProcessSession):
             self._blocked = True
             self._record("ABORT", detail="send failure")
             raise
+
+    async def terminate(self):
+        self._blocked = True
+        self._record("ABORT", detail="process termination")
+        return await super().terminate()
 
     async def shutdown(self, *, timeout_s=5.0):
         self._check(self._owner)

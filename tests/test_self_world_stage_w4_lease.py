@@ -692,3 +692,18 @@ def test_closed_phase_cannot_replace_original_process_shutdown(monkeypatch):
         assert p.returncode is None and p.wait_count == 0
         assert s.phase == 'BLOCKED'
     asyncio.run(run())
+
+
+@pytest.mark.parametrize('ending', ('terminate', 'unexpected_exit'))
+def test_process_exit_revokes_reader_before_buffered_stdout(monkeypatch, ending):
+    async def run():
+        s, owner, p, pre = await launch(monkeypatch)
+        await host_ready(s, owner, pre)
+        if ending == 'terminate':
+            assert await s.terminate() == -15
+        else:
+            p.returncode = 1
+        with pytest.raises(W4PreworldBlocked):
+            s.receive()
+        assert len(p.stdout.reads) == 4 and s.phase == 'BLOCKED'
+    asyncio.run(run())

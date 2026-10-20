@@ -84,7 +84,7 @@ before QUIESCE. Cancel/timeout, malformed stream, foreign terminal frame or
 unexpected EOF permanently latch BLOCKED. Tests include a transport that ignores
 cancellation: it cannot hand off while unfinished, and cannot deliver after it
 finally returns. No stale task or old epoch is revived. BLOCKED has no recovery
-transition; inherited terminate remains available for process cleanup.
+transition; terminate delegates to original process cleanup and also latches BLOCKED.
 
 Without raw capture, DEV shutdown calls original `shutdown()`. The base capture
 shutdown contains a private `until_eof()` coroutine with no delegation seam, so
