@@ -34,6 +34,7 @@ from adapters.mineflayer.self_world_stage_w4_logtap import (
 )
 from adapters.mineflayer.self_world_stage_w4_optin_offline import (
     reconcile_w4_s49_optin_offline,
+    seal_w4_s49_optin_offline,
 )
 from adapters.mineflayer.self_world_stage_w4_preflight import W4PreworldBlocked
 from adapters.mineflayer.self_world_stage_w4_window import W4WindowEvent
@@ -88,7 +89,9 @@ def _action_frames(session_id, post, action_id):
     )
 
 
-async def _one_original_owner(monkeypatch, tmp_path, *, broken=None, tamper=None):
+async def _one_original_owner(
+    monkeypatch, tmp_path, *, broken=None, tamper=None, close_tamper=None,
+):
     import test_postmain_s42_world_contrast as s42
 
     # S42's deterministic S19 fixture internally runs asyncio.run(); isolate
@@ -313,11 +316,31 @@ async def _one_original_owner(monkeypatch, tmp_path, *, broken=None, tamper=None
         assert not result["physical_run_permitted"]
         assert not result["s10_permission"]
         assert native_process.stdout.reads == list(incoming)
+        # A composition readback before clean shutdown is NOT a final seal.
+        with pytest.raises(W4PreworldBlocked):
+            seal_w4_s49_optin_offline(session=session, composition=result)
         session.advance(owner=owner, phase="QUIESCE", binding="stop-host")
         session.advance(owner=owner, phase="SHUTDOWN", binding="exit")
         assert await session.shutdown() == 0
         assert session.phase == "CLOSED"
-        return result
+        if close_tamper == "node_nonzero":
+            native_process.returncode = 1
+        elif close_tamper == "false_shutdown":
+            session._shutdown_completed = False
+        elif close_tamper == "pending_read":
+            session._pending = object()
+        elif close_tamper == "audit_abort":
+            session._record("ABORT", detail="synthetic-after-close-mutation")
+        elif close_tamper == "promoted_scope":
+            result["live_owner_attested"] = True
+        elif close_tamper == "wrong_session":
+            result["session_id"] = "foreign"
+        sealed = seal_w4_s49_optin_offline(session=session, composition=result)
+        assert sealed["local_shutdown_completed"]
+        assert sealed["node_exit_code"] == 0
+        assert not sealed["live_owner_attested"]
+        assert not sealed["physical_run_permitted"]
+        return sealed
     finally:
         stream.feed_eof()
         await collector
@@ -350,3 +373,16 @@ def test_joint_readback_vetoes_independent_witness_substitution(monkeypatch, tmp
     # only at joint readback. No unqualified IO before the rejection.
     with pytest.raises(W4PreworldBlocked):
         asyncio.run(_one_original_owner(monkeypatch, tmp_path, tamper=attack))
+
+
+@pytest.mark.parametrize("attack", (
+    "node_nonzero", "false_shutdown", "pending_read", "audit_abort",
+    "promoted_scope", "wrong_session",
+))
+def test_final_seal_rejects_dirty_or_forged_shutdown(
+    monkeypatch, tmp_path, attack,
+):
+    with pytest.raises(W4PreworldBlocked):
+        asyncio.run(_one_original_owner(
+            monkeypatch, tmp_path, close_tamper=attack,
+        ))
