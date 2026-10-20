@@ -76,7 +76,7 @@ def _action_frames(session_id, post, action_id):
     )
 
 
-async def _one_original_owner(monkeypatch, tmp_path, *, broken=None):
+async def _one_original_owner(monkeypatch, tmp_path, *, broken=None, tamper=None):
     import test_postmain_s42_world_contrast as s42
 
     retained, _near, _far, _, _ = s42._pair()
@@ -159,7 +159,7 @@ async def _one_original_owner(monkeypatch, tmp_path, *, broken=None):
         port = W4DevNativeObservationPort(session, owner=owner)
         holder = []
 
-        async def probe(_event):
+        def probe(_event):
             async def original_correlated():
                 after = await _correlated_observe(session, post.request_id)
                 session._bridge._handoff.after_world(
@@ -169,7 +169,7 @@ async def _one_original_owner(monkeypatch, tmp_path, *, broken=None):
                 record("native_after_probe", after.provenance.reference)
                 return after
             session.bind_probe(owner=owner, request_id=post.request_id)
-            return await session.delegate(
+            return session.delegate(
                 owner=owner, operation=session._operation,
                 invoke=original_correlated,
             )
@@ -248,13 +248,31 @@ async def _one_original_owner(monkeypatch, tmp_path, *, broken=None):
             (commands.summon_command + "\n").encode(),
             (commands.confirm_command + "\n").encode(),
         ]
+        checked_ledger = ledger
+        checked_events = tuple(events)
+        checked_closure = closures[0]
+        if tamper == "foreign_ledger":
+            checked_ledger = replace(ledger, session_id="foreign")
+        elif tamper == "missing_marker":
+            session._marker = False
+        elif tamper == "source_rewrite":
+            checked_events = (*events[:-1], replace(events[-1], content="forged"))
+        elif tamper == "missing_closure":
+            checked_closure = None
+        elif tamper == "pending_read":
+            session._pending = object()
+        elif tamper == "identity_mismatch":
+            checked_closure = replace(
+                checked_closure,
+                original_probe=replace(holder[-1], request_id="foreign"),
+            )
         result = reconcile_w4_s49_optin_offline(
-            session=session, ledger=ledger, before=before, after=holder[-1],
-            host_trace=trace, events=tuple(events),
+            session=session, ledger=checked_ledger, before=before,
+            after=holder[-1], host_trace=trace, events=checked_events,
             expected_session=pre.session_id,
             before_request_id=pre.request_id,
             after_request_id=post.request_id,
-            slot=1, one_time_token=TOKEN, original_closed=closures[0],
+            slot=1, one_time_token=TOKEN, original_closed=checked_closure,
         )
         assert result["original_s16_closed"]
         assert result["window"]["observed_zombie_id"] == trace[0].choice.entity_id
@@ -293,14 +311,10 @@ def test_same_fake_collector_cannot_supply_original_action_grant(monkeypatch, tm
 
 @pytest.mark.parametrize("attack", (
     "foreign_ledger", "missing_marker", "source_rewrite", "missing_closure",
-    "not_quiesced",
+    "pending_read", "identity_mismatch",
 ))
-def test_joint_readback_vetoes_independent_witness_substitution(attack):
-    # Fails before performing any I/O or constructing a real process.
-    with pytest.raises((W4PreworldBlocked, TypeError, AttributeError)):
-        reconcile_w4_s49_optin_offline(**{
-            "session": None, "ledger": None, "before": None, "after": None,
-            "host_trace": (), "events": (), "expected_session": "fixture",
-            "before_request_id": "pre", "after_request_id": "post",
-            "slot": 1, "one_time_token": TOKEN, "original_closed": None,
-        })
+def test_joint_readback_vetoes_independent_witness_substitution(monkeypatch, tmp_path, attack):
+    # Full decoder/collector/host/S16 path first; tamper one distinct seal
+    # only at joint readback. No unqualified IO before the rejection.
+    with pytest.raises(W4PreworldBlocked):
+        asyncio.run(_one_original_owner(monkeypatch, tmp_path, tamper=attack))
