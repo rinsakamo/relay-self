@@ -189,3 +189,57 @@ exact HEAD CIが確定するまでこの追加資格を PASS と呼ばない。
 `W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED` を維持。
 今回の新規 World 起動、物理Action、実OUTCOME、S10 update、
 QUALIFICATION/SCIENCE = すべて **0**。
+
+
+## 9. Original S49 cleanup report の W4 読取ゲート（offline-only）
+
+S49 原 `qualify()` は、World Action 3決定/2件の後に `PASS` を先に
+記録し、`finally` でNode・Javaを閉じる。標準実行 (`raw_capture_root=None`) の
+Node `shutdown()` が非0を返した場合や `node_cleanup_error` が発生した
+場合でも、その事実が最終 `status` / `rc` に反映されない経路がある。
+この実装のPASSを外側のW4入口が無条件に再利用することは禁止する。
+
+今回追加の `audit_original_s49_cleanup_claim_offline(report=...)` は
+**producer自身が記録した report の内容のみ**を検査する純関数。
+少なくとも、`S49/CLOSED/PASS`、厳密な int 型 `node_exit=0` /
+`server_exit=0`、cleanup error keyなし、同一sessionの
+`w3_node_stdout_capture` が `COMPLETE_NODE_STDOUT`、
+EOF true、shutdown ACK ちょうど1、Node exit 0、clean seal、
+過剰なTCP/source/S10/science資格の主張なしを要求する。
+いずれか欠損/不整合なら `W4PreworldBlocked`。
+旧通常S49のreportはACKを別捕捉していないので、W4には**適格化しない**。
+
+返るものは `UNTRUSTED_REPORT_CONTENT_ONLY` であり、
+`raw_stdout_independently_replayed=false`、
+`physical_run_permitted=false`。偽造されたJSONにも整合PASSし得るため、
+**Node raw stdout原本と記録receiptの独立 replay（既存
+`audit_w3_sealed_stdout`）は別の必須工程**。そのreplay自体も
+OS外部保管、独立issuer、server tick署名の代替ではない。
+
+同じ新moduleの
+`review_w4_s49_phase_b_optin_offline(selected_mode,
+explicit_opt_in,closed_composition,cleanup_claim)` は、
+`W4_S49_SYNTHETIC_OFFLINE_REVIEW` + 明示 true + 合成CLOSED seal
++ S49 cleanup claimの同一session一致だけを受け付ける、
+**process-launch / session factory / World writer / issuerを一切受け取らない
+レビュー入口**。返却の
+`original_s49_qualify_wired=false` /
+`live_original_owner_permitted=false` は常に不変。
+標準S49、live W4、暗黙選択、foreign session、未終了、非0 exit、
+勝手な物理資格主張は拒否する。
+
+**この実装は原S49の最終statusを修正したわけではない**。
+原status最終化の不備そのものは、保護19原本の別レビュー対象。
+既定起動・既存stage_world・R/V、S16/S17/S10、
+W3 HOLD×2やStage Sの10cm基準は不変更。
+
+必要な判定を明確に分離する:
+
+| 層 | 資格 |
+| --- | --- |
+| Phase A synthetic compose / close-out | exact HEAD CI成功ならOFFLINEのみ |
+| S49 producer cleanup report | 不一致をrejectする内部整合読取のみ |
+| W3 raw stdout independent replay | 別の原本照合が必要 |
+| Original S49 live opt-in + W4 XYZ/yaw staging | 未実装・未資格 |
+| 外部custody / TCP / Java tick / issuer / spend-once | NO_GO |
+| 実World / S10 / R/V / SCIENCE | 実行も昇格も禁止 |
