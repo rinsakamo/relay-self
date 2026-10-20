@@ -335,3 +335,15 @@ W3捕捉scopeを全回収し、その後で status/rc/classification の3要素�
 Java cleanup/原report書出しを妨害しないこと、旧FAIL/BLOCKEDを
 PASSへ昇格させないこと、3決定/2 ActionとStage Rの正常baselineは維持。
 これは**修正候補/テストだけ**で、original S49, 19 protected原本は未変更。
+
+
+## 14. Phase B オフラインレビュー入口の分類整合ゲート
+
+`review_w4_s49_phase_b_optin_offline()` は、保存済み W3 raw の
+独立ローカル replay の前に原S49 report の暫定 `classification` を
+`review_s49_cleanup_finalization_candidate(provisional_rc=0)` で検査し、
+候補が PASS かつ分類が元のreportと一致し、producer cleanup 内部整合が
+成立する場合のみ W3 replay を進める。
+未定義ラベル、通常/Stage Rの取り違え、cleanup失敗と旧資格ラベルの残存は
+**offline reviewでも拒否**する。これでも original S49 の実装修正、
+外部 source custody の取得、実World資格、S10やSCIENCE認可はしていない。

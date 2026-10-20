@@ -418,6 +418,7 @@ def _w4_s49_report_claim():
     return {
         "milestone": "S49", "stage": "CLOSED", "status": "PASS",
         "session_id": sid, "node_exit": 0, "server_exit": 0,
+        "classification": "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED",
         "w3_node_stdout_capture": {
             "schema": "relay-self-w3-node-stdout-v0",
             "scope": "NODE_BRIDGE_STDOUT_JSONL_BYTES_NOT_MINECRAFT_TCP",
@@ -587,7 +588,8 @@ def test_s49_cleanup_report_vetoes_all_unreliable_status_claims(fault):
 @pytest.mark.parametrize("fault", (
     "default_mode", "live_mode", "no_optin", "wrong_session",
     "open_session", "nonzero_exit", "fake_live_scope",
-    "claim_fake_live_scope", "missing_claim",
+    "claim_fake_live_scope", "missing_claim", "wrong_classification",
+    "unbound_stage_r_classification",
 ))
 def test_phase_b_mode_gate_blocks_implicit_or_live_wiring(tmp_path, fault):
     selected_mode = "W4_S49_SYNTHETIC_OFFLINE_REVIEW"
@@ -613,6 +615,10 @@ def test_phase_b_mode_gate_blocks_implicit_or_live_wiring(tmp_path, fault):
         report["w3_node_stdout_capture"]["external_source_independence_attested"] = True
     elif fault == "missing_claim":
         report.pop("w3_node_stdout_capture")
+    elif fault == "wrong_classification":
+        report["classification"] = "PENDING_REAL_NATIVE_EVIDENCE"
+    elif fault == "unbound_stage_r_classification":
+        report["classification"] = "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
     with pytest.raises(W4PreworldBlocked):
         review_w4_s49_phase_b_optin_offline(
             selected_mode=selected_mode, explicit_opt_in=explicit_opt_in,

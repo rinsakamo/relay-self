@@ -363,6 +363,20 @@ def review_w4_s49_phase_b_optin_offline(
     ):
         raise W4PreworldBlocked("W4 Phase B live opt-in is not authorized")
 
+    # The S49 producer's provisional success CLASSIFICATION cannot be
+    # consumed without the same closeout decision as status and exit code.
+    # This is still producer report consistency, not external attestation.
+    classification = review_s49_cleanup_finalization_candidate(
+        report=report, provisional_rc=0,
+    )
+    if (
+        classification["candidate_final_status"] != "PASS"
+        or classification["candidate_final_classification"]
+           != report.get("classification")
+        or classification["reported_cleanup_consistent"] is not True
+    ):
+        raise W4PreworldBlocked("S49 cleanup or classification does not permit review")
+
     # Re-run the actual on-disk decoder/replay at the review boundary:
     # passing a caller-constructed "replayed" dict is insufficient.
     cleanup_claim = replay_original_s49_cleanup_stdout_offline(
