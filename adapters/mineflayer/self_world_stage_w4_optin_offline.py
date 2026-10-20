@@ -386,3 +386,84 @@ def review_w4_s49_phase_b_optin_offline(
         "science_qualified": False,
         "next_gate": "W4_EXTERNAL_TRUST_NO_GO_PREWORLD_BLOCKED",
     }
+
+
+def review_s49_cleanup_finalization_candidate(
+    *, report: dict, provisional_rc: int,
+) -> dict:
+    """Prospective S49 final-status policy, WITHOUT changing protected S49.
+
+    Pure offline evaluation of an existing producer report. This does NOT
+    rewrite the report or an archived S49 outcome and gives no W4 authority.
+    """
+    if (
+        type(report) is not dict
+        or report.get("milestone") != "S49"
+        or report.get("status") not in {"PASS", "FAIL", "BLOCKED"}
+        or type(provisional_rc) is not int
+        or provisional_rc not in {0, 1, 2}
+    ):
+        raise W4PreworldBlocked("invalid prospective S49 finalization input")
+
+    previous_status = report["status"]
+    # Never turn a previously failed or blocked run into PASS.
+    if previous_status != "PASS":
+        expected_rc = 1 if previous_status == "FAIL" else 2
+        if provisional_rc != expected_rc:
+            raise W4PreworldBlocked("inconsistent provisional failure status/exit")
+        return {
+            "schema": "W4_S49_CLEANUP_FINALIZATION_CANDIDATE_OFFLINE_V0",
+            "previous_status": previous_status,
+            "candidate_final_status": previous_status,
+            "candidate_rc": expected_rc,
+            "cleanup_verified": False,
+            "veto_reasons": ["PRIOR_NONPASS"],
+            "original_report_mutated": False,
+            "original_qualify_modified": False,
+            "physical_run_permitted": False,
+            "science_qualified": False,
+        }
+
+    vetoes: list[str] = []
+    if report.get("stage") != "CLOSED" or provisional_rc != 0:
+        vetoes.append("PREMATURE_PASS")
+    if type(report.get("node_exit")) is not int or report["node_exit"] != 0:
+        vetoes.append("NODE_EXIT_NOT_ZERO")
+    if "node_cleanup_error" in report:
+        vetoes.append("NODE_CLEANUP_ERROR")
+    if type(report.get("server_exit")) is not int or report["server_exit"] != 0:
+        vetoes.append("JAVA_EXIT_NOT_ZERO")
+    if "server_cleanup_error" in report:
+        vetoes.append("JAVA_CLEANUP_ERROR")
+
+    # Normal historical S49 does not capture shutdown ACK. Its process
+    # exit can be checked, but do not manufacture an ACK it did not collect.
+    # When W3 capture is explicitly present, require its genuine local
+    # producer completeness claim; independent raw replay remains separate.
+    if "w3_node_stdout_capture" in report:
+        capture = report["w3_node_stdout_capture"]
+        if (
+            type(capture) is not dict
+            or capture.get("status") != "COMPLETE_NODE_STDOUT"
+            or capture.get("session_id") != report.get("session_id")
+            or capture.get("eof_observed") is not True
+            or type(capture.get("shutdown_ack_count")) is not int
+            or capture["shutdown_ack_count"] != 1
+            or type(capture.get("process_exit_code")) is not int
+            or capture["process_exit_code"] != 0
+            or capture.get("capture_fault") is not None
+        ):
+            vetoes.append("W3_CAPTURE_INCOMPLETE")
+
+    return {
+        "schema": "W4_S49_CLEANUP_FINALIZATION_CANDIDATE_OFFLINE_V0",
+        "previous_status": previous_status,
+        "candidate_final_status": "FAIL" if vetoes else "PASS",
+        "candidate_rc": 1 if vetoes else 0,
+        "cleanup_verified": not vetoes,
+        "veto_reasons": vetoes,
+        "original_report_mutated": False,
+        "original_qualify_modified": False,
+        "physical_run_permitted": False,
+        "science_qualified": False,
+    }

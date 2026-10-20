@@ -271,3 +271,40 @@ permissions remain **false**. The original S49 `finally` bug still requires
 its own independent protected-owner review and prospective correction.
 **Neither a local raw replay nor exact-HEAD CI success clears
 `W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED`.**
+
+
+## 11. 原 S49 cleanup 最終化の独立修正レビュー候補（未配線）
+
+`review_s49_cleanup_finalization_candidate(report, provisional_rc)` を
+**W4側のオフライン純関数**として追加する。原 `s49_normal_session_real_ci.qualify`
+（protected）を変更せず、同じ原status／終了記録を入力にし、修正後に
+期待すべき `candidate_final_status` と `candidate_rc` を別々に返す。
+これは過去reportの書き換え、元のS49ランナー実行、live接続ではない。
+
+最小修正候補（**原S49に今回適用しない**）：
+
+1. `finally` における session.shutdown の戻り値、node_cleanup_error、
+   Java shutdownの戻り値／例外を保存してから、**レポート出力直前**に
+   statusを最終化する。Action成功時点の `PASS` は暫定に過ぎない。
+2. 以前のstatusがFAIL/BLOCKEDなら一切PASSへ昇格しない。暫定PASSであっても
+   Node終了コードが0以外／欠損／bool偽装、`node_cleanup_error`キーあり、
+   Java終了コードが0以外／欠損、`server_cleanup_error`キーありなら
+   `final status=FAIL`, `rc=1` とする。
+3. W3捕捉を明示したときはその自己申告がCOMPLETE、EOF、ACK 1、
+   同一session、Node exit 0であることを要求する。未捕捉の標準S49に対して
+   STOP ACKを創作しない（**元標準S49がACKを確認したとは主張できない**）。
+4. cleanup中の二次例外により report 自体が保存されない可能性
+   （例: `await session.terminate()`の例外）も、原S49を変更できる時点で
+   別途fail-closed処理を確認する。今回の純関数テストはそれを実証しない。
+5. 最終FAILは旧S49 3決定/2 Action達成自体を遡及否定するものではない。
+   Actionの中間成立とセッション全体の資格を区別する。
+6. 原S49を直接変更すると19 protected Git blobの一致を破るため、
+   S49 ownerの独立レビュー・明示的な保護例外・既存挙動の負対照が揃うまで
+   既存原本は絶対に変更しない。新runの成功を歴史的runに上書きしない。
+
+**修正候補のテスト**: clean standard S49（ACKを推測しない）、Node非0/
+例外/欠落/bool、Java非0/例外/欠落、暫定status・rc矛盾、
+W3欠損／foreign、FAIL/BLOCKED非昇格を synthetic negativeで検査。
+original runner自体の修正資格・外部custody・live opt-inは未成立。
+
+`W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED` は不変。

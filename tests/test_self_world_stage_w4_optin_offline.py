@@ -37,6 +37,7 @@ from adapters.mineflayer.self_world_stage_w4_optin_offline import (
     reconcile_w4_s49_optin_offline,
     replay_original_s49_cleanup_stdout_offline,
     review_w4_s49_phase_b_optin_offline,
+    review_s49_cleanup_finalization_candidate,
     seal_w4_s49_optin_offline,
 )
 from adapters.mineflayer.self_world_stage_w4_preflight import W4PreworldBlocked
@@ -616,4 +617,110 @@ def test_phase_b_mode_gate_blocks_implicit_or_live_wiring(tmp_path, fault):
         review_w4_s49_phase_b_optin_offline(
             selected_mode=selected_mode, explicit_opt_in=explicit_opt_in,
             closed_composition=closed, report=report, archive_root=tmp_path,
+        )
+
+
+def _s49_cleanup_candidate_fixture():
+    return {
+        "milestone": "S49", "status": "PASS", "stage": "CLOSED",
+        "session_id": "fixture-session", "node_exit": 0,
+        "server_exit": 0,
+    }
+
+
+def test_s49_finalization_candidate_clean_normal_s49_without_claimed_ack():
+    report = _s49_cleanup_candidate_fixture()
+    original = dict(report)
+    result = review_s49_cleanup_finalization_candidate(
+        report=report, provisional_rc=0,
+    )
+    assert result["candidate_final_status"] == "PASS"
+    assert result["candidate_rc"] == 0
+    assert result["cleanup_verified"]
+    assert report == original
+    assert not result["original_qualify_modified"]
+    assert not result["physical_run_permitted"]
+
+
+@pytest.mark.parametrize("attack,reason", (
+    ("node_nonzero", "NODE_EXIT_NOT_ZERO"),
+    ("node_missing", "NODE_EXIT_NOT_ZERO"),
+    ("node_bool", "NODE_EXIT_NOT_ZERO"),
+    ("node_cleanup_exception", "NODE_CLEANUP_ERROR"),
+    ("node_cleanup_blank", "NODE_CLEANUP_ERROR"),
+    ("java_nonzero", "JAVA_EXIT_NOT_ZERO"),
+    ("java_missing", "JAVA_EXIT_NOT_ZERO"),
+    ("java_cleanup_exception", "JAVA_CLEANUP_ERROR"),
+    ("premature_stage", "PREMATURE_PASS"),
+    ("premature_rc", "PREMATURE_PASS"),
+    ("w3_capture_missing_ack", "W3_CAPTURE_INCOMPLETE"),
+    ("w3_capture_wrong_session", "W3_CAPTURE_INCOMPLETE"),
+))
+def test_s49_finalization_candidate_vetoes_false_pass(attack, reason):
+    report = _s49_cleanup_candidate_fixture()
+    rc = 0
+    if attack == "node_nonzero":
+        report["node_exit"] = 1
+    elif attack == "node_missing":
+        report.pop("node_exit")
+    elif attack == "node_bool":
+        report["node_exit"] = False
+    elif attack == "node_cleanup_exception":
+        report["node_cleanup_error"] = "timeout"
+    elif attack == "node_cleanup_blank":
+        report["node_cleanup_error"] = ""
+    elif attack == "java_nonzero":
+        report["server_exit"] = -9
+    elif attack == "java_missing":
+        report.pop("server_exit")
+    elif attack == "java_cleanup_exception":
+        report["server_cleanup_error"] = "interrupted"
+    elif attack == "premature_stage":
+        report["stage"] = "UNATTENDED_NATIVE_EVENT_LOOP"
+    elif attack == "premature_rc":
+        rc = 1
+    elif attack in {"w3_capture_missing_ack", "w3_capture_wrong_session"}:
+        report["w3_node_stdout_capture"] = {
+            "status": "COMPLETE_NODE_STDOUT",
+            "session_id": (
+                "foreign" if attack == "w3_capture_wrong_session"
+                else report["session_id"]
+            ),
+            "eof_observed": True,
+            "shutdown_ack_count": (
+                0 if attack == "w3_capture_missing_ack" else 1
+            ),
+            "process_exit_code": 0,
+            "capture_fault": None,
+        }
+    initial = json.loads(json.dumps(report))
+    result = review_s49_cleanup_finalization_candidate(
+        report=report, provisional_rc=rc,
+    )
+    assert report == initial
+    assert result["candidate_final_status"] == "FAIL"
+    assert result["candidate_rc"] == 1
+    assert reason in result["veto_reasons"]
+    assert not result["physical_run_permitted"]
+
+
+@pytest.mark.parametrize("status,rc", (("FAIL", 1), ("BLOCKED", 2)))
+def test_s49_candidate_never_upgrades_prior_nonpass(status, rc):
+    report = _s49_cleanup_candidate_fixture()
+    report["status"] = status
+    result = review_s49_cleanup_finalization_candidate(
+        report=report, provisional_rc=rc,
+    )
+    assert result["candidate_final_status"] == status
+    assert result["candidate_rc"] == rc
+    assert not result["cleanup_verified"]
+
+
+@pytest.mark.parametrize("status,rc", (("PASS", True), ("FAIL", 0), ("BLOCKED", 1)))
+def test_s49_candidate_rejects_type_or_status_inconsistency(status, rc):
+    report = _s49_cleanup_candidate_fixture()
+    report["status"] = status
+    with pytest.raises(W4PreworldBlocked):
+        review_s49_cleanup_finalization_candidate(
+            report=report, provisional_rc=rc,
         )
