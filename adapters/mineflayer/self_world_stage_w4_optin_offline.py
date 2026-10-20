@@ -155,3 +155,65 @@ def reconcile_w4_s49_optin_offline(
         "s10_permission": False,
         "science_qualified": False,
     }
+
+
+def seal_w4_s49_optin_offline(
+    *, session: W4DevLeasedSession, composition: dict,
+) -> dict:
+    """Recheck a local Phase-A result *after* original session shutdown.
+
+    This is a read-only, synthetic close-out check, not an external receipt
+    signature. It cannot make Java/Node execution or S49 qualification legal.
+    """
+    if (
+        type(session) is not W4DevLeasedSession
+        or type(composition) is not dict
+        or composition.get("schema") != "W4_S49_OPTIN_COMPOSITION_OFFLINE_V0"
+        or composition.get("session_id") != session.started.session_id
+        or composition.get("evidence_scope") != "SYNTHETIC_DEV_ONLY"
+        or any(composition.get(field) is not False for field in (
+            "live_owner_attested", "external_custody_qualified",
+            "physical_run_permitted", "s10_permission", "science_qualified",
+        ))
+        or session.phase != "CLOSED"
+        or not session._shutdown_completed
+        or session.process_returncode != 0
+        or session._pending is not None
+        or session._active
+        or session._delegated
+        or session._handoff_pending is not None
+        or session._actor is not session._controller
+        or session._ledger is None
+        or not session._marker
+    ):
+        raise W4PreworldBlocked("W4 synthetic original-session shutdown not sealed")
+
+    audit = session.audit
+    decoded = [a for a in audit if a.event == "DECODED"]
+    delivered = [a for a in audit if a.event == "DELIVER"]
+    if (
+        not audit
+        or any(a.event in {"DENY", "ABORT"} for a in audit)
+        or len(decoded) != len(delivered)
+        or len({a.seq for a in delivered}) != len(delivered)
+        or composition.get("native_decoded_frames") != len(decoded)
+        or composition.get("native_delivered_frames") != len(delivered)
+        or not any(a.event == "OPEN" and a.phase == "SHUTDOWN" for a in audit)
+        or audit[-1].event != "OPEN"
+        or audit[-1].phase != "CLOSED"
+        or any(a.phase == "SHUTDOWN" and a.event == "DELIVER" for a in audit)
+    ):
+        raise W4PreworldBlocked("W4 synthetic shutdown audit or receipt inconsistent")
+
+    return {
+        **composition,
+        "schema": "W4_S49_OPTIN_COMPOSITION_OFFLINE_CLOSED_V0",
+        "local_shutdown_completed": True,
+        "node_exit_code": 0,
+        # Reassert the ceiling explicitly: software-only closure.
+        "live_owner_attested": False,
+        "external_custody_qualified": False,
+        "physical_run_permitted": False,
+        "s10_permission": False,
+        "science_qualified": False,
+    }
