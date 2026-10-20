@@ -103,8 +103,15 @@ async def _one_original_owner(monkeypatch, tmp_path, *, broken=None, tamper=None
     incoming = basic[:5] + (_wire(post, 5),) + _action_frames(
         pre.session_id, post, action_id,
     )
-    session, owner, native_process, _ = await launch(monkeypatch, lines=incoming)
+    # Supply only startup + PREWORLD native frames initially. If a future
+    # World observation is read before the collector barrier, fake stdout
+    # reaches EOF and the original lease fails closed instead of silently
+    # consuming a pre-buffered postworld result.
+    session, owner, native_process, _ = await launch(
+        monkeypatch, lines=incoming[:4],
+    )
     receipt, ledger = await preworld(session, owner, pre)
+    assert not native_process.stdout.lines
     commands = receipt.candidate_commands
     before = ledger.captured_frames[-1]
 
@@ -164,6 +171,11 @@ async def _one_original_owner(monkeypatch, tmp_path, *, broken=None, tamper=None
             marker, order=len(events) + 1, server_pid=4242,
         ))
         session.world_marker(owner=owner, marker=marker)
+        # Only this synthetic producer releases the later entity/probe/S16
+        # bytes. This is a fixture ordering barrier, NOT evidence of actual
+        # Minecraft source custody or server tick chronology.
+        assert not native_process.stdout.lines
+        native_process.stdout.lines.extend(incoming[4:])
         op = session.advance(owner=owner, phase="HOST", binding="w4-fixture-host")
 
         intent = IntentCommitment()
@@ -300,7 +312,7 @@ async def _one_original_owner(monkeypatch, tmp_path, *, broken=None, tamper=None
         assert not result["live_owner_attested"]
         assert not result["physical_run_permitted"]
         assert not result["s10_permission"]
-        assert len(native_process.stdout.reads) == len(incoming)
+        assert native_process.stdout.reads == list(incoming)
         session.advance(owner=owner, phase="QUIESCE", binding="stop-host")
         session.advance(owner=owner, phase="SHUTDOWN", binding="exit")
         assert await session.shutdown() == 0
