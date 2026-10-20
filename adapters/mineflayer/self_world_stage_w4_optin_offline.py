@@ -1,0 +1,157 @@
+"""W4 Phase-A: immutable DEV readback of one original-component composition.
+
+Only verifies already produced local fixtures and original single-session
+read audit. No session launch, Java/Node server, World command, Action grant,
+or S10 path. Producer-provided evidence never becomes physical authority.
+"""
+from __future__ import annotations
+
+from adapters.mineflayer.normal_action import NormalActionClosedReadback
+from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.self_world_stage_w4_lease import W4DevLeasedSession
+from adapters.mineflayer.self_world_stage_w4_preflight import W4PreworldBlocked
+from adapters.mineflayer.self_world_stage_w4_prehost import (
+    W4PrehostLedger,
+    join_w4_prehost_s16_offline,
+)
+from adapters.mineflayer.self_world_stage_w4_window import (
+    W4WindowEvent,
+    reconcile_w4_window_offline,
+)
+from relay_self.reactive_l0 import L0Step
+
+
+def reconcile_w4_s49_optin_offline(
+    *, session: W4DevLeasedSession, ledger: W4PrehostLedger,
+    before: MineflayerObservation, after: MineflayerObservation,
+    host_trace: tuple[L0Step, ...],
+    events: tuple[W4WindowEvent, ...],
+    expected_session: str, before_request_id: str, after_request_id: str,
+    slot: int, one_time_token: str,
+    original_closed: NormalActionClosedReadback | None,
+) -> dict:
+    """Check *one* local lease + ledger + server marker + S49 host + S16.
+
+    The port deliberately accepts no server, process, callback, command or
+    token that could initiate new World/Action execution. Even a successful
+    cross-reference is not external source or lease qualification.
+    """
+    if (
+        type(session) is not W4DevLeasedSession
+        or session.phase != "HOST"
+        or session._pending is not None
+        or session._active or session._delegated
+        or session._handoff_pending is not None
+        or session._ledger is not ledger
+        or not session._marker
+        or session._bridge is None
+        or session._bridge._handoff._marker is None
+        or type(ledger) is not W4PrehostLedger
+        or ledger.delivery_scope != "PREWORLD_EVIDENCE_ONLY_NOT_L0_STIMULUS"
+        or ledger.original_reader_lease_attested
+        or ledger.external_source_qualified
+        or ledger.physical_run_permitted
+        or not ledger.captured_frames
+        or ledger.captured_frames[-1] != before
+        or ledger.probe_reference != before.provenance.reference
+        or type(before) is not MineflayerObservation
+        or type(after) is not MineflayerObservation
+        or before.session_id != expected_session
+        or after.session_id != expected_session
+        or before.request_id != before_request_id
+        or after.request_id != after_request_id
+        or not isinstance(host_trace, tuple)
+        or len(host_trace) != 1
+        or type(host_trace[0]) is not L0Step
+        or host_trace[0].choice.probe_seq != after.seq
+    ):
+        raise W4PreworldBlocked("W4 opt-in offline original-owner witness not complete")
+
+    # Actual *inherited* decoder and single receive call history on one
+    # in-process session, no synthesis of timestamps or source identifiers.
+    audit = session.audit
+    decoded = [a for a in audit if a.event == "DECODED"]
+    delivered = [a for a in audit if a.event == "DELIVER"]
+    if (
+        not audit or any(a.event in {"DENY", "ABORT"} for a in audit)
+        or len(delivered) != len(decoded)
+        or len({a.seq for a in delivered}) != len(delivered)
+        or [a.seq for a in delivered] != sorted(a.seq for a in delivered)
+        or not any(a.phase == "PREWORLD" and a.seq == before.seq for a in delivered)
+        or not any(a.phase == "HOST" and a.seq == after.seq for a in delivered)
+        or any(a.phase == "WORLD_WINDOW" for a in delivered)
+        or any(a.phase != "PREWORLD" for a in delivered if a.seq in {
+            f.seq for f in ledger.captured_frames
+        } if a.seq >= ledger.first_seq)
+        or any(a.phase == "HOST" and a.seq <= before.seq for a in delivered)
+        or not all(f.session_id == expected_session for f in ledger.captured_frames)
+        or tuple(f.seq for f in ledger.captured_frames)
+           != tuple(range(ledger.first_seq, ledger.last_seq + 1))
+        or ledger.last_seq != before.seq
+    ):
+        raise W4PreworldBlocked("preworld/host native receiver accounting mismatch")
+
+    window = reconcile_w4_window_offline(
+        before, after, expected_session=expected_session,
+        before_request_id=before_request_id,
+        after_request_id=after_request_id,
+        minimum_seq=before.seq, slot=slot,
+        one_time_token=one_time_token,
+        events=events, seen_tokens=frozenset(),
+    )
+    if (
+        window["before_source"] != ledger.probe_reference
+        or window["after_source"] != after.provenance.reference
+        or session._bridge._handoff._marker.log_line != events[5].content
+        or not session._bridge._handoff._marker.producer_content_only
+        or session._bridge._handoff._marker.external_source_qualified
+    ):
+        raise W4PreworldBlocked("collector readback does not bind owner")
+    step = host_trace[0]
+    if (
+        step.choice.entity_id != window["observed_zombie_id"]
+        or step.choice.request_id != after.request_id
+        or step.choice.provenance != after.provenance
+    ):
+        raise W4PreworldBlocked("original host L0 target/source does not bind window")
+
+    joined = None
+    if original_closed is None:
+        if step.asks_for_action:
+            raise W4PreworldBlocked("issued Action has no original S16 closure")
+    else:
+        if (
+            type(original_closed) is not NormalActionClosedReadback
+            or not step.asks_for_action
+            or original_closed.original_probe != after
+            or original_closed.terminal.action_id != step.action_request_id
+            or original_closed.consequence.session_id != expected_session
+        ):
+            raise W4PreworldBlocked("original S16 owner/Action does not bind host")
+        joined = join_w4_prehost_s16_offline(
+            before, original_closed,
+            expected_session=expected_session,
+            before_request_id=before_request_id,
+            minimum_seq=before.seq, slot=slot,
+            one_time_token=one_time_token, events=events,
+            seen_tokens=frozenset(),
+        )
+
+    return {
+        "schema": "W4_S49_OPTIN_COMPOSITION_OFFLINE_V0",
+        "session_id": expected_session,
+        "native_decoded_frames": len(decoded),
+        "native_delivered_frames": len(delivered),
+        "preworld_captured_sequences": [f.seq for f in ledger.captured_frames],
+        "preworld_unsolicited_sequences": [f.seq for f in ledger.buffered_frames],
+        "host_decisions": len(host_trace),
+        "original_s16_closed": joined is not None,
+        "window": window,
+        "original_s16_stage_s_join": joined,
+        "evidence_scope": "SYNTHETIC_DEV_ONLY",
+        "live_owner_attested": False,
+        "external_custody_qualified": False,
+        "physical_run_permitted": False,
+        "s10_permission": False,
+        "science_qualified": False,
+    }
