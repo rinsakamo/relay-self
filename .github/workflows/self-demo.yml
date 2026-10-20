@@ -104,6 +104,7 @@ jobs:
               adapters/mineflayer/self_world_stage_w4_preprobe.py|\
               adapters/mineflayer/self_world_stage_w4_prehost.py|\
               adapters/mineflayer/self_world_stage_w4_lease.py|\
+              adapters/mineflayer/self_world_stage_w4_optin_offline.py|\
               adapters/mineflayer/s49_normal_session_real_ci.py|\
               adapters/mineflayer/s34_native_world_cognition_ci.py|\
               src/relay_self/self_world.py|\
@@ -117,6 +118,7 @@ jobs:
               docs/selfworld-w4-s49-owner-lease-audit.md|\
               docs/selfworld-w4-s49-dev-lease.md|\
               docs/selfworld-w4-s49-optin-review.md|\
+              docs/selfworld-w4-s49-optin-composition.md|\
               tests/test_self_world.py|\
               adapters/mineflayer/v6_*.py|\
               adapters/mineflayer/v6_*.mjs|\
@@ -154,6 +156,7 @@ jobs:
               tests/test_self_world_stage_w4_preprobe.py|\
               tests/test_self_world_stage_w4_prehost.py|\
               tests/test_self_world_stage_w4_lease.py|\
+              tests/test_self_world_stage_w4_optin_offline.py|\
               tests/test_m02_paper_dev.py|\
               tests/test_m02_v8_stopped_world_clone_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
@@ -236,6 +239,7 @@ jobs:
             tests/test_self_world_stage_w4_preprobe.py \
             tests/test_self_world_stage_w4_prehost.py \
             tests/test_self_world_stage_w4_lease.py \
+            tests/test_self_world_stage_w4_optin_offline.py \
             tests/test_mineflayer_process_session.py \
             tests/test_feature_s49_normal_runtime.py \
             tests/test_self_body.py \
@@ -260,6 +264,7 @@ jobs:
           python -m pytest -q \
             tests/test_self_world_stage_w4_prehost.py \
             tests/test_self_world_stage_w4_lease.py \
+            tests/test_self_world_stage_w4_optin_offline.py \
             tests/test_self_world_stage_w4_preprobe.py \
             tests/test_self_world_stage_w4_owner_contract.py \
             tests/test_self_world_stage_w4_handoff.py \
@@ -289,6 +294,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
           python -m pytest -q \
             tests/test_self_world_stage_w4_lease.py \
+            tests/test_self_world_stage_w4_optin_offline.py \
             tests/test_postmain_architecture_freeze.py \
             tests/test_mineflayer_execution_qualification.py \
             tests/test_action_outcome_qualification.py \
