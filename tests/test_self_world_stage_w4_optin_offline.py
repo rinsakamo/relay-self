@@ -323,18 +323,42 @@ async def _one_original_owner(
         session.advance(owner=owner, phase="SHUTDOWN", binding="exit")
         assert await session.shutdown() == 0
         assert session.phase == "CLOSED"
-        if close_tamper == "node_nonzero":
-            native_process.returncode = 1
-        elif close_tamper == "false_shutdown":
-            session._shutdown_completed = False
-        elif close_tamper == "pending_read":
-            session._pending = object()
-        elif close_tamper == "audit_abort":
-            session._record("ABORT", detail="synthetic-after-close-mutation")
-        elif close_tamper == "promoted_scope":
-            result["live_owner_attested"] = True
-        elif close_tamper == "wrong_session":
-            result["session_id"] = "foreign"
+        if close_tamper == "all_close_negatives":
+            # One full original pipeline, then six *read-only* verdicts
+            # against independently restored local closeout mutations.
+            # No second Java/Node fixture or S16 execution is necessary.
+            for attack in (
+                "node_nonzero", "false_shutdown", "pending_read",
+                "audit_abort", "promoted_scope", "wrong_session",
+            ):
+                if attack == "node_nonzero":
+                    native_process.returncode = 1
+                elif attack == "false_shutdown":
+                    session._shutdown_completed = False
+                elif attack == "pending_read":
+                    session._pending = object()
+                elif attack == "audit_abort":
+                    session._record("ABORT", detail="fixture-only-mutation")
+                elif attack == "promoted_scope":
+                    result["live_owner_attested"] = True
+                elif attack == "wrong_session":
+                    result["session_id"] = "foreign"
+                with pytest.raises(W4PreworldBlocked):
+                    seal_w4_s49_optin_offline(
+                        session=session, composition=result,
+                    )
+                if attack == "node_nonzero":
+                    native_process.returncode = 0
+                elif attack == "false_shutdown":
+                    session._shutdown_completed = True
+                elif attack == "pending_read":
+                    session._pending = None
+                elif attack == "audit_abort":
+                    assert session._audit.pop().event == "ABORT"
+                elif attack == "promoted_scope":
+                    result["live_owner_attested"] = False
+                elif attack == "wrong_session":
+                    result["session_id"] = pre.session_id
         sealed = seal_w4_s49_optin_offline(session=session, composition=result)
         assert sealed["local_shutdown_completed"]
         assert sealed["node_exit_code"] == 0
@@ -375,14 +399,10 @@ def test_joint_readback_vetoes_independent_witness_substitution(monkeypatch, tmp
         asyncio.run(_one_original_owner(monkeypatch, tmp_path, tamper=attack))
 
 
-@pytest.mark.parametrize("attack", (
-    "node_nonzero", "false_shutdown", "pending_read", "audit_abort",
-    "promoted_scope", "wrong_session",
-))
-def test_final_seal_rejects_dirty_or_forged_shutdown(
-    monkeypatch, tmp_path, attack,
-):
-    with pytest.raises(W4PreworldBlocked):
-        asyncio.run(_one_original_owner(
-            monkeypatch, tmp_path, close_tamper=attack,
-        ))
+def test_final_seal_rejects_dirty_or_forged_shutdown(monkeypatch, tmp_path):
+    # Preserve all six independent veto assertions in one closed session;
+    # original S49/S16/collector setup should not be repeated six times.
+    sealed = asyncio.run(_one_original_owner(
+        monkeypatch, tmp_path, close_tamper="all_close_negatives",
+    ))
+    assert sealed["local_shutdown_completed"]
