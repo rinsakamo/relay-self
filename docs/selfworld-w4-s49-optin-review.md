@@ -347,3 +347,36 @@ PASSへ昇格させないこと、3決定/2 ActionとStage Rの正常baselineは
 未定義ラベル、通常/Stage Rの取り違え、cleanup失敗と旧資格ラベルの残存は
 **offline reviewでも拒否**する。これでも original S49 の実装修正、
 外部 source custody の取得、実World資格、S10やSCIENCE認可はしていない。
+
+## 15. S49 owner専用隔離パッチの負対照・保護境界（2026-10-21）
+
+S49 original `qualify()` cleanupを隔離修正した証人ブランチ:
+`self/product-self-one-command-s49cleanup-20261021`。
+基点は W4 `4fb2a74410ec370aea327bab129a644ade3e9529`。
+原S49のprotected blobは `fd2b06e9dbed17be0e35b3a1bbd0ed423b9af258`、
+隔離候補は `9064982380d1dc7fbc936939c9901ffecd9d8714`。
+
+意図的な `test_s18_and_original_default_routes_are_blob_identical` の失敗は
+S49原本固定契約の正常な拒否結果（CI #39515683503）。
+このゲートを削除・緩和・期待SHA変更することは禁止する。
+一方、証人として一時的に追加したDEV-only独立 workflow
+（歴史的 commit `d56c4fc8c9dd69502c41118640eac8a0fa2f7d39`、
+run #39518072719）は、Python 3.11/3.12 の両ジョブSUCCESSを返した。
+対象は **実original `qualify()` を用い外部processをすべてfake化**した
+Node exit7/例外/terminate二次例外、Java exit8/例外、clean、
+W3 producer capture complete/ACK欠落/foreign session/nonzero exit の
+局所回帰およびprospective finalization policy。これは工学DEVの局所検証
+であり、source保護例外の承認、原Minecraft/Node外部custody、
+S49物理資格、R/V SCIENCEを一切生成しない。
+
+Sブランチrepository-contractsは許可パス制約を持ち、
+このDEV用 workflowと専用新doc追加の恒久化は`Non-S-owner path`と
+判定された。そこで **生成済みCI receiptとGit commit履歴は保持しつつ**、
+これら新規ファイルは隔離branchの最新treeから取り除き、
+監査説明のみ既存・許可済みの本書に収める。元のproduct
+`.github/workflows/self-demo.yml` は絶対に変更しない。
+
+**S49 owner decision待ち:** protected 19原本の明示例外/再基準化、
+S #545とW4 #634の多世代乖離解決、通常/Stage Rを含む独立監査。
+未承認のisolated patchを S #545/W4 #634/main へpush/mergeせず、
+`W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED` を維持する。
