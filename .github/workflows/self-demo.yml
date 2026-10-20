@@ -103,6 +103,7 @@ jobs:
               adapters/mineflayer/self_world_stage_w4_owner_contract.py|\
               adapters/mineflayer/self_world_stage_w4_preprobe.py|\
               adapters/mineflayer/self_world_stage_w4_prehost.py|\
+              adapters/mineflayer/self_world_stage_w4_lease.py|\
               adapters/mineflayer/s49_normal_session_real_ci.py|\
               adapters/mineflayer/s34_native_world_cognition_ci.py|\
               src/relay_self/self_world.py|\
@@ -114,6 +115,7 @@ jobs:
               docs/selfworld-w4-nonhold-prereg.md|\
               docs/selfworld-w4-placement-window.md|\
               docs/selfworld-w4-s49-owner-lease-audit.md|\
+              docs/selfworld-w4-s49-dev-lease.md|\
               tests/test_self_world.py|\
               adapters/mineflayer/v6_*.py|\
               adapters/mineflayer/v6_*.mjs|\
@@ -150,6 +152,7 @@ jobs:
               tests/test_self_world_stage_w4_owner_contract.py|\
               tests/test_self_world_stage_w4_preprobe.py|\
               tests/test_self_world_stage_w4_prehost.py|\
+              tests/test_self_world_stage_w4_lease.py|\
               tests/test_m02_paper_dev.py|\
               tests/test_m02_v8_stopped_world_clone_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
@@ -231,6 +234,7 @@ jobs:
             tests/test_self_world_stage_w4_owner_contract.py \
             tests/test_self_world_stage_w4_preprobe.py \
             tests/test_self_world_stage_w4_prehost.py \
+            tests/test_self_world_stage_w4_lease.py \
             tests/test_mineflayer_process_session.py \
             tests/test_feature_s49_normal_runtime.py \
             tests/test_self_body.py \
@@ -254,11 +258,40 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_self_world_stage_w4_prehost.py \
+            tests/test_self_world_stage_w4_lease.py \
             tests/test_self_world_stage_w4_preprobe.py \
             tests/test_self_world_stage_w4_owner_contract.py \
             tests/test_self_world_stage_w4_handoff.py \
             tests/test_self_world_stage_w4_logtap.py \
             tests/test_self_world_stage_w4_window.py
+
+  w4-lease-focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Original S49 and S16 wait_for with S18 freeze (offline only)
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          python -m pytest -q \
+            tests/test_self_world_stage_w4_lease.py \
+            tests/test_postmain_architecture_freeze.py \
+            tests/test_mineflayer_execution_qualification.py \
+            tests/test_action_outcome_qualification.py \
+            tests/test_feature_s49_normal_runtime.py
 
   lint:
     runs-on: ubuntu-latest
