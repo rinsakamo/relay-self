@@ -23,7 +23,9 @@ created** producer-local evidence:
    executed with patched **in-memory fake stdout/stdin**. The guarded logfile
    cursor sees two planned commands and a conditional tagged marker.
    It reads the collector file, never Java stdout itself.
-4. Lease transfers `WORLD_WINDOW → HOST` after the marker. The original
+4. Lease transfers `WORLD_WINDOW → HOST` after the marker. Only then
+   does the fake native producer release the postworld entity/probe/S16 frames;
+   startup/PREWORLD transport holds no future frames. The original
    `NativeObservationOnly` and `NormalWorldL0.run_session()` interpret a
    new W4-target entity update, obtain an original correlated probe and
    issue a source-bound L0 candidate.
@@ -52,8 +54,10 @@ Receipt: `W4_S49_OPTIN_COMPOSITION_OFFLINE_V0`,
 `SYNTHETIC_DEV_ONLY`, `live_owner_attested=false`,
 `external_custody_qualified=false`, `physical_run_permitted=false`,
 `s10_permission=false`, `science_qualified=false`.
-The result checks **local producer self-consistency, not genuine external
-Minecraft source custody, clocks or causation**.
+The synthetic future-frame release is a **test-internal ordering control**,
+not proof that a real server caused a native event. The result checks **local
+producer self-consistency, not genuine external Minecraft source custody,
+clocks or causation**.
 
 ## Failure and freeze policy
 
