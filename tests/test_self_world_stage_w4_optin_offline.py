@@ -49,16 +49,19 @@ from test_self_world_stage_w4_window import TOKEN
 def _action_frames(session_id, post, action_id):
     import test_action_feedback_qualification as s17
 
-    def native(seq, x):
-        frame = s17.observation(seq, x, 0.)
-        # Reuse exactly the W4 placed target across original S16 before/after.
-        copied = replace(frame, session_id=session_id, snapshot=replace(
-            frame.snapshot,
-            nearby_entities=post.snapshot.nearby_entities,
-            nearby_entities_coverage=post.snapshot.nearby_entities_coverage,
-        ))
-        record = json.loads(_wire(copied, seq))
-        record.pop("request_id", None)  # S16 legacy probes never claim a W4 request ID.
+    def native(seq, dx):
+        # Prepare typed orientation in the RAW synthetic native producer frame,
+        # before the unchanged decoder/S16 sees it; never patch old outcomes.
+        oriented = replace(
+            post, seq=seq, request_id=None,
+            snapshot=replace(
+                post.snapshot, position=replace(
+                    post.snapshot.position, x=post.snapshot.position.x + dx,
+                ),
+            ),
+        )
+        record = json.loads(_wire(oriented, seq))
+        record.pop("request_id", None)  # Original S16 uses uncorrelated probes.
         return (json.dumps(record) + "\n").encode()
 
     def effect(seq, name, aid):
