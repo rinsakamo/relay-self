@@ -113,6 +113,7 @@ jobs:
               docs/selfworld-w4-independent-custody.md|\
               docs/selfworld-w4-nonhold-prereg.md|\
               docs/selfworld-w4-placement-window.md|\
+              docs/selfworld-w4-s49-owner-lease-audit.md|\
               tests/test_self_world.py|\
               adapters/mineflayer/v6_*.py|\
               adapters/mineflayer/v6_*.mjs|\
