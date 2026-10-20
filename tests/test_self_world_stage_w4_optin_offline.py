@@ -752,9 +752,12 @@ def test_s49_candidate_rejects_type_or_status_inconsistency(status, rc):
         )
 
 
-@pytest.mark.parametrize("failure", ("exit_7", "shutdown_exception"))
+@pytest.mark.parametrize("failure", (
+    "exit_7", "shutdown_exception", "terminate_exception",
+    "java_exit_8", "java_exception", "clean",
+))
 def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, failure):
-    """Original protected S49 false-PASS witness; no real Minecraft process."""
+    """Proposed owner-only cleanup fix, exercised via fake Java/Node ports."""
     from types import SimpleNamespace as NS
 
     import adapters.mineflayer.s49_normal_session_real_ci as s49
@@ -799,7 +802,9 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
         return server, None, None
 
     async def stop(*args):
-        server.returncode = 0
+        if failure == "java_exception":
+            raise OSError("synthetic-java-cleanup-exception")
+        server.returncode = 8 if failure == "java_exit_8" else 0
 
     monkeypatch.setattr(s49, "_ready_server", ready)
     monkeypatch.setattr(s49, "_shutdown_server", stop)
@@ -809,11 +814,13 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
 
         async def shutdown(self, *, timeout_s):
             assert timeout_s == 10
-            if failure == "shutdown_exception":
+            if failure in {"shutdown_exception", "terminate_exception"}:
                 raise OSError("synthetic-node-shutdown-exception")
-            return 7
+            return 7 if failure == "exit_7" else 0
 
         async def terminate(self):
+            if failure == "terminate_exception":
+                raise OSError("synthetic-node-terminate-exception")
             return 7
 
     async def new_session():
@@ -892,22 +899,31 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
     report = json.loads(out.read_text(encoding="utf-8"))
     assert len(report["decisions"]) == 3
     assert len(report["actual_native_actions"]) == 2
-    # Document the EXISTING defect; once original S49 is corrected, invert
-    # this expected witness to require original FAIL. Never call it qualified.
-    assert original_rc == 0
-    assert report["status"] == "PASS"
+    assert original_rc == (0 if failure == "clean" else 1)
+    assert report["status"] == ("PASS" if failure == "clean" else "FAIL")
+    assert report["classification"] == (
+        "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
+        if failure == "clean" else "S49_SESSION_NOT_QUALIFIED"
+    )
     if failure == "exit_7":
         assert report["node_exit"] == 7
-    else:
+    elif failure in {"shutdown_exception", "terminate_exception"}:
         assert "synthetic-node-shutdown-exception" in report["node_cleanup_error"]
+        if failure == "terminate_exception":
+            assert "synthetic-node-terminate-exception" in report["node_terminate_error"]
+        assert report["server_exit"] == 0  # Java still closes after Node fault
+    elif failure == "java_exit_8":
+        assert report["server_exit"] == 8
+    elif failure == "java_exception":
+        assert "synthetic-java-cleanup-exception" in report["server_cleanup_error"]
+    else:
+        assert report["node_exit"] == report["server_exit"] == 0
+    # The separate W4 auditor never upgrades a failed producer run.
     prospective = review_s49_cleanup_finalization_candidate(
         report=report, provisional_rc=original_rc,
     )
-    assert prospective["candidate_final_status"] == "FAIL"
-    assert prospective["candidate_rc"] == 1
-    assert prospective["candidate_final_classification"] == "S49_SESSION_NOT_QUALIFIED"
-    assert report["classification"] == "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
-    assert not prospective["reported_cleanup_consistent"]
+    assert prospective["candidate_final_status"] == report["status"]
+    assert prospective["candidate_rc"] == original_rc
     assert not prospective["physical_run_permitted"]
 
 

@@ -406,42 +406,94 @@ async def qualify(
         rc = 1
     finally:
         if stage_r is not None:
-            report["stage_r_owner"] = stage_r.summary()
+            try:
+                report["stage_r_owner"] = stage_r.summary()
+            except Exception as exc:
+                report["stage_r_cleanup_error"] = f"{type(exc).__name__}: {exc}"
         if staging is not None:
             staging.cancel()
             try:
                 await staging
             except asyncio.CancelledError:
                 pass
+            except Exception as exc:
+                report["stage_world_cleanup_error"] = f"{type(exc).__name__}: {exc}"
         if session is not None:
             try:
                 report["node_exit"] = await session.shutdown(timeout_s=10)
             except Exception as exc:
-                report["node_cleanup_error"] = str(exc)
-                await session.terminate()
+                report["node_cleanup_error"] = f"{type(exc).__name__}: {exc}"
+                try:
+                    await asyncio.wait_for(session.terminate(), timeout=10)
+                except Exception as term_exc:
+                    # A second Node exception must NOT skip Java shutdown
+                    # or final evidence writing for the same failed run.
+                    report["node_terminate_error"] = (
+                        f"{type(term_exc).__name__}: {term_exc}"
+                    )
             if raw_capture_root is not None:
                 report["w3_node_stdout_capture"] = session.raw_capture_receipt
-                if (
-                    session.raw_capture_receipt is None
-                    or session.raw_capture_receipt.get("status") != "COMPLETE_NODE_STDOUT"
-                ):
-                    report["status"] = "FAIL"
-                    report["error"] = "W3 raw Node stdout capture incomplete"
-                    rc = 1
         try:
             await _shutdown_server(server, collector)
         except Exception as exc:
-            report["server_cleanup_error"] = str(exc)
-            report["status"] = "FAIL"
-            rc = 1
+            report["server_cleanup_error"] = f"{type(exc).__name__}: {exc}"
         if server is not None:
             report["server_exit"] = server.returncode
         if temp is not None:
-            temp.cleanup()
-        if report["status"] == "PASS" and report.get("server_exit") != 0:
-            report["status"] = "FAIL"
-            report["error"] = "Java World failed clean shutdown"
-            rc = 1
+            try:
+                temp.cleanup()
+            except Exception as exc:
+                report["temp_cleanup_error"] = f"{type(exc).__name__}: {exc}"
+
+        # Action closure was provisional: qualify the WHOLE session only
+        # after all cleanup results have been recorded. Never leave an
+        # otherwise-stale QUALIFIED classification on a failed run.
+        if report["status"] == "PASS":
+            cleanup_faults = [
+                field for field in (
+                    "stage_r_cleanup_error", "stage_world_cleanup_error",
+                    "node_cleanup_error", "node_terminate_error",
+                    "server_cleanup_error", "temp_cleanup_error",
+                ) if field in report
+            ]
+            if session is None or (
+                type(report.get("node_exit")) is not int
+                or report["node_exit"] != 0
+            ):
+                cleanup_faults.append("node_exit")
+            if server is None or (
+                type(report.get("server_exit")) is not int
+                or report["server_exit"] != 0
+            ):
+                cleanup_faults.append("server_exit")
+            if raw_capture_root is not None:
+                w3 = report.get("w3_node_stdout_capture")
+                if (
+                    type(w3) is not dict
+                    or w3.get("status") != "COMPLETE_NODE_STDOUT"
+                    or w3.get("session_id") != report.get("session_id")
+                    or w3.get("eof_observed") is not True
+                    or type(w3.get("shutdown_ack_count")) is not int
+                    or w3["shutdown_ack_count"] != 1
+                    or type(w3.get("process_exit_code")) is not int
+                    or w3["process_exit_code"] != 0
+                    or w3.get("capture_fault") is not None
+                ):
+                    cleanup_faults.append("w3_node_stdout_capture")
+            if cleanup_faults:
+                report["status"] = "FAIL"
+                report["classification"] = "S49_SESSION_NOT_QUALIFIED"
+                report["error"] = (
+                    "S49 cleanup not qualified: " + ", ".join(cleanup_faults)
+                )
+                rc = 1
+        elif report.get("classification") in (
+            "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED",
+            "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2",
+        ):
+            # No pre-existing FAILURE/BLOCKED is allowed to retain the
+            # provisional qualified label, nor be upgraded to PASS.
+            report["classification"] = "S49_SESSION_NOT_QUALIFIED"
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(
             json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
