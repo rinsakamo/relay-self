@@ -101,7 +101,7 @@ async def _one_original_owner(
     # S42's deterministic S19 fixture internally runs asyncio.run(); isolate
     # fixture construction from this already-running joint asyncio event loop.
     retained, _near, _far, _, _ = await asyncio.to_thread(s42._pair)
-    pre, post, basic = _offline_lines()
+    pre, post, basic = await asyncio.to_thread(_offline_lines)
     # This new fake source uses the ORIGINAL S49 event-seq naming rule:
     # entity event 4 -> correlated request event-4 -> native move/binding 4.
     # Never rewrite a previously captured original/frozen receipt.

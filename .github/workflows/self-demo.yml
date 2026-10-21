@@ -130,6 +130,8 @@ jobs:
               tests/test_b0_*.py|\
               tests/test_b1_*.py|\
               tests/test_feature_s51_eat_execution.py|\
+              tests/test_s49_cleanup.py|\
+              docs/s49-cancellation-review.md|\
               tests/test_self_dev.py|\
               tests/test_self_live_think.py|\
               tests/test_self_action_evidence.py|\
@@ -299,6 +301,37 @@ jobs:
             tests/test_mineflayer_execution_qualification.py \
             tests/test_action_outcome_qualification.py \
             tests/test_feature_s49_normal_runtime.py
+
+  s49-cleanup-focused:
+    # Isolated original-owner engineering evidence; never admits protected changes.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Original qualify cancellation and raw-capture regression (no World)
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          python -m pytest -q -o junit_logging=all --junitxml=s49-cleanup-${{ matrix.python }}.xml tests/test_s49_cleanup.py tests/test_feature_s49_normal_runtime.py tests/test_self_world_stage_r_owner.py tests/test_self_world_stage_w3_capture.py
+      - name: Preserve original-owner engineering results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s49-cleanup-${{ github.sha }}-${{ matrix.python }}
+          path: s49-cleanup-${{ matrix.python }}.xml
+          if-no-files-found: error
 
   lint:
     runs-on: ubuntu-latest
