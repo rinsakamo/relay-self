@@ -319,6 +319,32 @@ class MineflayerProcessSession:
                 exit_code=exit_code, reason=reason,
             )
 
+    async def abort_startup(self) -> int:
+        """Reap a session whose adapter started but whose native spawn did not.
+
+        Called by the original s34 _new_session() before it transfers session
+        ownership to S49. This uses the same process and raw-capture objects,
+        never a second receiver or an additional bridge.
+        """
+        cleanup_error: BaseException | None = None
+        rc: int | None = None
+        try:
+            rc = await terminate_and_reap(self._process)
+        except BaseException as exc:
+            cleanup_error = exc
+        try:
+            self._seal_raw_capture(
+                exit_code=self._process.returncode,
+                reason="aborted_startup",
+            )
+        except BaseException as exc:
+            if cleanup_error is None:
+                cleanup_error = exc
+        if cleanup_error is not None:
+            raise cleanup_error
+        assert type(rc) is int
+        return rc
+
     async def terminate(self) -> int:
         """Terminate the owned child without retrying or launching a replacement."""
         rc = await _terminate_child(self._process)
