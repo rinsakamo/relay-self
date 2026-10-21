@@ -6,6 +6,7 @@ or S10 path. Producer-provided evidence never becomes physical authority.
 """
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 from adapters.mineflayer.normal_action import NormalActionClosedReadback
@@ -225,6 +226,77 @@ def seal_w4_s49_optin_offline(
     }
 
 
+
+def audit_original_s49_action_trace_claim_offline(*, report: dict) -> dict:
+    """Check the S49 producer's 3/2 narrative, NOT physical World evidence.
+
+    Counts, event/probe identity and reported OUTCOME are untrusted. They
+    must nevertheless be mutually consistent before W4 reads the report.
+    """
+    if type(report) is not dict:
+        raise W4PreworldBlocked("S49 report must be an object")
+    sid = report.get("session_id")
+    decisions = report.get("decisions")
+    actions = report.get("actual_native_actions")
+    if (
+        type(sid) is not str or not sid
+        or type(decisions) is not list or len(decisions) != 3
+        or type(actions) is not list or len(actions) != 2
+    ):
+        raise W4PreworldBlocked("S49 claimed 3/2 trace missing")
+
+    for i, step in enumerate(decisions):
+        if (
+            type(step) is not dict
+            or any(type(step.get(k)) is not int or step[k] < 0
+                   for k in ("event_seq", "probe_seq", "entity_id"))
+            or type(step.get("distance_m")) not in (float, int)
+            or not math.isfinite(step["distance_m"])
+            or step["distance_m"] < 0
+            or step.get("selected") != ("WAIT" if i == 0 else "MOVE_AWAY")
+            or type(step.get("issued")) is not bool
+            or step["issued"] is not (i != 0)
+        ):
+            raise W4PreworldBlocked("S49 claim has invalid L0 decision")
+
+    if (
+        len({step["entity_id"] for step in decisions}) != 3
+        or any(
+            decisions[i]["event_seq"] >= decisions[i + 1]["event_seq"]
+            or decisions[i]["probe_seq"] >= decisions[i + 1]["probe_seq"]
+            for i in (0, 1)
+        )
+    ):
+        raise W4PreworldBlocked("S49 claimed events/probes not unique monotonic")
+
+    for idx, action in enumerate(actions):
+        step = decisions[idx + 1]
+        if (
+            type(action) is not dict
+            or action.get("action") != f"s49-native-move-{step['event_seq']}"
+            or action.get("terminal") != "OUTCOME"
+            or action.get("source") != sid
+            or type(action.get("event_seq")) is not int
+            or action["event_seq"] != step["event_seq"]
+            or type(action.get("probe_seq")) is not int
+            or action["probe_seq"] != step["probe_seq"]
+            or type(action.get("movement_m")) not in (float, int)
+            or not math.isfinite(action["movement_m"])
+            or action["movement_m"] < 0.05
+        ):
+            raise W4PreworldBlocked("S49 reported action/probe/OUTCOME mismatch")
+
+    return {
+        "schema": "W4_S49_ACTION_TRACE_CLAIM_OFFLINE_V0",
+        "reported_decisions": 3,
+        "reported_actions": 2,
+        "evidence_scope": "UNTRUSTED_PRODUCER_REPORT_CONTENT_ONLY",
+        "physical_run_permitted": False,
+        "s10_permission": False,
+        "science_qualified": False,
+    }
+
+
 def audit_original_s49_cleanup_claim_offline(*, report: dict) -> dict:
     """Fail-closed readback of the *reported* S49 Node/Java cleanup.
 
@@ -263,6 +335,10 @@ def audit_original_s49_cleanup_claim_offline(*, report: dict) -> dict:
     ):
         raise W4PreworldBlocked("S49 producer status or class was not finalized")
 
+    # Reported Action success without the original owner's 3/2 narrative
+    # is not even internally consistent, irrespective of clean shutdown.
+    action_claim = audit_original_s49_action_trace_claim_offline(report=report)
+
     # Baseline original S49 need not capture Node shutdown ACK at all.
     # Consequently an old baseline PASS is NEVER sufficient for a W4
     # source/STOP gate. Even a well-formed W3 local receipt is not external.
@@ -295,6 +371,8 @@ def audit_original_s49_cleanup_claim_offline(*, report: dict) -> dict:
         "node_exit_code": 0,
         "server_exit_code": 0,
         "producer_claimed_stop_ack": 1,
+        "reported_decisions": action_claim["reported_decisions"],
+        "reported_actions": action_claim["reported_actions"],
         "evidence_scope": "UNTRUSTED_REPORT_CONTENT_ONLY",
         "raw_stdout_independently_replayed": False,
         "live_owner_attested": False,

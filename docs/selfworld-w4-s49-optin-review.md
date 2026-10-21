@@ -370,3 +370,25 @@ S10/SCIENCEの虚偽attestationを含めて受入条件を統一。
 （protected blob `fd2b06e9...`）・W4原本固定ハッシュ・
 S #545・隔離候補のパッチの採否には影響しない。
 `W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED` は維持する。
+
+
+## 17. S49 original 3決定・2 Action producer narrative整合性（offline only）
+
+W4 report readbackで単に `S49/CLOSED/PASS` および Node/Java cleanup
+とW3 raw receiptが整合するだけでは、S49 **3判断・2 Actionの存在**が
+欠落したレポートでも Phase B offline review が成立し得る。
+このため `audit_original_s49_action_trace_claim_offline()` を
+純関数で追加し、S49 owner原 report の
+`decisions` 3個（WAIT→MOVE_AWAY→MOVE_AWAY、発行0→1→1、
+entity/event/probe seqの一意・単調、finite距離）および
+`actual_native_actions` 2個（同一session、対応event/probe/action、
+terminal OUTCOME、movement 0.05m以上・finite）を要求する。
+
+**重要:** 検証対象はproducerによる事後JSONの自己申告であり、
+Action/Worldの外部真正証拠ではない。偽装者がJSON全体を一貫して
+生成することは可能である。W3 raw captureのlocal replayとも独立で、
+Node stdoutが実Actionの物理的因果を証明することはない。
+この内部整合条件はW4のoffline readback資格の上限を引き上げない。
+失敗時は `W4PreworldBlocked`、成功してもすべての
+`physical_run_permitted/s10_permission/science_qualified` はfalse。
+`W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED` は不変。

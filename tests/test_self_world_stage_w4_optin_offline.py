@@ -415,9 +415,27 @@ def test_final_seal_rejects_dirty_or_forged_shutdown(monkeypatch, tmp_path):
 def _w4_s49_report_claim():
     """Only untrusted local report contents; never an actual S49 evidence run."""
     sid = "session-1"
+    steps = [
+        {
+            "event_seq": seq, "probe_seq": probe, "entity_id": seq,
+            "selected": "WAIT" if i == 0 else "MOVE_AWAY",
+            "issued": i != 0, "distance_m": 10.0 if i == 0 else 2.0,
+        }
+        for i, (seq, probe) in enumerate(((1, 2), (3, 4), (5, 6)))
+    ]
+    actions = [
+        {
+            "action": f"s49-native-move-{step['event_seq']}",
+            "terminal": "OUTCOME", "source": sid,
+            "event_seq": step["event_seq"], "probe_seq": step["probe_seq"],
+            "movement_m": 0.2,
+        }
+        for step in steps[1:]
+    ]
     return {
         "milestone": "S49", "stage": "CLOSED", "status": "PASS",
         "session_id": sid, "node_exit": 0, "server_exit": 0,
+        "decisions": steps, "actual_native_actions": actions,
         "classification": "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED",
         "w3_node_stdout_capture": {
             "schema": "relay-self-w3-node-stdout-v0",
@@ -471,6 +489,8 @@ def test_s49_report_only_claim_cannot_enter_phase_b_offline_review(tmp_path):
     report = _w4_s49_report_claim()
     claim = audit_original_s49_cleanup_claim_offline(report=report)
     assert claim["producer_claimed_stop_ack"] == 1
+    assert claim["reported_decisions"] == 3
+    assert claim["reported_actions"] == 2
     assert not claim["raw_stdout_independently_replayed"]
     # No raw files: plausible producer report alone is not replay.
     with pytest.raises(W4PreworldBlocked):
@@ -995,5 +1015,60 @@ def test_s49_candidate_rejects_non_boolean_stage_r_optin(stage_r):
 def test_direct_s49_report_claim_rejects_secondary_cleanup_even_clean_exit(fault):
     report = _w4_s49_report_claim()
     report[fault] = ""
+    with pytest.raises(W4PreworldBlocked):
+        audit_original_s49_cleanup_claim_offline(report=report)
+
+@pytest.mark.parametrize("fault", (
+    "missing_decisions", "missing_actions", "short_decisions",
+    "extra_action", "wrong_wait", "wait_issued", "move_unissued",
+    "duplicate_entity", "duplicate_event_seq", "decreasing_probe",
+    "foreign_action_source", "action_seq_mismatch", "action_probe_mismatch",
+    "action_id_mismatch", "action_not_outcome", "missing_movement",
+    "tiny_movement", "nan_movement", "bool_movement", "foreign_action_type",
+))
+def test_w4_s49_action_trace_negative_claims_fail_closed(fault):
+    report = _w4_s49_report_claim()
+    decisions = report["decisions"]
+    actions = report["actual_native_actions"]
+    if fault == "missing_decisions":
+        report.pop("decisions")
+    elif fault == "missing_actions":
+        report.pop("actual_native_actions")
+    elif fault == "short_decisions":
+        decisions.pop()
+    elif fault == "extra_action":
+        actions.append(dict(actions[-1]))
+    elif fault == "wrong_wait":
+        decisions[0]["selected"] = "MOVE_AWAY"
+    elif fault == "wait_issued":
+        decisions[0]["issued"] = True
+    elif fault == "move_unissued":
+        decisions[1]["issued"] = False
+    elif fault == "duplicate_entity":
+        decisions[2]["entity_id"] = decisions[1]["entity_id"]
+    elif fault == "duplicate_event_seq":
+        decisions[2]["event_seq"] = decisions[1]["event_seq"]
+    elif fault == "decreasing_probe":
+        decisions[2]["probe_seq"] = 0
+    elif fault == "foreign_action_source":
+        actions[0]["source"] = "foreign"
+    elif fault == "action_seq_mismatch":
+        actions[0]["event_seq"] += 1
+    elif fault == "action_probe_mismatch":
+        actions[0]["probe_seq"] += 1
+    elif fault == "action_id_mismatch":
+        actions[0]["action"] = "forged"
+    elif fault == "action_not_outcome":
+        actions[0]["terminal"] = "UNKNOWN"
+    elif fault == "missing_movement":
+        actions[0].pop("movement_m")
+    elif fault == "tiny_movement":
+        actions[0]["movement_m"] = 0.049
+    elif fault == "nan_movement":
+        actions[0]["movement_m"] = float("nan")
+    elif fault == "bool_movement":
+        actions[0]["movement_m"] = True
+    elif fault == "foreign_action_type":
+        report["actual_native_actions"] = {}
     with pytest.raises(W4PreworldBlocked):
         audit_original_s49_cleanup_claim_offline(report=report)
