@@ -384,3 +384,97 @@ def test_native_spawn_success_transfers_without_early_reap(monkeypatch):
         assert process.reaped == 1
 
     asyncio.run(run())
+
+
+def test_uncooperative_java_collector_fails_closed_without_waiting_forever(
+    monkeypatch, tmp_path,
+):
+    """A reader suppressing cancellation cannot certify successful cleanup."""
+    async def run():
+        process = FakeProcess()
+        entered = asyncio.Event()
+        release = asyncio.Event()
+        original_create = asyncio.create_task
+        collectors = []
+
+        class ResistantStdout:
+            async def readline(self):
+                entered.set()
+                try:
+                    await asyncio.Event().wait()
+                except asyncio.CancelledError:
+                    await release.wait()
+                return b""
+
+        process.stdout = ResistantStdout()
+
+        async def fake_spawn(*args, **kwargs):
+            return process
+
+        def track_create(coro, *args, **kwargs):
+            task = original_create(coro, *args, **kwargs)
+            if getattr(coro, "__qualname__", "").endswith(".collect"):
+                collectors.append(task)
+            return task
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_spawn)
+        monkeypatch.setattr(asyncio, "create_task", track_create)
+        monkeypatch.setattr(s31a, "_STARTUP_COLLECTOR_SETTLE_S", 0.02)
+        owner = original_create(
+            s31a._ready_server(tmp_path, tmp_path / "dummy.jar", tmp_path / "java.log"),
+        )
+        await entered.wait()
+        owner.cancel()
+        try:
+            with pytest.raises(asyncio.CancelledError) as exc:
+                await asyncio.wait_for(owner, 1)
+            assert "collector did not settle" in getattr(
+                exc.value, "startup_cleanup_unconfirmed", "",
+            )
+            assert process.terminated == 1
+            assert process.reaped == 1
+            assert len(collectors) == 1
+            assert not collectors[0].done()  # Not misreported as settled.
+        finally:
+            release.set()
+            for collector in collectors:
+                await asyncio.wait_for(collector, 1)
+
+    asyncio.run(run())
+
+
+def test_process_wait_ignoring_cancel_never_becomes_confirmed_cleanup():
+    """wait_for() alone would overrun the deadline and lose the fault."""
+    async def run():
+        process = FakeProcess()
+        released = asyncio.Event()
+        wait_started = asyncio.Event()
+        call_count = 0
+
+        async def noncooperative_wait():
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                wait_started.set()
+                try:
+                    await asyncio.Event().wait()
+                except asyncio.CancelledError:
+                    await released.wait()
+                return process.returncode
+            process.reaped += 1
+            return process.returncode
+
+        process.wait = noncooperative_wait
+        try:
+            with pytest.raises(StartupCleanupUnconfirmed, match="prior wait remains"):
+                await asyncio.wait_for(terminate_and_reap(process, timeout_s=0.01), 1)
+            assert wait_started.is_set()
+            assert call_count == 2
+            # The second process.wait() may have returned an exit integer.
+            # The first noncooperative task still prevents complete settlement.
+            assert process.reaped == 1
+        finally:
+            released.set()
+            await asyncio.sleep(0)
+
+    asyncio.run(run())
