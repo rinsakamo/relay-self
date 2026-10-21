@@ -36,3 +36,7 @@
 ## External authenticity
 
 Synthetic fake-process assertions prove local control flow only. They do not attest a native process's OS identity, external custody, a Minecraft World, a user grant or a scientific measurement.
+
+## CI candidate branch
+
+- Non-merging CI evaluation copy: `self/product-self-one-command-s49startup-20261021`; upstream review candidate `self/s49-startup-ownership-review-20261021`. The push trigger evaluates the existing offline matrix; it is **not** adoption or a source-protection exception.
