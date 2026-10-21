@@ -398,6 +398,80 @@ def audit_original_s49_stage_r_owner_claim_offline(*, report: dict) -> dict:
     }
 
 
+
+def audit_original_s49_event_probe_pairs_offline(*, report: dict) -> dict:
+    """Compare the original producer's event→reprobe pairs with its L0 trace.
+
+    Internal consistency only: no OS process custody, Minecraft TCP, or
+    independent proof that either claimed observation was actually received.
+    """
+    if type(report) is not dict:
+        raise W4PreworldBlocked("S49 source pair report must be an object")
+    pairs = report.get("source_pair_trace")
+    decisions = report.get("decisions")
+    if (
+        type(pairs) is not list or len(pairs) != 3
+        or type(decisions) is not list or len(decisions) != 3
+    ):
+        raise W4PreworldBlocked("S49 original event/probe pairs missing")
+
+    def target_in(entries: object, entity_id: int) -> float | None:
+        if type(entries) is not list:
+            raise W4PreworldBlocked("S49 source pair entity collection invalid")
+        matched: list[float] = []
+        for entity in entries:
+            if (
+                type(entity) is not dict
+                or type(entity.get("name")) is not str
+                or type(entity.get("id")) is not int
+                or type(entity.get("d")) not in (int, float)
+                or not math.isfinite(entity["d"])
+                or entity["d"] < 0
+            ):
+                raise W4PreworldBlocked("S49 source pair entity field invalid")
+            if entity["id"] == entity_id and entity["name"] == "zombie":
+                matched.append(entity["d"])
+        if len(matched) != 1:
+            raise W4PreworldBlocked("S49 target missing or duplicated in source pair")
+        return matched[0]
+
+    for step, pair in zip(decisions, pairs, strict=True):
+        if (
+            type(step) is not dict
+            or type(pair) is not dict
+            or type(step.get("event_seq")) is not int
+            or type(step.get("probe_seq")) is not int
+            or type(step.get("entity_id")) is not int
+            or pair.get("event_kind") != "entities"
+            or type(pair.get("event_seq")) is not int
+            or pair["event_seq"] != step["event_seq"]
+            or type(pair.get("probe_seq")) is not int
+            or pair["probe_seq"] != step["probe_seq"]
+            or pair["probe_seq"] <= pair["event_seq"]
+            or type(step.get("distance_m")) not in (int, float)
+            or not math.isfinite(step["distance_m"])
+        ):
+            raise W4PreworldBlocked("S49 event/probe identity or ordering mismatch")
+        target_in(pair.get("event_entities"), step["entity_id"])
+        probe_distance = target_in(
+            pair.get("probe_entities"), step["entity_id"],
+        )
+        if not math.isclose(
+            probe_distance, step["distance_m"], rel_tol=1e-6, abs_tol=1e-6,
+        ):
+            raise W4PreworldBlocked("S49 decision distance diverged from probe")
+
+    return {
+        "schema": "W4_S49_EVENT_PROBE_PAIRS_OFFLINE_V0",
+        "reported_correlated_pairs": 3,
+        "evidence_scope": "UNTRUSTED_PRODUCER_REPORT_CONTENT_ONLY",
+        "external_custody_qualified": False,
+        "physical_run_permitted": False,
+        "s10_permission": False,
+        "science_qualified": False,
+    }
+
+
 def audit_original_s49_cleanup_claim_offline(*, report: dict) -> dict:
     """Fail-closed readback of the *reported* S49 Node/Java cleanup.
 
@@ -439,6 +513,7 @@ def audit_original_s49_cleanup_claim_offline(*, report: dict) -> dict:
     # Reported Action success without the original owner's 3/2 narrative
     # is not even internally consistent, irrespective of clean shutdown.
     action_claim = audit_original_s49_action_trace_claim_offline(report=report)
+    pair_claim = audit_original_s49_event_probe_pairs_offline(report=report)
 
     # Baseline original S49 need not capture Node shutdown ACK at all.
     # Consequently an old baseline PASS is NEVER sufficient for a W4
@@ -474,6 +549,7 @@ def audit_original_s49_cleanup_claim_offline(*, report: dict) -> dict:
         "producer_claimed_stop_ack": 1,
         "reported_decisions": action_claim["reported_decisions"],
         "reported_actions": action_claim["reported_actions"],
+        "reported_correlated_pairs": pair_claim["reported_correlated_pairs"],
         "evidence_scope": "UNTRUSTED_REPORT_CONTENT_ONLY",
         "raw_stdout_independently_replayed": False,
         "live_owner_attested": False,

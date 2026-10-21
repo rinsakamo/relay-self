@@ -452,3 +452,26 @@ W4のStage R監査もこの4項の strict 単調性を確認する。
 合成正常例は `second_probe=4 / terminal_after=7 / next_event=10 / next_probe=11` とし、
 `terminal_after==next_event` を独立負対照として拒否する。
 この検査もproducer内部整合のみで、World tick署名/外部native証拠ではない。
+
+
+## 20. 原S49 source_pair_trace の読取結合（offline only）
+
+原S49の `qualify().reprobe()` は各native event受信後に独立
+correlated probeを受け取り、`source_pair_trace` に
+`event_seq` / `event_kind` / `event_entities` と
+`probe_seq` / `probe_entities` を記録する。
+従来のW4 readbackは `decisions` 3件と `actual_native_actions`
+2件を整合確認していたが、その3判断が実際のproducer報告の
+event/probeペアと合うかを判定していなかった。
+
+新しい `audit_original_s49_event_probe_pairs_offline()` で、
+3ペアの存在、各event/probe seqおよび `"entities"` event kind、
+対象zombie idの一意な存在、probeで測定したfinite距離と
+判断の距離の一致を検査する。20種類の source欠落・順序改ざん・
+対象入替・距離不正などの負対照と、原 `qualify()` のfake-port
+出力をそのまま読む回帰テストを追加。
+
+この照合はあくまでも **同一producerの事後JSON同士の整合**であり、
+Minecraft TCP packet、native sourceの外部独立性、S16の実物理結果、
+S10の真正なcommitを証明しない。W3 local raw replayは別ゲートに
+据え置き、全permissionと SCIENCEはfalse、PREWORLD_BLOCKEDを維持。

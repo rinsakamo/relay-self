@@ -424,6 +424,22 @@ def _w4_s49_report_claim():
         }
         for i, (seq, probe) in enumerate(((1, 2), (3, 4), (5, 6)))
     ]
+    source_pairs = [
+        {
+            "event_seq": step["event_seq"],
+            "event_kind": "entities",
+            "event_entities": [{
+                "name": "zombie", "id": step["entity_id"],
+                "d": step["distance_m"],
+            }],
+            "probe_seq": step["probe_seq"],
+            "probe_entities": [{
+                "name": "zombie", "id": step["entity_id"],
+                "d": step["distance_m"],
+            }],
+        }
+        for step in steps
+    ]
     actions = [
         {
             "action": f"s49-native-move-{step['event_seq']}",
@@ -437,6 +453,7 @@ def _w4_s49_report_claim():
         "milestone": "S49", "stage": "CLOSED", "status": "PASS",
         "session_id": sid, "node_exit": 0, "server_exit": 0,
         "decisions": steps, "actual_native_actions": actions,
+        "source_pair_trace": source_pairs,
         "classification": "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED",
         "w3_node_stdout_capture": {
             "schema": "relay-self-w3-node-stdout-v0",
@@ -464,6 +481,7 @@ def _s49_stage_r_report_claim():
     # later event request, and that event before its correlated probe.
     decisions[2]["event_seq"] = 10
     decisions[2]["probe_seq"] = 11
+    report["source_pair_trace"][2].update(event_seq=10, probe_seq=11)
     report["actual_native_actions"][1].update(
         action="s49-native-move-10", event_seq=10, probe_seq=11,
     )
@@ -550,6 +568,7 @@ def test_s49_report_only_claim_cannot_enter_phase_b_offline_review(tmp_path):
     assert claim["producer_claimed_stop_ack"] == 1
     assert claim["reported_decisions"] == 3
     assert claim["reported_actions"] == 2
+    assert claim["reported_correlated_pairs"] == 3
     assert report["actual_native_actions"][0]["terminal"] == "outcome"
     assert not claim["raw_stdout_independently_replayed"]
     # No raw files: plausible producer report alone is not replay.
@@ -939,7 +958,8 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
         return NS(
             seq=seq + 1, request_id=request_id,
             snapshot=NS(nearby_entities=(NS(
-                name="zombie", entity_id=seq, distance=2.0,
+                name="zombie", entity_id=seq,
+                distance=10.0 if seq == 1 else 2.0,
             ),)),
         )
 
@@ -1016,6 +1036,12 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
     trace_verdict = audit_original_s49_action_trace_claim_offline(report=report)
     assert trace_verdict["reported_decisions"] == 3
     assert trace_verdict["reported_actions"] == 2
+    from adapters.mineflayer.self_world_stage_w4_optin_offline import (
+        audit_original_s49_event_probe_pairs_offline,
+    )
+    pair_verdict = audit_original_s49_event_probe_pairs_offline(report=report)
+    assert pair_verdict["reported_correlated_pairs"] == 3
+    assert not pair_verdict["physical_run_permitted"]
     assert not trace_verdict["physical_run_permitted"]
     # Document the EXISTING defect; once original S49 is corrected, invert
     # this expected witness to require original FAIL. Never call it qualified.
@@ -1272,4 +1298,83 @@ def test_w4_phase_b_reads_consistent_stage_r_only_as_untrusted_source(tmp_path):
     assert not result["s10_permission"]
     assert not result["external_custody_qualified"]
     assert not result["physical_run_permitted"]
+    assert not result["science_qualified"]
+
+
+@pytest.mark.parametrize("fault", (
+    "missing_pairs", "empty_pairs", "too_many_pairs",
+    "wrong_event_kind", "wrong_event_seq", "wrong_probe_seq",
+    "before_event", "no_event_entities", "no_probe_entities",
+    "foreign_event_target", "foreign_probe_target",
+    "event_duplicate_target", "probe_duplicate_target",
+    "wrong_entity_name", "probe_distance_changed",
+    "nan_probe_distance", "boolean_probe_distance",
+    "negative_probe_distance", "invalid_pair_type",
+    "invalid_probe_entities_type",
+))
+def test_original_s49_event_probe_pair_claim_fail_closed(fault):
+    report = _w4_s49_report_claim()
+    pairs = report["source_pair_trace"]
+    step = report["decisions"][1]
+    pair = pairs[1]
+    if fault == "missing_pairs":
+        del report["source_pair_trace"]
+    elif fault == "empty_pairs":
+        pairs.clear()
+    elif fault == "too_many_pairs":
+        pairs.append(dict(pair))
+    elif fault == "wrong_event_kind":
+        pair["event_kind"] = "effect_result"
+    elif fault == "wrong_event_seq":
+        pair["event_seq"] += 1
+    elif fault == "wrong_probe_seq":
+        pair["probe_seq"] += 1
+    elif fault == "before_event":
+        pair["probe_seq"] = pair["event_seq"]
+        step["probe_seq"] = pair["probe_seq"]
+        report["actual_native_actions"][0]["probe_seq"] = pair["probe_seq"]
+    elif fault == "no_event_entities":
+        pair["event_entities"] = []
+    elif fault == "no_probe_entities":
+        pair["probe_entities"] = []
+    elif fault == "foreign_event_target":
+        pair["event_entities"][0]["id"] += 1
+    elif fault == "foreign_probe_target":
+        pair["probe_entities"][0]["id"] += 1
+    elif fault == "event_duplicate_target":
+        pair["event_entities"].append(dict(pair["event_entities"][0]))
+    elif fault == "probe_duplicate_target":
+        pair["probe_entities"].append(dict(pair["probe_entities"][0]))
+    elif fault == "wrong_entity_name":
+        pair["probe_entities"][0]["name"] = "skeleton"
+    elif fault == "probe_distance_changed":
+        pair["probe_entities"][0]["d"] = 2.5
+    elif fault == "nan_probe_distance":
+        pair["probe_entities"][0]["d"] = float("nan")
+    elif fault == "boolean_probe_distance":
+        pair["probe_entities"][0]["d"] = True
+    elif fault == "negative_probe_distance":
+        pair["probe_entities"][0]["d"] = -1.0
+    elif fault == "invalid_pair_type":
+        pairs[1] = []
+    elif fault == "invalid_probe_entities_type":
+        pair["probe_entities"] = {}
+    with pytest.raises(W4PreworldBlocked):
+        audit_original_s49_cleanup_claim_offline(report=report)
+
+
+def test_w4_action_report_source_pair_stays_untrusted(tmp_path):
+    report = _w4_s49_report_claim()
+    report["w3_node_stdout_capture"] = _local_w3_synthetic_archive(tmp_path)
+    claim = audit_original_s49_cleanup_claim_offline(report=report)
+    assert claim["reported_decisions"] == 3
+    assert claim["reported_correlated_pairs"] == 3
+    result = review_w4_s49_phase_b_optin_offline(
+        selected_mode="W4_S49_SYNTHETIC_OFFLINE_REVIEW",
+        explicit_opt_in=True, closed_composition=_w4_s49_closed_claim(),
+        report=report, archive_root=tmp_path,
+    )
+    assert not result["external_custody_qualified"]
+    assert not result["physical_run_permitted"]
+    assert not result["s10_permission"]
     assert not result["science_qualified"]
