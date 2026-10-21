@@ -42,6 +42,7 @@ from adapters.mineflayer.self_world_stage_w4_optin_offline import (
 )
 from adapters.mineflayer.self_world_stage_w4_preflight import W4PreworldBlocked
 from adapters.mineflayer.self_world_stage_w4_window import W4WindowEvent
+from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
 from relay_self.execution_binding import ExecutionBinding, resolve_execution_binding
 from relay_self.intent import IntentCommitment
@@ -426,7 +427,7 @@ def _w4_s49_report_claim():
     actions = [
         {
             "action": f"s49-native-move-{step['event_seq']}",
-            "terminal": "OUTCOME", "source": sid,
+            "terminal": ActionState.OUTCOME.value, "source": sid,
             "event_seq": step["event_seq"], "probe_seq": step["probe_seq"],
             "movement_m": 0.2,
         }
@@ -491,6 +492,7 @@ def test_s49_report_only_claim_cannot_enter_phase_b_offline_review(tmp_path):
     assert claim["producer_claimed_stop_ack"] == 1
     assert claim["reported_decisions"] == 3
     assert claim["reported_actions"] == 2
+    assert report["actual_native_actions"][0]["terminal"] == "outcome"
     assert not claim["raw_stdout_independently_replayed"]
     # No raw files: plausible producer report alone is not replay.
     with pytest.raises(W4PreworldBlocked):
@@ -945,6 +947,18 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
     report = json.loads(out.read_text(encoding="utf-8"))
     assert len(report["decisions"]) == 3
     assert len(report["actual_native_actions"]) == 2
+    # Parse the *unchanged S49 original* serializer, not only a hand-built
+    # W4 report fixture: the canonical terminal wire value is "outcome".
+    assert [a["terminal"] for a in report["actual_native_actions"]] == [
+        ActionState.OUTCOME.value, ActionState.OUTCOME.value,
+    ]
+    from adapters.mineflayer.self_world_stage_w4_optin_offline import (
+        audit_original_s49_action_trace_claim_offline,
+    )
+    trace_verdict = audit_original_s49_action_trace_claim_offline(report=report)
+    assert trace_verdict["reported_decisions"] == 3
+    assert trace_verdict["reported_actions"] == 2
+    assert not trace_verdict["physical_run_permitted"]
     # Document the EXISTING defect; once original S49 is corrected, invert
     # this expected witness to require original FAIL. Never call it qualified.
     assert original_rc == 0
@@ -1025,6 +1039,7 @@ def test_direct_s49_report_claim_rejects_secondary_cleanup_even_clean_exit(fault
     "foreign_action_source", "action_seq_mismatch", "action_probe_mismatch",
     "action_id_mismatch", "action_not_outcome", "missing_movement",
     "tiny_movement", "nan_movement", "bool_movement", "foreign_action_type",
+    "uppercase_enum_name",
 ))
 def test_w4_s49_action_trace_negative_claims_fail_closed(fault):
     report = _w4_s49_report_claim()
@@ -1059,7 +1074,9 @@ def test_w4_s49_action_trace_negative_claims_fail_closed(fault):
     elif fault == "action_id_mismatch":
         actions[0]["action"] = "forged"
     elif fault == "action_not_outcome":
-        actions[0]["terminal"] = "UNKNOWN"
+        actions[0]["terminal"] = ActionState.UNKNOWN.value
+    elif fault == "uppercase_enum_name":
+        actions[0]["terminal"] = "OUTCOME"
     elif fault == "missing_movement":
         actions[0].pop("movement_m")
     elif fault == "tiny_movement":

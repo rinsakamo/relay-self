@@ -10,6 +10,7 @@ import math
 from pathlib import Path
 
 from adapters.mineflayer.normal_action import NormalActionClosedReadback
+from relay_self.action import ActionState
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.self_world_stage_w3_capture import (
     W3CaptureRejected,
@@ -232,6 +233,8 @@ def audit_original_s49_action_trace_claim_offline(*, report: dict) -> dict:
 
     Counts, event/probe identity and reported OUTCOME are untrusted. They
     must nevertheless be mutually consistent before W4 reads the report.
+    Compare the *actual original S49 serialized enum value* (lowercase
+    "outcome"), not the ActionState enum member's uppercase name.
     """
     if type(report) is not dict:
         raise W4PreworldBlocked("S49 report must be an object")
@@ -274,7 +277,7 @@ def audit_original_s49_action_trace_claim_offline(*, report: dict) -> dict:
         if (
             type(action) is not dict
             or action.get("action") != f"s49-native-move-{step['event_seq']}"
-            or action.get("terminal") != "OUTCOME"
+            or action.get("terminal") != ActionState.OUTCOME.value
             or action.get("source") != sid
             or type(action.get("event_seq")) is not int
             or action["event_seq"] != step["event_seq"]

@@ -392,3 +392,23 @@ Node stdoutが実Actionの物理的因果を証明することはない。
 失敗時は `W4PreworldBlocked`、成功してもすべての
 `physical_run_permitted/s10_permission/science_qualified` はfalse。
 `W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED` は不変。
+
+
+## 18. 原S49 ActionState enum のwire値との実装整合性（2026-10-21）
+
+前回追加した `audit_original_s49_action_trace_claim_offline()` は
+`terminal == "OUTCOME"` としていたが、保護された原S49の生産経路は
+`receipt.terminal.state.value` を記録し、
+`ActionState.OUTCOME.value == "outcome"`（小文字）である。
+原producerの正常な結果を合成大文字fixtureが隠して誤拒否する
+**内部の相互運用性バグ**を修正。検査側は元の
+`ActionState.OUTCOME.value` 定義から値を参照し、成功fixtureも
+同じ実enum値から生成する。原S49 `qualify()` をfake portsで実行する
+既存テストでも、出力した2件の `terminal` をそのままW4純関数へ通し、
+実際に3/2の報告を読取可能かを確認。大文字 `"OUTCOME"` と
+`ActionState.UNKNOWN.value` は負対照で拒否する。
+
+原S49の生産wire形式、保護19 SHA、Action/S16/S17の権限境界、
+W3 raw replayや実World資格は一切変更しない。
+報告JSONの内部整合と外部真正は別であり、
+`W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED` は継続。
