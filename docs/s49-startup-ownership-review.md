@@ -42,3 +42,15 @@ Synthetic fake-process assertions prove local control flow only. They do not att
 ## CI candidate branch
 
 - Non-merging CI evaluation copy: `self/product-self-one-command-s49startup-20261021`; upstream review candidate `self/s49-startup-ownership-review-20261021`. The push trigger evaluates the existing offline matrix; it is **not** adoption or a source-protection exception.
+
+
+## Independent follow-up audit — 2026-10-21 (audit branch)
+
+- Read-only baseline: `self/product-self-one-command-s49startup-bounded-20261021` at `84154cbda6ea0d4cea90cf3245243cfa6f001f6b`.
+- Audited candidate: `self/product-self-one-command-s49startup-audit-20261021` (inspect exact HEAD from CI; do not assume tests on earlier HEAD apply).
+- Source review found **one actionable fail-closed defect**: when `spawn_with_custody()` was cancelled during subprocess creation, `terminate_and_reap()` could correctly raise `StartupCleanupUnconfirmed` while the process object already had an integer `returncode`. The cancellation was re-raised **without** `startup_cleanup_unconfirmed`, allowing S49 to lose the custody diagnosis. Exit code is not a successful waiter-settlement receipt.
+- New code marks *every* failed reap during cancelled spawn as unconfirmed regardless of `returncode`; confirms `process.wait()` integer equals `process.returncode` rather than merely checking both are integers.
+- Added fake-only negative controls for post-cancel reaping failure despite integer `returncode`, and inconsistent `wait()` vs `returncode`. Both preserve failure rather than fabricate a clean exit.
+- Still unresolved by fake tests: whether Python subprocess creation can expose a native child if OS spawn stalls indefinitely before `Process` handoff; actual Java/Node host PID, signal/wait, stdout capture, W3 closure, cleanup under live WSL2 and OS identity require separate qualification. A still-uncooperative async waiter/collector may remain pending after fail-closed reporting; this is explicitly **NOT** complete cleanup proof.
+- The only existing protected original changed in this follow-up is **none** (helper, tests and this document only); four protected originals in the inherited candidate (S49/S31A/S34/Node session) **still require independent owner exception**. Do not alter protected expected hashes or treat CI's guard refusal as a waiver.
+- Qualified scientific / W4 owner lease claim remains **NO_GO** until exact-head matrix, independent owner review, native custody and live grant checks; neither this review nor fake tests authorizes World execution.
