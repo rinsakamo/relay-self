@@ -552,3 +552,80 @@ def test_reap_result_must_match_observed_process_exit():
         assert process.reaped == 1
 
     asyncio.run(run())
+
+
+def test_local_python_child_postspawn_cancel_real_reap(monkeypatch):
+    """DEV Linux/CI OS smoke: one inert Python child, never Minecraft/Node."""
+    import sys
+
+    async def run():
+        actual_spawn = asyncio.create_subprocess_exec
+        ready = asyncio.Event()
+        release = asyncio.Event()
+        spawned = []
+
+        async def delayed_handoff(*args, **kwargs):
+            process = await actual_spawn(*args, **kwargs)
+            spawned.append(process)
+            ready.set()
+            await release.wait()
+            return process
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", delayed_handoff)
+        owner = asyncio.create_task(
+            spawn_with_custody(
+                sys.executable, "-c", "import time; time.sleep(30)",
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+            )
+        )
+        try:
+            await asyncio.wait_for(ready.wait(), timeout=5)
+            owner.cancel()
+            release.set()
+            with pytest.raises(asyncio.CancelledError):
+                await asyncio.wait_for(owner, timeout=10)
+            assert len(spawned) == 1
+            process = spawned[0]
+            assert type(process.returncode) is int
+            assert await asyncio.wait_for(process.wait(), timeout=2) == process.returncode
+        finally:
+            release.set()
+            for process in spawned:
+                if process.returncode is None:
+                    process.kill()
+                    await asyncio.wait_for(process.wait(), timeout=5)
+
+    asyncio.run(run())
+
+
+def test_local_python_child_resisting_term_real_kill_reap():
+    """DEV POSIX OS smoke: confirmed escalation, not a scientific World."""
+    import os
+    import sys
+
+    if os.name != "posix":
+        pytest.skip("POSIX SIGTERM-ignore subprocess fixture")
+    async def run():
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, "-u", "-c",
+            "import signal,time,sys; signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+            "sys.stdout.write('READY\\n'); sys.stdout.flush(); time.sleep(30)",
+            stdout=asyncio.subprocess.PIPE,
+        )
+        try:
+            assert process.stdout is not None
+            assert await asyncio.wait_for(process.stdout.readline(), timeout=5) == b"READY\\n"
+            rc = await asyncio.wait_for(
+                terminate_and_reap(process, timeout_s=0.1),
+                timeout=5,
+            )
+            assert rc == process.returncode
+            assert type(rc) is int
+            assert rc != 0
+        finally:
+            if process.returncode is None:
+                process.kill()
+                await asyncio.wait_for(process.wait(), timeout=5)
+
+    asyncio.run(run())
