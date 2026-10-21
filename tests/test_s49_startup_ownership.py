@@ -299,6 +299,7 @@ def test_no_exit_confirmation_fails_closed():
     async def run():
         process = FakeProcess()
         async def bad_wait():
+            process.returncode = None
             raise RuntimeError("never reaped")
         process.wait = bad_wait
         with pytest.raises(StartupCleanupUnconfirmed, match="kill/reap"):
