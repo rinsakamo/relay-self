@@ -439,3 +439,16 @@ Stage Rフィールド欠損、revision変更、別issuer、grant再送、
 証明しない。原 S49とS10/Stage R owner原本、固定19 SHA、
 実World実行境界は不変更。`W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED`
 を引き続き維持する。
+
+
+### Stage R の native source時間順序補正
+
+原 `StageRDevSingleWriter.observe_original_probe()` は後続probeの
+`next_source_request_id` 中のevent seqも
+Action terminal後観測 `terminal_after_native_seq` より**大きい**ことを要求する。
+Stage R の正常なproducer報告の必要順序は
+`second_action.original_probe_seq < terminal_after_native_seq < next_event_seq < next_probe_seq`。
+W4のStage R監査もこの4項の strict 単調性を確認する。
+合成正常例は `second_probe=4 / terminal_after=7 / next_event=10 / next_probe=11` とし、
+`terminal_after==next_event` を独立負対照として拒否する。
+この検査もproducer内部整合のみで、World tick署名/外部native証拠ではない。

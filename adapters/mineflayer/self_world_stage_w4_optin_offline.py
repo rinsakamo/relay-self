@@ -368,7 +368,7 @@ def audit_original_s49_stage_r_owner_claim_offline(*, report: dict) -> dict:
     if (
         commit.get("terminal_action_id") != first_action
         or type(after_seq) is not int
-        or not previous_probe < after_seq < next_probe
+        or not previous_probe < after_seq < decisions[2]["event_seq"] < next_probe
         or type(commit.get("next_source_probe_seq")) is not int
         or commit["next_source_probe_seq"] != next_probe
         or commit.get("next_source_request_id") != (

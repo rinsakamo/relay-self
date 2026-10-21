@@ -460,6 +460,13 @@ def _s49_stage_r_report_claim():
     sid = report["session_id"]
     decisions = report["decisions"]
     first_action = report["actual_native_actions"][0]["action"]
+    # Stage R requires the terminal AFTER-native observation before the
+    # later event request, and that event before its correlated probe.
+    decisions[2]["event_seq"] = 10
+    decisions[2]["probe_seq"] = 11
+    report["actual_native_actions"][1].update(
+        action="s49-native-move-10", event_seq=10, probe_seq=11,
+    )
     report["stage_r_dev_enabled"] = True
     report["classification"] = "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
     report["learning_in_world"] = True
@@ -488,7 +495,7 @@ def _s49_stage_r_report_claim():
         "additional_action_issuer": False,
         "commit_source": {
             "terminal_action_id": first_action,
-            "terminal_after_native_seq": 5,
+            "terminal_after_native_seq": 7,
             "next_source_probe_seq": decisions[2]["probe_seq"],
             "next_source_request_id": (
                 f"s49-actual:{sid}:event-{decisions[2]['event_seq']}"
@@ -1157,6 +1164,7 @@ def test_w4_s49_action_trace_negative_claims_fail_closed(fault):
     "missing_commit", "other_action", "terminal_seq_equal",
     "late_source_probe", "foreign_source_request", "missing_feedback",
     "foreign_authority", "foreign_authority_source", "wrong_commit_rev",
+    "terminal_not_before_next_event",
 ))
 def test_s49_stage_r_producer_claim_fail_closed_offline(fault):
     report = _s49_stage_r_report_claim()
@@ -1211,6 +1219,8 @@ def test_s49_stage_r_producer_claim_fail_closed_offline(fault):
         commit["terminal_action_id"] = "foreign-action"
     elif fault == "terminal_seq_equal":
         commit["terminal_after_native_seq"] = report["decisions"][1]["probe_seq"]
+    elif fault == "terminal_not_before_next_event":
+        commit["terminal_after_native_seq"] = report["decisions"][2]["event_seq"]
     elif fault == "late_source_probe":
         commit["next_source_probe_seq"] = report["decisions"][1]["probe_seq"]
     elif fault == "foreign_source_request":
