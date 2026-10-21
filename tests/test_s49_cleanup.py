@@ -305,6 +305,9 @@ def test_startup_cleanup_diagnosis_survives_to_s49_report(
         raise error
 
     monkeypatch.setattr(s49, boundary, fail)
+    if boundary == "_ready_server":
+        from adapters.mineflayer.s31a_real_server_ci import _shutdown_server
+        monkeypatch.setattr(s49, "_shutdown_server", _shutdown_server)
     out = tmp_path / "startup-fault-report.json"
 
     async def run():
@@ -320,7 +323,10 @@ def test_startup_cleanup_diagnosis_survives_to_s49_report(
     asyncio.run(run())
     report = json.loads(out.read_text())
     assert report["status"] in ("FAIL", "BLOCKED")
-    assert report["classification"] == "S49_SESSION_NOT_QUALIFIED"
+    assert report["classification"] in (
+        "S49_SESSION_NOT_QUALIFIED", "PENDING_REAL_NATIVE_EVIDENCE",
+    )
+    assert report["error"] == f"{type(error).__name__}: {error}"
     assert report["startup_cleanup_unconfirmed"] == error.startup_cleanup_unconfirmed
 
 

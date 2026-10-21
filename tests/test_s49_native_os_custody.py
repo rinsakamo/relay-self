@@ -87,7 +87,13 @@ def native_evidence(monkeypatch, tmp_path, request):
 
     monkeypatch.setattr(asyncio, "create_subprocess_exec", track_spawn)
     monkeypatch.setattr(asyncio, "create_task", track_task)
-    yield cancel
+    def settled():
+        pending = [t.get_name() for t in asyncio.all_tasks()
+                   if t is not asyncio.current_task() and not t.done()]
+        emit("owner_cleanup_settled", pending_tasks=pending)
+        assert not pending
+
+    yield {"cancel": cancel, "settled": settled}
     for child, identity in children:
         emit("final_process", pid=child.pid, starttime=identity[1], returncode=child.returncode,
              proc_absent=not Path(f"/proc/{child.pid}").exists())
@@ -175,13 +181,15 @@ def test_real_native_spawn_cancel_before_handoff_reaps_exact_pid(
             assert len(children) == 1
             identity = _linux_pid_identity(children[0].pid)
             assert identity[0] != os.getpid()
-            native_evidence(owner, "os_spawn_before_process_handoff")
+            native_evidence["cancel"](owner, "os_spawn_before_process_handoff")
             release.set()
             with pytest.raises(asyncio.CancelledError):
                 await asyncio.wait_for(owner, timeout=10)
             child = children[0]
             assert type(child.returncode) is int
             assert await asyncio.wait_for(child.wait(), timeout=2) == child.returncode
+            await asyncio.sleep(0)
+            native_evidence["settled"]()
             _assert_gone(identity)
         finally:
             release.set()
@@ -238,10 +246,12 @@ def test_real_node_cancel_during_original_adapter_startup_reaps_and_seals(
             await asyncio.wait_for(wait_for_receive(), timeout=10)
             assert len(children) == 1
             identity = _linux_pid_identity(children[0].pid)
-            native_evidence(owner, "original_launch_wait_adapter_started")
+            native_evidence["cancel"](owner, "original_launch_wait_adapter_started")
             with pytest.raises(asyncio.CancelledError):
                 await asyncio.wait_for(owner, timeout=10)
             assert type(children[0].returncode) is int
+            await asyncio.sleep(0)
+            native_evidence["settled"]()
             _assert_gone(identity)
             receipt_path = root / "w3-node-stdout-receipt.json"
             assert receipt_path.is_file()
@@ -294,12 +304,14 @@ def test_real_java_original_readiness_cancel_settles_only_collector(
             await asyncio.wait_for(await_log(), timeout=10)
             assert len(children) == 1
             identity = _linux_pid_identity(children[0].pid)
-            native_evidence(owner, "original_ready_server_wait_readiness")
+            native_evidence["cancel"](owner, "original_ready_server_wait_readiness")
             with pytest.raises(asyncio.CancelledError):
                 await asyncio.wait_for(owner, timeout=10)
             assert type(children[0].returncode) is int
             assert len(collectors) == 1
             assert collectors[0].done()
+            await asyncio.sleep(0)
+            native_evidence["settled"]()
             _assert_gone(identity)
         finally:
             for child in children:
