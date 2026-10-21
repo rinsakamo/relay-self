@@ -118,6 +118,10 @@ async def spawn_with_custody(*argv, **kwargs) -> asyncio.subprocess.Process:
     return its handle to the caller. If the caller cancels, the same task is
     awaited to completion and any produced child is terminated and reaped.
     """
+    caller = asyncio.current_task()
+    if caller is not None and caller.cancelling():
+        # No child should be spawned if cancellation was already requested.
+        raise asyncio.CancelledError
     spawn = asyncio.create_task(asyncio.create_subprocess_exec(*argv, **kwargs))
     cancelled: asyncio.CancelledError | None = None
     while not spawn.done():
