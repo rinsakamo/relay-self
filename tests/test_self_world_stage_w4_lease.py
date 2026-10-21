@@ -581,6 +581,35 @@ def test_unknown_shutdown_delegation_target_is_denied_before_read(monkeypatch):
 PROTECTED_BLOBS = {'adapters/mineflayer/s49_normal_session_real_ci.py': 'fd2b06e9dbed17be0e35b3a1bbd0ed423b9af258', 'adapters/mineflayer/s34_native_world_cognition_ci.py': 'eaecb117ad26059d6d2abb2c12bca61b2dce1f01', 'adapters/mineflayer/s31a_real_server_ci.py': '7ee3e95af66e1b981f72509a3dd661d79ef95744', 'adapters/mineflayer/process_session.py': '6eec8f80621c581d47154f7c76e72303e00c04f0', 'adapters/mineflayer/normal_action.py': '0ded8fa296c92076a643de08cd6fc360061e1d08', 'adapters/mineflayer/execution.py': '2af25bc6808f8a4199fe2ee500d1c1dfbea25de2', 'adapters/mineflayer/action_outcome.py': '502a14304c8ab9f5e37bff4a054cf2a21730d294', 'src/relay_self/intent.py': 'f4ef9500cd7941e5e9e07fd41ac2b6e4b4d5ac25', 'src/relay_self/skill.py': '61885956810b4125721f685d449b361262b71120', 'src/relay_self/action.py': '869e761cfa2646f48f12e5e8088375ae64f04607', 'src/relay_self/action_supervision.py': '3320caab19d05afa74f046e3e0f143bc1aad5821', 'src/relay_self/learning.py': '9fd949e94e91ded1c070d359378833f354fba577', 'src/relay_self/habit.py': 'edc8904753421ef836843ae736f194f5a3a39168', 'src/relay_self/action_feedback.py': '8ae84e2e555550128a59a23c342f67a032a0c859', 'src/relay_self/action_outcome.py': 'd28bbc1745104bcd7872061bef2fe6222ceccb2a', 'docs/postmain-architecture.json': 'e8419c55b5535d451346fd2a9a3c42326a80aa29', 'docs/postmain-architecture.md': '62b8e807d1b35a7f06d15b61e411434f57fe111d', 'tests/test_postmain_architecture_freeze.py': 'd343aa052541b4ee9d2ce3e00653cc1a56d681ce', 'src/relay_self/persistent_cognition.py': '5d4fff3fa10bad78f98118758c8a22d53e8390fb'}
 
 
+# S49 scoped source adoption v1. Historical frozen originals above MUST
+# remain unchanged. This is an indivisible four-blob choice, not a permissive
+# per-file whitelist: a mixed, future-edited or fifth protected blob is denied.
+# Scope: source hash only; no permission for World, W4 lease or science.
+S49_APPROVED_CANDIDATE_BLOBS_V1 = {
+    'adapters/mineflayer/process_session.py':
+        'cf5a979d9da38acbe670973c11d7186ade49dbfe',
+    'adapters/mineflayer/s31a_real_server_ci.py':
+        '04a4b20278844528082f9f5c731350418ac3553c',
+    'adapters/mineflayer/s34_native_world_cognition_ci.py':
+        '66728a9667734f4b7164de23f244a938a756dbdc',
+    'adapters/mineflayer/s49_normal_session_real_ci.py':
+        'c48e22980d19c79e68c381566fb0edc09b346f1e',
+}
+
+
+def _protected_source_variant(actual):
+    """Only the frozen 19-source set OR exact four-blob S49 v1 may be used."""
+    assert set(actual) == set(PROTECTED_BLOBS), 'protected path inventory changed'
+    frozen = all(actual[p] == sha for p, sha in PROTECTED_BLOBS.items())
+    if frozen:
+        return 'S18_FROZEN_ORIGINAL'
+    assert set(S49_APPROVED_CANDIDATE_BLOBS_V1).issubset(PROTECTED_BLOBS)
+    for path, sha in PROTECTED_BLOBS.items():
+        expected = S49_APPROVED_CANDIDATE_BLOBS_V1.get(path, sha)
+        assert actual[path] == expected, path
+    return 'S49_SCOPED_FOUR_BLOBS_V1'
+
+
 def test_s18_and_original_default_routes_are_blob_identical():
     import subprocess
 
@@ -588,11 +617,49 @@ def test_s18_and_original_default_routes_are_blob_identical():
     from adapters.mineflayer import s49_normal_session_real_ci as s49
 
     root = Path(__file__).resolve().parents[1]
-    for path, expected in PROTECTED_BLOBS.items():
-        actual = subprocess.check_output(['git', 'hash-object', str(root / path)], text=True).strip()
-        assert actual == expected, path
+    actual = {
+        path: subprocess.check_output(
+            ['git', 'hash-object', str(root / path)], text=True,
+        ).strip()
+        for path in PROTECTED_BLOBS
+    }
+    # Do not edit historical PROTECTED_BLOBS or silently accept a partial
+    # exception. The existing exact S18 original state still passes unchanged.
+    assert _protected_source_variant(actual) in (
+        'S18_FROZEN_ORIGINAL', 'S49_SCOPED_FOUR_BLOBS_V1',
+    )
     assert s34.MineflayerProcessSession is MineflayerProcessSession
     assert s49._new_session is s34._new_session
+
+
+def test_s49_scoped_source_exception_rejects_partial_or_future_changes():
+    original = dict(PROTECTED_BLOBS)
+    candidate = {**original, **S49_APPROVED_CANDIDATE_BLOBS_V1}
+    assert len(original) == 19
+    assert len(S49_APPROVED_CANDIDATE_BLOBS_V1) == 4
+    assert all(original[p] != candidate[p] for p in S49_APPROVED_CANDIDATE_BLOBS_V1)
+    assert _protected_source_variant(original) == 'S18_FROZEN_ORIGINAL'
+    assert _protected_source_variant(candidate) == 'S49_SCOPED_FOUR_BLOBS_V1'
+    # An independently modified one-of-four / extra fifth protected source
+    # cannot claim an indivisible approved source version.
+    for path in S49_APPROVED_CANDIDATE_BLOBS_V1:
+        partial = dict(original)
+        partial[path] = candidate[path]
+        with pytest.raises(AssertionError, match=path.replace('.', r'\\.')):
+            _protected_source_variant(partial)
+        future = dict(candidate)
+        future[path] = '0' * 40
+        with pytest.raises(AssertionError, match=path.replace('.', r'\\.')):
+            _protected_source_variant(future)
+    fifth = next(p for p in original if p not in candidate or p not in S49_APPROVED_CANDIDATE_BLOBS_V1)
+    mixed = dict(candidate)
+    mixed[fifth] = '0' * 40
+    with pytest.raises(AssertionError, match=fifth.replace('.', r'\\.')):
+        _protected_source_variant(mixed)
+    missing = dict(candidate)
+    missing.pop(fifth)
+    with pytest.raises(AssertionError, match='inventory'):
+        _protected_source_variant(missing)
     for path in ('adapters/mineflayer/s49_normal_session_real_ci.py',
                  'adapters/mineflayer/s34_native_world_cognition_ci.py'):
         assert 'self_world_stage_w4_lease' not in (root / path).read_text()
