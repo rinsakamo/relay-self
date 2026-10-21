@@ -530,15 +530,21 @@ async def qualify(
         cancellations.append(exc)
         report["status"] = "FAIL"
         report["error"] = f"{type(exc).__name__}: {exc}"
+        if getattr(exc, "startup_cleanup_unconfirmed", None) is not None:
+            report["startup_cleanup_unconfirmed"] = exc.startup_cleanup_unconfirmed
         rc = 1
     except (S31ABlocked, OSError) as exc:
         report["status"] = "BLOCKED"
         report["error"] = f"{type(exc).__name__}: {exc}"
+        if getattr(exc, "startup_cleanup_unconfirmed", None) is not None:
+            report["startup_cleanup_unconfirmed"] = exc.startup_cleanup_unconfirmed
         print("S49 BLOCKED: " + str(exc), file=sys.stderr)
         rc = 2
     except Exception as exc:
         report["status"] = "FAIL"
         report["error"] = f"{type(exc).__name__}: {exc}"
+        if getattr(exc, "startup_cleanup_unconfirmed", None) is not None:
+            report["startup_cleanup_unconfirmed"] = exc.startup_cleanup_unconfirmed
         print("S49 FAIL: " + str(exc), file=sys.stderr)
         rc = 1
     finally:
