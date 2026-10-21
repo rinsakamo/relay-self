@@ -70,6 +70,8 @@ original `qualify()` の try本体は保護原本・旧candidateとAST一致。C
 OS強制終了、電源喪失、event-loopの停止/非協調コード、不可逆なstorage障害を越える保証はない。同期temp/report I/OをOSレベルで強制打切りできるとは主張しない。
 非協調taskは期限後にunconfirmedとしてFAILにし、終われば例外を回収する。PID停止を確認できない場合やreaderを撤収できない場合の統合資格はNO_GO。
 
+審査の対象境界は **qualifyが受領したhandleの終了処理**。保護helper `_ready_server` 内でspawn後・handle返却前にcancelされる場合、または `_new_session`/`MineflayerProcessSession.launch` のstartup待機内でcancelされる場合の未返却process custodyは別の未解決境界である。S49 finallyから未受領handleを捏造して回収したとは主張しない。今回これらの保護helperを変更せず、実Worldを起動していない。live採用前にhelper ownerによる取得時cancelの引渡し/停止契約と故障注入が必要。downloadのto_threadも取消でworker自体を強制終了できるものではない。したがってこの修正のteardown回帰から全startup段階の取消安全性や物理資格を推論しない。
+
 ## 回帰と最小の負対照集合
 
 新規 `tests/test_s49_cleanup.py` は原 `qualify()` を直接呼び、外部process/effect portsだけをfake化する。
@@ -80,7 +82,8 @@ OS強制終了、電源喪失、event-loopの停止/非協調コード、不可�
 | --- | --- |
 | original cleanup故障注入 Python3.12.3 / pytest9.1.1 | 32 PASS / 0 FAIL / 0 SKIP |
 | original cleanup故障注入 Python3.11.17 / pytest9.1.1 | 32 PASS / 0 FAIL / 0 SKIP |
-| S49/W3/Stage R/W4 readback/S18 focused（前teardown版） | 両Pythonで156 PASS / 0 FAIL / 0 SKIP。最終sourceのfull/CIで再検証 |
+| exact source CI S49/W3/Stage R focused | [88156105 CI](https://github.com/rinsakamo/relay-self/actions/runs/39562971507)、Python3.11.17/3.12.15 とも68 PASS / 0 FAIL / 0 SKIP。JUnit readback済み |
+| 最新W4 consumerとの外部cross-head検査 | 176 PASS / 2 FAIL。下記の旧欠陥証人の意味の変化。通常consumerの失敗ではない |
 | Ruff0.16.7 | PASS |
 | repository contracts | PASS |
 | Node22.22.2 adapter | 37 PASS / 0 FAIL / 0 SKIP |
@@ -90,6 +93,8 @@ OS強制終了、電源喪失、event-loopの停止/非協調コード、不可�
 新規32件のうち18ケースは `S49_FAULT_RECORD` に注入/calls/exits/report/rc/取消伝播を出力する。詳細故障は個別assertとcaptured reportで照合する。
 既存W4 readback testが候補単独で10 FAILする入れ子asyncio.runは未修正baselineでも確認。最新W4 `1473c74e` の既存fixture修正1行（`await asyncio.to_thread(_offline_lines)`）をこの隔離候補の既存testへ適用した。W4 runtime/sourceの変更や新しいW4合成試験の追加はしていない。
 全量pytestの開発途中2実行は追加W3 cleanup修正のため中断し、1501/1502 PASS時点のログを保持。完了した全量成績としては数えない。
+
+最新W4 `1473c74e` の未変更test/consumerと今回S49 blob `b0b96c79...` を外部pytest pluginでメモリ上だけ接続した追加検査は176 PASS/2 FAIL（0 SKIP）。失敗2件は `test_original_s49_qualify_fake_node_cleanup_failure[exit_7/shutdown_exception]` が保護された旧欠陥の証人として `original_rc == 0` を期待するため、今回の正しいFAIL/rc1と一致しない。得られた両FAIL reportは最新 `audit_original_s49_cleanup_claim_offline` が拒否することも2/2確認。これを新S49の正常経路回帰失敗とは解釈しない一方、cross-head全件PASSとも呼ばない。正式採用時に旧欠陥証人の期待意味をownerが別審査し、W4本線のfixtureを今回は書換えない。
 
 既存 `.github/workflows/self-demo.yml` にoriginal S49 focusedのPython3.11/3.12 jobを追加する。JUnitのcaptured故障記録をartifact保存する。新しいworkflow/Issue/PR/Action issuerは作らない。
 既存path allowlistにはこの専用S49 test/docだけを明示する。19保護blobの期待SHA・S18試験・保護jobは一切緩和せず、その拒否を保持する。
