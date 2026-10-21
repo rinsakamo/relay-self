@@ -502,3 +502,53 @@ def test_preexisting_cancel_before_spawn_never_creates_process(monkeypatch):
         assert calls == []
 
     asyncio.run(run())
+
+
+def test_cancel_during_spawn_preserves_unconfirmed_even_with_returncode(monkeypatch):
+    """An integer returncode must not mask a failed reap receipt."""
+    async def run():
+        process = FakeProcess()
+        entering = asyncio.Event()
+        release = asyncio.Event()
+
+        async def spawn(*args, **kwargs):
+            entering.set()
+            await release.wait()
+            return process
+
+        async def broken_wait():
+            raise RuntimeError("injected unreaped waiter")
+
+        process.wait = broken_wait
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", spawn)
+        owner = asyncio.create_task(spawn_with_custody("node", "dummy"))
+        await entering.wait()
+        owner.cancel()
+        release.set()
+        with pytest.raises(asyncio.CancelledError) as caught:
+            await owner
+        assert process.terminated == 1
+        assert process.returncode == -15  # A signal is not a reap receipt.
+        assert "StartupCleanupUnconfirmed" in getattr(
+            caught.value, "startup_cleanup_unconfirmed", "",
+        )
+
+    asyncio.run(run())
+
+
+def test_reap_result_must_match_observed_process_exit():
+    """A fake wait returning a different status cannot attest custody."""
+    async def run():
+        process = FakeProcess()
+
+        async def inconsistent_wait():
+            process.reaped += 1
+            return 0  # terminate() sets process.returncode=-15
+
+        process.wait = inconsistent_wait
+        with pytest.raises(StartupCleanupUnconfirmed, match="disagrees"):
+            await terminate_and_reap(process)
+        assert process.returncode == -15
+        assert process.reaped == 1
+
+    asyncio.run(run())
