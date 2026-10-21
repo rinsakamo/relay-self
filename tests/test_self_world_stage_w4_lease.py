@@ -649,17 +649,20 @@ def test_s49_scoped_source_exception_rejects_partial_or_future_changes():
     for path in S49_APPROVED_CANDIDATE_BLOBS_V1:
         partial = dict(original)
         partial[path] = candidate[path]
-        with pytest.raises(AssertionError, match=path.replace('.', r'\\.')):
+        with pytest.raises(AssertionError) as error:
             _protected_source_variant(partial)
+        assert str(error.value) == path
         future = dict(candidate)
         future[path] = '0' * 40
-        with pytest.raises(AssertionError, match=path.replace('.', r'\\.')):
+        with pytest.raises(AssertionError) as error:
             _protected_source_variant(future)
-    fifth = next(p for p in original if p not in candidate or p not in S49_APPROVED_CANDIDATE_BLOBS_V1)
+        assert str(error.value) == path
+    fifth = next(p for p in original if p not in S49_APPROVED_CANDIDATE_BLOBS_V1)
     mixed = dict(candidate)
     mixed[fifth] = '0' * 40
-    with pytest.raises(AssertionError, match=fifth.replace('.', r'\\.')):
+    with pytest.raises(AssertionError) as error:
         _protected_source_variant(mixed)
+    assert str(error.value) == fifth
     missing = dict(candidate)
     missing.pop(fifth)
     with pytest.raises(AssertionError, match='inventory'):
