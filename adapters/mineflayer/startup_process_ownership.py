@@ -100,6 +100,11 @@ async def terminate_and_reap(process: asyncio.subprocess.Process, *, timeout_s: 
                 ) from second_wait_error
         if type(result) is not int or type(process.returncode) is not int:
             raise StartupCleanupUnconfirmed("process wait did not confirm an integer exit code")
+        if result != process.returncode:
+            raise StartupCleanupUnconfirmed(
+                "process wait result disagrees with process returncode: "
+                f"wait={result}, returncode={process.returncode}"
+            )
         if isinstance(first_wait_error, StartupCleanupUnconfirmed):
             # Another wait task still exists; even a later integer rc cannot
             # attest full waiter settlement/cleanup.
@@ -141,8 +146,9 @@ async def spawn_with_custody(*argv, **kwargs) -> asyncio.subprocess.Process:
         try:
             await terminate_and_reap(process)
         except BaseException as exc:
-            if type(process.returncode) is not int:
-                _mark_unconfirmed(cancelled, exc)
+            # A recorded returncode alone is not custody proof: wait/reap may
+            # have failed or an earlier waiter/collector may remain pending.
+            _mark_unconfirmed(cancelled, exc)
             raise cancelled from exc
         raise cancelled
     return process
