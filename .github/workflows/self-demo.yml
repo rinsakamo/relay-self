@@ -69,6 +69,7 @@ jobs:
               adapters/mineflayer/package.json|\
               adapters/mineflayer/python_protocol.py|\
               adapters/mineflayer/process_session.py|\
+              adapters/mineflayer/startup_process_ownership.py|\
               adapters/mineflayer/normal_action.py|\
               adapters/mineflayer/seek_execution.py|\
               adapters/mineflayer/s51_eat_real_ci.py|\
@@ -131,7 +132,9 @@ jobs:
               tests/test_b1_*.py|\
               tests/test_feature_s51_eat_execution.py|\
               tests/test_s49_cleanup.py|\
+              tests/test_s49_startup_ownership.py|\
               docs/s49-cancellation-review.md|\
+              docs/s49-startup-ownership-review.md|\
               tests/test_self_dev.py|\
               tests/test_self_live_think.py|\
               tests/test_self_action_evidence.py|\
@@ -324,7 +327,7 @@ jobs:
           PYTHONPATH: 'src:tests:.'
         run: |
           test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
-          python -m pytest -q -o junit_logging=all --junitxml=s49-cleanup-${{ matrix.python }}.xml tests/test_s49_cleanup.py tests/test_feature_s49_normal_runtime.py tests/test_self_world_stage_r_owner.py tests/test_self_world_stage_w3_capture.py
+          python -m pytest -q -o junit_logging=all --junitxml=s49-cleanup-${{ matrix.python }}.xml tests/test_s49_cleanup.py tests/test_s49_startup_ownership.py tests/test_feature_s49_normal_runtime.py tests/test_self_world_stage_r_owner.py tests/test_self_world_stage_w3_capture.py
       - name: Preserve original-owner engineering results
         if: always()
         uses: actions/upload-artifact@v4
