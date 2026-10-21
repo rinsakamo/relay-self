@@ -630,6 +630,10 @@ def test_s18_and_original_default_routes_are_blob_identical():
     )
     assert s34.MineflayerProcessSession is MineflayerProcessSession
     assert s49._new_session is s34._new_session
+    for path in ('adapters/mineflayer/s49_normal_session_real_ci.py',
+                 'adapters/mineflayer/s34_native_world_cognition_ci.py'):
+        assert 'self_world_stage_w4_lease' not in (root / path).read_text()
+    assert MineflayerProcessSession.receive.__module__ == 'adapters.mineflayer.process_session'
 
 
 def test_s49_scoped_source_exception_rejects_partial_or_future_changes():
@@ -660,10 +664,7 @@ def test_s49_scoped_source_exception_rejects_partial_or_future_changes():
     missing.pop(fifth)
     with pytest.raises(AssertionError, match='inventory'):
         _protected_source_variant(missing)
-    for path in ('adapters/mineflayer/s49_normal_session_real_ci.py',
-                 'adapters/mineflayer/s34_native_world_cognition_ci.py'):
-        assert 'self_world_stage_w4_lease' not in (root / path).read_text()
-    assert MineflayerProcessSession.receive.__module__ == 'adapters.mineflayer.process_session'
+
 
 
 def test_lease_world_handoff_uses_original_server_collector(monkeypatch, tmp_path):
