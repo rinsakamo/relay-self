@@ -347,3 +347,26 @@ PASSへ昇格させないこと、3決定/2 ActionとStage Rの正常baselineは
 未定義ラベル、通常/Stage Rの取り違え、cleanup失敗と旧資格ラベルの残存は
 **offline reviewでも拒否**する。これでも original S49 の実装修正、
 外部 source custody の取得、実World資格、S10やSCIENCE認可はしていない。
+
+
+## 16. S49 producerの残存cleanup不整合をW4最終read gateで拒否
+
+原本修正候補の隔離DEV回帰（Python 3.11/3.12 両方SUCCESS）とは
+独立して、固定19原本を一切変更しない W4読取側で
+`node_terminate_error`、`stage_world_cleanup_error`、
+`stage_r_cleanup_error`、`temp_cleanup_error` と `error` キーを
+**値が空文字でも**明示拒否する。
+`stage_r_dev_enabled` は未指定/厳密boolのみ受け入れ、
+`"false"` / `1` / `null` などの曖昧入力を拒否する。
+producerの `status` の配列・dict・bool等はTypeErrorではなく
+`W4PreworldBlocked` で閉鎖する。
+W3捕捉も schema、source-scope、seal_reason、外部TCP/独立issuer/
+S10/SCIENCEの虚偽attestationを含めて受入条件を統一。
+ローカルW3 rawの再照合に成功しても、Phase Bの返り値は
+`SYNTHETIC_LOCAL_W3_RAW_REPLAY_NO_EXTERNAL_CUSTODY` のみで
+外部World資格を一切主張しない。
+
+この変更は既存W4 readbackに限定し、S49 original source
+（protected blob `fd2b06e9...`）・W4原本固定ハッシュ・
+S #545・隔離候補のパッチの採否には影響しない。
+`W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED` は維持する。

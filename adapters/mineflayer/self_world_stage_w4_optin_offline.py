@@ -251,6 +251,18 @@ def audit_original_s49_cleanup_claim_offline(*, report: dict) -> dict:
     ):
         raise W4PreworldBlocked("S49 Action PASS does not attest clean Node/Java exit")
 
+    # Do not consume stale qualified labels or extra cleanup failure keys.
+    # A report-only candidate PASS is NOT a physically trusted PASS.
+    prospective = review_s49_cleanup_finalization_candidate(
+        report=report, provisional_rc=0,
+    )
+    if (
+        prospective["candidate_final_status"] != "PASS"
+        or prospective["candidate_final_classification"]
+           != report.get("classification")
+    ):
+        raise W4PreworldBlocked("S49 producer status or class was not finalized")
+
     # Baseline original S49 need not capture Node shutdown ACK at all.
     # Consequently an old baseline PASS is NEVER sufficient for a W4
     # source/STOP gate. Even a well-formed W3 local receipt is not external.
@@ -391,7 +403,7 @@ def review_w4_s49_phase_b_optin_offline(
     return {
         "schema": "W4_S49_PHASE_B_OPTIN_OFFLINE_REVIEW_V0",
         "selected_mode": selected_mode,
-        "scope": "SYNTHETIC_AND_UNTRUSTED_S49_REPORT_ONLY",
+        "scope": "SYNTHETIC_LOCAL_W3_RAW_REPLAY_NO_EXTERNAL_CUSTODY",
         "original_s49_qualify_wired": False,
         "live_original_owner_permitted": False,
         "physical_run_permitted": False,
@@ -413,7 +425,12 @@ def review_s49_cleanup_finalization_candidate(
     if (
         type(report) is not dict
         or report.get("milestone") != "S49"
-        or report.get("status") not in {"PASS", "FAIL", "BLOCKED"}
+        or type(report.get("status")) is not str
+        or report["status"] not in {"PASS", "FAIL", "BLOCKED"}
+        or (
+            "stage_r_dev_enabled" in report
+            and type(report["stage_r_dev_enabled"]) is not bool
+        )
         or type(provisional_rc) is not int
         or provisional_rc not in {0, 1, 2}
     ):
@@ -455,8 +472,16 @@ def review_s49_cleanup_finalization_candidate(
         vetoes.append("PREMATURE_PASS")
     if type(report.get("node_exit")) is not int or report["node_exit"] != 0:
         vetoes.append("NODE_EXIT_NOT_ZERO")
-    if "node_cleanup_error" in report:
-        vetoes.append("NODE_CLEANUP_ERROR")
+    for key, reason in (
+        ("node_cleanup_error", "NODE_CLEANUP_ERROR"),
+        ("node_terminate_error", "NODE_TERMINATE_ERROR"),
+        ("stage_r_cleanup_error", "STAGE_R_CLEANUP_ERROR"),
+        ("stage_world_cleanup_error", "STAGE_WORLD_CLEANUP_ERROR"),
+        ("temp_cleanup_error", "TEMP_CLEANUP_ERROR"),
+        ("error", "PREEXISTING_PRODUCER_ERROR"),
+    ):
+        if key in report:
+            vetoes.append(reason)
     if type(report.get("server_exit")) is not int or report["server_exit"] != 0:
         vetoes.append("JAVA_EXIT_NOT_ZERO")
     if "server_cleanup_error" in report:
@@ -470,6 +495,8 @@ def review_s49_cleanup_finalization_candidate(
         capture = report["w3_node_stdout_capture"]
         if (
             type(capture) is not dict
+            or capture.get("schema") != "relay-self-w3-node-stdout-v0"
+            or capture.get("scope") != "NODE_BRIDGE_STDOUT_JSONL_BYTES_NOT_MINECRAFT_TCP"
             or capture.get("status") != "COMPLETE_NODE_STDOUT"
             or capture.get("session_id") != report.get("session_id")
             or capture.get("eof_observed") is not True
@@ -478,6 +505,13 @@ def review_s49_cleanup_finalization_candidate(
             or type(capture.get("process_exit_code")) is not int
             or capture["process_exit_code"] != 0
             or capture.get("capture_fault") is not None
+            or capture.get("seal_reason") != "clean_shutdown"
+            or any(capture.get(key) is not False for key in (
+                "minecraft_tcp_packets_attested",
+                "external_source_independence_attested",
+                "s10_commit_permitted", "physical_wait_permitted",
+                "science_qualified",
+            ))
         ):
             vetoes.append("W3_CAPTURE_INCOMPLETE")
 

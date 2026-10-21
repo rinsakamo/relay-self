@@ -498,6 +498,7 @@ def test_w3_raw_file_and_s49_report_replayed_for_offline_only(tmp_path):
     )
     assert not result["original_s49_qualify_wired"]
     assert not result["live_original_owner_permitted"]
+    assert result["scope"] == "SYNTHETIC_LOCAL_W3_RAW_REPLAY_NO_EXTERNAL_CUSTODY"
     assert not result["physical_run_permitted"]
     assert result["next_gate"] == "W4_EXTERNAL_TRUST_NO_GO_PREWORLD_BLOCKED"
 
@@ -590,6 +591,9 @@ def test_s49_cleanup_report_vetoes_all_unreliable_status_claims(fault):
     "open_session", "nonzero_exit", "fake_live_scope",
     "claim_fake_live_scope", "missing_claim", "wrong_classification",
     "unbound_stage_r_classification",
+    "node_terminate_error", "stage_world_cleanup_error", "temp_cleanup_error",
+    "stage_r_cleanup_error", "error_key", "false_stage_r_dev",
+    "capture_scope_exaggerated",
 ))
 def test_phase_b_mode_gate_blocks_implicit_or_live_wiring(tmp_path, fault):
     selected_mode = "W4_S49_SYNTHETIC_OFFLINE_REVIEW"
@@ -619,6 +623,17 @@ def test_phase_b_mode_gate_blocks_implicit_or_live_wiring(tmp_path, fault):
         report["classification"] = "PENDING_REAL_NATIVE_EVIDENCE"
     elif fault == "unbound_stage_r_classification":
         report["classification"] = "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
+    elif fault in {
+        "node_terminate_error", "stage_world_cleanup_error",
+        "temp_cleanup_error", "stage_r_cleanup_error",
+    }:
+        report[fault] = "synthetic failure"
+    elif fault == "error_key":
+        report["error"] = ""
+    elif fault == "false_stage_r_dev":
+        report["stage_r_dev_enabled"] = "false"
+    elif fault == "capture_scope_exaggerated":
+        report["w3_node_stdout_capture"]["minecraft_tcp_packets_attested"] = True
     with pytest.raises(W4PreworldBlocked):
         review_w4_s49_phase_b_optin_offline(
             selected_mode=selected_mode, explicit_opt_in=explicit_opt_in,
@@ -670,6 +685,12 @@ def test_s49_finalization_candidate_clean_normal_s49_without_claimed_ack():
     ("unrecognized_label", "PROVISIONAL_CLASSIFICATION_INVALID"),
     ("dev_label_without_stage_r", "PROVISIONAL_CLASSIFICATION_INVALID"),
     ("stage_r_standard_label", "PROVISIONAL_CLASSIFICATION_INVALID"),
+    ("node_terminate_error", "NODE_TERMINATE_ERROR"),
+    ("stage_r_cleanup_error", "STAGE_R_CLEANUP_ERROR"),
+    ("stage_world_cleanup_error", "STAGE_WORLD_CLEANUP_ERROR"),
+    ("temp_cleanup_error", "TEMP_CLEANUP_ERROR"),
+    ("existing_error_field", "PREEXISTING_PRODUCER_ERROR"),
+    ("w3_scope_exaggerated", "W3_CAPTURE_INCOMPLETE"),
 ))
 def test_s49_finalization_candidate_vetoes_false_pass(attack, reason):
     report = _s49_cleanup_candidate_fixture()
@@ -702,6 +723,18 @@ def test_s49_finalization_candidate_vetoes_false_pass(attack, reason):
         report["classification"] = "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
     elif attack == "stage_r_standard_label":
         report["stage_r_dev_enabled"] = True
+    elif attack in (
+        "node_terminate_error", "stage_r_cleanup_error",
+        "stage_world_cleanup_error", "temp_cleanup_error",
+    ):
+        report[attack] = ""
+    elif attack == "existing_error_field":
+        report["error"] = ""
+    elif attack == "w3_scope_exaggerated":
+        report["w3_node_stdout_capture"] = {
+            **_w4_s49_report_claim()["w3_node_stdout_capture"],
+            "minecraft_tcp_packets_attested": True,
+        }
     elif attack in {"w3_capture_missing_ack", "w3_capture_wrong_session"}:
         report["w3_node_stdout_capture"] = {
             "status": "COMPLETE_NODE_STDOUT",
@@ -933,3 +966,34 @@ def test_s49_nonpass_with_stale_qualified_label_always_demotes():
     assert report["classification"].endswith("_QUALIFIED")
     assert verdict["candidate_final_classification"] == "S49_SESSION_NOT_QUALIFIED"
     assert verdict["candidate_rc"] == 1
+
+
+@pytest.mark.parametrize("status", ([], {}, 123, True))
+def test_s49_candidate_rejects_malformed_status_as_blocked(status):
+    report = _s49_cleanup_candidate_fixture()
+    report["status"] = status
+    with pytest.raises(W4PreworldBlocked):
+        review_s49_cleanup_finalization_candidate(
+            report=report, provisional_rc=0,
+        )
+
+
+@pytest.mark.parametrize("stage_r", ("true", 1, None, [], {}))
+def test_s49_candidate_rejects_non_boolean_stage_r_optin(stage_r):
+    report = _s49_cleanup_candidate_fixture()
+    report["stage_r_dev_enabled"] = stage_r
+    with pytest.raises(W4PreworldBlocked):
+        review_s49_cleanup_finalization_candidate(
+            report=report, provisional_rc=0,
+        )
+
+
+@pytest.mark.parametrize("fault", (
+    "node_terminate_error", "stage_r_cleanup_error",
+    "stage_world_cleanup_error", "temp_cleanup_error",
+))
+def test_direct_s49_report_claim_rejects_secondary_cleanup_even_clean_exit(fault):
+    report = _w4_s49_report_claim()
+    report[fault] = ""
+    with pytest.raises(W4PreworldBlocked):
+        audit_original_s49_cleanup_claim_offline(report=report)
