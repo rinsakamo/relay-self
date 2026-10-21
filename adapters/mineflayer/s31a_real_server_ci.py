@@ -23,6 +23,11 @@ from pathlib import Path
 from typing import Any
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.startup_process_ownership import (
+    _supervise,
+    spawn_with_custody,
+    terminate_and_reap,
+)
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterErrorMessage,
     MineflayerCommandError,
@@ -171,38 +176,69 @@ def _command(server: asyncio.subprocess.Process, command: str) -> None:
 async def _ready_server(
     root: Path, jar: Path, log_path: Path,
 ) -> tuple[asyncio.subprocess.Process, asyncio.Task[None], asyncio.Event]:
-    server = await asyncio.create_subprocess_exec(
+    # Spawn task owns the child until the Process handle is returned. A
+    # cancelled caller cannot abandon a process born inside the await.
+    server = await spawn_with_custody(
         "java", "-Xms512M", "-Xmx1536M", "-jar", str(jar), "nogui",
         cwd=str(root),
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.STDOUT,
     )
-    ready = asyncio.Event()
-
-    async def collect() -> None:
-        assert server.stdout is not None
-        with log_path.open("w", encoding="utf-8") as logfile:
-            while raw := await server.stdout.readline():
-                line = raw.decode("utf-8", errors="replace")
-                logfile.write(line)
-                logfile.flush()
-                if "Done (" in line and "For help" in line:
-                    ready.set()
-
-    task = asyncio.create_task(collect())
+    collector: asyncio.Task[None] | None = None
     try:
+        ready = asyncio.Event()
+
+        async def collect() -> None:
+            assert server.stdout is not None
+            with log_path.open("w", encoding="utf-8") as logfile:
+                while raw := await server.stdout.readline():
+                    line = raw.decode("utf-8", errors="replace")
+                    logfile.write(line)
+                    logfile.flush()
+                    if "Done (" in line and "For help" in line:
+                        ready.set()
+
+        collector = asyncio.create_task(collect())
         await asyncio.wait_for(ready.wait(), timeout=190)
         if server.returncode is not None:
             raise S31ABlocked("server exited even though startup was signalled")
-    except (TimeoutError, S31ABlocked) as exc:
-        if server.returncode is None:
-            server.kill()
-        await server.wait()
-        await task
-        raise S31ABlocked("Minecraft server startup did not complete") from exc
-    return server, task, ready
+        return server, collector, ready
+    except BaseException as failure:
+        # Java and its *same* stdout collector remain local to this helper
+        # until a successful return to S49/S31A. Cancel/timeout/constructor
+        # faults all terminate the child and settle the reader.
+        cleanup_error: BaseException | None = None
+        try:
+            await terminate_and_reap(server)
+        except BaseException as exc:
+            cleanup_error = exc
+        if collector is not None:
+            if not collector.done():
+                collector.cancel()
 
+            async def settle_collector() -> None:
+                try:
+                    await collector
+                except asyncio.CancelledError:
+                    if not collector.cancelled():
+                        raise
+
+            try:
+                await _supervise(settle_collector())
+            except BaseException as exc:
+                if cleanup_error is None:
+                    cleanup_error = exc
+        if cleanup_error is not None:
+            setattr(
+                failure, "startup_cleanup_unconfirmed",
+                f"{type(cleanup_error).__name__}: {cleanup_error}",
+            )
+            failure.add_note(f"Java startup cleanup unconfirmed: {cleanup_error!r}")
+            raise failure from cleanup_error
+        if isinstance(failure, (TimeoutError, S31ABlocked)):
+            raise S31ABlocked("Minecraft server startup did not complete") from failure
+        raise
 
 async def _receive_bounded(session: MineflayerProcessSession, *,
                            timeout: float = 30) -> Any:
