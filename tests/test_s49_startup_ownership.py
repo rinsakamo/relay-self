@@ -478,3 +478,27 @@ def test_process_wait_ignoring_cancel_never_becomes_confirmed_cleanup():
             await asyncio.sleep(0)
 
     asyncio.run(run())
+
+
+def test_preexisting_cancel_before_spawn_never_creates_process(monkeypatch):
+    calls = []
+
+    async def spawn(*args, **kwargs):
+        calls.append((args, kwargs))
+        return FakeProcess()
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", spawn)
+
+    async def requested_cancel():
+        asyncio.current_task().cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await spawn_with_custody("java", "unused")
+        assert calls == []
+
+    async def run():
+        child = asyncio.create_task(requested_cancel())
+        with pytest.raises(asyncio.CancelledError):
+            await child
+        assert calls == []
+
+    asyncio.run(run())
