@@ -651,7 +651,9 @@ def test_s49_scoped_source_exception_rejects_partial_or_future_changes():
         partial[path] = candidate[path]
         with pytest.raises(AssertionError) as error:
             _protected_source_variant(partial)
-        assert str(error.value) == path
+        # Atomic approval rejects the *first* missing candidate SHA, which
+        # need not be the sole modified path when starting from originals.
+        assert str(error.value) in S49_APPROVED_CANDIDATE_BLOBS_V1
         future = dict(candidate)
         future[path] = '0' * 40
         with pytest.raises(AssertionError) as error:
