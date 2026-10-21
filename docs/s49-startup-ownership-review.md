@@ -1,0 +1,38 @@
+# S49 startup subprocess custody — isolated owner review (2026-10-21)
+
+## Authority and isolation
+
+- #392 original S49; #633 SelfWorld; #634 W4 Draft; #545 S Draft; #354 S18 freeze.
+- Base branch `self/product-self-one-command-s49cleanup-20261021`, exact base `c8edb2d42ab31934feda5f30024e68eeb016e100`.
+- This is an **isolated protected-source candidate**, not permission to adopt protected changes.
+- No new World, real Java/Node, W4 live lease, S10 grant, QUALIFICATION, SCIENCE, or old grant replay is authorized by this patch.
+- Invariants: sole local owner at spawn, atomic process handoff, supervised cancellation/reap, no second stdout receiver, no PASS with unresolved cleanup.
+
+## Pre-fix code-path witnesses (static audit, not evidence of a completed injected run)
+
+1. `process_session.py:launch`: `await asyncio.create_subprocess_exec` can be cancelled before assignment. After successful assignment, `except Exception` around constructor/initial `session.receive()` does not catch `CancelledError`; neither termination nor raw capture closure is assured.
+2. `s31a_real_server_ci.py:_ready_server`: process spawn happens before local return to original S49; only TimeoutError/S31ABlocked cleanup was installed. Cancellation during spawn/readiness, collector creation error or reader failure could escape with an unreturned live Java handle.
+3. `s49_normal_session_real_ci.py:qualify`: existing cancellation-safe finalizer only owns server/session handles that were *already returned* by those helpers; an absent handle is not proof of process nonexistence.
+
+## Candidate patch responsibility
+
+- `adapters/mineflayer/startup_process_ownership.py`: small function-based custody/cleanup contract, one shielded spawn task supervised until completion and a confirmed-reap helper with bounded wait + kill fallback; no background process manager or stdout consumer.
+- `adapters/mineflayer/process_session.py` **protected original**: Node launch uses new custody; constructor/receive/startup cancellation all call one confirmed cleanup and W3 aborted seal.
+- `adapters/mineflayer/s31a_real_server_ci.py` **protected original**: Java launch uses new custody; readiness failure/cancellation settles original collector after terminate/reap.
+- `adapters/mineflayer/s49_normal_session_real_ci.py` **protected original**: emit explicit `startup_cleanup_unconfirmed` in fail-closed report where a helper supplied a custody fault. Original finalizer order remains unchanged.
+- `tests/test_s49_startup_ownership.py`: fake-only fault injection with process spawn, post-spawn handoff, Node constructor/startup, Java readiness/collector, double cancellation, signal/wait errors, no confirmed reap.
+- `.github/workflows/self-demo.yml`: add exact paths and targeted pytest to existing jobs; **no protected expected SHA, guard, trigger, or S18 fixture change**.
+
+## Review gates
+
+- Frozen S49 original blob: `fd2b06e9dbed17be0e35b3a1bbd0ed423b9af258`.
+- Cleanup-isolated S49 candidate blob: `b0b96c798593f0621ac63076929cc4ab287812e7`.
+- Additional protected source candidates must be reviewed individually and compared with their **base Git blobs** from `c8edb2d4`; the fixed-19 manifest and expected SHA must not be changed merely to green CI.
+- Check Python 3.11/3.12 targeted + full pytest, real CI exact HEAD statuses, Node adapter, Ruff, W3 capture, original fake-port, repository contracts and original 19-blob guard.
+- Any guard failure is **expected protection** only when independently matched to the protected source diff; unrelated failures remain functional defects.
+- A candidate that passes startup tests remains `DEV_ONLY / PROTECTED_SOURCE_CHANGE_NO_GO / QUALIFICATION NO_GO / SCIENCE NOT_RUN`.
+- W4 original owner live lease remains disabled until independent protected-owner exception + all S49 custody/capture/cleanup, W4 single receiver, no duplicate issuer, lease receipt and World grant checks are passed.
+
+## External authenticity
+
+Synthetic fake-process assertions prove local control flow only. They do not attest a native process's OS identity, external custody, a Minecraft World, a user grant or a scientific measurement.
