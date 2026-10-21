@@ -615,7 +615,7 @@ def test_local_python_child_resisting_term_real_kill_reap():
         )
         try:
             assert process.stdout is not None
-            assert await asyncio.wait_for(process.stdout.readline(), timeout=5) == b"READY\\n"
+            assert await asyncio.wait_for(process.stdout.readline(), timeout=5) == b"READY\n"
             rc = await asyncio.wait_for(
                 terminate_and_reap(process, timeout_s=0.1),
                 timeout=5,
