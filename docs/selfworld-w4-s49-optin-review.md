@@ -1,5 +1,68 @@
 # W4 — 原 S49 owner への明示 opt-in 接続レビュー v0
 
+## 2026-10-21 LocalCodex 統合監査追補
+
+開始時の live GitHub readback は W4 `bf0b34632b1d11eb3c45b31653e147c514bec7f9`、
+S #545 `3240691a29e1f02bcb89cc20cf650ac9a0e83662`、隔離cleanup候補
+`52fda1926991ca41695327746d7b918337ef6118`。W4 run `39537671940` は
+必須7件がすべて completed/SUCCESS、full-regression/物理ジョブはSKIPPED。
+W4固定基準 `4fb2a74410ec370aea327bab129a644ade3e9529` と開始W4の
+保護19 Git blobは全一致。候補との差は原S49 blobのみ
+`fd2b06e9dbed17be0e35b3a1bbd0ed423b9af258` →
+`9064982380d1dc7fbc936939c9901ffecd9d8714`。本W4修正は19原本を変更しない。
+
+### 実際に修正した互換性とfixture依存
+
+原 `MineflayerEntityFact.name` は `str | None`。原 `qualify().reprobe()` は
+対象外entityの `name=None` も `source_pair_trace` にそのまま出力する。
+W4が全entityに文字列名を要求していたため、正しいzombieがいても誤拒否した。
+W4読取側だけで明示nullを許容し、targetは従来どおり **名前zombie・ID一致が
+ちょうど1件**、finite非負距離、event/probe/decision順序一致を要求する。
+未知名をzombieに補完しない。既存原qualify fake-port回帰に正規の
+`MineflayerEntityFact(..., name=None, ...)` を混在させてserializer出力を直接検査する。
+
+また、opt-inテストの単独実行では `_offline_lines()` が内部の `asyncio.run()` を
+実行中loopから呼んで失敗した。先行テストのcacheがある順序では隠れていた。
+既存のS42 fixture構築と同様に `asyncio.to_thread` で構築し、テスト順序依存を除く。
+検査の削除や負対照の増殖は行わない。
+
+### cleanup候補の独立審査結果
+
+隔離候補の原qualify fake-port 10ケース（clean、Node非0/例外/terminate例外、
+Java非0/例外、W3 clean/ACK欠落/foreign session/非0）はローカル3.12でPASS。
+ただし専用の外部fake probeで **Node shutdown中の `asyncio.CancelledError` が
+候補の `except Exception` を通過し、Java shutdown未呼出し・最終report未保存**を再現した。
+staging取消待機、Node terminate、Java collectorでも外側取消との競合を独立に扱う必要がある。
+候補の成功テストだけでは採用不可。temp cleanupの例外保存はあるが、
+W3 receipt取得自体の例外、取消に抵抗するtask、terminate後の強制kill/reapまでの
+最終保証は未成立。保護ゲートの期待SHAは変更しない。
+`PROTECTED_SOURCE_CHANGE_NO_GO` とし、候補をW4へcherry-pickしない。
+
+S49 ownerの次作業は、元のcancelを保持しながら、bounded cleanupを所有するtaskの
+終了を待ち、二次例外でもJava/collector/temp/reportへの処理を完遂する最小差分の作成。
+取消注入・staging例外・temp例外・W3 receipt例外・Stage R実producer回帰を伴う
+独立保護例外レビューが必要。rollbackは原blobへ戻すowner commitで行い、
+過去reportや期待SHAを再生成しない。
+
+### 実接続の境界とDEV調査
+
+原sessionは `host → filter → reprobe → S14 → 元executor/S16 → 次event` を
+順次awaitする。stagingはserver console writerでありNode stdoutを読まない。
+server collectorは1つ、W3 captureは元receiveのdecode前hookで第二readerではない。
+Stage Rは元reprobeの同期境界でのみHOLD successorを公開し、SelfWorld予測から
+S10権限を作らない。W4 leaseは依然として原 `_new_session/qualify` に未配線。
+旧3判断/2Action scriptをW4の向き依存target配置として扱うことはできない。
+
+今回のユーザーDEV権限では、既存CLI `self_demo --mode DEV --run-disposable
+--self-world-w3-raw-capture` の原S49経路を、fresh run ID・専用flat World・
+外部lockfile runtime・単一owner・外部timeout/owned process-group reap監視で
+検証対象にできる。外部custody欠如はQUALIFICATION/SCIENCEのblockerであり、
+この既存DEV経路の調査を省く理由にはしない。ただしW4 live lease/新stagingは
+未配線のままとし、DEV結果をその接続のPASSへ転用しない。
+最終exact HEADのテスト/CI/DEV件数・証拠hashと報告readbackは既存#633/#392/#634に記録する。
+`W4_EXTERNAL_TRUST_NO_GO`、QUALIFICATION NO_GO、SCIENCE未実施を維持する。
+
+
 **Authority:** SelfWorld #633 / Draft PR #634、S18 architecture freeze #354、S 統合 #537。  
 **レビュー起点:** `3e08e226d48c58fbde24a7cbf06aa41206826240`。
 **判定:** `W4_S49_OPTIN_REVIEW_CONDITIONAL_NO_GO`。

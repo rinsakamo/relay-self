@@ -102,7 +102,7 @@ async def _one_original_owner(
     # S42's deterministic S19 fixture internally runs asyncio.run(); isolate
     # fixture construction from this already-running joint asyncio event loop.
     retained, _near, _far, _, _ = await asyncio.to_thread(s42._pair)
-    pre, post, basic = _offline_lines()
+    pre, post, basic = await asyncio.to_thread(_offline_lines)
     # This new fake source uses the ORIGINAL S49 event-seq naming rule:
     # entity event 4 -> correlated request event-4 -> native move/binding 4.
     # Never rewrite a previously captured original/frozen receipt.
@@ -891,8 +891,13 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
 
     import adapters.mineflayer.s49_normal_session_real_ci as s49
     from adapters.mineflayer.execution import WorldConsequenceStatus
+    from adapters.mineflayer.python_protocol import MineflayerEntityFact, MineflayerPosition
     from relay_self.action import ActionState
     from relay_self.world_conditioned_choice import WorldChoiceKind
+
+    # An unnamed non-target is valid native input, preserved by qualify's
+    # serializer. It must not make W4 reject the independently named zombie.
+    unnamed = MineflayerEntityFact(999, None, None, 1.0, MineflayerPosition(0, 0, 1))
 
     sid = "fake-only-s49-native-session"
     monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
@@ -957,7 +962,7 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
         seq = int(request_id.rsplit("-", 1)[1])
         return NS(
             seq=seq + 1, request_id=request_id,
-            snapshot=NS(nearby_entities=(NS(
+            snapshot=NS(nearby_entities=(unnamed, NS(
                 name="zombie", entity_id=seq,
                 distance=10.0 if seq == 1 else 2.0,
             ),)),
@@ -999,7 +1004,7 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
                 entity = NS(name="zombie", entity_id=event_seq, distance=2.0)
                 frame = NS(
                     seq=event_seq, kind="entities",
-                    snapshot=NS(nearby_entities=(entity,)),
+                    snapshot=NS(nearby_entities=(unnamed, entity)),
                 )
                 reading = await probe(frame)
                 choice = NS(

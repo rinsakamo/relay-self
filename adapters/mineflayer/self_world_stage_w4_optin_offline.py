@@ -422,7 +422,12 @@ def audit_original_s49_event_probe_pairs_offline(*, report: dict) -> dict:
         for entity in entries:
             if (
                 type(entity) is not dict
-                or type(entity.get("name")) is not str
+                # The original decoder permits unnamed non-target entities.
+                # A null name must stay unknown, not reject the whole source.
+                or "name" not in entity
+                or (entity["name"] is not None and (
+                    type(entity["name"]) is not str or not entity["name"]
+                ))
                 or type(entity.get("id")) is not int
                 or type(entity.get("d")) not in (int, float)
                 or not math.isfinite(entity["d"])
