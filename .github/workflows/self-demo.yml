@@ -107,6 +107,7 @@ jobs:
               adapters/mineflayer/self_world_stage_w4_lease.py|\
               adapters/mineflayer/self_world_stage_w4_optin_offline.py|\
               adapters/mineflayer/s49_normal_session_real_ci.py|\
+              adapters/mineflayer/s31a_real_server_ci.py|\
               adapters/mineflayer/s34_native_world_cognition_ci.py|\
               src/relay_self/self_world.py|\
               src/relay_self/world_conditioned_choice.py|\
@@ -133,8 +134,11 @@ jobs:
               tests/test_feature_s51_eat_execution.py|\
               tests/test_s49_cleanup.py|\
               tests/test_s49_startup_ownership.py|\
+              tests/test_s49_native_os_custody.py|\
               docs/s49-cancellation-review.md|\
               docs/s49-startup-ownership-review.md|\
+              docs/s49-native-os-custody-dev.md|\
+              docs/s49-scoped-adoption-v1.md|\
               tests/test_self_dev.py|\
               tests/test_self_live_think.py|\
               tests/test_self_action_evidence.py|\
