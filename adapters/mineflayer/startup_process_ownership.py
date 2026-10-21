@@ -35,35 +35,63 @@ async def _supervise(awaitable):
     return value
 
 
-async def terminate_and_reap(process: asyncio.subprocess.Process, *, timeout_s: float = 5.0) -> int:
-    """Terminate, escalate to kill when necessary, and require a confirmed reap.
+async def _bounded_wait(awaitable, *, timeout_s: float, name: str):
+    """Bound even a wait coroutine which ignores its cancellation request.
 
-    Works during startup cancellation as well as startup exceptions. A second
-    caller cancellation does not orphan the one teardown task.
+    wait_for() can wait *past* its timeout for an uncooperative coroutine.
+    Do not let a synthetic or buggy child waiter hold cleanup indefinitely.
     """
+    waiter = asyncio.create_task(awaitable)
+    done, _ = await asyncio.wait({waiter}, timeout=timeout_s)
+    if not done:
+        waiter.cancel()
+        settled, _ = await asyncio.wait({waiter}, timeout=0.25)
+        if not settled:
+            # The pending waiter remains unconfirmed: do not call it reaped.
+            waiter.add_done_callback(lambda task: task.exception() if not task.cancelled() else None)
+            raise StartupCleanupUnconfirmed(f"{name} ignored cancellation after timeout")
+        try:
+            waiter.result()
+        except asyncio.CancelledError:
+            pass
+        except Exception:
+            pass
+        raise TimeoutError(f"{name} timed out")
+    return waiter.result()
+
+
+async def terminate_and_reap(process: asyncio.subprocess.Process, *, timeout_s: float = 5.0) -> int:
+    """Terminate, escalate to kill, then require a confirmed reap.
+
+    The stop/kill path is supervised across repeated caller cancellation.
+    A stuck wait task never turns a known signal into a claimed reap.
+    """
+    if type(timeout_s) not in (int, float) or timeout_s <= 0:
+        raise ValueError("positive bounded process timeout required")
+
     async def close() -> int:
         signal_error: BaseException | None = None
         if process.returncode is None:
             try:
                 process.terminate()
             except ProcessLookupError:
-                pass  # May have exited before the signal; still must wait.
+                pass
             except Exception as exc:
                 signal_error = exc
+        first_wait_error: BaseException | None = None
         try:
-            result = await asyncio.wait_for(process.wait(), timeout=timeout_s)
-        except (Exception, asyncio.CancelledError) as first_wait_error:
-            # The first wait can time out, fail, or be fault-injected. Never
-            # declare that an attempted signal is a confirmed process exit.
+            result = await _bounded_wait(process.wait(), timeout_s=timeout_s, name="terminate wait")
+        except (Exception, asyncio.CancelledError) as exc:
+            first_wait_error = exc
             if process.returncode is None:
                 try:
                     process.kill()
                 except ProcessLookupError:
                     pass
-                except Exception as exc:
-                    signal_error = exc
+                except Exception as signal_exc:
+                    signal_error = signal_exc
             try:
-                result = await asyncio.wait_for(process.wait(), timeout=timeout_s)
+                result = await _bounded_wait(process.wait(), timeout_s=timeout_s, name="kill wait")
             except (Exception, asyncio.CancelledError) as second_wait_error:
                 raise StartupCleanupUnconfirmed(
                     "kill/reap did not confirm process exit; "
@@ -72,6 +100,12 @@ async def terminate_and_reap(process: asyncio.subprocess.Process, *, timeout_s: 
                 ) from second_wait_error
         if type(result) is not int or type(process.returncode) is not int:
             raise StartupCleanupUnconfirmed("process wait did not confirm an integer exit code")
+        if isinstance(first_wait_error, StartupCleanupUnconfirmed):
+            # Another wait task still exists; even a later integer rc cannot
+            # attest full waiter settlement/cleanup.
+            raise StartupCleanupUnconfirmed(
+                f"process exited but prior wait remains unconfirmed: {first_wait_error}"
+            )
         return result
 
     return await _supervise(close())
