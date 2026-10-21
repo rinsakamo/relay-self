@@ -31,6 +31,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
 )
 from adapters.mineflayer.startup_process_ownership import (
+    StartupCleanupUnconfirmed,
     _supervise,
     spawn_with_custody,
     terminate_and_reap,
@@ -173,6 +174,9 @@ def _command(server: asyncio.subprocess.Process, command: str) -> None:
     server.stdin.write((command + "\n").encode("utf-8"))
 
 
+_STARTUP_COLLECTOR_SETTLE_S = 5.0
+
+
 async def _ready_server(
     root: Path, jar: Path, log_path: Path,
 ) -> tuple[asyncio.subprocess.Process, asyncio.Task[None], asyncio.Event]:
@@ -218,11 +222,17 @@ async def _ready_server(
                 collector.cancel()
 
             async def settle_collector() -> None:
-                try:
-                    await collector
-                except asyncio.CancelledError:
-                    if not collector.cancelled():
-                        raise
+                # A cancelled collector may swallow CancelledError. Shielding
+                # alone would then wait forever; refuse complete cleanup.
+                done, _ = await asyncio.wait(
+                    {collector}, timeout=_STARTUP_COLLECTOR_SETTLE_S,
+                )
+                if not done:
+                    raise StartupCleanupUnconfirmed(
+                        "Java startup stdout collector did not settle"
+                    )
+                if not collector.cancelled():
+                    collector.result()  # Never hide reader/logfile failure.
 
             try:
                 await _supervise(settle_collector())
