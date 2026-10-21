@@ -305,6 +305,6 @@ def test_no_exit_confirmation_fails_closed():
         with pytest.raises(StartupCleanupUnconfirmed, match="kill/reap"):
             await terminate_and_reap(process)
         assert process.killed == 1
-        assert process.returncode == -9  # signal is NOT a successful reap
+        assert process.returncode is None  # signal is NOT a successful reap
 
     asyncio.run(run())
