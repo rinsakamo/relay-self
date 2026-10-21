@@ -308,3 +308,79 @@ def test_no_exit_confirmation_fails_closed():
         assert process.returncode is None  # signal is NOT a successful reap
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("fault", ["cancel", "exception", "secondary_cancel"])
+def test_native_spawn_after_adapter_started_stays_owned(monkeypatch, tmp_path, fault):
+    from adapters.mineflayer import s34_native_world_cognition_ci as s34
+
+    async def run():
+        process = FakeProcess(blocked_reap=fault == "secondary_cancel")
+        session = MineflayerProcessSession(process, raw_capture_root=tmp_path)
+        entered = asyncio.Event()
+
+        async def fake_launch(cls, *args, **kwargs):
+            return session
+
+        async def fake_native_spawn(existing):
+            assert existing is session
+            entered.set()
+            if fault == "exception":
+                raise RuntimeError("native spawn fault")
+            await asyncio.Event().wait()
+
+        monkeypatch.setattr(
+            s34.MineflayerProcessSession, "launch", classmethod(fake_launch),
+        )
+        monkeypatch.setattr(s34, "_await_spawn", fake_native_spawn)
+        owner = asyncio.create_task(s34._new_session(raw_capture_root=tmp_path))
+        await entered.wait()
+        if fault == "exception":
+            with pytest.raises(RuntimeError, match="native spawn fault"):
+                await owner
+        else:
+            owner.cancel()
+            if fault == "secondary_cancel":
+                await process.wait_started.wait()
+                owner.cancel()
+                process.release_reap.set()
+            with pytest.raises(asyncio.CancelledError):
+                await owner
+        assert process.terminated == 1
+        assert process.reaped == 1
+        assert process.returncode == -15
+        receipt_path = tmp_path / "w3-node-stdout-receipt.json"
+        assert receipt_path.is_file()
+        import json
+        receipt = json.loads(receipt_path.read_text())
+        assert receipt["status"] == "INCOMPLETE_UNQUALIFIED"
+        assert receipt["eof_observed"] is False
+
+    asyncio.run(run())
+
+
+def test_native_spawn_success_transfers_without_early_reap(monkeypatch):
+    from adapters.mineflayer import s34_native_world_cognition_ci as s34
+
+    async def run():
+        process = FakeProcess()
+        session = MineflayerProcessSession(process)
+
+        async def fake_launch(cls, *args, **kwargs):
+            return session
+
+        async def fake_native_spawn(existing):
+            assert existing is session
+
+        monkeypatch.setattr(
+            s34.MineflayerProcessSession, "launch", classmethod(fake_launch),
+        )
+        monkeypatch.setattr(s34, "_await_spawn", fake_native_spawn)
+        actual = await s34._new_session()
+        assert actual is session
+        assert process.terminated == 0
+        assert process.reaped == 0
+        await actual.abort_startup()
+        assert process.reaped == 1
+
+    asyncio.run(run())
