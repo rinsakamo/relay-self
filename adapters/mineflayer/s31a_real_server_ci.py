@@ -23,17 +23,17 @@ from pathlib import Path
 from typing import Any
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
-from adapters.mineflayer.startup_process_ownership import (
-    _supervise,
-    spawn_with_custody,
-    terminate_and_reap,
-)
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterErrorMessage,
     MineflayerCommandError,
     MineflayerConnectionEnd,
     MineflayerLaunchConfig,
     MineflayerObservation,
+)
+from adapters.mineflayer.startup_process_ownership import (
+    _supervise,
+    spawn_with_custody,
+    terminate_and_reap,
 )
 
 MINECRAFT_VERSION = "1.21.8"
