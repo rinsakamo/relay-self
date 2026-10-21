@@ -10,7 +10,6 @@ import math
 from pathlib import Path
 
 from adapters.mineflayer.normal_action import NormalActionClosedReadback
-from relay_self.action import ActionState
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.self_world_stage_w3_capture import (
     W3CaptureRejected,
@@ -26,6 +25,7 @@ from adapters.mineflayer.self_world_stage_w4_window import (
     W4WindowEvent,
     reconcile_w4_window_offline,
 )
+from relay_self.action import ActionState
 from relay_self.reactive_l0 import L0Step
 
 
