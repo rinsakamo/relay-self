@@ -300,6 +300,104 @@ def audit_original_s49_action_trace_claim_offline(*, report: dict) -> dict:
     }
 
 
+
+def audit_original_s49_stage_r_owner_claim_offline(*, report: dict) -> dict:
+    """Check only the S49 producer's Stage R single-writer narrative.
+
+    This is an untrusted JSON relationship check, NEVER an S10 authority or
+    independently attested Memory/Learning commit. Source code remains frozen.
+    """
+    if type(report) is not dict or report.get("stage_r_dev_enabled") is not True:
+        raise W4PreworldBlocked("Stage R DEV producer identity not explicit")
+    trace = audit_original_s49_action_trace_claim_offline(report=report)
+    decisions = report["decisions"]
+    actions = report["actual_native_actions"]
+    revisions = report.get("stage_r_decision_revisions")
+    owner = report.get("stage_r_owner")
+    sid = report["session_id"]
+    if (
+        report.get("learning_in_world") is not True
+        or type(revisions) is not list or len(revisions) != 3
+        or type(owner) is not dict
+    ):
+        raise W4PreworldBlocked("Stage R revised L0 or owner claim absent")
+    for i, revision in enumerate(revisions):
+        if (
+            type(revision) is not dict
+            or type(revision.get("event_seq")) is not int
+            or revision["event_seq"] != decisions[i]["event_seq"]
+            or type(revision.get("retained_revision")) is not int
+            or revision["retained_revision"] != (2 if i == 2 else 1)
+            or type(revision.get("retained_value")) is not int
+            or revision["retained_value"] != 4
+            or revision.get("selected") != decisions[i]["selected"]
+        ):
+            raise W4PreworldBlocked("Stage R decision revision or source drift")
+
+    commit = owner.get("commit_source")
+    if (
+        owner.get("kind") != "stage_r_dev_single_writer"
+        or owner.get("classification") != "DEV_ONLY_NOT_SCIENCE"
+        or owner.get("original_session_id") != sid
+        or type(owner.get("initial_revision")) is not int
+        or owner["initial_revision"] != 1
+        or type(owner.get("current_revision")) is not int
+        or owner["current_revision"] != 2
+        or type(owner.get("current_value")) is not int
+        or owner["current_value"] != 4
+        or owner.get("joint_l0_s14_owner_identity") is not True
+        or type(owner.get("operator_s10_grants")) is not int
+        or owner["operator_s10_grants"] != 1
+        or type(owner.get("s10_hold_commits")) is not int
+        or owner["s10_hold_commits"] != 1
+        or type(owner.get("original_action_closures")) is not int
+        or owner["original_action_closures"] != 2
+        or any(owner.get(key) is not False for key in (
+            "pending_unsealed_or_unknown",
+            "grant_independent_external_attestation",
+            "hold_reward_or_policy_gain", "additional_action_issuer",
+        ))
+        or type(commit) is not dict
+    ):
+        raise W4PreworldBlocked("Stage R reported single writer not closed")
+
+    first_action = actions[0]["action"]
+    next_probe = decisions[2]["probe_seq"]
+    previous_probe = decisions[1]["probe_seq"]
+    after_seq = commit.get("terminal_after_native_seq")
+    if (
+        commit.get("terminal_action_id") != first_action
+        or type(after_seq) is not int
+        or not previous_probe < after_seq < next_probe
+        or type(commit.get("next_source_probe_seq")) is not int
+        or commit["next_source_probe_seq"] != next_probe
+        or commit.get("next_source_request_id") != (
+            f"s49-actual:{sid}:event-{decisions[2]['event_seq']}"
+        )
+        or type(commit.get("feedback_id")) is not str
+        or not commit["feedback_id"]
+        or commit.get("s10_authority_id") != (
+            f"s49-dev-operator-s10-once:{sid}:{first_action}"
+        )
+        or commit.get("s10_authority_source") != "s49-dev-learning-owner"
+        or type(commit.get("s10_commit_revision")) is not int
+        or commit["s10_commit_revision"] != 2
+    ):
+        raise W4PreworldBlocked("Stage R reported HOLD lineage not coherent")
+
+    return {
+        "schema": "W4_S49_STAGE_R_SINGLE_WRITER_CLAIM_OFFLINE_V0",
+        "reported_decisions": trace["reported_decisions"],
+        "reported_actions": trace["reported_actions"],
+        "reported_hold_commits": 1,
+        "evidence_scope": "UNTRUSTED_PRODUCER_REPORT_CONTENT_ONLY",
+        "external_custody_qualified": False,
+        "physical_run_permitted": False,
+        "s10_permission": False,
+        "science_qualified": False,
+    }
+
+
 def audit_original_s49_cleanup_claim_offline(*, report: dict) -> dict:
     """Fail-closed readback of the *reported* S49 Node/Java cleanup.
 
@@ -549,6 +647,20 @@ def review_s49_cleanup_finalization_candidate(
     )
     if classification != expected_class:
         vetoes.append("PROVISIONAL_CLASSIFICATION_INVALID")
+    if report.get("stage_r_dev_enabled") is True:
+        try:
+            audit_original_s49_stage_r_owner_claim_offline(report=report)
+        except W4PreworldBlocked:
+            vetoes.append("STAGE_R_OWNER_CLAIM_INCOMPLETE")
+    elif (
+        "stage_r_owner" in report
+        or "stage_r_decision_revisions" in report
+        or (
+            "learning_in_world" in report
+            and report["learning_in_world"] is not False
+        )
+    ):
+        vetoes.append("BASE_S49_HAS_STAGE_R_CLAIMS")
     if report.get("stage") != "CLOSED" or provisional_rc != 0:
         vetoes.append("PREMATURE_PASS")
     if type(report.get("node_exit")) is not int or report["node_exit"] != 0:

@@ -453,6 +453,57 @@ def _w4_s49_report_claim():
     }
 
 
+
+def _s49_stage_r_report_claim():
+    """Stage R's unchanged producer summary schema; JSON only, no S10."""
+    report = _w4_s49_report_claim()
+    sid = report["session_id"]
+    decisions = report["decisions"]
+    first_action = report["actual_native_actions"][0]["action"]
+    report["stage_r_dev_enabled"] = True
+    report["classification"] = "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
+    report["learning_in_world"] = True
+    report["stage_r_decision_revisions"] = [
+        {
+            "event_seq": step["event_seq"],
+            "retained_revision": 2 if i == 2 else 1,
+            "retained_value": 4,
+            "selected": step["selected"],
+        }
+        for i, step in enumerate(decisions)
+    ]
+    report["stage_r_owner"] = {
+        "kind": "stage_r_dev_single_writer",
+        "classification": "DEV_ONLY_NOT_SCIENCE",
+        "original_session_id": sid,
+        "initial_revision": 1, "current_revision": 2,
+        "current_value": 4,
+        "joint_l0_s14_owner_identity": True,
+        "operator_s10_grants": 1,
+        "s10_hold_commits": 1,
+        "original_action_closures": 2,
+        "pending_unsealed_or_unknown": False,
+        "grant_independent_external_attestation": False,
+        "hold_reward_or_policy_gain": False,
+        "additional_action_issuer": False,
+        "commit_source": {
+            "terminal_action_id": first_action,
+            "terminal_after_native_seq": 5,
+            "next_source_probe_seq": decisions[2]["probe_seq"],
+            "next_source_request_id": (
+                f"s49-actual:{sid}:event-{decisions[2]['event_seq']}"
+            ),
+            "feedback_id": "synthetic-hold-feedback",
+            "s10_authority_id": (
+                f"s49-dev-operator-s10-once:{sid}:{first_action}"
+            ),
+            "s10_authority_source": "s49-dev-learning-owner",
+            "s10_commit_revision": 2,
+        },
+    }
+    return report
+
+
 def _w4_s49_closed_claim():
     return {
         "schema": "W4_S49_OPTIN_COMPOSITION_OFFLINE_CLOSED_V0",
@@ -979,9 +1030,7 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
 
 
 def test_s49_finalization_candidate_stage_r_classification_is_dev_only():
-    report = _s49_cleanup_candidate_fixture()
-    report["stage_r_dev_enabled"] = True
-    report["classification"] = "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
+    report = _s49_stage_r_report_claim()
     verdict = review_s49_cleanup_finalization_candidate(
         report=report, provisional_rc=0,
     )
@@ -989,6 +1038,13 @@ def test_s49_finalization_candidate_stage_r_classification_is_dev_only():
     assert verdict["candidate_final_classification"] == report["classification"]
     assert verdict["candidate_classification_scope"] == "UNTRUSTED_PRODUCER_REPORT_ONLY"
     assert not verdict["science_qualified"]
+    from adapters.mineflayer.self_world_stage_w4_optin_offline import (
+        audit_original_s49_stage_r_owner_claim_offline,
+    )
+    owner_claim = audit_original_s49_stage_r_owner_claim_offline(report=report)
+    assert owner_claim["reported_hold_commits"] == 1
+    assert not owner_claim["s10_permission"]
+    assert not owner_claim["external_custody_qualified"]
 
 
 def test_s49_nonpass_with_stale_qualified_label_always_demotes():
@@ -1089,3 +1145,121 @@ def test_w4_s49_action_trace_negative_claims_fail_closed(fault):
         report["actual_native_actions"] = {}
     with pytest.raises(W4PreworldBlocked):
         audit_original_s49_cleanup_claim_offline(report=report)
+
+
+@pytest.mark.parametrize("fault", (
+    "missing_owner", "missing_revisions", "no_learning", "wrong_rev",
+    "wrong_event", "wrong_selection", "wrong_value", "wrong_kind",
+    "wrong_classification", "foreign_session", "wrong_initial",
+    "wrong_current", "fake_value_gain", "split_l0_s14",
+    "no_s10_grant", "duplicated_s10", "missing_closure",
+    "pending", "external_attestation", "reward_gain", "second_issuer",
+    "missing_commit", "other_action", "terminal_seq_equal",
+    "late_source_probe", "foreign_source_request", "missing_feedback",
+    "foreign_authority", "foreign_authority_source", "wrong_commit_rev",
+))
+def test_s49_stage_r_producer_claim_fail_closed_offline(fault):
+    report = _s49_stage_r_report_claim()
+    owner = report["stage_r_owner"]
+    commit = owner["commit_source"]
+    revisions = report["stage_r_decision_revisions"]
+    if fault == "missing_owner":
+        report.pop("stage_r_owner")
+    elif fault == "missing_revisions":
+        report.pop("stage_r_decision_revisions")
+    elif fault == "no_learning":
+        report["learning_in_world"] = False
+    elif fault == "wrong_rev":
+        revisions[2]["retained_revision"] = 1
+    elif fault == "wrong_event":
+        revisions[1]["event_seq"] += 1
+    elif fault == "wrong_selection":
+        revisions[2]["selected"] = "WAIT"
+    elif fault == "wrong_value":
+        revisions[1]["retained_value"] = 5
+    elif fault == "wrong_kind":
+        owner["kind"] = "second_writer"
+    elif fault == "wrong_classification":
+        owner["classification"] = "SCIENCE_QUALIFIED"
+    elif fault == "foreign_session":
+        owner["original_session_id"] = "foreign"
+    elif fault == "wrong_initial":
+        owner["initial_revision"] = 0
+    elif fault == "wrong_current":
+        owner["current_revision"] = 1
+    elif fault == "fake_value_gain":
+        owner["current_value"] = 5
+    elif fault == "split_l0_s14":
+        owner["joint_l0_s14_owner_identity"] = False
+    elif fault == "no_s10_grant":
+        owner["operator_s10_grants"] = 0
+    elif fault == "duplicated_s10":
+        owner["s10_hold_commits"] = 2
+    elif fault == "missing_closure":
+        owner["original_action_closures"] = 1
+    elif fault == "pending":
+        owner["pending_unsealed_or_unknown"] = True
+    elif fault == "external_attestation":
+        owner["grant_independent_external_attestation"] = True
+    elif fault == "reward_gain":
+        owner["hold_reward_or_policy_gain"] = True
+    elif fault == "second_issuer":
+        owner["additional_action_issuer"] = True
+    elif fault == "missing_commit":
+        owner["commit_source"] = None
+    elif fault == "other_action":
+        commit["terminal_action_id"] = "foreign-action"
+    elif fault == "terminal_seq_equal":
+        commit["terminal_after_native_seq"] = report["decisions"][1]["probe_seq"]
+    elif fault == "late_source_probe":
+        commit["next_source_probe_seq"] = report["decisions"][1]["probe_seq"]
+    elif fault == "foreign_source_request":
+        commit["next_source_request_id"] = "foreign"
+    elif fault == "missing_feedback":
+        commit["feedback_id"] = ""
+    elif fault == "foreign_authority":
+        commit["s10_authority_id"] = "forged"
+    elif fault == "foreign_authority_source":
+        commit["s10_authority_source"] = "selfworld-w4"
+    elif fault == "wrong_commit_rev":
+        commit["s10_commit_revision"] = 1
+    verdict = review_s49_cleanup_finalization_candidate(
+        report=report, provisional_rc=0,
+    )
+    assert verdict["candidate_final_status"] == "FAIL"
+    assert verdict["candidate_rc"] == 1
+    assert verdict["candidate_final_classification"] == "S49_SESSION_NOT_QUALIFIED"
+    assert "STAGE_R_OWNER_CLAIM_INCOMPLETE" in verdict["veto_reasons"]
+
+
+@pytest.mark.parametrize("fault", (
+    "base_with_owner", "base_with_revisions", "base_with_learning",
+))
+def test_s49_base_producer_cannot_inherit_stage_r_state(fault):
+    report = _w4_s49_report_claim()
+    if fault == "base_with_owner":
+        report["stage_r_owner"] = {}
+    elif fault == "base_with_revisions":
+        report["stage_r_decision_revisions"] = []
+    elif fault == "base_with_learning":
+        report["learning_in_world"] = True
+    verdict = review_s49_cleanup_finalization_candidate(
+        report=report, provisional_rc=0,
+    )
+    assert verdict["candidate_final_status"] == "FAIL"
+    assert "BASE_S49_HAS_STAGE_R_CLAIMS" in verdict["veto_reasons"]
+
+
+def test_w4_phase_b_reads_consistent_stage_r_only_as_untrusted_source(tmp_path):
+    report = _s49_stage_r_report_claim()
+    report["w3_node_stdout_capture"] = _local_w3_synthetic_archive(tmp_path)
+    result = review_w4_s49_phase_b_optin_offline(
+        selected_mode="W4_S49_SYNTHETIC_OFFLINE_REVIEW",
+        explicit_opt_in=True, closed_composition=_w4_s49_closed_claim(),
+        report=report, archive_root=tmp_path,
+    )
+    assert not result["original_s49_qualify_wired"]
+    assert not result["s10_permission"]
+    assert not result["external_custody_qualified"]
+    assert not result["physical_run_permitted"]
+    assert not result["science_qualified"]

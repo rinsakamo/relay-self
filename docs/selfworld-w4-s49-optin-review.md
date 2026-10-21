@@ -412,3 +412,30 @@ Node stdoutが実Actionの物理的因果を証明することはない。
 W3 raw replayや実World資格は一切変更しない。
 報告JSONの内部整合と外部真正は別であり、
 `W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED` は継続。
+
+
+## 19. Stage R DEV owner producer claimの偽装拒否（offline only）
+
+原S49 Stage R は `stage_r_dev_enabled=true` と
+`DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2` のラベルだけでなく、
+実行中の `stage_r_decision_revisions`（1→1→2）と、
+`StageRDevSingleWriter.summary()` に保存された
+同一L0/S14 owner・exactly one S10 HOLD・2つのAction closure・
+後続 native probe に先行する first terminal・独立operator grantを
+producerが報告する。W4の旧finalization候補はこの具体的な
+single-writer lineage を検査していなかった。
+
+新しい `audit_original_s49_stage_r_owner_claim_offline()` は
+Stage Rラベルの producer内部整合を、原Stage R summary schemaの
+source/commit/revision/session/closureに照らして検証する。
+Stage Rフィールド欠損、revision変更、別issuer、grant再送、
+外部attestation偽装、World未収束、reward gain、複数writer、
+後続probe不一致をfail-closedに拒否する。通常S49に
+`learning_in_world=true` や Stage R owner情報が紛れた場合も拒否。
+本検査はPhase-B offline readbackにも適用される。
+
+**重要:** ここで検証するのはproducerの事後JSON自己申告のみであり、
+真のS10 commit・単一writer・認知改善・物理Action・外部 source custodyを
+証明しない。原 S49とS10/Stage R owner原本、固定19 SHA、
+実World実行境界は不変更。`W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED`
+を引き続き維持する。
