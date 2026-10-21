@@ -42,20 +42,34 @@ async def terminate_and_reap(process: asyncio.subprocess.Process, *, timeout_s: 
     caller cancellation does not orphan the one teardown task.
     """
     async def close() -> int:
+        signal_error: BaseException | None = None
         if process.returncode is None:
             try:
                 process.terminate()
             except ProcessLookupError:
                 pass  # May have exited before the signal; still must wait.
+            except Exception as exc:
+                signal_error = exc
         try:
             result = await asyncio.wait_for(process.wait(), timeout=timeout_s)
-        except TimeoutError:
+        except (Exception, asyncio.CancelledError) as first_wait_error:
+            # The first wait can time out, fail, or be fault-injected. Never
+            # declare that an attempted signal is a confirmed process exit.
             if process.returncode is None:
                 try:
                     process.kill()
                 except ProcessLookupError:
                     pass
-            result = await asyncio.wait_for(process.wait(), timeout=timeout_s)
+                except Exception as exc:
+                    signal_error = exc
+            try:
+                result = await asyncio.wait_for(process.wait(), timeout=timeout_s)
+            except (Exception, asyncio.CancelledError) as second_wait_error:
+                raise StartupCleanupUnconfirmed(
+                    "kill/reap did not confirm process exit; "
+                    f"first_wait={first_wait_error!r}, "
+                    f"signal={signal_error!r}, second_wait={second_wait_error!r}"
+                ) from second_wait_error
         if type(result) is not int or type(process.returncode) is not int:
             raise StartupCleanupUnconfirmed("process wait did not confirm an integer exit code")
         return result
