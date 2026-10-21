@@ -138,6 +138,7 @@ def test_real_node_cancel_during_original_adapter_startup_reaps_and_seals(
         monkeypatch.setattr(asyncio, "create_subprocess_exec", track_spawn)
         monkeypatch.setattr(MineflayerProcessSession, "receive", track_receive)
         root = tmp_path / "w3"
+        root.mkdir()  # W3 requires an existing fresh absolute evidence directory.
         owner = asyncio.create_task(
             MineflayerProcessSession.launch(
                 MineflayerLaunchConfig(),
@@ -148,7 +149,14 @@ def test_real_node_cancel_during_original_adapter_startup_reaps_and_seals(
             )
         )
         try:
-            await asyncio.wait_for(receiving.wait(), timeout=10)
+            async def wait_for_receive():
+                while not receiving.is_set():
+                    if owner.done():
+                        owner.result()  # Surface startup faults rather than a false timeout.
+                        raise AssertionError("Node startup exited without receiving")
+                    await asyncio.sleep(0.01)
+
+            await asyncio.wait_for(wait_for_receive(), timeout=10)
             assert len(children) == 1
             identity = _linux_pid_identity(children[0].pid)
             owner.cancel()
