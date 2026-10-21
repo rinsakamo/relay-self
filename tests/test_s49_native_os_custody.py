@@ -8,6 +8,8 @@ current machine. They do not waive protected-source or W4 live-lease gates.
 from __future__ import annotations
 
 import asyncio
+import datetime
+import hashlib
 import json
 import os
 import shutil
@@ -21,6 +23,101 @@ from adapters.mineflayer import s31a_real_server_ci as s31a
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
 from adapters.mineflayer.startup_process_ownership import spawn_with_custody
+
+
+@pytest.fixture(autouse=True)
+def native_evidence(monkeypatch, tmp_path, request):
+    """Record real Process operations without another stdout reader or owner."""
+    events = tmp_path / "native-os-events.jsonl"
+    children = []
+    collectors = []
+    real_spawn = asyncio.create_subprocess_exec
+    real_task = asyncio.create_task
+
+    def emit(event, **fields):
+        row = {"event": event, "utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+               "test": request.node.nodeid, "python": sys.version, **fields}
+        with events.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(row, sort_keys=True) + "\n")
+            stream.flush()
+
+    async def track_spawn(*args, **kwargs):
+        child = await real_spawn(*args, **kwargs)
+        identity = _linux_pid_identity(child.pid)
+        children.append((child, identity))
+        emit("spawn", pid=child.pid, starttime=identity[1], argv=list(map(str, args)),
+             parent_pid=os.getpid(), proc_stat=Path(f"/proc/{child.pid}/stat").read_text())
+        for name in ("terminate", "kill"):
+            original = getattr(child, name)
+
+            def signal(original=original, name=name):
+                emit(name, pid=child.pid, starttime=identity[1], returncode=child.returncode)
+                return original()
+
+            monkeypatch.setattr(child, name, signal)
+        real_wait = child.wait
+
+        async def wait():
+            emit("wait_enter", pid=child.pid, starttime=identity[1])
+            try:
+                result = await real_wait()
+            except BaseException as exc:
+                emit("wait_error", pid=child.pid, error=type(exc).__name__)
+                raise
+            emit("wait_return", pid=child.pid, starttime=identity[1], result=result,
+                 returncode=child.returncode, proc_absent=not Path(f"/proc/{child.pid}").exists())
+            return result
+
+        monkeypatch.setattr(child, "wait", wait)
+        observer_root = os.environ.get("S49_OBSERVER_ROOT")
+        if observer_root:
+            ack = Path(observer_root) / f"{child.pid}-{identity[1]}.ack"
+            deadline = asyncio.get_running_loop().time() + 5
+            while not ack.is_file():
+                if asyncio.get_running_loop().time() > deadline:
+                    emit("observer_ack_missing", pid=child.pid)
+                    child.kill()
+                    await child.wait()
+                    raise AssertionError("Independent observer did not identify child")
+                await asyncio.sleep(0.002)
+            emit("independent_observer_ack", pid=child.pid, starttime=identity[1])
+        return child
+
+    def track_task(coro, *args, **kwargs):
+        task = real_task(coro, *args, **kwargs)
+        if getattr(coro, "__qualname__", "").endswith(".collect"):
+            collectors.append(task)
+            emit("collector_created", task_name=task.get_name())
+            task.add_done_callback(lambda done: emit(
+                "collector_settled", task_name=done.get_name(), done=done.done(),
+                cancelled=done.cancelled()))
+        return task
+
+    def cancel(owner, boundary):
+        emit("cancel_requested", boundary=boundary, task_name=owner.get_name())
+        owner.cancel()
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", track_spawn)
+    monkeypatch.setattr(asyncio, "create_task", track_task)
+    def settled():
+        pending = [t.get_name() for t in asyncio.all_tasks()
+                   if t is not asyncio.current_task() and not t.done()]
+        emit("owner_cleanup_settled", pending_tasks=pending)
+        assert not pending
+
+    yield {"cancel": cancel, "settled": settled}
+    for child, identity in children:
+        emit("final_process", pid=child.pid, starttime=identity[1], returncode=child.returncode,
+             proc_absent=not Path(f"/proc/{child.pid}").exists())
+        assert type(child.returncode) is int
+        _assert_gone(identity)
+    for task in collectors:
+        emit("final_collector", task_name=task.get_name(), done=task.done(),
+             cancelled=task.cancelled())
+        assert task.done()
+    for receipt in tmp_path.rglob("w3-node-stdout-receipt.json"):
+        emit("w3_receipt", path=str(receipt), sha256=hashlib.sha256(receipt.read_bytes()).hexdigest(),
+             content=json.loads(receipt.read_text()))
 
 
 def _linux_pid_identity(pid: int) -> tuple[int, str]:
@@ -69,7 +166,7 @@ def _native_command(tmp_path: Path, target: str) -> tuple[str, ...]:
 
 @pytest.mark.parametrize("target", ["node", "java"])
 def test_real_native_spawn_cancel_before_handoff_reaps_exact_pid(
-    monkeypatch, tmp_path, target,
+    monkeypatch, tmp_path, target, native_evidence,
 ):
     """OS-created child is owned even before create_subprocess_exec hands it off."""
     argv = _native_command(tmp_path, target)
@@ -96,13 +193,15 @@ def test_real_native_spawn_cancel_before_handoff_reaps_exact_pid(
             assert len(children) == 1
             identity = _linux_pid_identity(children[0].pid)
             assert identity[0] != os.getpid()
-            owner.cancel()
+            native_evidence["cancel"](owner, "os_spawn_before_process_handoff")
             release.set()
             with pytest.raises(asyncio.CancelledError):
                 await asyncio.wait_for(owner, timeout=10)
             child = children[0]
             assert type(child.returncode) is int
             assert await asyncio.wait_for(child.wait(), timeout=2) == child.returncode
+            await asyncio.sleep(0)
+            native_evidence["settled"]()
             _assert_gone(identity)
         finally:
             release.set()
@@ -115,7 +214,7 @@ def test_real_native_spawn_cancel_before_handoff_reaps_exact_pid(
 
 
 def test_real_node_cancel_during_original_adapter_startup_reaps_and_seals(
-    monkeypatch, tmp_path,
+    monkeypatch, tmp_path, native_evidence,
 ):
     """Exercise actual Node launch() and its *same* W3 startup capture."""
     script = Path(_native_command(tmp_path, "node")[1])
@@ -159,10 +258,12 @@ def test_real_node_cancel_during_original_adapter_startup_reaps_and_seals(
             await asyncio.wait_for(wait_for_receive(), timeout=10)
             assert len(children) == 1
             identity = _linux_pid_identity(children[0].pid)
-            owner.cancel()
+            native_evidence["cancel"](owner, "original_launch_wait_adapter_started")
             with pytest.raises(asyncio.CancelledError):
                 await asyncio.wait_for(owner, timeout=10)
             assert type(children[0].returncode) is int
+            await asyncio.sleep(0)
+            native_evidence["settled"]()
             _assert_gone(identity)
             receipt_path = root / "w3-node-stdout-receipt.json"
             assert receipt_path.is_file()
@@ -179,7 +280,7 @@ def test_real_node_cancel_during_original_adapter_startup_reaps_and_seals(
 
 
 def test_real_java_original_readiness_cancel_settles_only_collector(
-    monkeypatch, tmp_path,
+    monkeypatch, tmp_path, native_evidence,
 ):
     """Exercise original _ready_server() on an inert JVM, no Minecraft JAR."""
     java_argv = _native_command(tmp_path, "java")
@@ -215,12 +316,14 @@ def test_real_java_original_readiness_cancel_settles_only_collector(
             await asyncio.wait_for(await_log(), timeout=10)
             assert len(children) == 1
             identity = _linux_pid_identity(children[0].pid)
-            owner.cancel()
+            native_evidence["cancel"](owner, "original_ready_server_wait_readiness")
             with pytest.raises(asyncio.CancelledError):
                 await asyncio.wait_for(owner, timeout=10)
             assert type(children[0].returncode) is int
             assert len(collectors) == 1
             assert collectors[0].done()
+            await asyncio.sleep(0)
+            native_evidence["settled"]()
             _assert_gone(identity)
         finally:
             for child in children:

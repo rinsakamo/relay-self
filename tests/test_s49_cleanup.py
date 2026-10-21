@@ -289,6 +289,47 @@ def test_original_owner_cleanup(owner_ports, tmp_path, injections, cancelled, ca
     }, sort_keys=True))
 
 
+@pytest.mark.parametrize("boundary", ("_ready_server", "_new_session"))
+@pytest.mark.parametrize("kind", ("cancel", "blocked", "error"))
+def test_startup_cleanup_diagnosis_survives_to_s49_report(
+    owner_ports, tmp_path, monkeypatch, boundary, kind,
+):
+    """An unreturned helper handle cannot erase its cleanup fault."""
+    s49, _, _, _, _ = owner_ports
+    errors = {"cancel": asyncio.CancelledError, "blocked": s49.S31ABlocked,
+              "error": RuntimeError}
+    error = errors[kind]("injected startup custody fault")
+    error.startup_cleanup_unconfirmed = "injected: waiter or collector still unconfirmed"
+
+    async def fail(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr(s49, boundary, fail)
+    if boundary == "_ready_server":
+        from adapters.mineflayer.s31a_real_server_ci import _shutdown_server
+        monkeypatch.setattr(s49, "_shutdown_server", _shutdown_server)
+    out = tmp_path / "startup-fault-report.json"
+
+    async def run():
+        if kind == "cancel":
+            with pytest.raises(asyncio.CancelledError) as raised:
+                await s49.qualify(out, tmp_path / "java.log")
+            assert raised.value is error
+        else:
+            assert await s49.qualify(out, tmp_path / "java.log") != 0
+        assert not [t for t in asyncio.all_tasks()
+                    if t is not asyncio.current_task() and not t.done()]
+
+    asyncio.run(run())
+    report = json.loads(out.read_text())
+    assert report["status"] in ("FAIL", "BLOCKED")
+    assert report["classification"] in (
+        "S49_SESSION_NOT_QUALIFIED", "PENDING_REAL_NATIVE_EVIDENCE",
+    )
+    assert report["error"] == f"{type(error).__name__}: {error}"
+    assert report["startup_cleanup_unconfirmed"] == error.startup_cleanup_unconfirmed
+
+
 def test_report_failure_is_explicit(owner_ports, tmp_path, monkeypatch, capsys):
     s49, _, events, _, _ = owner_ports
     original = Path.replace
