@@ -351,8 +351,8 @@ def test_real_node_w4_successful_startup_owner_preworld_and_bounded_host_handoff
     """
     from adapters.mineflayer.s31a_real_server_ci import _await_spawn
     from adapters.mineflayer.self_world_stage_w4_lease import W4DevLeasedSession
-    from test_self_world_stage_w4_prehost import _offline_lines
     from test_self_world_stage_w4_lease import marker_for, preworld
+    from test_self_world_stage_w4_prehost import _offline_lines
 
     node = shutil.which("node")
     assert node is not None, "real Node executable required; no silent skip"
