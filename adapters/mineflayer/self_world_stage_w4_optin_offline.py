@@ -533,7 +533,7 @@ async def run_w4_s49_synthetic_orchestration(
         or explicit_opt_in is not True
         or type(raw_frames) is not tuple
         or len(raw_frames) != 5
-        or any(type(frame) is not bytes or not frame.endswith(b"\\n") for frame in raw_frames)
+        or any(type(frame) is not bytes or not frame.endswith(b"\n") for frame in raw_frames)
         or type(request_id) is not str or not request_id
         or type(one_time_token) is not str or not one_time_token
     ):
@@ -616,7 +616,7 @@ async def run_w4_s49_synthetic_orchestration(
             "[synthetic/DEV] [Server thread/INFO]: "
             + receipt.candidate_commands.expected_log_suffix
         )
-        marker_bytes = (line + "\\n").encode("utf-8")
+        marker_bytes = (line + "\n").encode("utf-8")
         marker = W4CollectorMarker(
             W4CollectorCursor(Path("/synthetic/w4/never-on-disk"), 1, 2, 0),
             line, 0, len(marker_bytes), hashlib.sha256(marker_bytes).hexdigest(), 200,
