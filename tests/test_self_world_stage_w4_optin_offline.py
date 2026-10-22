@@ -1181,3 +1181,65 @@ def test_w4_synthetic_orchestration_fail_closed_never_spawns(
     params["raw_frames"] = frames if fault == "list_frames" else tuple(frames)
     with pytest.raises((W4PreworldBlocked, ValueError)):
         asyncio.run(run_w4_s49_synthetic_orchestration(**params))
+
+
+@pytest.mark.parametrize(
+    ('payload', 'byte_exact'),
+    [(b'valid UTF-8: \xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e', True),
+     (b'\xff', False), (b'\xfe', False), (b'\xef\xbf\xbd', True)],
+    ids=['valid-utf8', 'invalid-ff', 'invalid-fe', 'literal-replacement-character'],
+)
+def test_observation_dev_original_java_collector_raw_evidence_boundary(
+    monkeypatch, tmp_path, payload, byte_exact,
+):
+    """Reproduce a protected-owner blocker, NOT an observation-entry PASS.
+
+    Exercise the actual _ready_server collector with synthetic pipe bytes.
+    Two distinct invalid inputs and a literal U+FFFD produce identical logs;
+    a file-tail sidecar cannot invert this transformation. No OS child runs.
+    """
+    async def run():
+        import hashlib
+
+        stream = asyncio.StreamReader()
+        raw = (b'[Server thread/INFO]: Done (1s)! For help\n'
+               b'[Server thread/INFO]: ' + payload + b'\n')
+        (tmp_path / 'synthetic-input.bin').write_bytes(raw)
+        stream.feed_data(raw)
+        stream.feed_eof()
+        server = SimpleNamespace(stdout=stream, returncode=None, pid=4242)
+        launches = []
+
+        async def synthetic_java(*args, **kwargs):
+            assert args[0] == 'java'
+            assert kwargs['stdout'] == asyncio.subprocess.PIPE
+            launches.append(args)
+            return server
+
+        monkeypatch.setattr(asyncio, 'create_subprocess_exec', synthetic_java)
+        log_path = tmp_path / 'original-collector.log'
+        returned, collector, ready = await _ready_server(
+            tmp_path, tmp_path / 'fixture-only-never-executed.jar', log_path,
+        )
+        await asyncio.wait_for(collector, timeout=1)
+        collected = log_path.read_bytes()
+        assert returned is server and ready.is_set() and len(launches) == 1
+        assert collector.done() and not collector.cancelled()
+        assert collected == raw.decode('utf-8', errors='replace').encode('utf-8')
+        assert (collected == raw) is byte_exact
+        if not byte_exact:
+            alternate = raw.replace(payload, b'\xef\xbf\xbd')
+            assert alternate != raw
+            assert alternate == collected  # Information loss is irreversible.
+        (tmp_path / 'boundary-readback.json').write_text(json.dumps({
+            'scope': 'OFFLINE_SYNTHETIC_COLLECTOR_BOUNDARY_ONLY',
+            'input_sha256': hashlib.sha256(raw).hexdigest(),
+            'collected_sha256': hashlib.sha256(collected).hexdigest(),
+            'byte_exact': byte_exact,
+            'classification': 'PROTECTED_SOURCE_OWNER_APPROVAL_REQUIRED',
+            'real_java_launches': 0, 'real_node_launches': 0,
+            'world_runs': 0, 'action_count': 0, 'outcome_count': 0,
+            's10_update_count': 0, 'observation_entry_offline_pass': False,
+        }, sort_keys=True) + '\n', encoding='utf-8')
+
+    asyncio.run(run())

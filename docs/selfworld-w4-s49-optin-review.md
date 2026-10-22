@@ -501,3 +501,123 @@ single-reader ownershipの**ソフトウェアDEVのみ**。
 6件目（seq 5）まで含めた入力は長さ検査で拒否し、
 HOST以降の未読frameを暗黙に捨てることはしない。
 CIのFULL有効化はあくまでオフラインpytestのみ。
+
+
+## 2026-10-22 observation-only real Minecraft DEV: protected collector blocker
+
+**`PROTECTED_SOURCE_OWNER_APPROVAL_REQUIRED` — dedicated real observation
+entry is NOT implemented or offline-qualified. No real World execution.**
+
+The new user mission requires reusing `_ready_server()` and its one Java stdout
+collector, retaining original stdout bytes, and stopping before protected-source
+changes if unavoidable. Current start branch is
+`self/product-self-one-command-w4-offline-orchestration-20261022`, exact start
+`6ee28751545584e36796ff6301830eaabc1e6bcd`. Re-fetched remote agrees. Actions
+[#39760396819](https://github.com/rinsakamo/relay-self/actions/runs/39760396819)
+is completed/SUCCESS for repository-contracts, lint, pytest and full-regression.
+PR #634 remains at `1473c74e4448bb9a527747de0619c8e55ffbd827`, #635 at
+`008cb0a7863c3189816d7a3da5b67100cafeec9a`; neither is merged by this work.
+
+### Concrete source obstruction
+
+The protected collector decodes `raw` with `errors="replace"` and writes the
+result as UTF-8 text. Inputs `ff`, `fe`, and literal UTF-8 `ef bf bd` all become
+the same saved bytes `ef bf bd`. A read-only sidecar of the collected file
+cannot recover which bytes arrived. Existing logtap reads this already-collected
+file, so it cannot fix the loss. Re-encoding that file as a "raw" artifact would
+mislabel derived content. A second pipe reader/collector, launch wrapper,
+global monkeypatch, or duplicated server-start implementation is outside the
+requested reuse/ownership contract.
+
+Four new executable regression cases in the existing allowlisted
+`tests/test_self_world_stage_w4_optin_offline.py` call the unchanged
+`_ready_server()` with fake subprocess pipes: valid multibyte UTF-8 preservation,
+two distinct invalid-byte losses and literal replacement-character preservation.
+They retain synthetic input bytes, actual collected bytes and independent hash
+readback under pytest basetemp. These are boundary reproductions, not the
+requested dedicated observation-entry positive/negative suite. No process,
+Minecraft, World, Action, S16 OUTCOME or S10 update is created by these four tests.
+The existing FAST/FULL jobs already include this test file; no CI change needed.
+
+### Exact minimal proposed diff — NOT APPLIED
+
+Proposed path: `adapters/mineflayer/s31a_real_server_ci.py`.
+Current/protected start blob: `04a4b20278844528082f9f5c731350418ac3553c`.
+Hypothetical proposal blob: `a9b9d96ce896a11fb4221e3ce6c5362eb8efb69d` (not adopted; no protected file edited).
+
+```diff
+--- a/adapters/mineflayer/s31a_real_server_ci.py
++++ b/adapters/mineflayer/s31a_real_server_ci.py
+@@ -195,11 +195,11 @@
+
+         async def collect() -> None:
+             assert server.stdout is not None
+-            with log_path.open("w", encoding="utf-8") as logfile:
++            with log_path.open("wb") as logfile:
+                 while raw := await server.stdout.readline():
++                    logfile.write(raw)
++                    logfile.flush()
+                     line = raw.decode("utf-8", errors="replace")
+-                    logfile.write(line)
+-                    logfile.flush()
+                     if "Done (" in line and "For help" in line:
+                         ready.set()
+```
+
+This proposal writes the bytes in the **same** existing collector before
+readiness decoding, retaining a single stdout reader. Valid UTF-8 log content
+on the target POSIX host remains byte-identical; invalid bytes are preserved
+instead of replaced. Existing strict UTF-8 marker consumers may reject such a
+log, which must fail closed. This small prerequisite proposal does not implement
+the observation owner, grant verification, full raw evidence/cleanup contract,
+or startup-failure PID evidence. It needs an authenticated original source
+owner decision, default-path regression review, and explicit versioned treatment
+of the existing protected-source inventory before application. The historical
+19-blob guard and approved indivisible S49 four-blob variant are unchanged;
+the proposal does not silently widen either one.
+
+### Terminal scope and remaining work
+
+Implementation stopped at the user's explicit protected-source boundary.
+`OBSERVATION_ONLY_DEV_READY_FOR_NEW_GRANT` is **not earned**: the dedicated
+entry, its complete required negative-control matrix and exact-entry CI remain
+unimplemented. Obtain the protected collector source-owner decision first;
+then implement the sidecar and all lifecycle/readback controls, fix its SHA and
+require new exact-HEAD FAST/FULL SUCCESS. Fresh authenticated one-run DEV grant
+has not been found or consumed. The work instruction, historical comments,
+synthetic markers and CI success are not such a grant.
+
+Host kernel identifies WSL2, but live dependency/JAR/port/PID/World/run binding
+has not been qualified for an execution. No Java server, Mineflayer bridge,
+World, physical Action, OUTCOME, S10 update, learning commit or science experiment
+was launched. No cleanup/reap success for a live run is claimed. Existing native
+OS and adapter unit tests, if run by offline CI, remain their own fixture scope.
+
+Always retain `DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN /
+EXTERNAL_SOURCE_CUSTODY_UNQUALIFIED / W4_ACTION_LIVE_NOT_AUTHORIZED`.
+Neither this code review nor the local synthetic collector evidence proves
+Minecraft TCP authenticity or strict server-tick causality.
+
+### Protected originals: current start versus unchanged working bytes
+
+| Path | Before = after Git blob SHA |
+| --- | --- |
+| `adapters/mineflayer/s49_normal_session_real_ci.py` | `c48e22980d19c79e68c381566fb0edc09b346f1e` |
+| `adapters/mineflayer/s34_native_world_cognition_ci.py` | `66728a9667734f4b7164de23f244a938a756dbdc` |
+| `adapters/mineflayer/s31a_real_server_ci.py` | `04a4b20278844528082f9f5c731350418ac3553c` |
+| `adapters/mineflayer/process_session.py` | `cf5a979d9da38acbe670973c11d7186ade49dbfe` |
+| `adapters/mineflayer/normal_action.py` | `0ded8fa296c92076a643de08cd6fc360061e1d08` |
+| `adapters/mineflayer/execution.py` | `2af25bc6808f8a4199fe2ee500d1c1dfbea25de2` |
+| `adapters/mineflayer/action_outcome.py` | `502a14304c8ab9f5e37bff4a054cf2a21730d294` |
+| `src/relay_self/intent.py` | `f4ef9500cd7941e5e9e07fd41ac2b6e4b4d5ac25` |
+| `src/relay_self/skill.py` | `61885956810b4125721f685d449b361262b71120` |
+| `src/relay_self/action.py` | `869e761cfa2646f48f12e5e8088375ae64f04607` |
+| `src/relay_self/action_supervision.py` | `3320caab19d05afa74f046e3e0f143bc1aad5821` |
+| `src/relay_self/learning.py` | `9fd949e94e91ded1c070d359378833f354fba577` |
+| `src/relay_self/habit.py` | `edc8904753421ef836843ae736f194f5a3a39168` |
+| `src/relay_self/action_feedback.py` | `8ae84e2e555550128a59a23c342f67a032a0c859` |
+| `src/relay_self/action_outcome.py` | `d28bbc1745104bcd7872061bef2fe6222ceccb2a` |
+| `docs/postmain-architecture.json` | `e8419c55b5535d451346fd2a9a3c42326a80aa29` |
+| `docs/postmain-architecture.md` | `62b8e807d1b35a7f06d15b61e411434f57fe111d` |
+| `tests/test_postmain_architecture_freeze.py` | `d343aa052541b4ee9d2ce3e00653cc1a56d681ce` |
+| `src/relay_self/persistent_cognition.py` | `5d4fff3fa10bad78f98118758c8a22d53e8390fb` |
