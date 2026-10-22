@@ -209,6 +209,7 @@ async def _ready_server(
         if raw_stdout_path is not None:
             raw_sink = raw_stdout_path.open("xb")
         ready = asyncio.Event()
+        ready_or_collector_done = asyncio.Event()
 
         async def collect() -> None:
             assert server.stdout is not None
@@ -223,12 +224,25 @@ async def _ready_server(
                         logfile.flush()
                         if "Done (" in line and "For help" in line:
                             ready.set()
+                            ready_or_collector_done.set()
             finally:
-                if raw_sink is not None:
-                    raw_sink.close()
+                try:
+                    if raw_sink is not None:
+                        raw_sink.close()
+                finally:
+                    ready_or_collector_done.set()
 
         collector = asyncio.create_task(collect())
-        await asyncio.wait_for(ready.wait(), timeout=190)
+        if raw_sink is None:
+            await asyncio.wait_for(ready.wait(), timeout=190)
+        else:
+            # An opted-in evidence writer can fail before the ready marker.
+            # Fail immediately instead of waiting 190s for an impossible event.
+            await asyncio.wait_for(ready_or_collector_done.wait(), timeout=190)
+            if collector.done():
+                collector.result()
+            if not ready.is_set():
+                raise S31ABlocked("raw Java collector ended before server readiness")
         if server.returncode is not None:
             raise S31ABlocked("server exited even though startup was signalled")
         return server, collector, ready
