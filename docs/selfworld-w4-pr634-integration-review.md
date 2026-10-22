@@ -29,3 +29,65 @@
 - Compare source object hashes for exact transferred modules/test files, and entire original 1010-line workflow retained aside from narrow additions.
 
 Status: **INTEGRATION_CANDIDATE_ONLY / NOT TESTED / NOT APPLIED_TO_PR / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**.
+
+
+## 2026-10-23: Independent source-level owner-API review (NOT runtime PASS)
+
+Review of the target PR #634 HEAD and the exact donor W4 HEAD found:
+- PR \`MineflayerProcessSession.launch\` and W4 candidate both preserve
+  \`config, bridge_path, node_executable, startup_timeout_s,
+  raw_capture_root, w4_native_orientation_dev\`.
+  Candidate substitutes \`spawn_with_custody\` and catches
+  \`BaseException\` to supervise startup cleanup, requiring direct cancellation
+  regression rather than relying on matching signatures.
+- Original PR \`s31a_real_server_ci._ready_server(root, jar, log_path)\` is
+  source compatible with the candidate signature that adds
+  keyword-only optional \`raw_stdout_path=None\`. A sole Java collector is
+  maintained in source; failure/cancellation and PID ownership require
+  actual focused tests after integration.
+- Candidate does NOT incorporate W4 donor
+  \`s49_normal_session_real_ci.py\`,
+  \`s34_native_world_cognition_ci.py\`, or the older opt-in staging module.
+  Existing S49/S34 are therefore protected from silent upstream replacement.
+- The donor \`tests/test_s49_startup_ownership.py\` contains cases that
+  exercise donor S34 \`_new_session\`/startup transfer. These cannot be
+  copied blindly as evidence for the target PR S34, whose original code is
+  intentionally retained. Native OS custody fixture similarly does NOT by
+  itself attest the integrated target owner.
+- No full repository bytes or installed WSL2 Python 3.12 runtime are
+  available inside the current ChatGPT tool environment. The public repo
+  cannot be cloned here. **No integrated source was executed here**.
+  A static review is not a test result and cannot justify changing PR head.
+
+### Exact-head LOCAL CODEX verification recipe
+
+Check out \`self/w4-pr634-integration-review-20261023\` in a fresh clean
+isolated WSL2 worktree at the exact HEAD written in the GitHub branch.
+Use Python 3.12 and \`PYTHONPATH=src:tests:.\`; no CI dispatch and no physical
+Minecraft. Focused tests must include:
+- \`tests/test_self_world_observation_only_*.py\`
+- \`tests/test_mineflayer_process_session.py\`
+- \`tests/test_feature_s49_normal_runtime.py\`
+- \`tests/test_self_body.py\`, \`tests/test_self_world.py\`
+- \`tests/test_postmain_architecture_freeze.py\`
+- \`tests/test_self_world_stage_w4_lease.py\`,
+  \`tests/test_self_world_stage_w4_optin_offline.py\`
+
+Before any promotion, add/evaluate focused cancellation tests on the
+*retained target S49/S34* call sites and W4 native child-creation path,
+including a real inert-process (NOT Minecraft) OS-PID cancel/reap test.
+Use DEV fixtures, independent cleanup inventory, 0 FAIL, 0 SKIP.
+Check \`ruff check src tests experiments adapters observability\`,
+\`python tools/check_repository.py\`, and the existing Node adapter checks
+under Node 22. Preserve receipt for the exact HEAD.
+
+Only when these are verified and protected owner review is accepted:
+1. Re-read PR #634 HEAD; require it still equals its frozen parent.
+2. If candidate advanced during repair, independently review new diff and
+   re-run exact-head verification before touching the PR branch.
+3. Fast-forward PR HEAD using an expected-SHA lease; keep Draft and
+   [skip ci] while the user has CI paused; do not merge.
+4. Report local results and branch SHA; do not re-run historic World DEV.
+
+Until then: \`STATIC_API_REVIEW_DONE / OFFLINE_EXECUTION_UNVERIFIED /
+PR_UNCHANGED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN\`.
