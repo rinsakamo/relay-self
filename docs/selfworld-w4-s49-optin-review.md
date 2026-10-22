@@ -776,3 +776,24 @@ there is no assertion of a real `STOP` on Java console, no independent
 Java/Node PID/port reap receipt, no cleanup completion across caller
 cancellation, no host/JAR binding, no actual checked one-use grant and no
 real producer trace. These missing gates continue to forbid a World.
+
+
+### 2026-10-23: Inert PREWORLD inventory, CI deliberately stopped
+
+Added self_world_observation_only_entry.py with LOCAL-only inspection of a
+clean exact git HEAD, operator-supplied JAR SHA256, a single local bridge hash,
+NODE_OPTIONS exclusion and a fresh empty non-symlink disposable directory.
+It runs no Minecraft server, Mineflayer bridge, World commands, Action,
+grant issuer or S10 updater. Its success status is always PREWORLD_BLOCKED,
+with physical_run_permitted=false and external_grant_verified=false.
+
+Local JAR checksum matching is not independent Mojang/custody attestation.
+The startup environment's Java 21, Node 22, Mineflayer package identity,
+actual port availability, Java/Node OS PIDs and reaps, World disposal,
+real console syntax, immutable archive and fresh independently signed
+one-use DEV grant are STILL NOT ATTESTED.
+
+The user cancelled the CI queue. This new batch was committed with
+[skip ci] intentionally; no new offline job is being claimed successful.
+Before any real World, an explicit exact-HEAD operator-owned verification
+and separate authenticated grant and actual OS process custody are mandatory.
