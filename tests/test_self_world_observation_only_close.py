@@ -100,7 +100,7 @@ def test_observation_only_close_settles_every_resource_offline(tmp_path, fault):
                 assert any(e.startswith("java_stop_") for e in result["errors"])
             if fault == "node_shutdown_timeout":
                 assert any(e.startswith("node_stop_") for e in result["errors"])
-                assert java.stdin.writes == [b"stop\\n"]
+                assert java.stdin.writes == [b"stop\n"]
     asyncio.run(run())
 
 
