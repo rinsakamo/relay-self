@@ -35,6 +35,22 @@ class ObservationOnlyDevSession(MineflayerProcessSession):
     is not a run grant or a second action/reader owner.
     """
 
+    def __init__(self, process, *, raw_capture_root=None) -> None:
+        super().__init__(process, raw_capture_root=raw_capture_root)
+        self._native_read_active = False
+
+    async def receive(self):
+        # One outstanding receive() on the inherited byte/decoder stream.
+        # wait_for() may delegate that exact read into a child Task; no
+        # ambient task/ContextVar or second stdout pipe is granted custody.
+        if self._native_read_active:
+            raise ObservationOnlyDevBlocked("concurrent native stdout reader denied")
+        self._native_read_active = True
+        try:
+            return await super().receive()
+        finally:
+            self._native_read_active = False
+
     async def _send(self, line: str) -> None:
         if type(line) is not str:
             raise ObservationOnlyDevBlocked("command must be canonical text")
