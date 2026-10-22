@@ -1,25 +1,50 @@
 """W4 observation-only DEV interface (source-local, no physical run grant).
 
 This module does not launch a Minecraft World or carry any runnable CLI.
-The original ProcessSession owns the sole Node stdout reader. A real run
-must have a separately authenticated, HEAD-specific, spend-once DEV grant
-and must use the original one Java stdout collector. Frame review cannot
+The original ProcessSession owns the sole Node stdout reader. The dedicated
+real DEV runner requires explicit confirmation and pins, and uses the original
+one Java stdout collector. Qualification still needs external trust. Frame review cannot
 make local Java console text independently authenticated World/tick truth.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import re
 from dataclasses import dataclass
 
-from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.process_session import MineflayerProcessEnded, MineflayerProcessSession
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterStarted,
     MineflayerObservation,
     encode_observe,
     encode_shutdown,
 )
+from adapters.mineflayer.startup_process_ownership import (
+    StartupCleanupUnconfirmed,
+    _supervise,
+    terminate_and_reap,
+)
+
+
+async def _bounded_observation_wait(awaitable, *, timeout_s: float, name: str):
+    """Settle the exact I/O task on timeout *or* outer cancellation."""
+    task = asyncio.create_task(awaitable)
+    try:
+        done, _ = await asyncio.wait({task}, timeout=timeout_s)
+        if not done:
+            raise TimeoutError(f"{name} timed out")
+        return task.result()
+    finally:
+        if not task.done():
+            task.cancel()
+            done, _ = await asyncio.wait({task}, timeout=0.25)
+            if not done:
+                task.add_done_callback(lambda t: None if t.cancelled() else t.exception())
+                raise StartupCleanupUnconfirmed(f"{name} cancellation did not settle")
+            if not task.cancelled():
+                task.exception()
 
 
 class ObservationOnlyDevBlocked(ValueError):
@@ -74,7 +99,9 @@ class ObservationOnlyDevSession(MineflayerProcessSession):
             raise ObservationOnlyDevBlocked("Action/World effect command forbidden")
         if line != allowed:
             raise ObservationOnlyDevBlocked("noncanonical command forbidden")
-        await super()._send(line)
+        await _bounded_observation_wait(
+            super()._send(line), timeout_s=5, name="observation-only command drain",
+        )
 
     async def shutdown_with_stdout_receipt(
         self, *, timeout_s: float = 10.0,
@@ -89,7 +116,36 @@ class ObservationOnlyDevSession(MineflayerProcessSession):
             raise ObservationOnlyDevBlocked(
                 "read-only STOP requires original W3 raw stdout capture"
             )
-        rc = await self.shutdown(timeout_s=timeout_s)
+        async def graceful():
+            if self._process.returncode is None:
+                await self._send(encode_shutdown())
+            while True:
+                try:
+                    await self.receive()
+                except MineflayerProcessEnded:
+                    break
+            rc = await self._process.wait()
+            if type(rc) is not int or rc != self.process_returncode:
+                raise ObservationOnlyDevBlocked("Node wait/returncode mismatch")
+            self._seal_raw_capture(exit_code=rc, reason="clean_shutdown")
+            return rc
+
+        # No inherited shutdown fallback with an unbounded process.wait().
+        # This same session reaps and seals failures after the bounded operation.
+        try:
+            rc = await _bounded_observation_wait(
+                graceful(), timeout_s=timeout_s, name="observation-only Node STOP/EOF/wait",
+            )
+        except BaseException:
+            async def abort():
+                try:
+                    await terminate_and_reap(self._process, timeout_s=timeout_s)
+                finally:
+                    self._seal_raw_capture(
+                        exit_code=self.process_returncode, reason="aborted_shutdown",
+                    )
+            await _supervise(abort())
+            raise
         receipt = self.raw_capture_receipt
         if (
             type(rc) is not int or rc != 0

@@ -18,33 +18,44 @@ import shutil
 import sys
 import tempfile
 from dataclasses import asdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
 from adapters.mineflayer.s31a_real_server_ci import (
-    _await_spawn, _command, _correlated_observe, _ready_server, _write_config,
+    _await_spawn,
+    _command,
+    _correlated_observe,
+    _ready_server,
+    _write_config,
 )
 from adapters.mineflayer.self_world_observation_only_close import (
     close_observation_only_dev,
 )
 from adapters.mineflayer.self_world_observation_only_dev import (
     ObservationOnlyDevSession,
+    _bounded_observation_wait,
     review_observation_only_dev_offline,
     wait_for_observation_raw_world_marker,
 )
 from adapters.mineflayer.self_world_observation_only_entry import (
-    _check_original_path, inventory_observation_only_entry,
+    _check_original_path,
+    inventory_observation_only_entry,
 )
 from adapters.mineflayer.self_world_observation_only_lifetime import (
     join_observation_only_local_lifetime,
 )
 from adapters.mineflayer.self_world_observation_only_native_boundary import (
-    audit_observation_only_local_disposal, capture_original_native_pid,
+    _loopback_port_can_bind,
+    _read_proc_starttime,
+    audit_observation_only_local_disposal,
+    capture_original_native_pid,
 )
 from adapters.mineflayer.self_world_stage_w4_logtap import (
-    _tail_bytes, capture_w4_collector_cursor,
+    _tail_bytes,
+    capture_w4_collector_cursor,
 )
-from adapters.mineflayer.startup_process_ownership import _supervise
+from adapters.mineflayer.startup_process_ownership import StartupCleanupUnconfirmed, _supervise
 
 _CONFIRM = "DEV_OBSERVATION_ONLY"
 
@@ -82,6 +93,8 @@ def _run_precheck(
         raise ObservationDevRunBlocked("distinct absolute external roots and pins required")
     for root in (repository, world_parent, evidence_parent):
         _check_original_path(root, directory=True)
+        if root != root.resolve():
+            raise ObservationDevRunBlocked("canonical paths without dot components required")
     if sys.platform != "linux":
         raise ObservationDevRunBlocked("local Linux/WSL2 DEV-only launcher")
 
@@ -101,13 +114,16 @@ def _write_report(path: Path, value: dict) -> None:
         pending.unlink(missing_ok=True)
 
 
-def _delete_disposable_root(root: Path, parent: Path, *, run_id: str) -> None:
+def _delete_disposable_root(
+    root: Path, parent: Path, *, run_id: str, identity: tuple[int, int],
+) -> None:
     """Never delete an unowned path or follow a replaced symlink."""
     if (
         root.parent != parent
         or root.name != f"w4-observe-{run_id}"
         or root.is_symlink()
         or not root.is_dir()
+        or (root.stat().st_dev, root.stat().st_ino) != identity
     ):
         raise ObservationDevRunBlocked("World root ownership changed before disposal")
     _check_original_path(parent, directory=True)
@@ -137,23 +153,32 @@ async def run_observation_only_real_dev(
     report = {
         "schema": "W4_OBSERVATION_ONLY_REAL_DEV_V1",
         "head": expected_head, "run_id": run_id,
-        "status": "BLOCKED", "classification": "DEV_ONLY_NOT_QUALIFIED",
+        "status": "BLOCKED", "classification": "PREWORLD_BLOCKED",
+        "scope": "DEV_ONLY_NOT_QUALIFIED",
         "stage": "PREWORLD", "server_pid": None, "node_pid": None,
         "action_count": 0, "outcome_count": 0, "s10_update_count": 0,
         "qualification_approved": False, "science_qualified": False,
         "external_grant_qualified": False,
+        "verdict": "PREWORLD_BLOCKED",
+        "started_utc": datetime.now(timezone.utc).isoformat(),
     }
+    _write_report(evidence_root / "report.json", report)
     java = collector = session = java_id = node_id = inventory = None
     close = None
     failure: BaseException | None = None
+    world_identity = None
     try:
         world_root.mkdir(mode=0o700)
+        info = world_root.stat()
+        world_identity = (info.st_dev, info.st_ino)
         inventory = inventory_observation_only_entry(
             repository=repository, expected_head=expected_head,
             server_jar=jar, expected_server_sha256=expected_jar_sha256,
             disposable_root=world_root,
         )
         report["inventory"] = asdict(inventory)
+        if not _loopback_port_can_bind(25565):
+            raise ObservationDevRunBlocked("Minecraft loopback port already occupied")
         _write_config(world_root)
         report["stage"] = "JAVA_STARTUP"
         java_log = evidence_root / "java-collector.log"
@@ -163,6 +188,8 @@ async def run_observation_only_real_dev(
         )
         java_id = capture_original_native_pid(java)
         report["server_pid"] = java_id.pid
+        report["java_identity"] = asdict(java_id)
+        report["java_ready_utc"] = datetime.now(timezone.utc).isoformat()
         report["stage"] = "NODE_SPAWN"
         session = await ObservationOnlyDevSession.launch(
             MineflayerLaunchConfig(
@@ -175,17 +202,24 @@ async def run_observation_only_real_dev(
         )
         node_id = capture_original_native_pid(session._process)
         report["node_pid"] = node_id.pid
+        report["node_identity"] = asdict(node_id)
+        report["node_started_utc"] = datetime.now(timezone.utc).isoformat()
+        report["adapter_started"] = asdict(session.started)
         spawn = await _await_spawn(session)
+        report["spawn"] = asdict(spawn)
         report["stage"] = "PRE_OBSERVATION"
         before_id = f"w4-before-{run_id}"
         after_id = f"w4-after-{run_id}"
         before = await _correlated_observe(session, before_id)
+        report["before"] = asdict(before)
         # The original sole Java stdout collector already owns the raw file.
         cursor = capture_w4_collector_cursor(java_raw)
         report["stage"] = "JAVA_READ_ONLY_MARKER"
         _command(java, "time query gametime")
         assert java.stdin is not None
-        await java.stdin.drain()
+        await _bounded_observation_wait(
+            java.stdin.drain(), timeout_s=5, name="Java marker command drain",
+        )
         marker = await wait_for_observation_raw_world_marker(cursor, timeout_s=10)
         raw_bytes = _tail_bytes(cursor, marker.raw_start_byte)
         marker_line = raw_bytes[:marker.raw_end_byte - marker.raw_start_byte]
@@ -193,6 +227,7 @@ async def run_observation_only_real_dev(
             raise ObservationDevRunBlocked("original Java collector marker changed")
         report["stage"] = "POST_OBSERVATION"
         after = await _correlated_observe(session, after_id)
+        report["after"] = asdict(after)
         readback = review_observation_only_dev_offline(
             started=session.started, spawn=spawn, before=before, after=after,
             before_request=before_id, after_request=after_id,
@@ -206,6 +241,9 @@ async def run_observation_only_real_dev(
         failure = exc
         report["status"] = "BLOCKED"
         report["error"] = f"{type(exc).__name__}: {exc}"
+        report["startup_cleanup_unconfirmed"] = getattr(
+            exc, "startup_cleanup_unconfirmed", None,
+        ) or (str(exc) if isinstance(exc, StartupCleanupUnconfirmed) else None)
     finally:
         async def finish() -> None:
             nonlocal close
@@ -225,9 +263,42 @@ async def run_observation_only_real_dev(
                 type(session.process_returncode) is int
             )
             java_reaped = java is not None and type(java.returncode) is int
-            if node_reaped and java_reaped and collector is not None and collector.done():
+            identities = [item for item in (java_id, node_id) if item is not None]
+            try:
+                report["pid_absent"] = {
+                    str(item.pid): _read_proc_starttime(item.pid) is None for item in identities
+                }
+                report["port_released"] = _loopback_port_can_bind(25565)
+            except BaseException as exc:
+                report["native_inspection_error"] = f"{type(exc).__name__}: {exc}"
+            collector_ok = (
+                collector is not None and collector.done() and not collector.cancelled()
+                and collector.exception() is None
+            )
+            report["collector_settled_normally"] = collector_ok
+            native_absent = (
+                len(identities) == int(java is not None) + int(session is not None)
+                and all(report.get("pid_absent", {}).values())
+                and "native_inspection_error" not in report
+            )
+            cleanup_known = (
+                (java is None or java_reaped)
+                and (session is None or node_reaped)
+                and (collector is None or collector_ok)
+                and native_absent
+                and not report.get("startup_cleanup_unconfirmed")
+                and "cleanup_error" not in report
+                and not any(
+                    "reap_" in error or "Unconfirmed" in error or "collector_" in error
+                    for error in (close or {}).get("errors", [])
+                )
+            )
+            report["cleanup_confirmed"] = cleanup_known
+            if cleanup_known and world_identity is not None:
                 try:
-                    _delete_disposable_root(world_root, world_parent, run_id=run_id)
+                    _delete_disposable_root(
+                        world_root, world_parent, run_id=run_id, identity=world_identity,
+                    )
                     report["world_root_removed"] = True
                 except BaseException as exc:
                     report["world_disposal_error"] = f"{type(exc).__name__}: {exc}"
@@ -255,14 +326,23 @@ async def run_observation_only_real_dev(
                     report["status"] = "PASS"
                     report["stage"] = "DEV_COMPLETE"
                     report["classification"] = "DEV_LOCAL_OBSERVATION_ONLY"
+                    report["verdict"] = "DEV_LOCAL_OBSERVATION_ONLY_PASS"
                 except BaseException as exc:
                     report["audit_error"] = f"{type(exc).__name__}: {exc}"
+            if report["status"] != "PASS":
+                if not cleanup_known or report.get("world_disposal_error"):
+                    report["verdict"] = "CLEANUP_UNCONFIRMED"
+                elif report["stage"] != "PREWORLD":
+                    report["verdict"] = "DEV_OBSERVATION_ONLY_BLOCKED"
+            report["finished_utc"] = datetime.now(timezone.utc).isoformat()
+            report["classification"] = report["verdict"]
             # Every run creates its own permanent evidence directory.
             try:
                 _write_report(evidence_root / "report.json", report)
             except BaseException as exc:
                 report["report_write_error"] = f"{type(exc).__name__}: {exc}"
                 report["status"] = "BLOCKED"
+                report["classification"] = "DEV_OBSERVATION_ONLY_BLOCKED"
         await _supervise(finish())
     if failure is not None and isinstance(failure, asyncio.CancelledError):
         raise failure

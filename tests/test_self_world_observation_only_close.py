@@ -25,7 +25,8 @@ def _wire(type_name: str, seq: int) -> bytes:
 @pytest.mark.parametrize("fault", (
     "none", "no_ack", "duplicate_ack", "java_stop_error",
     "java_pre_exited", "collector_fault", "node_missing", "java_missing",
-    "node_shutdown_timeout", "java_stop_timeout",
+    "node_shutdown_timeout", "java_stop_timeout", "java_drain_timeout",
+    "node_exit_failure", "java_wait_mismatch", "collector_timeout",
 ))
 def test_observation_only_close_settles_every_resource_offline(tmp_path, fault):
     node = FakeProcess([
@@ -56,6 +57,21 @@ def test_observation_only_close_settles_every_resource_offline(tmp_path, fault):
 
         java.wait = slow_java_wait
 
+    if fault == "java_drain_timeout":
+        async def stalled_drain():
+            await asyncio.Event().wait()
+        java.stdin.drain = stalled_drain
+    if fault == "java_wait_mismatch":
+        async def wrong_wait():
+            java.returncode = 1
+            return 0
+        java.wait = wrong_wait
+    if fault == "node_exit_failure":
+        async def failed_node_wait():
+            node.returncode = 1
+            return 1
+        node.wait = failed_node_wait
+
     async def run():
         session = ObservationOnlyDevSession(node, raw_capture_root=tmp_path)
         await session.receive()
@@ -65,6 +81,8 @@ def test_observation_only_close_settles_every_resource_offline(tmp_path, fault):
             session.shutdown_with_stdout_receipt = stalled_node_shutdown
         async def drain_collector():
             await asyncio.sleep(0)
+            if fault == "collector_timeout":
+                await asyncio.Event().wait()
             if fault == "collector_fault":
                 raise OSError("fixture raw collector write fault")
         collector = asyncio.create_task(drain_collector())
@@ -72,7 +90,7 @@ def test_observation_only_close_settles_every_resource_offline(tmp_path, fault):
             server=None if fault == "java_missing" else java,
             collector=collector,
             session=None if fault == "node_missing" else session,
-            timeout_s=0.05 if fault in {"node_shutdown_timeout", "java_stop_timeout"} else 0.3,
+            timeout_s=0.05,
         )
         assert result["schema"] == "W4_OBSERVATION_ONLY_LOCAL_CLOSE_DEV_V1"
         assert result["action_count"] == result["outcome_count"] == 0

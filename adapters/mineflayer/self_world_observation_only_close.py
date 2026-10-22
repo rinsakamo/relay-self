@@ -12,9 +12,9 @@ from typing import Any
 from adapters.mineflayer.s31a_real_server_ci import _command
 from adapters.mineflayer.self_world_observation_only_dev import (
     ObservationOnlyDevSession,
+    _bounded_observation_wait,
 )
 from adapters.mineflayer.startup_process_ownership import (
-    _bounded_wait,
     _supervise,
     terminate_and_reap,
 )
@@ -60,10 +60,9 @@ async def close_observation_only_dev(
             errors.append("node_missing")
         else:
             try:
-                receipt = await _bounded_wait(
+                receipt = await _bounded_observation_wait(
                     session.shutdown_with_stdout_receipt(timeout_s=timeout_s),
-                    timeout_s=timeout_s + 1,
-                    name="observation-only Node shutdown",
+                    timeout_s=3 * timeout_s + 2, name="observation-only Node close",
                 )
                 result["node_exit"] = session.process_returncode
                 result["node_stdout_receipt"] = receipt
@@ -75,6 +74,13 @@ async def close_observation_only_dev(
                     )
                 except BaseException as secondary:
                     errors.append(f"node_reap_{type(secondary).__name__}")
+                try:
+                    session._seal_raw_capture(
+                        exit_code=session.process_returncode, reason="aborted_shutdown",
+                    )
+                    result["node_stdout_receipt"] = session.raw_capture_receipt
+                except BaseException as secondary:
+                    errors.append(f"node_seal_{type(secondary).__name__}")
         # Always continue to Java even if Node cleanup or evidence failed.
         if server is None:
             errors.append("java_missing")
@@ -83,12 +89,18 @@ async def close_observation_only_dev(
                 try:
                     _command(server, "stop")  # Original Java experimenter stdin.
                     assert server.stdin is not None
-                    await server.stdin.drain()
+                    await _bounded_observation_wait(
+                        server.stdin.drain(), timeout_s=timeout_s,
+                        name="observation-only Java STOP drain",
+                    )
                     result["java_stop_requested"] = True
-                    result["java_exit"] = await _bounded_wait(
+                    result["java_exit"] = await _bounded_observation_wait(
                         server.wait(), timeout_s=timeout_s,
                         name="observation-only Java stop wait",
                     )
+                    if (type(result["java_exit"]) is not int
+                            or result["java_exit"] != server.returncode):
+                        raise ValueError("Java wait/returncode mismatch")
                 except BaseException as exc:
                     errors.append(f"java_stop_{type(exc).__name__}")
             else:

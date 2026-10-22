@@ -6,15 +6,15 @@ import json
 
 import pytest
 
+from adapters.mineflayer.self_world_observation_only_dev import ObservationOnlyDevBlocked
 from adapters.mineflayer.self_world_observation_only_entry import (
     ObservationOnlyEntryInventory,
 )
-from adapters.mineflayer.self_world_observation_only_owner_offline import (
-    rehearse_observation_only_owner_offline,
-)
-from adapters.mineflayer.self_world_observation_only_dev import ObservationOnlyDevBlocked
 from adapters.mineflayer.self_world_observation_only_lifetime import (
     ObservationOnlyLifetimeBlocked,
+)
+from adapters.mineflayer.self_world_observation_only_owner_offline import (
+    rehearse_observation_only_owner_offline,
 )
 from test_self_world_stage_w4_prehost import _offline_lines
 
