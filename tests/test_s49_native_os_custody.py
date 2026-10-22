@@ -339,3 +339,165 @@ def test_real_java_original_readiness_cancel_settles_only_collector(
                         pass
 
     asyncio.run(run())
+
+
+def test_real_node_w4_successful_startup_owner_preworld_and_bounded_host_handoff(
+    tmp_path, native_evidence,
+):
+    """Inert Node stdout traverses ORIGINAL decoder and W4 owner; no Minecraft.
+
+    A fabricated collector marker is used ONLY to exercise the offline HOST
+    lease transition. It is not a Java/World attestation or Action grant.
+    """
+    from adapters.mineflayer.s31a_real_server_ci import _await_spawn
+    from adapters.mineflayer.self_world_stage_w4_lease import W4DevLeasedSession
+    from test_self_world_stage_w4_prehost import _offline_lines
+    from test_self_world_stage_w4_lease import marker_for, preworld
+
+    node = shutil.which("node")
+    assert node is not None, "real Node executable required; no silent skip"
+    pre, _, lines = _offline_lines()
+    script = tmp_path / "inert-w4-startup.js"
+    script.write_text(
+        "const frames = " + json.dumps([row.decode("utf-8") for row in lines]) + ";\n"
+        "for (const frame of frames) process.stdout.write(frame);\n"
+        "process.stdin.on('data', (data) => {\n"
+        "  if (data.toString('utf8').includes('\\\"shutdown\\\"')) process.exit(0);\n"
+        "});\n"
+        "setInterval(() => {}, 1000);\n",
+        encoding="utf-8",
+    )
+
+    async def run():
+        session = None
+        identity = None
+        try:
+            session = await W4DevLeasedSession.launch(
+                MineflayerLaunchConfig(version="1.21.8"),
+                bridge_path=script,
+                node_executable=node,
+                startup_timeout_s=10,
+            )
+            identity = _linux_pid_identity(session._process.pid)
+            owner = session.owner_token()
+            assert session.process_returncode is None
+            # The original S34 startup reader consumes the sole native spawn.
+            observed_spawn = await asyncio.wait_for(_await_spawn(session), timeout=10)
+            assert observed_spawn.kind == "spawn"
+            receipt, ledger = await asyncio.wait_for(
+                preworld(session, owner, pre), timeout=10,
+            )
+            assert not receipt.physical_run_permitted
+            assert ledger.delivery_scope == "PREWORLD_EVIDENCE_ONLY_NOT_L0_STIMULUS"
+            session.advance(owner=owner, phase="WORLD_WINDOW", binding="offline-only")
+            # Deliberately synthetic: exercises the lease handoff, not a
+            # genuine Minecraft World marker or server collector witness.
+            session.world_marker(owner=owner, marker=marker_for(receipt))
+            op = session.advance(owner=owner, phase="HOST", binding="offline-host")
+            frame = await asyncio.wait_for(
+                session.delegate(
+                    owner=owner, operation=op, invoke=lambda: session.receive(),
+                ),
+                timeout=10,
+            )
+            assert frame.seq == 4 and frame.session_id == pre.session_id
+            assert [row.seq for row in session.audit if row.event == "DELIVER"] == [
+                0, 1, 2, 3, 4,
+            ]
+            assert not any(row.event == "DENY" for row in session.audit)
+            assert session._actor is asyncio.current_task()
+            assert session._delegated == 0
+            session.advance(owner=owner, phase="QUIESCE", binding="offline-quiet")
+            session.advance(owner=owner, phase="SHUTDOWN", binding="offline-shutdown")
+            assert await asyncio.wait_for(session.shutdown(timeout_s=5), timeout=10) == 0
+            assert session.phase == "CLOSED"
+            assert session.process_returncode == 0
+            _assert_gone(identity)
+            await asyncio.sleep(0)
+            native_evidence["settled"]()
+        finally:
+            if session is not None and session.process_returncode is None:
+                from adapters.mineflayer.startup_process_ownership import terminate_and_reap
+
+                await terminate_and_reap(session._process)
+
+    asyncio.run(run())
+
+
+def test_real_java_original_readiness_success_transfers_single_collector(
+    monkeypatch, tmp_path, native_evidence,
+):
+    """Original _ready_server success hands over one real JVM and one reader.
+
+    Only an inert Java program imitates the readiness string; this does not
+    establish actual Minecraft readiness or source attestation.
+    """
+    java_argv = _native_command(tmp_path, "java")
+    src = tmp_path / "S49Inert.java"
+    src.write_text(
+        'public final class S49Inert {'
+        ' public static void main(String[] args) throws Exception {'
+        ' System.out.println("BOOT");'
+        ' System.out.println("Done (0.5s)! For help, type help");'
+        ' System.out.flush();'
+        ' Thread.sleep(60000);'
+        ' }}\n',
+        encoding="utf-8",
+    )
+    javac = shutil.which("javac")
+    assert javac is not None
+    subprocess.run(
+        [javac, "-encoding", "UTF-8", "-d", str(tmp_path), str(src)],
+        check=True, timeout=30, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    prior_spawn = asyncio.create_subprocess_exec
+    launched = []
+
+    async def redirect_inert_java(*args, **kwargs):
+        assert args[0] == "java" and "-jar" in args
+        assert "-jar" not in java_argv
+        child = await prior_spawn(*java_argv, **kwargs)
+        launched.append(child)
+        return child
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", redirect_inert_java)
+
+    async def run():
+        server = None
+        collector = None
+        try:
+            server, collector, ready = await asyncio.wait_for(
+                s31a._ready_server(tmp_path, tmp_path / "unused.jar",
+                                  tmp_path / "original-collector.log"),
+                timeout=12,
+            )
+            identity = _linux_pid_identity(server.pid)
+            assert ready.is_set() and server.returncode is None
+            assert len(launched) == 1 and launched[0] is server
+            log = (tmp_path / "original-collector.log").read_text(encoding="utf-8")
+            assert log.count("BOOT") == 1
+            assert log.count("Done (") == 1
+            # Ownership is now with the caller; the same collector remains
+            # the *only* reader until the exact child exits.
+            from adapters.mineflayer.startup_process_ownership import terminate_and_reap
+
+            result = await asyncio.wait_for(terminate_and_reap(server), timeout=10)
+            assert result == server.returncode and type(result) is int
+            await asyncio.wait_for(collector, timeout=5)
+            assert collector.done()
+            _assert_gone(identity)
+            await asyncio.sleep(0)
+            native_evidence["settled"]()
+        finally:
+            if server is not None and server.returncode is None:
+                from adapters.mineflayer.startup_process_ownership import terminate_and_reap
+
+                await terminate_and_reap(server)
+            if collector is not None and not collector.done():
+                collector.cancel()
+                try:
+                    await asyncio.wait_for(collector, timeout=3)
+                except asyncio.CancelledError:
+                    pass
+
+    asyncio.run(run())
