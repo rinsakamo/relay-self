@@ -495,3 +495,9 @@ single-reader ownershipの**ソフトウェアDEVのみ**。
 物理read-only DEV・保護元S49 source編集・新Worldシナリオ・
 外部raw custody/issuer/grantは別の事前審査を要する。
 `W4_LIVE_NO_GO / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`を維持する。
+
+この入口は合成fixture内の **seq 0〜4だけ**（起動、spawn、preworld
+2件、host観測1件）を入力として受け取る。上流テスト用の
+6件目（seq 5）まで含めた入力は長さ検査で拒否し、
+HOST以降の未読frameを暗黙に捨てることはしない。
+CIのFULL有効化はあくまでオフラインpytestのみ。
