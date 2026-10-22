@@ -19,6 +19,10 @@ from adapters.mineflayer.python_protocol import (
     encode_shutdown,
 )
 from adapters.mineflayer.self_world_stage_w3_capture import W3RawNodeStdoutCapture
+from adapters.mineflayer.startup_process_ownership import (
+    spawn_with_custody,
+    terminate_and_reap,
+)
 
 
 class MineflayerProcessError(RuntimeError):
@@ -91,8 +95,11 @@ class MineflayerProcessSession:
                 raise MineflayerProcessStartError("W4 orientation requires pinned Minecraft 1.21.8")
             child_env["RELAYSELF_W4_NH1_ORIENTATION_V0"] = "1"
 
+        # Custody remains with the spawn task across cancellation before
+        # create_subprocess_exec() exposes its Process handle. Once returned,
+        # this helper owns the child through startup or confirmed reap.
         try:
-            process = await asyncio.create_subprocess_exec(
+            process = await spawn_with_custody(
                 *config.argv(bridge, node_executable=node_executable),
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
@@ -104,29 +111,45 @@ class MineflayerProcessSession:
                 f"could not launch Mineflayer bridge: {exc}"
             ) from exc
 
+        session: MineflayerProcessSession | None = None
         try:
             session = cls(process, raw_capture_root=raw_capture_root)
-        except Exception:
-            await _terminate_child(process)
-            raise
-
-        try:
             started = await asyncio.wait_for(
                 session.receive(),
                 timeout=startup_timeout_s,
             )
-        except Exception:
-            await session.terminate()
+            if not isinstance(started, MineflayerAdapterStarted):
+                raise MineflayerProcessStartError(
+                    "Mineflayer bridge did not produce adapter_started"
+                )
+            session._started = started
+            return session
+        except BaseException as failure:
+            # Includes CancelledError: unlike Exception it must not bypass
+            # process reap or W3 raw file closure. The cleanup task itself is
+            # shielded and supervised across further caller cancellations.
+            cleanup_error: BaseException | None = None
+            try:
+                await terminate_and_reap(process)
+            except BaseException as exc:
+                cleanup_error = exc
+            if session is not None:
+                try:
+                    session._seal_raw_capture(
+                        exit_code=process.returncode,
+                        reason="aborted_startup",
+                    )
+                except BaseException as exc:
+                    if cleanup_error is None:
+                        cleanup_error = exc
+            if cleanup_error is not None:
+                setattr(
+                    failure, "startup_cleanup_unconfirmed",
+                    f"{type(cleanup_error).__name__}: {cleanup_error}",
+                )
+                failure.add_note(f"Node startup cleanup unconfirmed: {cleanup_error!r}")
+                raise failure from cleanup_error
             raise
-
-        if not isinstance(started, MineflayerAdapterStarted):
-            await session.terminate()
-            raise MineflayerProcessStartError(
-                "Mineflayer bridge did not produce adapter_started"
-            )
-
-        session._started = started
-        return session
 
     @property
     def started(self) -> MineflayerAdapterStarted:
@@ -295,6 +318,32 @@ class MineflayerProcessSession:
             self._raw_receipt = self._raw_capture.seal(
                 exit_code=exit_code, reason=reason,
             )
+
+    async def abort_startup(self) -> int:
+        """Reap a session whose adapter started but whose native spawn did not.
+
+        Called by the original s34 _new_session() before it transfers session
+        ownership to S49. This uses the same process and raw-capture objects,
+        never a second receiver or an additional bridge.
+        """
+        cleanup_error: BaseException | None = None
+        rc: int | None = None
+        try:
+            rc = await terminate_and_reap(self._process)
+        except BaseException as exc:
+            cleanup_error = exc
+        try:
+            self._seal_raw_capture(
+                exit_code=self._process.returncode,
+                reason="aborted_startup",
+            )
+        except BaseException as exc:
+            if cleanup_error is None:
+                cleanup_error = exc
+        if cleanup_error is not None:
+            raise cleanup_error
+        assert type(rc) is int
+        return rc
 
     async def terminate(self) -> int:
         """Terminate the owned child without retrying or launching a replacement."""
