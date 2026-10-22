@@ -14,6 +14,7 @@ from adapters.mineflayer.self_world_observation_only_dev import (
     ObservationOnlyDevSession,
 )
 from adapters.mineflayer.startup_process_ownership import (
+    _bounded_wait,
     _supervise,
     terminate_and_reap,
 )
@@ -59,9 +60,10 @@ async def close_observation_only_dev(
             errors.append("node_missing")
         else:
             try:
-                receipt = await asyncio.wait_for(
+                receipt = await _bounded_wait(
                     session.shutdown_with_stdout_receipt(timeout_s=timeout_s),
-                    timeout=timeout_s + 1,
+                    timeout_s=timeout_s + 1,
+                    name="observation-only Node shutdown",
                 )
                 result["node_exit"] = session.process_returncode
                 result["node_stdout_receipt"] = receipt
@@ -83,8 +85,9 @@ async def close_observation_only_dev(
                     assert server.stdin is not None
                     await server.stdin.drain()
                     result["java_stop_requested"] = True
-                    result["java_exit"] = await asyncio.wait_for(
-                        server.wait(), timeout=timeout_s,
+                    result["java_exit"] = await _bounded_wait(
+                        server.wait(), timeout_s=timeout_s,
+                        name="observation-only Java stop wait",
                     )
                 except BaseException as exc:
                     errors.append(f"java_stop_{type(exc).__name__}")
