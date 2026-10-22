@@ -14,7 +14,6 @@ from adapters.mineflayer.self_world_observation_only_dev import (
     ObservationOnlyDevSession,
 )
 from adapters.mineflayer.startup_process_ownership import (
-    StartupCleanupUnconfirmed,
     _supervise,
     terminate_and_reap,
 )
