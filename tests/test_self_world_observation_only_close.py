@@ -95,3 +95,45 @@ def test_observation_only_close_rejects_wrong_owner_and_timeout():
                 server=None, collector=None, session=None, timeout_s=0,
             )
     asyncio.run(run())
+
+
+def test_observation_only_close_supervises_repeated_cancellation_offline():
+    """Caller cancellation cannot abandon the single owned Java STOP."""
+    async def run():
+        node = FakeProcess([])
+        java = FakeProcess([])
+        session = ObservationOnlyDevSession(node)
+        entered = asyncio.Event()
+        release = asyncio.Event()
+
+        async def controlled_shutdown(*, timeout_s):
+            assert timeout_s == 0.5
+            entered.set()
+            await release.wait()
+            node.returncode = 0
+            return {
+                "status": "COMPLETE_NODE_STDOUT",
+                "shutdown_ack_count": 1,
+                "eof_observed": True,
+                "process_exit_code": 0,
+                "seal_reason": "clean_shutdown",
+            }
+        session.shutdown_with_stdout_receipt = controlled_shutdown
+
+        async def collector():
+            await asyncio.sleep(0)
+
+        collect_task = asyncio.create_task(collector())
+        task = asyncio.create_task(close_observation_only_dev(
+            server=java, collector=collect_task, session=session, timeout_s=0.5,
+        ))
+        await entered.wait()
+        task.cancel()
+        task.cancel()
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert java.stdin.writes == [b"stop\n"]
+        assert java.returncode == 0
+        assert collect_task.done()
+    asyncio.run(run())
