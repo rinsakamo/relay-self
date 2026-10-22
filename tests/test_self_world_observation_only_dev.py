@@ -272,3 +272,49 @@ def test_observation_only_stop_without_byte_capture_fails_before_send():
         assert process.stdin.writes == []
         assert process.wait_count == 0
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("fault", (
+    "ok", "missing", "partial", "forged", "duplicate", "replaced_inode",
+))
+def test_observation_only_raw_java_marker_uses_existing_collector_file(tmp_path, fault):
+    from adapters.mineflayer.self_world_observation_only_dev import (
+        wait_for_observation_raw_world_marker,
+    )
+    from adapters.mineflayer.self_world_stage_w4_logtap import (
+        capture_w4_collector_cursor,
+    )
+    from adapters.mineflayer.self_world_stage_w4_preflight import W4PreworldBlocked
+
+    raw_path = tmp_path / "original-sole-collector.raw"
+    preface = b"[21:00:00] [Server thread/INFO]: Done (1s)! For help\n"
+    raw_path.write_bytes(preface)
+    cursor = capture_w4_collector_cursor(raw_path)
+    marker = b"[21:00:01] [Server thread/INFO]: The time is 1234\n"
+    payloads = {
+        "ok": marker,
+        "missing": b"[21:00:01] [Server thread/INFO]: unrelated\n",
+        "partial": marker.rstrip(b"\n"),
+        "forged": b"[21:00:01] [Fake thread/INFO]: The time is 1234\n",
+        "duplicate": marker + marker,
+        "replaced_inode": marker,
+    }
+    if fault == "replaced_inode":
+        raw_path.unlink()
+        raw_path.write_bytes(preface + payloads[fault])
+    else:
+        with raw_path.open("ab") as sink:
+            sink.write(payloads[fault])
+
+    async def run():
+        if fault == "ok":
+            result = await wait_for_observation_raw_world_marker(cursor, timeout_s=0.03)
+            assert result.local_game_time == 1234
+            assert result.raw_start_byte == len(preface)
+            assert result.raw_end_byte == len(preface) + len(marker)
+            assert result.raw_sha256 == hashlib.sha256(marker).hexdigest()
+            assert result.local_collector_only and not result.external_world_attested
+        else:
+            with pytest.raises((ObservationOnlyDevBlocked, W4PreworldBlocked)):
+                await wait_for_observation_raw_world_marker(cursor, timeout_s=0.03)
+    asyncio.run(run())
