@@ -25,6 +25,7 @@ def _wire(type_name: str, seq: int) -> bytes:
 @pytest.mark.parametrize("fault", (
     "none", "no_ack", "duplicate_ack", "java_stop_error",
     "java_pre_exited", "collector_fault", "node_missing", "java_missing",
+    "node_shutdown_timeout", "java_stop_timeout",
 ))
 def test_observation_only_close_settles_every_resource_offline(tmp_path, fault):
     node = FakeProcess([
@@ -42,10 +43,26 @@ def test_observation_only_close_settles_every_resource_offline(tmp_path, fault):
         def fail_write(_value):
             raise OSError("fixture Java stdin failed")
         java.stdin.write = fail_write
+    if fault == "java_stop_timeout":
+        original_java_wait = java.wait
+        java_wait_calls = 0
+
+        async def slow_java_wait():
+            nonlocal java_wait_calls
+            java_wait_calls += 1
+            if java_wait_calls == 1:
+                await asyncio.Event().wait()
+            return await original_java_wait()
+
+        java.wait = slow_java_wait
 
     async def run():
         session = ObservationOnlyDevSession(node, raw_capture_root=tmp_path)
         await session.receive()
+        if fault == "node_shutdown_timeout":
+            async def stalled_node_shutdown(*, timeout_s):
+                await asyncio.Event().wait()
+            session.shutdown_with_stdout_receipt = stalled_node_shutdown
         async def drain_collector():
             await asyncio.sleep(0)
             if fault == "collector_fault":
@@ -55,7 +72,7 @@ def test_observation_only_close_settles_every_resource_offline(tmp_path, fault):
             server=None if fault == "java_missing" else java,
             collector=collector,
             session=None if fault == "node_missing" else session,
-            timeout_s=0.3,
+            timeout_s=0.05 if fault in {"node_shutdown_timeout", "java_stop_timeout"} else 0.3,
         )
         assert result["schema"] == "W4_OBSERVATION_ONLY_LOCAL_CLOSE_DEV_V1"
         assert result["action_count"] == result["outcome_count"] == 0
@@ -78,9 +95,12 @@ def test_observation_only_close_settles_every_resource_offline(tmp_path, fault):
             assert result["errors"]
             if fault in ("no_ack", "duplicate_ack", "collector_fault"):
                 assert java.stdin.writes == [b"stop\n"]
-            if fault == "java_stop_error":
+            if fault in {"java_stop_error", "java_stop_timeout"}:
                 assert java.returncode is not None
                 assert any(e.startswith("java_stop_") for e in result["errors"])
+            if fault == "node_shutdown_timeout":
+                assert any(e.startswith("node_stop_") for e in result["errors"])
+                assert java.stdin.writes == [b"stop\\n"]
     asyncio.run(run())
 
 
