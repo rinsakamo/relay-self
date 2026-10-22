@@ -118,3 +118,79 @@ def test_observation_only_dev_does_not_spawn_any_process_in_offline_review(monke
     monkeypatch.setattr(asyncio, "create_subprocess_exec", forbidden)
     result = review_observation_only_dev_offline(**_valid_review())
     assert not result.physical_run_permitted
+
+
+def test_observation_only_synthetic_owner_loop_has_two_probes_no_action(monkeypatch):
+    from adapters.mineflayer.self_world_observation_only_dev import (
+        run_observation_only_synthetic_dev,
+    )
+
+    _pre, _post, raws = _offline_lines()
+    async def forbidden_spawn(*args, **kwargs):
+        raise AssertionError("synthetic observation loop cannot spawn Java or Node")
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", forbidden_spawn)
+    result = asyncio.run(run_observation_only_synthetic_dev(
+        raw_frames=tuple(raws), before_request=_pre.request_id,
+        after_request=_post.request_id,
+        marker_line=b"[21:00:00] [Server thread/INFO]: The time is 1234\n",
+    ))
+    assert result["schema"] == "W4_OBSERVATION_ONLY_SYNTHETIC_DEV_V1"
+    assert result["source_frames"] == 6
+    assert result["commands"] == ["observe", "observe", "shutdown"]
+    assert result["local_shutdown_completed"] and result["node_exit_code"] == 0
+    assert result["readback"]["action_count"] == 0
+    assert result["readback"]["outcome_count"] == 0
+    assert result["readback"]["s10_update_count"] == 0
+    assert result["world_marker_synthetic"]
+    assert not result["action_issued"] and not result["physical_run_permitted"]
+
+
+@pytest.mark.parametrize("attack", (
+    "missing_frame", "extra_frame", "partial_frame",
+    "foreign_session", "duplicate_seq", "different_request",
+    "bad_marker", "same_requests",
+))
+def test_observation_only_synthetic_owner_loop_rejects_corruption(monkeypatch, attack):
+    from adapters.mineflayer.self_world_observation_only_dev import (
+        run_observation_only_synthetic_dev,
+    )
+    from adapters.mineflayer.process_session import MineflayerProcessEnded
+    from adapters.mineflayer.s31a_real_server_ci import S31AQualificationError
+    from adapters.mineflayer.python_protocol import MineflayerAdapterProtocolError
+
+    pre, post, raws = _offline_lines()
+    frames = list(raws)
+    params = dict(
+        before_request=pre.request_id, after_request=post.request_id,
+        marker_line=b"[21:00:00] [Server thread/INFO]: The time is 1234\n",
+    )
+    if attack == "missing_frame":
+        frames.pop()
+    elif attack == "extra_frame":
+        frames.append(frames[-1])
+    elif attack == "partial_frame":
+        frames[3] = frames[3].rstrip(b"\n")
+    elif attack in {"foreign_session", "duplicate_seq", "different_request"}:
+        index = 5 if attack == "different_request" else 3
+        obj = json.loads(frames[index])
+        if attack == "foreign_session":
+            obj["session_id"] = "different-session"
+        elif attack == "duplicate_seq":
+            obj["seq"] = 2
+        else:
+            obj["request_id"] = "different-probe"
+        frames[index] = (json.dumps(obj) + "\n").encode()
+    elif attack == "bad_marker":
+        params["marker_line"] = b"fake marker\n"
+    else:
+        params["after_request"] = params["before_request"]
+    async def forbidden_spawn(*args, **kwargs):
+        raise AssertionError("offline negative must not launch a child")
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", forbidden_spawn)
+    with pytest.raises((
+        ObservationOnlyDevBlocked, MineflayerProcessEnded,
+        MineflayerAdapterProtocolError, S31AQualificationError,
+    )):
+        asyncio.run(run_observation_only_synthetic_dev(
+            raw_frames=tuple(frames), **params,
+        ))
