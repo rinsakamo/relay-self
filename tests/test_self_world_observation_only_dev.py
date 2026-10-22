@@ -209,3 +209,65 @@ def test_observation_only_provenance_is_derived_not_mutable_field():
     # replace() cannot directly override provenance: it is not a dataclass field.
     with pytest.raises(TypeError, match="unexpected keyword argument 'provenance'"):
         replace(after, provenance=before.provenance)
+
+
+@pytest.mark.parametrize("fault", (
+    "ok", "missing_ack", "duplicate_ack", "wrong_session", "seq_gap",
+))
+def test_observation_only_stop_requires_raw_ack_eof_reap(tmp_path, fault):
+    """The original W3 capture/decoder owns all shutdown frames and EOF."""
+    from test_mineflayer_process_session import started_line
+
+    def frame(kind, seq, sid="session-1"):
+        return (
+            json.dumps({"type": kind, "session_id": sid, "seq": seq}) + "\n"
+        ).encode()
+
+    lines = [started_line()]
+    if fault == "ok":
+        lines += [frame("shutdown_ack", 1), frame("connection_end", 2)]
+    elif fault == "duplicate_ack":
+        lines += [frame("shutdown_ack", 1), frame("shutdown_ack", 2)]
+    elif fault == "wrong_session":
+        lines += [frame("shutdown_ack", 1, "foreign")]
+    elif fault == "seq_gap":
+        lines += [frame("shutdown_ack", 4)]
+    process = FakeProcess(lines)
+
+    async def run():
+        session = ObservationOnlyDevSession(
+            process, raw_capture_root=tmp_path,
+        )
+        await session.receive()  # Original adapter_started, seq 0.
+        if fault == "ok":
+            receipt = await session.shutdown_with_stdout_receipt()
+            assert receipt["status"] == "COMPLETE_NODE_STDOUT"
+            assert receipt["shutdown_ack_count"] == 1
+            assert receipt["eof_observed"] is True
+            assert receipt["process_exit_code"] == 0
+            assert receipt["seal_reason"] == "clean_shutdown"
+            assert receipt["frame_count"] == 3
+        else:
+            with pytest.raises((
+                ObservationOnlyDevBlocked, ValueError,
+            )):
+                await session.shutdown_with_stdout_receipt()
+            assert session.raw_capture_receipt["status"] != "COMPLETE_NODE_STDOUT"
+        assert process.stdin.writes == [b'{"type":"shutdown"}\n']
+        assert process.wait_count >= 1
+        assert (tmp_path / "w3-node-stdout.raw.jsonl").exists()
+    asyncio.run(run())
+
+
+def test_observation_only_stop_without_byte_capture_fails_before_send():
+    from test_mineflayer_process_session import started_line
+
+    process = FakeProcess([started_line()])
+    async def run():
+        session = ObservationOnlyDevSession(process)
+        await session.receive()
+        with pytest.raises(ObservationOnlyDevBlocked, match="raw stdout capture"):
+            await session.shutdown_with_stdout_receipt()
+        assert process.stdin.writes == []
+        assert process.wait_count == 0
+    asyncio.run(run())
