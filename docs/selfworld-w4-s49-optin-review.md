@@ -876,3 +876,46 @@ NO_GO per selfworld-w4-independent-custody.md. This source change runs under
 [skip ci] with the user's CI pause, so neither the new tests nor the previous
 offline integration tests can be called PASS on the new exact HEAD. World=0,
 Action=0, OUTCOME=0, S10=0 and SCIENCE=0 in this branch continuation.
+
+
+### 2026-10-23 — user-approved simplified DEV real observation opt-in
+
+The user explicitly selected a leaner DEV gate: **NO external signer, third
+party archivist, or cryptographic global one-use grant** is needed to attempt
+an ordinary disposable, zero-Action developer observation session. This
+does NOT reclassify prior W2/W3 custody deficiencies, grant SCIENCE or
+QUALIFICATION, or loosen the S10 learning/Action boundaries.
+
+The dedicated real DEV entry is
+\`python -m adapters.mineflayer.self_world_observation_only_real_dev\`
+with required --confirm DEV_OBSERVATION_ONLY, --head, --repository,
+--server-jar, --server-sha256, --world-parent, --evidence-parent, and an
+optional unique --run-id (auto-generated otherwise). Only Linux/WSL2.
+The SHA256 is an operator-local artifact pin, NOT Mojang independent
+signature validation. The paths must be separate absolute roots outside
+the checkout and future artifact. Per-run world/evidence directories are
+created exclusively; the exact source HEAD and checkout cleanliness are
+checked before any process startup. Previous run IDs cannot be reused.
+
+The new entry composes original S31A Java _ready_server (sole RAW stdout
+collector), original Mineflayer ObservationOnlyDevSession.launch
+(sole Node reader with W3 byte capture), actual spawn and two explicitly
+correlated observe requests, a read-only Java console
+\`time query gametime\` and matching original collector marker,
+then the existing bounded Node/Java STOP owner, raw byte replay/lifetime
+join, local PID disappearance, loopback port bind and disposable root
+deletion checks. **No Self Action issuer, S10 writer or zombie staging**
+is invoked. On incomplete reaping, the disposable root is preserved
+for safe manual recovery, never silently unlinked while a process may live.
+Producer-local receipts and console grammar are reviewed as DEV evidence,
+not independent World tick truth. Report is atomically saved to the
+fresh evidence directory.
+
+This is a source implementation only; no physical run and NO CI/focused
+test has been executed on this HEAD. Commit carries [skip ci] because the
+user stopped CI. A practical real-Wsl run still requires JDK21, Node22,
+installed real Mineflayer, official or explicitly pinned Java server JAR
+and a dedicated free local 25565 port, checked by the operator. Before
+running the new real CLI, independently run offline focused tests of the
+frozen exact HEAD. Earlier CI green cannot qualify the new HEAD.
+All execution results remain DEV_ONLY, not SCIENCE/QUALIFICATION.
