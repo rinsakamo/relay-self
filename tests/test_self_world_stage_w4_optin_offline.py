@@ -1243,3 +1243,167 @@ def test_observation_dev_original_java_collector_raw_evidence_boundary(
         }, sort_keys=True) + '\n', encoding='utf-8')
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    "payload",
+    (
+        b"valid UTF-8: \xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e",
+        b"\xff",
+        b"\xfe",
+        b"\xef\xbf\xbd",
+    ),
+)
+def test_observation_dev_opt_in_raw_java_bytes_without_second_collector(
+    monkeypatch, tmp_path, payload,
+):
+    """Explicit raw capture retains received bytes; existing text log stays as-is."""
+    async def run():
+        original = (
+            b"[Server thread/INFO]: Done (1s)! For help\n"
+            b"[Server thread/INFO]: " + payload + b"\n"
+        )
+        stream = asyncio.StreamReader()
+        stream.feed_data(original)
+        stream.feed_eof()
+        proc = SimpleNamespace(stdout=stream, returncode=None, pid=4242)
+        starts = []
+
+        async def fake_java(*args, **kwargs):
+            assert args[0] == "java"
+            starts.append(args)
+            return proc
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_java)
+        text_path = tmp_path / "server.log"
+        raw_path = tmp_path / "server.raw"
+        returned, collector, ready = await _ready_server(
+            tmp_path, tmp_path / "never-used.jar", text_path,
+            raw_stdout_path=raw_path,
+        )
+        await asyncio.wait_for(collector, timeout=1)
+        assert returned is proc and ready.is_set()
+        assert starts and len(starts) == 1
+        assert raw_path.read_bytes() == original
+        assert text_path.read_bytes() == original.decode(
+            "utf-8", errors="replace",
+        ).encode("utf-8")
+        assert raw_path.read_bytes() != text_path.read_bytes() or (
+            original.decode("utf-8", errors="replace").encode("utf-8") == original
+        )
+        assert collector.done() and not collector.cancelled()
+        assert stream.at_eof()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("bad_target", (
+    "same_path", "foreign_directory", "already_exists", "dangling_symlink",
+))
+def test_observation_dev_raw_path_refused_before_java_spawn(
+    monkeypatch, tmp_path, bad_target,
+):
+    """Fail before creating Java/Node if the raw evidence root is unsafe."""
+    from adapters.mineflayer.s31a_real_server_ci import S31ABlocked
+
+    async def run():
+        async def forbidden_java(*args, **kwargs):
+            raise AssertionError("invalid raw path must fail before spawn")
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", forbidden_java)
+        log_path = tmp_path / "server.log"
+        raw_path = tmp_path / "server.raw"
+        if bad_target == "same_path":
+            raw_path = log_path
+        elif bad_target == "foreign_directory":
+            other = tmp_path / "other"
+            other.mkdir()
+            raw_path = other / "server.raw"
+        elif bad_target == "already_exists":
+            raw_path.write_bytes(b"do-not-overwrite")
+        elif bad_target == "dangling_symlink":
+            raw_path.symlink_to(tmp_path / "absent-raw")
+        with pytest.raises(S31ABlocked):
+            await _ready_server(
+                tmp_path, tmp_path / "never-used.jar", log_path,
+                raw_stdout_path=raw_path,
+            )
+        if bad_target == "already_exists":
+            assert raw_path.read_bytes() == b"do-not-overwrite"
+        assert not log_path.exists()
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("fault", ("open", "first_write"))
+def test_observation_dev_raw_sink_failure_reaps_owned_java(
+    monkeypatch, tmp_path, fault,
+):
+    """A single-collector raw error is not converted into startup success."""
+    async def run():
+        from pathlib import Path
+
+        stream = asyncio.StreamReader()
+        stream.feed_data(b"[Server thread/INFO]: Done (1s)! For help\n")
+        stream.feed_eof()
+
+        class FakeJava:
+            stdout = stream
+            returncode = None
+            pid = 4242
+            terminated = False
+
+            def terminate(self):
+                self.terminated = True
+                self.returncode = -15
+
+            async def wait(self):
+                return self.returncode
+
+        proc = FakeJava()
+        starts = []
+
+        async def fake_java(*args, **kwargs):
+            starts.append(args)
+            return proc
+
+        monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_java)
+        log_path = tmp_path / "server.log"
+        raw_path = tmp_path / "server.raw"
+        actual_open = Path.open
+
+        class FailingSink:
+            closed = False
+
+            def write(self, value):
+                raise OSError("synthetic raw sink write failure")
+
+            def flush(self):
+                return None
+
+            def close(self):
+                self.closed = True
+
+        sink = FailingSink()
+
+        def fake_open(path, mode="r", *args, **kwargs):
+            if path == raw_path and mode == "xb":
+                if fault == "open":
+                    raise PermissionError("synthetic raw sink open denial")
+                return sink
+            return actual_open(path, mode, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "open", fake_open)
+        with pytest.raises(OSError):
+            await asyncio.wait_for(
+                _ready_server(
+                    tmp_path, tmp_path / "never-used.jar", log_path,
+                    raw_stdout_path=raw_path,
+                ),
+                timeout=2,
+            )
+        assert len(starts) == 1 and proc.terminated and proc.returncode == -15
+        if fault == "first_write":
+            assert sink.closed
+
+    asyncio.run(run())
