@@ -721,3 +721,23 @@ can substitute for grant. Until those gates pass:
 `OBSERVATION_ONLY_REAL_ENTRY_NOT_IMPLEMENTED /
  FRESH_DEV_GRANT_UNVERIFIED / PREWORLD_BLOCKED /
  QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+
+
+### Observation-only Phase-A synthetic closed lifecycle
+
+The same dedicated module now exports
+`run_observation_only_synthetic_dev(raw_frames, before_request, after_request,
+marker_line)`. This is an exact six-line **in-memory** adapter process:
+original decoder and original `_await_spawn`/`_correlated_observe`, two
+canonical probes, a caller-supplied **synthetic** console marker, then a
+canonical shutdown. It accepts no live process/server/CLI/grant/callback,
+and its fake stdin refuses every original Action method through the same
+`ObservationOnlyDevSession._send` gate. The return labels
+`world_marker_synthetic=true`, `physical_run_permitted=false`,
+`action_issued=false`; no real STOP ACK, World tick or OS PID is claimed.
+
+The dedicated negative controls also reject missing/extra/incomplete frames,
+foreign session, replayed native seq, mismatched probe request, marker
+corruption and attempts to substitute an Action command. This **does not**
+close the real-process-startup/teardown/grant gate. Existing server
+collector raw opt-in has no observation-only physical caller yet.
