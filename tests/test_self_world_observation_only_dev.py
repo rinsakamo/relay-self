@@ -300,8 +300,13 @@ def test_observation_only_raw_java_marker_uses_existing_collector_file(tmp_path,
         "replaced_inode": marker,
     }
     if fault == "replaced_inode":
-        raw_path.unlink()
-        raw_path.write_bytes(preface + payloads[fault])
+        # Prepare the replacement while the original still exists: unlink+
+        # recreate can reuse its freed inode and yield a false negative.
+        replacement = tmp_path / "replacement-created-while-original-exists.raw"
+        replacement.write_bytes(preface + payloads[fault])
+        assert replacement.stat().st_ino != cursor.inode
+        replacement.replace(raw_path)
+        assert raw_path.stat().st_ino != cursor.inode
     else:
         with raw_path.open("ab") as sink:
             sink.write(payloads[fault])
