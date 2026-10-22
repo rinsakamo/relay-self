@@ -380,3 +380,78 @@ Sブランチrepository-contractsは許可パス制約を持ち、
 S #545とW4 #634の多世代乖離解決、通常/Stage Rを含む独立監査。
 未承認のisolated patchを S #545/W4 #634/main へpush/mergeせず、
 `W4_EXTERNAL_TRUST_NO_GO / PREWORLD_BLOCKED` を維持する。
+
+
+## 2026-10-22: independent source-owner admission preflight (DEFAULT OFF)
+
+**This section is a decision packet, not an owner signature, signed grant or
+a W4 physical-run entry point.** At time of preparation PR #634 remained
+DRAFT/OPEN (original S49 owner approval absent), while PR #635 remained
+OPEN/unmerged. The protected process_session/S31A/S34/S49 blob quartet is
+unchanged. No reviewed W4 subtype is installed into S49 `qualify()` or
+S34 `_new_session()`.
+
+### Fixed candidate and evidence separation
+
+- CI-only PR #635: `008cb0a7863c3189816d7a3da5b67100cafeec9a`,
+  CI run #39717268078 4/4 SUCCESS.
+- Inert WSL2 instrumented DEV: `c1bc2d64d3cadb272e577cc4be919d8a9c64ff94`;
+  newly independent LocalCodex-reported verification run
+  `w4-normal-20261022T050205Z-a55a97b6`. Its first non-instrumented
+  run with lost originals remains **UNDETERMINED**.
+- PR #635 workflow + W4 synthetic DEV test integrated:
+  `5ff9dfce5cce5b2831c492906ec498ef2ee5a17b`,
+  CI #39745128292 4/4 SUCCESS (FAST and offline FULL).
+  This is not an actual Minecraft/Node bridge qualification.
+- Present preflight changes only this existing review document and
+  `tests/test_self_world_stage_w4_optin_offline.py` in a separate isolated branch.
+  These controls are **not** an opt-in implementation.
+
+### Added no-World negative/route controls
+
+The test-only adoption preflight requires the following independent checks,
+all running on fake subprocesses with no physical World:
+
+1. **Inherited environment cannot opt in:** for four representative values
+   of `RELAYSELF_W4_NH1_ORIENTATION_V0`, an ordinary
+   `MineflayerProcessSession.launch()` must explicitly remove that variable
+   from the child process environment and continue to return the original class.
+2. **Explicit opt-in cannot be guessed/coerced:** non-boolean opt-in or
+   unpinned `MineflayerLaunchConfig.version` must reject *before OS spawn*.
+3. **Actual S49 factory identity remains original:** for three inherited
+   environment variants, `s49._new_session` must be precisely the S34
+   factory, invoke the original `MineflayerProcessSession.launch` class, and
+   never insert `w4_native_orientation_dev` as an implicit argument.
+
+These checks deliberately *preserve the current fail-closed status*. They
+are prerequisites for a **future distinct default-OFF DEV orchestration
+proposal**. They do **not** qualify a live W4 session or physically run W4.
+
+### Independent owner decision required before further source work
+
+A separately authenticated original S49/source owner would have to
+**explicitly and independently** identify:
+
+- exact proposed protected file paths and expected Git blob SHA for each
+  before/after state, without weakening the 19-source/S18 frozen contract;
+- a **new** default-OFF, explicit W4 DEV entry point, which does not
+  silently replace `s34._new_session()`, mutate the default S49 CLI,
+  or issue an additional world Action/observation receiver;
+- expected `STARTUP → PREWORLD → WORLD_WINDOW → HOST → ACTION_READ? →
+  QUIESCE → SHUTDOWN → CLOSED` lease/collector/decoder boundary conditions,
+  with valid Task delegation and cancellation cleanup;
+- real raw stdout producer and independently held source custody/pin, an
+  independently administered issuer identity, monotonic global spend-once
+  authority, and refusal of cloned or rolled-back local ledgers;
+- new prospective real-world scenario, source/World/Action authenticity,
+  stop rules, physical confidence and explicit one-use run permission.
+
+A PR comment, a green FAST/FULL CI, a synthetic `W4CollectorMarker`, or
+`github.run_attempt == 1` does not prove an independently controlled
+owner/grant. The latter is only per workflow run, not cross-commit global
+one-use. Until the above owner and external trust conditions hold:
+
+**`W4_S49_OPTIN_REVIEW_CONDITIONAL_NO_GO` /
+`SOURCE_OWNER_ATTESTATION_UNVERIFIED` /
+`W4_LIVE_NO_GO` / `QUALIFICATION_NO_GO` /
+`SCIENCE_NOT_RUN`.**
