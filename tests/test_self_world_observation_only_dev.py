@@ -69,7 +69,10 @@ def test_read_only_review_rejects_unbound_source_or_marker(attack):
     elif attack == "wrong_after_kind":
         params["after"] = replace(params["after"], kind="entities", request_id=None)
     elif attack == "same_source":
-        params["after"] = replace(params["after"], provenance=params["before"].provenance)
+        # Provenance is a derived read-only property (session_id, seq).
+        # A collision can only be constructed through its source fields.
+        params["after"] = replace(params["after"], seq=params["before"].seq)
+        assert params["after"].provenance == params["before"].provenance
     elif attack == "wrong_marker_hash":
         params["marker_sha256"] = "0" * 64
     elif attack == "forged_marker":
@@ -194,3 +197,15 @@ def test_observation_only_synthetic_owner_loop_rejects_corruption(monkeypatch, a
         asyncio.run(run_observation_only_synthetic_dev(
             raw_frames=tuple(frames), **params,
         ))
+
+
+def test_observation_only_provenance_is_derived_not_mutable_field():
+    """Keep the source-lineage negative tied to the real protocol dataclass."""
+    params = _valid_review()
+    before, after = params["before"], params["after"]
+    assert before.provenance.reference == f"{before.session_id}:{before.seq}"
+    assert after.provenance.reference == f"{after.session_id}:{after.seq}"
+    assert before.provenance != after.provenance
+    # replace() cannot directly override provenance: it is not a dataclass field.
+    with pytest.raises(TypeError, match="unexpected keyword argument 'provenance'"):
+        replace(after, provenance=before.provenance)
