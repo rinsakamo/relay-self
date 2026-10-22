@@ -178,8 +178,20 @@ _STARTUP_COLLECTOR_SETTLE_S = 5.0
 
 
 async def _ready_server(
-    root: Path, jar: Path, log_path: Path,
+    root: Path, jar: Path, log_path: Path, *,
+    raw_stdout_path: Path | None = None,
 ) -> tuple[asyncio.subprocess.Process, asyncio.Task[None], asyncio.Event]:
+    # Explicit DEV-only capture: the original single collector remains sole
+    # stdout reader. The default path preserves its historical UTF-8 log.
+    if raw_stdout_path is not None:
+        if (
+            not isinstance(raw_stdout_path, Path)
+            or raw_stdout_path == log_path
+            or raw_stdout_path.parent != log_path.parent
+            or raw_stdout_path.exists()
+            or raw_stdout_path.is_symlink()
+        ):
+            raise S31ABlocked("fresh adjacent raw stdout file required")
     # Spawn task owns the child until the Process handle is returned. A
     # cancelled caller cannot abandon a process born inside the await.
     server = await spawn_with_custody(
@@ -190,18 +202,30 @@ async def _ready_server(
         stderr=asyncio.subprocess.STDOUT,
     )
     collector: asyncio.Task[None] | None = None
+    raw_sink = None
     try:
+        # Exclusive creation before scheduling the collector means an invalid
+        # or already-used raw evidence path fails through existing PID cleanup.
+        if raw_stdout_path is not None:
+            raw_sink = raw_stdout_path.open("xb")
         ready = asyncio.Event()
 
         async def collect() -> None:
             assert server.stdout is not None
-            with log_path.open("w", encoding="utf-8") as logfile:
-                while raw := await server.stdout.readline():
-                    line = raw.decode("utf-8", errors="replace")
-                    logfile.write(line)
-                    logfile.flush()
-                    if "Done (" in line and "For help" in line:
-                        ready.set()
+            try:
+                with log_path.open("w", encoding="utf-8") as logfile:
+                    while raw := await server.stdout.readline():
+                        if raw_sink is not None:
+                            raw_sink.write(raw)
+                            raw_sink.flush()
+                        line = raw.decode("utf-8", errors="replace")
+                        logfile.write(line)
+                        logfile.flush()
+                        if "Done (" in line and "For help" in line:
+                            ready.set()
+            finally:
+                if raw_sink is not None:
+                    raw_sink.close()
 
         collector = asyncio.create_task(collect())
         await asyncio.wait_for(ready.wait(), timeout=190)
@@ -209,6 +233,8 @@ async def _ready_server(
             raise S31ABlocked("server exited even though startup was signalled")
         return server, collector, ready
     except BaseException as failure:
+        if collector is None and raw_sink is not None:
+            raw_sink.close()
         # Java and its *same* stdout collector remain local to this helper
         # until a successful return to S49/S31A. Cancel/timeout/constructor
         # faults all terminate the child and settle the reader.
