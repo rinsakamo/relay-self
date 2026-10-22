@@ -1082,3 +1082,102 @@ def test_original_s49_session_factory_cannot_select_w4_by_environment(
     assert len(called) == 1
     assert called[0][0] is MineflayerProcessSession
     assert "w4_native_orientation_dev" not in called[0][2]
+
+
+def test_w4_synthetic_orchestration_single_owner_full_loop(monkeypatch):
+    from adapters.mineflayer.self_world_stage_w4_optin_offline import (
+        run_w4_s49_synthetic_orchestration,
+    )
+
+    async def forbidden_spawn(*args, **kwargs):
+        raise AssertionError("offline W4 entry must never spawn Java/Node")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", forbidden_spawn)
+    pre, _post, lines = _offline_lines()
+    result = asyncio.run(run_w4_s49_synthetic_orchestration(
+        selected_mode="W4_S49_SYNTHETIC_OFFLINE_DEV",
+        explicit_opt_in=True,
+        raw_frames=lines, request_id=pre.request_id, one_time_token=TOKEN,
+    ))
+    assert result["schema"] == "W4_S49_SYNTHETIC_ORCHESTRATION_DEV_V1"
+    assert result["session_id"] == pre.session_id
+    assert result["phase"] == "CLOSED"
+    assert result["delivery_seqs"] == [0, 1, 2, 3, 4]
+    assert result["preworld_evidence_seqs"] == [2, 3]
+    assert result["host_evidence_seq"] == 4
+    assert result["operation_epoch"] == 4
+    assert result["process_exit_code"] == 0
+    assert result["raw_read_count"] == 5
+    assert result["world_marker_synthetic"] is True
+    for gate in (
+        "live_owner_attested", "external_custody_qualified",
+        "physical_run_permitted", "action_issued", "s10_permission",
+        "science_qualified",
+    ):
+        assert result[gate] is False
+    assert [x["event"] for x in result["audit"]].count("LEDGER_TRANSFER") == 1
+    assert [x["event"] for x in result["audit"]].count("WORLD_HANDOFF") == 1
+    assert [x["event"] for x in result["audit"]].count("DELEGATE") == 1
+    assert [x["event"] for x in result["audit"]].count("DELEGATE_REVOKE") == 1
+    assert not any(x["event"] == "DENY" for x in result["audit"])
+
+
+@pytest.mark.parametrize("fault", (
+    "wrong_mode", "no_optin", "invalid_flag", "list_frames",
+    "missing_frame", "extra_frame", "partial_frame",
+    "foreign_session", "duplicate_seq", "foreign_probe",
+    "wrong_host_kind", "wrong_request_id", "empty_token",
+))
+def test_w4_synthetic_orchestration_fail_closed_never_spawns(
+    monkeypatch, fault,
+):
+    from adapters.mineflayer.self_world_stage_w4_optin_offline import (
+        run_w4_s49_synthetic_orchestration,
+    )
+
+    async def forbidden_spawn(*args, **kwargs):
+        raise AssertionError("offline W4 entry must never spawn Java/Node")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", forbidden_spawn)
+    pre, _post, original_lines = _offline_lines()
+    frames = list(original_lines)
+    params = dict(
+        selected_mode="W4_S49_SYNTHETIC_OFFLINE_DEV",
+        explicit_opt_in=True,
+        request_id=pre.request_id,
+        one_time_token=TOKEN,
+    )
+    if fault == "wrong_mode":
+        params["selected_mode"] = "W4_S49_LIVE"
+    elif fault == "no_optin":
+        params["explicit_opt_in"] = False
+    elif fault == "invalid_flag":
+        params["explicit_opt_in"] = 1
+    elif fault == "missing_frame":
+        frames.pop()
+    elif fault == "extra_frame":
+        frames.append(original_lines[4])
+    elif fault == "partial_frame":
+        frames[4] = frames[4].rstrip(b"\n")
+    elif fault in {"foreign_session", "duplicate_seq", "foreign_probe", "wrong_host_kind"}:
+        which = 2 if fault in {"foreign_session", "duplicate_seq"} else (
+            3 if fault == "foreign_probe" else 4
+        )
+        payload = json.loads(frames[which])
+        if fault == "foreign_session":
+            payload["session_id"] = "foreign"
+        elif fault == "duplicate_seq":
+            payload["seq"] = 1
+        elif fault == "foreign_probe":
+            payload["request_id"] = "foreign-request"
+        else:
+            payload["kind"] = "probe"
+            payload["request_id"] = "unauthorized-host-probe"
+        frames[which] = (json.dumps(payload) + "\n").encode()
+    elif fault == "wrong_request_id":
+        params["request_id"] = "foreign-request"
+    elif fault == "empty_token":
+        params["one_time_token"] = ""
+    params["raw_frames"] = frames if fault == "list_frames" else tuple(frames)
+    with pytest.raises((W4PreworldBlocked, ValueError)):
+        asyncio.run(run_w4_s49_synthetic_orchestration(**params))
