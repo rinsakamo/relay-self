@@ -318,3 +318,36 @@ def test_observation_only_raw_java_marker_uses_existing_collector_file(tmp_path,
             with pytest.raises((ObservationOnlyDevBlocked, W4PreworldBlocked)):
                 await wait_for_observation_raw_world_marker(cursor, timeout_s=0.03)
     asyncio.run(run())
+
+
+def test_observation_only_native_receive_overlap_denied_without_second_reader():
+    from test_mineflayer_process_session import started_line
+
+    process = FakeProcess([])
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    line = started_line()
+
+    class HeldStdout:
+        reads = 0
+
+        async def readline(self):
+            self.reads += 1
+            entered.set()
+            await release.wait()
+            return line
+
+    stdout = HeldStdout()
+    process.stdout = stdout
+
+    async def run():
+        session = ObservationOnlyDevSession(process)
+        first = asyncio.create_task(session.receive())
+        await entered.wait()
+        with pytest.raises(ObservationOnlyDevBlocked, match="concurrent"):
+            await session.receive()
+        assert stdout.reads == 1
+        release.set()
+        started = await first
+        assert started.seq == 0 and started.session_id == "session-1"
+    asyncio.run(run())
