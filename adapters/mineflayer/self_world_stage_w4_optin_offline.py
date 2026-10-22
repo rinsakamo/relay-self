@@ -499,3 +499,178 @@ def review_s49_cleanup_finalization_candidate(
         "physical_run_permitted": False,
         "science_qualified": False,
     }
+
+
+async def run_w4_s49_synthetic_orchestration(
+    *, selected_mode: str, explicit_opt_in: bool,
+    raw_frames: tuple[bytes, ...], request_id: str, one_time_token: str,
+) -> dict:
+    """One complete W4 owner/decoder/ledger/HOST/shutdown DEV-only session.
+
+    All I/O is a private in-memory byte queue. There are no injected session,
+    process, callback, Action, server, socket, environment or grant parameters.
+    The synthetic collector marker is NEVER native World evidence.
+    """
+    import asyncio
+    import hashlib
+    import json
+    from collections import deque
+    from dataclasses import asdict
+
+    from adapters.mineflayer.python_protocol import (
+        MineflayerAdapterStarted,
+        MineflayerObservation,
+    )
+    from adapters.mineflayer.s31a_real_server_ci import _await_spawn
+    from adapters.mineflayer.self_world_stage_w4_lease import W4DevLeasedSession
+    from adapters.mineflayer.self_world_stage_w4_logtap import (
+        W4CollectorCursor,
+        W4CollectorMarker,
+    )
+
+    if (
+        selected_mode != "W4_S49_SYNTHETIC_OFFLINE_DEV"
+        or explicit_opt_in is not True
+        or type(raw_frames) is not tuple
+        or len(raw_frames) != 5
+        or any(type(frame) is not bytes or not frame.endswith(b"\\n") for frame in raw_frames)
+        or type(request_id) is not str or not request_id
+        or type(one_time_token) is not str or not one_time_token
+    ):
+        raise W4PreworldBlocked("explicit synthetic-only, bounded fixture required")
+
+    class OfflineProcess:
+        def __init__(self):
+            self.returncode = None
+            self.read_count = 0
+            self.commands = []
+            frames = deque(raw_frames)
+
+            class Stdout:
+                async def readline(inner):
+                    await asyncio.sleep(0)
+                    self.read_count += 1
+                    return frames.popleft() if frames else b""
+
+            class Stdin:
+                def write(inner, data):
+                    try:
+                        command = json.loads(data)
+                    except (ValueError, TypeError) as exc:
+                        raise W4PreworldBlocked("invalid synthetic command") from exc
+                    if command.get("type") not in {"observe", "shutdown"}:
+                        raise W4PreworldBlocked("synthetic transport forbids Action/World")
+                    self.commands.append(command.get("type"))
+                    if command["type"] == "shutdown":
+                        self.returncode = 0
+
+                async def drain(inner):
+                    await asyncio.sleep(0)
+
+            self.stdout = Stdout()
+            self.stdin = Stdin()
+
+        async def wait(self):
+            if self.returncode is None:
+                raise W4PreworldBlocked("synthetic child not shut down")
+            return self.returncode
+
+        def terminate(self):
+            if self.returncode is None:
+                self.returncode = -15
+
+        def kill(self):
+            if self.returncode is None:
+                self.returncode = -9
+
+    process = OfflineProcess()
+    session = None
+    try:
+        # Construct the inherited original decoder directly, never .launch().
+        # This class contains no actual child, filesystem or network access.
+        session = W4DevLeasedSession(process)
+        owner = session.owner_token()
+        first = await session.receive()
+        if not isinstance(first, MineflayerAdapterStarted):
+            raise W4PreworldBlocked("synthetic startup attestation missing")
+        session._started = first
+        await _await_spawn(session)
+
+        session.advance(owner=owner, phase="PREWORLD", binding=request_id)
+        receipt = await session.capture_preworld(
+            owner=owner, request_id=request_id, slot=1, token=one_time_token,
+        )
+        ledger = session.take_preworld_ledger(owner=owner)
+        if (
+            ledger.delivery_scope != "PREWORLD_EVIDENCE_ONLY_NOT_L0_STIMULUS"
+            or ledger.physical_run_permitted
+            or ledger.external_source_qualified
+            or ledger.original_reader_lease_attested
+        ):
+            raise W4PreworldBlocked("preworld evidence improperly promoted")
+        session.advance(owner=owner, phase="WORLD_WINDOW", binding="offline-only")
+
+        # Deliberately fabricate a marker for state-machine exercise only.
+        # Do not call Java or pass this marker into an actual server gate.
+        line = (
+            "[synthetic/DEV] [Server thread/INFO]: "
+            + receipt.candidate_commands.expected_log_suffix
+        )
+        marker_bytes = (line + "\\n").encode("utf-8")
+        marker = W4CollectorMarker(
+            W4CollectorCursor(Path("/synthetic/w4/never-on-disk"), 1, 2, 0),
+            line, 0, len(marker_bytes), hashlib.sha256(marker_bytes).hexdigest(), 200,
+        )
+        session.world_marker(owner=owner, marker=marker)
+        op = session.advance(owner=owner, phase="HOST", binding="read-only")
+        frame = await asyncio.wait_for(
+            session.delegate(
+                owner=owner, operation=op, invoke=lambda: session.receive(),
+            ),
+            timeout=5,
+        )
+        if (
+            type(frame) is not MineflayerObservation
+            or frame.session_id != first.session_id
+            or frame.seq != ledger.last_seq + 1
+            or frame.kind != "entities"
+            or process.read_count != 5
+            or session._supervisor is not None
+            or session._delegated != 0
+        ):
+            raise W4PreworldBlocked("host evidence/read ownership mismatch")
+        delivered = tuple(
+            row.seq for row in session.audit if row.event == "DELIVER"
+        )
+        if delivered != (0, 1, 2, 3, 4):
+            raise W4PreworldBlocked("synthetic reader sequence incomplete")
+
+        session.advance(owner=owner, phase="QUIESCE", binding="offline-quiesce")
+        session.advance(owner=owner, phase="SHUTDOWN", binding="offline-stop")
+        rc = await session.shutdown(timeout_s=5)
+        if rc != 0 or session.phase != "CLOSED" or process.commands != ["observe", "shutdown"]:
+            raise W4PreworldBlocked("synthetic shutdown was not clean")
+        return {
+            "schema": "W4_S49_SYNTHETIC_ORCHESTRATION_DEV_V1",
+            "session_id": first.session_id,
+            "phase": session.phase,
+            "delivery_seqs": list(delivered),
+            "raw_read_count": process.read_count,
+            "preworld_evidence_seqs": [row.seq for row in ledger.captured_frames],
+            "host_evidence_seq": frame.seq,
+            "operation_epoch": op.epoch,
+            "process_exit_code": rc,
+            "audit": [asdict(row) for row in session.audit],
+            "world_marker_synthetic": True,
+            "live_owner_attested": False,
+            "external_custody_qualified": False,
+            "physical_run_permitted": False,
+            "action_issued": False,
+            "s10_permission": False,
+            "science_qualified": False,
+        }
+    except BaseException:
+        if session is not None:
+            # Owned *synthetic* process only; no OS PID to leave behind.
+            await session.terminate()
+        raise
