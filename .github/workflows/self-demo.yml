@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - 'self/product-self-one-command-*'
+      - 'self/ci-fast-full-world-312-20261022'  # Isolated CI ref only; no World grant
   pull_request:
     branches:
       - 'self/s60b1-loopback-adapter-*'
