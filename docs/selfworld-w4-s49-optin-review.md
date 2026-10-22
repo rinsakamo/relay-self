@@ -832,3 +832,25 @@ The new raw-archive audit is deliberately read-only. No claim is made that
 the archive bytes have external provenance or that local SHA256 and
 same-directory receipt are an independent physical run grant. Exact-HEAD
 FAST/FULL must still be run explicitly when CI is re-enabled.
+
+
+### 2026-10-23 — one synthetic owner exercises entire local lifetime
+
+Added self_world_observation_only_owner_offline.py as the next integration
+rehearsal. It creates **in-memory fake Node and Java process objects**, drives
+the original MineflayerProcessSession single read/decoder/capture protocol
+through adapter_started → native spawn → correlated preprobe → local Java
+collector file marker → correlated postprobe → original bounded Node shutdown
+and sole Java STOP → original W3 byte replay → pure lifetime join. It
+accepts neither --confirm nor grant/callback/real server/JAR/port arguments.
+Only two observe and one Node shutdown commands and a fake Java STOP can pass.
+No OS subprocess, TCP port, Minecraft World, native actor or S10 owner is
+started. Negative fixtures exercise bad source, missing frame, false authority
+and corrupt marker.
+
+This is an **OFFLINE rehearsal**, not a runnable World entry or a real live
+S49 owner connection. There is no external independently verified new
+single-use DEV grant, separate process custody, actual PID/port/World disposal
+proof or prospective science qualification. Current HEAD remains
+CI_UNVERIFIED because user intentionally paused GitHub Actions; commit is
+pushed with [skip ci].
