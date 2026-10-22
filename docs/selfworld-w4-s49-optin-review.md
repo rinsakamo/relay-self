@@ -667,3 +667,57 @@ a new authenticated single-run DEV grant are all independent next steps.
 Until then `OBSERVATION_ONLY_DEV_READY_FOR_NEW_GRANT` is **not** earned.
 Minecraft/Node/Java/World/Action/OUTCOME/S10/SCIENCE run count in this
 source-review change: **zero**.
+
+
+## 2026-10-22 — W4 Observation-only DEV interface (offline-prospective)
+
+Narrow collector user approval is implemented in the isolated review branch.
+The **three exact protected-source alternatives** now reside in
+`tests/test_self_world_stage_w4_lease.py`:
+
+1. Historical 19-path S18 frozen original, unchanged.
+2. Complete indivisible S49 four-blob v1, unchanged.
+3. Complete S49 four-blob baseline with only the user-approved S31A
+   DEV raw collector blob `d1006006e644add5ae7b4788e9808683e4318003`.
+
+Mixing variants, missing peer blobs, a fifth unrelated change, or a future
+edited collector blob is rejected. This is code-version recognition **only**:
+no retrospective evidence mutation, original grant reuse, OS authority,
+Minecraft execution, Action authorization, S10 update, or R/V science approval.
+
+New `adapters/mineflayer/self_world_observation_only_dev.py` defines
+`ObservationOnlyDevSession`, a restricted subclass of the same original
+`MineflayerProcessSession`. It passes only **canonical explicit-request
+observe** and **canonical shutdown** through the one inherited Node writer,
+rejecting all Action/effect commands at the inherited `_send` seam.
+No normal Action/S16/L0 route uses this subtype by default.
+
+The pure `review_observation_only_dev_offline` requires same-session typed
+adapter startup/spawn/before+after probes, monotonic native seq, distinct
+correlated request IDs and provenance, and exact SHA of a bounded expected
+console marker. It returns a frozen non-authorizing readback with
+`action_count=0`, `outcome_count=0`, `s10_update_count=0` and every
+physical/qualification/science flag false. **Ordering booleans are still
+producer claims, not independent Java/TCP source custody or server-tick proof**.
+Its conservative `time query gametime` console grammar is prospective and
+must be checked against actual version-pinned server output before a run.
+There is not yet any actual Java/Mineflayer orchestration or physical CLI.
+
+`tests/test_self_world_observation_only_dev.py` adds synthetic positive
+and fail-closed cases for command restriction, marker/hash tampering,
+foreign session, duplicate native seq, unbound request, and producer order.
+The isolated `.github/workflows/self-demo.yml` FAST owner path allowlist
+and focused pytest list include these two new S-owned paths. This workflow
+change is *only on the isolated review branch*, not adopted into CI-only
+PR #635, and requires normal S/CI owner review before merge.
+
+**Current gate:** exact-new-HEAD pytest/FULL must finish; any regression
+must be reported as failure. Then require approved final source/CI owner
+variant, a separate observation-only physical orchestration + full lifecycle
+tests, immutable host/JAR/run identifiers and a fresh authenticated
+one-run DEV execution grant. No generic workflow marker or boolean opt-in
+can substitute for grant. Until those gates pass:
+
+`OBSERVATION_ONLY_REAL_ENTRY_NOT_IMPLEMENTED /
+ FRESH_DEV_GRANT_UNVERIFIED / PREWORLD_BLOCKED /
+ QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
