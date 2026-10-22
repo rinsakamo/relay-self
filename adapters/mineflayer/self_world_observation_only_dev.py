@@ -141,3 +141,108 @@ def review_observation_only_dev_offline(
         marker_raw_sha256=marker_sha256,
         marker_local_game_time=int(match.group(1)),
     )
+
+
+async def run_observation_only_synthetic_dev(
+    *, raw_frames: tuple[bytes, ...], before_request: str,
+    after_request: str, marker_line: bytes,
+) -> dict[str, object]:
+    """Exercise the original one-session decoder in an IN-MEMORY DEV only.
+
+    Not a Java/Node/Minecraft launcher and deliberately accepts no Process,
+    server, socket, callback, external file or grant. This cannot authorize
+    any real physical execution. No consumer Action/host/S16/S10 is imported.
+    """
+    import asyncio
+    from collections import deque
+    from dataclasses import asdict
+
+    from adapters.mineflayer.s31a_real_server_ci import (
+        _await_spawn,
+        _correlated_observe,
+    )
+
+    if (
+        type(raw_frames) is not tuple or len(raw_frames) != 6
+        or any(type(frame) is not bytes or not frame.endswith(b"\n") for frame in raw_frames)
+        or type(before_request) is not str or not before_request
+        or type(after_request) is not str or not after_request
+        or before_request == after_request
+        or type(marker_line) is not bytes
+    ):
+        raise ObservationOnlyDevBlocked("exact in-memory DEV fixture required")
+
+    class _FakeProcess:
+        returncode = None
+
+        def __init__(self):
+            self.remaining = deque(raw_frames)
+            self.commands: list[bytes] = []
+            self.stdout = self
+            self.stdin = self
+            self.read_count = 0
+
+        async def readline(self) -> bytes:
+            await asyncio.sleep(0)
+            self.read_count += 1
+            return self.remaining.popleft() if self.remaining else b""
+
+        def write(self, raw: bytes) -> None:
+            self.commands.append(raw)
+
+        async def drain(self) -> None:
+            await asyncio.sleep(0)
+
+        async def wait(self) -> int:
+            if self.commands[-1:] != [encode_shutdown().encode()]:
+                raise ObservationOnlyDevBlocked("synthetic shutdown missing")
+            self.returncode = 0
+            return 0
+
+        def terminate(self) -> None:
+            self.returncode = -15
+
+    process = _FakeProcess()
+    session = ObservationOnlyDevSession(process)
+    try:
+        started = await session.receive()
+        if type(started) is not MineflayerAdapterStarted:
+            raise ObservationOnlyDevBlocked("native adapter_started missing")
+        session._started = started
+        spawn = await _await_spawn(session)
+        before = await _correlated_observe(session, before_request)
+        # This marker is caller-supplied test data, never native Java evidence.
+        marker_sha = hashlib.sha256(marker_line).hexdigest()
+        after = await _correlated_observe(session, after_request)
+        result = review_observation_only_dev_offline(
+            started=started, spawn=spawn, before=before, after=after,
+            before_request=before_request, after_request=after_request,
+            raw_marker_line=marker_line, marker_sha256=marker_sha,
+            marker_after_before=True, after_marker=True,
+        )
+        if (
+            process.remaining or process.read_count != 6
+            or process.commands != [
+                encode_observe(before_request).encode(),
+                encode_observe(after_request).encode(),
+            ]
+        ):
+            raise ObservationOnlyDevBlocked("unconsumed frame or foreign command")
+        rc = await session.shutdown(timeout_s=5)
+        if rc != 0 or process.commands[-1] != encode_shutdown().encode():
+            raise ObservationOnlyDevBlocked("synthetic shutdown incomplete")
+        return {
+            "schema": "W4_OBSERVATION_ONLY_SYNTHETIC_DEV_V1",
+            "readback": asdict(result),
+            "source_frames": process.read_count,
+            "commands": ["observe", "observe", "shutdown"],
+            "local_shutdown_completed": True,
+            "node_exit_code": rc,
+            "world_marker_synthetic": True,
+            "action_issued": False,
+            "physical_run_permitted": False,
+            "science_qualified": False,
+        }
+    except BaseException:
+        process.terminate()  # No PID exists: synthetic process only.
+        raise
