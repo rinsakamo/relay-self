@@ -1097,7 +1097,7 @@ def test_w4_synthetic_orchestration_single_owner_full_loop(monkeypatch):
     result = asyncio.run(run_w4_s49_synthetic_orchestration(
         selected_mode="W4_S49_SYNTHETIC_OFFLINE_DEV",
         explicit_opt_in=True,
-        raw_frames=lines, request_id=pre.request_id, one_time_token=TOKEN,
+        raw_frames=lines[:5], request_id=pre.request_id, one_time_token=TOKEN,
     ))
     assert result["schema"] == "W4_S49_SYNTHETIC_ORCHESTRATION_DEV_V1"
     assert result["session_id"] == pre.session_id
@@ -1140,7 +1140,7 @@ def test_w4_synthetic_orchestration_fail_closed_never_spawns(
 
     monkeypatch.setattr(asyncio, "create_subprocess_exec", forbidden_spawn)
     pre, _post, original_lines = _offline_lines()
-    frames = list(original_lines)
+    frames = list(original_lines[:5])
     params = dict(
         selected_mode="W4_S49_SYNTHETIC_OFFLINE_DEV",
         explicit_opt_in=True,
@@ -1156,7 +1156,7 @@ def test_w4_synthetic_orchestration_fail_closed_never_spawns(
     elif fault == "missing_frame":
         frames.pop()
     elif fault == "extra_frame":
-        frames.append(original_lines[4])
+        frames.append(original_lines[5])
     elif fault == "partial_frame":
         frames[4] = frames[4].rstrip(b"\n")
     elif fault in {"foreign_session", "duplicate_seq", "foreign_probe", "wrong_host_kind"}:
