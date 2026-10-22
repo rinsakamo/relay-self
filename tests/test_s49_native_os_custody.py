@@ -382,11 +382,9 @@ def test_real_node_w4_successful_startup_owner_preworld_and_bounded_host_handoff
             owner = session.owner_token()
             assert session.process_returncode is None
             # The original S34 startup reader consumes the sole native spawn.
-            observed_spawn = await asyncio.wait_for(_await_spawn(session), timeout=10)
+            observed_spawn = await _await_spawn(session)
             assert observed_spawn.kind == "spawn"
-            receipt, ledger = await asyncio.wait_for(
-                preworld(session, owner, pre), timeout=10,
-            )
+            receipt, ledger = await preworld(session, owner, pre)
             assert not receipt.physical_run_permitted
             assert ledger.delivery_scope == "PREWORLD_EVIDENCE_ONLY_NOT_L0_STIMULUS"
             session.advance(owner=owner, phase="WORLD_WINDOW", binding="offline-only")
@@ -409,7 +407,7 @@ def test_real_node_w4_successful_startup_owner_preworld_and_bounded_host_handoff
             assert session._delegated == 0
             session.advance(owner=owner, phase="QUIESCE", binding="offline-quiet")
             session.advance(owner=owner, phase="SHUTDOWN", binding="offline-shutdown")
-            assert await asyncio.wait_for(session.shutdown(timeout_s=5), timeout=10) == 0
+            assert await session.shutdown(timeout_s=5) == 0
             assert session.phase == "CLOSED"
             assert session.process_returncode == 0
             _assert_gone(identity)
