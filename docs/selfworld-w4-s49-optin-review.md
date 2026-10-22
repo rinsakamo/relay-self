@@ -741,3 +741,38 @@ foreign session, replayed native seq, mismatched probe request, marker
 corruption and attempts to substitute an Action command. This **does not**
 close the real-process-startup/teardown/grant gate. Existing server
 collector raw opt-in has no observation-only physical caller yet.
+
+
+### 2026-10-22 subsequent native EOF / Java raw marker gate
+
+A new W4-observation-only **offline** gate reuses the unchanged W3
+original-session receive/capture behavior. When a fresh absolute
+`raw_capture_root` was supplied at session construction,
+`ObservationOnlyDevSession.shutdown_with_stdout_receipt()` invokes the
+inherited `shutdown()` with the same native reader until EOF, and requires
+`COMPLETE_NODE_STDOUT`, one `shutdown_ack`, `eof_observed=true`,
+`process_exit_code=0` and `seal_reason=clean_shutdown`. A normal uncaptured
+`shutdown()` is **not** enough for this gate. Fault-injection tests cover
+missing/duplicate ACK, wrong session, seq gaps and missing raw capture.
+The W3 receipt remains LOCAL Node→Python content, not TCP attestation.
+
+`wait_for_observation_raw_world_marker` polls only an already-created,
+inode-pinned original Java **raw** collector log through the existing W4
+read-only cursor/tail helper. The owner would first capture the cursor,
+then send a read-only `time query gametime` through the original Java
+stdin and inspect a single complete expected console line. Bad grammar,
+incomplete lines, duplicates, file replacement and timeouts fail closed.
+Version-specific actual Java console grammar has not been verified by
+this isolated offline code. The marker is still producer content, **not**
+independent Minecraft tick authentication.
+
+`ObservationOnlyDevSession.receive` now rejects overlapping reads
+against the inherited one byte stream; this check provides single
+in-process receipt *exclusion* but does not authenticate the original
+S49 owner or install a W4 live lease.
+
+**No runnable World entry or grant verifier was added.** In particular,
+there is no assertion of a real `STOP` on Java console, no independent
+Java/Node PID/port reap receipt, no cleanup completion across caller
+cancellation, no host/JAR binding, no actual checked one-use grant and no
+real producer trace. These missing gates continue to forbid a World.
