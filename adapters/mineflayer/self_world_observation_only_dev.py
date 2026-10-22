@@ -275,3 +275,70 @@ async def run_observation_only_synthetic_dev(
     except BaseException:
         process.terminate()  # No PID exists: synthetic process only.
         raise
+
+
+@dataclass(frozen=True, slots=True)
+class ObservationOnlyRawWorldMarker:
+    """Content in the original sole Java collector RAW file, not a tick proof."""
+
+    raw_start_byte: int
+    raw_end_byte: int
+    raw_sha256: str
+    local_game_time: int
+    local_collector_only: bool = True
+    external_world_attested: bool = False
+
+
+async def wait_for_observation_raw_world_marker(
+    cursor, *, timeout_s: float = 5.0,
+) -> ObservationOnlyRawWorldMarker:
+    """Tail only the raw file already written by the original Java collector.
+
+    The calling owner should capture its cursor before sending exactly one
+    read-only `time query gametime` command through original Java stdin.
+    This function never reads server.stdout or sends World/Action commands.
+    The expected output grammar is prospective and version-dependent.
+    """
+    import asyncio
+    import time
+
+    from adapters.mineflayer.self_world_stage_w4_logtap import (
+        W4CollectorCursor,
+        _tail_bytes,
+    )
+
+    if (
+        type(cursor) is not W4CollectorCursor
+        or type(timeout_s) not in (int, float)
+        or not 0 < timeout_s <= 30
+    ):
+        raise ObservationOnlyDevBlocked("valid raw collector cursor/timeout required")
+    deadline = time.monotonic() + timeout_s
+    start = cursor.start_byte
+    pending = b""
+    found = None
+    while True:
+        batch = _tail_bytes(cursor, start)
+        start += len(batch)
+        pending += batch
+        if len(pending) > 65_536:
+            raise ObservationOnlyDevBlocked("unbounded raw World marker tail")
+        while b"\n" in pending:
+            line, pending = pending.split(b"\n", 1)
+            raw = line + b"\n"
+            offset = start - len(pending) - len(raw)
+            # Reject any mutated/fake candidate rather than ignoring it.
+            if b"The time is " in raw:
+                match = _GAME_TIME.fullmatch(raw)
+                if match is None or found is not None:
+                    raise ObservationOnlyDevBlocked("ambiguous raw Java console marker")
+                found = ObservationOnlyRawWorldMarker(
+                    raw_start_byte=offset, raw_end_byte=offset + len(raw),
+                    raw_sha256=hashlib.sha256(raw).hexdigest(),
+                    local_game_time=int(match.group(1)),
+                )
+        if found is not None and not pending:
+            return found
+        if time.monotonic() >= deadline:
+            raise ObservationOnlyDevBlocked("missing complete raw World marker")
+        await asyncio.sleep(0.01)
