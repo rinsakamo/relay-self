@@ -219,9 +219,10 @@ def test_observation_only_stop_requires_raw_ack_eof_reap(tmp_path, fault):
     from test_mineflayer_process_session import started_line
 
     def frame(kind, seq, sid="session-1"):
-        return (
-            json.dumps({"type": kind, "session_id": sid, "seq": seq}) + "\n"
-        ).encode()
+        payload = {"type": kind, "session_id": sid, "seq": seq}
+        if kind == "connection_end":
+            payload["reason"] = "test bridge clean end"
+        return (json.dumps(payload) + "\n").encode()
 
     lines = [started_line()]
     if fault == "ok":
