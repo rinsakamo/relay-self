@@ -981,3 +981,104 @@ def test_s49_nonpass_with_stale_qualified_label_always_demotes():
     assert report["classification"].endswith("_QUALIFIED")
     assert verdict["candidate_final_classification"] == "S49_SESSION_NOT_QUALIFIED"
     assert verdict["candidate_rc"] == 1
+
+
+# Source-owner adoption preflight: a shell variable must never turn the
+# protected S49/default path into a W4 reader or a live physical admission.
+# All OS spawns in these controls are fakes; no bridge or World is launched.
+@pytest.mark.parametrize("inherited_optin", ("1", "true", "0", ""))
+def test_default_process_session_scrubs_inherited_w4_orientation(
+    monkeypatch, tmp_path, inherited_optin,
+):
+    from adapters.mineflayer.process_session import MineflayerProcessSession
+    from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
+    from test_mineflayer_process_session import FakeProcess, started_line
+
+    monkeypatch.setenv("RELAYSELF_W4_NH1_ORIENTATION_V0", inherited_optin)
+    bridge = tmp_path / "inert-bridge.mjs"
+    bridge.write_text("// no process spawned", encoding="utf-8")
+    fake = FakeProcess([started_line()])
+    calls = []
+
+    async def no_os_spawn(*argv, **kwargs):
+        calls.append((argv, kwargs))
+        return fake
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", no_os_spawn)
+
+    async def run():
+        session = await MineflayerProcessSession.launch(
+            MineflayerLaunchConfig(), bridge_path=bridge,
+        )
+        assert type(session) is MineflayerProcessSession
+        assert session.started.session_id == "session-1"
+
+    asyncio.run(run())
+    assert len(calls) == 1
+    assert "RELAYSELF_W4_NH1_ORIENTATION_V0" not in calls[0][1]["env"]
+
+
+@pytest.mark.parametrize(("optin", "version"), (
+    ("1", "1.21.8"), (1, "1.21.8"), (None, "1.21.8"),
+    (True, "1.21.7"), (True, None),
+))
+def test_w4_orientation_rejects_untyped_or_unpinned_optin_before_spawn(
+    monkeypatch, tmp_path, optin, version,
+):
+    from adapters.mineflayer.process_session import (
+        MineflayerProcessSession,
+        MineflayerProcessStartError,
+    )
+    from adapters.mineflayer.python_protocol import MineflayerLaunchConfig
+
+    bridge = tmp_path / "inert-bridge.mjs"
+    bridge.write_text("// never execute", encoding="utf-8")
+    spawned = []
+
+    async def forbidden_spawn(*args, **kwargs):
+        spawned.append((args, kwargs))
+        raise AssertionError("unqualified W4 mode attempted a process spawn")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", forbidden_spawn)
+
+    async def run():
+        with pytest.raises(MineflayerProcessStartError):
+            await MineflayerProcessSession.launch(
+                MineflayerLaunchConfig(version=version),
+                bridge_path=bridge,
+                w4_native_orientation_dev=optin,
+            )
+
+    asyncio.run(run())
+    assert not spawned
+
+
+@pytest.mark.parametrize("inherited_optin", ("1", "true", "0"))
+def test_original_s49_session_factory_cannot_select_w4_by_environment(
+    monkeypatch, inherited_optin,
+):
+    from adapters.mineflayer import s34_native_world_cognition_ci as s34
+    from adapters.mineflayer import s49_normal_session_real_ci as s49
+    from adapters.mineflayer.process_session import MineflayerProcessSession
+
+    monkeypatch.setenv("RELAYSELF_W4_NH1_ORIENTATION_V0", inherited_optin)
+    called = []
+    fake_session = object()
+
+    async def original_class_launch(cls, config, **kwargs):
+        called.append((cls, config, kwargs))
+        return fake_session
+
+    async def original_spawn(existing):
+        assert existing is fake_session
+
+    monkeypatch.setattr(
+        MineflayerProcessSession, "launch", classmethod(original_class_launch),
+    )
+    monkeypatch.setattr(s34, "_await_spawn", original_spawn)
+
+    assert s49._new_session is s34._new_session
+    assert asyncio.run(s49._new_session()) is fake_session
+    assert len(called) == 1
+    assert called[0][0] is MineflayerProcessSession
+    assert "w4_native_orientation_dev" not in called[0][2]
