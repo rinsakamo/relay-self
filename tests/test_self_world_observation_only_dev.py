@@ -151,12 +151,12 @@ def test_observation_only_synthetic_owner_loop_has_two_probes_no_action(monkeypa
     "bad_marker", "same_requests",
 ))
 def test_observation_only_synthetic_owner_loop_rejects_corruption(monkeypatch, attack):
+    from adapters.mineflayer.process_session import MineflayerProcessEnded
+    from adapters.mineflayer.python_protocol import MineflayerAdapterProtocolError
+    from adapters.mineflayer.s31a_real_server_ci import S31AQualificationError
     from adapters.mineflayer.self_world_observation_only_dev import (
         run_observation_only_synthetic_dev,
     )
-    from adapters.mineflayer.process_session import MineflayerProcessEnded
-    from adapters.mineflayer.s31a_real_server_ci import S31AQualificationError
-    from adapters.mineflayer.python_protocol import MineflayerAdapterProtocolError
 
     pre, post, raws = _offline_lines()
     frames = list(raws)
