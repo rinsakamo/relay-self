@@ -597,17 +597,30 @@ S49_APPROVED_CANDIDATE_BLOBS_V1 = {
 }
 
 
+# User-approved W4 DEV raw Java-stdout capture: a VERSIONED, exact fifth
+# difference atop S49 v1. This does not modify the historical S18 inventory,
+# S49 candidate, or grant default S49 any new World/Action authority.
+W4_DEV_RAW_COLLECTOR_BLOBS_V1 = {
+    **S49_APPROVED_CANDIDATE_BLOBS_V1,
+    'adapters/mineflayer/s31a_real_server_ci.py':
+        'd1006006e644add5ae7b4788e9808683e4318003',
+}
+
+
 def _protected_source_variant(actual):
-    """Only the frozen 19-source set OR exact four-blob S49 v1 may be used."""
+    """Only three exact 19-path alternatives, never arbitrary per-file exceptions."""
     assert set(actual) == set(PROTECTED_BLOBS), 'protected path inventory changed'
-    frozen = all(actual[p] == sha for p, sha in PROTECTED_BLOBS.items())
-    if frozen:
-        return 'S18_FROZEN_ORIGINAL'
-    assert set(S49_APPROVED_CANDIDATE_BLOBS_V1).issubset(PROTECTED_BLOBS)
-    for path, sha in PROTECTED_BLOBS.items():
-        expected = S49_APPROVED_CANDIDATE_BLOBS_V1.get(path, sha)
-        assert actual[path] == expected, path
-    return 'S49_SCOPED_FOUR_BLOBS_V1'
+    variants = (
+        ('S18_FROZEN_ORIGINAL', PROTECTED_BLOBS),
+        ('S49_SCOPED_FOUR_BLOBS_V1',
+         {**PROTECTED_BLOBS, **S49_APPROVED_CANDIDATE_BLOBS_V1}),
+        ('W4_DEV_RAW_COLLECTOR_BLOBS_V1',
+         {**PROTECTED_BLOBS, **W4_DEV_RAW_COLLECTOR_BLOBS_V1}),
+    )
+    for label, expected in variants:
+        if all(actual[path] == expected[path] for path in PROTECTED_BLOBS):
+            return label
+    raise AssertionError('unapproved protected-source blob variant')
 
 
 def test_s18_and_original_default_routes_are_blob_identical():
@@ -627,6 +640,7 @@ def test_s18_and_original_default_routes_are_blob_identical():
     # exception. The existing exact S18 original state still passes unchanged.
     assert _protected_source_variant(actual) in (
         'S18_FROZEN_ORIGINAL', 'S49_SCOPED_FOUR_BLOBS_V1',
+        'W4_DEV_RAW_COLLECTOR_BLOBS_V1',
     )
     assert s34.MineflayerProcessSession is MineflayerProcessSession
     assert s49._new_session is s34._new_session
@@ -664,6 +678,41 @@ def test_s49_scoped_source_exception_rejects_partial_or_future_changes():
         _protected_source_variant(mixed)
     missing = dict(candidate)
     missing.pop(fifth)
+    with pytest.raises(AssertionError, match='inventory'):
+        _protected_source_variant(missing)
+
+
+def test_w4_dev_raw_collector_exact_source_variant_rejects_partial_or_future():
+    original = dict(PROTECTED_BLOBS)
+    s49 = {**original, **S49_APPROVED_CANDIDATE_BLOBS_V1}
+    w4 = {**original, **W4_DEV_RAW_COLLECTOR_BLOBS_V1}
+    target = 'adapters/mineflayer/s31a_real_server_ci.py'
+    assert len(original) == 19
+    assert _protected_source_variant(original) == 'S18_FROZEN_ORIGINAL'
+    assert _protected_source_variant(s49) == 'S49_SCOPED_FOUR_BLOBS_V1'
+    assert _protected_source_variant(w4) == 'W4_DEV_RAW_COLLECTOR_BLOBS_V1'
+    # The raw collector blob is valid ONLY as the exact full S49-scoped
+    # ancestor variant. Raw change on frozen files or any missing peer fails.
+    partial = dict(original)
+    partial[target] = W4_DEV_RAW_COLLECTOR_BLOBS_V1[target]
+    with pytest.raises(AssertionError, match='unapproved'):
+        _protected_source_variant(partial)
+    for path in W4_DEV_RAW_COLLECTOR_BLOBS_V1:
+        if path != target:
+            incomplete = dict(w4)
+            incomplete[path] = original[path]
+            with pytest.raises(AssertionError, match='unapproved'):
+                _protected_source_variant(incomplete)
+    future = dict(w4)
+    future[target] = '0' * 40
+    with pytest.raises(AssertionError, match='unapproved'):
+        _protected_source_variant(future)
+    unexpected = dict(w4)
+    unexpected['src/relay_self/learning.py'] = '0' * 40
+    with pytest.raises(AssertionError, match='unapproved'):
+        _protected_source_variant(unexpected)
+    missing = dict(w4)
+    missing.pop('src/relay_self/learning.py')
     with pytest.raises(AssertionError, match='inventory'):
         _protected_source_variant(missing)
 
