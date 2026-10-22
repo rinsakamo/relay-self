@@ -797,3 +797,38 @@ The user cancelled the CI queue. This new batch was committed with
 [skip ci] intentionally; no new offline job is being claimed successful.
 Before any real World, an explicit exact-HEAD operator-owned verification
 and separate authenticated grant and actual OS process custody are mandatory.
+
+
+### 2026-10-23: W4 observation-only local lifetime content join
+
+The DEV-only pure module self_world_observation_only_lifetime.py associates
+four already-produced local objects without launching Java/Node or accepting
+a grant: a PREWORLD blocked inventory, a typed Mineflayer two-probe readback,
+a raw Java collector marker, and a local Node/Java/collector shutdown report.
+It refuses absent stop, missing ACK/EOF, corrupt session/seq, nonzero exits,
+unsettled collector, marker mismatch, Action/OUTCOME/S10 increments, or
+any attempt to assert external source/grant/physical/science qualification.
+Negative fixtures are in tests/test_self_world_observation_only_lifetime.py.
+
+A matching join proves ONLY self-consistency of producer-local data. The
+inputs do not prove the original server/Node PID existed, that marker
+events had physical order, that the source was independently witnessed,
+that all OS processes and ports were reaped, or that a fresh one-use DEV
+grant existed. There remains NO runnable W4 physical launcher or
+independent admission authority. The user paused CI; this batch is
+committed with [skip ci] and remains OFFLINE CI NOT RUN at the exact HEAD.
+
+
+2026-10-23 follow-up: the lifetime join now REQUIRES the archived W3 raw
+Node-stdout directory. It invokes the existing audit_w3_sealed_stdout
+on the saved received bytes and compares the audited receipt with the
+reported Node close object. Truncation, modification, absent archive and
+foreign session must block the join. This establishes local archived
+byte-content consistency, not original emission completeness, independent
+custody, immutable third-party retention or a physical OS process witness.
+
+
+The new raw-archive audit is deliberately read-only. No claim is made that
+the archive bytes have external provenance or that local SHA256 and
+same-directory receipt are an independent physical run grant. Exact-HEAD
+FAST/FULL must still be run explicitly when CI is re-enabled.
