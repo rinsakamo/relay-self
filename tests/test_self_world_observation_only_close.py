@@ -1,0 +1,97 @@
+"""W4 observation-only local close owner, fake processes only (no Java/Node)."""
+from __future__ import annotations
+
+import asyncio
+import json
+
+import pytest
+
+from adapters.mineflayer.self_world_observation_only_close import (
+    close_observation_only_dev,
+)
+from adapters.mineflayer.self_world_observation_only_dev import (
+    ObservationOnlyDevSession,
+)
+from test_mineflayer_process_session import FakeProcess, started_line
+
+
+def _wire(type_name: str, seq: int) -> bytes:
+    data = {"type": type_name, "session_id": "session-1", "seq": seq}
+    if type_name == "connection_end":
+        data["reason"] = "fixture clean close"
+    return (json.dumps(data) + "\n").encode()
+
+
+@pytest.mark.parametrize("fault", (
+    "none", "no_ack", "duplicate_ack", "java_stop_error",
+    "java_pre_exited", "collector_fault", "node_missing", "java_missing",
+))
+def test_observation_only_close_settles_every_resource_offline(tmp_path, fault):
+    node = FakeProcess([
+        started_line(), *(
+            [_wire("connection_end", 1)] if fault == "no_ack"
+            else [_wire("shutdown_ack", 1), _wire("shutdown_ack", 2)]
+            if fault == "duplicate_ack"
+            else [_wire("shutdown_ack", 1), _wire("connection_end", 2)]
+        ),
+    ])
+    java = FakeProcess([])
+    if fault == "java_pre_exited":
+        java.returncode = 0
+    if fault == "java_stop_error":
+        def fail_write(_value):
+            raise OSError("fixture Java stdin failed")
+        java.stdin.write = fail_write
+
+    async def run():
+        session = ObservationOnlyDevSession(node, raw_capture_root=tmp_path)
+        await session.receive()
+        async def drain_collector():
+            await asyncio.sleep(0)
+            if fault == "collector_fault":
+                raise OSError("fixture raw collector write fault")
+        collector = asyncio.create_task(drain_collector())
+        result = await close_observation_only_dev(
+            server=None if fault == "java_missing" else java,
+            collector=collector,
+            session=None if fault == "node_missing" else session,
+            timeout_s=0.3,
+        )
+        assert result["schema"] == "W4_OBSERVATION_ONLY_LOCAL_CLOSE_DEV_V1"
+        assert result["action_count"] == result["outcome_count"] == 0
+        assert result["s10_update_count"] == 0
+        assert not result["physical_run_permitted"]
+        assert not result["science_qualified"]
+        assert not result["external_custody_qualified"]
+        assert collector.done()
+        if fault == "none":
+            assert result["classification"] == "LOCAL_PRODUCER_CLOSE_ONLY"
+            assert result["errors"] == []
+            assert result["java_stop_requested"]
+            assert result["node_exit"] == 0 and result["java_exit"] == 0
+            assert result["java_collector_settled"]
+            assert result["node_stdout_receipt"]["shutdown_ack_count"] == 1
+            assert java.stdin.writes == [b"stop\n"]
+            assert node.stdin.writes == [b'{"type":"shutdown"}\n']
+        else:
+            assert result["classification"] == "LOCAL_CLOSE_UNCONFIRMED"
+            assert result["errors"]
+            if fault in ("no_ack", "duplicate_ack", "collector_fault"):
+                assert java.stdin.writes == [b"stop\n"]
+            if fault == "java_stop_error":
+                assert java.returncode is not None
+                assert any(e.startswith("java_stop_") for e in result["errors"])
+    asyncio.run(run())
+
+
+def test_observation_only_close_rejects_wrong_owner_and_timeout():
+    async def run():
+        with pytest.raises(ValueError):
+            await close_observation_only_dev(
+                server=None, collector=None, session=object(),
+            )
+        with pytest.raises(ValueError):
+            await close_observation_only_dev(
+                server=None, collector=None, session=None, timeout_s=0,
+            )
+    asyncio.run(run())
