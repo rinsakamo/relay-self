@@ -854,3 +854,25 @@ single-use DEV grant, separate process custody, actual PID/port/World disposal
 proof or prospective science qualification. Current HEAD remains
 CI_UNVERIFIED because user intentionally paused GitHub Actions; commit is
 pushed with [skip ci].
+
+
+### 2026-10-23: Linux/WSL2 local native disposal snapshots
+
+A separate read-only DEV helper (self_world_observation_only_native_boundary.py)
+captures the original live process-handle PID and Linux /proc starttime/boot-ID
+as a LOCAL identity. Once an original owner has separately recorded Node/Java
+STOP, EOF, zero exit and wait(), the helper requires both numeric PIDs be
+absent (including rejecting recycled PIDs), the exact flat disposable World
+directory name be absent without symlink aliases, and the reserved loopback
+port 127.0.0.1:25565 be temporarily bindable. Any inspection failure,
+reboot, process still alive, root still present or occupied port fails closed.
+It NEVER launches/terminates a native child, deletes a World, issues commands,
+or grants permission. It does NOT create a lock, own a port or verify the
+original creator of the World directory. Port probing is transient/racy;
+local process handle + /proc fingerprints are not independent custodian proof.
+
+The independent signer/archivist/monotonic global spend-once ledger remains
+NO_GO per selfworld-w4-independent-custody.md. This source change runs under
+[skip ci] with the user's CI pause, so neither the new tests nor the previous
+offline integration tests can be called PASS on the new exact HEAD. World=0,
+Action=0, OUTCOME=0, S10=0 and SCIENCE=0 in this branch continuation.

@@ -120,6 +120,7 @@ jobs:
               adapters/mineflayer/self_world_observation_only_entry.py|\
               adapters/mineflayer/self_world_observation_only_lifetime.py|\
               adapters/mineflayer/self_world_observation_only_owner_offline.py|\
+              adapters/mineflayer/self_world_observation_only_native_boundary.py|\
               adapters/mineflayer/s49_normal_session_real_ci.py|\
               adapters/mineflayer/s31a_real_server_ci.py|\
               adapters/mineflayer/s34_native_world_cognition_ci.py|\
@@ -185,6 +186,7 @@ jobs:
               tests/test_self_world_observation_only_entry.py|\
               tests/test_self_world_observation_only_lifetime.py|\
               tests/test_self_world_observation_only_owner_offline.py|\
+              tests/test_self_world_observation_only_native_boundary.py|\
               tests/test_m02_paper_dev.py|\
               tests/test_m02_v8_stopped_world_clone_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
@@ -277,6 +279,7 @@ jobs:
             tests/test_self_world_observation_only_entry.py \
             tests/test_self_world_observation_only_lifetime.py \
             tests/test_self_world_observation_only_owner_offline.py \
+            tests/test_self_world_observation_only_native_boundary.py \
             tests/test_mineflayer_process_session.py \
             tests/test_feature_s49_normal_runtime.py \
             tests/test_self_body.py \
