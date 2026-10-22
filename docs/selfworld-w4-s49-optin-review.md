@@ -455,3 +455,43 @@ one-use. Until the above owner and external trust conditions hold:
 `SOURCE_OWNER_ATTESTATION_UNVERIFIED` /
 `W4_LIVE_NO_GO` / `QUALIFICATION_NO_GO` /
 `SCIENCE_NOT_RUN`.**
+
+
+## 2026-10-22 W4専用DEVオーケストレーション v1（実World到達不能）
+
+ソース審査前の **Phase A** として、
+`adapters.mineflayer.self_world_stage_w4_optin_offline.run_w4_s49_synthetic_orchestration`
+を追加した。これは元S49 `qualify()` / S34 `_new_session()` に接続しない
+**別の明示入口**であり、既定OFFである。
+
+呼び出しは `selected_mode="W4_S49_SYNTHETIC_OFFLINE_DEV"` と
+`explicit_opt_in=True`、完全な5件の合成JSONL bytes、
+preworld probe request ID、および合成一回限りtokenを要求する。
+process・server・session・Action callback・任意cmd・World handleは
+引数として受け取れない。内部にのみ固定長のprivate in-memory
+`OfflineProcess` を作り、`W4DevLeasedSession` と元 decoder、
+元 `_await_spawn()`、元PREWORLD bridgeを使用する。
+
+正順:
+`STARTUP(adapter_started→spawn) → PREWORLD(probe→ledger1回)
+→ WORLD_WINDOW(明示的な合成marker) → HOST(委譲reader1件)
+→ QUIESCE → SHUTDOWN → CLOSED`。
+
+readは独立owner Taskのlease内に限り、original process-session
+decoder以外を追加しない。HOSTのframeは1件のみ受け取る。
+Action/World commandはin-memory Sinkが拒否し、
+`physical_run_permitted`・`action_issued`・`s10_permission`・
+`science_qualified`・`external_custody_qualified`は必ずfalse。
+合成markerは架空パスを表示するだけでファイルを作らない。
+実Worldのmarkerやserver tick、真正stdoutを示さない。
+
+試験は追加した成功1件・入力/順序/識別の拒否13件で確認する。
+既存12件のdefault-OFF owner preflightも保持。
+PR #635形式でFAST/FULL両方をexact HEAD検証すること。
+プロセス起動は禁止。初回の原本欠損runはUNDETERMINEDのままとする。
+
+ここで証明できるのは合成local orchestrationと
+single-reader ownershipの**ソフトウェアDEVのみ**。
+物理read-only DEV・保護元S49 source編集・新Worldシナリオ・
+外部raw custody/issuer/grantは別の事前審査を要する。
+`W4_LIVE_NO_GO / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`を維持する。
