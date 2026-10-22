@@ -60,6 +60,35 @@ class ObservationOnlyDevSession(MineflayerProcessSession):
             raise ObservationOnlyDevBlocked("noncanonical command forbidden")
         await super()._send(line)
 
+    async def shutdown_with_stdout_receipt(
+        self, *, timeout_s: float = 10.0,
+    ) -> dict[str, object]:
+        """Require the inherited W3 same-reader shutdown ACK, EOF and reap.
+
+        This checks Node→Python received bytes, not Minecraft network bytes,
+        physical Java PID custody, or an independently signed STOP witness.
+        A normal no-capture shutdown cannot qualify this DEV observation gate.
+        """
+        if self._raw_capture is None:
+            raise ObservationOnlyDevBlocked(
+                "read-only STOP requires original W3 raw stdout capture"
+            )
+        rc = await self.shutdown(timeout_s=timeout_s)
+        receipt = self.raw_capture_receipt
+        if (
+            type(rc) is not int or rc != 0
+            or type(receipt) is not dict
+            or receipt.get("status") != "COMPLETE_NODE_STDOUT"
+            or receipt.get("eof_observed") is not True
+            or receipt.get("shutdown_ack_count") != 1
+            or receipt.get("process_exit_code") != 0
+            or receipt.get("seal_reason") != "clean_shutdown"
+        ):
+            raise ObservationOnlyDevBlocked(
+                "STOP ACK/EOF/Node exit not jointly confirmed"
+            )
+        return dict(receipt)
+
 
 @dataclass(frozen=True, slots=True)
 class ObservationOnlyDevReadback:
