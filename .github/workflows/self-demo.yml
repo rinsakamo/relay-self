@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - 'self/s60b1-loopback-adapter-*'
+      - 'self/product-self-one-command-s49scoped-fullreg-20261021'  # CI-only review base
     types: [opened, reopened, synchronize, ready_for_review]
   workflow_dispatch:
     inputs:
