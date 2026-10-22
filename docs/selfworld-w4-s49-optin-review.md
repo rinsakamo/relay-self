@@ -621,3 +621,49 @@ Minecraft TCP authenticity or strict server-tick causality.
 | `docs/postmain-architecture.md` | `62b8e807d1b35a7f06d15b61e411434f57fe111d` |
 | `tests/test_postmain_architecture_freeze.py` | `d343aa052541b4ee9d2ce3e00653cc1a56d681ce` |
 | `src/relay_self/persistent_cognition.py` | `5d4fff3fa10bad78f98118758c8a22d53e8390fb` |
+
+
+## 2026-10-22 — User-authorized narrow collector DEV patch (isolated review)
+
+**Approval scope:** the user explicitly approved *only* a default-OFF,
+same-collector, opt-in preservation of Java server stdout raw bytes.
+This is not a W4 Live run grant, independent source-owner signature,
+a blanket S18/19-protected-source rebaseline, or approval to merge to
+main, S49, #634 or #635.
+
+Isolation branch:
+`self/product-self-one-command-w4-raw-owner-review-20261022`, based on
+the evidence-only `1ecbe83fc22049c5854a390800f35f67698e6455`.
+The only production edit is in
+`adapters/mineflayer/s31a_real_server_ci.py`:
+`_ready_server(..., *, raw_stdout_path: Path | None = None)`.
+
+- Default `None` continues writing the original replacement-decoded UTF-8
+  text file. No second Java stdout reader or alternative launcher exists.
+- Explicit DEV opt-in creates an *adjacent fresh* `raw_stdout_path` with
+  exclusive `xb` mode **inside the same owned startup/collector lifecycle**.
+  Each received raw line is written and flushed **before decoding**; the
+  previous text log and readiness detection remain unchanged.
+- Different existing path, symlink (including dangling), same log path and
+  foreign parent are rejected before starting Java. Raw open exceptions after
+  Java spawn follow the existing startup terminate/reap path. An early collector
+  failure signals the startup owner instead of waiting indefinitely on
+  `ready`; subsequent failures must be checked by the future DEV caller.
+- The raw byte artifact is not a Minecraft TCP packet proof, signed server
+  tick, external custody, or an independently authenticated receipt.
+- The earlier four irreversibility reproductions remain as historical
+  **default-OFF** controls. New synthetic tests check the explicit raw path,
+  invalid UTF-8 byte identity, rejection-before-spawn and failure/reap.
+  No observation-only physical entry/CLI has been installed by this patch.
+- The existing historical 19 protected Git blobs and their SHA guard
+  expectations were **not** edited or silently updated. Since this branch
+  intentionally changes the S31A blob, any versioned protection-guard
+  failure must be recorded separately and resolved by a deliberate
+  protected-owner variant decision; do not erase or weaken old safeguards.
+
+**Execution gate:** Dedicated observation-only entry with no Action,
+its full negative suite, exact-HEAD CI, WSL2/JAR/port/PID checks and
+a new authenticated single-run DEV grant are all independent next steps.
+Until then `OBSERVATION_ONLY_DEV_READY_FOR_NEW_GRANT` is **not** earned.
+Minecraft/Node/Java/World/Action/OUTCOME/S10/SCIENCE run count in this
+source-review change: **zero**.
