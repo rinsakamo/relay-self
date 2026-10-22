@@ -15,6 +15,7 @@ import os
 import shutil
 import subprocess
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 import pytest
@@ -38,7 +39,7 @@ def native_evidence(monkeypatch, tmp_path, request):
         row = {"event": event, "utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                "test": request.node.nodeid, "python": sys.version, **fields}
         with events.open("a", encoding="utf-8") as stream:
-            stream.write(json.dumps(row, sort_keys=True) + "\n")
+            stream.write(json.dumps(row, sort_keys=True, default=str) + "\n")
             stream.flush()
 
     async def track_spawn(*args, **kwargs):
@@ -105,7 +106,7 @@ def native_evidence(monkeypatch, tmp_path, request):
         emit("owner_cleanup_settled", pending_tasks=pending)
         assert not pending
 
-    yield {"cancel": cancel, "settled": settled}
+    yield {"cancel": cancel, "settled": settled, "emit": emit}
     for child, identity in children:
         emit("final_process", pid=child.pid, starttime=identity[1], returncode=child.returncode,
              proc_absent=not Path(f"/proc/{child.pid}").exists())
@@ -380,12 +381,24 @@ def test_real_node_w4_successful_startup_owner_preworld_and_bounded_host_handoff
             )
             identity = _linux_pid_identity(session._process.pid)
             owner = session.owner_token()
+            native_evidence["emit"](
+                "node_startup_handoff", pid=session._process.pid,
+                session_object=id(session), process_object=id(session._process),
+                original_decoder_module=type(session._decoder.original).__module__,
+                original_receive_module=MineflayerProcessSession.receive.__module__,
+                started_session_id=session.started.session_id,
+                action_supervisor_absent=session._supervisor is None,
+            )
             assert session.process_returncode is None
             # The original S34 startup reader consumes the sole native spawn.
             observed_spawn = await _await_spawn(session)
             assert observed_spawn.kind == "spawn"
             receipt, ledger = await preworld(session, owner, pre)
             assert not receipt.physical_run_permitted
+            native_evidence["emit"](
+                "preworld_handoff", receipt=asdict(receipt), ledger=asdict(ledger),
+                session_object=id(session), physical_run_permitted=False,
+            )
             assert ledger.delivery_scope == "PREWORLD_EVIDENCE_ONLY_NOT_L0_STIMULUS"
             session.advance(owner=owner, phase="WORLD_WINDOW", binding="offline-only")
             # Deliberately synthetic: exercises the lease handoff, not a
@@ -399,6 +412,11 @@ def test_real_node_w4_successful_startup_owner_preworld_and_bounded_host_handoff
                 timeout=10,
             )
             assert frame.seq == 4 and frame.session_id == pre.session_id
+            native_evidence["emit"](
+                "host_handoff", frame=asdict(frame), operation_epoch=op.epoch,
+                phase=session.phase, actor_is_controller=session._actor is asyncio.current_task(),
+                delegated=session._delegated, action_supervisor_absent=session._supervisor is None,
+            )
             assert [row.seq for row in session.audit if row.event == "DELIVER"] == [
                 0, 1, 2, 3, 4,
             ]
@@ -410,6 +428,11 @@ def test_real_node_w4_successful_startup_owner_preworld_and_bounded_host_handoff
             assert await session.shutdown(timeout_s=5) == 0
             assert session.phase == "CLOSED"
             assert session.process_returncode == 0
+            native_evidence["emit"](
+                "node_closed", pid=session._process.pid, phase=session.phase,
+                action_supervisor_absent=session._supervisor is None,
+                audit=[asdict(row) for row in session.audit],
+            )
             _assert_gone(identity)
             await asyncio.sleep(0)
             native_evidence["settled"]()
@@ -472,6 +495,16 @@ def test_real_java_original_readiness_success_transfers_single_collector(
             identity = _linux_pid_identity(server.pid)
             assert ready.is_set() and server.returncode is None
             assert len(launched) == 1 and launched[0] is server
+            native_evidence["emit"](
+                "java_ready_handoff", pid=server.pid, starttime=identity[1],
+                server_object=id(server), launched_object=id(launched[0]),
+                collector_object=id(collector), collector_name=collector.get_name(),
+                collector_done=collector.done(), ready_object=id(ready), ready_is_set=ready.is_set(),
+                collector_coro=collector.get_coro().__qualname__,
+                collector_locals={key: id(value) for key, value in
+                                  collector.get_coro().cr_frame.f_locals.items()
+                                  if key in {"process", "ready", "log_path"}},
+            )
             log = (tmp_path / "original-collector.log").read_text(encoding="utf-8")
             assert log.count("BOOT") == 1
             assert log.count("Done (") == 1
@@ -483,6 +516,12 @@ def test_real_java_original_readiness_success_transfers_single_collector(
             assert result == server.returncode and type(result) is int
             await asyncio.wait_for(collector, timeout=5)
             assert collector.done()
+            native_evidence["emit"](
+                "java_collector_handoff_closed", pid=server.pid,
+                collector_object=id(collector), collector_done=collector.done(),
+                collector_cancelled=collector.cancelled(), collector_exception=collector.exception(),
+                wait_result=result, returncode=server.returncode,
+            )
             _assert_gone(identity)
             await asyncio.sleep(0)
             native_evidence["settled"]()
