@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable
@@ -33,6 +34,7 @@ from adapters.mineflayer.self_world_observation_only_epoch_replay import (
 )
 from relay_self.relay_engine import (
     BoundedChoiceRequest,
+    CognitionMode,
     DecisionStatus,
     OpenCognitionRequest,
     RelayEngine,
@@ -91,30 +93,77 @@ def ab_requests(
     return replace(full, context=()), full
 
 
-def _request_digest(request: BoundedChoiceRequest | OpenCognitionRequest) -> str:
+def _request_digest(
+    request: BoundedChoiceRequest | OpenCognitionRequest,
+    *, model: str = "HASH_MODEL_PLACEHOLDER",
+    mode: CognitionMode = CognitionMode.BOUNDED,
+) -> str:
     from adapters.llama_cpp.relay_engine import (
         render_llama_cpp_open_request,
         render_llama_cpp_request,
     )
-    from relay_self.relay_engine import CognitionMode
-
     if type(request) is BoundedChoiceRequest:
         body = render_llama_cpp_request(
-            request, mode=CognitionMode.BOUNDED, model="HASH_MODEL_PLACEHOLDER",
+            request, mode=mode, model=model,
         )
     else:
         body = render_llama_cpp_open_request(
-            request, model="HASH_MODEL_PLACEHOLDER",
+            request, model=model,
         )
     return hashlib.sha256(json.dumps(
         body, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
     ).encode("utf-8")).hexdigest()
 
 
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise LlamaCppProviderError("local experiment refuses HTTP redirects")
+
+
+class ObservedLocalProvider:
+    """Observe the existing provider seam; RelayEngine still owns all routing."""
+
+    def __init__(self, provider, record):
+        self.provider = provider
+        self.record = record
+        self.calls = []
+
+    def __call__(self, request, *, mode):
+        item = {
+            "event": "provider_start", "mode": mode.value,
+            "request_sha256": _request_digest(
+                request, model=self.provider.model, mode=mode,
+            ),
+            "status": None, "choice_id": None, "error_type": None,
+            "prompt_tokens": None, "completion_tokens": None,
+        }
+        self.calls.append(item)
+        self.record(dict(item))
+        started = time.perf_counter_ns()
+        try:
+            outcome = self.provider(request, mode=mode)
+            item.update({
+                "status": outcome.status.value if hasattr(outcome, "status")
+                else "generated",
+                "choice_id": getattr(outcome, "choice_id", None),
+                "prompt_tokens": outcome.call_facts.prompt_tokens,
+                "completion_tokens": outcome.call_facts.completion_tokens,
+            })
+            return outcome
+        except BaseException as exc:
+            item["error_type"] = type(exc).__name__
+            raise
+        finally:
+            item["event"] = "provider_end"
+            item["wall_ns"] = time.perf_counter_ns() - started
+            self.record(dict(item))
+
+
 def run_matched_ab(
     *, cases: tuple[CognitionCase, ...], engine: RelayEngine,
     repeats: int = 4, warmup_pairs: int = 1, include_open: bool = True,
     on_record: Callable[[dict[str, object]], None] | None = None,
+    observed_provider: ObservedLocalProvider | None = None,
 ) -> dict[str, object]:
     """Execute the predeclared A/B order; never select outcomes adaptively.
 
@@ -149,18 +198,27 @@ def run_matched_ab(
     for case in cases:
         for epoch in ("prior", "following"):
             for route in routes:
+                ab_requests(case.prepared, epoch, route)
+    for case in cases:
+        for epoch in ("prior", "following"):
+            for route in routes:
                 no_context, with_context = ab_requests(case.prepared, epoch, route)
                 requests = {ARM_BASE: no_context, ARM_CONTEXT: with_context}
                 for pair in range(warmup_pairs + repeats):
                     for position, arm in enumerate(paired_order(pair)):
                         request = requests[arm]
+                        if observed_provider is not None:
+                            observed_provider.calls.clear()
                         start = time.perf_counter_ns()
                         data = {
                             "case_id": case.case_id, "source_class": case.source_class,
                             "epoch": epoch, "route": route, "arm": arm,
                             "pair": pair, "position": position,
                             "warmup": pair < warmup_pairs,
-                            "request_sha256": _request_digest(request),
+                            "request_sha256": _request_digest(
+                                request, model=observed_provider.provider.model
+                                if observed_provider else "HASH_MODEL_PLACEHOLDER",
+                            ),
                             "expected_choice": (
                                 case.expected_prior if epoch == "prior"
                                 else case.expected_following
@@ -169,7 +227,7 @@ def run_matched_ab(
                             "correct_rubric": None, "escalated": None,
                             "provider_calls": None, "prompt_tokens": None,
                             "completion_tokens": None, "open_text_sha256": None,
-                            "error_type": None,
+                            "error_type": None, "attempts": [],
                         }
                         try:
                             if route == "bounded":
@@ -182,6 +240,15 @@ def run_matched_ab(
                                         and outcome.choice_id == data["expected_choice"]
                                     ),
                                     "escalated": outcome.escalated,
+                                    "attempts": [
+                                        {"mode": attempt.mode.value,
+                                         "status": attempt.status.value,
+                                         "choice_id": attempt.choice_id,
+                                         "request_sha256": _request_digest(
+                                             request, mode=attempt.mode,
+                                         )}
+                                        for attempt in outcome.attempts
+                                    ],
                                     "provider_calls": outcome.provider_call_count,
                                     "prompt_tokens": outcome.observed_prompt_tokens,
                                     "completion_tokens": outcome.observed_completion_tokens,
@@ -200,6 +267,14 @@ def run_matched_ab(
                         except LlamaCppProviderError as exc:
                             data["error_type"] = type(exc).__name__
                         data["wall_ns"] = time.perf_counter_ns() - start
+                        if observed_provider is not None:
+                            data["attempts"] = list(observed_provider.calls)
+                            data["provider_calls"] = len(observed_provider.calls)
+                            if route == "bounded":
+                                data["escalated"] = any(
+                                    call["mode"] == "think"
+                                    for call in observed_provider.calls
+                                )
                         rows.append(data)
                         if on_record is not None:
                             on_record(dict(data))
@@ -221,6 +296,19 @@ def run_matched_ab(
                     ]
                     summary[key] = {
                         "count": len(group),
+                        "resolved_rate": sum(r["status"] == "resolved" for r in group)
+                        / len(group) if route == "bounded" else None,
+                        "rubric_rate": sum(r["correct_rubric"] is True for r in group)
+                        / len(group) if route == "bounded" else None,
+                        "think_rate": sum(r["escalated"] is True for r in group)
+                        / len(group) if route == "bounded" else None,
+                        "unresolved": sum(r["status"] == "unresolved" for r in group),
+                        "initial_unresolved": sum(
+                            bool(r["attempts"]) and r["attempts"][0]["status"] == "unresolved"
+                            for r in group
+                        ) if route == "bounded" else None,
+                        "error_rate": sum(r["error_type"] is not None for r in group)
+                        / len(group),
                         "errors": sum(row["error_type"] is not None for row in group),
                         "resolved": sum(row["status"] == "resolved" for row in group),
                         "rubric_correct": (
@@ -253,7 +341,24 @@ def run_matched_ab(
                             and all(row["completion_tokens"] is not None for row in group)
                         ),
                     }
+    differences = []
+    for a in measured:
+        if a["arm"] != ARM_BASE:
+            continue
+        b = next(row for row in measured if all(
+            row[key] == a[key] for key in ("case_id", "epoch", "route", "pair")
+        ) and row["arm"] == ARM_CONTEXT)
+        delta = {key: a[key] for key in ("case_id", "epoch", "route", "pair")}
+        for key in ("wall_ns", "provider_calls", "prompt_tokens", "completion_tokens",
+                    "correct_rubric", "escalated"):
+            delta[key + "_b_minus_a"] = (
+                b[key] - a[key] if a[key] is not None and b[key] is not None else None
+            )
+        delta["choice_a"] = a["choice_id"]
+        delta["choice_b"] = b["choice_id"]
+        differences.append(delta)
     return {
+        "paired_differences": differences,
         "schema": "W4_SELF_WORLD_MODEL_AB_DEV_V1",
         "classification": "DEV_ONLY_LOCAL_MODEL_OBSERVATION_NOT_SCIENCE",
         "rubric": (
@@ -430,11 +535,13 @@ def main() -> int:
         and journal.is_relative_to(args.evidence_root)
     ):
         raise W4ModelABBlocked("journal must be outside checkout and original")
-    engine = RelayEngine(LlamaCppRelayProvider(
-        endpoint=endpoint, model=args.model,
-    ))
+    from unittest.mock import patch
+
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
     fd = os.open(journal, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-    with os.fdopen(fd, "wb") as witness:
+    with os.fdopen(fd, "wb") as witness, patch(
+        "urllib.request.urlopen", opener.open,
+    ):
         def record(row: dict[str, object]) -> None:
             witness.write((json.dumps(
                 row, ensure_ascii=False, sort_keys=True,
@@ -450,10 +557,14 @@ def main() -> int:
             "model_alias": args.model,
             "classification": "IN_PROGRESS_UNQUALIFIED",
         })
+        observed = ObservedLocalProvider(LlamaCppRelayProvider(
+            endpoint=endpoint, model=args.model,
+        ), record)
         result = run_matched_ab(
-            cases=cases, engine=engine,
+            cases=cases, engine=RelayEngine(observed),
             repeats=args.repeats, warmup_pairs=args.warmup_pairs,
             include_open=not args.no_open, on_record=record,
+            observed_provider=observed,
         )
     result["journal_sha256"] = hashlib.sha256(journal.read_bytes()).hexdigest()
     result["repo_head"] = args.expected_head

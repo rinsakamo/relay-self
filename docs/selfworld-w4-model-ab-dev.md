@@ -85,3 +85,17 @@ local runs complete. Even then this is DEV_ONLY, not SCIENCE, because the
 sample and protocol are exploratory.
 
 `DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN / NO_NEW_WORLD_RUN`
+
+### 2026-10-24 protocol audit
+
+The CLI records each actual-model request hash separately for BOUNDED, THINK
+and OPEN at the existing provider seam, including a durable start event before
+transport and an end event on errors/interruption. Initial UNRESOLVED and THINK
+results remain distinct. Failed THINK retains both attempted provider calls;
+unknown token usage remains null. The unchanged RelayEngine owns escalation.
+Pairwise B−A differences retain worsening and missing measurements. CLI transport
+ignores proxy environment settings and refuses redirects beyond loopback.
+
+The earlier request digest using `HASH_MODEL_PLACEHOLDER` is retained only for
+fake-provider unit tests; actual CLI measurements use the fixed loaded alias.
+Model artifact identity must still be independently pinned before measurement.

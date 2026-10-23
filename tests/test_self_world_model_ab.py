@@ -203,3 +203,127 @@ def test_per_observation_journal_callback_sees_every_attempt():
     assert len([item for item in seen if not item["warmup"]]) == 2 * 2 * 2
     assert seen[0]["arm"] == ARM_BASE
     assert seen[2]["arm"] == ARM_CONTEXT
+
+
+def test_real_body_hashes_and_failed_think_are_journaled():
+    from adapters.llama_cpp.relay_engine import LlamaCppProviderError
+    from experiments.self_world_model_ab import ObservedLocalProvider, _request_digest
+
+    class Provider:
+        model = "fixed-local-model"
+
+        def __call__(self, request, *, mode):
+            if mode is CognitionMode.THINK:
+                raise LlamaCppProviderError("synthetic THINK failure")
+            return ProviderDecision(DecisionStatus.UNRESOLVED, None, "unknown")
+
+    journal = []
+    observed = ObservedLocalProvider(Provider(), journal.append)
+    report = run_matched_ab(
+        cases=(_synthetic_cases()[0],), engine=RelayEngine(observed),
+        repeats=1, warmup_pairs=0, include_open=False,
+        observed_provider=observed,
+    )
+    for row in report["rows"]:
+        assert row["provider_calls"] == 2
+        assert [a["mode"] for a in row["attempts"]] == ["bounded", "think"]
+        assert row["attempts"][0]["status"] == "unresolved"
+        assert row["attempts"][1]["error_type"] == "LlamaCppProviderError"
+        assert row["prompt_tokens"] is None
+    assert len(journal) == 16
+    request = _synthetic_cases()[0].prepared.prior_bounded
+    assert _request_digest(request, model="a") != _request_digest(request, model="b")
+    assert _request_digest(request, mode=CognitionMode.THINK) != _request_digest(request)
+
+
+def test_interrupt_retains_started_call_without_success_report(tmp_path):
+    import hashlib
+
+    from experiments.self_world_model_ab import ObservedLocalProvider
+
+    class Interrupted:
+        model = "synthetic"
+
+        def __call__(self, request, *, mode):
+            raise KeyboardInterrupt
+
+    path = tmp_path / "journal.jsonl"
+    with path.open("x") as stream:
+        def record(row):
+            stream.write(json.dumps(row) + "\n")
+            stream.flush()
+
+        observed = ObservedLocalProvider(Interrupted(), record)
+        with pytest.raises(KeyboardInterrupt):
+            run_matched_ab(
+                cases=(_synthetic_cases()[0],), engine=RelayEngine(observed),
+                repeats=1, warmup_pairs=0, observed_provider=observed,
+            )
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    assert [row["event"] for row in rows] == ["provider_start", "provider_end"]
+    assert rows[-1]["error_type"] == "KeyboardInterrupt"
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == hashlib.sha256(
+        path.read_text().encode()
+    ).hexdigest()
+
+
+def test_pair_deltas_preserve_worsening_and_unknown_usage():
+    def contrary(request, *, mode):
+        return ProviderDecision(
+            DecisionStatus.RESOLVED,
+            "DEFER_RECHECK" if request.context else "INSPECT_SOURCE", "synthetic",
+        )
+
+    report = run_matched_ab(
+        cases=(_synthetic_cases()[0],), engine=RelayEngine(contrary),
+        repeats=2, warmup_pairs=1, include_open=False,
+    )
+    assert len(report["paired_differences"]) == 4
+    for pair in report["paired_differences"]:
+        assert pair["correct_rubric_b_minus_a"] == -1
+        assert pair["prompt_tokens_b_minus_a"] is None
+
+
+def test_cli_journal_hash_and_open_privacy(monkeypatch, tmp_path):
+    import hashlib
+    import sys
+
+    import experiments.self_world_model_ab as module
+
+    class Fake:
+        def __init__(self, *, endpoint, model):
+            self.model = model
+
+        def __call__(self, request, *, mode):
+            return _stub(request, mode=mode)
+
+    output = tmp_path / "report.json"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    monkeypatch.setattr(module, "LlamaCppRelayProvider", Fake)
+    monkeypatch.setattr(module, "_repo_pins", lambda *args: None)
+    monkeypatch.setattr(sys, "argv", [
+        "ab", "--source", "synthetic", "--repo-root", str(repo),
+        "--expected-head", "a" * 40,
+        "--endpoint", "http://127.0.0.1:1234/v1/chat/completions",
+        "--model", "fake", "--output", str(output), "--repeats", "1",
+        "--warmup-pairs", "0", "--confirm", "LOCAL_MODEL_DEV_ONLY",
+    ])
+    assert module.main() == 0
+    report = json.loads(output.read_text())
+    journal = output.with_name(output.name + ".journal.jsonl")
+    assert report["journal_sha256"] == hashlib.sha256(journal.read_bytes()).hexdigest()
+    assert "synthetic hypothesis" not in output.read_text() + journal.read_text()
+    assert all(row["attempts"] for row in report["rows"])
+    before = journal.read_bytes()
+    with pytest.raises(W4ModelABBlocked):
+        module.main()
+    assert journal.read_bytes() == before
+
+
+def test_redirect_is_rejected_before_second_endpoint():
+    from adapters.llama_cpp.relay_engine import LlamaCppProviderError
+    from experiments.self_world_model_ab import NoRedirect
+
+    with pytest.raises(LlamaCppProviderError, match="redirect"):
+        NoRedirect().redirect_request(None, None, 302, "", {}, "http://external/")
