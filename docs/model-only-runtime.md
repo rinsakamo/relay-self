@@ -19,6 +19,10 @@ The scope adds `--no-context-shift --slots`, retains binary stdout/stderr bytes
 in an exclusive-new file, records PID/group/starttime, and reuses S57's
 TERM/KILL/wait cleanup. Caller failures and cancellation trigger cleanup;
 secondary cleanup failures remain visible beside the primary exception.
+Reap and `/proc` absence are recorded before the independent port check.
+A bounded 75-second bind observation permits TCP TIME_WAIT to settle without
+restarting the model or altering measurements. Persistent port failure remains
+a cleanup error alongside the retained reap receipt.
 Reap, `/proc` absence and a successful port bind are separate observations.
 They do not establish backend STOP ACK or GPU VRAM release. The synchronous
 scope must enclose the caller's whole execution; it is not an async task owner.

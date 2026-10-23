@@ -76,6 +76,7 @@ def test_scope_reaps_owned_child_for_all_exits(tmp_path, monkeypatch, fault):
     reap = next(r for r in rows if r['event'] == 'REAPED')
     assert reap['returncode'] == reap['wait_result'] == -15
     assert reap['proc_absent'] is True
+    assert any(r['event'] == 'PORT_RELEASED' and r['bindable'] for r in rows)
     assert rows[-1]['event'] == 'TERMINAL'
 
 
@@ -166,3 +167,32 @@ def test_busy_gpu_scope_never_starts_second_child(tmp_path, monkeypatch):
         assert child.returncode is None
     finally:
         os.close(lock)
+
+
+def test_port_time_wait_is_separate_from_reap(monkeypatch):
+    attempts = []
+    records = []
+    def bind(port):
+        attempts.append(port)
+        if len(attempts) == 1:
+            raise OwnedBackendRejected('TIME_WAIT fixture')
+    monkeypatch.setattr(runtime, 'preflight_available_port', bind)
+    monkeypatch.setattr(runtime.time, 'sleep', lambda duration: None)
+    runtime._wait_for_port(1234, lambda event, **kw: records.append(event))
+    assert attempts == [1234, 1234]
+    assert records == ['PORT_BIND_PENDING', 'PORT_RELEASED']
+
+
+def test_persistent_port_fault_keeps_reap_receipt(tmp_path, monkeypatch):
+    spec, child, _ = fixture(tmp_path, monkeypatch)
+    def fail(port, record):
+        raise OwnedBackendRejected('persistent cleanup bind fault')
+    monkeypatch.setattr(runtime, '_wait_for_port', fail)
+    with pytest.raises(BaseExceptionGroup):
+        with runtime.owned_model(spec, evidence=tmp_path / 'new',
+                                 confirm='PRODUCT_MODEL_DEV_ONLY'):
+            pass
+    rows = [json.loads(s) for s in (tmp_path / 'new/lifecycle.jsonl').read_text().splitlines()]
+    assert any(r['event'] == 'REAPED' and r['wait_result'] == -15 for r in rows)
+    assert rows[-1]['cleanup_errors']
+    assert child.returncode == -15

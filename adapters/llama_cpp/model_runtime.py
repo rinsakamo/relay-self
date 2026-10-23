@@ -12,6 +12,7 @@ import re
 import signal
 import subprocess
 import threading
+import time
 import urllib.request
 from builtins import BaseExceptionGroup
 from contextlib import contextmanager
@@ -45,6 +46,26 @@ def _json_get(port: int, route: str, target: Path) -> object:
 
 def _starttime(pid: int) -> str:
     return Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()[19]
+
+
+def _wait_for_port(port: int, record, *, timeout_s: float = 75) -> None:
+    """Observe TIME_WAIT settlement only; never launch or signal a process."""
+    start = time.monotonic()
+    pending = False
+    while True:
+        try:
+            preflight_available_port(port)
+            record("PORT_RELEASED", port=port, bindable=True,
+                   elapsed_s=time.monotonic() - start)
+            return
+        except OwnedBackendRejected:
+            if not pending:
+                record("PORT_BIND_PENDING", port=port,
+                       reason="BIND_UNAVAILABLE_NOT_PROOF_OF_LISTENER")
+                pending = True
+            if time.monotonic() - start >= timeout_s:
+                raise
+            time.sleep(0.25)
 
 
 @contextmanager
@@ -137,12 +158,12 @@ def owned_model(spec: OwnedBackendSpec, *, evidence: Path,
                 code = terminate_owned_process(proc)
                 waited = proc.wait(timeout=6)
                 absent = not Path(f"/proc/{proc.pid}").exists()
-                preflight_available_port(spec.port)
                 record("REAPED", pid=proc.pid, returncode=code, wait_result=waited,
-                       proc_absent=absent, port_bindable=True,
+                       proc_absent=absent,
                        backend_stop_ack=None, gpu_vram_released=None)
                 if code != waited or not absent:
                     raise OwnedBackendRejected("owned child reap unconfirmed")
+                _wait_for_port(spec.port, record)
             except BaseException as exc:
                 cleanup_errors.append(exc)
         if old_handler is not None:
