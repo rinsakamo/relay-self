@@ -34,8 +34,12 @@ evidence; cost is a DEV cognitive constraint, not metabolic debit.
 budget. The host must not choose the optimal strategy. When the goal is absent
 or fewer than two choices remain, `request=None,status=DEFER`.
 Otherwise it emits the **existing** `BoundedChoiceRequest`, without invoking
-RelayEngine or provider. A separate checker rejects unknown, unadvertised or
-substituted returned choices. Neither stage grants Memory/S10/Action authority.
+RelayEngine or provider. A separate checker **re-reads the original strict source** at selection acceptance,
+regenerates the entire candidate/request/custody record, and rejects unknown,
+unadvertised, goal-substituted or wholly forged request/manifest records.
+This is not a one-time delivery/consumption lease: an identical reply to an
+identical static DEV request cannot be distinguished without an existing
+lifecycle owner. Neither stage grants Memory/S10/Action authority.
 
 ## Separation of custody and model-facing surface
 
