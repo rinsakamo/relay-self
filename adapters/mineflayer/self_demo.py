@@ -810,7 +810,7 @@ def _dev_run(args: argparse.Namespace) -> int:
                     code = asyncio.run(_run_disposable(
                         root / "native_report.json", root / "minecraft_server.log",
                         **({"raw_capture_root": root} if stage_w3 else {}),
-                        passive_self_views=passive_views,
+                        **({"passive_self_views": True} if passive_views else {}),
                     ))
         native = json.loads((root / "native_report.json").read_text())
         if passive_views:

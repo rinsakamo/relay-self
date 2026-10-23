@@ -1,6 +1,6 @@
 # Product #537 — passive native SelfBody + SelfWorld join (isolated DEV candidate)
 
-**NOT EXECUTED / NOT INTEGRATED INTO PR #634 / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**
+**OFFLINE DEV VALIDATED / PHYSICAL NOT RUN / NOT INTEGRATED INTO PR #634 / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**
 
 Source base: PR #634 exact HEAD `f0751b915411e89f1d3dffe941461a308fcf2512`.
 Candidate branch: `dev/self-product-passive-bodyworld-20261024`.
@@ -69,3 +69,24 @@ PR #634 remains Draft and is **not updated, merged, or rebased** by this work.
 Only after local source validation should the original product owner decide
 whether to adopt this narrow passive observer into #634; it must never
 silently modify the W4 cognition/information-value research classification.
+
+
+## Independent local DEV verification (2026-10-24)
+
+The fixed candidate `c69b53a8f518b496a4f0c99575b4ba331c5f924d` was
+checked in an isolated Windows 11 / WSL2 Python 3.12.3 worktree. Initial
+failures are retained externally at
+`/home/rinsa/work/self-passive-evidence-20261024`.
+The synthetic probe fixture now uses the protocol's derived provenance;
+a hostile typed subclass exercises foreign provenance rejection. A supported
+non-probe kind exercises observer rejection. The default DEV delegate keeps
+its existing call signature when passive views are disabled.
+Additional controls reject mismatched Body/World epoch/session/source and
+exercise the outer DEV receipt for sidecar/source/Action substitutions.
+These are offline tests with stub owners, not a new physical S49 execution.
+The external report records final counts, integrity checks, and commit identity.
+
+Remaining product work: separately authorized physical verification of this
+flag, independent native-source attestation and durable Self identity, then
+owner-reviewed adoption and a continuous decision/outcome loop. The fixed
+three-probe demonstration does not establish autonomy or adaptive learning.

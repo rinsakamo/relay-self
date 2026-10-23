@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from adapters.mineflayer import s49_normal_session_real_ci, self_demo
+from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.self_product_passive_views import (
     DEV_SELF_ID,
     PassiveSelfViews,
@@ -33,10 +34,7 @@ def probe(seq: int, *, sid: str = "p-native", positive: bool = True):
                 ),
             ),
         )
-    return replace(
-        native,
-        provenance=Provenance("mineflayer", f"{sid}:{seq}"),
-    )
+    return native
 
 
 def test_three_native_probes_join_existing_body_world_without_policy_change():
@@ -84,11 +82,18 @@ def test_native_source_and_bounded_epoch_negatives(attack):
     elif attack == "uncorrelated":
         invalid = replace(probe(19), request_id="unsolicited")
     elif attack == "bad_provenance":
-        invalid = replace(
-            probe(19), provenance=Provenance("mineflayer", "different:19"),
+        class ForeignProvenance(MineflayerObservation):
+            @property
+            def provenance(self):
+                return Provenance("mineflayer", "different:19")
+
+        original = probe(19)
+        invalid = ForeignProvenance(
+            session_id=original.session_id, seq=original.seq, kind=original.kind,
+            snapshot=original.snapshot, request_id=original.request_id,
         )
     elif attack == "missing_kind":
-        invalid = replace(probe(19), kind="event")
+        invalid = replace(probe(19), kind="health", request_id=None)
     else:
         owner.observe(probe(19))
         owner.observe(probe(47))
@@ -228,3 +233,64 @@ def test_sidecar_substitutions_never_promote_source(attack):
     elif attack == "pretend_attested":
         rows[-1]["source_qualified"] = True
     assert not verify_passive_source_join(native, rows)
+
+
+@pytest.mark.parametrize("attack", ["epoch", "session", "source"])
+def test_composition_rejects_body_world_mismatch(monkeypatch, attack):
+    from adapters.mineflayer import self_product_passive_views as passive
+
+    original = passive.compose_self_body_view
+
+    def mismatched(**kwargs):
+        body = original(**kwargs)
+        if attack == "epoch":
+            return replace(body, epoch_id="foreign-epoch")
+        if attack == "session":
+            return replace(body, session_id="foreign-session")
+        return replace(body, observation=replace(
+            body.observation, native_seq=999,
+        ))
+
+    monkeypatch.setattr(passive, "compose_self_body_view", mismatched)
+    observer = PassiveSelfViews()
+    with pytest.raises(ValueError):
+        observer.observe(probe(8))
+    assert observer.rows() == ()
+
+
+@pytest.mark.parametrize("attack", [None, "sidecar", "source", "action"])
+def test_outer_dev_receipt_checks_passive_join(monkeypatch, tmp_path, attack):
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(self_demo.shutil, "which", lambda _: "/tool")
+    monkeypatch.setattr(self_demo.subprocess, "run", lambda *a, **kw:
+                        SimpleNamespace(returncode=0, stdout="version", stderr=""))
+
+    async def owner(report, log, *, passive_self_views):
+        assert passive_self_views is True
+        native, rows = _source_report_and_rows()
+        native.update(status="PASS", server_exit=0)
+        if attack == "sidecar":
+            rows[0]["world_source_ref"] = "foreign"
+        elif attack == "source":
+            native["session_id"] = "foreign"
+        elif attack == "action":
+            rows[0]["action_issued"] = True
+        report.write_text(json.dumps(native))
+        (report.parent / "self_views.jsonl").write_text(
+            "".join(json.dumps(row) + "\n" for row in rows)
+        )
+        return 0
+
+    monkeypatch.setattr(self_demo, "_run_disposable", owner)
+    from test_self_dev import args
+
+    root = tmp_path / "receipt"
+    result = self_demo._dev_run(args(root, self_passive_views=True))
+    receipt = json.loads((root / "dev_receipt.json").read_text())
+    assert result == (0 if attack is None else 1)
+    assert receipt["dev_passive_self_views"] == (
+        "SOURCE_JOINED_DEV_ONLY" if attack is None else "UNDETERMINED"
+    )
+    assert receipt["engineering_qualified"] is False
+    assert receipt["science_success"] is False
