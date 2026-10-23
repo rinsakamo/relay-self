@@ -1402,3 +1402,40 @@ UNDETERMINED remain separately tested synthetic behaviors.
 This verifies offline representation of an earlier DEV run, not a new-HEAD
 World run or independent physical custody. DEV_ONLY / QUALIFICATION_NO_GO /
 SCIENCE_NOT_RUN / NO_NEW_WORLD_RUN remain in force.
+
+
+### W4 two-epoch observations -> existing RelayEngine cognition inputs (2026-10-23)
+
+`adapters/mineflayer/self_world_observation_only_cognition.py` provides
+`prepare_w4_offline_cognition_inputs(replay, max_native_seq_gap=8)`.
+It consumes a previously source-pinned `W4OfflineEpochReplay`; verifies
+the exact same Self/session/sequence/provenance and re-derives ATT/PRD
+reviews. Earlier/later immutable SelfWorld views are projected through
+the existing `bind_self_world_to_cognition_request` into *prepared*
+`BoundedChoiceRequest` and `OpenCognitionRequest` values. No model/provider
+is called by this module. The two bounded choices are explicitly about
+source inspection versus deferring an unsupported claim, NOT physical WAIT,
+MOVE or Action authority. No generated intent, retained memory or S10 grant.
+
+The saved real run `1e86a714f3ea3374` has two positively captured
+probes but zero positively observed entities in both. Consequently, both
+`self_world_observed` fields should be empty and NO PRD review appears;
+`self_world_observer.status == "observed"` means a *probe* exists, NOT that
+any entity has been positively observed or that the World is empty.
+Synthetic positive-entity cases instead produce observed-target context
+and, if the prior explicit hypothesis exists, a next-epoch review with
+MATCH/MISMATCH/UNDETERMINED and `action_success: null`. The baseline
+hypothesis is not learned, and missing targets remain epistemically unknown.
+
+Synthetic tests demonstrate a **deterministic stub provider** receiving
+these immutable requests via existing RelayEngine BOUNDED -> THINK and OPEN.
+This is not real-model policy improvement, HABIT/L1 owner execution,
+Action routing, world qualification or science. Model calls in those tests
+are synthetic only; the prepared object itself makes zero calls.
+
+The above comparison is source-shape/epistemic availability measurement,
+not a causal performance estimate. Real-source input binding still
+requires LocalCodex to load the original saved W4 evidence as in the
+preceding section, run Python3.12 focused tests at the exact new HEAD,
+and confirm no new World, model, physical Action, OUTCOME or S10 writes.
+Code pushed to an isolated branch does NOT mean PR #634 has been updated.
