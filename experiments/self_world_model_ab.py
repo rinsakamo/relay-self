@@ -16,8 +16,8 @@ import sys
 import tempfile
 import time
 from dataclasses import dataclass, replace
-from typing import Callable
 from pathlib import Path
+from typing import Callable
 from urllib.parse import urlsplit
 
 from adapters.llama_cpp.relay_engine import (
@@ -93,7 +93,8 @@ def ab_requests(
 
 def _request_digest(request: BoundedChoiceRequest | OpenCognitionRequest) -> str:
     from adapters.llama_cpp.relay_engine import (
-        render_llama_cpp_open_request, render_llama_cpp_request,
+        render_llama_cpp_open_request,
+        render_llama_cpp_request,
     )
     from relay_self.relay_engine import CognitionMode
 
@@ -326,7 +327,7 @@ def _synthetic_cases() -> tuple[CognitionCase, ...]:
     """Use existing DEV-only synthetic raw fixture factory, not World data."""
     from unittest.mock import patch
 
-    from test_self_world_observation_only_epoch_replay import _case, _pin, _offline_lines
+    from test_self_world_observation_only_epoch_replay import _case, _offline_lines, _pin
 
     cases = []
     with tempfile.TemporaryDirectory(prefix="w4-model-ab-synthetic-") as temp:
