@@ -1309,3 +1309,72 @@ before/after, and the old W4 join did not treat that HOLD as an identity veto.
 the original probe and both native consequence observations before delegating
 to the unchanged window/S16/Stage S readback. The original HOLD definition and
 protected files are unchanged; missing identity now blocks this DEV join.
+
+
+## W4 saved-DEV observation -> SelfWorld two-epoch offline replay (2026-10-23)
+
+\`adapters/mineflayer/self_world_observation_only_epoch_replay.py\` supplies
+\`replay_w4_saved_self_world_epochs()\` as a **strictly read-only offline
+developer projection**, not a runtime connector. It requires an operator-pinned
+SHA256 for the *original report.json* (e.g. the separate 2026-10-23 W4 DEV
+report already archived by LocalCodex), the original exact HEAD and run ID,
+the unaltered local sealed W3 Node JSONL/receipt and sole Java collector RAW
+file in the SAME absolute evidence directory. Never reconstruct missing
+source from a summary or synthesize "real" frames.
+
+The routine recomputes the report hash, audits the saved Node byte stream
+with the existing W3 decoder/receipt, binds exactly one original started/spawn/
+correlated before/after probe to the original dataclass report snapshots,
+checks Java marker byte-offset/hash/content, replays existing local
+readback/lifetime validation, and checks the producer-local disposition
+and zero-Action/OUTCOME/S10 limits. The reporter remains the original local
+producer: these checks do not make Java console gametime or Node stdout
+independently attested Minecraft ticks. No timestamp or cross-clock relation
+is invented.
+
+It then invokes the **existing** \`project_mineflayer_present\`,
+\`project_self_world_present\`, \`compose_self_world_view\`, ATT
+\`select_self_world_attention\` and PRD \`predict_transition\`/
+\`review_self_world_prediction\` on two different read-only epochs of the
+same session. A simple **explicit hypothetical label-persistence baseline**
+is only generated if an earlier entity and its label were positively
+observed; it is NOT a learned transition law. If the source has no
+positively seen entity, no forecast is created. A later target omission
+is UNKNOWN/UNDETERMINED, not proof of physical disappearance.
+Missing, forged, cross-session, changed, reused or out-of-bounds source
+material is rejected. The earlier view is carried only as a typed
+comparison source, not committed Memory, BLF, S10 or a second owner.
+
+**Scope limit:** the returned next-epoch SelfWorld and ATT result are
+prepared for inspection, not injected into existing L0/S14 or used to
+make physical decisions. Connecting these to RelayEngine's existing
+bounded/L1/L2 choice routes would require separately validated owner
+snapshots; this DEV replay intentionally grants none.
+
+How to check on LocalCodex (without new World):
+\`\`\`python
+from pathlib import Path
+from adapters.mineflayer.self_world_observation_only_epoch_replay import (
+    replay_w4_saved_self_world_epochs,
+)
+replay = replay_w4_saved_self_world_epochs(
+    evidence_root=Path("/ABSOLUTE/ORIGINAL/EVIDENCE/w4-observe-1e86a714f3ea3374"),
+    expected_report_sha256="a2f16d3bec33fcb6ea86d225858da8bf4df6dbedf5908eba950a0998f18c755f",
+    expected_source_head="1b221d845e42ea0e8be003239525c50de20e7fef",
+    expected_run_id="1e86a714f3ea3374",
+    self_id="w4-offline-observer",
+)
+print(replay.classification, replay.prior.observation.source_ref,
+      replay.following.observation.source_ref,
+      replay.prediction_review)
+\`\`\`
+This documented path is an **operator placeholder**, not evidence that this
+ChatGPT environment accessed the original WSL2 files.
+
+Synthetic tests cover local byte joins, match/mismatch/undetermined,
+zero-entity/source-gap and rejection of tampering, cross-session errors,
+invalid cleanup and authority promotion. They are *not* real source run
+verification. On this GitHub code-only branch there was NO original evidence
+access and NO Python 3.12 run; all results remain unverified until LocalCodex
+checks the saved original run and reruns focused regressions at exact HEAD.
+CI/FULL/new Minecraft/Action/S10/SCIENCE remain 0/NOT_RUN.
