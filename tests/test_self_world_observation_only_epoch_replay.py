@@ -15,7 +15,8 @@ from adapters.mineflayer.self_world_observation_only_dev import (
 )
 from adapters.mineflayer.self_world_observation_only_entry import ObservationOnlyEntryInventory
 from adapters.mineflayer.self_world_observation_only_epoch_replay import (
-    W4OfflineEpochBlocked, replay_w4_saved_self_world_epochs,
+    W4OfflineEpochBlocked,
+    replay_w4_saved_self_world_epochs,
 )
 from adapters.mineflayer.self_world_observation_only_lifetime import (
     join_observation_only_local_lifetime,
@@ -25,7 +26,6 @@ from adapters.mineflayer.self_world_observation_only_native_boundary import (
 )
 from adapters.mineflayer.self_world_stage_w3_capture import W3RawNodeStdoutCapture
 from relay_self.self_world import WorldPredictionReviewStatus
-
 from test_self_world_stage_w4_prehost import _offline_lines
 
 RUN = "0123456789abcdef"
@@ -45,7 +45,7 @@ def _case(root: Path, *, target_before=False, later_kind="zombie"):
                 obj["snapshot"]["nearby_entities_coverage"]["candidate_count"] = 0
             else:
                 obj["snapshot"]["nearby_entities"] = [{
-                    "entity_id": 23, "name": kind, "entity_type": "mob",
+                    "id": 23, "name": kind, "type": "mob",
                     "distance": 2.0,
                     "position": {"x": 2.0, "y": 64.0, "z": 0.0},
                 }]
@@ -119,6 +119,7 @@ def _case(root: Path, *, target_before=False, later_kind="zombie"):
         "external_grant_qualified": False,
         "action_count": 0, "outcome_count": 0, "s10_update_count": 0,
         "server_pid": 12001, "node_pid": 12002,
+        "pid_absent": {"12001": True, "12002": True},
         "adapter_started": asdict(started),
         "spawn": asdict(spawn), "before": asdict(before), "after": asdict(after),
         "readback": asdict(readback), "marker": asdict(marker),
@@ -257,3 +258,21 @@ def test_replay_is_read_only_no_process_or_world(monkeypatch, tmp_path):
         for p in root.iterdir() if p.is_file()
     }
     assert before == after
+
+
+@pytest.mark.parametrize("attack", ["pid_alive", "foreign_inventory", "receipt_symlink"])
+def test_replay_rejects_inconsistent_source_and_unsafe_receipt(tmp_path, attack):
+    root = tmp_path / "case"
+    report = _case(root)
+    if attack == "pid_alive":
+        report["pid_absent"]["12001"] = False
+    elif attack == "foreign_inventory":
+        report["inventory"]["exact_head"] = "b" * 40
+        report["local_lifetime"]["exact_head"] = "b" * 40
+    else:
+        receipt = root / "w3-node-stdout-receipt.json"
+        outside = tmp_path / "receipt.json"
+        receipt.rename(outside)
+        receipt.symlink_to(outside)
+    with pytest.raises(W4OfflineEpochBlocked):
+        replay_w4_saved_self_world_epochs(**_pin(root, report))

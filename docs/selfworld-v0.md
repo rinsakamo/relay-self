@@ -1313,8 +1313,8 @@ protected files are unchanged; missing identity now blocks this DEV join.
 
 ## W4 saved-DEV observation -> SelfWorld two-epoch offline replay (2026-10-23)
 
-\`adapters/mineflayer/self_world_observation_only_epoch_replay.py\` supplies
-\`replay_w4_saved_self_world_epochs()\` as a **strictly read-only offline
+`adapters/mineflayer/self_world_observation_only_epoch_replay.py` supplies
+`replay_w4_saved_self_world_epochs()` as a **strictly read-only offline
 developer projection**, not a runtime connector. It requires an operator-pinned
 SHA256 for the *original report.json* (e.g. the separate 2026-10-23 W4 DEV
 report already archived by LocalCodex), the original exact HEAD and run ID,
@@ -1332,10 +1332,10 @@ producer: these checks do not make Java console gametime or Node stdout
 independently attested Minecraft ticks. No timestamp or cross-clock relation
 is invented.
 
-It then invokes the **existing** \`project_mineflayer_present\`,
-\`project_self_world_present\`, \`compose_self_world_view\`, ATT
-\`select_self_world_attention\` and PRD \`predict_transition\`/
-\`review_self_world_prediction\` on two different read-only epochs of the
+It then invokes the **existing** `project_mineflayer_present`,
+`project_self_world_present`, `compose_self_world_view`, ATT
+`select_self_world_attention` and PRD `predict_transition`/
+`review_self_world_prediction` on two different read-only epochs of the
 same session. A simple **explicit hypothetical label-persistence baseline**
 is only generated if an earlier entity and its label were positively
 observed; it is NOT a learned transition law. If the source has no
@@ -1352,7 +1352,7 @@ bounded/L1/L2 choice routes would require separately validated owner
 snapshots; this DEV replay intentionally grants none.
 
 How to check on LocalCodex (without new World):
-\`\`\`python
+```python
 from pathlib import Path
 from adapters.mineflayer.self_world_observation_only_epoch_replay import (
     replay_w4_saved_self_world_epochs,
@@ -1367,7 +1367,7 @@ replay = replay_w4_saved_self_world_epochs(
 print(replay.classification, replay.prior.observation.source_ref,
       replay.following.observation.source_ref,
       replay.prediction_review)
-\`\`\`
+```
 This documented path is an **operator placeholder**, not evidence that this
 ChatGPT environment accessed the original WSL2 files.
 
@@ -1378,3 +1378,27 @@ verification. On this GitHub code-only branch there was NO original evidence
 access and NO Python 3.12 run; all results remain unverified until LocalCodex
 checks the saved original run and reruns focused regressions at exact HEAD.
 CI/FULL/new Minecraft/Action/S10/SCIENCE remain 0/NOT_RUN.
+
+
+### Local source verification and replay repair (2026-10-23)
+
+The local Python 3.12 replay accessed the original run `1e86a714f3ea3374`
+at source HEAD `1b221d845e42ea0e8be003239525c50de20e7fef`, with report
+SHA256 `a2f16d3bec33fcb6ea86d225858da8bf4df6dbedf5908eba950a0998f18c755f`.
+JSON-normalized dataclass comparison preserves exact source fields while
+accounting for tuple-to-array serialization. Synthetic entities use the
+existing wire keys `id` and `type`. Receipt symlinks, conflicting PID absence
+records and an inventory bound to another source HEAD are rejected.
+
+Original before/after native seq 3/5 produced distinct immutable epochs of
+the same Self/session. Both have zero observed entities: ATT selects none,
+no hypothetical forecast is constructed and `prediction_review` is `None`.
+Both probes report time_of_day 19; the local Java marker reports gametime 24.
+These are separate source fields, not proof of elapsed physical ticks.
+Fifteen tampering cases on disposable copies were rejected; original bytes
+and the existing archive SHA256 index were unchanged. MATCH/MISMATCH/
+UNDETERMINED remain separately tested synthetic behaviors.
+
+This verifies offline representation of an earlier DEV run, not a new-HEAD
+World run or independent physical custody. DEV_ONLY / QUALIFICATION_NO_GO /
+SCIENCE_NOT_RUN / NO_NEW_WORLD_RUN remain in force.

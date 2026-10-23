@@ -36,12 +36,19 @@ from adapters.mineflayer.self_world_projection import project_self_world_present
 from adapters.mineflayer.self_world_stage_w3_capture import audit_w3_sealed_stdout
 from relay_self.attention import AttentionCriterion, AttentionSelection
 from relay_self.prediction import (
-    PredictionState, StateVariable, TransitionRule, predict_transition,
+    PredictionState,
+    StateVariable,
+    TransitionRule,
+    predict_transition,
 )
 from relay_self.provenance import Provenance
 from relay_self.self_world import (
-    SelfWorldView, WorldForecast, WorldPredictionReview, WorldScenario,
-    compose_self_world_view, review_self_world_prediction,
+    SelfWorldView,
+    WorldForecast,
+    WorldPredictionReview,
+    WorldScenario,
+    compose_self_world_view,
+    review_self_world_prediction,
     select_self_world_attention,
 )
 
@@ -100,7 +107,7 @@ def _typed_source_frames(raw: bytes):
 def _exact_frame(frames, report: dict, name: str, frame_type):
     candidates = [
         item for item in frames
-        if type(item) is frame_type and asdict(item) == report.get(name)
+        if type(item) is frame_type and json.loads(json.dumps(asdict(item))) == report.get(name)
     ]
     if len(candidates) != 1:
         raise W4OfflineEpochBlocked(f"missing or ambiguous saved {name} frame")
@@ -161,8 +168,9 @@ def replay_w4_saved_self_world_epochs(
     ):
         raise W4OfflineEpochBlocked("not an exactly scoped completed W4 DEV record")
     try:
-        receipt = audit_w3_sealed_stdout(evidence_root)
+        _source_file(evidence_root, "w3-node-stdout-receipt.json", 2_000_000)
         raw_node = _source_file(evidence_root, "w3-node-stdout.raw.jsonl", 32 * 1024 * 1024)
+        receipt = audit_w3_sealed_stdout(evidence_root)
         frames = _typed_source_frames(raw_node)
         started = _exact_frame(frames, report, "adapter_started", MineflayerAdapterStarted)
         spawn = _exact_frame(frames, report, "spawn", MineflayerObservation)
@@ -192,13 +200,21 @@ def replay_w4_saved_self_world_epochs(
             readback=readback, marker=marker, close=report["close"],
             node_raw_root=evidence_root,
         )
-        if asdict(lifetime) != report.get("local_lifetime"):
+        if (asdict(lifetime) != report.get("local_lifetime")
+                or lifetime.exact_head != expected_source_head):
             raise W4OfflineEpochBlocked("local Node/Java lifetime does not match")
         disposal = NativeLocalDisposalReadback(**report["local_disposal"])
         if (
             disposal.schema != "W4_OBSERVATION_ONLY_NATIVE_LOCAL_DISPOSAL_V1"
             or disposal.java_pid != report.get("server_pid")
             or disposal.node_pid != report.get("node_pid")
+            or report.get("pid_absent") != {
+                str(disposal.java_pid): True, str(disposal.node_pid): True,
+            }
+            or any(report.get(k) for k in (
+                "native_inspection_error", "cleanup_error", "world_disposal_error",
+                "startup_cleanup_unconfirmed",
+            ))
             or disposal.port != 25565
             or disposal.world_dir_name != f"w4-observe-{expected_run_id}"
             or any(getattr(disposal, k) is not True for k in (
