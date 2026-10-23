@@ -116,6 +116,7 @@ jobs:
               adapters/mineflayer/self_world_observation_only_real_dev.py|\
               adapters/mineflayer/self_world_observation_only_epoch_replay.py|\
               adapters/mineflayer/self_world_observation_only_cognition.py|\
+              experiments/self_world_model_ab.py|\
               adapters/mineflayer/s49_normal_session_real_ci.py|\
               adapters/mineflayer/s34_native_world_cognition_ci.py|\
               src/relay_self/self_world.py|\
@@ -186,6 +187,7 @@ jobs:
               tests/test_self_world_observation_only_real_dev.py|\
               tests/test_self_world_observation_only_epoch_replay.py|\
               tests/test_self_world_observation_only_cognition.py|\
+              tests/test_self_world_model_ab.py|\
               tests/test_m02_paper_dev.py|\
               tests/test_m02_v8_stopped_world_clone_dev.py|\
               tests/test_m02_v7_new_qualification.py|\
@@ -278,6 +280,7 @@ jobs:
             tests/test_self_world_observation_only_real_dev.py \
             tests/test_self_world_observation_only_epoch_replay.py \
             tests/test_self_world_observation_only_cognition.py \
+            tests/test_self_world_model_ab.py \
             tests/test_mineflayer_process_session.py \
             tests/test_feature_s49_normal_runtime.py \
             tests/test_s49_cleanup.py \
