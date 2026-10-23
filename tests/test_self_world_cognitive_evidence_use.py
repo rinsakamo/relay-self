@@ -311,8 +311,75 @@ def test_projection_never_leaks_host_custody_or_raw_identity(sources, monkeypatc
         original["observation"]["selected_positive_observations"][0]["entity_ref"],
         original["observation"]["source_bound_digest"],
     ]
-    assert all(x not in rendered for x in protected)
+    # The fixture self_id is the single letter "A", also present in fixed
+    # strategy names. Compare complete JSON string values for short IDs;
+    # retain substring checks for opaque source references and digests.
+    def strings(value):
+        if isinstance(value, str):
+            yield value
+            try:
+                decoded = json.loads(value)
+            except (ValueError, TypeError):
+                return
+            if not isinstance(decoded, str):
+                yield from strings(decoded)
+        elif isinstance(value, dict):
+            for key, item in value.items():
+                yield key
+                yield from strings(item)
+        elif isinstance(value, (list, tuple)):
+            for item in value:
+                yield from strings(item)
+
+    projected_strings = tuple(strings(request))
+    assert all(x not in projected_strings for x in protected)
+    assert all(x not in rendered for x in protected if len(x) > 1)
     for bad in ("source_receipt_sha256", "entity_ref", "world_absence_established",
                 "world_safety_established", "source_bound_digest"):
         assert bad not in rendered
     assert r.custody_manifest["source_digest"] not in rendered
+
+
+def test_selection_reloads_fixed_source_and_rederives_whole_envelope(sources, monkeypatch):
+    r = prepare(sources, monkeypatch, goal=goal())
+    calls = []
+
+    def load(root):
+        calls.append(root)
+        return sources
+
+    monkeypatch.setattr(host.probe, "load_sources", load)
+    c, replay = sources[2]
+    kwargs = dict(
+        source_root=None, case_id=c.case_id, epoch="following",
+        expected_source_digest=digest(asdict(replay)), goal=goal(),
+        choice_id="USE_CURRENT_POSITIVE", request_sha256=r.request_sha256,
+    )
+    assert gate.validate_selected_strategy(r, **kwargs) == "USE_CURRENT_POSITIVE"
+    assert calls == [None]
+    # Same allowed choice and unchanged request are insufficient if ANY part
+    # of the candidate/custody envelope has been substituted.
+    for forged in (
+        replace(r, admissible=("USE_CURRENT_POSITIVE",)),
+        replace(r, custody_manifest={**r.custody_manifest, "raw_source_verified": False}),
+    ):
+        with pytest.raises(gate.EvidenceUseBlocked):
+            gate.validate_selected_strategy(forged, **kwargs)
+    assert calls == [None, None, None]
+    changed = list(sources)
+    changed[2] = (c, replace(replay, run_id="0" * 16))
+    monkeypatch.setattr(host.probe, "load_sources", lambda _: changed)
+    with pytest.raises(ValueError):
+        gate.validate_selected_strategy(r, **kwargs)
+
+
+def test_goal_kind_and_cost_are_independent_of_source_eligibility(sources, monkeypatch):
+    rows = [prepare(sources, monkeypatch, goal=gate.GoalSpec(kind, 2, budget))
+            for kind in ("EXPLAIN_OBSERVED", "ASSESS_FORECAST")
+            for budget in (0.0, 0.5)]
+    assert all(r.admissible == rows[0].admissible for r in rows)
+    assert rows[0].available == rows[2].available
+    assert rows[1].available == rows[3].available
+    assert "REQUEST_MORE_EVIDENCE" not in rows[0].available
+    assert "REQUEST_MORE_EVIDENCE" in rows[1].available
+    assert rows[0].request.context[0] != rows[2].request.context[0]

@@ -82,3 +82,71 @@ qualification and science are **not authorized for this step**. New isolated
 branch commits carry `[skip ci]`. Python 3.12 runtime and source file
 integrity are NOT verified in the GitHub-only implementation session. The
 result remains `SOURCE_ONLY_NOT_QUALIFIED` until independent host execution.
+
+## Independent Windows / WSL2 DEV validation (2026-10-23)
+
+The source-audited remote HEAD was `337a9b7df7cf64ad4661d400a71dbed2d723b12e`.
+Its immediate parent is `8d52ca10939697c52f0f2143eda4ef5101584143`;
+`ca0f95ef4cf879fa571cb6c97c6747c5e58a1607` is the registered comparison base
+(ten preparation commits), with exactly the three permitted added files.
+An independent detached worktree was used. Runtime: Ubuntu 24.04.4 / WSL2,
+Python 3.12.3, existing RSEE venv, pytest 9.1.1 and Ruff 0.16.7.
+
+Initial focused validation found one redaction-test failure: the fixture's
+single-letter self ID `A` also occurs inside fixed strategy names such as
+`CLAIM`. The repaired test recursively checks complete JSON string values
+for short IDs, retaining substring checks for longer identities and digests.
+This changes no evidence eligibility or model-facing content. Ruff also found
+one import-format error, corrected only in the new adapter. Additional negative
+controls directly verify fresh source reload at selection acceptance, full
+candidate/custody regeneration, and independent goal-kind/cost constraints.
+Initial failures and repaired runs are retained in an exclusive external root:
+`/home/rinsa/verification-evidence/w4-cognitive-independent-20261023T140100Z`.
+
+The real saved source `1e86a714f3ea3374` was loaded through unchanged strict
+replay; four original synthetic factories supply the other cases. Each of ten
+epochs was checked with `EXPLAIN_OBSERVED` (budget 0) and `ASSESS_FORECAST`
+(budget 0.5). Every available strategy in every READY request was accepted only
+after re-reading the fixed source and rederiving the entire envelope. A sole
+remaining strategy produces DEFER, preserving the existing two-choice contract.
+
+| Case / epoch | Positive | Review | Current / matched eligible | Explain, cost 0 | Assess, cost 0.5 |
+| --- | --- | --- | --- | --- | --- |
+| saved-empty / prior | 0 | NO_REVIEW | no / no | DEFER: W | READY: R,W |
+| saved-empty / following | 0 | NO_REVIEW | no / no | DEFER: W | READY: R,W |
+| match / prior | 1 zombie | NO_REVIEW | yes / no | READY: C,W | READY: C,R,W |
+| match / following | 1 zombie | MATCH | yes / yes | READY: C,M,W | READY: C,M,R,W |
+| mismatch / prior | 1 zombie | NO_REVIEW | yes / no | READY: C,W | READY: C,R,W |
+| mismatch / following | 1 skeleton | MISMATCH | yes / no | READY: C,W | READY: C,R,W |
+| unknown / prior | 1 zombie | NO_REVIEW | yes / no | READY: C,W | READY: C,R,W |
+| unknown / following | 0 | UNDETERMINED | no / no | DEFER: W | READY: R,W |
+| synthetic-empty / prior | 0 | NO_REVIEW | no / no | DEFER: W | READY: R,W |
+| synthetic-empty / following | 0 | NO_REVIEW | no / no | DEFER: W | READY: R,W |
+
+C=current positive, M=matched target/property/value only, R=request more evidence,
+W=withhold unsupported claim. These are eligibility sets, not optimal-strategy
+labels. NO_REVIEW does not establish forecast absence or MATCH; UNDETERMINED
+and zero positives establish neither prediction failure nor World absence/safety.
+Goal kind and importance are independent request inputs; only the explicit cost
+budget filters availability. No cognitive optimality or measured cost is claimed.
+
+The historical SEM archive was reconciled read-only and exactly reproduced the
+prior audit (RAW 20/40, SEM 36/40 unchanged). Integrity checks cover 82 protected
+targets in the new worktree and original locations, all 770 historical entries
+and their index, seven prior evidence trees including original SEM and host
+two-axis, and ten additional source/authority path hashes. Full per-file hashes,
+initial/final test logs, JUnit counts and the 20-row matrix remain external.
+
+No CI, FULL regression, real LLM, GPU, Minecraft, physical Action, new physical
+OUTCOME, retained Memory/S10 update, qualification or SCIENCE was executed.
+Dependency tests use offline fixtures and fake providers only. Static identical
+responses still require a future existing-owner consumption lifecycle; this
+adapter creates no one-use authority. Future real-LLM necessity and scientific
+validation require separate review and registration after this DEV result.
+
+Final independent gate: **245 PASS / 0 FAIL / 0 ERROR / 0 SKIP**, Ruff **PASS**,
+repository contracts **PASS**. Initial focused run: 242 PASS / 1 FAIL / 0 ERROR /
+0 SKIP; repair-only run: 29 PASS. Initial Ruff failure is retained. SHA before /
+after comparison **PASS**. Completion:
+`W4_SELF_WORLD_COGNITIVE_EVIDENCE_USE_OFFLINE_DEV_RESULT`.
+`DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.

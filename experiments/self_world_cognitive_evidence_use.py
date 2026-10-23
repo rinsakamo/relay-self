@@ -13,7 +13,9 @@ from experiments import self_world_host_two_axis as host
 from experiments.self_world_metadata_ablation import digest
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
-    BoundedChoice, BoundedChoiceRequest, CognitionDatum,
+    BoundedChoice,
+    BoundedChoiceRequest,
+    CognitionDatum,
 )
 
 SCOPE = "DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN"
