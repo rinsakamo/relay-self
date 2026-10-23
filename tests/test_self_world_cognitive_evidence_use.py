@@ -1,4 +1,5 @@
 """DEV source-only evidence-use gate: no provider or physical execution."""
+import json
 from copy import deepcopy
 from dataclasses import asdict, replace
 
@@ -81,7 +82,7 @@ def test_ten_epochs_goals_stay_host_bound(sources, monkeypatch, kind, budget):
             assert tuple(c.choice_id for c in r.request.choices) == r.available
             assert r.request_sha256 == digest(asdict(r.request))
             projected = {
-                d.key: __import__("json").loads(d.value_json) for d in r.request.context
+                d.key: json.loads(d.value_json) for d in r.request.context
             }
             assert projected["dev_host_evidence_allowlist"]["positive_selected_count"] == positive
             assert projected["dev_host_evidence_allowlist"]["review_status"] == review
@@ -100,7 +101,7 @@ def test_mismatch_keeps_current_skeleton_without_old_zombie(sources, monkeypatch
         request_sha256=r.request_sha256,
         goal_spec=goal("ASSESS_FORECAST"),
     ) == "USE_CURRENT_POSITIVE"
-    p = __import__("json").loads(r.request.context[1].value_json)
+    p = json.loads(r.request.context[1].value_json)
     assert p["current_positive"][0]["label"] == "skeleton"
     assert p["matched_scope"] is None
     assert p["review_status"] == "MISMATCH"
@@ -110,7 +111,7 @@ def test_mismatch_keeps_current_skeleton_without_old_zombie(sources, monkeypatch
 def test_match_is_only_current_target_attribute_scope(sources, monkeypatch):
     r = prepare(sources, monkeypatch, case=1, goal=goal("ASSESS_FORECAST"))
     assert "USE_MATCHED_FORECAST_SCOPE" in r.available
-    p = __import__("json").loads(r.request.context[1].value_json)
+    p = json.loads(r.request.context[1].value_json)
     assert p["matched_scope"] == {
         "property": "entity_label",
         "supported_value": "zombie",
@@ -120,7 +121,7 @@ def test_match_is_only_current_target_attribute_scope(sources, monkeypatch):
 
 def test_prior_forecast_no_review_not_promoted(sources, monkeypatch):
     r = prepare(sources, monkeypatch, case=1, epoch="prior", goal=goal())
-    p = __import__("json").loads(r.request.context[1].value_json)
+    p = json.loads(r.request.context[1].value_json)
     assert p["prior_forecast_present"]
     assert p["forecast_present_in_view"]
     assert p["review_status"] == "NO_REVIEW"
@@ -131,7 +132,7 @@ def test_prior_forecast_no_review_not_promoted(sources, monkeypatch):
 
 def test_unknown_following_is_not_false_forecast_or_world_absence(sources, monkeypatch):
     r = prepare(sources, monkeypatch, case=3, goal=goal())
-    p = __import__("json").loads(r.request.context[1].value_json)
+    p = json.loads(r.request.context[1].value_json)
     assert p["review_status"] == "UNDETERMINED"
     assert p["positive_selected_count"] == 0
     assert p["unobserved"] == "UNKNOWN_not_world_absence"
@@ -159,6 +160,7 @@ def test_no_goal_or_zero_budget_is_defer_when_only_one_choice(sources, monkeypat
     ("EXPLAIN_OBSERVED", 0, 1),
     ("EXPLAIN_OBSERVED", True, 1),
     ("FORGED_SOURCE_GOAL", 1, 1),
+    ({"not": "a goal"}, 1, 1),
 ])
 def test_bad_goals_rejected(bad):
     with pytest.raises(gate.EvidenceUseBlocked):
@@ -297,7 +299,7 @@ def test_projection_never_leaks_host_custody_or_raw_identity(sources, monkeypatc
         expected_source_digest=digest(asdict(replay)),
     )
     request = asdict(r.request)
-    rendered = __import__("json").dumps(request)
+    rendered = json.dumps(request)
     protected = [
         original["binding"]["source_receipt_sha256"],
         original["binding"]["self_id"],
