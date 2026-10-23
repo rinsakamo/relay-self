@@ -48,7 +48,8 @@ class GoalSpec:
 
     def __post_init__(self):
         if (
-            self.kind not in GOAL_KINDS
+            type(self.kind) is not str
+            or self.kind not in GOAL_KINDS
             or type(self.importance) is not int
             or not 1 <= self.importance <= 3
             or type(self.max_additional_cost) not in (int, float)
@@ -60,7 +61,7 @@ class GoalSpec:
 
 @dataclass(frozen=True, slots=True)
 class EvidenceUseCandidates:
-    """Immutable gate output; custody must NEVER be passed to a provider."""
+    """Frozen gate envelope; custody dict is host-private, not a capability."""
 
     request: BoundedChoiceRequest | None
     admissible: tuple[str, ...]
