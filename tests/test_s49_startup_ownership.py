@@ -629,3 +629,40 @@ def test_local_python_child_resisting_term_real_kill_reap():
                 await asyncio.wait_for(process.wait(), timeout=5)
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("raw_capture", [False, True])
+def test_sole_java_collector_exception_is_not_a_190s_ready_wait(
+    monkeypatch, tmp_path, raw_capture,
+):
+    """Default and raw-DEV both fail fast, then reclaim the exact Java child."""
+    class BrokenStdout:
+        async def readline(self):
+            await asyncio.sleep(0)
+            raise RuntimeError("collector injected IO failure")
+
+    process = FakeProcess()
+    process.stdout = BrokenStdout()
+
+    async def fake_spawn(*args, **kwargs):
+        return process
+
+    monkeypatch.setattr(s31a, "spawn_with_custody", fake_spawn)
+
+    async def run():
+        kwargs = {}
+        if raw_capture:
+            kwargs["raw_stdout_path"] = tmp_path / "java-stdout.raw"
+        with pytest.raises(RuntimeError, match="collector injected IO failure"):
+            await asyncio.wait_for(
+                s31a._ready_server(
+                    tmp_path, tmp_path / "pinned-inert.jar",
+                    tmp_path / "original-java.log", **kwargs,
+                ),
+                timeout=3,
+            )
+        assert process.terminated == 1
+        assert process.reaped == 1
+        assert process.returncode == -15
+
+    asyncio.run(run())

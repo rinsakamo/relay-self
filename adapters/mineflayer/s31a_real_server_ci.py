@@ -233,16 +233,14 @@ async def _ready_server(
                     ready_or_collector_done.set()
 
         collector = asyncio.create_task(collect())
-        if raw_sink is None:
-            await asyncio.wait_for(ready.wait(), timeout=190)
-        else:
-            # An opted-in evidence writer can fail before the ready marker.
-            # Fail immediately instead of waiting 190s for an impossible event.
-            await asyncio.wait_for(ready_or_collector_done.wait(), timeout=190)
-            if collector.done():
-                collector.result()
-            if not ready.is_set():
-                raise S31ABlocked("raw Java collector ended before server readiness")
+        # Both the original 3-argument route and opted-in raw capture use
+        # the *same* sole stdout reader's completion event. A reader fault
+        # cannot leave the default route waiting 190 seconds for a dead task.
+        await asyncio.wait_for(ready_or_collector_done.wait(), timeout=190)
+        if collector.done():
+            collector.result()
+        if not ready.is_set():
+            raise S31ABlocked("Java collector ended before server readiness")
         if server.returncode is not None:
             raise S31ABlocked("server exited even though startup was signalled")
         return server, collector, ready

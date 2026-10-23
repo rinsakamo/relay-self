@@ -126,3 +126,17 @@ W4 PR634 integration candidate 557027be732362e021cceeb8aaa503f2f80acfe0.
   focused regression, and inert OS PID tests MUST be run on this new exact
   HEAD in WSL2. No current-head runtime PASS is claimed. No Minecraft,
   CI dispatch or physical Action is permitted for this review.
+
+
+### S31A legacy collector early-failure correction
+
+The earlier LocalCodex unpushed candidate reported a separate repaired
+default S31A readiness gap. This branch independently implements the
+minimal correction: both \`raw_stdout_path=None\` (old three-argument
+owner) and opt-in raw capture now wait on the **same existing sole
+collector's** ready-or-done event. If it has already ended, its error is
+retrieved immediately and the original process is terminated/reaped.
+No second Java reader or alternate server launcher is introduced.
+A two-arm offline fault fixture (raw off/on) is added to
+\`tests/test_s49_startup_ownership.py\`. These tests have NOT yet been
+run against this candidate HEAD.
