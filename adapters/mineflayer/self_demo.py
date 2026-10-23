@@ -414,11 +414,21 @@ async def _run_disposable(
     self_world_retained_handoff: bool = False,
     stage_r_dev: bool = False,
     raw_capture_root: Path | None = None,
+    passive_self_views: bool = False,
 ) -> int:
     # Existing exact S49 host is the *only* issuer. No duplicated event loop,
     # no new Game Action code or arbitrary LLM output -> Action mapping.
     from adapters.mineflayer.s49_normal_session_real_ci import qualify
 
+    passive_views = None
+    if passive_self_views:
+        if (live_model is not None or stage_r_dev or self_world_live
+                or self_world_prospective or self_world_typed_closure
+                or self_world_retained_handoff or raw_capture_root is not None):
+            raise DemoRejected("passive Self views require exclusive model-free S49 DEV")
+        from adapters.mineflayer.self_product_passive_views import PassiveSelfViews
+
+        passive_views = PassiveSelfViews()
     live_observer = None
     if live_model is not None:
         from adapters.mineflayer.self_live_think import LiveL2Observer
@@ -473,7 +483,14 @@ async def _run_disposable(
             except (OSError, ValueError, TypeError) as exc:
                 # Advisory record failure must NEVER veto sole L0/Action owner.
                 witness.error = type(exc).__name__
-        await live_observer.observe(reading)
+        if passive_views is not None:
+            try:
+                passive_views.observe(reading)
+            except Exception as exc:
+                # The read-only projection cannot veto S49's native Action owner.
+                passive_views.record_error(exc)
+        if live_observer is not None:
+            await live_observer.observe(reading)
 
     previous = os.environ.get("S49_REAL_SERVER_CI")
     previous_r = os.environ.get("S49_STAGE_R_DEV_ONLY")
@@ -489,6 +506,7 @@ async def _run_disposable(
             return await qualify(
                 report_path, server_log,
                 **({"raw_capture_root": raw_capture_root} if raw_capture_root is not None else {}),
+                **({"live_probe": observed_source} if passive_views is not None else {}),
             )
         if stage_n is None:
             return await qualify(report_path, server_log, live_probe=observed_source)
@@ -528,6 +546,11 @@ async def _run_disposable(
             with observe_closed_native_actions(on_closed):
                 return await qualify(report_path, server_log, live_probe=observed_source)
     finally:
+        if passive_views is not None:
+            _write_trace(
+                report_path.parent / "self_views.jsonl",
+                (*passive_views.rows(), passive_views.summary()),
+            )
         if stage_o is not None:
             _write_trace(
                 report_path.parent / "stage_o_retained_owner.jsonl",
@@ -632,6 +655,16 @@ def _dev_run(args: argparse.Namespace) -> int:
         retained_handoff = getattr(args, "self_world_retained_handoff", False)
         stage_r = getattr(args, "self_world_stage_r_dev", False)
         stage_w3 = getattr(args, "self_world_w3_raw_capture", False)
+        passive_views = getattr(args, "self_passive_views", False)
+        if type(passive_views) is not bool or (
+            passive_views and (
+                scenario != "native" or stage_r or stage_w3
+                or args.think or args.live_think
+                or getattr(args, "self_world_live", False)
+                or prospective or typed_closure or retained_handoff
+            )
+        ):
+            raise DemoRejected("passive SelfBody/SelfWorld needs exclusive native DEV")
         if type(stage_w3) is not bool or (stage_w3 and (
             scenario != "native" or stage_r or args.live_think or args.think
             or getattr(args, "self_world_live", False) or prospective
@@ -776,8 +809,72 @@ def _dev_run(args: argparse.Namespace) -> int:
                     code = asyncio.run(_run_disposable(
                         root / "native_report.json", root / "minecraft_server.log",
                         **({"raw_capture_root": root} if stage_w3 else {}),
+                        passive_self_views=passive_views,
                     ))
         native = json.loads((root / "native_report.json").read_text())
+        if passive_views:
+            # Compare every passive projection against original S49's own
+            # already correlated source pairs; never qualify native origin.
+            sidecar = root / "self_views.jsonl"
+            if (not sidecar.is_file() or sidecar.is_symlink()
+                    or sidecar.stat().st_size > 65536):
+                raise DemoRejected("passive Self view sidecar unavailable/invalid")
+            rows = [json.loads(line) for line in sidecar.read_text().splitlines()]
+            pairs = native.get("source_pair_trace")
+            native_session = native.get("session_id")
+            valid = (
+                isinstance(pairs, list) and len(pairs) == 3
+                and len(rows) == 4
+                and isinstance(native_session, str) and bool(native_session)
+                and isinstance(rows[-1], dict)
+                and rows[-1].get("kind") == "passive_self_views_summary"
+                and rows[-1].get("session_id") == native_session
+                and rows[-1].get("native_probes_joined") == 3
+                and rows[-1].get("observer_errors") == []
+                and rows[-1].get("extra_native_probes") == 0
+                and rows[-1].get("model_calls") == 0
+                and rows[-1].get("s10_commits") == 0
+                and rows[-1].get("action_issued") is False
+                and rows[-1].get("source_qualified") is False
+                and all(
+                    isinstance(p, dict) and isinstance(row, dict)
+                    and type(p.get("probe_seq")) is int
+                    and type(p.get("event_seq")) is int
+                    and row.get("kind") == "passive_self_views"
+                    and row.get("session_id") == native_session
+                    and row.get("native_seq") == p["probe_seq"]
+                    and row.get("request_id") ==
+                        f"s49-actual:{native_session}:event-{p['event_seq']}"
+                    and row.get("body_source_ref") ==
+                        f"native-probe:{native_session}:{p['probe_seq']}:"
+                        f"s49-actual:{native_session}:event-{p['event_seq']}"
+                    and row.get("world_source_ref") ==
+                        f"present:{native_session}:{p['probe_seq']}:"
+                        f"s49-actual:{native_session}:event-{p['event_seq']}"
+                    and row.get("body_world_exact_source_join") is True
+                    and row.get("observed_world_entities") ==
+                        len(p.get("probe_entities", []))
+                    and row.get("unobserved_world_absent") is None
+                    and row.get("world_safe") is None
+                    and row.get("action_issued") is False
+                    and row.get("model_calls") == 0
+                    and row.get("s10_commits") == 0
+                    for p, row in zip(pairs, rows[:3], strict=True)
+                )
+            )
+            receipt.update(
+                dev_passive_self_views="SOURCE_JOINED_DEV_ONLY" if valid else "UNDETERMINED",
+                dev_passive_self_views_count=3 if valid else 0,
+                dev_passive_self_views_sidecar="self_views.jsonl",
+                dev_passive_self_views_action_issuer="EXISTING_S49_ONLY",
+                dev_passive_self_views_extra_actions=0,
+                dev_passive_self_views_s10_updates=0,
+            )
+            if code == 0 and not valid:
+                code = 1
+                receipt["dev_passive_self_views_incomplete"] = (
+                    "ORIGINAL_SOURCE_BOUND_VIEW_JOIN_NOT_PROVEN"
+                )
         if scenario == "b1-local-adaptation":
             receipt["dev_b1_fixture_seed"] = native.get("b1_fixture_seed")
             if native.get("b1_fixture_seed") is not None:
@@ -1311,6 +1408,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="model-free native DEV ONLY: original S49 single-writer S10 HOLD")
     parser.add_argument("--self-world-w3-raw-capture", action="store_true",
                         help="DEV-only source bytes capture for original S49 model-free scenario; no grant")
+    parser.add_argument("--self-passive-views", action="store_true",
+                        help="DEV-only existing S49 probe -> read-only SelfBody/SelfWorld; no model")
     parser.add_argument("--model-alias", help="explicit pre-existing loopback model alias")
     parser.add_argument("--model-port", type=int, help="existing localhost OpenAI-compatible port")
     parser.add_argument("--model-timeout", type=float, default=12.0)
