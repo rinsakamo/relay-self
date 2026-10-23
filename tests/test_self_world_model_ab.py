@@ -327,3 +327,13 @@ def test_redirect_is_rejected_before_second_endpoint():
 
     with pytest.raises(LlamaCppProviderError, match="redirect"):
         NoRedirect().redirect_request(None, None, 302, "", {}, "http://external/")
+
+
+def test_output_parent_traversal_cannot_bypass_source_boundary(tmp_path):
+    from experiments.self_world_model_ab import _check_new_path
+
+    folder = tmp_path / "folder"
+    folder.mkdir()
+    with pytest.raises(W4ModelABBlocked):
+        _check_new_path(folder / ".." / "fresh-report.json")
+    assert not (tmp_path / "fresh-report.json").exists()

@@ -471,7 +471,8 @@ def _synthetic_cases() -> tuple[CognitionCase, ...]:
 
 
 def _check_new_path(path: Path) -> None:
-    if (not path.is_absolute() or not path.parent.is_dir()
+    if (not path.is_absolute() or path != path.resolve()
+            or not path.parent.is_dir()
             or path.exists() or path.is_symlink()
             or any(part.is_symlink() for part in path.parents)):
         raise W4ModelABBlocked("new external non-symlink output path required")
