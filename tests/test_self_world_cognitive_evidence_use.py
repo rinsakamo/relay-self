@@ -30,6 +30,21 @@ def goal(kind="EXPLAIN_OBSERVED", budget=0.5):
     return gate.GoalSpec(kind, 2, budget)
 
 
+_UNSET = object()
+
+
+def validate(sources, monkeypatch, prepared, *, choice_id, request_sha256,
+             case=2, epoch="following", goal_spec=_UNSET):
+    monkeypatch.setattr(host.probe, "load_sources", lambda _: sources)
+    c, replay = sources[case]
+    selected_goal = goal() if goal_spec is _UNSET else goal_spec
+    return gate.validate_selected_strategy(
+        prepared, choice_id=choice_id, request_sha256=request_sha256,
+        source_root=None, case_id=c.case_id, epoch=epoch,
+        expected_source_digest=digest(asdict(replay)), goal=selected_goal,
+    )
+
+
 @pytest.mark.parametrize("kind,budget", [
     ("EXPLAIN_OBSERVED", 0.0),
     ("ASSESS_FORECAST", 0.5),
@@ -80,8 +95,10 @@ def test_mismatch_keeps_current_skeleton_without_old_zombie(sources, monkeypatch
     r = prepare(sources, monkeypatch, goal=goal("ASSESS_FORECAST"))
     assert "USE_CURRENT_POSITIVE" in r.admissible
     assert "USE_MATCHED_FORECAST_SCOPE" not in r.admissible
-    assert gate.validate_selected_strategy(
-        r, choice_id="USE_CURRENT_POSITIVE", request_sha256=r.request_sha256,
+    assert validate(
+        sources, monkeypatch, r, choice_id="USE_CURRENT_POSITIVE",
+        request_sha256=r.request_sha256,
+        goal_spec=goal("ASSESS_FORECAST"),
     ) == "USE_CURRENT_POSITIVE"
     p = __import__("json").loads(r.request.context[1].value_json)
     assert p["current_positive"][0]["label"] == "skeleton"
@@ -129,8 +146,9 @@ def test_no_goal_or_zero_budget_is_defer_when_only_one_choice(sources, monkeypat
         assert r.status == "DEFER"
         assert r.request is None
         with pytest.raises(gate.EvidenceUseBlocked):
-            gate.validate_selected_strategy(
-                r, choice_id="WITHHOLD_UNSUPPORTED_CLAIM", request_sha256="",
+            validate(
+                sources, monkeypatch, r, choice_id="WITHHOLD_UNSUPPORTED_CLAIM",
+                request_sha256="", case=0, goal_spec=g,
             )
 
 
@@ -150,23 +168,52 @@ def test_bad_goals_rejected(bad):
 def test_cannot_force_candidate_or_replay_request(sources, monkeypatch):
     r = prepare(sources, monkeypatch, goal=goal())
     with pytest.raises(gate.EvidenceUseBlocked):
-        gate.validate_selected_strategy(
-            r, choice_id="USE_MATCHED_FORECAST_SCOPE", request_sha256=r.request_sha256,
+        validate(
+            sources, monkeypatch, r, choice_id="USE_MATCHED_FORECAST_SCOPE", request_sha256=r.request_sha256,
         )
     with pytest.raises(gate.EvidenceUseBlocked):
-        gate.validate_selected_strategy(
-            r, choice_id="USE_CURRENT_POSITIVE", request_sha256="0" * 64,
+        validate(
+            sources, monkeypatch, r, choice_id="USE_CURRENT_POSITIVE", request_sha256="0" * 64,
         )
     forged = replace(r, available=(*r.available, "USE_MATCHED_FORECAST_SCOPE"))
     with pytest.raises(gate.EvidenceUseBlocked):
-        gate.validate_selected_strategy(
-            forged, choice_id="USE_MATCHED_FORECAST_SCOPE",
+        validate(
+            sources, monkeypatch, forged, choice_id="USE_MATCHED_FORECAST_SCOPE",
             request_sha256=forged.request_sha256,
+        )
+    # Changing all visible fields and recomputing the request digest is NOT
+    # sufficient to acquire host custody: validation reads the fixed source.
+    from relay_self.relay_engine import BoundedChoice
+    forced_choice = "USE_MATCHED_FORECAST_SCOPE"
+    altered_request = replace(
+        r.request,
+        choices=(*r.request.choices, BoundedChoice(forced_choice, "forged")),
+    )
+    force_list = (*r.available, forced_choice)
+    full_forgery = replace(
+        r, request=altered_request, available=force_list,
+        admissible=(*r.admissible, forced_choice),
+        custody_manifest={**r.custody_manifest,
+                          "available": force_list,
+                          "admissible": (*r.admissible, forced_choice)},
+        request_sha256=digest(asdict(altered_request)),
+    )
+    with pytest.raises(gate.EvidenceUseBlocked):
+        validate(
+            sources, monkeypatch, full_forgery,
+            choice_id=forced_choice,
+            request_sha256=full_forgery.request_sha256,
+        )
+    # Reusing the request under another goal cost ceiling is not valid.
+    with pytest.raises(gate.EvidenceUseBlocked):
+        validate(
+            sources, monkeypatch, r, choice_id="USE_CURRENT_POSITIVE",
+            request_sha256=r.request_sha256, goal_spec=goal(budget=0.0),
         )
     tampered_request = replace(r.request, request_id="foreign-replay")
     with pytest.raises(gate.EvidenceUseBlocked):
-        gate.validate_selected_strategy(
-            replace(r, request=tampered_request),
+        validate(
+            sources, monkeypatch, replace(r, request=tampered_request),
             choice_id="USE_CURRENT_POSITIVE", request_sha256=r.request_sha256,
         )
 
