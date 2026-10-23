@@ -123,6 +123,8 @@ def _checked_record(record: dict, expected_source_digest: str) -> None:
         }
         or observation["source_verified"] is not True
         or observation["source_verification_status"] != "VERIFIED_FIXED_DEV_SOURCE"
+        or observation["observation_source"]["observer_id"] != b["self_id"]
+        or observation["observation_source"]["session_id"] != b["session_id"]
         or observation["world_absence_established"] is not False
         or observation["world_safety_established"] is not False
         or prediction["action_success"] is not None
@@ -166,7 +168,12 @@ def _checked_record(record: dict, expected_source_digest: str) -> None:
         or review.get("session_id") != b["session_id"]
         or review.get("later_epoch_id") != b["epoch_id"]
         or review.get("later_observation_ref")
-        != observation["observation_source"].get("source_ref")
+        != (
+            "present:"
+            + str(observation["observation_source"]["session_id"])
+            + ":" + str(observation["observation_source"]["native_seq"])
+            + ":" + str(observation["observation_source"]["request_id"])
+        )
         or review.get("observation_provenance")
         != observation["observation_provenance"]
     ):
