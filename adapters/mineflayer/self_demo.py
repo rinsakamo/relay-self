@@ -546,11 +546,6 @@ async def _run_disposable(
             with observe_closed_native_actions(on_closed):
                 return await qualify(report_path, server_log, live_probe=observed_source)
     finally:
-        if passive_views is not None:
-            _write_trace(
-                report_path.parent / "self_views.jsonl",
-                (*passive_views.rows(), passive_views.summary()),
-            )
         if stage_o is not None:
             _write_trace(
                 report_path.parent / "stage_o_retained_owner.jsonl",
@@ -576,6 +571,12 @@ async def _run_disposable(
             os.environ.pop("S49_REAL_SERVER_CI", None)
         else:
             os.environ["S49_REAL_SERVER_CI"] = previous
+        # Never defer original host environment restoration to sidecar I/O.
+        if passive_views is not None:
+            _write_trace(
+                report_path.parent / "self_views.jsonl",
+                (*passive_views.rows(), passive_views.summary()),
+            )
 
 
 async def _run_b1_local_dev(
@@ -820,48 +821,11 @@ def _dev_run(args: argparse.Namespace) -> int:
                     or sidecar.stat().st_size > 65536):
                 raise DemoRejected("passive Self view sidecar unavailable/invalid")
             rows = [json.loads(line) for line in sidecar.read_text().splitlines()]
-            pairs = native.get("source_pair_trace")
-            native_session = native.get("session_id")
-            valid = (
-                isinstance(pairs, list) and len(pairs) == 3
-                and len(rows) == 4
-                and isinstance(native_session, str) and bool(native_session)
-                and isinstance(rows[-1], dict)
-                and rows[-1].get("kind") == "passive_self_views_summary"
-                and rows[-1].get("session_id") == native_session
-                and rows[-1].get("native_probes_joined") == 3
-                and rows[-1].get("observer_errors") == []
-                and rows[-1].get("extra_native_probes") == 0
-                and rows[-1].get("model_calls") == 0
-                and rows[-1].get("s10_commits") == 0
-                and rows[-1].get("action_issued") is False
-                and rows[-1].get("source_qualified") is False
-                and all(
-                    isinstance(p, dict) and isinstance(row, dict)
-                    and type(p.get("probe_seq")) is int
-                    and type(p.get("event_seq")) is int
-                    and row.get("kind") == "passive_self_views"
-                    and row.get("session_id") == native_session
-                    and row.get("native_seq") == p["probe_seq"]
-                    and row.get("request_id") ==
-                        f"s49-actual:{native_session}:event-{p['event_seq']}"
-                    and row.get("body_source_ref") ==
-                        f"native-probe:{native_session}:{p['probe_seq']}:"
-                        f"s49-actual:{native_session}:event-{p['event_seq']}"
-                    and row.get("world_source_ref") ==
-                        f"present:{native_session}:{p['probe_seq']}:"
-                        f"s49-actual:{native_session}:event-{p['event_seq']}"
-                    and row.get("body_world_exact_source_join") is True
-                    and row.get("observed_world_entities") ==
-                        len(p.get("probe_entities", []))
-                    and row.get("unobserved_world_absent") is None
-                    and row.get("world_safe") is None
-                    and row.get("action_issued") is False
-                    and row.get("model_calls") == 0
-                    and row.get("s10_commits") == 0
-                    for p, row in zip(pairs, rows[:3], strict=True)
-                )
+            from adapters.mineflayer.self_product_passive_views import (
+                verify_passive_source_join,
             )
+
+            valid = verify_passive_source_join(native, rows)
             receipt.update(
                 dev_passive_self_views="SOURCE_JOINED_DEV_ONLY" if valid else "UNDETERMINED",
                 dev_passive_self_views_count=3 if valid else 0,
