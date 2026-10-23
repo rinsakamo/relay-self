@@ -91,3 +91,38 @@ Only when these are verified and protected owner review is accepted:
 
 Until then: \`STATIC_API_REVIEW_DONE / OFFLINE_EXECUTION_UNVERIFIED /
 PR_UNCHANGED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN\`.
+
+
+## 2026-10-23 isolated original-owner cleanup repairs (prospective, not yet qualified)
+
+The previous LocalCodex exact HEAD 78899df900f03119139d5da46d870ac66f57c449
+is **LOCAL ONLY and not accessible via GitHub**. Do not overwrite or
+backfill its report. This new independent branch is based on the published
+W4 PR634 integration candidate 557027be732362e021cceeb8aaa503f2f80acfe0.
+
+- S34 _new_session(): local cleanup now calls the already-installed
+  MineflayerProcessSession.abort_startup() after native spawn cancellation
+  or any BaseException, preserving primary fault and treating cleanup
+  failure as UNCONFIRMED rather than an owner success.
+- S49 qualify(): existing decision/Action/S10 code is byte-for-byte kept.
+  Owner-supplied cleanup and final-status logic are taken from the independent
+  original-owner DEV implementation previously exercised at donor HEAD
+  1b221d845e42ea0e8be003239525c50de20e7fef.
+  This serially supervises staging, Node shutdown/terminate/reap,
+  raw capture incomplete sealing, Java shutdown/reap, collector and temp,
+  even after a preceding cancel/secondary exception. Cleanup faults revoke
+  provisional PASS; original same-session report is atomically persisted.
+- The donor synthetic cancellation tests for S34/startup and S49 cleanup are
+  preserved as standalone test files, without modifying the original frozen
+  evidence or adding a second owner.
+- The historical W4 original-blob guard still contains all 19 exact
+  pre-adoption SHA pins and **has not been modified or bypassed**.
+  Prospective adoption of the 4 changed protected startup/owner blobs
+  (S31A, ProcessSession, S34, S49) requires explicit owner review of exact
+  baseline/candidate diffs. Until reviewed, the old W4 original-default
+  test is **EXPECTED TO FAIL**, not skip/xfail, and integration to PR #634
+  remains blocked. S18 architecture freeze is a separate static gate.
+- This is a source repair only. Python 3.12, Node 22, Ruff, contracts,
+  focused regression, and inert OS PID tests MUST be run on this new exact
+  HEAD in WSL2. No current-head runtime PASS is claimed. No Minecraft,
+  CI dispatch or physical Action is permitted for this review.

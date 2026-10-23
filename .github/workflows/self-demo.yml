@@ -167,6 +167,8 @@ jobs:
               tests/test_self_world_stage_w4_prehost.py|\
               tests/test_self_world_stage_w4_lease.py|\
               tests/test_self_world_stage_w4_optin_offline.py|\
+              tests/test_s49_cleanup.py|\
+              tests/test_s49_startup_ownership.py|\
               tests/test_self_world_observation_only_close.py|\
               tests/test_self_world_observation_only_dev.py|\
               tests/test_self_world_observation_only_entry.py|\
@@ -266,6 +268,8 @@ jobs:
             tests/test_self_world_observation_only_real_dev.py \
             tests/test_mineflayer_process_session.py \
             tests/test_feature_s49_normal_runtime.py \
+            tests/test_s49_cleanup.py \
+            tests/test_s49_startup_ownership.py \
             tests/test_self_body.py \
             tests/test_self_world.py
 
