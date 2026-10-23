@@ -324,17 +324,31 @@ def prepare_evidence_use(
 
 def validate_selected_strategy(
     prepared: EvidenceUseCandidates, *, choice_id: str, request_sha256: str,
+    source_root, case_id: str, epoch: str, expected_source_digest: str,
+    goal: GoalSpec | None,
 ) -> str:
-    """Reject disallowed/replayed/substituted choice; still NOT World authority."""
+    """Re-read original host evidence before accepting a choice ID.
+
+    A caller-controlled dataclass (even one with matching forged hashes) is not
+    host authority. Nor is this a one-time consumption lease: an identical
+    response to an identical static offline request cannot be distinguished
+    without the separately owned future request/response lifecycle.
+    """
+    if type(prepared) is not EvidenceUseCandidates:
+        raise EvidenceUseBlocked("untyped candidate set")
+    fresh = prepare_evidence_use(
+        source_root, case_id=case_id, epoch=epoch,
+        expected_source_digest=expected_source_digest, goal=goal,
+    )
     if (
-        type(prepared) is not EvidenceUseCandidates
-        or prepared.status != "READY"
-        or prepared.request is None
+        fresh != prepared
+        or fresh.status != "READY"
+        or fresh.request is None
         or type(choice_id) is not str
-        or choice_id not in prepared.available
-        or choice_id not in tuple(c.choice_id for c in prepared.request.choices)
-        or request_sha256 != prepared.request_sha256
-        or request_sha256 != digest(asdict(prepared.request))
+        or choice_id not in fresh.available
+        or choice_id not in tuple(c.choice_id for c in fresh.request.choices)
+        or request_sha256 != fresh.request_sha256
+        or request_sha256 != digest(asdict(fresh.request))
     ):
         raise EvidenceUseBlocked("ineligible choice or substituted request")
     return choice_id
