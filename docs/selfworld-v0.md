@@ -1439,3 +1439,14 @@ requires LocalCodex to load the original saved W4 evidence as in the
 preceding section, run Python3.12 focused tests at the exact new HEAD,
 and confirm no new World, model, physical Action, OUTCOME or S10 writes.
 Code pushed to an isolated branch does NOT mean PR #634 has been updated.
+
+W4 offline cognition DEV validation also pins the replay's exact label-persistence
+scenario/state/rule/forecast before accepting its recomputed review. A coherently
+rewritten hypothesis plus review is not the saved replay hypothesis. This is an
+input-consistency guard, not source authentication: original report/run/hash,
+raw Node receipt and Java marker verification remain the saved replay loader's
+responsibility. Well-formed hash strings or dataclass instances alone do not
+prove original custody. Synthetic empty-probe fixtures explicitly clear both
+epochs; the shared replay fixture's default following target is not an empty
+observation. Deterministic provider contrasts cover direct BOUNDED, existing
+BOUNDED-to-THINK escalation and independent OPEN without Action/S10 authority.

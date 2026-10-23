@@ -13,13 +13,22 @@ from adapters.mineflayer.self_world_observation_only_epoch_replay import (
     W4OfflineEpochReplay,
 )
 from relay_self.attention import AttentionCriterion
+from relay_self.prediction import (
+    PredictionState,
+    StateVariable,
+    TransitionRule,
+    predict_transition,
+)
+from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     BoundedChoice,
     BoundedChoiceRequest,
     OpenCognitionRequest,
 )
 from relay_self.self_world import (
+    WorldForecast,
     WorldPredictionReviewStatus,
+    WorldScenario,
     bind_self_world_to_cognition_request,
     review_self_world_prediction,
     select_self_world_attention,
@@ -140,9 +149,27 @@ def prepare_w4_offline_cognition_inputs(
         if fact is not None and fact.label is not None:
             if len(previous.scenarios) != 1 or len(previous.forecasts) != 1:
                 raise W4CognitionInputBlocked("missing prior forecast")
-            scenario = previous.scenarios[0]
-            if scenario.target_ref != selected_ref:
-                raise W4CognitionInputBlocked("forecast target does not match ATT")
+            # Match the saved replay's specific hypothesis, not merely any
+            # internally self-consistent forecast supplied with a new review.
+            state = PredictionState(
+                f"w4-local-{replay.run_id}-{prior.native_seq}",
+                (StateVariable("entity_label", fact.label),),
+                Provenance("w4-offline-dev-forecast", prior.source_ref),
+                source_refs=(prior.source_ref, f"target:{selected_ref}"),
+                source_provenance=(prior.provenance,),
+            )
+            rule = TransitionRule(
+                "hypothetical-label-persistence",
+                (StateVariable("entity_label", fact.label),),
+                (StateVariable("entity_label", fact.label),),
+                Provenance("w4-offline-hypothesis", "not-a-learned-world-law"),
+            )
+            scenario = WorldScenario(
+                f"w4-{replay.run_id}-label", previous.self_id, selected_ref, state,
+            )
+            forecast = WorldForecast(scenario.scenario_id, predict_transition(state, rule))
+            if previous.scenarios != (scenario,) or previous.forecasts != (forecast,):
+                raise W4CognitionInputBlocked("forecast differs from saved replay hypothesis")
             expected_review = review_self_world_prediction(
                 previous, current, scenario_id=scenario.scenario_id,
                 variable_key="entity_label", max_native_seq_gap=max_native_seq_gap,
