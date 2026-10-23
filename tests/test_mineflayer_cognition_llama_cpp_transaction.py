@@ -221,6 +221,10 @@ def test_no_bytecode_launcher_preserves_clean_checkout_before_preflight(tmp_path
     ):
         shutil.copy2(Path("experiments") / name, experiments / name)
 
+    adapter = repo / "adapters" / "llama_cpp"
+    adapter.mkdir(parents=True)
+    shutil.copy2(Path("adapters/llama_cpp/runtime_identity.py"), adapter)
+
     subprocess.run(["git", "init", "-q"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.email", "relay-self-test@example.invalid"], cwd=repo, check=True)
     subprocess.run(["git", "config", "user.name", "RelaySelf Test"], cwd=repo, check=True)
