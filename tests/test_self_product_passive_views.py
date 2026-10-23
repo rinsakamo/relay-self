@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+from copy import deepcopy
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -12,6 +14,7 @@ from adapters.mineflayer.self_product_passive_views import (
     DEV_SELF_ID,
     PassiveSelfViews,
     PassiveSelfViewsRejected,
+    verify_passive_source_join,
 )
 from relay_self.provenance import Provenance
 from test_self_live_think import native_probe
@@ -147,7 +150,7 @@ def test_passive_errors_never_veto_original_l0(monkeypatch, tmp_path):
 
 @pytest.mark.parametrize("kwargs", [
     {"stage_r_dev": True},
-    {"raw_capture_root": __import__("pathlib").Path("/tmp/raw")},
+    {"raw_capture_root": Path("/tmp/raw")},
     {"self_world_live": True},
 ])
 def test_nonexclusive_modes_fail_before_original_owner(monkeypatch, tmp_path, kwargs):
@@ -167,3 +170,61 @@ def test_passive_option_requires_dev_mode():
     with pytest.raises(SystemExit) as err:
         self_demo.main(["--self-passive-views", "--smoke"])
     assert err.value.code == 2
+
+
+def _source_report_and_rows():
+    observer = PassiveSelfViews()
+    seqs = (8, 19, 47)
+    for seq in seqs:
+        observer.observe(probe(seq))
+    native = {
+        "session_id": "p-native",
+        "source_pair_trace": [
+            {"event_seq": seq - 1, "probe_seq": seq,
+             "probe_entities": [{"id": seq, "name": "zombie"}]}
+            for seq in seqs
+        ],
+    }
+    return native, [*observer.rows(), observer.summary()]
+
+
+def test_native_report_and_self_views_validated_without_source_qualification():
+    native, rows = _source_report_and_rows()
+    assert verify_passive_source_join(native, rows)
+    assert rows[-1]["source_qualified"] is False
+
+
+@pytest.mark.parametrize("attack", (
+    "foreign_session", "wrong_probe_seq", "wrong_event_id",
+    "invented_positive", "false_safety", "action_authority",
+    "hidden_model", "s10_commit", "foreign_source_ref",
+    "missing_row", "observer_error", "pretend_attested",
+))
+def test_sidecar_substitutions_never_promote_source(attack):
+    native, rows = _source_report_and_rows()
+    native, rows = deepcopy(native), deepcopy(rows)
+    if attack == "foreign_session":
+        rows[0]["session_id"] = "another"
+    elif attack == "wrong_probe_seq":
+        rows[0]["native_seq"] = 9
+    elif attack == "wrong_event_id":
+        native["source_pair_trace"][0]["event_seq"] = 999
+    elif attack == "invented_positive":
+        rows[0]["observed_world_entities"] = 9
+    elif attack == "false_safety":
+        rows[0]["world_safe"] = True
+    elif attack == "action_authority":
+        rows[0]["action_authorized"] = True
+    elif attack == "hidden_model":
+        rows[-1]["model_calls"] = 1
+    elif attack == "s10_commit":
+        rows[0]["s10_commits"] = 1
+    elif attack == "foreign_source_ref":
+        rows[0]["world_source_ref"] = "present:other"
+    elif attack == "missing_row":
+        rows.pop(0)
+    elif attack == "observer_error":
+        rows[-1]["observer_errors"] = ["ValueError"]
+    elif attack == "pretend_attested":
+        rows[-1]["source_qualified"] = True
+    assert not verify_passive_source_join(native, rows)
