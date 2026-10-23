@@ -256,7 +256,9 @@ def test_projection_never_leaks_host_custody_or_raw_identity(sources, monkeypatc
         original["binding"]["self_id"],
         original["binding"]["session_id"],
         original["binding"]["epoch_id"],
-        original["observation"]["observation_source"]["source_ref"],
+        "present:{session_id}:{native_seq}:{request_id}".format(
+            **original["observation"]["observation_source"]
+        ),
         original["observation"]["selected_positive_observations"][0]["entity_ref"],
         original["observation"]["source_bound_digest"],
     ]
