@@ -7,14 +7,24 @@ from dataclasses import replace
 import pytest
 
 from experiments.self_world_model_ab import (
-    ARM_BASE, ARM_CONTEXT, W4ModelABBlocked, _synthetic_cases,
-    _write_new_report, ab_requests, paired_order, run_matched_ab,
+    ARM_BASE,
+    ARM_CONTEXT,
+    W4ModelABBlocked,
+    _synthetic_cases,
+    _write_new_report,
+    ab_requests,
+    paired_order,
+    run_matched_ab,
     validate_local_endpoint,
 )
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
-    CognitionMode, DecisionStatus, ProviderCallFacts, ProviderDecision,
-    ProviderExpression, RelayEngine,
+    CognitionMode,
+    DecisionStatus,
+    ProviderCallFacts,
+    ProviderDecision,
+    ProviderExpression,
+    RelayEngine,
 )
 
 
