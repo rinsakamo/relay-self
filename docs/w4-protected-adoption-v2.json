@@ -1,0 +1,212 @@
+{
+  "schema": "W4_PROTECTED_BLOB_ADOPTION_V2",
+  "version": "v2",
+  "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+  "effective_source_head": "f34ccc0bf86f271849034c21abd254e5e3de780f",
+  "classification": [
+    "DEV_ONLY",
+    "QUALIFICATION_NO_GO",
+    "SCIENCE_NOT_RUN",
+    "NO_NEW_WORLD_RUN"
+  ],
+  "approvals": [
+    {
+      "id": 6356863445,
+      "url": "https://github.com/rinsakamo/relay-self/issues/633#issuecomment-6356863445",
+      "user": "rinsakamo",
+      "body": "## W4 Protected Blob Adoption v2 — repository owner explicit approval (DEV only, 2026-10-23)\n\n**APPROVED by the repository owner/maintainer for a scoped prospective code-change adoption.** The connected authenticated GitHub principal is `rinsakamo` (repository `rinsakamo/relay-self`, owner/Admin); the owner explicitly instructed approval in this conversation. This approval applies only to the following four source paths and to the corresponding narrowly-scoped repository path policy and W4 protected-blob test migration needed to distinguish historical originals from prospective implementation:\n\n1. `adapters/mineflayer/process_session.py` — single Node owner/startup cancellation and raw byte capture\n2. `adapters/mineflayer/s31a_real_server_ci.py` — original Java subprocess/sole collector and read-only log capture\n3. `adapters/mineflayer/s34_native_world_cognition_ci.py` — native spawn cancellation cleanup through same process owner\n4. `adapters/mineflayer/s49_normal_session_real_ci.py` — supervised Node/Java/collector cleanup and failure reporting\n\n**Explicit authorization scope:** the source-owner/repository-admin permission for DEV-only adoption of these four prospective paths, and a migration of the W4 *historical-original equality test* to **(a)** check all 19 frozen original blob objects at their genuine historical SHA via Git object lookup, **(b)** independently pin/check the four adopted current-path blob hashes in a versioned manifest, and **(c)** reject any unlisted path or unauthorized hash. The migration must retain negative controls: falsified historical originals, unexpected protected-file changes, incorrect prospective source SHA, missing adoption evidence, S18 freeze mutation. Do not skip, xfail, delete or blindly overwrite the old SHA pins. Retain 15 other protected paths as exact current-tree equals historical blob; for the four adopted source paths, verify historical *Git objects* rather than mistakenly requiring the newer implementation to have historical bytes. No evidence or past grant may be rewritten.\n\n**Permission does not attest uninspected bytes or a final runtime result.** The newest LocalCodex commit `f34ccc0bf86f271849034c21abd254e5e3de780f` on `dev/w4-recovery-20261023` remains local/unpushed: it is NOT currently accessible from GitHub. Its four actual adopted blob SHA, detailed changes and standalone evidence MUST first be read from that original clean WSL2 worktree, compared against the old 19 SHA and reviewed. Bind these precise accepted bytes and the final exact HEAD in v2 manifest, retain the real logged `584 PASS / 1 FAIL` for the **pre-migration** local HEAD, and run Python3.12 focused/negative gates again after migration; Node/Ruff/contracts likewise. Owner approval is not a shortcut for a green test, source validation, PR update or unverified SHA.\n\n**Authorized next steps without renewed permission:** LocalCodex can perform the protected original/adopted v2 split in its existing isolated worktree, validate source-owner scopes/path policy and exact object hashes, correct any new failures, then commit/push new HEAD using `[skip ci]`. If all current-HEAD focused tests and four-owner cleanup/inert OS PID checks pass with zero FAIL/ERROR/SKIP, and PR #634 HEAD remains `1473c74e4448bb9a527747de0619c8e55ffbd827`, make an expected-SHA non-force fast-forward to the still-Draft PR head branch. Otherwise preserve the current PR head and report the remaining blocker. Do not merge, enable CI, run FULL or launch Minecraft.\n\n**Not authorized:** changes to main/0.x, loosening Action/S10 authority, S18 source mutation, blanket protected SHA exemptions, altering past frozen evidence, granting W4 QUALIFICATION or SCIENCE, new physical World execution.\n\nScope/status at recording: `OWNER_APPROVAL_RECORDED / PROSPECTIVE_ADOPTION_AUTHORIZED_CONDITIONALLY / EXACT_LOCAL_HEAD_UNREVIEWED / PR634_UNCHANGED / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.",
+      "body_sha256": "929e3af21189bd45bafcf015dbac2f0f052babbacd1fac93369b6a3d3a9e16a2"
+    },
+    {
+      "id": 6356864256,
+      "url": "https://github.com/rinsakamo/relay-self/pull/634#issuecomment-6356864256",
+      "user": "rinsakamo",
+      "body": "## W4 Protected Blob Adoption v2 — repository owner explicit approval (DEV only, 2026-10-23)\n\n**APPROVED by the repository owner/maintainer for a scoped prospective code-change adoption.** The connected authenticated GitHub principal is `rinsakamo` (repository `rinsakamo/relay-self`, owner/Admin); the owner explicitly instructed approval in this conversation. This approval applies only to the following four source paths and to the corresponding narrowly-scoped repository path policy and W4 protected-blob test migration needed to distinguish historical originals from prospective implementation:\n\n1. `adapters/mineflayer/process_session.py` — single Node owner/startup cancellation and raw byte capture\n2. `adapters/mineflayer/s31a_real_server_ci.py` — original Java subprocess/sole collector and read-only log capture\n3. `adapters/mineflayer/s34_native_world_cognition_ci.py` — native spawn cancellation cleanup through same process owner\n4. `adapters/mineflayer/s49_normal_session_real_ci.py` — supervised Node/Java/collector cleanup and failure reporting\n\n**Explicit authorization scope:** the source-owner/repository-admin permission for DEV-only adoption of these four prospective paths, and a migration of the W4 *historical-original equality test* to **(a)** check all 19 frozen original blob objects at their genuine historical SHA via Git object lookup, **(b)** independently pin/check the four adopted current-path blob hashes in a versioned manifest, and **(c)** reject any unlisted path or unauthorized hash. The migration must retain negative controls: falsified historical originals, unexpected protected-file changes, incorrect prospective source SHA, missing adoption evidence, S18 freeze mutation. Do not skip, xfail, delete or blindly overwrite the old SHA pins. Retain 15 other protected paths as exact current-tree equals historical blob; for the four adopted source paths, verify historical *Git objects* rather than mistakenly requiring the newer implementation to have historical bytes. No evidence or past grant may be rewritten.\n\n**Permission does not attest uninspected bytes or a final runtime result.** The newest LocalCodex commit `f34ccc0bf86f271849034c21abd254e5e3de780f` on `dev/w4-recovery-20261023` remains local/unpushed: it is NOT currently accessible from GitHub. Its four actual adopted blob SHA, detailed changes and standalone evidence MUST first be read from that original clean WSL2 worktree, compared against the old 19 SHA and reviewed. Bind these precise accepted bytes and the final exact HEAD in v2 manifest, retain the real logged `584 PASS / 1 FAIL` for the **pre-migration** local HEAD, and run Python3.12 focused/negative gates again after migration; Node/Ruff/contracts likewise. Owner approval is not a shortcut for a green test, source validation, PR update or unverified SHA.\n\n**Authorized next steps without renewed permission:** LocalCodex can perform the protected original/adopted v2 split in its existing isolated worktree, validate source-owner scopes/path policy and exact object hashes, correct any new failures, then commit/push new HEAD using `[skip ci]`. If all current-HEAD focused tests and four-owner cleanup/inert OS PID checks pass with zero FAIL/ERROR/SKIP, and PR #634 HEAD remains `1473c74e4448bb9a527747de0619c8e55ffbd827`, make an expected-SHA non-force fast-forward to the still-Draft PR head branch. Otherwise preserve the current PR head and report the remaining blocker. Do not merge, enable CI, run FULL or launch Minecraft.\n\n**Not authorized:** changes to main/0.x, loosening Action/S10 authority, S18 source mutation, blanket protected SHA exemptions, altering past frozen evidence, granting W4 QUALIFICATION or SCIENCE, new physical World execution.\n\nScope/status at recording: `OWNER_APPROVAL_RECORDED / PROSPECTIVE_ADOPTION_AUTHORIZED_CONDITIONALLY / EXACT_LOCAL_HEAD_UNREVIEWED / PR634_UNCHANGED / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.",
+      "body_sha256": "929e3af21189bd45bafcf015dbac2f0f052babbacd1fac93369b6a3d3a9e16a2"
+    }
+  ],
+  "files": [
+    {
+      "path": "adapters/mineflayer/s49_normal_session_real_ci.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "adapters/mineflayer/s49_normal_session_real_ci.py",
+      "historical_git_blob": "fd2b06e9dbed17be0e35b3a1bbd0ed423b9af258",
+      "prospective_git_blob": "9b624be92258c2d0e15c87474a8f4211b73e8531",
+      "prospective_content_sha256": "e240c6d310254d0e54099a1af9759cc53def817c01e80643fdee51d7ca87b84c",
+      "reason": "Original S49 owner supervises Node/Java/collector/temp teardown; reject false PASS and publish atomic report.",
+      "owner": "rinsakamo",
+      "version": "v2",
+      "effective_source_head": "f34ccc0bf86f271849034c21abd254e5e3de780f",
+      "approval_urls": [
+        "https://github.com/rinsakamo/relay-self/issues/633#issuecomment-6356863445",
+        "https://github.com/rinsakamo/relay-self/pull/634#issuecomment-6356864256"
+      ],
+      "related_tests": [
+        "tests/test_s49_cleanup.py",
+        "tests/test_s49_startup_ownership.py",
+        "tests/test_w4_pr634_startup_ownership.py",
+        "tests/test_w4_pr634_retained_owner_gate.py",
+        "tests/test_s49_native_os_custody.py"
+      ]
+    },
+    {
+      "path": "adapters/mineflayer/s34_native_world_cognition_ci.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "adapters/mineflayer/s34_native_world_cognition_ci.py",
+      "historical_git_blob": "eaecb117ad26059d6d2abb2c12bca61b2dce1f01",
+      "prospective_git_blob": "66728a9667734f4b7164de23f244a938a756dbdc",
+      "prospective_content_sha256": "a72beb27d7b5d4730275419b44da2d4a861c317c9acc6d28768f0ee5019c90cc",
+      "reason": "Original S34 owner aborts the same session when native spawn fails or is cancelled.",
+      "owner": "rinsakamo",
+      "version": "v2",
+      "effective_source_head": "f34ccc0bf86f271849034c21abd254e5e3de780f",
+      "approval_urls": [
+        "https://github.com/rinsakamo/relay-self/issues/633#issuecomment-6356863445",
+        "https://github.com/rinsakamo/relay-self/pull/634#issuecomment-6356864256"
+      ],
+      "related_tests": [
+        "tests/test_s49_cleanup.py",
+        "tests/test_s49_startup_ownership.py",
+        "tests/test_w4_pr634_startup_ownership.py",
+        "tests/test_w4_pr634_retained_owner_gate.py",
+        "tests/test_s49_native_os_custody.py"
+      ]
+    },
+    {
+      "path": "adapters/mineflayer/s31a_real_server_ci.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "adapters/mineflayer/s31a_real_server_ci.py",
+      "historical_git_blob": "7ee3e95af66e1b981f72509a3dd661d79ef95744",
+      "prospective_git_blob": "3c7d490519047dc9d6e99a17cdad6fe38f6fb644",
+      "prospective_content_sha256": "ef1ee8af15bd88472696a62e27b71138da5b80c7b7b28191403dade2d5d6a1f9",
+      "reason": "Sole Java collector; preserve three-argument API and fail early on collector failure; opt-in raw bytes.",
+      "owner": "rinsakamo",
+      "version": "v2",
+      "effective_source_head": "f34ccc0bf86f271849034c21abd254e5e3de780f",
+      "approval_urls": [
+        "https://github.com/rinsakamo/relay-self/issues/633#issuecomment-6356863445",
+        "https://github.com/rinsakamo/relay-self/pull/634#issuecomment-6356864256"
+      ],
+      "related_tests": [
+        "tests/test_s49_cleanup.py",
+        "tests/test_s49_startup_ownership.py",
+        "tests/test_w4_pr634_startup_ownership.py",
+        "tests/test_w4_pr634_retained_owner_gate.py",
+        "tests/test_s49_native_os_custody.py"
+      ]
+    },
+    {
+      "path": "adapters/mineflayer/process_session.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "adapters/mineflayer/process_session.py",
+      "historical_git_blob": "6eec8f80621c581d47154f7c76e72303e00c04f0",
+      "prospective_git_blob": "cf5a979d9da38acbe670973c11d7186ade49dbfe",
+      "prospective_content_sha256": "8ea47ab2341bfac8bb35531dfae5c35825efb0fb019f5b2e2ab76fabc3967e5a",
+      "reason": "Single Node stdout owner; supervise startup cancellation, reap and seal the same raw capture.",
+      "owner": "rinsakamo",
+      "version": "v2",
+      "effective_source_head": "f34ccc0bf86f271849034c21abd254e5e3de780f",
+      "approval_urls": [
+        "https://github.com/rinsakamo/relay-self/issues/633#issuecomment-6356863445",
+        "https://github.com/rinsakamo/relay-self/pull/634#issuecomment-6356864256"
+      ],
+      "related_tests": [
+        "tests/test_s49_cleanup.py",
+        "tests/test_s49_startup_ownership.py",
+        "tests/test_w4_pr634_startup_ownership.py",
+        "tests/test_w4_pr634_retained_owner_gate.py",
+        "tests/test_s49_native_os_custody.py"
+      ]
+    },
+    {
+      "path": "adapters/mineflayer/normal_action.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "adapters/mineflayer/normal_action.py",
+      "historical_git_blob": "0ded8fa296c92076a643de08cd6fc360061e1d08"
+    },
+    {
+      "path": "adapters/mineflayer/execution.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "adapters/mineflayer/execution.py",
+      "historical_git_blob": "2af25bc6808f8a4199fe2ee500d1c1dfbea25de2"
+    },
+    {
+      "path": "adapters/mineflayer/action_outcome.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "adapters/mineflayer/action_outcome.py",
+      "historical_git_blob": "502a14304c8ab9f5e37bff4a054cf2a21730d294"
+    },
+    {
+      "path": "src/relay_self/intent.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "src/relay_self/intent.py",
+      "historical_git_blob": "f4ef9500cd7941e5e9e07fd41ac2b6e4b4d5ac25"
+    },
+    {
+      "path": "src/relay_self/skill.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "src/relay_self/skill.py",
+      "historical_git_blob": "61885956810b4125721f685d449b361262b71120"
+    },
+    {
+      "path": "src/relay_self/action.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "src/relay_self/action.py",
+      "historical_git_blob": "869e761cfa2646f48f12e5e8088375ae64f04607"
+    },
+    {
+      "path": "src/relay_self/action_supervision.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "src/relay_self/action_supervision.py",
+      "historical_git_blob": "3320caab19d05afa74f046e3e0f143bc1aad5821"
+    },
+    {
+      "path": "src/relay_self/learning.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "src/relay_self/learning.py",
+      "historical_git_blob": "9fd949e94e91ded1c070d359378833f354fba577"
+    },
+    {
+      "path": "src/relay_self/habit.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "src/relay_self/habit.py",
+      "historical_git_blob": "edc8904753421ef836843ae736f194f5a3a39168"
+    },
+    {
+      "path": "src/relay_self/action_feedback.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "src/relay_self/action_feedback.py",
+      "historical_git_blob": "8ae84e2e555550128a59a23c342f67a032a0c859"
+    },
+    {
+      "path": "src/relay_self/action_outcome.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "src/relay_self/action_outcome.py",
+      "historical_git_blob": "d28bbc1745104bcd7872061bef2fe6222ceccb2a"
+    },
+    {
+      "path": "docs/postmain-architecture.json",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "docs/postmain-architecture.json",
+      "historical_git_blob": "e8419c55b5535d451346fd2a9a3c42326a80aa29"
+    },
+    {
+      "path": "docs/postmain-architecture.md",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "docs/postmain-architecture.md",
+      "historical_git_blob": "62b8e807d1b35a7f06d15b61e411434f57fe111d"
+    },
+    {
+      "path": "tests/test_postmain_architecture_freeze.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "tests/test_postmain_architecture_freeze.py",
+      "historical_git_blob": "d343aa052541b4ee9d2ce3e00653cc1a56d681ce"
+    },
+    {
+      "path": "src/relay_self/persistent_cognition.py",
+      "historical_source_commit": "1473c74e4448bb9a527747de0619c8e55ffbd827",
+      "historical_path": "src/relay_self/persistent_cognition.py",
+      "historical_git_blob": "5d4fff3fa10bad78f98118758c8a22d53e8390fb"
+    }
+  ]
+}

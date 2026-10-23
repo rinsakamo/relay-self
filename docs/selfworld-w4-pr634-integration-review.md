@@ -252,3 +252,17 @@ repository path-policy B disposition and W4 versioned-guard C disposition.
 Only then apply the approved receipt and reverify the guard, contracts and
 focused integration at a new exact HEAD before considering any PR push.
 W4 external custody/signer trust and fresh World authority remain separate.
+
+
+## 2026-10-23 prospective v2 adoption update
+
+The preceding NOT ADOPTED/BLOCKED section is the retained pre-migration
+record at `f34ccc0bf86f271849034c21abd254e5e3de780f`, not the current
+authority disposition. Repository Owner/Admin has since explicitly approved
+the four-path adoption, scoped path policy and two-layer guard migration.
+Current procedure and immutable historical/prospective hash manifest are
+[Adoption v2 Record](w4-protected-adoption-v2.md) and
+[v2 manifest](w4-protected-adoption-v2.json). Exact adoption commit results
+are recorded in the new external evidence root; earlier failed logs and
+World DEV evidence are unchanged. No new World or scientific qualification
+is authorized or claimed.

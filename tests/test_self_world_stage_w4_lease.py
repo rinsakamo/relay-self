@@ -582,15 +582,12 @@ PROTECTED_BLOBS = {'adapters/mineflayer/s49_normal_session_real_ci.py': 'fd2b06e
 
 
 def test_s18_and_original_default_routes_are_blob_identical():
-    import subprocess
-
     from adapters.mineflayer import s34_native_world_cognition_ci as s34
     from adapters.mineflayer import s49_normal_session_real_ci as s49
+    from test_w4_protected_recovery_audit import validate_adoption
 
     root = Path(__file__).resolve().parents[1]
-    for path, expected in PROTECTED_BLOBS.items():
-        actual = subprocess.check_output(['git', 'hash-object', str(root / path)], text=True).strip()
-        assert actual == expected, path
+    validate_adoption(root=root)
     assert s34.MineflayerProcessSession is MineflayerProcessSession
     assert s49._new_session is s34._new_session
     for path in ('adapters/mineflayer/s49_normal_session_real_ci.py',
