@@ -192,9 +192,20 @@ async def _cleanup_session(report, server, collector, session, staging, temp, st
             sync_step(prefix + "_kill_error", process.kill)
             report[prefix + "_kill_attempted"] = True
         value = await step(prefix + "_reap_error", process.wait(), timeout=5)
-        if type(value) is int:
+        if type(value) is int and value == process.returncode:
             report[prefix + "_exit"] = value
         else:
+            report[prefix + "_reap_unconfirmed"] = True
+
+    async def confirm_exit(process, prefix):
+        # A helper's claimed exit is not a receipt from the owned process.
+        # Require the same process's wait, returncode and reported exit to agree.
+        if process is None:
+            report[prefix + "_reap_unconfirmed"] = True
+            return
+        value = await step(prefix + "_reap_error", process.wait(), timeout=5)
+        if (type(value) is not int or type(process.returncode) is not int
+                or value != process.returncode or value != report.get(prefix + "_exit")):
             report[prefix + "_reap_unconfirmed"] = True
 
     # host.run_session has returned/unwound before entering finally: no new
@@ -212,6 +223,9 @@ async def _cleanup_session(report, server, collector, session, staging, temp, st
         value = await step("node_cleanup_error", session.shutdown(timeout_s=10), timeout=25)
         if type(value) is int:
             report["node_exit"] = value
+            owned_node = getattr(session, "_process", None)
+            if owned_node is None or owned_node.returncode != value:
+                report["node_cleanup_error"] = "Node shutdown disagrees with owned process exit"
         if type(value) is not int and "node_cleanup_error" not in report:
             report["node_cleanup_error"] = "Node shutdown exit unconfirmed"
         if "node_cleanup_error" in report:
@@ -221,6 +235,7 @@ async def _cleanup_session(report, server, collector, session, staging, temp, st
             else:
                 report.setdefault("node_terminate_error", "Node terminate exit unconfirmed")
                 await force_reap(getattr(session, "_process", None), "node")
+        await confirm_exit(getattr(session, "_process", None), "node")
         if raw_capture_root is not None:
             # terminate() can itself be cancelled before it seals the existing
             # W3 file. Seal that same capture as incomplete, without reading or
@@ -237,6 +252,7 @@ async def _cleanup_session(report, server, collector, session, staging, temp, st
             await force_reap(server, "server")
         if type(server.returncode) is int:
             report["server_exit"] = server.returncode
+        await confirm_exit(server, "server")
     # The original helper may fail before reaching its collector branch or may
     # only request cancellation. Settle that same collector, never add a reader.
     if collector is not None:

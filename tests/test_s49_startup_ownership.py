@@ -666,3 +666,25 @@ def test_sole_java_collector_exception_is_not_a_190s_ready_wait(
         assert process.returncode == -15
 
     asyncio.run(run())
+
+
+def test_cancel_racing_spawn_exception_retains_original_cancellation(monkeypatch):
+    async def run():
+        entered = asyncio.Event()
+        release = asyncio.Event()
+        async def broken_spawn(*args, **kwargs):
+            entered.set()
+            await release.wait()
+            raise OSError('spawn race fault without a child')
+        monkeypatch.setattr(asyncio, 'create_subprocess_exec', broken_spawn)
+        owner = asyncio.create_task(spawn_with_custody('inert'))
+        await entered.wait()
+        owner.cancel('original cancel')
+        release.set()
+        with pytest.raises(asyncio.CancelledError, match='original cancel') as caught:
+            await owner
+        assert isinstance(caught.value.__cause__, OSError)
+        assert 'spawn race fault' in caught.value.startup_cleanup_unconfirmed
+        assert not [t for t in asyncio.all_tasks()
+                    if t is not asyncio.current_task() and not t.done()]
+    asyncio.run(run())

@@ -140,3 +140,115 @@ No second Java reader or alternate server launcher is introduced.
 A two-arm offline fault fixture (raw off/on) is added to
 \`tests/test_s49_startup_ownership.py\`. These tests have NOT yet been
 run against this candidate HEAD.
+
+
+## W4 recovery 2026-10-23 — protected adoption candidate v2 (NOT ADOPTED)
+
+DEV / ENGINEERING VALIDATION only. No World, Minecraft server, bridge,
+Action, grant spend, OUTCOME, S10, qualification or science execution.
+
+Starting PR head: `1473c74e4448bb9a527747de0619c8e55ffbd827`.
+Preserved unpushed candidate: `78899df900f03119139d5da46d870ac66f57c449`.
+Recovered repair branch head: `f31b1a7415cf5244fcdf469aadbee659965480eb`.
+Independent recovery branch: `dev/w4-recovery-20261023`.
+Worktree: `/home/rinsa/work/relay-self-w4-recovery-20261023`.
+Evidence root: `/home/rinsa/w4-recovery-evidence-20261023`.
+
+### Engineering changes and old failures
+
+The actual `f31b1a74` commits supply original S34 `_new_session` abort and
+S49 supervised cleanup; the prior `78899df9` reproductions are retained as
+new tests without rewriting the old files or logs. Both S34 cancel/exception
+paths now reap and seal before ownership returns. Both S49 fault paths
+continue to Java cleanup. A normal exception is an existing `rc=1 / FAIL`
+report; cancellation is re-raised after cleanup. The old reproduction that
+required a leaked ordinary cleanup exception now directly asserts FAIL,
+Java cleanup, zero native Actions and atomic report publication instead.
+
+Two additional failures were reproduced before repair, with logs:
+- caller cancellation racing a spawn OSError was lost at `await shield`;
+  retrieve the spawn terminal under the original cancellation instead;
+- Node shutdown could return 0 while the same process exited 7; compare
+  the helper result, owned process returncode and confirmed wait result,
+  attempt fallback cleanup on disagreement, and reject unconfirmed reap.
+
+Existing opt-in tests explicitly documented the old S49 false-PASS witness
+and directed inversion after repair. They now require `FAIL / rc=1 /
+S49_SESSION_NOT_QUALIFIED` for the same nonzero/exception faults. Their
+synthetic Process supplies the native wait contract. No guard is weakened.
+
+S31A is the original Java readiness/collector owner. The existing recovered
+repair monitors ready-or-collector-done in default and raw opt-in routes,
+so a collector exception cannot leave the default caller waiting 190 s.
+One collector still reads stdout. Existing raw byte capture remains opt-in.
+
+### Formal adoption authority — BLOCKED
+
+Procedure reviewed at exact commits:
+- `5e03f7c02cff635996c86c8a850071bb7d639f20`,
+  `docs/s49-protected-owner-decision-packet.md`, Decisions A/B/C;
+- `f2722a2d0b423fee53272a34b3bbb7f06367beee`,
+  `docs/s49-scoped-adoption-v1.md`;
+- `175e6ebd62ba5698a4afcb4eb08613c0db96a546`, previous exact variant gate.
+
+A requires a separate authenticated source-owner disposition for EACH
+exact protected before/after blob with identity/authority, date, scope,
+independently inspected evidence and residual risks. B separately requires
+repository/workflow-owner path authority. C requires W4/test-owner approval
+of the versioned guard migration. Historical v1 candidate permission is not
+approval for different v2 blobs. Current PR reviews are empty; the latest
+owner-repair PR comments explicitly retain adoption NO_GO. The user permits
+preparing this candidate and executing the procedure, but does not waive
+independent approvals. No such exact-candidate receipts were found.
+
+Disposition: **PROTECTED_BLOB_ADOPTION_BLOCKED**. For all four rows below,
+source owner / authenticated reviewer / approval date / accepted risk /
+receipt URL are **UNDETERMINED**, not supplied by this agent or its tests.
+W4 guard-migration approval and new-test path authority are also missing.
+No candidate is installed into `PROTECTED_BLOBS`, and that historical guard
+continues to FAIL on the proposed sources.
+
+| Protected path | Original SHA256 | Proposed v2 SHA256 |
+|---|---|---|
+| `adapters/mineflayer/s49_normal_session_real_ci.py` | `0b89333e4d2e74268fdfafbac5e10c6aa6d82398475b3c5160468448d788bc8a` | `e240c6d310254d0e54099a1af9759cc53def817c01e80643fdee51d7ca87b84c` |
+| `adapters/mineflayer/s34_native_world_cognition_ci.py` | `b0b6596b4b70924d15d06f53159b56a3e2629677a448f372d50e3c159e26ef38` | `a72beb27d7b5d4730275419b44da2d4a861c317c9acc6d28768f0ee5019c90cc` |
+| `adapters/mineflayer/s31a_real_server_ci.py` | `87317a4b9805801f3a36a5f33db8388796fd0e5c1929150f9c73b303fb85c478` | `ef1ee8af15bd88472696a62e27b71138da5b80c7b7b28191403dade2d5d6a1f9` |
+| `adapters/mineflayer/process_session.py` | `4c71be38551033cb71839c856e97fb37767047ea9f4bb05a142b36b3a58ee5da` | `8ea47ab2341bfac8bb35531dfae5c35825efb0fb019f5b2e2ab76fabc3967e5a` |
+
+The full 19-file inventory, Git blob IDs and before/after diff are retained
+in `protected-manifest.json` and `protected-original-to-proposed.patch` at
+the evidence root. Immutable old bytes are preserved under
+`original-protected/`; their hash must still match the Git object. The
+remaining 15 protected blobs, including S18 manifest, docs, regression and
+Action/S10 owners, remain identical. SelfBody/SelfWorld core sources remain
+identical to the PR. Historical original evidence SHA256SUMS (72 entries)
+was rechecked successfully; no past result is retroactively qualified.
+
+New historical-guard controls accept the original 19 inventory and reject
+each of 19 individually substituted hashes. They simulate hashes only to
+exercise the unchanged rejection rule, not to authenticate an owner or
+accept the actual candidate. Real-tree protected equality remains FAIL.
+
+### Native verification and claim ceiling
+
+Fixtures execute real inert Node 22.22.2 / JVM 21 subprocesses on this
+Windows 11 build 26200 / WSL2 Ubuntu 24.04 host, with Python 3.12.3.
+The existing JDK was explicitly bound after preserving a javac-PATH failure.
+Independent observer PID/starttime acknowledgments gate child handoff,
+with signals, wait/returncode, disappearance, collector settlement and
+pending-task records. Tests cover original S34 normal/cancel/exception
+ownership and original S49 native Node-fault cleanup through both real
+processes; Java readiness strings and Node JSONL are synthetic fixtures,
+not Minecraft readiness or qualified native World evidence.
+
+CI/FULL/Minecraft were not run. The self-demo push branch filter matches
+PR #634; workflow configuration is untouched by this recovery. No push is
+attempted because formal adoption is incomplete. PR remains Draft and
+unchanged. Final exact-commit commands, JUnit counts, tool versions and
+exit codes are external evidence; no all-test pytest or matrix is used.
+
+Required next step: authenticated exact v2 source-owner A dispositions,
+repository path-policy B disposition and W4 versioned-guard C disposition.
+Only then apply the approved receipt and reverify the guard, contracts and
+focused integration at a new exact HEAD before considering any PR push.
+W4 external custody/signer trust and fresh World authority remain separate.

@@ -558,3 +558,21 @@ def test_supervisor_fault_still_writes_non_success(owner_ports, tmp_path, monkey
     report = json.loads(out.read_text())
     assert report["status"] == "FAIL"
     assert "supervisor fault" in report["cleanup_supervisor_error"]
+
+
+def test_node_claimed_success_must_match_owned_process(owner_ports, tmp_path, monkeypatch):
+    s49, _, _, node, _ = owner_ports
+    original_new = s49._new_session
+    async def new(**kwargs):
+        session = await original_new(**kwargs)
+        async def false_success(**kwargs):
+            node.returncode = 7
+            return 0
+        session.shutdown = false_success
+        return session
+    monkeypatch.setattr(s49, '_new_session', new)
+    out = tmp_path / 'mismatched-exit.json'
+    assert asyncio.run(s49.qualify(out, tmp_path / 'java.log')) == 1
+    report = json.loads(out.read_text())
+    assert report['status'] == 'FAIL'
+    assert 'node_exit' in report['error'] or 'node_cleanup_error' in report

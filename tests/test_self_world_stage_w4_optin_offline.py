@@ -886,7 +886,7 @@ def test_s49_candidate_rejects_type_or_status_inconsistency(status, rc):
 
 @pytest.mark.parametrize("failure", ("exit_7", "shutdown_exception"))
 def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, failure):
-    """Original protected S49 false-PASS witness; no real Minecraft process."""
+    """Repaired original S49 refuses the recorded false-PASS witness."""
     from types import SimpleNamespace as NS
 
     import adapters.mineflayer.s49_normal_session_real_ci as s49
@@ -930,7 +930,14 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
         async def drain(self):
             return None
 
-    server = NS(stdin=FakeStdin(), returncode=0)
+    class Process:
+        stdin = FakeStdin()
+        returncode = 0
+
+        async def wait(self):
+            return self.returncode
+
+    server = Process()
 
     async def ready(*args):
         return server, None, None
@@ -943,6 +950,8 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
 
     class FakeNodeSession:
         started = NS(session_id=sid)
+        _process = Process()
+        _process.returncode = 7
 
         async def shutdown(self, *, timeout_s):
             assert timeout_s == 10
@@ -1048,10 +1057,11 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
     assert pair_verdict["reported_correlated_pairs"] == 3
     assert not pair_verdict["physical_run_permitted"]
     assert not trace_verdict["physical_run_permitted"]
-    # Document the EXISTING defect; once original S49 is corrected, invert
-    # this expected witness to require original FAIL. Never call it qualified.
-    assert original_rc == 0
-    assert report["status"] == "PASS"
+    # The historical witness is retained in the old commit/log. The repaired
+    # original owner itself must now veto the same nonzero/exception cases.
+    assert original_rc == 1
+    assert report["status"] == "FAIL"
+    assert "cleanup_supervisor_error" not in report
     if failure == "exit_7":
         assert report["node_exit"] == 7
     else:
@@ -1062,7 +1072,7 @@ def test_original_s49_qualify_fake_node_cleanup_failure(monkeypatch, tmp_path, f
     assert prospective["candidate_final_status"] == "FAIL"
     assert prospective["candidate_rc"] == 1
     assert prospective["candidate_final_classification"] == "S49_SESSION_NOT_QUALIFIED"
-    assert report["classification"] == "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
+    assert report["classification"] == "S49_SESSION_NOT_QUALIFIED"
     assert not prospective["reported_cleanup_consistent"]
     assert not prospective["physical_run_permitted"]
 

@@ -135,6 +135,10 @@ async def spawn_with_custody(*argv, **kwargs) -> asyncio.subprocess.Process:
         except asyncio.CancelledError as exc:
             if cancelled is None:
                 cancelled = exc
+        except Exception:
+            # Retrieve the spawn fault below, retaining an earlier caller
+            # cancellation as the terminal exception when both race.
+            break
     try:
         process = spawn.result()
     except BaseException as exc:
