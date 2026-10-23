@@ -90,3 +90,36 @@ Remaining product work: separately authorized physical verification of this
 flag, independent native-source attestation and durable Self identity, then
 owner-reviewed adoption and a continuous decision/outcome loop. The fixed
 three-probe demonstration does not establish autonomy or adaptive learning.
+
+
+## Isolated #634 adoption-CI preparation (2026-10-24)
+
+The original physical DEV trial at **source HEAD**
+`2bf5f66c54b813b9a02b95878fe1527cf22df889` is documented in
+[Issue #537](https://github.com/rinsakamo/relay-self/issues/537#issuecomment-6369342706).
+The same original S49 sole-owner World session completed 3 decisions, 2
+Action OUTCOMEs and 3 native source-correlated passive Body/World views.
+No extra probe/Action, model, S10 or Memory write was created. Native source
+completeness remains producer-local: original source_pair_trace alone cannot
+recalculate health/food/coverage fields. Independent raw-source attestation,
+STOP ACK, continuous autonomy and learning remain unqualified.
+
+**Adoption preparation only**, without changing runtime source: the
+separate branch `dev/self-product-passive-pr634-adoption-20261024` starts
+at the physical-tested commit and adjusts the existing
+`.github/workflows/self-demo.yml` only in these four placements:
+
+1. allowlist `adapters/mineflayer/self_product_passive_views.py`;
+2. allowlist this `docs/self-product-passive-views-dev.md`;
+3. allowlist `tests/test_self_product_passive_views.py`;
+4. register the dedicated test in existing Python 3.12 offline FAST pytest.
+
+Do not remove or loosen any existing original owner/protected blob checks,
+one-shot World job if/branches, additional jobs or full regression gates.
+This is not a request to run CI, FULL or World. The workflow diff and exact
+new HEAD require independent Python 3.12/workflow syntax and scoped-allowlist
+review **before** the owner can accept a fast-forward into Draft #634.
+The World DEV result is attributable to the earlier runtime-identical
+HEAD, not a physical run at the new workflow-only commit.
+Do not silently change #634 or #545, automatically merge main, or promote
+producer-local source consistency to independent R/V qualification.
