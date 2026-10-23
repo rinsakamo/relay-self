@@ -17,6 +17,68 @@ DEV_SELF_ID = "self-product-passive-native-observer"
 MAX_PROBES = 3
 
 
+def verify_passive_source_join(native: dict, rows: list[dict]) -> bool:
+    """Producer-local DEV linkage, NOT independent physical attestation."""
+    if type(native) is not dict or type(rows) is not list:
+        return False
+    pairs, session = native.get("source_pair_trace"), native.get("session_id")
+    if (
+        type(pairs) is not list or len(pairs) != MAX_PROBES
+        or len(rows) != MAX_PROBES + 1
+        or not isinstance(session, str) or not session
+        or type(rows[-1]) is not dict
+    ):
+        return False
+    summary = rows[-1]
+    if (
+        summary.get("kind") != "passive_self_views_summary"
+        or summary.get("session_id") != session
+        or summary.get("native_probes_joined") != MAX_PROBES
+        or summary.get("observer_errors") != []
+        or summary.get("extra_native_probes") != 0
+        or summary.get("action_issuer") != "EXISTING_S49_ONLY"
+        or summary.get("model_calls") != 0
+        or summary.get("s10_commits") != 0
+        or summary.get("memory_writes") != 0
+        or summary.get("action_issued") is not False
+        or summary.get("source_qualified") is not False
+        or summary.get("science_qualified") is not False
+    ):
+        return False
+    for source, row in zip(pairs, rows[:-1], strict=True):
+        if type(source) is not dict or type(row) is not dict:
+            return False
+        seq, event = source.get("probe_seq"), source.get("event_seq")
+        targets = source.get("probe_entities")
+        if (
+            type(seq) is not int or type(event) is not int
+            or type(targets) is not list
+        ):
+            return False
+        request = f"s49-actual:{session}:event-{event}"
+        if (
+            row.get("kind") != "passive_self_views"
+            or row.get("session_id") != session
+            or row.get("native_seq") != seq
+            or row.get("request_id") != request
+            or row.get("body_source_ref")
+            != f"native-probe:{session}:{seq}:{request}"
+            or row.get("world_source_ref")
+            != f"present:{session}:{seq}:{request}"
+            or row.get("body_world_exact_source_join") is not True
+            or row.get("observed_world_entities") != len(targets)
+            or row.get("unobserved_world_absent") is not None
+            or row.get("world_safe") is not None
+            or row.get("action_issued") is not False
+            or row.get("action_authorized") is not False
+            or row.get("model_calls") != 0
+            or row.get("s10_commits") != 0
+            or row.get("memory_writes") != 0
+        ):
+            return False
+    return True
+
+
 class PassiveSelfViewsRejected(ValueError):
     """Foreign, stale, duplicate or non-native observer source."""
 
