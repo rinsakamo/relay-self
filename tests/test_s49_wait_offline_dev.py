@@ -10,20 +10,20 @@ import pytest
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.s49_wait_fenced_executor_dev import S49WaitFencedExecutorDev
-from adapters.mineflayer.s49_wait_typed_capture_dev import (
-    S49TypedClosureCaptureDev,
-)
 from adapters.mineflayer.s49_wait_offline_dev import (
     _digest,
     _paper_rows,
     run_s49_s50_offline_dev,
 )
+from adapters.mineflayer.s49_wait_typed_capture_dev import (
+    S49TypedClosureCaptureDev,
+)
 from relay_self.action import ActionState
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
+from test_s49_wait_typed_capture_dev import fixture as typed_source_fixture
 from test_s50_p1_control_action import ACTION, MARKER, SESSION, WORLD
 from test_s50_p1_wait_joint_dev import originals
-from test_s49_wait_typed_capture_dev import fixture as typed_source_fixture
 
 
 def owner(*, prior=True):
