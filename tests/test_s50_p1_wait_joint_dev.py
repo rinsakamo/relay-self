@@ -1,8 +1,8 @@
 """S50 joint original evidence: correlation is not full-tick WAIT proof."""
 from __future__ import annotations
 
-from copy import deepcopy
 import re
+from copy import deepcopy
 
 import pytest
 
@@ -11,7 +11,8 @@ from adapters.mineflayer.m02_paper_dev.s50_p1_wait_joint_dev import (
     MISSING_R_PROOFS,
     review_joint_wait_sources,
 )
-from test_s50_p1_control_action import MARKER, WORLD, fixture as control_fixture
+from test_s50_p1_control_action import MARKER, WORLD
+from test_s50_p1_control_action import fixture as control_fixture
 from test_s50_p1_lifecycle import source as lifecycle_source
 from test_s50_p1_scope import original_source as scope_source
 from test_s50_p1_wait import fixture as wait_source
