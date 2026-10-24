@@ -24,6 +24,7 @@ class InvalidSelfBodyData(ValueError):
 
 class BodyOrigin(str, Enum):
     OBSERVATION = "observation"
+    INTEROCEPTION = "interoception"
     BELIEF = "belief"
     HYPOTHESIS = "hypothesis"
     PREDICTION = "prediction"
@@ -106,6 +107,31 @@ class BodyPrediction:
 
 
 @dataclass(frozen=True, slots=True)
+class BodyInteroception:
+    """Owner-local sensor reading joined to native Present, not World truth."""
+
+    field: BodyField
+    session_id: str
+    native_seq: int
+    request_id: str
+    native_provenance: Provenance
+    owner_tick: int
+    owner_provenance: Provenance
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.field, BodyField):
+            raise InvalidSelfBodyData("typed sensor field required")
+        _token("sensor session_id", self.session_id)
+        _token("sensor request_id", self.request_id)
+        _seq("sensor native_seq", self.native_seq)
+        _seq("sensor owner_tick", self.owner_tick)
+        if not isinstance(self.native_provenance, Provenance) or not isinstance(
+            self.owner_provenance, Provenance
+        ):
+            raise InvalidSelfBodyData("sensor requires independent native/owner provenance")
+
+
+@dataclass(frozen=True, slots=True)
 class BodyReading:
     key: str
     origin: BodyOrigin
@@ -126,6 +152,24 @@ class SelfBodyView:
     predictions: tuple[BodyPrediction, ...]
     outcome: ActionOutcomeInterpretation | None
     self_id: str | None = None  # Optional legacy; required for SelfWorld join.
+    interoceptions: tuple[BodyInteroception, ...] = ()
+
+    def sensed(self, key: str) -> BodyReading:
+        """Sensor values never become Minecraft OBSERVATION or true M0 energy."""
+        _token("sensor key", key)
+        for item in self.interoceptions:
+            if item.field.key == key:
+                assert self.observation is not None
+                return BodyReading(
+                    key, BodyOrigin.INTEROCEPTION, item.field.value,
+                    (
+                        self.observation.source_ref,
+                        f"body-sensor:{item.session_id}:{item.native_seq}:"
+                        f"{item.owner_tick}:{item.request_id}",
+                    ),
+                    (item.native_provenance, item.owner_provenance),
+                )
+        return BodyReading(key, BodyOrigin.UNKNOWN, None, (), ())
 
     def observed(self, key: str) -> BodyReading:
         """Only admitted native Present may populate OBSERVATION (never PRD)."""
@@ -193,6 +237,7 @@ def compose_self_body_view(
     minimum_native_seq: int = 0,
     seen_observation_refs: tuple[str, ...] = (),
     self_id: str | None = None,
+    interoceptions: tuple[BodyInteroception, ...] = (),
 ) -> SelfBodyView:
     """Fail closed across session, freshness, origin, and branch boundaries.
 
@@ -224,6 +269,24 @@ def compose_self_body_view(
             raise InvalidSelfBodyData("stale native body observation")
         if observation.source_ref in seen_observation_refs:
             raise InvalidSelfBodyData("duplicate native body observation")
+
+    if not isinstance(interoceptions, tuple) or not all(
+        isinstance(item, BodyInteroception) for item in interoceptions
+    ):
+        raise InvalidSelfBodyData("interoception requires typed immutable tuple")
+    if interoceptions and observation is None:
+        raise InvalidSelfBodyData("sensor cannot exist without matching native Present")
+    if len({item.field.key for item in interoceptions}) != len(interoceptions):
+        raise InvalidSelfBodyData("duplicate sensor field")
+    for item in interoceptions:
+        if (
+            observation is None
+            or item.session_id != session_id
+            or item.native_seq != observation.native_seq
+            or item.request_id != observation.request_id
+            or item.native_provenance != observation.source_provenance
+        ):
+            raise InvalidSelfBodyData("sensor does not match current native Present")
     if outcome is not None:
         if not isinstance(outcome, ActionOutcomeInterpretation) or outcome.session_id != session_id:
             raise InvalidSelfBodyData("invalid or foreign S16 Action outcome")
@@ -252,7 +315,7 @@ def compose_self_body_view(
             raise InvalidSelfBodyData("PRD result not bound to matching body hypothesis")
     return SelfBodyView(
         session_id, epoch_id, observation, beliefs, hypotheses, predictions,
-        outcome, self_id,
+        outcome, self_id, interoceptions,
     )
 
 
