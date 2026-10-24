@@ -143,7 +143,8 @@ def review_s49_os_process_receipt_dev(
     if (receipt.get("session_id") != producer_review.get("session_id")
             or receipt.get("stdout_sha256") != producer_review.get("w3_stdout_sha256")):
         raise BoundaryRejected("OS/W3 source not the correlated original")
-    rows = _event_rows(_read_original(native_os_log))
+    data = _read_original(native_os_log)
+    rows = _event_rows(data)
     relevant = {}
     for row in rows:
         kind = row["event"]
@@ -196,7 +197,6 @@ def review_s49_os_process_receipt_dev(
     if not (positions["spawn"] < positions["wait_return"]
             < positions["final_process"] < positions["w3_receipt"]):
         raise BoundaryRejected("process lifecycle/receipt event ordering invalid")
-    data = _read_original(native_os_log)
     return {
         "schema": "S49_OS_LOCAL_PROCESS_W3_W4_RECEIPT_DEV_V1",
         "status": "OS_EVENT_LOG_AND_W3_RECEIPT_SHAPE_ONLY",
