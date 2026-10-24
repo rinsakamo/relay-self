@@ -422,7 +422,7 @@ async def _run_disposable(
 
     passive_views = None
     if passive_self_views:
-        if (live_model is not None or stage_r_dev or self_world_live
+        if (live_model is not None or self_world_live
                 or self_world_prospective or self_world_typed_closure
                 or self_world_retained_handoff or raw_capture_root is not None):
             raise DemoRejected("passive Self views require exclusive model-free S49 DEV")
@@ -500,8 +500,12 @@ async def _run_disposable(
     try:
         if live_observer is None:
             if stage_r_dev:
+                # The SAME native S49 owner can publish a governed S10 HOLD
+                # and forward its already received probes to a read-only
+                # SelfBody/SelfWorld sidecar. No extra receiver or issuer.
                 return await qualify(
                     report_path, server_log, stage_r_dev=True,
+                    **({"live_probe": observed_source} if passive_views is not None else {}),
                 )
             return await qualify(
                 report_path, server_log,
@@ -659,7 +663,7 @@ def _dev_run(args: argparse.Namespace) -> int:
         passive_views = getattr(args, "self_passive_views", False)
         if type(passive_views) is not bool or (
             passive_views and (
-                scenario != "native" or stage_r or stage_w3
+                scenario != "native" or stage_w3
                 or args.think or args.live_think
                 or getattr(args, "self_world_live", False)
                 or prospective or typed_closure or retained_handoff
@@ -805,6 +809,7 @@ def _dev_run(args: argparse.Namespace) -> int:
                     code = asyncio.run(_run_disposable(
                         root / "native_report.json", root / "minecraft_server.log",
                         stage_r_dev=True,
+                        **({"passive_self_views": True} if passive_views else {}),
                     ))
                 else:
                     code = asyncio.run(_run_disposable(
@@ -966,6 +971,43 @@ def _dev_run(args: argparse.Namespace) -> int:
             receipt["dev_stage_r_native_trace"] = "native_report.json"
             if not certified:
                 code = 1
+            if passive_views:
+                # Check independent read-only projection rows AGAINST the
+                # original S49 source that governed this genuine DEV-only S10
+                # HOLD. The passive callback owns NO learning permission.
+                view_rows = rows[:-1] if isinstance(rows, list) else []
+                source_join = (
+                    certified
+                    and receipt.get("dev_passive_self_views") == "SOURCE_JOINED_DEV_ONLY"
+                    and len(view_rows) == len(sources) == 3
+                    and all(
+                        view.get("native_seq") == pair.get("probe_seq")
+                        and view.get("request_id") ==
+                        f"s49-actual:{native['session_id']}:event-{pair.get('event_seq')}"
+                        and view.get("body_world_exact_source_join") is True
+                        and view.get("s10_commits") == 0
+                        and view.get("action_issued") is False
+                        for view, pair in zip(view_rows, sources, strict=True)
+                    )
+                    and commit.get("next_source_probe_seq") == view_rows[-1].get("native_seq")
+                    and commit.get("next_source_request_id") == view_rows[-1].get("request_id")
+                ) if (isinstance(commit, dict) and isinstance(sources, list)) else False
+                receipt.update(
+                    dev_stage_r_self_views_next_epoch=(
+                        "SAME_SOURCE_DEV_ONLY" if source_join else "UNDETERMINED"
+                    ),
+                    dev_stage_r_self_views_l0_s14_single_owner=certified,
+                    dev_stage_r_self_views_passive_s10_authority=False,
+                    dev_stage_r_self_views_real_s10_hold_commits=(
+                        owner.get("s10_hold_commits") if source_join else None
+                    ),
+                    dev_stage_r_self_views_behavioral_gain_proven=False,
+                )
+                if code == 0 and not source_join:
+                    code = 1
+                    receipt["dev_stage_r_self_views_incomplete"] = (
+                        "NEXT_EPOCH_VIEW_AND_S10_SOURCE_JOIN_NOT_PROVEN"
+                    )
         if scenario == "b0-ground":
             # Read-only projection of source; NOT independent R qualification.
             acquisition = native.get("ground_pickup")
