@@ -135,7 +135,7 @@ def test_self_declared_observer_ack_still_cannot_sign_original_issuer(
     "epoch_fake_os_identity", "mixed_test", "bad_utc", "truncated_line",
     "extra_unknown_event", "symlink", "hardlink", "relative",
     "receipt_tampered", "w3_raw_tampered", "observer_wrong_start",
-)))
+))
 def test_bad_native_os_log_and_false_epoch_authority_rejected(
     monkeypatch, tmp_path, case,
 ):
