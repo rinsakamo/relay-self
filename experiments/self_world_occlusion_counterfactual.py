@@ -96,6 +96,42 @@ class DriftHypothesis:
     evidence_pairs: tuple[tuple[str, str], ...]
     source_scope: Literal["SYNTHETIC_DEV"] = _SYNTHETIC_SCOPE
 
+    def __post_init__(self) -> None:
+        _name("candidate self_id", self.self_id)
+        _name("candidate session_id", self.session_id)
+        _integer("delta_x", self.delta_x)
+        if self.source_scope != _SYNTHETIC_SCOPE:
+            raise TransferProbeBlocked("candidate source scope is not synthetic")
+        if not (
+            isinstance(self.trained_regions, tuple)
+            and isinstance(self.trained_targets, tuple)
+            and isinstance(self.evidence_pairs, tuple)
+        ):
+            raise TransferProbeBlocked("candidate evidence must be immutable")
+        count = len(self.evidence_pairs)
+        if count < 2 or count != len(self.trained_regions) or (
+            count != len(self.trained_targets)
+        ):
+            raise TransferProbeBlocked("candidate evidence is incomplete")
+        if len(set(self.trained_regions)) < 2 or (
+            len(set(self.trained_targets)) != count
+        ):
+            raise TransferProbeBlocked("candidate training diversity missing")
+        refs = []
+        for region, target, pair in zip(
+            self.trained_regions, self.trained_targets,
+            self.evidence_pairs, strict=True,
+        ):
+            _name("trained region", region)
+            _name("trained target", target)
+            if not isinstance(pair, tuple) or len(pair) != 2:
+                raise TransferProbeBlocked("bad source pair")
+            for ref in pair:
+                _name("training source ref", ref)
+                refs.append(ref)
+        if len(set(refs)) != len(refs):
+            raise TransferProbeBlocked("duplicated training source")
+
     @property
     def digest(self) -> str:
         return _digest((
@@ -147,6 +183,7 @@ class OccludedTask:
     goal_x: int
     nudge_delta_x: int = 2
     nudge_cost: int = 1
+    gap_status: Literal["OCCLUDED", "UNOBSERVED"] = "OCCLUDED"
 
     def __post_init__(self) -> None:
         if not isinstance(self.history, tuple) or len(self.history) not in (1, 2):
@@ -158,6 +195,8 @@ class OccludedTask:
         _integer("nudge_cost", self.nudge_cost)
         if self.nudge_cost < 0:
             raise TransferProbeBlocked("negative intervention cost")
+        if self.gap_status not in {"OCCLUDED", "UNOBSERVED"}:
+            raise TransferProbeBlocked("unqualified gap status")
         last = self.history[-1]
         if len(self.history) == 2:
             previous = self.history[0]
@@ -190,6 +229,7 @@ class OccludedTask:
             "goal": self.goal_x,
             "nudge_delta": self.nudge_delta_x,
             "nudge_cost": self.nudge_cost,
+            "gap_status": self.gap_status,
         })
 
 
@@ -341,6 +381,13 @@ def score_sealed(
     )
     if _digest(assertion) != forecast.commitment:
         raise TransferProbeBlocked("forecast modified after commitment")
+    if (
+        outcome.nudge_x != outcome.hold_x + task.nudge_delta_x
+        or outcome.after_ref_hold == outcome.after_ref_nudge
+        or outcome.after_ref_hold in {x.source_ref for x in task.history}
+        or outcome.after_ref_nudge in {x.source_ref for x in task.history}
+    ):
+        raise TransferProbeBlocked("synthetic twin provenance inconsistent")
     if forecast.hold_x is None or forecast.nudge_x is None:
         return ForecastEvaluation(
             ScoreStatus.UNAVAILABLE, None, None, None, None, None, None
