@@ -297,13 +297,23 @@ jobs:
         run: |
           npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
           npm run check --prefix adapters/mineflayer
+      - name: FULL prepare exact main merge candidate
+        if: env.RELAY_CI_TIER == 'full' && github.event_name == 'pull_request' && github.base_ref == 'main'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
       - name: FULL exact-head full offline regression (required pytest context for main)
         if: env.RELAY_CI_TIER == 'full'
         env:
           PYTHONPATH: 'src:tests:.'
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.base_ref }}" == "main" ]]; then
+            test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          else
+            test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          fi
           python -m pytest -q -o junit_logging=all --junitxml=s49-scoped-full-regression.xml
       - name: Preserve FULL offline JUnit
         if: always() && env.RELAY_CI_TIER == 'full'
