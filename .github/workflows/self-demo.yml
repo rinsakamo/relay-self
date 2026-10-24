@@ -82,6 +82,9 @@ jobs:
               docs/selfbody-v0.md|\
               docs/self-product-passive-views-dev.md|\
               tests/test_self_body.py|\
+              experiments/self_body_timing_dev.py|\
+              docs/self-body-timing-dev.md|\
+              tests/test_self_body_timing_dev.py|\
               adapters/mineflayer/self_world_projection.py|\
               adapters/mineflayer/self_world_prospective.py|\
               adapters/mineflayer/self_world_learning_gate.py|\
@@ -293,6 +296,7 @@ jobs:
             tests/test_w4_pr634_startup_ownership.py \
             tests/test_w4_pr634_retained_owner_gate.py \
             tests/test_self_body.py \
+            tests/test_self_body_timing_dev.py \
             tests/test_self_world.py
 
 
