@@ -29,8 +29,13 @@ def transcript(capture, run_id=RUN_ID):
         f" player_uuid={PLAYER} world={world} run_id={run_id}"
         " clear_ack=UNATTESTED_CONSOLE_CLAIM\n"
     )
+    boundary = (
+        f"S49_OBSERVER_SERVER_INPUT action_id={action} session_id={session}"
+        f" player_uuid={PLAYER} world={world} run_id={run_id}"
+        " tick=70 input_idle=true s49_release_causality=NOT_ATTESTED\n"
+    )
     paper = "".join(
-        line.rstrip("\n") + f" run_id={run_id}\n"
+        line.rstrip("\n") + f" run_id={run_id} input_idle=true\n"
         for line in raw_paper(capture).splitlines(keepends=True)
     )
     complete = (
@@ -38,7 +43,7 @@ def transcript(capture, run_id=RUN_ID):
         f" player_uuid={PLAYER} world={world} run_id={run_id}"
         " last_tick=78 samples=8 authority=NONE p1_recovery=NONE\n"
     )
-    return subject + paper + complete
+    return subject + boundary + paper + complete
 
 
 def review(capture, paper, *, player=PLAYER):
@@ -57,6 +62,10 @@ def test_one_run_with_original_s16_is_correlation_not_proof(monkeypatch):
     assert outcome["typed_s16_sha256"] == capture.projection.evidence_sha256
     assert outcome["source_authentication"] == "UNATTESTED_PAPER_LOG_TEXT"
     assert outcome["server_effective_control_release"] == "NOT_ATTESTED"
+    assert outcome["server_input_snapshot"] == "PAPER_REPORTED_IDLE_AT_BEGIN"
+    assert outcome["server_input_monitor"] == (
+        "PAPER_REPORTED_NO_ACTIVE_INPUT_OR_MOVE_EVENT"
+    )
     assert outcome["whole_tick_self_inactivity"] == "NOT_ATTESTED"
     assert outcome["source_bound_tick"] is None
     assert outcome["wait_interval_ref"] is None
@@ -71,7 +80,11 @@ def test_one_run_with_original_s16_is_correlation_not_proof(monkeypatch):
     "duplicate_complete", "restart", "missing_tick", "duplicate_tick",
     "different_run_tick", "bad_run_id", "last_tick", "abort",
     "false_clear", "false_authority", "false_recovery", "bad_sample_count",
-    "old_s50", "old_nine_line_only",
+    "old_s50", "old_nine_line_only", "missing_input_boundary",
+    "double_input_boundary", "active_input_begin", "active_input_tick",
+    "active_input_boundary", "fake_input_causality", "bad_boundary_tick",
+    "foreign_boundary_player", "observed_input_reactivation",
+    "observed_move_event",
 ])
 def test_foreign_or_replayed_observer_run_rejected(monkeypatch, mutation):
     capture = typed_owner(monkeypatch)
@@ -97,6 +110,41 @@ def test_foreign_or_replayed_observer_run_rejected(monkeypatch, mutation):
         original = "".join(rows[1:])
     elif mutation == "duplicate_subject":
         original = rows[0] + original
+    elif mutation == "missing_input_boundary":
+        original = "".join(rows[:1] + rows[2:])
+    elif mutation == "double_input_boundary":
+        original = "".join(rows[:2] + [rows[1]] + rows[2:])
+    elif mutation == "active_input_begin":
+        original = original.replace("index=0 input_idle=true", "index=0 input_idle=false")
+    elif mutation == "active_input_tick":
+        original = original.replace("index=4 input_idle=true", "index=4 input_idle=false")
+    elif mutation == "active_input_boundary":
+        original = original.replace(
+            "tick=70 input_idle=true", "tick=70 input_idle=false", 1
+        )
+    elif mutation == "fake_input_causality":
+        original = original.replace(
+            "s49_release_causality=NOT_ATTESTED",
+            "s49_release_causality=ATTESTED",
+        )
+    elif mutation == "bad_boundary_tick":
+        original = original.replace(
+            "tick=70 input_idle=true", "tick=71 input_idle=true", 1
+        )
+    elif mutation == "foreign_boundary_player":
+        original = original.replace(
+            "player_uuid=" + PLAYER, "player_uuid=" + FOREIGN, 1
+        )
+        # Force the first SUBJECT back so the mutated second record is tested.
+        original = original.replace(
+            "player_uuid=" + FOREIGN, "player_uuid=" + PLAYER, 1
+        ).replace(
+            "player_uuid=" + PLAYER, "player_uuid=" + FOREIGN, 1
+        )
+    elif mutation == "observed_input_reactivation":
+        original += "S49_DEV_BACK_WAIT_ABORT reason=SERVER_INPUT_ACTIVE_DURING_OBSERVATION\n"
+    elif mutation == "observed_move_event":
+        original += "S49_DEV_BACK_WAIT_ABORT reason=SELF_MOVEMENT_EVENT_DURING_OBSERVATION\n"
     elif mutation == "missing_complete":
         original = "".join(rows[:-1])
     elif mutation == "duplicate_complete":
@@ -106,7 +154,7 @@ def test_foreign_or_replayed_observer_run_rejected(monkeypatch, mutation):
     elif mutation == "missing_tick":
         original = "".join(row for row in rows if "index=4 " not in row)
     elif mutation == "duplicate_tick":
-        original = "".join(rows[:3] + [rows[2]] + rows[3:])
+        original = "".join(rows[:4] + [rows[3]] + rows[4:])
     elif mutation == "different_run_tick":
         original = original.replace("run_id=" + RUN_ID,
                                     "run_id=" + FOREIGN, 2)
@@ -173,7 +221,7 @@ def test_prefixed_paper_lines_are_not_attested(monkeypatch):
 
 
 def callback_slice(transcript_text):
-    return "\n".join(transcript_text.splitlines()[1:-1]) + "\n"
+    return "\n".join(transcript_text.splitlines()[2:-1]) + "\n"
 
 
 def test_full_transcript_is_persisted_with_owner_wait_shape(
@@ -190,6 +238,9 @@ def test_full_transcript_is_persisted_with_owner_wait_shape(
     assert saved["status"] == "SAME_ACTION_PAPER_SHAPE_ONLY"
     assert saved["observer_transcript_review"]["observer_run_id"] == RUN_ID
     assert saved["observer_transcript_review"]["sample_count"] == 8
+    assert saved["observer_transcript_review"]["server_input_snapshot"] == (
+        "PAPER_REPORTED_IDLE_AT_BEGIN"
+    )
     assert saved["observer_transcript_review"]["source_authentication"] == (
         "UNATTESTED_PAPER_LOG_TEXT"
     )
