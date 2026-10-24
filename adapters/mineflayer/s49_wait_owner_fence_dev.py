@@ -125,6 +125,18 @@ class S49WaitFenceDev:
         self._previous_tick = world_tick
         self._phase = "SAMPLING"
 
+    def abort(self, owner: object, *, reason_source_ref: str) -> None:
+        """Irrevocable owner-local failure; no rearm or synthesized WAIT."""
+        if owner is not self._owner:
+            self._phase = "ABORTED"
+            raise BoundaryRejected("foreign WAIT abort owner")
+        if self._phase == "ABORTED":
+            return
+        if self._phase == "SEALED":
+            raise BoundaryRejected("sealed WAIT fence cannot be retroactively aborted")
+        self._phase = "ABORTED"
+        self._record("ABORT", None, reason_source_ref, None)
+
     def seal(self, owner: object, *, seal_source_ref: str) -> tuple[dict, ...]:
         self._check(owner)
         if self._phase != "SAMPLING" or len(self._rows) != 9:

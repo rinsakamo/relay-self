@@ -23,6 +23,8 @@ on:
       - tests/test_s50_p1_wait_joint_dev.py
       - adapters/mineflayer/s49_wait_owner_fence_dev.py
       - tests/test_s49_wait_owner_fence_dev.py
+      - adapters/mineflayer/s49_wait_fenced_executor_dev.py
+      - tests/test_s49_wait_fenced_executor_dev.py
 
 permissions:
   contents: read
@@ -39,6 +41,7 @@ jobs:
       PYTHONPATH: 'src:tests:.'
       PYTHONDONTWRITEBYTECODE: '1'
       ORIGINAL_P1_HEAD: '56600977fb730918ac67769df0ad9ab45f2e9d49'
+      ORIGINAL_S49_HEAD: 'd22e8c09d17f9743becb4e10c8a1e836e84e4201'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -65,7 +68,17 @@ jobs:
               exit 1
             }
           done
-          echo "P1 original source and tests: exact blob match"
+          for path in \
+              adapters/mineflayer/s49_normal_session_real_ci.py \
+              adapters/mineflayer/normal_action.py; do
+            expected="$(git rev-parse "${ORIGINAL_S49_HEAD}:$path")"
+            actual="$(git rev-parse "HEAD:$path")"
+            test "$expected" = "$actual" || {
+              echo "::error::Protected S49 original changed: $path"
+              exit 1
+            }
+          done
+          echo "P1 and S49 original protected source: exact blob match"
       - name: Install isolated Python 3.12 focused dependencies
         run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
       - name: LIGHT syntax guard
@@ -83,7 +96,9 @@ jobs:
             adapters/mineflayer/m02_paper_dev/s50_p1_wait_joint_dev.py \
             tests/test_s50_p1_wait_joint_dev.py \
             adapters/mineflayer/s49_wait_owner_fence_dev.py \
-            tests/test_s49_wait_owner_fence_dev.py
+            tests/test_s49_wait_owner_fence_dev.py \
+            adapters/mineflayer/s49_wait_fenced_executor_dev.py \
+            tests/test_s49_wait_fenced_executor_dev.py
       - name: FAST original P1 + SelfBody/M0 focused offline tests
         run: |
           python -m pytest -q \
@@ -98,7 +113,8 @@ jobs:
             tests/test_s50_p1_wait.py \
             tests/test_s50_p1_scope.py \
             tests/test_s50_p1_wait_joint_dev.py \
-            tests/test_s49_wait_owner_fence_dev.py
+            tests/test_s49_wait_owner_fence_dev.py \
+            tests/test_s49_wait_fenced_executor_dev.py
       - name: State validation boundary
         if: always()
         run: |
