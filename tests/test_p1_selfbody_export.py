@@ -38,9 +38,9 @@ def test_wait_sensor_is_separate_from_true_fatigue_and_basal():
     assert readout.wait_interval_ref == "paper-idle:11"
     assert readout.profile_sha256 == profile.sha256
     assert readout.source_scope == "P1_PRODUCER_LOCAL_NOT_WORLD_ATTESTED"
-    assert "true_fatigue" not in vars(readout)
-    assert "energy" not in vars(readout)
-    assert "action_grant" not in vars(readout)
+    assert not hasattr(readout, "true_fatigue")
+    assert not hasattr(readout, "energy")
+    assert not hasattr(readout, "action_grant")
 
 
 def test_blocked_move_is_not_rest_and_has_no_wait_witness():
