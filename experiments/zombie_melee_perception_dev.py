@@ -121,7 +121,7 @@ class ZombieMeleeCueReview:
     l1_motion: L1MotionStatus
     observed_distance_m: float | None
     contact_radius_m: float
-    """Read-only assessment, not Action authorization or a learning result."""
+    # Read-only assessment, not Action authorization or learning.
 
 
 def _observed_zombie(
