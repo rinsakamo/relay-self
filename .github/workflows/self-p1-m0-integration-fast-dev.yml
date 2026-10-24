@@ -27,6 +27,8 @@ on:
       - tests/test_s49_wait_fenced_executor_dev.py
       - adapters/mineflayer/s49_wait_offline_dev.py
       - tests/test_s49_wait_offline_dev.py
+      - adapters/mineflayer/s49_wait_typed_capture_dev.py
+      - tests/test_s49_wait_typed_capture_dev.py
 
 permissions:
   contents: read
@@ -102,7 +104,9 @@ jobs:
             adapters/mineflayer/s49_wait_fenced_executor_dev.py \
             tests/test_s49_wait_fenced_executor_dev.py \
             adapters/mineflayer/s49_wait_offline_dev.py \
-            tests/test_s49_wait_offline_dev.py
+            tests/test_s49_wait_offline_dev.py \
+            adapters/mineflayer/s49_wait_typed_capture_dev.py \
+            tests/test_s49_wait_typed_capture_dev.py
       - name: FAST original P1 + SelfBody/M0 focused offline tests
         run: |
           python -m pytest -q \
@@ -119,7 +123,8 @@ jobs:
             tests/test_s50_p1_wait_joint_dev.py \
             tests/test_s49_wait_owner_fence_dev.py \
             tests/test_s49_wait_fenced_executor_dev.py \
-            tests/test_s49_wait_offline_dev.py
+            tests/test_s49_wait_offline_dev.py \
+            tests/test_s49_wait_typed_capture_dev.py
       - name: State validation boundary
         if: always()
         run: |
