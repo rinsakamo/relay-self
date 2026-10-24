@@ -15,11 +15,7 @@ from experiments.self_body_host_clock_sidecar_dev import (
     CLOCK_FILE,
     VIEWS_FILE,
     atomic_write_jsonl_new,
-    host_clock_rows,
     verify_host_clock_source_join,
-)
-from experiments.self_body_host_clock_s49_liveprobe_dev import (
-    S49PassiveHostClockDEV,
 )
 from test_self_dev import args
 from test_self_product_passive_views import probe
@@ -350,3 +346,28 @@ def test_dev_receipt_requires_source_and_clock_join_not_physical_qualification(
     assert receipt["science_success"] is False
     assert receipt["dev_host_clock_physical_attestation"] is False
     assert (root / "SHA256SUMS").exists()
+
+
+def test_failed_original_native_terminal_never_qualifies_clock(
+    monkeypatch, tmp_path,
+):
+    monkeypatch.setattr(self_demo.shutil, "which", lambda _name: "/fake-tool")
+    monkeypatch.setattr(self_demo.subprocess, "run", lambda *a, **kw:
+                        SimpleNamespace(returncode=0, stdout="v", stderr=""))
+    async def qualified_but_failed(report, log, *, live_probe=None):
+        for seq in SEQS:
+            await live_probe(probe(seq))
+        native = native_report()
+        native["status"] = "FAILED"
+        native["server_exit"] = 1
+        report.write_text(json.dumps(native), encoding="utf-8")
+        return 0
+
+    monkeypatch.setattr(s49, "qualify", qualified_but_failed)
+    root = tmp_path / "failed-original"
+    code = self_demo._dev_run(args(root, self_passive_host_clock=True))
+    receipt = json.loads((root / "dev_receipt.json").read_text())
+    assert code == 1
+    assert receipt["dev_host_clock"] == "UNDETERMINED"
+    assert receipt["dev_host_clock_samples"] == 0
+    assert receipt["dev_host_clock_physical_attestation"] is False
