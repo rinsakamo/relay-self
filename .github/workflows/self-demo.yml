@@ -19,10 +19,10 @@ on:
         options: [fast, full]
 
 env:
-  # LIGHT on ordinary Draft push/PR; FAST when owner marks module review-ready;
+  # LIGHT on ordinary push/PR sync; FAST only when owner marks review-ready;
   # FULL for a non-Draft PR targeting main (or explicit owner invocation).
   RELAY_CI_TIER: >-
-    ${{ (github.event_name == 'pull_request' && github.base_ref == 'main' && !github.event.pull_request.draft && 'full') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'full' && 'full') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci-full-offline]') && 'full') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast' && 'fast') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci-fast-offline]') && 'fast') || (github.event_name == 'pull_request' && !github.event.pull_request.draft && 'fast') || 'light' }}
+    ${{ (github.event_name == 'pull_request' && github.base_ref == 'main' && !github.event.pull_request.draft && 'full') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'full' && 'full') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci-full-offline]') && 'full') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast' && 'fast') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci-fast-offline]') && 'fast') || (github.event_name == 'pull_request' && (github.event.action == 'ready_for_review' || ((github.event.action == 'opened' || github.event.action == 'reopened') && !github.event.pull_request.draft)) && 'fast') || 'light' }}
 
 permissions:
   contents: read
