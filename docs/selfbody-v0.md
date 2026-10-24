@@ -1,3 +1,35 @@
+## 2026-10-24 — B0/S51 owner-local multi-epoch cognition trace (DEV)
+
+**Implementation candidate, not independently tested or qualified.** The
+existing S51 owner now projects each original hunger/appetite L0 decision,
+then the existing post-EAT next-L0 decision, into a bounded array
+`dev_b0_cognition_epochs` (1–16 existing appetite probes plus 1 successor).
+Each projection reads the already selected `B0Decision` and original
+`B0EnergyLedger` sensor; it does not call `decide()` again, advance
+metabolism, add native probes, move or authorize any Action.
+
+The original Self DEV receipt compares each array entry to the corresponding
+original `ground_appetite_trace`: session/seq/request, L0 kind, native Food,
+M0 sensor reading and tick, explicit UNKNOWN P1, and the no-authority flags.
+The final entry must equal the separately validated
+`dev_b0_cognition_next_epoch` and preserve strictly increasing native seq
+with nondecreasing owner ticks. Incorrect, re-ordered or forged arrays fail
+the DEV receipt; missing arrays remain `NOT_OBSERVED` for older sources.
+The positive classification is **ORDERED_PRODUCER_LOCAL_DEV**, never
+independent native attestation or behavioral gain.
+
+The original appetite trace does not independently preserve every Health
+field, and M0 owner ticks are decision ticks rather than Minecraft World
+time. Hence no physical-fatigue WAIT recovery or long-run viability claim.
+The B0 and S49 owners are still separate existing run routes; neither this
+trace nor a HOLD S10 update joins their physical owners.
+
+These new tests are synthetic; the final exact HEAD still requires local
+Python3.12 focused/FAST and real disposable DEV proof before a product
+runtime claim. R qualification and V science remain NO_GO / NOT_RUN.
+
+---
+
 ## 2026-10-24 — M0 owner-local interoception DEV integration
 
 **Current scope: implementation candidate, DEV_ONLY / QUALIFICATION_NO_GO /
