@@ -67,7 +67,7 @@ jobs:
           {
             echo "### S49 Paper read-only DEV JAR"
             echo "Commit: $GITHUB_SHA"
-            echo "SHA-256: `$SHA`"
+            echo "SHA-256: $SHA"
             echo "Bytes: $BYTES"
             echo "Mode: COMPILE_ONLY / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN"
           } >> "$GITHUB_STEP_SUMMARY"

@@ -1,8 +1,9 @@
 # RelaySelf S49 Paper WAIT observer — isolated DEV source producer
 
-**Status: SOURCE_STAGED / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
-This is source code only. The Java 21 / Paper 1.21.8 plugin has **not**
-been built, loaded, or exercised in a real World by this DEV step.
+**Status: JAVA_21_COMPILE_VERIFIED_DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
+The isolated Java 21 / Paper API 1.21.8 plugin was built and its packaged
+class, plugin.yml and default-disabled config.yml inspected in a compile-only
+GitHub Actions runner. It has **not** been loaded, run, or tested in a real World.
 
 This is an independent Paper plugin, not a patch to the protected
 `RelayMetabolismPlugin`, `normal_action.py`, or S49 `qualify()` runner.
@@ -34,11 +35,17 @@ independent review. It does **not** prove native command release takes effect
 before the first tick, full-tick inactivity, no other issuers, or R original
 custody; neither record is a P1 recovery witness.
 
-### Build gate (not performed in this source-only step)
+### Java 21 compile result (not real Paper execution)
 
-A future **authorized isolated DEV environment** may run
-`mvn -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml verify`
-using Java 21 and Paper API 1.21.8, with explicit source/JAR hashes recorded.
-Installation into any real World, command execution, or integration with
-the protected S49 process requires a separately governed run. No Java or
-Minecraft is started by the Python-only source-contract checks.
+The isolated build at [GitHub Actions #40100070963](https://github.com/rinsakamo/relay-self/actions/runs/40100070963)
+completed successfully for commit `efc6d70ca8fbcb578a15bab0901b58ef88329a7a`.
+The packaged DEV JAR measured 6,501 bytes with SHA-256
+`987ecc19d3ea999a6186c807d4ca5a51897a3b7ef5446cb736261d3354ed64ea`
+for that specific build. The compiled JAR is available as a short-retention
+GitHub Actions artifact. Do not treat the artifact ZIP SHA as the JAR SHA.
+
+The workflow compiles only this standalone observer using Java 21, audits the
+JAR entries, ensures protected S49/P1 source blob identities, and does not
+launch Paper, Minecraft, Mineflayer or any physical World. Installation,
+console command execution, native S49 Action integration, or independent R
+source qualification is **not approved or evidenced by this build**.
