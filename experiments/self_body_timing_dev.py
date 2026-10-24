@@ -49,7 +49,7 @@ def _name(name: str, value: object) -> None:
 
 
 def _check_view(view: SelfBodyView, self_id: str) -> None:
-    if not isinstance(view, SelfBodyView):
+    if type(view) is not SelfBodyView:
         raise TimingReviewRejected("typed SelfBodyView required")
     if view.self_id != self_id:
         raise TimingReviewRejected("foreign or unspecified Self identity")
@@ -173,6 +173,10 @@ def predict_hypothetical_dodge(
             + hypothesis.actuator_start_ms + travel_ms
         )
         headroom_ms = hypothesis.attack_horizon_ms - total_ms
+        if not all(math.isfinite(value) for value in (
+            travel_ms, total_ms, headroom_ms,
+        )):
+            raise TimingReviewRejected("nonfinite derived timing budget")
         status = (
             DodgeBudgetStatus.WITHIN_HYPOTHETICAL_BUDGET
             if headroom_ms > 0
@@ -265,6 +269,8 @@ def review_body_position_delta(
             horizontal_distance = math.hypot(
                 end[0] - start[0], end[2] - start[2]
             )
+            if not math.isfinite(horizontal_distance):
+                raise TimingReviewRejected("nonfinite derived position delta")
             status = BodyDisplacementStatus.SOURCE_CORRELATED_POSITION_DELTA
             action_id = b.action_id
     return BodyDisplacementReview(

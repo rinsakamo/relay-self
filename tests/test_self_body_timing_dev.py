@@ -20,6 +20,7 @@ from relay_self.provenance import Provenance
 from relay_self.self_body import (
     BodyField,
     BodyObservation,
+    SelfBodyView,
     compose_self_body_view,
 )
 
@@ -316,3 +317,111 @@ def test_position_delta_status_cannot_claim_native_velocity():
     )
     with pytest.raises(TimingReviewRejected, match="unsupported displacement"):
         replace(result, status="VELOCITY_MEASURED")
+
+
+@pytest.mark.parametrize("settings", (
+    {"distance": 1e308, "speed": 1e-308},
+    {"detect": 1e308, "cognition": 1e308},
+))
+def test_nonfinite_derived_budget_is_rejected(settings):
+    with pytest.raises(TimingReviewRejected, match="nonfinite"):
+        predict_hypothetical_dodge(body(), hypothesis(**settings))
+
+
+def test_nonfinite_position_delta_is_rejected():
+    with pytest.raises(TimingReviewRejected, match="nonfinite"):
+        review_body_position_delta(
+            body(seq=1, position=(-1e308, 64, 0)),
+            body(seq=2, position=(1e308, 64, 0), readback=True),
+            self_id="self-a",
+        )
+
+
+def test_overridden_read_only_view_cannot_supply_invented_position():
+    class InventedPosition(SelfBodyView):
+        def observed(self, key):
+            return replace(super().observed(key), value=999)
+
+    original = body()
+    forged = InventedPosition(**{
+        name: getattr(original, name)
+        for name in original.__dataclass_fields__
+    })
+    with pytest.raises(TimingReviewRejected, match="typed SelfBodyView"):
+        predict_hypothetical_dodge(forged, hypothesis(original))
+
+
+@pytest.mark.parametrize("cognition,speed,expected", (
+    (5, 0.4, DodgeBudgetStatus.LATE_UNDER_HYPOTHESIS),
+    (350, 20, DodgeBudgetStatus.WITHIN_HYPOTHETICAL_BUDGET),
+    (450, 20, DodgeBudgetStatus.LATE_UNDER_HYPOTHESIS),
+))
+def test_cognition_and_body_remain_independent(cognition, speed, expected):
+    result = predict_hypothetical_dodge(
+        body(), hypothesis(cognition=cognition, speed=speed),
+    )
+    assert result.status is expected
+    assert result.travel_ms == pytest.approx(200 / speed)
+    assert not result.allowed_to_act and not result.physical_success_attested
+
+
+@pytest.mark.parametrize("disposition", (
+    ActionOutcomeDisposition.UNKNOWN, ActionOutcomeDisposition.UNAVAILABLE,
+))
+def test_unknown_and_unavailable_readbacks_cannot_measure_movement(disposition):
+    later = replace(
+        body(seq=2, readback=True), outcome=action_outcome(disposition=disposition),
+    )
+    result = review_body_position_delta(body(), later, self_id="self-a")
+    assert result.status is BodyDisplacementStatus.UNKNOWN
+    assert result.horizontal_distance_m is None and result.speed_mps is None
+
+
+@pytest.mark.parametrize("change", (
+    {"source_status": "applied"}, {"session_id": "foreign"},
+    {"action_id": "other"}, {"reason_code": "acknowledged"},
+    {"world_provenance": Provenance("foreign", "result")},
+))
+def test_ack_and_foreign_action_lineage_cannot_attest_displacement(change):
+    after = body(seq=2, readback=True)
+    after = replace(after, outcome=replace(after.outcome, **change))
+    result = review_body_position_delta(body(), after, self_id="self-a")
+    assert result.status is BodyDisplacementStatus.UNKNOWN
+
+
+def test_duplicate_request_with_advancing_seq_rejected():
+    before, after = body(), body(seq=2, readback=True)
+    after = replace(after, observation=replace(
+        after.observation, request_id=before.observation.request_id,
+    ))
+    with pytest.raises(TimingReviewRejected, match="duplicate"):
+        review_body_position_delta(before, after, self_id="self-a")
+
+
+@pytest.mark.parametrize("clock_input", (
+    {"elapsed_s": 1}, {"elapsed_s": -1},
+    {"clock_domain": "node-monotonic"},
+))
+def test_no_clock_input_can_be_smuggled_into_source_seq_review(clock_input):
+    # No measured-clock seam exists: missing clocks stay UNKNOWN; neither
+    # inverted time nor an unvalidated foreign domain is admitted as a duration.
+    with pytest.raises(TypeError):
+        review_body_position_delta(body(), body(seq=2), self_id="self-a", **clock_input)
+
+
+def test_synthetic_success_is_not_existing_learning_feedback():
+    from relay_self.action_feedback import (
+        InvalidActionFeedbackData,
+        LearningFeedbackInterpretation,
+        interpret_action_outcome_as_learning_feedback,
+    )
+    from relay_self.learning import LearningFeedback
+
+    result = predict_hypothetical_dodge(body(), hypothesis())
+    assert not isinstance(result, (LearningFeedbackInterpretation, LearningFeedback))
+    assert not hasattr(result, "commit_learning")
+    with pytest.raises(InvalidActionFeedbackData, match="action must be"):
+        interpret_action_outcome_as_learning_feedback(
+            result, None, None,
+            provenance=Provenance("synthetic-dev", "prediction"),
+        )

@@ -1,6 +1,6 @@
 # SelfBody timing and motor-capability hypothesis — DEV-only (#632)
 
-**SOURCE_STAGED / PYTHON3.12_UNVERIFIED / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**
+**LOCAL_PYTHON3.12_VALIDATED / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**
 
 This is an intentionally narrow additive source slice on PR #634 HEAD
 0ceb75bbc41066b63d84037271e2b69159fc86df. It is not a physically executed
@@ -71,7 +71,7 @@ latency and server ticks are *not* represented by that simple approximation.
 
 ## Offline negative-control suite
 
-tests/test_self_body_timing_dev.py provides 25 test functions with parameterized
+tests/test_self_body_timing_dev.py provides 34 test functions with parameterized
 negative examples: fixed-Body L0/L2 timing contrast; fixed-cognition variable
 Body speed; deadline equality; missing time/speed/clearance and missing Body
 observation; stale/foreign native source and Self/session; invalid/negative/NaN
@@ -79,14 +79,49 @@ time or speed; fraudulent native attestation; direct result upgrade to Action
 authority; immutability; source-paired movement distance with velocity UNKNOWN;
 ordered seq not treated as seconds; ACK/UNKNOWN/uncorrelated action evidence;
 duplicate/stale/foreign pair; missing Body fields and absence of issuer methods.
+Additional controls cover fast cognition with a slow Body and the reverse;
+derived numeric overflow; overridden read-only views; UNKNOWN and UNAVAILABLE;
+ACK/foreign Action lineage; duplicate request IDs; rejected timestamp/clock-domain
+arguments; and synthetic predictions rejected by the existing S17 feedback seam.
+
+## Local Windows / WSL2 verification (2026-10-24)
+
+The independent detached worktree began at exact remote source HEAD
+8156f9091d1216ce3d0d202ae69711ddeae50059, on Windows 11 Home build 26200,
+WSL2 Ubuntu 24.04.4, Python 3.12.3, pytest 9.1.1, Ruff 0.17.2 and Git 2.43.0.
+The existing Python 3.12 venv was reused; no package installation was needed.
+
+- Initial requested seven-file focused suite: 121 PASS, zero FAIL/ERROR/SKIP.
+- Added controls first reproduced four implementation failures: two budget
+  overflows, one position-delta overflow and one overridden view acceptance.
+  An additional test had an incorrect S17 import, then an incorrect keyword;
+  both test-authoring failures and their logs are retained.
+- Minimal DEV fixes reject nonfinite derived values and require the concrete
+  SelfBodyView type so an overridden observation reader cannot supply values.
+  This is input hardening, not authentication of arbitrary Python objects.
+- After repair: requested focused suite 140 PASS, adoption-v2 audit 52 PASS,
+  zero FAIL/ERROR/SKIP; Ruff and repository contracts exit 0.
+- The prior protected inventory has 82 targets (76 repository paths plus the
+  historical index and five original evidence files); all match prior SHA256.
+  All 770 historical entries and the index match. The v2 audit separately checks
+  all 19 historical commit/path/blob objects, unchanged 15 current files and
+  four adopted current implementations. Historical originals are not required
+  to equal those four approved later implementations.
+
+Complete logs, JUnit, before/after hashes and failure history are outside Git at
+`/home/rinsa/work/selfbody-timing-validation-20261024-evidence/`.
+Synthetic unit fixtures use existing deterministic Action/S10 code only in
+test-local state; there is no physical Action, new native OUTCOME, retained
+S10/Memory update, World or LLM run. Real clocks remain absent: elapsed time
+and measured speed remain UNKNOWN. This verifies the local DEV foundation,
+not learned motor capability, a physical dodge or an installed reflex.
 
 ## Next gates (separate authorization)
 
-1. Independent WSL2 detached worktree at exact HEAD, Python 3.12.3:
-   focused new tests and existing SelfBody/S49/S16/Action/S18 guards, Ruff,
-   repository contracts; verify protected 82, historical 770 and earlier
-   evidence SHA before/after. Isolated DEV fixes/retries allowed. Record errors
-   and final exact HEAD. Do not claim tests PASS before execution.
+1. Review the final exact DEV HEAD and local verification evidence for prospective
+   owner adoption. The current product FAST registration and path allowlist do
+   not include this additive slice; any later integration must stage those
+   changes separately. No automatic adoption into #634 is performed.
 2. Audit true measured host monotonic clocks at source capture, L0/L1/L2
    selection, Action authorization/issue, Mineflayer start and native movement
    observation without introducing a second native reader/motor owner.
