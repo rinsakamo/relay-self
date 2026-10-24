@@ -399,6 +399,8 @@ async def qualify(
             "basal_cost_per_decision": ledger.config.basal_cost,
             "food_energy_per_verified_item": ledger.config.food_energy,
         }
+        if dev_only and food_source == "ground":
+            report["dev_b0_cognition_epochs"] = []
         report["stage"] = "EXTERNAL_SURVIVAL_AND_FOOD_STAGING"
         assert server.stdin is not None
         _command(server, "gamemode survival RelaySelf")
@@ -417,6 +419,20 @@ async def qualify(
                     session, f"b0-ground-appetite-{attempt:02d}",
                 )
                 decision = ledger.decide(read)
+                if dev_only:
+                    from adapters.mineflayer.self_body_m0_projection import (
+                        compose_b0_cognition_views,
+                        summarize_b0_cognition_views,
+                    )
+
+                    viewed = compose_b0_cognition_views(
+                        read, ledger, decision,
+                        self_id="s51-b0-dev-self",
+                        epoch_id=f"b0-appetite-{read.seq}",
+                    )
+                    report["dev_b0_cognition_epochs"].append(
+                        summarize_b0_cognition_views(viewed)
+                    )
                 if decision.kind != "WAIT":
                     raise S51PhysicalFailure("unexpected L0 action before ground fixture")
                 trace = {
@@ -672,11 +688,11 @@ async def qualify(
             report["next_native_probe"] = asdict(fresh)
             next_l0 = ledger.decide(fresh)
             if dev_only:
-                # The same original S51 L0 has ALREADY made its decision.
-                # Project that owner-local *sensor* into SelfBody/World without
-                # reading true M0 energy, running a new L0, or issuing Action.
+                # Original S51 L0 already decided from this SAME received
+                # native probe. Merely project its M0 sensor and native view.
                 from adapters.mineflayer.self_body_m0_projection import (
                     compose_b0_cognition_views,
+                    summarize_b0_cognition_views,
                 )
 
                 cognition = compose_b0_cognition_views(
@@ -684,27 +700,10 @@ async def qualify(
                     self_id="s51-b0-dev-self",
                     epoch_id=f"b0-next-probe-{fresh.seq}",
                 )
-                sensed = cognition.body.sensed("m0_energy_sensor")
-                report["dev_b0_cognition_next_epoch"] = {
-                    "classification": "DEV_ONLY_PRODUCER_LOCAL_M0_INTEROCEPTION",
-                    "native_source": cognition.body.observation.source_ref,
-                    "world_source": cognition.world.observation.source_ref,
-                    "body_world_same_object": cognition.world.self_body is cognition.body,
-                    "source_seq": fresh.seq,
-                    "l0_kind": cognition.l0_kind,
-                    "m0_tick": cognition.sensor_tick,
-                    "m0_energy_sensor": sensed.value,
-                    "m0_sensor_origin": sensed.origin.value,
-                    "m0_sensor_owner_source": sensed.provenance[-1].source,
-                    "native_food": cognition.body.observed("food").value,
-                    "native_health": cognition.body.observed("health").value,
-                    "p1_fatigue": cognition.body.sensed("p1_fatigue").value,
-                    "true_m0_energy_exposed": False,
-                    "s10_updates": 0,
-                    "additional_native_reads": 0,
-                    "additional_actions": 0,
-                    "qualification": False,
-                }
+                next_view = summarize_b0_cognition_views(cognition)
+                report["dev_b0_cognition_next_epoch"] = next_view
+                if food_source == "ground":
+                    report["dev_b0_cognition_epochs"].append(next_view)
             report["next_l0"] = {
                 "probe_seq": next_l0.probe_seq,
                 "kind": next_l0.kind,
