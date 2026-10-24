@@ -25,7 +25,8 @@ def _digest(value: str) -> str:
 def _paper_rows(raw: str, *, marker: str, world: str, first: int) -> tuple:
     """Project exactly eight original-line hashes; never claim tick completeness."""
     samples = []
-    for line in raw.splitlines():
+    for raw_line in raw.splitlines(keepends=True):
+        line = raw_line.rstrip("\r\n")
         if not line.startswith("S50_DEV_WAIT_TICK "):
             continue
         data = {}
@@ -46,7 +47,7 @@ def _paper_rows(raw: str, *, marker: str, world: str, first: int) -> tuple:
         if (index != len(samples) + 1
                 or tick != first + len(samples) or index > 8):
             raise BoundaryRejected("missing/reordered/extra Paper tick")
-        samples.append((tick, "paper-line-sha256:" + _digest(line)))
+        samples.append((tick, "paper-line-sha256:" + _digest(raw_line)))
     if len(samples) != 8:
         raise BoundaryRejected("eight Paper callback samples required")
     return tuple(samples)
