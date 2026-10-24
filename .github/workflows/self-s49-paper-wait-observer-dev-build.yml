@@ -44,12 +44,22 @@ jobs:
           java-version: '21'
           cache: maven
           cache-dependency-path: adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml
-      - name: Compile only the sidecar; no Minecraft World
+      - name: Compile twice and demand reproducible JAR SHA-256; no Minecraft World
         run: |
           set -eu
-          mvn --batch-mode --no-transfer-progress \
-            -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml \
-            -DskipTests package
+          POM=adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml
+          JAR=adapters/mineflayer/s49_paper_wait_observer_dev/target/relay-s49-wait-observer-dev-0.1.0-dev.jar
+          mvn --batch-mode --no-transfer-progress -f "$POM" -DskipTests clean package
+          test -s "$JAR"
+          FIRST="$(sha256sum "$JAR" | cut -d ' ' -f 1)"
+          mvn --batch-mode --no-transfer-progress -f "$POM" -DskipTests clean package
+          test -s "$JAR"
+          SECOND="$(sha256sum "$JAR" | cut -d ' ' -f 1)"
+          test "$FIRST" = "$SECOND" || {
+            echo "::error::Non-reproducible S49 Paper observer: first=$FIRST second=$SECOND"
+            exit 1
+          }
+          echo "S49_REPRODUCIBLE_DEV_JAR sha256=$SECOND HEAD=$GITHUB_SHA"
       - name: Audit packaged JAR class/resources and SHA-256
         run: |
           set -eu
