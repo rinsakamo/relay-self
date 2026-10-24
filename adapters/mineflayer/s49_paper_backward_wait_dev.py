@@ -132,6 +132,8 @@ async def project_s49_backward_paper_dev(
     expected_player_uuid: str | None = None,
     require_preaction_edge: bool = False,
     custody_archive: object | None = None,
+    w3_original_root: Path | None = None,
+    paper_collector_cursor: object | None = None,
 ) -> dict:
     """One-shot offline correlation from the original typed owner closure.
 
@@ -160,6 +162,7 @@ async def project_s49_backward_paper_dev(
         "paper_input_sha256": None, "owner_rows": [], "owner_review": None,
         "observer_transcript_review": None,
         "two_buffer_archive_review": None,
+        "producer_file_review": None,
         "source_authentication": "UNATTESTED_CALLER_PAPER_INPUT",
         "server_effective_control_release": "NOT_ATTESTED",
         "whole_tick_self_inactivity": "NOT_ATTESTED",
@@ -171,6 +174,10 @@ async def project_s49_backward_paper_dev(
     try:
         if require_preaction_edge not in (True, False) or type(require_preaction_edge) is not bool:
             raise BoundaryRejected("pre-action admission mode must be bool")
+        if (w3_original_root is None) != (paper_collector_cursor is None):
+            raise BoundaryRejected("original producer file locators must be paired")
+        if w3_original_root is not None and custody_archive is None:
+            raise BoundaryRejected("producer-file check requires two-buffer archive")
         if custody_archive is not None and not require_preaction_edge:
             raise BoundaryRejected("archive requires strict pre-action transition")
         if require_preaction_edge and (
@@ -211,6 +218,21 @@ async def project_s49_backward_paper_dev(
                 if source_review["paper_log_sha256"] != _sha(observer_transcript):
                     raise BoundaryRejected("archived Paper bytes differ from source")
                 report["two_buffer_archive_review"] = source_review
+                if w3_original_root is not None:
+                    from adapters.mineflayer.s49_paper_existing_sources_dev import (
+                        review_s49_existing_w3_paper_files_dev,
+                    )
+                    producer_review = review_s49_existing_w3_paper_files_dev(
+                        typed_capture,
+                        w3_root=w3_original_root,
+                        paper_cursor=paper_collector_cursor,
+                        archive=custody_archive,
+                        expected_player_uuid=expected_player_uuid,
+                    )
+                    if (producer_review["paper_collector_window_sha256"]
+                            != source_review["paper_log_sha256"]):
+                        raise BoundaryRejected("saved Paper collector not same archive")
+                    report["producer_file_review"] = producer_review
         if marker != action + "-" + session:
             raise BoundaryRejected("S49 Paper marker not action/session bound")
         decoded = evidence.decoded_evidence

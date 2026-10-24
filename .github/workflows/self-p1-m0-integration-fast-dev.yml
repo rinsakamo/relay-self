@@ -33,6 +33,8 @@ on:
       - adapters/mineflayer/s49_paper_transcript_dev.py
       - adapters/mineflayer/s49_paper_preaction_dev.py
       - adapters/mineflayer/s49_paper_custody_dev.py
+      - adapters/mineflayer/s49_paper_existing_sources_dev.py
+      - tests/test_s49_paper_existing_sources_dev.py
       - tests/test_s49_paper_custody_dev.py
       - tests/test_s49_paper_preaction_dev.py
       - tests/test_s49_paper_transcript_dev.py
@@ -121,10 +123,12 @@ jobs:
             adapters/mineflayer/s49_paper_transcript_dev.py \
             adapters/mineflayer/s49_paper_preaction_dev.py \
             adapters/mineflayer/s49_paper_custody_dev.py \
+            adapters/mineflayer/s49_paper_existing_sources_dev.py \
             tests/test_s49_paper_backward_wait_dev.py \
             tests/test_s49_paper_transcript_dev.py \
             tests/test_s49_paper_preaction_dev.py \
             tests/test_s49_paper_custody_dev.py \
+            tests/test_s49_paper_existing_sources_dev.py \
             tests/test_s49_paper_wait_observer_dev.py
       - name: FAST original P1 + SelfBody/M0 focused offline tests
         run: |
@@ -148,6 +152,7 @@ jobs:
             tests/test_s49_paper_transcript_dev.py \
             tests/test_s49_paper_preaction_dev.py \
             tests/test_s49_paper_custody_dev.py \
+            tests/test_s49_paper_existing_sources_dev.py \
             tests/test_s49_paper_wait_observer_dev.py
       - name: State validation boundary
         if: always()

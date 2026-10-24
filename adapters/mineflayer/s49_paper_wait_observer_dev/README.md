@@ -199,3 +199,47 @@ established issuer/process identity and epoch, server-effective control
 release attribution to the original S49 Action, complete Self inactivity
 per admitted World tick, and an issuer-complete no-Action boundary.
 Never infer these from an input digest or a claimed reader label.
+
+### Existing W3 / existing Paper collector producer-file replay (DEV)
+
+The isolated read-only `review_s49_existing_w3_paper_files_dev`
+accepts two **already produced** local original sources: a previously
+sealed W3 Node-bridge-stdout capture directory, and a previously pinned
+`W4CollectorCursor` for the existing Paper server-console-collector file.
+It never launches a process, observes real World, reads the Java stdout
+pipe, or sends an Action.
+
+W3's `audit_w3_sealed_stdout` checks the complete original JSONL stream,
+session, EOF and shutdown receipt. The DEV join re-decodes that same
+saved JSONL through the existing protocol decoder and checks the four
+exact original S16 typed frames (before, dispatch, clear, after) and their
+sequence numbers. These are **Node→Python stdout bytes**, not Minecraft
+TCP packet bytes or commands sent over stdin. The existing W4 collector
+cursor records the file's inode/device/EOF offset before the candidate
+activity. A separate read-only tail checks only bytes *after that offset*
+on the same unchanged regular file; replacement, truncation, symlink
+aliases, hardlinks, size overrun, incomplete trailing lines and altered
+source windows are rejected. Log bytes must match the previously
+reviewed full pre-action Paper transcript.
+
+The optional `project_s49_backward_paper_dev(...,
+w3_original_root=..., paper_collector_cursor=...,
+custody_archive=..., require_preaction_edge=True)` writes a derived
+`producer_file_review` into the original S49 owner-local report before
+arming its WAIT fence. It requires all four arguments and never bypasses
+the existing S16/owner checks.
+
+**Limits:** Both producers remain locally owned, so their saved file
+contents do not prove the independent origin, signature, OS process
+identity, issuer epoch, or authenticity of either host. W3 receipt hash
+and Paper inode are only local integrity/position evidence. These two
+records do not carry an authenticated shared clock or proof that the
+S49 clear ACK caused Paper BACK off. Full World-tick inactivity is still
+unknown. Output status is
+`LOCAL_PRODUCER_FILE_CONTENT_BOUND_ONLY`, always
+`QUALIFICATION_NO_GO`, `SCIENCE_NOT_RUN`, zero physical WAIT and
+zero P1 recovery.
+
+Actual independent original native wire custody, independent Paper
+source authentication and causal source binding require a distinct R
+qualification gate and external trust anchor, not this DEV replayer.
