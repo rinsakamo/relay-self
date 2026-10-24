@@ -130,6 +130,7 @@ async def project_s49_backward_paper_dev(
     output_path: Path,
     observer_transcript: str | None = None,
     expected_player_uuid: str | None = None,
+    require_preaction_edge: bool = False,
 ) -> dict:
     """One-shot offline correlation from the original typed owner closure.
 
@@ -166,17 +167,32 @@ async def project_s49_backward_paper_dev(
         "wait_ticks_admitted": 0, "p1_fatigue_recovered": 0.0,
     }
     try:
+        if require_preaction_edge not in (True, False) or type(require_preaction_edge) is not bool:
+            raise BoundaryRejected("pre-action admission mode must be bool")
+        if require_preaction_edge and (
+            observer_transcript is None or expected_player_uuid is None
+        ):
+            raise BoundaryRejected("pre-action transition requires full transcript")
         if observer_transcript is not None or expected_player_uuid is not None:
-            # This is a stricter optional source-shape join, NEVER R custody.
+            # Correlation-only: neither path can grant source custody or P1.
             if not isinstance(observer_transcript, str):
                 raise BoundaryRejected("full Paper observer transcript missing")
-            from adapters.mineflayer.s49_paper_transcript_dev import (
-                review_s49_paper_transcript_dev,
-            )
-            audit = review_s49_paper_transcript_dev(
-                typed_capture, observer_transcript,
-                expected_player_uuid=expected_player_uuid,
-            )
+            if require_preaction_edge:
+                from adapters.mineflayer.s49_paper_preaction_dev import (
+                    review_s49_preaction_paper_dev,
+                )
+                audit = review_s49_preaction_paper_dev(
+                    typed_capture, observer_transcript,
+                    expected_player_uuid=expected_player_uuid,
+                )
+            else:
+                from adapters.mineflayer.s49_paper_transcript_dev import (
+                    review_s49_paper_transcript_dev,
+                )
+                audit = review_s49_paper_transcript_dev(
+                    typed_capture, observer_transcript,
+                    expected_player_uuid=expected_player_uuid,
+                )
             if audit["normalized_paper_sha256"] != _sha(paper_original):
                 raise BoundaryRejected("Paper full transcript and callback slice differ")
             report["observer_transcript_review"] = audit

@@ -1,9 +1,17 @@
 """Negative controls for pre-armed server-side BACK transition (offline only)."""
 from __future__ import annotations
 
+import asyncio
+import json
+
 import pytest
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
+from adapters.mineflayer.s49_paper_backward_wait_dev import (
+    BEGIN,
+    TICK,
+    project_s49_backward_paper_dev,
+)
 from adapters.mineflayer.s49_paper_preaction_dev import (
     review_s49_preaction_paper_dev,
 )
@@ -149,3 +157,64 @@ def test_paper_logger_prefix_only_changes_text_digest(monkeypatch):
         for row in pre_transcript(capture).splitlines(keepends=True)
     )
     assert review(capture, paper)["wait_ticks_admitted"] == 0
+
+
+def _callbacks_only(raw):
+    return "\n".join(
+        line for line in raw.splitlines()
+        if line.startswith((BEGIN, TICK))
+    ) + "\n"
+
+
+def test_original_owner_projection_requires_same_preaction_paper_edge(
+    monkeypatch, tmp_path,
+):
+    capture = typed_owner(monkeypatch)
+    whole = pre_transcript(capture)
+    result = asyncio.run(project_s49_backward_paper_dev(
+        capture, _callbacks_only(whole),
+        output_path=tmp_path / "preaction-owner.json",
+        observer_transcript=whole,
+        expected_player_uuid="32345678-1234-4234-8234-123456789abc",
+        require_preaction_edge=True,
+    ))
+    saved = json.loads((tmp_path / "preaction-owner.json").read_text())
+    assert saved == result
+    assert saved["status"] == "SAME_ACTION_PAPER_SHAPE_ONLY"
+    audit = saved["observer_transcript_review"]
+    assert audit["status"] == "BACK_TRUE_TO_FALSE_PAPER_SHAPE_ONLY"
+    assert audit["back_true_tick"] < audit["back_false_tick"]
+    assert audit["s49_native_clear_caused_edge"] == "NOT_ATTESTED"
+    assert saved["source_bound_tick"] is None
+    assert saved["wait_interval_ref"] is None
+    assert saved["wait_ticks_admitted"] == 0
+    assert saved["p1_fatigue_recovered"] == 0.0
+
+
+@pytest.mark.parametrize("mutation", ["no_edge", "other_release", "bad_callback", "missing_source"])
+def test_owner_refuses_missing_or_spliced_preaction_edge(
+    monkeypatch, tmp_path, mutation,
+):
+    capture = typed_owner(monkeypatch)
+    full = pre_transcript(capture)
+    cut = _callbacks_only(full)
+    if mutation == "no_edge":
+        full = transcript(capture)
+    elif mutation == "other_release":
+        full = full.replace("tick=70 back=false", "tick=72 back=false")
+    elif mutation == "bad_callback":
+        cut = cut.replace("index=4 input_idle=true", "index=4 input_idle=false")
+    target = tmp_path / "reject-preaction.json"
+    with pytest.raises(BoundaryRejected):
+        asyncio.run(project_s49_backward_paper_dev(
+            capture, cut, output_path=target,
+            observer_transcript=None if mutation == "missing_source" else full,
+            expected_player_uuid="32345678-1234-4234-8234-123456789abc",
+            require_preaction_edge=True,
+        ))
+    saved = json.loads(target.read_text())
+    assert saved["status"] == "REJECTED_NOT_QUALIFIED"
+    assert saved["source_bound_tick"] is None
+    assert saved["wait_interval_ref"] is None
+    assert saved["wait_ticks_admitted"] == 0
+    assert saved["p1_fatigue_recovered"] == 0.0

@@ -7,15 +7,15 @@ inactivity for all World ticks, or any P1 admission.
 from __future__ import annotations
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
+from adapters.mineflayer.s49_paper_backward_wait_dev import BEGIN, TICK
 from adapters.mineflayer.s49_paper_transcript_dev import (
     ABORT,
     COMPLETE,
-    SUBJECT,
     SERVER_INPUT,
+    SUBJECT,
     _fields,
     review_s49_paper_transcript_dev,
 )
-from adapters.mineflayer.s49_paper_backward_wait_dev import BEGIN, TICK
 from adapters.mineflayer.s49_wait_typed_capture_dev import S49TypedClosureCaptureDev
 
 PRE_ARM = "S49_OBSERVER_PRE_ARM"

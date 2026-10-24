@@ -158,3 +158,12 @@ recovery and original protected files remain unchanged.
 
 No real Minecraft/Paper server, physical Action, QUALIFICATION or SCIENCE
 is run by the isolated Java compile / Python 3.12 FAST gates.
+
+The existing S49 owner-local offline projection optionally enforces this
+new gate via `project_s49_backward_paper_dev(...,
+require_preaction_edge=True, observer_transcript=...,
+expected_player_uuid=...)`. It requires the full pre-action transcript
+review and byte-derived normalized callback digest agreement before
+arming the owner WAIT fence. Even successful offline shape correlation
+does **not** attest that the original S49 native clear caused the
+server-observed edge or permit physical fatigue recovery.
