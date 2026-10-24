@@ -154,9 +154,9 @@ def test_passive_errors_never_veto_original_l0(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize("kwargs", [
-    {"stage_r_dev": True},
     {"raw_capture_root": Path("/tmp/raw")},
     {"self_world_live": True},
+    {"stage_r_dev": True, "live_model": ("blocked", 1234, 2.0)},
 ])
 def test_nonexclusive_modes_fail_before_original_owner(monkeypatch, tmp_path, kwargs):
     async def unreachable(*args, **params):
@@ -169,6 +169,126 @@ def test_nonexclusive_modes_fail_before_original_owner(monkeypatch, tmp_path, kw
             passive_self_views=True, **kwargs,
         ))
     assert not (tmp_path / "self_views.jsonl").exists()
+
+
+def test_same_s49_native_session_can_feed_passive_views_and_single_writer(
+    monkeypatch, tmp_path,
+):
+    """Existing S49 owns S10 and Action; passive callback has no grant."""
+    seen = []
+
+    async def fake_original_s49(
+        report_path, server_log, *, live_probe=None, stage_r_dev=False,
+    ):
+        assert stage_r_dev is True
+        assert live_probe is not None
+        for seq in (8, 19, 47):
+            await live_probe(probe(seq))
+            seen.append(seq)
+        return 0
+
+    monkeypatch.setattr(s49_normal_session_real_ci, "qualify", fake_original_s49)
+    result = asyncio.run(self_demo._run_disposable(
+        tmp_path / "report.json", tmp_path / "server.log",
+        stage_r_dev=True, passive_self_views=True,
+    ))
+    assert result == 0
+    assert seen == [8, 19, 47]  # no additional native reads
+    rows = [
+        json.loads(line)
+        for line in (tmp_path / "self_views.jsonl").read_text().splitlines()
+    ]
+    assert [row["native_seq"] for row in rows[:-1]] == seen
+    assert all(row["body_world_exact_source_join"] for row in rows[:-1])
+    assert rows[-1]["native_probes_joined"] == 3
+    assert rows[-1]["action_issuer"] == "EXISTING_S49_ONLY"
+    assert rows[-1]["s10_commits"] == 0
+    assert rows[-1]["model_calls"] == 0
+    assert not (tmp_path / "report.json").exists()  # fake owner did not forge one
+
+
+@pytest.mark.parametrize("attack", (None, "foreign_next_view", "forged_hold"))
+def test_joint_dev_receipt_requires_native_s10_and_matching_later_body_world(
+    monkeypatch, tmp_path, attack,
+):
+    from types import SimpleNamespace
+    from test_self_dev import args
+
+    monkeypatch.setattr(self_demo.shutil, "which", lambda _: "/tool")
+    monkeypatch.setattr(
+        self_demo.subprocess, "run",
+        lambda *a, **kw: SimpleNamespace(returncode=0, stdout="version", stderr=""),
+    )
+
+    async def native_owner(report, server_log, *, stage_r_dev, passive_self_views):
+        assert stage_r_dev is True and passive_self_views is True
+        native, rows = _source_report_and_rows()
+        original = "s49-native-move-18"
+        native.update(
+            status="PASS", classification="DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2",
+            learning_in_world=True, server_exit=0, node_exit=0,
+            actual_native_actions=[
+                {"action": original, "execution_evidence": {
+                    "after_observation": {"seq": 32},
+                }},
+                {"action": "s49-native-move-46"},
+            ],
+            stage_r_decision_revisions=[
+                {"retained_revision": 1, "retained_value": 4, "selected": "WAIT"},
+                {"retained_revision": 1, "retained_value": 4, "selected": "MOVE_AWAY"},
+                {"retained_revision": 2, "retained_value": 4, "selected": "MOVE_AWAY"},
+            ],
+            stage_r_owner={
+                "original_session_id": "p-native",
+                "initial_revision": 1, "current_revision": 2,
+                "current_value": 4, "joint_l0_s14_owner_identity": True,
+                "operator_s10_grants": 1, "s10_hold_commits": 1,
+                "original_action_closures": 2,
+                "pending_unsealed_or_unknown": False,
+                "grant_independent_external_attestation": False,
+                "hold_reward_or_policy_gain": False,
+                "additional_action_issuer": False,
+                "commit_source": {
+                    "terminal_action_id": original,
+                    "terminal_after_native_seq": 32,
+                    "next_source_probe_seq": 47,
+                    "next_source_request_id": "s49-actual:p-native:event-46",
+                    "s10_commit_revision": 2,
+                    "s10_authority_source": "s49-dev-learning-owner",
+                    "feedback_id": "test-typed-feedback",
+                },
+            },
+        )
+        if attack == "foreign_next_view":
+            rows[2]["world_source_ref"] = "present:foreign-session"
+        elif attack == "forged_hold":
+            native["stage_r_owner"]["operator_s10_grants"] = 2
+        report.write_text(json.dumps(native), encoding="utf-8")
+        (report.parent / "self_views.jsonl").write_text(
+            "".join(json.dumps(row) + "\\n" for row in rows),
+            encoding="utf-8",
+        )
+        return 0
+
+    monkeypatch.setattr(self_demo, "_run_disposable", native_owner)
+    root = tmp_path / ("joined" if attack is None else attack)
+    result = self_demo._dev_run(args(
+        root, self_passive_views=True, self_world_stage_r_dev=True,
+    ))
+    receipt = json.loads((root / "dev_receipt.json").read_text())
+    assert result == (0 if attack is None else 1)
+    assert receipt["classification"] == "DEV_ONLY"
+    assert receipt["engineering_qualified"] is False
+    assert receipt["science_success"] is False
+    assert receipt["dev_stage_r_self_views_next_epoch"] == (
+        "SAME_SOURCE_DEV_ONLY" if attack is None else "UNDETERMINED"
+    )
+    assert receipt["dev_stage_r_self_views_passive_s10_authority"] is False
+    assert receipt["dev_stage_r_self_views_behavioral_gain_proven"] is False
+    if attack is None:
+        assert receipt["dev_stage_r_s10_commits"] == 1
+        assert receipt["dev_stage_r_self_views_real_s10_hold_commits"] == 1
+        assert receipt["dev_passive_self_views_s10_updates"] == 0
 
 
 def test_passive_option_requires_dev_mode():
