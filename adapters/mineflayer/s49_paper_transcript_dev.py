@@ -13,9 +13,10 @@ from adapters.mineflayer.s49_paper_backward_wait_dev import BEGIN, TICK, _parse_
 from adapters.mineflayer.s49_wait_typed_capture_dev import S49TypedClosureCaptureDev
 
 SUBJECT = "S49_OBSERVER_SUBJECT"
+SERVER_INPUT = "S49_OBSERVER_SERVER_INPUT"
 COMPLETE = "S49_OBSERVER_COMPLETE"
 ABORT = "S49_DEV_BACK_WAIT_ABORT"
-ORDER = (SUBJECT, BEGIN, *(TICK for _ in range(8)), COMPLETE)
+ORDER = (SUBJECT, SERVER_INPUT, BEGIN, *(TICK for _ in range(8)), COMPLETE)
 
 
 def _fields(line: str, kind: str, names: frozenset[str]) -> dict[str, str]:
@@ -78,7 +79,7 @@ def review_s49_paper_transcript_dev(
         if len(row) > 2048:
             raise BoundaryRejected("oversized Paper source line")
         hits = [(row.find(kind), kind) for kind in
-                (SUBJECT, COMPLETE, BEGIN, TICK, ABORT)]
+                (SUBJECT, SERVER_INPUT, COMPLETE, BEGIN, TICK, ABORT)]
         hits = [(offset, kind) for offset, kind in hits if offset >= 0]
         if not hits:
             continue
@@ -91,6 +92,10 @@ def review_s49_paper_transcript_dev(
     subject = _fields(observations[0][1], SUBJECT, frozenset({
         "action_id", "session_id", "player_uuid", "world", "run_id", "clear_ack",
     }))
+    boundary = _fields(observations[1][1], SERVER_INPUT, frozenset({
+        "action_id", "session_id", "player_uuid", "world", "run_id",
+        "tick", "input_idle", "s49_release_causality",
+    }))
     complete = _fields(observations[-1][1], COMPLETE, frozenset({
         "action_id", "session_id", "player_uuid", "world", "run_id",
         "last_tick", "samples", "authority", "p1_recovery",
@@ -101,24 +106,28 @@ def review_s49_paper_transcript_dev(
         "player_uuid": expected_player_uuid, "run_id": run_id,
     }
     if (not _uuid4(run_id)
-            or any(subject.get(k) != v or complete.get(k) != v
-                   for k, v in keys.items())
+            or any(subject.get(k) != v or boundary.get(k) != v
+                   or complete.get(k) != v for k, v in keys.items())
             or subject["clear_ack"] != "UNATTESTED_CONSOLE_CLAIM"
+            or boundary["input_idle"] != "true"
+            or boundary["s49_release_causality"] != "NOT_ATTESTED"
             or complete["samples"] != "8" or complete["authority"] != "NONE"
             or complete["p1_recovery"] != "NONE"):
         raise BoundaryRejected("foreign observer run/subject or fake authority")
-    for kind, line in observations[1:10]:
+    for kind, line in observations[2:11]:
         fields = _fields(line, kind, frozenset({
             "marker_id", "action_id", "session_id", "world",
-            "run_id", "tick", "index",
+            "run_id", "tick", "index", "input_idle",
         }))
-        if fields["run_id"] != run_id:
+        if fields["run_id"] != run_id or fields["input_idle"] != "true":
             raise BoundaryRejected("mixed observer run in Paper callbacks")
-    normalized = "\n".join(line for _, line in observations[1:10]) + "\n"
+    normalized = "\n".join(line for _, line in observations[2:11]) + "\n"
     begin, samples = _parse_paper(
         normalized, action_id=action, session_id=session,
         marker_id=marker, world=world,
     )
+    if boundary["tick"] != str(begin):
+        raise BoundaryRejected("Paper input boundary not at begin tick")
     if complete["last_tick"] != str(begin + 8):
         raise BoundaryRejected("terminal tick not eighth callback")
     return {
@@ -136,6 +145,8 @@ def review_s49_paper_transcript_dev(
             normalized.encode("utf-8")
         ).hexdigest(),
         "source_authentication": "UNATTESTED_PAPER_LOG_TEXT",
+        "server_input_snapshot": "PAPER_REPORTED_IDLE_AT_BEGIN",
+        "server_input_monitor": "PAPER_REPORTED_NO_ACTIVE_INPUT_OR_MOVE_EVENT",
         "server_effective_control_release": "NOT_ATTESTED",
         "whole_tick_self_inactivity": "NOT_ATTESTED",
         "all_action_issuers_idle": "NOT_ATTESTED",
