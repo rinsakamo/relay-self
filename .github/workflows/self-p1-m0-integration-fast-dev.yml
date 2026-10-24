@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - self/integration-p1-m0-bodyworld-dev-20261024
+      - self/dev-s49-s50-p1-world-first-20261025
     paths:
       - .github/workflows/self-p1-m0-integration-fast-dev.yml
       - experiments/fatigue_p1.py
@@ -36,6 +37,9 @@ on:
       - adapters/mineflayer/s49_paper_existing_sources_dev.py
       - adapters/mineflayer/s49_w4_epoch_source_dev.py
       - adapters/mineflayer/s49_os_process_receipt_dev.py
+      - adapters/mineflayer/s49_s50_p1_wait_replay_dev.py
+      - tests/test_s49_s50_p1_wait_replay_dev.py
+      - docs/s49-s50-p1-world-first-dev.md
       - tests/test_s49_os_process_receipt_dev.py
       - tests/test_s49_w4_epoch_source_dev.py
       - tests/test_s49_paper_existing_sources_dev.py
@@ -130,6 +134,7 @@ jobs:
             adapters/mineflayer/s49_paper_existing_sources_dev.py \
             adapters/mineflayer/s49_w4_epoch_source_dev.py \
             adapters/mineflayer/s49_os_process_receipt_dev.py \
+            adapters/mineflayer/s49_s50_p1_wait_replay_dev.py \
             tests/test_s49_paper_backward_wait_dev.py \
             tests/test_s49_paper_transcript_dev.py \
             tests/test_s49_paper_preaction_dev.py \
@@ -137,6 +142,7 @@ jobs:
             tests/test_s49_paper_existing_sources_dev.py \
             tests/test_s49_w4_epoch_source_dev.py \
             tests/test_s49_os_process_receipt_dev.py \
+            tests/test_s49_s50_p1_wait_replay_dev.py \
             tests/test_s49_paper_wait_observer_dev.py
       - name: FAST original P1 + SelfBody/M0 focused offline tests
         run: |
@@ -163,6 +169,7 @@ jobs:
             tests/test_s49_paper_existing_sources_dev.py \
             tests/test_s49_w4_epoch_source_dev.py \
             tests/test_s49_os_process_receipt_dev.py \
+            tests/test_s49_s50_p1_wait_replay_dev.py \
             tests/test_s49_paper_wait_observer_dev.py
       - name: State validation boundary
         if: always()
