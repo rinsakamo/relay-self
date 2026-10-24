@@ -98,7 +98,7 @@ def test_java_emitted_fields_match_exact_existing_s49_parser():
     source = JAVA.read_text(encoding="utf-8")
     assert '"marker_id=" + marker + " action_id=" + action' in source
     assert '" session_id=" + session + " world=" + worldId' in source
-    assert '" tick=" + beginTick + " index=0"' in source
+    assert '" tick=" + beginTick + " index=0 input_idle=true"' in source
     assert '" tick=" + tick + " index=" + index' in source
     assert "marker = action + \"-\" + session;" in source
     # No extra columns that the current strict Python reader would ignore.
