@@ -49,12 +49,14 @@ only, never an elapsed time. No new S17/S10 authority is present.
 - A failed/cancelled callback may call `abort(own_ticket)` to drop the active
   ticket without making a successful timing row; abort does not reset a
   terminal clock failure or mint an OUTCOME.
-- An injected Python clock cannot be mislabeled as host-provided.
+- An injected Python clock cannot be mislabeled as host-provided; the public
+  `origin` property is read-only to normal callers. This is not a security
+  boundary against untrusted in-process Python memory mutation.
 - `PassiveHostInterval` cannot be upgraded to physical timestamp, Action
   authority, speed, a World consequence or S17 learning.
 - Existing S49 is **not modified**; no hook is connected to a real runtime.
   This source has not been physically executed or tested in Python3.12 yet.
-  The 23 new test functions are source-staged, NOT marked PASS.
+  The 24 new test functions are source-staged, NOT marked PASS.
 
 ## Next LocalCodex DEV gate
 
