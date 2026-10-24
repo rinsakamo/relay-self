@@ -693,6 +693,8 @@ def _dev_run(args: argparse.Namespace) -> int:
         stage_w3 = getattr(args, "self_world_w3_raw_capture", False)
         passive_views = getattr(args, "self_passive_views", False)
         passive_clock = getattr(args, "self_passive_host_clock", False)
+        if passive_clock is True:
+            receipt["dev_host_clock"] = "UNDETERMINED"
         if type(passive_clock) is not bool or (passive_clock and (
             passive_views or scenario != "native" or stage_r or stage_w3
             or args.think or args.live_think
@@ -887,20 +889,12 @@ def _dev_run(args: argparse.Namespace) -> int:
             from experiments.self_body_host_clock_sidecar_dev import (
                 CLOCK_FILE,
                 VIEWS_FILE,
-                MAX_BYTES,
+                read_sidecar_jsonl,
                 verify_host_clock_source_join,
             )
 
-            view_path = root / VIEWS_FILE
-            clock_path = root / CLOCK_FILE
-            for candidate in (view_path, clock_path):
-                if (not candidate.is_file() or candidate.is_symlink()
-                        or candidate.stat().st_size > MAX_BYTES):
-                    raise DemoRejected("host clock DEV sidecar missing/invalid")
-            view_rows = [json.loads(line) for line in
-                         view_path.read_text(encoding="utf-8").splitlines()]
-            clock_rows = [json.loads(line) for line in
-                          clock_path.read_text(encoding="utf-8").splitlines()]
+            view_rows = read_sidecar_jsonl(root / VIEWS_FILE)
+            clock_rows = read_sidecar_jsonl(root / CLOCK_FILE)
             valid_clock = (
                 code == 0 and native.get("status") == "PASS"
                 and native.get("server_exit") == 0

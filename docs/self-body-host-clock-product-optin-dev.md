@@ -1,6 +1,6 @@
 # SelfBody S49 passive host-clock — opt-in product DEV staging
 
-**PRODUCT_OPTIN_SOURCE_STAGED / PYTHON3_12_NOT_RUN / DEV_ONLY /
+**OFFLINE_PRODUCT_OPTIN_VALIDATED / DEV_ONLY /
 QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**
 
 Base: `6753fc260437cb1836149ccefd3ec03480174203`, previously
@@ -84,11 +84,11 @@ or second World run.
 
 New `tests/test_self_body_host_clock_product_optin_dev.py` stages
 fake-original-owner tests and source/receipt/atomic-writer negatives.
-They are NOT yet independently executed. The existing source
+They have been independently executed under Windows 11 Home / WSL2 Ubuntu 24.04.4, Python 3.12.3, pytest 9.1.1. The existing source
 `experiments/self_body_host_clock_s49_liveprobe_dev.py` and its
 locally verified 326 focused test result are reused without change.
 
-**Next independent WSL2 Python3.12 qualification:**
+**Independent WSL2 Python3.12 verification procedure:**
 
 1. Pin exact final remote HEAD in a clean detached worktree; save initial
    evidence outside repository. Record environment and HEAD, hash
@@ -117,6 +117,55 @@ locally verified 326 focused test result are reused without change.
    Actual one-shot disposable DEV World requires separate owner
    authorization. QUALIFICATION and SCIENCE remain NO_GO.
 
-The new opt-in is code-staged for review, NOT proven to run safely in
+The new opt-in is offline DEV verified with fake original owners, NOT proven to run safely in
 the real Java/Node/collector lifetime, and has not measured real
 Minecraft physical reaction or motor capability.
+
+## Independent offline verification (2026-10-24)
+
+Pinned input `9c20deab5d3a1a2700e1e9fe541916e7e60a8611`: focused
+387 PASS, W4 adoption v2 52 PASS, contracts PASS. Initial Ruff failed on
+one import ordering error; its stdout/stderr and exit code are retained.
+New controls reproduced **7 failures before repair**: foreign view Self,
+reused request, reversed source ordering, bool masquerading as an integer
+summary counter, failed native terminal accepted by the standalone verifier,
+unbounded writer record count, and cleanup I/O masking primary publication
+failure. These failures are retained, not replaced by later green runs.
+
+Repairs affect only the four authorized files: exact typed clock summary
+checks; view Self and monotonic native/event ordering with unique requests;
+successful original terminal gating; at most 8 records and 65536 bytes per
+sidecar; complete newline-terminated object JSONL reads; preserve primary I/O
+exception with cleanup diagnostic notes. Failed/incomplete product receipts
+retain `UNDETERMINED`. No protected observer, native reader or original S49
+owner was changed.
+
+Expanded focused suite: **427 PASS**, including **82 product cases**
+(40 added cases). W4 adoption v2: **52 PASS**. Ruff 0.17.0 and repository
+contracts PASS. Final exact commit and remote publication/readback are
+recorded in the external evidence root, avoiding a self-referential commit
+hash in this document:
+`/home/rinsa/selfbody-product-optin-evidence-20261024-verify/`.
+Protected 82/82, original protected 82/82, historical 770/770 and historical
+SHA256 index match; W4 historical 19, unchanged 15 and adopted 4 are checked.
+
+Controls include original OFF call signature and zero observer construction;
+fake original L0/action equivalence with ordinary success or advisory observer
+failure; exactly one passive projection per delivered object; zero extra
+receive; bounded error history; absent/partial/oversized/symlink sidecars;
+write/flush/file-fsync/link/directory-fsync failures; cancel, KeyboardInterrupt,
+SystemExit and BaseException with cleanup once and restored environment,
+both with and without sidecar failure. A directory-fsync failure may leave
+a complete published file; it propagates failure and is never a successful
+receipt. If filesystem cleanup itself refuses deletion, the primary failure
+and diagnostic note remain authoritative; no success or retry is inferred.
+The two files remain separate atomic publications, not a shared transaction.
+
+This is producer-local DEV correlation using a fake original owner. It
+establishes no independent native success, physical clock qualification or
+motor ability. Callback elapsed includes asynchronous suspension; it is not
+cognitive speed, Action latency, physical movement speed or avoidance success.
+Product PR adoption requires a separate reviewed integration and its own
+permitted validation. A real World trial requires fresh explicit owner
+authorization, exact runtime/source identity, lifecycle/cleanup custody and
+independent native evidence. DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.

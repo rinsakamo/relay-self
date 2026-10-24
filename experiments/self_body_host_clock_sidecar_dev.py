@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import sys
 import uuid
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from experiments.self_body_host_clock_s49_liveprobe_dev import S49PassiveHostClo
 CLOCK_FILE = "self_host_clock.jsonl"
 VIEWS_FILE = "self_views.jsonl"
 MAX_BYTES = 65536
+MAX_RECORDS = 2 * MAX_PROBES + 2
 
 
 def host_clock_rows(owner: S49PassiveHostClockDEV) -> tuple[dict, ...]:
@@ -73,6 +75,10 @@ def host_clock_rows(owner: S49PassiveHostClockDEV) -> tuple[dict, ...]:
 
 def atomic_write_jsonl_new(path: Path, rows: tuple[dict, ...]) -> None:
     """Create one complete sidecar in a prepared dir without replacing evidence."""
+    if type(rows) is not tuple or not 1 <= len(rows) <= MAX_RECORDS:
+        raise ValueError("invalid bounded record count")
+    if any(type(row) is not dict for row in rows):
+        raise ValueError("JSONL objects required")
     if not path.parent.is_dir() or path.parent.is_symlink():
         raise ValueError("sidecar needs existing trusted directory")
     if path.exists() or path.is_symlink():
@@ -97,20 +103,31 @@ def atomic_write_jsonl_new(path: Path, rows: tuple[dict, ...]) -> None:
         finally:
             os.close(directory)
     finally:
-        tmp.unlink(missing_ok=True)
+        primary = sys.exc_info()[1]
+        try:
+            tmp.unlink(missing_ok=True)
+        except BaseException as cleanup_error:
+            if primary is None:
+                raise
+            primary.add_note("temporary sidecar cleanup: " + type(cleanup_error).__name__)
 
 
 def verify_host_clock_source_join(
     native: dict, view_rows: list[dict], clock_rows: list[dict],
 ) -> bool:
     """Strict DEV receipt only; source/pair equivalence is NOT attestation."""
+    if (type(native) is not dict or native.get("status") != "PASS"
+            or type(native.get("server_exit")) is not int or native["server_exit"] != 0
+            or type(native.get("node_exit")) is not int or native["node_exit"] != 0):
+        return False
     if not verify_passive_source_join(native, view_rows):
         return False
     if type(clock_rows) is not list or len(clock_rows) != MAX_PROBES + 1:
         return False
     summary = clock_rows[-1]
     if type(summary) is not dict or any(
-        summary.get(k) != v for k, v in {
+        (type(summary.get(k)) is not type(v) or summary.get(k) != v)
+        for k, v in {
             "kind": "passive_host_clock_summary",
             "classification": "DEV_ONLY_NOT_QUALIFIED",
             "sample_kind": "PASSIVE_CALLBACK_PROCESSING_ONLY",
@@ -136,13 +153,24 @@ def verify_host_clock_source_join(
     ):
         return False
     seen: set[tuple[str, int]] = set()
-    for sample, view in zip(clock_rows[:-1], view_rows[:-1], strict=True):
+    requests: set[str] = set()
+    previous_seq = -1
+    previous_event = -1
+    for sample, view, pair in zip(
+        clock_rows[:-1], view_rows[:-1], native["source_pair_trace"], strict=True,
+    ):
         if type(sample) is not dict:
             return False
         ns = sample.get("callback_elapsed_ns")
         ms = sample.get("callback_elapsed_ms")
         if (
-            sample.get("kind") != "passive_host_clock_sample"
+            view.get("self_id") != DEV_SELF_ID
+            or type(view.get("native_seq")) is not int
+            or view["native_seq"] <= previous_seq
+            or pair["event_seq"] <= previous_event
+            or pair["event_seq"] >= pair["probe_seq"]
+            or view["request_id"] in requests
+            or sample.get("kind") != "passive_host_clock_sample"
             or sample.get("classification") != "DEV_ONLY_NOT_QUALIFIED"
             or sample.get("sample_kind") != "PASSIVE_CALLBACK_PROCESSING_ONLY"
             or sample.get("clock_origin")
@@ -164,4 +192,24 @@ def verify_host_clock_source_join(
         if key in seen:
             return False
         seen.add(key)
+        requests.add(view["request_id"])
+        previous_seq = view["native_seq"]
+        previous_event = pair["event_seq"]
     return True
+
+
+def read_sidecar_jsonl(path: Path) -> list[dict]:
+    """Bounded complete JSONL only; missing/partial pairs never yield a receipt."""
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("missing or symlink sidecar")
+    with path.open("rb") as stream:
+        raw = stream.read(MAX_BYTES + 1)
+    if not raw or len(raw) > MAX_BYTES or not raw.endswith(b"\n"):
+        raise ValueError("incomplete or oversized JSONL")
+    lines = raw.decode("utf-8").splitlines()
+    if not 1 <= len(lines) <= MAX_RECORDS:
+        raise ValueError("unbounded JSONL records")
+    rows = [json.loads(line) for line in lines]
+    if any(type(row) is not dict for row in rows):
+        raise ValueError("JSONL objects required")
+    return rows

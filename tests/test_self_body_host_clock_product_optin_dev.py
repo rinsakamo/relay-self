@@ -409,7 +409,7 @@ def test_outer_dev_receipt_rejects_corrupted_host_clock_evidence(
     root = tmp_path / ("corrupt-" + attack)
     assert self_demo._dev_run(args(root, self_passive_host_clock=True)) != 0
     receipt = json.loads((root / "dev_receipt.json").read_text())
-    assert receipt.get("dev_host_clock") != "SOURCE_JOINED_CALLBACK_DEV_ONLY"
+    assert receipt["dev_host_clock"] == "UNDETERMINED"
     assert receipt["engineering_qualified"] is False
     assert receipt["science_success"] is False
 
@@ -430,3 +430,299 @@ def test_default_product_dev_receipt_does_not_report_clock(
     receipt = json.loads((root / "dev_receipt.json").read_text())
     assert "dev_host_clock" not in receipt
     assert not (root / CLOCK_FILE).exists()
+
+
+@pytest.mark.parametrize("mutation", ["foreign-self", "duplicate-request", "stale-seq",
+                                     "bool-summary", "native-failure"])
+def test_new_receipt_source_identity_negatives(monkeypatch, tmp_path, mutation):
+    fake_owner(monkeypatch)
+    asyncio.run(self_demo._run_disposable(
+        tmp_path / "report.json", tmp_path / "server.log", passive_host_clock=True,
+    ))
+    native, views, clock = native_report(), views_at(tmp_path), rows_at(tmp_path)
+    if mutation == "foreign-self":
+        views[0]["self_id"] = "foreign-self"
+    elif mutation == "bool-summary":
+        clock[-1]["aborted_callbacks"] = False
+    elif mutation == "native-failure":
+        native["status"] = "FAIL"
+    elif mutation == "duplicate-request":
+        native["source_pair_trace"][1]["event_seq"] = SEQS[0] - 1
+        request = views[0]["request_id"]
+        views[1]["request_id"] = request
+        views[1]["body_source_ref"] = f"native-probe:p-native:{SEQS[1]}:{request}"
+        views[1]["world_source_ref"] = f"present:p-native:{SEQS[1]}:{request}"
+        clock[1]["source_ref"] = views[1]["body_source_ref"]
+    else:
+        native["source_pair_trace"] = list(reversed(native["source_pair_trace"]))
+        views = list(reversed(views[:-1])) + [views[-1]]
+        clock = list(reversed(clock[:-1])) + [clock[-1]]
+    assert not verify_host_clock_source_join(native, views, clock)
+
+
+def test_new_atomic_record_bound(tmp_path):
+    with pytest.raises(ValueError):
+        atomic_write_jsonl_new(tmp_path / CLOCK_FILE, ({"x": 1},) * 100)
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_new_atomic_primary_io_survives_cleanup_failure(monkeypatch, tmp_path):
+    from experiments import self_body_host_clock_sidecar_dev as sidecar
+    original_unlink = Path.unlink
+    def bad_link(*a, **kw):
+        raise OSError("PRIMARY publish failure")
+    def bad_unlink(path, *a, **kw):
+        original_unlink(path, *a, **kw)
+        raise OSError("SECONDARY cleanup failure")
+    monkeypatch.setattr(sidecar.os, "link", bad_link)
+    monkeypatch.setattr(Path, "unlink", bad_unlink)
+    with pytest.raises(OSError, match="PRIMARY"):
+        atomic_write_jsonl_new(tmp_path / CLOCK_FILE, ({"x": 1},))
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("stage", ["write", "flush", "fsync", "link", "directory-fsync"])
+def test_new_atomic_injected_io_failure(monkeypatch, tmp_path, stage):
+    import os
+
+    from experiments import self_body_host_clock_sidecar_dev as sidecar
+    original_fdopen, original_fsync = os.fdopen, os.fsync
+    calls = []
+    class BrokenStream:
+        def __init__(self, fd):
+            self.stream = original_fdopen(fd, "wb")
+        def __enter__(self):
+            return self
+        def __exit__(self, *exc):
+            self.stream.close()
+        def write(self, data):
+            if stage == "write":
+                raise OSError("injected write")
+            return self.stream.write(data)
+        def flush(self):
+            if stage == "flush":
+                raise OSError("injected flush")
+            return self.stream.flush()
+        def fileno(self):
+            return self.stream.fileno()
+    def fsync(fd):
+        calls.append(fd)
+        if stage == "fsync" or (stage == "directory-fsync" and len(calls) == 2):
+            raise OSError("injected fsync")
+        return original_fsync(fd)
+    monkeypatch.setattr(sidecar.os, "fdopen", lambda fd, mode: BrokenStream(fd))
+    monkeypatch.setattr(sidecar.os, "fsync", fsync)
+    if stage == "link":
+        monkeypatch.setattr(sidecar.os, "link", lambda *a: (_ for _ in ()).throw(
+            OSError("injected link")))
+    with pytest.raises(OSError):
+        atomic_write_jsonl_new(tmp_path / CLOCK_FILE, ({"x": 1},))
+    assert not list(tmp_path.glob(".*.tmp"))
+    if stage == "directory-fsync":
+        assert json.loads((tmp_path / CLOCK_FILE).read_text()) == {"x": 1}
+    else:
+        assert not (tmp_path / CLOCK_FILE).exists()
+
+
+def test_new_atomic_permissions_invalid_directory_and_size(tmp_path):
+    import stat
+    atomic_write_jsonl_new(tmp_path / CLOCK_FILE, ({"x": 1},))
+    assert stat.S_IMODE((tmp_path / CLOCK_FILE).stat().st_mode) == 0o600
+    for parent in (tmp_path / "missing", tmp_path / CLOCK_FILE):
+        with pytest.raises(ValueError):
+            atomic_write_jsonl_new(parent / VIEWS_FILE, ({"x": 1},))
+    alias = tmp_path / "alias"
+    alias.symlink_to(tmp_path, target_is_directory=True)
+    with pytest.raises(ValueError):
+        atomic_write_jsonl_new(alias / VIEWS_FILE, ({"x": 1},))
+    with pytest.raises(ValueError):
+        atomic_write_jsonl_new(tmp_path / VIEWS_FILE, ({"x": "x" * 65536},))
+
+
+@pytest.mark.parametrize("damage", ["missing-views", "missing-clock", "bad-json",
+                                    "huge", "partial", "symlink", "extra", "array"])
+def test_new_outer_receipt_rejects_sidecar_damage(monkeypatch, tmp_path, damage):
+    monkeypatch.setattr(self_demo.shutil, "which", lambda _: "/fake-tool")
+    monkeypatch.setattr(self_demo.subprocess, "run", lambda *a, **kw:
+                        SimpleNamespace(returncode=0, stdout="v", stderr=""))
+    fake_owner(monkeypatch)
+    original = self_demo._run_disposable
+    async def damaged(report, log, **options):
+        result = await original(report, log, **options)
+        clock = report.parent / CLOCK_FILE
+        if damage == "missing-views":
+            (report.parent / VIEWS_FILE).unlink()
+        elif damage == "missing-clock":
+            clock.unlink()
+        elif damage == "bad-json":
+            clock.write_text("{bad}\n")
+        elif damage == "huge":
+            clock.write_text("x" * 65537)
+        elif damage == "partial":
+            clock.write_bytes(clock.read_bytes().rstrip(b"\n"))
+        elif damage == "symlink":
+            clock.unlink()
+            clock.symlink_to(report.parent / VIEWS_FILE)
+        elif damage == "array":
+            clock.write_text("[]\n")
+        else:
+            with clock.open("a") as stream:
+                stream.write('{}\n' * 100)
+        return result
+    monkeypatch.setattr(self_demo, "_run_disposable", damaged)
+    root = tmp_path / "damaged"
+    assert self_demo._dev_run(args(root, self_passive_host_clock=True)) != 0
+    receipt = json.loads((root / "dev_receipt.json").read_text())
+    assert receipt["dev_host_clock"] == "UNDETERMINED"
+    assert receipt["engineering_qualified"] is False
+
+
+@pytest.mark.parametrize("interrupt", [asyncio.CancelledError, KeyboardInterrupt,
+                                       SystemExit, BaseException])
+@pytest.mark.parametrize("sidecar_failure", [False, True])
+def test_new_interrupt_preserves_cleanup_environment_and_no_sample(
+    monkeypatch, tmp_path, interrupt, sidecar_failure,
+):
+    import os
+
+    from experiments import self_body_host_clock_s49_liveprobe_dev as bridge
+    from experiments import self_body_host_clock_sidecar_dev as sidecar
+    original = bridge.S49PassiveHostClockDEV
+    terminal = interrupt("original interrupt")
+    cleaned, actions = [], []
+    async def interrupted(_view):
+        raise terminal
+    monkeypatch.setattr(bridge, "S49PassiveHostClockDEV",
+                        lambda views: original(views=views, observer=interrupted))
+    async def qualify(report, log, *, live_probe=None):
+        try:
+            await live_probe(probe(8))
+            actions.append("forbidden after interrupt")
+        finally:
+            cleaned.append("cleanup")
+    monkeypatch.setattr(s49, "qualify", qualify)
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "prior-owner")
+    monkeypatch.setenv("S49_STAGE_R_DEV_ONLY", "prior-stage")
+    if sidecar_failure:
+        monkeypatch.setattr(sidecar, "atomic_write_jsonl_new", lambda *a, **kw:
+                            (_ for _ in ()).throw(OSError("sidecar failure")))
+    with pytest.raises(interrupt) as result:
+        asyncio.run(self_demo._run_disposable(
+            tmp_path / "report.json", tmp_path / "server.log", passive_host_clock=True,
+        ))
+    assert result.value is terminal
+    assert cleaned == ["cleanup"] and actions == []
+    assert os.environ["S49_REAL_SERVER_CI"] == "prior-owner"
+    assert os.environ["S49_STAGE_R_DEV_ONLY"] == "prior-stage"
+    assert not (tmp_path / "report.json").exists()
+    if not sidecar_failure:
+        clock = rows_at(tmp_path)
+        assert clock[-1]["clock_samples"] == 0
+        assert clock[-1]["aborted_callbacks"] == 1
+        assert not any(r["kind"] == "passive_host_clock_sample" for r in clock)
+
+
+def test_new_advisory_failure_keeps_fake_l0_actions_and_bounded_history(monkeypatch, tmp_path):
+    from experiments import self_body_host_clock_s49_liveprobe_dev as bridge
+    original = bridge.S49PassiveHostClockDEV
+    async def failed(_view):
+        raise RuntimeError("advisory")
+    monkeypatch.setattr(bridge, "S49PassiveHostClockDEV",
+                        lambda views: original(views=views, observer=failed))
+    visits = []
+    async def qualify(report, log, *, live_probe=None):
+        try:
+            for seq in SEQS:
+                if live_probe is not None:
+                    await live_probe(probe(seq))
+                visits.append((seq, "original L0", "original fake action"))
+            if live_probe is not None:
+                for _ in range(20):
+                    await live_probe(probe(SEQS[-1]))
+            report.write_text(json.dumps(native_report()))
+            return 0
+        finally:
+            visits.append("cleanup")
+    monkeypatch.setattr(s49, "qualify", qualify)
+    off, on = tmp_path / "off", tmp_path / "on"
+    off.mkdir()
+    on.mkdir()
+    asyncio.run(self_demo._run_disposable(off / "report.json", off / "server.log"))
+    expected = list(visits)
+    visits.clear()
+    asyncio.run(self_demo._run_disposable(on / "report.json", on / "server.log",
+                                         passive_host_clock=True))
+    assert visits == expected
+    clock = rows_at(on)
+    assert clock[-1]["clock_samples"] == 0
+    assert clock[-1]["advisory_failures"] == 4
+    assert clock[-1]["failure_overflow"] > 0
+    assert not verify_host_clock_source_join(native_report(), views_at(on), clock)
+
+
+@pytest.mark.parametrize("flags", [
+    {"run_disposable": False}, {"confirm": "no"}, {"dev_scenario": "b0-ground"},
+    {"self_world_live": True}, {"self_world_prospective": True},
+    {"self_world_typed_closure": True}, {"self_world_retained_handoff": True},
+    {"live_think": True},
+])
+def test_new_preflight_exclusions(monkeypatch, tmp_path, flags):
+    a = args(tmp_path / "blocked", self_passive_host_clock=True)
+    for name, value in flags.items():
+        setattr(a, name, value)
+    monkeypatch.setattr(self_demo.subprocess, "run", lambda *a, **kw: pytest.fail("process"))
+    monkeypatch.setattr(self_demo, "_run_disposable", lambda *a, **kw: pytest.fail("owner"))
+    assert self_demo._dev_run(a) == 2
+
+
+def test_new_default_off_constructs_no_observers_and_preserves_exact_call(monkeypatch, tmp_path):
+    from adapters.mineflayer import self_product_passive_views as passive
+    from experiments import self_body_host_clock_s49_liveprobe_dev as bridge
+    calls = []
+    async def qualify(*positional, **keywords):
+        calls.append((positional, keywords))
+        return 0
+    def forbidden(*a, **kw):
+        pytest.fail("default OFF created observer")
+    monkeypatch.setattr(s49, "qualify", qualify)
+    monkeypatch.setattr(passive, "PassiveSelfViews", forbidden)
+    monkeypatch.setattr(bridge, "S49PassiveHostClockDEV", forbidden)
+    report, log = tmp_path / "report.json", tmp_path / "server.log"
+    assert asyncio.run(self_demo._run_disposable(report, log)) == 0
+    assert calls == [((report, log), {})]
+    assert list(tmp_path.iterdir()) == []
+
+
+def test_new_successful_optin_preserves_original_fake_decisions(monkeypatch, tmp_path):
+    from adapters.mineflayer import process_session
+    from adapters.mineflayer import self_product_passive_views as passive
+    counts, decisions, snapshots = [], [], []
+    original_observe = passive.PassiveSelfViews.observe
+    def observe(views, reading):
+        counts.append(id(reading))
+        return original_observe(views, reading)
+    monkeypatch.setattr(passive.PassiveSelfViews, "observe", observe)
+    monkeypatch.setattr(process_session.MineflayerProcessSession, "receive",
+                        lambda *a, **kw: pytest.fail("extra native receive"))
+    async def qualify(report, log, *, live_probe=None):
+        try:
+            for seq in SEQS:
+                reading = probe(seq)
+                if live_probe is not None:
+                    await live_probe(reading)
+                    assert counts[-1] == id(reading)
+                decisions.append((seq, "fake original L0", "fake original action"))
+            report.write_text(json.dumps(native_report()))
+            return 0
+        finally:
+            decisions.append("cleanup")
+    monkeypatch.setattr(s49, "qualify", qualify)
+    for enabled in (False, True):
+        root = tmp_path / str(enabled)
+        root.mkdir()
+        assert asyncio.run(self_demo._run_disposable(root / "report.json", root / "server.log",
+                                                    passive_host_clock=enabled)) == 0
+        snapshots.append(list(decisions))
+        decisions.clear()
+    assert snapshots[0] == snapshots[1]
+    assert len(counts) == 3
