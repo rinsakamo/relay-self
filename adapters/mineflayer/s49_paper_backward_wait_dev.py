@@ -125,6 +125,8 @@ async def project_s49_backward_paper_dev(
     typed_capture: S49TypedClosureCaptureDev,
     paper_original: str, *,
     output_path: Path,
+    observer_transcript: str | None = None,
+    expected_player_uuid: str | None = None,
 ) -> dict:
     """One-shot offline correlation from the original typed owner closure.
 
@@ -151,6 +153,7 @@ async def project_s49_backward_paper_dev(
         "session_id": session, "action_id": action, "marker_id": marker,
         "paper_world": world, "typed_s16_sha256": evidence.evidence_sha256,
         "paper_input_sha256": None, "owner_rows": [], "owner_review": None,
+        "observer_transcript_review": None,
         "source_authentication": "UNATTESTED_CALLER_PAPER_INPUT",
         "server_effective_control_release": "NOT_ATTESTED",
         "whole_tick_self_inactivity": "NOT_ATTESTED",
@@ -160,6 +163,20 @@ async def project_s49_backward_paper_dev(
         "wait_ticks_admitted": 0, "p1_fatigue_recovered": 0.0,
     }
     try:
+        if observer_transcript is not None or expected_player_uuid is not None:
+            # This is a stricter optional source-shape join, NEVER R custody.
+            if not isinstance(observer_transcript, str):
+                raise BoundaryRejected("full Paper observer transcript missing")
+            from adapters.mineflayer.s49_paper_transcript_dev import (
+                review_s49_paper_transcript_dev,
+            )
+            audit = review_s49_paper_transcript_dev(
+                typed_capture, observer_transcript,
+                expected_player_uuid=expected_player_uuid,
+            )
+            if audit["normalized_paper_sha256"] != _sha(paper_original):
+                raise BoundaryRejected("Paper full transcript and callback slice differ")
+            report["observer_transcript_review"] = audit
         if marker != action + "-" + session:
             raise BoundaryRejected("S49 Paper marker not action/session bound")
         decoded = evidence.decoded_evidence
