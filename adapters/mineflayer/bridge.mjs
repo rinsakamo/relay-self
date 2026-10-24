@@ -62,6 +62,16 @@ if (clockOptIn === '1' && config.version !== '1.21.8') {
   process.stderr.write('V6 raw source requires explicit Minecraft 1.21.8\n')
   process.exit(2)
 }
+// DEV-only read-side schema opt-in. Never an Action command or signer.
+const w4OrientationOptIn = process.env.RELAYSELF_W4_NH1_ORIENTATION_V0
+if (w4OrientationOptIn !== undefined && !['0', '1'].includes(w4OrientationOptIn)) {
+  process.stderr.write('invalid W4 orientation opt-in\n')
+  process.exit(2)
+}
+if (w4OrientationOptIn === '1' && config.version !== '1.21.8') {
+  process.stderr.write('W4 native orientation requires explicit Minecraft 1.21.8\n')
+  process.exit(2)
+}
 const sessionId = randomUUID()
 let seq = 0
 let spawned = false
@@ -86,7 +96,9 @@ function emitAdapterError (error) {
 
 function emitObservation (kind, requestId = undefined) {
   try {
-    const snapshot = snapshotFromBot(bot)
+    const snapshot = snapshotFromBot(bot, {
+      includeNativeOrientation: w4OrientationOptIn === '1'
+    })
     if (kind === 'probe') {
       emit('observation', makeProbePayload(snapshot, requestId))
     } else {

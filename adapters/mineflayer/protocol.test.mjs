@@ -607,3 +607,43 @@ test('S29 duplicate correlated probe ID is rejected per Node bridge session', ()
   assert.deepEqual([...seen], ['req-S29:one.1', 'req-S29:two.2'])
   assert.throws(() => admitProbeRequestId(seen, ' space'), /request_id/)
 })
+
+test('W4 orientation is opt-in read-only and never alters default snapshot', () => {
+  const bot = {
+    health: 20, food: 20, foodSaturation: 5, oxygenLevel: 20,
+    time: null, inventory: { items: () => [] },
+    entity: {
+      id: 1, position: { x: 0, y: 64, z: 0 },
+      yaw: Math.PI / 2, pitch: 0.2
+    },
+    entities: {}
+  }
+  const ordinary = snapshotFromBot(bot)
+  assert.equal(Object.hasOwn(ordinary, 'native_orientation'), false)
+  const optIn = snapshotFromBot(bot, { includeNativeOrientation: true })
+  assert.deepEqual(optIn.native_orientation, {
+    source: 'mineflayer_bot_entity',
+    yaw_rad: Math.PI / 2,
+    pitch_rad: 0.2
+  })
+  const { native_orientation: ignored, ...withoutOrientation } = optIn
+  assert.deepEqual(withoutOrientation, ordinary)
+  assert.throws(
+    () => snapshotFromBot({
+      ...bot,
+      entity: { ...bot.entity, yaw: undefined }
+    }, { includeNativeOrientation: true }),
+    /finite number/
+  )
+  assert.throws(
+    () => snapshotFromBot({
+      ...bot,
+      entity: { ...bot.entity, pitch: Math.PI }
+    }, { includeNativeOrientation: true }),
+    /pitch outside bound/
+  )
+  assert.throws(
+    () => snapshotFromBot(bot, { includeNativeOrientation: '1' }),
+    /must be boolean/
+  )
+})

@@ -845,15 +845,35 @@ async def _observe_native_threat(
     raise S34EvidenceFailure("bounded native zombie observation unavailable")
 
 
-async def _new_session() -> MineflayerProcessSession:
+async def _new_session(
+    *, raw_capture_root: Path | None = None,
+) -> MineflayerProcessSession:
     session = await MineflayerProcessSession.launch(
         MineflayerLaunchConfig(
             host=SERVER_HOST, port=SERVER_PORT,
             username=BOT_USERNAME, version=MINECRAFT_VERSION,
         ),
         startup_timeout_s=12,
+        **({"raw_capture_root": raw_capture_root} if raw_capture_root is not None else {}),
     )
-    await _await_spawn(session)
+    try:
+        await _await_spawn(session)
+    except BaseException as failure:
+        # adapter_started was already consumed, but the physical native spawn
+        # has not completed and S49 has no handle. Local ownership ends only
+        # after the exact session is terminated/reaped and W3 is sealed.
+        try:
+            await session.abort_startup()
+        except BaseException as cleanup_error:
+            setattr(
+                failure, "startup_cleanup_unconfirmed",
+                f"{type(cleanup_error).__name__}: {cleanup_error}",
+            )
+            failure.add_note(
+                f"native spawn startup cleanup unconfirmed: {cleanup_error!r}"
+            )
+            raise failure from cleanup_error
+        raise
     return session
 
 

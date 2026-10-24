@@ -5,6 +5,9 @@ from planning. Uses frozen S14/S15/S16 owners, never replays uncertain effects.
 """
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from enum import Enum
 
@@ -19,8 +22,10 @@ from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
 from relay_self.action import ActionLifecycle, ActionState
+from relay_self.action_feedback import LearningFeedbackInterpretation
 from relay_self.action_outcome import (
     ActionOutcomeDisposition,
+    ActionOutcomeInterpretation,
     record_interpreted_action_outcome,
 )
 from relay_self.action_supervision import ActionSupervisor
@@ -29,6 +34,7 @@ from relay_self.execution_binding import (
     start_and_propose_bound_execution,
 )
 from relay_self.intent import IntentCommitment
+from relay_self.learning import LearningCommitResult, LearningPreferenceState
 from relay_self.provenance import Provenance
 from relay_self.reactive_l0 import (
     L0Step,
@@ -37,7 +43,10 @@ from relay_self.reactive_l0 import (
 )
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
+    select_stage_q_dev_committed_world_choice,
+    select_stage_t_dev_directional_world_choice,
     select_world_conditioned_choice,
+    verify_stage_t_dev_directional_commit,
 )
 
 
@@ -45,6 +54,34 @@ class NormalActionRejected(ValueError):
     """A current authenticated independent Action authority was not proven."""
 
 
+
+
+@dataclass(frozen=True, slots=True)
+class NormalRetainedOwnerReadback:
+    """Unmodified exact L0 owner-held S10 state reference at constructor time."""
+
+    session_id: str
+    intent_id: str
+    owner_snapshot: LearningPreferenceState
+
+
+_OWNER_READ_ONLY: ContextVar[
+    Callable[[NormalRetainedOwnerReadback], None] | None
+] = ContextVar("normal_l0_retained_owner_read_only", default=None)
+
+
+@contextmanager
+def observe_original_retained_owner(
+    callback: Callable[[NormalRetainedOwnerReadback], None],
+) -> Iterator[None]:
+    """S-only, opt-in DEV owner-identity tap; no write or learning grant."""
+    if not callable(callback):
+        raise NormalActionRejected("retained owner observer required")
+    token = _OWNER_READ_ONLY.set(callback)
+    try:
+        yield
+    finally:
+        _OWNER_READ_ONLY.reset(token)
 
 
 class NormalWorldL0(ReactiveL0):
@@ -55,6 +92,112 @@ class NormalWorldL0(ReactiveL0):
     The original untruncated native snapshots stay intact. This operator
     selects exactly one *zombie* witness, never infers a safe empty World.
     """
+
+    def __init__(
+        self, session_id: str, intent_id: str,
+        retained: LearningPreferenceState, *, max_events: int = 8,
+        max_action_requests: int = 3,
+    ) -> None:
+        super().__init__(
+            session_id, intent_id, retained, max_events=max_events,
+            max_action_requests=max_action_requests,
+        )
+        self._stage_r_dev_token: object | None = None
+        self._stage_r_dev_commit: LearningCommitResult | None = None
+        # Stage T is explicit synthetic OFFLINE rehearsal, NOT S49 live path.
+        self._stage_t_dev_token: object | None = None
+        self._stage_t_dev_commit: LearningCommitResult | None = None
+        self._stage_t_dev_s17: LearningFeedbackInterpretation | None = None
+        # The SAME exact object is still owned by original L0, and is never
+        # replaced by the observer or reconstructed from JSON.
+        callback = _OWNER_READ_ONLY.get()
+        if callback is not None:
+            try:
+                callback(NormalRetainedOwnerReadback(
+                    self.session_id, self.intent_id, self.retained,
+                ))
+            except Exception:
+                # Passive witness failures cannot veto original S49 owner.
+                pass
+
+    def bind_stage_r_dev_owner(self, *, token: object) -> None:
+        """Explicit opt-in from sole S49 runner; no default learning authority."""
+        if (self._stage_r_dev_token is not None
+                or self._stage_t_dev_token is not None
+                or self._stage_r_dev_commit is not None
+                or type(token) is not object
+                or self.events != 0 or self.action_requests != 0
+                or self.retained.target_id != "risk_weight"
+                or self.retained.revision != 1
+                or self.retained.value != 4):
+            raise NormalActionRejected("Stage R owner must bind before native epochs")
+        self._stage_r_dev_token = token
+
+    def install_stage_r_dev_successor(
+        self, *, token: object, commit: LearningCommitResult,
+    ) -> None:
+        """One synchronous, terminal-bound owner handoff (not Action issuance)."""
+        if (self._stage_r_dev_token is None
+                or self._stage_t_dev_token is not None
+                or token is not self._stage_r_dev_token
+                or self._stage_r_dev_commit is not None
+                or not isinstance(commit, LearningCommitResult)
+                or commit.previous_state is not self.retained
+                or commit.new_state is self.retained
+                or commit.new_state.revision != self.retained.revision + 1
+                or commit.new_state.last_update is not commit.record
+                or commit.new_state.value != self.retained.value
+                or self.action_requests < 1):
+            raise NormalActionRejected("no exact single-use Stage R owner transition")
+        self.retained = commit.new_state
+        self._stage_r_dev_commit = commit
+
+    def bind_stage_t_dev_preview(self, *, token: object) -> None:
+        """Opt-in offline original-host policy rehearsal; no issuer or Action."""
+        if (
+            type(token) is not object
+            or self._stage_r_dev_token is not None
+            or self._stage_t_dev_token is not None
+            or self.events != 0 or self.action_requests != 0
+            or self.retained.target_id != "risk_weight"
+            or self.retained.revision != 1 or self.retained.value != 4
+        ):
+            raise NormalActionRejected("Stage T requires unused original rev1 owner")
+        self._stage_t_dev_token = token
+
+    def install_stage_t_dev_preview(
+        self, *, token: object, commit: LearningCommitResult,
+        s10_owner_state: LearningPreferenceState,
+        typed_s17: LearningFeedbackInterpretation,
+    ) -> None:
+        """DEV/OFFLINE: one exact Stage S S17→S10 successor, no live runner.
+
+        The real S49 qualify() does NOT call this method. Source-authenticated
+        S10 issuer and physical admission remain separate qualification work.
+        """
+        if (
+            self._stage_t_dev_token is None
+            or token is not self._stage_t_dev_token
+            or self._stage_r_dev_token is not None
+            or self._stage_t_dev_commit is not None
+            or self._stage_t_dev_s17 is not None
+            or not isinstance(commit, LearningCommitResult)
+            or not isinstance(s10_owner_state, LearningPreferenceState)
+            or commit.new_state is not s10_owner_state
+            or commit.previous_state is not self.retained
+            or not isinstance(typed_s17, LearningFeedbackInterpretation)
+            or typed_s17.action_id not in self._used_action_ids
+            or self.action_requests < 1
+            or self.events < 1
+        ):
+            raise NormalActionRejected("Stage T exact original-host preview denied")
+        successor = verify_stage_t_dev_directional_commit(
+            commit, self.retained, typed_s17,
+        )
+        # No asynchronous window between preview owner and its evidence.
+        self.retained = successor
+        self._stage_t_dev_commit = commit
+        self._stage_t_dev_s17 = typed_s17
 
     def _check(self, event, probe):
         if (
@@ -87,6 +230,24 @@ class NormalWorldL0(ReactiveL0):
         native = _native_threat(
             probe, probe.request_id, expected_entity_id=after[0].entity_id,
         )
+        if self._stage_t_dev_commit is not None:
+            assert self._stage_t_dev_s17 is not None
+            return select_stage_t_dev_directional_world_choice(
+                native, self.retained,
+                commit=self._stage_t_dev_commit,
+                original_owner=self._stage_t_dev_commit.previous_state,
+                typed_s17=self._stage_t_dev_s17,
+                expected_session_id=self.session_id,
+                expected_entity_id=native.entity_id,
+            )
+        if self._stage_r_dev_commit is not None:
+            return select_stage_q_dev_committed_world_choice(
+                native, self.retained,
+                commit=self._stage_r_dev_commit,
+                original_owner=self._stage_r_dev_commit.previous_state,
+                expected_session_id=self.session_id,
+                expected_entity_id=native.entity_id,
+            )
         return select_world_conditioned_choice(
             native, self.retained,
             expected_session_id=self.session_id, expected_entity_id=native.entity_id,
@@ -133,6 +294,37 @@ class NormalActionReceipt:
     terminal: ActionLifecycle
     consequence: WorldConsequence
     source: Provenance
+
+
+@dataclass(frozen=True, slots=True)
+class NormalActionClosedReadback:
+    """Typed S16 closure delivered after original ActionSupervisor terminal."""
+
+    terminal: ActionLifecycle
+    interpretation: ActionOutcomeInterpretation
+    consequence: WorldConsequence
+    original_probe: MineflayerObservation
+
+
+# Context-local, disabled by default. It is NOT an Action/LRN authority.
+# The optional observer may inspect the already-closed original Action only.
+_READ_ONLY_CLOSURE: ContextVar[
+    Callable[[NormalActionClosedReadback], None] | None
+] = ContextVar("normal_action_read_only_closure", default=None)
+
+
+@contextmanager
+def observe_closed_native_actions(
+    callback: Callable[[NormalActionClosedReadback], None],
+) -> Iterator[None]:
+    """Product-owned DEV tap. Never grants, cancels or alters Action issuance."""
+    if not callable(callback):
+        raise NormalActionRejected("typed closure observer required")
+    token = _READ_ONLY_CLOSURE.set(callback)
+    try:
+        yield
+    finally:
+        _READ_ONLY_CLOSURE.reset(token)
 
 
 class NormalSessionActionExecutor:
@@ -261,6 +453,16 @@ class NormalSessionActionExecutor:
                 terminal = record_interpreted_action_outcome(
                     self.supervisor, interpretation, at_ns=t + 3,
                 )
+            observer = _READ_ONLY_CLOSURE.get()
+            if observer is not None:
+                # Only AFTER genuine terminal outcome closure; callback
+                # failure cannot veto a dispatched/completed World Action.
+                try:
+                    observer(NormalActionClosedReadback(
+                        terminal, interpretation, consequence, probe,
+                    ))
+                except Exception:
+                    pass
             return NormalActionReceipt(terminal, consequence, probe.provenance)
         except BaseException:
             if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:

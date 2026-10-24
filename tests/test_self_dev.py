@@ -184,6 +184,70 @@ def test_dev_b0_receipt_cannot_promote_forged_s51_qualified(tmp_path, monkeypatc
 
 
 
+
+@pytest.mark.parametrize("tamper", (None, "sensor", "wrong_native", "fake_p1"))
+def test_dev_b0_owner_sensor_body_view_source_join_is_only_producer_local(
+    tmp_path, monkeypatch, tamper,
+):
+    monkeypatch.setattr(demo.shutil, "which", lambda _: "/tool")
+    monkeypatch.setattr(demo.subprocess, "run", lambda *a, **kw:
+                        SimpleNamespace(returncode=0, stdout="version", stderr=""))
+
+    async def owner(report, server_log):
+        sid = "dev-s51-source"
+        seq = 44
+        request = "b0-next-l0-native"
+        view = {
+            "classification": "DEV_ONLY_PRODUCER_LOCAL_M0_INTEROCEPTION",
+            "native_source": f"native-probe:{sid}:{seq}:{request}",
+            "world_source": f"present:{sid}:{seq}:{request}",
+            "body_world_same_object": True,
+            "source_seq": seq, "l0_kind": "WAIT", "m0_tick": 12,
+            "m0_energy_sensor": 8.0,
+            "m0_sensor_origin": "interoception",
+            "m0_sensor_owner_source": "b0-m0-owner-local-sensor",
+            "native_food": 17.0, "native_health": 20.0,
+            "p1_fatigue": None, "true_m0_energy_exposed": False,
+            "s10_updates": 0, "additional_native_reads": 0,
+            "additional_actions": 0, "qualification": False,
+        }
+        if tamper == "sensor":
+            view["m0_energy_sensor"] = 18.0
+        elif tamper == "wrong_native":
+            view["native_source"] = "native-probe:forged"
+        elif tamper == "fake_p1":
+            view["p1_fatigue"] = 0.0
+        report.write_text(json.dumps({
+            "status": "PASS", "classification": "QUALIFIED", "session_id": sid,
+            "server_exit": 0, "node_exit": 0,
+            "source_pair_trace": [], "decisions": [], "actual_native_actions": [],
+            "ground_pickup": {"status": "DEV_ONLY", "movement_outcomes": []},
+            "next_native_probe": {
+                "session_id": sid, "seq": seq, "request_id": request,
+                "snapshot": {"food": 17.0, "health": 20.0},
+            },
+            "next_l0": {"kind": "WAIT", "energy_sensor_reading": 8.0},
+            "metabolism_after_eat": {"tick": 12, "credit_count": 1},
+            "dev_b0_cognition_next_epoch": view,
+        }), encoding="utf-8")
+        return 0
+
+    monkeypatch.setattr(demo, "_run_b0_ground_dev", owner)
+    root = tmp_path / (tamper or "joined")
+    options = args(root)
+    options.dev_scenario = "b0-ground"
+    result = demo._dev_run(options)
+    receipt = json.loads((root / "dev_receipt.json").read_text())
+    assert result == (0 if tamper is None else 1)
+    assert receipt["dev_b0_body_m0_interoception"] == (
+        "SOURCE_JOINED_PRODUCER_LOCAL_DEV" if tamper is None else "UNDETERMINED"
+    )
+    assert receipt["engineering_qualified"] is False
+    assert receipt["science_success"] is False
+    assert receipt["m_energy_credited"] is False
+
+
+
 def test_dev_b0_prelaunch_uses_fresh_world_not_rsee_clone(tmp_path, monkeypatch):
     from adapters.mineflayer import s51_eat_real_ci as s51
     monkeypatch.setenv('S51_REAL_SERVER_CI', '1')
@@ -218,3 +282,119 @@ def test_dev_b0_prelaunch_uses_fresh_world_not_rsee_clone(tmp_path, monkeypatch)
     assert (tmp_path / 'dev-owner.native.jsonl').is_file()
     assert (tmp_path / 'dev-owner.commands.jsonl').is_file()
 
+
+
+# SelfWorld #633 Stage J: DEV entry must reuse the existing S49 native owner.
+
+
+def _stage_j_args(root):
+    a = args(root)
+    a.dev_scenario = "native-selfworld"
+    a.self_world_live = True
+    a.live_think = True
+    a.model_alias = "stage-j-backend-not-attested"
+    a.model_port = 16559
+    a.model_timeout = 1.0
+    return a
+
+
+def test_stage_j_dev_requires_explicit_mode_and_source_scoped_flags(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        demo, "_run_disposable", lambda *a, **kw: pytest.fail("owner launched"),
+    )
+    for case in ("missing_live", "missing_world", "invalid_port", "no_consent"):
+        a = _stage_j_args(tmp_path / case)
+        if case == "missing_live":
+            a.live_think = False
+        elif case == "missing_world":
+            a.self_world_live = False
+        elif case == "invalid_port":
+            a.model_port = 53
+        else:
+            a.confirm = "not-consent"
+        assert demo._dev_run(a) == 2
+        assert not a.output_dir.exists()
+    # Normal S49/B0/B1 DEV must not unexpectedly invoke a live L2.
+    a = args(tmp_path / "no-implicit-model")
+    a.self_world_live = True
+    assert demo._dev_run(a) == 2
+    assert not a.output_dir.exists()
+
+
+@pytest.mark.parametrize(("qualified", "forged"), ((True, False), (False, False), (True, True)))
+def test_stage_j_dev_is_read_only_and_never_elevates_owner(tmp_path, monkeypatch, qualified, forged):
+    monkeypatch.setattr(demo.shutil, "which", lambda _: "/tool")
+    monkeypatch.setattr(
+        demo.subprocess, "run",
+        lambda *a, **kw: SimpleNamespace(returncode=0, stdout="v", stderr=""),
+    )
+    calls = []
+
+    async def existing_s49(report_path, log_path, *, live_model, self_world_live):
+        calls.append((live_model, self_world_live))
+        assert demo.tempfile.gettempdir() == str(report_path.parent / "owned-worlds")
+        report_path.write_text(json.dumps({
+            "status": "PASS", "classification": "QUALIFIED",
+            "session_id": "s-native-j", "server_exit": 0, "node_exit": 0,
+            "decisions": [{}, {}, {}],
+            "actual_native_actions": [{}, {}],
+            "source_pair_trace": [
+                {"event_seq": 7, "probe_seq": 8},
+                {"event_seq": 18, "probe_seq": 19},
+            ],
+        }))
+        sidecar = {
+            "kind": "l2_live_observer",
+            "session": "s-native-j",
+            "self_world_live": True,
+            "native_l0_action_owner": "S49_NATIVE_EXISTING",
+            "authorized_actions": 0, "l2_used_as_action": False,
+            "learning_updates": 0, "habit_grants": 0,
+            "l0_blocked_on_l2": False,
+            "model_attempts": 1 if qualified else 0,
+            "self_world_l2_input_bound": qualified,
+            "self_world_prior_source": (
+                "present:s-native-j:8:s49-actual:s-native-j:event-999"
+                if forged else "present:s-native-j:8:s49-actual:s-native-j:event-7"
+            ),
+            "self_world_after_source":
+                "present:s-native-j:19:s49-actual:s-native-j:event-18"
+            if qualified else None,
+            "self_world_review_status": "match" if qualified else None,
+            "self_world_review_reason": (
+                "observed_prediction_match" if qualified else None
+            ),
+            "preconfigured_l1_cognitive_candidate": "OBSERVE" if qualified else None,
+            "status": "UNCONFIRMED",  # no verified backend; never a provider success
+        }
+        (report_path.parent / "live_l2.jsonl").write_text(json.dumps(sidecar) + "\n")
+        return 0
+
+    monkeypatch.setattr(demo, "_run_disposable", existing_s49)
+    root = tmp_path / (
+        "forged-source" if forged else
+        "qualified-input" if qualified else "incomplete-input"
+    )
+    assert demo._dev_run(_stage_j_args(root)) == (0 if qualified and not forged else 1)
+    assert calls == [(("stage-j-backend-not-attested", 16559, 1.0), True)]
+    receipt = json.loads((root / "dev_receipt.json").read_text())
+    assert receipt["mode"] == "DEV"
+    assert receipt["classification"] == "DEV_ONLY"
+    assert receipt["engineering_qualified"] is False
+    assert receipt["science_success"] is False
+    assert receipt["g3_go"] is False
+    assert receipt["m_energy_credited"] is False
+    assert receipt["stop_ack"] == "UNATTESTED"
+    assert receipt["scenario"] == "native-selfworld"
+    assert receipt["source_scope"] == "S49_OWNER_DIAGNOSTIC_NOT_DEV_QUALIFICATION"
+    assert receipt["native_actions"] == 2
+    assert receipt["dev_self_world_input"] == (
+        "SOURCE_BOUND" if qualified and not forged else "NOT_OBSERVED"
+    )
+    assert receipt["dev_self_world_native_pair_verified"] is (qualified and not forged)
+    assert receipt["dev_self_world_model_identity_verified"] is False
+    assert receipt["status"] == ("COMPLETED" if qualified and not forged else "FAILED")
+    assert (root / "native_report.json").is_file()
+    assert (root / "live_l2.jsonl").is_file()
+    assert (root / "SHA256SUMS").is_file()
+    assert not (root / "observed_memory.json").exists()

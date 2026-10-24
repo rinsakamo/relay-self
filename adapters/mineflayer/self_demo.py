@@ -28,6 +28,10 @@ from adapters.mineflayer.self_action_evidence import (
     NativeEvidenceRejected,
     verify_native_action_evidence,
 )
+from adapters.mineflayer.self_world_projection import (
+    review_saved_s16_action_self_world,
+    review_self_world_s15_action_frames,
+)
 from relay_self.habit import (
     CueFeature,
     HabitCue,
@@ -268,6 +272,64 @@ def project_native_report(report: dict[str, object]) -> tuple[dict[str, object],
 
 
 
+def review_s49_action_self_world_report(
+    report: dict[str, object],
+) -> tuple[dict[str, object], ...]:
+    """Read-only Stage K review of existing S49 CLOSED Action native frames.
+
+    Require the actual decoded S16 witness, original S49 action/target link
+    and positive pre-action entity source. Do not invent an earlier prediction
+    or infer prediction caused movement. This is a retrospective baseline.
+    """
+    project_native_report(report)
+    decisions = {
+        decision["event_seq"]: decision
+        for decision in report["decisions"]
+    }
+    items = []
+    for action in report["actual_native_actions"]:
+        if "execution_evidence" not in action:
+            raise DemoRejected("Stage K requires original S16 decoded Action frames")
+        decision = decisions[action["event_seq"]]
+        if (decision["probe_seq"] != action["probe_seq"]
+                or decision["selected"] != "MOVE_AWAY"
+                or decision["issued"] is not True):
+            raise DemoRejected("Stage K Action lacks original native decision")
+        evidence = action["execution_evidence"]
+        before = evidence["before_observation"]
+        if before["seq"] <= action["probe_seq"]:
+            raise DemoRejected("Stage K pre-action snapshot not after S49 decision")
+        from relay_self.self_world import InvalidSelfWorldData
+
+        try:
+            review = review_saved_s16_action_self_world(
+                evidence, action_id=action["action"],
+                session_id=report["session_id"],
+                movement_m=action["movement_m"],
+                target_entity_id=decision["entity_id"],
+            )
+        except (InvalidSelfWorldData, TypeError, KeyError, ValueError) as exc:
+            raise DemoRejected("Stage K S16 target source unavailable/invalid") from exc
+        items.append({
+            "kind": "s16_saved_world_review",
+            "classification": "DEV_ONLY_RETROSPECTIVE_NOT_PRIOR_LIVE_PREDICTION",
+            "session": review.session_id,
+            "action_id": action["action"],
+            "target_ref": review.target_ref,
+            "status": review.status.value,
+            "reason_code": review.reason_code,
+            "predicted_value": review.predicted_value,
+            "observed_value": review.observed_value,
+            "prior_source": review.prior_observation_ref,
+            "later_source": review.later_observation_ref,
+            "actual_native_actions_added": 0,
+            "s17_feedback_created": False,
+            "s10_learning_committed": False,
+            "habit_learned": False,
+        })
+    return tuple(items)
+
+
 def retain_native_observations(
     rows: tuple[dict[str, object], ...],
 ) -> PersistentCognition:
@@ -346,34 +408,179 @@ def _write_trace(path: Path | None, rows: tuple[dict[str, object], ...]) -> None
 async def _run_disposable(
     report_path: Path, server_log: Path, *,
     live_model: tuple[str, int, float] | None = None,
+    self_world_live: bool = False,
+    self_world_prospective: bool = False,
+    self_world_typed_closure: bool = False,
+    self_world_retained_handoff: bool = False,
+    stage_r_dev: bool = False,
+    raw_capture_root: Path | None = None,
+    passive_self_views: bool = False,
 ) -> int:
     # Existing exact S49 host is the *only* issuer. No duplicated event loop,
     # no new Game Action code or arbitrary LLM output -> Action mapping.
     from adapters.mineflayer.s49_normal_session_real_ci import qualify
 
+    passive_views = None
+    if passive_self_views:
+        if (live_model is not None or self_world_live
+                or self_world_prospective or self_world_typed_closure
+                or self_world_retained_handoff or raw_capture_root is not None):
+            raise DemoRejected("passive Self views require exclusive model-free S49 DEV")
+        from adapters.mineflayer.self_product_passive_views import PassiveSelfViews
+
+        passive_views = PassiveSelfViews()
     live_observer = None
     if live_model is not None:
         from adapters.mineflayer.self_live_think import LiveL2Observer
 
         live_observer = LiveL2Observer(
             model=live_model[0], port=live_model[1], timeout_s=live_model[2],
+            self_world_live=self_world_live,
         )
+    stage_n = None
+    if self_world_typed_closure:
+        if not self_world_prospective:
+            raise DemoRejected("Stage N requires pre-Action Stage L witness")
+        from adapters.mineflayer.self_world_native_feedback import (
+            StageNDeclaredPolicy,
+            StageNNativeClosureObserver,
+        )
+        stage_n = StageNNativeClosureObserver(StageNDeclaredPolicy())
+    stage_o = None
+    if stage_r_dev and (
+        live_model is not None or self_world_live or self_world_prospective
+        or self_world_typed_closure or self_world_retained_handoff
+    ):
+        raise DemoRejected("Stage R original S49 owner DEV uses model-free native only")
+    if self_world_retained_handoff:
+        if not self_world_typed_closure:
+            raise DemoRejected("Stage O requires Stage N typed S17 source")
+        from adapters.mineflayer.self_world_owner_handoff import StageOOwnerReadback
+        stage_o = StageOOwnerReadback()
+    witness = None
+    if self_world_prospective:
+        if live_observer is None or not self_world_live:
+            raise DemoRejected("Stage L requires existing SelfWorld live observer")
+        from adapters.mineflayer.self_world_prospective import ProspectiveWitnessWriter
+        witness = ProspectiveWitnessWriter(report_path.parent / "stage_l_prospective.jsonl")
+
+    async def observed_source(reading):
+        if stage_o is not None:
+            try:
+                stage_o.observe_existing_probe(reading)
+            except (TypeError, ValueError) as exc:
+                stage_o.record_error("source", exc)
+        if stage_n is not None:
+            try:
+                stage_n.observe_existing_probe(reading)
+            except (TypeError, ValueError) as exc:
+                # Failed advisory tap is evidence, never L0 admission failure.
+                stage_n.record_observer_error("source", exc)
+        if witness is not None:
+            try:
+                # Source is sealed on disk before original S49 can select/issue.
+                witness.record(reading)
+            except (OSError, ValueError, TypeError) as exc:
+                # Advisory record failure must NEVER veto sole L0/Action owner.
+                witness.error = type(exc).__name__
+        if passive_views is not None:
+            try:
+                passive_views.observe(reading)
+            except Exception as exc:
+                # The read-only projection cannot veto S49's native Action owner.
+                passive_views.record_error(exc)
+        if live_observer is not None:
+            await live_observer.observe(reading)
+
     previous = os.environ.get("S49_REAL_SERVER_CI")
+    previous_r = os.environ.get("S49_STAGE_R_DEV_ONLY")
     os.environ["S49_REAL_SERVER_CI"] = "1"
+    if stage_r_dev:
+        os.environ["S49_STAGE_R_DEV_ONLY"] = "1"
     try:
         if live_observer is None:
-            return await qualify(report_path, server_log)
-        return await qualify(report_path, server_log, live_probe=live_observer.observe)
+            if stage_r_dev:
+                # The SAME native S49 owner can publish a governed S10 HOLD
+                # and forward its already received probes to a read-only
+                # SelfBody/SelfWorld sidecar. No extra receiver or issuer.
+                return await qualify(
+                    report_path, server_log, stage_r_dev=True,
+                    **({"live_probe": observed_source} if passive_views is not None else {}),
+                )
+            return await qualify(
+                report_path, server_log,
+                **({"raw_capture_root": raw_capture_root} if raw_capture_root is not None else {}),
+                **({"live_probe": observed_source} if passive_views is not None else {}),
+            )
+        if stage_n is None:
+            return await qualify(report_path, server_log, live_probe=observed_source)
+        from adapters.mineflayer.normal_action import (
+            observe_closed_native_actions,
+            observe_original_retained_owner,
+        )
+
+        def on_closed(original):
+            try:
+                typed_feedback = stage_n.observe_closed(original)
+            except (TypeError, ValueError) as exc:
+                # Keep real terminal; retain observer rejection for DEV receipt.
+                stage_n.record_observer_error("closed", exc)
+                return
+            if stage_o is not None:
+                try:
+                    from relay_self.learning import LearningUpdateRule
+
+                    # HOLD-only *proposal*: no authority, S10 commit or owner
+                    # reassignment; original S49 retains the exact rev1 object.
+                    stage_o.prepare_original_hold(
+                        typed_feedback,
+                        LearningUpdateRule("stage-o-dev-hold-preview", 1, 1),
+                    )
+                except (TypeError, ValueError) as exc:
+                    stage_o.record_error("s17-to-s10-proposal", exc)
+
+        # Same event-loop context, original S49 issuer; callback receives only
+        # an already-closed Action and never controls the physical outcome.
+        if stage_o is None:
+            with observe_closed_native_actions(on_closed):
+                return await qualify(report_path, server_log, live_probe=observed_source)
+        # Readback only: L0 retains original owner object; callback never
+        # supplies S10 authority and cannot mutate the original owner.
+        with observe_original_retained_owner(stage_o.receive_original_owner):
+            with observe_closed_native_actions(on_closed):
+                return await qualify(report_path, server_log, live_probe=observed_source)
     finally:
+        if stage_o is not None:
+            _write_trace(
+                report_path.parent / "stage_o_retained_owner.jsonl",
+                (stage_o.summary(),),
+            )
+        if stage_n is not None:
+            _write_trace(
+                report_path.parent / "stage_n_native_feedback.jsonl",
+                (stage_n.summary(),),
+            )
+        if witness is not None:
+            witness.close()
         if live_observer is not None:
             # Separate product-side L2 receipt, never misstate original S49
             # host model calls=0 or infer a new native Action permission.
             live_row = await live_observer.close()
             _write_trace(report_path.parent / "live_l2.jsonl", (live_row,))
+        if previous_r is None:
+            os.environ.pop("S49_STAGE_R_DEV_ONLY", None)
+        else:
+            os.environ["S49_STAGE_R_DEV_ONLY"] = previous_r
         if previous is None:
             os.environ.pop("S49_REAL_SERVER_CI", None)
         else:
             os.environ["S49_REAL_SERVER_CI"] = previous
+        # Never defer original host environment restoration to sidecar I/O.
+        if passive_views is not None:
+            _write_trace(
+                report_path.parent / "self_views.jsonl",
+                (*passive_views.rows(), passive_views.summary()),
+            )
 
 
 async def _run_b1_local_dev(
@@ -416,7 +623,7 @@ async def _run_b0_ground_dev(report_path: Path, server_log: Path) -> int:
 
 
 def _dev_run(args: argparse.Namespace) -> int:
-    """Two opt-in existing owner routes; both persist DEV_ONLY without elevation."""
+    """Existing S49/S51 disposable owners; all output remains DEV_ONLY."""
     scenario = getattr(args, "dev_scenario", "native")
     receipt = {
         "mode": "DEV", "classification": "DEV_ONLY", "status": "NOT_RUN",
@@ -424,11 +631,11 @@ def _dev_run(args: argparse.Namespace) -> int:
         "run_id": uuid.uuid4().hex, "retry_of": args.retry_of,
         "intent": (
             "S49 disposable L0 development; Java/Node, Mojang download and EULA"
-            if scenario == "native" else
+            if scenario in ("native", "native-selfworld") else
             "S51 disposable B0 ground/EAT/M0 development; Java/Node, Mojang download and EULA"
         ),
         "world_source": (
-            "NEW_S49_FLAT_WORLD_NOT_GOLDEN" if scenario == "native"
+            "NEW_S49_FLAT_WORLD_NOT_GOLDEN" if scenario in ("native", "native-selfworld")
             else "NEW_S51_DEV_WORLD_NOT_GOLDEN"
         ),
         "seed": "SERVER_GENERATED_NOT_ATTESTED",
@@ -439,7 +646,7 @@ def _dev_run(args: argparse.Namespace) -> int:
     }
     root = args.output_dir
     try:
-        if scenario not in ("native", "b0-ground", "b1-local-adaptation"):
+        if scenario not in ("native", "native-selfworld", "b0-ground", "b1-local-adaptation"):
             raise DemoRejected("DEV requires one S49/S51 owner route")
         if getattr(args, "b1_retention", "on") not in ("on", "off"):
             raise DemoRejected("B1 retention must be on or off")
@@ -447,8 +654,67 @@ def _dev_run(args: argparse.Namespace) -> int:
             raise DemoRejected("retention OFF is B1 scenario only")
         if args.confirm != CONFIRM or not args.run_disposable:
             raise DemoRejected("DEV requires disposable opt-in and exact confirmation")
-        if args.think or args.live_think or args.reflect_report or args.smoke:
-            raise DemoRejected("DEV accepts only the existing model-free disposable route")
+        live_selfworld = scenario == "native-selfworld"
+        prospective = getattr(args, "self_world_prospective", False)
+        typed_closure = getattr(args, "self_world_typed_closure", False)
+        retained_handoff = getattr(args, "self_world_retained_handoff", False)
+        stage_r = getattr(args, "self_world_stage_r_dev", False)
+        stage_w3 = getattr(args, "self_world_w3_raw_capture", False)
+        passive_views = getattr(args, "self_passive_views", False)
+        if type(passive_views) is not bool or (
+            passive_views and (
+                scenario != "native" or stage_w3
+                or args.think or args.live_think
+                or getattr(args, "self_world_live", False)
+                or prospective or typed_closure or retained_handoff
+            )
+        ):
+            raise DemoRejected("passive SelfBody/SelfWorld needs exclusive native DEV")
+        if type(stage_w3) is not bool or (stage_w3 and (
+            scenario != "native" or stage_r or args.live_think or args.think
+            or getattr(args, "self_world_live", False) or prospective
+            or typed_closure or retained_handoff
+        )):
+            raise DemoRejected("Stage W3 raw source requires exclusive model-free native DEV")
+        if type(stage_r) is not bool or (
+            stage_r and (
+                scenario != "native" or prospective or typed_closure
+                or retained_handoff or args.live_think or args.think
+                or getattr(args, "self_world_live", False)
+            )
+        ):
+            raise DemoRejected("Stage R requires exclusive model-free native DEV scenario")
+        if type(retained_handoff) is not bool or (
+            retained_handoff and (not typed_closure or not live_selfworld)
+        ):
+            raise DemoRejected("Stage O retained source requires Stage N DEV")
+        if type(typed_closure) is not bool or (
+            typed_closure and (not prospective or not live_selfworld)
+        ):
+            raise DemoRejected("Stage N typed readback requires prospective SelfWorld DEV")
+        if prospective and (not live_selfworld or type(prospective) is not bool):
+            raise DemoRejected("Stage L prospective forecast requires SelfWorld DEV")
+        if live_selfworld:
+            if (args.think or args.reflect_report or args.smoke
+                    or not getattr(args, "self_world_live", False)
+                    or not args.live_think):
+                raise DemoRejected("native-selfworld DEV requires explicit live flags")
+            from adapters.mineflayer.s60b1_loopback_adapter import (
+                LoopbackTransportConfig,
+            )
+            # A reachable model is NOT assumed or certified. The DEV can
+            # retain source/PRD/L1/L2 input receipts even if backend is absent.
+            try:
+                LoopbackTransportConfig(
+                    model=args.model_alias, port=args.model_port, slots=1,
+                    max_tokens=96, connect_s=min(3.0, args.model_timeout),
+                    read_s=args.model_timeout, whole_s=args.model_timeout,
+                )
+            except (TypeError, ValueError, AttributeError) as exc:
+                raise DemoRejected("invalid explicit SelfWorld loopback bounds") from exc
+        elif (args.think or args.live_think or args.reflect_report or args.smoke
+                or getattr(args, "self_world_live", False)):
+            raise DemoRejected("ordinary DEV accepts only existing model-free routes")
         if args.retry_of is not None and (
             len(args.retry_of) != 32 or any(c not in "0123456789abcdef" for c in args.retry_of)
         ):
@@ -524,11 +790,60 @@ def _dev_run(args: argparse.Namespace) -> int:
                     root / "native_report.json", root / "minecraft_server.log",
                     retention=getattr(args, "b1_retention", "on") == "on",
                 ))
-            else:
+            elif scenario == "native-selfworld":
+                extra = {}
+                if prospective:
+                    extra["self_world_prospective"] = True
+                if typed_closure:
+                    extra["self_world_typed_closure"] = True
+                if retained_handoff:
+                    extra["self_world_retained_handoff"] = True
                 code = asyncio.run(_run_disposable(
                     root / "native_report.json", root / "minecraft_server.log",
+                    live_model=(args.model_alias, args.model_port, args.model_timeout),
+                    self_world_live=True,
+                    **extra,
                 ))
+            else:
+                if stage_r:
+                    code = asyncio.run(_run_disposable(
+                        root / "native_report.json", root / "minecraft_server.log",
+                        stage_r_dev=True,
+                        **({"passive_self_views": True} if passive_views else {}),
+                    ))
+                else:
+                    code = asyncio.run(_run_disposable(
+                        root / "native_report.json", root / "minecraft_server.log",
+                        **({"raw_capture_root": root} if stage_w3 else {}),
+                        **({"passive_self_views": True} if passive_views else {}),
+                    ))
         native = json.loads((root / "native_report.json").read_text())
+        if passive_views:
+            # Compare every passive projection against original S49's own
+            # already correlated source pairs; never qualify native origin.
+            sidecar = root / "self_views.jsonl"
+            if (not sidecar.is_file() or sidecar.is_symlink()
+                    or sidecar.stat().st_size > 65536):
+                raise DemoRejected("passive Self view sidecar unavailable/invalid")
+            rows = [json.loads(line) for line in sidecar.read_text().splitlines()]
+            from adapters.mineflayer.self_product_passive_views import (
+                verify_passive_source_join,
+            )
+
+            valid = verify_passive_source_join(native, rows)
+            receipt.update(
+                dev_passive_self_views="SOURCE_JOINED_DEV_ONLY" if valid else "UNDETERMINED",
+                dev_passive_self_views_count=3 if valid else 0,
+                dev_passive_self_views_sidecar="self_views.jsonl",
+                dev_passive_self_views_action_issuer="EXISTING_S49_ONLY",
+                dev_passive_self_views_extra_actions=0,
+                dev_passive_self_views_s10_updates=0,
+            )
+            if code == 0 and not valid:
+                code = 1
+                receipt["dev_passive_self_views_incomplete"] = (
+                    "ORIGINAL_SOURCE_BOUND_VIEW_JOIN_NOT_PROVEN"
+                )
         if scenario == "b1-local-adaptation":
             receipt["dev_b1_fixture_seed"] = native.get("b1_fixture_seed")
             if native.get("b1_fixture_seed") is not None:
@@ -593,6 +908,106 @@ def _dev_run(args: argparse.Namespace) -> int:
                 for e, pickup in zip(epochs, pickups)
                 if isinstance(e, dict)
             )
+        if stage_r:
+            owner = native.get("stage_r_owner")
+            trace = native.get("stage_r_decision_revisions")
+            sources = native.get("source_pair_trace")
+            actions = native.get("actual_native_actions")
+            commit = owner.get("commit_source") if isinstance(owner, dict) else None
+            original = (
+                actions[0] if isinstance(actions, list) and len(actions) == 2
+                else None
+            )
+            next_source = (
+                sources[2] if isinstance(sources, list) and len(sources) == 3
+                else None
+            )
+            certified = (
+                code == 0
+                and native.get("status") == "PASS"
+                and native.get("classification") == "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
+                and native.get("learning_in_world") is True
+                and isinstance(owner, dict)
+                and owner.get("original_session_id") == native.get("session_id")
+                and owner.get("initial_revision") == 1
+                and owner.get("current_revision") == 2
+                and owner.get("current_value") == 4
+                and owner.get("joint_l0_s14_owner_identity") is True
+                and owner.get("operator_s10_grants") == 1
+                and owner.get("s10_hold_commits") == 1
+                and isinstance(commit, dict)
+                and isinstance(original, dict)
+                and isinstance(next_source, dict)
+                and commit.get("terminal_action_id") == original.get("action")
+                and commit.get("terminal_after_native_seq") ==
+                original.get("execution_evidence", {}).get(
+                    "after_observation", {},
+                ).get("seq")
+                and commit.get("next_source_probe_seq") == next_source.get("probe_seq")
+                and commit.get("next_source_request_id") ==
+                f"s49-actual:{native.get('session_id')}:event-{next_source.get('event_seq')}"
+                and commit.get("s10_commit_revision") == 2
+                and commit.get("s10_authority_source") == "s49-dev-learning-owner"
+                and isinstance(commit.get("feedback_id"), str)
+                and commit["feedback_id"] != ""
+                and owner.get("original_action_closures") == 2
+                and owner.get("pending_unsealed_or_unknown") is False
+                and owner.get("grant_independent_external_attestation") is False
+                and owner.get("hold_reward_or_policy_gain") is False
+                and owner.get("additional_action_issuer") is False
+                and isinstance(trace, list)
+                and [r.get("retained_revision") for r in trace] == [1, 1, 2]
+                and [r.get("retained_value") for r in trace] == [4, 4, 4]
+                and [r.get("selected") for r in trace] == ["WAIT", "MOVE_AWAY", "MOVE_AWAY"]
+            )
+            receipt["dev_stage_r_owner"] = (
+                "S49_ONE_WRITER_HOLD_REV2" if certified else "NOT_CERTIFIED"
+            )
+            receipt["dev_stage_r_s10_commits"] = (
+                owner.get("s10_hold_commits") if isinstance(owner, dict) else None
+            )
+            receipt["dev_stage_r_issuer_independently_attested"] = False
+            receipt["dev_stage_r_policy_adaptation_proven"] = False
+            receipt["dev_stage_r_native_trace"] = "native_report.json"
+            if not certified:
+                code = 1
+            if passive_views:
+                # Check independent read-only projection rows AGAINST the
+                # original S49 source that governed this genuine DEV-only S10
+                # HOLD. The passive callback owns NO learning permission.
+                view_rows = rows[:-1] if isinstance(rows, list) else []
+                source_join = (
+                    certified
+                    and receipt.get("dev_passive_self_views") == "SOURCE_JOINED_DEV_ONLY"
+                    and len(view_rows) == len(sources) == 3
+                    and all(
+                        view.get("native_seq") == pair.get("probe_seq")
+                        and view.get("request_id") ==
+                        f"s49-actual:{native['session_id']}:event-{pair.get('event_seq')}"
+                        and view.get("body_world_exact_source_join") is True
+                        and view.get("s10_commits") == 0
+                        and view.get("action_issued") is False
+                        for view, pair in zip(view_rows, sources, strict=True)
+                    )
+                    and commit.get("next_source_probe_seq") == view_rows[-1].get("native_seq")
+                    and commit.get("next_source_request_id") == view_rows[-1].get("request_id")
+                ) if (isinstance(commit, dict) and isinstance(sources, list)) else False
+                receipt.update(
+                    dev_stage_r_self_views_next_epoch=(
+                        "SAME_SOURCE_DEV_ONLY" if source_join else "UNDETERMINED"
+                    ),
+                    dev_stage_r_self_views_l0_s14_single_owner=certified,
+                    dev_stage_r_self_views_passive_s10_authority=False,
+                    dev_stage_r_self_views_real_s10_hold_commits=(
+                        owner.get("s10_hold_commits") if source_join else None
+                    ),
+                    dev_stage_r_self_views_behavioral_gain_proven=False,
+                )
+                if code == 0 and not source_join:
+                    code = 1
+                    receipt["dev_stage_r_self_views_incomplete"] = (
+                        "NEXT_EPOCH_VIEW_AND_S10_SOURCE_JOIN_NOT_PROVEN"
+                    )
         if scenario == "b0-ground":
             # Read-only projection of source; NOT independent R qualification.
             acquisition = native.get("ground_pickup")
@@ -625,8 +1040,433 @@ def _dev_run(args: argparse.Namespace) -> int:
                 receipt["dev_b0_move_outcomes"]
                 + int(native.get("action_terminal") == "outcome")
             )
+            # A separate DEV-only M0 sensor view may accompany an original
+            # S51 next native L0 probe. Neither the simulated energy ledger
+            # nor the provisional P1 body is native Minecraft observation.
+            view = native.get("dev_b0_cognition_next_epoch")
+            source = native.get("next_native_probe")
+            next_choice = native.get("next_l0")
+            m0 = native.get("metabolism_after_eat")
+            if isinstance(view, dict):
+                seq = source.get("seq") if isinstance(source, dict) else None
+                request_id = (
+                    source.get("request_id") if isinstance(source, dict) else None
+                )
+                session = native.get("session_id")
+                joined = (
+                    type(seq) is int
+                    and isinstance(request_id, str) and request_id
+                    and isinstance(session, str) and session
+                    and isinstance(next_choice, dict)
+                    and isinstance(m0, dict)
+                    and view.get("classification") ==
+                    "DEV_ONLY_PRODUCER_LOCAL_M0_INTEROCEPTION"
+                    and view.get("native_source") ==
+                    f"native-probe:{session}:{seq}:{request_id}"
+                    and view.get("world_source") ==
+                    f"present:{session}:{seq}:{request_id}"
+                    and view.get("body_world_same_object") is True
+                    and view.get("source_seq") == seq
+                    and view.get("l0_kind") == next_choice.get("kind")
+                    and view.get("m0_tick") == m0.get("tick")
+                    and view.get("m0_energy_sensor") ==
+                    next_choice.get("energy_sensor_reading")
+                    and view.get("m0_sensor_origin") == "interoception"
+                    and view.get("m0_sensor_owner_source") ==
+                    "b0-m0-owner-local-sensor"
+                    and view.get("native_food") == source.get("snapshot", {}).get("food")
+                    and view.get("native_health") == source.get("snapshot", {}).get("health")
+                    and view.get("p1_fatigue") is None
+                    and view.get("true_m0_energy_exposed") is False
+                    and view.get("s10_updates") == 0
+                    and view.get("additional_native_reads") == 0
+                    and view.get("additional_actions") == 0
+                    and view.get("qualification") is False
+                )
+                receipt["dev_b0_body_m0_interoception"] = (
+                    "SOURCE_JOINED_PRODUCER_LOCAL_DEV" if joined else "UNDETERMINED"
+                )
+                if code == 0 and not joined:
+                    code = 1
+                    receipt["dev_b0_body_m0_incomplete"] = (
+                        "M0_SENSOR_AND_NATIVE_PRESENT_NOT_JOINED"
+                    )
+            else:
+                receipt["dev_b0_body_m0_interoception"] = "NOT_OBSERVED"
+            # A multi-epoch cognition trace must correspond one-for-one
+            # with the already saved native S51 appetite observations, plus
+            # the existing next-L0 sensor. Never infer an unseen native probe.
+            epochs = native.get("dev_b0_cognition_epochs")
+            appetite = native.get("ground_appetite_trace")
+            if isinstance(epochs, list):
+                expected = len(appetite) if isinstance(appetite, list) else -1
+                sid = native.get("session_id")
+                pre = epochs[:-1]
+                trace_joined = (
+                    receipt["dev_b0_body_m0_interoception"] ==
+                    "SOURCE_JOINED_PRODUCER_LOCAL_DEV"
+                    and isinstance(sid, str) and bool(sid)
+                    and 1 <= expected <= 16
+                    and len(pre) == expected
+                    and epochs[-1] == view
+                    and isinstance(view, dict)
+                    and all(
+                        isinstance(row, dict) and isinstance(probe_row, dict)
+                        and type(probe_row.get("probe_seq")) is int
+                        and probe_row["probe_seq"] >= 0
+                        and row.get("source_seq") == probe_row["probe_seq"]
+                        and row.get("native_source") ==
+                        f"native-probe:{sid}:{probe_row['probe_seq']}:"
+                        f"b0-ground-appetite-{i:02d}"
+                        and row.get("world_source") ==
+                        f"present:{sid}:{probe_row['probe_seq']}:"
+                        f"b0-ground-appetite-{i:02d}"
+                        and row.get("body_world_same_object") is True
+                        and row.get("classification") ==
+                        "DEV_ONLY_PRODUCER_LOCAL_M0_INTEROCEPTION"
+                        and row.get("l0_kind") == probe_row.get("kind") == "WAIT"
+                        and row.get("native_food") == probe_row.get("food")
+                        and row.get("m0_energy_sensor") ==
+                        probe_row.get("energy_sensor_reading")
+                        and row.get("m0_tick") == probe_row.get("metabolic_tick")
+                        and row.get("m0_sensor_origin") == "interoception"
+                        and row.get("m0_sensor_owner_source") ==
+                        "b0-m0-owner-local-sensor"
+                        and row.get("p1_fatigue") is None
+                        and row.get("true_m0_energy_exposed") is False
+                        and row.get("s10_updates") == 0
+                        and row.get("additional_native_reads") == 0
+                        and row.get("additional_actions") == 0
+                        and row.get("qualification") is False
+                        for i, (row, probe_row) in
+                        enumerate(zip(pre, appetite, strict=True))
+                    )
+                    and all(
+                        type(prev.get("source_seq")) is int
+                        and type(after.get("source_seq")) is int
+                        and prev["source_seq"] < after["source_seq"]
+                        and type(prev.get("m0_tick")) is int
+                        and type(after.get("m0_tick")) is int
+                        and prev["m0_tick"] <= after["m0_tick"]
+                        for prev, after in zip(epochs, epochs[1:])
+                    )
+                )
+                receipt["dev_b0_cognition_epoch_trace"] = (
+                    "ORDERED_PRODUCER_LOCAL_DEV" if trace_joined else "UNDETERMINED"
+                )
+                receipt["dev_b0_cognition_epoch_count"] = (
+                    len(epochs) if trace_joined else 0
+                )
+                if code == 0 and not trace_joined:
+                    code = 1
+                    receipt["dev_b0_cognition_epoch_incomplete"] = (
+                        "NATIVE_APPETITE_AND_NEXT_L0_SOURCE_TRACE_NOT_JOINED"
+                    )
+            else:
+                receipt["dev_b0_cognition_epoch_trace"] = "NOT_OBSERVED"
+                receipt["dev_b0_cognition_epoch_count"] = 0
             # Qualified M0 energy stays false in DEV; these are owner-local
             # measurements on a disposable, non-R-qualified World.
+        if scenario == "native-selfworld":
+            sidecar_file = root / "live_l2.jsonl"
+            if (not sidecar_file.is_file() or sidecar_file.is_symlink()
+                    or sidecar_file.stat().st_size > 65536):
+                raise DemoRejected("native-selfworld DEV sidecar missing/invalid")
+            rows = sidecar_file.read_text(encoding="utf-8").splitlines()
+            if len(rows) != 1:
+                raise DemoRejected("native-selfworld DEV requires one sidecar record")
+            sidecar = json.loads(rows[0])
+            if (sidecar.get("kind") != "l2_live_observer"
+                    or sidecar.get("session") != native.get("session_id")
+                    or sidecar.get("self_world_live") is not True
+                    or sidecar.get("native_l0_action_owner") != "S49_NATIVE_EXISTING"
+                    or sidecar.get("authorized_actions") != 0
+                    or sidecar.get("l2_used_as_action") is not False
+                    or sidecar.get("learning_updates") != 0
+                    or sidecar.get("habit_grants") != 0
+                    or sidecar.get("l0_blocked_on_l2") is not False
+                    or sidecar.get("model_attempts") not in (0, 1)):
+                raise DemoRejected("native-selfworld DEV sidecar violates owner boundary")
+            # Cross-check the observer-local refs against the ORIGINAL S49
+            # correlated native probes, not only against the sidecar's claims.
+            # Native event seq, probe seq and logical decision epoch differ.
+            paired = native.get("source_pair_trace")
+            valid_pair_refs: list[str] = []
+            if isinstance(paired, list):
+                for pair in paired:
+                    if not isinstance(pair, dict):
+                        continue
+                    event, seq = pair.get("event_seq"), pair.get("probe_seq")
+                    if (type(event) is int and event >= 0
+                            and type(seq) is int and seq >= 0):
+                        valid_pair_refs.append(
+                            f"present:{native['session_id']}:{seq}:"
+                            f"s49-actual:{native['session_id']}:event-{event}"
+                        )
+            prior_ref = sidecar.get("self_world_prior_source")
+            after_ref = sidecar.get("self_world_after_source")
+            actual_source_pair = (
+                prior_ref in valid_pair_refs
+                and after_ref in valid_pair_refs
+                and valid_pair_refs.index(prior_ref) < valid_pair_refs.index(after_ref)
+                and len(set(valid_pair_refs)) == len(valid_pair_refs)
+            )
+            receipt["dev_self_world_native_pair_verified"] = actual_source_pair
+            qualified_input = (
+                actual_source_pair
+                and sidecar.get("self_world_l2_input_bound") is True
+                and sidecar.get("self_world_review_status")
+                in ("match", "mismatch", "undetermined")
+                and isinstance(sidecar.get("self_world_prior_source"), str)
+                and isinstance(sidecar.get("self_world_after_source"), str)
+                and sidecar["self_world_prior_source"] != sidecar["self_world_after_source"]
+                and sidecar.get("model_attempts") == 1
+            )
+            receipt.update(
+                dev_self_world_input="SOURCE_BOUND" if qualified_input else "NOT_OBSERVED",
+                dev_self_world_review=sidecar.get("self_world_review_status"),
+                dev_self_world_review_reason=sidecar.get("self_world_review_reason"),
+                dev_self_world_prior_source=sidecar.get("self_world_prior_source"),
+                dev_self_world_after_source=sidecar.get("self_world_after_source"),
+                dev_self_world_l1_cognitive_candidate=sidecar.get(
+                    "preconfigured_l1_cognitive_candidate"
+                ),
+                dev_self_world_provider_status=sidecar.get("status"),
+                dev_self_world_model_attempts=sidecar.get("model_attempts"),
+                dev_self_world_model_identity_verified=False,
+                dev_self_world_sidecar="live_l2.jsonl",
+            )
+            # Stage K reuses the already CLOSED S15/S16 native before/after
+            # frames from each Action. No new probe, L2 lease or movement.
+            # This differs from S49's intentionally different zombies across
+            # decision epochs and does not imply learning or Action causality.
+            action_reviews: list[dict[str, object]] = []
+            decisions_by_event = {
+                d["event_seq"]: d for d in native.get("decisions", [])
+                if isinstance(d, dict) and type(d.get("event_seq")) is int
+            }
+            for action in native.get("actual_native_actions", []):
+                evidence = action.get("execution_evidence")
+                if evidence is None:
+                    # Legacy/mock reports have no original S16 frames. Do
+                    # not certify them, but do not break the Stage J test
+                    # whose purpose is only to gate the live sidecar.
+                    action_reviews.append({
+                        "action_id": action.get("action"),
+                        "status": "unavailable", "reason": "original_frames_not_saved",
+                    })
+                    continue
+                decision = decisions_by_event.get(action.get("event_seq"))
+                if (decision is None
+                        or decision.get("probe_seq") != action.get("probe_seq")
+                        or decision.get("entity_id") is None):
+                    raise DemoRejected("S15 Action missing S49 source-decision lineage")
+                reviewed = review_self_world_s15_action_frames(
+                    evidence, action_id=action["action"],
+                    session_id=native["session_id"],
+                    movement_m=action["movement_m"],
+                    target_entity_id=decision["entity_id"],
+                    preceding_s49_probe_seq=decision["probe_seq"],
+                )
+                if reviewed is None:
+                    action_reviews.append({
+                        "action_id": action["action"],
+                        "status": "unavailable",
+                        "reason": "initial_target_not_positive",
+                    })
+                else:
+                    action_reviews.append({
+                        "action_id": action["action"],
+                        "status": reviewed.status.value,
+                        "reason": reviewed.reason_code,
+                        "target_ref": reviewed.target_ref,
+                        "before_source_ref": reviewed.prior_observation_ref,
+                        "after_source_ref": reviewed.later_observation_ref,
+                        "predicted": reviewed.predicted_value,
+                        "observed": reviewed.observed_value,
+                    })
+            receipt["dev_self_world_s15_action_reviews"] = action_reviews
+            receipt["dev_self_world_s15_positive_comparisons"] = sum(
+                row["status"] in ("match", "mismatch") for row in action_reviews
+            )
+            receipt["dev_self_world_s15_positive_source_certified"] = (
+                len(action_reviews) == 2
+                and receipt["dev_self_world_s15_positive_comparisons"] >= 1
+            )
+            if prospective:
+                from adapters.mineflayer.self_world_prospective import (
+                    verify_prospective_native_reviews,
+                )
+                path = root / "stage_l_prospective.jsonl"
+                if (not path.is_file() or path.is_symlink()
+                        or path.stat().st_size > 65536):
+                    raise DemoRejected("Stage L pre-Action forecast file missing")
+                # This read happens only after S49 has completed: original
+                # fsynced pre-Action lines + independent typed S16 readback.
+                prospective_reviews = verify_prospective_native_reviews(
+                    native, path.read_bytes(),
+                )
+                positive_count = sum(
+                    r["status"] in ("match", "mismatch")
+                    for r in prospective_reviews
+                )
+                receipt.update(
+                    dev_self_world_prospective="SOURCE_BOUND"
+                    if positive_count > 0 else "UNDETERMINED",
+                    dev_self_world_prospective_witness="stage_l_prospective.jsonl",
+                    dev_self_world_prospective_reviews=prospective_reviews,
+                    dev_self_world_prospective_positive_count=positive_count,
+                    dev_self_world_prospective_s17_feedback=0,
+                    dev_self_world_prospective_s10_commits=0,
+                    dev_self_world_prospective_actions_issued=0,
+                )
+                if code == 0 and positive_count == 0:
+                    code = 1
+                    receipt["dev_self_world_prospective_incomplete"] = (
+                        "NO_POSITIVE_SAME_TARGET_SUCCESSOR_SOURCE"
+                    )
+            if typed_closure:
+                stage_n_path = root / "stage_n_native_feedback.jsonl"
+                if (not stage_n_path.is_file() or stage_n_path.is_symlink()
+                        or stage_n_path.stat().st_size > 65536):
+                    raise DemoRejected("Stage N original typed closure sidecar missing")
+                stage_n_rows = stage_n_path.read_text(encoding="utf-8").splitlines()
+                if len(stage_n_rows) != 1:
+                    raise DemoRejected("Stage N expects one typed closure summary")
+                stage_n = json.loads(stage_n_rows[0])
+                closures = stage_n.get("source_closures")
+                subsequent = stage_n.get("post_closure_source_observations")
+                if (stage_n.get("kind") != "stage_n_typed_s16_closed_readback"
+                        or stage_n.get("source_session") != native["session_id"]
+                        or stage_n.get("declared_policy") != "actual-move-execution-only"
+                        or stage_n.get("declared_feedback_direction") != "hold"
+                        or stage_n.get("s10_authority_attested") is not False
+                        or stage_n.get("s10_learning_commits") != 0
+                        or stage_n.get("native_actions_added") != 0
+                        or not isinstance(closures, list)
+                        or not isinstance(subsequent, list)):
+                    raise DemoRejected("Stage N must not mint S10 or Action authority")
+                actions = native.get("actual_native_actions", [])
+                original = {a["action"]: a for a in actions}
+                native_source_probes = {
+                    p["probe_seq"]: (
+                        p["event_seq"],
+                        f"s49-actual:{native['session_id']}:event-{p['event_seq']}",
+                    )
+                    for p in native.get("source_pair_trace", [])
+                }
+                certified = (
+                    stage_n.get("observer_errors") == []
+                    and len(closures) == stage_n.get("typed_s17_feedback_count") == 2
+                    and len(original) == 2
+                    and len(subsequent) >= 1
+                    and all(
+                        c.get("action_id") in original
+                        and c.get("source_probe_seq") ==
+                        original[c["action_id"]]["probe_seq"]
+                        and c.get("source_probe_seq") in native_source_probes
+                        and c.get("source_probe_request_id") ==
+                        native_source_probes[c["source_probe_seq"]][1]
+                        and c.get("after_native_seq") ==
+                        original[c["action_id"]]["execution_evidence"][
+                            "after_observation"]["seq"]
+                        and c.get("original_terminal") == "outcome"
+                        and c.get("original_outcome_reason") == "observed_execution"
+                        and c.get("feedback_direction") == "hold"
+                        and c.get("s17_interpretation") == "produced"
+                        and c.get("s10_update_committed") is False
+                        and c.get("action_issued_by_stage_n") is False
+                        for c in closures
+                    )
+                    and all(
+                        row.get("after_action_id") in original
+                        and row.get("next_native_seq") in native_source_probes
+                        and row.get("next_native_seq") >
+                        original[row["after_action_id"]]["execution_evidence"][
+                            "after_observation"]["seq"]
+                        and row.get("next_native_request_id") ==
+                        native_source_probes[row["next_native_seq"]][1]
+                        and row.get("same_native_session") is True
+                        and row.get("action_issued_from_feedback") is False
+                        for row in subsequent
+                    )
+                )
+                receipt.update(
+                    dev_self_world_stage_n="TYPED_S17_READ_ONLY"
+                    if certified else "NOT_CERTIFIED",
+                    dev_self_world_stage_n_closures=len(closures),
+                    dev_self_world_stage_n_observer_errors=stage_n.get("observer_errors"),
+                    dev_self_world_stage_n_future_sources=len(subsequent),
+                    dev_self_world_stage_n_s10_authorized=False,
+                    dev_self_world_stage_n_s10_commits=0,
+                    dev_self_world_stage_n_source="stage_n_native_feedback.jsonl",
+                )
+                if code == 0 and not certified:
+                    code = 1
+                    receipt["dev_self_world_stage_n_incomplete"] = (
+                        "TYPED_ACTION_READBACK_NOT_PROVEN"
+                    )
+            if retained_handoff:
+                owner_path = root / "stage_o_retained_owner.jsonl"
+                if (not owner_path.is_file() or owner_path.is_symlink()
+                        or owner_path.stat().st_size > 65536):
+                    raise DemoRejected("Stage O original L0 owner readback missing")
+                owner_lines = owner_path.read_text(encoding="utf-8").splitlines()
+                if len(owner_lines) != 1:
+                    raise DemoRejected("Stage O expects one owner readback summary")
+                owner = json.loads(owner_lines[0])
+                actual = native.get("source_pair_trace", [])
+                reads = owner.get("same_owner_source_reads")
+                certified = (
+                    owner.get("kind") == "stage_o_original_owner_readback"
+                    and owner.get("session_id") == native["session_id"]
+                    and owner.get("intent_id") == "escape-threat"
+                    and owner.get("captured_original_l0_retained_identity") is True
+                    and owner.get("original_owner_target") == "risk_weight"
+                    and owner.get("original_owner_value") == 4
+                    and owner.get("original_owner_revision") == 1
+                    and owner.get("source_read_count") == 3
+                    and isinstance(reads, list) and len(reads) == len(actual) == 3
+                    and all(
+                        x.get("source_probe_seq") == y.get("probe_seq")
+                        and x.get("source_request_id") ==
+                        f"s49-actual:{native['session_id']}:event-{y['event_seq']}"
+                        and x.get("source_session") == native["session_id"]
+                        and x.get("retained_target") == "risk_weight"
+                        and x.get("retained_revision") == 1
+                        and x.get("retained_value") == 4
+                        and x.get("exact_original_owner_identity") is True
+                        and x.get("read_only") is True
+                        for x, y in zip(reads, actual, strict=True)
+                    )
+                    and owner.get("observer_errors") == []
+                    and owner.get("s10_update_authority") is False
+                    and owner.get("s10_commits") == 0
+                    and owner.get("s49_l0_retained_mutated") is False
+                    and owner.get("next_epoch_learned_action") is False
+                    and owner.get("additional_native_actions") == 0
+                )
+                receipt.update(
+                    dev_self_world_stage_o="ORIGINAL_OWNER_READ_ONLY"
+                    if certified else "NOT_CERTIFIED",
+                    dev_self_world_stage_o_read_count=len(reads)
+                    if isinstance(reads, list) else 0,
+                    dev_self_world_stage_o_s10_authorized=False,
+                    dev_self_world_stage_o_s10_commits=0,
+                    dev_self_world_stage_o_source="stage_o_retained_owner.jsonl",
+                )
+                if code == 0 and not certified:
+                    code = 1
+                    receipt["dev_self_world_stage_o_incomplete"] = (
+                        "EXACT_L0_OWNER_SOURCE_HANDOFF_NOT_PROVEN"
+                    )
+            # Existing S49 may finish without enough positive target probes.
+            # Preserve its raw source report but do not certify Stage J input.
+            if code == 0 and not qualified_input:
+                code = 1
+                receipt["dev_self_world_incomplete"] = (
+                    "NATIVE_OWNER_FINISHED_BUT_TWO_SOURCE_COGNITION_NOT_ESTABLISHED"
+                )
         receipt.update(
             status="COMPLETED" if code == 0 else "FAILED",
             reason=native.get("error"), session_id=native.get("session_id"),
@@ -687,13 +1527,27 @@ def main(argv: list[str] | None = None) -> int:
                         help="one L2 commentary AFTER a completed real native run, never an Action")
     parser.add_argument("--live-think", action="store_true",
                         help="one L2 model attempt DURING native World; L0 remains independent")
+    parser.add_argument("--self-world-live", action="store_true",
+                        help="opt-in two-source SelfWorld L1/L2 read-only live sidecar")
+    parser.add_argument("--self-world-prospective", action="store_true",
+                        help="DEV-only pre-Action sealed SelfWorld forecast, no new Action owner")
+    parser.add_argument("--self-world-typed-closure", action="store_true",
+                        help="DEV-only S49 original S16 typed terminal readback and S17 HOLD")
+    parser.add_argument("--self-world-retained-handoff", action="store_true",
+                        help="DEV-only original S49 L0 retained owner identity readback")
+    parser.add_argument("--self-world-stage-r-dev", action="store_true",
+                        help="model-free native DEV ONLY: original S49 single-writer S10 HOLD")
+    parser.add_argument("--self-world-w3-raw-capture", action="store_true",
+                        help="DEV-only source bytes capture for original S49 model-free scenario; no grant")
+    parser.add_argument("--self-passive-views", action="store_true",
+                        help="DEV-only existing S49 probe -> read-only SelfBody/SelfWorld; no model")
     parser.add_argument("--model-alias", help="explicit pre-existing loopback model alias")
     parser.add_argument("--model-port", type=int, help="existing localhost OpenAI-compatible port")
     parser.add_argument("--model-timeout", type=float, default=12.0)
     parser.add_argument("--mode", choices=("DEV",),
                         help="DEV_ONLY; never delegates to QUALIFICATION or SCIENCE")
     parser.add_argument(
-        "--dev-scenario", choices=("native", "b0-ground", "b1-local-adaptation"),
+        "--dev-scenario", choices=("native", "native-selfworld", "b0-ground", "b1-local-adaptation"),
         default="native", help="DEV S49 native, S51 B0 or S51 B1 local candidate",
     )
     parser.add_argument(
@@ -702,6 +1556,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--retry-of", help="prior DEV run ID, informational lineage only")
     args = parser.parse_args(argv)
+    if args.self_world_w3_raw_capture and args.mode != "DEV":
+        parser.error("--self-world-w3-raw-capture requires --mode DEV")
+    if args.self_passive_views and args.mode != "DEV":
+        parser.error("--self-passive-views requires --mode DEV")
     if args.mode == "DEV":
         return _dev_run(args)
     if args.retry_of is not None:
@@ -709,6 +1567,20 @@ def main(argv: list[str] | None = None) -> int:
     if args.dev_scenario != "native" or args.b1_retention != "on":
         parser.error("--dev-scenario/--b1-retention require --mode DEV")
 
+    if (args.self_world_prospective or args.self_world_typed_closure
+            or args.self_world_retained_handoff or args.self_world_stage_r_dev
+    ) and not args.mode:
+        print(json.dumps(_row(
+            "blocked", "NO_WORLD_USED", reason="PROSPECTIVE_REQUIRES_EXPLICIT_DEV",
+            model_calls=0, actual_actions=0,
+        ), sort_keys=True))
+        return 2
+    if args.self_world_live and not args.live_think:
+        print(json.dumps(_row(
+            "blocked", "NO_WORLD_USED", reason="SELF_WORLD_REQUIRES_LIVE_L2",
+            model_calls=0, actual_actions=0,
+        ), sort_keys=True))
+        return 2
     if args.think and args.live_think:
         print(json.dumps(_row(
             "blocked", "NO_WORLD_USED", reason="TWO_MODEL_ATTEMPTS_DENIED",
@@ -867,6 +1739,7 @@ def main(argv: list[str] | None = None) -> int:
                 code = asyncio.run(_run_disposable(
                     report_file, server_log,
                     live_model=(args.model_alias, args.model_port, args.model_timeout),
+                    self_world_live=args.self_world_live,
                 ))
             else:
                 code = asyncio.run(_run_disposable(report_file, server_log))
@@ -891,7 +1764,12 @@ def main(argv: list[str] | None = None) -> int:
                         or row.get("session") != trace[0]["session"]
                         or row.get("model_attempts") not in (0, 1)
                         or row.get("authorized_actions") != 0
-                        or row.get("l2_used_as_action") is not False):
+                        or row.get("l2_used_as_action") is not False
+                        or row.get("self_world_live") is not args.self_world_live
+                        or (args.self_world_live and (
+                            row.get("self_world_l2_input_bound") is True
+                            and row.get("model_attempts") != 1
+                        ))):
                     raise DemoRejected("live L2 receipt contradicts original S49")
                 trace = (*trace, row)
             if args.think:

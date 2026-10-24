@@ -399,6 +399,8 @@ async def qualify(
             "basal_cost_per_decision": ledger.config.basal_cost,
             "food_energy_per_verified_item": ledger.config.food_energy,
         }
+        if dev_only and food_source == "ground":
+            report["dev_b0_cognition_epochs"] = []
         report["stage"] = "EXTERNAL_SURVIVAL_AND_FOOD_STAGING"
         assert server.stdin is not None
         _command(server, "gamemode survival RelaySelf")
@@ -417,6 +419,20 @@ async def qualify(
                     session, f"b0-ground-appetite-{attempt:02d}",
                 )
                 decision = ledger.decide(read)
+                if dev_only:
+                    from adapters.mineflayer.self_body_m0_projection import (
+                        compose_b0_cognition_views,
+                        summarize_b0_cognition_views,
+                    )
+
+                    viewed = compose_b0_cognition_views(
+                        read, ledger, decision,
+                        self_id="s51-b0-dev-self",
+                        epoch_id=f"b0-appetite-{read.seq}",
+                    )
+                    report["dev_b0_cognition_epochs"].append(
+                        summarize_b0_cognition_views(viewed)
+                    )
                 if decision.kind != "WAIT":
                     raise S51PhysicalFailure("unexpected L0 action before ground fixture")
                 trace = {
@@ -671,6 +687,23 @@ async def qualify(
             fresh = await _correlated_observe(session, "b0-next-l0-native")
             report["next_native_probe"] = asdict(fresh)
             next_l0 = ledger.decide(fresh)
+            if dev_only:
+                # Original S51 L0 already decided from this SAME received
+                # native probe. Merely project its M0 sensor and native view.
+                from adapters.mineflayer.self_body_m0_projection import (
+                    compose_b0_cognition_views,
+                    summarize_b0_cognition_views,
+                )
+
+                cognition = compose_b0_cognition_views(
+                    fresh, ledger, next_l0,
+                    self_id="s51-b0-dev-self",
+                    epoch_id=f"b0-next-probe-{fresh.seq}",
+                )
+                next_view = summarize_b0_cognition_views(cognition)
+                report["dev_b0_cognition_next_epoch"] = next_view
+                if food_source == "ground":
+                    report["dev_b0_cognition_epochs"].append(next_view)
             report["next_l0"] = {
                 "probe_seq": next_l0.probe_seq,
                 "kind": next_l0.kind,

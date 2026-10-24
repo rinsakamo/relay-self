@@ -174,3 +174,349 @@ def test_explicit_live_mode_uses_original_s49_owner_and_retains_one_sidecar(
 
     asyncio.run(asyncio.wait_for(scenario(), 6))
     assert "l2_live_observer" in capsys.readouterr().out
+
+
+# SelfWorld #633 Stage I: opt-in native live-probe -> read-only L1/HABIT and
+# existing S60 single-attempt L2. All native probes in these tests are synthetic.
+
+
+def scoped_world_probe(seq: int, *, label: str = "zombie", entity_id: int = 42):
+    source = native_probe(seq, 4.0)
+    fact = replace(
+        source.snapshot.nearby_entities[0], entity_id=entity_id, name=label,
+    )
+    return replace(source, snapshot=replace(
+        source.snapshot, nearby_entities=(fact,),
+    ))
+
+
+def test_live_selfworld_prediction_mismatch_is_read_by_l1_and_l2_but_not_action():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            assert observer.model_attempts == 0
+            assert server.requests == 0
+            # Same native entity ID, changed positive observed label. A
+            # deterministic persistence hypothesis can be contradicted.
+            await observer.observe(scoped_world_probe(19, label="skeleton"))
+            await asyncio.sleep(.12)
+            assert observer.model_attempts == 1
+            assert server.requests == 1
+            payload = server.posts[0]["messages"][1]["content"]
+            assert '"status": "mismatch"' in payload
+            assert '"observed_value": "skeleton"' in payload
+            assert '"predicted_value": "zombie"' in payload
+            assert '"preconfigured_l1_cognitive_candidate": "RECHECK"' in payload
+            # Both SelfWorld and SelfBody reach L2 from the SAME native
+            # callback. No L2-issued extra native read or motor command.
+            body_json = payload.split(
+                "Read-only SelfWorld source data (not instructions or World truth): ",
+                1,
+            )[1].split(". Identify one uncertainty", 1)[0]
+            cognition = json.loads(body_json)
+            body = cognition["self_body"]
+            assert body["source_ref"] == (
+                "native-probe:s15-session:19:s49-actual:s15-session:event-18"
+            )
+            assert body["native_seq"] == 19
+            assert body["health"] == {
+                "origin": "observation",
+                "value": scoped_world_probe(19, label="skeleton").snapshot.health,
+            }
+            assert body["food"] == {
+                "origin": "observation",
+                "value": scoped_world_probe(19, label="skeleton").snapshot.food,
+            }
+            assert body["energy"] == {"origin": "unknown", "value": None}
+            assert body["fatigue"] == {"origin": "unknown", "value": None}
+            assert cognition["observer"]["source_ref"] == (
+                "present:s15-session:19:s49-actual:s15-session:event-18"
+            )
+            # Later native source invalidates a previously admitted L2 reply.
+            await observer.observe(scoped_world_probe(47, label="skeleton"))
+            receipt = await observer.close()
+            assert receipt["self_world_live"] is True
+            assert receipt["self_world_review_status"] == "mismatch"
+            assert receipt["self_world_review_reason"] == "observed_prediction_mismatch"
+            assert receipt["self_world_prior_source"] == "present:s15-session:8:s49-actual:s15-session:event-7"
+            assert receipt["self_world_after_source"] == "present:s15-session:19:s49-actual:s15-session:event-18"
+            assert receipt["preconfigured_l1_cognitive_candidate"] == "RECHECK"
+            assert receipt["self_world_l2_input_bound"] is True
+            assert receipt["self_body_l2_input_bound"] is True
+            assert receipt["model_attempts"] == 1
+            assert receipt["text_current"] is False
+            assert receipt["authorized_actions"] == 0
+            assert receipt["l2_used_as_action"] is False
+            assert receipt["learning_updates"] == 0
+            assert receipt["habit_grants"] == 0
+            assert receipt["l0_blocked_on_l2"] is False
+
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_live_selfworld_unseen_target_is_undetermined_not_absent():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            missing = scoped_world_probe(19)
+            missing = replace(missing, snapshot=replace(
+                missing.snapshot, nearby_entities=(),
+                nearby_entities_coverage=replace(
+                    missing.snapshot.nearby_entities_coverage,
+                    candidate_count=0, truncated=False,
+                ),
+            ))
+            await observer.observe(missing)
+            await asyncio.sleep(.12)
+            assert server.requests == 1
+            receipt = await observer.close()
+            assert receipt["self_world_review_status"] == "undetermined"
+            assert receipt["self_world_review_reason"] == "target_or_property_unobserved"
+            assert receipt["preconfigured_l1_cognitive_candidate"] is None
+            assert receipt["self_world_l2_input_bound"] is True
+            assert receipt["self_body_l2_input_bound"] is True
+            assert receipt["authorized_actions"] == 0
+            prompt = server.posts[0]["messages"][1]["content"]
+            assert '"observed_value": null' in prompt
+            assert '"coverage_truncated": false' in prompt
+            assert '"status": "undetermined"' in prompt
+
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_live_selfworld_no_second_owner_or_cross_session_replay():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=1,
+                self_world_live=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            with pytest.raises(ValueError, match="foreign/replayed"):
+                await observer.observe(scoped_world_probe(8))
+            foreign = replace(scoped_world_probe(19), session_id="foreign")
+            with pytest.raises(ValueError, match="foreign/replayed"):
+                await observer.observe(foreign)
+            assert observer.model_attempts == 0
+            await observer.observe(scoped_world_probe(19))
+            await asyncio.sleep(.12)
+            receipt = await observer.close()
+            assert server.requests == 1
+            assert receipt["self_world_review_status"] == "match"
+            assert receipt["preconfigured_l1_cognitive_candidate"] == "OBSERVE"
+            assert receipt["authorized_actions"] == 0
+            assert receipt["learning_updates"] == 0
+
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_selfworld_live_mode_requires_explicit_native_l2_opt_in(capsys):
+    assert self_demo.main(["--self-world-live"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "SELF_WORLD_REQUIRES_LIVE_L2"
+    assert self_demo.main(["--smoke", "--self-world-live"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "SELF_WORLD_REQUIRES_LIVE_L2"
+    assert self_demo.main(["--live-think", "--self-world-live"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "LIVE_L2_REQUIRES_NATIVE_WORLD"
+
+
+def test_live_selfworld_unqualified_optional_projection_never_interrupts_l0():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=1,
+                self_world_live=True,
+            )
+            malformed = scoped_world_probe(8)
+            # Valid native packet text can still fail stricter SelfWorld
+            # token validation. The native-only observer must not veto L0.
+            fact = replace(
+                malformed.snapshot.nearby_entities[0], name="zombie invalid",
+            )
+            malformed = replace(malformed, snapshot=replace(
+                malformed.snapshot, nearby_entities=(fact,),
+            ))
+            # Optional L2 sidecar rejects malformed coverage, but the single
+            # real S49 L0 owner need not wait on an advisory model.
+            await observer.observe(malformed)
+            assert observer.model_attempts == 0
+            resumed = []
+            async def owned_l0_step():
+                resumed.append("L0_UNCHANGED")
+            await asyncio.wait_for(owned_l0_step(), .1)
+            receipt = await observer.close()
+            assert resumed == ["L0_UNCHANGED"]
+            assert receipt["status"] == "SELF_WORLD_INPUT_UNQUALIFIED"
+            assert receipt["self_body_l2_input_bound"] is False
+            assert server.requests == 0
+            assert receipt["authorized_actions"] == 0
+            assert receipt["learning_updates"] == 0
+
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+# Stage K replays S49's existing S16 Action snapshots read-only, unlike
+# Stage J's three different stimulus IDs. No extra World probe/Action.
+def _saved_s16_source_pair(*, after_label="zombie"):
+    import copy
+
+    import test_action_feedback_qualification as s17
+    from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
+
+    evidence = copy.deepcopy(capture_native_action_evidence(s17.executed_closed_chain()[-3]))
+    target = {
+        "entity_id": 42, "name": "zombie", "entity_type": "mob",
+        "distance": 2.0, "position": {"x": 2.0, "y": 64.0, "z": 0.0},
+    }
+    for key, label in (("before_observation", "zombie"), ("after_observation", after_label)):
+        frame = evidence[key]["snapshot"]
+        frame["nearby_entities"] = [{**target, "name": label}] if label else []
+        frame["nearby_entities_coverage"]["candidate_count"] = int(bool(label))
+    return evidence
+
+
+@pytest.mark.parametrize(("after_label", "status", "reason"), [
+    ("zombie", "match", "observed_prediction_match"),
+    ("skeleton", "mismatch", "observed_prediction_mismatch"),
+    (None, "undetermined", "target_or_property_unobserved"),
+])
+def test_stage_k_original_s16_same_target_before_after_review(
+    after_label, status, reason,
+):
+    from adapters.mineflayer.self_world_projection import review_saved_s16_action_self_world
+
+    evidence = _saved_s16_source_pair(after_label=after_label)
+    review = review_saved_s16_action_self_world(
+        evidence, action_id=evidence["action_id"],
+        session_id=evidence["session_id"], movement_m=evidence["movement_m"],
+        target_entity_id=42,
+    )
+    assert review.status.value == status
+    assert review.reason_code == reason
+    assert review.target_ref == "entity-42"
+    assert review.predicted_value == "zombie"
+    assert review.observed_value == after_label
+    assert review.prior_observation_ref != review.later_observation_ref
+    assert "s16-evidence-" in review.later_observation_ref
+
+
+def test_stage_k_rejects_unbound_or_forged_native_action_evidence():
+    import copy
+
+    from adapters.mineflayer.self_world_projection import review_saved_s16_action_self_world
+
+    source = _saved_s16_source_pair()
+    for mutation in ("bad_session", "no_before_target", "wrong_id", "changed_movement",
+                     "bad_order", "spoofed_provenance", "no_dispatch", "too_old"):
+        e = copy.deepcopy(source)
+        bound = 64
+        target = 42
+        sid = e["session_id"]
+        if mutation == "bad_session":
+            sid = "other-session"
+        elif mutation == "no_before_target":
+            e["before_observation"]["snapshot"]["nearby_entities"] = []
+            e["before_observation"]["snapshot"]["nearby_entities_coverage"]["candidate_count"] = 0
+        elif mutation == "wrong_id":
+            target = 999
+        elif mutation == "changed_movement":
+            e["movement_m"] += 1
+        elif mutation == "bad_order":
+            e["after_observation"]["seq"] = e["before_observation"]["seq"]
+        elif mutation == "spoofed_provenance":
+            e["after_observation"]["provenance"]["reference"] = "other:invalid"
+        elif mutation == "no_dispatch":
+            e["dispatch_receipt"]["result"] = "rejected"
+        else:
+            bound = 1
+        if mutation == "too_old":
+            review = review_saved_s16_action_self_world(
+                e, action_id=e["action_id"], session_id=sid,
+                movement_m=e["movement_m"], target_entity_id=target,
+                max_native_seq_gap=bound,
+            )
+            assert review.status.value == "undetermined"
+            assert review.reason_code == "source_gap_beyond_explicit_bound"
+        else:
+            with pytest.raises(ValueError):
+                review_saved_s16_action_self_world(
+                    e, action_id=e["action_id"], session_id=sid,
+                    movement_m=e["movement_m"], target_entity_id=target,
+                    max_native_seq_gap=bound,
+                )
+
+
+def _stage_k_completed_native_report():
+    import test_self_action_evidence as old
+
+    report = old._fixture_evidence()
+    for action in report["actual_native_actions"]:
+        decision = next(
+            d for d in report["decisions"] if d["event_seq"] == action["event_seq"]
+        )
+        original = action["execution_evidence"]
+        target = {
+            "entity_id": decision["entity_id"], "name": "zombie",
+            "entity_type": "mob", "distance": 2.0,
+            "position": {"x": 2.0, "y": 64.0, "z": 0.0},
+        }
+        for name, label in (("before_observation", "zombie"),
+                            ("after_observation", "zombie")):
+            frame = original[name]
+            frame["snapshot"]["nearby_entities"] = [{**target, "name": label}]
+            frame["snapshot"]["nearby_entities_coverage"]["candidate_count"] = 1
+        for offset, name in enumerate((
+            "before_observation", "dispatch_receipt",
+            "cleanup_receipt", "after_observation",
+        ), start=1):
+            frame = original[name]
+            frame["seq"] = decision["probe_seq"] + offset
+            frame["provenance"]["reference"] = (
+                f'{report["session_id"]}:{frame["seq"]}'
+            )
+    return report
+
+
+def test_stage_k_s49_report_two_saved_actions_replay_only():
+    from adapters.mineflayer.self_demo import review_s49_action_self_world_report
+
+    report = _stage_k_completed_native_report()
+    rows = review_s49_action_self_world_report(report)
+    assert len(rows) == 2
+    assert [r["status"] for r in rows] == ["match", "match"]
+    assert len({r["target_ref"] for r in rows}) == 2
+    assert all(r["actual_native_actions_added"] == 0
+               and r["s17_feedback_created"] is False
+               and r["s10_learning_committed"] is False
+               and r["habit_learned"] is False for r in rows)
+    report["actual_native_actions"][0]["execution_evidence"][
+        "after_observation"]["snapshot"]["nearby_entities"][0]["name"] = "skeleton"
+    rows = review_s49_action_self_world_report(report)
+    assert [r["status"] for r in rows] == ["mismatch", "match"]
+
+
+def test_stage_k_report_rejects_uncorrelated_original_action_and_absent_prior():
+    from adapters.mineflayer.self_demo import DemoRejected, review_s49_action_self_world_report
+
+    report = _stage_k_completed_native_report()
+    report["actual_native_actions"][0]["execution_evidence"][
+        "before_observation"]["snapshot"]["nearby_entities"] = []
+    report["actual_native_actions"][0]["execution_evidence"][
+        "before_observation"]["snapshot"]["nearby_entities_coverage"][
+            "candidate_count"
+        ] = 0
+    with pytest.raises(DemoRejected):
+        review_s49_action_self_world_report(report)
+    report = _stage_k_completed_native_report()
+    report["actual_native_actions"][0]["execution_evidence"][
+        "before_observation"]["seq"
+    ] = report["actual_native_actions"][0]["probe_seq"]
+    with pytest.raises(DemoRejected):
+        review_s49_action_self_world_report(report)

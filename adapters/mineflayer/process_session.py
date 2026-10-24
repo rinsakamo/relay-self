@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 
 from adapters.mineflayer.python_protocol import (
@@ -16,6 +17,11 @@ from adapters.mineflayer.python_protocol import (
     encode_observe,
     encode_set_control,
     encode_shutdown,
+)
+from adapters.mineflayer.self_world_stage_w3_capture import W3RawNodeStdoutCapture
+from adapters.mineflayer.startup_process_ownership import (
+    spawn_with_custody,
+    terminate_and_reap,
 )
 
 
@@ -38,7 +44,10 @@ class MineflayerProcessIOError(MineflayerProcessError):
 class MineflayerProcessSession:
     """Own one Node/Mineflayer bridge process without adding Self semantics."""
 
-    def __init__(self, process: asyncio.subprocess.Process) -> None:
+    def __init__(
+        self, process: asyncio.subprocess.Process, *,
+        raw_capture_root: Path | None = None,
+    ) -> None:
         if process.stdin is None or process.stdout is None:
             raise MineflayerProcessStartError(
                 "Mineflayer child process requires stdin and stdout pipes"
@@ -46,6 +55,11 @@ class MineflayerProcessSession:
         self._process = process
         self._decoder = MineflayerStreamDecoder()
         self._started: MineflayerAdapterStarted | None = None
+        self._raw_capture = (
+            W3RawNodeStdoutCapture(raw_capture_root)
+            if raw_capture_root is not None else None
+        )
+        self._raw_receipt: dict[str, object] | None = None
 
     @classmethod
     async def launch(
@@ -55,6 +69,8 @@ class MineflayerProcessSession:
         bridge_path: str | Path | None = None,
         node_executable: str = "node",
         startup_timeout_s: float = 10.0,
+        raw_capture_root: Path | None = None,
+        w4_native_orientation_dev: bool = False,
     ) -> "MineflayerProcessSession":
         """Launch exactly one bridge process and consume its startup attestation."""
 
@@ -69,41 +85,71 @@ class MineflayerProcessSession:
                 f"Mineflayer bridge does not exist: {bridge}"
             )
 
+        if type(w4_native_orientation_dev) is not bool:
+            raise MineflayerProcessStartError("W4 orientation requires explicit boolean opt-in")
+        # Suppress inherited environment opt-in in every default S49/R/V launch.
+        child_env = os.environ.copy()
+        child_env.pop("RELAYSELF_W4_NH1_ORIENTATION_V0", None)
+        if w4_native_orientation_dev:
+            if config.version != "1.21.8":
+                raise MineflayerProcessStartError("W4 orientation requires pinned Minecraft 1.21.8")
+            child_env["RELAYSELF_W4_NH1_ORIENTATION_V0"] = "1"
+
+        # Custody remains with the spawn task across cancellation before
+        # create_subprocess_exec() exposes its Process handle. Once returned,
+        # this helper owns the child through startup or confirmed reap.
         try:
-            process = await asyncio.create_subprocess_exec(
+            process = await spawn_with_custody(
                 *config.argv(bridge, node_executable=node_executable),
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=None,
+                env=child_env,
             )
         except OSError as exc:
             raise MineflayerProcessStartError(
                 f"could not launch Mineflayer bridge: {exc}"
             ) from exc
 
+        session: MineflayerProcessSession | None = None
         try:
-            session = cls(process)
-        except Exception:
-            await _terminate_child(process)
-            raise
-
-        try:
+            session = cls(process, raw_capture_root=raw_capture_root)
             started = await asyncio.wait_for(
                 session.receive(),
                 timeout=startup_timeout_s,
             )
-        except Exception:
-            await session.terminate()
+            if not isinstance(started, MineflayerAdapterStarted):
+                raise MineflayerProcessStartError(
+                    "Mineflayer bridge did not produce adapter_started"
+                )
+            session._started = started
+            return session
+        except BaseException as failure:
+            # Includes CancelledError: unlike Exception it must not bypass
+            # process reap or W3 raw file closure. The cleanup task itself is
+            # shielded and supervised across further caller cancellations.
+            cleanup_error: BaseException | None = None
+            try:
+                await terminate_and_reap(process)
+            except BaseException as exc:
+                cleanup_error = exc
+            if session is not None:
+                try:
+                    session._seal_raw_capture(
+                        exit_code=process.returncode,
+                        reason="aborted_startup",
+                    )
+                except BaseException as exc:
+                    if cleanup_error is None:
+                        cleanup_error = exc
+            if cleanup_error is not None:
+                setattr(
+                    failure, "startup_cleanup_unconfirmed",
+                    f"{type(cleanup_error).__name__}: {cleanup_error}",
+                )
+                failure.add_note(f"Node startup cleanup unconfirmed: {cleanup_error!r}")
+                raise failure from cleanup_error
             raise
-
-        if not isinstance(started, MineflayerAdapterStarted):
-            await session.terminate()
-            raise MineflayerProcessStartError(
-                "Mineflayer bridge did not produce adapter_started"
-            )
-
-        session._started = started
-        return session
 
     @property
     def started(self) -> MineflayerAdapterStarted:
@@ -117,23 +163,48 @@ class MineflayerProcessSession:
     def process_returncode(self) -> int | None:
         return self._process.returncode
 
+    @property
+    def raw_capture_receipt(self) -> dict[str, object] | None:
+        return self._raw_receipt
+
     async def receive(self) -> MineflayerDecodedMessage:
         """Read and validate exactly one target-local JSONL message."""
 
         assert self._process.stdout is not None
         line = await self._process.stdout.readline()
         if not line:
+            if self._raw_capture is not None:
+                self._raw_capture.mark_eof()
             raise MineflayerProcessEnded(
                 "Mineflayer bridge stdout ended; "
                 f"returncode={self._process.returncode}"
             )
+        if self._raw_capture is not None:
+            self._raw_capture.append_before_decode(line)
         try:
             text = line.decode("utf-8")
         except UnicodeDecodeError as exc:
+            if self._raw_capture is not None:
+                self._raw_capture.mark_decode_failure()
             raise MineflayerProcessIOError(
                 "Mineflayer bridge emitted non-UTF-8 stdout"
             ) from exc
-        return self._decoder.decode(text)
+        try:
+            message = self._decoder.decode(text)
+        except ValueError:
+            if self._raw_capture is not None:
+                self._raw_capture.mark_decode_failure()
+            raise
+        if self._raw_capture is not None:
+            self._raw_capture.after_decoder(
+                session_id=message.session_id, seq=message.seq,
+                message_type=(
+                    "adapter_started" if isinstance(message, MineflayerAdapterStarted)
+                    else "shutdown_ack" if type(message).__name__ == "MineflayerShutdownAck"
+                    else type(message).__name__
+                ),
+            )
+        return message
 
     async def send_set_control(
         self,
@@ -205,25 +276,80 @@ class MineflayerProcessSession:
         """Request one clean bridge shutdown, with bounded termination fallback."""
 
         _require_positive_timeout("timeout_s", timeout_s)
-        if self._process.returncode is not None:
-            return self._process.returncode
+        if self._raw_capture is None:
+            if self._process.returncode is not None:
+                return self._process.returncode
+            await self._send(encode_shutdown())
+            try:
+                return await asyncio.wait_for(
+                    self._process.wait(), timeout=timeout_s,
+                )
+            except TimeoutError as exc:
+                await self.terminate()
+                raise MineflayerProcessEnded(
+                    "Mineflayer bridge did not exit after shutdown request"
+                ) from exc
 
-        await self._send(encode_shutdown())
+        # Capture-only path: drain all Node stdout through the same decoder
+        # until EOF so the shutdown_ack and trailing messages are not lost.
+        # No second event consumer is introduced during S49 active control.
         try:
-            return await asyncio.wait_for(
-                self._process.wait(),
-                timeout=timeout_s,
+            if self._process.returncode is None:
+                await self._send(encode_shutdown())
+            async def until_eof() -> None:
+                while True:
+                    try:
+                        await self.receive()
+                    except MineflayerProcessEnded:
+                        return
+            await asyncio.wait_for(until_eof(), timeout=timeout_s)
+            rc = await asyncio.wait_for(self._process.wait(), timeout=timeout_s)
+            self._seal_raw_capture(exit_code=rc, reason="clean_shutdown")
+            return rc
+        except Exception:
+            await _terminate_child(self._process)
+            self._seal_raw_capture(
+                exit_code=self._process.returncode, reason="aborted_shutdown",
             )
-        except TimeoutError as exc:
-            await self.terminate()
-            raise MineflayerProcessEnded(
-                "Mineflayer bridge did not exit after shutdown request"
-            ) from exc
+            raise
+
+    def _seal_raw_capture(self, *, exit_code: int | None, reason: str) -> None:
+        if self._raw_capture is not None and self._raw_receipt is None:
+            self._raw_receipt = self._raw_capture.seal(
+                exit_code=exit_code, reason=reason,
+            )
+
+    async def abort_startup(self) -> int:
+        """Reap a session whose adapter started but whose native spawn did not.
+
+        Called by the original s34 _new_session() before it transfers session
+        ownership to S49. This uses the same process and raw-capture objects,
+        never a second receiver or an additional bridge.
+        """
+        cleanup_error: BaseException | None = None
+        rc: int | None = None
+        try:
+            rc = await terminate_and_reap(self._process)
+        except BaseException as exc:
+            cleanup_error = exc
+        try:
+            self._seal_raw_capture(
+                exit_code=self._process.returncode,
+                reason="aborted_startup",
+            )
+        except BaseException as exc:
+            if cleanup_error is None:
+                cleanup_error = exc
+        if cleanup_error is not None:
+            raise cleanup_error
+        assert type(rc) is int
+        return rc
 
     async def terminate(self) -> int:
         """Terminate the owned child without retrying or launching a replacement."""
-
-        return await _terminate_child(self._process)
+        rc = await _terminate_child(self._process)
+        self._seal_raw_capture(exit_code=rc, reason="terminated")
+        return rc
 
     async def _send(self, line: str) -> None:
         if self._process.returncode is not None:
