@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 
 import pytest
 
@@ -123,7 +124,15 @@ def test_transition_untrusted_or_partial_fails_closed(monkeypatch, mutation):
     elif mutation == "prearm_late":
         original = original.replace("tick=68 input_idle=true", "tick=70 input_idle=true")
     elif mutation == "timeout":
-        original = original.replace("tick=68 input_idle=true", "tick=1 input_idle=true")
+        # A coherent later Paper clock with an arm far before the BACK edge.
+        # Keep the eight callback ticks continuous and change the terminal.
+        original = re.sub(
+            r"(?<!last_)tick=(\\d+)",
+            lambda match: "tick=" + str(int(match.group(1)) + 300),
+            original,
+        )
+        original = original.replace("tick=368 input_idle=true", "tick=1 input_idle=true")
+        original = original.replace("last_tick=78", "last_tick=378")
     elif mutation == "restart":
         original += pre_transcript(capture)
     elif mutation == "input_reactivation":
@@ -203,7 +212,11 @@ def test_owner_refuses_missing_or_spliced_preaction_edge(
     elif mutation == "other_release":
         full = full.replace("tick=70 back=false", "tick=72 back=false")
     elif mutation == "bad_callback":
-        cut = cut.replace("index=4 input_idle=true", "index=4 input_idle=false")
+        cut = "\n".join(
+            line.replace("input_idle=true", "input_idle=false")
+            if "index=4" in line else line
+            for line in cut.splitlines()
+        ) + "\n"
     target = tmp_path / "reject-preaction.json"
     with pytest.raises(BoundaryRejected):
         asyncio.run(project_s49_backward_paper_dev(
