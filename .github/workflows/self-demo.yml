@@ -1,4 +1,4 @@
-name: Self 1.0 one-command product integration
+name: Self 1.0 LIGHT / FAST / FULL offline product integration
 
 on:
   push:
@@ -7,7 +7,22 @@ on:
   pull_request:
     branches:
       - 'self/s60b1-loopback-adapter-*'
+      - 'self/product-self-one-command-s49scoped-fullreg-20261021'  # CI-only review base
+      - main  # FULL is mandatory on a non-Draft PR targeting main
     types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Explicit offline FAST or FULL; neither launches a World'
+        required: true
+        type: choice
+        options: [fast, full]
+
+env:
+  # LIGHT on ordinary push/PR sync; FAST only when owner marks review-ready;
+  # FULL for a non-Draft PR targeting main (or explicit owner invocation).
+  RELAY_CI_TIER: >-
+    ${{ (github.event_name == 'pull_request' && github.base_ref == 'main' && !github.event.pull_request.draft && 'full') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'full' && 'full') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci-full-offline]') && 'full') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast' && 'fast') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci-fast-offline]') && 'fast') || (github.event_name == 'pull_request' && (github.event.action == 'ready_for_review' || ((github.event.action == 'opened' || github.event.action == 'reopened') && !github.event.pull_request.draft)) && 'fast') || 'light' }}
 
 permissions:
   contents: read
@@ -51,6 +66,7 @@ jobs:
             test -n "$path" || continue
             case "$path" in
               .github/workflows/self-demo.yml|\
+              .github/workflows/self-world-dev-once.yml|\
               .github/workflows/m02-paper-dev-build.yml|\
               .github/workflows/m02-v7-five-arm-dev.yml|\
               .github/workflows/m02-v7-controlled-pose-dev.yml|\
@@ -181,11 +197,13 @@ jobs:
                 ;;
             esac
           done <<< "$changed"
-      - run: python tools/check_repository.py
+      - name: FAST/FULL repository-wide contract checks
+        if: env.RELAY_CI_TIER != 'light'
+        run: python tools/check_repository.py
 
   pytest:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -196,10 +214,25 @@ jobs:
         with:
           python-version: '3.12'
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        if: env.RELAY_CI_TIER != 'light'
         with:
           node-version: '22'
+      - uses: actions/setup-java@v4
+        if: env.RELAY_CI_TIER != 'light'
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: LIGHT syntax checks (no pytest, no World)
+        if: env.RELAY_CI_TIER == 'light'
+        run: |
+          python -m compileall -q src tests experiments adapters observability
+          ruby -e 'require "yaml"; Dir.glob(".github/workflows/*.{yml,yaml}").each { |path| YAML.parse_file(path) }'
+          git ls-files -z -- '*.sh' | while IFS= read -r -d '' file; do bash -n "$file"; done
+          git ls-files -z -- '*.js' '*.cjs' '*.mjs' | while IFS= read -r -d '' file; do node --check "$file"; done
       - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+        if: env.RELAY_CI_TIER != 'light'
       - name: FAST owner-focused B0/B1 integration, no physical World
+        if: env.RELAY_CI_TIER == 'fast'
         env:
           PYTHONPATH: 'src:tests:.'
         run: |
@@ -252,100 +285,43 @@ jobs:
             tests/test_mineflayer_process_session.py \
             tests/test_feature_s49_normal_runtime.py \
             tests/test_self_body.py \
-            tests/test_self_world.py
-
-
-  w4-prehost-focused:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.12'
-      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-      - name: W4 PREHOST focused source-order and cancellation regression (offline only)
-        env:
-          PYTHONPATH: 'src:tests:.'
-        run: |
-          python -m pytest -q \
-            tests/test_self_world_stage_w4_prehost.py \
-            tests/test_self_world_stage_w4_lease.py \
-            tests/test_self_world_stage_w4_optin_offline.py \
-            tests/test_self_world_stage_w4_preprobe.py \
-            tests/test_self_world_stage_w4_owner_contract.py \
-            tests/test_self_world_stage_w4_handoff.py \
-            tests/test_self_world_stage_w4_logtap.py \
-            tests/test_self_world_stage_w4_window.py
-
-  w4-lease-focused:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    strategy:
-      fail-fast: false
-      matrix:
-        python: ['3.11', '3.12']
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: ${{ matrix.python }}
-      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-      - name: Original S49 and S16 wait_for with S18 freeze (offline only)
-        env:
-          PYTHONPATH: 'src:tests:.'
-        run: |
-          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
-          python -m pytest -q \
-            tests/test_self_world_stage_w4_lease.py \
-            tests/test_self_world_stage_w4_optin_offline.py \
+            tests/test_self_world.py \
             tests/test_postmain_architecture_freeze.py \
             tests/test_mineflayer_execution_qualification.py \
             tests/test_action_outcome_qualification.py \
-            tests/test_feature_s49_normal_runtime.py
-
-  s49-cleanup-focused:
-    # Isolated original-owner engineering evidence; never admits protected changes.
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        python: ['3.11', '3.12']
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+            tests/test_s49_cleanup.py \
+            tests/test_s49_startup_ownership.py \
+            tests/test_s49_native_os_custody.py
+      - name: FAST/FULL Mineflayer adapter checks (existing Node 22)
+        if: env.RELAY_CI_TIER != 'light'
+        run: |
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          npm run check --prefix adapters/mineflayer
+      - name: FULL prepare exact main merge candidate
+        if: env.RELAY_CI_TIER == 'full' && github.event_name == 'pull_request' && github.base_ref == 'main'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: ${{ matrix.python }}
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: '22'
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-      - name: Original qualify cancellation and raw-capture regression (no World)
+      - name: FULL exact-head full offline regression (required pytest context for main)
+        if: env.RELAY_CI_TIER == 'full'
         env:
           PYTHONPATH: 'src:tests:.'
+          PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
-          python -m pytest -q -o junit_logging=all --junitxml=s49-cleanup-${{ matrix.python }}.xml tests/test_s49_cleanup.py tests/test_s49_startup_ownership.py tests/test_s49_native_os_custody.py tests/test_feature_s49_normal_runtime.py tests/test_self_world_stage_r_owner.py tests/test_self_world_stage_w3_capture.py
-      - name: Preserve original-owner engineering results
-        if: always()
+          if [[ "${{ github.event_name }}" == "pull_request" && "${{ github.base_ref }}" == "main" ]]; then
+            test "$(git rev-parse HEAD)" = "${{ github.sha }}"
+          else
+            test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          fi
+          python -m pytest -q -o junit_logging=all --junitxml=s49-scoped-full-regression.xml
+      - name: Preserve FULL offline JUnit
+        if: always() && env.RELAY_CI_TIER == 'full'
         uses: actions/upload-artifact@v4
         with:
-          name: s49-cleanup-${{ github.sha }}-${{ matrix.python }}
-          path: s49-cleanup-${{ matrix.python }}.xml
-          if-no-files-found: error
+          name: s49-scoped-full-${{ github.sha }}
+          path: s49-scoped-full-regression.xml
+          if-no-files-found: warn
 
   lint:
     runs-on: ubuntu-latest
@@ -358,713 +334,9 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check 'ruff==0.16.7'
-      - run: ruff check src tests experiments adapters observability
-
-  mineflayer-adapter:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: '22'
-      - run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
-      - run: npm run check --prefix adapters/mineflayer
-
-  full-regression:
-    # Drafts stay FAST. Narrow offline full-test DEV gate on the isolated
-    # S49 source-scoped branch only; no physical World/one-shot grant jobs.
-    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || (github.event_name == 'push' && github.ref == 'refs/heads/self/product-self-one-command-s49scoped-fullreg-20261021')
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    env:
-      PYTHONPATH: 'src:tests:.'
-      PYTHONDONTWRITEBYTECODE: '1'
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: '22'
-      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-      - name: Exact-HEAD full offline regression (no World)
-        run: |
-          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
-          python -m pytest -q -o junit_logging=all --junitxml=s49-scoped-full-regression.xml
-      - name: Preserve full offline regression JUnit
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: s49-scoped-full-${{ github.sha }}
-          path: s49-scoped-full-regression.xml
-          if-no-files-found: error
-
-  selfworld-stage-j-dev-once:
-    # One fresh disposable S49 World only, never on ordinary draft pushes.
-    # A marker commit acts as an explicit DEV grant; CI must pass first.
-    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-j-dev-once]') }}
-    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      PYTHONPATH: 'src:tests:.'
-      PYTHONDONTWRITEBYTECODE: '1'
-      DEV_ROOT: /tmp/selfworld-stage-j-${{ github.run_id }}-${{ github.run_attempt }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: '22'
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-      - name: Install S49 fixture dependency before module import
-        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-      - name: Reaffirm source, exact commit, and fixed Mineflayer version
-        run: |
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test ! -e "$DEV_ROOT"
-          java -version
-          node --version
-          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
-          node -e "if(require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
-      - name: Start exactly one explicit DEV_ONLY S49 SelfWorld test
-        shell: bash
-        run: |
-          set -o pipefail
-          python -B -m adapters.mineflayer.self_demo \
-            --mode DEV --dev-scenario native-selfworld --run-disposable \
-            --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
-            --output-dir "$DEV_ROOT" \
-            --live-think --self-world-live \
-            --model-alias stage-j-backend-not-attested --model-port 16559 \
-            --model-timeout 1 \
-            | tee "${{ runner.temp }}/selfworld-stage-j-cli.log"
-      - name: Preserve this one DEV receipt even on failure
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: selfworld-stage-j-dev-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ env.DEV_ROOT }}/dev_receipt.json
-            ${{ env.DEV_ROOT }}/SHA256SUMS
-            ${{ env.DEV_ROOT }}/native_report.json
-            ${{ env.DEV_ROOT }}/minecraft_server.log
-            ${{ env.DEV_ROOT }}/host_stdout.log
-            ${{ env.DEV_ROOT }}/host_stderr.log
-            ${{ env.DEV_ROOT }}/live_l2.jsonl
-            ${{ runner.temp }}/selfworld-stage-j-cli.log
-          if-no-files-found: warn
-          retention-days: 30
-
-  selfworld-stage-k-source-replay-once:
-    # Pure read-only replay of immutable prior Stage J artifact, NO Java/World.
-    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-k-replay-once]') }}
-    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
-    env:
-      PYTHONPATH: 'src:tests:.'
-      GH_TOKEN: ${{ github.token }}
-      STAGE_K_ROOT: /tmp/relay-self-stage-k-${{ github.run_id }}-${{ github.run_attempt }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-      - name: Read original immutable Stage J native source (no game)
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -m 700 "$STAGE_K_ROOT"
-          gh api repos/rinsakamo/relay-self/actions/artifacts/12128397812/zip \
-            > "$STAGE_K_ROOT/stage-j-original.zip"
-          python - <<'PY'
-          import hashlib
-          import json
-          import os
-          import pathlib
-          import zipfile
-
-          from adapters.mineflayer.self_demo import review_s49_action_self_world_report
-
-          root = pathlib.Path(os.environ["STAGE_K_ROOT"])
-          raw = (root / "stage-j-original.zip").read_bytes()
-          source_sha = hashlib.sha256(raw).hexdigest()
-          expected = "3b127778a8a6a2483a8f30649edbb3334229fb2f2f92cba720f084f36dfc467e"
-          assert source_sha == expected, "immutable original artifact digest differs"
-          with zipfile.ZipFile(root / "stage-j-original.zip") as archive:
-              members = archive.infolist()
-              assert len(members) <= 30
-              assert all(
-                  not pathlib.PurePosixPath(item.filename).is_absolute()
-                  and ".." not in pathlib.PurePosixPath(item.filename).parts
-                  and item.file_size < 2_000_000
-                  and not item.is_dir()
-                  for item in members
-              )
-              def once(basename):
-                  matches = [item for item in members
-                             if pathlib.PurePosixPath(item.filename).name == basename]
-                  assert len(matches) == 1, f"one {basename} required"
-                  return json.loads(archive.read(matches[0]))
-              dev = once("dev_receipt.json")
-              native = once("native_report.json")
-          assert dev["git_head"] == "2e75a56d66c9dd32046719d5d1b9f6ff7cd539cc"
-          assert dev["run_id"] == "e7d91ef52b7a462bb622a844f8a942f7"
-          assert dev["status"] == "COMPLETED"
-          assert dev["classification"] == "DEV_ONLY"
-          assert dev["session_id"] == native["session_id"]
-          assert dev["dev_self_world_input"] == "SOURCE_BOUND"
-          assert dev["dev_self_world_review"] == "undetermined"
-          results = review_s49_action_self_world_report(native)
-          assert len(results) == 2
-          summary = {
-              "classification": "DEV_ONLY_RETROSPECTIVE_NO_NEW_WORLD",
-              "source_run": 39105927208,
-              "source_artifact_id": 12128397812,
-              "source_artifact_sha256": source_sha,
-              "source_session": native["session_id"],
-              "source_action_count": len(native["actual_native_actions"]),
-              "retrospective_reviews": results,
-              "new_world_starts": 0,
-              "additional_actions": 0,
-              "prospective_live_prediction_attested": False,
-              "s17_feedback_granted": False,
-              "s10_learning_committed": False,
-              "r_qualified": False,
-              "v_science": False,
-          }
-          (root / "stage-k-result.json").write_text(
-              json.dumps(summary, indent=2, sort_keys=True) + "\n"
-          )
-          print(json.dumps(summary, sort_keys=True))
-          # Outcome UNKNOWN is a valid conservative evidence classification;
-          # do not turn it into MATCH for a green workflow.
-          assert any(r["status"] in ("match", "mismatch") for r in results), (
-              "source replay valid, but no positive same-target successor"
-          )
-          PY
-      - name: Preserve retrospective results, including incomplete and failed
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: selfworld-stage-k-source-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ env.STAGE_K_ROOT }}/stage-k-result.json
-          if-no-files-found: warn
-          retention-days: 30
-
-
-  selfworld-stage-k-archive-once:
-    # Separate, read-only after-the-fact analysis of ORIGINAL Stage J World.
-    # No Java/Node/Minecraft starts. Do not treat as prospective prediction.
-    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-k-archive-once]') }}
-    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      actions: read
-    env:
-      PYTHONPATH: 'src:tests:.'
-      GH_TOKEN: ${{ github.token }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.12'
-      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-      - name: Retrieve original immutable Stage J physical DEV artifact only
-        run: |
-          mkdir -p "$RUNNER_TEMP/stage-k"
-          gh api repos/rinsakamo/relay-self/actions/artifacts/12128397812/zip > "$RUNNER_TEMP/stage-k/original.zip"
-          python - <<'PY'
-          import hashlib, os
-          from pathlib import Path
-          source = Path(os.environ["RUNNER_TEMP"]) / "stage-k/original.zip"
-          digest = hashlib.sha256(source.read_bytes()).hexdigest()
-          print("ORIGINAL_ARTIFACT_SHA256", digest)
-          assert digest == "3b127778a8a6a2483a8f30649edbb3334229fb2f2f92cba720f084f36dfc467e"
-          PY
-      - name: Read-only source-attested S15/S16 retrospective review
-        run: |
-          python - <<'PY'
-          import json, os, zipfile
-          from pathlib import Path
-          from adapters.mineflayer.self_demo import review_s49_action_self_world_report
-          root = Path(os.environ["RUNNER_TEMP"]) / "stage-k"
-          with zipfile.ZipFile(root / "original.zip") as archive:
-              matches = [name for name in archive.namelist()
-                         if name == "native_report.json" or name.endswith("/native_report.json")]
-              receipts = [name for name in archive.namelist()
-                          if name == "dev_receipt.json" or name.endswith("/dev_receipt.json")]
-              assert len(matches) == len(receipts) == 1
-              report = json.loads(archive.read(matches[0]))
-              receipt = json.loads(archive.read(receipts[0]))
-          assert receipt["git_head"] == "2e75a56d66c9dd32046719d5d1b9f6ff7cd539cc"
-          assert receipt["classification"] == "DEV_ONLY"
-          assert receipt["run_id"] == "e7d91ef52b7a462bb622a844f8a942f7"
-          assert receipt["dev_self_world_input"] == "SOURCE_BOUND"
-          assert receipt["dev_self_world_review"] == "undetermined"
-          assert receipt["native_actions"] == 2
-          assert report["session_id"] == receipt["session_id"]
-          reviews = review_s49_action_self_world_report(report)
-          result = {
-              "stage": "K", "classification": "DEV_ONLY_RETROSPECTIVE",
-              "source_run": "39105927208", "source_artifact_id": 12128397812,
-              "source_git_head": receipt["git_head"],
-              "new_world_launches": 0, "new_native_probes": 0,
-              "new_actions": 0, "s17_feedback_created": False,
-              "s10_learning_committed": False, "habit_learned": False,
-              "observations": reviews,
-          }
-          (root / "review.json").write_text(json.dumps(result, sort_keys=True, indent=2)+"\n")
-          print("STAGE_K_REVIEWS", json.dumps(result, sort_keys=True))
-          PY
-      - name: Retain exact source-archive replay result, including failures
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: selfworld-stage-k-archive-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ runner.temp }}/stage-k/original.zip
-            ${{ runner.temp }}/stage-k/review.json
-          if-no-files-found: warn
-          retention-days: 30
-
-  selfworld-stage-l-dev-once:
-    # Explicit NEW disposable DEV run. Not the Stage J grant nor QUALIFICATION.
-    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-l-dev-once]') }}
-    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      PYTHONPATH: 'src:tests:.'
-      PYTHONDONTWRITEBYTECODE: '1'
-      DEV_ROOT: /tmp/selfworld-stage-l-${{ github.run_id }}-${{ github.run_attempt }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: '22'
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-      - name: Exact head and standard original S49 dependencies
-        run: |
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test ! -e "$DEV_ROOT"
-          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          java -version
-          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
-          node -e "if(require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
-      - name: Single disposable World with fsynced pre-Action PRD
-        shell: bash
-        run: |
-          set -o pipefail
-          python -B -m adapters.mineflayer.self_demo \
-            --mode DEV --dev-scenario native-selfworld --run-disposable \
-            --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
-            --output-dir "$DEV_ROOT" \
-            --live-think --self-world-live --self-world-prospective \
-            --model-alias stage-l-backend-not-attested --model-port 16559 \
-            --model-timeout 1 \
-            | tee "${{ runner.temp }}/selfworld-stage-l-cli.log"
-      - name: Always preserve this one DEV source/forecast witness
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: selfworld-stage-l-dev-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ env.DEV_ROOT }}/dev_receipt.json
-            ${{ env.DEV_ROOT }}/SHA256SUMS
-            ${{ env.DEV_ROOT }}/stage_l_prospective.jsonl
-            ${{ env.DEV_ROOT }}/native_report.json
-            ${{ env.DEV_ROOT }}/minecraft_server.log
-            ${{ env.DEV_ROOT }}/host_stdout.log
-            ${{ env.DEV_ROOT }}/host_stderr.log
-            ${{ env.DEV_ROOT }}/live_l2.jsonl
-            ${{ runner.temp }}/selfworld-stage-l-cli.log
-          if-no-files-found: warn
-          retention-days: 30
-
-  selfworld-stage-m-source-gate-once:
-    # Pure read-only Stage L physical source audit: explicitly BLOCK S17/S10
-    # without a typed Action lifecycle, explicit criterion and owner authority.
-    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-m-source-gate-once]') }}
-    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      actions: read
-    env:
-      PYTHONPATH: 'src:tests:.'
-      GH_TOKEN: ${{ github.token }}
-      STAGE_M_ROOT: /tmp/selfworld-stage-m-${{ github.run_id }}-${{ github.run_attempt }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.12'
-      - name: Install S49 typing test fixture import dependency
-        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-      - name: Read original Stage L evidence bytes without launching a World
-        run: |
-          set -euo pipefail
-          mkdir -m 700 "$STAGE_M_ROOT"
-          gh api repos/rinsakamo/relay-self/actions/artifacts/12129387412/zip > "$STAGE_M_ROOT/stage-l-original.zip"
-          python - <<'PY'
-          import hashlib
-          import json
-          import os
-          import pathlib
-          import zipfile
-
-          from adapters.mineflayer.self_world_learning_gate import (
-              audit_stage_l_physical_learning_readiness,
-          )
-
-          root = pathlib.Path(os.environ["STAGE_M_ROOT"])
-          payload = (root / "stage-l-original.zip").read_bytes()
-          sha = hashlib.sha256(payload).hexdigest()
-          assert sha == "3993d389617bd32fd2e24030cbf6fa3434f609ff5473a56dcf3405a7efa58216", (
-              "original immutable Stage L Artifact checksum differs"
-          )
-          with zipfile.ZipFile(root / "stage-l-original.zip") as archive:
-              members = archive.infolist()
-              assert 3 <= len(members) <= 25
-              assert all(
-                  not pathlib.PurePosixPath(item.filename).is_absolute()
-                  and ".." not in pathlib.PurePosixPath(item.filename).parts
-                  and not item.is_dir() and item.file_size <= 2_000_000
-                  for item in members
-              )
-              def source(name):
-                  hits = [z for z in members
-                          if pathlib.PurePosixPath(z.filename).name == name]
-                  assert len(hits) == 1, f"one original {name} required"
-                  return archive.read(hits[0])
-              native = json.loads(source("native_report.json"))
-              receipt = json.loads(source("dev_receipt.json"))
-              witness = source("stage_l_prospective.jsonl")
-              manifest = source("SHA256SUMS").decode()
-              for name in ("native_report.json", "dev_receipt.json",
-                           "stage_l_prospective.jsonl"):
-                  expected = [line.split("  ", 1)[0] for line in manifest.splitlines()
-                              if line.endswith("  " + name)]
-                  assert len(expected) == 1
-                  assert hashlib.sha256(source(name)).hexdigest() == expected[0]
-          assert receipt["git_head"] == "4f9e4d56fbaf2227c267daf457a5e1ec2b07382e"
-          assert receipt["run_id"] == "e5654ddea28444649bb7b474f6a0c525"
-          assert receipt["classification"] == "DEV_ONLY"
-          assert receipt["status"] == "COMPLETED"
-          assert receipt["session_id"] == native["session_id"]
-          assert receipt["dev_self_world_prospective_positive_count"] == 2
-          audit = audit_stage_l_physical_learning_readiness(native, witness)
-          assert audit["learning_gate"] == "BLOCKED_MISSING_TYPED_S17_AND_S10_AUTHORITY"
-          assert audit["positive_predictions"] == 2
-          assert audit["s17_feedback_created"] == 0
-          assert audit["s10_learning_committed"] == 0
-          result = {
-              "source_artifact_id": 12129387412,
-              "source_artifact_sha256": sha,
-              "source_workflow_run": 39108409463,
-              "original_git_head": receipt["git_head"],
-              "new_world_launches": 0, "new_native_actions": 0,
-              "qualification": "DEV_ONLY_SOURCE_NOT_LIVE_LEARNING",
-              **audit,
-          }
-          (root / "stage-m-gate.json").write_text(
-              json.dumps(result, sort_keys=True, indent=2) + "\n"
-          )
-          print("STAGE_M_SOURCE_AUDIT", json.dumps(result, sort_keys=True))
-          PY
-      - name: Retain immutable source-audit receipt
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: selfworld-stage-m-source-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ env.STAGE_M_ROOT }}/stage-l-original.zip
-            ${{ env.STAGE_M_ROOT }}/stage-m-gate.json
-          if-no-files-found: warn
-          retention-days: 30
-
-  selfworld-stage-n-typed-closure-once:
-    # New isolated S49 DEV World; original terminal observer, not a 2nd issuer.
-    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-n-typed-closure-once]') }}
-    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      PYTHONPATH: 'src:tests:.'
-      PYTHONDONTWRITEBYTECODE: '1'
-      DEV_ROOT: /tmp/selfworld-stage-n-${{ github.run_id }}-${{ github.run_attempt }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: '22'
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-      - name: Verify exact source and install original native prerequisites
-        run: |
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test ! -e "$DEV_ROOT"
-          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          java -version
-          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
-          node -e "if(require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
-      - name: Single disposable S49 original typed S16/S17 HOLD readback
-        shell: bash
-        run: |
-          set -o pipefail
-          python -B -m adapters.mineflayer.self_demo \
-            --mode DEV --dev-scenario native-selfworld --run-disposable \
-            --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
-            --output-dir "$DEV_ROOT" \
-            --live-think --self-world-live --self-world-prospective \
-            --self-world-typed-closure \
-            --model-alias stage-n-backend-not-attested --model-port 16559 \
-            --model-timeout 1 \
-            | tee "${{ runner.temp }}/selfworld-stage-n-cli.log"
-      - name: Preserve fresh DEV results including incomplete or failure
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: selfworld-stage-n-dev-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ env.DEV_ROOT }}/dev_receipt.json
-            ${{ env.DEV_ROOT }}/SHA256SUMS
-            ${{ env.DEV_ROOT }}/stage_n_native_feedback.jsonl
-            ${{ env.DEV_ROOT }}/stage_l_prospective.jsonl
-            ${{ env.DEV_ROOT }}/native_report.json
-            ${{ env.DEV_ROOT }}/minecraft_server.log
-            ${{ env.DEV_ROOT }}/host_stdout.log
-            ${{ env.DEV_ROOT }}/host_stderr.log
-            ${{ env.DEV_ROOT }}/live_l2.jsonl
-            ${{ runner.temp }}/selfworld-stage-n-cli.log
-          if-no-files-found: warn
-          retention-days: 30
-
-  selfworld-stage-o-owner-once:
-    # One NEW isolated S49 DEV World: read exact L0 original retained owner,
-    # no learning authority, physical Action controls or new native probe.
-    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-o-owner-once]') }}
-    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      PYTHONPATH: 'src:tests:.'
-      PYTHONDONTWRITEBYTECODE: '1'
-      DEV_ROOT: /tmp/selfworld-stage-o-${{ github.run_id }}-${{ github.run_attempt }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: '22'
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-      - name: Original S49 World dependencies and immutable head
-        run: |
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test ! -e "$DEV_ROOT"
-          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          java -version
-          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
-          node -e "if(require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
-      - name: Original S49 L0 retained object identity and next real native sources
-        shell: bash
-        run: |
-          set -o pipefail
-          python -B -m adapters.mineflayer.self_demo \
-            --mode DEV --dev-scenario native-selfworld --run-disposable \
-            --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
-            --output-dir "$DEV_ROOT" \
-            --live-think --self-world-live --self-world-prospective \
-            --self-world-typed-closure --self-world-retained-handoff \
-            --model-alias stage-o-backend-not-attested --model-port 16559 \
-            --model-timeout 1 \
-            | tee "${{ runner.temp }}/selfworld-stage-o-cli.log"
-      - name: Retain exact DEV evidence on both pass and failure
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: selfworld-stage-o-dev-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ env.DEV_ROOT }}/dev_receipt.json
-            ${{ env.DEV_ROOT }}/SHA256SUMS
-            ${{ env.DEV_ROOT }}/stage_o_retained_owner.jsonl
-            ${{ env.DEV_ROOT }}/stage_n_native_feedback.jsonl
-            ${{ env.DEV_ROOT }}/stage_l_prospective.jsonl
-            ${{ env.DEV_ROOT }}/native_report.json
-            ${{ env.DEV_ROOT }}/minecraft_server.log
-            ${{ env.DEV_ROOT }}/host_stdout.log
-            ${{ env.DEV_ROOT }}/host_stderr.log
-            ${{ env.DEV_ROOT }}/live_l2.jsonl
-            ${{ runner.temp }}/selfworld-stage-o-cli.log
-          if-no-files-found: warn
-          retention-days: 30
-
-  selfworld-stage-r-dev-once:
-    # Exactly one fresh disposable original S49 single-owner DEV experiment.
-    # Marker must be in the final HEAD; required FAST gates run first.
-    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-r-dev-once]') }}
-    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      PYTHONPATH: 'src:tests:.'
-      PYTHONDONTWRITEBYTECODE: '1'
-      DEV_ROOT: /tmp/selfworld-stage-r-${{ github.run_id }}-${{ github.run_attempt }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: '22'
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-      - name: Verify one owner, exact HEAD and original native dependencies
-        run: |
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test ! -e "$DEV_ROOT"
-          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          java -version
-          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
-          node -e "if(require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
-      - name: One real S49 terminal then S10 HOLD at newer native probe
-        shell: bash
-        run: |
-          set -o pipefail
-          python -B -m adapters.mineflayer.self_demo \
-            --mode DEV --dev-scenario native --run-disposable \
-            --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
-            --output-dir "$DEV_ROOT" --self-world-stage-r-dev \
-            | tee "${{ runner.temp }}/selfworld-stage-r-cli.log"
-      - name: Preserve DEV receipts and raw native evidence on fail or pass
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: selfworld-stage-r-dev-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ env.DEV_ROOT }}/dev_receipt.json
-            ${{ env.DEV_ROOT }}/SHA256SUMS
-            ${{ env.DEV_ROOT }}/native_report.json
-            ${{ env.DEV_ROOT }}/minecraft_server.log
-            ${{ env.DEV_ROOT }}/host_stdout.log
-            ${{ env.DEV_ROOT }}/host_stderr.log
-            ${{ runner.temp }}/selfworld-stage-r-cli.log
-          if-no-files-found: warn
-          retention-days: 30
-
-  selfworld-stage-w3-capture-dev-once:
-    # One fresh DEV-only Node→Python pre-decode raw capture; original S49 sole Action owner.
-    # Marker must be in the final HEAD; required FAST gates run first.
-    if: ${{ github.event_name == 'push' && github.run_attempt == 1 && github.ref == 'refs/heads/self/product-self-one-command-selfbody-20261018' && contains(github.event.head_commit.message, '[selfworld-stage-w3-capture-dev-once]') }}
-    needs: [repository-contracts, pytest, lint, mineflayer-adapter]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      PYTHONPATH: 'src:tests:.'
-      PYTHONDONTWRITEBYTECODE: '1'
-      DEV_ROOT: /tmp/selfworld-stage-w3-${{ github.run_id }}-${{ github.run_attempt }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: '22'
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-      - name: Verify one owner, exact HEAD and original native dependencies
-        run: |
-          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          test ! -e "$DEV_ROOT"
-          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          java -version
-          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
-          node -e "if(require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
-      - name: Capture original S49 native stdout pre-decode and seal new DEV-only evidence
-        shell: bash
-        run: |
-          set -o pipefail
-          python -B -m adapters.mineflayer.self_demo \
-            --mode DEV --dev-scenario native --run-disposable \
-            --confirm SELF-DEMO-I-OWN-DISPOSABLE-WORLD \
-            --output-dir "$DEV_ROOT" --self-world-w3-raw-capture \
-            | tee "${{ runner.temp }}/selfworld-stage-w3-cli.log"
-      - name: Preserve new Node stdout raw bytes and incomplete receipts even on failure
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: selfworld-stage-w3-dev-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            ${{ env.DEV_ROOT }}/dev_receipt.json
-            ${{ env.DEV_ROOT }}/SHA256SUMS
-            ${{ env.DEV_ROOT }}/native_report.json
-            ${{ env.DEV_ROOT }}/w3-node-stdout.raw.jsonl
-            ${{ env.DEV_ROOT }}/w3-node-stdout-receipt.json
-            ${{ env.DEV_ROOT }}/minecraft_server.log
-            ${{ env.DEV_ROOT }}/host_stdout.log
-            ${{ env.DEV_ROOT }}/host_stderr.log
-            ${{ runner.temp }}/selfworld-stage-w3-cli.log
-          if-no-files-found: warn
-          retention-days: 30
+      - name: LIGHT fatal syntax/static lint only
+        if: env.RELAY_CI_TIER == 'light'
+        run: ruff check --select E9,F63,F7,F82 src tests experiments adapters observability
+      - name: FAST/FULL complete Ruff lint
+        if: env.RELAY_CI_TIER != 'light'
+        run: ruff check src tests experiments adapters observability
