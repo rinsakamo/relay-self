@@ -24,6 +24,7 @@ BEGIN = "S49_DEV_BACK_WAIT_BEGIN"
 TICK = "S49_DEV_BACK_WAIT_TICK"
 KEYS = frozenset({"marker_id", "action_id", "session_id", "world", "tick", "index"})
 RUN_KEYS = KEYS | {"run_id"}
+INPUT_KEYS = RUN_KEYS | {"input_idle"}
 
 
 def _sha(data: str) -> str:
@@ -47,7 +48,7 @@ def _parse_paper(
         if not line.startswith("S49_DEV_BACK_WAIT_"):
             continue
         tokens = line.split()
-        if len(tokens) not in (7, 8) or tokens[0] not in {BEGIN, TICK}:
+        if len(tokens) not in (7, 8, 9) or tokens[0] not in {BEGIN, TICK}:
             raise BoundaryRejected("unexpected Paper S49 row shape")
         values = {}
         for token in tokens[1:]:
@@ -57,8 +58,10 @@ def _parse_paper(
             if not key or not value or key in values:
                 raise BoundaryRejected("empty or duplicate S49 field")
             values[key] = value
-        if set(values) not in (KEYS, RUN_KEYS):
+        if set(values) not in (KEYS, RUN_KEYS, INPUT_KEYS):
             raise BoundaryRejected("missing/foreign S49 Paper source field")
+        if "input_idle" in values and values["input_idle"] != "true":
+            raise BoundaryRejected("Paper reports active Self input at callback")
         run_id = values.get("run_id")
         if run_id is not None:
             try:
