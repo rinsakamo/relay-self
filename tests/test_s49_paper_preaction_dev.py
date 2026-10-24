@@ -127,7 +127,7 @@ def test_transition_untrusted_or_partial_fails_closed(monkeypatch, mutation):
         # A coherent later Paper clock with an arm far before the BACK edge.
         # Keep the eight callback ticks continuous and change the terminal.
         original = re.sub(
-            r"(?<!last_)tick=(\\d+)",
+            r"(?<!last_)tick=(\d+)",
             lambda match: "tick=" + str(int(match.group(1)) + 300),
             original,
         )
