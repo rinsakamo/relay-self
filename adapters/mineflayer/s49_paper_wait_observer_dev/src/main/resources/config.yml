@@ -1,0 +1,3 @@
+# Strict opt-in: no server listeners or scheduled tasks with this false.
+enabled: false
+expected-player-name: RelaySelf

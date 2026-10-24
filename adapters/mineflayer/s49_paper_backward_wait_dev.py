@@ -66,7 +66,8 @@ def _parse_paper(
             index = int(values["index"])
         except (KeyError, ValueError) as exc:
             raise BoundaryRejected("invalid S49 Paper tick/index") from exc
-        if type(tick) is not int or tick < 1 or str(tick) != values["tick"]:
+        if (tick < 1 or str(tick) != values["tick"]
+                or index < 0 or str(index) != values["index"]):
             raise BoundaryRejected("invalid S49 Paper clock")
         entries.append((tokens[0], tick, index, _sha(raw_line)))
     if len(entries) != 9:

@@ -1,0 +1,10 @@
+name: RelayS49WaitObserverDev
+main: io.github.rinsakamo.relays49observer.S49WaitObserverPlugin
+version: '0.1.0-dev'
+api-version: '1.21.8'
+description: 'DEV-only read-only S49 Paper clock callback observer; disabled by default'
+load: POSTWORLD
+commands:
+  relays49observe:
+    description: 'Console only: claim one S49 closed Action for 8 Paper samples; no WAIT authority'
+    usage: '/relays49observe <action_id> <session_id> <player_uuid>'

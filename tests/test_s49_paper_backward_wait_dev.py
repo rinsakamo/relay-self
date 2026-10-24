@@ -93,6 +93,7 @@ def test_same_s49_action_s16_clear_and_paper_source_shape(
     "duplicate_tick", "missing_tick", "gapped_tick", "reordered",
     "missing_begin", "begin_late", "bad_index", "unknown_field",
     "duplicated_field", "extra_kind", "ambiguous_number",
+    "noncanonical_index",
 ])
 def test_invalid_paper_or_cross_action_source_never_admits(
     monkeypatch, tmp_path, mutation,
@@ -136,6 +137,8 @@ def test_invalid_paper_or_cross_action_source_never_admits(
         value = value.replace(" index=4", " new_field=x index=4", 1)
     elif mutation == "duplicated_field":
         value = value.replace(" index=4", " index=4 index=4", 1)
+    elif mutation == "noncanonical_index":
+        value = value.replace("index=2", "index=02", 1)
     elif mutation == "extra_kind":
         value += "S49_DEV_BACK_WAIT_UNKNOWN marker=x\n"
     else:
