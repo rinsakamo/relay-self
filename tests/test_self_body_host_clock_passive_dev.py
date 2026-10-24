@@ -119,7 +119,7 @@ def test_replayed_source_seq_rejected():
 def test_foreign_session_and_identity_rejected():
     m = PassiveHostCallbackTimer(self_id="s1", clock=ticks(1, 2))
     m.exit(m.enter(body()))
-    with pytest.raises(PassiveHostClockRejected, match="foreign"):
+    with pytest.raises(PassiveHostClockRejected, match="invalid native"):
         m.enter(body(seq=2, session="T"))
     with pytest.raises(PassiveHostClockRejected, match="foreign"):
         m.enter(body(seq=2, self_id="someone-else"))
