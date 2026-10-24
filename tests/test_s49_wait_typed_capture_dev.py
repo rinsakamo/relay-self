@@ -191,3 +191,55 @@ def test_fake_backward_command_still_lacks_native_cleanup_wire_binding():
                 "control": "back", "state": True,
             }],
         )
+
+
+@pytest.mark.parametrize("drift", [
+    "second_dispatched", "owner_count", "new_supervisor", "tampered_payload",
+])
+def test_typed_close_to_wait_handoff_rejects_owner_drift(monkeypatch, drift):
+    ex, probe, receipt, readback = fixture()
+
+    async def original_called(_session, _step, _bound, _probe, _p, _i):
+        normal._READ_ONLY_CLOSURE.get()(readback)
+        return receipt
+
+    monkeypatch.setattr(ex, "execute", original_called)
+    capture = S49TypedClosureCaptureDev(ex)
+    asyncio.run(capture.execute_owned(None, None, None, probe, None, None))
+    if drift == "second_dispatched":
+        ex._dispatched.add("unrelated")
+    elif drift == "owner_count":
+        ex._count += 1
+    elif drift == "new_supervisor":
+        from relay_self.action_supervision import ActionSupervisor
+        ex.supervisor = ActionSupervisor()
+    else:
+        capture.projection.decoded_evidence["cleanup_receipt"]["action_id"] = (
+            "tampered-clear"
+        )
+    with pytest.raises(BoundaryRejected):
+        capture.arm_owner_wait()
+    assert ex.wait_phase == "NEW"
+    assert capture.state == "CAPTURED"
+
+
+def test_nested_original_closure_observer_is_not_silently_replaced(monkeypatch):
+    ex, probe, _, _ = fixture()
+    called = []
+
+    async def should_not_run(*a, **kw):
+        called.append(True)
+        raise AssertionError("competing observer permitted execution")
+
+    monkeypatch.setattr(ex, "execute", should_not_run)
+    capture = S49TypedClosureCaptureDev(ex)
+
+    async def scenario():
+        with normal.observe_closed_native_actions(called.append):
+            with pytest.raises(BoundaryRejected, match="another original"):
+                await capture.execute_owned(
+                    None, None, None, probe, None, None,
+                )
+    asyncio.run(scenario())
+    assert called == []
+    assert capture.state == "NEW"
