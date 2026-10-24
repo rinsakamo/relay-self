@@ -1,3 +1,28 @@
+## 2026-10-24 — Original P1 reconciled-tick sensor exporter (DEV)
+
+The new pure P1-owner file `experiments/p1_selfbody_export.py` adds
+`export_p1_sensed_tick(profile, before, reconciled_tick, sensor)`.
+It **recomputes the existing** P1 `reconcile` result against its original
+prior state/profile/source (zero movement tolerance) before exporting the
+quantized `sensed_for_self` reading. It exports session, profile SHA256,
+World tick, activity, World source pointer and optional WAIT interval pointer;
+it never publishes evaluator-private true fatigue or physical capacity.
+
+The returned `P1SelfBodyReadout` carries the mandatory
+`P1_PRODUCER_LOCAL_NOT_WORLD_ATTESTED` scope. P1 cannot independently
+authenticate the external S/R tick or inactivity from source strings; the
+exporter **does not** prove a genuine physical WAIT/recovery event. A blocked
+MOVE still cannot recover fatigue; attempted forged transition/profile/tick,
+missing WAIT witness or stray Action is rejected in synthetic tests.
+
+The corresponding product **consumer** is isolated in S Draft #634 and
+fails closed if this original P1 exporter is not yet present in its checkout.
+Neither side creates another P1 physics owner, Self policy, Action issuer,
+native probe or reward. Python3.12 focused validation and later owner-approved
+integration remain required before physical DEV adoption; R/V separate.
+
+---
+
 # P1-B — Source-correlated physical WAIT / fatigue Body interface (offline)
 
 **Authority:** P1 #620, S #537, R #575, M #616, V #619.
