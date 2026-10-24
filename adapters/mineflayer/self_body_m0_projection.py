@@ -35,6 +35,38 @@ class B0CognitionViews:
     source_scope: str = "B0_M0_OWNER_LOCAL_DEV_NOT_PHYSICAL_ATTESTATION"
 
 
+def summarize_b0_cognition_views(views: B0CognitionViews) -> dict[str, object]:
+    """Bounded read-only audit. Not a source attestation or energy grant."""
+    if not isinstance(views, B0CognitionViews):
+        raise InvalidSelfBodyData("typed B0 cognition views required")
+    body, world = views.body, views.world
+    if body.observation is None or world.observation is None or world.self_body is not body:
+        raise InvalidSelfBodyData("body/world not source joined")
+    sensing = body.sensed("m0_energy_sensor")
+    if sensing.origin.value != "interoception" or len(sensing.provenance) != 2:
+        raise InvalidSelfBodyData("M0 owner sensor not bound")
+    return {
+        "classification": "DEV_ONLY_PRODUCER_LOCAL_M0_INTEROCEPTION",
+        "native_source": body.observation.source_ref,
+        "world_source": world.observation.source_ref,
+        "body_world_same_object": True,
+        "source_seq": body.observation.native_seq,
+        "l0_kind": views.l0_kind,
+        "m0_tick": views.sensor_tick,
+        "m0_energy_sensor": sensing.value,
+        "m0_sensor_origin": sensing.origin.value,
+        "m0_sensor_owner_source": sensing.provenance[-1].source,
+        "native_food": body.observed("food").value,
+        "native_health": body.observed("health").value,
+        "p1_fatigue": body.sensed("p1_fatigue").value,
+        "true_m0_energy_exposed": False,
+        "s10_updates": 0,
+        "additional_native_reads": 0,
+        "additional_actions": 0,
+        "qualification": False,
+    }
+
+
 def compose_b0_cognition_views(
     probe: MineflayerObservation,
     ledger: B0EnergyLedger,
