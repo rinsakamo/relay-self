@@ -131,6 +131,12 @@ class S49WaitFenceDev:
             self._phase = "ABORTED"
             raise BoundaryRejected("foreign WAIT abort owner")
         if self._phase == "ABORTED":
+            # A local validation failure can set ABORTED before the wrapper
+            # observes the exception. Preserve one immutable terminal fault
+            # row; an already-recorded blocked issue needs no duplicate.
+            if self._rows and self._rows[-1]["kind"] in {"ABORT", "BLOCKED_ISSUE"}:
+                return
+            self._record("ABORT", None, reason_source_ref, None)
             return
         if self._phase == "SEALED":
             raise BoundaryRejected("sealed WAIT fence cannot be retroactively aborted")
