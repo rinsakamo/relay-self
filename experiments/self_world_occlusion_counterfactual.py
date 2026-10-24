@@ -289,11 +289,11 @@ def issue_forecast(
             previous.target_id in rule.trained_targets
         ):
             raise TransferProbeBlocked("not an unseen region/target")
-        if rule.training_last_step > previous.step:
-            raise TransferProbeBlocked("future training at forecast issuance")
         used = {ref for pair in rule.evidence_pairs for ref in pair}
         if any(x.source_ref in used for x in task.history):
             raise TransferProbeBlocked("train/evaluation evidence leaked")
+        if rule.training_last_step > previous.step:
+            raise TransferProbeBlocked("future training at forecast issuance")
         rule_digest = rule.digest
         drift = rule.delta_x
 
