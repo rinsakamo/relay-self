@@ -17,7 +17,7 @@ SOURCE = "S49_P1_OWNER_WAIT_FENCE_DEV_V1"
 MAX_ROWS = 12  # ARM + 8 OBSERVED ticks + SEAL; ABORT for failed windows
 FIELDS = frozenset({
     "source", "ordinal", "kind", "session_id", "marker_id", "world",
-    "world_tick", "source_ref", "action_id",
+    "world_tick", "source_ref", "action_id", "controls_clear_ref",
 })
 
 
@@ -27,12 +27,12 @@ def _identifier(value: object) -> bool:
 
 def _row(kind: str, session: str, marker: str, world: str,
          ordinal: int, tick: int | None, source_ref: str,
-         action_id: str | None) -> dict:
+         action_id: str | None, clear_ref: str | None = None) -> dict:
     return {
         "source": SOURCE, "ordinal": ordinal, "kind": kind,
         "session_id": session, "marker_id": marker, "world": world,
         "world_tick": tick, "source_ref": source_ref,
-        "action_id": action_id,
+        "action_id": action_id, "controls_clear_ref": clear_ref,
     }
 
 
@@ -75,13 +75,13 @@ class S49WaitFenceDev:
             raise BoundaryRejected("open supervised Action during owner WAIT fence")
 
     def _record(self, kind: str, tick: int | None, ref: str,
-                action: str | None) -> None:
+                action: str | None, clear_ref: str | None = None) -> None:
         if not _identifier(ref):
             self._phase = "ABORTED"
             raise BoundaryRejected("missing original source reference")
         self._rows.append(_row(
             kind, self._session, self._marker, self._world,
-            len(self._rows) + 1, tick, ref, action,
+            len(self._rows) + 1, tick, ref, action, clear_ref,
         ))
 
     def arm(self, owner: object, *, closed_action_id: str,
@@ -92,7 +92,8 @@ class S49WaitFenceDev:
             self._phase = "ABORTED"
             raise BoundaryRejected("WAIT arm needs closed Action and clear readback")
         # These references alone never attest actual terminal or motor release.
-        self._record("ARM", None, terminal_outcome_ref, closed_action_id)
+        self._record("ARM", None, terminal_outcome_ref, closed_action_id,
+                     controls_clear_ref)
         self._phase = "ARMED"
 
     def before_issue(self, owner: object, *, action_id: str,
@@ -157,7 +158,9 @@ def review_s49_owner_wait_fence(rows: Sequence[Mapping[str, object]], *,
                 or row.get("world_tick") != tick
                 or not _identifier(row.get("source_ref"))
                 or (not _identifier(row.get("action_id")) if i == 0
-                    else row.get("action_id") is not None)):
+                    else row.get("action_id") is not None)
+                or (not _identifier(row.get("controls_clear_ref")) if i == 0
+                    else row.get("controls_clear_ref") is not None)):
             raise BoundaryRejected("unbound or forged owner WAIT fence row")
     return {
         "classification": "S49_OWNER_LOCAL_ISSUER_FENCE_DEV_ONLY",

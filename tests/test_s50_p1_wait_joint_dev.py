@@ -11,7 +11,9 @@ from adapters.mineflayer.m02_paper_dev.s50_p1_wait_joint_dev import (
     MISSING_R_PROOFS,
     review_joint_wait_sources,
 )
-from test_s50_p1_control_action import MARKER, WORLD
+from adapters.mineflayer.s49_wait_owner_fence_dev import S49WaitFenceDev
+from relay_self.action_supervision import ActionSupervisor
+from test_s50_p1_control_action import ACTION, MARKER, SESSION, WORLD
 from test_s50_p1_control_action import fixture as control_fixture
 from test_s50_p1_lifecycle import source as lifecycle_source
 from test_s50_p1_scope import original_source as scope_source
@@ -136,3 +138,33 @@ def test_open_or_second_action_cannot_be_smuggled_into_wait():
     data[3].append(deepcopy(data[3][-1]))
     with pytest.raises(BoundaryRejected):
         review_joint_wait_sources(*data)
+
+
+def test_owner_fence_cross_source_join_remains_no_r_wait():
+    owner = object()
+    f = S49WaitFenceDev(
+        owner=owner, supervisor=ActionSupervisor(), session_id=SESSION,
+        marker_id=MARKER, world=WORLD,
+    )
+    f.arm(owner, closed_action_id=ACTION, terminal_outcome_ref="prior-outcome",
+          controls_clear_ref="prior-controls-clear")
+    for tick in range(61, 69):
+        f.observe_paper_tick(owner, world_tick=tick,
+                             source_ref=f"raw-paper-tick-{tick}")
+    r = review_joint_wait_sources(
+        *originals(), s49_owner_fence_rows=f.seal(
+            owner, seal_source_ref="owner-fence-closed",
+        ),
+    )
+    assert r["s49_owner_fence_source"] == "LOCAL_SOURCE_SHAPE_SCREENED"
+    assert r["s49_owner_fence_report"]["same_owner_local_action_window_screened"]
+    assert r["s49_owner_fence_report"]["paper_world_clock_bound_to_owner"] == "NOT_ATTESTED"
+    assert r["all_action_issuers_proven_idle"] is False
+    assert r["source_bound_tick"] is None
+    assert r["wait_ticks_admitted"] == 0
+    assert r["p1_fatigue_recovered"] == 0.0
+
+    rows = list(f.original_rows)
+    rows[6]["world_tick"] = 999
+    with pytest.raises(BoundaryRejected):
+        review_joint_wait_sources(*originals(), s49_owner_fence_rows=rows)

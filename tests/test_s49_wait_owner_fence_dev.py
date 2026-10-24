@@ -129,6 +129,7 @@ def test_partial_window_cannot_seal():
 @pytest.mark.parametrize(("idx", "field", "value"), [
     (0, "action_id", None),
     (0, "source_ref", ""),
+    (0, "controls_clear_ref", ""),
     (0, "kind", "PAPER_SAMPLE"),
     (1, "world_tick", 62),
     (3, "ordinal", 2),
