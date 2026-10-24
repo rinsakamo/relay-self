@@ -86,3 +86,31 @@ covering other possible Action paths. The current Java observer does
 Do not reinterpret eight consecutive Paper callbacks, stationary positions,
 or other entities' movement as that proof. Keep P1 admission fields null/zero
 until the owner/R qualification gate explicitly succeeds.
+
+### Paper-reported server input boundary (2026-10-25, offline DEV only)
+
+Paper API 1.21.8 provides `Player.getCurrentInput()` and
+`PlayerInputEvent`. The isolated observer now checks all seven input flags
+(forward/back/left/right/jump/sprint/sneak) on console arm and on each
+callback. It passively registers a MONITOR-only input listener and a
+PlayerMoveEvent listener for the selected Self. Input reactivation,
+positional movement events, or changed Self coordinates at the callback
+fail-close the **candidate**, while unrelated entities' movement does not.
+
+It adds exactly one `S49_OBSERVER_SERVER_INPUT` row between SUBJECT and
+BEGIN, with `input_idle=true`, `tick=<Paper world time>`, and
+`s49_release_causality=NOT_ATTESTED`. BEGIN and all eight TICK rows must
+also include `input_idle=true` for the strict full-transcript reviewer.
+The source remains the default-disabled, one-shot, console-only, read-only
+Paper observer. No gameplay action, native command or energy change.
+
+**Evidence boundary:** Paper reports an idle *server-side input snapshot*
+and absence of monitored input/move events within this one observer
+lifetime; neither guarantees packet history or that the Mineflayer
+`clear_controls` ACK caused the state transition. Movement packets and
+client input flags are not interchangeable, and callbacks are not
+continuous whole-tick coverage. Therefore `server_effective_control_release`
+and `whole_tick_self_inactivity` remain `NOT_ATTESTED`. No
+`SourceBoundTick(WAIT)`, P1 recovery or qualification is admitted.
+The independent R source custody and an S49→Paper causal handshake
+are still required before any live qualification gate.
