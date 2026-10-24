@@ -1,6 +1,6 @@
 # SelfWorld beyond observation: occlusion and counterfactual transfer (DEV)
 
-**Status: SOURCE-STAGED / OPERATOR PYTHON3.12 NOT RUN / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**
+**Status: OFFLINE SYNTHETIC DEV / independent Python3.12 audit recorded externally / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**
 
 Authority: SelfWorld #633, S #537, Adaptive Cognition #426, S18 #354. Candidate extends the existing unadopted regularity-transfer branch. Draft PR #634, #545 and main remain untouched.
 
@@ -49,3 +49,18 @@ This example does not show the Counterfactual Action chosen in the real World. I
 5. Do not enable the learned rule in runtime. Future DEV should combine the two tested properties: **unvisited place transfer + positive predictive contribution under occlusion**; then independently compare prospective task outcomes under trusted source and cost gates.
 
 **Acceptance language:** OFFLINE_SYNTHETIC_PREDICTION_PROBE once tests actually pass, NOT World adaptive-cognition qualified. A synthetic benefit relative to persistence is not proof of net value against the cheapest informative baseline. REGULARITY_VALUE_NOT_DEMONSTRATED for real World/runtime remains.
+
+## Independent DEV audit correction (2026-10-24)
+
+The original candidate accepted a hypothesis trained at a future synthetic step.
+The isolated correction retains `training_last_step` in the hypothesis and its digest,
+and rejects transfer when that step exceeds the last pre-gap observation step.
+Additional controls cover independent A/B scoring with missing/foreign C rules,
+non-consecutive/duplicate history, and forecast issuance before twin generation.
+Training and holdout steps assume one shared synthetic experiment clock; they do
+not attest native time. Historical rules are intentionally transferable; no TTL or
+wall-clock freshness guarantee is implemented. Rule reversal remains a scored
+failure, not a freshness rejection. Caller-authored synthetic labels, hypothesis
+contents and recomputed digests are not authenticated evidence. A digest only
+checks equality to a retained commitment; an independently trusted issuance
+receipt and native source attestation remain absent.

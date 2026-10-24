@@ -94,12 +94,16 @@ class DriftHypothesis:
     trained_regions: tuple[str, ...]
     trained_targets: tuple[str, ...]
     evidence_pairs: tuple[tuple[str, str], ...]
+    training_last_step: int
     source_scope: Literal["SYNTHETIC_DEV"] = _SYNTHETIC_SCOPE
 
     def __post_init__(self) -> None:
         _name("candidate self_id", self.self_id)
         _name("candidate session_id", self.session_id)
         _integer("delta_x", self.delta_x)
+        _integer("training_last_step", self.training_last_step)
+        if self.training_last_step < 1:
+            raise TransferProbeBlocked("invalid training end step")
         if self.source_scope != _SYNTHETIC_SCOPE:
             raise TransferProbeBlocked("candidate source scope is not synthetic")
         if not (
@@ -137,7 +141,7 @@ class DriftHypothesis:
         return _digest((
             self.self_id, self.session_id, self.delta_x,
             self.trained_regions, self.trained_targets,
-            self.evidence_pairs, self.source_scope,
+            self.evidence_pairs, self.training_last_step, self.source_scope,
         ))
 
 
@@ -172,6 +176,7 @@ def compress_drift(
         return None
     return DriftHypothesis(
         owner[0], owner[1], deltas.pop(), regions, targets, evidence,
+        max(pair.after.step for pair in training),
     )
 
 
@@ -284,6 +289,8 @@ def issue_forecast(
             previous.target_id in rule.trained_targets
         ):
             raise TransferProbeBlocked("not an unseen region/target")
+        if rule.training_last_step > previous.step:
+            raise TransferProbeBlocked("future training at forecast issuance")
         used = {ref for pair in rule.evidence_pairs for ref in pair}
         if any(x.source_ref in used for x in task.history):
             raise TransferProbeBlocked("train/evaluation evidence leaked")

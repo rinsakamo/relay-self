@@ -5,11 +5,11 @@ from dataclasses import replace
 import pytest
 
 from experiments.self_world_occlusion_counterfactual import (
+    ACTION_HOLD,
+    ACTION_NUDGE,
     ARM_LOCAL,
     ARM_PERSIST,
     ARM_TRANSFER,
-    ACTION_HOLD,
-    ACTION_NUDGE,
     OccludedTask,
     PositivePosition,
     PositiveTransition,
@@ -341,3 +341,47 @@ def test_inconsistent_twin_cannot_be_promoted_into_outcome():
     fake = replace(_outcome(task), nudge_x=999)
     with pytest.raises(TransferProbeBlocked, match="provenance inconsistent"):
         score_sealed(task, forecast, fake)
+
+
+def test_future_training_cannot_leak_into_pre_gap_forecast():
+    future = tuple(
+        PositiveTransition(replace(pair.before, step=10), replace(pair.after, step=11))
+        for pair in _positive_training()
+    )
+    rule = compress_drift(future)
+    with pytest.raises(TransferProbeBlocked, match="future training"):
+        issue_forecast(_task(), method=ARM_TRANSFER, rule=rule)
+
+
+
+@pytest.mark.parametrize("bad_rule", [None, replace(_rule(), session_id="foreign")])
+def test_two_reading_baselines_score_independently_of_invalid_transfer(bad_rule):
+    task = _task(two=True)
+    forecasts = [issue_forecast(task, method=arm) for arm in (ARM_PERSIST, ARM_LOCAL)]
+    with pytest.raises(TransferProbeBlocked):
+        issue_forecast(task, method=ARM_TRANSFER, rule=bad_rule)
+    twin = _outcome(task)
+    assert [score_sealed(task, f, twin).occluded_error for f in forecasts] == [1, 0]
+
+
+def test_stale_or_duplicate_history_is_rejected():
+    task = _task(two=True)
+    with pytest.raises(TransferProbeBlocked, match="non-consecutive"):
+        replace(task, history=(replace(task.history[0], step=task.latest.step), task.latest))
+    with pytest.raises(TransferProbeBlocked, match="non-consecutive"):
+        replace(task, history=(replace(task.history[0], source_ref=task.latest.source_ref),
+                               task.latest))
+
+
+def test_predictions_precede_twins_and_do_not_depend_on_hidden_outcome():
+    task = _task(two=True)
+    forecasts = tuple(issue_forecast(task, method=arm, rule=_rule() if arm == ARM_TRANSFER
+                                    else None)
+                      for arm in (ARM_PERSIST, ARM_LOCAL, ARM_TRANSFER))
+    commitments = tuple(f.commitment for f in forecasts)
+    for hidden in (1, 0, -1):
+        twin = _outcome(task, hidden_drift=hidden)
+        for forecast in forecasts:
+            score_sealed(task, forecast, twin)
+        assert tuple(f.commitment for f in forecasts) == commitments
+    assert forecasts[-1] == issue_forecast(task, method=ARM_TRANSFER, rule=_rule())
