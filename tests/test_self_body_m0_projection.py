@@ -16,6 +16,7 @@ from adapters.mineflayer.self_body_m0_projection import (
     compose_b0_cognition_views,
     summarize_b0_cognition_views,
 )
+from adapters.mineflayer.self_body_p1_projection import P1OwnerSensorHandoff
 from experiments.metabolism_viability import Interoception
 from relay_self.self_body import (
     BodyOrigin,
@@ -258,3 +259,113 @@ def test_b0_dev_appetite_epoch_trace_needs_all_native_and_sensor_sources(
     assert receipt["science_success"] is False
     assert receipt["m_energy_credited"] is False
     assert (opts.output_dir / "SHA256SUMS").is_file()
+
+
+def _p1_owner_handoff(probe, **changes):
+    """Synthetic only: the proposed P1 owner report is NOT World attested."""
+    payload = dict(
+        session_id=probe.session_id,
+        native_seq=probe.seq,
+        native_request_id=probe.request_id,
+        owner_world_tick=41,
+        profile_sha256="a" * 64,
+        world_source_ref="p1-owner-dev:tick-41",
+        sensor_reading=0.4,
+        activity="WAIT",
+        wait_interval_ref="p1-owner-dev:full-tick-idle-41",
+    )
+    payload.update(changes)
+    return P1OwnerSensorHandoff(**payload)
+
+
+def test_optional_p1_sensor_joins_same_body_world_without_wait_grant():
+    probe, owner, decision = prepared()
+    energy_before = owner.body
+    p1 = _p1_owner_handoff(probe)
+    joined = compose_b0_cognition_views(
+        probe, owner, decision,
+        self_id="dev-b0-self", epoch_id="epoch-8", p1_handoff=p1,
+    )
+    body, world = joined.body, joined.world
+    summary = summarize_b0_cognition_views(joined)
+    assert world.self_body is body
+    assert body.observed("food").origin is BodyOrigin.OBSERVATION
+    assert body.sensed("m0_energy_sensor").value == decision.sensor_reading
+    reading = body.sensed("p1_fatigue_sensor")
+    assert reading.origin is BodyOrigin.INTEROCEPTION
+    assert reading.value == 0.4
+    assert reading.source_refs[0] == body.observation.source_ref
+    assert reading.provenance[-1].source == "p1-owner-local-unattested-sensor"
+    assert body.observed("p1_fatigue").origin is BodyOrigin.UNKNOWN
+    assert summary["p1_fatigue"] == 0.4
+    assert summary["p1_sensor_origin"] == "interoception"
+    assert summary["p1_source_scope"] == "PRODUCER_LOCAL_UNATTESTED"
+    assert summary["qualification"] is False
+    assert summary["additional_native_reads"] == 0
+    assert summary["additional_actions"] == 0
+    assert owner.body is energy_before  # no physical P1/M0 transition
+    assert owner.credit_count == 0
+    assert owner._last_decision_seq == probe.seq
+    assert not hasattr(joined, "authorize_action")
+    assert not hasattr(joined, "reconcile_wait")
+
+
+def test_absent_p1_owner_keeps_unknown_and_existing_b0_path():
+    probe, owner, decision = prepared()
+    baseline = project(probe, owner, decision)
+    s = summarize_b0_cognition_views(baseline)
+    assert s["p1_fatigue"] is None
+    assert s["p1_sensor_origin"] == "unknown"
+    assert s["p1_source_scope"] == "UNKNOWN"
+    assert len(baseline.body.interoceptions) == 1
+    assert baseline.body.sensed("p1_fatigue_sensor").origin is BodyOrigin.UNKNOWN
+
+
+@pytest.mark.parametrize("attack", [
+    "session", "seq", "request", "tick_negative", "tick_bool",
+    "profile_foreign", "world_ref_missing", "nan", "infinite",
+    "bool_reading", "rest", "wait_without_interval",
+    "move_with_wait_witness", "fight_with_wait_witness",
+])
+def test_p1_sensor_handoff_rejects_foreign_or_forged_correlation(attack):
+    probe, owner, decision = prepared()
+    changes = {
+        "session": {"session_id": "foreign"},
+        "seq": {"native_seq": probe.seq + 1},
+        "request": {"native_request_id": "another-request"},
+        "tick_negative": {"owner_world_tick": -1},
+        "tick_bool": {"owner_world_tick": True},
+        "profile_foreign": {"profile_sha256": "not-a-profile"},
+        "world_ref_missing": {"world_source_ref": ""},
+        "nan": {"sensor_reading": float("nan")},
+        "infinite": {"sensor_reading": float("inf")},
+        "bool_reading": {"sensor_reading": True},
+        "rest": {"activity": "REST"},
+        "wait_without_interval": {"wait_interval_ref": None},
+        "move_with_wait_witness": {"activity": "MOVE"},
+        "fight_with_wait_witness": {"activity": "FIGHT"},
+    }[attack]
+    before = owner.body
+    with pytest.raises(InvalidSelfBodyData):
+        compose_b0_cognition_views(
+            probe, owner, decision,
+            self_id="dev-b0-self", epoch_id="epoch-8",
+            p1_handoff=_p1_owner_handoff(probe, **changes),
+        )
+    assert owner.body is before and owner.credit_count == 0
+
+
+def test_p1_move_uses_no_idle_witness_and_cannot_claim_wait_recovery():
+    probe, owner, decision = prepared()
+    p1 = _p1_owner_handoff(
+        probe, activity="MOVE", wait_interval_ref=None,
+    )
+    joined = compose_b0_cognition_views(
+        probe, owner, decision,
+        self_id="dev-b0-self", epoch_id="epoch-8", p1_handoff=p1,
+    )
+    reading = joined.body.sensed("p1_fatigue_sensor")
+    assert reading.value == 0.4
+    assert "MOVE" in reading.provenance[-1].reference
+    assert not hasattr(joined, "recovered")
+    assert not hasattr(joined.body, "physical_wait_authorized")
