@@ -65,3 +65,11 @@ The `run_id` is not cryptographic attestation and the Paper log text is not
 independently custodied. In particular, a server-side effective motor release
 before BEGIN, comprehensive intra-tick Self inactivity, and the absence of
 other Action issuers remain **NOT_ATTESTED**. No P1 WAIT source is minted.
+
+The optional `project_s49_backward_paper_dev(...,
+observer_transcript=..., expected_player_uuid=...)` joins this strict
+one-run transcript review to the original S49 owner WAIT-shape projection.
+The extracted BEGIN+8 callback slice must have the same normalized SHA-256;
+a mismatch rejects and saves a non-admitting failure report once. Both digests
+are **derived from caller-provided input** and remain untrusted for R custody.
+The join never calls P1 `reconcile()` or constructs `SourceBoundTick(WAIT)`.
