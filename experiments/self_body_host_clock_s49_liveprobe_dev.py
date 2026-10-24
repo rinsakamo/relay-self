@@ -69,6 +69,8 @@ class S49PassiveHostClockDEV:
         self._observer = observer if observer is not None else _default_read_only
         self._failures: list[PassiveProbeFailure] = []
         self._overflow = 0
+        self._legacy_errors = 0
+        self._legacy_error_overflow = 0
 
     def _failure(
         self, stage: str, exc: BaseException, reading: object,
@@ -88,6 +90,14 @@ class S49PassiveHostClockDEV:
         else:
             self._overflow += 1
 
+    def _record_error(self, exc: Exception) -> None:
+        # Bound forwarding too: the unchanged legacy owner retains every call.
+        if self._legacy_errors < MAX_PROBES + 1:
+            self.views.record_error(exc)
+            self._legacy_errors += 1
+        else:
+            self._legacy_error_overflow += 1
+
     @staticmethod
     def _view(reading: MineflayerObservation, row: dict) -> SelfBodyView:
         if type(reading) is not MineflayerObservation or reading.kind != "probe":
@@ -101,7 +111,15 @@ class S49PassiveHostClockDEV:
             observation=observation,
         )
         if (
-            row.get("session_id") != reading.session_id
+            row.get("self_id") != DEV_SELF_ID
+            or view.self_id != DEV_SELF_ID
+            or view.session_id != reading.session_id
+            or view.epoch_id != f"native-probe-{reading.seq}"
+            or observation.session_id != reading.session_id
+            or observation.native_seq != reading.seq
+            or observation.request_id != reading.request_id
+            or observation.source_provenance != reading.provenance
+            or row.get("session_id") != reading.session_id
             or row.get("native_seq") != reading.seq
             or row.get("request_id") != reading.request_id
             or row.get("body_source_ref") != observation.source_ref
@@ -116,13 +134,13 @@ class S49PassiveHostClockDEV:
 
     async def observe(self, reading: MineflayerObservation) -> None:
         """S49-compatible awaitable callback, never an independent receiver."""
-        previous_count = len(self.views.rows())
         try:
+            previous_count = len(self.views.rows())
             # The pre-existing product observer is authoritative for admission.
             # A timer failure cannot suppress that observer's original work.
             self.views.observe(reading)
         except Exception as exc:
-            self.views.record_error(exc)
+            self._record_error(exc)
             self._failure("legacy-admission", exc, reading)
             return
         except BaseException as exc:
@@ -150,9 +168,13 @@ class S49PassiveHostClockDEV:
                     self.timer.abort(ticket)
                 except BaseException as abort_exc:
                     self._failure("clock-abort", abort_exc, reading)
+                    if isinstance(exc, Exception) and not isinstance(abort_exc, Exception):
+                        self._failure(stage, exc, reading)
+                        self._record_error(exc)
+                        raise
             self._failure(stage, exc, reading)
             if isinstance(exc, Exception):
-                self.views.record_error(exc)
+                self._record_error(exc)
                 return
             raise
 
@@ -168,6 +190,7 @@ class S49PassiveHostClockDEV:
             "aborted_callbacks": len(self.timer.aborted_tickets()),
             "advisory_failures": len(self._failures),
             "failure_overflow": self._overflow,
+            "legacy_error_overflow": self._legacy_error_overflow,
             "action_issuer": "EXISTING_S49_ONLY",
             "additional_native_receives": 0,
             "additional_native_probes": 0,

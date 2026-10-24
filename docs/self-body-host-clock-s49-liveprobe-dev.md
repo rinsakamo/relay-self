@@ -1,6 +1,6 @@
 # SelfBody S49 live_probe host-clock adapter — isolated offline DEV
 
-**SOURCE_STAGED / LOCAL_PY312_NOT_RUN / OWNER_HOOK_NOT_CONNECTED /
+**LOCAL_PY312_OFFLINE_VERIFIED / OWNER_HOOK_NOT_CONNECTED /
 DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**
 
 Parent: verified passive clock **`5a64df726a9afad995e193ad1092c6c23e270327`**.
@@ -76,11 +76,40 @@ capacity, backwards/error clock, aborted callbacks, ordinary non-veto, fatal
 cancellation, original fake-owner cleanup, bounded failure ledger and output
 claims. They are not a physical World trial.
 
-**These new files have not been tested on WSL2 Python3.12 yet.** Independent
-LocalCodex exact-final-HEAD focused tests, Ruff, repository contracts,
-Protected82/770/historical-index and adoption v2 (19/15+4), negative history
-and after/before SHA are required before an adoption decision. Preserve
-initial failures and fix/retest only these additive isolated DEV files.
+Local verification on Windows 11 Home build 26200 / WSL2 Ubuntu 24.04.4,
+Python 3.12.3, pytest 9.1.1 and Ruff 0.17.0 uses the existing
+`/tmp/relay-self-dev-venv`. Evidence is outside the detached worktree at
+`/home/rinsa/selfbody-liveprobe-evidence-20261024-run1`.
+
+Initial expected HEAD `3c472501cb4d645303ff2a85eea9c35fe67c544d`:
+focused **297 PASS**, adoption v2 **52 PASS**, Ruff/contracts exit 0,
+FAIL/ERROR/SKIP 0. Added regression controls then reproduced **8 FAIL /
+36 PASS**, exit 1, retained in `negative-before-fix.log` and JUnit.
+The failures identified three isolated adapter gaps:
+
+- Forwarding every error to the unchanged legacy observer grew its error
+  list without bound. Forward at most `MAX_PROBES + 1` errors and count
+  `legacy_error_overflow`; retain the existing bounded adapter failure ledger.
+- An interrupt during abort after an ordinary callback error was swallowed.
+  Propagate that interrupt; if the primary failure is already cancellation or
+  a system interrupt, preserve that exact original exception instead.
+- Source join checked source strings but omitted row Self and reconstructed
+  view Self/epoch. Explicitly check these plus observation identity/provenance.
+
+New negative controls also cover task.cancel with original-owner finally,
+no fake success/report/Action, duplicate requests, projection interruption,
+invalid exit clocks, cross PID, secondary abort interruptions and native I/O
+tripwires. They remain fixtures, not real World evidence. Existing timer
+controls cover forged tickets/receipts, abort budgets and terminal reuse.
+
+Pre/post verification must include exact-final-HEAD focused, Ruff/contracts,
+Protected 82/82, Historical 770/770 and SHA256 index, and adoption v2
+historical 19 / unchanged 15 / adopted 4. No protected source was edited.
+Final focused **326 PASS / FAIL 0 / ERROR 0 / SKIP 0**; adoption v2
+**52 PASS**; Ruff and contracts exit 0. Added **11 test functions / 29
+parameter-expanded cases** beyond the initial 24 functions. Exact commit is recorded in the external evidence and
+Issue #632/#627/#537 reports. Only these three DEV files may differ from
+parent `5a64df726a9afad995e193ad1092c6c23e270327`.
 
 For future actual owner integration, separately review `self_demo` flag
 exclusivity, S49 original `live_probe` invocation, original collector

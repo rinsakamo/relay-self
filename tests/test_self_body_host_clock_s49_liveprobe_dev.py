@@ -398,3 +398,195 @@ def test_clock_exit_cancellation_aborts_ticket_and_propagates():
     assert len(relay.timer.aborted_tickets()) == 1
     assert relay.failures()[0].stage == "clock-exit"
     assert relay.failures()[0].cancelled_or_interrupted is True
+
+
+def test_both_error_histories_remain_bounded():
+    relay = observer(clock=ticks(1, 2))
+    async def run():
+        for _ in range(100):
+            await relay.observe(probe(8))
+    asyncio.run(run())
+    assert len(relay.views.summary()['observer_errors']) <= MAX_PROBES + 1
+    assert len(relay.failures()) == MAX_PROBES + 1
+    assert relay.summary()['legacy_error_overflow'] == 95
+
+
+@pytest.mark.parametrize('failure', [asyncio.CancelledError, KeyboardInterrupt,
+                                    SystemExit, BaseException])
+def test_abort_interrupt_after_ordinary_failure_propagates(failure, monkeypatch):
+    async def broken(_view):
+        raise RuntimeError('ordinary callback failure')
+    relay = observer(clock=ticks(1), work=broken)
+    def interrupted(_ticket):
+        raise failure('abort interrupted')
+    monkeypatch.setattr(relay.timer, 'abort', interrupted)
+    with pytest.raises(failure, match='abort interrupted'):
+        asyncio.run(relay.observe(probe(8)))
+    assert relay.timer.rows() == ()
+    assert [x.stage for x in relay.failures()] == ['clock-abort', 'callback']
+
+
+@pytest.mark.parametrize('field,value', [
+    ('self_id', 'foreign-self'), ('session_id', 'foreign-session'),
+    ('native_seq', 19), ('request_id', 'foreign-request'),
+    ('body_source_ref', 'forged-body'), ('world_source_ref', 'forged-world'),
+])
+def test_original_admission_row_substitution_rejected(field, value, monkeypatch):
+    relay = observer(clock=ticks(1, 2))
+    rows = relay.views.rows
+    def substituted():
+        return tuple(dict(row, **{field: value}) for row in rows())
+    monkeypatch.setattr(relay.views, 'rows', substituted)
+    asyncio.run(relay.observe(probe(8)))
+    assert relay.timer.rows() == ()
+    assert relay.failures()[0].stage == 'typed-view'
+
+
+@pytest.mark.parametrize('field,value', [('self_id', 'foreign-self'),
+                                         ('epoch_id', 'foreign-epoch')])
+def test_reconstructed_typed_view_identity_substitution(field, value, monkeypatch):
+    from experiments import self_body_host_clock_s49_liveprobe_dev as coupling
+    compose = coupling.compose_self_body_view
+    def substituted(**kwargs):
+        return replace(compose(**kwargs), **{field: value})
+    monkeypatch.setattr(coupling, 'compose_self_body_view', substituted)
+    relay = observer(clock=ticks(1, 2))
+    asyncio.run(relay.observe(probe(8)))
+    assert relay.timer.rows() == ()
+    assert relay.failures()[0].stage == 'typed-view'
+
+
+def test_actual_task_cancel_reaches_original_finally_without_report(tmp_path):
+    entered = asyncio.Event()
+    actions, cleanup, received = [], [], []
+    async def work(_view):
+        entered.set()
+        await asyncio.Future()
+    relay = observer(clock=ticks(1), work=work)
+    original_probe = probe(8)
+    original_observe = relay.views.observe
+    def reuse(reading):
+        assert reading is original_probe
+        received.append(reading)
+        original_observe(reading)
+    relay.views.observe = reuse
+    report = tmp_path / 'original-report.json'
+    async def original():
+        try:
+            await relay.observe(original_probe)
+            actions.append('original-action')
+            report.write_text('success')
+        finally:
+            cleanup.append('owner-finally')
+    async def run():
+        task = asyncio.create_task(original())
+        await entered.wait()
+        task.cancel('owner cancellation')
+        with pytest.raises(asyncio.CancelledError, match='owner cancellation'):
+            await task
+    asyncio.run(run())
+    assert received == [original_probe]
+    assert cleanup == ['owner-finally']
+    assert actions == []
+    assert not report.exists()
+    assert relay.timer.rows() == ()
+    assert len(relay.timer.aborted_tickets()) == 1
+
+
+def test_duplicate_request_with_new_native_seq_is_untimed():
+    relay = observer(clock=ticks(1, 2))
+    first = probe(8)
+    async def run():
+        await relay.observe(first)
+        await relay.observe(replace(probe(19), request_id=first.request_id))
+    asyncio.run(run())
+    assert len(relay.timer.rows()) == 1
+    assert len(relay.failures()) == 1
+
+
+@pytest.mark.parametrize('failure', [RuntimeError, asyncio.CancelledError])
+def test_projection_failure_preserves_ordinary_vs_cancel(failure, monkeypatch):
+    from experiments import self_body_host_clock_s49_liveprobe_dev as coupling
+    def broken(_reading):
+        raise failure('projection failure')
+    monkeypatch.setattr(coupling, 'project_mineflayer_present', broken)
+    relay = observer(clock=ticks(1, 2))
+    if failure is RuntimeError:
+        asyncio.run(relay.observe(probe(8)))
+    else:
+        with pytest.raises(failure):
+            asyncio.run(relay.observe(probe(8)))
+    assert len(relay.views.rows()) == 1
+    assert relay.timer.rows() == ()
+    assert relay.failures()[0].stage == 'typed-view'
+
+
+@pytest.mark.parametrize('bad', [-1, True, 1.5, float('nan'), 2**63])
+def test_exit_bad_timestamp_abort_and_terminal_without_l0_veto(bad):
+    relay = observer(clock=ticks(10, bad, 20))
+    l0 = []
+    async def run():
+        for seq in (8, 19):
+            await relay.observe(probe(seq))
+            l0.append(seq)
+    asyncio.run(run())
+    assert l0 == [8, 19]
+    assert relay.timer.rows() == ()
+    assert len(relay.timer.aborted_tickets()) == 1
+    assert [x.stage for x in relay.failures()] == ['clock-exit', 'clock-enter']
+
+
+def test_cross_pid_callback_exit_aborts_without_sample(monkeypatch):
+    import os
+    original_pid = os.getpid()
+    async def foreign_pid(_view):
+        monkeypatch.setattr(os, 'getpid', lambda: original_pid + 1)
+    relay = observer(clock=ticks(10, 20), work=foreign_pid)
+    asyncio.run(relay.observe(probe(8)))
+    assert relay.timer.rows() == ()
+    assert len(relay.timer.aborted_tickets()) == 1
+    assert relay.failures()[0].stage == 'clock-exit'
+
+
+@pytest.mark.parametrize('secondary', [RuntimeError, asyncio.CancelledError,
+                                      KeyboardInterrupt, SystemExit, BaseException])
+def test_original_cancellation_identity_wins_over_abort_failure(secondary, monkeypatch):
+    original = asyncio.CancelledError('original cancellation identity')
+    async def cancel(_view):
+        raise original
+    relay = observer(clock=ticks(1), work=cancel)
+    def broken(_ticket):
+        raise secondary('secondary')
+    monkeypatch.setattr(relay.timer, 'abort', broken)
+    with pytest.raises(asyncio.CancelledError) as caught:
+        asyncio.run(relay.observe(probe(8)))
+    assert caught.value is original
+    assert relay.timer.rows() == ()
+    assert [x.stage for x in relay.failures()] == ['clock-abort', 'callback']
+
+
+def test_received_probe_path_cannot_call_native_reader_or_new_session(monkeypatch):
+    from adapters.mineflayer.process_session import MineflayerProcessSession
+    from experiments import self_body_host_clock_s49_liveprobe_dev as coupling
+    extra = []
+    def forbidden(*args, **kwargs):
+        extra.append('forbidden-native-call')
+        raise AssertionError('extra native reader/session/issuer')
+    monkeypatch.setattr(MineflayerProcessSession, 'receive', forbidden)
+    monkeypatch.setattr(s49_normal_session_real_ci, '_new_session', forbidden)
+    for name in dir(MineflayerProcessSession):
+        if name.startswith('send_'):
+            monkeypatch.setattr(MineflayerProcessSession, name, forbidden)
+    reading = probe(8)
+    projection = coupling.project_mineflayer_present
+    identities = []
+    def project_same(value):
+        identities.append(value is reading)
+        return projection(value)
+    monkeypatch.setattr(coupling, 'project_mineflayer_present', project_same)
+    relay = observer(clock=ticks(1, 2))
+    asyncio.run(relay.observe(reading))
+    assert extra == []
+    assert identities == [True]
+    assert len(relay.timer.rows()) == 1
+    assert relay.failures() == ()
