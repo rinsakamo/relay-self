@@ -49,3 +49,19 @@ JAR entries, ensures protected S49/P1 source blob identities, and does not
 launch Paper, Minecraft, Mineflayer or any physical World. Installation,
 console command execution, native S49 Action integration, or independent R
 source qualification is **not approved or evidenced by this build**.
+
+### Paper observer run identity and strict transcript DEV
+
+Every explicit console observation now mints a fresh Paper-local UUIDv4
+`run_id`, included in SUBJECT, BEGIN, all eight TICK callbacks, and COMPLETE.
+COMPLETE also binds the claimed player UUID, World UUID and last Paper tick.
+The DEV-only offline `review_s49_paper_transcript_dev` requires one ordered
+SUBJECT → BEGIN → 8 TICK → COMPLETE transcript, rejecting ABORT, restart,
+mixed-run samples, mismatched session/action/world/player, and forged
+authority fields. The older nine-line parser still accepts legacy test
+fixtures **only** as non-admitting source-shape candidates.
+
+The `run_id` is not cryptographic attestation and the Paper log text is not
+independently custodied. In particular, a server-side effective motor release
+before BEGIN, comprehensive intra-tick Self inactivity, and the absence of
+other Action issuers remain **NOT_ATTESTED**. No P1 WAIT source is minted.
