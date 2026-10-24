@@ -95,11 +95,16 @@ def test_compress_two_positive_sites_into_prd_rule():
     assert c.regions == ((0, 0), (2, 0))
     assert len(c.source_pairs) == 2
     assert c.as_prediction_rule().assignments[0].value == "zombie"
-    assert c.as_prediction_rule().provenance.source == "relay_self.dev.self_world_regularity"
+    assert (
+        c.as_prediction_rule().provenance.source
+        == "relay_self.dev.self_world_regularity"
+    )
 
 
 def test_heldout_other_region_matches_but_cheap_repeat_matches_too():
-    result = evaluate_unseen_region(_candidate(), _pair(7, target="entity-three", x=66.0))
+    result = evaluate_unseen_region(
+        _candidate(), _pair(7, target="entity-three", x=66.0)
+    )
     assert result.status is TransferStatus.MATCH
     assert result.cheap_repeat_status is TransferStatus.MATCH
     assert result.predicted_label == result.observed_label == "zombie"
@@ -130,9 +135,15 @@ def test_training_requires_two_locations_two_entities():
     a = _training()[0]
     assert induce_label_persistence((a,), label="zombie", max_native_seq_gap=2) is None
     b = _pair(4, target="entity-two", x=3.0)
-    assert induce_label_persistence((a, b), label="zombie", max_native_seq_gap=2) is None
+    assert (
+        induce_label_persistence((a, b), label="zombie", max_native_seq_gap=2)
+        is None
+    )
     c = _pair(4, target="entity-one", x=34.0)
-    assert induce_label_persistence((a, c), label="zombie", max_native_seq_gap=2) is None
+    assert (
+        induce_label_persistence((a, c), label="zombie", max_native_seq_gap=2)
+        is None
+    )
 
 
 def test_training_mismatch_never_yields_rule():
