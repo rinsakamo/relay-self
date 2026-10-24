@@ -1,3 +1,47 @@
+## 2026-10-24 — P1 sensor handoff to the existing M0/SelfBody view (DEV)
+
+**PRODUCT ADAPTER ONLY / UNATTESTED P1 INPUT / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
+P1 physical-fatigue ownership remains in the separate unmerged Draft
+[#626](https://github.com/rinsakamo/relay-self/pull/626), specifically
+`experiments/fatigue_p1.py` and `experiments/fatigue_p1_boundary.py`.
+Their physiology, WAIT recovery, profile and World-tick verification are **not**
+copied, edited or bypassed by this work.
+
+The optional `P1OwnerSensorHandoff` supplies a **sensor reading**, not true
+fatigue or physical recovery, and an original-owner **source pointer**, not
+independent authenticity. `project_p1_sensor` correlates session, original
+native seq/request/provenance, source owner World tick, profile SHA256 and
+activity/wait-witness pointer. A WAIT-shaped report without its idle-interval
+reference is rejected; a MOVE/FIGHT report carrying WAIT witness is also
+rejected. **The existence of a string witness is not an attestation that a
+full physical tick was idle**. The S/R executor and P1's existing
+`SourceBoundTick` / `reconcile` gate alone may establish physical semantics.
+
+`compose_b0_cognition_views(..., p1_handoff=None)` keeps legacy B0 behavior
+and `P1 UNKNOWN` by default. When an explicit producer-local handoff is
+supplied, `SelfBody.sensed("p1_fatigue_sensor")` has
+`BodyOrigin.INTEROCEPTION`, alongside the original observed native
+`food/health` and separate `m0_energy_sensor`; it **never** becomes
+`BodyOrigin.OBSERVATION` nor grants movement/WAIT/S10/M0 permissions.
+The optional summary labels this as `PRODUCER_LOCAL_UNATTESTED`, never
+qualified native source. The existing S51 entry does **not** enable this
+optional handoff: until the P1 owner can supply a genuinely correlated
+and source-checked tick, real product fatigue remains UNKNOWN.
+
+Added offline positive/negative tests cover the unchanged default,
+separate P1/M0 origins, invalid session, native seq/request, profile,
+World tick, nonfinite sensor, REST smuggling, false WAIT witness and
+blocked/MOVE non-recovery. Original physical P1 invariants:
+**physical WAIT recovers fatigue only on authenticated full World ticks;
+blocked MOVE is not WAIT; M0/Paper BASAL continues during WAIT.**
+
+This is an implementation seam, not a runtime-qualified P1 integration.
+Next owner handoff requires #626/S/R original verified tick and Action state,
+then exact-HEAD Python3.12 FAST and explicitly authorized disposable DEV World.
+No unqualified sensor can be used to award physiological or scientific success.
+
+---
+
 ## 2026-10-24 — B0/S51 owner-local multi-epoch cognition trace (DEV)
 
 **Implementation candidate, not independently tested or qualified.** The
