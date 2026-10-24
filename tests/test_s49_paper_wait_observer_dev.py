@@ -72,6 +72,23 @@ def test_java_source_is_console_opt_in_one_shot_sync_observation_only():
     assert "PLUGIN_DISABLED" in source
     assert "S49_OBSERVER_SUBJECT" in source
     assert "S49_OBSERVER_SERVER_INPUT" in source
+    assert "relays49preobserve" in source
+    assert "S49_OBSERVER_PRE_ARM" in source
+    assert "S49_OBSERVER_BACK_TRUE" in source
+    assert "S49_OBSERVER_BACK_FALSE" in source
+    assert "backOnTick" in source
+    assert "prePhase = 2;" in source
+    assert "prePhase = 3;" in source
+    assert "releaseTick <= backOnTick" in source
+    assert "MAX_PRE_ARM_TICKS = 240L" in source
+    assert "PRE_ACTION_TIMEOUT_OR_CLOCK_RESET" in source
+    assert "PRE_ACTION_UNOBSERVED_BACK_ON" in source
+    assert "PRE_ACTION_UNOBSERVED_BACK_OFF" in source
+    assert "PRE_ACTION_FOREIGN_INPUT" in source
+    assert "observePre(subject)" in source
+    assert "if (preAction && prePhase < 3)" in source
+    assert "getPluginManager().registerEvents(this, this)" in source
+
     assert "input_idle=true" in source
     assert "s49_release_causality=NOT_ATTESTED" in source
     assert "subject.getCurrentInput()" in source

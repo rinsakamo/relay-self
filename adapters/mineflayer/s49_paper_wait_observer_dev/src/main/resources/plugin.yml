@@ -8,3 +8,6 @@ commands:
   relays49observe:
     description: 'Console only: claim one S49 closed Action for 8 Paper samples; no WAIT authority'
     usage: '/relays49observe <action_id> <session_id> <player_uuid>'
+  relays49preobserve:
+    description: 'Console only: pre-arm read-only BACK on/off observer; no Action authority'
+    usage: '/relays49preobserve <action_id> <session_id> <player_uuid>'

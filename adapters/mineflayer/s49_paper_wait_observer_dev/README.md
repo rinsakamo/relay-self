@@ -121,3 +121,40 @@ preexisting/default server input. The R gate must independently bind
 a server-observed transition and the S49 original cleanup chronology;
 the DEV parser must never infer such a transition from a UUID or
 console action claim.
+
+### Pre-action BACK edge (optional DEV path; not run in a World)
+
+The existing `/relays49observe` *post-Action* read-only command remains
+unchanged and is still available for its earlier source-shape checks. An
+additional one-shot, console-only `/relays49preobserve <action_id>
+<session_id> <player_uuid>` command is now intended **before** the sole S49
+Executor issues MOVE_BACKWARD. This is an alternate observer mode, **not**
+another issuer or an authorizer. Config `enabled: false` stays the default;
+neither Java nor Python invokes the command automatically.
+
+The pre-action mode requires server input idle at arm, then exclusively
+BACK input true via a Paper PlayerInputEvent, followed at a *later World
+tick* by all input flags false via a second event. It records
+`S49_OBSERVER_PRE_ARM`, `S49_OBSERVER_BACK_TRUE`, and
+`S49_OBSERVER_BACK_FALSE` with the same Paper-owned per-run UUIDv4,
+claimed action/session, and server World UUID. After the BACK-off event it
+begins the existing `SERVER_INPUT → BEGIN → 8 TICK → COMPLETE` idle
+screen. Pre-arm watchdog timeout is 240 Paper ticks. A missing event,
+foreign input, clock reset, Self world/session switch, new activity during
+the idle window, or no complete 8 ticks aborts the candidate. Self movement
+*during the actual backward Action* is expected and not a pre-arm veto;
+movement after the observed release invalidates the idle window. No action
+or physical input is changed by this plugin.
+
+The independent `review_s49_preaction_paper_dev` rejects missing,
+duplicated, reordered, cross-run, noncanonical, or forged claimed-edge
+records and checks the existing S49 typed S16 closure/8-tick transcript
+structure. All provided Java log lines are still *caller supplied* unless
+independently custodied. Even a valid Paper-observed BACK true→false edge
+cannot prove it was caused by the particular S49 native clear ACK. It
+also does not establish all World-tick inactivity, coverage of all
+other issuers, or any physical WAIT admission. P1 remains at zero
+recovery and original protected files remain unchanged.
+
+No real Minecraft/Paper server, physical Action, QUALIFICATION or SCIENCE
+is run by the isolated Java compile / Python 3.12 FAST gates.

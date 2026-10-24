@@ -20,15 +20,21 @@ import org.bukkit.scheduler.BukkitTask;
 /**
  * Standalone DEV-only, console-opt-in, READ-ONLY Paper clock observer.
  *
- * The console supplies action/session IDs AFTER it believes S49 has closed.
- * These IDs are untrusted claims: Paper does NOT receive an S16 receipt.
+ * The legacy console command claims a closed S49 Action. A distinct
+ * pre-action command arms observation before any server-seen BACK input.
+ * All console IDs remain untrusted: Paper has no authenticated S16 receipt.
  * Synchronous ticks are callback observations, not whole-tick inactivity.
  * This observer NEVER changes controls, World, energy, or Action authority.
  */
 public final class S49WaitObserverPlugin extends JavaPlugin implements Listener {
     private static final int SAMPLE_COUNT = 8;
+    private static final long MAX_PRE_ARM_TICKS = 240L;
     private boolean used = false;
     private boolean active = false;
+    private boolean preAction = false;
+    private int prePhase = 0; // 1 armed, 2 back ON, 3 back OFF/sampling
+    private long preArmTick;
+    private long backOnTick;
     private BukkitTask task;
     private String marker;
     private String action;
@@ -52,7 +58,8 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
     public boolean onCommand(
         CommandSender sender, Command command, String label, String[] args
     ) {
-        if (!command.getName().equalsIgnoreCase("relays49observe")) {
+        boolean pre = command.getName().equalsIgnoreCase("relays49preobserve");
+        if (!pre && !command.getName().equalsIgnoreCase("relays49observe")) {
             return false;
         }
         if (!(sender instanceof ConsoleCommandSender)
@@ -88,6 +95,8 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
         World world = subject.getWorld();
         used = true;             // consume before publishing any source row
         active = true;
+        preAction = pre;
+        prePhase = pre ? 1 : 0;
         action = args[0];
         session = args[1];
         observerRunId = UUID.randomUUID().toString();
@@ -95,6 +104,7 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
         playerId = parsedPlayer;
         worldId = world.getUID();
         beginTick = world.getFullTime();
+        preArmTick = beginTick;
         index = 0;
         startingLocation = subject.getLocation();
         try {
@@ -109,6 +119,14 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
                 + " session_id=" + session + " player_uuid=" + playerId
                 + " world=" + worldId + " run_id=" + observerRunId
                 + " clear_ack=UNATTESTED_CONSOLE_CLAIM");
+            if (preAction) {
+                getLogger().info("S49_OBSERVER_PRE_ARM " + baseFields()
+                    + " tick=" + preArmTick + " input_idle=true");
+                task = Bukkit.getScheduler().runTaskTimer(
+                    this, () -> observePre(subject), 1L, 1L
+                );
+                return true;
+            }
             getLogger().info("S49_OBSERVER_SERVER_INPUT action_id=" + action
                 + " session_id=" + session + " player_uuid=" + playerId
                 + " world=" + worldId + " run_id=" + observerRunId
@@ -125,6 +143,56 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
             throw ex;
         }
         return true;
+    }
+
+    private static boolean backwardOnly(Input input) {
+        return input != null && input.isBackward()
+            && !input.isForward() && !input.isLeft() && !input.isRight()
+            && !input.isJump() && !input.isSprint() && !input.isSneak();
+    }
+
+    private void observePre(Player subject) {
+        if (!active || !preAction) {
+            return;
+        }
+        try {
+            if (!Bukkit.isPrimaryThread() || !subject.isOnline()
+                    || subject.isDead() || !subject.getUniqueId().equals(playerId)
+                    || !subject.getWorld().getUID().equals(worldId)) {
+                abort("PRE_ACTION_OWNER_OR_WORLD_CHANGED");
+                return;
+            }
+            long now = subject.getWorld().getFullTime();
+            if (now < preArmTick || now - preArmTick > MAX_PRE_ARM_TICKS) {
+                abort("PRE_ACTION_TIMEOUT_OR_CLOCK_RESET");
+                return;
+            }
+            if (prePhase == 1) {
+                if (!idleInput(subject.getCurrentInput())) {
+                    abort("PRE_ACTION_UNOBSERVED_BACK_ON");
+                }
+                return;
+            }
+            if (prePhase == 2) {
+                if (!backwardOnly(subject.getCurrentInput())) {
+                    abort("PRE_ACTION_UNOBSERVED_BACK_OFF");
+                }
+                return;
+            }
+            if (prePhase != 3) {
+                abort("PRE_ACTION_PHASE_INVALID");
+                return;
+            }
+            // An input event may have released BACK earlier in this same
+            // tick; the first stable callback must occur on a later tick.
+            if (now == beginTick) {
+                return;
+            }
+            observe(subject);
+        } catch (RuntimeException ex) {
+            abort("PRE_ACTION_OBSERVER_EXCEPTION");
+            throw ex;
+        }
     }
 
     private static boolean idleInput(Input input) {
@@ -145,7 +213,51 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onPlayerInput(PlayerInputEvent event) {
         if (active && event.getPlayer().getUniqueId().equals(playerId)) {
-            if (!Bukkit.isPrimaryThread() || !idleInput(event.getInput())) {
+            if (!Bukkit.isPrimaryThread()) {
+                abort("INPUT_EVENT_OFF_PRIMARY_THREAD");
+                return;
+            }
+            if (preAction && prePhase == 1) {
+                if (backwardOnly(event.getInput())) {
+                    backOnTick = event.getPlayer().getWorld().getFullTime();
+                    if (backOnTick < preArmTick) {
+                        abort("PRE_ACTION_BACK_ON_BEFORE_ARM");
+                        return;
+                    }
+                    prePhase = 2;
+                    getLogger().info("S49_OBSERVER_BACK_TRUE " + baseFields()
+                        + " tick=" + backOnTick + " back=true");
+                } else if (!idleInput(event.getInput())) {
+                    abort("PRE_ACTION_FOREIGN_INPUT");
+                }
+                return;
+            }
+            if (preAction && prePhase == 2) {
+                if (idleInput(event.getInput())) {
+                    long releaseTick = event.getPlayer().getWorld().getFullTime();
+                    if (releaseTick <= backOnTick) {
+                        abort("PRE_ACTION_BACK_EDGE_SAME_TICK_OR_REWIND");
+                        return;
+                    }
+                    prePhase = 3;
+                    beginTick = releaseTick;
+                    index = 0;
+                    startingLocation = event.getPlayer().getLocation();
+                    getLogger().info("S49_OBSERVER_BACK_FALSE " + baseFields()
+                        + " tick=" + releaseTick + " back=false");
+                    getLogger().info("S49_OBSERVER_SERVER_INPUT action_id="
+                        + action + " session_id=" + session
+                        + " player_uuid=" + playerId + " world=" + worldId
+                        + " run_id=" + observerRunId + " tick=" + releaseTick
+                        + " input_idle=true s49_release_causality=NOT_ATTESTED");
+                    getLogger().info("S49_DEV_BACK_WAIT_BEGIN " + baseFields()
+                        + " tick=" + beginTick + " index=0 input_idle=true");
+                } else if (!backwardOnly(event.getInput())) {
+                    abort("PRE_ACTION_FOREIGN_INPUT");
+                }
+                return;
+            }
+            if (!idleInput(event.getInput())) {
                 abort("SERVER_INPUT_ACTIVE_DURING_OBSERVATION");
             }
         }
@@ -154,6 +266,10 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onPlayerMove(PlayerMoveEvent event) {
         if (active && event.getPlayer().getUniqueId().equals(playerId)) {
+            // The initial S49 backward Action legitimately moves the Self.
+            if (preAction && prePhase < 3) {
+                return;
+            }
             if (!Bukkit.isPrimaryThread()
                     || !samePosition(event.getFrom(), event.getTo())) {
                 abort("SELF_MOVEMENT_EVENT_DURING_OBSERVATION");
