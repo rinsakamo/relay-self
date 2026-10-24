@@ -199,3 +199,14 @@ def test_no_motor_or_native_reader_interface():
         "commit_learning", "update_world", "native_timestamp",
     ):
         assert not hasattr(m, forbidden)
+
+
+def test_duplicate_probe_request_id_with_advancing_seq_is_rejected():
+    m = PassiveHostCallbackTimer(self_id="s1", clock=ticks(10, 11))
+    m.exit(m.enter(body(seq=1)))
+    later = body(seq=2)
+    stale = replace(
+        later.observation, request_id="probe-1",
+    )
+    with pytest.raises(PassiveHostClockRejected, match="replay"):
+        m.enter(replace(later, observation=stale))
