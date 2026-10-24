@@ -5,11 +5,17 @@ No S49/S51 execution, World, native Action, actual P1 or M0 credit.
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError, replace
+from types import SimpleNamespace
+import json
 
 import pytest
 
+from adapters.mineflayer import self_demo
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
-from adapters.mineflayer.self_body_m0_projection import compose_b0_cognition_views
+from adapters.mineflayer.self_body_m0_projection import (
+    compose_b0_cognition_views,
+    summarize_b0_cognition_views,
+)
 from experiments.metabolism_viability import Interoception
 from relay_self.self_body import (
     BodyOrigin,
@@ -127,3 +133,128 @@ def test_interoception_cannot_be_promoted_without_native_present():
             session_id=body.session_id, epoch_id=body.epoch_id,
             interoceptions=body.interoceptions,
         )
+
+
+def test_b0_cognition_epoch_summary_exposes_sensor_only():
+    probe, ledger, decision = prepared()
+    summary = summarize_b0_cognition_views(project(probe, ledger, decision))
+    assert summary["classification"] == "DEV_ONLY_PRODUCER_LOCAL_M0_INTEROCEPTION"
+    assert summary["native_source"] == (
+        f"native-probe:{probe.session_id}:{probe.seq}:{probe.request_id}"
+    )
+    assert summary["world_source"] == (
+        f"present:{probe.session_id}:{probe.seq}:{probe.request_id}"
+    )
+    assert summary["m0_energy_sensor"] == decision.sensor_reading
+    assert summary["native_food"] == probe.snapshot.food
+    assert summary["p1_fatigue"] is None
+    assert summary["true_m0_energy_exposed"] is False
+    assert summary["additional_native_reads"] == summary["additional_actions"] == 0
+    assert "energy" not in summary and "true_m0_energy" not in summary
+
+
+@pytest.mark.parametrize("attack", (
+    None, "source", "sensor", "out_of_order", "p1_forged", "missing",
+))
+def test_b0_dev_appetite_epoch_trace_needs_all_native_and_sensor_sources(
+    monkeypatch, tmp_path, attack,
+):
+    from test_self_dev import args as dev_args
+
+    monkeypatch.setattr(self_demo.shutil, "which", lambda _: "/tool")
+    monkeypatch.setattr(
+        self_demo.subprocess, "run",
+        lambda *a, **kw: SimpleNamespace(
+            returncode=0, stdout="version", stderr="",
+        ),
+    )
+
+    async def original_owner(report, server_log):
+        sid = "native-s51-dev"
+        ledger = B0EnergyLedger(sid)
+        views = []
+        trace = []
+        for n, seq in enumerate((8, 19)):
+            probe = replace(
+                native_probe(seq, 3.0, sid=sid),
+                request_id=f"b0-ground-appetite-{n:02d}",
+            )
+            decision = ledger.decide(probe)
+            assert decision.kind == "WAIT"
+            view = compose_b0_cognition_views(
+                probe, ledger, decision, self_id="s51-b0-dev-self",
+                epoch_id=f"b0-appetite-{seq}",
+            )
+            views.append(summarize_b0_cognition_views(view))
+            trace.append({
+                "probe_seq": seq, "kind": decision.kind,
+                "food": probe.snapshot.food,
+                "energy_sensor_reading": decision.sensor_reading,
+                "metabolic_tick": decision.body_tick,
+            })
+            ledger.step("WAIT")
+        last = replace(
+            native_probe(47, 3.0, sid=sid),
+            request_id="b0-next-l0-native",
+        )
+        decision = ledger.decide(last)
+        next_view = summarize_b0_cognition_views(compose_b0_cognition_views(
+            last, ledger, decision, self_id="s51-b0-dev-self",
+            epoch_id="b0-next-probe-47",
+        ))
+        views.append(next_view)
+        if attack == "source":
+            views[0]["native_source"] = "native-probe:other:8:foreign"
+        elif attack == "sensor":
+            views[1]["m0_energy_sensor"] += 7
+        elif attack == "out_of_order":
+            views[0]["source_seq"] = 70
+        elif attack == "p1_forged":
+            views[0]["p1_fatigue"] = 0.0
+        body = {
+            "status": "PASS",
+            "classification": "QUALIFIED",
+            "session_id": sid,
+            "server_exit": 0, "node_exit": 0,
+            "ground_pickup": {"movement_outcomes": []},
+            "ground_appetite_trace": trace,
+            "next_native_probe": {
+                "session_id": sid, "seq": 47,
+                "request_id": "b0-next-l0-native",
+                "snapshot": {
+                    "food": last.snapshot.food, "health": last.snapshot.health,
+                },
+            },
+            "next_l0": {
+                "kind": decision.kind,
+                "energy_sensor_reading": decision.sensor_reading,
+            },
+            "metabolism_after_eat": {
+                "tick": ledger.body.tick, "credit_count": 0,
+            },
+            "dev_b0_cognition_next_epoch": next_view,
+        }
+        if attack != "missing":
+            body["dev_b0_cognition_epochs"] = views
+        report.write_text(json.dumps(body), encoding="utf-8")
+        return 0
+
+    monkeypatch.setattr(self_demo, "_run_b0_ground_dev", original_owner)
+    opts = dev_args(tmp_path / (attack or "joined"))
+    opts.dev_scenario = "b0-ground"
+    result = self_demo._dev_run(opts)
+    receipt = json.loads((opts.output_dir / "dev_receipt.json").read_text())
+    assert result == (1 if attack not in (None, "missing") else 0)
+    assert receipt["dev_b0_cognition_epoch_trace"] == (
+        "ORDERED_PRODUCER_LOCAL_DEV" if attack is None
+        else "NOT_OBSERVED" if attack == "missing"
+        else "UNDETERMINED"
+    )
+    assert receipt["dev_b0_cognition_epoch_count"] == (
+        3 if attack is None else 0
+    )
+    assert receipt["classification"] == "DEV_ONLY"
+    assert receipt["engineering_qualified"] is False
+    assert receipt["science_success"] is False
+    assert receipt["m_energy_credited"] is False
+    assert (opts.output_dir / "SHA256SUMS").is_file()
