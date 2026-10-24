@@ -184,6 +184,70 @@ def test_dev_b0_receipt_cannot_promote_forged_s51_qualified(tmp_path, monkeypatc
 
 
 
+
+@pytest.mark.parametrize("tamper", (None, "sensor", "wrong_native", "fake_p1"))
+def test_dev_b0_owner_sensor_body_view_source_join_is_only_producer_local(
+    tmp_path, monkeypatch, tamper,
+):
+    monkeypatch.setattr(demo.shutil, "which", lambda _: "/tool")
+    monkeypatch.setattr(demo.subprocess, "run", lambda *a, **kw:
+                        SimpleNamespace(returncode=0, stdout="version", stderr=""))
+
+    async def owner(report, server_log):
+        sid = "dev-s51-source"
+        seq = 44
+        request = "b0-next-l0-native"
+        view = {
+            "classification": "DEV_ONLY_PRODUCER_LOCAL_M0_INTEROCEPTION",
+            "native_source": f"native-probe:{sid}:{seq}:{request}",
+            "world_source": f"present:{sid}:{seq}:{request}",
+            "body_world_same_object": True,
+            "source_seq": seq, "l0_kind": "WAIT", "m0_tick": 12,
+            "m0_energy_sensor": 8.0,
+            "m0_sensor_origin": "interoception",
+            "m0_sensor_owner_source": "b0-m0-owner-local-sensor",
+            "native_food": 17.0, "native_health": 20.0,
+            "p1_fatigue": None, "true_m0_energy_exposed": False,
+            "s10_updates": 0, "additional_native_reads": 0,
+            "additional_actions": 0, "qualification": False,
+        }
+        if tamper == "sensor":
+            view["m0_energy_sensor"] = 18.0
+        elif tamper == "wrong_native":
+            view["native_source"] = "native-probe:forged"
+        elif tamper == "fake_p1":
+            view["p1_fatigue"] = 0.0
+        report.write_text(json.dumps({
+            "status": "PASS", "classification": "QUALIFIED", "session_id": sid,
+            "server_exit": 0, "node_exit": 0,
+            "source_pair_trace": [], "decisions": [], "actual_native_actions": [],
+            "ground_pickup": {"status": "DEV_ONLY", "movement_outcomes": []},
+            "next_native_probe": {
+                "session_id": sid, "seq": seq, "request_id": request,
+                "snapshot": {"food": 17.0, "health": 20.0},
+            },
+            "next_l0": {"kind": "WAIT", "energy_sensor_reading": 8.0},
+            "metabolism_after_eat": {"tick": 12, "credit_count": 1},
+            "dev_b0_cognition_next_epoch": view,
+        }), encoding="utf-8")
+        return 0
+
+    monkeypatch.setattr(demo, "_run_b0_ground_dev", owner)
+    root = tmp_path / (tamper or "joined")
+    options = args(root)
+    options.dev_scenario = "b0-ground"
+    result = demo._dev_run(options)
+    receipt = json.loads((root / "dev_receipt.json").read_text())
+    assert result == (0 if tamper is None else 1)
+    assert receipt["dev_b0_body_m0_interoception"] == (
+        "SOURCE_JOINED_PRODUCER_LOCAL_DEV" if tamper is None else "UNDETERMINED"
+    )
+    assert receipt["engineering_qualified"] is False
+    assert receipt["science_success"] is False
+    assert receipt["m_energy_credited"] is False
+
+
+
 def test_dev_b0_prelaunch_uses_fresh_world_not_rsee_clone(tmp_path, monkeypatch):
     from adapters.mineflayer import s51_eat_real_ci as s51
     monkeypatch.setenv('S51_REAL_SERVER_CI', '1')
