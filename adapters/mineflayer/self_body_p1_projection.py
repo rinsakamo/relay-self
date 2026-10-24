@@ -34,9 +34,21 @@ class P1OwnerSensorHandoff:
     wait_interval_ref: str | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class P1NativeCorrelation:
+    """S/R-provided exact tick/probe pairing; a claim, not attestation."""
+
+    session_id: str
+    native_seq: int
+    native_request_id: str
+    world_tick: int
+    world_source_ref: str
+
+
 def handoff_from_p1_owner_readout(
     present: MinecraftPresent,
     readout: object,
+    correlation: P1NativeCorrelation,
 ) -> P1OwnerSensorHandoff:
     """Accept ONLY the original P1 #626 producer's checked sensor readout.
 
@@ -53,8 +65,22 @@ def handoff_from_p1_owner_readout(
         raise InvalidSelfBodyData("original P1 typed sensor export required")
     if readout.source_scope != "P1_PRODUCER_LOCAL_NOT_WORLD_ATTESTED":
         raise InvalidSelfBodyData("P1 readout cannot claim source attestation")
-    if not isinstance(present, MinecraftPresent):
-        raise InvalidSelfBodyData("typed native Present required")
+    if not isinstance(present, MinecraftPresent) or not isinstance(
+        correlation, P1NativeCorrelation
+    ):
+        raise InvalidSelfBodyData("typed native Present and S/R tick correlation required")
+    if (
+        correlation.session_id != present.session_id
+        or correlation.session_id != readout.session_id
+        or type(correlation.native_seq) is not int
+        or correlation.native_seq != present.seq
+        or correlation.native_request_id != present.request_id
+        or type(correlation.world_tick) is not int
+        or correlation.world_tick != readout.world_tick
+        or not isinstance(correlation.world_source_ref, str)
+        or correlation.world_source_ref != readout.world_source_ref
+    ):
+        raise InvalidSelfBodyData("P1 owner tick not correlated to this native probe")
     handoff = P1OwnerSensorHandoff(
         session_id=readout.session_id,
         native_seq=present.seq,
