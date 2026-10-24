@@ -132,6 +132,9 @@ def review_s49_paper_transcript_dev(
         "original_text_sha256": hashlib.sha256(
             original_text.encode("utf-8")
         ).hexdigest(),
+        "normalized_paper_sha256": hashlib.sha256(
+            normalized.encode("utf-8")
+        ).hexdigest(),
         "source_authentication": "UNATTESTED_PAPER_LOG_TEXT",
         "server_effective_control_release": "NOT_ATTESTED",
         "whole_tick_self_inactivity": "NOT_ATTESTED",
