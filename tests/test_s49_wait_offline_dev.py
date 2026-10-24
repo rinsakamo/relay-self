@@ -161,3 +161,14 @@ def test_cancelled_window_saves_abort_before_rethrow(tmp_path):
     assert report["status"] == "CANCELLED_NOT_QUALIFIED"
     assert report["owner_rows"][-1]["kind"] == "ABORT"
     assert ex.wait_phase == "ABORTED"
+
+
+def test_paper_line_digest_distinguishes_lf_and_crlf():
+    paper = originals()[0]
+    first = _paper_rows(paper, marker=MARKER, world=WORLD, first=61)
+    second = _paper_rows(
+        paper.replace("\n", "\r\n"),
+        marker=MARKER, world=WORLD, first=61,
+    )
+    assert [tick for tick, _ in first] == [tick for tick, _ in second]
+    assert [ref for _, ref in first] != [ref for _, ref in second]
