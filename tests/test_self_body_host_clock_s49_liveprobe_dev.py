@@ -337,3 +337,32 @@ def test_malformed_native_subclass_property_not_inspected_for_failure_evidence()
     assert relay.failures()[0].session_id is None
     assert relay.failures()[0].native_seq is None
     assert relay.timer.rows() == ()
+
+
+def test_pure_projection_source_substitution_is_nonveto_and_untimed(monkeypatch):
+    from experiments import self_body_host_clock_s49_liveprobe_dev as coupling
+
+    original = coupling.project_body_present
+
+    def substituted(present):
+        correct = original(present)
+        return replace(correct, request_id="forged-request")
+
+    monkeypatch.setattr(coupling, "project_body_present", substituted)
+    relay = observer(clock=ticks(1, 2))
+    asyncio.run(relay.observe(probe(8)))
+    assert len(relay.views.rows()) == 1
+    assert relay.timer.rows() == ()
+    assert relay.failures()[0].stage == "typed-view"
+    assert relay.views.summary()["observer_errors"] == ["S49PassiveClockJoinRejected"]
+
+
+def test_real_python_monotonic_label_not_world_body_or_cpu_clock():
+    relay = S49PassiveHostClockDEV()
+    asyncio.run(relay.observe(probe(8)))
+    sample = relay.timer.rows()[0]
+    assert sample.origin is HostClockOrigin.PYTHON_PROCESS_MONOTONIC
+    assert sample.sample_kind == "PASSIVE_CALLBACK_PROCESSING_ONLY"
+    assert sample.movement_speed_mps is None
+    assert relay.summary()["physical_timing_attested"] is False
+    assert relay.summary()["cognition_time_attested"] is False
