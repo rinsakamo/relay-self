@@ -135,6 +135,7 @@ async def project_s49_backward_paper_dev(
     w3_original_root: Path | None = None,
     paper_collector_cursor: object | None = None,
     w4_read_audit: tuple | None = None,
+    os_native_event_log: Path | None = None,
 ) -> dict:
     """One-shot offline correlation from the original typed owner closure.
 
@@ -165,6 +166,7 @@ async def project_s49_backward_paper_dev(
         "two_buffer_archive_review": None,
         "producer_file_review": None,
         "w4_read_epoch_review": None,
+        "os_process_receipt_review": None,
         "source_authentication": "UNATTESTED_CALLER_PAPER_INPUT",
         "server_effective_control_release": "NOT_ATTESTED",
         "whole_tick_self_inactivity": "NOT_ATTESTED",
@@ -176,6 +178,8 @@ async def project_s49_backward_paper_dev(
     try:
         if require_preaction_edge not in (True, False) or type(require_preaction_edge) is not bool:
             raise BoundaryRejected("pre-action admission mode must be bool")
+        if os_native_event_log is not None and w4_read_audit is None:
+            raise BoundaryRejected("OS process receipt needs the original W4 epoch")
         if w4_read_audit is not None and w3_original_root is None:
             raise BoundaryRejected("W4 local read-epoch requires both original producer files")
         if (w3_original_root is None) != (paper_collector_cursor is None):
@@ -244,6 +248,18 @@ async def project_s49_backward_paper_dev(
                         report["w4_read_epoch_review"] = review_s49_w4_read_epoch_dev(
                             typed_capture, producer_review, w4_read_audit,
                         )
+                        if os_native_event_log is not None:
+                            from adapters.mineflayer.s49_os_process_receipt_dev import (
+                                review_s49_os_process_receipt_dev,
+                            )
+                            report["os_process_receipt_review"] = (
+                                review_s49_os_process_receipt_dev(
+                                    native_os_log=os_native_event_log,
+                                    w3_root=w3_original_root,
+                                    producer_review=producer_review,
+                                    w4_epoch_review=report["w4_read_epoch_review"],
+                                )
+                            )
         if marker != action + "-" + session:
             raise BoundaryRejected("S49 Paper marker not action/session bound")
         decoded = evidence.decoded_evidence

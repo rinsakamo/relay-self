@@ -274,3 +274,32 @@ Next independent R evidence must attest the actual original owner
 process/OS principal/epoch (not caller-declared labels), external
 source custody and server-effective BACK OFF causal attribution.
 A changed or stale local audit is never grounds for another Action.
+
+
+### Native-OS PID/starttime/reap ↔ W3 receipt ↔ W4 read epoch (offline DEV)
+
+The optional `s49_os_process_receipt_dev.py` replays an **existing** Native
+OS test JSONL event file (spawn with Linux `/proc/[pid]/stat` starttime,
+wait/reap, final process exit, and W3 receipt digest/content), read-only.
+It demands one PID+starttime, matching original process stat string,
+matching wait/exit/reap, and a byte-identical W3 sealed receipt linked
+to the previously screened producer source. The W4 local ACTION_READ
+epoch review and producer-file review must refer to the same session,
+Action and four W3 S16 source-line hashes. The S49 owner projection can
+optionally supply `os_native_event_log=...` alongside existing W3/Paper/W4
+inputs. There is no additional process, reader, World action or S10 update.
+
+PID alone can be reused. Even an `independent_observer_ack` in the local
+log is **self-reported** until the separate witness original/identity are
+authenticated outside this process. An inert Native OS test child cannot
+prove identity of original physical S49 Node or Minecraft session.
+The current Native OS record has no cryptographically authenticated W4
+read-epoch-to-OS-principal binding, no original Node stdin, no Minecraft
+TCP packets and no Paper server-effective BACK-off causal witness.
+
+The result `OS_EVENT_LOG_AND_W3_RECEIPT_SHAPE_ONLY` is never independent
+process/custody attestation. `os_process_identity_attested`,
+`original_s49_owner_process_to_w3_bound` and
+`cross_source_issuer_epoch_attested` remain false. Only an external R/W4
+source trust anchor and original-issuer process/epoch evidence can close
+this gap; until then SourceBoundTick(WAIT)=None and P1 recovery=0.
