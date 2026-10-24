@@ -15,7 +15,6 @@ from adapters.mineflayer.self_product_passive_views import (
 from experiments.self_body_host_clock_passive_dev import (
     HostClockOrigin,
     PassiveHostCallbackTimer,
-    PassiveHostClockRejected,
 )
 from experiments.self_body_host_clock_s49_liveprobe_dev import (
     S49PassiveClockJoinRejected,
@@ -324,16 +323,7 @@ def test_failed_abort_must_not_mask_original_callback_cancellation(monkeypatch):
 
 
 def test_malformed_native_subclass_property_not_inspected_for_failure_evidence():
-    from adapters.mineflayer.python_protocol import MineflayerObservation
-
-    class Trap(MineflayerObservation):
-        @property
-        def session_id(self):
-            raise AssertionError("foreign getter should not be executed")
-
-    native = probe(8)
-    # Not constructing Trap: instance-only override through object inheritance
-    # is enough to prove source correlation rejects an untrusted subtype.
+    # Reject non-native objects without invoking their hostile properties.
     class Foreign:
         @property
         def session_id(self):
