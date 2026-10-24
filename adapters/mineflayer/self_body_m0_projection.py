@@ -9,11 +9,11 @@ from dataclasses import dataclass
 
 from adapters.mineflayer.b0_energy_bridge import B0Decision, B0EnergyLedger
 from adapters.mineflayer.present_projection import project_mineflayer_present
+from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.self_body_p1_projection import (
     P1OwnerSensorHandoff,
     project_p1_sensor,
 )
-from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.self_body_projection import project_body_present
 from adapters.mineflayer.self_world_projection import project_self_world_present
 from experiments.metabolism_viability import observe_energy
