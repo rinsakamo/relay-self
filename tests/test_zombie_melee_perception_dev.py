@@ -38,6 +38,17 @@ def _frame(
             position=(d, 0.0, 0.0),
         ),
     )
+    if truncated:
+        assert d is not None
+        entities += tuple(
+            MinecraftEntityPresent(
+                entity_id=100 + i,
+                name="cow",
+                distance_m=5.0 + i / 10.0,
+                position=(5.0 + i / 10.0, 0.0, 0.0),
+            )
+            for i in range(15)
+        )
     present = MinecraftPresent(
         session_id=session,
         seq=seq,
@@ -221,3 +232,27 @@ def test_source_and_arm_cues_do_not_claim_animation_is_windup():
     result = _review(arm_swing=_swing())
     assert result.l1_motion.value == "ARM_SWING_OBSERVED_SYNTHETIC"
     assert result.l0_contact is L0ContactStatus.UNKNOWN
+
+
+def test_false_truncated_coverage_rejected_without_native_claim():
+    frame = _frame(2, 1.0)
+    malformed = replace(
+        frame,
+        present=replace(
+            frame.present,
+            coverage_candidates=17,
+            coverage_truncated=True,
+        ),
+    )
+    with pytest.raises(MeleeCueRejected, match="inconsistent truncated"):
+        _review(malformed, _frame(1, 2.0))
+
+
+def test_fake_coverage_scope_rejected():
+    frame = _frame(2, 1.0)
+    malformed = replace(
+        frame,
+        present=replace(frame.present, coverage_scope="global_world_truth"),
+    )
+    with pytest.raises(MeleeCueRejected, match="bounded entity coverage"):
+        _review(malformed, _frame(1, 2.0))
