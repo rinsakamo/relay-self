@@ -371,3 +371,61 @@ def test_failed_original_native_terminal_never_qualifies_clock(
     assert receipt["dev_host_clock"] == "UNDETERMINED"
     assert receipt["dev_host_clock_samples"] == 0
     assert receipt["dev_host_clock_physical_attestation"] is False
+
+
+@pytest.mark.parametrize("attack", ["missing", "symlink", "foreign_source", "wrong_clock"])
+def test_outer_dev_receipt_rejects_corrupted_host_clock_evidence(
+    monkeypatch, tmp_path, attack,
+):
+    monkeypatch.setattr(self_demo.shutil, "which", lambda _name: "/fake-tool")
+    monkeypatch.setattr(self_demo.subprocess, "run", lambda *a, **kw:
+                        SimpleNamespace(returncode=0, stdout="v", stderr=""))
+    fake_owner(monkeypatch)
+    original = self_demo._run_disposable
+
+    async def tampered(report, log, *, passive_host_clock=False):
+        assert passive_host_clock is True
+        result = await original(report, log, passive_host_clock=True)
+        clock_file = report.parent / CLOCK_FILE
+        if attack == "missing":
+            clock_file.unlink()
+        elif attack == "symlink":
+            clock_file.unlink()
+            clock_file.symlink_to(report.parent / VIEWS_FILE)
+        else:
+            rows = rows_at(report.parent)
+            if attack == "foreign_source":
+                rows[0]["source_ref"] = "foreign-native-source"
+            else:
+                rows[0]["clock_origin"] = "SYNTHETIC_DEV_CLOCK"
+            clock_file.write_text(
+                "".join(json.dumps(row) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+        return result
+
+    monkeypatch.setattr(self_demo, "_run_disposable", tampered)
+    root = tmp_path / ("corrupt-" + attack)
+    assert self_demo._dev_run(args(root, self_passive_host_clock=True)) != 0
+    receipt = json.loads((root / "dev_receipt.json").read_text())
+    assert receipt.get("dev_host_clock") != "SOURCE_JOINED_CALLBACK_DEV_ONLY"
+    assert receipt["engineering_qualified"] is False
+    assert receipt["science_success"] is False
+
+
+def test_default_product_dev_receipt_does_not_report_clock(
+    monkeypatch, tmp_path,
+):
+    monkeypatch.setattr(self_demo.shutil, "which", lambda _name: "/fake-tool")
+    monkeypatch.setattr(self_demo.subprocess, "run", lambda *a, **kw:
+                        SimpleNamespace(returncode=0, stdout="v", stderr=""))
+    async def original(report, log):
+        report.write_text(json.dumps(native_report()), encoding="utf-8")
+        return 0
+
+    monkeypatch.setattr(self_demo, "_run_disposable", original)
+    root = tmp_path / "default-dev"
+    assert self_demo._dev_run(args(root)) == 0
+    receipt = json.loads((root / "dev_receipt.json").read_text())
+    assert "dev_host_clock" not in receipt
+    assert not (root / CLOCK_FILE).exists()
