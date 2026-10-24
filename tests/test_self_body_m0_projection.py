@@ -5,18 +5,23 @@ No S49/S51 execution, World, native Action, actual P1 or M0 credit.
 from __future__ import annotations
 
 import json
-from dataclasses import FrozenInstanceError, replace
-from types import SimpleNamespace
+import sys
+from dataclasses import FrozenInstanceError, make_dataclass, replace
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
 from adapters.mineflayer import self_demo
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+from adapters.mineflayer.present_projection import project_mineflayer_present
 from adapters.mineflayer.self_body_m0_projection import (
     compose_b0_cognition_views,
     summarize_b0_cognition_views,
 )
-from adapters.mineflayer.self_body_p1_projection import P1OwnerSensorHandoff
+from adapters.mineflayer.self_body_p1_projection import (
+    P1OwnerSensorHandoff,
+    handoff_from_p1_owner_readout,
+)
 from experiments.metabolism_viability import Interoception
 from relay_self.self_body import (
     BodyOrigin,
@@ -369,3 +374,54 @@ def test_p1_move_uses_no_idle_witness_and_cannot_claim_wait_recovery():
     assert "MOVE" in reading.provenance[-1].reference
     assert not hasattr(joined, "recovered")
     assert not hasattr(joined.body, "physical_wait_authorized")
+
+
+def test_original_p1_readout_boundary_fails_closed_without_owner(monkeypatch):
+    probe, _, _ = prepared()
+    present = project_mineflayer_present(probe)
+    # Until Draft #626 original modules are adopted into this checkout,
+    # no optional P1 reading may be silently treated as present.
+    monkeypatch.setitem(sys.modules, "experiments.p1_selfbody_export", None)
+    with pytest.raises(InvalidSelfBodyData, match="P1 owner exporter not integrated"):
+        handoff_from_p1_owner_readout(present, object())
+
+
+def test_p1_owner_readout_shape_join_remains_unattested(monkeypatch):
+    """Synthetic protocol compatibility, NOT proof of P1 or World source."""
+    probe, owner, decision = prepared()
+    present = project_mineflayer_present(probe)
+    dummy = ModuleType("experiments.p1_selfbody_export")
+    fields = [
+        ("session_id", str), ("profile_sha256", str),
+        ("world_tick", int), ("activity", str), ("world_source_ref", str),
+        ("wait_interval_ref", str | None), ("sensor_reading", float),
+        ("source_scope", str),
+    ]
+    dummy.P1SelfBodyReadout = make_dataclass(
+        "P1SelfBodyReadout", fields, frozen=True, slots=True,
+    )
+    monkeypatch.setitem(sys.modules, dummy.__name__, dummy)
+    owner_output = dummy.P1SelfBodyReadout(
+        probe.session_id, "a" * 64, 41, "WAIT", "p1-unattested:41",
+        "p1-idle-unattested:41", 0.4,
+        "P1_PRODUCER_LOCAL_NOT_WORLD_ATTESTED",
+    )
+    handoff = handoff_from_p1_owner_readout(present, owner_output)
+    views = compose_b0_cognition_views(
+        probe, owner, decision, self_id="dev-b0-self",
+        epoch_id="epoch-8", p1_handoff=handoff,
+    )
+    assert views.body.sensed("p1_fatigue_sensor").value == 0.4
+    assert views.body.sensed("p1_fatigue_sensor").origin is BodyOrigin.INTEROCEPTION
+    assert views.body.observed("p1_fatigue").origin is BodyOrigin.UNKNOWN
+    assert summarize_b0_cognition_views(views)["p1_source_scope"] == (
+        "PRODUCER_LOCAL_UNATTESTED"
+    )
+    with pytest.raises(InvalidSelfBodyData, match="cannot claim"):
+        handoff_from_p1_owner_readout(
+            present, replace(owner_output, source_scope="FULLY_ATTESTED"),
+        )
+    with pytest.raises(InvalidSelfBodyData, match="source mismatch"):
+        handoff_from_p1_owner_readout(
+            present, replace(owner_output, session_id="foreign-session"),
+        )
