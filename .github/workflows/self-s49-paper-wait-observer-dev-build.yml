@@ -1,0 +1,84 @@
+name: S49 Paper WAIT observer isolated DEV compile
+on:
+  push:
+    branches:
+      - self/integration-p1-m0-bodyworld-dev-20261024
+    paths:
+      - 'adapters/mineflayer/s49_paper_wait_observer_dev/**'
+      - '.github/workflows/self-s49-paper-wait-observer-dev-build.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s49-paper-observer-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  paper-observer-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require exact commit and immutable S49 / P1 originals
+        env:
+          ORIGINAL_S49_HEAD: d22e8c09d17f9743becb4e10c8a1e836e84e4201
+          ORIGINAL_P1_HEAD: 56600977fb730918ac67769df0ad9ab45f2e9d49
+        run: |
+          set -eu
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          for path in adapters/mineflayer/normal_action.py adapters/mineflayer/s49_normal_session_real_ci.py; do
+            test "$(git rev-parse "${ORIGINAL_S49_HEAD}:$path")" = "$(git rev-parse "HEAD:$path")"
+          done
+          for path in experiments/fatigue_p1.py experiments/fatigue_p1_boundary.py experiments/p1_selfbody_export.py tests/test_fatigue_p1.py tests/test_fatigue_p1_boundary.py tests/test_p1_selfbody_export.py; do
+            test "$(git rev-parse "${ORIGINAL_P1_HEAD}:$path")" = "$(git rev-parse "HEAD:$path")"
+          done
+          echo 'Protected P1/S49 original git blobs match'
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml
+      - name: Compile only the sidecar; no Minecraft World
+        run: |
+          set -eu
+          mvn --batch-mode --no-transfer-progress \
+            -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml \
+            -DskipTests package
+      - name: Audit packaged JAR class/resources and SHA-256
+        run: |
+          set -eu
+          JAR=adapters/mineflayer/s49_paper_wait_observer_dev/target/relay-s49-wait-observer-dev-0.1.0-dev.jar
+          test -s "$JAR"
+          jar tf "$JAR" | grep -Fxq 'io/github/rinsakamo/relays49observer/S49WaitObserverPlugin.class'
+          jar tf "$JAR" | grep -Fxq 'plugin.yml'
+          jar tf "$JAR" | grep -Fxq 'config.yml'
+          unzip -p "$JAR" plugin.yml | grep -Fq 'name: RelayS49WaitObserverDev'
+          unzip -p "$JAR" config.yml | grep -Fxq 'enabled: false'
+          test "$(unzip -p "$JAR" plugin.yml | grep -c '^  relays49observe:$')" = 1
+          SHA="$(sha256sum "$JAR" | cut -d ' ' -f 1)"
+          BYTES="$(wc -c < "$JAR" | tr -d ' ')"
+          echo "S49_PAPER_DEV_JAR sha256=$SHA bytes=$BYTES HEAD=$GITHUB_SHA"
+          {
+            echo "### S49 Paper read-only DEV JAR"
+            echo "Commit: $GITHUB_SHA"
+            echo "SHA-256: `$SHA`"
+            echo "Bytes: $BYTES"
+            echo "Mode: COMPILE_ONLY / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-paper-dev-observer-jar-${{ github.sha }}
+          path: adapters/mineflayer/s49_paper_wait_observer_dev/target/relay-s49-wait-observer-dev-0.1.0-dev.jar
+          if-no-files-found: error
+          retention-days: 7
+      - name: Confirm no World was run
+        if: always()
+        run: |
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+          echo 'Java compilation only. No Paper server / Minecraft / Node / Python physical action / qualification was started.'
