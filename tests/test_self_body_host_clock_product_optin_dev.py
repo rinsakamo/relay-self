@@ -314,15 +314,16 @@ def test_dev_preflight_rejects_unapproved_combinations_without_launch(
         called.append("owner")
         return 0
     monkeypatch.setattr(self_demo, "_run_disposable", forbidden)
-    for flags in (
+    for i, flags in enumerate((
         {"self_passive_views": True},
         {"self_world_stage_r_dev": True},
         {"self_world_w3_raw_capture": True},
         {"think": True},
-    ):
-        a = args(tmp_path / ("blocked-" + str(len(called))), **{
-            "self_passive_host_clock": True, **flags,
-        })
+    )):
+        a = args(tmp_path / ("blocked-" + str(i)),
+                 self_passive_host_clock=True)
+        for name, value in flags.items():
+            setattr(a, name, value)
         assert self_demo._dev_run(a) == 2
         assert called == []
 
