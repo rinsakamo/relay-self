@@ -96,7 +96,7 @@ class PassiveHostCallbackTimer:
             raise PassiveHostClockRejected("injected clock must be callable")
         self.self_id = self_id
         self.capacity = capacity
-        self.origin = (
+        self._origin = (
             HostClockOrigin.PYTHON_PROCESS_MONOTONIC
             if clock is None else HostClockOrigin.SYNTHETIC_DEV_CLOCK
         )
@@ -109,6 +109,11 @@ class PassiveHostCallbackTimer:
         self._seen_requests: set[str] = set()
         self._last_clock_ns: int | None = None
         self._rows: list[PassiveHostInterval] = []
+
+    @property
+    def origin(self) -> HostClockOrigin:
+        """Public provenance classification is not caller-settable."""
+        return self._origin
 
     def _now(self) -> int:
         if self._clock_failed:
