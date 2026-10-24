@@ -71,7 +71,7 @@ latency and server ticks are *not* represented by that simple approximation.
 
 ## Offline negative-control suite
 
-tests/test_self_body_timing_dev.py provides 23 test functions with parameterized
+tests/test_self_body_timing_dev.py provides 25 test functions with parameterized
 negative examples: fixed-Body L0/L2 timing contrast; fixed-cognition variable
 Body speed; deadline equality; missing time/speed/clearance and missing Body
 observation; stale/foreign native source and Self/session; invalid/negative/NaN
