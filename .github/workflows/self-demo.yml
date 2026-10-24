@@ -1,4 +1,4 @@
-name: Self 1.0 FAST / FULL offline product integration
+name: Self 1.0 LIGHT / FAST / FULL offline product integration
 
 on:
   push:
@@ -8,14 +8,21 @@ on:
     branches:
       - 'self/s60b1-loopback-adapter-*'
       - 'self/product-self-one-command-s49scoped-fullreg-20261021'  # CI-only review base
+      - main  # FULL is mandatory on a non-Draft PR targeting main
     types: [opened, reopened, synchronize, ready_for_review]
   workflow_dispatch:
     inputs:
       mode:
-        description: 'Explicit offline FULL validation only; never launches a World'
+        description: 'Explicit offline FAST or FULL; neither launches a World'
         required: true
         type: choice
-        options: [full]
+        options: [fast, full]
+
+env:
+  # LIGHT on ordinary Draft push/PR; FAST when owner marks module review-ready;
+  # FULL for a non-Draft PR targeting main (or explicit owner invocation).
+  RELAY_CI_TIER: >-
+    ${{ (github.event_name == 'pull_request' && github.base_ref == 'main' && !github.event.pull_request.draft && 'full') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'full' && 'full') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci-full-offline]') && 'full') || (github.event_name == 'workflow_dispatch' && inputs.mode == 'fast' && 'fast') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci-fast-offline]') && 'fast') || (github.event_name == 'pull_request' && !github.event.pull_request.draft && 'fast') || 'light' }}
 
 permissions:
   contents: read
@@ -190,7 +197,9 @@ jobs:
                 ;;
             esac
           done <<< "$changed"
-      - run: python tools/check_repository.py
+      - name: FAST/FULL repository-wide contract checks
+        if: env.RELAY_CI_TIER != 'light'
+        run: python tools/check_repository.py
 
   pytest:
     runs-on: ubuntu-latest
@@ -205,14 +214,25 @@ jobs:
         with:
           python-version: '3.12'
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        if: env.RELAY_CI_TIER != 'light'
         with:
           node-version: '22'
       - uses: actions/setup-java@v4
+        if: env.RELAY_CI_TIER != 'light'
         with:
           distribution: temurin
           java-version: '21'
+      - name: LIGHT syntax checks (no pytest, no World)
+        if: env.RELAY_CI_TIER == 'light'
+        run: |
+          python -m compileall -q src tests experiments adapters observability
+          ruby -e 'require "yaml"; Dir.glob(".github/workflows/*.{yml,yaml}").each { |path| YAML.parse_file(path) }'
+          git ls-files -z -- '*.sh' | while IFS= read -r -d '' file; do bash -n "$file"; done
+          git ls-files -z -- '*.js' '*.cjs' '*.mjs' | while IFS= read -r -d '' file; do node --check "$file"; done
       - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+        if: env.RELAY_CI_TIER != 'light'
       - name: FAST owner-focused B0/B1 integration, no physical World
+        if: env.RELAY_CI_TIER == 'fast'
         env:
           PYTHONPATH: 'src:tests:.'
         run: |
@@ -272,10 +292,26 @@ jobs:
             tests/test_s49_cleanup.py \
             tests/test_s49_startup_ownership.py \
             tests/test_s49_native_os_custody.py
-      - name: FAST Mineflayer adapter checks (existing Node 22)
+      - name: FAST/FULL Mineflayer adapter checks (existing Node 22)
+        if: env.RELAY_CI_TIER != 'light'
         run: |
           npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
           npm run check --prefix adapters/mineflayer
+      - name: FULL exact-head full offline regression (required pytest context for main)
+        if: env.RELAY_CI_TIER == 'full'
+        env:
+          PYTHONPATH: 'src:tests:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          python -m pytest -q -o junit_logging=all --junitxml=s49-scoped-full-regression.xml
+      - name: Preserve FULL offline JUnit
+        if: always() && env.RELAY_CI_TIER == 'full'
+        uses: actions/upload-artifact@v4
+        with:
+          name: s49-scoped-full-${{ github.sha }}
+          path: s49-scoped-full-regression.xml
+          if-no-files-found: warn
 
   lint:
     runs-on: ubuntu-latest
@@ -288,42 +324,9 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install --disable-pip-version-check 'ruff==0.16.7'
-      - run: ruff check src tests experiments adapters observability
-
-  full-regression:
-    # Drafts stay FAST; only non-Draft PR, explicit marker, or manual FULL.
-    # No Minecraft/World grant is produced by this offline suite.
-    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ci-full-offline]')) || (github.event_name == 'workflow_dispatch' && inputs.mode == 'full')
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    env:
-      PYTHONPATH: 'src:tests:.'
-      PYTHONDONTWRITEBYTECODE: '1'
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
-          fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-        with:
-          node-version: '22'
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-      - name: Exact-HEAD full offline regression (no World)
-        run: |
-          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
-          python -m pytest -q -o junit_logging=all --junitxml=s49-scoped-full-regression.xml
-      - name: Preserve full offline regression JUnit
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: s49-scoped-full-${{ github.sha }}
-          path: s49-scoped-full-regression.xml
-          if-no-files-found: error
-
+      - name: LIGHT fatal syntax/static lint only
+        if: env.RELAY_CI_TIER == 'light'
+        run: ruff check --select E9,F63,F7,F82 src tests experiments adapters observability
+      - name: FAST/FULL complete Ruff lint
+        if: env.RELAY_CI_TIER != 'light'
+        run: ruff check src tests experiments adapters observability
