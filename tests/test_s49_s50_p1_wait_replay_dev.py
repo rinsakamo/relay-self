@@ -63,7 +63,9 @@ def test_zero_fatigue_still_idle_but_no_recovery(monkeypatch):
 def test_unsafe_paper_or_s16_does_not_recover(monkeypatch, mutation):
     capture, profile, state, paper = setup_replay(monkeypatch)
     if mutation == "active_input":
-        paper = paper.replace("index=4 input_idle=true", "index=4 input_idle=false")
+        paper = "".join(line.replace("input_idle=true", "input_idle=false")
+                        if "index=4 " in line else line
+                        for line in paper.splitlines(keepends=True))
     elif mutation == "self_movement":
         paper += "S49_DEV_BACK_WAIT_ABORT reason=SELF_MOVEMENT_EVENT_DURING_OBSERVATION\n"
     elif mutation == "missing_tick":
