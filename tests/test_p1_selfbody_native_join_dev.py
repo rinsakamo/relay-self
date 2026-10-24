@@ -63,7 +63,7 @@ def test_original_p1_wait_sensor_joins_original_m0_without_two_owners():
     profile, prior, tick, readout = original_wait_p1()
     assert tick.transition.after.fatigue == pytest.approx(0.7)
     assert tick.transition.recovered == pytest.approx(0.1)
-    assert readout.sensor_reading == 0.3  # blind sensor != true fatigue
+    assert readout.sensor_reading == pytest.approx(0.3)  # blind sensor != truth
     probe, m0, decision, present, correlation = native_and_owners(readout)
     handoff = handoff_from_p1_owner_readout(present, readout, correlation)
     old_state = m0.body
@@ -77,7 +77,7 @@ def test_original_p1_wait_sensor_joins_original_m0_without_two_owners():
     assert body.observed("food").origin is BodyOrigin.OBSERVATION
     assert body.sensed("m0_energy_sensor").origin is BodyOrigin.INTEROCEPTION
     assert body.sensed("p1_fatigue_sensor").origin is BodyOrigin.INTEROCEPTION
-    assert body.sensed("p1_fatigue_sensor").value == 0.3
+    assert body.sensed("p1_fatigue_sensor").value == pytest.approx(0.3)
     assert body.observed("p1_fatigue").value is None
     assert summary["p1_source_scope"] == "PRODUCER_LOCAL_UNATTESTED"
     assert summary["true_m0_energy_exposed"] is False
