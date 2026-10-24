@@ -14,6 +14,7 @@ from dataclasses import replace
 from typing import Any
 
 from adapters.mineflayer.present_projection import project_mineflayer_present
+from adapters.mineflayer.self_body_projection import project_body_present
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackDisplacementAdapter,
@@ -38,6 +39,7 @@ from relay_self.prediction import (
 )
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import BoundedChoice, BoundedChoiceRequest
+from relay_self.self_body import compose_self_body_view
 from relay_self.self_world import (
     SelfWorldView,
     WorldForecast,
@@ -91,6 +93,7 @@ class LiveL2Observer:
         self._world_after_source: str | None = None
         self._world_l1_candidate: str | None = None
         self._world_l2_bound: bool = False
+        self._body_l2_bound: bool = False
 
     @property
     def model_attempts(self) -> int:
@@ -106,10 +109,25 @@ class LiveL2Observer:
         present = project_mineflayer_present(reading)
         observer = "self-demo-live-observer"
         world_obs = project_self_world_present(present, observer_id=observer)
+        epoch = f"native-{reading.seq}"
+        body = compose_self_body_view(
+            self_id=observer, session_id=reading.session_id,
+            epoch_id=epoch, observation=project_body_present(present),
+        )
         current = compose_self_world_view(
             self_id=observer, session_id=reading.session_id,
-            epoch_id=f"native-{reading.seq}", observation=world_obs,
+            epoch_id=epoch, observation=world_obs, self_body=body,
         )
+        # The same already-received S49 native probe is the only source for
+        # both cognition interfaces; no new native read or owner is created.
+        if (
+            current.self_body is not body or body.observation is None
+            or current.observation is None
+            or body.observation.native_seq != current.observation.native_seq
+            or body.observation.request_id != current.observation.request_id
+            or body.observation.source_provenance != current.observation.provenance
+        ):
+            raise ValueError("SelfBody/SelfWorld native source mismatch")
         if self._world_prior is None:
             candidates = select_self_world_attention(
                 current, AttentionCriterion("live-one-zombie", focus_key="name:zombie"),
@@ -194,12 +212,28 @@ class LiveL2Observer:
         self._world_after_source = world_obs.source_ref
         self._world_l1_candidate = habit.selected_candidate_ref
         self._world_l2_bound = True
+        self._body_l2_bound = True
         # This string is only untrusted user data for an existing read-only L2
         # provider. Model output cannot enter L0 or any physical Action route.
         data = {
             "observer": fields["self_world_observer"],
             "observed": fields["self_world_observed"],
             "prediction_review": fields["self_world_prediction_review"],
+            "self_body": {
+                "source_ref": body.observation.source_ref,
+                "native_seq": body.observation.native_seq,
+                "health": {
+                    "origin": body.observed("health").origin.value,
+                    "value": body.observed("health").value,
+                },
+                "food": {
+                    "origin": body.observed("food").origin.value,
+                    "value": body.observed("food").value,
+                },
+                # M/P1 energy and fatigue have no qualified source in Present.
+                "energy": {"origin": "unknown", "value": None},
+                "fatigue": {"origin": "unknown", "value": None},
+            },
             "preconfigured_l1_cognitive_candidate": habit.selected_candidate_ref,
         }
         return (
@@ -377,6 +411,7 @@ class LiveL2Observer:
             "self_world_review_reason": self._world_review_reason,
             "preconfigured_l1_cognitive_candidate": self._world_l1_candidate,
             "self_world_l2_input_bound": self._world_l2_bound,
+            "self_body_l2_input_bound": self._body_l2_bound,
             "l0_blocked_on_l2": False,
             "l2_used_as_action": False,
             "authorized_actions": 0,
