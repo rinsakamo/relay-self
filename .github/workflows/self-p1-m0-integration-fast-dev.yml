@@ -1,0 +1,90 @@
+name: P1-M0 SelfBody isolated FAST DEV (offline)
+on:
+  push:
+    branches:
+      - self/integration-p1-m0-bodyworld-dev-20261024
+    paths:
+      - .github/workflows/self-p1-m0-integration-fast-dev.yml
+      - experiments/fatigue_p1.py
+      - experiments/fatigue_p1_boundary.py
+      - experiments/p1_selfbody_export.py
+      - adapters/mineflayer/self_body_p1_projection.py
+      - adapters/mineflayer/self_body_m0_projection.py
+      - tests/test_fatigue_p1.py
+      - tests/test_fatigue_p1_boundary.py
+      - tests/test_p1_selfbody_export.py
+      - tests/test_p1_selfbody_native_join_dev.py
+      - tests/test_self_body_m0_projection.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p1-m0-dev-fast-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  focused-fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      ORIGINAL_P1_HEAD: '56600977fb730918ac67769df0ad9ab45f2e9d49'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Pin exact DEV head and original P1 source + tests
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          for path in \
+              experiments/fatigue_p1.py \
+              experiments/fatigue_p1_boundary.py \
+              experiments/p1_selfbody_export.py \
+              tests/test_fatigue_p1.py \
+              tests/test_fatigue_p1_boundary.py \
+              tests/test_p1_selfbody_export.py; do
+            expected="$(git rev-parse "${ORIGINAL_P1_HEAD}:$path")"
+            actual="$(git rev-parse "HEAD:$path")"
+            test "$expected" = "$actual" || {
+              echo "::error::Original P1 blob changed: $path"
+              exit 1
+            }
+          done
+          echo "P1 original source and tests: exact blob match"
+      - name: Install isolated Python 3.12 focused dependencies
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: LIGHT syntax guard
+        run: |
+          python -m compileall -q experiments adapters/mineflayer src/relay_self tests
+      - name: FAST changed-module Ruff (no World)
+        run: |
+          ruff check \
+            experiments/p1_selfbody_export.py \
+            adapters/mineflayer/self_body_p1_projection.py \
+            adapters/mineflayer/self_body_m0_projection.py \
+            tests/test_p1_selfbody_export.py \
+            tests/test_p1_selfbody_native_join_dev.py \
+            tests/test_self_body_m0_projection.py
+      - name: FAST original P1 + SelfBody/M0 focused offline tests
+        run: |
+          python -m pytest -q \
+            tests/test_fatigue_p1.py \
+            tests/test_fatigue_p1_boundary.py \
+            tests/test_p1_selfbody_export.py \
+            tests/test_p1_selfbody_native_join_dev.py \
+            tests/test_self_body_m0_projection.py \
+            tests/test_self_body.py \
+            tests/test_self_world.py \
+            tests/test_self_dev.py
+      - name: State validation boundary
+        if: always()
+        run: |
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+          echo 'No Java / Node / Minecraft / LLM / physical World or S/R attestation was requested.'
