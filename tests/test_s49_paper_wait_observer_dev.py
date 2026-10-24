@@ -68,9 +68,23 @@ def test_java_source_is_console_opt_in_one_shot_sync_observation_only():
     assert "S49_DEV_BACK_WAIT_BEGIN" in source
     assert "S49_DEV_BACK_WAIT_TICK" in source
     assert "S49_DEV_BACK_WAIT_ABORT" in source
-    assert "SCHEDULER_START_FAILED" in source
+    assert "OBSERVER_START_FAILED" in source
     assert "PLUGIN_DISABLED" in source
     assert "S49_OBSERVER_SUBJECT" in source
+    assert "S49_OBSERVER_SERVER_INPUT" in source
+    assert "input_idle=true" in source
+    assert "s49_release_causality=NOT_ATTESTED" in source
+    assert "subject.getCurrentInput()" in source
+    assert "idleInput(event.getInput())" in source
+    assert "EventPriority.MONITOR" in source
+    assert "ignoreCancelled = false" in source
+    assert "samePosition(event.getFrom(), event.getTo())" in source
+    assert "samePosition(subject.getLocation(), startingLocation)" in source
+    assert "registerEvents(this, this)" in source
+    assert "SERVER_INPUT_ACTIVE_AT_START" in source
+    assert "SERVER_INPUT_ACTIVE_AT_CALLBACK" in source
+    assert "SERVER_INPUT_ACTIVE_DURING_OBSERVATION" in source
+    assert "SELF_MOVEMENT_EVENT_DURING_OBSERVATION" in source
     for disallowed in (
         "setExhaustion(", "setFoodLevel(", "setHealth(",
         "setVelocity(", "teleport(", "setWalkSpeed(",
