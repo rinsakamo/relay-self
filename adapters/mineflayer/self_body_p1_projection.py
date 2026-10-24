@@ -34,6 +34,42 @@ class P1OwnerSensorHandoff:
     wait_interval_ref: str | None = None
 
 
+def handoff_from_p1_owner_readout(
+    present: MinecraftPresent,
+    readout: object,
+) -> P1OwnerSensorHandoff:
+    """Accept ONLY the original P1 #626 producer's checked sensor readout.
+
+    P1 #626 is a separate unmerged owner: until its original modules are
+    integrated into the product checkout, this path fails closed. Even an
+    original P1 typed readout is producer-local, not authenticated physical
+    World evidence or permission for WAIT recovery.
+    """
+    try:
+        from experiments.p1_selfbody_export import P1SelfBodyReadout
+    except ImportError as exc:
+        raise InvalidSelfBodyData("P1 owner exporter not integrated") from exc
+    if not isinstance(readout, P1SelfBodyReadout):
+        raise InvalidSelfBodyData("original P1 typed sensor export required")
+    if readout.source_scope != "P1_PRODUCER_LOCAL_NOT_WORLD_ATTESTED":
+        raise InvalidSelfBodyData("P1 readout cannot claim source attestation")
+    if not isinstance(present, MinecraftPresent):
+        raise InvalidSelfBodyData("typed native Present required")
+    handoff = P1OwnerSensorHandoff(
+        session_id=readout.session_id,
+        native_seq=present.seq,
+        native_request_id=present.request_id,
+        owner_world_tick=readout.world_tick,
+        profile_sha256=readout.profile_sha256,
+        world_source_ref=readout.world_source_ref,
+        sensor_reading=readout.sensor_reading,
+        activity=readout.activity,
+        wait_interval_ref=readout.wait_interval_ref,
+    )
+    project_p1_sensor(present, handoff)  # validate source/probe shape
+    return handoff
+
+
 def project_p1_sensor(
     present: MinecraftPresent, handoff: P1OwnerSensorHandoff,
 ) -> BodyInteroception:
