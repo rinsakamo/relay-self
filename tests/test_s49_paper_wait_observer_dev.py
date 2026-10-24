@@ -5,6 +5,7 @@ they cannot establish Paper API compatibility, runtime ownership or W4 proof.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from xml.etree import ElementTree
 
