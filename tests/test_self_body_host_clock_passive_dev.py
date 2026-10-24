@@ -210,3 +210,56 @@ def test_duplicate_probe_request_id_with_advancing_seq_is_rejected():
     )
     with pytest.raises(PassiveHostClockRejected, match="replay"):
         m.enter(replace(later, observation=stale))
+
+
+def test_failed_callback_aborts_without_emitting_false_success():
+    m = PassiveHostCallbackTimer(self_id="s1", clock=ticks(1, 3, 5))
+    ticket = m.enter(body(seq=1))
+    m.abort(ticket)
+    assert m.rows() == ()
+    with pytest.raises(PassiveHostClockRejected, match="duplicate"):
+        m.exit(ticket)
+    fresh = m.enter(body(seq=2))
+    assert m.exit(fresh).callback_elapsed_ns == 2
+
+
+def test_clock_error_is_terminal_even_if_later_time_would_recover():
+    m = PassiveHostCallbackTimer(self_id="s1", clock=ticks(100, 99, 101))
+    ticket = m.enter(body(seq=1))
+    with pytest.raises(PassiveHostClockRejected, match="reversed"):
+        m.exit(ticket)
+    with pytest.raises(PassiveHostClockRejected, match="terminal"):
+        m.exit(ticket)
+    assert m.rows() == ()
+
+
+def test_clock_callback_raises_and_never_emits_an_interval():
+    def broken_clock():
+        raise RuntimeError("no clock")
+
+    m = PassiveHostCallbackTimer(self_id="s1", clock=broken_clock)
+    with pytest.raises(PassiveHostClockRejected, match="sampling failed"):
+        m.enter(body(seq=1))
+    assert m.rows() == ()
+
+
+def test_cross_process_clock_domain_refused_without_fabricated_time(monkeypatch):
+    from experiments.self_body_host_clock_passive_dev import os
+
+    origin_pid = os.getpid()
+    m = PassiveHostCallbackTimer(self_id="s1", clock=ticks(100, 200))
+    ticket = m.enter(body(seq=1))
+    monkeypatch.setattr(os, "getpid", lambda: origin_pid + 1)
+    with pytest.raises(PassiveHostClockRejected, match="cross-process"):
+        m.exit(ticket)
+    with pytest.raises(PassiveHostClockRejected, match="terminal"):
+        m.exit(ticket)
+    assert m.rows() == ()
+
+
+def test_forged_abort_ticket_cannot_erase_actual_callback():
+    m = PassiveHostCallbackTimer(self_id="s1", clock=ticks(100, 200))
+    ticket = m.enter(body(seq=1))
+    with pytest.raises(PassiveHostClockRejected, match="foreign"):
+        m.abort(replace(ticket, native_seq=77))
+    assert m.exit(ticket).callback_elapsed_ns == 100
