@@ -132,14 +132,10 @@ def test_foreign_or_replayed_observer_run_rejected(monkeypatch, mutation):
             "tick=70 input_idle=true", "tick=71 input_idle=true", 1
         )
     elif mutation == "foreign_boundary_player":
-        original = original.replace(
-            "player_uuid=" + PLAYER, "player_uuid=" + FOREIGN, 1
-        )
-        # Force the first SUBJECT back so the mutated second record is tested.
-        original = original.replace(
-            "player_uuid=" + FOREIGN, "player_uuid=" + PLAYER, 1
-        ).replace(
-            "player_uuid=" + PLAYER, "player_uuid=" + FOREIGN, 1
+        original = "".join(
+            [rows[0], rows[1].replace(
+                "player_uuid=" + PLAYER, "player_uuid=" + FOREIGN, 1
+            ), *rows[2:]]
         )
     elif mutation == "observed_input_reactivation":
         original += "S49_DEV_BACK_WAIT_ABORT reason=SERVER_INPUT_ACTIVE_DURING_OBSERVATION\n"
