@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import os
 from dataclasses import replace
@@ -10,12 +9,12 @@ from dataclasses import replace
 import pytest
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
+from adapters.mineflayer.python_protocol import MineflayerStreamDecoder
 from adapters.mineflayer.s49_paper_backward_wait_dev import (
     BEGIN,
     TICK,
     project_s49_backward_paper_dev,
 )
-from adapters.mineflayer.python_protocol import MineflayerStreamDecoder
 from adapters.mineflayer.s49_paper_existing_sources_dev import (
     review_s49_existing_w3_paper_files_dev,
 )
