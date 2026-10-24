@@ -415,20 +415,28 @@ async def _run_disposable(
     stage_r_dev: bool = False,
     raw_capture_root: Path | None = None,
     passive_self_views: bool = False,
+    passive_host_clock: bool = False,
 ) -> int:
     # Existing exact S49 host is the *only* issuer. No duplicated event loop,
     # no new Game Action code or arbitrary LLM output -> Action mapping.
     from adapters.mineflayer.s49_normal_session_real_ci import qualify
 
     passive_views = None
-    if passive_self_views:
-        if (live_model is not None or stage_r_dev or self_world_live
+    host_clock = None
+    if passive_self_views or passive_host_clock:
+        if (passive_self_views and passive_host_clock
+                or live_model is not None or stage_r_dev or self_world_live
                 or self_world_prospective or self_world_typed_closure
                 or self_world_retained_handoff or raw_capture_root is not None):
-            raise DemoRejected("passive Self views require exclusive model-free S49 DEV")
+            raise DemoRejected("passive observer requires exclusive model-free S49 DEV")
         from adapters.mineflayer.self_product_passive_views import PassiveSelfViews
 
         passive_views = PassiveSelfViews()
+        if passive_host_clock:
+            from experiments.self_body_host_clock_s49_liveprobe_dev import (
+                S49PassiveHostClockDEV,
+            )
+            host_clock = S49PassiveHostClockDEV(views=passive_views)
     live_observer = None
     if live_model is not None:
         from adapters.mineflayer.self_live_think import LiveL2Observer
@@ -483,7 +491,9 @@ async def _run_disposable(
             except (OSError, ValueError, TypeError) as exc:
                 # Advisory record failure must NEVER veto sole L0/Action owner.
                 witness.error = type(exc).__name__
-        if passive_views is not None:
+        if host_clock is not None:
+            await host_clock.observe(reading)
+        elif passive_views is not None:
             try:
                 passive_views.observe(reading)
             except Exception as exc:
@@ -573,10 +583,32 @@ async def _run_disposable(
             os.environ["S49_REAL_SERVER_CI"] = previous
         # Never defer original host environment restoration to sidecar I/O.
         if passive_views is not None:
-            _write_trace(
-                report_path.parent / "self_views.jsonl",
-                (*passive_views.rows(), passive_views.summary()),
-            )
+            view_rows = (*passive_views.rows(), passive_views.summary())
+            if host_clock is None:
+                _write_trace(report_path.parent / "self_views.jsonl", view_rows)
+            else:
+                from experiments.self_body_host_clock_sidecar_dev import (
+                    CLOCK_FILE,
+                    VIEWS_FILE,
+                    atomic_write_jsonl_new,
+                    host_clock_rows,
+                )
+
+                primary = sys.exc_info()[1]
+                for name, rows in (
+                    (VIEWS_FILE, view_rows),
+                    (CLOCK_FILE, host_clock_rows(host_clock)),
+                ):
+                    try:
+                        atomic_write_jsonl_new(report_path.parent / name, rows)
+                    except BaseException as sidecar_error:
+                        if primary is None:
+                            raise
+                        # Keep original cancellation/owner failure as terminal.
+                        primary.add_note(
+                            "passive host-clock sidecar " + name + ": "
+                            + type(sidecar_error).__name__
+                        )
 
 
 async def _run_b1_local_dev(
@@ -657,6 +689,14 @@ def _dev_run(args: argparse.Namespace) -> int:
         stage_r = getattr(args, "self_world_stage_r_dev", False)
         stage_w3 = getattr(args, "self_world_w3_raw_capture", False)
         passive_views = getattr(args, "self_passive_views", False)
+        passive_clock = getattr(args, "self_passive_host_clock", False)
+        if type(passive_clock) is not bool or (passive_clock and (
+            passive_views or scenario != "native" or stage_r or stage_w3
+            or args.think or args.live_think
+            or getattr(args, "self_world_live", False)
+            or prospective or typed_closure or retained_handoff
+        )):
+            raise DemoRejected("host clock requires exclusive passive native DEV")
         if type(passive_views) is not bool or (
             passive_views and (
                 scenario != "native" or stage_r or stage_w3
@@ -811,6 +851,7 @@ def _dev_run(args: argparse.Namespace) -> int:
                         root / "native_report.json", root / "minecraft_server.log",
                         **({"raw_capture_root": root} if stage_w3 else {}),
                         **({"passive_self_views": True} if passive_views else {}),
+                        **({"passive_host_clock": True} if passive_clock else {}),
                     ))
         native = json.loads((root / "native_report.json").read_text())
         if passive_views:
@@ -838,6 +879,41 @@ def _dev_run(args: argparse.Namespace) -> int:
                 code = 1
                 receipt["dev_passive_self_views_incomplete"] = (
                     "ORIGINAL_SOURCE_BOUND_VIEW_JOIN_NOT_PROVEN"
+                )
+        if passive_clock:
+            from experiments.self_body_host_clock_sidecar_dev import (
+                CLOCK_FILE,
+                VIEWS_FILE,
+                MAX_BYTES,
+                verify_host_clock_source_join,
+            )
+
+            view_path = root / VIEWS_FILE
+            clock_path = root / CLOCK_FILE
+            for candidate in (view_path, clock_path):
+                if (not candidate.is_file() or candidate.is_symlink()
+                        or candidate.stat().st_size > MAX_BYTES):
+                    raise DemoRejected("host clock DEV sidecar missing/invalid")
+            view_rows = [json.loads(line) for line in
+                         view_path.read_text(encoding="utf-8").splitlines()]
+            clock_rows = [json.loads(line) for line in
+                          clock_path.read_text(encoding="utf-8").splitlines()]
+            valid_clock = verify_host_clock_source_join(
+                native, view_rows, clock_rows,
+            )
+            receipt.update(
+                dev_host_clock=(
+                    "SOURCE_JOINED_CALLBACK_DEV_ONLY" if valid_clock else "UNDETERMINED"
+                ),
+                dev_host_clock_samples=3 if valid_clock else 0,
+                dev_host_clock_sidecar=CLOCK_FILE,
+                dev_host_clock_action_issuer="EXISTING_S49_ONLY",
+                dev_host_clock_physical_attestation=False,
+            )
+            if code == 0 and not valid_clock:
+                code = 1
+                receipt["dev_host_clock_incomplete"] = (
+                    "SOURCE_BOUND_PASSIVE_CALLBACK_CLOCK_NOT_PROVEN"
                 )
         if scenario == "b1-local-adaptation":
             receipt["dev_b1_fixture_seed"] = native.get("b1_fixture_seed")
@@ -1374,6 +1450,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="DEV-only source bytes capture for original S49 model-free scenario; no grant")
     parser.add_argument("--self-passive-views", action="store_true",
                         help="DEV-only existing S49 probe -> read-only SelfBody/SelfWorld; no model")
+    parser.add_argument("--self-passive-host-clock", action="store_true",
+                        help="DEV-only passive Python callback elapsed sidecar; no new reader")
     parser.add_argument("--model-alias", help="explicit pre-existing loopback model alias")
     parser.add_argument("--model-port", type=int, help="existing localhost OpenAI-compatible port")
     parser.add_argument("--model-timeout", type=float, default=12.0)
@@ -1393,6 +1471,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--self-world-w3-raw-capture requires --mode DEV")
     if args.self_passive_views and args.mode != "DEV":
         parser.error("--self-passive-views requires --mode DEV")
+    if args.self_passive_host_clock and args.mode != "DEV":
+        parser.error("--self-passive-host-clock requires --mode DEV")
     if args.mode == "DEV":
         return _dev_run(args)
     if args.retry_of is not None:
