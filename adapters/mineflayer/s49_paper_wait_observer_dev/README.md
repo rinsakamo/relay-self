@@ -73,3 +73,16 @@ The extracted BEGIN+8 callback slice must have the same normalized SHA-256;
 a mismatch rejects and saves a non-admitting failure report once. Both digests
 are **derived from caller-provided input** and remain untrusted for R custody.
 The join never calls P1 `reconcile()` or constructs `SourceBoundTick(WAIT)`.
+
+### Remaining qualification gate (not performed)
+
+To turn a shape-only transcript into a physically source-bound WAIT,
+an independent, preserved server-side custody chain must establish **in
+order**: the sole S49 Action terminal OUTCOME and motor clear; the time at
+which the server could no longer apply its motor effect; an interval of
+complete Self inactivity on relevant World ticks; and an issuer boundary
+covering other possible Action paths. The current Java observer does
+**not** supply this causal/coverage chain, even after a same-run match.
+Do not reinterpret eight consecutive Paper callbacks, stationary positions,
+or other entities' movement as that proof. Keep P1 admission fields null/zero
+until the owner/R qualification gate explicitly succeeds.
