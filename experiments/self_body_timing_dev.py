@@ -149,8 +149,10 @@ def predict_hypothetical_dodge(
     )
     status = DodgeBudgetStatus.UNKNOWN
     travel_ms = total_ms = headroom_ms = None
-    if body.observation is not None and all(
-        value is not None for value in quantities
+    if (
+        body.observation is not None
+        and _position(body) is not None
+        and all(value is not None for value in quantities)
     ):
         assert hypothesis.attack_horizon_ms is not None
         assert hypothesis.detection_ms is not None
