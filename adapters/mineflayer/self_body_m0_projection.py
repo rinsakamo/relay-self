@@ -9,6 +9,10 @@ from dataclasses import dataclass
 
 from adapters.mineflayer.b0_energy_bridge import B0Decision, B0EnergyLedger
 from adapters.mineflayer.present_projection import project_mineflayer_present
+from adapters.mineflayer.self_body_p1_projection import (
+    P1OwnerSensorHandoff,
+    project_p1_sensor,
+)
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.self_body_projection import project_body_present
 from adapters.mineflayer.self_world_projection import project_self_world_present
@@ -45,6 +49,7 @@ def summarize_b0_cognition_views(views: B0CognitionViews) -> dict[str, object]:
     sensing = body.sensed("m0_energy_sensor")
     if sensing.origin.value != "interoception" or len(sensing.provenance) != 2:
         raise InvalidSelfBodyData("M0 owner sensor not bound")
+    p1 = body.sensed("p1_fatigue_sensor")
     return {
         "classification": "DEV_ONLY_PRODUCER_LOCAL_M0_INTEROCEPTION",
         "native_source": body.observation.source_ref,
@@ -58,7 +63,12 @@ def summarize_b0_cognition_views(views: B0CognitionViews) -> dict[str, object]:
         "m0_sensor_owner_source": sensing.provenance[-1].source,
         "native_food": body.observed("food").value,
         "native_health": body.observed("health").value,
-        "p1_fatigue": body.sensed("p1_fatigue").value,
+        "p1_fatigue": p1.value,
+        "p1_sensor_origin": p1.origin.value,
+        "p1_source_scope": (
+            "PRODUCER_LOCAL_UNATTESTED" if p1.value is not None
+            else "UNKNOWN"
+        ),
         "true_m0_energy_exposed": False,
         "s10_updates": 0,
         "additional_native_reads": 0,
@@ -74,6 +84,7 @@ def compose_b0_cognition_views(
     *,
     self_id: str,
     epoch_id: str,
+    p1_handoff: P1OwnerSensorHandoff | None = None,
 ) -> B0CognitionViews:
     """Read the already-decided M0 sensor, never re-decide or advance its tick.
 
@@ -110,12 +121,17 @@ def compose_b0_cognition_views(
         owner_tick=decision.body_tick,
         owner_provenance=owner_origin,
     )
+    # P1 is an optional producer-exported, still-unattested sensor. It
+    # cannot create physical WAIT evidence, fatigue recovery or M0 credit.
+    sensors = (sensor,)
+    if p1_handoff is not None:
+        sensors += (project_p1_sensor(present, p1_handoff),)
     body = compose_self_body_view(
         self_id=self_id,
         session_id=present.session_id,
         epoch_id=epoch_id,
         observation=project_body_present(present),
-        interoceptions=(sensor,),
+        interoceptions=sensors,
     )
     world = compose_self_world_view(
         self_id=self_id,
