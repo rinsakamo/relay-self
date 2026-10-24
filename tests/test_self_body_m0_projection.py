@@ -19,6 +19,7 @@ from adapters.mineflayer.self_body_m0_projection import (
     summarize_b0_cognition_views,
 )
 from adapters.mineflayer.self_body_p1_projection import (
+    P1NativeCorrelation,
     P1OwnerSensorHandoff,
     handoff_from_p1_owner_readout,
 )
@@ -382,8 +383,11 @@ def test_original_p1_readout_boundary_fails_closed_without_owner(monkeypatch):
     # Until Draft #626 original modules are adopted into this checkout,
     # no optional P1 reading may be silently treated as present.
     monkeypatch.setitem(sys.modules, "experiments.p1_selfbody_export", None)
+    correlation = P1NativeCorrelation(
+        probe.session_id, probe.seq, probe.request_id, 41, "p1-unattested:41",
+    )
     with pytest.raises(InvalidSelfBodyData, match="P1 owner exporter not integrated"):
-        handoff_from_p1_owner_readout(present, object())
+        handoff_from_p1_owner_readout(present, object(), correlation)
 
 
 def test_p1_owner_readout_shape_join_remains_unattested(monkeypatch):
@@ -406,7 +410,10 @@ def test_p1_owner_readout_shape_join_remains_unattested(monkeypatch):
         "p1-idle-unattested:41", 0.4,
         "P1_PRODUCER_LOCAL_NOT_WORLD_ATTESTED",
     )
-    handoff = handoff_from_p1_owner_readout(present, owner_output)
+    correlation = P1NativeCorrelation(
+        probe.session_id, probe.seq, probe.request_id, 41, "p1-unattested:41",
+    )
+    handoff = handoff_from_p1_owner_readout(present, owner_output, correlation)
     views = compose_b0_cognition_views(
         probe, owner, decision, self_id="dev-b0-self",
         epoch_id="epoch-8", p1_handoff=handoff,
@@ -420,8 +427,10 @@ def test_p1_owner_readout_shape_join_remains_unattested(monkeypatch):
     with pytest.raises(InvalidSelfBodyData, match="cannot claim"):
         handoff_from_p1_owner_readout(
             present, replace(owner_output, source_scope="FULLY_ATTESTED"),
+            correlation,
         )
     with pytest.raises(InvalidSelfBodyData, match="source mismatch"):
         handoff_from_p1_owner_readout(
             present, replace(owner_output, session_id="foreign-session"),
+            correlation,
         )
