@@ -671,6 +671,40 @@ async def qualify(
             fresh = await _correlated_observe(session, "b0-next-l0-native")
             report["next_native_probe"] = asdict(fresh)
             next_l0 = ledger.decide(fresh)
+            if dev_only:
+                # The same original S51 L0 has ALREADY made its decision.
+                # Project that owner-local *sensor* into SelfBody/World without
+                # reading true M0 energy, running a new L0, or issuing Action.
+                from adapters.mineflayer.self_body_m0_projection import (
+                    compose_b0_cognition_views,
+                )
+
+                cognition = compose_b0_cognition_views(
+                    fresh, ledger, next_l0,
+                    self_id="s51-b0-dev-self",
+                    epoch_id=f"b0-next-probe-{fresh.seq}",
+                )
+                sensed = cognition.body.sensed("m0_energy_sensor")
+                report["dev_b0_cognition_next_epoch"] = {
+                    "classification": "DEV_ONLY_PRODUCER_LOCAL_M0_INTEROCEPTION",
+                    "native_source": cognition.body.observation.source_ref,
+                    "world_source": cognition.world.observation.source_ref,
+                    "body_world_same_object": cognition.world.self_body is cognition.body,
+                    "source_seq": fresh.seq,
+                    "l0_kind": cognition.l0_kind,
+                    "m0_tick": cognition.sensor_tick,
+                    "m0_energy_sensor": sensed.value,
+                    "m0_sensor_origin": sensed.origin.value,
+                    "m0_sensor_owner_source": sensed.provenance[-1].source,
+                    "native_food": cognition.body.observed("food").value,
+                    "native_health": cognition.body.observed("health").value,
+                    "p1_fatigue": cognition.body.sensed("p1_fatigue").value,
+                    "true_m0_energy_exposed": False,
+                    "s10_updates": 0,
+                    "additional_native_reads": 0,
+                    "additional_actions": 0,
+                    "qualification": False,
+                }
             report["next_l0"] = {
                 "probe_seq": next_l0.probe_seq,
                 "kind": next_l0.kind,
