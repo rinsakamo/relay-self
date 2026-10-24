@@ -265,7 +265,7 @@ def test_joint_dev_receipt_requires_native_s10_and_matching_later_body_world(
             native["stage_r_owner"]["operator_s10_grants"] = 2
         report.write_text(json.dumps(native), encoding="utf-8")
         (report.parent / "self_views.jsonl").write_text(
-            "".join(json.dumps(row) + "\\n" for row in rows),
+            "".join(json.dumps(row) + "\n" for row in rows),
             encoding="utf-8",
         )
         return 0
