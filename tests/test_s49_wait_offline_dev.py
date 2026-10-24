@@ -52,7 +52,8 @@ def test_same_owner_cross_source_projection_and_atomic_private_report(tmp_path):
     target = tmp_path / "run.json"
     result = run(ex, target)
     saved = json.loads(target.read_text())
-    assert result == saved
+    # The report is JSON; tuples from the Python screening result become lists.
+    assert json.loads(json.dumps(result)) == saved
     assert saved["status"] == "OFFLINE_PROJECTION_ONLY"
     assert ex.wait_phase == "SEALED"
     assert len(saved["owner_rows"]) == 10
