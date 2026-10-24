@@ -301,3 +301,18 @@ def test_no_new_authority_methods_created():
         "motor_owner", "grant_action", "update_world",
     ):
         assert not hasattr(review, key)
+
+
+@pytest.mark.parametrize("bad_status", ("PHYSICAL_SUCCESS", "QUALIFIED_L0"))
+def test_hypothetical_review_cannot_be_relabeled_physical(bad_status):
+    result = predict_hypothetical_dodge(body(), hypothesis())
+    with pytest.raises(TimingReviewRejected, match="unsupported timing"):
+        replace(result, status=bad_status)
+
+
+def test_position_delta_status_cannot_claim_native_velocity():
+    result = review_body_position_delta(
+        body(seq=1), body(seq=2, readback=True), self_id="self-a",
+    )
+    with pytest.raises(TimingReviewRejected, match="unsupported displacement"):
+        replace(result, status="VELOCITY_MEASURED")
