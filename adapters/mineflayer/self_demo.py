@@ -1093,6 +1093,78 @@ def _dev_run(args: argparse.Namespace) -> int:
                     )
             else:
                 receipt["dev_b0_body_m0_interoception"] = "NOT_OBSERVED"
+            # A multi-epoch cognition trace must correspond one-for-one
+            # with the already saved native S51 appetite observations, plus
+            # the existing next-L0 sensor. Never infer an unseen native probe.
+            epochs = native.get("dev_b0_cognition_epochs")
+            appetite = native.get("ground_appetite_trace")
+            if isinstance(epochs, list):
+                expected = len(appetite) if isinstance(appetite, list) else -1
+                sid = native.get("session_id")
+                pre = epochs[:-1]
+                trace_joined = (
+                    receipt["dev_b0_body_m0_interoception"] ==
+                    "SOURCE_JOINED_PRODUCER_LOCAL_DEV"
+                    and isinstance(sid, str) and bool(sid)
+                    and 1 <= expected <= 16
+                    and len(pre) == expected
+                    and epochs[-1] == view
+                    and isinstance(view, dict)
+                    and all(
+                        isinstance(row, dict) and isinstance(probe_row, dict)
+                        and type(probe_row.get("probe_seq")) is int
+                        and probe_row["probe_seq"] >= 0
+                        and row.get("source_seq") == probe_row["probe_seq"]
+                        and row.get("native_source") ==
+                        f"native-probe:{sid}:{probe_row['probe_seq']}:"
+                        f"b0-ground-appetite-{i:02d}"
+                        and row.get("world_source") ==
+                        f"present:{sid}:{probe_row['probe_seq']}:"
+                        f"b0-ground-appetite-{i:02d}"
+                        and row.get("body_world_same_object") is True
+                        and row.get("classification") ==
+                        "DEV_ONLY_PRODUCER_LOCAL_M0_INTEROCEPTION"
+                        and row.get("l0_kind") == probe_row.get("kind") == "WAIT"
+                        and row.get("native_food") == probe_row.get("food")
+                        and row.get("m0_energy_sensor") ==
+                        probe_row.get("energy_sensor_reading")
+                        and row.get("m0_tick") == probe_row.get("metabolic_tick")
+                        and row.get("m0_sensor_origin") == "interoception"
+                        and row.get("m0_sensor_owner_source") ==
+                        "b0-m0-owner-local-sensor"
+                        and row.get("p1_fatigue") is None
+                        and row.get("true_m0_energy_exposed") is False
+                        and row.get("s10_updates") == 0
+                        and row.get("additional_native_reads") == 0
+                        and row.get("additional_actions") == 0
+                        and row.get("qualification") is False
+                        for i, (row, probe_row) in
+                        enumerate(zip(pre, appetite, strict=True))
+                    )
+                    and all(
+                        type(prev.get("source_seq")) is int
+                        and type(after.get("source_seq")) is int
+                        and prev["source_seq"] < after["source_seq"]
+                        and type(prev.get("m0_tick")) is int
+                        and type(after.get("m0_tick")) is int
+                        and prev["m0_tick"] <= after["m0_tick"]
+                        for prev, after in zip(epochs, epochs[1:])
+                    )
+                )
+                receipt["dev_b0_cognition_epoch_trace"] = (
+                    "ORDERED_PRODUCER_LOCAL_DEV" if trace_joined else "UNDETERMINED"
+                )
+                receipt["dev_b0_cognition_epoch_count"] = (
+                    len(epochs) if trace_joined else 0
+                )
+                if code == 0 and not trace_joined:
+                    code = 1
+                    receipt["dev_b0_cognition_epoch_incomplete"] = (
+                        "NATIVE_APPETITE_AND_NEXT_L0_SOURCE_TRACE_NOT_JOINED"
+                    )
+            else:
+                receipt["dev_b0_cognition_epoch_trace"] = "NOT_OBSERVED"
+                receipt["dev_b0_cognition_epoch_count"] = 0
             # Qualified M0 energy stays false in DEV; these are owner-local
             # measurements on a disposable, non-R-qualified World.
         if scenario == "native-selfworld":
