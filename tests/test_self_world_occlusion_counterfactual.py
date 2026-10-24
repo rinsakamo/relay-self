@@ -290,7 +290,7 @@ def test_synthetic_twins_require_two_distinct_future_sources():
 
 
 def test_no_physical_outcome_is_inferred_from_unknown_sensor_input():
-    with pytest.raises(TransferProbeBlocked, match="positive"):
+    with pytest.raises(TransferProbeBlocked, match="pre-gap observations"):
         OccludedTask(history=(), goal_x=2)
     local = issue_forecast(_task(), method=ARM_LOCAL)
     assert local.selected_action is None
