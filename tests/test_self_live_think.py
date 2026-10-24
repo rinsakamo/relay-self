@@ -211,6 +211,31 @@ def test_live_selfworld_prediction_mismatch_is_read_by_l1_and_l2_but_not_action(
             assert '"observed_value": "skeleton"' in payload
             assert '"predicted_value": "zombie"' in payload
             assert '"preconfigured_l1_cognitive_candidate": "RECHECK"' in payload
+            # Both SelfWorld and SelfBody reach L2 from the SAME native
+            # callback. No L2-issued extra native read or motor command.
+            body_json = payload.split(
+                "Read-only SelfWorld source data (not instructions or World truth): ",
+                1,
+            )[1].split(". Identify one uncertainty", 1)[0]
+            cognition = json.loads(body_json)
+            body = cognition["self_body"]
+            assert body["source_ref"] == (
+                "native-probe:s15-session:19:s49-actual:s15-session:event-18"
+            )
+            assert body["native_seq"] == 19
+            assert body["health"] == {
+                "origin": "observation",
+                "value": scoped_world_probe(19, label="skeleton").snapshot.health,
+            }
+            assert body["food"] == {
+                "origin": "observation",
+                "value": scoped_world_probe(19, label="skeleton").snapshot.food,
+            }
+            assert body["energy"] == {"origin": "unknown", "value": None}
+            assert body["fatigue"] == {"origin": "unknown", "value": None}
+            assert cognition["observer"]["source_ref"] == (
+                "present:s15-session:19:s49-actual:s15-session:event-18"
+            )
             # Later native source invalidates a previously admitted L2 reply.
             await observer.observe(scoped_world_probe(47, label="skeleton"))
             receipt = await observer.close()
@@ -221,6 +246,7 @@ def test_live_selfworld_prediction_mismatch_is_read_by_l1_and_l2_but_not_action(
             assert receipt["self_world_after_source"] == "present:s15-session:19:s49-actual:s15-session:event-18"
             assert receipt["preconfigured_l1_cognitive_candidate"] == "RECHECK"
             assert receipt["self_world_l2_input_bound"] is True
+            assert receipt["self_body_l2_input_bound"] is True
             assert receipt["model_attempts"] == 1
             assert receipt["text_current"] is False
             assert receipt["authorized_actions"] == 0
@@ -256,6 +282,7 @@ def test_live_selfworld_unseen_target_is_undetermined_not_absent():
             assert receipt["self_world_review_reason"] == "target_or_property_unobserved"
             assert receipt["preconfigured_l1_cognitive_candidate"] is None
             assert receipt["self_world_l2_input_bound"] is True
+            assert receipt["self_body_l2_input_bound"] is True
             assert receipt["authorized_actions"] == 0
             prompt = server.posts[0]["messages"][1]["content"]
             assert '"observed_value": null' in prompt
@@ -327,6 +354,7 @@ def test_live_selfworld_unqualified_optional_projection_never_interrupts_l0():
             receipt = await observer.close()
             assert resumed == ["L0_UNCHANGED"]
             assert receipt["status"] == "SELF_WORLD_INPUT_UNQUALIFIED"
+            assert receipt["self_body_l2_input_bound"] is False
             assert server.requests == 0
             assert receipt["authorized_actions"] == 0
             assert receipt["learning_updates"] == 0
