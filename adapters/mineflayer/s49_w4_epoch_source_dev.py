@@ -101,6 +101,7 @@ def review_s49_w4_read_epoch_dev(
         ):
             raise BoundaryRejected("W4 read issuer/Task/epoch mismatch")
         if (any(row.seq is not None for row in (group[0], group[1], group[4]))
+                or type(group[2].seq) is not int or type(group[3].seq) is not int
                 or group[2].seq != expected_seq or group[3].seq != expected_seq
                 or read_task != group[2].reader or read_task != group[3].reader):
             raise BoundaryRejected("W4 decoded/delivered seq not the original S16 source")
