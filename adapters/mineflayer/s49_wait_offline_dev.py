@@ -14,6 +14,10 @@ from pathlib import Path
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.m02_paper_dev.s50_p1_wait_joint_dev import review_joint_wait_sources
 from adapters.mineflayer.s49_wait_fenced_executor_dev import S49WaitFencedExecutorDev
+from adapters.mineflayer.s49_wait_typed_capture_dev import (
+    S49TypedClosureCaptureDev,
+    reject_incompatible_s50_control_action,
+)
 
 SCHEMA = "S49_S50_OFFLINE_PROJECTION_DEV_V1"
 
@@ -77,6 +81,7 @@ def _write_once(path: Path, report: dict) -> None:
 async def run_s49_s50_offline_dev(
     executor: S49WaitFencedExecutorDev, sources: tuple, *,
     prior_action_id: str, output_path: Path,
+    typed_capture: S49TypedClosureCaptureDev | None = None,
 ) -> dict:
     """Cross-screen one provided Action and eight raw Paper lines; save once.
 
@@ -96,6 +101,11 @@ async def run_s49_s50_offline_dev(
         "wait_interval_ref": None, "source_bound_tick": None,
         "wait_ticks_admitted": 0, "p1_fatigue_recovered": 0.0,
         "input_hashes": None, "joint_screen": None, "owner_rows": [],
+        "closure_mode": (
+            "TYPED_EXECUTOR_ORIGINAL_DEV" if typed_capture is not None
+            else "LEGACY_SYNTHETIC_OWNER_DEV_ONLY"
+        ),
+        "typed_s16_evidence_sha256": None,
     }
     try:
         cross = review_joint_wait_sources(*sources)
@@ -103,6 +113,20 @@ async def run_s49_s50_offline_dev(
                 or cross["action_id"] != prior_action_id):
             raise BoundaryRejected("S49 owner and S50 source mismatch")
         paper, native, commands, journal, movement = sources
+        if typed_capture is not None:
+            if (not isinstance(typed_capture, S49TypedClosureCaptureDev)
+                    or typed_capture._executor is not executor
+                    or typed_capture.state != "CAPTURED"
+                    or typed_capture.projection is None):
+                raise BoundaryRejected("typed S49 owner close was not captured")
+            evidence = typed_capture.projection
+            report["typed_s16_evidence_sha256"] = evidence.evidence_sha256
+            # Never let the older forward S50 demo impersonate the original
+            # S49 backward-action and its -s15-clear native ACK.
+            reject_incompatible_s50_control_action(
+                evidence, source_session=cross["session_id"],
+                action_id=cross["action_id"], commands=commands,
+            )
         originals = _paper_rows(
             paper, marker=cross["marker_id"], world=cross["paper_world"],
             first=cross["first_world_tick"],
