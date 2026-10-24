@@ -117,6 +117,8 @@ class DodgeBudgetReview:
     physical_success_attested: bool = False
 
     def __post_init__(self) -> None:
+        if not isinstance(self.status, DodgeBudgetStatus):
+            raise TimingReviewRejected("unsupported timing review status")
         if self.allowed_to_act is not False or (
             self.physical_success_attested is not False
         ):
@@ -204,6 +206,8 @@ class BodyDisplacementReview:
     authorized_to_move: bool = False
 
     def __post_init__(self) -> None:
+        if not isinstance(self.status, BodyDisplacementStatus):
+            raise TimingReviewRejected("unsupported displacement status")
         if (
             self.elapsed_s is not None or self.speed_mps is not None
             or self.authorized_to_move is not False
@@ -249,6 +253,9 @@ def review_body_position_delta(
         and after.outcome is not None
         and after.outcome.disposition is ActionOutcomeDisposition.OUTCOME
         and after.outcome.reason_code == "observed_execution"
+        and after.outcome.source_status == "executed"
+        and after.outcome.session_id == after.session_id
+        and a.action_id is None
         and b.action_id == after.outcome.action_id
         and b.consequence_provenance == after.outcome.world_provenance
     ):
