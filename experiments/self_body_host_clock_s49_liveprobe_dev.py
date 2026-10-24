@@ -73,8 +73,9 @@ class S49PassiveHostClockDEV:
     def _failure(
         self, stage: str, exc: BaseException, reading: object,
     ) -> None:
-        sid = getattr(reading, "session_id", None)
-        seq = getattr(reading, "seq", None)
+        # Do not invoke foreign subclass properties when recording failures.
+        sid = reading.session_id if type(reading) is MineflayerObservation else None
+        seq = reading.seq if type(reading) is MineflayerObservation else None
         row = PassiveProbeFailure(
             stage=stage,
             error_type=type(exc).__name__,
@@ -143,9 +144,12 @@ class S49PassiveHostClockDEV:
             self.timer.exit(ticket)
         except BaseException as exc:
             if ticket is not None:
-                # Failure/CancelledError must NOT become a completed interval.
-                # abort() does not clear a terminal clock failure.
-                self.timer.abort(ticket)
+                # Abort must not conceal an original cancellation/interruption.
+                # A failing abort is recorded separately, never as success.
+                try:
+                    self.timer.abort(ticket)
+                except BaseException as abort_exc:
+                    self._failure("clock-abort", abort_exc, reading)
             self._failure(stage, exc, reading)
             if isinstance(exc, Exception):
                 self.views.record_error(exc)
