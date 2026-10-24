@@ -19,6 +19,8 @@ on:
       - adapters/mineflayer/m02_paper_dev/s50_p1_scope.py
       - tests/test_s50_p1_wait.py
       - tests/test_s50_p1_scope.py
+      - adapters/mineflayer/m02_paper_dev/s50_p1_wait_joint_dev.py
+      - tests/test_s50_p1_wait_joint_dev.py
 
 permissions:
   contents: read
@@ -75,7 +77,9 @@ jobs:
             adapters/mineflayer/self_body_m0_projection.py \
             tests/test_p1_selfbody_export.py \
             tests/test_p1_selfbody_native_join_dev.py \
-            tests/test_self_body_m0_projection.py
+            tests/test_self_body_m0_projection.py \
+            adapters/mineflayer/m02_paper_dev/s50_p1_wait_joint_dev.py \
+            tests/test_s50_p1_wait_joint_dev.py
       - name: FAST original P1 + SelfBody/M0 focused offline tests
         run: |
           python -m pytest -q \
@@ -88,7 +92,8 @@ jobs:
             tests/test_self_world.py \
             tests/test_self_dev.py \
             tests/test_s50_p1_wait.py \
-            tests/test_s50_p1_scope.py
+            tests/test_s50_p1_scope.py \
+            tests/test_s50_p1_wait_joint_dev.py
       - name: State validation boundary
         if: always()
         run: |
