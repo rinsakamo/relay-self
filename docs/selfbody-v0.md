@@ -1,3 +1,27 @@
+## 2026-10-24 — P1 original-owner reconciled sensor readout handoff
+
+PR #626 now has a candidate pure exporter
+`experiments/p1_selfbody_export.py`: it recomputes the original
+`reconcile(profile, before, prepared, SourceBoundTick)` result before
+calling the existing quantized `sensed_for_self`. This has a strict
+**producer-local, not independently World-attested** classification.
+
+Product adapter `handoff_from_p1_owner_readout` accepts only that
+original typed `P1SelfBodyReadout`, not arbitrary dicts or true Fatigue,
+and checks native self/session/probe source through the existing
+`project_p1_sensor`. Until PR #626's actual module exists in the
+product checkout, this conversion **fails closed**, and the current
+S51 B0 path keeps P1 UNKNOWN. A synthetic compatibility test uses a
+stand-in type only to check the readout's shape; it is *not* original
+P1 verification, physical WAIT attestation, or proof of fatigue recovery.
+
+Original P1 physics, Paper tick source, full-tick WAIT inactivity
+verification, blocked MOVE treatment, S49/S51 Action ownership, M0
+basal metabolism and S10 grants are **unchanged**. No executable
+full-Self loop or live P1 producer installation is claimed.
+
+---
+
 ## 2026-10-24 — P1 sensor handoff to the existing M0/SelfBody view (DEV)
 
 **PRODUCT ADAPTER ONLY / UNATTESTED P1 INPUT / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
