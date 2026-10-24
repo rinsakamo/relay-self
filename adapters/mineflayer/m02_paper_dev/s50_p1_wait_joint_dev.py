@@ -14,6 +14,7 @@ from adapters.mineflayer.m02_paper_dev.s50_p1_control_action import (
 from adapters.mineflayer.m02_paper_dev.s50_p1_lifecycle import review_lifecycle
 from adapters.mineflayer.m02_paper_dev.s50_p1_scope import review_scope
 from adapters.mineflayer.m02_paper_dev.s50_p1_wait import candidate_wait_ticks
+from adapters.mineflayer.s49_wait_owner_fence_dev import review_s49_owner_wait_fence
 
 MISSING_R_PROOFS = (
     "EXHAUSTIVE_PHYSICAL_ACTIVITY_FOR_EACH_COMPLETE_WORLD_TICK",
@@ -29,6 +30,8 @@ def review_joint_wait_sources(
     commands: list[dict],
     journal: list[dict],
     movement: dict,
+    *,
+    s49_owner_fence_rows: tuple[dict, ...] | None = None,
 ) -> dict:
     """Reject incoherent original streams; always withhold physical WAIT.
 
@@ -82,6 +85,15 @@ def review_joint_wait_sources(
     if lifecycle["same_world_chunk_change_ticks"]:
         environment_context_flags.append("CHUNK_LIFECYCLE_IN_SELF_WORLD")
 
+    owner_fence = None
+    if s49_owner_fence_rows is not None:
+        owner_fence = review_s49_owner_wait_fence(
+            s49_owner_fence_rows,
+            session_id=action["source_session"],
+            marker_id=marker, world=world,
+            first_world_tick=first, last_world_tick=last,
+        )
+
     # Even an all-clean cross-source screen cannot fill the missing R witnesses.
     return {
         "classification": "S50_P1_JOINT_ORIGINALS_DEV_SCREEN_ONLY",
@@ -103,6 +115,11 @@ def review_joint_wait_sources(
         "environment_context_flags": environment_context_flags,
         "self_sample_screen_clear": not self_activity_flags,
         "missing_independent_r_proofs": MISSING_R_PROOFS,
+        "s49_owner_fence_source": (
+            "LOCAL_SOURCE_SHAPE_SCREENED" if owner_fence is not None
+            else "NOT_PROVIDED"
+        ),
+        "s49_owner_fence_report": owner_fence,
         "complete_world_tick_inactivity_proven": False,
         "all_action_issuers_proven_idle": False,
         "r_original_source_authenticated": False,
