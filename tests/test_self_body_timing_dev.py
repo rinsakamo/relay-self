@@ -159,7 +159,7 @@ def test_foreign_self_and_session_rejected():
     with pytest.raises(TimingReviewRejected, match="foreign or unspecified"):
         predict_hypothetical_dodge(replace(b, self_id="other"), h)
     with pytest.raises(TimingReviewRejected, match="foreign session"):
-        predict_hypothetical_dodge(replace(h, session_id="T"), h)
+        predict_hypothetical_dodge(b, replace(h, session_id="T"))
 
 
 def test_uncorrelated_native_provenance_rejected():
