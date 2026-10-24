@@ -243,3 +243,34 @@ zero P1 recovery.
 Actual independent original native wire custody, independent Paper
 source authentication and causal source binding require a distinct R
 qualification gate and external trust anchor, not this DEV replayer.
+
+### W4 cooperative read-lease epoch screen (isolated DEV)
+
+The new `s49_w4_epoch_source_dev.py` tests a narrow snapshot of the
+**existing** W4 `ReadAudit` records against the previously verified
+W3 Node-stdout S16 four-frame source. An `ACTION_READ` OPEN for the same
+S49 Action and native session must have four complete, in-order
+`ISSUE → READ → DECODED → DELIVER → READ_REVOKE` operations. Each
+DECODED/DELIVER sequence must correspond to the original retained
+before/dispatch/clear/after frame order. The recorded local action epoch
+must be revoked and followed by a strictly newer HOST epoch. Any stale,
+cross-Action, changed reader/issuer, missing read, duplicate sequence,
+aborted audit, or false TCP/external-custody claim is rejected.
+
+The optional original-owner `project_s49_backward_paper_dev(...,
+w4_read_audit=..., w3_original_root=..., paper_collector_cursor=...,
+custody_archive=..., require_preaction_edge=True)` performs this screen
+**before** arming the same S49 owner-local candidate WAIT fence. A
+synthetic test `ReadAudit` is merely a shape fixture: a caller could
+manufacture all epoch/Task IDs. The W4 DEV lease itself is cooperative
+Python I/O control; it does not cryptographically authenticate an
+OS process, a Node→Minecraft TCP producer, the Paper server, or any
+independent reader principal. Also the W4 lease remains opt-in DEV
+and is not evidence of installation in the original S49 runtime.
+Consequently status remains `LOCAL_ACTION_READ_EPOCH_SHAPE_ONLY`,
+and original P1 physical fatigue recovery remains zero.
+
+Next independent R evidence must attest the actual original owner
+process/OS principal/epoch (not caller-declared labels), external
+source custody and server-effective BACK OFF causal attribution.
+A changed or stale local audit is never grounds for another Action.

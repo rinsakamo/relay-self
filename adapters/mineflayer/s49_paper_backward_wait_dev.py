@@ -134,6 +134,7 @@ async def project_s49_backward_paper_dev(
     custody_archive: object | None = None,
     w3_original_root: Path | None = None,
     paper_collector_cursor: object | None = None,
+    w4_read_audit: tuple | None = None,
 ) -> dict:
     """One-shot offline correlation from the original typed owner closure.
 
@@ -163,6 +164,7 @@ async def project_s49_backward_paper_dev(
         "observer_transcript_review": None,
         "two_buffer_archive_review": None,
         "producer_file_review": None,
+        "w4_read_epoch_review": None,
         "source_authentication": "UNATTESTED_CALLER_PAPER_INPUT",
         "server_effective_control_release": "NOT_ATTESTED",
         "whole_tick_self_inactivity": "NOT_ATTESTED",
@@ -174,6 +176,8 @@ async def project_s49_backward_paper_dev(
     try:
         if require_preaction_edge not in (True, False) or type(require_preaction_edge) is not bool:
             raise BoundaryRejected("pre-action admission mode must be bool")
+        if w4_read_audit is not None and w3_original_root is None:
+            raise BoundaryRejected("W4 local read-epoch requires both original producer files")
         if (w3_original_root is None) != (paper_collector_cursor is None):
             raise BoundaryRejected("original producer file locators must be paired")
         if w3_original_root is not None and custody_archive is None:
@@ -233,6 +237,13 @@ async def project_s49_backward_paper_dev(
                             != source_review["paper_log_sha256"]):
                         raise BoundaryRejected("saved Paper collector not same archive")
                     report["producer_file_review"] = producer_review
+                    if w4_read_audit is not None:
+                        from adapters.mineflayer.s49_w4_epoch_source_dev import (
+                            review_s49_w4_read_epoch_dev,
+                        )
+                        report["w4_read_epoch_review"] = review_s49_w4_read_epoch_dev(
+                            typed_capture, producer_review, w4_read_audit,
+                        )
         if marker != action + "-" + session:
             raise BoundaryRejected("S49 Paper marker not action/session bound")
         decoded = evidence.decoded_evidence
