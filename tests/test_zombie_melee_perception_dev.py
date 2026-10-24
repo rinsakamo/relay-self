@@ -65,12 +65,12 @@ def _swing(seq: int = 2, entity: int = 7):
     )
 
 
-def _review(current=None, prior=None, **kwargs):
+def _review(current=None, prior=None, *, contact_radius_m=1.8, **kwargs):
     return review_zombie_melee(
         current=current or _frame(2, 1.25),
         target_entity_id=7,
         prior=prior,
-        contact_radius_m=1.8,
+        contact_radius_m=contact_radius_m,
         **kwargs,
     )
 
