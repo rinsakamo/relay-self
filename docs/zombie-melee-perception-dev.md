@@ -21,7 +21,9 @@ These targets are **hypotheses**, not current source capabilities. A wind-up is 
 - adapters/mineflayer/python_protocol.py MineflayerEntityFact = id/name/type/distance/position; no motion or attack flag.
 - adapters/mineflayer/present_projection.py preserves positive probe id/name/distance/position but not entity_type or animation.
 - Current product S49 host focuses on positively observed zombie witnesses and owner-authorized MOVE_AWAY, not dodge/hit prediction.
-- Mineflayer public API has entitySwingArm(entity), representing a **swing animation**, not necessarily an earlier raised-arm phase or guaranteed damaging strike. Timing/coverage in pinned Mineflayer 4.39.0 + Java 1.21.8 remain unverified through real World source.
+- Minecraft Java zombies also visibly raise their arms during **pursuit**, not necessarily as a discrete attack wind-up (Minecraft Wiki, Zombie/Attacking the player). Arm-up pose may therefore be an L1 pursuit/caution cue but must not be labeled a confirmed pre-hit attack.
+- Mineflayer public API has entitySwingArm(entity), representing a **swing animation**, not necessarily an earlier raised-arm phase, pursuit pose transition or guaranteed damaging strike. Timing/coverage in pinned Mineflayer 4.39.0 + Java 1.21.8 remain unverified through real World source.
+- Source reference for this distinction: https://minecraft.wiki/w/Zombie (Attacking the player); API event summary: https://deepwiki.com/PrismarineJS/mineflayer/6.1-items-and-equipment .
 - Source labels (mineflayer) are producer-local provenance, not independent raw native attestation. No raw animation packet or attack timing proof was obtained.
 
 ## Additive DEV implementation
