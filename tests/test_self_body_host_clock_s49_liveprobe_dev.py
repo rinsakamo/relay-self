@@ -277,5 +277,73 @@ def test_advisory_failure_ledger_is_bounded():
             await relay.observe(probe(8))
     asyncio.run(run())
     assert len(relay.failures()) == MAX_PROBES + 1
-    assert relay.summary()["failure_overflow"] == 26
+    assert relay.summary()["failure_overflow"] == 25
     assert len(relay.timer.rows()) == 1
+
+
+def test_original_fake_s49_cancellation_propagates_into_owner_cleanup(monkeypatch):
+    cleanup = []
+    async def cancel(_view):
+        raise asyncio.CancelledError("host cancelled")
+    relay = observer(clock=ticks(1), work=cancel)
+
+    async def fake_original_qualify(report_path, server_log, *, live_probe=None):
+        try:
+            await live_probe(probe(8))
+            raise AssertionError("owner should have propagated cancellation")
+        finally:
+            cleanup.append("original-owner-cleanup")
+
+    monkeypatch.setattr(s49_normal_session_real_ci, "qualify", fake_original_qualify)
+    async def run():
+        await s49_normal_session_real_ci.qualify(
+            "no-world.json", "no-world.log", live_probe=relay.observe,
+        )
+    with pytest.raises(asyncio.CancelledError):
+        asyncio.run(run())
+    assert cleanup == ["original-owner-cleanup"]
+    assert len(relay.timer.aborted_tickets()) == 1
+    assert relay.timer.rows() == ()
+    assert relay.summary()["action_issuer"] == "EXISTING_S49_ONLY"
+
+
+def test_failed_abort_must_not_mask_original_callback_cancellation(monkeypatch):
+    async def cancel(_view):
+        raise asyncio.CancelledError("original")
+    relay = observer(clock=ticks(1), work=cancel)
+
+    def abort_raises(_ticket):
+        raise RuntimeError("secondary abort failure")
+
+    monkeypatch.setattr(relay.timer, "abort", abort_raises)
+    with pytest.raises(asyncio.CancelledError, match="original"):
+        asyncio.run(relay.observe(probe(8)))
+    assert [x.stage for x in relay.failures()] == ["clock-abort", "callback"]
+    assert len(relay.views.rows()) == 1
+    assert relay.timer.rows() == ()
+
+
+def test_malformed_native_subclass_property_not_inspected_for_failure_evidence():
+    from adapters.mineflayer.python_protocol import MineflayerObservation
+
+    class Trap(MineflayerObservation):
+        @property
+        def session_id(self):
+            raise AssertionError("foreign getter should not be executed")
+
+    native = probe(8)
+    # Not constructing Trap: instance-only override through object inheritance
+    # is enough to prove source correlation rejects an untrusted subtype.
+    class Foreign:
+        @property
+        def session_id(self):
+            raise AssertionError("foreign getter should not be executed")
+        @property
+        def seq(self):
+            raise AssertionError("foreign getter should not be executed")
+
+    relay = observer(clock=ticks(1))
+    asyncio.run(relay.observe(Foreign()))
+    assert relay.failures()[0].session_id is None
+    assert relay.failures()[0].native_seq is None
+    assert relay.timer.rows() == ()
