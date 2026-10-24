@@ -595,11 +595,12 @@ async def _run_disposable(
                 )
 
                 primary = sys.exc_info()[1]
-                for name, rows in (
-                    (VIEWS_FILE, view_rows),
-                    (CLOCK_FILE, host_clock_rows(host_clock)),
-                ):
+                for name in (VIEWS_FILE, CLOCK_FILE):
                     try:
+                        rows = (
+                            view_rows if name == VIEWS_FILE
+                            else host_clock_rows(host_clock)
+                        )
                         atomic_write_jsonl_new(report_path.parent / name, rows)
                     except BaseException as sidecar_error:
                         if primary is None:
