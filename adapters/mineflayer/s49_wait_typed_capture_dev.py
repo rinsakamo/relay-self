@@ -10,6 +10,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 
+from adapters.mineflayer import normal_action as native_action_owner
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.normal_action import (
@@ -53,6 +54,12 @@ class S49TypedClosureCaptureDev:
         self._executor = executor
         self._state = "NEW"
         self._projection: S49TypedClosureProjectionDev | None = None
+        self._receipt: NormalActionReceipt | None = None
+        self._readback: NormalActionClosedReadback | None = None
+        self._probe: object | None = None
+        self._supervisor: object | None = None
+        self._dispatch_at_close: frozenset[str] = frozenset()
+        self._count_at_close: int | None = None
 
     @property
     def state(self) -> str:
@@ -117,6 +124,9 @@ class S49TypedClosureCaptureDev:
         """
         if self._state != "NEW" or self._executor.wait_phase != "NEW":
             raise BoundaryRejected("original S49 Action capture is one-shot")
+        # An outer Stage R/product observer must never be silently replaced.
+        if native_action_owner._READ_ONLY_CLOSURE.get() is not None:
+            raise BoundaryRejected("another original Action closure observer is active")
         self._state = "RUNNING"
         observations: list[NormalActionClosedReadback] = []
 
@@ -135,6 +145,12 @@ class S49TypedClosureCaptureDev:
             self._state = "FAILED"
             self._projection = None
             raise
+        self._receipt = receipt
+        self._readback = observations[0]
+        self._probe = probe
+        self._supervisor = self._executor.supervisor
+        self._dispatch_at_close = frozenset(self._executor._dispatched)
+        self._count_at_close = self._executor._count
         self._projection = result
         self._state = "CAPTURED"
         return receipt
@@ -144,6 +160,15 @@ class S49TypedClosureCaptureDev:
         if self._state != "CAPTURED" or self._projection is None:
             raise BoundaryRejected("missing captured original S49 typed OUTCOME")
         result = self._projection
+        if (self._receipt is None or self._readback is None
+                or self._executor.supervisor is not self._supervisor
+                or frozenset(self._executor._dispatched) != self._dispatch_at_close
+                or self._executor._count != self._count_at_close):
+            raise BoundaryRejected("owner changed after typed S16 close")
+        if self._project(
+            self._receipt, [self._readback], expected_probe=self._probe,
+        ) != result:
+            raise BoundaryRejected("typed S16 capture changed after closure")
         self._executor.arm_after_original_outcome(
             closed_action_id=result.action_id,
             terminal_outcome_ref=result.terminal_ref,
