@@ -1,3 +1,44 @@
+# 2026-10-24 — Joint native S49 owner S10 HOLD + passive Cognition views
+
+**Current product DEV work; supersedes the older “Stage R mutually exclusive”
+statement below.** Earlier sections are retained as provenance/history.
+
+The pre-existing S49 `qualify(stage_r_dev=True, live_probe=...)` entry supports
+an original S49-owned single-writer S17→S10 **HOLD** update (revision 1→2,
+no value/policy gain) and passive callback of *already received* native probes.
+The product entry now permits these two features **together**, only with
+`--mode DEV --dev-scenario native --run-disposable`, exact opt-in
+`--self-world-stage-r-dev --self-passive-views`, and the usual confirmation
+and isolated output root. Model calls, W3 raw capture and other owner modes
+remain excluded. The existing S49 runtime, L0 issuer, original qualified
+probe source, evidence, stage R learning-authorization gate and cleanup are
+unchanged.
+
+The sidecar still reports **zero S10 authority/commits** because it only reads
+body/world views. The *original* S49 native report is the separate S10
+single-writer source. A new outer receipt explicitly checks that all three
+passive observations match the original S49 source pair trace and that the
+third view source is the exact **post-terminal** source used by Stage R for
+the one governed S10 HOLD commit. Any forged owner, missing/foreign native
+probe or mismatch produces UNDETERMINED/FAILED without promoting the World,
+grant, learning outcome or native Action.
+
+`dev_stage_r_self_views_next_epoch=SAME_SOURCE_DEV_ONLY` means only a
+source-linked next-epoch body/world view coexists with the original bounded
+S10 revision. It does **not** prove a behavioral effect, viability recovery,
+new habit, genuine resource-energy credit, non-HOLD learning, or long-run
+autonomy. This is another thin slice on the path to a living Full Self.
+
+**Tests** `tests/test_self_product_passive_views.py`: combined read-only
+probe callback + original stage R dispatch; synthetic full receipt/source
+match; forgery/foreign sidecar denial; unchanged model/capture isolation.
+These tests cannot certify a physical run. The new exact HEAD must receive
+FAST Python3.12, Ruff, contracts and owner/path checks at module completion,
+with legitimate native DEV requiring separate local operator opt-in.
+R #575 and V #619 remain independent NO_GO / NOT_RUN.
+
+---
+
 # Product #537 — passive native SelfBody + SelfWorld join (isolated DEV candidate)
 
 **OFFLINE DEV VALIDATED / PHYSICAL NOT RUN / NOT INTEGRATED INTO PR #634 / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**
