@@ -79,6 +79,7 @@ jobs:
               adapters/mineflayer/self_live_think.py|\
               adapters/mineflayer/self_body_projection.py|\
               adapters/mineflayer/self_body_m0_projection.py|\
+              adapters/mineflayer/self_body_p1_projection.py|\
               src/relay_self/self_body.py|\
               docs/selfbody-v0.md|\
               docs/self-product-passive-views-dev.md|\
