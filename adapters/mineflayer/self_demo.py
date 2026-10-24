@@ -1040,6 +1040,59 @@ def _dev_run(args: argparse.Namespace) -> int:
                 receipt["dev_b0_move_outcomes"]
                 + int(native.get("action_terminal") == "outcome")
             )
+            # A separate DEV-only M0 sensor view may accompany an original
+            # S51 next native L0 probe. Neither the simulated energy ledger
+            # nor the provisional P1 body is native Minecraft observation.
+            view = native.get("dev_b0_cognition_next_epoch")
+            source = native.get("next_native_probe")
+            next_choice = native.get("next_l0")
+            m0 = native.get("metabolism_after_eat")
+            if isinstance(view, dict):
+                seq = source.get("seq") if isinstance(source, dict) else None
+                request_id = (
+                    source.get("request_id") if isinstance(source, dict) else None
+                )
+                session = native.get("session_id")
+                joined = (
+                    type(seq) is int
+                    and isinstance(request_id, str) and request_id
+                    and isinstance(session, str) and session
+                    and isinstance(next_choice, dict)
+                    and isinstance(m0, dict)
+                    and view.get("classification") ==
+                    "DEV_ONLY_PRODUCER_LOCAL_M0_INTEROCEPTION"
+                    and view.get("native_source") ==
+                    f"native-probe:{session}:{seq}:{request_id}"
+                    and view.get("world_source") ==
+                    f"present:{session}:{seq}:{request_id}"
+                    and view.get("body_world_same_object") is True
+                    and view.get("source_seq") == seq
+                    and view.get("l0_kind") == next_choice.get("kind")
+                    and view.get("m0_tick") == m0.get("tick")
+                    and view.get("m0_energy_sensor") ==
+                    next_choice.get("energy_sensor_reading")
+                    and view.get("m0_sensor_origin") == "interoception"
+                    and view.get("m0_sensor_owner_source") ==
+                    "b0-m0-owner-local-sensor"
+                    and view.get("native_food") == source.get("snapshot", {}).get("food")
+                    and view.get("native_health") == source.get("snapshot", {}).get("health")
+                    and view.get("p1_fatigue") is None
+                    and view.get("true_m0_energy_exposed") is False
+                    and view.get("s10_updates") == 0
+                    and view.get("additional_native_reads") == 0
+                    and view.get("additional_actions") == 0
+                    and view.get("qualification") is False
+                )
+                receipt["dev_b0_body_m0_interoception"] = (
+                    "SOURCE_JOINED_PRODUCER_LOCAL_DEV" if joined else "UNDETERMINED"
+                )
+                if code == 0 and not joined:
+                    code = 1
+                    receipt["dev_b0_body_m0_incomplete"] = (
+                        "M0_SENSOR_AND_NATIVE_PRESENT_NOT_JOINED"
+                    )
+            else:
+                receipt["dev_b0_body_m0_interoception"] = "NOT_OBSERVED"
             # Qualified M0 energy stays false in DEV; these are owner-local
             # measurements on a disposable, non-R-qualified World.
         if scenario == "native-selfworld":
