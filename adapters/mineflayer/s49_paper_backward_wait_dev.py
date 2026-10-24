@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from uuid import UUID
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.s49_wait_owner_fence_dev import review_s49_owner_wait_fence
@@ -22,6 +23,7 @@ SCHEMA = "S49_BACKWARD_PAPER_SAME_ACTION_DEV_V1"
 BEGIN = "S49_DEV_BACK_WAIT_BEGIN"
 TICK = "S49_DEV_BACK_WAIT_TICK"
 KEYS = frozenset({"marker_id", "action_id", "session_id", "world", "tick", "index"})
+RUN_KEYS = KEYS | {"run_id"}
 
 
 def _sha(data: str) -> str:
@@ -39,12 +41,13 @@ def _parse_paper(
     if not isinstance(raw, str) or not raw:
         raise BoundaryRejected("missing S49 Paper original")
     entries = []
+    observer_run = None
     for raw_line in raw.splitlines(keepends=True):
         line = raw_line.rstrip("\r\n")
         if not line.startswith("S49_DEV_BACK_WAIT_"):
             continue
         tokens = line.split()
-        if len(tokens) != 7 or tokens[0] not in {BEGIN, TICK}:
+        if len(tokens) not in (7, 8) or tokens[0] not in {BEGIN, TICK}:
             raise BoundaryRejected("unexpected Paper S49 row shape")
         values = {}
         for token in tokens[1:]:
@@ -54,8 +57,20 @@ def _parse_paper(
             if not key or not value or key in values:
                 raise BoundaryRejected("empty or duplicate S49 field")
             values[key] = value
-        if set(values) != KEYS:
+        if set(values) not in (KEYS, RUN_KEYS):
             raise BoundaryRejected("missing/foreign S49 Paper source field")
+        run_id = values.get("run_id")
+        if run_id is not None:
+            try:
+                parsed = UUID(run_id)
+            except (ValueError, AttributeError) as exc:
+                raise BoundaryRejected("malformed Paper observer run ID") from exc
+            if str(parsed) != run_id or parsed.version != 4:
+                raise BoundaryRejected("noncanonical Paper observer run ID")
+        if not entries:
+            observer_run = run_id
+        elif run_id != observer_run:
+            raise BoundaryRejected("mixed or restarted Paper observer run")
         if (values.get("action_id") != action_id
                 or values.get("session_id") != session_id
                 or values.get("marker_id") != marker_id
