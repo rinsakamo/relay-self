@@ -1,3 +1,44 @@
+## 2026-10-24 — M0 owner-local interoception DEV integration
+
+**Current scope: implementation candidate, DEV_ONLY / QUALIFICATION_NO_GO /
+SCIENCE_NOT_RUN; source-origin and cognition semantics are distinct.**
+
+SelfBody now has optional `BodyInteroception` entries with a separate
+`BodyOrigin.INTEROCEPTION` / `SelfBodyView.sensed(key)` accessor. This is NOT
+the native `observed(key)` path: a local M0 sensor reading cannot claim native
+Minecraft observation or grant knowledge of the true simulated M0 Energy.
+Every sensor is joined to an already typed Present by session, native seq,
+request ID and native provenance, and records a separate M0 owner/tick
+provenance. An absent P1 physical fatigue input remains UNKNOWN.
+
+The B0-specific adapter `self_body_m0_projection.py` accepts the **existing**
+S51/B0 owner `B0EnergyLedger`, its **already selected** `B0Decision` and the
+same correlated native probe. It checks the exact B0 owner session,
+M0 decision tick, native source, positive nonterminal status and owner sensor
+recalculation before producing one immutable joint SelfBody/SelfWorld view.
+This is **producer-local DEV linkage**, not independent physical source
+attestation, or a second policy that can request/issue Minecraft Action.
+
+The existing S51 native EAT→M0-credit→next native L0 decision path publishes
+a small extra read-only `dev_b0_cognition_next_epoch` record **only under its
+existing `dev_only` mode**. No new native observation, movement, EAT,
+resource credit, S10 permission or L2 model request is made. The enclosing
+Self product DEV receipt checks this sensor value, world/body original probe
+sources, M0 tick and next L0 against the unmodified owner report. Missing
+sensor record is recorded as NOT_OBSERVED; an inconsistent present record
+makes that DEV trial fail closed.
+
+**Limit:** This is a first real M0-to-SelfBody *information* edge.
+It does NOT join the separate S49 native Action owner and S51 M0 owner into
+one continuous Full Self; P1's physical fatigue implementation lives in
+unmerged Draft #626. Never manufacture fatigue, treat blocked MOVE as WAIT,
+equate M0 simulation units with Minecraft health, or call this a scientific
+homeostasis result. Tests are synthetic until exact HEAD Python 3.12 FAST and
+explicit local DEV World evidence exist. No real Minecraft/LLM/W4 activity
+is requested by this document.
+
+---
+
 # SelfBody v0 — read-only cognitive body view (#632)
 
 ## Purpose and authority
