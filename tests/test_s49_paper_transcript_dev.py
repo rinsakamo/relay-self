@@ -7,11 +7,11 @@ import json
 import pytest
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
-from adapters.mineflayer.s49_paper_transcript_dev import (
-    review_s49_paper_transcript_dev,
-)
 from adapters.mineflayer.s49_paper_backward_wait_dev import (
     project_s49_backward_paper_dev,
+)
+from adapters.mineflayer.s49_paper_transcript_dev import (
+    review_s49_paper_transcript_dev,
 )
 from test_s49_paper_backward_wait_dev import raw_paper, run, typed_owner
 
