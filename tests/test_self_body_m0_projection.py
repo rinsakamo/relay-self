@@ -4,9 +4,9 @@ No S49/S51 execution, World, native Action, actual P1 or M0 credit.
 """
 from __future__ import annotations
 
+import json
 from dataclasses import FrozenInstanceError, replace
 from types import SimpleNamespace
-import json
 
 import pytest
 
