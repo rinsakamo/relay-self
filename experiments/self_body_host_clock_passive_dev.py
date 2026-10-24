@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable
 
-from relay_self.self_body import SelfBodyView
+from relay_self.self_body import BodyObservation, SelfBodyView
 
 
 class PassiveHostClockRejected(ValueError):
@@ -109,6 +109,8 @@ class PassiveHostCallbackTimer:
         self._seen_requests: set[str] = set()
         self._last_clock_ns: int | None = None
         self._rows: list[PassiveHostInterval] = []
+        self._aborted: list[CallbackTicket] = []
+        self._attempts = 0
 
     @property
     def origin(self) -> HostClockOrigin:
@@ -126,6 +128,9 @@ class PassiveHostCallbackTimer:
         except Exception as exc:
             self._clock_failed = True
             raise PassiveHostClockRejected("local clock sampling failed") from exc
+        except BaseException:
+            self._clock_failed = True
+            raise
         if (
             type(value) is not int or value < 0 or value > (2**63 - 1)
             or (self._last_clock_ns is not None
@@ -142,7 +147,7 @@ class PassiveHostCallbackTimer:
             raise PassiveHostClockRejected("foreign or overridden SelfBodyView")
         obs = view.observation
         if (
-            obs is None or not view.session_id or not view.epoch_id
+            type(obs) is not BodyObservation or not view.session_id or not view.epoch_id
             or obs.session_id != view.session_id
             or obs.source_provenance.source != "mineflayer"
             or obs.source_provenance.reference
@@ -156,7 +161,7 @@ class PassiveHostCallbackTimer:
             raise PassiveHostClockRejected("invalid native source or replay")
         if self._active is not None:
             raise PassiveHostClockRejected("overlapping callback timing")
-        if len(self._rows) >= self.capacity:
+        if self._attempts >= self.capacity:
             raise PassiveHostClockRejected("bounded callback budget exhausted")
         ticket = CallbackTicket(
             self_id=self.self_id,
@@ -168,6 +173,7 @@ class PassiveHostCallbackTimer:
             entered_ns=self._now(),
             origin=self.origin,
         )
+        self._attempts += 1
         self._active = ticket
         self._session = view.session_id
         self._last_seq = obs.native_seq
@@ -199,7 +205,12 @@ class PassiveHostCallbackTimer:
         """Discard an unfinished callback after failure/cancellation, no sample."""
         if ticket is not self._active or self._active is None:
             raise PassiveHostClockRejected("foreign or duplicate callback ticket")
+        self._aborted.append(ticket)
         self._active = None
+
+    def aborted_tickets(self) -> tuple[CallbackTicket, ...]:
+        """Bounded immutable failure history, never successful timing samples."""
+        return tuple(self._aborted)
 
     def rows(self) -> tuple[PassiveHostInterval, ...]:
         """Return immutable snapshots; no native read, world write or motor grant."""

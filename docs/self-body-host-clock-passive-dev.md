@@ -1,6 +1,6 @@
 # SelfBody host-local callback time — additive offline DEV prototype (#632)
 
-**SOURCE_STAGED / PYTHON3_12_UNVERIFIED / DEV_ONLY /
+**LOCAL_PYTHON3_12_VALIDATED / DEV_ONLY /
 QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**
 
 The verified PR #634 SelfBody timing calculation uses synthetic hypotheticals;
@@ -55,8 +55,7 @@ only, never an elapsed time. No new S17/S10 authority is present.
 - `PassiveHostInterval` cannot be upgraded to physical timestamp, Action
   authority, speed, a World consequence or S17 learning.
 - Existing S49 is **not modified**; no hook is connected to a real runtime.
-  This source has not been physically executed or tested in Python3.12 yet.
-  The 24 new test functions are source-staged, NOT marked PASS.
+  Python 3.12.3 local validation is recorded below; no World was run.
 
 ## Next LocalCodex DEV gate
 
@@ -80,3 +79,69 @@ only, never an elapsed time. No new S17/S10 authority is present.
    damage/fall and failures; L2→L1→L0 learning remains separate #426 gates.
 
 No PR #634/#545/main ref or workflow update is made by this prototype.
+
+## Local validation, 2026-10-24 (isolated WSL2 DEV)
+
+Original source `ff68a50cff87a439fea3a8ada590fa60e1b023b3`: requested
+focused suite **251 PASS**, adoption v2 **52 PASS**, zero FAIL/ERROR/SKIP;
+Ruff 0.17.0 and repository contracts PASS. Python 3.12.3, pytest 9.1.1,
+Ubuntu 24.04.4 on WSL2. No prior PR CI result was reused.
+
+Added **10 test functions / 19 parameterized cases**. Before implementation
+repairs the host-clock suite yielded **40 PASS / 11 FAIL / 0 ERROR / 0 SKIP**.
+The revised requested focused suite yields **270 PASS**, adoption **52 PASS**,
+zero FAIL/ERROR/SKIP; lint/contracts PASS. Full commands, exit codes, JUnit,
+stdout/stderr and immutable first failures reside in the external evidence root
+`/home/rinsa/selfbody-clock-evidence-20261024-verify/`.
+
+Repairs: count every entered attempt (including aborts) against capacity;
+retain aborted tickets in a bounded immutable snapshot separate from successful
+rows; mark clock BaseException failures terminal before re-raising; reject
+BodyObservation subclasses overriding source correlation. These do not grant
+source authenticity against arbitrary in-process mutation. Request IDs are
+checked for uniqueness and bound into source refs; the future owner must also
+check them against its actual already-received native probe.
+
+Independent before/after checks cover Protected 82, original protected 82,
+Historical 770 and its pinned index; v2 separately verifies historical 19
+Git objects, unchanged current 15, and adopted current four. S18, S49,
+single reader, Action issuer, S10 and Memory owners are unchanged.
+
+## Smallest prospective live_probe composition (not installed)
+
+The existing `live_probe: Callable[[MineflayerObservation], Awaitable[None]]`
+receives a probe already obtained by S49 `reprobe`. Reuse the existing
+`PassiveSelfViews` projection to obtain the same Self/session/epoch/source
+SelfBody view; time only the observer work after projection admission:
+
+```python
+ticket = timer.enter(view)
+try:
+    await passive_observer(view)
+except BaseException:
+    timer.abort(ticket)
+    raise
+else:
+    interval = timer.exit(ticket)
+```
+
+This sketch is an owner review condition, not a new runtime adapter. In an
+async callback the monotonic interval includes suspension/scheduling time;
+it is not CPU time or L0/L1/L2 decision latency. Projection and timer admission
+cost before `enter` are excluded. Success means callback return only.
+
+S49 currently awaits `live_probe` without locally suppressing its exception.
+Preserve that failure/cancellation propagation: do not retry, fabricate an
+Action result, change L0 selection or swallow cancellation. A clock failure at
+exit produces no sample and propagates rejection. Owner review must specify
+how observer/timer failures appear in the existing failure report and cleanup,
+without altering Action authority. Future tests must cover the original
+single reader/issuer identity, no additional receive/probe, exact input source,
+callback failure/cancellation, terminal clock failure, exhausted attempt budget,
+and unchanged original Action outcome/L0 evidence. This task installs no hook.
+
+Cognition time, authorization/issue time, motor start and physical displacement
+need separately authorized original-owner source points and clock qualification.
+No node/Python subtraction, seq-as-time, tick-to-seconds conversion, physical
+speed, dodge, learning success, positive S17 feedback, or S10 update follows.
+**DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN** remain in force.

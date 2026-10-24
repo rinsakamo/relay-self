@@ -1,4 +1,5 @@
 """#632 offline-only producer-local callback timing contract negatives."""
+import asyncio
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
@@ -271,3 +272,134 @@ def test_injected_clock_origin_cannot_be_reassigned_by_public_setter():
         m.origin = HostClockOrigin.PYTHON_PROCESS_MONOTONIC
     row = m.exit(m.enter(body()))
     assert row.origin is HostClockOrigin.SYNTHETIC_DEV_CLOCK
+
+
+@pytest.mark.parametrize('failure', [BaseException, KeyboardInterrupt, SystemExit])
+def test_base_exception_clock_failure_remains_terminal(failure):
+    calls = 0
+
+    def clock():
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise failure('clock interrupted')
+        return 100
+
+    m = PassiveHostCallbackTimer(self_id='s1', clock=clock)
+    with pytest.raises(failure):
+        m.enter(body())
+    with pytest.raises(PassiveHostClockRejected, match='terminal'):
+        m.enter(body())
+    assert calls == 1 and m.rows() == ()
+
+
+def test_aborted_attempt_consumes_budget_and_retains_failure_history():
+    m = PassiveHostCallbackTimer(self_id='s1', capacity=1, clock=ticks(1, 2))
+    ticket = m.enter(body())
+    m.abort(ticket)
+    assert m.aborted_tickets() == (ticket,)
+    with pytest.raises(PassiveHostClockRejected, match='budget'):
+        m.enter(body(seq=2))
+    assert m.rows() == ()
+
+
+def test_later_success_does_not_hide_aborted_source_or_allow_reuse():
+    m = PassiveHostCallbackTimer(self_id='s1', clock=ticks(1, 2, 3))
+    ticket = m.enter(body())
+    m.abort(ticket)
+    with pytest.raises(PassiveHostClockRejected, match='replay'):
+        m.enter(body())
+    m.exit(m.enter(body(seq=2)))
+    assert m.aborted_tickets() == (ticket,)
+    assert len(m.rows()) == 1
+
+
+def test_abort_cannot_reset_terminal_clock_fault():
+    m = PassiveHostCallbackTimer(self_id='s1', clock=ticks(10, 9, 11))
+    ticket = m.enter(body())
+    with pytest.raises(PassiveHostClockRejected, match='reversed'):
+        m.exit(ticket)
+    m.abort(ticket)
+    with pytest.raises(PassiveHostClockRejected, match='terminal'):
+        m.enter(body(seq=2))
+    assert m.rows() == ()
+
+
+@pytest.mark.parametrize('bad', [-1, True, 1.5, float('nan'), 2**63])
+def test_invalid_exit_timestamp_is_terminal_after_abort(bad):
+    m = PassiveHostCallbackTimer(self_id='s1', clock=ticks(10, bad, 11))
+    ticket = m.enter(body())
+    with pytest.raises(PassiveHostClockRejected, match='clock'):
+        m.exit(ticket)
+    m.abort(ticket)
+    with pytest.raises(PassiveHostClockRejected, match='terminal'):
+        m.enter(body(seq=2))
+    assert m.rows() == ()
+
+
+def test_observation_subclass_cannot_override_source_reference():
+    class Substitute(BodyObservation):
+        @property
+        def source_ref(self):
+            return 'forged-source'
+
+    view = body()
+    obs = view.observation
+    forged = Substitute(**{k: getattr(obs, k) for k in obs.__dataclass_fields__})
+    m = PassiveHostCallbackTimer(self_id='s1', clock=ticks(1, 2))
+    with pytest.raises(PassiveHostClockRejected, match='native source'):
+        m.enter(replace(view, observation=forged))
+
+
+@pytest.mark.parametrize('failure', [RuntimeError, BaseException])
+def test_failed_exit_clock_cannot_recover(failure):
+    calls = 0
+
+    def clock():
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise failure('exit failure')
+        return calls
+
+    m = PassiveHostCallbackTimer(self_id='s1', clock=clock)
+    ticket = m.enter(body())
+    expected = PassiveHostClockRejected if failure is RuntimeError else failure
+    with pytest.raises(expected):
+        m.exit(ticket)
+    m.abort(ticket)
+    with pytest.raises(PassiveHostClockRejected, match='terminal'):
+        m.enter(body(seq=2))
+    assert m.rows() == ()
+
+
+@pytest.mark.parametrize('failure', [RuntimeError, asyncio.CancelledError,
+                                     KeyboardInterrupt, SystemExit])
+def test_future_async_owner_aborts_all_callback_base_exceptions(failure):
+    m = PassiveHostCallbackTimer(self_id='s1', clock=ticks(1))
+
+    async def owner():
+        ticket = m.enter(body())
+        try:
+            raise failure('callback stopped')
+        except BaseException:
+            m.abort(ticket)
+            raise
+        else:
+            m.exit(ticket)
+
+    with pytest.raises(failure):
+        asyncio.run(owner())
+    assert m.rows() == ()
+    assert len(m.aborted_tickets()) == 1
+
+
+def test_wrong_source_reference_and_session_pair_rejected():
+    view = body()
+    m = PassiveHostCallbackTimer(self_id='s1', clock=ticks(1))
+    for obs in (
+        replace(view.observation, source_provenance=Provenance('mineflayer', 'T:1')),
+        replace(view.observation, session_id='T'),
+    ):
+        with pytest.raises(PassiveHostClockRejected, match='native source'):
+            m.enter(replace(view, observation=obs))
