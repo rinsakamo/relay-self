@@ -899,8 +899,11 @@ def _dev_run(args: argparse.Namespace) -> int:
                          view_path.read_text(encoding="utf-8").splitlines()]
             clock_rows = [json.loads(line) for line in
                           clock_path.read_text(encoding="utf-8").splitlines()]
-            valid_clock = verify_host_clock_source_join(
-                native, view_rows, clock_rows,
+            valid_clock = (
+                code == 0 and native.get("status") == "PASS"
+                and native.get("server_exit") == 0
+                and native.get("node_exit") == 0
+                and verify_host_clock_source_join(native, view_rows, clock_rows)
             )
             receipt.update(
                 dev_host_clock=(
