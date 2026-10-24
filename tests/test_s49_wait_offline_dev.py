@@ -10,6 +10,9 @@ import pytest
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.s49_wait_fenced_executor_dev import S49WaitFencedExecutorDev
+from adapters.mineflayer.s49_wait_typed_capture_dev import (
+    S49TypedClosureCaptureDev,
+)
 from adapters.mineflayer.s49_wait_offline_dev import (
     _digest,
     _paper_rows,
@@ -20,6 +23,7 @@ from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
 from test_s50_p1_control_action import ACTION, MARKER, SESSION, WORLD
 from test_s50_p1_wait_joint_dev import originals
+from test_s49_wait_typed_capture_dev import fixture as typed_source_fixture
 
 
 def owner(*, prior=True):
@@ -172,3 +176,50 @@ def test_paper_line_digest_distinguishes_lf_and_crlf():
     )
     assert [tick for tick, _ in first] == [tick for tick, _ in second]
     assert [ref for _, ref in first] != [ref for _, ref in second]
+
+
+def test_typed_s16_cannot_be_aliased_to_unrelated_s50_paper_demo(
+    tmp_path, monkeypatch,
+):
+    # Test observer registration using typed S17 fixture; no physical S49 run.
+    ex, probe, receipt, readback = typed_source_fixture()
+    import adapters.mineflayer.normal_action as original
+
+    async def offline_return(_session, _step, _bound, _probe, _p, _i):
+        original._READ_ONLY_CLOSURE.get()(readback)
+        return receipt
+
+    monkeypatch.setattr(ex, "execute", offline_return)
+    capture = S49TypedClosureCaptureDev(ex)
+    asyncio.run(capture.execute_owned(None, None, None, probe, None, None))
+    # Set the caller-reported session to S50's marker to test that the typed
+    # closure still cannot be claimed as S50's different physical action.
+    ex.session_id = SESSION
+    out = tmp_path / "typed-incompatible.json"
+    with pytest.raises(BoundaryRejected, match="session or Action"):
+        asyncio.run(run_s49_s50_offline_dev(
+            ex, originals(), prior_action_id=ACTION,
+            output_path=out, typed_capture=capture,
+        ))
+    report = json.loads(out.read_text())
+    assert report["closure_mode"] == "TYPED_EXECUTOR_ORIGINAL_DEV"
+    assert report["status"] == "REJECTED_NOT_QUALIFIED"
+    assert report["typed_s16_evidence_sha256"] == (
+        capture.projection.evidence_sha256
+    )
+    assert report["source_bound_tick"] is None
+    assert report["p1_fatigue_recovered"] == 0
+    assert ex.wait_phase == "NEW"
+
+
+def test_typed_capture_must_match_exact_existing_executor(tmp_path):
+    ex, _, _, _ = typed_source_fixture()
+    capture = S49TypedClosureCaptureDev(ex)
+    caller = owner()
+    target = tmp_path / "foreign-capture.json"
+    with pytest.raises(BoundaryRejected, match="typed S49 owner"):
+        asyncio.run(run_s49_s50_offline_dev(
+            caller, originals(), prior_action_id=ACTION,
+            output_path=target, typed_capture=capture,
+        ))
+    assert json.loads(target.read_text())["status"] == "REJECTED_NOT_QUALIFIED"
