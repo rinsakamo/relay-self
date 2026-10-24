@@ -1,3 +1,44 @@
+## Focused integration verification (current combined DEV branch)
+
+These commands are **to be executed in the actual user's isolated Python 3.12
+checkout**; their success is not claimed by authoring this file:
+
+```bash
+export PYTHONPATH=src:tests:.
+python3.12 -m pytest -q \
+  tests/test_fatigue_p1.py \
+  tests/test_fatigue_p1_boundary.py \
+  tests/test_p1_selfbody_export.py \
+  tests/test_self_body_m0_projection.py \
+  tests/test_p1_selfbody_native_join_dev.py \
+  tests/test_self_body.py \
+  tests/test_self_world.py
+python3.12 -m compileall -q \
+  experiments/fatigue_p1.py experiments/fatigue_p1_boundary.py \
+  experiments/p1_selfbody_export.py \
+  adapters/mineflayer/self_body_p1_projection.py \
+  adapters/mineflayer/self_body_m0_projection.py
+ruff check \
+  experiments/fatigue_p1.py experiments/fatigue_p1_boundary.py \
+  experiments/p1_selfbody_export.py \
+  adapters/mineflayer/self_body_p1_projection.py \
+  adapters/mineflayer/self_body_m0_projection.py \
+  tests/test_fatigue_p1.py tests/test_fatigue_p1_boundary.py \
+  tests/test_p1_selfbody_export.py \
+  tests/test_p1_selfbody_native_join_dev.py \
+  tests/test_self_body_m0_projection.py
+```
+
+Check #626 original blobs (including original tests) by SHA against the
+fixed P1 Draft HEAD `56600977fb730918ac67769df0ad9ab45f2e9d49`.
+Negative controls are source/tick mismatch, tampered P1 reconcile,
+false WAIT vs blocked MOVE and masked P1 sensor vs private true state.
+Keep DEV_ONLY, QUALIFICATION_NO_GO, SCIENCE_NOT_RUN; no JVM, Node,
+Minecraft/World or actual fatigue recovery claim without an independently
+authorized original S/R physical source and separate qualifying procedure.
+
+---
+
 ## 2026-10-24 — Exact P1 #626 × S #634 cross-branch integration DEV candidate
 
 An **isolated DEV branch**, `self/integration-p1-m0-bodyworld-dev-20261024`,
