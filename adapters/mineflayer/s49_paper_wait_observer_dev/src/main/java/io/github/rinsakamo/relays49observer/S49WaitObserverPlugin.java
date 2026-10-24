@@ -2,11 +2,18 @@ package io.github.rinsakamo.relays49observer;
 
 import java.util.UUID;
 import org.bukkit.Bukkit;
+import org.bukkit.Input;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerInputEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -18,7 +25,7 @@ import org.bukkit.scheduler.BukkitTask;
  * Synchronous ticks are callback observations, not whole-tick inactivity.
  * This observer NEVER changes controls, World, energy, or Action authority.
  */
-public final class S49WaitObserverPlugin extends JavaPlugin {
+public final class S49WaitObserverPlugin extends JavaPlugin implements Listener {
     private static final int SAMPLE_COUNT = 8;
     private boolean used = false;
     private boolean active = false;
@@ -29,6 +36,7 @@ public final class S49WaitObserverPlugin extends JavaPlugin {
     private String observerRunId;
     private UUID playerId;
     private UUID worldId;
+    private Location startingLocation;
     private long beginTick;
     private int index;
 
@@ -88,22 +96,69 @@ public final class S49WaitObserverPlugin extends JavaPlugin {
         worldId = world.getUID();
         beginTick = world.getFullTime();
         index = 0;
-        getLogger().info("S49_OBSERVER_SUBJECT action_id=" + action
-            + " session_id=" + session + " player_uuid=" + playerId
-            + " world=" + worldId + " run_id=" + observerRunId
-            + " clear_ack=UNATTESTED_CONSOLE_CLAIM");
-        getLogger().info("S49_DEV_BACK_WAIT_BEGIN " + baseFields()
-            + " tick=" + beginTick + " index=0");
-        // Main-thread, single read-only callback per server tick.
+        startingLocation = subject.getLocation();
         try {
+            // Registers passive input/motion observations before the first
+            // sample; it never changes input or entity state.
+            Bukkit.getPluginManager().registerEvents(this, this);
+            if (!idleInput(subject.getCurrentInput())) {
+                abort("SERVER_INPUT_ACTIVE_AT_START");
+                return true;
+            }
+            getLogger().info("S49_OBSERVER_SUBJECT action_id=" + action
+                + " session_id=" + session + " player_uuid=" + playerId
+                + " world=" + worldId + " run_id=" + observerRunId
+                + " clear_ack=UNATTESTED_CONSOLE_CLAIM");
+            getLogger().info("S49_OBSERVER_SERVER_INPUT action_id=" + action
+                + " session_id=" + session + " player_uuid=" + playerId
+                + " world=" + worldId + " run_id=" + observerRunId
+                + " tick=" + beginTick
+                + " input_idle=true s49_release_causality=NOT_ATTESTED");
+            getLogger().info("S49_DEV_BACK_WAIT_BEGIN " + baseFields()
+                + " tick=" + beginTick + " index=0 input_idle=true");
+            // Main-thread, single read-only callback per server tick.
             task = Bukkit.getScheduler().runTaskTimer(
                 this, () -> observe(subject), 1L, 1L
             );
         } catch (RuntimeException ex) {
-            abort("SCHEDULER_START_FAILED");
+            abort("OBSERVER_START_FAILED");
             throw ex;
         }
         return true;
+    }
+
+    private static boolean idleInput(Input input) {
+        // Conservative: no movement, jump, sprint, or sneak input may remain.
+        return input != null && !input.isForward() && !input.isBackward()
+            && !input.isLeft() && !input.isRight() && !input.isJump()
+            && !input.isSprint() && !input.isSneak();
+    }
+
+    private static boolean samePosition(Location a, Location b) {
+        return a != null && b != null
+            && a.getWorld().getUID().equals(b.getWorld().getUID())
+            && Double.compare(a.getX(), b.getX()) == 0
+            && Double.compare(a.getY(), b.getY()) == 0
+            && Double.compare(a.getZ(), b.getZ()) == 0;
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onPlayerInput(PlayerInputEvent event) {
+        if (active && event.getPlayer().getUniqueId().equals(playerId)) {
+            if (!Bukkit.isPrimaryThread() || !idleInput(event.getInput())) {
+                abort("SERVER_INPUT_ACTIVE_DURING_OBSERVATION");
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
+    public void onPlayerMove(PlayerMoveEvent event) {
+        if (active && event.getPlayer().getUniqueId().equals(playerId)) {
+            if (!Bukkit.isPrimaryThread()
+                    || !samePosition(event.getFrom(), event.getTo())) {
+                abort("SELF_MOVEMENT_EVENT_DURING_OBSERVATION");
+            }
+        }
     }
 
     private static boolean validId(String candidate) {
@@ -126,6 +181,14 @@ public final class S49WaitObserverPlugin extends JavaPlugin {
                 abort("OWNER_OR_WORLD_CHANGED");
                 return;
             }
+            if (!idleInput(subject.getCurrentInput())) {
+                abort("SERVER_INPUT_ACTIVE_AT_CALLBACK");
+                return;
+            }
+            if (!samePosition(subject.getLocation(), startingLocation)) {
+                abort("SELF_POSITION_CHANGED_AT_CALLBACK");
+                return;
+            }
             long tick = subject.getWorld().getFullTime();
             int next = index + 1;
             if (next > SAMPLE_COUNT || tick != beginTick + next) {
@@ -134,7 +197,8 @@ public final class S49WaitObserverPlugin extends JavaPlugin {
             }
             index = next;
             getLogger().info("S49_DEV_BACK_WAIT_TICK " + baseFields()
-                + " tick=" + tick + " index=" + index);
+                + " tick=" + tick + " index=" + index
+                + " input_idle=true");
             if (index == SAMPLE_COUNT) {
                 active = false;
                 cancelTask();
