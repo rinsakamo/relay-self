@@ -83,7 +83,9 @@ def atomic_write_jsonl_new(path: Path, rows: tuple[dict, ...]) -> None:
         raise ValueError("invalid bounded sidecar bytes")
     tmp = path.with_name("." + path.name + "." + uuid.uuid4().hex + ".tmp")
     try:
-        with tmp.open("xb") as out:
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(tmp, flags, 0o600)
+        with os.fdopen(fd, "wb") as out:
             out.write(encoded)
             out.flush()
             os.fsync(out.fileno())
