@@ -1,3 +1,39 @@
+## 2026-10-24 — Exact P1 #626 × S #634 cross-branch integration DEV candidate
+
+An **isolated DEV branch**, `self/integration-p1-m0-bodyworld-dev-20261024`,
+contains byte/blob-identical original `experiments/fatigue_p1.py`,
+`experiments/fatigue_p1_boundary.py`, and
+`experiments/p1_selfbody_export.py` from P1 Draft #626, together with S
+Draft #634's existing SelfBody/World/M0 producer-local views. These are
+staging copies of immutable source blobs, **not a second P1 physics owner**;
+neither main nor #545 nor the main code of P1 #626 is overwritten.
+
+This integration tightens the consumer: a real P1
+`P1SelfBodyReadout` is not automatically attached to an arbitrary later
+native probe. `handoff_from_p1_owner_readout` now additionally requires
+`P1NativeCorrelation` from the original S/R observer specifying the
+**exact** session/native-seq/request and P1 World tick/source. The product
+rejects inconsistent correlation. A typed correlation is still just a
+reported pair, **not independent proof** of full physical WAIT inactivity;
+S/R original World source verification remains mandatory.
+
+`tests/test_p1_selfbody_native_join_dev.py` exercises the **real original
+P1 code + S SelfBody/M0 adapter together** on synthetic World inputs:
+genuine P1 `reconcile` and masked sensor export, native-observation and
+M0 interoception, blocked MOVE without P1 recovery, M0 basal debit
+independent of P1 recovery, mismatched correlation and forged recovery.
+It is an integration *test candidate*, not a physical World run. P1/M0
+decision ticks and Paper World ticks are kept distinct.
+
+Do not adopt the combined staging branch wholesale into #634: it carries
+original P1-owner paths which must be integrated by explicit owner
+review. Only the S-facing readout correlation code/tests/docs may be
+normal fast-forward adopted into #634. Keep original P1 provider unchanged
+until separately qualified; Python3.12 FAST in a local combined worktree
+is still required before a runtime integration claim.
+
+---
+
 ## 2026-10-24 — P1 original-owner reconciled sensor readout handoff
 
 PR #626 now has a candidate pure exporter
@@ -8,8 +44,9 @@ calling the existing quantized `sensed_for_self`. This has a strict
 
 Product adapter `handoff_from_p1_owner_readout` accepts only that
 original typed `P1SelfBodyReadout`, not arbitrary dicts or true Fatigue,
-and checks native self/session/probe source through the existing
-`project_p1_sensor`. Until PR #626's actual module exists in the
+and requires an explicit exact native-seq/request to P1 World-tick/source
+`P1NativeCorrelation` supplied by S/R; the existing `project_p1_sensor`
+validates the associated native Present. Until PR #626's actual module exists in the
 product checkout, this conversion **fails closed**, and the current
 S51 B0 path keeps P1 UNKNOWN. A synthetic compatibility test uses a
 stand-in type only to check the readout's shape; it is *not* original
