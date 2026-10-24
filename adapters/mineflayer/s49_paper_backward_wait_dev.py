@@ -131,6 +131,7 @@ async def project_s49_backward_paper_dev(
     observer_transcript: str | None = None,
     expected_player_uuid: str | None = None,
     require_preaction_edge: bool = False,
+    custody_archive: object | None = None,
 ) -> dict:
     """One-shot offline correlation from the original typed owner closure.
 
@@ -158,6 +159,7 @@ async def project_s49_backward_paper_dev(
         "paper_world": world, "typed_s16_sha256": evidence.evidence_sha256,
         "paper_input_sha256": None, "owner_rows": [], "owner_review": None,
         "observer_transcript_review": None,
+        "two_buffer_archive_review": None,
         "source_authentication": "UNATTESTED_CALLER_PAPER_INPUT",
         "server_effective_control_release": "NOT_ATTESTED",
         "whole_tick_self_inactivity": "NOT_ATTESTED",
@@ -169,6 +171,8 @@ async def project_s49_backward_paper_dev(
     try:
         if require_preaction_edge not in (True, False) or type(require_preaction_edge) is not bool:
             raise BoundaryRejected("pre-action admission mode must be bool")
+        if custody_archive is not None and not require_preaction_edge:
+            raise BoundaryRejected("archive requires strict pre-action transition")
         if require_preaction_edge and (
             observer_transcript is None or expected_player_uuid is None
         ):
@@ -196,6 +200,17 @@ async def project_s49_backward_paper_dev(
             if audit["normalized_paper_sha256"] != _sha(paper_original):
                 raise BoundaryRejected("Paper full transcript and callback slice differ")
             report["observer_transcript_review"] = audit
+            if custody_archive is not None:
+                from adapters.mineflayer.s49_paper_custody_dev import (
+                    review_s49_paper_archive_dev,
+                )
+                source_review = review_s49_paper_archive_dev(
+                    typed_capture, custody_archive,
+                    expected_player_uuid=expected_player_uuid,
+                )
+                if source_review["paper_log_sha256"] != _sha(observer_transcript):
+                    raise BoundaryRejected("archived Paper bytes differ from source")
+                report["two_buffer_archive_review"] = source_review
         if marker != action + "-" + session:
             raise BoundaryRejected("S49 Paper marker not action/session bound")
         decoded = evidence.decoded_evidence
