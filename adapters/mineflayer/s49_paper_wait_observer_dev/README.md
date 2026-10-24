@@ -114,3 +114,10 @@ and `whole_tick_self_inactivity` remain `NOT_ATTESTED`. No
 `SourceBoundTick(WAIT)`, P1 recovery or qualification is admitted.
 The independent R source custody and an S49→Paper causal handshake
 are still required before any live qualification gate.
+
+In particular, `getCurrentInput()` reporting all-false at BEGIN
+does not prove a preceding true→false transition: it can also be the
+preexisting/default server input. The R gate must independently bind
+a server-observed transition and the S49 original cleanup chronology;
+the DEV parser must never infer such a transition from a UUID or
+console action claim.
