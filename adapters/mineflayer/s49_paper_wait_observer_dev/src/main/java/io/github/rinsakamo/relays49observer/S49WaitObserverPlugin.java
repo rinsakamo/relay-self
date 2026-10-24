@@ -26,6 +26,7 @@ public final class S49WaitObserverPlugin extends JavaPlugin {
     private String marker;
     private String action;
     private String session;
+    private String observerRunId;
     private UUID playerId;
     private UUID worldId;
     private long beginTick;
@@ -81,6 +82,7 @@ public final class S49WaitObserverPlugin extends JavaPlugin {
         active = true;
         action = args[0];
         session = args[1];
+        observerRunId = UUID.randomUUID().toString();
         marker = action + "-" + session;
         playerId = parsedPlayer;
         worldId = world.getUID();
@@ -88,7 +90,7 @@ public final class S49WaitObserverPlugin extends JavaPlugin {
         index = 0;
         getLogger().info("S49_OBSERVER_SUBJECT action_id=" + action
             + " session_id=" + session + " player_uuid=" + playerId
-            + " world=" + worldId
+            + " world=" + worldId + " run_id=" + observerRunId
             + " clear_ack=UNATTESTED_CONSOLE_CLAIM");
         getLogger().info("S49_DEV_BACK_WAIT_BEGIN " + baseFields()
             + " tick=" + beginTick + " index=0");
@@ -111,7 +113,8 @@ public final class S49WaitObserverPlugin extends JavaPlugin {
 
     private String baseFields() {
         return "marker_id=" + marker + " action_id=" + action
-            + " session_id=" + session + " world=" + worldId;
+            + " session_id=" + session + " world=" + worldId
+            + " run_id=" + observerRunId;
     }
 
     private void observe(Player subject) {
@@ -135,8 +138,11 @@ public final class S49WaitObserverPlugin extends JavaPlugin {
             if (index == SAMPLE_COUNT) {
                 active = false;
                 cancelTask();
-                getLogger().info("S49_OBSERVER_COMPLETE samples=8"
-                    + " authority=NONE no_p1_recovery");
+                getLogger().info("S49_OBSERVER_COMPLETE action_id=" + action
+                    + " session_id=" + session + " player_uuid=" + playerId
+                    + " world=" + worldId + " run_id=" + observerRunId
+                    + " last_tick=" + tick
+                    + " samples=8 authority=NONE p1_recovery=NONE");
             }
         } catch (RuntimeException ex) {
             abort("PAPER_OBSERVER_EXCEPTION");
