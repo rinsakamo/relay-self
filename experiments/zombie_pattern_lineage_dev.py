@@ -75,7 +75,12 @@ class PatternLineage:
             raise PatternLineageRejected("unsupported cognitive lane")
         if not isinstance(self.rule, HabitRule):
             raise PatternLineageRejected("existing HabitRule required")
-        if self.rule.provenance.source != _PROVENANCE[self.origin]:
+        if (
+            self.rule.provenance.source != _PROVENANCE[self.origin]
+            or self.rule.provenance.reference != (
+                f"{self.origin.value}:{self.rule.habit_id}"
+            )
+        ):
             raise PatternLineageRejected("forged origin provenance")
         if self.rule.cue_requirements != (
             CueFeature(_FEATURE[self.lane], _EXPECTED_TRIGGER[self.lane]),
@@ -114,6 +119,22 @@ class PatternSelectionReview:
     learned_from_world: bool = False
     authorized_for_action: bool = False
     admitted_to_l0: bool = False
+
+    def __post_init__(self) -> None:
+        if (
+            self.learned_from_world is not False
+            or self.authorized_for_action is not False
+            or self.admitted_to_l0 is not False
+        ):
+            raise PatternLineageRejected(
+                "offline comparison cannot assert learning or Action authority"
+            )
+        if (
+            not isinstance(self.origin, PatternOrigin)
+            or not isinstance(self.lane, PatternLane)
+            or not isinstance(self.status, HabitSelectionStatus)
+        ):
+            raise PatternLineageRejected("invalid pattern selection metadata")
 
 
 def _make_rule(
