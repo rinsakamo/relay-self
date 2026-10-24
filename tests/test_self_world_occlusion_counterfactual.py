@@ -310,3 +310,34 @@ def test_multiple_methods_get_identical_task_fingerprint():
         == issue_forecast(task, method=ARM_LOCAL).task_fingerprint
         == issue_forecast(task, method=ARM_TRANSFER, rule=r).task_fingerprint
     )
+
+
+def test_gap_is_explicit_unknown_not_entity_absence():
+    task = replace(_task(), gap_status="UNOBSERVED")
+    forecast = issue_forecast(task, method=ARM_TRANSFER, rule=_rule())
+    assert forecast.hold_x == 1
+    assert task.gap_status == "UNOBSERVED"
+    assert task.fingerprint != _task().fingerprint
+
+
+def test_invalid_gap_status_is_rejected():
+    with pytest.raises(TransferProbeBlocked, match="gap status"):
+        replace(_task(), gap_status="PRESENT_BUT_NO_ENEMIES")
+
+
+def test_candidate_source_forgery_is_rejected():
+    with pytest.raises(TransferProbeBlocked, match="not synthetic"):
+        replace(_rule(), source_scope="mineflayer")
+
+
+def test_candidate_evidence_mutation_is_rejected():
+    with pytest.raises(TransferProbeBlocked, match="incomplete"):
+        replace(_rule(), evidence_pairs=())
+
+
+def test_inconsistent_twin_cannot_be_promoted_into_outcome():
+    task = _task()
+    forecast = issue_forecast(task, method=ARM_PERSIST)
+    fake = replace(_outcome(task), nudge_x=999)
+    with pytest.raises(TransferProbeBlocked, match="provenance inconsistent"):
+        score_sealed(task, forecast, fake)
