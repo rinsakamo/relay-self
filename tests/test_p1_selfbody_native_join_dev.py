@@ -8,6 +8,7 @@ from dataclasses import replace
 import pytest
 
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+from adapters.mineflayer.m02_paper_dev.s50_p1_wait import candidate_wait_ticks
 from adapters.mineflayer.present_projection import project_mineflayer_present
 from adapters.mineflayer.self_body_m0_projection import (
     compose_b0_cognition_views,
@@ -27,6 +28,7 @@ from experiments.fatigue_p1_boundary import (
 )
 from experiments.p1_selfbody_export import export_p1_sensed_tick
 from relay_self.self_body import BodyOrigin, InvalidSelfBodyData
+from test_s50_p1_wait import fixture as s50_wait_fixture
 from test_self_live_think import native_probe
 
 
@@ -141,3 +143,32 @@ def test_blocked_move_is_never_an_idling_p1_recovery():
     )
     assert joint.body.sensed("p1_fatigue_sensor").value == pytest.approx(0.8)
     assert not hasattr(joint, "reconcile_wait")
+
+
+def test_s50_paper_wait_candidate_cannot_become_p1_authority():
+    """Eight Paper point samples never authenticate full-tick WAIT."""
+    candidate = candidate_wait_ticks(
+        s50_wait_fixture(),
+        marker_id="action-session",
+        expected_world="world",
+        source_action_terminal="outcome",
+    )
+    assert candidate["source_stationary_8_of_8"] is True
+    assert len(candidate["samples"]) == 8
+    assert candidate["wait_ticks_admitted"] == 0
+    assert candidate["p1_fatigue_recovered"] == 0
+    assert candidate["r_full_tick_activity_witness"] == "NOT_ATTESTED"
+    assert candidate["r_action_free_interval_witness"] == "NOT_ATTESTED"
+    assert candidate["source_original_authenticated_by_r"] is False
+    assert candidate["m02_basal_continues"] is True
+    assert all(
+        x["p1_wait_recovery_admitted"] is False
+        and x["full_tick_activity_proven"] is False
+        for x in candidate["samples"]
+    )
+    _, _, _, readout = original_wait_p1()
+    _, _, _, present, correlation = native_and_owners(readout)
+    # A native S50 candidate is not the original P1 reconciled sensor
+    # producer. It cannot be smuggled into the read-only SelfBody bridge.
+    with pytest.raises(InvalidSelfBodyData, match="original P1 typed"):
+        handoff_from_p1_owner_readout(present, candidate, correlation)
