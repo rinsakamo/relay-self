@@ -154,3 +154,32 @@ def test_original_rows_are_defensive_copies():
     rows = list(fence.seal(owner, seal_source_ref="seal"))
     rows[0]["action_id"] = "tampered"
     assert review(fence.original_rows)["owner_original_rows"] == 10
+
+
+def test_supervisor_open_action_prevents_arm_and_existing_window_tick(monkeypatch):
+    owner = object()
+    supervisor = ActionSupervisor()
+    fence = S49WaitFenceDev(
+        owner=owner, supervisor=supervisor, session_id=SESSION,
+        marker_id=MARKER, world=WORLD,
+    )
+    monkeypatch.setattr(
+        ActionSupervisor, "open_actions", property(lambda self: (object(),)),
+    )
+    with pytest.raises(BoundaryRejected, match="open supervised Action"):
+        fence.arm(owner, closed_action_id="prior",
+                  terminal_outcome_ref="outcome", controls_clear_ref="clear")
+    assert fence.phase == "ABORTED"
+    assert fence.original_rows == ()
+
+
+def test_boolean_ordinal_and_forged_readback_ref_cannot_pass_source_screen():
+    fence, owner, _, _ = source()
+    rows = list(fence.seal(owner, seal_source_ref="seal"))
+    rows[4]["ordinal"] = True
+    with pytest.raises(BoundaryRejected):
+        review(rows)
+    rows = list(fence.original_rows)
+    rows[0]["controls_clear_ref"] = None
+    with pytest.raises(BoundaryRejected):
+        review(rows)
