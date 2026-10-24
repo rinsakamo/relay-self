@@ -103,6 +103,7 @@ class PassiveHostCallbackTimer:
         self._active: CallbackTicket | None = None
         self._session: str | None = None
         self._last_seq = -1
+        self._seen_requests: set[str] = set()
         self._last_clock_ns: int | None = None
         self._rows: list[PassiveHostInterval] = []
 
@@ -131,6 +132,7 @@ class PassiveHostCallbackTimer:
             or type(obs.native_seq) is not int
             or obs.native_seq <= self._last_seq
             or type(obs.request_id) is not str or not obs.request_id
+            or obs.request_id in self._seen_requests
             or self._session not in (None, view.session_id)
         ):
             raise PassiveHostClockRejected("invalid native source or replay")
@@ -151,6 +153,7 @@ class PassiveHostCallbackTimer:
         self._active = ticket
         self._session = view.session_id
         self._last_seq = obs.native_seq
+        self._seen_requests.add(obs.request_id)
         return ticket
 
     def exit(self, ticket: CallbackTicket) -> PassiveHostInterval:
