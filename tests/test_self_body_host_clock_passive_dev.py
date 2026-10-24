@@ -263,3 +263,11 @@ def test_forged_abort_ticket_cannot_erase_actual_callback():
     with pytest.raises(PassiveHostClockRejected, match="foreign"):
         m.abort(replace(ticket, native_seq=77))
     assert m.exit(ticket).callback_elapsed_ns == 100
+
+
+def test_injected_clock_origin_cannot_be_reassigned_by_public_setter():
+    m = PassiveHostCallbackTimer(self_id="s1", clock=ticks(10, 20))
+    with pytest.raises(AttributeError):
+        m.origin = HostClockOrigin.PYTHON_PROCESS_MONOTONIC
+    row = m.exit(m.enter(body()))
+    assert row.origin is HostClockOrigin.SYNTHETIC_DEV_CLOCK
