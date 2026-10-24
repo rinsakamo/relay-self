@@ -583,9 +583,11 @@ async def _run_disposable(
             os.environ["S49_REAL_SERVER_CI"] = previous
         # Never defer original host environment restoration to sidecar I/O.
         if passive_views is not None:
-            view_rows = (*passive_views.rows(), passive_views.summary())
             if host_clock is None:
-                _write_trace(report_path.parent / "self_views.jsonl", view_rows)
+                _write_trace(
+                    report_path.parent / "self_views.jsonl",
+                    (*passive_views.rows(), passive_views.summary()),
+                )
             else:
                 from experiments.self_body_host_clock_sidecar_dev import (
                     CLOCK_FILE,
@@ -598,8 +600,8 @@ async def _run_disposable(
                 for name in (VIEWS_FILE, CLOCK_FILE):
                     try:
                         rows = (
-                            view_rows if name == VIEWS_FILE
-                            else host_clock_rows(host_clock)
+                            (*passive_views.rows(), passive_views.summary())
+                            if name == VIEWS_FILE else host_clock_rows(host_clock)
                         )
                         atomic_write_jsonl_new(report_path.parent / name, rows)
                     except BaseException as sidecar_error:
