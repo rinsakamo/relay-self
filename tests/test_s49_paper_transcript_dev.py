@@ -1,11 +1,17 @@
 """DEV-only one-run Paper observer negatives, without Minecraft or P1 grant."""
 from __future__ import annotations
 
+import asyncio
+import json
+
 import pytest
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.s49_paper_transcript_dev import (
     review_s49_paper_transcript_dev,
+)
+from adapters.mineflayer.s49_paper_backward_wait_dev import (
+    project_s49_backward_paper_dev,
 )
 from test_s49_paper_backward_wait_dev import raw_paper, run, typed_owner
 
@@ -164,3 +170,59 @@ def test_prefixed_paper_lines_are_not_attested(monkeypatch):
     assert result["status"] == "ONE_RUN_TRANSCRIPT_SHAPE_ONLY"
     assert result["source_authentication"] == "UNATTESTED_PAPER_LOG_TEXT"
     assert result["wait_interval_ref"] is None
+
+
+def callback_slice(transcript_text):
+    return "\n".join(transcript_text.splitlines()[1:-1]) + "\n"
+
+
+def test_full_transcript_is_persisted_with_owner_wait_shape(
+    monkeypatch, tmp_path,
+):
+    capture = typed_owner(monkeypatch)
+    original = transcript(capture)
+    result = asyncio.run(project_s49_backward_paper_dev(
+        capture, callback_slice(original), output_path=tmp_path / "joined.json",
+        observer_transcript=original, expected_player_uuid=PLAYER,
+    ))
+    saved = json.loads((tmp_path / "joined.json").read_text())
+    assert saved == result
+    assert saved["status"] == "SAME_ACTION_PAPER_SHAPE_ONLY"
+    assert saved["observer_transcript_review"]["observer_run_id"] == RUN_ID
+    assert saved["observer_transcript_review"]["sample_count"] == 8
+    assert saved["observer_transcript_review"]["source_authentication"] == (
+        "UNATTESTED_PAPER_LOG_TEXT"
+    )
+    assert capture._executor.wait_phase == "SEALED"
+    assert saved["source_bound_tick"] is None
+    assert saved["wait_interval_ref"] is None
+    assert saved["wait_ticks_admitted"] == 0
+    assert saved["p1_fatigue_recovered"] == 0.0
+
+
+@pytest.mark.parametrize("mutation", ["different_tick", "wrong_player", "truncated"])
+def test_full_transcript_and_callback_slice_must_agree(
+    monkeypatch, tmp_path, mutation,
+):
+    capture = typed_owner(monkeypatch)
+    original = transcript(capture)
+    segment = callback_slice(original)
+    player = PLAYER
+    if mutation == "different_tick":
+        segment = segment.replace("tick=74 index=4", "tick=75 index=4", 1)
+    elif mutation == "wrong_player":
+        player = FOREIGN
+    else:
+        original = original.replace("samples=8", "samples=7")
+    destination = tmp_path / "rejected.json"
+    with pytest.raises(BoundaryRejected):
+        asyncio.run(project_s49_backward_paper_dev(
+            capture, segment, output_path=destination,
+            observer_transcript=original, expected_player_uuid=player,
+        ))
+    report = json.loads(destination.read_text())
+    assert report["status"] == "REJECTED_NOT_QUALIFIED"
+    assert report["source_bound_tick"] is None
+    assert report["wait_interval_ref"] is None
+    assert report["wait_ticks_admitted"] == 0
+    assert report["p1_fatigue_recovered"] == 0.0
