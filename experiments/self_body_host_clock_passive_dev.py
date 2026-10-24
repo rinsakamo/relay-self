@@ -7,6 +7,7 @@ start, Minecraft game time, attack windup, motion or Action execution.
 from __future__ import annotations
 
 import math
+import os
 import time
 from dataclasses import dataclass
 from enum import Enum
@@ -100,6 +101,8 @@ class PassiveHostCallbackTimer:
             if clock is None else HostClockOrigin.SYNTHETIC_DEV_CLOCK
         )
         self._clock = time.monotonic_ns if clock is None else clock
+        self._owner_pid = os.getpid()
+        self._clock_failed = False
         self._active: CallbackTicket | None = None
         self._session: str | None = None
         self._last_seq = -1
@@ -108,12 +111,22 @@ class PassiveHostCallbackTimer:
         self._rows: list[PassiveHostInterval] = []
 
     def _now(self) -> int:
-        value = self._clock()
+        if self._clock_failed:
+            raise PassiveHostClockRejected("terminal local clock failure")
+        if os.getpid() != self._owner_pid:
+            self._clock_failed = True
+            raise PassiveHostClockRejected("cross-process local clock reuse")
+        try:
+            value = self._clock()
+        except Exception as exc:
+            self._clock_failed = True
+            raise PassiveHostClockRejected("local clock sampling failed") from exc
         if (
             type(value) is not int or value < 0 or value > (2**63 - 1)
             or (self._last_clock_ns is not None
                 and value < self._last_clock_ns)
         ):
+            self._clock_failed = True
             raise PassiveHostClockRejected("bad or reversed local monotonic clock")
         self._last_clock_ns = value
         return value
@@ -176,6 +189,12 @@ class PassiveHostCallbackTimer:
         self._rows.append(review)
         self._active = None
         return review
+
+    def abort(self, ticket: CallbackTicket) -> None:
+        """Discard an unfinished callback after failure/cancellation, no sample."""
+        if ticket is not self._active or self._active is None:
+            raise PassiveHostClockRejected("foreign or duplicate callback ticket")
+        self._active = None
 
     def rows(self) -> tuple[PassiveHostInterval, ...]:
         """Return immutable snapshots; no native read, world write or motor grant."""
