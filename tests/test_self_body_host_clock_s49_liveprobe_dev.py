@@ -366,3 +366,35 @@ def test_real_python_monotonic_label_not_world_body_or_cpu_clock():
     assert sample.movement_speed_mps is None
     assert relay.summary()["physical_timing_attested"] is False
     assert relay.summary()["cognition_time_attested"] is False
+
+
+def test_clock_enter_cancellation_is_not_swallowed_by_advisory_policy():
+    def cancelled_clock():
+        raise asyncio.CancelledError("clock entry cancelled")
+
+    relay = observer(clock=cancelled_clock)
+    with pytest.raises(asyncio.CancelledError, match="clock entry cancelled"):
+        asyncio.run(relay.observe(probe(8)))
+    assert len(relay.views.rows()) == 1
+    assert relay.timer.rows() == ()
+    assert relay.timer.aborted_tickets() == ()
+    assert relay.failures()[0].stage == "clock-enter"
+    assert relay.failures()[0].cancelled_or_interrupted is True
+
+
+def test_clock_exit_cancellation_aborts_ticket_and_propagates():
+    def clock():
+        nonlocal_count[0] += 1
+        if nonlocal_count[0] == 2:
+            raise asyncio.CancelledError("clock exit cancelled")
+        return 11
+
+    nonlocal_count = [0]
+    relay = observer(clock=clock)
+    with pytest.raises(asyncio.CancelledError, match="clock exit cancelled"):
+        asyncio.run(relay.observe(probe(8)))
+    assert len(relay.views.rows()) == 1
+    assert relay.timer.rows() == ()
+    assert len(relay.timer.aborted_tickets()) == 1
+    assert relay.failures()[0].stage == "clock-exit"
+    assert relay.failures()[0].cancelled_or_interrupted is True
