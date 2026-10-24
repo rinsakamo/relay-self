@@ -16,6 +16,11 @@ from adapters.mineflayer.present_projection import (
     MinecraftEntityPresent,
     MinecraftPresent,
 )
+from adapters.mineflayer.python_protocol import (
+    MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE,
+    MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES,
+    MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE,
+)
 
 _MOTION_SOURCE = "SYNTHETIC_EVENT"
 
@@ -78,6 +83,22 @@ class ZombieMeleeFrame:
             p.provenance.reference != f"{p.session_id}:{p.seq}"
         ):
             raise MeleeCueRejected("uncorrelated Mineflayer source")
+        n = len(p.observed_entities)
+        if (
+            p.coverage_scope != MINEFLAYER_NEARBY_ENTITY_SOURCE_SCOPE
+            or p.coverage_radius_m != MINEFLAYER_NEARBY_ENTITY_MAX_DISTANCE
+            or p.coverage_cap != MINEFLAYER_NEARBY_ENTITY_MAX_ENTITIES
+            or p.coverage_candidates < n
+            or n > p.coverage_cap
+        ):
+            raise MeleeCueRejected("unqualified bounded entity coverage")
+        if p.coverage_truncated:
+            if n != p.coverage_cap or (
+                p.coverage_candidates <= p.coverage_cap
+            ):
+                raise MeleeCueRejected("inconsistent truncated coverage")
+        elif p.coverage_candidates != n:
+            raise MeleeCueRejected("inconsistent full coverage")
 
     @property
     def source_ref(self) -> str:
