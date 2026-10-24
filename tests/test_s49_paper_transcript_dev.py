@@ -115,9 +115,15 @@ def test_foreign_or_replayed_observer_run_rejected(monkeypatch, mutation):
     elif mutation == "double_input_boundary":
         original = "".join(rows[:2] + [rows[1]] + rows[2:])
     elif mutation == "active_input_begin":
-        original = original.replace("index=0 input_idle=true", "index=0 input_idle=false")
+        original = "".join([
+            *rows[:2], rows[2].replace("input_idle=true", "input_idle=false"),
+            *rows[3:],
+        ])
     elif mutation == "active_input_tick":
-        original = original.replace("index=4 input_idle=true", "index=4 input_idle=false")
+        original = "".join([
+            *rows[:6], rows[6].replace("input_idle=true", "input_idle=false"),
+            *rows[7:],
+        ])
     elif mutation == "active_input_boundary":
         original = original.replace(
             "tick=70 input_idle=true", "tick=70 input_idle=false", 1
