@@ -67,17 +67,20 @@ def review_joint_wait_sources(
             or lifecycle["last_world_tick"] != last):
         raise BoundaryRejected("S/R cross-source World-tick window mismatch")
 
-    observed_conflicts = []
+    # A nearby entity is World context, not automatically an active Self
+    # motor. Never require an empty Minecraft World for the Body to rest.
+    self_activity_flags = []
     if not candidate["source_stationary_8_of_8"]:
-        observed_conflicts.append("SAMPLED_SELF_ACTIVITY")
+        self_activity_flags.append("SAMPLED_SELF_ACTIVITY")
     if scope["activity_counter_changed_after_first_sampler"]:
-        observed_conflicts.append("NATIVE_EVENT_COUNTER_CHANGED")
+        self_activity_flags.append("NATIVE_SELF_EVENT_COUNTER_CHANGED")
+    environment_context_flags = []
     if scope["same_world_other_loaded_entities_seen_ticks"]:
-        observed_conflicts.append("OTHER_LOADED_ENTITY_IN_SELF_WORLD")
+        environment_context_flags.append("OTHER_LOADED_ENTITY_IN_SELF_WORLD")
     if lifecycle["same_world_entity_lifecycle_ticks"]:
-        observed_conflicts.append("TRANSIENT_ENTITY_LIFECYCLE_IN_SELF_WORLD")
+        environment_context_flags.append("TRANSIENT_ENTITY_LIFECYCLE_IN_SELF_WORLD")
     if lifecycle["same_world_chunk_change_ticks"]:
-        observed_conflicts.append("CHUNK_LIFECYCLE_IN_SELF_WORLD")
+        environment_context_flags.append("CHUNK_LIFECYCLE_IN_SELF_WORLD")
 
     # Even an all-clean cross-source screen cannot fill the missing R witnesses.
     return {
@@ -96,8 +99,9 @@ def review_joint_wait_sources(
             "PAPER_LOADED_CHUNK_CENSUS",
             "PAPER_ENTITY_LIFECYCLE_CALLBACK",
         ),
-        "observed_conflicts": observed_conflicts,
-        "sample_screen_clear": not observed_conflicts,
+        "self_activity_flags": self_activity_flags,
+        "environment_context_flags": environment_context_flags,
+        "self_sample_screen_clear": not self_activity_flags,
         "missing_independent_r_proofs": MISSING_R_PROOFS,
         "complete_world_tick_inactivity_proven": False,
         "all_action_issuers_proven_idle": False,

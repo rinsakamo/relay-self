@@ -47,8 +47,9 @@ def test_four_original_streams_cross_join_but_cannot_authorize_p1_recovery():
     assert result["first_world_tick"] == 61
     assert result["last_world_tick"] == 68
     assert len(result["source_streams_screened"]) == 4
-    assert result["sample_screen_clear"] is True
-    assert result["observed_conflicts"] == []
+    assert result["self_sample_screen_clear"] is True
+    assert result["self_activity_flags"] == []
+    assert result["environment_context_flags"] == []
     assert result["missing_independent_r_proofs"] == MISSING_R_PROOFS
     assert result["complete_world_tick_inactivity_proven"] is False
     assert result["all_action_issuers_proven_idle"] is False
@@ -63,8 +64,12 @@ def test_four_original_streams_cross_join_but_cannot_authorize_p1_recovery():
 
 def test_other_same_world_entity_never_qualifies_as_solo_wait():
     r = review_joint_wait_sources(*originals(mob_elsewhere=False))
-    assert r["observed_conflicts"] == ["OTHER_LOADED_ENTITY_IN_SELF_WORLD"]
-    assert not r["sample_screen_clear"]
+    assert r["self_activity_flags"] == []
+    assert r["self_sample_screen_clear"]
+    assert r["environment_context_flags"] == [
+        "OTHER_LOADED_ENTITY_IN_SELF_WORLD",
+    ]
+    assert r["wait_interval_ref"] is None
     assert r["p1_fatigue_recovered"] == 0
 
 
@@ -72,7 +77,10 @@ def test_transient_entity_event_between_samplers_is_not_invisible():
     r = review_joint_wait_sources(*originals(
         event_world="00000000-0000-0000-0000-000000000001",
     ))
-    assert "TRANSIENT_ENTITY_LIFECYCLE_IN_SELF_WORLD" in r["observed_conflicts"]
+    assert "TRANSIENT_ENTITY_LIFECYCLE_IN_SELF_WORLD" in (
+        r["environment_context_flags"]
+    )
+    assert r["self_sample_screen_clear"]
     assert r["wait_interval_ref"] is None
 
 
@@ -84,7 +92,8 @@ def test_native_counter_change_blocks_even_when_positions_are_static():
             lines[index] = line.replace("movement_events=10", "movement_events=11")
     data[0] = "\n".join(lines)
     r = review_joint_wait_sources(*data)
-    assert "NATIVE_EVENT_COUNTER_CHANGED" in r["observed_conflicts"]
+    assert "NATIVE_SELF_EVENT_COUNTER_CHANGED" in r["self_activity_flags"]
+    assert not r["self_sample_screen_clear"]
     assert r["wait_ticks_admitted"] == 0
 
 
