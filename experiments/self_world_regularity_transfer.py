@@ -99,7 +99,8 @@ def _positive_pair(pair: ObservedPair, max_gap: int) -> _PositivePair | None:
     a, b = pair.before, pair.after
     if not isinstance(a, SelfWorldView) or not isinstance(b, SelfWorldView):
         raise InvalidSelfWorldData("pair requires two typed SelfWorld views")
-    if not isinstance(pair.entity_ref, str) or not pair.entity_ref.startswith("entity-"):
+    if (not isinstance(pair.entity_ref, str)
+            or not pair.entity_ref.startswith("entity-")):
         raise InvalidSelfWorldData("target must be exterior entity identity")
     if (
         a.self_id != b.self_id
@@ -108,7 +109,8 @@ def _positive_pair(pair: ObservedPair, max_gap: int) -> _PositivePair | None:
     ):
         raise InvalidSelfWorldData("foreign Self/session or duplicate epoch")
     prior, later = a.observation, b.observation
-    if not isinstance(prior, WorldObservation) or not isinstance(later, WorldObservation):
+    if (not isinstance(prior, WorldObservation)
+            or not isinstance(later, WorldObservation)):
         return None
     if (
         prior.observer_id != a.self_id
@@ -228,7 +230,10 @@ def evaluate_unseen_region(
         )
     rule = candidate.as_prediction_rule()
     source = PredictionState(
-        state_id=f"dev-holdout-{hashlib.sha256(repr(p.sources).encode()).hexdigest()[:20]}",
+        state_id=(
+            "dev-holdout-"
+            + hashlib.sha256(repr(p.sources).encode()).hexdigest()[:20]
+        ),
         variables=(StateVariable("entity_label", p.label_before),),
         provenance=p.before_provenance,
         source_refs=(p.sources[0], f"target:{p.target_ref}"),
