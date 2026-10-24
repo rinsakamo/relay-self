@@ -429,7 +429,7 @@ def test_p1_owner_readout_shape_join_remains_unattested(monkeypatch):
             present, replace(owner_output, source_scope="FULLY_ATTESTED"),
             correlation,
         )
-    with pytest.raises(InvalidSelfBodyData, match="source mismatch"):
+    with pytest.raises(InvalidSelfBodyData, match="not correlated"):
         handoff_from_p1_owner_readout(
             present, replace(owner_output, session_id="foreign-session"),
             correlation,
