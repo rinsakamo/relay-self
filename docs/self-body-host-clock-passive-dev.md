@@ -21,7 +21,8 @@ entry and `exit(ticket)` at callback return. With the default clock, both
 timestamps are sampled by `time.monotonic_ns` from **the same Python process**.
 The difference is `callback_elapsed_ns` and `callback_elapsed_ms`, labelled
 `PASSIVE_CALLBACK_PROCESSING_ONLY`. Injected clocks are always marked
-`SYNTHETIC_DEV_CLOCK`; the offline tests use only these synthetic samples.
+`SYNTHETIC_DEV_CLOCK`; offline tests primarily use deterministic synthetic
+samples and one local Python-process monotonic smoke case, not native World time.
 
 The typed output explicitly has `action_start_ns=None`,
 `world_cue_onset_ns=None`, `movement_speed_mps=None`,
@@ -40,14 +41,20 @@ only, never an elapsed time. No new S17/S10 authority is present.
   `mineflayer:<session>:<seq>` provenance; ephemeral source ref retained.
   This checks **declared producer-local correlation**, not independently
   cryptographic source authenticity.
-- Replay/stale seq, wrong session, absent observation, overlapping callbacks,
-  forged/duplicate tickets, noninteger/reversed/oversized timestamps, and
-  event-count exhaustion fail closed.
+- Replay/stale seq, duplicate request ID, wrong session, absent observation,
+  overlapping callbacks, forged/duplicate tickets, noninteger/reversed/oversized
+  timestamps, and event-count exhaustion fail closed.
+- A process-ID transition or failed/reversed clock read is terminal for the
+  recorder; no later recovered timestamps can relabel the failed interval.
+- A failed/cancelled callback may call `abort(own_ticket)` to drop the active
+  ticket without making a successful timing row; abort does not reset a
+  terminal clock failure or mint an OUTCOME.
 - An injected Python clock cannot be mislabeled as host-provided.
 - `PassiveHostInterval` cannot be upgraded to physical timestamp, Action
   authority, speed, a World consequence or S17 learning.
 - Existing S49 is **not modified**; no hook is connected to a real runtime.
   This source has not been physically executed or tested in Python3.12 yet.
+  The 23 new test functions are source-staged, NOT marked PASS.
 
 ## Next LocalCodex DEV gate
 
