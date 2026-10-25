@@ -1,0 +1,204 @@
+# DEV repeat: original S49 plus new duration-only P1 capability budget.
+# Retry 002: original six-epoch final Action budget cross-epoch readback fix.
+# DEV retry-002: validate fourth original native source by index 3, not final fifth WAIT.
+name: S49 P1 repeat motor budget DEV
+on:
+  push:
+    branches:
+      - self/dev-p1-motor-repeat-20261025
+    paths:
+      - .github/workflows/self-p1-repeat-motor-budget-world-dev.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s49-repeat-motor-budget-once-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  world-first-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 27
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DEV_OUTPUT: '/tmp/s49-paper-p1-${{ github.run_id }}-${{ github.run_attempt }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify DEV observer config, dependencies and loopback isolation
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          grep -q '^enabled: false$' adapters/mineflayer/s49_paper_wait_observer_dev/src/main/resources/config.yml
+          python - <<'PY'
+          import socket
+          with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+              s.bind(("127.0.0.1", 25565))
+          print("Fresh loopback Minecraft port available; no external process touched")
+          PY
+      - name: Python 3.12 focused DEV entrypoint checks BEFORE any World
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py tests/test_s49_p1_l0_capability_dev.py tests/test_s49_p1_l0_sensitivity_dev.py tests/test_s49_p1_l0_fresh_pair_dev.py tests/test_s49_p1_l0_gait_candidate_dev.py tests/test_s49_p1_l0_near_decide_dev.py tests/test_s49_original_next_epoch_dev.py tests/test_s49_p1_fifth_epoch_dev.py tests/test_s49_p1_same_native_gait_dev.py tests/test_s49_p1_sixth_motor_dev.py tests/test_s49_p1_physical_pair_dev.py tests/test_s49_p1_motor_budget_dev.py
+      - name: Source syntax and focussed Ruff for P1 pair
+        run: |
+          python -m compileall -q adapters/mineflayer/s49_p1_physical_pair_dev.py adapters/mineflayer/s49_p1_physical_pair_review_dev.py adapters/mineflayer/s49_p1_motor_budget_dev.py
+          ruff check adapters/mineflayer/s49_p1_physical_pair_dev.py adapters/mineflayer/s49_p1_physical_pair_review_dev.py adapters/mineflayer/s49_p1_motor_budget_dev.py adapters/mineflayer/s49_paper_world_first_dev.py tests/test_s49_p1_physical_pair_dev.py tests/test_s49_p1_motor_budget_dev.py
+      - name: Compile single read-only Paper wait observer on Java 21
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml -DskipTests package
+          test -f adapters/mineflayer/s49_paper_wait_observer_dev/target/relay-s49-wait-observer-dev-0.1.0-dev.jar
+      - name: Install original Mineflayer package (unmodified bridge)
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: Fetch official stable Paper 1.21.8 build 60 and verify published SHA256
+        id: paper
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, urllib.parse, urllib.request
+          version = "1.21.8"
+          api = f"https://fill.papermc.io/v3/projects/paper/versions/{version}/builds"
+          ua = "RelaySelf-S49-P1-WORLD-FIRST-DEV/0.1 (https://github.com/rinsakamo/relay-self)"
+          req = urllib.request.Request(api, headers={"User-Agent": ua})
+          with urllib.request.urlopen(req, timeout=50) as rsp:
+              builds = json.loads(rsp.read(3_000_000))
+          stable = [b for b in builds if b.get("channel") == "STABLE" and b.get("id") == 60]
+          if len(stable) != 1:
+              raise RuntimeError("Pinned Paper 1.21.8 stable build 60 unavailable")
+          artifact = stable[0]["downloads"]["server:default"]
+          expected = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          if (artifact["checksums"]["sha256"] != expected
+                  or artifact["size"] != 52811717):
+              raise RuntimeError("Pinned original Paper build metadata mismatch")
+          url = artifact["url"]
+          parsed = urllib.parse.urlparse(url)
+          if (parsed.scheme != "https" or parsed.hostname != "fill-data.papermc.io"
+                  or not parsed.path.startswith("/v1/objects/")):
+              raise RuntimeError("Untrusted Paper binary URL")
+          target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "paper-1.21.8-dev.jar"
+          hash_ = hashlib.sha256()
+          total = 0
+          with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": ua}), timeout=120) as src, target.open("xb") as dst:
+              while chunk := src.read(1048576):
+                  total += len(chunk)
+                  if total > 52811717: raise RuntimeError("Paper size exceeded")
+                  dst.write(chunk)
+                  hash_.update(chunk)
+          if total != 52811717 or hash_.hexdigest() != expected:
+              raise RuntimeError("Paper downloaded bytes mismatch")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"jar={target}\nsha256={expected}\n")
+          print("PAPER_DEV_PINNED", total, expected)
+          PY
+      - name: Independently execute two original S49 sessions in disposable Worlds
+        env:
+          PAPER_JAR: ${{ steps.paper.outputs.jar }}
+          PAPER_SHA: ${{ steps.paper.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$DEV_OUTPUT"
+          OBSERVER="$PWD/adapters/mineflayer/s49_paper_wait_observer_dev/target/relay-s49-wait-observer-dev-0.1.0-dev.jar"
+          OBSERVER_SHA="$(sha256sum "$OBSERVER" | cut -d' ' -f1)"
+          for CASE in ORIGINAL_P1 UNCALIBRATED_STRESS_P1; do
+            echo "Starting independent DEV World scenario $CASE"
+            python -m adapters.mineflayer.s49_paper_world_first_dev \
+              --output-dir "$DEV_OUTPUT/$CASE" \
+              --paper-jar "$PAPER_JAR" \
+              --paper-sha256 "$PAPER_SHA" \
+              --observer-jar "$OBSERVER" \
+              --observer-sha256 "$OBSERVER_SHA" \
+              --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD \
+              --fresh-target-distance 2 --actual-next-epoch \
+              --actual-fifth-epoch --compare-fifth-gait \
+              --actual-sixth-motor --motor-scenario "$CASE"
+          done
+      - name: Compare matched native preconditions and real S16 distances, no causal overclaim
+        run: |
+          python -m adapters.mineflayer.s49_p1_physical_pair_review_dev --root "$DEV_OUTPUT"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          r = json.loads((Path(os.environ["DEV_OUTPUT"]) / "paired_world_review_dev.json").read_text())
+          assert r["status"] == "DEV_PAIRED_SCRIPTED_WORLD_MEASUREMENT"
+          assert r["observed_preconditions_matched"] is True
+          assert r["pair_count"] == 1
+          assert r["base"]["scenario"] == "ORIGINAL_P1"
+          assert r["stress"]["scenario"] == "UNCALIBRATED_STRESS_P1"
+          assert r["base"]["s16_terminal_outcome"] is True
+          assert r["stress"]["s16_terminal_outcome"] is True
+          assert r["base"]["actual_duration_s"] > r["stress"]["actual_duration_s"]
+          assert r["world_tick_histories_identical"] is False
+          assert r["physical_fatigue_measured"] is False
+          assert r["distance_difference_causally_attributed_to_fatigue"] is False
+          assert r["qualification_go"] is False and r["science_go"] is False
+          print("P1_DEV_NATIVE_WORLD_PHYSICAL_DISTANCE_PAIR_PASSED")
+          PY
+      - name: Compare second pair against immutable first DEV source
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["DEV_OUTPUT"])
+          r = json.loads((root / "paired_world_review_dev.json").read_text())
+          first = {
+              "run_id": 40181302973, "artifact_id": 12594212819,
+              "commit_sha": "dce06b9a2f52ce94c4f63f5352e30c1280023a13",
+              "baseline_m": 0.6269065734210617,
+              "stress_m": 0.09800003853258321,
+          }
+          repeated = {
+              "status": "DEV_REPEAT_TWO_INDEPENDENT_WORLD_PAIRS_RECORDED",
+              "prior_source": first,
+              "repeat_run_id": os.environ["GITHUB_RUN_ID"],
+              "repeat_source_sha": os.environ["GITHUB_SHA"],
+              "repeat_baseline_m": r["base"]["measured_sixth_displacement_m"],
+              "repeat_stress_m": r["stress"]["measured_sixth_displacement_m"],
+              "first_distance_delta_m": first["stress_m"] - first["baseline_m"],
+              "repeat_distance_delta_m": r["observed_distance_delta_m"],
+              "same_direction": (
+                  (first["stress_m"] < first["baseline_m"]) ==
+                  (r["stress"]["measured_sixth_displacement_m"]
+                   < r["base"]["measured_sixth_displacement_m"])
+              ),
+              "baseline_abs_change_m": abs(
+                  r["base"]["measured_sixth_displacement_m"] - first["baseline_m"]),
+              "stress_abs_change_m": abs(
+                  r["stress"]["measured_sixth_displacement_m"] - first["stress_m"]),
+              "pairs_observed": 2, "fresh_worlds_observed": 4,
+              "motor_interface": "DEV_MOTOR_BUDGET_DURATION_ONLY",
+              "physical_fatigue_measured": False,
+              "tick_histories_identical": False,
+              "causal_fatigue_effect_attested": False,
+              "qualification_go": False, "science_go": False,
+          }
+          (root / "repeatability_review_dev.json").write_text(
+              json.dumps(repeated, indent=2, sort_keys=True) + "\n")
+          print("P1_DEV_TWO_PAIRS_REPRO_REVIEW", json.dumps(repeated, sort_keys=True))
+          PY
+      - name: Preserve both fresh World records, including failure evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-p1-repeat-motor-budget-world-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEV_OUTPUT }}/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: State DEV-only epistemic boundary
+        if: always()
+        run: |
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+          echo 'Two disposable Worlds; same scripted conditions but no identical world-clock claim.'
+          echo 'Uncalibrated rate stress is a sensitivity scenario, not measured physical fatigue.'
