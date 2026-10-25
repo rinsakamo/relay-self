@@ -80,6 +80,11 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     // Separate prospective S50 fixed-pose DEV: World-tick position billing.
     // False on all historical Paper profiles and non-controlled World runs.
     private boolean s50TickMeterCandidate = false;
+    // #150 T1: observer only. Does not attest L0, action ownership or session.
+    // False unless explicitly opted into a disposable M0.2 DEV World.
+    private boolean adaptiveTickObserverDev = false;
+    private int adaptiveTickRows = 0;
+    private static final int ADAPTIVE_TICK_ROWS_MAX = 256;
     private boolean s50TickMeterArmed = false;
     private Location s50TickMeterLast;
     private long s50TickMeterRows = 0;
@@ -210,6 +215,12 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 throw new IllegalStateException("invalid S50 tick meter DEV flag");
             }
             s50TickMeterCandidate = getConfig().getBoolean("s50-tick-meter-dev", false);
+            if (getConfig().contains("adaptive-tick-observer-dev")
+                    && !getConfig().isBoolean("adaptive-tick-observer-dev")) {
+                throw new IllegalStateException("invalid passive WorldTick observer flag");
+            }
+            adaptiveTickObserverDev = getConfig().getBoolean(
+                "adaptive-tick-observer-dev", false);
             target = getConfig().getString("target-player", "");
             if (!target.equals("RelaySelf")) {
                 throw new IllegalStateException("only the owned RelaySelf dev bot is supported");
@@ -249,6 +260,20 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 Player p = Bukkit.getPlayerExact(target);
                 if (p == null || !p.isOnline() || p.isDead()) {
                     return;
+                }
+                // Passive Paper callback sample only. A real Self-side L0
+                // decision was NOT executed or confirmed in this callback.
+                // Never infer S49 Action ID/session or use as a motor writer.
+                if (adaptiveTickObserverDev && adaptiveTickRows < ADAPTIVE_TICK_ROWS_MAX) {
+                    adaptiveTickRows++;
+                    getLogger().info("PAPER_DEV_TIME_SAMPLE index=" + adaptiveTickRows
+                        + " server_tick=" + Bukkit.getCurrentTick()
+                        + " world_full_time=" + p.getWorld().getFullTime()
+                        + " wall_nanos=" + System.nanoTime()
+                        + " world=" + p.getWorld().getUID()
+                        + " player=" + p.getUniqueId()
+                        + " source=PAPER_SCHEDULER_CALLBACK_ONLY"
+                        + " l0_checked=false action_bound=false");
                 }
                 if (s50TickMeterArmed) {
                     meterS50Tick(p);
