@@ -271,6 +271,7 @@ async def qualify(
     raw_capture_root: Path | None = None,
     dev_next_epoch: str | None = None,
     dev_fifth_epoch: str | None = None,
+    dev_sixth_epoch: str | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -306,6 +307,12 @@ async def qualify(
             or os.environ.get("S49_FIFTH_EPOCH_DEV_ONLY") != "1"
         ):
             raise S31ABlocked("fifth original L0 WAIT requires a fourth authorized MOVE DEV")
+        if dev_sixth_epoch is not None and (
+            dev_sixth_epoch != "MOVE_AWAY"
+            or dev_fifth_epoch != "WAIT"
+            or os.environ.get("S49_SIXTH_EPOCH_DEV_ONLY") != "1"
+        ):
+            raise S31ABlocked("sixth original L0 MOVE requires fifth native WAIT DEV")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -334,10 +341,12 @@ async def qualify(
         # second L0, receiver, issuer or Action executor.
         host = NormalWorldL0(
             sid, "escape-threat", retained,
-            max_events=(5 if dev_fifth_epoch is not None
+            max_events=(6 if dev_sixth_epoch is not None
+                        else 5 if dev_fifth_epoch is not None
                         else 4 if dev_next_epoch is not None else 3),
             max_action_requests=(
-                3 if dev_next_epoch == "MOVE_AWAY" else 2
+                (4 if dev_sixth_epoch == "MOVE_AWAY"
+                 else 3 if dev_next_epoch == "MOVE_AWAY" else 2)
             ),
         )
         executor = NormalSessionActionExecutor(sid, intent)
@@ -528,7 +537,10 @@ async def qualify(
             expected_choices.append(dev_next_epoch)
         if dev_fifth_epoch is not None:
             expected_choices.append(dev_fifth_epoch)
-        expected_actions = 2 + (dev_next_epoch == "MOVE_AWAY")
+        if dev_sixth_epoch is not None:
+            expected_choices.append(dev_sixth_epoch)
+        expected_actions = (2 + (dev_next_epoch == "MOVE_AWAY")
+                            + (dev_sixth_epoch == "MOVE_AWAY"))
         if (
             len(trace) != len(expected_choices)
             or [s.choice.selection.value for s in trace] != expected_choices
@@ -550,6 +562,14 @@ async def qualify(
             )
             or (dev_next_epoch == "WAIT" and trace[3].asks_for_action)
             or (dev_fifth_epoch == "WAIT" and trace[4].asks_for_action)
+            or (
+                dev_sixth_epoch == "MOVE_AWAY"
+                and (
+                    not trace[5].asks_for_action
+                    or executor.supervisor.get(trace[5].action_request_id).state
+                    is not ActionState.OUTCOME
+                )
+            )
         ):
             raise S49PhysicalFailure("original S49 bounded epoch/Action terminal mismatch")
         if dev_next_epoch is not None:
@@ -578,6 +598,19 @@ async def qualify(
                 "additional_native_reader": False,
                 "p1_as_action_authority": False,
             }
+        if dev_sixth_epoch is not None:
+            report["dev_original_sixth_epoch"] = {
+                "actual_original_host_decide": True,
+                "same_host_events": host.events,
+                "same_host_action_requests": host.action_requests,
+                "event_seq": trace[5].event_seq,
+                "probe_seq": trace[5].choice.probe_seq,
+                "selected": trace[5].choice.selection.value,
+                "action_issued": trace[5].asks_for_action,
+                "new_action_issuer": False,
+                "new_native_receiver": False,
+                "p1_as_action_authority": False,
+            }
         if stage_r is not None:
             report["stage_r_decision_revisions"] = [
                 {"event_seq": step.event_seq,
@@ -599,7 +632,9 @@ async def qualify(
             report["learning_in_world"] = True  # HOLD revision, NOT gain
         report["status"] = "PASS"
         report["classification"] = (
-            "DEV_ONLY_S49_ORIGINAL_FIFTH_WAIT_AFTER_THIRD_MOVE"
+            "DEV_ONLY_S49_SIXTH_MOTOR_DEV_AFTER_FIFTH_WAIT"
+            if dev_sixth_epoch is not None
+            else "DEV_ONLY_S49_ORIGINAL_FIFTH_WAIT_AFTER_THIRD_MOVE"
             if dev_fifth_epoch is not None
             else "DEV_ONLY_S49_ORIGINAL_NEXT_EPOCH_" + dev_next_epoch
             if dev_next_epoch is not None
@@ -704,6 +739,7 @@ async def qualify(
             "DEV_ONLY_S49_ORIGINAL_NEXT_EPOCH_WAIT",
             "DEV_ONLY_S49_ORIGINAL_NEXT_EPOCH_MOVE_AWAY",
             "DEV_ONLY_S49_ORIGINAL_FIFTH_WAIT_AFTER_THIRD_MOVE",
+            "DEV_ONLY_S49_SIXTH_MOTOR_DEV_AFTER_FIFTH_WAIT",
         ):
             # No pre-existing FAILURE/BLOCKED is allowed to retain the
             # provisional qualified label, nor be upgraded to PASS.
