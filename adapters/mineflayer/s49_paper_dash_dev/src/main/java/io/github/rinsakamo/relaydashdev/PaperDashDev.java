@@ -32,6 +32,7 @@ public final class PaperDashDev extends JavaPlugin implements Listener {
     private boolean used = false;
     private boolean active = false;
     private boolean boostOn = false;
+    private boolean vetoLatched = false;
     private UUID subjectId;
     private UUID worldId;
     private String sessionId;
@@ -107,6 +108,7 @@ public final class PaperDashDev extends JavaPlugin implements Listener {
         used = true;
         active = true;
         boostOn = false;
+        vetoLatched = false;
         subjectId = id;
         worldId = player.getWorld().getUID();
         sessionId = args[0];
@@ -130,6 +132,7 @@ public final class PaperDashDev extends JavaPlugin implements Listener {
     }
 
     private void setBoost(Player player, boolean enabled) {
+        if (boostOn == enabled) return;
         AttributeInstance attribute = player.getAttribute(Attribute.MOVEMENT_SPEED);
         if (attribute == null) {
             throw new IllegalStateException("missing MOVEMENT_SPEED attribute");
@@ -160,8 +163,10 @@ public final class PaperDashDev extends JavaPlugin implements Listener {
                 && input.isSprint() && player.isSprinting()
                 && !input.isBackward() && !input.isLeft() && !input.isRight()
                 && !input.isSneak();
-            setBoost(player, forwardOnly);
-            if (forwardOnly) forwardBoostTicks++;
+            if (!forwardOnly) vetoLatched = false;
+            boolean grant = forwardOnly && !vetoLatched;
+            setBoost(player, grant);
+            if (grant) forwardBoostTicks++;
             else cappedTicks++;
         } catch (RuntimeException ex) {
             release("MOTOR_EXCEPTION");
@@ -182,6 +187,9 @@ public final class PaperDashDev extends JavaPlugin implements Listener {
         double yaw = Math.toRadians(event.getFrom().getYaw());
         double forwardProjection = (-Math.sin(yaw) * dx + Math.cos(yaw) * dz) / distance;
         if (forwardProjection < 0.85) {
+            // Do not instantly re-enable from a stale Paper input snapshot.
+            // A subsequent observed non-forward input must clear the latch.
+            vetoLatched = true;
             setBoost(event.getPlayer(), false);
             movementVetoes++;
             getLogger().info("PAPER_DASH_DEV_DIRECTION_VETO session_id=" + sessionId
