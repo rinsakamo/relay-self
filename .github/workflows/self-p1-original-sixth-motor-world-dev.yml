@@ -1,3 +1,4 @@
+# Retry 002: original six-epoch final Action budget cross-epoch readback fix.
 # DEV retry-002: validate fourth original native source by index 3, not final fifth WAIT.
 name: S49 P1 original sixth motor DEV World
 on:
