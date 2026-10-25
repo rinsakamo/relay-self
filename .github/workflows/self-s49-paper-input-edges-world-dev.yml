@@ -1,3 +1,4 @@
+# DEV retry 002: correct isort placement after s49_p1_* modules.
 # DEV Paper server back edges: original S49 Action second MOVE, one native reader.
 # Retry 003: exact Ruff lexicographic S31A before S49 imported module group.
 # Retry 002: reorder scoped source imports and lint new read-only clock modules.
