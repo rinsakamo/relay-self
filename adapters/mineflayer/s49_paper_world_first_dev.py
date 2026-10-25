@@ -51,7 +51,7 @@ def _fresh_output(directory: Path) -> None:
             or not directory.parent.is_dir()
             or directory.is_symlink()
             or any(p.is_symlink() for p in directory.parents)
-            or (directory.parent / ".git").exists()
+            or any((p / ".git").exists() for p in directory.parents)
             or os.environ.get("NODE_OPTIONS")):
         raise S49PaperDevBlocked("fresh isolated output and unshimmed Node required")
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
@@ -153,7 +153,7 @@ async def run(
                 server = observed["server"]
                 if server is None or server.stdin is None:
                     raise S49PaperDevBlocked("original S49 server no longer owned")
-                offset = paper_log.stat().st_size if paper_log.exists() else 0
+                # Native clear ACK is not a server-effective release tick.\n                # Give the server time to settle before the independent\n                # Paper idle observation; the delay itself admits no ticks.\n                await asyncio.sleep(0.5)\n                offset = paper_log.stat().st_size if paper_log.exists() else 0
                 original._command(
                     server, "relays49observe "
                     + receipt.terminal.action_id + " "
