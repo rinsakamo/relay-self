@@ -1,3 +1,7 @@
+# DEV native-distance follow-on run: replaces explicit fatigue seed 0.5
+# with fatigue accrued by P1 from the final original S49 MOVE's observed
+# displacement, then checks Paper's later 8 WAIT callback ticks.
+# The first DEV World RUN 40146589860 proved seeded WAIT path on Paper.
 # DEV retry-002: initial run 40146359686 observed S49+Paper but
 # post-action scheduler callback began later than console clock.
 # Anchoring BEGIN to first Paper callback avoids fabricated missing tick.
