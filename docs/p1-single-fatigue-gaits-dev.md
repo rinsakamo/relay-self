@@ -95,3 +95,38 @@ is an M0 action accounting step, not established as 20Hz Minecraft time.
 
 Validation is restricted to Python 3.12 focused pytest, Ruff, and syntax.
 No FULL / new World / science / PR merge / main update is requested here.
+
+
+## Implemented Paper motor prototype and measured negative control
+
+DEV plugin: \`adapters/mineflayer/s49_paper_dash_dev/\`, default OFF.
+Its one-shot console claim can be armed only by an external owner; that
+claim is **not** cryptographic proof of an issued S49 forward Action.
+
+For an explicitly armed subject, the Paper main-thread motor observer keeps
+DASH *stance* through lateral/backward motion; its transient
+\`MOVEMENT_SPEED\` bonus (up to +50%) is applied only on unambiguous
+forward-only sprint input, otherwise cleared without dropping stance.
+Unexpected/unverified input always gets **no additional DASH bonus**.
+This is NOT an independently proven hard cap against other mods,
+intra-tick forward-to-side changes, or Mineflayer/Paper clock skew.
+
+**Original S49 backward negative in real disposable Paper 1.21.8:**
+GitHub workflow run https://github.com/rinsakamo/relay-self/actions/runs/40205538388
+on exact tested commit \`ddfef0db6de51ce5d939e073a23f0373abed83b6\`.
+Original S49 2 Action outcomes, Paper DASH diagnostic 5 ticks,
+**forward modifier active 0 ticks**, Java/Node exit 0, cleanup confirmed.
+P1 native state and M0 ledger unchanged; original Action/World evidence
+preserved. Explicitly **not** a forward-DASH or side-speed qualification.
+
+DEV retries retained: 40204947652 failed pre-DASH due missing sole-session
+reference; 40205129465 / 40205349719 failed from same-world-tick
+scheduler callback erroneously triggering automatic safety disarm.
+The final test allows the *initial* same-tick callback while keeping
+subsequent non-increasing World tick checks fail closed.
+
+Remaining live work: add a genuinely authorized forward DASH Action
+through the existing S49 single issuer, then test actual forward speed,
+side/back cap, release timing, and source-bound M0/P1 settlement
+(without inferring elapsed full World ticks from host sleep time).
+No main / PR #634 adoption or qualification is implied.
