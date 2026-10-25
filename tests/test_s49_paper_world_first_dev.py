@@ -204,3 +204,99 @@ def test_disposable_paper_asset_and_observer_are_staged_without_java(
     assert receipt["qualification_go"] is False
     assert receipt["science_go"] is False
     assert receipt["p1_production_state_updated"] is False
+
+
+def test_move_distance_from_original_receipt_then_paper_wait(monkeypatch):
+    """No 0.5 seed: verified last original MOVE supplies the P1 fatigue debit."""
+    native, paper = sources(monkeypatch)
+    distance = native["actual_native_actions"][-1]["movement_m"]
+    observed = review_postaction_wait_dev(
+        native, paper, expected_player_uuid=PLAYER,
+        profile=FatigueProfile(enabled=True, initial=0.0),
+        fatigue_mode="MOVE_DISTANCE",
+    )
+    expected = distance * 0.04  # unchanged P1 move_per_block rate
+    assert observed["dev_fatigue_mode"] == "MOVE_DISTANCE"
+    assert observed["dev_fatigue_initial_origin"] == (
+        "OBSERVED_LAST_S49_MOVE_DISTANCE_P1_MODEL_INITIAL_ZERO"
+    )
+    assert observed["dev_move"]["movement_m"] == distance
+    assert observed["dev_move"]["fatigue_before"] == 0.0
+    assert observed["dev_move"]["fatigue_accumulated"] == pytest.approx(expected)
+    assert observed["dev_move"]["fatigue_after"] == pytest.approx(expected)
+    assert observed["dev_move"]["actual_move_world_tick"] is None
+    assert observed["dev_fatigue_before"] == pytest.approx(expected)
+    assert observed["dev_wait_count"] == 8
+    assert observed["dev_wait_ticks"][0]["tick"] == 71
+    assert observed["dev_wait_ticks"][0]["recovered"] == pytest.approx(expected)
+    assert observed["dev_fatigue_recovered"] == pytest.approx(expected)
+    assert observed["dev_fatigue_after"] == pytest.approx(0.0)
+    assert not observed["dev_continuous_world_tick_fatigue_history"]
+    assert observed["dev_model_phase_bridge"].startswith("ACTION_AGGREGATE_")
+    assert observed["p1_fatigue_recovered"] == 0.0
+    assert observed["wait_ticks_admitted"] == 0
+    assert not observed["world_run_verified"]
+
+
+@pytest.mark.parametrize("bad", [
+    "wrong_distance", "forged_clear", "foreign_action", "no_last_move",
+    "wrong_session", "old_seed", "unknown_mode",
+])
+def test_move_distance_requires_original_last_action(monkeypatch, bad):
+    native, paper = sources(monkeypatch)
+    last = native["actual_native_actions"][-1]
+    profile = FatigueProfile(enabled=True, initial=0.0)
+    mode = "MOVE_DISTANCE"
+    if bad == "wrong_distance":
+        last["movement_m"] += 0.15
+    elif bad == "forged_clear":
+        last["execution_evidence"]["cleanup_receipt"]["result"] = "rejected"
+    elif bad == "foreign_action":
+        last["action"] = "foreign-action"
+    elif bad == "no_last_move":
+        last["execution_evidence"]["action_ref"] = "WAIT"
+    elif bad == "wrong_session":
+        last["source"] = "other-session"
+    elif bad == "old_seed":
+        profile = FatigueProfile(enabled=True, initial=0.5)
+    else:
+        mode = "UNKNOWN"
+    with pytest.raises(BoundaryRejected):
+        review_postaction_wait_dev(
+            native, paper, expected_player_uuid=PLAYER,
+            profile=profile, fatigue_mode=mode,
+        )
+
+
+def test_prior_move_cannot_silently_contribute_without_intervening_ticks(monkeypatch):
+    native, paper = sources(monkeypatch)
+    last = native["actual_native_actions"][-1]
+    earlier = native["actual_native_actions"][0]
+    earlier["movement_m"] = 5.0  # unverified gap: deliberately NOT used
+    result = review_postaction_wait_dev(
+        native, paper, expected_player_uuid=PLAYER,
+        profile=FatigueProfile(enabled=True, initial=0.0),
+        fatigue_mode="MOVE_DISTANCE",
+    )
+    assert result["dev_move"]["action_id"] == last["action"]
+    assert result["dev_move"]["scope"] == (
+        "LAST_ACTION_ONLY_NO_PRIOR_MOVE_OR_GAP_INFERENCE"
+    )
+    assert result["dev_fatigue_before"] == pytest.approx(last["movement_m"] * 0.04)
+
+
+def test_zero_move_fatigue_rate_never_invents_recovery(monkeypatch):
+    from experiments.fatigue_p1 import Rate
+
+    native, paper = sources(monkeypatch)
+    result = review_postaction_wait_dev(
+        native, paper, expected_player_uuid=PLAYER,
+        profile=FatigueProfile(
+            enabled=True, initial=0.0, move_per_block=Rate(0.0),
+        ),
+        fatigue_mode="MOVE_DISTANCE",
+    )
+    assert result["dev_move"]["fatigue_accumulated"] == 0
+    assert result["dev_fatigue_before"] == 0
+    assert result["dev_fatigue_recovered"] == 0
+    assert result["dev_fatigue_after"] == 0
