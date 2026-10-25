@@ -9,9 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
-from adapters.mineflayer.s49_paper_postwait_dev import review_postaction_wait_dev
 from adapters.mineflayer.present_projection import project_mineflayer_present
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.s49_paper_postwait_dev import review_postaction_wait_dev
 from adapters.mineflayer.self_body_projection import project_body_present
 from experiments.fatigue_p1 import (
     FatigueProfile,
