@@ -22,6 +22,7 @@ from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
 from adapters.mineflayer.s49_p1_l0_capability_dev import compare_body_capability_l0_dev
+from adapters.mineflayer.s49_p1_l0_fresh_pair_dev import review_postwait_fresh_l0_input_dev
 from adapters.mineflayer.s49_p1_l0_sensitivity_dev import compare_p1_knockdown_dev
 from adapters.mineflayer.s49_p1_l0_shadow_dev import preview_postwait_l0_dev
 from adapters.mineflayer.s49_p1_postwait_native_dev import (
@@ -118,7 +119,10 @@ async def run(
         )
         paper_log = output_dir / "paper_server.log"
         original_report = output_dir / "original_s49_report.json"
-        observed = {"server": None, "window": None, "count": 0, "postwait": None}
+        observed = {
+            "server": None, "window": None, "count": 0, "postwait": None,
+            "fresh_event": None, "fresh_probe": None,
+        }
         unpatched_config = original._write_config
         unpatched_ready = original._ready_server
         original_executor = original.NormalSessionActionExecutor
@@ -191,6 +195,50 @@ async def run(
                 )
                 observed["postwait"] = await original._correlated_observe(
                     args[0], request_id,
+                )
+                # DEV-only STAGING: after (never during) the Paper WAIT
+                # window, cause one new external World entity event. No
+                # second reader, Self Action or original L0 permission.
+                pre = observed["postwait"]
+                prior_zombies = {
+                    e.entity_id for e in pre.snapshot.nearby_entities
+                    if e.name == "zombie"
+                }
+                original._command(server, "kill @e[type=minecraft:zombie]")
+                await server.stdin.drain()
+                await asyncio.sleep(0.6)
+                original._command(
+                    server,
+                    "execute at RelaySelf run summon minecraft:zombie "
+                    "~2 ~ ~ {NoAI:1b,Silent:1b,PersistenceRequired:1b,"
+                    "Invulnerable:1b}",
+                )
+                await server.stdin.drain()
+                for _ in range(75):
+                    frame = await asyncio.wait_for(args[0].receive(), timeout=1.0)
+                    if not isinstance(frame, original.MineflayerObservation):
+                        if isinstance(frame, original.MineflayerEntityHurt):
+                            continue
+                        raise S49PaperDevBlocked("unexpected post-WAIT native frame")
+                    if frame.seq <= pre.seq or frame.kind != "entities":
+                        continue
+                    zombies = [
+                        e for e in frame.snapshot.nearby_entities
+                        if e.name == "zombie"
+                    ]
+                    if (len(zombies) == 1
+                            and zombies[0].entity_id not in prior_zombies
+                            and not frame.snapshot.nearby_entities_coverage.truncated):
+                        observed["fresh_event"] = frame
+                        break
+                if observed["fresh_event"] is None:
+                    raise S49PaperDevBlocked("no fresh native entity event after WAIT")
+                fresh_req = (
+                    f"s49-postwait-event:{self.session_id}:"
+                    f"{observed['fresh_event'].seq}"
+                )
+                observed["fresh_probe"] = await original._correlated_observe(
+                    args[0], fresh_req,
                 )
                 return receipt
 
@@ -294,6 +342,23 @@ async def run(
                 or rate_sensitivity["new_action_issuers"] != 0
                 or rate_sensitivity["real_action_count_added"] != 0):
             raise S49PaperDevBlocked("same-World fatigue knockdown not source bound")
+        if observed["fresh_event"] is None or observed["fresh_probe"] is None:
+            raise S49PaperDevBlocked("post-WAIT native L0 pair absent")
+        _, original_owner, _, _, _, _ = original.s19._epoch_one()
+        fresh_pair = review_postwait_fresh_l0_input_dev(
+            observed["fresh_event"], observed["fresh_probe"],
+            prior_postwait_probe=observed["postwait"],
+            body=actual_next_body,
+            handoff=self_body_handoff,
+            p1_reviewed=p1,
+            profile=FatigueProfile(enabled=True, initial=0.0),
+            retained=original_owner.new_state,
+        )
+        if (fresh_pair["fresh_event_seq"] <= actual_next_cognition["native_seq"]
+                or fresh_pair["fresh_probe_seq"] <= fresh_pair["fresh_event_seq"]
+                or fresh_pair["original_l0_decide_called"] is not False
+                or fresh_pair["new_action_issued"] is not False):
+            raise S49PaperDevBlocked("post-WAIT fresh native L0 source invalid")
         if (p1["dev_fatigue_recovered"] <= 0
                 or p1["dev_fatigue_before"] <= 0
                 or p1["dev_move"] is None
@@ -311,6 +376,7 @@ async def run(
             next_l0_shadow_dev=shadow_l0,
             next_l0_capability_dev=capability_choice,
             next_l0_sensitivity_dev=rate_sensitivity,
+            next_l0_fresh_pair_dev=fresh_pair,
         )
         report["p1"]["world_run_verified"] = True
         report["p1"]["status"] = "DEV_WORLD_OBSERVED_MOVE_DISTANCE_WAIT_REPLAY"
