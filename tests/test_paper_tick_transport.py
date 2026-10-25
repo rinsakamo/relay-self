@@ -1,6 +1,6 @@
 """#150 wire delivery matches Paper logger, never proves L0 or Action authority."""
-from dataclasses import replace
 import json
+from dataclasses import replace
 
 import pytest
 
