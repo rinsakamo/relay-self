@@ -10,7 +10,7 @@ on:
       - adapters/mineflayer/s49_p1_fifth_epoch_dev.py
       - tests/test_s49_p1_fifth_epoch_dev.py
       - adapters/mineflayer/s49_p1_same_native_gait_dev.py
-      - tests/test_s49_p1_same_native_gait_dev.py tests/test_s49_p1_sixth_motor_dev.py
+      - tests/test_s49_p1_same_native_gait_dev.py
       - tests/test_s49_p1_sixth_motor_dev.py
 
 permissions:
