@@ -122,6 +122,6 @@ def test_default_signature_remains_three_epoch_without_dev_optin():
     signature = inspect.signature(original.qualify)
     assert signature.parameters["dev_next_epoch"].default is None
     original_code = inspect.getsource(original.qualify)
-    assert "max_events=4 if dev_next_epoch is not None else 3" in original_code
+    assert "else 4 if dev_next_epoch is not None else 3" in original_code
     assert "max_action_requests=(" in original_code
     assert "S49_NEXT_EPOCH_DEV_ONLY" in original_code
