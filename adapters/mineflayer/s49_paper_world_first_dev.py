@@ -332,7 +332,7 @@ async def run(
                 receipt = await super().execute(*args, **kwargs)
                 observed["count"] += 1
                 if (paper_input_edges_dev or paper_motion_ticks_dev
-                        ) and observed["count"] == 1:
+                        or dash_negative_control_dev) and observed["count"] == 1:
                     if (not args or args[0].started.session_id != self.session_id
                             or self.supervisor.open_actions):
                         raise S49PaperDevBlocked("Paper prearm must share first closed S49 owner")
