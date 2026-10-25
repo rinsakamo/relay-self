@@ -25,10 +25,6 @@ from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
 from adapters.mineflayer.s49_motor_clock_review_dev import review_native_motor_clock_dev
-from adapters.mineflayer.s49_paper_input_edges_dev import (
-    await_paper_input_arm_dev,
-    review_paper_input_edges_dev,
-)
 from adapters.mineflayer.s49_native_motor_clock_dev import (
     instrument_native_bridge_dev,
     remove_native_bridge_dev,
@@ -60,6 +56,10 @@ from adapters.mineflayer.s49_p1_same_native_gait_dev import (
 from adapters.mineflayer.s49_p1_self_body_dev import (
     compose_s49_p1_dev_self_body,
     compose_s49_p1_postwait_native_dev,
+)
+from adapters.mineflayer.s49_paper_input_edges_dev import (
+    await_paper_input_arm_dev,
+    review_paper_input_edges_dev,
 )
 from adapters.mineflayer.s49_selfbody_motion_feedback_dev import (
     SelfBodyMotionState,
