@@ -46,8 +46,12 @@ def test_same_native_near_world_before_move_vs_after_wait_gait(monkeypatch):
     assert view["status"] == "DEV_P1_L0_S42_NOMINAL_GAIT_COMPARISON"
     assert view["s42_selection_unchanged"] == "MOVE_AWAY"
     assert view["nominal_one_tick_demand_blocks"] == 1.0
+    expected_fatigue = reviewed["dev_move"]["movement_m"] * profile.move_per_block.value
     assert view["modeled_after_move_one_tick_capacity_blocks"] == pytest.approx(
-        1.0 - 0.7 * (0.6269065734210617 * 0.04),
+        profile.nominal_move_limit_blocks * (
+            1.0 - profile.impairment_per_fraction.value * expected_fatigue
+            / profile.capacity
+        ),
     )
     assert view["modeled_after_move_one_tick_capacity_blocks"] < (
         view["modeled_after_wait_one_tick_capacity_blocks"]
