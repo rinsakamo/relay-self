@@ -1,3 +1,4 @@
+# DEV retry after focused negative control: expected capability derived from fixture displacement.
 # DEV: one-time real native post-WAIT P1 capacity-aware candidate comparison, no new issuer.
 # DEV retry: frozen S19 replay now uses asyncio.to_thread (live-loop-safe).
 # DEV retry: correct typed negative-control fixtures (no World on prior failure).
