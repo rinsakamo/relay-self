@@ -183,6 +183,7 @@ async def run(
     motion_uncertainty_dev: bool = False,
     dash_negative_control_dev: bool = False,
     dash_forward_operator_dev: bool = False,
+    dash_client_mirror_dev: bool = False,
     forward_operator_confirmation: str | None = None,
     dash_jar: Path | None = None,
     dash_sha: str | None = None,
@@ -208,6 +209,7 @@ async def run(
         "motion_uncertainty_dev": motion_uncertainty_dev,
         "dash_negative_control_dev": dash_negative_control_dev,
         "dash_forward_operator_dev": dash_forward_operator_dev,
+        "dash_client_mirror_dev": dash_client_mirror_dev,
     }
     created = False
     dev_bridge = None
@@ -251,6 +253,8 @@ async def run(
             raise S49PaperDevBlocked(
                 "uncertainty damping requires original S49 SelfBody Motion Feedback"
             )
+        if dash_client_mirror_dev and not dash_forward_operator_dev:
+            raise S49PaperDevBlocked("client-only DASH motor mirror requires isolated forward DEV")
         if dash_forward_operator_dev and (
             forward_operator_confirmation != FORWARD_OPERATOR_CONFIRM
             or dash_negative_control_dev or actual_next_epoch
@@ -283,6 +287,7 @@ async def run(
         if dash_forward_operator_dev:
             forward_attr_bridge = generate_forward_attr_bridge_dev(
                 output_dir / "forward_client_attr_dev.jsonl",
+                mirror_speed=dash_client_mirror_dev,
             )
         report.update(
             paper_jar_sha256=paper_sha,
@@ -1581,6 +1586,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="DEV: original authorized BACK Action while DASH stance remains")
     parser.add_argument("--dash-forward-operator-dev", action="store_true",
                         help="DEV: separate operator motor; not S49-issued forward Action")
+    parser.add_argument("--dash-client-mirror-dev", action="store_true",
+                        help="DEV only: mirror Paper +50% speed in temporary Mineflayer self physics")
     parser.add_argument("--confirm-forward-operator")
     parser.add_argument("--dash-jar", type=Path)
     parser.add_argument("--dash-sha256")
@@ -1606,6 +1613,7 @@ def main(argv: list[str] | None = None) -> int:
         motion_uncertainty_dev=args.motion_uncertainty_dev,
         dash_negative_control_dev=args.dash_negative_control_dev,
         dash_forward_operator_dev=args.dash_forward_operator_dev,
+        dash_client_mirror_dev=args.dash_client_mirror_dev,
         forward_operator_confirmation=args.confirm_forward_operator,
         dash_jar=args.dash_jar,
         dash_sha=args.dash_sha256,
