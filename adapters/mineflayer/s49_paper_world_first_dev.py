@@ -21,6 +21,7 @@ from uuid import UUID
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
+from adapters.mineflayer.s49_p1_l0_capability_dev import compare_body_capability_l0_dev
 from adapters.mineflayer.s49_p1_l0_shadow_dev import preview_postwait_l0_dev
 from adapters.mineflayer.s49_p1_postwait_native_dev import (
     compose_postwait_native_self_world_dev,
@@ -259,6 +260,21 @@ async def run(
                 or shadow_l0["after_wait_p1_model_efficiency_pct"]
                 != actual_next_cognition["p1_dev_hypothesis_capability_pct"]):
             raise S49PaperDevBlocked("next-epoch L0 shadow source mismatch")
+        # A bounded optional Cognition comparison, not a second L0 route
+        # or a physical MOVE command. Same native probe; after-MOVE value is
+        # explicitly counterfactual to the actual post-WAIT World geometry.
+        capability_choice = compare_body_capability_l0_dev(
+            actual_next_body, observed["postwait"],
+            self_body_handoff, p1,
+            FatigueProfile(enabled=True, initial=0.0),
+            frozen_commit.new_state,
+        )
+        if (capability_choice["native_seq"] != shadow_l0["native_seq"]
+                or capability_choice["s42_selection_unchanged"]
+                != shadow_l0["original_s42_selection"]
+                or capability_choice["new_action_grant_issued"] is not False
+                or capability_choice["actual_native_actions_added"] != 0):
+            raise S49PaperDevBlocked("post-WAIT capability candidate source mismatch")
         if (p1["dev_fatigue_recovered"] <= 0
                 or p1["dev_fatigue_before"] <= 0
                 or p1["dev_move"] is None
@@ -274,6 +290,7 @@ async def run(
             next_cognition_native_dev=actual_next_cognition,
             next_self_world_dev=world_body_join,
             next_l0_shadow_dev=shadow_l0,
+            next_l0_capability_dev=capability_choice,
         )
         report["p1"]["world_run_verified"] = True
         report["p1"]["status"] = "DEV_WORLD_OBSERVED_MOVE_DISTANCE_WAIT_REPLAY"
