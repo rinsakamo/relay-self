@@ -84,6 +84,9 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     // False unless explicitly opted into a disposable M0.2 DEV World.
     private boolean adaptiveTickObserverDev = false;
     private int adaptiveTickRows = 0;
+    // nanoTime has an arbitrary origin and may be negative; log a monotonic
+    // *relative* duration from this instance instead of its absolute value.
+    private final long adaptiveTickClockOriginNanos = System.nanoTime();
     private static final int ADAPTIVE_TICK_ROWS_MAX = 256;
     private boolean s50TickMeterArmed = false;
     private Location s50TickMeterLast;
@@ -269,7 +272,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     getLogger().info("PAPER_DEV_TIME_SAMPLE index=" + adaptiveTickRows
                         + " server_tick=" + Bukkit.getCurrentTick()
                         + " world_full_time=" + p.getWorld().getFullTime()
-                        + " wall_nanos=" + System.nanoTime()
+                        + " wall_nanos=" + (System.nanoTime() - adaptiveTickClockOriginNanos)
                         + " world=" + p.getWorld().getUID()
                         + " player=" + p.getUniqueId()
                         + " source=PAPER_SCHEDULER_CALLBACK_ONLY"
