@@ -46,6 +46,18 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
     private Location startingLocation;
     private long beginTick;
     private int index;
+    // Independent, one-shot, non-authoritative movement event telemetry.
+    // Does not consume the legacy WAIT observer's separate one-shot permission.
+    private boolean movementUsed = false;
+    private boolean movementActive = false;
+    private boolean registered = false;
+    private String movementAction;
+    private String movementSession;
+    private UUID movementPlayerId;
+    private UUID movementWorldId;
+    private int movementEvents;
+    private int movementDistinctTicks;
+    private long movementLastTick = -1;
 
     @Override
     public void onEnable() {
@@ -59,6 +71,10 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
     public boolean onCommand(
         CommandSender sender, Command command, String label, String[] args
     ) {
+        if (command.getName().equalsIgnoreCase("relays49motionstart")
+                || command.getName().equalsIgnoreCase("relays49motionstop")) {
+            return motionCommand(sender, command, args);
+        }
         boolean pre = command.getName().equalsIgnoreCase("relays49preobserve");
         if (!pre && !command.getName().equalsIgnoreCase("relays49observe")) {
             return false;
@@ -112,7 +128,7 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
         try {
             // Registers passive input/motion observations before the first
             // sample; it never changes input or entity state.
-            Bukkit.getPluginManager().registerEvents(this, this);
+            ensureRegistered();
             if (!idleInput(subject.getCurrentInput())) {
                 abort("SERVER_INPUT_ACTIVE_AT_START");
                 return true;
@@ -142,6 +158,73 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
             abort("OBSERVER_START_FAILED");
             throw ex;
         }
+        return true;
+    }
+
+    private void ensureRegistered() {
+        if (!registered) {
+            Bukkit.getPluginManager().registerEvents(this, this);
+            registered = true;
+        }
+    }
+
+    private boolean motionCommand(
+        CommandSender sender, Command command, String[] args
+    ) {
+        if (!(sender instanceof ConsoleCommandSender) || !Bukkit.isPrimaryThread()
+                || !getConfig().getBoolean("enabled", false) || args.length != 3
+                || !validId(args[0]) || !validId(args[1])) {
+            getLogger().warning("S49_MOTION_SERVER_DENIED invalid_console_or_claim");
+            return true;
+        }
+        UUID expected;
+        try {
+            expected = UUID.fromString(args[2]);
+        } catch (IllegalArgumentException ex) {
+            getLogger().warning("S49_MOTION_SERVER_DENIED invalid_player_id");
+            return true;
+        }
+        boolean start = command.getName().equalsIgnoreCase("relays49motionstart");
+        if (start) {
+            Player subject = Bukkit.getPlayer(expected);
+            if (movementUsed || movementActive || active || subject == null
+                    || !subject.isOnline() || subject.isDead()
+                    || !subject.getName().equals(
+                        getConfig().getString("expected-player-name", "RelaySelf")
+                    ) || !expected.equals(subject.getUniqueId())) {
+                getLogger().warning("S49_MOTION_SERVER_DENIED no_once_or_owner");
+                return true;
+            }
+            movementUsed = true;
+            movementActive = true;
+            movementAction = args[0];
+            movementSession = args[1];
+            movementPlayerId = expected;
+            movementWorldId = subject.getWorld().getUID();
+            movementEvents = 0;
+            movementDistinctTicks = 0;
+            movementLastTick = -1;
+            ensureRegistered();
+            getLogger().info("S49_MOTION_SERVER_ARM action_id=" + movementAction
+                + " session_id=" + movementSession + " player_uuid=" + movementPlayerId
+                + " world=" + movementWorldId
+                + " tick=" + subject.getWorld().getFullTime()
+                + " authority=NONE input_edge_attested=false");
+            return true;
+        }
+        if (!movementActive || !args[0].equals(movementAction)
+                || !args[1].equals(movementSession)
+                || !expected.equals(movementPlayerId)) {
+            getLogger().warning("S49_MOTION_SERVER_DENIED mismatched_stop");
+            return true;
+        }
+        movementActive = false;
+        getLogger().info("S49_MOTION_SERVER_COMPLETE action_id=" + movementAction
+            + " session_id=" + movementSession + " player_uuid=" + movementPlayerId
+            + " world=" + movementWorldId
+            + " movement_events=" + movementEvents
+            + " distinct_position_change_ticks=" + movementDistinctTicks
+            + " authority=NONE input_edge_attested=false");
         return true;
     }
 
@@ -269,6 +352,38 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onPlayerMove(PlayerMoveEvent event) {
+        if (movementActive
+                && event.getPlayer().getUniqueId().equals(movementPlayerId)
+                && event.getTo() != null
+                && !samePosition(event.getFrom(), event.getTo())) {
+            if (!Bukkit.isPrimaryThread()
+                    || !event.getPlayer().getWorld().getUID().equals(movementWorldId)
+                    || movementEvents >= 64) {
+                movementActive = false;
+                getLogger().warning("S49_MOTION_SERVER_ABORT unsafe_source_or_limit");
+            } else {
+                long tick = event.getPlayer().getWorld().getFullTime();
+                if (tick < movementLastTick) {
+                    movementActive = false;
+                    getLogger().warning("S49_MOTION_SERVER_ABORT nonmonotonic_world_tick");
+                } else {
+                    movementEvents++;
+                    if (tick != movementLastTick) {
+                        movementDistinctTicks++;
+                    }
+                    movementLastTick = tick;
+                    Location from = event.getFrom();
+                    Location to = event.getTo();
+                    getLogger().info("S49_MOTION_SERVER_POSITION action_id="
+                        + movementAction + " session_id=" + movementSession
+                        + " world=" + movementWorldId
+                        + " tick=" + tick + " index=" + movementEvents
+                        + " from_x=" + from.getX() + " from_z=" + from.getZ()
+                        + " to_x=" + to.getX() + " to_z=" + to.getZ()
+                        + " input_edge_attested=false");
+                }
+            }
+        }
         if (active && event.getPlayer().getUniqueId().equals(playerId)) {
             // The initial S49 backward Action legitimately moves the Self.
             if (preAction && prePhase < 3) {
@@ -368,6 +483,7 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
     @Override
     public void onDisable() {
         abort("PLUGIN_DISABLED");
+        movementActive = false;
         cancelTask();
         getLogger().info("S49_OBSERVER_STOPPED no_action_or_world_mutation");
     }
