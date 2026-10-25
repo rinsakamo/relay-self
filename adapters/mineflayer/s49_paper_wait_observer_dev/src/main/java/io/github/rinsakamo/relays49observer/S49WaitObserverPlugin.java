@@ -226,7 +226,9 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
                     }
                     prePhase = 2;
                     getLogger().info("S49_OBSERVER_BACK_TRUE " + baseFields()
-                        + " tick=" + backOnTick + " back=true");
+                        + " tick=" + backOnTick + " back=true"
+                        + " x=" + event.getPlayer().getLocation().getX()
+                        + " z=" + event.getPlayer().getLocation().getZ());
                 } else if (!idleInput(event.getInput())) {
                     abort("PRE_ACTION_FOREIGN_INPUT");
                 }
@@ -244,7 +246,9 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
                     index = 0;
                     startingLocation = event.getPlayer().getLocation();
                     getLogger().info("S49_OBSERVER_BACK_FALSE " + baseFields()
-                        + " tick=" + releaseTick + " back=false");
+                        + " tick=" + releaseTick + " back=false"
+                        + " x=" + event.getPlayer().getLocation().getX()
+                        + " z=" + event.getPlayer().getLocation().getZ());
                     getLogger().info("S49_OBSERVER_SERVER_INPUT action_id="
                         + action + " session_id=" + session
                         + " player_uuid=" + playerId + " world=" + worldId
