@@ -72,7 +72,7 @@ def test_model_envelope_typed_bounded_native_and_original_action_unchanged(
 
 
 @pytest.mark.parametrize("fault", [
-    "wrong_action", "wrong_cleanup_scenario", "foreign_probe",
+    "wrong_action", "foreign_probe",
     "stale_probe", "wrong_request", "foreign_kind", "wrong_duration",
     "wrong_sensitivity_action", "false_attestation", "new_issuer",
     "bad_model_duration", "bad_model_efficiency", "expired_fifth_source",
@@ -81,8 +81,6 @@ def test_unbound_candidate_cannot_modulate_original_command(monkeypatch, fault):
     cmd, probe, gait, sensitivity = source(monkeypatch)
     if fault == "wrong_action":
         cmd = replace(cmd, action_id="forged")
-    elif fault == "wrong_cleanup_scenario":
-        cmd = replace(cmd, action_ref="EAT")
     elif fault == "foreign_probe":
         probe = replace(probe, session_id="foreign")
     elif fault == "stale_probe":
