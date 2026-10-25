@@ -50,6 +50,8 @@ def preview_postwait_l0_dev(
             or native.session_id != handoff.session_id
             or reviewed.get("session_id") != handoff.session_id
             or reviewed.get("action_id") != handoff.action_id
+            or reviewed.get("world") != handoff.world
+            or reviewed.get("p1_profile_sha256") != profile.sha256
             or reviewed.get("observer_run_id") != handoff.observer_run_id
             or reviewed.get("paper_window_sha256") != handoff.model_source_digest
             or reviewed.get("dev_fatigue_mode") != "MOVE_DISTANCE"
