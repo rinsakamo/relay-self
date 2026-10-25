@@ -131,3 +131,44 @@ through the existing S49 single issuer, then test actual forward speed,
 side/back cap, release timing, and source-bound M0/P1 settlement
 (without inferring elapsed full World ticks from host sleep time).
 No main / PR #634 adoption or qualification is implied.
+
+## 2026-10-26 paired Paper / Mineflayer motor DEV
+
+Branch: self/dev-s49-dash-forward-operator-world-20261026
+
+This is an **explicitly operator-owned forward experiment** performed
+within the sole original S49 Mineflayer session *after* the two real
+S49 MOVE_BACKWARD Actions had each reached original S16 terminal.
+It is **NOT** an S49-issued MOVE_FORWARD Action or S16 learning receipt.
+
+| Exact GitHub World run | RUN / 0.9s | DASH / 0.9s | ratio | Paper boosted ticks |
+| --- | ---: | ---: | ---: | ---: |
+| https://github.com/rinsakamo/relay-self/actions/runs/40241254554 | 4.810m | 5.046m | 1.049 | 0 |
+| https://github.com/rinsakamo/relay-self/actions/runs/40241532469 | 4.810m | 5.046m | 1.049 | 23 |
+| https://github.com/rinsakamo/relay-self/actions/runs/40242559345 | 4.810m | **7.573m** | **1.574** | 24 |
+
+The third trial used a temporary, single-session Mineflayer bridge
+that mirrors the Paper +50% modifier to the missing client self attribute
+minecraft:movement_speed while forward+sprint is in effect. The original
+bridge.mjs remained unchanged, as did the original one-owner S49 controls.
+A separate trace proved that the unmodified Mineflayer client had no
+own movement speed attribute and used physics.playerSpeed=0.1:
+https://github.com/rinsakamo/relay-self/actions/runs/40242229676.
+
+All trials verified independent Paper modifier cleanup; the paired run
+also retained exactly two original S49 closed actions and Java/Node exit 0.
+
+**Important limits**:
+- 1.574 is the observed displacement ratio including acceleration and
+  stopping time, not certified steady-speed multiplier.
+- Paper/Node actual effective motor ticks are not source-aligned.
+- The previous real backward negative https://github.com/rinsakamo/relay-self/actions/runs/40205538388
+  observed zero forward modifier ticks while DASH stance remained active.
+  **Lateral speed cap enforcement is still unverified.**
+- No genuine S49 forward Action permission, M0 posting, P1 native state
+  settlement, 20-second physical exhaustion, fatigue-induced speed limiting,
+  L0 learning or S10 memory update was executed.
+- The 4.32 m/s side/back target remains a proposed design cap; Paper's
+  transient attribute switching is not a proven hard instantaneous cap.
+
+DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.
