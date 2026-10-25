@@ -78,3 +78,39 @@ This branch is not a Paper plugin installation, World launcher change or a
 real Minecraft run. It supplies the P1 calculation seam plus regressions, and
 records the concrete server mismatch to fix next. Do not label a synthetic
 fixture WORLD PASS; do not reuse historic paper/v7 evidence as this run.
+
+## 2026-10-25: same-run Paper opt-in implementation
+
+Two modules now stage the minimal **single-run** owner path:
+`s49_paper_postwait_dev.py` joins S49 original S16 clear and original
+Paper 8-tick post-action input/position observer; `s49_paper_world_first_dev.py`
+is an explicit S-owned disposable wrapper for the unchanged S49 `qualify()`.
+Only its Paper server asset/config are substituted, and an inherited original
+S49 Executor sends the read-only Paper console observation **after the second
+original S49 MOVE** has closed. The original S49 cleanup still owns Java,
+Node, collector, and World. No separate issuer, direct native control, W4
+external custody, or new SourceBoundTick is installed.
+
+The pre-action BACK-on/off observer is **not** a DEV prerequisite: this first
+run uses the existing post-action observer and omits the uncertain boundary
+tick. Model fatigue begins at a clearly labeled synthetic configured initial
+value (0.5), not inferred biological exertion. The Paper and original S49
+receipts must be from the **same** newly created session/run.
+
+Operator command (NOT EXECUTED IN THIS SESSION):
+
+```bash
+PYTHONPATH=src:tests:. python3.12 -m adapters.mineflayer.s49_paper_world_first_dev \
+  --output-dir /ABSOLUTE/FRESH/OWNED/s49-paper-p1-001 \
+  --paper-jar /ABSOLUTE/VERIFIED/paper-1.21.8.jar \
+  --paper-sha256 FULL_64_HEX_SHA256 \
+  --observer-jar /ABSOLUTE/VERIFIED/relay-s49-wait-observer-dev-0.1.0-dev.jar \
+  --observer-sha256 FULL_64_HEX_SHA256 \
+  --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD
+```
+
+JAR SHA identities are mandatory. The observer is normally disabled and is
+enabled only in the new disposable World. An actual successful run would be
+labeled `DEV_WORLD_OBSERVED_WITH_SEEDED_P1_MODEL`; R-qualified
+`p1_fatigue_recovered` remains 0 and V science remains unrun. Failure
+on a new Paper server is a DEV debugging input, not a recovered Golden run.
