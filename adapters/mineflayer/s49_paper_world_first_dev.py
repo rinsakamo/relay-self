@@ -645,7 +645,8 @@ async def run(
                     or choices[3]["selected"] != expected_choice
                     or choices[3]["issued"] != (expected_choice == "MOVE_AWAY")
                     or witness["same_host_action_requests"]
-                    != (3 if expected_choice == "MOVE_AWAY" else 2)
+                    != (4 if actual_sixth_motor
+                        else 3 if expected_choice == "MOVE_AWAY" else 2)
                     or len(source["actual_native_actions"])
                     != (4 if actual_sixth_motor
                         else 3 if expected_choice == "MOVE_AWAY" else 2)
@@ -682,7 +683,8 @@ async def run(
                         }
                         or observed["third_clear_seq"] is None
                         or fifth["same_host_events"] != expected_epochs
-                        or fifth["same_host_action_requests"] != 3
+                        or fifth["same_host_action_requests"]
+                        != (4 if actual_sixth_motor else 3)
                         or fifth["next_choice"] != "WAIT"
                         or fifth["next_action_issued"] is not False
                         or fifth["next_event_seq"] != choices[4]["event_seq"]
