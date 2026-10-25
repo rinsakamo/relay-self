@@ -21,7 +21,10 @@ from uuid import UUID
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
-from adapters.mineflayer.s49_p1_self_body_dev import compose_s49_p1_dev_self_body
+from adapters.mineflayer.s49_p1_self_body_dev import (
+    compose_s49_p1_dev_self_body,
+    compose_s49_p1_postwait_native_dev,
+)
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from experiments.fatigue_p1 import FatigueProfile
 
@@ -109,7 +112,7 @@ async def run(
         )
         paper_log = output_dir / "paper_server.log"
         original_report = output_dir / "original_s49_report.json"
-        observed = {"server": None, "window": None, "count": 0}
+        observed = {"server": None, "window": None, "count": 0, "postwait": None}
         unpatched_config = original._write_config
         unpatched_ready = original._ready_server
         original_executor = original.NormalSessionActionExecutor
@@ -168,6 +171,21 @@ async def run(
                 (output_dir / "paper_observer_window.log").write_text(
                     observed["window"], encoding="utf-8",
                 )
+                # The original host awaits on_action_request → executor.execute;
+                # it cannot also receive on this same session until we return.
+                # Use the SAME original session and its existing correlated
+                # probe helper. No second receiver/task, issuer or Action.
+                if (not args or args[0].started.session_id != self.session_id
+                        or self.supervisor.open_actions):
+                    raise S49PaperDevBlocked(
+                        "post-WAIT native read requires closed original owner"
+                    )
+                request_id = (
+                    f"s49-postwait:{self.session_id}:{receipt.terminal.action_id}"
+                )
+                observed["postwait"] = await original._correlated_observe(
+                    args[0], request_id,
+                )
                 return receipt
 
         # Scoped DEV adaptation: no edits to original qualify(), S49 executor
@@ -197,6 +215,19 @@ async def run(
         # A *model hypothesis* for next Cognition, not a new native Present,
         # true fatigue reading, actuator grant or persisted resource state.
         next_cognition = self_body_handoff.next_cognition_readback()
+        if observed["postwait"] is None:
+            raise S49PaperDevBlocked("no original-session post-WAIT native probe")
+        actual_next_body, actual_next_cognition = compose_s49_p1_postwait_native_dev(
+            self_body_handoff, p1,
+            source["actual_native_actions"][-1],
+            observed["postwait"],
+            expected_request_id=(
+                f"s49-postwait:{source['session_id']}:{p1['action_id']}"
+            ),
+        )
+        if (actual_next_body.observation is None
+                or actual_next_cognition["extra_native_probes"] != 1):
+            raise S49PaperDevBlocked("native next cognition Present missing")
         if (p1["dev_fatigue_recovered"] <= 0
                 or p1["dev_fatigue_before"] <= 0
                 or p1["dev_move"] is None
@@ -209,6 +240,7 @@ async def run(
             world_status="DISPOSABLE_PAPER_COMPLETED_AND_CLEANED",
             p1=p1,
             self_body_dev=next_cognition,
+            next_cognition_native_dev=actual_next_cognition,
         )
         report["p1"]["world_run_verified"] = True
         report["p1"]["status"] = "DEV_WORLD_OBSERVED_MOVE_DISTANCE_WAIT_REPLAY"
