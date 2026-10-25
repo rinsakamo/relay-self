@@ -181,3 +181,31 @@ replay, then emits a bounded `self_body_dev` next-cognition readback in
 This is the minimal DEV interface needed before wiring post-WAIT native
 Present to P1's actual `BodyInteroception` and feeding it into a *future*
 real cognition epoch. No qualification/science claim is implied.
+
+## Post-Paper native Cognition epoch with shared SelfWorld/SelfBody
+
+A further DEV-only extension requests exactly one correlated native probe
+**after** the Paper observer reports all eight WAIT samples. The request
+is performed by the original MineflayerProcessSession while the S49
+`on_action_request` callback has suspended the outer host reader.
+There is no parallel JSONL receiver, second Mineflayer process, native
+Action, or change to the original S49 qualification routine.
+
+The existing `compose_s49_p1_postwait_native_dev` builds an immutable
+SelfBodyView with genuine native health/food/position from this later probe
+and the **P1 hypothesized** fatigue copied from the Paper replay. The
+`compose_postwait_native_self_world_dev` companion builds SelfWorldView
+from that *same typed native probe* and checks the exact session, request,
+sequence, provenance, epoch, and that `world.self_body is body`.
+The disposable World report preserves `next_cognition_native_dev` and
+`next_self_world_dev` separately, and verifies their source agreement.
+
+The newly requested post-WAIT native probe is **later than** the last
+S49 Action's native after-probe, but no native protocol-to-Paper callback
+clock alignment is available. Thus the exact Paper tick corresponding to
+the probe remains unknown. The post-WAIT probe is genuinely observed, while
+P1 fatigue remains a fallible SelfBody **hypothesis**, not a P1 sensor
+attested by S/R and not a World Observation. The historical real
+`NormalWorldL0` is unchanged and `next_l0_consumed=false`; this is
+a read-only next-Cognition input, NOT evidence that L0 used the hypothesis
+to select a new Action. No S10 or learning owner is mutated.
