@@ -1,0 +1,13 @@
+name: RelayS49PaperDashDev
+main: io.github.rinsakamo.relaydashdev.PaperDashDev
+version: '0.1.0-dev'
+api-version: '1.21.8'
+description: 'DEV-only bounded Paper movement attribute candidate, off by default'
+load: POSTWORLD
+commands:
+  relaydasharm:
+    description: 'Console only, one-shot DEV arm; does not authorize any S49 Action'
+    usage: '/relaydasharm <session_id> <player_uuid> <power>'
+  relaydashstop:
+    description: 'Console only, release DEV speed modifier'
+    usage: '/relaydashstop <session_id> <player_uuid>'
