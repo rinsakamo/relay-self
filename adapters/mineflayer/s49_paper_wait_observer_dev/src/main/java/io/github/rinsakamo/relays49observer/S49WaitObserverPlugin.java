@@ -32,6 +32,7 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
     private boolean used = false;
     private boolean active = false;
     private boolean preAction = false;
+    private boolean postBoundaryPending = false;
     private int prePhase = 0; // 1 armed, 2 back ON, 3 back OFF/sampling
     private long preArmTick;
     private long backOnTick;
@@ -96,6 +97,7 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
         used = true;             // consume before publishing any source row
         active = true;
         preAction = pre;
+        postBoundaryPending = !pre;
         prePhase = pre ? 1 : 0;
         action = args[0];
         session = args[1];
@@ -127,13 +129,11 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
                 );
                 return true;
             }
-            getLogger().info("S49_OBSERVER_SERVER_INPUT action_id=" + action
-                + " session_id=" + session + " player_uuid=" + playerId
-                + " world=" + worldId + " run_id=" + observerRunId
-                + " tick=" + beginTick
-                + " input_idle=true s49_release_causality=NOT_ATTESTED");
-            getLogger().info("S49_DEV_BACK_WAIT_BEGIN " + baseFields()
-                + " tick=" + beginTick + " index=0 input_idle=true");
+            // Main-thread scheduler may first invoke the observer 1 or 2
+            // World ticks AFTER this console command. Do not label the
+            // command-time tick as the first sampling callback.
+            // Establish a fresh Paper-callback boundary at first invocation,
+            // then exclude that boundary tick from the eight WAIT candidates.
             // Main-thread, single read-only callback per server tick.
             task = Bukkit.getScheduler().runTaskTimer(
                 this, () -> observe(subject), 1L, 1L
@@ -306,6 +306,19 @@ public final class S49WaitObserverPlugin extends JavaPlugin implements Listener 
                 return;
             }
             long tick = subject.getWorld().getFullTime();
+            if (postBoundaryPending) {
+                postBoundaryPending = false;
+                beginTick = tick;
+                startingLocation = subject.getLocation();
+                getLogger().info("S49_OBSERVER_SERVER_INPUT action_id=" + action
+                    + " session_id=" + session + " player_uuid=" + playerId
+                    + " world=" + worldId + " run_id=" + observerRunId
+                    + " tick=" + beginTick
+                    + " input_idle=true s49_release_causality=NOT_ATTESTED");
+                getLogger().info("S49_DEV_BACK_WAIT_BEGIN " + baseFields()
+                    + " tick=" + beginTick + " index=0 input_idle=true");
+                return;
+            }
             int next = index + 1;
             if (next > SAMPLE_COUNT || tick != beginTick + next) {
                 abort("TICK_GAP_OR_REPLAY");
