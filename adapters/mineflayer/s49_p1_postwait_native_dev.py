@@ -1,131 +1,88 @@
-"""One existing S49 owner, one later native probe, one DEV Cognition epoch.
+"""DEV-only SelfWorld/Cognition companion to the one S49 post-WAIT probe.
 
-The native probe follows the Paper WAIT window, but its protocol has NO
-native mapping to the exact last Paper World tick. This bridge is read-only,
-does not create L0 decisions/Action grants or P1 R-tick authentication.
+Original S49 Action callback is the ONLY native JSONL receiver. This file
+consumes a frame already received by that original owner; it never reads
+another protocol message or issues an Action. The P1 quantity stays a model
+hypothesis even though native health/food/position are now observable.
 """
 from __future__ import annotations
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.present_projection import project_mineflayer_present
 from adapters.mineflayer.python_protocol import MineflayerObservation
-from adapters.mineflayer.s49_p1_self_body_dev import (
-    MODEL,
-    P1DevSelfBodyHandoff,
-)
+from adapters.mineflayer.s49_p1_self_body_dev import MODEL
 from adapters.mineflayer.self_body_projection import project_body_present
 from adapters.mineflayer.self_world_projection import project_self_world_present
-from relay_self.self_body import BodyOrigin, compose_self_body_view
+from relay_self.self_body import BodyOrigin, SelfBodyView
 from relay_self.self_world import compose_self_world_view
 
 
-def compose_postwait_native_cognition_dev(
-    handoff: P1DevSelfBodyHandoff,
-    frame: MineflayerObservation,
-    *,
-    last_s49_action_after_seq: int,
-    required_request_id: str,
-    self_id: str = "RelaySelf",
+def compose_postwait_native_self_world_dev(
+    body: SelfBodyView,
+    native: MineflayerObservation,
 ) -> dict[str, object]:
-    """Project a real *later* native probe plus fallible P1 Body hypothesis.
+    """Join SelfWorld to same native Present + already validated SelfBody.
 
-    Native SelfBody/World observations share exact source, epoch and instance;
-    P1 only enters as a hypothesis from the completed Paper/model replay.
-    A post-Paper native message cannot attest an exact Paper tick or full idle.
+    The original owner must have provided a *later* correlated native probe
+    and constructed the SelfBody with that observation first. Equality to
+    the original typed native observation is checked again here.
     """
-    if not isinstance(handoff, P1DevSelfBodyHandoff) or not isinstance(
-        frame, MineflayerObservation
+    if not isinstance(body, SelfBodyView) or not isinstance(
+        native, MineflayerObservation
     ):
-        raise BoundaryRejected("typed P1 handoff and existing native protocol required")
-    if (frame.kind != "probe"
-            or type(last_s49_action_after_seq) is not int
-            or last_s49_action_after_seq < 0
-            or not isinstance(required_request_id, str)
-            or not required_request_id.startswith("s49-postwait:")
-            or not isinstance(self_id, str) or not self_id.strip()
-            or frame.session_id != handoff.session_id
-            or frame.seq <= last_s49_action_after_seq
-            or frame.request_id != required_request_id
-            or handoff.after_wait.session_id != frame.session_id
-            or handoff.after_wait.observation is not None
-            or handoff.after_wait.sensed("p1_fatigue_sensor").origin
-            is not BodyOrigin.UNKNOWN):
-        raise BoundaryRejected("post-WAIT native request/session/seq/owner mismatch")
-
-    present = project_mineflayer_present(frame)
-    if (present.provenance.source != "mineflayer"
-            or present.provenance.reference
-            != f"{handoff.session_id}:{present.seq}"
-            or present.coverage_truncated
-            or present.coverage_candidates < len(present.observed_entities)):
-        raise BoundaryRejected("native post-WAIT probe source or coverage invalid")
-    epoch = f"p1-dev-postwait-native-{present.seq}"
-    obs = project_body_present(present)
-    body = compose_self_body_view(
-        session_id=present.session_id,
-        epoch_id=epoch,
-        self_id=self_id,
-        observation=obs,
-        minimum_native_seq=last_s49_action_after_seq + 1,
-        # Existing SelfBody hypothesis: never forge a producer sensor.
-        hypotheses=handoff.after_wait.hypotheses,
-    )
+        raise BoundaryRejected("post-WAIT next epoch needs typed Body and native probe")
+    if (body.observation is None or body.self_id is None
+            or native.kind != "probe"
+            or native.session_id != body.session_id
+            or native.seq != body.observation.native_seq
+            or native.request_id != body.observation.request_id
+            or body.interoceptions
+            or len(body.hypotheses) != 1
+            or body.hypothetical(MODEL, "p1_phase").value != "after-wait"
+            or body.hypothetical(MODEL, "p1_source_scope").value is None
+            or body.sensed("p1_fatigue_sensor").origin is not BodyOrigin.UNKNOWN
+            or body.observed("p1_fatigue").origin is not BodyOrigin.UNKNOWN):
+        raise BoundaryRejected("post-WAIT Body did not keep P1 model distinct")
+    present = project_mineflayer_present(native)
+    if project_body_present(present) != body.observation:
+        raise BoundaryRejected("post-WAIT native frame and Body observation mismatch")
     world = compose_self_world_view(
-        session_id=present.session_id,
-        epoch_id=epoch,
-        self_id=self_id,
-        observation=project_self_world_present(present, observer_id=self_id),
+        session_id=body.session_id,
+        self_id=body.self_id,
+        epoch_id=body.epoch_id,
+        observation=project_self_world_present(
+            present, observer_id=body.self_id,
+        ),
         self_body=body,
     )
-    if (world.self_body is not body
-            or world.observation is None
-            or world.observation.native_seq != obs.native_seq
-            or world.observation.provenance != obs.source_provenance
-            or world.observation.request_id != obs.request_id
-            or body.observed("health").origin is not BodyOrigin.OBSERVATION
-            or body.sensed("p1_fatigue_sensor").origin is not BodyOrigin.UNKNOWN
-            or body.observed("p1_fatigue").origin is not BodyOrigin.UNKNOWN
-            or body.hypothetical(MODEL, "p1_sensor_pct").origin
-            is not BodyOrigin.HYPOTHESIS):
-        raise BoundaryRejected("post-WAIT SelfBody/SelfWorld epoch split or promotion")
+    if (world.self_body is not body or world.observation is None
+            or world.observation.provenance != body.observation.source_provenance
+            or world.observation.native_seq != body.observation.native_seq
+            or world.observation.request_id != body.observation.request_id):
+        raise BoundaryRejected("SelfWorld and SelfBody next cognition epoch differ")
     return {
-        "classification": "DEV_NEXT_COGNITION_NATIVE_PROBE_WITH_P1_HYPOTHESIS",
-        "session_id": handoff.session_id,
-        "action_id": handoff.action_id,
-        "observer_run_id": handoff.observer_run_id,
-        "world": handoff.world,
-        "paper_window_sha256": handoff.model_source_digest,
-        "epoch_id": epoch,
-        "native_request_id": present.request_id,
+        "status": "DEV_NEXT_COGNITION_WORLD_BODY_SOURCE_JOINED",
+        "session_id": body.session_id,
+        "self_id": body.self_id,
+        "epoch_id": body.epoch_id,
         "native_seq": present.seq,
-        "native_source_ref": obs.source_ref,
-        "native_source_provenance": {
-            "source": present.provenance.source,
-            "reference": present.provenance.reference,
-        },
-        "last_action_native_after_seq": last_s49_action_after_seq,
-        "native_health": body.observed("health").value,
-        "native_food": body.observed("food").value,
-        "native_position": list(present.body_position),
-        "native_visible_entities": len(world.observation.entities),
-        "self_world_body_same_epoch": world.epoch_id == body.epoch_id,
-        "self_world_body_same_object": world.self_body is body,
-        "p1_model_fatigue_sensor_pct": body.hypothetical(
-            MODEL, "p1_sensor_pct"
+        "native_request_id": present.request_id,
+        "native_source_ref": body.observation.source_ref,
+        "selfworld_native_source_ref": world.observation.source_ref,
+        "world_entity_count": len(world.observation.entities),
+        "world_coverage_truncated": world.observation.coverage_truncated,
+        "world_body_same_epoch": world.epoch_id == body.epoch_id,
+        "world_body_same_object": world.self_body is body,
+        "p1_model_sensor_pct": body.hypothetical(
+            MODEL, "p1_sensor_pct",
         ).value,
-        "p1_model_capability_pct": body.hypothetical(
-            MODEL, "p1_capability_pct"
-        ).value,
-        "p1_model_origin": "hypothesis",
-        "native_p1_fatigue_observed": False,
-        "p1_owner_sensor_attested": False,
-        "native_postwait_paper_tick_exactly_correlated": False,
-        "native_postwait_world_tick": None,
-        "single_original_session_receiver": True,
-        "postwait_native_probe_requests": 1,
-        "additional_native_receivers": 0,
-        "additional_action_issuers": 0,
-        "actual_next_l0_decision_consumed": False,
+        "p1_source_kind": "SELF_BODY_HYPOTHESIS_NOT_NATIVE_OBSERVATION",
+        "native_fatigue_observed": False,
+        "p1_sensor_attested": False,
+        "native_paper_exact_tick_joined": False,
+        "extra_protocol_receivers": 0,
+        "extra_action_issuers": 0,
+        "next_l0_consumed": False,
         "qualification_go": False,
         "science_go": False,
     }
