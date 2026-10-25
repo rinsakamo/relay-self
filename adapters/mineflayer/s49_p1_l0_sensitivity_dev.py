@@ -24,7 +24,7 @@ BASELINE = FatigueProfile(enabled=True, initial=0.0)
 CHALLENGE = FatigueProfile(
     enabled=True,
     initial=0.0,
-    move_per_block=Rate(2.0),
+    move_per_block=Rate(6.0),
 )
 
 
