@@ -439,7 +439,7 @@ async def run(
                 original_next_l0_dev={
                     "status": "DEV_SAME_ORIGINAL_HOST_ACTUAL_L0_DECIDE",
                     **witness,
-                    "event_seq": native.seq,
+                    "event_seq": witness["next_event_seq"],
                     "native_probe_seq": native.seq,
                     "native_probe_request_id": native.request_id,
                     "p1_model_origin": "hypothesis",
