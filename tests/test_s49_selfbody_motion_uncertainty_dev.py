@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pytest
+from test_s49_selfbody_motion_feedback_dev import _issued_command, _original_closed
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.s49_selfbody_motion_feedback_dev import (
@@ -15,7 +16,6 @@ from adapters.mineflayer.s49_selfbody_motion_uncertainty_dev import (
     UNCERTAINTY_FLOOR_M,
     guard_next_motion_correction_dev,
 )
-from test_s49_selfbody_motion_feedback_dev import _issued_command, _original_closed
 
 
 NOMINAL = 0.19648932318884205
