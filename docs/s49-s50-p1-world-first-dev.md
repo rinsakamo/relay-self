@@ -209,3 +209,30 @@ attested by S/R and not a World Observation. The historical real
 `NormalWorldL0` is unchanged and `next_l0_consumed=false`; this is
 a read-only next-Cognition input, NOT evidence that L0 used the hypothesis
 to select a new Action. No S10 or learning owner is mutated.
+
+## 2026-10-25: L0/S42 shadow comparison on one post-WAIT native probe
+
+The original S49 owner already samples one correlated native probe after the
+Paper WAIT callback series (no second receiver or issuer). A separate
+`s49_p1_l0_shadow_dev.preview_postwait_l0_dev()` now asks the **unchanged
+S42 World-conditioned chooser** what its fixed frozen rev1/value4 policy would
+select on that **same typed post-WAIT probe**. Separately it reads the two
+P1/SelfBody model capability values (after MOVE vs after WAIT).
+
+This is a deliberately **read-only comparison**. It does **NOT** call
+`ReactiveL0.decide()`, fabricate its required fresh entities-event/probe pair,
+use the P1 hypothesis to change S42's actual score, mint an Action grant,
+or execute another MOVE. Outputs explicitly record
+`original_l0_entities_event_consumed=false`,
+`actual_reactive_l0_decide_called=false`,
+`fresh_action_grant_issued=false`,
+`s42_has_p1_input=false`, and `p1_changed_original_s42_selection=false`.
+It compares native geometry (actual Paper/Mineflayer) with a hypothetical P1
+body image and preserves the difference between actual native food/health/
+position and estimated fatigue/capability. Original L0 remains unchanged.
+
+The next engineering step, **after** this shadow check, is an opt-in fatigue-
+aware L0 candidate evaluator that can operate on an actual fresh native
+entities event followed by an independent correlated probe. It must remain
+separate from the existing S49 native Action issuer and must not imply that
+P1 is externally attested or that old S42 choices were modified.
