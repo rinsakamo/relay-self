@@ -41,6 +41,11 @@ from adapters.mineflayer.s49_p1_postwait_native_dev import (
 from adapters.mineflayer.s49_p1_same_native_gait_dev import (
     compare_fifth_p1_gait_dev,
 )
+from adapters.mineflayer.s49_p1_physical_pair_dev import (
+    BASELINE,
+    STRESS,
+    evaluate_sixth_motor_sensitivity_dev,
+)
 from adapters.mineflayer.s49_p1_self_body_dev import (
     compose_s49_p1_dev_self_body,
     compose_s49_p1_postwait_native_dev,
@@ -111,6 +116,7 @@ async def run(
     actual_fifth_epoch: bool = False,
     compare_fifth_gait: bool = False,
     actual_sixth_motor: bool = False,
+    motor_scenario: str = BASELINE,
 ) -> int:
     """One new Paper World, original S49 two MOVE actions, one post-WAIT sample."""
     report = {
@@ -125,6 +131,7 @@ async def run(
         "actual_original_s49_fifth_epoch": actual_fifth_epoch,
         "compare_fifth_gait": compare_fifth_gait,
         "actual_sixth_motor": actual_sixth_motor,
+        "motor_scenario": motor_scenario,
     }
     created = False
     try:
@@ -138,6 +145,10 @@ async def run(
             raise S49PaperDevBlocked("same-native P1 gait review needs fifth original L0")
         if actual_sixth_motor and (not actual_fifth_epoch or not compare_fifth_gait):
             raise S49PaperDevBlocked("physical DEV P1 motor requires same fifth comparison")
+        if motor_scenario not in (BASELINE, STRESS) or (
+            motor_scenario == STRESS and not actual_sixth_motor
+        ):
+            raise S49PaperDevBlocked("stress sensitivity requires original sixth DEV Action")
         paper_jar = _fresh_asset(paper_jar, paper_sha)
         observer_jar = _fresh_asset(observer_jar, observer_sha)
         if paper_jar.resolve() == observer_jar.resolve():
@@ -161,6 +172,7 @@ async def run(
             "fifth_gait_compare": None,
             "original_session": None, "sixth_l0_probe": None,
             "sixth_clear_seq": None, "actual_sixth_motor_command": None,
+            "sixth_motor_sensitivity": None,
             "third_clear_seq": None,
             "fresh_trace": [],
         }
@@ -450,9 +462,18 @@ async def run(
                         or gait["new_grants"] != 0
                         or command.duration_s != gait["baseline_nominal_command_duration_s"]):
                     raise S49PaperDevBlocked("sixth DEV motor timing not bound to original issued Action")
-                adapted_duration = gait["fatigue_aware_candidate_duration_s"]
+                sensitivity = evaluate_sixth_motor_sensitivity_dev(
+                    observed["third_move_model"], gait, motor_scenario,
+                )
+                if (sensitivity["third_action_id"] != gait["third_original_action_id"]
+                        or sensitivity["fifth_native_seq"] != gait["fifth_native_seq"]
+                        or sensitivity["action_permission"] is not False
+                        or observed["sixth_motor_sensitivity"] is not None):
+                    raise S49PaperDevBlocked("sensitivity cannot authorize or alias action")
+                adapted_duration = sensitivity["duration_s"]
                 if not 0 < adapted_duration < command.duration_s:
                     raise S49PaperDevBlocked("P1 model cannot bound sixth motor timing")
+                observed["sixth_motor_sensitivity"] = sensitivity
                 observed["actual_sixth_motor_command"] = {
                     "status": "DEV_ORIGINAL_S49_ISSUED_ACTION_MOTOR_DURATION_CHANGED",
                     "action_id": command.action_id,
@@ -462,6 +483,9 @@ async def run(
                     "model_held_without_new_wait_recovery": True,
                     "unmodified_original_action_duration_s": command.duration_s,
                     "dev_model_conditioned_duration_s": adapted_duration,
+                    "dev_motor_sensitivity_scenario": motor_scenario,
+                    "dev_motor_sensitivity_profile_sha256":
+                        sensitivity["hypothetical_profile_sha256"],
                     "new_action_issuer": False,
                     "new_grant": False,
                     "r_qualified_fatigue": False,
@@ -746,7 +770,10 @@ async def run(
                             or physical["p1_model_source_fifth_seq"]
                             != gait["fifth_native_seq"]
                             or physical["dev_model_conditioned_duration_s"]
-                            != gait["fatigue_aware_candidate_duration_s"]
+                            != observed["sixth_motor_sensitivity"]["duration_s"]
+                            or physical["dev_motor_sensitivity_scenario"] != motor_scenario
+                            or physical["dev_motor_sensitivity_profile_sha256"]
+                            != observed["sixth_motor_sensitivity"]["hypothetical_profile_sha256"]
                             or physical["unmodified_original_action_duration_s"]
                             != gait["baseline_nominal_command_duration_s"]
                             or physical["new_action_issuer"] is not False
@@ -763,6 +790,7 @@ async def run(
                         fifth_l0_self_world_body_dev=fifth_view,
                         fifth_l0_p1_gait_compare_dev=gait,
                         original_sixth_l0_dev=six,
+                        sixth_motor_sensitivity_dev=observed["sixth_motor_sensitivity"],
                         sixth_motor_action_dev={
                             **physical,
                             "observed_distance_m": last["movement_m"],
@@ -1059,6 +1087,10 @@ def main(argv: list[str] | None = None) -> int:
         "--actual-sixth-motor", action="store_true",
         help="DEV only sixth original authorized MOVE with bounded model-conditioned duration",
     )
+    parser.add_argument(
+        "--motor-scenario", choices=(BASELINE, STRESS), default=BASELINE,
+        help="DEV-only sixth motor model; stress is not physical calibration",
+    )
     args = parser.parse_args(argv)
     return asyncio.run(run(
         args.output_dir, args.paper_jar, args.paper_sha256,
@@ -1069,6 +1101,7 @@ def main(argv: list[str] | None = None) -> int:
         actual_fifth_epoch=args.actual_fifth_epoch,
         compare_fifth_gait=args.compare_fifth_gait,
         actual_sixth_motor=args.actual_sixth_motor,
+        motor_scenario=args.motor_scenario,
     ))
 
 
