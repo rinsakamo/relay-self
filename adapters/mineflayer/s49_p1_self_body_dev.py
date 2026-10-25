@@ -23,9 +23,9 @@ from experiments.fatigue_p1 import (
 from relay_self.prediction import PredictionState, StateVariable
 from relay_self.provenance import Provenance
 from relay_self.self_body import (
-    InvalidSelfBodyData,
     BodyHypothesis,
     BodyOrigin,
+    InvalidSelfBodyData,
     SelfBodyView,
     compose_self_body_view,
 )
