@@ -1,3 +1,4 @@
+# DEV retry-002: validate fourth original native source by index 3, not final fifth WAIT.
 name: S49 original fifth WAIT after third MOVE DEV
 on:
   push:
