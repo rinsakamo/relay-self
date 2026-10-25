@@ -1,3 +1,4 @@
+# DEV re-test 002: the original nominal Action duration is recorded from the budget BEFORE replacing the command.
 # DEV repeat: original S49 plus new duration-only P1 capability budget.
 # Retry 002: original six-epoch final Action budget cross-epoch readback fix.
 # DEV retry-002: validate fourth original native source by index 3, not final fifth WAIT.
