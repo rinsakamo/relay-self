@@ -14,7 +14,6 @@ import os
 import shutil
 import socket
 import time
-from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 from uuid import UUID
@@ -35,6 +34,10 @@ from adapters.mineflayer.s49_p1_l0_gait_candidate_dev import (
 from adapters.mineflayer.s49_p1_l0_near_decide_dev import decide_bounded_near_move_dev
 from adapters.mineflayer.s49_p1_l0_sensitivity_dev import compare_p1_knockdown_dev
 from adapters.mineflayer.s49_p1_l0_shadow_dev import preview_postwait_l0_dev
+from adapters.mineflayer.s49_p1_motor_envelope_dev import (
+    apply_motor_envelope_dev,
+    bind_motor_envelope_dev,
+)
 from adapters.mineflayer.s49_p1_physical_pair_dev import (
     BASELINE,
     STRESS,
@@ -470,9 +473,15 @@ async def run(
                         or sensitivity["action_permission"] is not False
                         or observed["sixth_motor_sensitivity"] is not None):
                     raise S49PaperDevBlocked("sensitivity cannot authorize or alias action")
-                adapted_duration = sensitivity["duration_s"]
-                if not 0 < adapted_duration < command.duration_s:
-                    raise S49PaperDevBlocked("P1 model cannot bound sixth motor timing")
+                envelope = bind_motor_envelope_dev(
+                    command, probe, gait, sensitivity,
+                )
+                if envelope.model_scenario != motor_scenario:
+                    raise S49PaperDevBlocked("motor envelope altered scenario")
+                scoped_command = apply_motor_envelope_dev(
+                    envelope, command, probe,
+                )
+                adapted_duration = scoped_command.duration_s
                 observed["sixth_motor_sensitivity"] = sensitivity
                 observed["actual_sixth_motor_command"] = {
                     "status": "DEV_ORIGINAL_S49_ISSUED_ACTION_MOTOR_DURATION_CHANGED",
@@ -490,7 +499,7 @@ async def run(
                     "new_grant": False,
                     "r_qualified_fatigue": False,
                 }
-                command = replace(command, duration_s=adapted_duration)
+                command = scoped_command
             return await original_native_execute(
                 session, command, timeout_s=timeout_s, provenance=provenance,
             )
