@@ -1,0 +1,3 @@
+# Independent DEV Paper actuator: cannot activate without console opt-in.
+enabled: false
+expected-player-name: RelaySelf
