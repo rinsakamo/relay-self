@@ -26,6 +26,7 @@ from experiments.fatigue_p1 import (
     FatigueFrame,
     FatigueProfile,
     FatigueRejected,
+    FatigueState,
     advance,
     initial_state,
 )
@@ -43,13 +44,15 @@ def _uuid(value: str, *, version: int | None = None) -> bool:
 
 def review_postaction_wait_dev(
     original_s49: dict, paper_window: str, *, expected_player_uuid: str,
-    profile: FatigueProfile,
+    profile: FatigueProfile, fatigue_mode: str = "SEED",
 ) -> dict:
     """Join original S49 second Action to a same-run post-clear Paper window.
 
-    The profile's initial fatigue is an **explicit DEV model seed**, not a
-    measurement of physical exertion or a historical P1 state. Unknown
-    command/packet causality stays outside the DEV claim.
+    SEED preserves the historical offline fixture. MOVE_DISTANCE uses only
+    the last actual S49 MOVE's verified geometric displacement as P1 input.
+    Its aggregate distance is NOT independently localized to one World tick;
+    prior unobserved intervals receive NO automatic WAIT credit or debit.
+    Unknown command/packet causality stays outside the DEV claim.
     """
     actions = original_s49.get("actual_native_actions")
     session = original_s49.get("session_id")
@@ -60,8 +63,10 @@ def review_postaction_wait_dev(
             or not 0 < len(paper_window) <= 65536
             or not _uuid(expected_player_uuid)
             or not isinstance(profile, FatigueProfile) or not profile.enabled
-            or profile.initial <= 0):
-        raise BoundaryRejected("successful S49 pair, Paper window, seeded P1 required")
+            or fatigue_mode not in ("SEED", "MOVE_DISTANCE")
+            or (fatigue_mode == "SEED" and profile.initial <= 0)
+            or (fatigue_mode == "MOVE_DISTANCE" and profile.initial != 0)):
+        raise BoundaryRejected("successful S49 pair, Paper, matching P1 DEV mode required")
     action = actions[-1]
     if (not isinstance(action, dict)
             or action.get("terminal") != "outcome"
@@ -139,7 +144,37 @@ def review_postaction_wait_dev(
     # Paper BEGIN is observed after the original native clear. The uncertain
     # boundary itself earns NO recovery. Only subsequent callback ticks do.
     try:
-        state = initial_state(profile, session, world_tick=begin)
+        move = None
+        if fatigue_mode == "MOVE_DISTANCE":
+            # First S49 MOVE may be separated from the last by hundreds of
+            # unobserved World ticks. Crediting both without intervening
+            # states would invent a fatigue history. Debit LAST MOVE only.
+            model_start = initial_state(profile, session, world_tick=0)
+            move_transition = advance(
+                profile, model_start, FatigueFrame(
+                    session_id=session, world_tick=1, activity="MOVE",
+                    observed_blocks=action["movement_m"],
+                ),
+            )
+            move = {
+                "action_id": action["action"],
+                "movement_m": action["movement_m"],
+                "p1_move_rate_per_block": profile.move_per_block.value,
+                "fatigue_before": move_transition.before.fatigue,
+                "fatigue_accumulated": move_transition.accumulated,
+                "fatigue_after": move_transition.after.fatigue,
+                "model_step": 1,
+                "actual_move_world_tick": None,
+                "scope": "LAST_ACTION_ONLY_NO_PRIOR_MOVE_OR_GAP_INFERENCE",
+            }
+            # Rebase explicit DEV-only model phase. Paper BEGIN is an actual
+            # World tick, but P1's model_step 1 is NOT. No missing ticks are
+            # treated as WAIT/MOVE; this is not a continuous World-tick ledger.
+            state = FatigueState(
+                session, profile.sha256, begin, move_transition.after.fatigue,
+            )
+        else:
+            state = initial_state(profile, session, world_tick=begin)
         before = state.fatigue
         rows = []
         for world_tick, ref in samples:
@@ -168,7 +203,18 @@ def review_postaction_wait_dev(
         "observer_run_id": run_id,
         "paper_window_sha256": hashlib.sha256(paper_window.encode()).hexdigest(),
         "p1_profile_sha256": profile.sha256,
-        "dev_fatigue_initial_origin": "EXPLICIT_DEV_SEEDED_MODEL_NOT_PHYSICAL_MEASUREMENT",
+        "dev_fatigue_initial_origin": (
+            "OBSERVED_LAST_S49_MOVE_DISTANCE_P1_MODEL_INITIAL_ZERO"
+            if fatigue_mode == "MOVE_DISTANCE"
+            else "EXPLICIT_DEV_SEEDED_MODEL_NOT_PHYSICAL_MEASUREMENT"
+        ),
+        "dev_fatigue_mode": fatigue_mode,
+        "dev_move": move,
+        "dev_model_phase_bridge": (
+            "ACTION_AGGREGATE_MODEL_STEP_REBASED_TO_PAPER_BEGIN_WITHOUT_GAP_INFERENCE"
+            if fatigue_mode == "MOVE_DISTANCE" else None
+        ),
+        "dev_continuous_world_tick_fatigue_history": False,
         "dev_fatigue_before": before,
         "dev_fatigue_after": state.fatigue,
         "dev_fatigue_recovered": sum(row["recovered"] for row in rows),
