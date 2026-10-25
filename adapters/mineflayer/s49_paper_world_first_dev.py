@@ -23,10 +23,10 @@ from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
 from adapters.mineflayer.s49_p1_l0_capability_dev import compare_body_capability_l0_dev
 from adapters.mineflayer.s49_p1_l0_fresh_pair_dev import review_postwait_fresh_l0_input_dev
-from adapters.mineflayer.s49_p1_l0_near_decide_dev import decide_bounded_near_move_dev
 from adapters.mineflayer.s49_p1_l0_gait_candidate_dev import (
     evaluate_fatigue_aware_fresh_candidate_dev,
 )
+from adapters.mineflayer.s49_p1_l0_near_decide_dev import decide_bounded_near_move_dev
 from adapters.mineflayer.s49_p1_l0_sensitivity_dev import compare_p1_knockdown_dev
 from adapters.mineflayer.s49_p1_l0_shadow_dev import preview_postwait_l0_dev
 from adapters.mineflayer.s49_p1_postwait_native_dev import (
