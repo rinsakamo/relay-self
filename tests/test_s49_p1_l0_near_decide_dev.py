@@ -55,7 +55,7 @@ def evaluate(monkeypatch, *, distance=2.0, bad=None):
     return decide_bounded_near_move_dev(
         event, probe, prior_postwait_probe=prior,
         body=body, handoff=handoff, p1_reviewed=p1,
-        profile=FatigueProfile(enabled=True, initial=0),
+        profile=FatigueProfile(enabled=True, initial=0.0),
         retained=retained, operator_shadow_grant=grant,
     )
 
