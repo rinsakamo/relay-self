@@ -1,3 +1,4 @@
+# Retry 003: exact Ruff lexicographic S31A before S49 imported module group.
 # Retry 002: reorder scoped source imports and lint new read-only clock modules.
 # DEV focused retry 004: source-shape tests pass; fix fixture Ruff; keep only touched focused tests.
 # DEV retry 003: original protocol rejects rejected-without-error receipts before downstream readback.
