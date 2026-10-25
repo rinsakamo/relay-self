@@ -1,0 +1,33 @@
+# Paper 1.21.8 DEV actuator compilation, not a World or S49 run.
+name: Paper DASH Direction Cap Focused DEV
+on:
+  push:
+    branches:
+      - self/dev-paper-dash-directional-cap-20261025
+    paths:
+      - .github/workflows/self-paper-dash-direction-cap-dev.yml
+permissions:
+  contents: read
+jobs:
+  paper-dash-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify isolated fail-closed Paper actuator
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          grep -q '^enabled: false$' adapters/mineflayer/s49_paper_dash_dev/src/main/resources/config.yml
+          test -f adapters/mineflayer/s49_paper_dash_dev/src/main/java/io/github/rinsakamo/relaydashdev/PaperDashDev.java
+      - name: Compile Paper 1.21.8 plugin (Java 21)
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/s49_paper_dash_dev/pom.xml -DskipTests package
+          test -s adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-paper-dash-dev-0.1.0-dev.jar
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
