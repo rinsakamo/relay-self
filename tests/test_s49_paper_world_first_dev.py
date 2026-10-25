@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 
 from adapters.mineflayer import s49_normal_session_real_ci as original_s49
-
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.s49_paper_postwait_dev import review_postaction_wait_dev
 from adapters.mineflayer.s49_paper_world_first_dev import (
