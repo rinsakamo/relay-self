@@ -1,0 +1,195 @@
+name: S49 original fifth WAIT after third MOVE DEV
+on:
+  push:
+    branches:
+      - self/dev-s49-native-next-epoch-20261025
+    paths:
+      - .github/workflows/self-s49-fifth-world-dev.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s49-fifth-world-once-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  world-first-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DEV_OUTPUT: '/tmp/s49-paper-p1-${{ github.run_id }}-${{ github.run_attempt }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify DEV observer config, dependencies and loopback isolation
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          grep -q '^enabled: false$' adapters/mineflayer/s49_paper_wait_observer_dev/src/main/resources/config.yml
+          python - <<'PY'
+          import socket
+          with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+              s.bind(("127.0.0.1", 25565))
+          print("Fresh loopback Minecraft port available; no external process touched")
+          PY
+      - name: Python 3.12 focused DEV entrypoint checks BEFORE any World
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py tests/test_s49_p1_l0_capability_dev.py tests/test_s49_p1_l0_sensitivity_dev.py tests/test_s49_p1_l0_fresh_pair_dev.py tests/test_s49_p1_l0_gait_candidate_dev.py tests/test_s49_p1_l0_near_decide_dev.py tests/test_s49_original_next_epoch_dev.py tests/test_s49_p1_fifth_epoch_dev.py
+      - name: Compile single read-only Paper wait observer on Java 21
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml -DskipTests package
+          test -f adapters/mineflayer/s49_paper_wait_observer_dev/target/relay-s49-wait-observer-dev-0.1.0-dev.jar
+      - name: Install original Mineflayer package (unmodified bridge)
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: Fetch official stable Paper 1.21.8 build 60 and verify published SHA256
+        id: paper
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, urllib.parse, urllib.request
+          version = "1.21.8"
+          api = f"https://fill.papermc.io/v3/projects/paper/versions/{version}/builds"
+          ua = "RelaySelf-S49-P1-WORLD-FIRST-DEV/0.1 (https://github.com/rinsakamo/relay-self)"
+          req = urllib.request.Request(api, headers={"User-Agent": ua})
+          with urllib.request.urlopen(req, timeout=50) as rsp:
+              builds = json.loads(rsp.read(3_000_000))
+          stable = [b for b in builds if b.get("channel") == "STABLE" and b.get("id") == 60]
+          if len(stable) != 1:
+              raise RuntimeError("Pinned Paper 1.21.8 stable build 60 unavailable")
+          artifact = stable[0]["downloads"]["server:default"]
+          expected = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          if (artifact["checksums"]["sha256"] != expected
+                  or artifact["size"] != 52811717):
+              raise RuntimeError("Pinned original Paper build metadata mismatch")
+          url = artifact["url"]
+          parsed = urllib.parse.urlparse(url)
+          if (parsed.scheme != "https" or parsed.hostname != "fill-data.papermc.io"
+                  or not parsed.path.startswith("/v1/objects/")):
+              raise RuntimeError("Untrusted Paper binary URL")
+          target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "paper-1.21.8-dev.jar"
+          hash_ = hashlib.sha256()
+          total = 0
+          with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": ua}), timeout=120) as src, target.open("xb") as dst:
+              while chunk := src.read(1048576):
+                  total += len(chunk)
+                  if total > 52811717: raise RuntimeError("Paper size exceeded")
+                  dst.write(chunk)
+                  hash_.update(chunk)
+          if total != 52811717 or hash_.hexdigest() != expected:
+              raise RuntimeError("Paper downloaded bytes mismatch")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"jar={target}\nsha256={expected}\n")
+          print("PAPER_DEV_PINNED", total, expected)
+          PY
+      - name: Run original S49 on one disposable Paper World, then DEV P1
+        env:
+          PAPER_JAR: ${{ steps.paper.outputs.jar }}
+          PAPER_SHA: ${{ steps.paper.outputs.sha256 }}
+        run: |
+          OBSERVER="$PWD/adapters/mineflayer/s49_paper_wait_observer_dev/target/relay-s49-wait-observer-dev-0.1.0-dev.jar"
+          OBSERVER_SHA="$(sha256sum "$OBSERVER" | cut -d' ' -f1)"
+          python -m adapters.mineflayer.s49_paper_world_first_dev \
+            --output-dir "$DEV_OUTPUT" \
+            --paper-jar "$PAPER_JAR" \
+            --paper-sha256 "$PAPER_SHA" \
+            --observer-jar "$OBSERVER" \
+            --observer-sha256 "$OBSERVER_SHA" \
+            --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD \
+            --fresh-target-distance 2 --actual-next-epoch --actual-fifth-epoch
+      - name: Verify fifth original L0 and third MOVE P1 model from single source
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["DEV_OUTPUT"])
+          report = json.loads((root / "world_first_dev_report.json").read_text())
+          source = json.loads((root / "original_s49_report.json").read_text())
+          assert report["status"] == "PASS", report.get("reason")
+          assert report["classification"] == "DEV_WORLD_ORIGINAL_S49_FIFTH_WAIT_THIRD_P1_MODEL"
+          assert source["status"] == "PASS", source.get("error")
+          assert source["classification"] == "DEV_ONLY_S49_ORIGINAL_FIFTH_WAIT_AFTER_THIRD_MOVE"
+          assert source["node_exit"] == 0 and source["server_exit"] == 0
+          assert [s["selected"] for s in source["decisions"]] == [
+              "WAIT", "MOVE_AWAY", "MOVE_AWAY", "MOVE_AWAY", "WAIT"
+          ]
+          assert [s["issued"] for s in source["decisions"]] == [
+              False, True, True, True, False
+          ]
+          assert len(source["source_pair_trace"]) == 5
+          actions = source["actual_native_actions"]
+          assert len(actions) == 3
+          third = actions[-1]
+          assert third["terminal"] == "outcome" and third["movement_m"] > 0.05
+          from adapters.mineflayer.self_action_evidence import verify_native_action_evidence
+          verify_native_action_evidence(
+              third["execution_evidence"], action_id=third["action"],
+              session_id=source["session_id"],
+              movement_m=third["movement_m"],
+          )
+          prior = report["p1"]
+          assert prior["dev_wait_count"] == 8
+          assert prior["dev_fatigue_after"] == 0
+          assert prior["qualification_go"] is False
+          third_view = report["third_move_p1_self_body_dev"]
+          assert third_view["third_action_id"] == third["action"]
+          assert third_view["movement_m"] == third["movement_m"]
+          assert third_view["p1_model_fatigue_before"] == 0
+          assert third_view["p1_model_fatigue_accumulated"] > 0
+          assert third_view["p1_model_fatigue_after"] > 0
+          assert third_view["p1_native_fatigue"] is None
+          assert third_view["model_step_only"] == 1
+          assert third_view["observed_move_world_tick"] is None
+          assert third_view["selfworld_body_same_object"] is True
+          fifth_view = report["fifth_l0_self_world_body_dev"]
+          next_ = report["original_fifth_l0_dev"]
+          assert next_["actual_original_host_decide"] is True
+          assert next_["same_host_events"] == 5
+          assert next_["same_host_action_requests"] == 3
+          assert next_["next_choice"] == "WAIT"
+          assert next_["next_action_issued"] is False
+          assert fifth_view["status"] == "DEV_FIFTH_NATIVE_SELF_WORLD_BODY_PROJECTED_PRE_L0"
+          assert fifth_view["selfworld_body_same_object"] is True
+          assert fifth_view["native_seq"] == next_["next_probe_seq"]
+          assert fifth_view["p1_model_fatigue"] == third_view["p1_model_fatigue_after"]
+          assert fifth_view["p1_model_sensor_pct"] == third_view["p1_model_sensor_pct"]
+          assert fifth_view["projection_before_original_l0_decide"] is True
+          assert fifth_view["original_l0_policy_consumes_p1"] is False
+          assert next_["p1_new_action_authority"] is False
+          assert next_["source_bound_tick"] is None
+          assert next_["wait_ticks_admitted"] == 0
+          assert next_["qualification_go"] is False
+          assert report["qualification_go"] is False and report["science_go"] is False
+          print("S49_FIFTH_ORIGINAL_L0_WAIT_THIRD_MOVE_P1_MODEL_DEV_PASS")
+          PY
+      - name: Preserve original DEV receipts and failures (R/SCIENCE not run)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-paper-world-first-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.DEV_OUTPUT }}/world_first_dev_report.json
+            ${{ env.DEV_OUTPUT }}/original_s49_report.json
+            ${{ env.DEV_OUTPUT }}/paper_server.log
+            ${{ env.DEV_OUTPUT }}/paper_observer_window.log
+          if-no-files-found: warn
+          retention-days: 7
+      - name: State DEV boundary
+        if: always()
+        run: |
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+          echo 'No external R custody, V science, production P1 state, or Golden evidence changed.'
