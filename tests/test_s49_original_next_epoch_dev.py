@@ -114,7 +114,7 @@ def test_dev_gate_rejects_before_any_java_node_or_action(
     result = json.loads(report.read_text())
     assert result["status"] == "BLOCKED"
     assert result["actual_native_actions"] == []
-    assert result["qualification_go"] is False if "qualification_go" in result else True
+    assert result.get("qualification_go") is not True
     assert "next original L0 epoch" not in result.get("classification", "")
 
 
