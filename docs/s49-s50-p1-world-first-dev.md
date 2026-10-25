@@ -363,3 +363,47 @@ never repeated R or V trials.
 **Classification:** `DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
 No changes to original S49/P1 physics files, protected historical
 evidence, Draft #545/#634 or main.
+
+## 2026-10-25: same fresh native World → P1-conditioned cognition gait candidate
+
+`s49_p1_l0_gait_candidate_dev.evaluate_fatigue_aware_fresh_candidate_dev()`
+takes **one actual next-epoch Mineflayer entities event and its correlated
+probe**, received solely by original S49's owned session after a completed
+Paper WAIT interval. It reruns the existing unchanged P1 model with *two
+explicit* profiles: default `move_per_block=0.04` and a deliberately
+uncalibrated stress `move_per_block=6.0`. Each replay separately verifies
+the S49 terminal Action, Paper ticks, next native Present and the original
+`NormalWorldL0._check()` native event/probe gate. Both scenarios are
+compared against **identical** World/Action IDs and geometry.
+
+The **frozen S42 choice** remains unchanged (e.g. `MOVE_AWAY` for a
+2-block zombie). The DEV candidate adds only an optional gait envelope:
+`MOVE_AWAY_NOMINAL_MODEL_CANDIDATE` with default-profile full modeled
+capacity, or `MOVE_AWAY_LIMIT_TO_MODEL_CAPACITY_CANDIDATE` under the
+stress scenario when the modeled one-tick speed falls below the nominal
+1 block/tick demand. Far threats still yield `WAIT_NO_ACTION_CANDIDATE`
+under both profiles. Distances are aggregated original S49 Actions, *not*
+per-World-tick historical MOVE telemetry.
+
+Confirmed one-World run:
+[GitHub Actions 40164632316](https://github.com/rinsakamo/relay-self/actions/runs/40164632316),
+source HEAD `583c3e0ccf833fc3daa6a374cb4663f1b80e0875`,
+artifact 12587279509. Independent receipt reread:
+- Original S49 two measured MOVE Action distances each
+  `0.6269065734210617` blocks and successful Java/Node cleanup.
+- Paper WAIT callbacks ticks **460–467**, 8/8 consecutive, boundary
+  excluded. Default P1 accumulated and recovered `0.02507626293684247`.
+- New actual native post-WAIT event **68**, correlated probe **69**,
+  original S42 `MOVE_AWAY` under both profiles.
+- Baseline post-WAIT modeled fatigue `0`, one-tick envelope
+  `1.0` block. Stress modeled fatigue `0.20`, envelope
+  `0.86` block; the DEV candidate changes its gait envelope label.
+- No extra native reader, P1 owner mutation, S10 update, L0.decide,
+  native Action issuer/grant, or actual additional Action. No new
+  R attestation or science claim.
+
+**Boundary:** the fatigue-dependent distinction is in **the new read-only
+DEV candidate**, not in original ReactiveL0.decide's production policy.
+The stress rate is a scenario, not a calibrated biological/physical
+fatigue source. This comparison prepares a separately authorized actual
+behavior test; it does not silently perform one.
