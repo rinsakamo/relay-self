@@ -1,3 +1,6 @@
+# DEV retry-002: initial run 40146359686 observed S49+Paper but
+# post-action scheduler callback began later than console clock.
+# Anchoring BEGIN to first Paper callback avoids fabricated missing tick.
 name: S49 Paper World-first single DEV run
 on:
   push:
@@ -50,7 +53,7 @@ jobs:
       - name: Python 3.12 focused DEV entrypoint checks BEFORE any World
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py
+          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py
       - name: Compile single read-only Paper wait observer on Java 21
         run: |
           mvn -B -ntp -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml -DskipTests package
