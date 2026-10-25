@@ -70,6 +70,9 @@ from adapters.mineflayer.s49_selfbody_motion_feedback_dev import (
     apply_to_next_issued,
     propose_motion_correction,
 )
+from adapters.mineflayer.s49_selfbody_motion_uncertainty_dev import (
+    guard_next_motion_correction_dev,
+)
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from experiments.fatigue_p1 import FatigueProfile
 from relay_self.provenance import Provenance
@@ -141,6 +144,7 @@ async def run(
     motor_clock_dev: bool = False,
     paper_input_edges_dev: bool = False,
     paper_motion_ticks_dev: bool = False,
+    motion_uncertainty_dev: bool = False,
 ) -> int:
     """One new Paper World, original S49 two MOVE actions, one post-WAIT sample."""
     report = {
@@ -160,6 +164,7 @@ async def run(
         "motor_clock_dev": motor_clock_dev,
         "paper_input_edges_dev": paper_input_edges_dev,
         "paper_motion_ticks_dev": paper_motion_ticks_dev,
+        "motion_uncertainty_dev": motion_uncertainty_dev,
     }
     created = False
     dev_bridge = None
@@ -198,6 +203,10 @@ async def run(
             raise S49PaperDevBlocked(
                 "Paper passive movement requires Node clock, never simultaneously input prearm"
             )
+        if motion_uncertainty_dev and not selfbody_motion_feedback:
+            raise S49PaperDevBlocked(
+                "uncertainty damping requires original S49 SelfBody Motion Feedback"
+            )
         paper_jar = _fresh_asset(paper_jar, paper_sha)
         observer_jar = _fresh_asset(observer_jar, observer_sha)
         if paper_jar.resolve() == observer_jar.resolve():
@@ -227,6 +236,7 @@ async def run(
             "sixth_clear_seq": None, "actual_sixth_motor_command": None,
             "sixth_motor_sensitivity": None,
             "motion_state": None, "motion_correction": None,
+            "motion_uncertainty_guard": None,
             "motion_pre_sixth": None,
             "paper_prearm_offset": None, "paper_first_session": None,
             "paper_motion_offset": None, "paper_motion_action": None,
@@ -622,6 +632,11 @@ async def run(
                         current_native_seq=probe.seq,
                         baseline_duration_s=adapted_duration,
                     )
+                    if motion_uncertainty_dev:
+                        correction, guard = guard_next_motion_correction_dev(
+                            state, correction,
+                        )
+                        observed["motion_uncertainty_guard"] = guard
                     command = apply_to_next_issued(
                         correction, command,
                         current_session_id=probe.session_id,
@@ -989,6 +1004,29 @@ async def run(
                             raise S49PaperDevBlocked(
                                 "SelfBody closed-loop actual Action result not source-bound"
                             )
+                        if motion_uncertainty_dev:
+                            guard = observed["motion_uncertainty_guard"]
+                            if (guard is None
+                                    or guard.source_action_id != pre.samples[-1].action_id
+                                    or guard.source_session_id != source["session_id"]
+                                    or guard.guarded_duration_s
+                                    != physical["actual_issued_duration_s"]
+                                    or guard.historical_closed_samples != 3
+                                    or guard.unguarded_duration_s
+                                    >= guard.guarded_duration_s):
+                                raise S49PaperDevBlocked(
+                                    "SelfBody uncertainty safeguard not bound to original Action"
+                                )
+                            report["selfbody_motion_uncertainty_dev"] = {
+                                **guard.as_report(),
+                                "closed_sixth_actual_displacement_m":
+                                    after.samples[-1].observed_displacement_m,
+                                "closed_sixth_prediction_error_m":
+                                    after.samples[-1].prediction_error_m,
+                                "closed_sixth_action_id": after.samples[-1].action_id,
+                                "history_ends_before_sixth_action": True,
+                                "policy_action_authority_changed": False,
+                            }
                         report["selfbody_motion_feedback_dev"] = {
                             "status": "DEV_REAL_S49_SELF_BODY_MOTION_CLOSED_LOOP",
                             "before_sixth_samples": [
@@ -1357,6 +1395,10 @@ def main(argv: list[str] | None = None) -> int:
         "--paper-motion-ticks-dev", action="store_true",
         help="DEV only: observe server player motion event tick positions around original second MOVE",
     )
+    parser.add_argument(
+        "--motion-uncertainty-dev", action="store_true",
+        help="DEV: damp SelfBody's next Action duration correction using closed prediction errors",
+    )
     args = parser.parse_args(argv)
     return asyncio.run(run(
         args.output_dir, args.paper_jar, args.paper_sha256,
@@ -1372,6 +1414,7 @@ def main(argv: list[str] | None = None) -> int:
         motor_clock_dev=args.motor_clock_dev,
         paper_input_edges_dev=args.paper_input_edges_dev,
         paper_motion_ticks_dev=args.paper_motion_ticks_dev,
+        motion_uncertainty_dev=args.motion_uncertainty_dev,
     ))
 
 
