@@ -28,6 +28,7 @@ from relay_self.self_body import (
 )
 from relay_self.world_conditioned_choice import WorldChoiceRejected
 
+
 def review_postwait_fresh_l0_input_dev(
     event: MineflayerObservation,
     probe: MineflayerObservation,
