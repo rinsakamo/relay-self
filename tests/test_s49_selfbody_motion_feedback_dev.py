@@ -16,7 +16,6 @@ from adapters.mineflayer.s49_selfbody_motion_feedback_dev import (
     apply_to_next_issued,
     propose_motion_correction,
 )
-from relay_self.provenance import Provenance
 
 
 def _original_closed(index: int, *, distance: float = 0.6269065734210617):
@@ -33,7 +32,6 @@ def _original_closed(index: int, *, distance: float = 0.6269065734210617):
         seq = frame.seq + shift
         return replace(
             frame, seq=seq,
-            provenance=Provenance("mineflayer", f"{sid}:{seq}"),
             **({"action_id": aid} if aid is not None else {}),
             **attrs,
         )
@@ -154,7 +152,7 @@ def test_closed_outcomes_cannot_be_forged_or_reused(change):
             source,
             before_observation=replace(
                 source.before_observation,
-                provenance=Provenance("forged", "non-native"),
+                session_id="foreign-source",
             ),
         )
     elif change == "zero_duration":
