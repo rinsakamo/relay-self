@@ -122,7 +122,11 @@ async def run(
         observed = {
             "server": None, "window": None, "count": 0, "postwait": None,
             "fresh_event": None, "fresh_probe": None,
+            "fresh_trace": [],
         }
+        # This mutable list is retained even if original qualify() stops:
+        # failed World DEV runs preserve the observer's bounded event diagnostics.
+        report["postwait_fresh_event_trace_dev"] = observed["fresh_trace"]
         unpatched_config = original._write_config
         unpatched_ready = original._ready_server
         original_executor = original.NormalSessionActionExecutor
@@ -214,18 +218,40 @@ async def run(
                     "Invulnerable:1b}",
                 )
                 await server.stdin.drain()
+                deadline = time.monotonic() + 15.0
                 for _ in range(75):
-                    frame = await asyncio.wait_for(args[0].receive(), timeout=1.0)
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    try:
+                        # A 1s per-frame deadline discarded delayed World
+                        # events on the previous DEV run. Keep ONE bounded
+                        # owner-local source wait, not a parallel receiver.
+                        frame = await asyncio.wait_for(
+                            args[0].receive(), timeout=remaining,
+                        )
+                    except TimeoutError:
+                        observed["fresh_trace"].append(
+                            {"status": "SOURCE_WAIT_TIMED_OUT"}
+                        )
+                        break
                     if not isinstance(frame, original.MineflayerObservation):
                         if isinstance(frame, original.MineflayerEntityHurt):
+                            observed["fresh_trace"].append(
+                                {"status": "IGNORED_ENTITY_HURT"}
+                            )
                             continue
                         raise S49PaperDevBlocked("unexpected post-WAIT native frame")
-                    if frame.seq <= pre.seq or frame.kind != "entities":
-                        continue
                     zombies = [
                         e for e in frame.snapshot.nearby_entities
                         if e.name == "zombie"
                     ]
+                    observed["fresh_trace"].append({
+                        "seq": frame.seq, "kind": frame.kind,
+                        "zombie_ids": [e.entity_id for e in zombies],
+                    })
+                    if frame.seq <= pre.seq or frame.kind != "entities":
+                        continue
                     if (len(zombies) == 1
                             and zombies[0].entity_id not in prior_zombies
                             and not frame.snapshot.nearby_entities_coverage.truncated):
