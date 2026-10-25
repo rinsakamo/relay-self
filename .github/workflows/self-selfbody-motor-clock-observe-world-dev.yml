@@ -1,3 +1,4 @@
+# Retry 002: reorder scoped source imports and lint new read-only clock modules.
 # DEV focused retry 004: source-shape tests pass; fix fixture Ruff; keep only touched focused tests.
 # DEV retry 003: original protocol rejects rejected-without-error receipts before downstream readback.
 # DEV retry 002: fixture provenance is a derived property, no injected field.
@@ -61,7 +62,7 @@ jobs:
       - name: Source syntax and focussed Ruff for P1 pair
         run: |
           python -m compileall -q adapters/mineflayer/s49_p1_physical_pair_dev.py adapters/mineflayer/s49_p1_physical_pair_review_dev.py adapters/mineflayer/s49_p1_motor_budget_dev.py adapters/mineflayer/s49_selfbody_motion_feedback_dev.py adapters/mineflayer/s49_motor_clock_review_dev.py adapters/mineflayer/s49_native_motor_clock_dev.py
-          ruff check adapters/mineflayer/s49_p1_physical_pair_dev.py adapters/mineflayer/s49_p1_physical_pair_review_dev.py adapters/mineflayer/s49_p1_motor_budget_dev.py adapters/mineflayer/s49_selfbody_motion_feedback_dev.py adapters/mineflayer/s49_paper_world_first_dev.py tests/test_s49_p1_physical_pair_dev.py tests/test_s49_p1_motor_budget_dev.py tests/test_s49_selfbody_motion_feedback_dev.py tests/test_s49_motor_clock_dev.py
+          ruff check adapters/mineflayer/s49_p1_physical_pair_dev.py adapters/mineflayer/s49_p1_physical_pair_review_dev.py adapters/mineflayer/s49_p1_motor_budget_dev.py adapters/mineflayer/s49_selfbody_motion_feedback_dev.py adapters/mineflayer/s49_motor_clock_review_dev.py adapters/mineflayer/s49_native_motor_clock_dev.py adapters/mineflayer/s49_paper_world_first_dev.py tests/test_s49_p1_physical_pair_dev.py tests/test_s49_p1_motor_budget_dev.py tests/test_s49_selfbody_motion_feedback_dev.py tests/test_s49_motor_clock_dev.py
       - name: Compile single read-only Paper wait observer on Java 21
         run: |
           mvn -B -ntp -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml -DskipTests package
