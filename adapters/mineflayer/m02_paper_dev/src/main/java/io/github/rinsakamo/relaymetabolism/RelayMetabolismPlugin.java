@@ -274,7 +274,8 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 // Passive Paper callback sample only. A real Self-side L0
                 // decision was NOT executed or confirmed in this callback.
                 // Never infer S49 Action ID/session or use as a motor writer.
-                if (adaptiveTickObserverDev && adaptiveTickRows < ADAPTIVE_TICK_ROWS_MAX) {
+                if (adaptiveTickObserverDev && adaptiveTickRows < ADAPTIVE_TICK_ROWS_MAX
+                        && p.getListeningPluginChannels().contains(ADAPTIVE_TICK_CHANNEL)) {
                     adaptiveTickRows++;
                     String tickWire = "index=" + adaptiveTickRows
                         + " server_tick=" + Bukkit.getCurrentTick()
