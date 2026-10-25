@@ -497,11 +497,11 @@ async def run(
                     or witness.get("actual_original_host_decide") is not True
                     or witness.get("same_host_events") != expected_epochs
                     or witness.get("next_choice") != expected_choice
-                    or witness.get("next_event_seq") != choices[-1]["event_seq"]
-                    or witness.get("next_probe_seq") != choices[-1]["probe_seq"]
+                    or witness.get("next_event_seq") != choices[3]["event_seq"]
+                    or witness.get("next_probe_seq") != choices[3]["probe_seq"]
                     or witness.get("next_probe_seq") != native.seq
-                    or witness.get("next_event_seq") != pairs[-1]["event_seq"]
-                    or witness.get("next_probe_seq") != pairs[-1]["probe_seq"]
+                    or witness.get("next_event_seq") != pairs[3]["event_seq"]
+                    or witness.get("next_probe_seq") != pairs[3]["probe_seq"]
                     or witness.get("next_event_seq") <= observed["native_cleared_seq"]
                     or native.session_id != source["session_id"]
                     or native.kind != "probe"
@@ -509,8 +509,8 @@ async def run(
                         f"s49-actual:{source['session_id']}:"
                         f"event-{witness['next_event_seq']}"
                     )
-                    or choices[-1]["selected"] != expected_choice
-                    or choices[-1]["issued"] != (expected_choice == "MOVE_AWAY")
+                    or choices[3]["selected"] != expected_choice
+                    or choices[3]["issued"] != (expected_choice == "MOVE_AWAY")
                     or witness["same_host_action_requests"]
                     != (3 if expected_choice == "MOVE_AWAY" else 2)
                     or len(source["actual_native_actions"])
