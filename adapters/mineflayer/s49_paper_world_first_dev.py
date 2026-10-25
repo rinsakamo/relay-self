@@ -24,6 +24,10 @@ from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
+from adapters.mineflayer.s49_forward_dash_operator_dev import (
+    CONFIRM as FORWARD_OPERATOR_CONFIRM,
+    run_forward_operator_dev,
+)
 from adapters.mineflayer.s49_motor_clock_review_dev import review_native_motor_clock_dev
 from adapters.mineflayer.s49_native_motor_clock_dev import (
     instrument_native_bridge_dev,
@@ -172,6 +176,8 @@ async def run(
     paper_motion_ticks_dev: bool = False,
     motion_uncertainty_dev: bool = False,
     dash_negative_control_dev: bool = False,
+    dash_forward_operator_dev: bool = False,
+    forward_operator_confirmation: str | None = None,
     dash_jar: Path | None = None,
     dash_sha: str | None = None,
 ) -> int:
@@ -195,6 +201,7 @@ async def run(
         "paper_motion_ticks_dev": paper_motion_ticks_dev,
         "motion_uncertainty_dev": motion_uncertainty_dev,
         "dash_negative_control_dev": dash_negative_control_dev,
+        "dash_forward_operator_dev": dash_forward_operator_dev,
     }
     created = False
     dev_bridge = None
@@ -237,7 +244,16 @@ async def run(
             raise S49PaperDevBlocked(
                 "uncertainty damping requires original S49 SelfBody Motion Feedback"
             )
-        if dash_negative_control_dev:
+        if dash_forward_operator_dev and (
+            forward_operator_confirmation != FORWARD_OPERATOR_CONFIRM
+            or dash_negative_control_dev or actual_next_epoch
+            or actual_fifth_epoch or actual_sixth_motor
+            or paper_input_edges_dev or paper_motion_ticks_dev
+            or motor_clock_dev or selfbody_motion_feedback
+            or motion_uncertainty_dev
+        ):
+            raise S49PaperDevBlocked("forward operator DEV requires isolated explicit consent")
+        if dash_negative_control_dev or dash_forward_operator_dev:
             if not isinstance(dash_jar, Path) or not isinstance(dash_sha, str):
                 raise S49PaperDevBlocked("explicit DASH DEV plugin asset and SHA required")
             dash_jar = _fresh_asset(dash_jar, dash_sha)
@@ -246,7 +262,7 @@ async def run(
         paper_jar = _fresh_asset(paper_jar, paper_sha)
         observer_jar = _fresh_asset(observer_jar, observer_sha)
         if paper_jar.resolve() == observer_jar.resolve() or (
-            dash_negative_control_dev and dash_jar.resolve() in (
+            (dash_negative_control_dev or dash_forward_operator_dev) and dash_jar.resolve() in (
                 paper_jar.resolve(), observer_jar.resolve()
             )
         ):
@@ -281,6 +297,7 @@ async def run(
             "paper_prearm_offset": None, "paper_first_session": None,
             "paper_motion_offset": None, "paper_motion_action": None,
             "dash_negative_action": None, "dash_negative_window": None,
+            "dash_forward_operator_result": None,
             "third_clear_seq": None,
             "fresh_trace": [],
         }
@@ -302,7 +319,7 @@ async def run(
             plugin_dir = root / "plugins"
             plugin_dir.mkdir(exist_ok=False)
             shutil.copyfile(observer_jar, plugin_dir / "s49-wait-observer-dev.jar")
-            if dash_negative_control_dev:
+            if dash_negative_control_dev or dash_forward_operator_dev:
                 shutil.copyfile(dash_jar, plugin_dir / "s49-dash-dev.jar")
                 dash_cfg = plugin_dir / "RelayS49DashDev"
                 dash_cfg.mkdir()
@@ -434,6 +451,19 @@ async def run(
                 server = observed["server"]
                 if server is None or server.stdin is None:
                     raise S49PaperDevBlocked("original S49 server no longer owned")
+                if dash_forward_operator_dev:
+                    if (not args or args[0].started.session_id != self.session_id
+                            or self.supervisor.open_actions
+                            or observed["dash_forward_operator_result"] is not None):
+                        raise S49PaperDevBlocked("extra DEV motor lost exclusive closed S49 owner")
+                    # Separately authorized operator DEV, never S49-issued
+                    # forward Action or S16 learning/feedback.
+                    observed["dash_forward_operator_result"] = await run_forward_operator_dev(
+                        session=args[0], paper_server=server, paper_log=paper_log,
+                        subject_uuid=offline_uuid(BOT_USERNAME),
+                        send_console=original._command,
+                        confirmation=forward_operator_confirmation,
+                    )
                 # Native clear ACK is not a server-effective release tick.
                 # Give the server time to settle before the independent
                 # Paper idle observation; the delay itself admits no ticks.
@@ -899,6 +929,17 @@ async def run(
                 or observed["window"] is None):
             raise S49PaperDevBlocked("original S49 or Paper observer did not complete")
         source = json.loads(original_report.read_text(encoding="utf-8"))
+        if dash_forward_operator_dev:
+            measured = observed["dash_forward_operator_result"]
+            if not isinstance(measured, dict) or (
+                measured.get("status") != "DEV_OPERATOR_FORWARD_DASH_WORLD_MEASURED"
+                or measured.get("same_original_session_id") != source.get("session_id")
+                or measured.get("original_s49_authorized_forward") is not False
+                or measured.get("m0_posted") is not False
+                or measured.get("p1_native_updated") is not False
+            ):
+                raise S49PaperDevBlocked("extra operator motor not source-consistent")
+            report["dash_forward_operator_result_dev"] = measured
         if dash_negative_control_dev:
             window = observed["dash_negative_window"]
             action = observed["dash_negative_action"]
@@ -1514,6 +1555,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--dash-negative-control-dev", action="store_true",
                         help="DEV: original authorized BACK Action while DASH stance remains")
+    parser.add_argument("--dash-forward-operator-dev", action="store_true",
+                        help="DEV: separate operator motor; not S49-issued forward Action")
+    parser.add_argument("--confirm-forward-operator")
     parser.add_argument("--dash-jar", type=Path)
     parser.add_argument("--dash-sha256")
     parser.add_argument(
@@ -1537,6 +1581,8 @@ def main(argv: list[str] | None = None) -> int:
         paper_motion_ticks_dev=args.paper_motion_ticks_dev,
         motion_uncertainty_dev=args.motion_uncertainty_dev,
         dash_negative_control_dev=args.dash_negative_control_dev,
+        dash_forward_operator_dev=args.dash_forward_operator_dev,
+        forward_operator_confirmation=args.confirm_forward_operator,
         dash_jar=args.dash_jar,
         dash_sha=args.dash_sha256,
     ))
