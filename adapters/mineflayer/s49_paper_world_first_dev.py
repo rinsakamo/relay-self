@@ -23,6 +23,7 @@ from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
 from adapters.mineflayer.s49_p1_l0_capability_dev import compare_body_capability_l0_dev
 from adapters.mineflayer.s49_p1_l0_fresh_pair_dev import review_postwait_fresh_l0_input_dev
+from adapters.mineflayer.s49_p1_l0_near_decide_dev import decide_bounded_near_move_dev
 from adapters.mineflayer.s49_p1_l0_gait_candidate_dev import (
     evaluate_fatigue_aware_fresh_candidate_dev,
 )
@@ -37,6 +38,8 @@ from adapters.mineflayer.s49_p1_self_body_dev import (
 )
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from experiments.fatigue_p1 import FatigueProfile
+from relay_self.provenance import Provenance
+from relay_self.reactive_l0 import L0ActionGrant
 
 OBSERVER_CONFIG = Path(__file__).parent / "s49_paper_wait_observer_dev" / (
     "src/main/resources/config.yml"
@@ -434,6 +437,47 @@ async def run(
                 or (fresh_target_distance == 2
                     and fresh_pair["fresh_s42_selection"] != "MOVE_AWAY")):
             raise S49PaperDevBlocked("post-WAIT fresh native L0 source invalid")
+        # A logical one-use DEV shadow grant from this explicit operator
+        # wrapper; NOT an S49 NormalActionAuthorization. No native physical
+        # MOVE is dispatched and the original completed host remains closed.
+        near_request = None
+        if fresh_target_distance == 2:
+            fresh_event = observed["fresh_event"]
+            fresh_probe = observed["fresh_probe"]
+            shadow_grant = L0ActionGrant(
+                authority_id=(
+                    f"dev-shadow-only:{source['session_id']}:{fresh_event.seq}"
+                ),
+                action_id=(
+                    f"dev-shadow-no-dispatch:{source['session_id']}:{fresh_event.seq}"
+                ),
+                intent_id="escape-threat",
+                session_id=source["session_id"],
+                event_seq=fresh_event.seq,
+                probe_seq=fresh_probe.seq,
+                entity_id=fresh_pair["fresh_zombie_entity_id"],
+                granted=True,
+                provenance=Provenance(
+                    "dev-independent-shadow-only-not-s49-issuer",
+                    f"{source['session_id']}:event-{fresh_event.seq}:operator-scoped-dev",
+                ),
+            )
+            near_request = decide_bounded_near_move_dev(
+                fresh_event, fresh_probe,
+                prior_postwait_probe=observed["postwait"],
+                body=actual_next_body,
+                handoff=self_body_handoff,
+                p1_reviewed=p1,
+                profile=FatigueProfile(enabled=True, initial=0.0),
+                retained=original_owner.new_state,
+                operator_shadow_grant=shadow_grant,
+            )
+            if (near_request["fresh_event_seq"] != fresh_pair["fresh_event_seq"]
+                    or near_request["fresh_probe_seq"] != fresh_pair["fresh_probe_seq"]
+                    or near_request["normal_action_executor_called"] is not False
+                    or near_request["physical_action_issued"] is not False
+                    or near_request["bounded_dev_l0_action_requests"] != 1):
+                raise S49PaperDevBlocked("bounded near request source/authority mismatch")
         # Optional DEV-only cognition candidate: revalidate BOTH P1
         # model profiles against the SAME real fresh native event/probe.
         # No original L0.decide(), grant, or additional physical Action.
@@ -469,6 +513,7 @@ async def run(
             next_l0_sensitivity_dev=rate_sensitivity,
             next_l0_fresh_pair_dev=fresh_pair,
             next_l0_gait_candidate_dev=gait_candidate,
+            next_l0_near_decide_dev=near_request,
         )
         report["p1"]["world_run_verified"] = True
         report["p1"]["status"] = "DEV_WORLD_OBSERVED_MOVE_DISTANCE_WAIT_REPLAY"
