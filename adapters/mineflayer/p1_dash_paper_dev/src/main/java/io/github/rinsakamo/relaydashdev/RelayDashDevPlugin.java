@@ -3,6 +3,7 @@ package io.github.rinsakamo.relaydashdev;
 import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Input;
+import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -14,6 +15,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -30,6 +32,9 @@ public final class RelayDashDevPlugin extends JavaPlugin implements Listener {
     private int maxTicks;
     private int elapsedTicks;
     private int appliedTicks;
+    private long lastForwardMovementTick = -1000;
+    private long lastIncompatibleMovementTick = -1000;
+    private boolean usedPositionFallback;
 
     @Override
     public void onEnable() {
@@ -75,6 +80,9 @@ public final class RelayDashDevPlugin extends JavaPlugin implements Listener {
             maxTicks = limit;
             elapsedTicks = 0;
             appliedTicks = 0;
+            lastForwardMovementTick = -1000;
+            lastIncompatibleMovementTick = -1000;
+            usedPositionFallback = false;
             used = true;  // one-shot, consumed before starting any task
             armed = true;
             active = false;
@@ -87,11 +95,58 @@ public final class RelayDashDevPlugin extends JavaPlugin implements Listener {
         return true;
     }
 
-    private static boolean forwardSprintOnly(Player player) {
+    private boolean forwardSprintOnly(Player player) {
         Input input = player.getCurrentInput();
-        return input != null && input.isForward() && input.isSprint()
-            && !input.isBackward() && !input.isLeft() && !input.isRight()
-            && !input.isSneak() && !input.isJump() && player.isSprinting();
+        if (!player.isSprinting()) {
+            return false;
+        }
+        // Contradictory server input always vetoes the speed boost.
+        if (input != null && (input.isBackward() || input.isLeft()
+                || input.isRight() || input.isSneak() || input.isJump())) {
+            return false;
+        }
+        if (input != null && input.isForward() && input.isSprint()) {
+            return true;
+        }
+        // The Mineflayer 1.21.8 client may not send a PlayerInputEvent.
+        // A fresh actual Paper PlayerMoveEvent with positive forward motion
+        // is a weaker DEV fallback, NOT evidence of effective control ticks.
+        long now = player.getWorld().getFullTime();
+        boolean evidence = lastForwardMovementTick >= lastIncompatibleMovementTick
+            && now >= lastForwardMovementTick && now - lastForwardMovementTick <= 2;
+        if (evidence) {
+            usedPositionFallback = true;
+        }
+        return evidence;
+    }
+
+    @EventHandler
+    public void onMove(PlayerMoveEvent event) {
+        if (!armed || subjectId == null
+                || !event.getPlayer().getUniqueId().equals(subjectId)
+                || event.getTo() == null) {
+            return;
+        }
+        Location from = event.getFrom();
+        Location to = event.getTo();
+        double dx = to.getX() - from.getX();
+        double dz = to.getZ() - from.getZ();
+        double length = Math.hypot(dx, dz);
+        if (length < 0.0001) {
+            return;
+        }
+        // Bukkit direction vector accounts for current yaw (turning in place
+        // must not be confused with forward travel).
+        double fx = to.getDirection().getX();
+        double fz = to.getDirection().getZ();
+        double forward = dx * fx + dz * fz;
+        double lateral = Math.abs(dx * fz - dz * fx);
+        long tick = event.getPlayer().getWorld().getFullTime();
+        if (forward > 0.01 && lateral <= forward * 0.25) {
+            lastForwardMovementTick = tick;
+        } else {
+            lastIncompatibleMovementTick = tick;
+        }
     }
 
     private void step() {
@@ -107,6 +162,15 @@ public final class RelayDashDevPlugin extends JavaPlugin implements Listener {
             return;
         }
         if (!forwardSprintOnly(subject)) {
+            if (elapsedTicks == 10) {
+                Input input = subject.getCurrentInput();
+                getLogger().info("RELAY_DASH_INPUT_DEV tick=" + subject.getWorld().getFullTime()
+                    + " input_forward=" + (input != null && input.isForward())
+                    + " input_sprint=" + (input != null && input.isSprint())
+                    + " native_sprinting=" + subject.isSprinting()
+                    + " last_forward_motion_tick=" + lastForwardMovementTick
+                    + " last_incompatible_motion_tick=" + lastIncompatibleMovementTick);
+            }
             // BEFORE activation allow input propagation up to ten server ticks.
             if (!active && elapsedTicks <= 10) {
                 return;
@@ -152,7 +216,8 @@ public final class RelayDashDevPlugin extends JavaPlugin implements Listener {
             getLogger().info("RELAY_DASH_DONE reason=" + reason
                 + " elapsed_ticks=" + elapsedTicks
                 + " applied_ticks=" + appliedTicks
-                + " modifier_removed=true");
+                + " modifier_removed=true"
+                + " position_direction_fallback=" + usedPositionFallback);
         }
         armed = false;
         active = false;
