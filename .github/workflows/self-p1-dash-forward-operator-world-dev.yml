@@ -8,6 +8,7 @@ on:
       - adapters/mineflayer/s49_paper_world_first_dev.py
       - 'adapters/mineflayer/s49_paper_dash_dev/**'
       - adapters/mineflayer/s49_forward_dash_operator_dev.py
+      - adapters/mineflayer/s49_forward_client_attr_dev.py
 
 permissions:
   contents: read
@@ -53,8 +54,8 @@ jobs:
       - name: Python 3.12 focused and Ruff BEFORE any World
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
-          python -m compileall -q adapters/mineflayer/s49_paper_world_first_dev.py adapters/mineflayer/s49_forward_dash_operator_dev.py experiments/p1_gait_dev.py tests/test_p1_gait_dev.py
-          ruff check --diff adapters/mineflayer/s49_paper_world_first_dev.py adapters/mineflayer/s49_forward_dash_operator_dev.py || true
+          python -m compileall -q adapters/mineflayer/s49_paper_world_first_dev.py adapters/mineflayer/s49_forward_dash_operator_dev.py adapters/mineflayer/s49_forward_client_attr_dev.py experiments/p1_gait_dev.py tests/test_p1_gait_dev.py
+          ruff check --diff adapters/mineflayer/s49_paper_world_first_dev.py adapters/mineflayer/s49_forward_dash_operator_dev.py adapters/mineflayer/s49_forward_client_attr_dev.py || true
           ruff check adapters/mineflayer/s49_paper_world_first_dev.py adapters/mineflayer/s49_forward_dash_operator_dev.py experiments/p1_gait_dev.py tests/test_p1_gait_dev.py
           python -m pytest -q tests/test_p1_gait_dev.py tests/test_fatigue_p1.py
       - name: Compile single read-only Paper wait observer on Java 21
