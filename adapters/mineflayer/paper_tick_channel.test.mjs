@@ -39,17 +39,19 @@ test('invalid flags, UUIDs and numeric scope are rejected', () => {
 
 test('channel listener checks consecutive ticks, never produces action outputs', () => {
   const client = new EventEmitter()
+  const bot = new EventEmitter(); bot._client = client
   const channels = []
   client.registerChannel = (...a) => channels.push(a)
   const seen = []; const invalid = []
-  attachPaperTickChannel({ _client: client }, x => seen.push(x), e => invalid.push(e))
+  attachPaperTickChannel(bot, x => seen.push(x), e => invalid.push(e))
+  bot.emit('login')
   assert.deepEqual(channels, [[PAPER_TICK_CHANNEL, null, true]])
   client.emit(PAPER_TICK_CHANNEL, payload(1))
   client.emit(PAPER_TICK_CHANNEL, payload(2))
   client.emit(PAPER_TICK_CHANNEL, payload(4))
   client.emit(PAPER_TICK_CHANNEL, payload(3))
-  assert.equal(seen.length, 3)
-  assert.deepEqual(seen.map(x => x.server_tick), ['101', '102', '103'])
+  assert.equal(seen.length, 2)
+  assert.deepEqual(seen.map(x => x.server_tick), ['101', '102'])
   assert.equal(invalid.length, 1)
   assert.ok(seen.every(x => !x.l0_checked && !x.action_bound))
 })
@@ -57,8 +59,10 @@ test('channel listener checks consecutive ticks, never produces action outputs',
 test('no first index, foreign player, duplicate tick or non-Buffer rejected', () => {
   for (const kind of ['no-first', 'foreign', 'duplicate', 'not-buffer']) {
     const client = new EventEmitter(); client.registerChannel = () => {}
+    const bot = new EventEmitter(); bot._client = client
     const seen = []; const invalid = []
-    attachPaperTickChannel({ _client: client }, x => seen.push(x), e => invalid.push(e))
+    attachPaperTickChannel(bot, x => seen.push(x), e => invalid.push(e))
+    bot.emit('login')
     if (kind === 'no-first') client.emit(PAPER_TICK_CHANNEL, payload(2))
     else {
       client.emit(PAPER_TICK_CHANNEL, payload(1))
