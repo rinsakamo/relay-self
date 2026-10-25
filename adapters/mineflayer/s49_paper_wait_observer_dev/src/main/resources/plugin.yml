@@ -11,3 +11,9 @@ commands:
   relays49preobserve:
     description: 'Console only: pre-arm read-only BACK on/off observer; no Action authority'
     usage: '/relays49preobserve <action_id> <session_id> <player_uuid>'
+  relays49motionstart:
+    description: 'DEV console only: arm one passive server movement-tick observation'
+    usage: '/relays49motionstart <action_id> <session_id> <player_uuid>'
+  relays49motionstop:
+    description: 'DEV console only: seal passive server movement-tick observation'
+    usage: '/relays49motionstop <action_id> <session_id> <player_uuid>'
