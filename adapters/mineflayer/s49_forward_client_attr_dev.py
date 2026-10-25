@@ -1,6 +1,8 @@
 """Generated DEV-only Mineflayer attribute / physics readback, never core bridge.
 
-Uses the same sole Node bridge, no stdout changes, no Action/motor mutation.
+Uses the same sole Node bridge and unchanged stdout protocol. Optional explicit
+mirror mode changes only the throwaway local Mineflayer movement speed state,
+matching an independently armed Paper modifier. No S49 Action changes.
 """
 from __future__ import annotations
 
@@ -14,18 +16,54 @@ BRIDGE = Path(__file__).with_name("bridge.mjs")
 PREFIX = ".relay-s49-dash-attr-dev-"
 
 
-def generate_forward_attr_bridge_dev(log_path: Path) -> Path:
+def generate_forward_attr_bridge_dev(log_path: Path, *, mirror_speed: bool = False) -> Path:
+    if type(mirror_speed) is not bool:
+        raise BoundaryRejected("explicit boolean client speed mirror mode required")
     if (not log_path.is_absolute() or not log_path.parent.is_dir()
             or log_path.exists() or log_path.is_symlink()
             or BRIDGE.is_symlink()):
         raise BoundaryRejected("fresh isolated forward client attribute telemetry required")
     source = BRIDGE.read_text("utf-8")
+    mirror_logic = """
+let devMirrorOwned = null
+function syncDevMirror() {
+  if (!devMirrorEnabled) return
+  const key = bot.physics?.movementSpeedAttribute
+  const c = bot.controlState
+  const canBoost = devAttrEnabled && c && c.forward && c.sprint &&
+    !c.back && !c.left && !c.right && !c.sneak
+  if (canBoost && devMirrorOwned === null) {
+    if (key !== 'minecraft:movement_speed' ||
+        !bot.entity?.attributes ||
+        bot.entity.attributes[key] !== undefined ||
+        bot.physics?.playerSpeed !== 0.1) {
+      throw new Error('foreign or unmatched self movement attribute; fail closed')
+    }
+    const own = { value: 0.1, modifiers: [{
+      uuid: '2390810b-946c-4b51-8400-4aba4c042031',
+      amount: 0.5, operation: 2
+    }] }
+    bot.entity.attributes[key] = own
+    devMirrorOwned = own
+  }
+  if (!canBoost && devMirrorOwned !== null) {
+    if (bot.entity.attributes[key] !== devMirrorOwned) {
+      throw new Error('self movement attribute replaced while mirrored')
+    }
+    delete bot.entity.attributes[key]
+    devMirrorOwned = null
+  }
+}
+"""
     edits = (
         ("import { lstatSync } from 'node:fs'",
          "import { lstatSync, appendFileSync } from 'node:fs'"),
         ("const seenProbeRequestIds = new Set()",
          """const seenProbeRequestIds = new Set()
 let devAttrEnabled = false
+const devMirrorEnabled = """ + ("true" if mirror_speed else "false") + """
+""" + mirror_logic + """
+
 let devAttrTickCount = 0
 const devAttrFile = """ + json.dumps(str(log_path)) + """
 function writeDevAttr() {
@@ -47,7 +85,7 @@ function writeDevAttr() {
 }
 """),
         ("bot.on('move', () => {",
-         """bot.on('physicsTick', writeDevAttr)
+         """bot.on('physicsTick', () => { syncDevMirror(); writeDevAttr() })
 
 bot.on('move', () => {"""),
         ("""      bot.setControlState(command.control, command.state)
@@ -56,12 +94,34 @@ bot.on('move', () => {"""),
       if (command.action_id === 's49-forward-operator-dev-dash-sprint' &&
           command.control === 'sprint' && command.state === true) {
         devAttrEnabled = true
+        syncDevMirror()
       }
       emitEffectResult(command, 'applied')"""),
     )
     for before, after in edits:
         if source.count(before) != 1:
             raise BoundaryRejected("frozen bridge attribute instrumentation point changed")
+        source = source.replace(before, after, 1)
+    if mirror_speed:
+        before = """      bot.clearControlStates()
+      emitEffectResult(command, 'applied')"""
+        after = """      bot.clearControlStates()
+      devAttrEnabled = false
+      syncDevMirror()
+      emitEffectResult(command, 'applied')"""
+        if source.count(before) != 1:
+            raise BoundaryRejected("clear hook changed; cannot restore mirror")
+        source = source.replace(before, after, 1)
+        before = """    bot.clearControlStates()
+  }
+  emit('shutdown_ack')"""
+        after = """    bot.clearControlStates()
+    devAttrEnabled = false
+    syncDevMirror()
+  }
+  emit('shutdown_ack')"""
+        if source.count(before) != 1:
+            raise BoundaryRejected("shutdown hook changed; cannot restore mirror")
         source = source.replace(before, after, 1)
     target = BRIDGE.with_name(PREFIX + uuid4().hex + ".mjs")
     with target.open("x", encoding="utf-8") as sink:
