@@ -123,7 +123,7 @@ jobs:
             --observer-jar "$OBSERVER" --observer-sha256 "$OBSERVER_SHA" \
             --dash-jar "$DASH" --dash-sha256 "$DASH_SHA" \
             --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD \
-            --dash-forward-operator-dev \
+            --dash-forward-operator-dev --dash-client-mirror-dev \
             --confirm-forward-operator S49-EXTRA-FORWARD-OPERATOR-MOTOR-DEV
       - name: Verify extra operator status and original S49 still authoritative
         run: |
@@ -146,6 +146,7 @@ jobs:
           assert n["full_dash"]["observed_displacement_m"] > 0.3
           assert n["paper_callback_ticks"] >= 1
           assert n["paper_modifier_removed"] is True
+          assert report["dash_client_mirror_dev"] is True
           assert n["m0_posted"] is False and n["p1_native_updated"] is False
           assert n["qualification_go"] is False and n["science_go"] is False
           print("S49_EXTRA_FORWARD_OPERATOR_DEV_RESULT",json.dumps(n,sort_keys=True))
