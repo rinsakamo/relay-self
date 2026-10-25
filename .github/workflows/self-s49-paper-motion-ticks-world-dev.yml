@@ -1,3 +1,4 @@
+# DEV retry 002: only Ruff E702 fixture change; no previous World was launched.
 # DEV fallback: Paper PlayerMoveEvent ticks, NOT server BACK input tick attestation.
 # Retry 003: exact Ruff lexicographic S31A before S49 imported module group.
 # Retry 002: reorder scoped source imports and lint new read-only clock modules.
