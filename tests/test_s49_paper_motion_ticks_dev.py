@@ -84,7 +84,8 @@ def test_server_position_source_rejects_invalid_trace(tmp_path, bad):
 
 def test_motion_observation_needs_native_clock_and_selfbody(tmp_path):
     p, o = tmp_path / "paper.jar", tmp_path / "observer.jar"
-    p.write_bytes(b"f"); o.write_bytes(b"o")
+    p.write_bytes(b"f")
+    o.write_bytes(b"o")
     out = tmp_path / "not-created"
     assert asyncio.run(run(
         out, p, hashlib.sha256(p.read_bytes()).hexdigest(),
