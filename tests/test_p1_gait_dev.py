@@ -51,6 +51,27 @@ def test_four_modes_speed_and_forward_only_dash():
     assert tick(cfg, state, "RUN", direction="back").frame.direction == "back"
 
 
+def test_dash_stance_persists_side_and_back_with_capped_speed_no_extra_m0():
+    cfg = FatigueProfile(enabled=True)
+    state = initial_state(cfg, "stance")
+    for direction in ("side", "back"):
+        budget = dash_budget_dev(cfg, state, 1.0, 0, direction=direction)
+        assert budget.admitted_gait == "DASH"
+        assert budget.permitted_power == 0
+        lateral = tick(cfg, state, "DASH", power=0.0, direction=direction)
+        assert lateral.frame.gait == "DASH"
+        assert lateral.directional_speed_cap_m_s == pytest.approx(4.32)
+        assert lateral.added_m0_charge == 0
+        assert lateral.recovered == 0
+    ahead = tick(cfg, state, "DASH", power=1.0, extra=1)
+    assert ahead.directional_speed_cap_m_s == pytest.approx(8.415)
+    assert ahead.accumulated > lateral.accumulated
+    with pytest.raises(FatigueRejected):
+        tick(cfg, state, "DASH", power=0.0, extra=1, direction="side")
+    with pytest.raises(FatigueRejected):
+        tick(cfg, state, "DASH", power=.1, direction="back")
+
+
 def test_full_dash_fatigue_reaches_limit_at_20s_while_recovering():
     cfg = FatigueProfile(enabled=True)
     state = initial_state(cfg, "full-dash")
