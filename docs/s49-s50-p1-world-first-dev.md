@@ -236,3 +236,33 @@ aware L0 candidate evaluator that can operate on an actual fresh native
 entities event followed by an independent correlated probe. It must remain
 separate from the existing S49 native Action issuer and must not imply that
 P1 is externally attested or that old S42 choices were modified.
+
+## 2026-10-25: post-WAIT P1-aware candidate gait comparison (DEV)
+
+The optional `s49_p1_l0_capability_dev` reuses the **same real post-WAIT
+native probe**, frozen S42 choice, and validated S49+Paper+P1 SelfBody
+model. It compares two *possible* one-tick movement capability envelopes:
+
+- After the last original S49 MOVE: P1's virtual fatigue model predicts
+  lower maximum movement than `FatigueProfile.nominal_move_limit_blocks`
+  (existing default 1 block / World tick), so a nominal-gait MOVE
+  would need **scaling** in that model.
+- After eight Paper WAIT callbacks: the model recovers toward the same
+  nominal capacity. The original frozen S42 choice is unchanged and never
+  receives a P1 sensor input; a WAIT choice remains WAIT in both models.
+
+**Temporal counterfactual:** The actual live native geometry belongs to
+the **post-WAIT** snapshot alone. Applying the *earlier* after-MOVE model
+capability to that later geometry is explicitly hypothetical, not an actual
+native observation or an earlier L0 decision. The original S49 measured MOVE
+distance aggregates an Action spanning unknown native ticks and is **not**
+passed off as a measured one-tick demand. The one-tick nominal demand comes
+from P1's preexisting profile, not a new physical measurement.
+
+This candidate evaluator returns the read-only tags
+`MOVE_AWAY_SCALE_TO_CAPACITY_MODEL_ONLY`,
+`MOVE_AWAY_NOMINAL_GAIT_MODEL_ONLY`, or `S42_WAIT_UNCHANGED`. It
+does **not** modify `ReactiveL0.decide`, execute a MOVE, create a second
+receiver/issuer, update S10/M0/P1 production, or qualify Paper WAIT.
+This prepares an eventual opt-in actual L0 integration after independent
+source and actuator constraints are separately met.
