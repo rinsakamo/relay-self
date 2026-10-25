@@ -1,3 +1,4 @@
+# DEV after-WAIT fresh actual native entities event + probe / read-only L0 guard.
 # DEV follow-on: after FAST 40157741050 SUCCESS, one actual Paper World
 # comparing baseline vs uncalibrated fatigue-rate stress on identical receipts.
 # DEV one-world sensitivity: no extra S49 action, profile intervention is modeling only.
@@ -68,7 +69,7 @@ jobs:
       - name: Python 3.12 focused DEV entrypoint checks BEFORE any World
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py tests/test_s49_p1_l0_capability_dev.py tests/test_s49_p1_l0_sensitivity_dev.py
+          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py tests/test_s49_p1_l0_capability_dev.py tests/test_s49_p1_l0_sensitivity_dev.py tests/test_s49_p1_l0_fresh_pair_dev.py
       - name: Compile single read-only Paper wait observer on Java 21
         run: |
           mvn -B -ntp -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml -DskipTests package
@@ -287,6 +288,43 @@ jobs:
           assert knockdown["qualification_go"] is False
           assert knockdown["science_go"] is False
           print("S49_P1_L0_RATE_SENSITIVITY_DEV_PASS", knockdown)
+          fresh = report["next_l0_fresh_pair_dev"]
+          assert fresh["status"] == "DEV_REAL_NATIVE_POSTWAIT_FRESH_L0_INPUT_PAIRED"
+          assert fresh["session_id"] == p1["session_id"]
+          assert fresh["action_id"] == p1["action_id"]
+          assert fresh["world"] == p1["world"]
+          assert fresh["observer_run_id"] == p1["observer_run_id"]
+          assert fresh["paper_window_sha256"] == p1["paper_window_sha256"]
+          assert fresh["prior_native_seq"] == next_epoch["native_seq"]
+          assert fresh["fresh_event_seq"] > fresh["prior_native_seq"]
+          assert fresh["fresh_probe_seq"] > fresh["fresh_event_seq"]
+          assert fresh["fresh_probe_request_id"] == (
+              f"s49-postwait-event:{p1['session_id']}:{fresh['fresh_event_seq']}"
+          )
+          assert fresh["fresh_body_epoch_id"] == (
+              f"s49-postwait-fresh-{fresh['fresh_probe_seq']}"
+          )
+          assert fresh["fresh_native_body_source_ref"].startswith(
+              f"native-probe:{p1['session_id']}:{fresh['fresh_probe_seq']}:"
+          )
+          assert fresh["fresh_native_food"] >= 0
+          assert fresh["fresh_native_health"] >= 0
+          assert fresh["fresh_native_event_and_probe"] is True
+          assert fresh["original_l0_input_checked"] is True
+          assert fresh["original_l0_decide_called"] is False
+          assert fresh["new_l0_owner_registered"] is False
+          assert fresh["new_action_grant_issued"] is False
+          assert fresh["new_action_issued"] is False
+          assert fresh["fresh_body_p1_model_origin"] == "hypothesis"
+          assert fresh["fresh_native_p1_sensor"] is None
+          assert fresh["postwait_p1_capability_pct_model_only"] == 100
+          assert fresh["extra_native_probes"] == 1
+          assert fresh["extra_protocol_receivers"] == 0
+          assert fresh["paper_native_tick_equivalence"] is False
+          assert fresh["p1_model_attested"] is False
+          assert fresh["qualification_go"] is False
+          assert fresh["science_go"] is False
+          print("S49_P1_FRESH_NATIVE_L0_INPUT_DEV_PASS", fresh)
           PY
       - name: Preserve original DEV receipts and failures (R/SCIENCE not run)
         if: always()
