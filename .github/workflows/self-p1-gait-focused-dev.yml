@@ -6,6 +6,8 @@ on:
       - self/dev-p1-gait-net-recovery-dash-20261025
     paths:
       - .github/workflows/self-p1-gait-focused-dev.yml
+      - experiments/p1_gait_dev.py
+      - tests/test_p1_gait_dev.py
 
 permissions:
   contents: read
