@@ -246,7 +246,7 @@ async def run(
         # S49 runner. This replays a read-only S42 choice from the one
         # already obtained native probe; there is NO entities-event pair,
         # independent Action grant or actual ReactiveL0.decide().
-        _, frozen_commit, _, _, _, _ = original.s19._epoch_one()
+        _, frozen_commit, _, _, _, _ = await asyncio.to_thread(original.s19._epoch_one)
         shadow_l0 = preview_postwait_l0_dev(
             actual_next_body, observed["postwait"],
             self_body_handoff, p1,
