@@ -144,6 +144,12 @@ jobs:
           assert n["qualification_go"] is False and n["science_go"] is False
           print("S49_DASH_BACKWARD_NEGATIVE_REAL_WORLD_DEV_PASS",n)
           PY
+      - name: Print bounded Paper DEV plugin log for failure diagnosis
+        if: failure()
+        run: |
+          if test -f "$DEV_OUTPUT/paper_server.log"; then
+            grep -E 'S49_DASH_DEV|RelayS49DashDev|S49 FAIL|SEVERE' "$DEV_OUTPUT/paper_server.log" | tail -n 70 || true
+          fi
       - name: Preserve native S49/Paper/Node and three-clock review
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
