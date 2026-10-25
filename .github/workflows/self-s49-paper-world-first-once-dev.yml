@@ -1,3 +1,4 @@
+# DEV FAR-WAIT contrast: original bounded ReactiveL0.decide WAIT, zero Action.
 # DEV follow-on: evaluate baseline/stress gait candidate on the SAME fresh L0 pair.
 # DEV fresh-event trial 4: native CLEAR_OLD confirmed before SPAWN_NEW, then exact L0 pair.
 # DEV fresh-event trial 3: offload frozen S19 owner creation from running asyncio loop.
@@ -132,7 +133,8 @@ jobs:
             --paper-sha256 "$PAPER_SHA" \
             --observer-jar "$OBSERVER" \
             --observer-sha256 "$OBSERVER_SHA" \
-            --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD
+            --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD \
+            --fresh-target-distance 10
       - name: Check real-run SelfBody model handoff (no fake native or L0)
         run: |
           python - <<'PY'
@@ -315,6 +317,14 @@ jobs:
           assert fresh["fresh_native_health"] >= 0
           assert fresh["fresh_native_event_and_probe"] is True
           assert fresh["original_l0_input_checked"] is True
+          assert report["postwait_fresh_target_distance_m"] == 10
+          assert fresh["fresh_s42_selection"] == "WAIT"
+          assert 8.0 < fresh["fresh_s42_distance_m"] < 12.0
+          assert fresh["bounded_dev_shadow_l0_decide_called"] is True
+          assert fresh["bounded_dev_shadow_l0_decision"] == "WAIT"
+          assert fresh["bounded_dev_shadow_l0_events"] == 1
+          assert fresh["bounded_dev_shadow_l0_action_requests"] == 0
+          assert fresh["original_s49_host_l0_replaced"] is False
           assert fresh["original_l0_decide_called"] is False
           assert fresh["new_l0_owner_registered"] is False
           assert fresh["new_action_grant_issued"] is False
