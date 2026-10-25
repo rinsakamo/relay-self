@@ -26,12 +26,12 @@ from adapters.mineflayer.s49_p1_l0_fresh_pair_dev import review_postwait_fresh_l
 from adapters.mineflayer.s49_p1_l0_gait_candidate_dev import (
     evaluate_fatigue_aware_fresh_candidate_dev,
 )
-from adapters.mineflayer.s49_p1_l0_near_decide_dev import decide_bounded_near_move_dev
-from adapters.mineflayer.s49_p1_l0_sensitivity_dev import compare_p1_knockdown_dev
 from adapters.mineflayer.s49_p1_fifth_epoch_dev import (
     compose_third_move_native_dev,
     project_fifth_l0_view_dev,
 )
+from adapters.mineflayer.s49_p1_l0_near_decide_dev import decide_bounded_near_move_dev
+from adapters.mineflayer.s49_p1_l0_sensitivity_dev import compare_p1_knockdown_dev
 from adapters.mineflayer.s49_p1_l0_shadow_dev import preview_postwait_l0_dev
 from adapters.mineflayer.s49_p1_postwait_native_dev import (
     compose_postwait_native_self_world_dev,
