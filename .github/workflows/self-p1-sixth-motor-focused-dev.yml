@@ -1,0 +1,49 @@
+name: S49 P1 sixth motor original DEV focused
+on:
+  push:
+    branches:
+      - self/dev-p1-original-motor-sixth-20261025
+    paths:
+      - .github/workflows/self-p1-sixth-motor-focused-dev.yml
+      - adapters/mineflayer/s49_normal_session_real_ci.py
+      - adapters/mineflayer/s49_paper_world_first_dev.py
+      - adapters/mineflayer/s49_p1_fifth_epoch_dev.py
+      - tests/test_s49_p1_fifth_epoch_dev.py
+      - adapters/mineflayer/s49_p1_same_native_gait_dev.py
+      - tests/test_s49_p1_same_native_gait_dev.py tests/test_s49_p1_sixth_motor_dev.py
+      - tests/test_s49_p1_sixth_motor_dev.py
+
+permissions:
+  contents: read
+concurrency:
+  group: p1-sixth-motor-focused-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Exact DEV HEAD and preserved original executor/fatigue model
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git rev-parse HEAD:adapters/mineflayer/normal_action.py)" = '0ded8fa296c92076a643de08cd6fc360061e1d08'
+          test "$(git rev-parse HEAD:experiments/fatigue_p1.py)" = 'bd4f35a4079da0770ef11cdec921dbba31de9b81'
+      - name: Install Python 3.12 focused dependencies
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Syntax and Ruff
+        run: |
+          python -m compileall -q adapters/mineflayer src/relay_self tests
+          ruff check adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/s49_paper_world_first_dev.py adapters/mineflayer/s49_p1_fifth_epoch_dev.py tests/test_s49_p1_fifth_epoch_dev.py adapters/mineflayer/s49_p1_same_native_gait_dev.py tests/test_s49_p1_same_native_gait_dev.py tests/test_s49_p1_sixth_motor_dev.py
+      - name: Fifth native epoch focused negative tests
+        run: |
+          python -m pytest -q tests/test_s49_p1_fifth_epoch_dev.py tests/test_s49_original_next_epoch_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_same_native_gait_dev.py
