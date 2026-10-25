@@ -14,6 +14,7 @@ import os
 import shutil
 import socket
 import time
+from contextlib import nullcontext
 from pathlib import Path
 from unittest.mock import patch
 from uuid import UUID
@@ -45,6 +46,12 @@ from adapters.mineflayer.s49_p1_postwait_native_dev import (
 )
 from adapters.mineflayer.s49_p1_same_native_gait_dev import (
     compare_fifth_p1_gait_dev,
+)
+from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.s49_motor_clock_review_dev import review_native_motor_clock_dev
+from adapters.mineflayer.s49_native_motor_clock_dev import (
+    instrument_native_bridge_dev,
+    remove_native_bridge_dev,
 )
 from adapters.mineflayer.s49_p1_self_body_dev import (
     compose_s49_p1_dev_self_body,
@@ -123,6 +130,7 @@ async def run(
     actual_sixth_motor: bool = False,
     motor_scenario: str = BASELINE,
     selfbody_motion_feedback: bool = False,
+    motor_clock_dev: bool = False,
 ) -> int:
     """One new Paper World, original S49 two MOVE actions, one post-WAIT sample."""
     report = {
@@ -139,8 +147,10 @@ async def run(
         "actual_sixth_motor": actual_sixth_motor,
         "motor_scenario": motor_scenario,
         "selfbody_motion_feedback": selfbody_motion_feedback,
+        "motor_clock_dev": motor_clock_dev,
     }
     created = False
+    dev_bridge = None
     try:
         if confirmation != CONFIRM:
             raise S49PaperDevBlocked("explicit disposable DEV confirmation required")
@@ -162,12 +172,20 @@ async def run(
             raise S49PaperDevBlocked(
                 "SelfBody Motion Feedback requires original sixth DEV baseline Action"
             )
+        if motor_clock_dev and not selfbody_motion_feedback:
+            raise S49PaperDevBlocked(
+                "passive motor clock requires original SelfBody closed-loop"
+            )
         paper_jar = _fresh_asset(paper_jar, paper_sha)
         observer_jar = _fresh_asset(observer_jar, observer_sha)
         if paper_jar.resolve() == observer_jar.resolve():
             raise S49PaperDevBlocked("server and plugin must be separate JARs")
         _fresh_output(output_dir)
         created = True
+        if motor_clock_dev:
+            dev_bridge = instrument_native_bridge_dev(
+                output_dir / "native_motor_clock_dev.jsonl",
+            )
         report.update(
             paper_jar_sha256=paper_sha,
             observer_jar_sha256=observer_sha,
@@ -632,12 +650,24 @@ async def run(
                         raise S49PaperDevBlocked("multiple next-epoch native probes")
                     observed["next_l0_probe"] = reading
 
+        uninstrumented_launch = MineflayerProcessSession.launch
+
+        async def one_existing_session_with_dev_bridge(config, **kwargs):
+            if dev_bridge is None or "bridge_path" in kwargs:
+                raise S49PaperDevBlocked("DEV clock bridge requires original one-session launch")
+            return await uninstrumented_launch(
+                config, bridge_path=dev_bridge, **kwargs,
+            )
+
         with (patch.dict(os.environ, {
                 "S49_REAL_SERVER_CI": "1",
                 **({"S49_NEXT_EPOCH_DEV_ONLY": "1"} if actual_next_epoch else {}),
                 **({"S49_FIFTH_EPOCH_DEV_ONLY": "1"} if actual_fifth_epoch else {}),
                 **({"S49_SIXTH_EPOCH_DEV_ONLY": "1"} if actual_sixth_motor else {}),
               }),
+              (patch.object(MineflayerProcessSession, "launch",
+                            one_existing_session_with_dev_bridge)
+               if motor_clock_dev else nullcontext()),
               patch.object(original, "_fetch_official_server", paper_fetch),
               patch.object(original, "_write_config", paper_config),
               patch.object(original, "_ready_server", paper_ready),
@@ -878,6 +908,13 @@ async def run(
                             "qualification_go": False,
                             "science_go": False,
                         }
+                    if motor_clock_dev:
+                        review = review_native_motor_clock_dev(
+                            output_dir / "native_motor_clock_dev.jsonl",
+                            paper_log, source,
+                            report["selfbody_motion_feedback_dev"],
+                        )
+                        report["motor_clock_observation_dev"] = review
                     report.update(
                         status="PASS",
                         classification="DEV_WORLD_SIXTH_ORIGINAL_S49_P1_MOTOR_TIMING_APPLIED",
@@ -1150,6 +1187,8 @@ async def run(
                       reason=f"{type(exc).__name__}: {exc}")
         return 2
     finally:
+        if dev_bridge is not None:
+            remove_native_bridge_dev(dev_bridge)
         if created:
             # Reuse original S49's own process cleanup; never perform
             # second terminate/reap on a process owned by qualify().
@@ -1194,6 +1233,10 @@ def main(argv: list[str] | None = None) -> int:
         "--selfbody-motion-feedback", action="store_true",
         help="DEV only: three completed S49 MOVE outcomes update SelfBody and bound sixth duration",
     )
+    parser.add_argument(
+        "--motor-clock-dev", action="store_true",
+        help="DEV only: read-only per-Action Node ON/OFF and client physicsTick in one generated bridge",
+    )
     args = parser.parse_args(argv)
     return asyncio.run(run(
         args.output_dir, args.paper_jar, args.paper_sha256,
@@ -1206,6 +1249,7 @@ def main(argv: list[str] | None = None) -> int:
         actual_sixth_motor=args.actual_sixth_motor,
         motor_scenario=args.motor_scenario,
         selfbody_motion_feedback=args.selfbody_motion_feedback,
+        motor_clock_dev=args.motor_clock_dev,
     ))
 
 
