@@ -1,3 +1,4 @@
+# DEV extension: same native post-WAIT source in SelfWorld and SelfBody.
 # DEV native-next: one correlated post-WAIT probe through original S49 reader.
 # DEV follow-on: native MOVE→P1 WAIT→two read-only SelfBody model epochs.
 # DEV native-distance follow-on run: replaces explicit fatigue seed 0.5
@@ -59,7 +60,7 @@ jobs:
       - name: Python 3.12 focused DEV entrypoint checks BEFORE any World
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py
+          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py
       - name: Compile single read-only Paper wait observer on Java 21
         run: |
           mvn -B -ntp -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml -DskipTests package
@@ -172,6 +173,26 @@ jobs:
           assert next_epoch["real_next_l0_decision_consumed"] is False
           assert next_epoch["qualification_go"] is False
           print("S49_P1_SELF_BODY_NEXT_NATIVE_DEV_PASS", next_epoch)
+          joined = report["next_self_world_dev"]
+          assert joined["status"] == "DEV_NEXT_COGNITION_WORLD_BODY_SOURCE_JOINED"
+          assert joined["session_id"] == next_epoch["session_id"]
+          assert joined["native_seq"] == next_epoch["native_seq"]
+          assert joined["native_request_id"] == next_epoch["native_request_id"]
+          assert joined["native_source_ref"] == next_epoch["native_source_ref"]
+          assert joined["world_body_same_object"] is True
+          assert joined["world_body_same_epoch"] is True
+          assert joined["p1_model_sensor_pct"] == next_epoch[
+              "p1_dev_hypothesis_sensor_pct"
+          ]
+          assert joined["p1_source_kind"] == (
+              "SELF_BODY_HYPOTHESIS_NOT_NATIVE_OBSERVATION"
+          )
+          assert joined["native_paper_exact_tick_joined"] is False
+          assert joined["extra_protocol_receivers"] == 0
+          assert joined["extra_action_issuers"] == 0
+          assert joined["next_l0_consumed"] is False
+          assert joined["qualification_go"] is False
+          print("S49_P1_NEXT_SELF_WORLD_BODY_DEV_PASS", joined)
           PY
       - name: Preserve original DEV receipts and failures (R/SCIENCE not run)
         if: always()
