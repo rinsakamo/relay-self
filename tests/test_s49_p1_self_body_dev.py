@@ -13,7 +13,6 @@ from adapters.mineflayer.s49_p1_self_body_dev import (
     compose_s49_p1_postwait_native_dev,
 )
 from experiments.fatigue_p1 import FatigueProfile
-from relay_self.provenance import Provenance
 from relay_self.self_body import BodyOrigin, SelfBodyView
 from test_s49_paper_world_first_dev import PLAYER, sources
 from test_self_live_think import native_probe
@@ -124,10 +123,7 @@ def correlated_next_native(monkeypatch):
     sid = reviewed["session_id"]
     req = f"s49-postwait:{sid}:{reviewed['action_id']}"
     native = native_probe(seq, 2.0, sid=sid)
-    native = replace(
-        native, request_id=req,
-        provenance=Provenance("mineflayer", f"{sid}:{seq}"),
-    )
+    native = replace(native, request_id=req)
     return handoff, reviewed, last, native, req
 
 
@@ -160,7 +156,7 @@ def test_true_postwait_native_probe_creates_next_readonly_cognition_epoch(monkey
 
 @pytest.mark.parametrize("bad", [
     "foreign_session", "old_seq", "same_seq", "foreign_request",
-    "foreign_origin", "foreign_action", "foreign_world",
+    "wrong_kind", "foreign_action", "foreign_world",
     "profile_mode", "missing_consequence", "bad_expected_request",
 ])
 def test_next_native_cognition_rejects_crosssource_or_stale_probe(monkeypatch, bad):
@@ -175,8 +171,8 @@ def test_next_native_cognition_rejects_crosssource_or_stale_probe(monkeypatch, b
         )
     elif bad == "foreign_request":
         probe = replace(probe, request_id="foreign")
-    elif bad == "foreign_origin":
-        probe = replace(probe, provenance=Provenance("untrusted", "other"))
+    elif bad == "wrong_kind":
+        probe = replace(probe, kind="entities", request_id=None)
     elif bad == "foreign_action":
         last["action"] = "foreign"
     elif bad == "foreign_world":
