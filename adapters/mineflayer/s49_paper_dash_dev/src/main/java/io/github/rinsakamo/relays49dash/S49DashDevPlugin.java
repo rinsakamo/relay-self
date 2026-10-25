@@ -13,7 +13,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.command.ConsoleCommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
@@ -42,6 +44,9 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
     private String sessionId;
     private long armTick;
     private long lastTick;
+    private long lastMotionTick = -1;
+    private boolean recentMeasuredForward;
+    private int observedMotionTicks;
     private int forwardTicks;
     private int cappedTicks;
     private double requestedPower;
@@ -138,6 +143,9 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         requestedPower = power;
         armTick = player.getWorld().getFullTime();
         lastTick = armTick;
+        lastMotionTick = -1;
+        recentMeasuredForward = false;
+        observedMotionTicks = 0;
         forwardTicks = 0;
         cappedTicks = 0;
         modifier = new AttributeModifier(
@@ -182,10 +190,20 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         Input input = subject.getCurrentInput();
         // Never assume Paper input and Mineflayer physics ticks align.
         // Ambiguous/unknown, side+forward, reverse or idle => NO DASH BONUS.
-        boolean forwardOnly = input != null && input.isForward()
-            && !input.isBackward() && !input.isLeft() && !input.isRight()
+        boolean inputSaysSideOrBack = input != null
+            && (input.isBackward() || input.isLeft() || input.isRight());
+        boolean nativeForward = input != null && input.isForward()
+            && !inputSaysSideOrBack
             && !input.isSneak() && !input.isJump()
             && (input.isSprint() || subject.isSprinting());
+        // Paper's Input API did not show Mineflayer BACK edges in the
+        // earlier negative control. A second DEV evidence path uses actual
+        // authoritative server movement bearing; no client tick alignment
+        // or original S49 Action authorization is implied.
+        boolean measuredForward = recentMeasuredForward
+            && lastMotionTick >= tick - 1 && lastMotionTick <= tick;
+        boolean forwardOnly = !inputSaysSideOrBack
+            && (nativeForward || measuredForward);
         if (!setBoost(forwardOnly)) {
             disarm("MODIFIER_SET_FAILED");
             return;
@@ -201,7 +219,56 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " input_forward_only=" + forwardOnly
             + " modifier_applied=" + boosted
             + " dash_stance_active=true"
+            + " paper_input_forward=" + (input != null && input.isForward())
+            + " paper_input_sprint=" + (input != null && input.isSprint())
+            + " paper_sprinting=" + subject.isSprinting()
+            + " measured_forward_recent=" + measuredForward
             + " input_edge_attested=false");
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void observeServerMovement(PlayerMoveEvent event) {
+        if (!armed || !event.getPlayer().getUniqueId().equals(playerId)
+                || event.getTo() == null) {
+            return;
+        }
+        if (!Bukkit.isPrimaryThread() || !safeSubject()) {
+            disarm("MOVEMENT_SOURCE_CHANGED");
+            return;
+        }
+        long tick = subject.getWorld().getFullTime();
+        double dx = event.getTo().getX() - event.getFrom().getX();
+        double dz = event.getTo().getZ() - event.getFrom().getZ();
+        double horizontal = Math.hypot(dx, dz);
+        if (tick < armTick || tick < lastMotionTick
+                || !Double.isFinite(horizontal) || horizontal > 1.0) {
+            recentMeasuredForward = false;
+            if (!setBoost(false)) {
+                disarm("MOVEMENT_MODIFIER_CLEAR_FAILED");
+            }
+            return;
+        }
+        if (horizontal < 0.005) {
+            return;
+        }
+        double yaw = Math.toRadians(event.getTo().getYaw());
+        double forwardDot = (-Math.sin(yaw) * dx
+            + Math.cos(yaw) * dz) / horizontal;
+        Input input = subject.getCurrentInput();
+        boolean explicitOther = input != null
+            && (input.isBackward() || input.isLeft() || input.isRight());
+        recentMeasuredForward = forwardDot > 0.92 && !explicitOther;
+        lastMotionTick = tick;
+        observedMotionTicks++;
+        if (!setBoost(recentMeasuredForward)) {
+            disarm("MOVEMENT_MODIFIER_SET_FAILED");
+            return;
+        }
+        getLogger().info("S49_DASH_DEV_MOTION action_id=" + actionId
+            + " tick=" + tick + " forward_dot=" + forwardDot
+            + " observed_forward=" + recentMeasuredForward
+            + " modifier_applied=" + boosted
+            + " server_motion_not_input_attestation=true");
     }
 
     private boolean setBoost(boolean shouldBoost) {
@@ -254,6 +321,7 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " session_id=" + sessionId + " reason=" + reason
             + " forward_boost_ticks=" + forwardTicks
             + " other_direction_or_ambiguous_ticks=" + cappedTicks
+            + " paper_motion_events=" + observedMotionTicks
             + " modifier_applied=false"
             + " authority=NONE P1_APPLIED=false M0_POSTED=false");
     }
