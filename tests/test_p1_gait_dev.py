@@ -91,7 +91,7 @@ def test_run_plateaus_and_walk_recovers_during_motion():
     first = tick(cfg, state, "RUN")
     assert first.accumulated > 0 and first.recovered > 0
     assert first.after.fatigue < state.fatigue
-    for _ in range(2000):
+    for _ in range(4000):
         first = tick(cfg, first.after, "RUN")
     assert first.after.fatigue == pytest.approx(.16, abs=.003)
     before_walk = first.after
