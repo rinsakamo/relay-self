@@ -19,8 +19,8 @@ def _source(tmp_path):
     aid, sid = original["actual_native_actions"][1]["action"], original["session_id"]
     marker = f"marker_id={aid}-{sid} action_id={aid} session_id={sid} world=world run_id=run"
     header = f"S49_OBSERVER_PRE_ARM {marker} tick=440 input_idle=true"
-    on = f"S49_OBSERVER_BACK_TRUE {marker} tick=444 back=true x=0.0 z=0.0"
-    off = f"S49_OBSERVER_BACK_FALSE {marker} tick=448 back=false x=0.6 z=0.0"
+    on = f"S49_OBSERVER_BACK_TRUE {marker} tick=446 back=true x=0.0 z=0.0"
+    off = f"S49_OBSERVER_BACK_FALSE {marker} tick=450 back=false x=0.6 z=0.0"
     paper.write_text("\n".join([header, on, off, paper.read_text()]))
     return paper, original, clock
 
@@ -30,8 +30,8 @@ def test_paper_server_edges_match_original_second_closed_action(tmp_path):
     result = review_paper_input_edges_dev(paper, source, clock)
     assert result["status"] == "DEV_PAPER_SERVER_INPUT_EDGE_TICKS_OBSERVED"
     assert result["paper_arm_tick"] == 440
-    assert result["paper_server_back_on_event_tick"] == 444
-    assert result["paper_server_back_off_event_tick"] == 448
+    assert result["paper_server_back_on_event_tick"] == 446
+    assert result["paper_server_back_off_event_tick"] == 450
     assert result["paper_observed_input_edge_tick_span"] == 4
     assert result["paper_server_position_displacement_between_edge_events_m"] == .6
     assert result["post_release_consecutive_world_wait_ticks"] == 8
@@ -57,9 +57,9 @@ def test_paper_events_fail_closed_on_mismatch(tmp_path, tamper):
     elif tamper == "wrong_session":
         contents = contents.replace("session_id=test-session", "session_id=other", 1)
     elif tamper == "same_tick":
-        contents = contents.replace("tick=448 back=false", "tick=444 back=false")
+        contents = contents.replace("tick=450 back=false", "tick=446 back=false")
     elif tamper == "reversed":
-        contents = contents.replace("tick=444 back=true", "tick=449 back=true")
+        contents = contents.replace("tick=446 back=true", "tick=451 back=true")
     elif tamper == "wait_gap":
         contents = contents.replace("tick=451 index=1", "tick=452 index=1")
     elif tamper == "not_finite":
