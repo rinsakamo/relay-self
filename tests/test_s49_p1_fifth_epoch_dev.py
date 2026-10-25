@@ -102,9 +102,10 @@ def test_bad_native_p1_source_never_projects_fifth_epoch(monkeypatch, bad):
 
 
 def test_fifth_dev_flag_is_default_off_and_rejected_without_fourth_move(tmp_path):
-    from adapters.mineflayer.s49_paper_world_first_dev import run, CONFIRM
     import asyncio
     import hashlib
+
+    from adapters.mineflayer.s49_paper_world_first_dev import CONFIRM, run
 
     paper = tmp_path / "paper.jar"
     observer = tmp_path / "observer.jar"
