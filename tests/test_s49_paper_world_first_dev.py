@@ -6,6 +6,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from adapters.mineflayer import s49_normal_session_real_ci as original_s49
+
 import pytest
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
@@ -154,3 +156,52 @@ def test_no_source_or_world_mutation_in_passive_join():
     assert "execute_mineflayer_command(" not in code
     assert "SourceBoundTick(" not in code
     assert "p1_fatigue_recovered" in code
+
+
+def test_disposable_paper_asset_and_observer_are_staged_without_java(
+    monkeypatch, tmp_path,
+):
+    """Fake only the outer S49 runner; do not launch Java, Node or a World."""
+    paper = tmp_path / "paper.jar"
+    plugin = tmp_path / "plugin.jar"
+    paper.write_bytes(b"synthetic-paper-asset-no-launch")
+    plugin.write_bytes(b"synthetic-observer-asset-no-launch")
+    output = tmp_path / "fresh-s49-paper"
+    seen = []
+
+    async def fake_original_qualify(report_path, server_log):
+        from pathlib import Path as P
+
+        world = tmp_path / "owned-fake-world"
+        world.mkdir()
+        staged = world / "minecraft.jar"
+        receipt = original_s49._fetch_official_server(staged)
+        assert receipt["runtime"] == "PAPER_1_21_8_DISPOSABLE_DEV"
+        original_s49._write_config(world)
+        assert staged.read_bytes() == paper.read_bytes()
+        observer = world / "plugins" / "s49-wait-observer-dev.jar"
+        assert observer.read_bytes() == plugin.read_bytes()
+        settings = (world / "plugins" / "RelayS49WaitObserverDev"
+                    / "config.yml").read_text()
+        assert "enabled: true" in settings
+        assert "expected-player-name: RelaySelf" in settings
+        assert P(report_path).parent == output
+        assert P(server_log).parent == output
+        seen.append("original-s49-called-with-paper")
+        # Intentionally no native outcome: a fake should never become World PASS.
+        return 2
+
+    monkeypatch.setattr(original_s49, "qualify", fake_original_qualify)
+    # Config fixture writes to a temp path only; no actual Minecraft process.
+    status = asyncio.run(run(
+        output, paper, hashlib.sha256(paper.read_bytes()).hexdigest(),
+        plugin, hashlib.sha256(plugin.read_bytes()).hexdigest(),
+        confirmation=CONFIRM,
+    ))
+    assert status == 2
+    assert seen == ["original-s49-called-with-paper"]
+    receipt = json.loads((output / "world_first_dev_report.json").read_text())
+    assert receipt["classification"] == "DEV_ONLY"
+    assert receipt["qualification_go"] is False
+    assert receipt["science_go"] is False
+    assert receipt["p1_production_state_updated"] is False
