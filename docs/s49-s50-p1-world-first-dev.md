@@ -266,3 +266,31 @@ does **not** modify `ReactiveL0.decide`, execute a MOVE, create a second
 receiver/issuer, update S10/M0/P1 production, or qualify Paper WAIT.
 This prepares an eventual opt-in actual L0 integration after independent
 source and actuator constraints are separately met.
+
+## 2026-10-25: one-World P1 fatigue-rate knockdown (DEV)
+
+`s49_p1_l0_sensitivity_dev.compare_p1_knockdown_dev()` reuses the exact
+*same* original S49 Action receipts, Paper eight post-clear WAIT callbacks,
+and ONE already received post-WAIT native probe for two separate independent
+P1 model replays. It first uses the existing original `FatigueProfile`
+defaults, then a deliberately uncalibrated high-fatigue DEV rate
+`move_per_block=Rate(2.0)` with identical WAIT recovery. Both start with
+`initial=0.0`; no artificial fatigue is injected. Model ownership and
+physics implementation are unchanged.
+
+The high-rate condition is a **sensitivity/knockdown scenario**, not a
+biological measurement, not a production P1 setting, and not World evidence
+of greater exertion. Baseline ~0.627-block final MOVE accrues ~0.025 model
+fatigue; eight observed WAIT callbacks return it to zero. The same MOVE at
+stress-rate saturates the model capacity 1.0, and eight WAIT model steps
+recover 0.8, leaving a modeled ~0.2. On the *same* native geometry, the
+unchanged S42 `MOVE_AWAY` selection remains the same; the P1-aware,
+read-only one-tick gait assessment differs between `NOMINAL_GAIT` and
+`SCALE_TO_CAPACITY`. S42 is never given this model as a new physical input.
+
+No new server, native read/receiver, Action issuer, L0.decide(), physical
+MOVE, M0/P1 production mutation, or S10 learning is performed by the
+knockdown itself. Never infer actual per-tick MOVE displacement, a causal
+effect of physical fatigue on L0 behavior, or a qualified WAIT from this
+model-only intervention. The World runner records `next_l0_sensitivity_dev`
+beside the original native/SelfWorld/SelfBody/capability reports.
