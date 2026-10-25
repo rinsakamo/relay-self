@@ -10,7 +10,7 @@ M0's extra DASH energy is a *charge proposal*, not an M0 ledger posting.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Literal
 
 from experiments.fatigue_p1 import (
@@ -55,7 +55,8 @@ class GaitRatesDev:
     additional_dash_m0_per_s: float = 0.20
 
     def __post_init__(self) -> None:
-        for name, value in vars(self).items():
+        for name in (field.name for field in fields(self)):
+            value = getattr(self, name)
             if not _finite_nonnegative(value):
                 raise FatigueRejected(f"invalid gait rate: {name}")
         if (self.walk_speed_m_s <= 0
