@@ -1,0 +1,3 @@
+# Disabled by default; one disposable Paper DEV session only.
+enabled: false
+expected-player-name: RelaySelf
