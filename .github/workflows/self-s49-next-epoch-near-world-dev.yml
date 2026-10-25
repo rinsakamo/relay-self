@@ -1,0 +1,184 @@
+name: S49 original host fourth MOVE Paper DEV
+on:
+  push:
+    branches:
+      - self/dev-s49-native-next-epoch-20261025
+    paths:
+      - .github/workflows/self-s49-next-epoch-near-world-dev.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s49-original-near-next-once-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  world-first-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DEV_OUTPUT: '/tmp/s49-paper-p1-${{ github.run_id }}-${{ github.run_attempt }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify DEV observer config, dependencies and loopback isolation
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          grep -q '^enabled: false$' adapters/mineflayer/s49_paper_wait_observer_dev/src/main/resources/config.yml
+          python - <<'PY'
+          import socket
+          with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+              s.bind(("127.0.0.1", 25565))
+          print("Fresh loopback Minecraft port available; no external process touched")
+          PY
+      - name: Python 3.12 focused DEV entrypoint checks BEFORE any World
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py tests/test_s49_p1_l0_capability_dev.py tests/test_s49_p1_l0_sensitivity_dev.py tests/test_s49_p1_l0_fresh_pair_dev.py tests/test_s49_p1_l0_gait_candidate_dev.py tests/test_s49_p1_l0_near_decide_dev.py tests/test_s49_original_next_epoch_dev.py
+      - name: Compile single read-only Paper wait observer on Java 21
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml -DskipTests package
+          test -f adapters/mineflayer/s49_paper_wait_observer_dev/target/relay-s49-wait-observer-dev-0.1.0-dev.jar
+      - name: Install original Mineflayer package (unmodified bridge)
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: Fetch official stable Paper 1.21.8 build 60 and verify published SHA256
+        id: paper
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, urllib.parse, urllib.request
+          version = "1.21.8"
+          api = f"https://fill.papermc.io/v3/projects/paper/versions/{version}/builds"
+          ua = "RelaySelf-S49-P1-WORLD-FIRST-DEV/0.1 (https://github.com/rinsakamo/relay-self)"
+          req = urllib.request.Request(api, headers={"User-Agent": ua})
+          with urllib.request.urlopen(req, timeout=50) as rsp:
+              builds = json.loads(rsp.read(3_000_000))
+          stable = [b for b in builds if b.get("channel") == "STABLE" and b.get("id") == 60]
+          if len(stable) != 1:
+              raise RuntimeError("Pinned Paper 1.21.8 stable build 60 unavailable")
+          artifact = stable[0]["downloads"]["server:default"]
+          expected = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          if (artifact["checksums"]["sha256"] != expected
+                  or artifact["size"] != 52811717):
+              raise RuntimeError("Pinned original Paper build metadata mismatch")
+          url = artifact["url"]
+          parsed = urllib.parse.urlparse(url)
+          if (parsed.scheme != "https" or parsed.hostname != "fill-data.papermc.io"
+                  or not parsed.path.startswith("/v1/objects/")):
+              raise RuntimeError("Untrusted Paper binary URL")
+          target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "paper-1.21.8-dev.jar"
+          hash_ = hashlib.sha256()
+          total = 0
+          with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": ua}), timeout=120) as src, target.open("xb") as dst:
+              while chunk := src.read(1048576):
+                  total += len(chunk)
+                  if total > 52811717: raise RuntimeError("Paper size exceeded")
+                  dst.write(chunk)
+                  hash_.update(chunk)
+          if total != 52811717 or hash_.hexdigest() != expected:
+              raise RuntimeError("Paper downloaded bytes mismatch")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"jar={target}\nsha256={expected}\n")
+          print("PAPER_DEV_PINNED", total, expected)
+          PY
+      - name: Run original S49 on one disposable Paper World, then DEV P1
+        env:
+          PAPER_JAR: ${{ steps.paper.outputs.jar }}
+          PAPER_SHA: ${{ steps.paper.outputs.sha256 }}
+        run: |
+          OBSERVER="$PWD/adapters/mineflayer/s49_paper_wait_observer_dev/target/relay-s49-wait-observer-dev-0.1.0-dev.jar"
+          OBSERVER_SHA="$(sha256sum "$OBSERVER" | cut -d' ' -f1)"
+          python -m adapters.mineflayer.s49_paper_world_first_dev \
+            --output-dir "$DEV_OUTPUT" \
+            --paper-jar "$PAPER_JAR" \
+            --paper-sha256 "$PAPER_SHA" \
+            --observer-jar "$OBSERVER" \
+            --observer-sha256 "$OBSERVER_SHA" \
+            --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD \
+            --fresh-target-distance 2 --actual-next-epoch
+      - name: Verify actual fourth L0 WAIT in sole original host and preserved DEV boundary
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["DEV_OUTPUT"])
+          report = json.loads((root / "world_first_dev_report.json").read_text())
+          original = json.loads((root / "original_s49_report.json").read_text())
+          assert report["status"] == "PASS", report.get("reason")
+          assert report["classification"] == "DEV_WORLD_ORIGINAL_S49_NEXT_EPOCH_MOVE_AWAY"
+          assert original["status"] == "PASS", original.get("error")
+          assert original["classification"] == "DEV_ONLY_S49_ORIGINAL_NEXT_EPOCH_MOVE_AWAY"
+          assert [r["selected"] for r in original["decisions"]] == [
+              "WAIT", "MOVE_AWAY", "MOVE_AWAY", "MOVE_AWAY"
+          ]
+          assert [r["issued"] for r in original["decisions"]] == [
+              False, True, True, True
+          ]
+          assert len(original["actual_native_actions"]) == 3
+          assert original["node_exit"] == 0 and original["server_exit"] == 0
+          assert len(original["source_pair_trace"]) == 4
+          next_ = report["original_next_l0_dev"]
+          assert next_["status"] == "DEV_SAME_ORIGINAL_HOST_ACTUAL_L0_DECIDE"
+          assert next_["actual_original_host_decide"] is True
+          assert next_["same_host_events"] == 4
+          assert next_["same_host_action_requests"] == 3
+          assert next_["next_choice"] == "MOVE_AWAY"
+          assert next_["next_action_issued"] is True
+          assert next_["new_l0_owner"] is False
+          assert next_["new_native_reader"] is False
+          assert next_["native_probe_seq"] == original["decisions"][-1]["probe_seq"]
+          assert next_["next_event_seq"] == original["decisions"][-1]["event_seq"]
+          assert next_["p1_model_origin"] == "hypothesis"
+          assert next_["p1_hypothesis_used_as_action_grant"] is False
+          assert next_["source_bound_tick"] is None
+          assert next_["wait_ticks_admitted"] == 0
+          assert report["p1"]["dev_fatigue_recovered"] > 0
+          assert report["p1"]["qualification_go"] is False
+          assert report["qualification_go"] is False
+          assert report["science_go"] is False
+          last = original["actual_native_actions"][-1]
+          assert last["terminal"] == "outcome"
+          assert last["movement_m"] > 0.05
+          assert last["event_seq"] == next_["next_event_seq"]
+          assert last["probe_seq"] == next_["next_probe_seq"]
+          assert last["action"].startswith("s49-native-move-")
+          from adapters.mineflayer.self_action_evidence import verify_native_action_evidence
+          verify_native_action_evidence(
+              last["execution_evidence"], action_id=last["action"],
+              session_id=original["session_id"],
+              movement_m=last["movement_m"],
+          )
+          print("S49_SAME_ORIGINAL_HOST_FOURTH_NATIVE_MOVE_DEV_PASS")
+          PY
+      - name: Preserve original DEV receipts and failures (R/SCIENCE not run)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-paper-world-first-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.DEV_OUTPUT }}/world_first_dev_report.json
+            ${{ env.DEV_OUTPUT }}/original_s49_report.json
+            ${{ env.DEV_OUTPUT }}/paper_server.log
+            ${{ env.DEV_OUTPUT }}/paper_observer_window.log
+          if-no-files-found: warn
+          retention-days: 7
+      - name: State DEV boundary
+        if: always()
+        run: |
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+          echo 'No external R custody, V science, production P1 state, or Golden evidence changed.'
