@@ -270,6 +270,7 @@ async def qualify(
     stage_r_dev: bool = False,
     raw_capture_root: Path | None = None,
     dev_next_epoch: str | None = None,
+    dev_fifth_epoch: str | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -299,6 +300,12 @@ async def qualify(
             or dev_next_epoch not in ("WAIT", "MOVE_AWAY")
         ):
             raise S31ABlocked("extra original L0 epoch requires explicit isolated DEV gate")
+        if dev_fifth_epoch is not None and (
+            dev_fifth_epoch != "WAIT"
+            or dev_next_epoch != "MOVE_AWAY"
+            or os.environ.get("S49_FIFTH_EPOCH_DEV_ONLY") != "1"
+        ):
+            raise S31ABlocked("fifth original L0 WAIT requires a fourth authorized MOVE DEV")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -327,7 +334,8 @@ async def qualify(
         # second L0, receiver, issuer or Action executor.
         host = NormalWorldL0(
             sid, "escape-threat", retained,
-            max_events=4 if dev_next_epoch is not None else 3,
+            max_events=(5 if dev_fifth_epoch is not None
+                        else 4 if dev_next_epoch is not None else 3),
             max_action_requests=(
                 3 if dev_next_epoch == "MOVE_AWAY" else 2
             ),
@@ -518,6 +526,8 @@ async def qualify(
         expected_choices = ["WAIT", "MOVE_AWAY", "MOVE_AWAY"]
         if dev_next_epoch is not None:
             expected_choices.append(dev_next_epoch)
+        if dev_fifth_epoch is not None:
+            expected_choices.append(dev_fifth_epoch)
         expected_actions = 2 + (dev_next_epoch == "MOVE_AWAY")
         if (
             len(trace) != len(expected_choices)
@@ -539,6 +549,7 @@ async def qualify(
                 )
             )
             or (dev_next_epoch == "WAIT" and trace[3].asks_for_action)
+            or (dev_fifth_epoch == "WAIT" and trace[4].asks_for_action)
         ):
             raise S49PhysicalFailure("original S49 bounded epoch/Action terminal mismatch")
         if dev_next_epoch is not None:
@@ -552,6 +563,19 @@ async def qualify(
                 "next_action_issued": trace[3].asks_for_action,
                 "new_l0_owner": False,
                 "new_native_reader": False,
+                "p1_as_action_authority": False,
+            }
+        if dev_fifth_epoch is not None:
+            report["dev_original_fifth_epoch"] = {
+                "actual_original_host_decide": True,
+                "same_host_events": host.events,
+                "same_host_action_requests": host.action_requests,
+                "next_event_seq": trace[4].event_seq,
+                "next_probe_seq": trace[4].choice.probe_seq,
+                "next_choice": trace[4].choice.selection.value,
+                "next_action_issued": trace[4].asks_for_action,
+                "same_original_host": True,
+                "additional_native_reader": False,
                 "p1_as_action_authority": False,
             }
         if stage_r is not None:
@@ -575,7 +599,9 @@ async def qualify(
             report["learning_in_world"] = True  # HOLD revision, NOT gain
         report["status"] = "PASS"
         report["classification"] = (
-            "DEV_ONLY_S49_ORIGINAL_NEXT_EPOCH_" + dev_next_epoch
+            "DEV_ONLY_S49_ORIGINAL_FIFTH_WAIT_AFTER_THIRD_MOVE"
+            if dev_fifth_epoch is not None
+            else "DEV_ONLY_S49_ORIGINAL_NEXT_EPOCH_" + dev_next_epoch
             if dev_next_epoch is not None
             else (
                 "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
@@ -677,6 +703,7 @@ async def qualify(
             "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2",
             "DEV_ONLY_S49_ORIGINAL_NEXT_EPOCH_WAIT",
             "DEV_ONLY_S49_ORIGINAL_NEXT_EPOCH_MOVE_AWAY",
+            "DEV_ONLY_S49_ORIGINAL_FIFTH_WAIT_AFTER_THIRD_MOVE",
         ):
             # No pre-existing FAILURE/BLOCKED is allowed to retain the
             # provisional qualified label, nor be upgraded to PASS.
