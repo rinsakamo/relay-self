@@ -1,0 +1,10 @@
+name: RelayP1DashPaperDev
+main: io.github.rinsakamo.relaydashdev.RelayDashDevPlugin
+version: '0.1.0-dev'
+api-version: '1.21.8'
+description: 'Disposable console-only Paper forward-DASH mechanical probe (DEV, not S authority)'
+load: POSTWORLD
+commands:
+  relaydashdev:
+    description: 'Console-only one-shot forward sprint modifier arm/off, no Action grant'
+    usage: '/relaydashdev arm <player_uuid> <1..100> <1..400> | off'
