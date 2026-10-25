@@ -1,3 +1,4 @@
+# DEV follow-on: read-only frozen S42/P1 capacity shadow, not actual L0 Action.
 # DEV extension: same native post-WAIT source in SelfWorld and SelfBody.
 # DEV native-next: one correlated post-WAIT probe through original S49 reader.
 # DEV follow-on: native MOVE→P1 WAIT→two read-only SelfBody model epochs.
@@ -60,7 +61,7 @@ jobs:
       - name: Python 3.12 focused DEV entrypoint checks BEFORE any World
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py
+          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py
       - name: Compile single read-only Paper wait observer on Java 21
         run: |
           mvn -B -ntp -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml -DskipTests package
@@ -193,6 +194,24 @@ jobs:
           assert joined["next_l0_consumed"] is False
           assert joined["qualification_go"] is False
           print("S49_P1_NEXT_SELF_WORLD_BODY_DEV_PASS", joined)
+          shadow = report["next_l0_shadow_dev"]
+          assert shadow["status"] == "DEV_S42_ORIGINAL_POLICY_SHADOW_COMPARISON"
+          assert shadow["native_seq"] == next_epoch["native_seq"]
+          assert shadow["native_request_id"] == next_epoch["native_request_id"]
+          assert shadow["body_epoch_id"] == next_epoch["epoch_id"]
+          assert shadow["s42_has_p1_input"] is False
+          assert shadow["p1_changed_original_s42_selection"] is False
+          assert shadow["actual_reactive_l0_decide_called"] is False
+          assert shadow["original_l0_entities_event_consumed"] is False
+          assert shadow["fresh_action_grant_issued"] is False
+          assert shadow["after_move_p1_model_efficiency_pct"] < (
+              shadow["after_wait_p1_model_efficiency_pct"]
+          )
+          assert shadow["after_wait_p1_model_efficiency_pct"] == 100
+          assert shadow["additional_native_probes"] == 0
+          assert shadow["extra_action_issuers"] == 0
+          assert shadow["qualification_go"] is False and shadow["science_go"] is False
+          print("S49_P1_L0_SHADOW_DEV_PASS", shadow)
           PY
       - name: Preserve original DEV receipts and failures (R/SCIENCE not run)
         if: always()
