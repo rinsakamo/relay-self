@@ -407,3 +407,32 @@ DEV candidate**, not in original ReactiveL0.decide's production policy.
 The stress rate is a scenario, not a calibrated biological/physical
 fatigue source. This comparison prepares a separately authorized actual
 behavior test; it does not silently perform one.
+
+## 2026-10-25: actual bounded L0 WAIT branch (far new stimulus)
+
+After the near-stimulus DEV source/gait comparison, the runner adds
+`--fresh-target-distance {2,10}` as a strictly bounded external World
+staging option. Two blocks is the previous near-MOVE control; ten blocks is
+a new far-WAIT contrast. The original S49 two MOVE outcomes and Paper
+eight WAIT callbacks remain untouched.
+
+When a **fresh actual Mineflayer `entities` event plus correlated
+`probe`** for the far zombie is present, the unchanged original
+`NormalWorldL0.decide(event,probe,grant=None)` is called on a **separate
+one-epoch bounded DEV shadow instance** only when its original S42 choice
+is WAIT. This tests a real original L0 policy *decision method*, not just
+the preceding `_check()` selector. The result must consume exactly one
+shadow event and zero Action requests. The already-completed original S49
+host is neither reset nor replaced. On a near MOVE stimulus the same
+`decide(...,grant=None)` would reject; the real-run code therefore
+does **not** call it or invent an independent grant.
+
+The P1 model continues as a read-only Body hypothesis; the original L0
+WAIT selection remains geometry-based and is not caused by P1. No
+new Action issuer, protocol receiver, native Action, S10 update or R-grade
+attestation is introduced. Evidence fields
+`bounded_dev_shadow_l0_decide_called`, `bounded_dev_shadow_l0_decision`,
+`bounded_dev_shadow_l0_events`, `bounded_dev_shadow_l0_action_requests`
+and `original_s49_host_l0_replaced=false` explicitly distinguish
+a method actually invoked on a bounded DEV instance from original S49
+host activity.
