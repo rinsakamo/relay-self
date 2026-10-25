@@ -1,3 +1,4 @@
+# DEV near new zombie: actual bounded L0 MOVE request, SHADOW GRANT ONLY, NO ACTION DISPATCH.
 # DEV FAR-WAIT contrast: original bounded ReactiveL0.decide WAIT, zero Action.
 # DEV follow-on: evaluate baseline/stress gait candidate on the SAME fresh L0 pair.
 # DEV fresh-event trial 4: native CLEAR_OLD confirmed before SPAWN_NEW, then exact L0 pair.
@@ -74,7 +75,7 @@ jobs:
       - name: Python 3.12 focused DEV entrypoint checks BEFORE any World
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py tests/test_s49_p1_l0_capability_dev.py tests/test_s49_p1_l0_sensitivity_dev.py tests/test_s49_p1_l0_fresh_pair_dev.py tests/test_s49_p1_l0_gait_candidate_dev.py
+          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py tests/test_s49_p1_l0_capability_dev.py tests/test_s49_p1_l0_sensitivity_dev.py tests/test_s49_p1_l0_fresh_pair_dev.py tests/test_s49_p1_l0_gait_candidate_dev.py tests/test_s49_p1_l0_near_decide_dev.py
       - name: Compile single read-only Paper wait observer on Java 21
         run: |
           mvn -B -ntp -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml -DskipTests package
@@ -134,7 +135,7 @@ jobs:
             --observer-jar "$OBSERVER" \
             --observer-sha256 "$OBSERVER_SHA" \
             --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD \
-            --fresh-target-distance 10
+            --fresh-target-distance 2
       - name: Check real-run SelfBody model handoff (no fake native or L0)
         run: |
           python - <<'PY'
@@ -317,12 +318,12 @@ jobs:
           assert fresh["fresh_native_health"] >= 0
           assert fresh["fresh_native_event_and_probe"] is True
           assert fresh["original_l0_input_checked"] is True
-          assert report["postwait_fresh_target_distance_m"] == 10
-          assert fresh["fresh_s42_selection"] == "WAIT"
-          assert 8.0 < fresh["fresh_s42_distance_m"] < 12.0
-          assert fresh["bounded_dev_shadow_l0_decide_called"] is True
-          assert fresh["bounded_dev_shadow_l0_decision"] == "WAIT"
-          assert fresh["bounded_dev_shadow_l0_events"] == 1
+          assert report["postwait_fresh_target_distance_m"] == 2
+          assert fresh["fresh_s42_selection"] == "MOVE_AWAY"
+          assert 1.0 < fresh["fresh_s42_distance_m"] < 4.0
+          assert fresh["bounded_dev_shadow_l0_decide_called"] is False
+          assert fresh["bounded_dev_shadow_l0_decision"] is None
+          assert fresh["bounded_dev_shadow_l0_events"] == 0
           assert fresh["bounded_dev_shadow_l0_action_requests"] == 0
           assert fresh["original_s49_host_l0_replaced"] is False
           assert fresh["original_l0_decide_called"] is False
@@ -339,6 +340,33 @@ jobs:
           assert fresh["qualification_go"] is False
           assert fresh["science_go"] is False
           print("S49_P1_FRESH_NATIVE_L0_INPUT_DEV_PASS", fresh)
+          near = report["next_l0_near_decide_dev"]
+          assert near["status"] == "DEV_REAL_NATIVE_BOUNDED_L0_MOVE_REQUEST_NO_EXECUTION"
+          assert near["session_id"] == fresh["session_id"]
+          assert near["world"] == fresh["world"]
+          assert near["action_id"] == fresh["action_id"]
+          assert near["observer_run_id"] == fresh["observer_run_id"]
+          assert near["fresh_event_seq"] == fresh["fresh_event_seq"]
+          assert near["fresh_probe_seq"] == fresh["fresh_probe_seq"]
+          assert near["native_request_id"] == fresh["fresh_probe_request_id"]
+          assert near["fresh_entity_id"] == fresh["fresh_zombie_entity_id"]
+          assert near["original_s42_selection"] == "MOVE_AWAY"
+          assert near["bounded_dev_l0_decide_called"] is True
+          assert near["bounded_dev_l0_events"] == 1
+          assert near["bounded_dev_l0_action_requests"] == 1
+          assert near["logical_dev_grant_used"] is True
+          assert near["logical_shadow_action_id"].startswith("dev-shadow-no-dispatch:")
+          assert near["s49_execution_authorization_issued"] is False
+          assert near["normal_action_executor_called"] is False
+          assert near["physical_action_issued"] is False
+          assert near["original_s49_l0_owner_replaced"] is False
+          assert near["additional_native_receivers"] == 0
+          assert near["additional_native_probes"] == 0
+          assert near["p1_modeled_not_native"] is True
+          assert near["p1_model_changes_s42_choice"] is False
+          assert near["qualification_go"] is False
+          assert near["science_go"] is False
+          print("S49_P1_NEAR_REAL_L0_DECIDE_DEV_PASS", near)
           gait = report["next_l0_gait_candidate_dev"]
           assert gait["status"] == "DEV_FRESH_WORLD_P1_CAPABILITY_CONDITIONED_L0_CANDIDATE"
           assert gait["session_id"] == fresh["session_id"]
