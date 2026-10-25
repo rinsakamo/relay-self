@@ -150,6 +150,16 @@ jobs:
           assert n["qualification_go"] is False and n["science_go"] is False
           print("S49_EXTRA_FORWARD_OPERATOR_DEV_RESULT",json.dumps(n,sort_keys=True))
           PY
+      - name: Show bounded Mineflayer player attribute diagnostics
+        if: always()
+        run: |
+          if test -f "$DEV_OUTPUT/forward_client_attr_dev.jsonl"; then
+            echo 'DEV CLIENT ATTRIBUTE TRACE (first 4 / last 2)'
+            head -n 4 "$DEV_OUTPUT/forward_client_attr_dev.jsonl"
+            tail -n 2 "$DEV_OUTPUT/forward_client_attr_dev.jsonl"
+          else
+            echo 'DEV CLIENT ATTRIBUTE TRACE MISSING'
+          fi
       - name: Print bounded Paper DEV plugin log for failure diagnosis
         if: failure()
         run: |
