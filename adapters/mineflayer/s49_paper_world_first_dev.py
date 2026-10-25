@@ -23,6 +23,7 @@ from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
 from adapters.mineflayer.s49_p1_l0_capability_dev import compare_body_capability_l0_dev
 from adapters.mineflayer.s49_p1_l0_shadow_dev import preview_postwait_l0_dev
+from adapters.mineflayer.s49_p1_l0_sensitivity_dev import compare_p1_knockdown_dev
 from adapters.mineflayer.s49_p1_postwait_native_dev import (
     compose_postwait_native_self_world_dev,
 )
@@ -275,6 +276,24 @@ async def run(
                 or capability_choice["new_action_grant_issued"] is not False
                 or capability_choice["actual_native_actions_added"] != 0):
             raise S49PaperDevBlocked("post-WAIT capability candidate source mismatch")
+        # Same original native/Paper source under a second, explicitly
+        # uncalibrated fatigue rate. This is DEV sensitivity, not another
+        # World session, model authority, or action issuer.
+        rate_sensitivity = compare_p1_knockdown_dev(
+            source, observed["window"], observed["postwait"],
+            expected_player_uuid=offline_uuid(BOT_USERNAME),
+            retained=frozen_commit.new_state,
+        )
+        if (rate_sensitivity["native_seq"] != capability_choice["native_seq"]
+                or rate_sensitivity["s42_original_selection"]
+                != capability_choice["s42_selection_unchanged"]
+                or rate_sensitivity["baseline_l0_capability_candidate"]
+                != capability_choice["after_wait_on_actual_postwait_world_model"]
+                or rate_sensitivity["stress_fatigue_after_wait"]
+                <= rate_sensitivity["baseline_fatigue_after_wait"]
+                or rate_sensitivity["new_action_issuers"] != 0
+                or rate_sensitivity["real_action_count_added"] != 0):
+            raise S49PaperDevBlocked("same-World fatigue knockdown not source bound")
         if (p1["dev_fatigue_recovered"] <= 0
                 or p1["dev_fatigue_before"] <= 0
                 or p1["dev_move"] is None
@@ -291,6 +310,7 @@ async def run(
             next_self_world_dev=world_body_join,
             next_l0_shadow_dev=shadow_l0,
             next_l0_capability_dev=capability_choice,
+            next_l0_sensitivity_dev=rate_sensitivity,
         )
         report["p1"]["world_run_verified"] = True
         report["p1"]["status"] = "DEV_WORLD_OBSERVED_MOVE_DISTANCE_WAIT_REPLAY"
