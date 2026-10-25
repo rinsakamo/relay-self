@@ -187,23 +187,28 @@ async def run(
         source = json.loads(original_report.read_text(encoding="utf-8"))
         if (source.get("node_exit") != 0 or source.get("server_exit") != 0):
             raise S49PaperDevBlocked("original Java/Node cleanup not successful")
-        # Initial fatigue 0.5 is an *explicit DEV model seed*, not
-        # an inferred measured body fatigue or Action-associated energy.
+        # No arbitrary initial fatigue. The last original S49 MOVE's
+        # verified geometric distance drives P1's MOVE debit. The gap to
+        # Paper BEGIN remains unmodeled, not silently filled with WAIT.
         p1 = review_postaction_wait_dev(
             source, observed["window"], expected_player_uuid=offline_uuid(BOT_USERNAME),
-            profile=FatigueProfile(enabled=True, initial=0.5),
+            profile=FatigueProfile(enabled=True, initial=0.0),
+            fatigue_mode="MOVE_DISTANCE",
         )
-        if p1["dev_fatigue_recovered"] <= 0:
-            raise S49PaperDevBlocked("no P1 DEV recovery despite seeded fatigue")
+        if (p1["dev_fatigue_recovered"] <= 0
+                or p1["dev_fatigue_before"] <= 0
+                or p1["dev_move"] is None
+                or p1["dev_move"]["fatigue_accumulated"] <= 0):
+            raise S49PaperDevBlocked("last MOVE distance did not produce P1 DEV debit/recovery")
         report.update(
             status="PASS",
-            classification="DEV_WORLD_OBSERVED_WITH_SEEDED_P1_MODEL",
+            classification="DEV_WORLD_OBSERVED_MOVE_DISTANCE_TO_WAIT_P1_MODEL",
             original_s49_session_id=source["session_id"],
             world_status="DISPOSABLE_PAPER_COMPLETED_AND_CLEANED",
             p1=p1,
         )
         report["p1"]["world_run_verified"] = True
-        report["p1"]["status"] = "DEV_WORLD_OBSERVED_MODEL_REPLAY"
+        report["p1"]["status"] = "DEV_WORLD_OBSERVED_MOVE_DISTANCE_WAIT_REPLAY"
         return 0
     except asyncio.CancelledError:
         report["status"] = "CANCELLED"
