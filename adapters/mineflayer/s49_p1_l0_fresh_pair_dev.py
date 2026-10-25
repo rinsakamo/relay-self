@@ -11,9 +11,8 @@ from __future__ import annotations
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.normal_action import NormalWorldL0
 from adapters.mineflayer.present_projection import project_mineflayer_present
-from adapters.mineflayer.s34_native_world_cognition_ci import S34EvidenceFailure
 from adapters.mineflayer.python_protocol import MineflayerObservation
-from relay_self.reactive_l0 import ReactiveL0Rejected
+from adapters.mineflayer.s34_native_world_cognition_ci import S34EvidenceFailure
 from adapters.mineflayer.s49_p1_l0_capability_dev import (
     compare_body_capability_l0_dev,
 )
@@ -21,9 +20,13 @@ from adapters.mineflayer.s49_p1_self_body_dev import P1DevSelfBodyHandoff
 from adapters.mineflayer.self_body_projection import project_body_present
 from experiments.fatigue_p1 import FatigueProfile
 from relay_self.learning import LearningPreferenceState
-from relay_self.self_body import SelfBodyView, InvalidSelfBodyData, compose_self_body_view
+from relay_self.reactive_l0 import ReactiveL0Rejected
+from relay_self.self_body import (
+    InvalidSelfBodyData,
+    SelfBodyView,
+    compose_self_body_view,
+)
 from relay_self.world_conditioned_choice import WorldChoiceRejected
-
 
 def review_postwait_fresh_l0_input_dev(
     event: MineflayerObservation,
