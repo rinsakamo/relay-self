@@ -8,7 +8,9 @@ import pytest
 import test_postmain_two_epoch_continuation as s19
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.s49_p1_l0_sensitivity_dev import (
-    BASELINE, CHALLENGE, compare_p1_knockdown_dev,
+    BASELINE,
+    CHALLENGE,
+    compare_p1_knockdown_dev,
 )
 from adapters.mineflayer.s49_p1_self_body_dev import compose_s49_p1_dev_self_body
 from test_s49_paper_world_first_dev import PLAYER, sources
