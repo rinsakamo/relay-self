@@ -1,3 +1,4 @@
+# DEV: one-time real native post-WAIT P1 capacity-aware candidate comparison, no new issuer.
 # DEV retry: frozen S19 replay now uses asyncio.to_thread (live-loop-safe).
 # DEV retry: correct typed negative-control fixtures (no World on prior failure).
 # DEV follow-on: read-only frozen S42/P1 capacity shadow, not actual L0 Action.
@@ -63,7 +64,7 @@ jobs:
       - name: Python 3.12 focused DEV entrypoint checks BEFORE any World
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py
+          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py tests/test_s49_p1_l0_capability_dev.py
       - name: Compile single read-only Paper wait observer on Java 21
         run: |
           mvn -B -ntp -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml -DskipTests package
@@ -214,6 +215,39 @@ jobs:
           assert shadow["extra_action_issuers"] == 0
           assert shadow["qualification_go"] is False and shadow["science_go"] is False
           print("S49_P1_L0_SHADOW_DEV_PASS", shadow)
+          capability = report["next_l0_capability_dev"]
+          assert capability["status"] == "DEV_P1_L0_S42_NOMINAL_GAIT_COMPARISON"
+          assert capability["native_seq"] == next_epoch["native_seq"]
+          assert capability["native_request_id"] == next_epoch["native_request_id"]
+          assert capability["body_epoch_id"] == next_epoch["epoch_id"]
+          assert capability["s42_selection_unchanged"] == shadow["original_s42_selection"]
+          assert capability["modeled_after_move_one_tick_capacity_blocks"] < (
+              capability["modeled_after_wait_one_tick_capacity_blocks"]
+          )
+          assert capability["modeled_after_wait_one_tick_capacity_blocks"] == 1.0
+          if capability["s42_selection_unchanged"] == "MOVE_AWAY":
+              assert capability["after_move_on_postwait_world_counterfactual"] == (
+                  "MOVE_AWAY_SCALE_TO_CAPACITY_MODEL_ONLY"
+              )
+              assert capability["after_wait_on_actual_postwait_world_model"] == (
+                  "MOVE_AWAY_NOMINAL_GAIT_MODEL_ONLY"
+              )
+          else:
+              assert capability["after_move_on_postwait_world_counterfactual"] == (
+                  "S42_WAIT_UNCHANGED"
+              )
+              assert capability["after_wait_on_actual_postwait_world_model"] == (
+                  "S42_WAIT_UNCHANGED"
+              )
+          assert capability["counterfactual_same_world_geometry_not_native_at_move_time"] is True
+          assert capability["original_s49_action_displacement_is_not_one_tick_demand"] is True
+          assert capability["original_l0_policy_modified"] is False
+          assert capability["original_l0_decide_called"] is False
+          assert capability["new_action_grant_issued"] is False
+          assert capability["actual_native_actions_added"] == 0
+          assert capability["additional_native_reads"] == 0
+          assert capability["qualification_go"] is False and capability["science_go"] is False
+          print("S49_P1_L0_CAPABILITY_COMPARE_DEV_PASS", capability)
           PY
       - name: Preserve original DEV receipts and failures (R/SCIENCE not run)
         if: always()
