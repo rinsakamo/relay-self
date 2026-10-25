@@ -1,0 +1,182 @@
+# DEV fallback: Paper PlayerMoveEvent ticks, NOT server BACK input tick attestation.
+# Retry 003: exact Ruff lexicographic S31A before S49 imported module group.
+# Retry 002: reorder scoped source imports and lint new read-only clock modules.
+# DEV focused retry 004: source-shape tests pass; fix fixture Ruff; keep only touched focused tests.
+# DEV retry 003: original protocol rejects rejected-without-error receipts before downstream readback.
+# DEV retry 002: fixture provenance is a derived property, no injected field.
+# DEV re-test 002: the original nominal Action duration is recorded from the budget BEFORE replacing the command.
+# DEV repeat: original S49 plus new duration-only P1 capability budget.
+# Retry 002: original six-epoch final Action budget cross-epoch readback fix.
+# DEV retry-002: validate fourth original native source by index 3, not final fifth WAIT.
+name: S49 Paper Motion Tick Events DEV World
+on:
+  push:
+    branches:
+      - self/dev-s49-paper-input-edges-20261025
+    paths:
+      - .github/workflows/self-s49-paper-motion-ticks-world-dev.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s49-paper-motion-once-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  world-first-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DEV_OUTPUT: '/tmp/s49-paper-p1-${{ github.run_id }}-${{ github.run_attempt }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify DEV observer config, dependencies and loopback isolation
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          grep -q '^enabled: false$' adapters/mineflayer/s49_paper_wait_observer_dev/src/main/resources/config.yml
+          python - <<'PY'
+          import socket
+          with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+              s.bind(("127.0.0.1", 25565))
+          print("Fresh loopback Minecraft port available; no external process touched")
+          PY
+      - name: Python 3.12 focused DEV entrypoint checks BEFORE any World
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          python -m pytest -q tests/test_s49_selfbody_motion_feedback_dev.py tests/test_s49_p1_motor_budget_dev.py tests/test_s49_p1_sixth_motor_dev.py tests/test_s49_p1_physical_pair_dev.py
+      - name: Source syntax and focussed Ruff for P1 pair
+        run: |
+          python -m compileall -q adapters/mineflayer/s49_p1_physical_pair_dev.py adapters/mineflayer/s49_p1_physical_pair_review_dev.py adapters/mineflayer/s49_p1_motor_budget_dev.py adapters/mineflayer/s49_selfbody_motion_feedback_dev.py adapters/mineflayer/s49_motor_clock_review_dev.py adapters/mineflayer/s49_native_motor_clock_dev.py adapters/mineflayer/s49_paper_motion_ticks_dev.py adapters/mineflayer/s49_paper_input_edges_dev.py
+          ruff check adapters/mineflayer/s49_p1_physical_pair_dev.py adapters/mineflayer/s49_p1_physical_pair_review_dev.py adapters/mineflayer/s49_p1_motor_budget_dev.py adapters/mineflayer/s49_selfbody_motion_feedback_dev.py adapters/mineflayer/s49_motor_clock_review_dev.py adapters/mineflayer/s49_native_motor_clock_dev.py adapters/mineflayer/s49_paper_motion_ticks_dev.py adapters/mineflayer/s49_paper_input_edges_dev.py adapters/mineflayer/s49_paper_world_first_dev.py tests/test_s49_p1_physical_pair_dev.py tests/test_s49_p1_motor_budget_dev.py tests/test_s49_selfbody_motion_feedback_dev.py tests/test_s49_motor_clock_dev.py tests/test_s49_paper_motion_ticks_dev.py
+      - name: Compile single read-only Paper wait observer on Java 21
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml -DskipTests package
+          test -f adapters/mineflayer/s49_paper_wait_observer_dev/target/relay-s49-wait-observer-dev-0.1.0-dev.jar
+      - name: Install original Mineflayer package (unmodified bridge)
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: Fetch official stable Paper 1.21.8 build 60 and verify published SHA256
+        id: paper
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, urllib.parse, urllib.request
+          version = "1.21.8"
+          api = f"https://fill.papermc.io/v3/projects/paper/versions/{version}/builds"
+          ua = "RelaySelf-S49-P1-WORLD-FIRST-DEV/0.1 (https://github.com/rinsakamo/relay-self)"
+          req = urllib.request.Request(api, headers={"User-Agent": ua})
+          with urllib.request.urlopen(req, timeout=50) as rsp:
+              builds = json.loads(rsp.read(3_000_000))
+          stable = [b for b in builds if b.get("channel") == "STABLE" and b.get("id") == 60]
+          if len(stable) != 1:
+              raise RuntimeError("Pinned Paper 1.21.8 stable build 60 unavailable")
+          artifact = stable[0]["downloads"]["server:default"]
+          expected = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          if (artifact["checksums"]["sha256"] != expected
+                  or artifact["size"] != 52811717):
+              raise RuntimeError("Pinned original Paper build metadata mismatch")
+          url = artifact["url"]
+          parsed = urllib.parse.urlparse(url)
+          if (parsed.scheme != "https" or parsed.hostname != "fill-data.papermc.io"
+                  or not parsed.path.startswith("/v1/objects/")):
+              raise RuntimeError("Untrusted Paper binary URL")
+          target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "paper-1.21.8-dev.jar"
+          hash_ = hashlib.sha256()
+          total = 0
+          with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": ua}), timeout=120) as src, target.open("xb") as dst:
+              while chunk := src.read(1048576):
+                  total += len(chunk)
+                  if total > 52811717: raise RuntimeError("Paper size exceeded")
+                  dst.write(chunk)
+                  hash_.update(chunk)
+          if total != 52811717 or hash_.hexdigest() != expected:
+              raise RuntimeError("Paper downloaded bytes mismatch")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"jar={target}\nsha256={expected}\n")
+          print("PAPER_DEV_PINNED", total, expected)
+          PY
+      - name: Run one original S49 selfbody closed-loop with passive Node clock
+        env:
+          PAPER_JAR: ${{ steps.paper.outputs.jar }}
+          PAPER_SHA: ${{ steps.paper.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          OBSERVER="$PWD/adapters/mineflayer/s49_paper_wait_observer_dev/target/relay-s49-wait-observer-dev-0.1.0-dev.jar"
+          OBSERVER_SHA="$(sha256sum "$OBSERVER" | cut -d' ' -f1)"
+          python -m adapters.mineflayer.s49_paper_world_first_dev \
+            --output-dir "$DEV_OUTPUT" \
+            --paper-jar "$PAPER_JAR" --paper-sha256 "$PAPER_SHA" \
+            --observer-jar "$OBSERVER" --observer-sha256 "$OBSERVER_SHA" \
+            --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD \
+            --fresh-target-distance 2 --actual-next-epoch \
+            --actual-fifth-epoch --compare-fifth-gait --actual-sixth-motor \
+            --motor-scenario ORIGINAL_P1 --selfbody-motion-feedback \
+            --motor-clock-dev --paper-motion-ticks-dev
+      - name: Cross-check unmodified S49 receipts and distinct timing domains
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          root=Path(os.environ["DEV_OUTPUT"])
+          report=json.loads((root/"world_first_dev_report.json").read_text())
+          source=json.loads((root/"original_s49_report.json").read_text())
+          clock=report["motor_clock_observation_dev"]
+          assert report["status"] == "PASS" and source["status"] == "PASS"
+          assert source["node_exit"] == 0 and source["server_exit"] == 0
+          assert len(source["decisions"]) == 6
+          assert len(source["actual_native_actions"]) == 4
+          assert all(a["terminal"] == "outcome" for a in source["actual_native_actions"])
+          assert clock["status"] == "DEV_S49_THREE_CLOCKS_OBSERVED"
+          assert clock["original_session_id"] == source["session_id"]
+          assert clock["source_action_count"] == 4
+          assert clock["paper_wait_tick_samples"] == 8
+          assert clock["cross_domain_clock_alignment_attested"] is False
+          assert clock["paper_effective_move_tick_count_attested"] is False
+          assert clock["paper_control_on_off_tick_observed"] is False
+          assert clock["new_action_issuer"] is False
+          assert clock["qualification_go"] is False
+          assert clock["science_go"] is False
+          assert len(clock["node_actions"]) == 4
+          paper=report["paper_server_motion_ticks_dev"]
+          assert paper["status"] == "DEV_PAPER_SERVER_POSITION_EVENT_TICKS_OBSERVED"
+          assert paper["action_id"] == source["actual_native_actions"][1]["action"]
+          assert paper["native_session_id"] == source["session_id"]
+          assert paper["paper_position_change_event_count"] >= 1
+          assert paper["paper_distinct_position_change_ticks"] >= 1
+          assert paper["server_input_effective_tick_count_attested"] is False
+          assert paper["paper_player_input_back_on_observed"] is False
+          assert paper["paper_player_input_back_off_observed"] is False
+          assert paper["no_new_action_issuer"] is True
+          print("S49_PAPER_SERVER_POSITION_EVENT_TICKS_DEV_PASS",
+                json.dumps(paper,sort_keys=True))
+          print("S49_SELFBODY_THREE_DISTINCT_CLOCK_DOMAINS_DEV_PASS",
+                json.dumps(clock,sort_keys=True))
+          PY
+      - name: Preserve native S49/Paper/Node and three-clock review
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-paper-motion-ticks-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEV_OUTPUT }}/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: DEV epistemic boundary
+        if: always()
+        run: |
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+          echo 'Node hrtime + Mineflayer physicsTick are not Paper effective Action ticks.'
