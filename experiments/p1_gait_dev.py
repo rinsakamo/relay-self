@@ -116,6 +116,7 @@ class GaitTransitionDev:
     recovered: float
     added_m0_charge: float
     nominal_forward_speed_m_s: float
+    directional_speed_cap_m_s: float
     exhausted: bool
     source_authenticated: bool = False
     m0_ledger_posted: bool = False
@@ -136,6 +137,7 @@ def dash_budget_dev(
     available_extra_m0_energy: float,
     *,
     rates: GaitRatesDev = GaitRatesDev(),
+    direction: Direction = "forward",
 ) -> DashBudgetDev:
     """Limit DASH demand before authorized S49 issuance; never execute it.
 
@@ -144,11 +146,16 @@ def dash_budget_dev(
     """
     _check(profile, state)
     if (not isinstance(rates, GaitRatesDev)
+            or direction not in ("forward", "side", "back")
             or not _finite_nonnegative(requested_power)
             or requested_power > 1
             or not _finite_nonnegative(available_extra_m0_energy)):
         raise FatigueRejected("invalid DASH demand or extra M0 budget")
     fatigue_limited = state.fatigue >= profile.capacity - 1e-10
+    # A DASH *stance* survives lateral/backward locomotion; no boost is spent.
+    # Paper must separately enforce the physical directional speed ceilings.
+    if direction != "forward":
+        return DashBudgetDev(0.0, "DASH", fatigue_limited, False)
     energy_limit = (
         min(1.0, available_extra_m0_energy /
             (rates.additional_dash_m0_per_s * WORLD_TICK_SECONDS))
@@ -187,25 +194,34 @@ def advance_gait_dev(
             or frame.applied_dash_power > 1):
         raise FatigueRejected("invalid gait tick / actual motor observation")
     if frame.gait == "DASH":
-        if (frame.direction != "forward" or frame.applied_dash_power <= 0
-                or frame.available_extra_m0_energy is None):
-            raise FatigueRejected("DASH requires actual forward output and M0 budget")
-        budget = dash_budget_dev(
-            profile, state, frame.applied_dash_power,
-            frame.available_extra_m0_energy, rates=rates,
-        )
-        if budget.permitted_power + 1e-10 < frame.applied_dash_power:
-            raise FatigueRejected("DASH exceeded physical P1/M0 admission")
-        load = (rates.run_load_per_s + (
-            rates.full_dash_load_per_s - rates.run_load_per_s
-        ) * frame.applied_dash_power ** rates.dash_load_curve)
-        recovery_rate = rates.dash_recovery_per_s
-        nominal_speed = rates.run_speed_m_s * (
-            1 + (rates.max_dash_multiplier - 1) * frame.applied_dash_power
-        )
-        m0_extra = rates.additional_dash_m0_per_s * (
-            frame.applied_dash_power * WORLD_TICK_SECONDS
-        )
+        if frame.direction != "forward":
+            if frame.applied_dash_power != 0 or frame.available_extra_m0_energy is not None:
+                raise FatigueRejected("side/back DASH stance cannot spend forward boost")
+            # Retain DASH mode, but use ordinary RUN load and a reduced cap.
+            # No fake full-power expenditure while merely strafing/retreating.
+            load = rates.run_load_per_s
+            recovery_rate = rates.run_recovery_per_s
+            nominal_speed = rates.jog_speed_m_s
+            m0_extra = 0.0
+        else:
+            if frame.applied_dash_power <= 0 or frame.available_extra_m0_energy is None:
+                raise FatigueRejected("forward DASH requires actual output and M0 budget")
+            budget = dash_budget_dev(
+                profile, state, frame.applied_dash_power,
+                frame.available_extra_m0_energy, rates=rates,
+            )
+            if budget.permitted_power + 1e-10 < frame.applied_dash_power:
+                raise FatigueRejected("DASH exceeded physical P1/M0 admission")
+            load = (rates.run_load_per_s + (
+                rates.full_dash_load_per_s - rates.run_load_per_s
+            ) * frame.applied_dash_power ** rates.dash_load_curve)
+            recovery_rate = rates.dash_recovery_per_s
+            nominal_speed = rates.run_speed_m_s * (
+                1 + (rates.max_dash_multiplier - 1) * frame.applied_dash_power
+            )
+            m0_extra = rates.additional_dash_m0_per_s * (
+                frame.applied_dash_power * WORLD_TICK_SECONDS
+            )
     else:
         if frame.applied_dash_power != 0 or frame.available_extra_m0_energy is not None:
             raise FatigueRejected("non-DASH cannot claim DASH energy or output")
@@ -235,5 +251,6 @@ def advance_gait_dev(
         accumulated=max(0.0, added), recovered=recovered,
         added_m0_charge=m0_extra,
         nominal_forward_speed_m_s=nominal_speed,
+        directional_speed_cap_m_s=nominal_speed,
         exhausted=after.fatigue >= profile.capacity - 1e-10,
     )
