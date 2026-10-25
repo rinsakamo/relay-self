@@ -12,7 +12,7 @@ One-way:
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 
 from adapters.mineflayer.execution import (
     MOVE_BACKWARD_DURATION_S,
@@ -38,7 +38,7 @@ class MotionSample:
 
     def as_report(self) -> dict[str, object]:
         return {
-            **self.__dict__,
+            **asdict(self),
             "sample_source": "ORIGINAL_S16_NATIVE_WORLD_CONSEQUENCE",
             "realized_control_hold_s_attested": False,
             "world_tick_count_attested": False,
@@ -118,7 +118,7 @@ class MotionCorrection:
 
     def as_report(self) -> dict[str, object]:
         return {
-            **self.__dict__,
+            **asdict(self),
             "model_measures_elapsed_world_ticks": False,
             "native_fatigue_measured": False,
             "new_action_issuer": False,
