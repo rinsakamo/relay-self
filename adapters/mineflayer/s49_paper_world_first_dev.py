@@ -370,7 +370,7 @@ async def run(
             raise S49PaperDevBlocked("same-World fatigue knockdown not source bound")
         if observed["fresh_event"] is None or observed["fresh_probe"] is None:
             raise S49PaperDevBlocked("post-WAIT native L0 pair absent")
-        _, original_owner, _, _, _, _ = original.s19._epoch_one()
+        _, original_owner, _, _, _, _ = await asyncio.to_thread(original.s19._epoch_one)
         fresh_pair = review_postwait_fresh_l0_input_dev(
             observed["fresh_event"], observed["fresh_probe"],
             prior_postwait_probe=observed["postwait"],
