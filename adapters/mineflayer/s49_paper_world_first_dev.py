@@ -50,6 +50,11 @@ from adapters.mineflayer.s49_p1_self_body_dev import (
     compose_s49_p1_dev_self_body,
     compose_s49_p1_postwait_native_dev,
 )
+from adapters.mineflayer.s49_selfbody_motion_feedback_dev import (
+    SelfBodyMotionState,
+    apply_to_next_issued,
+    propose_motion_correction,
+)
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from experiments.fatigue_p1 import FatigueProfile
 from relay_self.provenance import Provenance
@@ -117,6 +122,7 @@ async def run(
     compare_fifth_gait: bool = False,
     actual_sixth_motor: bool = False,
     motor_scenario: str = BASELINE,
+    selfbody_motion_feedback: bool = False,
 ) -> int:
     """One new Paper World, original S49 two MOVE actions, one post-WAIT sample."""
     report = {
@@ -132,6 +138,7 @@ async def run(
         "compare_fifth_gait": compare_fifth_gait,
         "actual_sixth_motor": actual_sixth_motor,
         "motor_scenario": motor_scenario,
+        "selfbody_motion_feedback": selfbody_motion_feedback,
     }
     created = False
     try:
@@ -149,6 +156,12 @@ async def run(
             motor_scenario == STRESS and not actual_sixth_motor
         ):
             raise S49PaperDevBlocked("stress sensitivity requires original sixth DEV Action")
+        if selfbody_motion_feedback and (
+            not actual_sixth_motor or motor_scenario != BASELINE
+        ):
+            raise S49PaperDevBlocked(
+                "SelfBody Motion Feedback requires original sixth DEV baseline Action"
+            )
         paper_jar = _fresh_asset(paper_jar, paper_sha)
         observer_jar = _fresh_asset(observer_jar, observer_sha)
         if paper_jar.resolve() == observer_jar.resolve():
@@ -173,6 +186,8 @@ async def run(
             "original_session": None, "sixth_l0_probe": None,
             "sixth_clear_seq": None, "actual_sixth_motor_command": None,
             "sixth_motor_sensitivity": None,
+            "motion_state": None, "motion_correction": None,
+            "motion_pre_sixth": None,
             "third_clear_seq": None,
             "fresh_trace": [],
         }
@@ -215,6 +230,21 @@ async def run(
             async def execute(self, *args, **kwargs):
                 receipt = await super().execute(*args, **kwargs)
                 observed["count"] += 1
+                if selfbody_motion_feedback:
+                    previous = observed["motion_state"]
+                    if previous is None:
+                        previous = SelfBodyMotionState(self.session_id)
+                    if (previous.session_id != self.session_id
+                            or self.supervisor.open_actions
+                            or observed["count"] > 4):
+                        raise S49PaperDevBlocked("SelfBody Motion lacks sole closed S49 owner")
+                    requested = (
+                        observed["actual_sixth_motor_command"]["actual_issued_duration_s"]
+                        if observed["count"] == 4 else 0.2
+                    )
+                    observed["motion_state"] = previous.observe_closed(
+                        receipt.consequence, requested_duration_s=requested,
+                    )
                 if observed["count"] == 3 and actual_fifth_epoch:
                     # Third Action was issued by ORIGINAL S49 in its fourth
                     # L0 epoch, with existing S14/S16 gates and executor.
@@ -478,6 +508,28 @@ async def run(
                 )
                 adapted_duration = proposal.candidate_duration_s
                 command = proposal.apply_to_issued(command)
+                if selfbody_motion_feedback:
+                    state = observed["motion_state"]
+                    if (not isinstance(state, SelfBodyMotionState)
+                            or len(state.samples) != 3
+                            or state.samples[-1].action_id
+                            != observed["third_move_model"].third_action_id
+                            or observed["motion_correction"] is not None):
+                        raise S49PaperDevBlocked(
+                            "SelfBody model must be updated after three closed native MOVEs"
+                        )
+                    correction = propose_motion_correction(
+                        state,
+                        current_native_seq=probe.seq,
+                        baseline_duration_s=adapted_duration,
+                    )
+                    command = apply_to_next_issued(
+                        correction, command,
+                        current_session_id=probe.session_id,
+                        current_native_seq=probe.seq,
+                    )
+                    observed["motion_pre_sixth"] = state
+                    observed["motion_correction"] = correction
                 observed["sixth_motor_sensitivity"] = sensitivity
                 observed["actual_sixth_motor_command"] = {
                     "status": "DEV_ORIGINAL_S49_ISSUED_ACTION_MOTOR_DURATION_CHANGED",
@@ -488,6 +540,8 @@ async def run(
                     "model_held_without_new_wait_recovery": True,
                     "unmodified_original_action_duration_s": proposal.nominal_duration_s,
                     "dev_model_conditioned_duration_s": adapted_duration,
+                    "actual_issued_duration_s": command.duration_s,
+                    "selfbody_motion_feedback_applied": selfbody_motion_feedback,
                     "dev_motor_sensitivity_scenario": motor_scenario,
                     "dev_motor_sensitivity_profile_sha256":
                         sensitivity["hypothetical_profile_sha256"],
@@ -783,6 +837,47 @@ async def run(
                             or physical["new_action_issuer"] is not False
                             or physical["r_qualified_fatigue"] is not False):
                         raise S49PaperDevBlocked("sixth original Action motor DEV evidence mismatch")
+                    if selfbody_motion_feedback:
+                        pre = observed["motion_pre_sixth"]
+                        correction = observed["motion_correction"]
+                        after = observed["motion_state"]
+                        if (not isinstance(pre, SelfBodyMotionState)
+                                or correction is None
+                                or not isinstance(after, SelfBodyMotionState)
+                                or len(pre.samples) != 3
+                                or len(after.samples) != 4
+                                or after.samples[-1].action_id != last["action"]
+                                or after.samples[-1].observed_displacement_m
+                                != last["movement_m"]
+                                or after.samples[-1].requested_duration_s
+                                != physical["actual_issued_duration_s"]
+                                or physical["actual_issued_duration_s"]
+                                != correction.proposed_duration_s
+                                or physical["selfbody_motion_feedback_applied"] is not True
+                                or correction.source_action_id
+                                != source["actual_native_actions"][2]["action"]):
+                            raise S49PaperDevBlocked(
+                                "SelfBody closed-loop actual Action result not source-bound"
+                            )
+                        report["selfbody_motion_feedback_dev"] = {
+                            "status": "DEV_REAL_S49_SELF_BODY_MOTION_CLOSED_LOOP",
+                            "before_sixth_samples": [
+                                sample.as_report() for sample in pre.samples
+                            ],
+                            "sixth_proposal": correction.as_report(),
+                            "sixth_closed_sample": after.samples[-1].as_report(),
+                            "model_sample_count_after": len(after.samples),
+                            "observed_target_error_m":
+                                last["movement_m"] - correction.goal_distance_m,
+                            "original_s49_l0_goal_was_0_45m": False,
+                            "original_action_issuer_unchanged": True,
+                            "same_native_receiver": True,
+                            "world_tick_count_attested": False,
+                            "fatigue_native_sensor": False,
+                            "s10_updates": 0,
+                            "qualification_go": False,
+                            "science_go": False,
+                        }
                     report.update(
                         status="PASS",
                         classification="DEV_WORLD_SIXTH_ORIGINAL_S49_P1_MOTOR_TIMING_APPLIED",
@@ -1095,6 +1190,10 @@ def main(argv: list[str] | None = None) -> int:
         "--motor-scenario", choices=(BASELINE, STRESS), default=BASELINE,
         help="DEV-only sixth motor model; stress is not physical calibration",
     )
+    parser.add_argument(
+        "--selfbody-motion-feedback", action="store_true",
+        help="DEV only: three completed S49 MOVE outcomes update SelfBody and bound sixth duration",
+    )
     args = parser.parse_args(argv)
     return asyncio.run(run(
         args.output_dir, args.paper_jar, args.paper_sha256,
@@ -1106,6 +1205,7 @@ def main(argv: list[str] | None = None) -> int:
         compare_fifth_gait=args.compare_fifth_gait,
         actual_sixth_motor=args.actual_sixth_motor,
         motor_scenario=args.motor_scenario,
+        selfbody_motion_feedback=args.selfbody_motion_feedback,
     ))
 
 
