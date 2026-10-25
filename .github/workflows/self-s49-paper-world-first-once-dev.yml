@@ -1,3 +1,4 @@
+# DEV native-next: one correlated post-WAIT probe through original S49 reader.
 # DEV follow-on: native MOVE→P1 WAIT→two read-only SelfBody model epochs.
 # DEV native-distance follow-on run: replaces explicit fatigue seed 0.5
 # with fatigue accrued by P1 from the final original S49 MOVE's observed
@@ -146,7 +147,31 @@ jobs:
           assert body["additional_native_receivers"] == 0
           assert body["qualification_go"] is False
           assert body["science_go"] is False
-          print("S49_P1_SELF_BODY_DEV_MODEL_HANDOFF_PASS", body)
+          next_epoch = report["next_cognition_native_dev"]
+          assert next_epoch["status"] == "DEV_REAL_NATIVE_NEXT_COGNITION_INPUT"
+          assert next_epoch["session_id"] == body["session_id"]
+          assert next_epoch["action_id"] == body["action_id"]
+          assert next_epoch["paper_world"] == body["world"]
+          assert next_epoch["observer_run_id"] == body["observer_run_id"]
+          assert next_epoch["native_seq"] > next_epoch["previous_action_after_probe_seq"]
+          assert next_epoch["native_source_ref"].startswith(
+              f"native-probe:{body['session_id']}:"
+          )
+          assert next_epoch["native_request_id"] == (
+              f"s49-postwait:{body['session_id']}:{body['action_id']}"
+          )
+          assert next_epoch["p1_dev_origin"] == "hypothesis"
+          assert next_epoch["p1_dev_hypothesis_sensor_pct"] == (
+              body["p1_sensor_pct_after_wait"]
+          )
+          assert next_epoch["p1_native_sensor"] is None
+          assert next_epoch["p1_native_observation"] is None
+          assert next_epoch["one_original_session_reader"] is True
+          assert next_epoch["extra_native_probes"] == 1
+          assert next_epoch["extra_action_issuers"] == 0
+          assert next_epoch["real_next_l0_decision_consumed"] is False
+          assert next_epoch["qualification_go"] is False
+          print("S49_P1_SELF_BODY_NEXT_NATIVE_DEV_PASS", next_epoch)
           PY
       - name: Preserve original DEV receipts and failures (R/SCIENCE not run)
         if: always()
