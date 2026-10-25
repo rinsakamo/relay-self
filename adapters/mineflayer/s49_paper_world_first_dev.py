@@ -14,7 +14,6 @@ import os
 import shutil
 import socket
 import time
-from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 from uuid import UUID
@@ -35,6 +34,7 @@ from adapters.mineflayer.s49_p1_l0_gait_candidate_dev import (
 from adapters.mineflayer.s49_p1_l0_near_decide_dev import decide_bounded_near_move_dev
 from adapters.mineflayer.s49_p1_l0_sensitivity_dev import compare_p1_knockdown_dev
 from adapters.mineflayer.s49_p1_l0_shadow_dev import preview_postwait_l0_dev
+from adapters.mineflayer.s49_p1_motor_budget_dev import propose_issued_motor_budget_dev
 from adapters.mineflayer.s49_p1_physical_pair_dev import (
     BASELINE,
     STRESS,
@@ -470,9 +470,14 @@ async def run(
                         or sensitivity["action_permission"] is not False
                         or observed["sixth_motor_sensitivity"] is not None):
                     raise S49PaperDevBlocked("sensitivity cannot authorize or alias action")
-                adapted_duration = sensitivity["duration_s"]
-                if not 0 < adapted_duration < command.duration_s:
-                    raise S49PaperDevBlocked("P1 model cannot bound sixth motor timing")
+                proposal = propose_issued_motor_budget_dev(
+                    sensitivity,
+                    session_id=probe.session_id,
+                    sixth_native_seq=probe.seq,
+                    issued_action_id=command.action_id,
+                )
+                adapted_duration = proposal.candidate_duration_s
+                command = proposal.apply_to_issued(command)
                 observed["sixth_motor_sensitivity"] = sensitivity
                 observed["actual_sixth_motor_command"] = {
                     "status": "DEV_ORIGINAL_S49_ISSUED_ACTION_MOTOR_DURATION_CHANGED",
@@ -490,7 +495,6 @@ async def run(
                     "new_grant": False,
                     "r_qualified_fatigue": False,
                 }
-                command = replace(command, duration_s=adapted_duration)
             return await original_native_execute(
                 session, command, timeout_s=timeout_s, provenance=provenance,
             )
