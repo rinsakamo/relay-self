@@ -14,6 +14,10 @@ import shutil
 import socket
 from pathlib import Path
 
+from adapters.mineflayer.p1_dash_native_physics_dev import (
+    install_dev_bridge,
+    remove_dev_bridge,
+)
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
@@ -117,6 +121,7 @@ async def run(
     }
     server = collector = session = None
     output_created = False
+    dev_bridge = None
     try:
         if confirmation != CONFIRM:
             raise DashDevBlocked("explicit disposable DEV confirmation required")
@@ -145,12 +150,14 @@ async def run(
         )
         report["paper_world_started"] = True
         report["stage"] = "ONE_NATIVE_OWNER"
+        dev_bridge = install_dev_bridge()
         session = await MineflayerProcessSession.launch(
             MineflayerLaunchConfig(
                 host=SERVER_HOST, port=SERVER_PORT,
                 username=BOT_USERNAME, version=MINECRAFT_VERSION,
             ),
             startup_timeout_s=15,
+            bridge_path=dev_bridge,
         )
         spawned = await _await_spawn(session)
         report["session_id"] = session.started.session_id
@@ -192,7 +199,30 @@ async def run(
         if len(ticks) < 2 or len(ticks) != len(set(ticks)):
             raise DashDevBlocked("insufficient or duplicated Paper active ticks")
         report["server_sprint_forward_observed_ticks"] = ticks
+        # Server positions (not requested host duration) check real speed.
+        paper_positions = []
+        for row in relevant:
+            if "RELAY_DASH_TICK tick=" not in row:
+                continue
+            raw = row.split("RELAY_DASH_TICK tick=", 1)[1]
+            fields = dict(part.split("=", 1) for part in raw.split()
+                          if "=" in part)
+            paper_positions.append((int(raw.split()[0]),
+                                    float(fields["x"]), float(fields["z"])))
+        movement_per_tick = [
+            ((x2 - x1)**2 + (z2 - z1)**2)**0.5
+            for (t1, x1, z1), (t2, x2, z2)
+            in zip(paper_positions, paper_positions[1:])
+            if t2 == t1 + 1
+        ]
+        if len(movement_per_tick) < 5:
+            raise DashDevBlocked("no five consecutive Paper movement tick intervals")
+        sustained_speed_per_tick = sum(movement_per_tick[-5:]) / 5
+        report["measured_paper_last_five_tick_avg_m"] = sustained_speed_per_tick
+        report["nominal_vanilla_run_per_tick_m"] = 5.61 / 20
         report["speed_gain_configured"] = 0.5
+        if sustained_speed_per_tick < 0.34:
+            raise DashDevBlocked("DASH modifier did not yield faster server movement")
         report["actual_move_ratio"] = (
             dash["native_horizontal_displacement_m"]
             / baseline["native_horizontal_displacement_m"]
@@ -249,6 +279,8 @@ async def run(
             except Exception as exc:
                 report["paper_shutdown_error"] = str(exc)
                 report["status"] = "BLOCKED"
+        if dev_bridge is not None:
+            remove_dev_bridge(dev_bridge)
         if output_created:
             (output / "dash_dev_report.json").write_text(
                 json.dumps(report, indent=2, sort_keys=True) + "\n",
