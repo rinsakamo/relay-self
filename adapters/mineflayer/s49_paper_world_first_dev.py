@@ -476,7 +476,13 @@ async def run(
         async def observe_original_next_probe(reading):
             if (observed["postwait"] is not None
                     and reading.seq > observed["postwait"].seq):
-                if (actual_fifth_epoch
+                if (actual_sixth_motor
+                        and observed["fifth_l0_view"] is not None
+                        and reading.seq > observed["fifth_l0_probe"].seq):
+                    if observed["sixth_l0_probe"] is not None:
+                        raise S49PaperDevBlocked("multiple sixth native L0 probes")
+                    observed["sixth_l0_probe"] = reading
+                elif (actual_fifth_epoch
                         and observed["third_move_model"] is not None
                         and reading.seq > observed["third_move_probe"].seq):
                     if observed["fifth_l0_view"] is not None:
@@ -491,6 +497,54 @@ async def run(
                         observed["fifth_gait_compare"] = compare_fifth_p1_gait_dev(
                             observed["third_move_model"], reading,
                         )
+                    if actual_sixth_motor:
+                        # Explicit disposable DEV external World staging at
+                        # original fifth probe while sole L0 host is suspended.
+                        # No second receive owner and no extra Action.
+                        server = observed["server"]
+                        source = observed["original_session"]
+                        if (server is None or server.stdin is None
+                                or source is None or source.started.session_id
+                                != reading.session_id):
+                            raise S49PaperDevBlocked("sixth staging lost sole native owner")
+                        original._command(server, "kill @e[type=minecraft:zombie]")
+                        await server.stdin.drain()
+                        deadline = time.monotonic() + 12.0
+                        for _ in range(100):
+                            remaining = deadline - time.monotonic()
+                            if remaining <= 0:
+                                break
+                            try:
+                                frame = await asyncio.wait_for(
+                                    source.receive(), timeout=remaining,
+                                )
+                            except TimeoutError:
+                                break
+                            if not isinstance(frame, original.MineflayerObservation):
+                                if isinstance(frame, original.MineflayerEntityHurt):
+                                    continue
+                                raise S49PaperDevBlocked("unexpected sixth clear native frame")
+                            zombies = [
+                                e for e in frame.snapshot.nearby_entities
+                                if e.name == "zombie"
+                            ]
+                            observed["fresh_trace"].append({
+                                "stage": "FIFTH_CLEAR_OLD", "seq": frame.seq,
+                                "kind": frame.kind,
+                                "zombie_ids": [e.entity_id for e in zombies],
+                            })
+                            if (frame.seq > reading.seq and not zombies
+                                    and not frame.snapshot.nearby_entities_coverage.truncated):
+                                observed["sixth_clear_seq"] = frame.seq
+                                break
+                        if observed["sixth_clear_seq"] is None:
+                            raise S49PaperDevBlocked("fifth WAIT zombie not natively cleared")
+                        original._command(
+                            server, "execute at RelaySelf run summon minecraft:zombie "
+                            "~2 ~ ~ {NoAI:1b,Silent:1b,PersistenceRequired:1b,"
+                            "Invulnerable:1b}",
+                        )
+                        await server.stdin.drain()
                 else:
                     if observed["next_l0_probe"] is not None:
                         raise S49PaperDevBlocked("multiple next-epoch native probes")
@@ -500,12 +554,15 @@ async def run(
                 "S49_REAL_SERVER_CI": "1",
                 **({"S49_NEXT_EPOCH_DEV_ONLY": "1"} if actual_next_epoch else {}),
                 **({"S49_FIFTH_EPOCH_DEV_ONLY": "1"} if actual_fifth_epoch else {}),
+                **({"S49_SIXTH_EPOCH_DEV_ONLY": "1"} if actual_sixth_motor else {}),
               }),
               patch.object(original, "_fetch_official_server", paper_fetch),
               patch.object(original, "_write_config", paper_config),
               patch.object(original, "_ready_server", paper_ready),
               patch.object(original, "NormalSessionActionExecutor",
-                           OriginalS49WithPassivePaperDEV)):
+                           OriginalS49WithPassivePaperDEV),
+              patch.object(native_action_owner, "execute_mineflayer_command",
+                           scoped_native_motor_execute)):
             rc = await original.qualify(
                 original_report, paper_log,
                 **({
@@ -514,6 +571,7 @@ async def run(
                     ),
                     "live_probe": observe_original_next_probe,
                     **({"dev_fifth_epoch": "WAIT"} if actual_fifth_epoch else {}),
+                    **({"dev_sixth_epoch": "MOVE_AWAY"} if actual_sixth_motor else {}),
                 } if actual_next_epoch else {}),
             )
         report["original_s49_rc"] = rc
@@ -523,6 +581,7 @@ async def run(
         if (rc != 0
                 or observed["count"] != (
                     2 + (actual_next_epoch and fresh_target_distance == 2)
+                    + actual_sixth_motor
                 )
                 or observed["window"] is None):
             raise S49PaperDevBlocked("original S49 or Paper observer did not complete")
@@ -560,7 +619,9 @@ async def run(
             expected_choice = (
                 "MOVE_AWAY" if fresh_target_distance == 2 else "WAIT"
             )
-            expected_epochs = 5 if actual_fifth_epoch else 4
+            expected_epochs = (
+                6 if actual_sixth_motor else 5 if actual_fifth_epoch else 4
+            )
             if (native is None
                     or observed["native_cleared_seq"] is None
                     or not isinstance(choices, list) or len(choices) != expected_epochs
@@ -586,7 +647,8 @@ async def run(
                     or witness["same_host_action_requests"]
                     != (3 if expected_choice == "MOVE_AWAY" else 2)
                     or len(source["actual_native_actions"])
-                    != (3 if expected_choice == "MOVE_AWAY" else 2)
+                    != (4 if actual_sixth_motor
+                        else 3 if expected_choice == "MOVE_AWAY" else 2)
                     or body.observation is None
                     or body.observation.native_seq != observed["postwait"].seq
                     or world_body["world_body_same_object"] is not True
@@ -601,7 +663,7 @@ async def run(
                 third_view = observed["third_move_body"]
                 fifth_view = observed["fifth_l0_view"]
                 fifth_native = observed["fifth_l0_probe"]
-                fifth_receipt = source["actual_native_actions"][-1]
+                fifth_receipt = source["actual_native_actions"][2]
                 fifth = source.get("dev_original_fifth_epoch")
                 if (third_model is None or third_view is None
                         or fifth_view is None or fifth_native is None
@@ -619,7 +681,7 @@ async def run(
                             )
                         }
                         or observed["third_clear_seq"] is None
-                        or fifth["same_host_events"] != 5
+                        or fifth["same_host_events"] != expected_epochs
                         or fifth["same_host_action_requests"] != 3
                         or fifth["next_choice"] != "WAIT"
                         or fifth["next_action_issued"] is not False
@@ -636,7 +698,8 @@ async def run(
                         != third_view["p1_model_sensor_pct"]
                         or fifth_view["projection_before_original_l0_decide"] is not True
                         or choices[4]["issued"] is not False
-                        or len(source["actual_native_actions"]) != 3
+                        or len(source["actual_native_actions"])
+                        != (4 if actual_sixth_motor else 3)
                         or fifth["p1_as_action_authority"] is not False):
                     raise S49PaperDevBlocked("fifth original epoch/P1 join rejected")
                 if compare_fifth_gait:
@@ -651,6 +714,66 @@ async def run(
                             or gait["candidate_executed"] is not False
                             or gait["new_grants"] != 0):
                         raise S49PaperDevBlocked("fifth same-native gait model comparison invalid")
+                if actual_sixth_motor:
+                    six = source.get("dev_original_sixth_epoch")
+                    physical = observed["actual_sixth_motor_command"]
+                    last = source["actual_native_actions"][-1]
+                    sixth_probe = observed["sixth_l0_probe"]
+                    gait = observed["fifth_gait_compare"]
+                    if (not isinstance(six, dict)
+                            or not isinstance(physical, dict)
+                            or not isinstance(sixth_probe, original.MineflayerObservation)
+                            or observed["sixth_clear_seq"] is None
+                            or six.get("actual_original_host_decide") is not True
+                            or six.get("same_host_events") != 6
+                            or six.get("same_host_action_requests") != 4
+                            or six.get("selected") != "MOVE_AWAY"
+                            or six.get("action_issued") is not True
+                            or six.get("event_seq") != choices[5]["event_seq"]
+                            or six.get("probe_seq") != choices[5]["probe_seq"]
+                            or six.get("probe_seq") != sixth_probe.seq
+                            or six.get("event_seq") <= observed["sixth_clear_seq"]
+                            or last.get("event_seq") != six["event_seq"]
+                            or last.get("probe_seq") != six["probe_seq"]
+                            or last.get("action") != physical["action_id"]
+                            or last.get("terminal") != "outcome"
+                            or last.get("movement_m", 0) < 0.05
+                            or physical["native_session_id"] != source["session_id"]
+                            or physical["same_original_native_probe_seq"]
+                            != sixth_probe.seq
+                            or physical["p1_model_source_fifth_seq"]
+                            != gait["fifth_native_seq"]
+                            or physical["dev_model_conditioned_duration_s"]
+                            != gait["fatigue_aware_candidate_duration_s"]
+                            or physical["unmodified_original_action_duration_s"]
+                            != gait["baseline_nominal_command_duration_s"]
+                            or physical["new_action_issuer"] is not False
+                            or physical["r_qualified_fatigue"] is not False):
+                        raise S49PaperDevBlocked("sixth original Action motor DEV evidence mismatch")
+                    report.update(
+                        status="PASS",
+                        classification="DEV_WORLD_SIXTH_ORIGINAL_S49_P1_MOTOR_TIMING_APPLIED",
+                        original_s49_session_id=source["session_id"],
+                        world_status="DISPOSABLE_PAPER_COMPLETED_AND_CLEANED",
+                        original_s49_action_count=observed["count"],
+                        p1=p1,
+                        third_move_p1_self_body_dev=third_view,
+                        fifth_l0_self_world_body_dev=fifth_view,
+                        fifth_l0_p1_gait_compare_dev=gait,
+                        original_sixth_l0_dev=six,
+                        sixth_motor_action_dev={
+                            **physical,
+                            "observed_distance_m": last["movement_m"],
+                            "command_duration_modified": True,
+                            "observed_distance_causal_change_attested": False,
+                            "hypothesis_held_across_unattested_world_ticks": True,
+                            "original_s14_s16_authorization": True,
+                            "qualification_go": False,
+                            "science_go": False,
+                        },
+                    )
+                    report["p1"]["world_run_verified"] = True
+                    return 0
                 report.update(
                     status="PASS",
                     classification="DEV_WORLD_ORIGINAL_S49_FIFTH_WAIT_THIRD_P1_MODEL",
@@ -930,6 +1053,10 @@ def main(argv: list[str] | None = None) -> int:
         "--compare-fifth-gait", action="store_true",
         help="DEV only same-native P1 gait candidate, no Action modification",
     )
+    parser.add_argument(
+        "--actual-sixth-motor", action="store_true",
+        help="DEV only sixth original authorized MOVE with bounded model-conditioned duration",
+    )
     args = parser.parse_args(argv)
     return asyncio.run(run(
         args.output_dir, args.paper_jar, args.paper_sha256,
@@ -939,6 +1066,7 @@ def main(argv: list[str] | None = None) -> int:
         actual_next_epoch=args.actual_next_epoch,
         actual_fifth_epoch=args.actual_fifth_epoch,
         compare_fifth_gait=args.compare_fifth_gait,
+        actual_sixth_motor=args.actual_sixth_motor,
     ))
 
 
