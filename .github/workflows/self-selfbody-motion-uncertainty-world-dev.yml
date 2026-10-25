@@ -1,3 +1,4 @@
+# Retry-002 DEV: fix focused Ruff import grouping; previous run PREWORLD stopped.
 # DEV only: attenuate next original S49 Action correction with closed S16 residual uncertainty.
 name: S49 SelfBody Motion Uncertainty DEV World
 on:
