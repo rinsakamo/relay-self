@@ -21,7 +21,7 @@ from uuid import UUID
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
-from adapters.mineflayer.s49_paper_postwait_dev import review_postaction_wait_dev
+from adapters.mineflayer.s49_p1_self_body_dev import compose_s49_p1_dev_self_body
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from experiments.fatigue_p1 import FatigueProfile
 
@@ -190,11 +190,13 @@ async def run(
         # No arbitrary initial fatigue. The last original S49 MOVE's
         # verified geometric distance drives P1's MOVE debit. The gap to
         # Paper BEGIN remains unmodeled, not silently filled with WAIT.
-        p1 = review_postaction_wait_dev(
+        self_body_handoff, p1 = compose_s49_p1_dev_self_body(
             source, observed["window"], expected_player_uuid=offline_uuid(BOT_USERNAME),
             profile=FatigueProfile(enabled=True, initial=0.0),
-            fatigue_mode="MOVE_DISTANCE",
         )
+        # A *model hypothesis* for next Cognition, not a new native Present,
+        # true fatigue reading, actuator grant or persisted resource state.
+        next_cognition = self_body_handoff.next_cognition_readback()
         if (p1["dev_fatigue_recovered"] <= 0
                 or p1["dev_fatigue_before"] <= 0
                 or p1["dev_move"] is None
@@ -206,6 +208,7 @@ async def run(
             original_s49_session_id=source["session_id"],
             world_status="DISPOSABLE_PAPER_COMPLETED_AND_CLEANED",
             p1=p1,
+            self_body_dev=next_cognition,
         )
         report["p1"]["world_run_verified"] = True
         report["p1"]["status"] = "DEV_WORLD_OBSERVED_MOVE_DISTANCE_WAIT_REPLAY"
