@@ -2,7 +2,7 @@ name: S49 original fifth WAIT after third MOVE DEV
 on:
   push:
     branches:
-      - self/dev-s49-native-next-epoch-20261025
+      - self/dev-s49-p1-fifth-epoch-20261025
     paths:
       - .github/workflows/self-s49-fifth-world-dev.yml
 
