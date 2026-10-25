@@ -1,3 +1,4 @@
+# DEV retry: correct typed negative-control fixtures (no World on prior failure).
 # DEV follow-on: read-only frozen S42/P1 capacity shadow, not actual L0 Action.
 # DEV extension: same native post-WAIT source in SelfWorld and SelfBody.
 # DEV native-next: one correlated post-WAIT probe through original S49 reader.
