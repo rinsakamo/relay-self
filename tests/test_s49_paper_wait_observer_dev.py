@@ -62,6 +62,18 @@ def test_java_source_is_console_opt_in_one_shot_sync_observation_only():
     assert "subject.getWorld().getFullTime()" in source
     assert 'private static final int SAMPLE_COUNT = 8;' in source
     assert "tick != beginTick + next" in source
+    # Regression from first real Paper DEV (run #40146359686):
+    # console-time begin=453, first callback was not begin+1.
+    # Post-mode must anchor BEGIN on the first callback, then omit it.
+    assert "postBoundaryPending = !pre;" in source
+    assert "if (postBoundaryPending)" in source
+    assert "postBoundaryPending = false;" in source
+    assert "beginTick = tick;" in source
+    assert "return;" in source[source.index("if (postBoundaryPending)"):
+                              source.index("int next = index + 1;")]
+    assert source.index("if (postBoundaryPending)") < source.index(
+        "int next = index + 1;"
+    )
     assert "runTaskTimer(" in source
     assert "1L, 1L" in source
     assert "runTaskTimerAsynchronously" not in source
