@@ -1,3 +1,4 @@
+# DEV fresh-event trial 2: bounded 15s single receiver after Paper WAIT; retain diagnostics on failure.
 # DEV after-WAIT fresh actual native entities event + probe / read-only L0 guard.
 # DEV follow-on: after FAST 40157741050 SUCCESS, one actual Paper World
 # comparing baseline vs uncalibrated fatigue-rate stress on identical receipts.
