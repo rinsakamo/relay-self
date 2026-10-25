@@ -44,6 +44,8 @@ on:
       - adapters/mineflayer/s49_p1_postwait_native_dev.py
       - adapters/mineflayer/s49_p1_l0_shadow_dev.py
       - adapters/mineflayer/s49_p1_l0_capability_dev.py
+      - adapters/mineflayer/s49_p1_l0_sensitivity_dev.py
+      - tests/test_s49_p1_l0_sensitivity_dev.py
       - tests/test_s49_p1_l0_capability_dev.py
       - tests/test_s49_p1_l0_shadow_dev.py
       - tests/test_s49_p1_postwait_native_dev.py
@@ -152,6 +154,8 @@ jobs:
             adapters/mineflayer/s49_p1_postwait_native_dev.py \
             adapters/mineflayer/s49_p1_l0_shadow_dev.py \
             adapters/mineflayer/s49_p1_l0_capability_dev.py \
+            adapters/mineflayer/s49_p1_l0_sensitivity_dev.py \
+            tests/test_s49_p1_l0_sensitivity_dev.py \
             tests/test_s49_p1_l0_capability_dev.py \
             tests/test_s49_p1_l0_shadow_dev.py \
             tests/test_s49_p1_postwait_native_dev.py \
@@ -198,6 +202,7 @@ jobs:
             tests/test_s49_p1_postwait_native_dev.py \
             tests/test_s49_p1_l0_shadow_dev.py \
             tests/test_s49_p1_l0_capability_dev.py \
+            tests/test_s49_p1_l0_sensitivity_dev.py \
             tests/test_s49_paper_wait_observer_dev.py
       - name: State validation boundary
         if: always()
