@@ -1,3 +1,4 @@
+# DEV retry 003: original protocol rejects rejected-without-error receipts before downstream readback.
 # DEV retry 002: fixture provenance is a derived property, no injected field.
 # DEV re-test 002: the original nominal Action duration is recorded from the budget BEFORE replacing the command.
 # DEV repeat: original S49 plus new duration-only P1 capability budget.
