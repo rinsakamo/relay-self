@@ -495,7 +495,7 @@ async def run(
                     or not isinstance(pairs, list) or len(pairs) != expected_epochs
                     or not isinstance(witness, dict)
                     or witness.get("actual_original_host_decide") is not True
-                    or witness.get("same_host_events") != 4
+                    or witness.get("same_host_events") != expected_epochs
                     or witness.get("next_choice") != expected_choice
                     or witness.get("next_event_seq") != choices[-1]["event_seq"]
                     or witness.get("next_probe_seq") != choices[-1]["probe_seq"]
