@@ -21,6 +21,9 @@ from uuid import UUID
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
+from adapters.mineflayer.s49_p1_postwait_native_dev import (
+    compose_postwait_native_self_world_dev,
+)
 from adapters.mineflayer.s49_p1_self_body_dev import (
     compose_s49_p1_dev_self_body,
     compose_s49_p1_postwait_native_dev,
@@ -228,6 +231,16 @@ async def run(
         if (actual_next_body.observation is None
                 or actual_next_cognition["extra_native_probes"] != 1):
             raise S49PaperDevBlocked("native next cognition Present missing")
+        world_body_join = compose_postwait_native_self_world_dev(
+            actual_next_body, observed["postwait"],
+        )
+        if (not world_body_join["world_body_same_object"]
+                or world_body_join["native_seq"] != actual_next_cognition["native_seq"]
+                or world_body_join["native_request_id"]
+                != actual_next_cognition["native_request_id"]
+                or world_body_join["p1_model_sensor_pct"]
+                != actual_next_cognition["p1_dev_hypothesis_sensor_pct"]):
+            raise S49PaperDevBlocked("postwait SelfWorld/SelfBody source mismatch")
         if (p1["dev_fatigue_recovered"] <= 0
                 or p1["dev_fatigue_before"] <= 0
                 or p1["dev_move"] is None
@@ -241,6 +254,7 @@ async def run(
             p1=p1,
             self_body_dev=next_cognition,
             next_cognition_native_dev=actual_next_cognition,
+            next_self_world_dev=world_body_join,
         )
         report["p1"]["world_run_verified"] = True
         report["p1"]["status"] = "DEV_WORLD_OBSERVED_MOVE_DISTANCE_WAIT_REPLAY"
