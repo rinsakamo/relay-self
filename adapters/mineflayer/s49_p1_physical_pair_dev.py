@@ -44,6 +44,12 @@ def evaluate_sixth_motor_sensitivity_dev(
             or gait.get("third_original_action_id") != model.third_action_id
             or gait.get("third_original_move_distance_m") != model.move_distance_m
             or gait.get("p1_model_fatigue") != model.model_fatigue
+            or type(gait.get("fifth_native_seq")) is not int
+            or gait["fifth_native_seq"] <= model.third_after_probe.seq
+            or gait.get("fifth_native_request_id") is None
+            or not gait["fifth_native_request_id"].startswith(
+                f"s49-actual:{model.third_after_probe.session_id}:event-"
+            )
             or gait.get("original_p1_model_sha256") != model.model_profile_sha256
             or gait.get("same_native_world_input") is not True
             or gait.get("candidate_executed") is not False
