@@ -114,3 +114,38 @@ enabled only in the new disposable World. An actual successful run would be
 labeled `DEV_WORLD_OBSERVED_WITH_SEEDED_P1_MODEL`; R-qualified
 `p1_fatigue_recovered` remains 0 and V science remains unrun. Failure
 on a new Paper server is a DEV debugging input, not a recovered Golden run.
+
+## 2026-10-25: native last MOVE distance → P1 fatigue → Paper WAIT
+
+DEV acceptance no longer uses an arbitrary `initial=0.5` on the World-first
+runner. `fatigue_mode="MOVE_DISTANCE"` now starts at `initial=0.0` and
+checks the last original S49 `MOVE_BACKWARD` Action's decoded immutable
+before/after native poses, issued/control-clear ACK and reported movement
+distance using existing `verify_native_action_evidence`. It computes one
+explicit P1 `advance(... FatigueFrame(activity="MOVE",
+observed_blocks=actual_distance))` **model step** at zero starting fatigue.
+Only then does the existing post-clear Paper callback interval (excluding the
+boundary callback tick) feed eight real Paper tick indices to
+`advance(... FatigueFrame(WAIT))`.
+
+**Critical time precision:** The S49 Action evidence contains geometric
+*per-Action* distance, not separately located per-World-tick MOVE distance.
+Therefore P1's MOVE model_step=1 is a **local virtual evaluation index**
+and is never advertised as the Action's actual Minecraft World tick. The
+model fatigue after that MOVE is explicitly rebased to the first verified
+Paper idle callback boundary, with no claim that unobserved intervening
+World ticks were WAIT or MOVE. The earlier S49 MOVE is not added because
+it is separated by an unobserved interval which might have permitted rest.
+This is a verified Action-displacement-driven **DEV model replay**, not a
+fully source-timed long-lived Body state or a continuous World-tick ledger.
+
+The expected retained fields include `dev_move.movement_m`,
+`dev_move.fatigue_accumulated`, `dev_fatigue_before`,
+`dev_fatigue_recovered`, `dev_fatigue_after`, and
+`dev_model_phase_bridge=ACTION_AGGREGATE_MODEL_STEP_REBASED_TO_PAPER_BEGIN_WITHOUT_GAP_INFERENCE`.
+The run is successful only for positive actual MOVE fatigue and positive
+subsequent Paper WAIT recovery. The old `SEED` mode remains available
+for backward-compatibility offline fixtures, but is **not** the World-first
+run mode. R-qualified `source_bound_tick` remains null, and R-qualified
+`p1_fatigue_recovered` remains zero; no S10 learning or production
+FatigueState mutation occurs. M0 BASAL remains independent/unchanged.
