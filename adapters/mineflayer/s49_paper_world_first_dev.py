@@ -23,6 +23,9 @@ from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
 from adapters.mineflayer.s49_p1_l0_capability_dev import compare_body_capability_l0_dev
 from adapters.mineflayer.s49_p1_l0_fresh_pair_dev import review_postwait_fresh_l0_input_dev
+from adapters.mineflayer.s49_p1_l0_gait_candidate_dev import (
+    evaluate_fatigue_aware_fresh_candidate_dev,
+)
 from adapters.mineflayer.s49_p1_l0_sensitivity_dev import compare_p1_knockdown_dev
 from adapters.mineflayer.s49_p1_l0_shadow_dev import preview_postwait_l0_dev
 from adapters.mineflayer.s49_p1_postwait_native_dev import (
@@ -419,6 +422,22 @@ async def run(
                 or fresh_pair["original_l0_decide_called"] is not False
                 or fresh_pair["new_action_issued"] is not False):
             raise S49PaperDevBlocked("post-WAIT fresh native L0 source invalid")
+        # Optional DEV-only cognition candidate: revalidate BOTH P1
+        # model profiles against the SAME real fresh native event/probe.
+        # No original L0.decide(), grant, or additional physical Action.
+        gait_candidate = evaluate_fatigue_aware_fresh_candidate_dev(
+            source, observed["window"], observed["postwait"],
+            observed["fresh_event"], observed["fresh_probe"],
+            expected_player_uuid=offline_uuid(BOT_USERNAME),
+            retained=original_owner.new_state,
+        )
+        if (gait_candidate["fresh_event_seq"] != fresh_pair["fresh_event_seq"]
+                or gait_candidate["fresh_probe_seq"] != fresh_pair["fresh_probe_seq"]
+                or gait_candidate["fresh_s42_selection_unchanged"]
+                != fresh_pair["fresh_s42_selection"]
+                or gait_candidate["new_action_issued"] is not False
+                or gait_candidate["new_action_grant_issued"] is not False):
+            raise S49PaperDevBlocked("same-world gait candidate source mismatch")
         if (p1["dev_fatigue_recovered"] <= 0
                 or p1["dev_fatigue_before"] <= 0
                 or p1["dev_move"] is None
@@ -437,6 +456,7 @@ async def run(
             next_l0_capability_dev=capability_choice,
             next_l0_sensitivity_dev=rate_sensitivity,
             next_l0_fresh_pair_dev=fresh_pair,
+            next_l0_gait_candidate_dev=gait_candidate,
         )
         report["p1"]["world_run_verified"] = True
         report["p1"]["status"] = "DEV_WORLD_OBSERVED_MOVE_DISTANCE_WAIT_REPLAY"
