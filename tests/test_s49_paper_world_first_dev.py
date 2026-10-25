@@ -1,6 +1,7 @@
 """Offline DEV-only tests for the original S49 report/Paper/P1 join."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 from pathlib import Path
@@ -132,18 +133,17 @@ def test_offline_uuid_is_stable_and_name_pinned():
     assert len(offline_uuid(BOT_USERNAME)) == 36
 
 
-@pytest.mark.asyncio
-async def test_dev_runner_denies_missing_operator_confirmation_without_world(tmp_path):
+def test_dev_runner_denies_missing_operator_confirmation_without_world(tmp_path):
     output = tmp_path / "world-first"
     server = tmp_path / "paper.jar"
     plugin = tmp_path / "plugin.jar"
     server.write_bytes(b"not-a-real-paper-server")
     plugin.write_bytes(b"not-a-real-observer")
-    result = await run(
+    result = asyncio.run(run(
         output, server, hashlib.sha256(server.read_bytes()).hexdigest(),
         plugin, hashlib.sha256(plugin.read_bytes()).hexdigest(),
         confirmation=CONFIRM + "-wrong",
-    )
+    ))
     assert result == 2
     assert not output.exists()
 
