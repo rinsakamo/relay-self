@@ -98,6 +98,7 @@ async def run(
     output_dir: Path, paper_jar: Path, paper_sha: str,
     observer_jar: Path, observer_sha: str, *, confirmation: str,
     fresh_target_distance: int = 2,
+    actual_next_epoch: bool = False,
 ) -> int:
     """One new Paper World, original S49 two MOVE actions, one post-WAIT sample."""
     report = {
@@ -108,6 +109,7 @@ async def run(
         "qualification_go": False,
         "science_go": False,
         "p1_production_state_updated": False,
+        "actual_original_s49_next_epoch": actual_next_epoch,
     }
     created = False
     try:
@@ -131,6 +133,7 @@ async def run(
         observed = {
             "server": None, "window": None, "count": 0, "postwait": None,
             "fresh_event": None, "fresh_probe": None,
+            "next_l0_probe": None, "native_cleared_seq": None,
             "fresh_trace": [],
         }
         # This mutable list is retained even if original qualify() stops:
@@ -267,6 +270,12 @@ async def run(
                     "Invulnerable:1b}",
                 )
                 await server.stdin.drain()
+                if actual_next_epoch:
+                    # The original host.run_session is suspended in this
+                    # Action callback. Do NOT consume the fresh event here:
+                    # return control to that SAME host's fourth epoch.
+                    observed["native_cleared_seq"] = cleared_seq
+                    return receipt
                 deadline = time.monotonic() + 12.0
                 for _ in range(100):
                     remaining = deadline - time.monotonic()
@@ -312,24 +321,138 @@ async def run(
                 )
                 return receipt
 
-        # Scoped DEV adaptation: no edits to original qualify(), S49 executor
-        # implementation, frozen Action authorization, or original cleanup.
-        with (patch.dict(os.environ, {"S49_REAL_SERVER_CI": "1"}),
+        # Opt-in candidate changes qualify()'s DEV-only bounded epoch
+        # contract, NEVER the original S14/S16 issuer or cleanup.
+        async def observe_original_next_probe(reading):
+            if (observed["postwait"] is not None
+                    and reading.seq > observed["postwait"].seq):
+                if observed["next_l0_probe"] is not None:
+                    raise S49PaperDevBlocked("multiple next-epoch native probes")
+                observed["next_l0_probe"] = reading
+
+        with (patch.dict(os.environ, {
+                "S49_REAL_SERVER_CI": "1",
+                **({"S49_NEXT_EPOCH_DEV_ONLY": "1"} if actual_next_epoch else {}),
+              }),
               patch.object(original, "_fetch_official_server", paper_fetch),
               patch.object(original, "_write_config", paper_config),
               patch.object(original, "_ready_server", paper_ready),
               patch.object(original, "NormalSessionActionExecutor",
                            OriginalS49WithPassivePaperDEV)):
-            rc = await original.qualify(original_report, paper_log)
+            rc = await original.qualify(
+                original_report, paper_log,
+                **({
+                    "dev_next_epoch": (
+                        "MOVE_AWAY" if fresh_target_distance == 2 else "WAIT"
+                    ),
+                    "live_probe": observe_original_next_probe,
+                } if actual_next_epoch else {}),
+            )
         report["original_s49_rc"] = rc
         report["postwait_fresh_target_distance_m"] = fresh_target_distance
         report["original_s49_action_count"] = observed["count"]
         report["world_status"] = "CLOSED_WITH_ORIGINAL_S49_CLEANUP"
-        if rc != 0 or observed["count"] != 2 or observed["window"] is None:
+        if (rc != 0
+                or observed["count"] != (
+                    2 + (actual_next_epoch and fresh_target_distance == 2)
+                )
+                or observed["window"] is None):
             raise S49PaperDevBlocked("original S49 or Paper observer did not complete")
         source = json.loads(original_report.read_text(encoding="utf-8"))
         if (source.get("node_exit") != 0 or source.get("server_exit") != 0):
             raise S49PaperDevBlocked("original Java/Node cleanup not successful")
+        if actual_next_epoch:
+            # The last (possibly third) native Action is AFTER the Paper
+            # window. For its P1 replay, use only the original two closed
+            # Actions that preceded the observation: never rewrite the
+            # persisted original report or silently credit an extra MOVE.
+            p1_source = dict(source)
+            p1_source["actual_native_actions"] = source["actual_native_actions"][:2]
+            handoff, p1 = compose_s49_p1_dev_self_body(
+                p1_source, observed["window"],
+                expected_player_uuid=offline_uuid(BOT_USERNAME),
+                profile=FatigueProfile(enabled=True, initial=0.0),
+            )
+            if observed["postwait"] is None:
+                raise S49PaperDevBlocked("missing Paper-complete native body source")
+            body, native_after_wait = compose_s49_p1_postwait_native_dev(
+                handoff, p1, p1_source["actual_native_actions"][-1],
+                observed["postwait"],
+                expected_request_id=(
+                    f"s49-postwait:{source['session_id']}:{p1['action_id']}"
+                ),
+            )
+            world_body = compose_postwait_native_self_world_dev(
+                body, observed["postwait"],
+            )
+            native = observed["next_l0_probe"]
+            choices = source.get("decisions")
+            pairs = source.get("source_pair_trace")
+            witness = source.get("dev_original_next_epoch")
+            expected_choice = (
+                "MOVE_AWAY" if fresh_target_distance == 2 else "WAIT"
+            )
+            if (native is None
+                    or observed["native_cleared_seq"] is None
+                    or not isinstance(choices, list) or len(choices) != 4
+                    or not isinstance(pairs, list) or len(pairs) != 4
+                    or not isinstance(witness, dict)
+                    or witness.get("actual_original_host_decide") is not True
+                    or witness.get("same_host_events") != 4
+                    or witness.get("next_choice") != expected_choice
+                    or witness.get("next_event_seq") != choices[-1]["event_seq"]
+                    or witness.get("next_probe_seq") != choices[-1]["probe_seq"]
+                    or witness.get("next_probe_seq") != native.seq
+                    or witness.get("next_event_seq") != pairs[-1]["event_seq"]
+                    or witness.get("next_probe_seq") != pairs[-1]["probe_seq"]
+                    or witness.get("next_event_seq") <= observed["native_cleared_seq"]
+                    or native.session_id != source["session_id"]
+                    or native.kind != "probe"
+                    or native.request_id != (
+                        f"s49-actual:{source['session_id']}:"
+                        f"event-{witness['next_event_seq']}"
+                    )
+                    or choices[-1]["selected"] != expected_choice
+                    or choices[-1]["issued"] != (expected_choice == "MOVE_AWAY")
+                    or witness["same_host_action_requests"]
+                    != (3 if expected_choice == "MOVE_AWAY" else 2)
+                    or len(source["actual_native_actions"])
+                    != (3 if expected_choice == "MOVE_AWAY" else 2)
+                    or body.observation is None
+                    or body.observation.native_seq != observed["postwait"].seq
+                    or world_body["world_body_same_object"] is not True
+                    or native_after_wait["p1_dev_origin"] != "hypothesis"
+                    or p1["dev_fatigue_mode"] != "MOVE_DISTANCE"
+                    or p1["dev_fatigue_recovered"] <= 0
+                    or p1["source_bound_tick"] is not None
+                    or p1["wait_ticks_admitted"] != 0):
+                raise S49PaperDevBlocked("original fourth L0 epoch not source-proven")
+            report.update(
+                status="PASS",
+                classification="DEV_WORLD_ORIGINAL_S49_NEXT_EPOCH_" + expected_choice,
+                world_status="DISPOSABLE_PAPER_COMPLETED_AND_CLEANED",
+                original_s49_session_id=source["session_id"],
+                original_s49_action_count=observed["count"],
+                p1=p1,
+                next_cognition_native_dev=native_after_wait,
+                next_self_world_dev=world_body,
+                original_next_l0_dev={
+                    "status": "DEV_SAME_ORIGINAL_HOST_ACTUAL_L0_DECIDE",
+                    **witness,
+                    "event_seq": native.seq,
+                    "native_probe_seq": native.seq,
+                    "native_probe_request_id": native.request_id,
+                    "p1_model_origin": "hypothesis",
+                    "p1_hypothesis_used_as_action_grant": False,
+                    "paper_full_tick_attestation": False,
+                    "source_bound_tick": None,
+                    "wait_ticks_admitted": 0,
+                    "r_qualification": False,
+                    "science": False,
+                },
+            )
+            report["p1"]["world_run_verified"] = True
+            return 0
         # No arbitrary initial fatigue. The last original S49 MOVE's
         # verified geometric distance drives P1's MOVE debit. The gap to
         # Paper BEGIN remains unmodeled, not silently filled with WAIT.
@@ -546,12 +669,17 @@ def main(argv: list[str] | None = None) -> int:
         "--fresh-target-distance", type=int, choices=(2, 10), default=2,
         help="Post-WAIT external DEV zombie stimulus in blocks; only 2 or 10",
     )
+    parser.add_argument(
+        "--actual-next-epoch", action="store_true",
+        help="Explicit DEV-only fourth native decision on the ORIGINAL S49 host",
+    )
     args = parser.parse_args(argv)
     return asyncio.run(run(
         args.output_dir, args.paper_jar, args.paper_sha256,
         args.observer_jar, args.observer_sha256,
         confirmation=args.confirm,
         fresh_target_distance=args.fresh_target_distance,
+        actual_next_epoch=args.actual_next_epoch,
     ))
 
 
