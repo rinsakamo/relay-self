@@ -6,6 +6,7 @@ on:
       - self/dev-paper-dash-directional-cap-20261025
     paths:
       - .github/workflows/self-paper-dash-direction-cap-dev.yml
+      - adapters/mineflayer/s49_paper_dash_dev/**
 permissions:
   contents: read
 jobs:
