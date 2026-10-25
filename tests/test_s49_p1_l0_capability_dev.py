@@ -47,8 +47,8 @@ def test_same_native_near_world_before_move_vs_after_wait_gait(monkeypatch):
     assert view["s42_selection_unchanged"] == "MOVE_AWAY"
     assert view["nominal_one_tick_demand_blocks"] == 1.0
     assert view["modeled_after_move_one_tick_capacity_blocks"] == pytest.approx(
-        1.0 - 0.7 * (0.6269065734210617 * 0.04), rel=0.001,
-    ) or view["modeled_after_move_one_tick_capacity_blocks"] < 1.0
+        1.0 - 0.7 * (0.6269065734210617 * 0.04),
+    )
     assert view["modeled_after_move_one_tick_capacity_blocks"] < (
         view["modeled_after_wait_one_tick_capacity_blocks"]
     )
