@@ -30,6 +30,10 @@ from adapters.mineflayer.s49_forward_dash_operator_dev import (
 from adapters.mineflayer.s49_forward_dash_operator_dev import (
     run_forward_operator_dev,
 )
+from adapters.mineflayer.s49_forward_client_attr_dev import (
+    generate_forward_attr_bridge_dev,
+    remove_forward_attr_bridge_dev,
+)
 from adapters.mineflayer.s49_motor_clock_review_dev import review_native_motor_clock_dev
 from adapters.mineflayer.s49_native_motor_clock_dev import (
     instrument_native_bridge_dev,
@@ -207,6 +211,7 @@ async def run(
     }
     created = False
     dev_bridge = None
+    forward_attr_bridge = None
     try:
         if confirmation != CONFIRM:
             raise S49PaperDevBlocked("explicit disposable DEV confirmation required")
@@ -274,6 +279,10 @@ async def run(
         if motor_clock_dev:
             dev_bridge = instrument_native_bridge_dev(
                 output_dir / "native_motor_clock_dev.jsonl",
+            )
+        if dash_forward_operator_dev:
+            forward_attr_bridge = generate_forward_attr_bridge_dev(
+                output_dir / "forward_client_attr_dev.jsonl",
             )
         report.update(
             paper_jar_sha256=paper_sha,
@@ -885,6 +894,13 @@ async def run(
 
         uninstrumented_launch = MineflayerProcessSession.launch
 
+        async def one_forward_operator_session_with_dev_bridge(config, **kwargs):
+            if forward_attr_bridge is None or "bridge_path" in kwargs:
+                raise S49PaperDevBlocked("extra forward diagnostic must reuse sole S49 process")
+            return await uninstrumented_launch(
+                config, bridge_path=forward_attr_bridge, **kwargs,
+            )
+
         async def one_existing_session_with_dev_bridge(config, **kwargs):
             if dev_bridge is None or "bridge_path" in kwargs:
                 raise S49PaperDevBlocked("DEV clock bridge requires original one-session launch")
@@ -900,7 +916,11 @@ async def run(
               }),
               (patch.object(MineflayerProcessSession, "launch",
                             one_existing_session_with_dev_bridge)
-               if motor_clock_dev else nullcontext()),
+               if motor_clock_dev else (
+                   patch.object(MineflayerProcessSession, "launch",
+                                one_forward_operator_session_with_dev_bridge)
+                   if dash_forward_operator_dev else nullcontext()
+               )),
               patch.object(original, "_fetch_official_server", paper_fetch),
               patch.object(original, "_write_config", paper_config),
               patch.object(original, "_ready_server", paper_ready),
@@ -1499,6 +1519,8 @@ async def run(
     finally:
         if dev_bridge is not None:
             remove_native_bridge_dev(dev_bridge)
+        if forward_attr_bridge is not None:
+            remove_forward_attr_bridge_dev(forward_attr_bridge)
         if created:
             # Reuse original S49's own process cleanup; never perform
             # second terminate/reap on a process owned by qualify().
