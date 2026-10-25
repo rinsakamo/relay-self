@@ -361,6 +361,55 @@ class MineflayerNativeClockPacket(MineflayerMessage):
             raise MineflayerAdapterProtocolError("unqualified native V6 clock packet")
 
 
+
+@dataclass(frozen=True, slots=True)
+class MineflayerPaperTickSample(MineflayerMessage):
+    """Opt-in Paper clientbound delivery, not a checked Self L0 WorldTick.
+
+    Identifiers are client-transport bound via MineflayerStreamDecoder,
+    but native origin and same-tick decision completion are NOT attested.
+    """
+
+    source: str
+    observation_precision: str
+    index: int
+    server_tick: str
+    world_full_time: str
+    wall_nanos: str
+    world: str
+    player: str
+    bridge_recv_monotonic_ns: str
+    l0_checked: bool
+    action_bound: bool
+    paper_native_source_authenticated: bool
+
+    def __post_init__(self) -> None:
+        MineflayerMessage.__post_init__(self)
+        if (
+            self.source != "PAPER_SCHEDULER_CALLBACK_ONLY"
+            or self.observation_precision != "PAPER_PLUGIN_MESSAGE_RECEIVED_LATER"
+            or type(self.index) is not int or not 1 <= self.index <= 256
+            or any(
+                type(v) is not str
+                or re.fullmatch(r"(0|[1-9][0-9]*)", v) is None
+                or int(v) >= 2**63
+                for v in (self.server_tick, self.world_full_time, self.wall_nanos)
+            )
+            or type(self.bridge_recv_monotonic_ns) is not str
+            or re.fullmatch(r"[1-9][0-9]*", self.bridge_recv_monotonic_ns) is None
+            or int(self.bridge_recv_monotonic_ns) >= 2**63
+            or type(self.world) is not str
+            or re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", self.world) is None
+            or type(self.player) is not str
+            or re.fullmatch(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", self.player) is None
+            or self.l0_checked is not False
+            or self.action_bound is not False
+            or self.paper_native_source_authenticated is not False
+        ):
+            raise MineflayerAdapterProtocolError("unqualified Paper tick transport sample")
+
+
+
 @dataclass(frozen=True, slots=True)
 class MineflayerEntityHurt(MineflayerMessage):
     entity_id: int
@@ -447,6 +496,7 @@ MineflayerDecodedMessage = Union[
     MineflayerAdapterStarted,
     MineflayerObservation,
     MineflayerNativeClockPacket,
+    MineflayerPaperTickSample,
     MineflayerEntityHurt,
     MineflayerEffectResult,
     MineflayerConnectionEnd,
@@ -573,6 +623,32 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
             tick_day_time=payload["tick_day_time"],
             host_monotonic_ns=payload["host_monotonic_ns"],
             command_effect_tick_attested=payload["command_effect_tick_attested"],
+        )
+
+    if message_type == "paper_tick_sample":
+        _require_exact_keys(
+            "paper_tick_sample", payload,
+            {
+                "type", "session_id", "seq", "source",
+                "observation_precision", "index", "server_tick",
+                "world_full_time", "wall_nanos", "world", "player",
+                "bridge_recv_monotonic_ns", "l0_checked", "action_bound",
+                "paper_native_source_authenticated",
+            },
+        )
+        return MineflayerPaperTickSample(
+            session_id=session_id, seq=seq,
+            source=payload["source"],
+            observation_precision=payload["observation_precision"],
+            index=payload["index"],
+            server_tick=payload["server_tick"],
+            world_full_time=payload["world_full_time"],
+            wall_nanos=payload["wall_nanos"],
+            world=payload["world"], player=payload["player"],
+            bridge_recv_monotonic_ns=payload["bridge_recv_monotonic_ns"],
+            l0_checked=payload["l0_checked"],
+            action_bound=payload["action_bound"],
+            paper_native_source_authenticated=payload["paper_native_source_authenticated"],
         )
 
     if message_type == "entity_hurt":
