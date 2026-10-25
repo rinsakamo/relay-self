@@ -40,6 +40,9 @@ from adapters.mineflayer.s49_p1_self_body_dev import (
     compose_s49_p1_dev_self_body,
     compose_s49_p1_postwait_native_dev,
 )
+from adapters.mineflayer.s49_p1_same_native_gait_dev import (
+    compare_fifth_p1_gait_dev,
+)
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from experiments.fatigue_p1 import FatigueProfile
 from relay_self.provenance import Provenance
@@ -104,6 +107,7 @@ async def run(
     fresh_target_distance: int = 2,
     actual_next_epoch: bool = False,
     actual_fifth_epoch: bool = False,
+    compare_fifth_gait: bool = False,
 ) -> int:
     """One new Paper World, original S49 two MOVE actions, one post-WAIT sample."""
     report = {
@@ -116,6 +120,7 @@ async def run(
         "p1_production_state_updated": False,
         "actual_original_s49_next_epoch": actual_next_epoch,
         "actual_original_s49_fifth_epoch": actual_fifth_epoch,
+        "compare_fifth_gait": compare_fifth_gait,
     }
     created = False
     try:
@@ -125,6 +130,8 @@ async def run(
             raise S49PaperDevBlocked("fresh DEV threat distance must be exactly 2 or 10 blocks")
         if actual_fifth_epoch and (not actual_next_epoch or fresh_target_distance != 2):
             raise S49PaperDevBlocked("fifth DEV epoch requires fourth original MOVE")
+        if compare_fifth_gait and not actual_fifth_epoch:
+            raise S49PaperDevBlocked("same-native P1 gait review needs fifth original L0")
         paper_jar = _fresh_asset(paper_jar, paper_sha)
         observer_jar = _fresh_asset(observer_jar, observer_sha)
         if paper_jar.resolve() == observer_jar.resolve():
@@ -145,6 +152,7 @@ async def run(
             "third_action": None, "third_move_probe": None,
             "third_move_model": None, "third_move_body": None,
             "fifth_l0_probe": None, "fifth_l0_view": None,
+            "fifth_gait_compare": None,
             "third_clear_seq": None,
             "fresh_trace": [],
         }
@@ -419,6 +427,10 @@ async def run(
                     observed["fifth_l0_view"] = project_fifth_l0_view_dev(
                         observed["third_move_model"], reading,
                     )
+                    if compare_fifth_gait:
+                        observed["fifth_gait_compare"] = compare_fifth_p1_gait_dev(
+                            observed["third_move_model"], reading,
+                        )
                 else:
                     if observed["next_l0_probe"] is not None:
                         raise S49PaperDevBlocked("multiple next-epoch native probes")
@@ -567,6 +579,18 @@ async def run(
                         or len(source["actual_native_actions"]) != 3
                         or fifth["p1_as_action_authority"] is not False):
                     raise S49PaperDevBlocked("fifth original epoch/P1 join rejected")
+                if compare_fifth_gait:
+                    gait = observed["fifth_gait_compare"]
+                    if (not isinstance(gait, dict)
+                            or gait["fifth_native_seq"] != fifth_native.seq
+                            or gait["fifth_native_request_id"] != fifth_native.request_id
+                            or gait["third_original_action_id"] != third_model.third_action_id
+                            or gait["same_native_world_input"] is not True
+                            or gait["baseline_nominal_command_duration_s"]
+                            <= gait["fatigue_aware_candidate_duration_s"]
+                            or gait["candidate_executed"] is not False
+                            or gait["new_grants"] != 0):
+                        raise S49PaperDevBlocked("fifth same-native gait model comparison invalid")
                 report.update(
                     status="PASS",
                     classification="DEV_WORLD_ORIGINAL_S49_FIFTH_WAIT_THIRD_P1_MODEL",
@@ -576,6 +600,7 @@ async def run(
                     p1=p1,
                     third_move_p1_self_body_dev=third_view,
                     fifth_l0_self_world_body_dev=fifth_view,
+                    fifth_l0_p1_gait_compare_dev=observed["fifth_gait_compare"],
                     original_fourth_l0_dev=witness,
                     original_fifth_l0_dev={
                         **fifth, "status": "DEV_SAME_ORIGINAL_HOST_FIFTH_NATIVE_WAIT",
@@ -841,6 +866,10 @@ def main(argv: list[str] | None = None) -> int:
         "--actual-fifth-epoch", action="store_true",
         help="Explicit DEV-only fifth native WAIT after original third MOVE",
     )
+    parser.add_argument(
+        "--compare-fifth-gait", action="store_true",
+        help="DEV only same-native P1 gait candidate, no Action modification",
+    )
     args = parser.parse_args(argv)
     return asyncio.run(run(
         args.output_dir, args.paper_jar, args.paper_sha256,
@@ -849,6 +878,7 @@ def main(argv: list[str] | None = None) -> int:
         fresh_target_distance=args.fresh_target_distance,
         actual_next_epoch=args.actual_next_epoch,
         actual_fifth_epoch=args.actual_fifth_epoch,
+        compare_fifth_gait=args.compare_fifth_gait,
     ))
 
 
