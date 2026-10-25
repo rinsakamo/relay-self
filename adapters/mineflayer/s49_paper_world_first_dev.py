@@ -35,16 +35,16 @@ from adapters.mineflayer.s49_p1_l0_gait_candidate_dev import (
 from adapters.mineflayer.s49_p1_l0_near_decide_dev import decide_bounded_near_move_dev
 from adapters.mineflayer.s49_p1_l0_sensitivity_dev import compare_p1_knockdown_dev
 from adapters.mineflayer.s49_p1_l0_shadow_dev import preview_postwait_l0_dev
+from adapters.mineflayer.s49_p1_physical_pair_dev import (
+    BASELINE,
+    STRESS,
+    evaluate_sixth_motor_sensitivity_dev,
+)
 from adapters.mineflayer.s49_p1_postwait_native_dev import (
     compose_postwait_native_self_world_dev,
 )
 from adapters.mineflayer.s49_p1_same_native_gait_dev import (
     compare_fifth_p1_gait_dev,
-)
-from adapters.mineflayer.s49_p1_physical_pair_dev import (
-    BASELINE,
-    STRESS,
-    evaluate_sixth_motor_sensitivity_dev,
 )
 from adapters.mineflayer.s49_p1_self_body_dev import (
     compose_s49_p1_dev_self_body,
