@@ -81,12 +81,15 @@ def test_shadow_rejects_crosssource_or_modified_world(monkeypatch, bad):
     elif bad == "mode":
         reviewed["dev_fatigue_mode"] = "SEED"
     elif bad == "retained":
-        retained = replace(retained, value=3)
+        retained = s19._epoch_one()[1].previous_state
     elif bad == "foreign_p1":
         body = replace(body, session_id="foreign")
     else:
         native = replace(native, snapshot=replace(
             native.snapshot, nearby_entities=(),
+            nearby_entities_coverage=replace(
+                native.snapshot.nearby_entities_coverage, candidate_count=0,
+            ),
         ))
     with pytest.raises(BoundaryRejected):
         evaluate(body, native, handoff, reviewed, retained)
