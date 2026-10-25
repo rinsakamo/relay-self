@@ -17,8 +17,19 @@ metabolic pathways. Keep **one P1 fatigue state**.
 | RUN | vanilla sprint | 5.61 |
 | DASH | forward sprint + temporary speed modifier | up to 8.415 |
 
-DASH is **forward only**. Other directions must not receive a DASH speed
-modifier. Maximal speed is 1.5 × RUN. Actual Minecraft server/client speeds,
+DASH's **boost is forward only**, but DASH *stance* is retained while
+strafing or retreating. For the first DEV model, side/back cap is set to
+JOG's 4.32 m/s (design ceiling, **not** an observed Minecraft velocity).
+Side/back consume no additional DASH M0 charge and use ordinary RUN fatigue;
+a transition back to forward movement may use DASH again if its P1/M0 budget
+permits it. Maximal forward speed is 1.5 × RUN. This avoids toggling off the
+DASH stance at every directional change. Paper's global MOVEMENT_SPEED
+attribute does **not** impose a hard direction-dependent cap. A physical
+motor-mode controller must apply the forward modifier only where supported,
+and must validate authoritative directional input or displacement to rule
+out unintended sideways/backward acceleration. Previous Paper InputEvent
+probes did not establish reliable control edges; fail closed on ambiguity.
+Do not claim that this offline model enforces the in-World directional cap. Actual Minecraft server/client speeds,
 especially acceleration, stopping, and effects in other directions, must be
 measured rather than inferred from these nominal numbers.
 
