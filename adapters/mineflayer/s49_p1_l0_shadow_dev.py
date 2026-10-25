@@ -47,6 +47,7 @@ def preview_postwait_l0_dev(
             or retained.target_id != "risk_weight"
             or retained.revision != 1 or retained.value != 4
             or body.session_id != handoff.session_id
+            or body.self_id != handoff.after_wait.self_id
             or native.session_id != handoff.session_id
             or reviewed.get("session_id") != handoff.session_id
             or reviewed.get("action_id") != handoff.action_id
