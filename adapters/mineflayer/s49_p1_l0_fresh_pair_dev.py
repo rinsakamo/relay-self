@@ -106,6 +106,21 @@ def review_postwait_fresh_l0_input_dev(
         raise BoundaryRejected("original L0 rejected fresh World stimulus") from exc
     if l0.events != 0 or l0.action_requests != 0 or choice.action_authorized:
         raise BoundaryRejected("read-only L0 check unexpectedly consumed authority")
+    # A distant threat can exercise ORIGINAL ReactiveL0.decide() safely:
+    # the frozen WAIT branch accepts grant=None and issues zero Actions.
+    # This is a NEW bounded DEV-only L0 instance; the original S49 host
+    # (whose three-event budget is complete) remains untouched.
+    shadow_wait_decided = False
+    if choice.selection.value == "WAIT":
+        step = l0.decide(event, probe, grant=None)
+        if (step.choice != choice or step.asks_for_action
+                or step.grant is not None or step.action_request_id is not None
+                or l0.events != 1 or l0.action_requests != 0):
+            raise BoundaryRejected("real L0 WAIT decision attempted Action")
+        shadow_wait_decided = True
+    if (l0.action_requests != 0
+            or shadow_wait_decided != (choice.selection.value == "WAIT")):
+        raise BoundaryRejected("shadow WAIT path not Action-free")
     comparison = compare_body_capability_l0_dev(
         new_body, probe, handoff, p1_reviewed, profile, retained,
     )
@@ -144,6 +159,13 @@ def review_postwait_fresh_l0_input_dev(
         ),
         "fresh_native_p1_sensor": new_body.sensed("p1_fatigue_sensor").value,
         "original_l0_decide_called": False,
+        "bounded_dev_shadow_l0_decide_called": shadow_wait_decided,
+        "bounded_dev_shadow_l0_decision": (
+            "WAIT" if shadow_wait_decided else None
+        ),
+        "bounded_dev_shadow_l0_events": l0.events,
+        "bounded_dev_shadow_l0_action_requests": l0.action_requests,
+        "original_s49_host_l0_replaced": False,
         "new_l0_owner_registered": False,
         "new_action_grant_issued": False,
         "new_action_issued": False,
