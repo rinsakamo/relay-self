@@ -94,6 +94,7 @@ async def _await_complete(paper_log: Path, offset: int, *, timeout: float = 15) 
 async def run(
     output_dir: Path, paper_jar: Path, paper_sha: str,
     observer_jar: Path, observer_sha: str, *, confirmation: str,
+    fresh_target_distance: int = 2,
 ) -> int:
     """One new Paper World, original S49 two MOVE actions, one post-WAIT sample."""
     report = {
@@ -109,6 +110,8 @@ async def run(
     try:
         if confirmation != CONFIRM:
             raise S49PaperDevBlocked("explicit disposable DEV confirmation required")
+        if type(fresh_target_distance) is not int or fresh_target_distance not in (2, 10):
+            raise S49PaperDevBlocked("fresh DEV threat distance must be exactly 2 or 10 blocks")
         paper_jar = _fresh_asset(paper_jar, paper_sha)
         observer_jar = _fresh_asset(observer_jar, observer_sha)
         if paper_jar.resolve() == observer_jar.resolve():
@@ -256,7 +259,8 @@ async def run(
                 original._command(
                     server,
                     "execute at RelaySelf run summon minecraft:zombie "
-                    "~2 ~ ~ {NoAI:1b,Silent:1b,PersistenceRequired:1b,"
+                    f"~{fresh_target_distance} ~ ~ "
+                    "{NoAI:1b,Silent:1b,PersistenceRequired:1b,"
                     "Invulnerable:1b}",
                 )
                 await server.stdin.drain()
@@ -315,6 +319,7 @@ async def run(
                            OriginalS49WithPassivePaperDEV)):
             rc = await original.qualify(original_report, paper_log)
         report["original_s49_rc"] = rc
+        report["postwait_fresh_target_distance_m"] = fresh_target_distance
         report["original_s49_action_count"] = observed["count"]
         report["world_status"] = "CLOSED_WITH_ORIGINAL_S49_CLEANUP"
         if rc != 0 or observed["count"] != 2 or observed["window"] is None:
@@ -420,7 +425,14 @@ async def run(
         if (fresh_pair["fresh_event_seq"] <= actual_next_cognition["native_seq"]
                 or fresh_pair["fresh_probe_seq"] <= fresh_pair["fresh_event_seq"]
                 or fresh_pair["original_l0_decide_called"] is not False
-                or fresh_pair["new_action_issued"] is not False):
+                or fresh_pair["new_action_issued"] is not False
+                or fresh_pair["bounded_dev_shadow_l0_action_requests"] != 0
+                or fresh_pair["bounded_dev_shadow_l0_decide_called"]
+                != (fresh_pair["fresh_s42_selection"] == "WAIT")
+                or (fresh_target_distance == 10
+                    and fresh_pair["fresh_s42_selection"] != "WAIT")
+                or (fresh_target_distance == 2
+                    and fresh_pair["fresh_s42_selection"] != "MOVE_AWAY")):
             raise S49PaperDevBlocked("post-WAIT fresh native L0 source invalid")
         # Optional DEV-only cognition candidate: revalidate BOTH P1
         # model profiles against the SAME real fresh native event/probe.
@@ -485,11 +497,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--observer-jar", type=Path, required=True)
     parser.add_argument("--observer-sha256", required=True)
     parser.add_argument("--confirm", required=True)
+    parser.add_argument(
+        "--fresh-target-distance", type=int, choices=(2, 10), default=2,
+        help="Post-WAIT external DEV zombie stimulus in blocks; only 2 or 10",
+    )
     args = parser.parse_args(argv)
     return asyncio.run(run(
         args.output_dir, args.paper_jar, args.paper_sha256,
         args.observer_jar, args.observer_sha256,
         confirmation=args.confirm,
+        fresh_target_distance=args.fresh_target_distance,
     ))
 
 
