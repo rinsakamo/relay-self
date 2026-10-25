@@ -294,3 +294,72 @@ knockdown itself. Never infer actual per-tick MOVE displacement, a causal
 effect of physical fatigue on L0 behavior, or a qualified WAIT from this
 model-only intervention. The World runner records `next_l0_sensitivity_dev`
 beside the original native/SelfWorld/SelfBody/capability reports.
+
+## 2026-10-25: after-WAIT FRESH native L0 input pairing — real DEV PASS
+
+The original S49 owner still executes exactly two original MOVE Actions.
+The Paper observer then captures eight consecutive post-control-clear idle
+callback ticks. The *same* original Mineflayer session retrieves one
+post-WAIT correlated native probe. At this point the S49 original host is
+awaiting the executor callback; its JSONL receiver is not concurrently active.
+
+An explicit **external DEV World stage** next clears the old zombie.
+Instead of assuming the Paper console "Killed" response also means that
+Mineflayer's entity registry is current, the original receiver waits for
+an actual native observation whose registry contains **zero zombies**.
+Only after the zero-zombie snapshot has been received does the external
+server console summon one new no-AI zombie at a near position. The same
+original sole session reader captures the new `kind=entities` event and
+issues an exact correlated native `probe` request. This separation matters:
+an earlier run that summoned immediately observed a two-zombie entity
+snapshot and did NOT pass the old L0 uniqueness requirement.
+
+`s49_p1_l0_fresh_pair_dev.review_postwait_fresh_l0_input_dev()`
+checks original-session ordering, first post-WAIT probe, newly observed
+zombie identity, event/probe exact request and native geometry, and calls
+the original `NormalWorldL0._check(event, probe)` on a **fresh bounded
+DEV shadow instance**. A new immutable SelfBodyView is created from the
+*new* correlated probe with the already validated P1 **hypothesis**; the
+older probe's native geometry is not reused. Frozen S42 policy is compared
+to the same new native probe and P1's modeled movement capability.
+
+This is stronger than the prior post-WAIT **probe-only** shadow: a genuine
+new `entities` stimulus and a later matching `probe` now exist. Still,
+`_check` does not call `ReactiveL0.decide`; no independent S49 Action
+grant is minted, no L0 owner is registered as a production controller,
+no extra S49 Action is executed, and no L0 behavioral fatigue effect is
+inferred. World staging is a DEV external experimenter change, NOT a
+Self/Mineflayer issued Action. P1 remains a virtual model, and Paper ticks
+are not native-probe-time-attested.
+
+### Reproduced evidence
+
+- **DEV source HEAD:** `d50e62801f2f00e0069d390c9af036ec90e7ed46`
+- **Real World run:** GitHub Actions #40161285724, SUCCESS; original S49
+  and full outer report PASS. Java and Node exit 0; two original MOVE
+  outcomes; same World/Action/Observer and Paper callback ticks **458–465**.
+- **S49 MOVE measured:** final distance `0.6269065734210617` blocks;
+  P1 original default MODEL `0.02507626293684247` gain and same
+  recovery, ending at 0 (not R-certified fatigue).
+- **Ordered one-session native inputs:** initial post-WAIT probe seq 62;
+  old zombie native absence at seq 66; genuinely new zombie
+  `entities` event **seq 67, entity 28**; correlated probe **seq 68**;
+  same session `f0e3712a-b8d3-41c9-a05e-d1f925fb9dd4`.
+- Original S42 source check returns MOVE_AWAY at 2.0m, **no** Action grant,
+  Action dispatch, production P1 commit, or fatigue-attested sensor.
+- Evidence: Actions archive ID `12586941262`; locally independent
+  archive parse checked original S49 status, exits, move count, Paper log
+  SHA, consecutive WAIT ticks, P1 gain/recovery and all fresh-pair bounds.
+
+The three earlier fail-closed DEV attempts are retained in separate
+artifacts and do not become PASS retroactively: #40160267832 (one-second
+native event wait), #40160629621 (async S19 owner call), #40160941736
+(old/new entity registry overlap). The latest implementation uses a
+bounded source wait, runs original frozen S19 reconstruction off the
+running asyncio event loop, and gates new World spawn on native
+zero-zombie evidence. These were ordinary isolated DEV corrections,
+never repeated R or V trials.
+
+**Classification:** `DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+No changes to original S49/P1 physics files, protected historical
+evidence, Draft #545/#634 or main.
