@@ -1,0 +1,13 @@
+name: RelayS49DashDev
+main: io.github.rinsakamo.relays49dash.S49DashDevPlugin
+version: '0.1.0-dev'
+api-version: '1.21.8'
+description: 'DEV-only fail-closed forward DASH modifier; no Action authorization'
+load: POSTWORLD
+commands:
+  relays49dasharm:
+    description: 'Disposable console DEV arm, not an Action permission'
+    usage: '/relays49dasharm <action_id> <session_id> <player_uuid> <power>'
+  relays49dashoff:
+    description: 'Disposable console DEV release; clears the own transient modifier'
+    usage: '/relays49dashoff <action_id> <session_id> <player_uuid>'
