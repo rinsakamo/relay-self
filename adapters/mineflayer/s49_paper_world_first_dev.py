@@ -25,6 +25,10 @@ from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
 from adapters.mineflayer.s49_motor_clock_review_dev import review_native_motor_clock_dev
+from adapters.mineflayer.s49_paper_input_edges_dev import (
+    await_paper_input_arm_dev,
+    review_paper_input_edges_dev,
+)
 from adapters.mineflayer.s49_native_motor_clock_dev import (
     instrument_native_bridge_dev,
     remove_native_bridge_dev,
@@ -131,6 +135,7 @@ async def run(
     motor_scenario: str = BASELINE,
     selfbody_motion_feedback: bool = False,
     motor_clock_dev: bool = False,
+    paper_input_edges_dev: bool = False,
 ) -> int:
     """One new Paper World, original S49 two MOVE actions, one post-WAIT sample."""
     report = {
@@ -148,6 +153,7 @@ async def run(
         "motor_scenario": motor_scenario,
         "selfbody_motion_feedback": selfbody_motion_feedback,
         "motor_clock_dev": motor_clock_dev,
+        "paper_input_edges_dev": paper_input_edges_dev,
     }
     created = False
     dev_bridge = None
@@ -175,6 +181,10 @@ async def run(
         if motor_clock_dev and not selfbody_motion_feedback:
             raise S49PaperDevBlocked(
                 "passive motor clock requires original SelfBody closed-loop"
+            )
+        if paper_input_edges_dev and not motor_clock_dev:
+            raise S49PaperDevBlocked(
+                "Paper input edge observations require original Node/S49 clock opt-in"
             )
         paper_jar = _fresh_asset(paper_jar, paper_sha)
         observer_jar = _fresh_asset(observer_jar, observer_sha)
@@ -206,6 +216,7 @@ async def run(
             "sixth_motor_sensitivity": None,
             "motion_state": None, "motion_correction": None,
             "motion_pre_sixth": None,
+            "paper_prearm_offset": None, "paper_first_session": None,
             "third_clear_seq": None,
             "fresh_trace": [],
         }
@@ -248,6 +259,11 @@ async def run(
             async def execute(self, *args, **kwargs):
                 receipt = await super().execute(*args, **kwargs)
                 observed["count"] += 1
+                if paper_input_edges_dev and observed["count"] == 1:
+                    if (not args or args[0].started.session_id != self.session_id
+                            or self.supervisor.open_actions):
+                        raise S49PaperDevBlocked("Paper prearm must share first closed S49 owner")
+                    observed["paper_first_session"] = args[0]
                 if selfbody_motion_feedback:
                     previous = observed["motion_state"]
                     if previous is None:
@@ -349,13 +365,20 @@ async def run(
                 # Give the server time to settle before the independent
                 # Paper idle observation; the delay itself admits no ticks.
                 await asyncio.sleep(0.5)
-                offset = paper_log.stat().st_size if paper_log.exists() else 0
-                original._command(
-                    server, "relays49observe "
-                    + receipt.terminal.action_id + " "
-                    + self.session_id + " " + offline_uuid(BOT_USERNAME),
-                )
-                await server.stdin.drain()
+                if paper_input_edges_dev:
+                    offset = observed["paper_prearm_offset"]
+                    if (type(offset) is not int
+                            or receipt.terminal.action_id
+                            != observed["paper_prearm_action_id"]):
+                        raise S49PaperDevBlocked("prearmed Paper must match second closed S49 Action")
+                else:
+                    offset = paper_log.stat().st_size if paper_log.exists() else 0
+                    original._command(
+                        server, "relays49observe "
+                        + receipt.terminal.action_id + " "
+                        + self.session_id + " " + offline_uuid(BOT_USERNAME),
+                    )
+                    await server.stdin.drain()
                 observed["window"] = await _await_complete(paper_log, offset)
                 (output_dir / "paper_observer_window.log").write_text(
                     observed["window"], encoding="utf-8",
@@ -489,6 +512,28 @@ async def run(
             # Hook the ORIGINAL S49 executor's S15 transport, after the
             # original Action issue and all existing S14/S16 authorization.
             # No additional Action issuer, reader, grant or process.
+            if paper_input_edges_dev and observed["count"] == 1:
+                server = observed["server"]
+                if (observed["paper_prearm_offset"] is not None
+                        or session is not observed["paper_first_session"]
+                        or server is None or server.stdin is None
+                        or not command.action_id.startswith("s49-native-move-")
+                        or command.duration_s != 0.2):
+                    raise S49PaperDevBlocked("Paper must prearm once before original second MOVE")
+                offset = paper_log.stat().st_size if paper_log.exists() else 0
+                observed["paper_prearm_offset"] = offset
+                observed["paper_prearm_action_id"] = command.action_id
+                original._command(
+                    server, "relays49preobserve "
+                    + command.action_id + " "
+                    + session.started.session_id + " " + offline_uuid(BOT_USERNAME),
+                )
+                await server.stdin.drain()
+                await await_paper_input_arm_dev(
+                    paper_log, offset=offset,
+                    action_id=command.action_id,
+                    session_id=session.started.session_id,
+                )
             if actual_sixth_motor and observed["sixth_l0_probe"] is not None:
                 probe = observed["sixth_l0_probe"]
                 gait = observed["fifth_gait_compare"]
@@ -915,6 +960,12 @@ async def run(
                             report["selfbody_motion_feedback_dev"],
                         )
                         report["motor_clock_observation_dev"] = review
+                        if paper_input_edges_dev:
+                            report["paper_server_input_edges_dev"] = (
+                                review_paper_input_edges_dev(
+                                    paper_log, source, review,
+                                )
+                            )
                     report.update(
                         status="PASS",
                         classification="DEV_WORLD_SIXTH_ORIGINAL_S49_P1_MOTOR_TIMING_APPLIED",
@@ -1237,6 +1288,10 @@ def main(argv: list[str] | None = None) -> int:
         "--motor-clock-dev", action="store_true",
         help="DEV only: read-only per-Action Node ON/OFF and client physicsTick in one generated bridge",
     )
+    parser.add_argument(
+        "--paper-input-edges-dev", action="store_true",
+        help="DEV only: arm existing one-shot Paper observer BEFORE original second MOVE",
+    )
     args = parser.parse_args(argv)
     return asyncio.run(run(
         args.output_dir, args.paper_jar, args.paper_sha256,
@@ -1250,6 +1305,7 @@ def main(argv: list[str] | None = None) -> int:
         motor_scenario=args.motor_scenario,
         selfbody_motion_feedback=args.selfbody_motion_feedback,
         motor_clock_dev=args.motor_clock_dev,
+        paper_input_edges_dev=args.paper_input_edges_dev,
     ))
 
 
