@@ -1,0 +1,35 @@
+# Minimal DEV: offline rate model only. No Minecraft, no qualification, no FULL.
+name: P1 Single Fatigue Gaits Focused DEV
+on:
+  push:
+    branches:
+      - self/dev-p1-gait-net-recovery-dash-20261025
+    paths:
+      - .github/workflows/self-p1-gait-focused-dev.yml
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Focused DEV tests and Ruff
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          python -m compileall -q experiments/p1_gait_dev.py tests/test_p1_gait_dev.py
+          ruff check experiments/p1_gait_dev.py tests/test_p1_gait_dev.py
+          python -m pytest -q tests/test_p1_gait_dev.py tests/test_fatigue_p1.py tests/test_fatigue_p1_boundary.py
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
