@@ -20,13 +20,22 @@ from adapters.mineflayer.self_action_evidence import (
 from adapters.mineflayer.self_body_projection import project_body_present
 from adapters.mineflayer.self_world_projection import project_self_world_present
 from experiments.fatigue_p1 import (
-    FatigueFrame, FatigueProfile, FatigueRejected, FatigueSensor,
-    advance, capability, initial_state, observe,
+    FatigueFrame,
+    FatigueProfile,
+    FatigueRejected,
+    FatigueSensor,
+    advance,
+    capability,
+    initial_state,
+    observe,
 )
 from relay_self.prediction import PredictionState, StateVariable
 from relay_self.provenance import Provenance
 from relay_self.self_body import (
-    BodyHypothesis, BodyOrigin, InvalidSelfBodyData, SelfBodyView,
+    BodyHypothesis,
+    BodyOrigin,
+    InvalidSelfBodyData,
+    SelfBodyView,
     compose_self_body_view,
 )
 from relay_self.self_world import InvalidSelfWorldData, compose_self_world_view
