@@ -1,3 +1,4 @@
+# DEV follow-on: evaluate baseline/stress gait candidate on the SAME fresh L0 pair.
 # DEV fresh-event trial 4: native CLEAR_OLD confirmed before SPAWN_NEW, then exact L0 pair.
 # DEV fresh-event trial 3: offload frozen S19 owner creation from running asyncio loop.
 # DEV fresh-event trial 2: bounded 15s single receiver after Paper WAIT; retain diagnostics on failure.
@@ -72,7 +73,7 @@ jobs:
       - name: Python 3.12 focused DEV entrypoint checks BEFORE any World
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py tests/test_s49_p1_l0_capability_dev.py tests/test_s49_p1_l0_sensitivity_dev.py tests/test_s49_p1_l0_fresh_pair_dev.py
+          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py tests/test_s49_p1_l0_capability_dev.py tests/test_s49_p1_l0_sensitivity_dev.py tests/test_s49_p1_l0_fresh_pair_dev.py tests/test_s49_p1_l0_gait_candidate_dev.py
       - name: Compile single read-only Paper wait observer on Java 21
         run: |
           mvn -B -ntp -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml -DskipTests package
@@ -328,6 +329,46 @@ jobs:
           assert fresh["qualification_go"] is False
           assert fresh["science_go"] is False
           print("S49_P1_FRESH_NATIVE_L0_INPUT_DEV_PASS", fresh)
+          gait = report["next_l0_gait_candidate_dev"]
+          assert gait["status"] == "DEV_FRESH_WORLD_P1_CAPABILITY_CONDITIONED_L0_CANDIDATE"
+          assert gait["session_id"] == fresh["session_id"]
+          assert gait["action_id"] == fresh["action_id"]
+          assert gait["world"] == fresh["world"]
+          assert gait["observer_run_id"] == fresh["observer_run_id"]
+          assert gait["paper_window_sha256"] == fresh["paper_window_sha256"]
+          assert gait["fresh_event_seq"] == fresh["fresh_event_seq"]
+          assert gait["fresh_probe_seq"] == fresh["fresh_probe_seq"]
+          assert gait["fresh_probe_request_id"] == fresh["fresh_probe_request_id"]
+          assert gait["fresh_native_source_ref"] == fresh["fresh_native_body_source_ref"]
+          assert gait["fresh_zombie_entity_id"] == fresh["fresh_zombie_entity_id"]
+          assert gait["fresh_s42_selection_unchanged"] == fresh["fresh_s42_selection"]
+          assert gait["baseline_after_wait_model_fatigue"] == 0.0
+          assert 0 < gait["stress_after_wait_model_fatigue"] < 1.0
+          assert gait["baseline_one_tick_capacity_blocks"] == 1.0
+          assert gait["stress_one_tick_capacity_blocks"] < 1.0
+          if gait["fresh_s42_selection_unchanged"] == "MOVE_AWAY":
+              assert gait["baseline_cognition_candidate"] == (
+                  "MOVE_AWAY_NOMINAL_MODEL_CANDIDATE"
+              )
+              assert gait["stress_cognition_candidate"] == (
+                  "MOVE_AWAY_LIMIT_TO_MODEL_CAPACITY_CANDIDATE"
+              )
+              assert gait["gait_candidate_changed_by_p1_scenario"] is True
+          else:
+              assert gait["baseline_cognition_candidate"] == "WAIT_NO_ACTION_CANDIDATE"
+              assert gait["stress_cognition_candidate"] == "WAIT_NO_ACTION_CANDIDATE"
+              assert gait["gait_candidate_changed_by_p1_scenario"] is False
+          assert gait["s42_intent_modified"] is False
+          assert gait["actual_l0_decide_called"] is False
+          assert gait["new_action_grant_issued"] is False
+          assert gait["new_action_issued"] is False
+          assert gait["additional_native_receivers"] == 0
+          assert gait["additional_native_probes"] == 0
+          assert gait["p1_physically_attested"] is False
+          assert gait["production_p1_mutated"] is False
+          assert gait["qualification_go"] is False
+          assert gait["science_go"] is False
+          print("S49_P1_FRESH_GAIT_CANDIDATE_DEV_PASS", gait)
           PY
       - name: Preserve original DEV receipts and failures (R/SCIENCE not run)
         if: always()
