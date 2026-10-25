@@ -23,7 +23,6 @@ def _original_closed(index: int, *, distance: float = 0.6269065734210617):
     # evidence exactly as required by capture_native_action_evidence().
     *_, source, _, _ = s17.executed_closed_chain()
     aid = f"original-s49-move-{index}"
-    sid = source.session_id
     shift = index * 100
     before, dispatch = source.before_observation, source.dispatch_receipt
     cleanup, after = source.cleanup_receipt, source.after_observation
