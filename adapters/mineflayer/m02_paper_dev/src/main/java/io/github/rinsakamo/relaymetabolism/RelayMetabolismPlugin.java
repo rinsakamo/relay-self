@@ -88,6 +88,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     // *relative* duration from this instance instead of its absolute value.
     private final long adaptiveTickClockOriginNanos = System.nanoTime();
     private static final int ADAPTIVE_TICK_ROWS_MAX = 256;
+    private static final String ADAPTIVE_TICK_CHANNEL = "relayself:world_tick_dev";
     private boolean s50TickMeterArmed = false;
     private Location s50TickMeterLast;
     private long s50TickMeterRows = 0;
@@ -224,6 +225,12 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             }
             adaptiveTickObserverDev = getConfig().getBoolean(
                 "adaptive-tick-observer-dev", false);
+            if (adaptiveTickObserverDev) {
+                // Client receives on its existing Mineflayer transport.
+                // Server receives NO tick input commands or Action effects.
+                getServer().getMessenger().registerOutgoingPluginChannel(
+                    this, ADAPTIVE_TICK_CHANNEL);
+            }
             target = getConfig().getString("target-player", "");
             if (!target.equals("RelaySelf")) {
                 throw new IllegalStateException("only the owned RelaySelf dev bot is supported");
@@ -269,14 +276,21 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 // Never infer S49 Action ID/session or use as a motor writer.
                 if (adaptiveTickObserverDev && adaptiveTickRows < ADAPTIVE_TICK_ROWS_MAX) {
                     adaptiveTickRows++;
-                    getLogger().info("PAPER_DEV_TIME_SAMPLE index=" + adaptiveTickRows
+                    String tickWire = "index=" + adaptiveTickRows
                         + " server_tick=" + Bukkit.getCurrentTick()
                         + " world_full_time=" + p.getWorld().getFullTime()
                         + " wall_nanos=" + (System.nanoTime() - adaptiveTickClockOriginNanos)
                         + " world=" + p.getWorld().getUID()
                         + " player=" + p.getUniqueId()
                         + " source=PAPER_SCHEDULER_CALLBACK_ONLY"
-                        + " l0_checked=false action_bound=false");
+                        + " l0_checked=false action_bound=false";
+                    getLogger().info("PAPER_DEV_TIME_SAMPLE " + tickWire);
+                    // No client subscription means no wire receipt. A logged
+                    // Paper callback must never be mistaken for an L0 check.
+                    if (p.getListeningPluginChannels().contains(ADAPTIVE_TICK_CHANNEL)) {
+                        p.sendPluginMessage(this, ADAPTIVE_TICK_CHANNEL,
+                            tickWire.getBytes(StandardCharsets.US_ASCII));
+                    }
                 }
                 if (s50TickMeterArmed) {
                     meterS50Tick(p);
