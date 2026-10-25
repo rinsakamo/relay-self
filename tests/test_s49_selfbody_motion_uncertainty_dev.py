@@ -17,7 +17,6 @@ from adapters.mineflayer.s49_selfbody_motion_uncertainty_dev import (
 )
 from test_s49_selfbody_motion_feedback_dev import _issued_command, _original_closed
 
-
 NOMINAL = 0.19648932318884205
 
 
