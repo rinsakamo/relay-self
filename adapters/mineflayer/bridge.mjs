@@ -11,6 +11,7 @@ import {
   resolveAttackEntity
 } from './bridge_hooks.mjs'
 import { attachV6NativeClockPackets } from './v6_native_clock.mjs'
+import { attachPaperTickChannel } from './paper_tick_channel.mjs'
 import {
   admitProbeRequestId,
   makeEnvelope,
@@ -60,6 +61,17 @@ if (clockOptIn !== undefined && !['0', '1'].includes(clockOptIn)) {
 }
 if (clockOptIn === '1' && config.version !== '1.21.8') {
   process.stderr.write('V6 raw source requires explicit Minecraft 1.21.8\n')
+  process.exit(2)
+}
+// Explicitly opt-in. Both time and Action events remain on the same native
+// Mineflayer stdout receiver (no new process, socket, or physical issuer).
+const paperTickOptIn = process.env.RELAYSELF_PAPER_TICK_DEV
+if (paperTickOptIn !== undefined && !['0', '1'].includes(paperTickOptIn)) {
+  process.stderr.write('invalid Paper tick DEV opt-in\n')
+  process.exit(2)
+}
+if (paperTickOptIn === '1' && config.version !== '1.21.8') {
+  process.stderr.write('Paper tick DEV requires explicit 1.21.8\n')
   process.exit(2)
 }
 const sessionId = randomUUID()
@@ -115,6 +127,13 @@ emit('adapter_started', {
 })
 
 const bot = mineflayer.createBot(options)
+if (paperTickOptIn === '1') {
+  attachPaperTickChannel(
+    bot,
+    (sample) => emit('paper_tick_sample', sample),
+    (error) => emitAdapterError(error)
+  )
+}
 if (clockOptIn === '1') {
   attachV6NativeClockPackets(
     bot,
