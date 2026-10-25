@@ -11,7 +11,7 @@ from __future__ import annotations
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.normal_action import NormalWorldL0
 from adapters.mineflayer.python_protocol import MineflayerObservation
-from adapters.mineflayer.reactive_l0 import ReactiveL0Rejected
+from relay_self.reactive_l0 import ReactiveL0Rejected
 from adapters.mineflayer.s49_p1_l0_capability_dev import (
     compare_body_capability_l0_dev,
 )
