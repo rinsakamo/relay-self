@@ -36,12 +36,12 @@ from adapters.mineflayer.s49_p1_l0_shadow_dev import preview_postwait_l0_dev
 from adapters.mineflayer.s49_p1_postwait_native_dev import (
     compose_postwait_native_self_world_dev,
 )
+from adapters.mineflayer.s49_p1_same_native_gait_dev import (
+    compare_fifth_p1_gait_dev,
+)
 from adapters.mineflayer.s49_p1_self_body_dev import (
     compose_s49_p1_dev_self_body,
     compose_s49_p1_postwait_native_dev,
-)
-from adapters.mineflayer.s49_p1_same_native_gait_dev import (
-    compare_fifth_p1_gait_dev,
 )
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from experiments.fatigue_p1 import FatigueProfile
