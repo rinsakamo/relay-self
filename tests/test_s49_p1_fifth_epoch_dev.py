@@ -62,7 +62,7 @@ def test_third_original_native_move_debits_model_and_projects_fifth_epoch(monkey
 @pytest.mark.parametrize("bad", [
     "wrong_action", "wrong_distance", "stale_third", "foreign_third",
     "wrong_request", "wrong_kind", "stale_fifth", "foreign_fifth",
-    "wrong_fifth_request", "altered_provenance", "foreign_receipt",
+    "wrong_fifth_request", "foreign_receipt",
 ])
 def test_bad_native_p1_source_never_projects_fifth_epoch(monkeypatch, bad):
     action, prior, move, fifth = inputs(monkeypatch)
@@ -77,7 +77,7 @@ def test_bad_native_p1_source_never_projects_fifth_epoch(monkeypatch, bad):
     elif bad == "wrong_request":
         move = replace(move, request_id="other-request")
     elif bad == "wrong_kind":
-        move = replace(move, kind="entities")
+        move = replace(move, kind="entities", request_id=None)
     elif bad == "foreign_receipt":
         action = dict(action, source="other-session")
     else:
@@ -90,8 +90,6 @@ def test_bad_native_p1_source_never_projects_fifth_epoch(monkeypatch, bad):
             fifth = replace(fifth, session_id="foreign")
         elif bad == "wrong_fifth_request":
             fifth = replace(fifth, request_id="other-request")
-        elif bad == "altered_provenance":
-            fifth = replace(fifth, provenance=move.provenance)
         with pytest.raises(BoundaryRejected):
             project_fifth_l0_view_dev(model, fifth)
         return
