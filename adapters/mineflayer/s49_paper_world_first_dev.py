@@ -14,10 +14,12 @@ import os
 import shutil
 import socket
 import time
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 from uuid import UUID
 
+from adapters.mineflayer import normal_action as native_action_owner
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
@@ -108,6 +110,7 @@ async def run(
     actual_next_epoch: bool = False,
     actual_fifth_epoch: bool = False,
     compare_fifth_gait: bool = False,
+    actual_sixth_motor: bool = False,
 ) -> int:
     """One new Paper World, original S49 two MOVE actions, one post-WAIT sample."""
     report = {
@@ -121,6 +124,7 @@ async def run(
         "actual_original_s49_next_epoch": actual_next_epoch,
         "actual_original_s49_fifth_epoch": actual_fifth_epoch,
         "compare_fifth_gait": compare_fifth_gait,
+        "actual_sixth_motor": actual_sixth_motor,
     }
     created = False
     try:
@@ -132,6 +136,8 @@ async def run(
             raise S49PaperDevBlocked("fifth DEV epoch requires fourth original MOVE")
         if compare_fifth_gait and not actual_fifth_epoch:
             raise S49PaperDevBlocked("same-native P1 gait review needs fifth original L0")
+        if actual_sixth_motor and (not actual_fifth_epoch or not compare_fifth_gait):
+            raise S49PaperDevBlocked("physical DEV P1 motor requires same fifth comparison")
         paper_jar = _fresh_asset(paper_jar, paper_sha)
         observer_jar = _fresh_asset(observer_jar, observer_sha)
         if paper_jar.resolve() == observer_jar.resolve():
@@ -153,6 +159,8 @@ async def run(
             "third_move_model": None, "third_move_body": None,
             "fifth_l0_probe": None, "fifth_l0_view": None,
             "fifth_gait_compare": None,
+            "original_session": None, "sixth_l0_probe": None,
+            "sixth_clear_seq": None, "actual_sixth_motor_command": None,
             "third_clear_seq": None,
             "fresh_trace": [],
         }
@@ -162,6 +170,7 @@ async def run(
         unpatched_config = original._write_config
         unpatched_ready = original._ready_server
         original_executor = original.NormalSessionActionExecutor
+        original_native_execute = native_action_owner.execute_mineflayer_command
 
         def paper_fetch(target: Path) -> dict:
             shutil.copyfile(paper_jar, target)
@@ -266,6 +275,10 @@ async def run(
                     return receipt
                 if observed["count"] != 2:
                     return receipt
+                if actual_sixth_motor:
+                    if not args or args[0].started.session_id != self.session_id:
+                        raise S49PaperDevBlocked("sixth motor DEV missing original session owner")
+                    observed["original_session"] = args[0]
                 # The original S16 receipts are already completed; this
                 # callback does not issue another Minecraft native Action.
                 capture_native_action_evidence(receipt.consequence)
@@ -410,6 +423,53 @@ async def run(
                     args[0], fresh_req,
                 )
                 return receipt
+
+        async def scoped_native_motor_execute(session, command, *,
+                                               timeout_s, provenance):
+            # Hook the ORIGINAL S49 executor's S15 transport, after the
+            # original Action issue and all existing S14/S16 authorization.
+            # No additional Action issuer, reader, grant or process.
+            if actual_sixth_motor and observed["sixth_l0_probe"] is not None:
+                probe = observed["sixth_l0_probe"]
+                gait = observed["fifth_gait_compare"]
+                if (observed["actual_sixth_motor_command"] is not None
+                        or not isinstance(gait, dict)
+                        or session is not observed["original_session"]
+                        or probe.session_id != session.started.session_id
+                        or probe.request_id is None
+                        or not probe.request_id.startswith(
+                            f"s49-actual:{probe.session_id}:event-"
+                        )
+                        or command.action_id != (
+                            f"s49-native-move-{probe.request_id.rsplit('-', 1)[-1]}"
+                        )
+                        or gait["third_original_action_id"]
+                        != observed["third_move_model"].third_action_id
+                        or gait["candidate_executed"] is not False
+                        or gait["source_bound_tick"] is not None
+                        or gait["new_grants"] != 0
+                        or command.duration_s != gait["baseline_nominal_command_duration_s"]):
+                    raise S49PaperDevBlocked("sixth DEV motor timing not bound to original issued Action")
+                adapted_duration = gait["fatigue_aware_candidate_duration_s"]
+                if not 0 < adapted_duration < command.duration_s:
+                    raise S49PaperDevBlocked("P1 model cannot bound sixth motor timing")
+                observed["actual_sixth_motor_command"] = {
+                    "status": "DEV_ORIGINAL_S49_ISSUED_ACTION_MOTOR_DURATION_CHANGED",
+                    "action_id": command.action_id,
+                    "native_session_id": probe.session_id,
+                    "same_original_native_probe_seq": probe.seq,
+                    "p1_model_source_fifth_seq": gait["fifth_native_seq"],
+                    "model_held_without_new_wait_recovery": True,
+                    "unmodified_original_action_duration_s": command.duration_s,
+                    "dev_model_conditioned_duration_s": adapted_duration,
+                    "new_action_issuer": False,
+                    "new_grant": False,
+                    "r_qualified_fatigue": False,
+                }
+                command = replace(command, duration_s=adapted_duration)
+            return await original_native_execute(
+                session, command, timeout_s=timeout_s, provenance=provenance,
+            )
 
         # Opt-in candidate changes qualify()'s DEV-only bounded epoch
         # contract, NEVER the original S14/S16 issuer or cleanup.
