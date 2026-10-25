@@ -274,7 +274,7 @@ source and actuator constraints are separately met.
 and ONE already received post-WAIT native probe for two separate independent
 P1 model replays. It first uses the existing original `FatigueProfile`
 defaults, then a deliberately uncalibrated high-fatigue DEV rate
-`move_per_block=Rate(2.0)` with identical WAIT recovery. Both start with
+`move_per_block=Rate(6.0)` with identical WAIT recovery. Both start with
 `initial=0.0`; no artificial fatigue is injected. Model ownership and
 physics implementation are unchanged.
 
