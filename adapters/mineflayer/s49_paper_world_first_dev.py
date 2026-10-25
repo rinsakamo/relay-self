@@ -486,7 +486,7 @@ async def run(
                     "same_original_native_probe_seq": probe.seq,
                     "p1_model_source_fifth_seq": gait["fifth_native_seq"],
                     "model_held_without_new_wait_recovery": True,
-                    "unmodified_original_action_duration_s": command.duration_s,
+                    "unmodified_original_action_duration_s": proposal.nominal_duration_s,
                     "dev_model_conditioned_duration_s": adapted_duration,
                     "dev_motor_sensitivity_scenario": motor_scenario,
                     "dev_motor_sensitivity_profile_sha256":
