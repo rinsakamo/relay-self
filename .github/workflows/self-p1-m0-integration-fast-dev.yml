@@ -40,6 +40,8 @@ on:
       - adapters/mineflayer/s49_s50_p1_wait_replay_dev.py
       - adapters/mineflayer/s49_paper_postwait_dev.py
       - adapters/mineflayer/s49_paper_world_first_dev.py
+      - adapters/mineflayer/s49_p1_self_body_dev.py
+      - tests/test_s49_p1_self_body_dev.py
       - tests/test_s49_paper_world_first_dev.py
       - tests/test_s49_s50_p1_wait_replay_dev.py
       - docs/s49-s50-p1-world-first-dev.md
@@ -140,6 +142,8 @@ jobs:
             adapters/mineflayer/s49_s50_p1_wait_replay_dev.py \
             adapters/mineflayer/s49_paper_postwait_dev.py \
             adapters/mineflayer/s49_paper_world_first_dev.py \
+            adapters/mineflayer/s49_p1_self_body_dev.py \
+            tests/test_s49_p1_self_body_dev.py \
             tests/test_s49_paper_world_first_dev.py \
             tests/test_s49_paper_backward_wait_dev.py \
             tests/test_s49_paper_transcript_dev.py \
@@ -178,6 +182,7 @@ jobs:
             tests/test_s49_os_process_receipt_dev.py \
             tests/test_s49_s50_p1_wait_replay_dev.py \
             tests/test_s49_paper_world_first_dev.py \
+            tests/test_s49_p1_self_body_dev.py \
             tests/test_s49_paper_wait_observer_dev.py
       - name: State validation boundary
         if: always()
