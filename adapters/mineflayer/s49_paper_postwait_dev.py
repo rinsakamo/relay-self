@@ -64,7 +64,7 @@ def review_postaction_wait_dev(
         raise BoundaryRejected("successful S49 pair, Paper window, seeded P1 required")
     action = actions[-1]
     if (not isinstance(action, dict)
-            or action.get("terminal") != "OUTCOME"
+            or action.get("terminal") != "outcome"
             or action.get("source") != session
             or not isinstance(action.get("action"), str)):
         raise BoundaryRejected("original second Action terminal missing")
