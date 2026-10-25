@@ -269,6 +269,7 @@ async def qualify(
     live_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
     stage_r_dev: bool = False,
     raw_capture_root: Path | None = None,
+    dev_next_epoch: str | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -292,6 +293,12 @@ async def qualify(
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
         if stage_r_dev and os.environ.get("S49_STAGE_R_DEV_ONLY") != "1":
             raise S31ABlocked("Stage R requires separate explicit DEV-only operator gate")
+        if dev_next_epoch is not None and (
+            os.environ.get("S49_NEXT_EPOCH_DEV_ONLY") != "1"
+            or stage_r_dev
+            or dev_next_epoch not in ("WAIT", "MOVE_AWAY")
+        ):
+            raise S31ABlocked("extra original L0 epoch requires explicit isolated DEV gate")
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -316,8 +323,14 @@ async def qualify(
             "escape-threat", objective="escape near zombie", at_ns=1,
             provenance=source("committed-existing-intent"),
         )
+        # DEV opt-in enlarges the SAME original host; there is never a
+        # second L0, receiver, issuer or Action executor.
         host = NormalWorldL0(
-            sid, "escape-threat", retained, max_events=3, max_action_requests=2,
+            sid, "escape-threat", retained,
+            max_events=4 if dev_next_epoch is not None else 3,
+            max_action_requests=(
+                3 if dev_next_epoch == "MOVE_AWAY" else 2
+            ),
         )
         executor = NormalSessionActionExecutor(sid, intent)
         if stage_r_dev:
@@ -502,20 +515,45 @@ async def qualify(
             "selected": s.choice.selection.value,
             "issued": s.asks_for_action,
         } for s in trace]
+        expected_choices = ["WAIT", "MOVE_AWAY", "MOVE_AWAY"]
+        if dev_next_epoch is not None:
+            expected_choices.append(dev_next_epoch)
+        expected_actions = 2 + (dev_next_epoch == "MOVE_AWAY")
         if (
-            len(trace) != 3
-            or [s.choice.selection.value for s in trace]
-            != ["WAIT", "MOVE_AWAY", "MOVE_AWAY"]
-            or len({s.choice.entity_id for s in trace}) != 3
-            or len(report["actual_native_actions"]) != 2
+            len(trace) != len(expected_choices)
+            or [s.choice.selection.value for s in trace] != expected_choices
+            or len({s.choice.entity_id for s in trace}) != len(expected_choices)
+            or len(report["actual_native_actions"]) != expected_actions
             or executor.supervisor.open_actions
             or executor.supervisor.get(trace[1].action_request_id).state is not ActionState.OUTCOME
             or executor.supervisor.get(trace[2].action_request_id).state is not ActionState.OUTCOME
             or trace[0].asks_for_action
-            or host.action_requests != 2
-            or host.events != 3
+            or host.action_requests != expected_actions
+            or host.events != len(expected_choices)
+            or (
+                dev_next_epoch == "MOVE_AWAY"
+                and (
+                    not trace[3].asks_for_action
+                    or executor.supervisor.get(trace[3].action_request_id).state
+                    is not ActionState.OUTCOME
+                )
+            )
+            or (dev_next_epoch == "WAIT" and trace[3].asks_for_action)
         ):
-            raise S49PhysicalFailure("not three unattended decisions and two real closures")
+            raise S49PhysicalFailure("original S49 bounded epoch/Action terminal mismatch")
+        if dev_next_epoch is not None:
+            report["dev_original_next_epoch"] = {
+                "actual_original_host_decide": True,
+                "same_host_events": host.events,
+                "same_host_action_requests": host.action_requests,
+                "next_event_seq": trace[3].event_seq,
+                "next_probe_seq": trace[3].choice.probe_seq,
+                "next_choice": trace[3].choice.selection.value,
+                "next_action_issued": trace[3].asks_for_action,
+                "new_l0_owner": False,
+                "new_native_reader": False,
+                "p1_as_action_authority": False,
+            }
         if stage_r is not None:
             report["stage_r_decision_revisions"] = [
                 {"event_seq": step.event_seq,
@@ -537,9 +575,13 @@ async def qualify(
             report["learning_in_world"] = True  # HOLD revision, NOT gain
         report["status"] = "PASS"
         report["classification"] = (
-            "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
-            if stage_r is not None
-            else "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
+            "DEV_ONLY_S49_ORIGINAL_NEXT_EPOCH_" + dev_next_epoch
+            if dev_next_epoch is not None
+            else (
+                "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2"
+                if stage_r is not None
+                else "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
+            )
         )
         report["stage"] = "CLOSED"
         rc = 0
@@ -633,6 +675,8 @@ async def qualify(
         elif report.get("classification") in (
             "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED",
             "DEV_ONLY_S49_SINGLE_WRITER_HOLD_REV2",
+            "DEV_ONLY_S49_ORIGINAL_NEXT_EPOCH_WAIT",
+            "DEV_ONLY_S49_ORIGINAL_NEXT_EPOCH_MOVE_AWAY",
         ):
             # No pre-existing FAILURE/BLOCKED is allowed to retain the
             # provisional qualified label, nor be upgraded to PASS.
