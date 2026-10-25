@@ -23,12 +23,12 @@ from adapters.mineflayer import normal_action as native_action_owner
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
 from adapters.mineflayer.s49_motor_clock_review_dev import review_native_motor_clock_dev
 from adapters.mineflayer.s49_native_motor_clock_dev import (
     instrument_native_bridge_dev,
     remove_native_bridge_dev,
 )
-from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
 from adapters.mineflayer.s49_p1_fifth_epoch_dev import (
     compose_third_move_native_dev,
     project_fifth_l0_view_dev,
