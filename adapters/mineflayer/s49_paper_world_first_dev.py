@@ -26,6 +26,8 @@ from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
 from adapters.mineflayer.s49_forward_dash_operator_dev import (
     CONFIRM as FORWARD_OPERATOR_CONFIRM,
+)
+from adapters.mineflayer.s49_forward_dash_operator_dev import (
     run_forward_operator_dev,
 )
 from adapters.mineflayer.s49_motor_clock_review_dev import review_native_motor_clock_dev
