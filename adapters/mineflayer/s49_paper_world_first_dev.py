@@ -20,8 +20,8 @@ from uuid import UUID
 
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
-from adapters.mineflayer.s49_paper_postwait_dev import review_postaction_wait_dev
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
+from adapters.mineflayer.s49_paper_postwait_dev import review_postaction_wait_dev
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from experiments.fatigue_p1 import FatigueProfile
 
@@ -153,7 +153,11 @@ async def run(
                 server = observed["server"]
                 if server is None or server.stdin is None:
                     raise S49PaperDevBlocked("original S49 server no longer owned")
-                # Native clear ACK is not a server-effective release tick.\n                # Give the server time to settle before the independent\n                # Paper idle observation; the delay itself admits no ticks.\n                await asyncio.sleep(0.5)\n                offset = paper_log.stat().st_size if paper_log.exists() else 0
+                # Native clear ACK is not a server-effective release tick.
+                # Give the server time to settle before the independent
+                # Paper idle observation; the delay itself admits no ticks.
+                await asyncio.sleep(0.5)
+                offset = paper_log.stat().st_size if paper_log.exists() else 0
                 original._command(
                     server, "relays49observe "
                     + receipt.terminal.action_id + " "
