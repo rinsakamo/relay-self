@@ -131,6 +131,32 @@ async def _await_complete(paper_log: Path, offset: int, *, timeout: float = 15) 
     raise S49PaperDevBlocked("Paper observer never completed eight ticks")
 
 
+async def _await_dash_dev_line(
+    paper_log: Path, offset: int, *, marker: str, action_id: str,
+    timeout: float = 15,
+) -> str:
+    if marker not in ("ARM", "COMPLETE"):
+        raise S49PaperDevBlocked("unknown DASH diagnostic marker")
+    until = time.monotonic() + timeout
+    while time.monotonic() < until:
+        if paper_log.is_file() and not paper_log.is_symlink():
+            with paper_log.open("rb") as stream:
+                stream.seek(offset)
+                raw = stream.read(65537)
+            if len(raw) > 65536:
+                raise S49PaperDevBlocked("DASH log window too large")
+            window = raw.decode("utf-8")
+            if ("S49_DASH_DEV_DENIED" in window
+                    or "S49_DASH_DEV_CLEANUP_UNCONFIRMED" in window):
+                raise S49PaperDevBlocked("Paper DASH rejected or cleanup uncertain")
+            if any("S49_DASH_DEV_" + marker + " " in line
+                   and "action_id=" + action_id + " " in line
+                   for line in window.splitlines()):
+                return window
+        await asyncio.sleep(0.10)
+    raise S49PaperDevBlocked("Paper DASH did not report " + marker)
+
+
 async def run(
     output_dir: Path, paper_jar: Path, paper_sha: str,
     observer_jar: Path, observer_sha: str, *, confirmation: str,
@@ -145,6 +171,9 @@ async def run(
     paper_input_edges_dev: bool = False,
     paper_motion_ticks_dev: bool = False,
     motion_uncertainty_dev: bool = False,
+    dash_negative_control_dev: bool = False,
+    dash_jar: Path | None = None,
+    dash_sha: str | None = None,
 ) -> int:
     """One new Paper World, original S49 two MOVE actions, one post-WAIT sample."""
     report = {
@@ -165,6 +194,7 @@ async def run(
         "paper_input_edges_dev": paper_input_edges_dev,
         "paper_motion_ticks_dev": paper_motion_ticks_dev,
         "motion_uncertainty_dev": motion_uncertainty_dev,
+        "dash_negative_control_dev": dash_negative_control_dev,
     }
     created = False
     dev_bridge = None
@@ -207,9 +237,19 @@ async def run(
             raise S49PaperDevBlocked(
                 "uncertainty damping requires original S49 SelfBody Motion Feedback"
             )
+        if dash_negative_control_dev:
+            if not isinstance(dash_jar, Path) or not isinstance(dash_sha, str):
+                raise S49PaperDevBlocked("explicit DASH DEV plugin asset and SHA required")
+            dash_jar = _fresh_asset(dash_jar, dash_sha)
+        elif dash_jar is not None or dash_sha is not None:
+            raise S49PaperDevBlocked("DASH asset requires explicit opt-in")
         paper_jar = _fresh_asset(paper_jar, paper_sha)
         observer_jar = _fresh_asset(observer_jar, observer_sha)
-        if paper_jar.resolve() == observer_jar.resolve():
+        if paper_jar.resolve() == observer_jar.resolve() or (
+            dash_negative_control_dev and dash_jar.resolve() in (
+                paper_jar.resolve(), observer_jar.resolve()
+            )
+        ):
             raise S49PaperDevBlocked("server and plugin must be separate JARs")
         _fresh_output(output_dir)
         created = True
@@ -240,6 +280,7 @@ async def run(
             "motion_pre_sixth": None,
             "paper_prearm_offset": None, "paper_first_session": None,
             "paper_motion_offset": None, "paper_motion_action": None,
+            "dash_negative_action": None, "dash_negative_window": None,
             "third_clear_seq": None,
             "fresh_trace": [],
         }
@@ -261,6 +302,14 @@ async def run(
             plugin_dir = root / "plugins"
             plugin_dir.mkdir(exist_ok=False)
             shutil.copyfile(observer_jar, plugin_dir / "s49-wait-observer-dev.jar")
+            if dash_negative_control_dev:
+                shutil.copyfile(dash_jar, plugin_dir / "s49-dash-dev.jar")
+                dash_cfg = plugin_dir / "RelayS49DashDev"
+                dash_cfg.mkdir()
+                (dash_cfg / "config.yml").write_text(
+                    "enabled: true\nexpected-player-name: RelaySelf\n",
+                    encoding="utf-8",
+                )
             config_dir = plugin_dir / "RelayS49WaitObserverDev"
             config_dir.mkdir()
             config = OBSERVER_CONFIG.read_text(encoding="utf-8")
@@ -536,6 +585,27 @@ async def run(
             # Hook the ORIGINAL S49 executor's S15 transport, after the
             # original Action issue and all existing S14/S16 authorization.
             # No additional Action issuer, reader, grant or process.
+            if dash_negative_control_dev and observed["count"] == 1:
+                server = observed["server"]
+                if (observed["dash_negative_action"] is not None
+                        or session is not observed["paper_first_session"]
+                        or server is None or server.stdin is None
+                        or command.control != "back" or command.state is not True
+                        or command.duration_s != 0.2
+                        or not command.action_id.startswith("s49-native-move-")):
+                    raise S49PaperDevBlocked("DASH negative must be original issued back MOVE")
+                offset = paper_log.stat().st_size if paper_log.exists() else 0
+                observed["dash_negative_action"] = command.action_id
+                original._command(
+                    server, "relays49dasharm "
+                    + command.action_id + " "
+                    + session.started.session_id + " " + offline_uuid(BOT_USERNAME)
+                    + " 1.0",
+                )
+                await server.stdin.drain()
+                await _await_dash_dev_line(
+                    paper_log, offset, marker="ARM", action_id=command.action_id,
+                )
             if paper_motion_ticks_dev and observed["count"] == 1:
                 server = observed["server"]
                 if (observed["paper_motion_offset"] is not None
@@ -668,6 +738,22 @@ async def run(
                     session, command, timeout_s=timeout_s, provenance=provenance,
                 )
             finally:
+                if (dash_negative_control_dev and observed["count"] == 1
+                        and observed["dash_negative_action"] == command.action_id):
+                    server = observed["server"]
+                    if server is None or server.stdin is None:
+                        raise S49PaperDevBlocked("DASH negative World owner lost")
+                    offset = paper_log.stat().st_size if paper_log.exists() else 0
+                    original._command(
+                        server, "relays49dashoff "
+                        + command.action_id + " "
+                        + session.started.session_id + " " + offline_uuid(BOT_USERNAME),
+                    )
+                    await server.stdin.drain()
+                    observed["dash_negative_window"] = await _await_dash_dev_line(
+                        paper_log, offset, marker="COMPLETE",
+                        action_id=command.action_id,
+                    )
                 if (paper_motion_ticks_dev and observed["count"] == 1
                         and observed["paper_motion_action"] == command.action_id):
                     server = observed["server"]
@@ -813,6 +899,37 @@ async def run(
                 or observed["window"] is None):
             raise S49PaperDevBlocked("original S49 or Paper observer did not complete")
         source = json.loads(original_report.read_text(encoding="utf-8"))
+        if dash_negative_control_dev:
+            window = observed["dash_negative_window"]
+            action = observed["dash_negative_action"]
+            if not isinstance(window, str) or not isinstance(action, str):
+                raise S49PaperDevBlocked("DASH negative missing Paper completion")
+            rows = [line for line in paper_log.read_text(encoding="utf-8").splitlines()
+                    if "S49_DASH_DEV_TICK " in line
+                    and "action_id=" + action + " " in line]
+            complete = [line for line in window.splitlines()
+                        if "S49_DASH_DEV_COMPLETE " in line
+                        and "action_id=" + action + " " in line]
+            if (not rows or len(complete) != 1
+                    or any("modifier_applied=true" in line for line in rows)
+                    or "forward_boost_ticks=0" not in complete[0]
+                    or "modifier_applied=false" not in complete[0]):
+                raise S49PaperDevBlocked("unwanted backward DASH bonus or missing ticks")
+            report["dash_negative_control_result_dev"] = {
+                "status": "DEV_S49_BACKWARD_MOTION_NO_DASH_BOOST_OBSERVED",
+                "original_issued_action_id": action,
+                "source_session_id": source.get("session_id"),
+                "paper_gait_ticks_observed": len(rows),
+                "forward_modifier_active_ticks": 0,
+                "dash_stance_kept_during_backward": True,
+                "m0_posted": False,
+                "p1_native_updated": False,
+                "forward_dash_verified": False,
+                "sideways_cap_verified": False,
+                "server_effective_tick_alignment_attested": False,
+                "qualification_go": False,
+                "science_go": False,
+            }
         if (source.get("node_exit") != 0 or source.get("server_exit") != 0):
             raise S49PaperDevBlocked("original Java/Node cleanup not successful")
         if actual_next_epoch:
@@ -1395,6 +1512,10 @@ def main(argv: list[str] | None = None) -> int:
         "--paper-motion-ticks-dev", action="store_true",
         help="DEV only: observe server player motion event tick positions around original second MOVE",
     )
+    parser.add_argument("--dash-negative-control-dev", action="store_true",
+                        help="DEV: original authorized BACK Action while DASH stance remains")
+    parser.add_argument("--dash-jar", type=Path)
+    parser.add_argument("--dash-sha256")
     parser.add_argument(
         "--motion-uncertainty-dev", action="store_true",
         help="DEV: damp SelfBody's next Action duration correction using closed prediction errors",
@@ -1415,6 +1536,9 @@ def main(argv: list[str] | None = None) -> int:
         paper_input_edges_dev=args.paper_input_edges_dev,
         paper_motion_ticks_dev=args.paper_motion_ticks_dev,
         motion_uncertainty_dev=args.motion_uncertainty_dev,
+        dash_negative_control_dev=args.dash_negative_control_dev,
+        dash_jar=args.dash_jar,
+        dash_sha=args.dash_sha256,
     ))
 
 
