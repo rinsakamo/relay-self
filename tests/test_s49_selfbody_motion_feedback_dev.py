@@ -143,10 +143,16 @@ def test_closed_outcomes_cannot_be_forged_or_reused(change):
             cleanup_receipt=replace(source.cleanup_receipt, action_id="wrong-clean"),
         )
     elif change == "wrong_dispatch":
-        source = replace(
-            source,
-            dispatch_receipt=replace(source.dispatch_receipt, result="rejected"),
-        )
+        # Original typed S16 may reject a non-applied dispatch immediately,
+        # before downstream SelfBody observes any forged receipt.
+        with pytest.raises(ValueError):
+            replace(
+                source,
+                dispatch_receipt=replace(
+                    source.dispatch_receipt, result="rejected",
+                ),
+            )
+        return
     elif change == "foreign_provenance":
         source = replace(
             source,
