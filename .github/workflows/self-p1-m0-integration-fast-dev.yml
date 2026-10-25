@@ -177,6 +177,7 @@ jobs:
             tests/test_s49_w4_epoch_source_dev.py \
             tests/test_s49_os_process_receipt_dev.py \
             tests/test_s49_s50_p1_wait_replay_dev.py \
+            tests/test_s49_paper_world_first_dev.py \
             tests/test_s49_paper_wait_observer_dev.py
       - name: State validation boundary
         if: always()
