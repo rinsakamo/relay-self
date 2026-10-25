@@ -210,7 +210,46 @@ async def run(
                 }
                 original._command(server, "kill @e[type=minecraft:zombie]")
                 await server.stdin.drain()
-                await asyncio.sleep(0.6)
+                # Two-phase external World stimulus: a Paper "Killed"
+                # console line does not prove Mineflayer's entity registry
+                # has dropped the old target yet. First wait until the
+                # original single JSONL reader OBSERVES no zombie, then
+                # summon. Previous run showed overlapping 2-zombie
+                # entitySpawn before the stale entity disappeared.
+                clear_deadline = time.monotonic() + 12.0
+                cleared_seq = None
+                for _ in range(100):
+                    remaining = clear_deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    try:
+                        frame = await asyncio.wait_for(
+                            args[0].receive(), timeout=remaining,
+                        )
+                    except TimeoutError:
+                        break
+                    if not isinstance(frame, original.MineflayerObservation):
+                        if isinstance(frame, original.MineflayerEntityHurt):
+                            continue
+                        raise S49PaperDevBlocked("unexpected native clear frame")
+                    zombies = [
+                        e for e in frame.snapshot.nearby_entities
+                        if e.name == "zombie"
+                    ]
+                    observed["fresh_trace"].append({
+                        "stage": "CLEAR_OLD", "seq": frame.seq,
+                        "kind": frame.kind,
+                        "zombie_ids": [e.entity_id for e in zombies],
+                    })
+                    if (frame.seq > pre.seq and not zombies
+                            and not frame.snapshot.nearby_entities_coverage.truncated):
+                        cleared_seq = frame.seq
+                        break
+                if cleared_seq is None:
+                    raise S49PaperDevBlocked("old zombie never cleared from native source")
+
+                # Only after native clear is observed may a new single
+                # stimulus be issued by the external DEV World operator.
                 original._command(
                     server,
                     "execute at RelaySelf run summon minecraft:zombie "
@@ -218,28 +257,22 @@ async def run(
                     "Invulnerable:1b}",
                 )
                 await server.stdin.drain()
-                deadline = time.monotonic() + 15.0
-                for _ in range(75):
+                deadline = time.monotonic() + 12.0
+                for _ in range(100):
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
                         break
                     try:
-                        # A 1s per-frame deadline discarded delayed World
-                        # events on the previous DEV run. Keep ONE bounded
-                        # owner-local source wait, not a parallel receiver.
                         frame = await asyncio.wait_for(
                             args[0].receive(), timeout=remaining,
                         )
                     except TimeoutError:
-                        observed["fresh_trace"].append(
-                            {"status": "SOURCE_WAIT_TIMED_OUT"}
-                        )
+                        observed["fresh_trace"].append({
+                            "stage": "SPAWN_NEW", "status": "SOURCE_WAIT_TIMED_OUT",
+                        })
                         break
                     if not isinstance(frame, original.MineflayerObservation):
                         if isinstance(frame, original.MineflayerEntityHurt):
-                            observed["fresh_trace"].append(
-                                {"status": "IGNORED_ENTITY_HURT"}
-                            )
                             continue
                         raise S49PaperDevBlocked("unexpected post-WAIT native frame")
                     zombies = [
@@ -247,10 +280,11 @@ async def run(
                         if e.name == "zombie"
                     ]
                     observed["fresh_trace"].append({
-                        "seq": frame.seq, "kind": frame.kind,
+                        "stage": "SPAWN_NEW", "seq": frame.seq,
+                        "kind": frame.kind,
                         "zombie_ids": [e.entity_id for e in zombies],
                     })
-                    if frame.seq <= pre.seq or frame.kind != "entities":
+                    if frame.seq <= cleared_seq or frame.kind != "entities":
                         continue
                     if (len(zombies) == 1
                             and zombies[0].entity_id not in prior_zombies
@@ -258,7 +292,7 @@ async def run(
                         observed["fresh_event"] = frame
                         break
                 if observed["fresh_event"] is None:
-                    raise S49PaperDevBlocked("no fresh native entity event after WAIT")
+                    raise S49PaperDevBlocked("no fresh single-target native event after WAIT")
                 fresh_req = (
                     f"s49-postwait-event:{self.session_id}:"
                     f"{observed['fresh_event'].seq}"
