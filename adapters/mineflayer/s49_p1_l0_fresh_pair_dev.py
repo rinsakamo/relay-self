@@ -10,15 +10,19 @@ from __future__ import annotations
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.normal_action import NormalWorldL0
+from adapters.mineflayer.present_projection import project_mineflayer_present
+from adapters.mineflayer.s34_native_world_cognition_ci import S34EvidenceFailure
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from relay_self.reactive_l0 import ReactiveL0Rejected
 from adapters.mineflayer.s49_p1_l0_capability_dev import (
     compare_body_capability_l0_dev,
 )
 from adapters.mineflayer.s49_p1_self_body_dev import P1DevSelfBodyHandoff
+from adapters.mineflayer.self_body_projection import project_body_present
 from experiments.fatigue_p1 import FatigueProfile
 from relay_self.learning import LearningPreferenceState
-from relay_self.self_body import SelfBodyView
+from relay_self.self_body import SelfBodyView, InvalidSelfBodyData, compose_self_body_view
+from relay_self.world_conditioned_choice import WorldChoiceRejected
 
 
 def review_postwait_fresh_l0_input_dev(
@@ -69,6 +73,22 @@ def review_postwait_fresh_l0_input_dev(
     ]
     if len(spawned) != 1 or spawned[0].entity_id in prior_zombies:
         raise BoundaryRejected("a new native zombie World stimulus is required")
+    # A NEW cognition epoch is based on the fresh event's matching probe
+    # (not the earlier single post-WAIT probe's geometry). The prior P1
+    # body hypothesis is retained as a fallible model, never an observed
+    # physical fatigue sensor or a new P1 evaluator-owner state.
+    try:
+        new_body = compose_self_body_view(
+            session_id=handoff.session_id,
+            self_id=body.self_id,
+            epoch_id=f"s49-postwait-fresh-{probe.seq}",
+            observation=project_body_present(project_mineflayer_present(probe)),
+            hypotheses=body.hypotheses,
+            minimum_native_seq=prior_postwait_probe.seq + 1,
+        )
+    except (InvalidSelfBodyData, ValueError, TypeError) as exc:
+        raise BoundaryRejected("fresh next-epoch native SelfBody rejected") from exc
+
     # The original L0's existing exact event/probe check is called WITHOUT
     # decide() or a grant. The event source is real and ordered, but no
     # new owner or Action issuer becomes active.
@@ -78,12 +98,12 @@ def review_postwait_fresh_l0_input_dev(
             max_events=1, max_action_requests=1,
         )
         choice = l0._check(event, probe)
-    except (ReactiveL0Rejected, ValueError, TypeError) as exc:
+    except (ReactiveL0Rejected, S34EvidenceFailure, WorldChoiceRejected, ValueError, TypeError) as exc:
         raise BoundaryRejected("original L0 rejected fresh World stimulus") from exc
     if l0.events != 0 or l0.action_requests != 0 or choice.action_authorized:
         raise BoundaryRejected("read-only L0 check unexpectedly consumed authority")
     comparison = compare_body_capability_l0_dev(
-        body, prior_postwait_probe, handoff, p1_reviewed, profile, retained,
+        new_body, probe, handoff, p1_reviewed, profile, retained,
     )
     if (comparison["session_id"] != handoff.session_id
             or comparison["s42_selection_unchanged"] != choice.selection.value
@@ -100,6 +120,10 @@ def review_postwait_fresh_l0_input_dev(
         "fresh_event_seq": event.seq,
         "fresh_probe_seq": probe.seq,
         "fresh_probe_request_id": probe.request_id,
+        "fresh_body_epoch_id": new_body.epoch_id,
+        "fresh_native_body_source_ref": new_body.observation.source_ref,
+        "fresh_native_food": new_body.observed("food").value,
+        "fresh_native_health": new_body.observed("health").value,
         "fresh_zombie_entity_id": spawned[0].entity_id,
         "fresh_s42_selection": choice.selection.value,
         "fresh_s42_distance_m": choice.distance_m,
@@ -111,6 +135,10 @@ def review_postwait_fresh_l0_input_dev(
         ),
         "fresh_native_event_and_probe": True,
         "original_l0_input_checked": True,
+        "fresh_body_p1_model_origin": (
+            new_body.hypothetical("p1-dev-distance-wait", "p1_sensor_pct").origin.value
+        ),
+        "fresh_native_p1_sensor": new_body.sensed("p1_fatigue_sensor").value,
         "original_l0_decide_called": False,
         "new_l0_owner_registered": False,
         "new_action_grant_issued": False,
