@@ -436,3 +436,45 @@ attestation is introduced. Evidence fields
 and `original_s49_host_l0_replaced=false` explicitly distinguish
 a method actually invoked on a bounded DEV instance from original S49
 host activity.
+
+## 2026-10-25: actual bounded L0 near-MOVE request, no physical issuance
+
+One additional DEV trial now exercises the **actual original L0
+`NormalWorldL0.decide()` method** on a **real fresh near 2-block** native
+`entities` event and its correlated `probe`, captured by the same sole S49
+Mineflayer receiver *after* two original native MOVE outcomes and Paper
+eight WAIT callbacks. This is distinct from the prior far-10-block WAIT
+branch and distinct from a read-only `_check()` or candidate preview.
+
+An explicit calling DEV operator prepares an **isolated logical grant** with
+`authority_id=dev-shadow-only:...` and
+`action_id=dev-shadow-no-dispatch:...`, source
+`dev-independent-shadow-only-not-s49-issuer`. This typed `L0ActionGrant`
+allows exactly one bounded DEV instance to emit one logical
+`MOVE_AWAY` request; it is **not** the independent S49
+`NormalActionAuthorization`, carries no physical S15 owner permission,
+is **never** forwarded to `NormalSessionActionExecutor.execute()` and must
+never be treated as qualified physical Action authority. The original
+S49 L0 host and its two-action budget are unchanged. A new controller,
+receiver, second issuer, or new physical MOVE is **not** started.
+
+Real DEV evidence: [Actions run #40174483862](https://github.com/rinsakamo/relay-self/actions/runs/40174483862)
+SUCCESS at HEAD `efd40c56c1358d317e7cbe73555833cf5413fdaf`,
+archive `12591143776`; Python3.12 FAST
+[#40174323422](https://github.com/rinsakamo/relay-self/actions/runs/40174323422)
+SUCCESS. Original S49: 2 OUTCOME MOVE Actions, Java/Node exit0;
+the last MOVE measured 0.6269065734210608 blocks.
+Paper WAIT window 461–468 eight consecutive callbacks, P1 default
+fatigue model 0→0.025076262936842432→0. A new actual
+`entities` seq70, zombie entity43 at 2.0m, matching
+`probe` seq71 allowed the original bounded DEV L0 `decide()`
+to output exactly one `MOVE_AWAY` logical request. Independent
+archive check matched the stored Paper-window SHA256 and every
+reported Action/no-dispatch bound.
+
+P1 baseline vs uncalibrated stress still changes only the
+`MOVE_AWAY_NOMINAL_MODEL_CANDIDATE` vs
+`MOVE_AWAY_LIMIT_TO_MODEL_CAPACITY_CANDIDATE` advisory gait label.
+It **does not** alter actual original S42 selection, demonstrate
+causal physical fatigue on behavior, or qualify full World-tick WAIT.
+Status remains `DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
