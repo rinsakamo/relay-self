@@ -149,3 +149,35 @@ for backward-compatibility offline fixtures, but is **not** the World-first
 run mode. R-qualified `source_bound_tick` remains null, and R-qualified
 `p1_fatigue_recovered` remains zero; no S10 learning or production
 FatigueState mutation occurs. M0 BASAL remains independent/unchanged.
+
+## 2026-10-25: P1 DEV → SelfBody cognitive interface (read-only)
+
+`adapters/mineflayer/s49_p1_self_body_dev.py` reuses the existing
+`review_postaction_wait_dev()` source check rather than accepting arbitrary
+reported fatigue numbers. After the last actual S49 MOVE + Paper's 8 WAIT
+ticks, it produces **two immutable `SelfBodyView` epochs** representing
+the state immediately after the MOVE model step and after the WAIT model
+replay, then emits a bounded `self_body_dev` next-cognition readback in
+`world_first_dev_report.json`.
+
+- The existing P1 `observe()` sensor is quantized (0.01 units) before
+  exposing integer percent levels through `BodyHypothesis` /
+  `SelfBodyView.hypothetical("p1-dev-distance-wait", ...)`. This is a
+  modeled body image, *not* a physical fatigue measurement or full-tick
+  R-authenticated sensory readout.
+- No corresponding **native Present** arrives after the Paper 8-tick
+  window. Consequently `SelfBodyView.observation=None` and
+  `sensed("p1_fatigue_sensor")` / `observed("p1_fatigue")` return
+  UNKNOWN; promoting the Paper-only data to `BodyInteroception` would
+  falsely claim native correlation. Missing original native data is not
+  synthesized, and no second Mineflayer command reader is introduced.
+- The readback includes before/after P1 model sensor levels, capability
+  estimates, session, Action, Paper World/run SHA references, and explicit
+  `actual_next_l0_decision_consumed=false`. Future Cognition can access
+  the two model epochs, but **this run does not alter L0's real choice**,
+  learn anything in S10, mutate a persistent SelfBody owner, or grant
+  permissions to execute an Action.
+
+This is the minimal DEV interface needed before wiring post-WAIT native
+Present to P1's actual `BodyInteroception` and feeding it into a *future*
+real cognition epoch. No qualification/science claim is implied.
