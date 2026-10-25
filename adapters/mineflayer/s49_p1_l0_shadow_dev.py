@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from adapters.mineflayer.m02_paper_dev.s50_boundary import BoundaryRejected
 from adapters.mineflayer.python_protocol import MineflayerObservation
-from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
+from adapters.mineflayer.s34_native_world_cognition_ci import S34EvidenceFailure, _native_threat
 from adapters.mineflayer.s49_p1_postwait_native_dev import (
     compose_postwait_native_self_world_dev,
 )
@@ -19,7 +19,10 @@ from adapters.mineflayer.s49_p1_self_body_dev import (
 from experiments.fatigue_p1 import FatigueProfile, FatigueState, capability
 from relay_self.learning import LearningPreferenceState
 from relay_self.self_body import BodyOrigin, SelfBodyView
-from relay_self.world_conditioned_choice import select_world_conditioned_choice
+from relay_self.world_conditioned_choice import (
+    WorldChoiceRejected,
+    select_world_conditioned_choice,
+)
 
 
 def preview_postwait_l0_dev(
@@ -67,7 +70,7 @@ def preview_postwait_l0_dev(
             expected_session_id=handoff.session_id,
             expected_entity_id=threat.entity_id,
         )
-    except (ValueError, TypeError) as exc:
+    except (S34EvidenceFailure, WorldChoiceRejected, ValueError, TypeError) as exc:
         raise BoundaryRejected("post-WAIT S42 shadow source/policy rejected") from exc
 
     move_tick = reviewed["uncertain_release_tick_excluded"]
