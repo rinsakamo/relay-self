@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/self-p1-dash-backward-cap-world-dev.yml
       - adapters/mineflayer/s49_paper_world_first_dev.py
+      - 'adapters/mineflayer/s49_paper_dash_dev/**'
 
 permissions:
   contents: read
