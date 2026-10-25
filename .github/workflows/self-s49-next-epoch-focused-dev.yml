@@ -35,7 +35,7 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git rev-parse 'HEAD:adapters/mineflayer/normal_action.py')" = '0ded8fa296c92076a643de08cd6fc360061e1d08'
-          test "$(git rev-parse 'HEAD:experiments/fatigue_p1.py')" = "$(git rev-parse '581c1c1ed703a77707fcde3aec24e1380f916a8f:experiments/fatigue_p1.py')" || true
+          test "$(git rev-parse 'HEAD:experiments/fatigue_p1.py')" = 'bd4f35a4079da0770ef11cdec921dbba31de9b81'
           echo 'Original S49 qualify() source is a modified DEV candidate; NO original-blob equivalence asserted.'
           echo 'Original main, S18, grants and R/V results are unchanged.'
       - name: Install Python 3.12 focused tools
