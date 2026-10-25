@@ -35,7 +35,10 @@ def compare_fifth_p1_gait_dev(
             or fifth["model_only"] is not True
             or fifth["selfworld_body_same_object"] is not True
             or fifth["p1_model_fatigue"] != model.model_fatigue
-            or fifth["p1_model_profile_sha256"] != model.model_profile_sha256):
+            or fifth["p1_model_profile_sha256"] != model.model_profile_sha256
+            or model.body.hypotheses[0].scenario.source_refs[0] != (
+                f"s49-closed-action:{native.session_id}:{model.third_action_id}"
+            )):
         raise BoundaryRejected("fifth native Self views not tied to third MOVE")
 
     profile = FatigueProfile(enabled=True, initial=0.0)
