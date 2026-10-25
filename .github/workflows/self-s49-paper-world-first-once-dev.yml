@@ -1,3 +1,4 @@
+# DEV one-world sensitivity: no extra S49 action, profile intervention is modeling only.
 # DEV retry after focused negative control: expected capability derived from fixture displacement.
 # DEV: one-time real native post-WAIT P1 capacity-aware candidate comparison, no new issuer.
 # DEV retry: frozen S19 replay now uses asyncio.to_thread (live-loop-safe).
@@ -65,7 +66,7 @@ jobs:
       - name: Python 3.12 focused DEV entrypoint checks BEFORE any World
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1'
-          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py tests/test_s49_p1_l0_capability_dev.py
+          python -m pytest -q tests/test_s49_s50_p1_wait_replay_dev.py tests/test_s49_paper_world_first_dev.py tests/test_s49_paper_wait_observer_dev.py tests/test_s49_p1_self_body_dev.py tests/test_s49_p1_postwait_native_dev.py tests/test_s49_p1_l0_shadow_dev.py tests/test_s49_p1_l0_capability_dev.py tests/test_s49_p1_l0_sensitivity_dev.py
       - name: Compile single read-only Paper wait observer on Java 21
         run: |
           mvn -B -ntp -f adapters/mineflayer/s49_paper_wait_observer_dev/pom.xml -DskipTests package
@@ -249,6 +250,41 @@ jobs:
           assert capability["additional_native_reads"] == 0
           assert capability["qualification_go"] is False and capability["science_go"] is False
           print("S49_P1_L0_CAPABILITY_COMPARE_DEV_PASS", capability)
+          knockdown = report["next_l0_sensitivity_dev"]
+          assert knockdown["status"] == "DEV_SAME_WORLD_P1_RATE_KNOCKDOWN"
+          assert knockdown["classification"] == (
+              "DEV_ONLY_MODEL_SENSITIVITY_NOT_CALIBRATION"
+          )
+          assert knockdown["native_seq"] == next_epoch["native_seq"]
+          assert knockdown["native_request_id"] == next_epoch["native_request_id"]
+          assert knockdown["action_id"] == p1["action_id"]
+          assert knockdown["world"] == p1["world"]
+          assert knockdown["observer_run_id"] == p1["observer_run_id"]
+          assert knockdown["wait_samples"] == 8
+          assert knockdown["s42_original_selection"] == shadow["original_s42_selection"]
+          assert knockdown["baseline_l0_capability_candidate"] == (
+              capability["after_wait_on_actual_postwait_world_model"]
+          )
+          assert knockdown["baseline_fatigue_after_wait"] == 0.0
+          assert 0 < knockdown["stress_fatigue_after_wait"] < 1
+          assert knockdown["baseline_one_tick_capacity"] == 1.0
+          assert knockdown["stress_one_tick_capacity"] < 1.0
+          if knockdown["s42_original_selection"] == "MOVE_AWAY":
+              assert knockdown["stress_l0_capability_candidate"] == (
+                  "MOVE_AWAY_SCALE_TO_CAPACITY_MODEL_ONLY"
+              )
+          else:
+              assert knockdown["stress_l0_capability_candidate"] == (
+                  "S42_WAIT_UNCHANGED"
+              )
+          assert knockdown["stress_profile_is_measured"] is False
+          assert knockdown["new_native_probes"] == 0
+          assert knockdown["new_action_issuers"] == 0
+          assert knockdown["real_action_count_added"] == 0
+          assert knockdown["production_p1_mutated"] is False
+          assert knockdown["qualification_go"] is False
+          assert knockdown["science_go"] is False
+          print("S49_P1_L0_RATE_SENSITIVITY_DEV_PASS", knockdown)
           PY
       - name: Preserve original DEV receipts and failures (R/SCIENCE not run)
         if: always()
