@@ -126,12 +126,20 @@ jobs:
           assert r["dash"]["native_horizontal_displacement_m"] > .15
           print("P1_DASH_DISPOSABLE_NATIVE_PAPER_DEV",json.dumps(r,sort_keys=True))
           PY
+      - name: Surface bounded DEV diagnostic (including pre-world failures)
+        if: always()
+        run: |
+          if test -f "$DEV_OUTPUT/dash_dev_report.json"; then cat "$DEV_OUTPUT/dash_dev_report.json"; fi
+          if test -f "$DEV_OUTPUT/paper_server.log"; then grep 'RELAY_DASH_' "$DEV_OUTPUT/paper_server.log" | tail -50 || true; fi
       - name: Preserve DEV original logs and movement report
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: p1-forward-dash-world-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ env.DEV_OUTPUT }}/
+          path: |
+            ${{ env.DEV_OUTPUT }}/dash_dev_report.json
+            ${{ env.DEV_OUTPUT }}/paper_dash_rows.log
+            ${{ env.DEV_OUTPUT }}/paper_server.log
           if-no-files-found: warn
           retention-days: 7
       - name: Boundary
