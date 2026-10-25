@@ -64,14 +64,19 @@ export function decodePaperTickPayload (bytes, recvMonoNs) {
 export function attachPaperTickChannel (bot, onSample, onInvalid) {
   if (!bot?._client || typeof bot._client.on !== 'function' ||
       typeof bot._client.registerChannel !== 'function' ||
+      typeof bot.once !== 'function' ||
       typeof onSample !== 'function' || typeof onInvalid !== 'function') {
     throw new TypeError('real client and callbacks required')
   }
   // registerChannel sends the register packet when custom=true. No second
   // socket/listener or registered incoming command/action channel.
-  bot._client.registerChannel(PAPER_TICK_CHANNEL, null, true)
+  // The connection must reach PLAY before the client registers the channel.
+  // Paper starts emitting only after the subscription becomes visible.
+  bot.once('login', () => bot._client.registerChannel(PAPER_TICK_CHANNEL, null, true))
   let previous = null
+  let invalidated = false
   bot._client.on(PAPER_TICK_CHANNEL, bytes => {
+    if (invalidated) return
     try {
       const sample = decodePaperTickPayload(bytes, process.hrtime.bigint())
       const tick = BigInt(sample.server_tick)
@@ -91,6 +96,7 @@ export function attachPaperTickChannel (bot, onSample, onInvalid) {
       previous = sample
       onSample(sample)
     } catch (error) {
+      invalidated = true
       // Forward invalid data; do not hide gaps or pretend a tick was checked.
       onInvalid(error)
     }
