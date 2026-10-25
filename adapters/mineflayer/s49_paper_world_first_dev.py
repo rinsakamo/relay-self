@@ -28,6 +28,10 @@ from adapters.mineflayer.s49_p1_l0_gait_candidate_dev import (
 )
 from adapters.mineflayer.s49_p1_l0_near_decide_dev import decide_bounded_near_move_dev
 from adapters.mineflayer.s49_p1_l0_sensitivity_dev import compare_p1_knockdown_dev
+from adapters.mineflayer.s49_p1_fifth_epoch_dev import (
+    compose_third_move_native_dev,
+    project_fifth_l0_view_dev,
+)
 from adapters.mineflayer.s49_p1_l0_shadow_dev import preview_postwait_l0_dev
 from adapters.mineflayer.s49_p1_postwait_native_dev import (
     compose_postwait_native_self_world_dev,
@@ -99,6 +103,7 @@ async def run(
     observer_jar: Path, observer_sha: str, *, confirmation: str,
     fresh_target_distance: int = 2,
     actual_next_epoch: bool = False,
+    actual_fifth_epoch: bool = False,
 ) -> int:
     """One new Paper World, original S49 two MOVE actions, one post-WAIT sample."""
     report = {
@@ -110,6 +115,7 @@ async def run(
         "science_go": False,
         "p1_production_state_updated": False,
         "actual_original_s49_next_epoch": actual_next_epoch,
+        "actual_original_s49_fifth_epoch": actual_fifth_epoch,
     }
     created = False
     try:
@@ -117,6 +123,8 @@ async def run(
             raise S49PaperDevBlocked("explicit disposable DEV confirmation required")
         if type(fresh_target_distance) is not int or fresh_target_distance not in (2, 10):
             raise S49PaperDevBlocked("fresh DEV threat distance must be exactly 2 or 10 blocks")
+        if actual_fifth_epoch and (not actual_next_epoch or fresh_target_distance != 2):
+            raise S49PaperDevBlocked("fifth DEV epoch requires fourth original MOVE")
         paper_jar = _fresh_asset(paper_jar, paper_sha)
         observer_jar = _fresh_asset(observer_jar, observer_sha)
         if paper_jar.resolve() == observer_jar.resolve():
@@ -134,6 +142,10 @@ async def run(
             "server": None, "window": None, "count": 0, "postwait": None,
             "fresh_event": None, "fresh_probe": None,
             "next_l0_probe": None, "native_cleared_seq": None,
+            "third_action": None, "third_move_probe": None,
+            "third_move_model": None, "third_move_body": None,
+            "fifth_l0_probe": None, "fifth_l0_view": None,
+            "third_clear_seq": None,
             "fresh_trace": [],
         }
         # This mutable list is retained even if original qualify() stops:
@@ -174,6 +186,76 @@ async def run(
             async def execute(self, *args, **kwargs):
                 receipt = await super().execute(*args, **kwargs)
                 observed["count"] += 1
+                if observed["count"] == 3 and actual_fifth_epoch:
+                    # Third Action was issued by ORIGINAL S49 in its fourth
+                    # L0 epoch, with existing S14/S16 gates and executor.
+                    if (not args or args[0].started.session_id != self.session_id
+                            or self.supervisor.open_actions
+                            or observed["postwait"] is None):
+                        raise S49PaperDevBlocked("third Action not closed on original owner")
+                    evidence = capture_native_action_evidence(receipt.consequence)
+                    third = {
+                        "action": receipt.terminal.action_id,
+                        "source": self.session_id,
+                        "terminal": receipt.terminal.state.value,
+                        "movement_m": receipt.consequence.movement_distance,
+                        "execution_evidence": evidence,
+                    }
+                    observed["third_action"] = third
+                    observed["third_move_probe"] = await original._correlated_observe(
+                        args[0],
+                        f"s49-third-move:{self.session_id}:{third['action']}",
+                    )
+                    model, projected = compose_third_move_native_dev(
+                        third, observed["third_move_probe"],
+                        previous_wait_native_seq=observed["postwait"].seq,
+                    )
+                    observed["third_move_model"] = model
+                    observed["third_move_body"] = projected
+                    server = observed["server"]
+                    if server is None or server.stdin is None:
+                        raise S49PaperDevBlocked("third Action lost original Paper owner")
+                    # Clear the previous target, confirmed by the sole native
+                    # receiver while host.run_session awaits this Action.
+                    original._command(server, "kill @e[type=minecraft:zombie]")
+                    await server.stdin.drain()
+                    clear_deadline = time.monotonic() + 12.0
+                    for _ in range(100):
+                        remaining = clear_deadline - time.monotonic()
+                        if remaining <= 0:
+                            break
+                        try:
+                            frame = await asyncio.wait_for(
+                                args[0].receive(), timeout=remaining,
+                            )
+                        except TimeoutError:
+                            break
+                        if not isinstance(frame, original.MineflayerObservation):
+                            if isinstance(frame, original.MineflayerEntityHurt):
+                                continue
+                            raise S49PaperDevBlocked("unexpected native third clear frame")
+                        zombies = [e for e in frame.snapshot.nearby_entities
+                                   if e.name == "zombie"]
+                        observed["fresh_trace"].append({
+                            "stage": "THIRD_CLEAR_OLD", "seq": frame.seq,
+                            "kind": frame.kind,
+                            "zombie_ids": [e.entity_id for e in zombies],
+                        })
+                        if (frame.seq > observed["third_move_probe"].seq
+                                and not zombies
+                                and not frame.snapshot.nearby_entities_coverage.truncated):
+                            observed["third_clear_seq"] = frame.seq
+                            break
+                    if observed["third_clear_seq"] is None:
+                        raise S49PaperDevBlocked("third MOVE old zombie not natively cleared")
+                    # Only environment staging: L0 remains the sole issuer.
+                    original._command(
+                        server, "execute at RelaySelf run summon minecraft:zombie "
+                        "~10 ~ ~ {NoAI:1b,Silent:1b,PersistenceRequired:1b,"
+                        "Invulnerable:1b}",
+                    )
+                    await server.stdin.drain()
+                    return receipt
                 if observed["count"] != 2:
                     return receipt
                 # The original S16 receipts are already completed; this
@@ -326,13 +408,26 @@ async def run(
         async def observe_original_next_probe(reading):
             if (observed["postwait"] is not None
                     and reading.seq > observed["postwait"].seq):
-                if observed["next_l0_probe"] is not None:
-                    raise S49PaperDevBlocked("multiple next-epoch native probes")
-                observed["next_l0_probe"] = reading
+                if (actual_fifth_epoch
+                        and observed["third_move_model"] is not None
+                        and reading.seq > observed["third_move_probe"].seq):
+                    if observed["fifth_l0_view"] is not None:
+                        raise S49PaperDevBlocked("multiple original fifth L0 probes")
+                    observed["fifth_l0_probe"] = reading
+                    # This passive SelfBody/SelfWorld construction occurs
+                    # BEFORE original L0._check/decide, no Action control.
+                    observed["fifth_l0_view"] = project_fifth_l0_view_dev(
+                        observed["third_move_model"], reading,
+                    )
+                else:
+                    if observed["next_l0_probe"] is not None:
+                        raise S49PaperDevBlocked("multiple next-epoch native probes")
+                    observed["next_l0_probe"] = reading
 
         with (patch.dict(os.environ, {
                 "S49_REAL_SERVER_CI": "1",
                 **({"S49_NEXT_EPOCH_DEV_ONLY": "1"} if actual_next_epoch else {}),
+                **({"S49_FIFTH_EPOCH_DEV_ONLY": "1"} if actual_fifth_epoch else {}),
               }),
               patch.object(original, "_fetch_official_server", paper_fetch),
               patch.object(original, "_write_config", paper_config),
@@ -346,6 +441,7 @@ async def run(
                         "MOVE_AWAY" if fresh_target_distance == 2 else "WAIT"
                     ),
                     "live_probe": observe_original_next_probe,
+                    **({"dev_fifth_epoch": "WAIT"} if actual_fifth_epoch else {}),
                 } if actual_next_epoch else {}),
             )
         report["original_s49_rc"] = rc
@@ -392,10 +488,11 @@ async def run(
             expected_choice = (
                 "MOVE_AWAY" if fresh_target_distance == 2 else "WAIT"
             )
+            expected_epochs = 5 if actual_fifth_epoch else 4
             if (native is None
                     or observed["native_cleared_seq"] is None
-                    or not isinstance(choices, list) or len(choices) != 4
-                    or not isinstance(pairs, list) or len(pairs) != 4
+                    or not isinstance(choices, list) or len(choices) != expected_epochs
+                    or not isinstance(pairs, list) or len(pairs) != expected_epochs
                     or not isinstance(witness, dict)
                     or witness.get("actual_original_host_decide") is not True
                     or witness.get("same_host_events") != 4
@@ -427,6 +524,73 @@ async def run(
                     or p1["source_bound_tick"] is not None
                     or p1["wait_ticks_admitted"] != 0):
                 raise S49PaperDevBlocked("original fourth L0 epoch not source-proven")
+            if actual_fifth_epoch:
+                third_model = observed["third_move_model"]
+                third_view = observed["third_move_body"]
+                fifth_view = observed["fifth_l0_view"]
+                fifth_native = observed["fifth_l0_probe"]
+                fifth_receipt = source["actual_native_actions"][-1]
+                fifth = source.get("dev_original_fifth_epoch")
+                if (third_model is None or third_view is None
+                        or fifth_view is None or fifth_native is None
+                        or not isinstance(fifth, dict)
+                        or p1["dev_fatigue_after"] != 0
+                        or third_view["p1_model_fatigue_before"] != 0
+                        or third_model.model_profile_sha256 != p1["p1_profile_sha256"]
+                        or third_model.third_action_id != fifth_receipt["action"]
+                        or third_model.move_distance_m != fifth_receipt["movement_m"]
+                        or observed["third_action"] != {
+                            key: fifth_receipt[key]
+                            for key in (
+                                "action", "source", "terminal",
+                                "movement_m", "execution_evidence"
+                            )
+                        }
+                        or observed["third_clear_seq"] is None
+                        or fifth["same_host_events"] != 5
+                        or fifth["same_host_action_requests"] != 3
+                        or fifth["next_choice"] != "WAIT"
+                        or fifth["next_action_issued"] is not False
+                        or fifth["next_event_seq"] != choices[4]["event_seq"]
+                        or fifth["next_probe_seq"] != choices[4]["probe_seq"]
+                        or fifth["next_event_seq"] != pairs[4]["event_seq"]
+                        or fifth["next_probe_seq"] != pairs[4]["probe_seq"]
+                        or fifth["next_probe_seq"] != fifth_native.seq
+                        or fifth["next_event_seq"] <= observed["third_clear_seq"]
+                        or fifth["next_event_seq"] <= third_model.third_after_probe.seq
+                        or fifth_view["native_seq"] != fifth_native.seq
+                        or fifth_view["p1_model_fatigue"] != third_model.model_fatigue
+                        or fifth_view["p1_model_sensor_pct"]
+                        != third_view["p1_model_sensor_pct"]
+                        or fifth_view["projection_before_original_l0_decide"] is not True
+                        or choices[4]["issued"] is not False
+                        or len(source["actual_native_actions"]) != 3
+                        or fifth["p1_as_action_authority"] is not False):
+                    raise S49PaperDevBlocked("fifth original epoch/P1 join rejected")
+                report.update(
+                    status="PASS",
+                    classification="DEV_WORLD_ORIGINAL_S49_FIFTH_WAIT_THIRD_P1_MODEL",
+                    world_status="DISPOSABLE_PAPER_COMPLETED_AND_CLEANED",
+                    original_s49_session_id=source["session_id"],
+                    original_s49_action_count=observed["count"],
+                    p1=p1,
+                    third_move_p1_self_body_dev=third_view,
+                    fifth_l0_self_world_body_dev=fifth_view,
+                    original_fourth_l0_dev=witness,
+                    original_fifth_l0_dev={
+                        **fifth, "status": "DEV_SAME_ORIGINAL_HOST_FIFTH_NATIVE_WAIT",
+                        "third_actual_action_outcome": True,
+                        "third_move_p1_model_only": True,
+                        "original_l0_policy_uses_p1": False,
+                        "p1_new_action_authority": False,
+                        "source_bound_tick": None,
+                        "wait_ticks_admitted": 0,
+                        "qualification_go": False,
+                        "science_go": False,
+                    },
+                )
+                report["p1"]["world_run_verified"] = True
+                return 0
             report.update(
                 status="PASS",
                 classification="DEV_WORLD_ORIGINAL_S49_NEXT_EPOCH_" + expected_choice,
@@ -673,6 +837,10 @@ def main(argv: list[str] | None = None) -> int:
         "--actual-next-epoch", action="store_true",
         help="Explicit DEV-only fourth native decision on the ORIGINAL S49 host",
     )
+    parser.add_argument(
+        "--actual-fifth-epoch", action="store_true",
+        help="Explicit DEV-only fifth native WAIT after original third MOVE",
+    )
     args = parser.parse_args(argv)
     return asyncio.run(run(
         args.output_dir, args.paper_jar, args.paper_sha256,
@@ -680,6 +848,7 @@ def main(argv: list[str] | None = None) -> int:
         confirmation=args.confirm,
         fresh_target_distance=args.fresh_target_distance,
         actual_next_epoch=args.actual_next_epoch,
+        actual_fifth_epoch=args.actual_fifth_epoch,
     ))
 
 
