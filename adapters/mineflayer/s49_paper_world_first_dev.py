@@ -61,6 +61,10 @@ from adapters.mineflayer.s49_paper_input_edges_dev import (
     await_paper_input_arm_dev,
     review_paper_input_edges_dev,
 )
+from adapters.mineflayer.s49_paper_motion_ticks_dev import (
+    await_paper_motion_marker_dev,
+    review_paper_motion_ticks_dev,
+)
 from adapters.mineflayer.s49_selfbody_motion_feedback_dev import (
     SelfBodyMotionState,
     apply_to_next_issued,
@@ -136,6 +140,7 @@ async def run(
     selfbody_motion_feedback: bool = False,
     motor_clock_dev: bool = False,
     paper_input_edges_dev: bool = False,
+    paper_motion_ticks_dev: bool = False,
 ) -> int:
     """One new Paper World, original S49 two MOVE actions, one post-WAIT sample."""
     report = {
@@ -154,6 +159,7 @@ async def run(
         "selfbody_motion_feedback": selfbody_motion_feedback,
         "motor_clock_dev": motor_clock_dev,
         "paper_input_edges_dev": paper_input_edges_dev,
+        "paper_motion_ticks_dev": paper_motion_ticks_dev,
     }
     created = False
     dev_bridge = None
@@ -186,6 +192,12 @@ async def run(
             raise S49PaperDevBlocked(
                 "Paper input edge observations require original Node/S49 clock opt-in"
             )
+        if paper_motion_ticks_dev and (
+            not motor_clock_dev or paper_input_edges_dev
+        ):
+            raise S49PaperDevBlocked(
+                "Paper passive movement requires Node clock, never simultaneously input prearm"
+            )
         paper_jar = _fresh_asset(paper_jar, paper_sha)
         observer_jar = _fresh_asset(observer_jar, observer_sha)
         if paper_jar.resolve() == observer_jar.resolve():
@@ -217,6 +229,7 @@ async def run(
             "motion_state": None, "motion_correction": None,
             "motion_pre_sixth": None,
             "paper_prearm_offset": None, "paper_first_session": None,
+            "paper_motion_offset": None, "paper_motion_action": None,
             "third_clear_seq": None,
             "fresh_trace": [],
         }
@@ -259,7 +272,8 @@ async def run(
             async def execute(self, *args, **kwargs):
                 receipt = await super().execute(*args, **kwargs)
                 observed["count"] += 1
-                if paper_input_edges_dev and observed["count"] == 1:
+                if (paper_input_edges_dev or paper_motion_ticks_dev
+                        ) and observed["count"] == 1:
                     if (not args or args[0].started.session_id != self.session_id
                             or self.supervisor.open_actions):
                         raise S49PaperDevBlocked("Paper prearm must share first closed S49 owner")
@@ -512,6 +526,28 @@ async def run(
             # Hook the ORIGINAL S49 executor's S15 transport, after the
             # original Action issue and all existing S14/S16 authorization.
             # No additional Action issuer, reader, grant or process.
+            if paper_motion_ticks_dev and observed["count"] == 1:
+                server = observed["server"]
+                if (observed["paper_motion_offset"] is not None
+                        or session is not observed["paper_first_session"]
+                        or server is None or server.stdin is None
+                        or not command.action_id.startswith("s49-native-move-")
+                        or command.duration_s != 0.2):
+                    raise S49PaperDevBlocked("Paper movement must arm one original second MOVE")
+                offset = paper_log.stat().st_size if paper_log.exists() else 0
+                observed["paper_motion_offset"] = offset
+                observed["paper_motion_action"] = command.action_id
+                original._command(
+                    server, "relays49motionstart "
+                    + command.action_id + " "
+                    + session.started.session_id + " " + offline_uuid(BOT_USERNAME),
+                )
+                await server.stdin.drain()
+                await await_paper_motion_marker_dev(
+                    paper_log, offset, marker="ARM",
+                    action_id=command.action_id,
+                    session_id=session.started.session_id,
+                )
             if paper_input_edges_dev and observed["count"] == 1:
                 server = observed["server"]
                 if (observed["paper_prearm_offset"] is not None
@@ -612,9 +648,28 @@ async def run(
                     "new_grant": False,
                     "r_qualified_fatigue": False,
                 }
-            return await original_native_execute(
-                session, command, timeout_s=timeout_s, provenance=provenance,
-            )
+            try:
+                return await original_native_execute(
+                    session, command, timeout_s=timeout_s, provenance=provenance,
+                )
+            finally:
+                if (paper_motion_ticks_dev and observed["count"] == 1
+                        and observed["paper_motion_action"] == command.action_id):
+                    server = observed["server"]
+                    if server is None or server.stdin is None:
+                        raise S49PaperDevBlocked("Paper passive motion owner lost")
+                    offset = paper_log.stat().st_size if paper_log.exists() else 0
+                    original._command(
+                        server, "relays49motionstop "
+                        + command.action_id + " "
+                        + session.started.session_id + " " + offline_uuid(BOT_USERNAME),
+                    )
+                    await server.stdin.drain()
+                    await await_paper_motion_marker_dev(
+                        paper_log, offset, marker="COMPLETE",
+                        action_id=command.action_id,
+                        session_id=session.started.session_id,
+                    )
 
         # Opt-in candidate changes qualify()'s DEV-only bounded epoch
         # contract, NEVER the original S14/S16 issuer or cleanup.
@@ -966,6 +1021,12 @@ async def run(
                                     paper_log, source, review,
                                 )
                             )
+                        if paper_motion_ticks_dev:
+                            report["paper_server_motion_ticks_dev"] = (
+                                review_paper_motion_ticks_dev(
+                                    paper_log, source, review,
+                                )
+                            )
                     report.update(
                         status="PASS",
                         classification="DEV_WORLD_SIXTH_ORIGINAL_S49_P1_MOTOR_TIMING_APPLIED",
@@ -1292,6 +1353,10 @@ def main(argv: list[str] | None = None) -> int:
         "--paper-input-edges-dev", action="store_true",
         help="DEV only: arm existing one-shot Paper observer BEFORE original second MOVE",
     )
+    parser.add_argument(
+        "--paper-motion-ticks-dev", action="store_true",
+        help="DEV only: observe server player motion event tick positions around original second MOVE",
+    )
     args = parser.parse_args(argv)
     return asyncio.run(run(
         args.output_dir, args.paper_jar, args.paper_sha256,
@@ -1306,6 +1371,7 @@ def main(argv: list[str] | None = None) -> int:
         selfbody_motion_feedback=args.selfbody_motion_feedback,
         motor_clock_dev=args.motor_clock_dev,
         paper_input_edges_dev=args.paper_input_edges_dev,
+        paper_motion_ticks_dev=args.paper_motion_ticks_dev,
     ))
 
 
