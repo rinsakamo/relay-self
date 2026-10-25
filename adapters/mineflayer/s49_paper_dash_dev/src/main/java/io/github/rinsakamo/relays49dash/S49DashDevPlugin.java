@@ -169,6 +169,11 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         }
         World world = subject.getWorld();
         long tick = world.getFullTime();
+        // Paper may schedule the first callback in the same World tick
+        // as arm(); that does not represent an elapsed World tick.
+        if (tick == armTick && lastTick == armTick) {
+            return;
+        }
         if (tick <= lastTick || tick - armTick > MAX_ARM_TICKS) {
             disarm("TICK_GAP_OR_MAX_WINDOW");
             return;
