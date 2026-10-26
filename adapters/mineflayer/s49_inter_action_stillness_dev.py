@@ -40,7 +40,7 @@ def review_inter_action_stillness_dev(
         or timeline.get("world_tick_m0_debits_posted") is not False
         or timeline.get("WAIT_sourcebound_admitted") is not False
         or type(min_still_ticks) is not int or not 8 <= min_still_ticks <= 40
-        or type(path) is not Path or path.is_symlink() or not path.is_file()
+        or not isinstance(path, Path) or path.is_symlink() or not path.is_file()
         or not 0 < path.stat().st_size <= 250_000
     ):
         raise InterActionStillnessRejected("bounded, source-joined passive inputs required")
