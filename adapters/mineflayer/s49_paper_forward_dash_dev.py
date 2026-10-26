@@ -29,11 +29,13 @@ from adapters.mineflayer.s49_node_physics_postclear_dev import (
     audit_node_paper_motion_fingerprint_dev,
     audit_node_physics_postclear_dev,
 )
-from adapters.mineflayer.s49_two_action_world_timeline_dev import review_two_action_world_timeline_dev
 from adapters.mineflayer.s49_paper_world_first_dev import (
     _await_dash_dev_line,
     _fresh_output,
     offline_uuid,
+)
+from adapters.mineflayer.s49_two_action_world_timeline_dev import (
+    review_two_action_world_timeline_dev,
 )
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from experiments.fatigue_p1 import FatigueProfile, initial_state
