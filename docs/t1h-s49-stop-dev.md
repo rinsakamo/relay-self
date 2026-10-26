@@ -32,7 +32,10 @@ either primitive:
 - A unique marker, matching World/Player, **8 consecutive observed idle
   transitions with identical stationary pose**, no gaps or duplicate
   post-marker Paper server ticks are required for a bounded S49-owner-local
-  `S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW` receipt. Residual movement
+  `S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW` receipt, committed by the
+  S49 foreground owner **while Paper is still running**, after the
+  flush-per-line Paper collector provides the qualifying window.
+  Resource shutdown is verified separately. Residual movement
   before the settled window is allowed and must remain visible in original
   log. A missing clear ACK, session mismatch, insufficient Paper samples,
   sustained movement, input activity, or log discontinuity keeps STOP
@@ -57,7 +60,8 @@ JSONL reader/writer. It stages one bounded issued MOVE, requests STOP
 after 80ms from host owner (no new native receive task), verifies
 `FAILED`/UNKNOWN with matching original clear ACK, issues the Paper
 marker only **after** that ACK, observes later Paper callbacks, and
-evaluates the post-marker native log after owned shutdown.
+evaluates the post-marker native log **before owned shutdown**,
+committing the bounded owner-local DEV STOP ACK while the World is still live.
 
 Run on LocalCodex's Windows11/WSL2 machine with Python 3.12,
 Node22, JDK21, disposable Paper1.21.8 and built plugin:
