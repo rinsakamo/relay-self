@@ -93,7 +93,8 @@ def review_two_action_world_timeline_dev(
                 data = _fields(line, marker)
                 # Reject a foreign duplicate/overlap carrying the same first
                 # action even when its session differs.
-                if data.get("action_id") == action_id:
+                expected_action = second["action"] if name == "EDGE" else action_id
+                if data.get("action_id") == expected_action:
                     groups[name].append(data)
                 break
     ticks, edges, completes = (groups["TICK"], groups["EDGE"], groups["COMPLETE"])
