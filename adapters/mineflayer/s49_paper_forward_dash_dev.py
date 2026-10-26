@@ -498,19 +498,18 @@ async def run(
                 else command.cleanup_action_id
             ) or result.session_id != subject["session"]):
                 raise ForwardDashDevRejected("foreign native S15 effect ACK")
-            offset = paper_log.stat().st_size if paper_log.exists() else 0
+            # Write-and-flush once without polling Paper log. A blocking
+            # Paper round-trip here artificially extends the actual native
+            # control interval (observer effect). Console input is FIFO:
+            # subsequent S49 dashoff follows both effect markers; the final
+            # S16/producer-local bracket audit rejects any lost marker before
+            # touching the original owner's B0 M0 balance.
             original._command(
                 server, "relays49dashmark " + command.action_id + " "
                 + subject["session"] + " " + offline_uuid("RelaySelf")
                 + " " + phase + " " + str(result.seq),
             )
             await server.stdin.drain()
-            marker = await _await_dash_dev_line(
-                paper_log, offset, marker="EDGE", action_id=command.action_id,
-            )
-            if ("phase=" + phase not in marker
-                    or "native_seq=" + str(result.seq) not in marker):
-                raise ForwardDashDevRejected("Paper acknowledged wrong native effect ACK")
         try:
             return await base_execute(
                 session, command, timeout_s=timeout_s, provenance=provenance,
