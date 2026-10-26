@@ -217,7 +217,7 @@ class NormalSessionActionExecutor:
         self, session: MineflayerProcessSession, step: L0Step,
         bound: BoundExecutionCandidate, probe: MineflayerObservation,
         propose: NormalActionAuthorization, issue: NormalActionAuthorization,
-        *, timeout_s: float = 9,
+        *, timeout_s: float = 9, l0_interrupt_dev: bool = False,
     ) -> NormalActionReceipt:
         if (
             not isinstance(session, MineflayerProcessSession)
@@ -226,6 +226,8 @@ class NormalSessionActionExecutor:
         ):
             raise NormalActionRejected("live Mineflayer session mismatch")
         self.require_authorizations(step, bound, probe, propose, issue)
+        if type(l0_interrupt_dev) is not bool:
+            raise NormalActionRejected("L0 interrupt DEV opt-in must be bool")
         # A monotonically increasing owner-local ordering index, not wall time.
         t = 100 + 10 * self._count
         origin = Provenance("normal-action-runtime", f"{self.session_id}:{t}")
@@ -249,6 +251,7 @@ class NormalSessionActionExecutor:
         try:
             consequence = await execute_mineflayer_command(
                 session, command, timeout_s=timeout_s, provenance=origin,
+                l0_interrupt_dev=l0_interrupt_dev,
             )
             interpretation = interpret_world_consequence(
                 issued, result, consequence, provenance=origin,
