@@ -1,0 +1,31 @@
+name: S49 Forward Motor Admission Focused DEV
+on:
+  push:
+    branches:
+      - self/dev-s49-forward-motor-admission-20261026
+    paths:
+      - adapters/mineflayer/execution.py
+      - adapters/mineflayer/normal_action.py
+      - adapters/mineflayer/s49_normal_session_real_ci.py
+      - tests/test_s49_forward_motor_admission_dev.py
+      - .github/workflows/self-s49-forward-admission-focused-dev.yml
+permissions:
+  contents: read
+jobs:
+  forward-admission-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          python -m compileall -q adapters/mineflayer/execution.py adapters/mineflayer/normal_action.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_s49_forward_motor_admission_dev.py
+          ruff check adapters/mineflayer/execution.py adapters/mineflayer/normal_action.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_s49_forward_motor_admission_dev.py
+          PYTHONPATH="src:tests:." python -m pytest -q tests/test_s49_forward_motor_admission_dev.py tests/test_feature_s49_normal_runtime.py tests/test_s49_original_next_epoch_dev.py
+      - run: echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN / NO_WORLD'

@@ -330,15 +330,21 @@ def observe_closed_native_actions(
 class NormalSessionActionExecutor:
     """Caller-owned one-session Action supervisor, never implicit authority."""
 
-    def __init__(self, session_id: str, intent: IntentCommitment) -> None:
+    def __init__(
+        self, session_id: str, intent: IntentCommitment, *,
+        dev_forward_motor: bool = False,
+    ) -> None:
         if (
-            not isinstance(session_id, str) or not session_id
+            type(dev_forward_motor) is not bool
+            or not isinstance(session_id, str) or not session_id
             or not isinstance(intent, IntentCommitment)
             or intent.current_intent is None
         ):
             raise NormalActionRejected("active named session and Intent required")
         self.session_id = session_id
         self.intent = intent
+        # Default remains the original physically bound backward S49 path.
+        self._dev_forward_motor = dev_forward_motor
         self.supervisor = ActionSupervisor()
         self._dispatched: set[str] = set()
         self._count = 0
@@ -386,7 +392,9 @@ class NormalSessionActionExecutor:
                 for e in p.observed_entities
             )
             or bound.candidate_ref != "MOVE_AWAY"
-            or bound.binding.action_ref != "MOVE_BACKWARD"
+            or bound.binding.action_ref != (
+                "MOVE_FORWARD" if self._dev_forward_motor else "MOVE_BACKWARD"
+            )
             or bound.binding.action_id != step.action_request_id
             or bound.binding.action_id in self._dispatched
             or bound.intent_id != self.intent.current_intent.intent_id

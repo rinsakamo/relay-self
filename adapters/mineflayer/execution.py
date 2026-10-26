@@ -19,6 +19,7 @@ from relay_self.execution_binding import ExecutionBindingResult
 from relay_self.provenance import Provenance
 
 MOVE_BACKWARD_ACTION_REF = "MOVE_BACKWARD"
+MOVE_FORWARD_ACTION_REF = "MOVE_FORWARD"  # explicit bounded S49 DEV-only caller
 MOVE_BACKWARD_EFFECT = "set_control"
 MOVE_BACKWARD_CONTROL = "back"
 MOVE_BACKWARD_DURATION_S = 0.20
@@ -78,7 +79,11 @@ class MineflayerCommand:
         _require_identifier("effect", self.effect)
         _require_identifier("control", self.control)
         _require_identifier("cleanup_action_id", self.cleanup_action_id)
-        if self.action_ref != MOVE_BACKWARD_ACTION_REF:
+        expected_control = {
+            MOVE_BACKWARD_ACTION_REF: MOVE_BACKWARD_CONTROL,
+            MOVE_FORWARD_ACTION_REF: "forward",
+        }.get(self.action_ref)
+        if expected_control is None:
             raise InvalidMineflayerExecutionData(
                 f"unsupported S15 action_ref: {self.action_ref}"
             )
@@ -86,9 +91,9 @@ class MineflayerCommand:
             raise InvalidMineflayerExecutionData(
                 "MOVE_BACKWARD command effect must be set_control"
             )
-        if self.control != MOVE_BACKWARD_CONTROL:
+        if self.control != expected_control:
             raise InvalidMineflayerExecutionData(
-                "MOVE_BACKWARD command control must be back"
+                "physical control mismatches exact action_ref"
             )
         if self.state is not True:
             raise InvalidMineflayerExecutionData(
@@ -233,7 +238,11 @@ def build_mineflayer_command(
         raise InvalidMineflayerExecutionData(
             "issued intent_id does not match ExecutionBindingResult"
         )
-    if binding_result.action_ref != MOVE_BACKWARD_ACTION_REF:
+    controls = {
+        MOVE_BACKWARD_ACTION_REF: MOVE_BACKWARD_CONTROL,
+        MOVE_FORWARD_ACTION_REF: "forward",
+    }
+    if binding_result.action_ref not in controls:
         raise InvalidMineflayerExecutionData(
             f"unsupported S15 action_ref: {binding_result.action_ref}"
         )
@@ -243,7 +252,7 @@ def build_mineflayer_command(
         binding_id=binding_result.binding_id,
         action_ref=binding_result.action_ref,
         effect=MOVE_BACKWARD_EFFECT,
-        control=MOVE_BACKWARD_CONTROL,
+        control=controls[binding_result.action_ref],
         state=True,
         duration_s=MOVE_BACKWARD_DURATION_S,
         cleanup_action_id=f"{issued_action.action_id}-s15-clear",
@@ -257,7 +266,7 @@ async def execute_mineflayer_command(
     timeout_s: float = 2.0,
     provenance: Provenance,
 ) -> WorldConsequence:
-    """Execute one bounded MOVE_BACKWARD command with structured observation.
+    """Execute one bounded, explicitly bound movement command with observation.
 
     The function owns no Action lifecycle state. It sends one explicit
     backward-control command, clears controls exactly once on the normal path,
@@ -309,7 +318,7 @@ async def execute_mineflayer_command(
         )
         if dispatch.result != "applied":
             raise MineflayerExecutionError(
-                "Mineflayer rejected MOVE_BACKWARD dispatch: "
+                "Mineflayer rejected bound movement dispatch: "
                 f"{dispatch.error}"
             )
 

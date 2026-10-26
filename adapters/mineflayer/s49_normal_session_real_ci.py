@@ -272,6 +272,7 @@ async def qualify(
     dev_next_epoch: str | None = None,
     dev_fifth_epoch: str | None = None,
     dev_sixth_epoch: str | None = None,
+    dev_forward_motor: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -279,6 +280,7 @@ async def qualify(
         "minecraft_version": MINECRAFT_VERSION,
         "mineflayer_version": MINEFLAYER_VERSION,
         "actual_native_actions": [],
+        "dev_forward_motor": dev_forward_motor,
         "decisions": [],
         "real_model_calls": 0,
         "learning_in_world": False,
@@ -293,6 +295,14 @@ async def qualify(
     try:
         if os.environ.get("S49_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
+        if type(dev_forward_motor) is not bool or (
+            dev_forward_motor and (
+                os.environ.get("S49_FORWARD_MOTOR_DEV_ONLY") != "1"
+                or stage_r_dev or dev_next_epoch is not None
+                or dev_fifth_epoch is not None or dev_sixth_epoch is not None
+            )
+        ):
+            raise S31ABlocked("forward motor requires isolated explicit DEV gate")
         if stage_r_dev and os.environ.get("S49_STAGE_R_DEV_ONLY") != "1":
             raise S31ABlocked("Stage R requires separate explicit DEV-only operator gate")
         if dev_next_epoch is not None and (
@@ -349,7 +359,9 @@ async def qualify(
                  else 3 if dev_next_epoch == "MOVE_AWAY" else 2)
             ),
         )
-        executor = NormalSessionActionExecutor(sid, intent)
+        executor = NormalSessionActionExecutor(
+            sid, intent, dev_forward_motor=dev_forward_motor,
+        )
         if stage_r_dev:
             # Explicit S49-owned extension; never install a read-only
             # observer as a new Action issuer or as an S10 authority.
@@ -442,7 +454,7 @@ async def qualify(
                 candidate_ref="MOVE_AWAY", required_intent_id="escape-threat",
                 skill_execution_id=f"s49-skill-{step.event_seq}",
                 skill_ref="escape-movement", action_id=step.action_request_id,
-                action_ref="MOVE_BACKWARD",
+                action_ref="MOVE_FORWARD" if dev_forward_motor else "MOVE_BACKWARD",
                 provenance=source(f"binding-{step.event_seq}"),
             )
             bound = resolve_execution_binding(
@@ -632,6 +644,8 @@ async def qualify(
             report["learning_in_world"] = True  # HOLD revision, NOT gain
         report["status"] = "PASS"
         report["classification"] = (
+            "DEV_ONLY_S49_FORWARD_MOTOR_NOT_DIRECTIONALLY_QUALIFIED"
+            if dev_forward_motor else
             "DEV_ONLY_S49_SIXTH_MOTOR_DEV_AFTER_FIFTH_WAIT"
             if dev_sixth_epoch is not None
             else "DEV_ONLY_S49_ORIGINAL_FIFTH_WAIT_AFTER_THIRD_MOVE"
@@ -740,6 +754,7 @@ async def qualify(
             "DEV_ONLY_S49_ORIGINAL_NEXT_EPOCH_MOVE_AWAY",
             "DEV_ONLY_S49_ORIGINAL_FIFTH_WAIT_AFTER_THIRD_MOVE",
             "DEV_ONLY_S49_SIXTH_MOTOR_DEV_AFTER_FIFTH_WAIT",
+            "DEV_ONLY_S49_FORWARD_MOTOR_NOT_DIRECTIONALLY_QUALIFIED",
         ):
             # No pre-existing FAILURE/BLOCKED is allowed to retain the
             # provisional qualified label, nor be upgraded to PASS.
@@ -766,8 +781,12 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--server-log", type=Path, required=True)
+    parser.add_argument("--dev-forward-motor", action="store_true",
+                        help="isolated DEV MOVE_FORWARD motor, not DASH or escape qualification")
     args = parser.parse_args()
-    return asyncio.run(qualify(args.report, args.server_log))
+    return asyncio.run(qualify(
+        args.report, args.server_log, dev_forward_motor=args.dev_forward_motor,
+    ))
 
 
 if __name__ == "__main__":
