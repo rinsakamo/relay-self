@@ -185,6 +185,52 @@ if (nativePhysicsTraceEnabled) {
     }
   })
 }
+// The only physical input custodian remains this existing Mineflayer bot.
+// Bounded DEV witness from original S15 first clear through second SET.
+// This file provides NO Paper World-tick synchronization or WAIT authority.
+const interActionPath = process.env.S49_INTER_ACTION_CONTROL_DEV_PATH
+const interActionEnabled =
+  nativePhysicsTraceEnabled &&
+  process.env.S49_INTER_ACTION_CONTROL_DEV_ONLY === '1' &&
+  typeof interActionPath === 'string' && isAbsolute(interActionPath)
+let interActionTrace = null
+function localControlsDev () {
+  return ['forward', 'sprint', 'back', 'left', 'right', 'jump', 'sneak']
+    .map(control => [control, bot.getControlState(control)])
+}
+if (interActionEnabled) {
+  bot.on('physicsTick', () => {
+    if (!interActionTrace || interActionTrace.complete) return
+    if (!bot.entity || !bot.entity.position) {
+      interActionTrace.overflow = true
+      return
+    }
+    if (interActionTrace.rows.length >= 1200) {
+      interActionTrace.overflow = true
+      return
+    }
+    const controls = Object.fromEntries(localControlsDev())
+    const pos = bot.entity.position
+    interActionTrace.rows.push({
+      ordinal: interActionTrace.rows.length + 1,
+      monotonic_ms: Number(process.hrtime.bigint() / 1000000n),
+      controls, x: pos.x, z: pos.z
+    })
+  })
+}
+function sealInterActionDev (command) {
+  if (!interActionEnabled || !interActionTrace || interActionTrace.complete) return
+  interActionTrace.second_action_id = command.action_id
+  interActionTrace.before_second_set_controls =
+    Object.fromEntries(localControlsDev())
+  interActionTrace.complete = true
+  try {
+    writeFileSync(interActionPath, JSON.stringify(interActionTrace) + '\n',
+      { flag: 'wx', encoding: 'utf8', mode: 0o600 })
+  } catch (error) {
+    emitAdapterError(new Error('S49_INTER_ACTION_CONTROL_WRITE_FAILED'))
+  }
+}
 let attrDiagActive = false
 let attrDiagSamples = 0
 function traceDevAttr (stage, info = {}) {
@@ -375,6 +421,7 @@ async function handleEffect (command) {
         emitEffectResult(command, 'rejected', 'sprint_dev_gate_or_pair')
         return
       }
+      sealInterActionDev(command)
       try {
         bot.setControlState('sprint', true)
         bot.setControlState('forward', true)
@@ -405,6 +452,18 @@ async function handleEffect (command) {
           !nativePhysicsTrace.clear_seen) {
         nativePhysicsTrace.clear_seen = true
         captureNativePhysicsDev('CLEAR')
+        if (interActionEnabled && interActionTrace === null) {
+          interActionTrace = {
+            version: 'S49_NODE_INTER_ACTION_INPUT_OFF_DEV_V1',
+            session_id: sessionId,
+            first_action_id: nativePhysicsTrace.action_id,
+            first_cleanup_action_id: command.action_id,
+            source_attested: false, clock_synchronized: false,
+            complete: false, overflow: false,
+            start_controls: Object.fromEntries(localControlsDev()),
+            rows: []
+          }
+        }
       }
       if (attrSyncDev && bot.entity && bot.entity.attributes) {
         delete bot.entity.attributes['minecraft:movement_speed']
