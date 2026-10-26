@@ -279,6 +279,31 @@ def review_original_s49_native_effect_edges_dev(
         0, min(bracket["last_tick"], times[1])
         - max(bracket["first_tick"], times[0]) + 1,
     )
+    # An after-ACK marker alone is NOT movement evidence. Require at least
+    # one actual Paper speed-boost callback inside the bounded marker window
+    # before original S49 can settle any corresponding M0 DASH invoice.
+    boosted_inside = 0
+    for line in raw.splitlines():
+        marker = "S49_DASH_DEV_TICK "
+        if marker not in line:
+            continue
+        fields = dict(
+            token.split("=", 1) for token in line.split(marker, 1)[1].split()
+            if token.count("=") == 1
+        )
+        if fields.get("action_id") != action_id:
+            continue
+        if fields.get("session_id") != session_id:
+            raise ForwardDashDevRejected("Paper boost callback foreign session")
+        try:
+            tick = int(fields["tick"])
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ForwardDashDevRejected("malformed Paper native ACK callback tick") from exc
+        if (times[0] <= tick <= times[1]
+                and fields.get("modifier_applied") == "true"):
+            boosted_inside += 1
+    if elapsed_in_bracket < 1 or boosted_inside < 1:
+        raise ForwardDashDevRejected("native ACK marker window has no physical DASH callback")
     return {
         "classification": "S49_NATIVE_ACK_TO_PAPER_MARKER_DELIVERY_DEV_ONLY",
         "action_id": action_id, "session_id": session_id,
@@ -287,6 +312,7 @@ def review_original_s49_native_effect_edges_dev(
         "paper_dispatch_ack_marker_tick": times[0],
         "paper_cleanup_ack_marker_tick": times[1],
         "paper_sample_ticks_within_marker_window": elapsed_in_bracket,
+        "boosted_paper_callbacks_inside_ack_marker_window": boosted_inside,
         "paper_arm_tick": bracket["arm_tick"],
         "paper_release_tick": bracket["release_tick"],
         "native_single_reader": True,
