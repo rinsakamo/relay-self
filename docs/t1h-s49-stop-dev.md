@@ -12,7 +12,8 @@ The existing runtime implements S49 primitive Action issue/S16
 product-level high STOP command or STOP ACK. T1h introduces one
 **opt-in owner-local DEV STOP request state** rather than mislabelling
 either primitive:
-- `S49DevStopOwner.request(stop_id, active_action_id)` latches once;
+- `S49DevStopOwner.request(stop_id, active_action_id=...,
+  expected_clear_action_id=...)` binds the original cleanup ID and latches once;
   thereafter `allows_action=false`. It has no effect writer or native
   receiver. The original S49 owner uses the same exact original Action ID.
 - `execute_mineflayer_command(..., l0_interrupt_dev=True,
@@ -20,7 +21,9 @@ either primitive:
   pre-motor admission, receipt waits and its one existing motor receive
   turn. An external owner event aborts only the currently issued MOVE
   and enters the **existing once-only S49 cleanup** (no additional
-  `set_control`, second `clear_controls` or receive task). The
+  `set_control`, second `clear_controls` or receive task). A stalled send
+  is polled by the original executor and its pending write is cancelled and
+  joined before the original cleanup path runs. The
   interrupted Action remains `FAILED` / supervised `UNKNOWN`, not
   a successful OUTCOME. Default `stop_requested_dev=None` is unchanged.
 - Once the original single-stream client `clear_controls`
@@ -31,11 +34,15 @@ either primitive:
   logs later `PAPER_DEV_MOTOR_SAMPLE` source rows on actual server ticks.
 - A unique marker, matching World/Player, **8 consecutive observed idle
   transitions with identical stationary pose**, no gaps or duplicate
-  post-marker Paper server ticks are required for a bounded S49-owner-local
+  post-marker Paper server ticks (including the first tick after the marker)
+  are required for a bounded S49-owner-local
   `S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW` receipt, committed by the
   S49 foreground owner **while Paper is still running**, after the
   flush-per-line Paper collector provides the qualifying window.
-  Resource shutdown is verified separately. Residual movement
+  The whole available interval is checked: later motion/input or gaps cannot
+  hide behind an earlier good window. The original single reader drains an
+  exact correlated live probe immediately before confirmation, so a past idle
+  window cannot override a known dead source. Resource shutdown is verified separately. Residual movement
   before the settled window is allowed and must remain visible in original
   log. A missing clear ACK, session mismatch, insufficient Paper samples,
   sustained movement, input activity, or log discontinuity keeps STOP
@@ -85,16 +92,41 @@ Do not run against existing R/V World. For a native FAIL, retain its
 complete original world and repair on the isolation branch, then rerun
 with a different fresh output directory.
 
-### Verification at initial integration
+### Local verification completed (2026-10-26 JST)
 
-The new pure STOP ownership, S49 executor opt-in hook, dedicated
-Paper-log parser, negative tests and disposable DEV case are committed.
-**Python3.12 FAST, exact repository integrated pytest, full Node and
-Java21 build, and new Minecraft T1h DEV World have not been executed
-in this chat tool environment.** GitHub read-back validates code
-publication, not runtime correctness.
+See [native results and limitations](t1h-native-dev-results-20261026.md) and
+[machine-readable per-trial measurements](t1h-native-dev-results-20261026.json).
+The initial implementation had not been tested; the local campaign now retains
+all positive and negative original logs, World folders, source diffs and cleanup
+receipts under the result document's external evidence root.
 
-Further trials: STOP at an epoch boundary, STOP during EAT,
-unexpected client disconnect before Paper marker, absent/duplicate
-clear ACK and recovered stale source. Avoid high-level STOP promotion
-on partial evidence. See Issue #150 and #627.
+The same CLI now additionally accepts `t1h_pre_stop`, `t1h_lost_ack`,
+`t1h_delayed_ack`, `t1h_disconnect`, `t1h_disconnect_after_idle`,
+`t1h_paper_short`, `t1h_input_residual`, `t1h_motion_residual`,
+`t1h_stale_ack`, and `t1h_double_ack`. Every case owns a fresh World.
+
+- Lost/delayed ACK cases affect the Python consumer of the real bridge receipt;
+  original wire bytes remain. They are not proof of a network packet-loss model.
+- Input-residual case alone sets the explicit DEV fault token
+  `RELAYSELF_T1H_CLEAR_FAULT_DEV=T1E-DISPOSABLE-DEV-ONLY`, also requiring both
+  existing Paper DEV flags. The original bridge intentionally omits clear and
+  emits a false applied ACK. No new movement writer is installed. Paper must
+  reject ongoing input; bridge shutdown always performs the genuine clear.
+  The runner removes the fault token before every other case.
+- Motion-residual case applies a temporary environmental levitation effect
+  through the existing Paper console. Cleared input does not establish stillness.
+- Stale ACK case requires an earlier `t1h_stop_move` in the same fresh batch;
+  it reads that actual older session/Action's native receipt without re-executing
+  the older World. Current Action ID differs. No synthetic ID substitution is
+  used in the final stale-receipt trial.
+- `PASS` on a negative case means the expected refusal was verified; it is not
+  a DEV STOP ACK. Injected disconnect retains `FAIL` for normal transport closure
+  even when refusal and process reaping succeed. Do not rewrite it as normal
+  shutdown or a successful STOP handshake.
+
+STOP-after-latch probes never issue another Supervisor Action or Motor effect.
+No T2 accounting owner is created by this STOP fixture; accounting rows and P1
+WAIT credits remain zero. Existing M0/P1 code and TPS restrictions are unchanged.
+Further product work should connect the same opt-in owner to the normal
+multi-epoch Self command boundary, including EAT cancellation, with separately
+scoped DEV trials. No R qualification or high-TPS STOP deadline is inherited.
