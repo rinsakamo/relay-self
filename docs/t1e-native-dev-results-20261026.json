@@ -1,0 +1,283 @@
+{
+  "classification": "DEV_WORLD_OBSERVED",
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "tested_code_head": "7eba8ed4ac247225494ae319087f6a12b8492f01",
+  "branch": "self/dev-t1e-s49-l0-integration-20261026",
+  "evidence_root": "/home/rinsa/work/t1e-integration-evidence-20261026/run-003",
+  "python": "3.12.3",
+  "node": "22.22.2",
+  "java": "21.0.12.1",
+  "python_fast_passed": 344,
+  "node_tests_passed": 52,
+  "paper_api_build": "Java21 Maven BUILD SUCCESS",
+  "requested_tps": 20,
+  "node_received_ticks_definition": "Accepted/emitted paper_tick_sample receipts, not all raw plugin callbacks",
+  "latency_definition": "Same Node monotonic clock: paper_l0_shadow emission after evaluation to effect_result after actual clearControlStates completion; not Paper-to-client latency",
+  "cases": [
+    {
+      "case": "normal",
+      "status": "PASS",
+      "metrics": {
+        "active_shadow_ticks": 4,
+        "clear_ack_applied_at_node": true,
+        "clear_control_sends": 1,
+        "fresh_world_tick_attested": false,
+        "node_emitted_shadow_ticks": 39,
+        "node_received_ticks": 39,
+        "node_shadow_emit_to_clear_applied_ms": null,
+        "paper_effective_tps": 21.084196447757613,
+        "paper_sent_ticks": 40,
+        "paper_ticks_without_emitted_l0": [
+          "52"
+        ],
+        "python_danger_receive_to_clear_ack_ms": null,
+        "python_danger_receive_to_clear_send_ms": null,
+        "set_control_sends": 1
+      },
+      "consequence_status": "executed",
+      "consequence_error": null,
+      "cleanup_receipt_received_by_executor": true,
+      "movement_distance_at_s49_probe_m": 0.6269065734210613,
+      "paper_post_clear_marker_tick": 36,
+      "settled_server_ticks": [
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51
+      ],
+      "settled_last_eight": {
+        "consecutive": true,
+        "input_idle": true,
+        "max_pose_delta_m": 0.0
+      },
+      "post_marker_to_final_pose_delta_m": 0.12287857661821566,
+      "maximum_shadow_evaluation_ms": 0.168873,
+      "cleanup_complete": true,
+      "source_hashes": {
+        "commands.jsonl": "9aa04e6079a05c96e71f99309725bf13d2d198798548cbb2a3e8543bcbe535a2",
+        "native.jsonl": "25fffc7241febdc0c70a83cb2cf3e998f68a933c97788ac263bb1429207a68e7",
+        "node_timing.jsonl": "fbc13726332cadf5cfa577fa90f8717bb52833ffa2f5eed6e3fde884f5fd37ae",
+        "paper.log": "5c8b980f164f8bc7ea78a5f23dbcfd215fb803b7409dc64ab96c7cf63e928101",
+        "python_timing.jsonl": "71f07da16e11578a5e2a15a6b4f50fed0884a3cd3fc9210aef919f2d817223ce",
+        "report.json": "e66a510250bc5d9bcd1809eac2483e2e44f29b4aafe0d564de7e6aca15e1a9a2"
+      }
+    },
+    {
+      "case": "low_health",
+      "status": "PASS",
+      "metrics": {
+        "active_danger_assessment": "LOW_HEALTH",
+        "active_shadow_ticks": 5,
+        "clear_ack_applied_at_node": true,
+        "clear_control_sends": 1,
+        "fresh_world_tick_attested": false,
+        "node_emitted_shadow_ticks": 39,
+        "node_received_ticks": 39,
+        "node_shadow_emit_to_clear_applied_ms": 1.35877,
+        "paper_effective_tps": 21.16610526873992,
+        "paper_sent_ticks": 40,
+        "paper_ticks_without_emitted_l0": [
+          "52"
+        ],
+        "python_danger_receive_to_clear_ack_ms": 1.121976,
+        "python_danger_receive_to_clear_send_ms": 0.05717,
+        "set_control_sends": 1
+      },
+      "consequence_status": "failed",
+      "consequence_error": "MineflayerExecutionError: L0 DEV abort request: INTERRUPT_LOW_HEALTH",
+      "cleanup_receipt_received_by_executor": true,
+      "movement_distance_at_s49_probe_m": null,
+      "paper_post_clear_marker_tick": 36,
+      "settled_server_ticks": [
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51
+      ],
+      "settled_last_eight": {
+        "consecutive": true,
+        "input_idle": true,
+        "max_pose_delta_m": 0.0
+      },
+      "post_marker_to_final_pose_delta_m": 0.05863197510925472,
+      "maximum_shadow_evaluation_ms": 0.158826,
+      "cleanup_complete": true,
+      "source_hashes": {
+        "commands.jsonl": "e7feea553d641459606a4398af2d96e47294978387ac2b88642e5f4b9dba3af8",
+        "native.jsonl": "eab3cb59c4da2bda6a0a6317ae55b8852147ea9cb8a34f880761ee12982314fd",
+        "node_timing.jsonl": "4f8877736c9ef356f94511b221320bb57cfd8bcd79a61bee92c32db88d997bec",
+        "paper.log": "1237d3e41e94d20d14acaa4bfaa634bd2f29b6de3fa3ed69a31107a4d1362c49",
+        "python_timing.jsonl": "c7f18a0573d81e3aeaf5e549da456098cf7c3679af430a7228ca757d42f6fdb4",
+        "report.json": "35f527b1663f40db4f16f2c62a02e8183f9e0ce3dfb834885669c63b570c200f"
+      }
+    },
+    {
+      "case": "hostile",
+      "status": "PASS",
+      "metrics": {
+        "active_danger_assessment": "KNOWN_NEAR_HOSTILE",
+        "active_shadow_ticks": 4,
+        "clear_ack_applied_at_node": true,
+        "clear_control_sends": 1,
+        "fresh_world_tick_attested": false,
+        "node_emitted_shadow_ticks": 40,
+        "node_received_ticks": 40,
+        "node_shadow_emit_to_clear_applied_ms": 2.945492,
+        "paper_effective_tps": 21.44860487364605,
+        "paper_sent_ticks": 41,
+        "paper_ticks_without_emitted_l0": [
+          "53"
+        ],
+        "python_danger_receive_to_clear_ack_ms": 3.024508,
+        "python_danger_receive_to_clear_send_ms": 0.042203,
+        "set_control_sends": 1
+      },
+      "consequence_status": "failed",
+      "consequence_error": "MineflayerExecutionError: L0 DEV abort request: INTERRUPT_KNOWN_HOSTILE",
+      "cleanup_receipt_received_by_executor": true,
+      "movement_distance_at_s49_probe_m": null,
+      "paper_post_clear_marker_tick": 37,
+      "settled_server_ticks": [
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52
+      ],
+      "settled_last_eight": {
+        "consecutive": true,
+        "input_idle": true,
+        "max_pose_delta_m": 0.0
+      },
+      "post_marker_to_final_pose_delta_m": 0.23026314641538548,
+      "maximum_shadow_evaluation_ms": 0.16897,
+      "cleanup_complete": true,
+      "source_hashes": {
+        "commands.jsonl": "1ceb032dab88312a4f3e9fa6d8938350c91945c883f6bcff2b0d5c4eb81278f2",
+        "native.jsonl": "c45fa03ecfda03507068eb4529434020086525ab9842f52945e77e2ab1458b45",
+        "node_timing.jsonl": "8f9335f52dfec9fbb7667965894dfe6c4549e79a0ab3394e59470557dadb0def",
+        "paper.log": "6c50266ac315615d9a1397c6e551b464c3a386b919a6c2559b5e3adc471372c7",
+        "python_timing.jsonl": "b263e605dd5a111872dfa03cdcd8ae41a799c6c08b79525c5654774e6f660ad5",
+        "report.json": "cef14f93d580b2805232da0cdb38daa108181d39adc3b26c5f4ce207865abedc"
+      }
+    },
+    {
+      "case": "unknown",
+      "status": "PASS",
+      "metrics": {
+        "active_danger_assessment": "UNKNOWN",
+        "active_shadow_ticks": 17,
+        "clear_ack_applied_at_node": true,
+        "clear_control_sends": 1,
+        "fresh_world_tick_attested": false,
+        "node_emitted_shadow_ticks": 51,
+        "node_received_ticks": 51,
+        "node_shadow_emit_to_clear_applied_ms": 1.961299,
+        "paper_effective_tps": 20.79864166632365,
+        "paper_sent_ticks": 52,
+        "paper_ticks_without_emitted_l0": [
+          "64"
+        ],
+        "python_danger_receive_to_clear_ack_ms": 1.743242,
+        "python_danger_receive_to_clear_send_ms": 0.050434,
+        "set_control_sends": 1
+      },
+      "consequence_status": "failed",
+      "consequence_error": "MineflayerExecutionError: L0 DEV abort request: INTERRUPT_UNKNOWN",
+      "cleanup_receipt_received_by_executor": true,
+      "movement_distance_at_s49_probe_m": null,
+      "paper_post_clear_marker_tick": 48,
+      "settled_server_ticks": [
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63
+      ],
+      "settled_last_eight": {
+        "consecutive": true,
+        "input_idle": true,
+        "max_pose_delta_m": 0.0
+      },
+      "post_marker_to_final_pose_delta_m": 0.137982318730562,
+      "maximum_shadow_evaluation_ms": 0.244187,
+      "cleanup_complete": true,
+      "source_hashes": {
+        "commands.jsonl": "275bf5477b4cf97f99482c42a4f1a2f07e9a570bdf296b918195b105bc58068b",
+        "native.jsonl": "fcc7fae08a45014b8e1988b04074c2b17f36a51b053c0f1b33357286066f0419",
+        "node_timing.jsonl": "b19f7985da225f11dd55354d2346c1020a6addc6f5932c899ee1370c26799995",
+        "paper.log": "c7ea0048da777baadfc903100d469bcdae6d93e1bf0bfdf1be2aebbc1854e6eb",
+        "python_timing.jsonl": "c0edbb511fa40267c3881a9f2c57a292f11de8717f3b5385893b83558c361f00",
+        "report.json": "1b45d196236b56fdfd675325f9e63d7d3260b8d876f02fd199c1a00f937263bd"
+      }
+    },
+    {
+      "case": "lost_ack",
+      "status": "PASS",
+      "metrics": {
+        "active_danger_assessment": "LOW_HEALTH",
+        "active_shadow_ticks": 4,
+        "clear_ack_applied_at_node": true,
+        "clear_control_sends": 1,
+        "fresh_world_tick_attested": false,
+        "node_emitted_shadow_ticks": 50,
+        "node_received_ticks": 50,
+        "node_shadow_emit_to_clear_applied_ms": 1.383734,
+        "paper_effective_tps": 21.00970409154558,
+        "paper_sent_ticks": 51,
+        "paper_ticks_without_emitted_l0": [
+          "62"
+        ],
+        "python_danger_receive_to_clear_ack_ms": 1.234022,
+        "python_danger_receive_to_clear_send_ms": 0.038022,
+        "set_control_sends": 1
+      },
+      "consequence_status": "failed",
+      "consequence_error": "MineflayerExecutionError: L0 DEV abort request: INTERRUPT_LOW_HEALTH",
+      "cleanup_receipt_received_by_executor": false,
+      "movement_distance_at_s49_probe_m": null,
+      "paper_post_clear_marker_tick": 46,
+      "settled_server_ticks": [
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "settled_last_eight": {
+        "consecutive": true,
+        "input_idle": true,
+        "max_pose_delta_m": 0.0
+      },
+      "post_marker_to_final_pose_delta_m": 0.0,
+      "maximum_shadow_evaluation_ms": 0.114522,
+      "cleanup_complete": true,
+      "source_hashes": {
+        "commands.jsonl": "ea544f9a09da44aa1093a6b07db7f8881e1b880ca4beb5a5aaee255c49ac0707",
+        "native.jsonl": "b40df987bf6e27b38c9c3c6c9d1d740da7b6d4688ca1720c84c9324a748c5e24",
+        "node_timing.jsonl": "fbae30974d8d7d91d803f6bda38a4481c95c5f66bf2602538b43df3f7c73ec3d",
+        "paper.log": "50c8fdbd7dcec8e9f50fde53124a12d4c2edde153eb52089d8dcc66689bc0ce7",
+        "python_timing.jsonl": "3e0e8f3f1a3c028899b4e9ea1b357a0bbaf9f91980581c2af586f60c42ad21c7",
+        "report.json": "3c88d4379b7f4b7fbe64b256353583089671cad7f5f16c3d09283e446973d760"
+      }
+    }
+  ]
+}
