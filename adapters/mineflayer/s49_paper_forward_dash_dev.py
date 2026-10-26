@@ -21,7 +21,10 @@ from adapters.mineflayer import normal_action as action_owner
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.b0_energy_bridge import DashM0InvoiceDev
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
-from adapters.mineflayer.s49_node_physics_postclear_dev import audit_node_physics_postclear_dev
+from adapters.mineflayer.s49_node_physics_postclear_dev import (
+    audit_node_paper_motion_fingerprint_dev,
+    audit_node_physics_postclear_dev,
+)
 from adapters.mineflayer.s49_paper_world_first_dev import (
     _await_dash_dev_line,
     _fresh_output,
@@ -761,6 +764,14 @@ async def run(
                                 action_id=subject["action_id"],
                                 session_id=subject["session"],
                                 paper_post_release=report["post_release_paper_motion_dev"],
+                            )
+                        )
+                        report["node_paper_motion_fingerprint_dev"] = (
+                            audit_node_paper_motion_fingerprint_dev(
+                                report["node_physics_postclear_dev"],
+                                report["post_release_paper_motion_dev"],
+                                action_id=subject["action_id"],
+                                session_id=subject["session"],
                             )
                         )
         if m0_live_dev:
