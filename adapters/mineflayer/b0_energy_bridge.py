@@ -79,6 +79,23 @@ class DashM0DebitDev:
     source_scope: str = "PRODUCER_LOCAL_DEV_NOT_INDEPENDENTLY_ATTESTED"
 
 
+@dataclass(frozen=True, slots=True)
+class M0S49MoveDebitDev:
+    """One existing M0 MOVE step per original S49 S16-closed Action."""
+
+    action_id: str
+    session_id: str
+    m0_tick_before: int
+    m0_tick_after: int
+    energy_before: float
+    energy_after: float
+    basal_debit: float
+    move_debit: float
+    dash_extra_debit: float
+    paper_world_ticks_for_dash: int
+    source_scope: str = "S49_NATIVE_ACTION_M0_STEP_DEV_NOT_WORLD_TICK"
+
+
 class B0EnergyLedger:
     """Session-scoped owner; only verified S51 EAT may mint one food unit."""
 
@@ -107,6 +124,7 @@ class B0EnergyLedger:
         self._credits: set[str] = set()
         self._dev_dash_extra_debit = dev_dash_extra_debit
         self._dev_dash_debited_actions: set[str] = set()
+        self._dev_s49_move_actions: set[str] = set()
         self._dev_dash_last_world_tick: int | None = None
         self._last_eat_seq = -1
         self._last_decision_seq = -1
@@ -181,6 +199,86 @@ class B0EnergyLedger:
             invoice.charge, before.tick, after.tick,
             invoice.first_world_tick, invoice.last_world_tick,
             invoice.observed_world_ticks,
+        )
+
+    def post_s49_move_step_dev(
+        self, receipt: NormalActionReceipt,
+        invoice: DashM0InvoiceDev | None, *, native_evidence: dict,
+    ) -> M0S49MoveDebitDev:
+        """Exactly one legacy M0 MOVE transition for each S49 native OUTCOME.
+
+        One M0 step == one original issued/closed Action, NOT one Paper tick.
+        Atomic basal + MOVE + optional verified DASH extra, no fabricated
+        unobserved WAIT or World tick debits.
+        """
+        if (not self._dev_dash_extra_debit
+                or not isinstance(receipt, NormalActionReceipt)
+                or receipt.terminal.state is not ActionState.OUTCOME
+                or receipt.consequence.status is not WorldConsequenceStatus.EXECUTED
+                or receipt.terminal.action_id != receipt.consequence.action_id
+                or receipt.consequence.session_id != self.session_id
+                or not isinstance(receipt.terminal.action_id, str)
+                or not receipt.terminal.action_id
+                or receipt.terminal.action_id in self._dev_s49_move_actions
+                or self.body.terminal or type(native_evidence) is not dict):
+            raise B0EnergyRejected("nonterminal issued S49 MOVE or ownership required")
+        action_id = receipt.terminal.action_id
+        verify_native_action_evidence(
+            native_evidence, action_id=action_id, session_id=self.session_id,
+            movement_m=receipt.consequence.movement_distance,
+            allow_dev_forward=True, allow_dev_sprint=True,
+        )
+        if native_evidence["action_ref"] != "MOVE_FORWARD_SPRINT_DEV":
+            raise B0EnergyRejected("M0 S49 MOVE requires DEV sprint execution evidence")
+        dash = 0.0
+        paper_ticks = 0
+        if invoice is not None:
+            if (
+                not isinstance(invoice, DashM0InvoiceDev)
+                or invoice.session_id != self.session_id
+                or invoice.action_id != action_id
+                or invoice.action_id in self._dev_dash_debited_actions
+                or self._dev_s49_move_actions
+                or type(invoice.first_world_tick) is not int
+                or type(invoice.last_world_tick) is not int
+                or type(invoice.observed_world_ticks) is not int
+                or not 5 <= invoice.observed_world_ticks <= 80
+                or invoice.first_world_tick < 0
+                or invoice.last_world_tick != invoice.first_world_tick
+                    + invoice.observed_world_ticks - 1
+                or type(invoice.boost_ticks) is not int
+                or not 1 <= invoice.boost_ticks <= invoice.observed_world_ticks
+                or type(invoice.charge) not in (int, float)
+                or not math.isfinite(invoice.charge)
+                or not 0 < invoice.charge <=
+                    0.20 * 0.05 * invoice.observed_world_ticks + 1e-10
+                or invoice.source_scope != "PAPER_P1_CALLBACK_S49_SOURCE_JOIN_DEV_ONLY"
+            ):
+                raise B0EnergyRejected("unbound or replayed P1 World charge")
+            dash = float(invoice.charge)
+            paper_ticks = invoice.observed_world_ticks
+        elif len(self._dev_s49_move_actions) != 1 or len(self._dev_dash_debited_actions) != 1:
+            raise B0EnergyRejected("unboosted MOVE must follow one closed DASH Action")
+        before = self.body
+        basal, moving = self.config.basal_cost, self.config.move_cost
+        if not math.isfinite(basal + moving + dash) or before.energy <= basal + moving + dash:
+            raise B0EnergyRejected("M0 insufficient energy for full native MOVE")
+        transition = metabolism_step(
+            before, action="MOVE", consumed_food_units=0, config=self.config,
+        )
+        if transition.terminal_now or transition.intake != 0:
+            raise B0EnergyRejected("unexpected original B0 M0 MOVE transition")
+        after = replace(transition.after, energy=transition.after.energy - dash)
+        if after.terminal or after.energy <= 0:
+            raise B0EnergyRejected("negative/terminal M0 after DASH bill")
+        self.body = after
+        self._dev_s49_move_actions.add(action_id)
+        if invoice is not None:
+            self._dev_dash_debited_actions.add(action_id)
+            self._dev_dash_last_world_tick = invoice.last_world_tick
+        return M0S49MoveDebitDev(
+            action_id, self.session_id, before.tick, after.tick,
+            before.energy, after.energy, basal, moving, dash, paper_ticks,
         )
 
     def step(
