@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import os
 import shutil
 from pathlib import Path
@@ -49,7 +50,8 @@ def review_forward_dash_rows(raw: str, *, action_id: str, session_id: str) -> di
                 or data.get("dash_stance_active") != "true"
                 or data.get("modifier_applied") not in ("true", "false")
                 or data.get("input_forward_only") not in ("true", "false")
-                or data["input_forward_only"] != data["modifier_applied"]
+                or data.get("motion_forward_inferred", "false")
+                not in ("true", "false")
             ):
                 raise ForwardDashDevRejected("Paper DASH input/modifier mismatch")
             try:
@@ -62,7 +64,27 @@ def review_forward_dash_rows(raw: str, *, action_id: str, session_id: str) -> di
                 or str(index) != data["index"] or str(tick) != data["tick"]
             ):
                 raise ForwardDashDevRejected("Paper DASH tick gap/replay")
-            rows.append((tick, data["modifier_applied"] == "true"))
+            packet = data["input_forward_only"] == "true"
+            motion = data.get("motion_forward_inferred") == "true"
+            applied = data["modifier_applied"] == "true"
+            source = data.get("boost_source", "PACKET" if packet else "NONE")
+            if (applied != (packet or motion) or (packet and motion)
+                    or source != (
+                        "PACKET" if packet else "MOTION_PROJECTION"
+                        if motion else "NONE"
+                    )):
+                raise ForwardDashDevRejected("invalid DASH source/motor classification")
+            speed = data.get("sampled_speed_mps")
+            if speed is not None:
+                try:
+                    speed_value = float(speed)
+                except ValueError as exc:
+                    raise ForwardDashDevRejected("bad sampled Paper speed") from exc
+                if not math.isfinite(speed_value) or speed_value < 0:
+                    raise ForwardDashDevRejected("nonfinite sampled Paper speed")
+            else:
+                speed_value = None
+            rows.append((tick, applied, motion, speed_value))
         if "S49_DASH_DEV_COMPLETE " in line:
             payload = line.split("S49_DASH_DEV_COMPLETE ", 1)[1]
             data = dict(
@@ -77,11 +99,18 @@ def review_forward_dash_rows(raw: str, *, action_id: str, session_id: str) -> di
         raise ForwardDashDevRejected("missing or repeated DASH completion")
     c = completed[0]
     if (c.get("modifier_applied") != "false"
-            or int(c.get("forward_boost_ticks", "-1")) != sum(on for _, on in rows)
+            or int(c.get("forward_boost_ticks", "-1")) != sum(row[1] for row in rows)
             or int(c.get("other_direction_or_ambiguous_ticks", "-1"))
-            != sum(not on for _, on in rows)):
+            != sum(not row[1] for row in rows)):
         raise ForwardDashDevRejected("DASH completion disagrees with observed ticks")
+    if ("motion_estimated_boost_ticks" in c
+            and int(c["motion_estimated_boost_ticks"])
+            != sum(row[2] for row in rows)):
+        raise ForwardDashDevRejected("inferred boost source count mismatch")
+    speeds = [row[3] for row in rows if row[3] is not None]
     return {
+        "paper_motion_inferred_boost_ticks": sum(row[2] for row in rows),
+        "sampled_peak_server_horizontal_speed_m_s": max(speeds) if speeds else None,
         "paper_gait_ticks_observed": len(rows),
         "paper_forward_boost_ticks": sum(on for _, on in rows),
         "paper_other_or_ambiguous_ticks": sum(not on for _, on in rows),
@@ -230,7 +259,11 @@ async def run(
         if review["paper_forward_boost_ticks"] < 1:
             report["status"] = "DEV_SPRINT_NO_POSITIVE_PAPER_BOOST"
             return 1
-        report["status"] = "DEV_FORWARD_SPRINT_POSITIVE_PAPER_DASH_OBSERVED"
+        report["status"] = (
+            "DEV_FORWARD_SPRINT_MOTION_GATED_PAPER_DASH_OBSERVED"
+            if review["paper_motion_inferred_boost_ticks"] > 0
+            else "DEV_FORWARD_SPRINT_POSITIVE_PAPER_DASH_OBSERVED"
+        )
         return 0
     except Exception as exc:
         report["error"] = f"{type(exc).__name__}: {exc}"

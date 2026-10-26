@@ -44,6 +44,7 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
     private long lastTick;
     private int forwardTicks;
     private int cappedTicks;
+    private int motionProjectedBoostTicks;
     private double requestedPower;
     private double lastX;
     private double lastZ;
@@ -144,6 +145,7 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         lastZ = player.getLocation().getZ();
         forwardTicks = 0;
         cappedTicks = 0;
+        motionProjectedBoostTicks = 0;
         modifier = new AttributeModifier(
             key, 0.5 * requestedPower, AttributeModifier.Operation.MULTIPLY_SCALAR_1
         );
@@ -197,12 +199,32 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             && !input.isBackward() && !input.isLeft() && !input.isRight()
             && !input.isSneak() && !input.isJump()
             && (input.isSprint() || subject.isSprinting());
-        if (!setBoost(forwardOnly)) {
+        // Mineflayer 4.39.0 / Paper 1.21.8 may expose empty Input flags
+        // while the native player is sprinting and visibly moving forward.
+        // Distinguish this *motion inference* from a real Input forward edge.
+        // An ambiguous or sideways/backwards vector NEVER receives a boost.
+        double yaw = Math.toRadians(subject.getLocation().getYaw());
+        double forwardDelta = -Math.sin(yaw) * dx + Math.cos(yaw) * dz;
+        double sideDelta = Math.cos(yaw) * dx + Math.sin(yaw) * dz;
+        boolean emptyPacket = input != null && !input.isForward()
+            && !input.isBackward() && !input.isLeft() && !input.isRight()
+            && !input.isSneak() && !input.isJump() && !input.isSprint();
+        boolean motionForwardInferred = !forwardOnly && emptyPacket
+            && subject.isSprinting() && tick - armTick > 1
+            && tick - armTick <= MAX_ARM_TICKS
+            && forwardDelta > 0.035
+            && Math.abs(sideDelta) <= 0.10 * forwardDelta
+            && sampledSpeedMps > 0.70;
+        boolean shouldBoost = forwardOnly || motionForwardInferred;
+        if (!setBoost(shouldBoost)) {
             disarm("MODIFIER_SET_FAILED");
             return;
         }
-        if (forwardOnly) {
+        if (shouldBoost) {
             forwardTicks++;
+            if (motionForwardInferred) {
+                motionProjectedBoostTicks++;
+            }
         } else {
             cappedTicks++;
         }
@@ -210,6 +232,9 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " session_id=" + sessionId + " tick=" + tick
             + " index=" + (forwardTicks + cappedTicks)
             + " input_forward_only=" + forwardOnly
+            + " motion_forward_inferred=" + motionForwardInferred
+            + " boost_source=" + (forwardOnly ? "PACKET" :
+                motionForwardInferred ? "MOTION_PROJECTION" : "NONE")
             + " modifier_applied=" + boosted
             + " dash_stance_active=true"
             + " input_edge_attested=false"
@@ -221,7 +246,10 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " packet_sprint=" + (input != null && input.isSprint())
             + " player_sprinting=" + subject.isSprinting()
             + " delta_x_m=" + dx + " delta_z_m=" + dz
-            + " sampled_speed_mps=" + sampledSpeedMps);
+            + " sampled_speed_mps=" + sampledSpeedMps
+            + " projected_forward_delta_m=" + forwardDelta
+            + " projected_side_delta_m=" + sideDelta
+            + " yaw_degrees=" + subject.getLocation().getYaw());
     }
 
     private boolean setBoost(boolean shouldBoost) {
@@ -273,6 +301,7 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         getLogger().info("S49_DASH_DEV_COMPLETE action_id=" + actionId
             + " session_id=" + sessionId + " reason=" + reason
             + " forward_boost_ticks=" + forwardTicks
+            + " motion_estimated_boost_ticks=" + motionProjectedBoostTicks
             + " other_direction_or_ambiguous_ticks=" + cappedTicks
             + " modifier_applied=false"
             + " authority=NONE P1_APPLIED=false M0_POSTED=false");

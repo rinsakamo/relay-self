@@ -124,7 +124,7 @@ jobs:
           root=Path(os.environ["DEV_OUTPUT"])
           report=json.loads((root/"paper_forward_dash_dev_report.json").read_text())
           source=json.loads((root/"original_s49_report.json").read_text())
-          assert report["status"] == "DEV_FORWARD_SPRINT_POSITIVE_PAPER_DASH_OBSERVED", report
+          assert report["status"] in ("DEV_FORWARD_SPRINT_POSITIVE_PAPER_DASH_OBSERVED", "DEV_FORWARD_SPRINT_MOTION_GATED_PAPER_DASH_OBSERVED"), report
           assert source["status"] == "PASS" and source["node_exit"] == 0 and source["server_exit"] == 0
           assert source["dev_sprint_motor"] is True
           assert len(source["actual_native_actions"]) == 2
@@ -139,6 +139,7 @@ jobs:
               )
           p=report["paper"]
           assert p["paper_forward_boost_ticks"] >= 1
+          assert p["paper_forward_boost_ticks"] >= p["paper_motion_inferred_boost_ticks"]
           assert p["paper_modifier_removed"] is True
           assert p["m0_posted"] is False and p["p1_native_updated"] is False
           assert p["qualification_go"] is False and p["science_go"] is False
@@ -162,4 +163,4 @@ jobs:
         if: always()
         run: |
           echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
-          echo 'Positive Paper boost is not measured 8.42m/s or a verified directional hard cap.'
+          echo 'Paper boost may use server-facing motion inference, NOT authenticated Input forward packet; no hard directional cap or settled speed qualified.'

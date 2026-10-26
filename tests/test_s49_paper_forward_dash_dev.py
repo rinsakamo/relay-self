@@ -62,3 +62,24 @@ def test_forged_or_broken_paper_window_rejected(change):
         raw = raw.replace("tick=104", "tick=0")
     with pytest.raises(ForwardDashDevRejected):
         review_forward_dash_rows(raw, action_id=ACTION, session_id=SESSION)
+
+
+
+def test_server_motion_inference_is_labeled_not_packet_input():
+    original = _rows(positive=False).replace(
+        "input_forward_only=false modifier_applied=false",
+        "input_forward_only=false modifier_applied=true "
+        "motion_forward_inferred=true boost_source=MOTION_PROJECTION "
+        "sampled_speed_mps=4.5",
+    ).replace("forward_boost_ticks=0 other_direction_or_ambiguous_ticks=1",
+              "forward_boost_ticks=1 motion_estimated_boost_ticks=1 "
+              "other_direction_or_ambiguous_ticks=0")
+    review = review_forward_dash_rows(original, action_id=ACTION, session_id=SESSION)
+    assert review["paper_forward_boost_ticks"] == 1
+    assert review["paper_motion_inferred_boost_ticks"] == 1
+    assert review["sampled_peak_server_horizontal_speed_m_s"] == 4.5
+    with pytest.raises(ForwardDashDevRejected):
+        review_forward_dash_rows(
+            original.replace("boost_source=MOTION_PROJECTION", "boost_source=PACKET"),
+            action_id=ACTION, session_id=SESSION,
+        )
