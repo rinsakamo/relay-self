@@ -48,7 +48,7 @@ CONFIRM = "T1E-DISPOSABLE-DEV-ONLY"
 CASES = ("normal", "low_health", "hostile", "unknown", "lost_ack")
 TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop", "t2_disconnect_move",
               "t2_disconnect_boundary", "t2_disconnect_wait", "t2_lost_ack",
-              "t2_delayed_ack", "t2_old_effect")
+              "t2_delayed_ack", "t2_old_effect", "t1h_stop_move")
 
 
 def write(path, value):
@@ -125,7 +125,7 @@ def measure(root, report):
 
 
 async def run_case(args, case):
-    t1f = case.startswith(("t1f_", "t2_"))
+    t1f = case.startswith(("t1f_", "t2_", "t1h_"))
     root = args.output / case
     root.mkdir()
     world = root / "server"
@@ -279,7 +279,16 @@ async def run_case(args, case):
                     raise RuntimeError("T1g lost source forbids new Action effect")
                 report["dispatch_python_ns"] = time.monotonic_ns()
                 await super().send_set_control(*a, **kw)
-                if case != "normal":
+                if case == "t1h_stop_move":
+                    # Host owner requests STOP; only original S49 writes Motor.
+                    async def request_owner_stop():
+                        await asyncio.sleep(0.08)
+                        self.t1h_stop_owner.request(
+                            "t1h-operator-stop",
+                            active_action_id=self.t1h_active_action_id,
+                        )
+                    fixture = asyncio.create_task(request_owner_stop())
+                elif case != "normal":
                     fixture = asyncio.create_task(stage())
 
             async def send_clear_controls(self, *a, **kw):
@@ -305,6 +314,10 @@ async def run_case(args, case):
         await asyncio.sleep(0.8)
         probe = await _correlated_observe(session, "t1e-initial")
         report["initial_probe"] = asdict(probe)
+        if case == "t1h_stop_move":
+            from adapters.mineflayer.t1h_native_stop_dev import run_stop_move_dev
+            await run_stop_move_dev(session, server, report)
+            return report
         if t1f:
             from adapters.mineflayer.t1f_continuation_dev import run_continuation
             await run_continuation(session, server, report, root, observe_only=case == "t1f_observe",
@@ -415,6 +428,24 @@ async def run_case(args, case):
             except (ValueError, TypeError, KeyError, UnicodeError) as exc:
                 report["terminal_transport_error"] = f"{type(exc).__name__}: {exc}"
                 report["cleanup_complete"] = False
+        if case == "t1h_stop_move" and report.get("status") == (
+            "T1H_PENDING_POST_SHUTDOWN_PAPER_AUDIT"
+        ):
+            from adapters.mineflayer.t1h_stop_owner_dev import StopDevRejected
+            try:
+                details = report["t1h"]
+                if not report["cleanup_complete"] or session is None:
+                    raise StopDevRejected("S49 stop without clean bridge/server close")
+                stop_ack = session.t1h_stop_owner.finalize(
+                    log.read_text(), marker_id=details["marker_id"],
+                    world=details["world"], player=details["player"],
+                )
+                report["t1h"]["stop_ack_dev"] = asdict(stop_ack)
+                report["t1h"]["paper_ack_pending"] = False
+                report["status"] = "PASS"
+            except (StopDevRejected, OSError, UnicodeError, KeyError) as exc:
+                report["t1h_stop_error"] = f"{type(exc).__name__}: {exc}"
+                report["status"] = "FAIL"
         if not report["cleanup_complete"]:
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
