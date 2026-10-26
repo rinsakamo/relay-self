@@ -16,13 +16,6 @@ import shutil
 from pathlib import Path
 from unittest.mock import patch
 
-from experiments.fatigue_p1 import FatigueProfile, initial_state
-from experiments.p1_gait_dev import (
-    GaitTickDev,
-    advance_gait_dev,
-    p1_motor_power_limit_dev,
-)
-
 from adapters.mineflayer import normal_action as action_owner
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
@@ -30,6 +23,12 @@ from adapters.mineflayer.s49_paper_world_first_dev import (
     _await_dash_dev_line,
     _fresh_output,
     offline_uuid,
+)
+from experiments.fatigue_p1 import FatigueProfile, initial_state
+from experiments.p1_gait_dev import (
+    GaitTickDev,
+    advance_gait_dev,
+    p1_motor_power_limit_dev,
 )
 
 CONFIRM = "S49-P1-DEV-DISPOSABLE-PAPER-WORLD"
