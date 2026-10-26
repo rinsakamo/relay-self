@@ -178,7 +178,7 @@ if (nativePhysicsTraceEnabled) {
     try {
       // Exclusive create: a stale, duplicated or foreign trace cannot be
       // overwritten. Source evidence is Node-local and stays DEV_ONLY.
-      writeFileSync(nativePhysicsTracePath, JSON.stringify(nativePhysicsTrace) + '\\n',
+      writeFileSync(nativePhysicsTracePath, JSON.stringify(nativePhysicsTrace) + '\n',
         { flag: 'wx', encoding: 'utf8', mode: 0o600 })
     } catch (error) {
       emitAdapterError(new Error('S49_NODE_PHYSICS_TRACE_WRITE_FAILED'))
