@@ -46,7 +46,7 @@ def receipt(*, action_id="t1h-clear", session_id=SID, effect="clear_controls",
 
 def requested():
     o = S49DevStopOwner(SID)
-    o.request("t1h-stop-1", active_action_id="t1h-move")
+    o.request("t1h-stop-1", active_action_id="t1h-move", expected_clear_action_id="t1h-clear")
     return o
 
 
@@ -119,3 +119,45 @@ def test_unrelated_log_marker_cannot_be_reused_for_dev_stop():
     with pytest.raises(StopDevRejected):
         o.finalize(log(), marker_id="other-marker", world=W, player=P)
     assert not o.allows_action
+
+
+def test_caller_cannot_rename_an_old_action_clear_as_current_evidence():
+    owner = requested()
+    with pytest.raises(StopDevRejected, match="matching"):
+        owner.accept_clear(receipt(action_id="old-clear"), clear_action_id="old-clear")
+    assert owner.failed and owner.ack is None
+
+
+def test_unissued_stop_never_accepts_any_motor_ack():
+    owner = S49DevStopOwner(SID)
+    owner.request("stop-unissued")
+    with pytest.raises(StopDevRejected):
+        owner.accept_clear(receipt(), clear_action_id="t1h-clear")
+    assert owner.ack is None
+
+
+def test_invalid_request_does_not_partially_latch_stop():
+    owner = S49DevStopOwner(SID)
+    with pytest.raises(StopDevRejected):
+        owner.request("valid", active_action_id="bad action")
+    assert not owner.requested and owner.allows_action
+
+
+def test_duplicate_clear_is_consumed_once():
+    owner = requested()
+    owner.accept_clear(receipt(), clear_action_id="t1h-clear")
+    with pytest.raises(StopDevRejected):
+        owner.accept_clear(receipt(), clear_action_id="t1h-clear")
+    assert owner.clear_ack_seq == 22
+
+
+@pytest.mark.parametrize("change", [{"count": 20, "active_at": 19},
+                                     {"count": 20, "move_at": 19},
+                                     {"count": 20, "gap_at": 19},
+                                     {"count": 20, "gap_at": 1}])
+def test_later_fault_cannot_hide_behind_an_earlier_good_window(change):
+    owner = requested()
+    owner.accept_clear(receipt(), clear_action_id="t1h-clear")
+    with pytest.raises(StopDevRejected):
+        owner.finalize(log(**change), marker_id=MARK, world=W, player=P)
+    assert owner.ack is None

@@ -316,11 +316,15 @@ async def execute_mineflayer_command(
 
         _require_not_stopping(stop_requested_dev)
         movement_command_attempted = True
-        await adapter.send_set_control(
-            command.action_id,
-            control=command.control,
-            state=command.state,
-        )
+        if stop_requested_dev is None:
+            await adapter.send_set_control(
+                command.action_id, control=command.control, state=command.state,
+            )
+        else:
+            await _send_motor_with_stop_dev(
+                adapter, command, timeout_s=timeout_s,
+                stop_requested_dev=stop_requested_dev,
+            )
         dispatch = await _receive_until(
             adapter,
             timeout_s=timeout_s,
@@ -525,6 +529,42 @@ def _check_l0_interrupt(message: object, *, session_id: str) -> bool:
     if result is not L0Interruption.CONTINUE_UNVERIFIED:
         raise MineflayerExecutionError(f"L0 DEV abort request: {result.value}")
     return True
+
+
+async def _send_motor_with_stop_dev(
+    adapter: MineflayerExecutionSession, command: MineflayerCommand, *,
+    timeout_s: float, stop_requested_dev: Callable[[], bool],
+) -> None:
+    """Original executor owns and joins its one write before any clear.
+
+    A stalled transport drain must not indefinitely hide a high STOP. No
+    second receiver is created, and the pending write is cancelled/reaped
+    before the original once-only cleanup path can issue clear_controls.
+    """
+    async def send():
+        _require_not_stopping(stop_requested_dev)
+        await adapter.send_set_control(
+            command.action_id, control=command.control, state=command.state,
+        )
+
+    _require_not_stopping(stop_requested_dev)
+    pending = asyncio.create_task(send())
+    deadline = asyncio.get_running_loop().time() + timeout_s
+    try:
+        while True:
+            _require_not_stopping(stop_requested_dev)
+            remaining = deadline - asyncio.get_running_loop().time()
+            if remaining <= 0:
+                raise TimeoutError("T1h motor send exceeded bounded transport deadline")
+            done, _ = await asyncio.wait({pending}, timeout=min(.025, remaining))
+            if done:
+                await pending
+                _require_not_stopping(stop_requested_dev)
+                return
+    finally:
+        if not pending.done():
+            pending.cancel()
+        await asyncio.gather(pending, return_exceptions=True)
 
 
 def _require_not_stopping(stop_requested_dev: Callable[[], bool] | None) -> None:

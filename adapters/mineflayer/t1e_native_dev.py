@@ -48,7 +48,11 @@ CONFIRM = "T1E-DISPOSABLE-DEV-ONLY"
 CASES = ("normal", "low_health", "hostile", "unknown", "lost_ack")
 TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop", "t2_disconnect_move",
               "t2_disconnect_boundary", "t2_disconnect_wait", "t2_lost_ack",
-              "t2_delayed_ack", "t2_old_effect", "t1h_stop_move")
+              "t2_delayed_ack", "t2_old_effect", "t1h_stop_move",
+              "t1h_pre_stop", "t1h_lost_ack", "t1h_delayed_ack",
+              "t1h_disconnect", "t1h_paper_short", "t1h_input_residual",
+              "t1h_motion_residual", "t1h_stale_ack", "t1h_double_ack",
+              "t1h_disconnect_after_idle")
 
 
 def write(path, value):
@@ -253,10 +257,10 @@ async def run_case(args, case):
                     if isinstance(message, MineflayerEffectResult) and message.effect == "clear_controls":
                         self.previous_clear = message
                         report["clear_ack_received_python_ns"] = now
-                        if case in ("lost_ack", "t2_lost_ack"):
+                        if case in ("lost_ack", "t2_lost_ack", "t1h_lost_ack"):
                             report["ack_fault"] = "DROP_AT_PYTHON_CONSUMER_ORIGINAL_RAW_RETAINED"
                             continue
-                        if case == "t2_delayed_ack" and "ack_fault" not in report:
+                        if case in ("t2_delayed_ack", "t1h_delayed_ack") and "ack_fault" not in report:
                             report["ack_fault"] = "DELAY_0.7S_AT_CONSUMER_RAW_RETAINED"
                             await asyncio.sleep(.7)
                     if (case == "t2_disconnect_move" and isinstance(message, MineflayerEffectResult)
@@ -275,17 +279,21 @@ async def run_case(args, case):
 
             async def send_set_control(self, *a, **kw):
                 nonlocal fixture
-                if self.source_lost or (self.tick_owner and self.tick_owner.failed):
+                if (self.source_lost or (self.tick_owner and self.tick_owner.failed)
+                        or (getattr(self, "t1h_stop_owner", None) is not None
+                            and not self.t1h_stop_owner.allows_action)):
                     raise RuntimeError("T1g lost source forbids new Action effect")
                 report["dispatch_python_ns"] = time.monotonic_ns()
                 await super().send_set_control(*a, **kw)
-                if case == "t1h_stop_move":
+                if case.startswith("t1h_"):
                     # Host owner requests STOP; only original S49 writes Motor.
                     async def request_owner_stop():
                         await asyncio.sleep(0.08)
+                        report["stop_requested_python_ns"] = time.monotonic_ns()
                         self.t1h_stop_owner.request(
                             "t1h-operator-stop",
                             active_action_id=self.t1h_active_action_id,
+                            expected_clear_action_id=self.t1h_active_action_id + "-clear",
                         )
                     fixture = asyncio.create_task(request_owner_stop())
                 elif case != "normal":
@@ -295,6 +303,10 @@ async def run_case(args, case):
                 report["clear_send_python_ns"] = time.monotonic_ns()
                 await super().send_clear_controls(*a, **kw)
 
+        os.environ.pop("RELAYSELF_T1H_CLEAR_FAULT_DEV", None)
+        if case == "t1h_input_residual":
+            os.environ["RELAYSELF_T1H_CLEAR_FAULT_DEV"] = CONFIRM
+            report["motor_fault"] = "DEV_CLEAR_NOOP_FALSE_APPLIED_ACK_INPUT_HELD"
         os.environ["RELAYSELF_PAPER_TICK_DEV"] = "1"
         os.environ["RELAYSELF_PAPER_TICK_TRACE_DEV"] = str(root / "node_timing.jsonl")
         if t1f:
@@ -314,7 +326,7 @@ async def run_case(args, case):
         await asyncio.sleep(0.8)
         probe = await _correlated_observe(session, "t1e-initial")
         report["initial_probe"] = asdict(probe)
-        if case == "t1h_stop_move":
+        if case.startswith("t1h_"):
             from adapters.mineflayer.t1h_native_stop_dev import run_stop_move_dev
             await run_stop_move_dev(session, server, report, root)
             return report
@@ -407,6 +419,10 @@ async def run_case(args, case):
                 report["port_rebind"] = True
             except OSError:
                 report["port_rebind"] = False
+        report["process_reap_complete"] = (report["java_pid_absent"] and report["node_pid_absent"]
+                                           and report["port_rebind"]
+                                           and report.get("java_exit") is not None
+                                           and report.get("node_exit") is not None)
         report["cleanup_complete"] = (report.get("java_exit") == report.get("node_exit") == 0
                                       and report["java_pid_absent"] and report["node_pid_absent"]
                                       and report["port_rebind"])
@@ -428,21 +444,25 @@ async def run_case(args, case):
             except (ValueError, TypeError, KeyError, UnicodeError) as exc:
                 report["terminal_transport_error"] = f"{type(exc).__name__}: {exc}"
                 report["cleanup_complete"] = False
-        if case == "t1h_stop_move" and report.get("status") == (
-            "T1H_OWNER_STOP_ACKED_AWAITING_CLEAN_RESOURCE_SHUTDOWN"
+        if case.startswith("t1h_") and report.get("status") == (
+            "T1H_EXPECTATION_MET_AWAITING_RESOURCE_SHUTDOWN"
         ):
-            # Owner already committed the bounded DEV ACK while Paper lived.
-            # Normal transport custody is a separate, additional condition.
+            # Positive ACK or expected refusal was evaluated while Paper lived.
+            # Normal transport custody remains a separate condition.
             report["status"] = "PASS" if report["cleanup_complete"] else "FAIL"
         if not report["cleanup_complete"]:
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
-        if case == "t1h_stop_move" and (
-            report["metrics"]["set_control_sends"] != 1
-            or report["metrics"]["clear_control_sends"] != 1
-            or "stop_ack_dev" not in report.get("t1h", {})
-        ):
-            report["status"] = "FAIL"
+        if case.startswith("t1h_"):
+            positive = case in ("t1h_stop_move", "t1h_double_ack")
+            detail = report.get("t1h", {})
+            if ((positive and "stop_ack_dev" not in detail)
+                    or (not positive and not detail.get("negative_control_pass"))):
+                report["status"] = "FAIL"
+            expected_count = 0 if case == "t1h_pre_stop" else 1
+            if (report["metrics"]["set_control_sends"] != expected_count
+                    or report["metrics"]["clear_control_sends"] != expected_count):
+                report["status"] = "FAIL"
         if not t1f and (report["metrics"]["set_control_sends"] != 1
                 or report["metrics"]["clear_control_sends"] != 1):
             report["status"] = "FAIL"

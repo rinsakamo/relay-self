@@ -287,7 +287,13 @@ async function handleEffect (command) {
     }
 
     if (command.effect === 'clear_controls') {
-      bot.clearControlStates()
+      // Explicit isolated DEV negative: a faulty client lies about applying
+      // clear. The sole original issuer is unchanged. Paper must refuse ACK.
+      // Shutdown always performs the real clear, independent of this fault.
+      const t1hClearFault = process.env.RELAYSELF_T1H_CLEAR_FAULT_DEV === 'T1E-DISPOSABLE-DEV-ONLY' &&
+        process.env.RELAYSELF_T1F_DEV === '1' &&
+        process.env.RELAYSELF_PAPER_TICK_DEV === '1'
+      if (!t1hClearFault) bot.clearControlStates()
       t1fControl = { phase: "CLEARED", since_ns: process.hrtime.bigint().toString(), generation: t1fControl.generation + 1 }
       emitEffectResult(command, 'applied')
       return

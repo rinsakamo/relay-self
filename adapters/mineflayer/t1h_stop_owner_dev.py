@@ -117,7 +117,7 @@ def paper_stopped_after_marker(
         following.append((tick, sample))
     if len(following) < 8:
         raise StopDevRejected("insufficient Paper post-clear callback samples")
-    prior_tick = None
+    prior_tick = start_tick
     prior_pose = None
     run: list[int] = []
     # Full bounded original interval; cannot select a lucky subset while
@@ -138,8 +138,8 @@ def paper_stopped_after_marker(
         else:
             run = []
         prior_pose = pose
-        if len(run) >= 8:
-            return run[-8], run[-1]
+    if len(run) >= 8:
+        return run[0], run[7]
     raise StopDevRejected("no 8 consecutive motion-free Paper tick transitions")
 
 
@@ -150,6 +150,7 @@ class S49DevStopOwner:
         self.session_id = _id("session_id", session_id)
         self.stop_id: str | None = None
         self.active_action_id: str | None = None
+        self.expected_clear_action_id: str | None = None
         self.clear_action_id: str | None = None
         self.clear_ack_seq: int | None = None
         self.ack: StopDevAck | None = None
@@ -163,12 +164,18 @@ class S49DevStopOwner:
     def allows_action(self) -> bool:
         return not self.requested and not self.failed
 
-    def request(self, stop_id: str, *, active_action_id: str | None = None) -> None:
+    def request(self, stop_id: str, *, active_action_id: str | None = None,
+                expected_clear_action_id: str | None = None) -> None:
         if self.requested or self.failed:
             raise StopDevRejected("STOP already latched, no duplicate owner request")
-        self.stop_id = _id("stop_id", stop_id)
-        if active_action_id is not None:
-            self.active_action_id = _id("active_action_id", active_action_id)
+        validated_stop = _id("stop_id", stop_id)
+        action = _id("active_action_id", active_action_id) if active_action_id is not None else None
+        clear = _id("expected_clear_action_id", expected_clear_action_id) if expected_clear_action_id is not None else None
+        if action is None and clear is not None:
+            raise StopDevRejected("unissued Action cannot bind a clear ACK")
+        self.stop_id = validated_stop
+        self.active_action_id = action
+        self.expected_clear_action_id = clear or (action + "-clear" if action else None)
 
     def accept_clear(
         self, receipt: MineflayerEffectResult, *, clear_action_id: str,
@@ -177,7 +184,9 @@ class S49DevStopOwner:
             raise StopDevRejected("STOP clear already consumed or not requested")
         self.clear_action_id = _id("clear_action_id", clear_action_id)
         if (
-            not isinstance(receipt, MineflayerEffectResult)
+            self.active_action_id is None
+            or self.clear_action_id != self.expected_clear_action_id
+            or not isinstance(receipt, MineflayerEffectResult)
             or receipt.session_id != self.session_id
             or receipt.action_id != self.clear_action_id
             or receipt.effect != "clear_controls"
