@@ -88,3 +88,30 @@ export class PaperTickDeadlineGuard {
     }
   }
 }
+
+
+// The single bridge caller supplies its existing emit() seam. Both receipts
+// are emitted atomically with respect to a *budget refusal*: no accepted
+// Paper/L0 pair escapes before the deadline check. Still no native authority.
+export function handleBudgetedPaperTick (sample, bot, { guard, evaluateShadow, emit, clock }) {
+  if (!(guard instanceof PaperTickDeadlineGuard) ||
+      typeof evaluateShadow !== 'function' || typeof emit !== 'function' ||
+      typeof clock !== 'function') {
+    throw new TypeError('single receiver must supply bounded local seams')
+  }
+  const shadow = evaluateShadow(sample, bot)
+  if (!shadow || shadow.source !== 'MINEFLAYER_CACHE_SHADOW_L0_DEV' ||
+      shadow.paper_sample_index !== sample?.index ||
+      shadow.paper_server_tick !== sample.server_tick ||
+      shadow.paper_world !== sample.world || shadow.paper_player !== sample.player ||
+      shadow.l0_shadow_evaluated !== true ||
+      shadow.l0_fresh_world_tick_attested !== false ||
+      shadow.tps_admission_granted !== false ||
+      shadow.authorized_action_issued !== false) {
+    throw new Error('L0 shadow may not claim fresh native Action or TPS authority')
+  }
+  const result = guard.observe(sample, { completedMonoNs: clock() })
+  emit('paper_tick_sample', sample)
+  emit('paper_l0_shadow', shadow)
+  return result
+}
