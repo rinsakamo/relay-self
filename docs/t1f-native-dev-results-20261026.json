@@ -1,0 +1,418 @@
+{
+  "accepted_runs": [
+    2,
+    3,
+    5
+  ],
+  "cases": [
+    {
+      "case": "t1f_observe",
+      "cleanup_complete": true,
+      "decisions": [],
+      "epochs": 0,
+      "error": "ValueError: T1f refusal: UNDETERMINED / SESSION_LATCHED",
+      "hazard_clear_latency": [],
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "last_consumed_snapshot_count": null,
+      "metrics_corrected_derived_not_original_mutation": {
+        "clear_control_sends": 0,
+        "node_admitted_ticks": 1,
+        "node_received_ticks": 21,
+        "paper_sent_ticks": 22,
+        "paper_ticks_without_node_snapshot": [
+          37
+        ],
+        "paper_to_node_exact_delay": "UNKNOWN",
+        "qualification": false,
+        "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+        "set_control_sends": 0
+      },
+      "node_exit": 0,
+      "node_pid_absent": true,
+      "normal_move_distances": [],
+      "port_rebind": true,
+      "raw_shutdown_tail_not_credited_to_loop": null,
+      "raw_snapshot_count": 21,
+      "root": "/home/rinsa/work/t1f-integration-evidence-20261026/run-001/t1f_observe",
+      "run": 1,
+      "source_hashes_sha256": {
+        "commands.jsonl": "16d4f3da9b968414e7b5bbbf1a20483ddfc8cc1b5ffed092bd5d219c888e17d1",
+        "native.jsonl": "e691e1eb67bc20f53304d269f22f944304f814af5017f3b890cf59df378beece",
+        "node_timing.jsonl": "6840dc486b64bc264943b74cce48708ae9d5c6f6fd3e38329fa0401f2cfcc46e",
+        "paper.log": "a48f411cb649295baf0488ef79f87a4524a96b6833cfb6321d9665a03ea4991b",
+        "python_timing.jsonl": "1d2db31c584f4e9e6bb7758c9af5ead96d8c83fa375f9aaf37d1cee8a277a7c6",
+        "report.json": "5cee0e3fe5ff0f307e9fb536c3ea209538e45a8188ca0aef25ed16811451c612",
+        "source_hashes.json": "d0b1e86fc88d8fe6980f3a4bd5a6aeebe9195f95ebebc55e527b157f033e0646"
+      },
+      "status": "FAIL",
+      "subject_head": "85a2aa48e46f113315bcf89c3599b29e3b441908",
+      "t1f": null,
+      "t2": null,
+      "tracked_diff_empty": false
+    },
+    {
+      "case": "t1f_observe",
+      "cleanup_complete": true,
+      "decisions": [],
+      "epochs": 0,
+      "error": null,
+      "hazard_clear_latency": [],
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "last_consumed_snapshot_count": 59,
+      "metrics_corrected_derived_not_original_mutation": {
+        "clear_control_sends": 0,
+        "node_admitted_ticks": 59,
+        "node_received_ticks": 59,
+        "paper_sent_ticks": 60,
+        "paper_ticks_without_node_snapshot": [
+          73
+        ],
+        "paper_to_node_exact_delay": "UNKNOWN",
+        "qualification": false,
+        "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+        "set_control_sends": 0
+      },
+      "node_exit": 0,
+      "node_pid_absent": true,
+      "normal_move_distances": [],
+      "port_rebind": true,
+      "raw_shutdown_tail_not_credited_to_loop": 0,
+      "raw_snapshot_count": 59,
+      "root": "/home/rinsa/work/t1f-integration-evidence-20261026/run-002/t1f_observe",
+      "run": 2,
+      "source_hashes_sha256": {
+        "commands.jsonl": "16d4f3da9b968414e7b5bbbf1a20483ddfc8cc1b5ffed092bd5d219c888e17d1",
+        "native.jsonl": "b3ab9bbf32e99827b366c124b0ab4478ddd89644a6a3eb540339d0c91b23f89d",
+        "node_timing.jsonl": "50e50e2e6e5bfedbfd8b8a5bcace33f1cd135b4d6e80540da265c0d6b22354c9",
+        "paper.log": "3af1e88e13ca0811e2c302c99c20eeef2f74eaba500cdf2977aaa6e95e047b8a",
+        "python_timing.jsonl": "1b1ed5e905cae9d8473bace88a00ae87697823cb76bc76581c0275e0967c73a9",
+        "report.json": "b43fbfbee64ddd197cd3466725abd5fed6fe3e84ddf2091b89656c99f7f92684",
+        "source_hashes.json": "313c83c556682304c338f95d379382572bfc562405b94604eaa362bf5bdd6a68"
+      },
+      "status": "PASS",
+      "subject_head": "85a2aa48e46f113315bcf89c3599b29e3b441908",
+      "t1f": {
+        "admitted": 59,
+        "cache_mismatch_frames": 0,
+        "frames": 59,
+        "max_causal_age_upper_ms": 91.20677,
+        "max_node_processing_ms": 0.704701,
+        "paper_to_node_exact_delay": "UNKNOWN",
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "source": "PAPER_CALLBACK_BODY_NOT_CACHE",
+        "statuses": {
+          "ADMITTED": 59,
+          "LATE": 0,
+          "MISSING": 0,
+          "STALE": 0,
+          "UNDETERMINED": 0
+        },
+        "world": "632cfbf8-1f71-4af0-b6d0-9517043099b5"
+      },
+      "t2": null,
+      "tracked_diff_empty": false
+    },
+    {
+      "case": "t1f_loop",
+      "cleanup_complete": true,
+      "decisions": [
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "WAIT_NO_ACTION"
+      ],
+      "epochs": 4,
+      "error": null,
+      "hazard_clear_latency": [
+        {
+          "action_id": "t1f-epoch-2",
+          "assessment": "LOW_HEALTH",
+          "evaluation_complete_to_clear_applied_ms": 1.537524,
+          "shadow_emit_to_clear_applied_ms": 1.522745
+        }
+      ],
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "last_consumed_snapshot_count": 69,
+      "metrics_corrected_derived_not_original_mutation": {
+        "clear_control_sends": 3,
+        "node_admitted_ticks": 69,
+        "node_received_ticks": 69,
+        "paper_sent_ticks": 70,
+        "paper_ticks_without_node_snapshot": [
+          82
+        ],
+        "paper_to_node_exact_delay": "UNKNOWN",
+        "qualification": false,
+        "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+        "set_control_sends": 3
+      },
+      "node_exit": 0,
+      "node_pid_absent": true,
+      "normal_move_distances": [
+        0.6269065734210613,
+        0.7342911432182313
+      ],
+      "port_rebind": true,
+      "raw_shutdown_tail_not_credited_to_loop": 0,
+      "raw_snapshot_count": 69,
+      "root": "/home/rinsa/work/t1f-integration-evidence-20261026/run-003/t1f_loop",
+      "run": 3,
+      "source_hashes_sha256": {
+        "commands.jsonl": "f8c47496cc0bb51d5b491b0d87af1104ae028d438903ccba71b78c04482c34fb",
+        "native.jsonl": "670dc2d8fbfd115764b5a845889688f08012dcbd702424ccb0bb84d51a31f26a",
+        "node_timing.jsonl": "56c84bd0077466adf5013136056f4395f4a75934df06cb8c3bb7984ae2b2a47d",
+        "paper.log": "cbda764a6fce823915a379636677e788ca6773b70f979b5de7caec723e656e45",
+        "python_timing.jsonl": "e9d84cd145be0416548359edef02d6bc83ef7693d91322dc483d0d0b9476061a",
+        "report.json": "7936fe41da6d278b19a84c60f3514c7a68bc2d6b2e2cfd5d3eb7bff589b09fb0",
+        "source_hashes.json": "4440e2196d7824eebf15dcc1ed7bce19263363b491847339af2483c1e955798d"
+      },
+      "status": "PASS",
+      "subject_head": "85a2aa48e46f113315bcf89c3599b29e3b441908",
+      "t1f": {
+        "admitted": 69,
+        "cache_mismatch_frames": 12,
+        "frames": 69,
+        "max_causal_age_upper_ms": 93.635345,
+        "max_node_processing_ms": 0.884199,
+        "paper_to_node_exact_delay": "UNKNOWN",
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "source": "PAPER_CALLBACK_BODY_NOT_CACHE",
+        "statuses": {
+          "ADMITTED": 69,
+          "LATE": 0,
+          "MISSING": 0,
+          "STALE": 0,
+          "UNDETERMINED": 0
+        },
+        "world": "386aa1b1-d3f3-4aff-8ac1-2d0a786d516a"
+      },
+      "t2": null,
+      "tracked_diff_empty": false
+    },
+    {
+      "case": "t2_loop",
+      "cleanup_complete": true,
+      "decisions": [
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD"
+      ],
+      "epochs": 2,
+      "error": "RuntimeError: native hunger/food source absent",
+      "hazard_clear_latency": [],
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "last_consumed_snapshot_count": null,
+      "metrics_corrected_derived_not_original_mutation": {
+        "clear_control_sends": 2,
+        "node_admitted_ticks": 357,
+        "node_received_ticks": 357,
+        "paper_sent_ticks": 358,
+        "paper_ticks_without_node_snapshot": [
+          369
+        ],
+        "paper_to_node_exact_delay": "UNKNOWN",
+        "qualification": false,
+        "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+        "set_control_sends": 2
+      },
+      "node_exit": 0,
+      "node_pid_absent": true,
+      "normal_move_distances": [
+        0.6269065734210613,
+        0.6269065734210615
+      ],
+      "port_rebind": true,
+      "raw_shutdown_tail_not_credited_to_loop": null,
+      "raw_snapshot_count": 357,
+      "root": "/home/rinsa/work/t1f-integration-evidence-20261026/run-004/t2_loop",
+      "run": 4,
+      "source_hashes_sha256": {
+        "commands.jsonl": "073b7b2ee33b454ef6a3810fd6bed14236b9b9d14822583baa4df5f2a26a52af",
+        "native.jsonl": "8c714b6033e2883b6b7dc2b3fa898e0e139bd0466a212b589d6a916b98ab6873",
+        "node_timing.jsonl": "ceedddd0c610faddeb698773a62d22be049134001027edcf4ecb4928ce9d638f",
+        "paper.log": "adcc9214988c9bdc41a54534fc0fb85935a05990b28a085db26b792e3209fa7d",
+        "python_timing.jsonl": "474cbe09f27a62f5cf721de57a95f7a4de8dbe751e7c27d6d836d6fbcc861b9d",
+        "report.json": "1aea29e526d4304a8e18dbf2f97fad1d821cf93a55458487a9972d0a4ee1017d",
+        "source_hashes.json": "1cde8c50adb6ccbe8f53845e756b061ebdc1a57e33f4906eacc6abef6d671375",
+        "t2_ticks.json": "f3b06a1c5d152229fe5ad207dad76c67b8ba24fe23a44b4ef730595e5862a27c"
+      },
+      "status": "FAIL",
+      "subject_head": "85a2aa48e46f113315bcf89c3599b29e3b441908",
+      "t1f": null,
+      "t2": null,
+      "tracked_diff_empty": false
+    },
+    {
+      "case": "t2_loop",
+      "cleanup_complete": true,
+      "decisions": [
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "MOVE_BACKWARD",
+        "WAIT_NO_ACTION"
+      ],
+      "epochs": 22,
+      "error": null,
+      "hazard_clear_latency": [
+        {
+          "action_id": "t1f-epoch-20",
+          "assessment": "LOW_HEALTH",
+          "evaluation_complete_to_clear_applied_ms": 0.757703,
+          "shadow_emit_to_clear_applied_ms": 0.746744
+        }
+      ],
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "last_consumed_snapshot_count": 694,
+      "metrics_corrected_derived_not_original_mutation": {
+        "clear_control_sends": 21,
+        "node_admitted_ticks": 695,
+        "node_received_ticks": 695,
+        "paper_sent_ticks": 696,
+        "paper_ticks_without_node_snapshot": [
+          707
+        ],
+        "paper_to_node_exact_delay": "UNKNOWN",
+        "qualification": false,
+        "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+        "set_control_sends": 21
+      },
+      "node_exit": 0,
+      "node_pid_absent": true,
+      "normal_move_distances": [
+        0.6269065734210613,
+        0.6269065734210615,
+        0.6269065734210613,
+        0.6269065734210608,
+        0.6269065734210608,
+        0.6269065734210617,
+        0.6269065734210617,
+        0.6269065734210617,
+        0.6269065734210617,
+        0.6269065734210626,
+        0.6269065734210617,
+        0.6269065734210617,
+        0.6269065734210617,
+        0.6269065734210617,
+        0.6269065734210617,
+        0.6269065734210617,
+        0.6269065734210617,
+        0.6269065734210617,
+        0.6269065734210617,
+        0.6269065734210635
+      ],
+      "port_rebind": true,
+      "raw_shutdown_tail_not_credited_to_loop": 1,
+      "raw_snapshot_count": 695,
+      "root": "/home/rinsa/work/t1f-integration-evidence-20261026/run-005/t2_loop",
+      "run": 5,
+      "source_hashes_sha256": {
+        "commands.jsonl": "85ac81aa84a7f364a38b7b54ed9cd283f75dbb3a53c254f683cd5f580b8f9409",
+        "native.jsonl": "e4d943545a26eba3ee5526caa00b46f642682e62a97beb14376526c3aaff7301",
+        "node_timing.jsonl": "7f53ca6f5785d7fa0d08e0c03be0a010a73a5f4771d7179b5118bd6927d09329",
+        "paper.log": "fdbc2ea8cf70acf9a6010feba5243aacd1ef39fea87489f5d35a7a89f17b86d9",
+        "python_timing.jsonl": "b137590f5a777d4082e151fca3338c2c4238754e56d28619bf9e223b6d027572",
+        "report.json": "76383e6c55c279d40e7c30593b2e0909754ef25cefbb8cb260c015d701c715b2",
+        "source_hashes.json": "a747a60a187551aad941632438c0fb835b121739f5d3f6ecb20b5054abab0902",
+        "t2_ticks.json": "a8006da836c31962463c42ecd3e42de64bed7ecffbb785c69cc4f66bc150b6c1"
+      },
+      "status": "PASS",
+      "subject_head": "ba880ea1900a3c56b23224983f55d9c132bf91e0",
+      "t1f": {
+        "admitted": 694,
+        "cache_mismatch_frames": 7,
+        "frames": 694,
+        "max_causal_age_upper_ms": 127.610112,
+        "max_node_processing_ms": 0.702773,
+        "paper_to_node_exact_delay": "UNKNOWN",
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "source": "PAPER_CALLBACK_BODY_NOT_CACHE",
+        "statuses": {
+          "ADMITTED": 694,
+          "LATE": 0,
+          "MISSING": 0,
+          "STALE": 0,
+          "UNDETERMINED": 0
+        },
+        "world": "b255251d-6123-4931-97c1-86d1a031e284"
+      },
+      "t2": {
+        "P1_qualified_WAIT": false,
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.224552748132643,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 673
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "ad12189e-2623-46b0-89e0-4f4a6bc00aee",
+          "world_tick": 1703
+        },
+        "first_tick": 1031,
+        "intake": 4.0,
+        "last_tick": 1703,
+        "latched": false,
+        "m0_basal": 0.673,
+        "m0_cognition": 0.0673,
+        "m0_move": 0.035147251867782885,
+        "p1_accumulated": 0.7029450373556577,
+        "p1_recovered": 0.7029450373556577,
+        "ticks": 673,
+        "wait_dev_ticks": 430,
+        "world_seconds": 33.65
+      },
+      "tracked_diff_empty": true
+    }
+  ],
+  "classification": [
+    "DEV_ONLY",
+    "DEV_WORLD_OBSERVED",
+    "QUALIFICATION_NO_GO",
+    "SCIENCE_NOT_RUN"
+  ],
+  "implementation_head": "ba880ea1900a3c56b23224983f55d9c132bf91e0",
+  "java": {
+    "plugin_build": "SUCCESS",
+    "version": "21.0.12.1"
+  },
+  "node": {
+    "passed": 68,
+    "version": "22.22.2"
+  },
+  "post_run_change": "report reducer and accounting cutoff only; no motor or source-admission change",
+  "python_fast": {
+    "passed": 418,
+    "post_reporting_targeted_passed": 2,
+    "version": "3.12.3"
+  },
+  "retained_failed_runs": [
+    1,
+    4
+  ],
+  "world_executions": 5
+}

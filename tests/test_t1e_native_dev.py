@@ -33,3 +33,17 @@ def test_active_interval_latency_excludes_startup_unknown_and_uses_node_clock(tm
     assert metrics["paper_effective_tps"] == 20
     assert not metrics["fresh_world_tick_attested"]
     assert metrics["clear_control_sends"] == 1
+
+
+def test_snapshot_report_does_not_count_native_l0_as_absent_cache_shadow(tmp_path):
+    frames = [{"type": "paper_snapshot", "seq": 2,
+               "data": {"snapshot": {"tick": 10}, "status": "ADMITTED"}}]
+    (tmp_path / "node_timing.jsonl").write_text("\n".join(map(json.dumps, frames)))
+    (tmp_path / "paper.log").write_text(
+        "PAPER_DEV_TIME_SAMPLE server_tick=10 wall_nanos=1\n"
+        "PAPER_DEV_TIME_SAMPLE server_tick=11 wall_nanos=2\n")
+    (tmp_path / "commands.jsonl").write_text('{"effect":"set_control"}\n')
+    result = measure(tmp_path, {})
+    assert result["node_received_ticks"] == result["node_admitted_ticks"] == 1
+    assert result["paper_ticks_without_node_snapshot"] == [11]
+    assert result["paper_to_node_exact_delay"] == "UNKNOWN"

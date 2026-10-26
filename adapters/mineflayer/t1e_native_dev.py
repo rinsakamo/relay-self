@@ -67,6 +67,21 @@ def measure(root, report):
 
     node = journal("node_timing.jsonl")
     commands = journal("commands.jsonl")
+    snapshots = [r for r in node if r["type"] == "paper_snapshot"]
+    if snapshots:
+        sent = rows(root / "paper.log", "PAPER_DEV_TIME_SAMPLE ")
+        sent_ticks = {int(r["server_tick"]) for r in sent}
+        received_ticks = {r["data"]["snapshot"]["tick"] for r in snapshots}
+        return {
+            "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+            "paper_sent_ticks": len(sent), "node_received_ticks": len(snapshots),
+            "node_admitted_ticks": sum(r["data"]["status"] == "ADMITTED" for r in snapshots),
+            "paper_ticks_without_node_snapshot": sorted(sent_ticks - received_ticks),
+            "set_control_sends": sum(r.get("effect") == "set_control" for r in commands),
+            "clear_control_sends": sum(r.get("effect") == "clear_controls" for r in commands),
+            "paper_to_node_exact_delay": "UNKNOWN",
+            "qualification": False,
+        }
     dispatches = [r for r in node if r["type"] == "effect_result" and r["effect"] == "set_control"]
     clears = [r for r in node if r["type"] == "effect_result" and r["effect"] == "clear_controls"]
     shadows = [r for r in node if r["type"] == "paper_l0_shadow"]
@@ -164,12 +179,13 @@ async def run_case(args, case):
             tick_owner = None
             latest_paper = None
             paper_frames = None
+            consume_tick_accounting = True
 
             async def receive(self):
                 while True:
                     message = await super().receive()
                     now = time.monotonic_ns()
-                    if isinstance(message, MineflayerPaperSnapshot):
+                    if isinstance(message, MineflayerPaperSnapshot) and self.consume_tick_accounting:
                         self.latest_paper = message
                         if self.paper_frames is None:
                             self.paper_frames = []
@@ -277,8 +293,10 @@ async def run_case(args, case):
     finally:
         if fixture is not None:
             await fixture
-        if t1f and session is not None and session.tick_owner is not None:
-            write(root / "t2_ticks.json", session.tick_owner.rows)
+        if t1f and session is not None:
+            session.consume_tick_accounting = False
+            if session.tick_owner is not None:
+                write(root / "t2_ticks.json", session.tick_owner.rows)
         if session is not None:
             try:
                 report["node_exit"] = await session.shutdown(timeout_s=12)
