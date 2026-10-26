@@ -389,9 +389,10 @@ async def execute_mineflayer_command(
             provenance=provenance,
         )
     except Exception as exc:
-        if movement_command_attempted and cleanup is None:
-            if not cleanup_attempted:
-                cleanup_attempted = True
+        # The command ID is consumed at first dispatch. Never retry a clear
+        # that might have reached the client but whose ACK was lost.
+        if movement_command_attempted and cleanup is None and not cleanup_attempted:
+            cleanup_attempted = True
             try:
                 await adapter.send_clear_controls(command.cleanup_action_id)
                 if l0_interrupt_dev:
