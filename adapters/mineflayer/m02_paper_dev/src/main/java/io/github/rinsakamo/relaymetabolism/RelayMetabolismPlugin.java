@@ -286,6 +286,19 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                         + " source=PAPER_SCHEDULER_CALLBACK_ONLY"
                         + " l0_checked=false action_bound=false";
                     getLogger().info("PAPER_DEV_TIME_SAMPLE " + tickWire);
+                    // Bounded, passive server pose/input witness on the same
+                    // callback. This is not a client clear ACK or motor writer.
+                    Location pose = p.getLocation();
+                    org.bukkit.Input input = p.getCurrentInput();
+                    getLogger().info("PAPER_DEV_MOTOR_SAMPLE index=" + adaptiveTickRows
+                        + " server_tick=" + Bukkit.getCurrentTick()
+                        + " world=" + p.getWorld().getUID()
+                        + " player=" + p.getUniqueId()
+                        + " x=" + pose.getX() + " y=" + pose.getY() + " z=" + pose.getZ()
+                        + " forward=" + input.isForward() + " backward=" + input.isBackward()
+                        + " left=" + input.isLeft() + " right=" + input.isRight()
+                        + " jump=" + input.isJump() + " sneak=" + input.isSneak()
+                        + " sprint=" + input.isSprint());
                     // No client subscription means no wire receipt. A logged
                     // Paper callback must never be mistaken for an L0 check.
                     if (p.getListeningPluginChannels().contains(ADAPTIVE_TICK_CHANNEL)) {
@@ -501,6 +514,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             if (p == null || !p.isOnline() || p.isDead()) return false;
             Location loc = p.getLocation();
             getLogger().info("S_V8_DEV_SNAPSHOT marker_id=" + args[0]
+                + " server_tick=" + Bukkit.getCurrentTick()
                 + " world=" + p.getWorld().getUID() + " seed=" + p.getWorld().getSeed()
                 + " full_time=" + p.getWorld().getFullTime()
                 + " player_tick=" + appliedTicks

@@ -28,6 +28,8 @@ MOVE_BACKWARD_EFFECT = "set_control"
 MOVE_BACKWARD_CONTROL = "back"
 MOVE_BACKWARD_DURATION_S = 0.20
 MOVE_BACKWARD_MINIMUM_DISTANCE = 0.05
+# DEV 20-TPS watchdog: three nominal tick intervals, never a freshness proof.
+L0_DEV_MAX_SILENCE_S = 0.15
 
 
 class MineflayerExecutionError(ValueError):
@@ -358,8 +360,7 @@ async def execute_mineflayer_command(
                 isinstance(message, MineflayerObservation)
                 and message.kind == "probe"
             ),
-            l0_interrupt_dev=l0_interrupt_dev,
-            expected_session_id=session_id,
+            l0_interrupt_dev=False,
         )
         movement_distance = _horizontal_distance(
             before.snapshot.position.x,
@@ -439,15 +440,33 @@ async def _watch_l0_during_motor(
     loop = asyncio.get_running_loop()
     deadline = loop.time() + duration_s
     checked = 0
+    last_shadow = None
+    silence_deadline = loop.time() + L0_DEV_MAX_SILENCE_S
     while True:
         remaining = deadline - loop.time()
         if remaining <= 0:
             break
+        silence_remaining = silence_deadline - loop.time()
+        if silence_remaining <= 0:
+            raise MineflayerExecutionError("L0 DEV shadow stream stalled during motor")
         try:
-            message = await asyncio.wait_for(adapter.receive(), timeout=remaining)
+            message = await asyncio.wait_for(
+                adapter.receive(), timeout=min(remaining, silence_remaining),
+            )
         except TimeoutError:
+            if loop.time() >= silence_deadline:
+                raise MineflayerExecutionError("L0 DEV shadow stream stalled during motor")
             break
         if _check_l0_interrupt(message, session_id=session_id):
+            if last_shadow is not None and (
+                message.paper_sample_index != last_shadow.paper_sample_index + 1
+                or int(message.paper_server_tick) != int(last_shadow.paper_server_tick) + 1
+                or message.paper_world != last_shadow.paper_world
+                or message.paper_player != last_shadow.paper_player
+            ):
+                raise MineflayerExecutionError("L0 DEV shadow tick discontinuity")
+            last_shadow = message
+            silence_deadline = loop.time() + L0_DEV_MAX_SILENCE_S
             checked += 1
     if checked == 0:
         raise MineflayerExecutionError(

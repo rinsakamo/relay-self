@@ -160,3 +160,46 @@ tests including this new integration test, Java21 Paper compile and isolated
 DEV World telemetry; verify actual clear ACK, server-native post-clear
 observations and latency. Then separately qualify a source-bound fresh
 per-WorldTick L0 sensor and rate adaptation.
+
+## T1e local integration continuation — 2026-10-26
+
+The DEV motor monitor now rejects discontinuous shadow ticks and stops after
+150 ms without a shadow while held movement remains active. This is a bounded
+20-TPS DEV silence policy, not a freshness or physiological response guarantee.
+A late hazard received after the clear ACK cannot reopen the completed motor;
+the existing typed native decoder and subsequent Action retain their authority.
+The original clear ID remains consumed on the first attempt, including lost ACK.
+
+`python -m adapters.mineflayer.t1e_native_dev` runs fresh disposable Paper Worlds
+with the original S49 physical `execute_mineflayer_command` and existing explicit
+operator Action issuer. It tests fixed MOVE_BACKWARD fixtures (0.2 s normal;
+up to 1 s for hazard injection), not autonomous S49 policy competence. Normal,
+LOW_HEALTH, KNOWN_NEAR_HOSTILE, cache-coverage UNKNOWN and a consumer-dropped
+clear ACK use the same sole native receiver and existing clear writer. The
+UNKNOWN fixture adds 130 marker entities; the lost-ACK fixture retains the
+original ACK bytes and drops only delivery to the Python consumer. No TPS
+command, high-rate motor, model call, R grant or V trial is involved.
+
+The opt-in Paper callback now logs bounded `PAPER_DEV_MOTOR_SAMPLE` pose and
+current server input alongside its existing tick send. An additive `server_tick`
+on the existing console snapshot supplies a post-clear Paper boundary. Both
+are observation only. Eight consecutive later callbacks with idle input and
+unchanged pose demonstrate settled DEV behavior; the first post-ACK position
+may still include residual motion and must not be described as instantaneous
+server STOP or P1-qualified WAIT.
+
+For timing, `RELAYSELF_PAPER_TICK_TRACE_DEV=/absolute/fresh/file` optionally
+writes an exclusive Node journal, only with `RELAYSELF_PAPER_TICK_DEV=1`.
+It records existing stream identities and Node monotonic timestamps at shadow
+emission and after local `clearControlStates()` completion. Their difference
+includes Python handoff/return but excludes the small interval from actual
+shadow evaluation completion to its emission. Python receipt/send/ACK durations
+are separately measured on the Python clock. The Paper send-to-client absolute
+latency remains unknown: JVM and Node epochs are never subtracted. Synchronous
+DEV trace/log overhead is included in observed behavior, not calibrated away.
+
+The runner records Paper-sent, Node-received, emitted shadow and active-Action
+shadow ticks separately, including uncovered Paper tick IDs. Neither emitted
+cache scans nor a local deadline pass attests a fresh complete World snapshot.
+Evidence roots are exclusive; DEV retries use new roots and retain earlier
+results. Java/Node exit, PID absence and port rebind are checked after each case.

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 
 import pytest
 
@@ -13,7 +14,6 @@ from adapters.mineflayer.execution import (
     execute_mineflayer_command,
 )
 from adapters.mineflayer.python_protocol import MineflayerPaperL0Shadow
-
 
 WORLD = "11111111-1111-4111-8111-111111111111"
 PLAYER = "22222222-2222-4222-8222-222222222222"
@@ -146,4 +146,61 @@ def test_missing_clear_ack_never_reissues_duplicate_action_id():
     assert result.status is WorldConsequenceStatus.FAILED
     assert result.cleanup_attempted
     assert result.cleanup_receipt is None
+    assert session.sent.count(("clear_controls", cmd.cleanup_action_id)) == 1
+
+
+@pytest.mark.parametrize("index,tick", [(1, "123"), (3, "125"), (2, "126")])
+def test_duplicate_missing_or_reordered_shadow_tick_interrupts(index, tick):
+    session = base.FakeSession([
+        shadow(1, "NO_KNOWN_URGENT_SIGNAL"),
+        replace(shadow(2, "NO_KNOWN_URGENT_SIGNAL"),
+                paper_sample_index=index, paper_server_tick=tick),
+    ])
+    with pytest.raises(ValueError, match="tick discontinuity"):
+        asyncio.run(_watch_l0_during_motor(
+            session, duration_s=0.02, session_id="s15-session",
+        ))
+
+
+def test_one_benign_shadow_does_not_mask_subsequent_stall(monkeypatch):
+    import adapters.mineflayer.execution as owner
+    monkeypatch.setattr(owner, "L0_DEV_MAX_SILENCE_S", 0.01)
+
+    class StalledSession(base.FakeSession):
+        async def receive(self):
+            if self._messages:
+                return self._messages.popleft()
+            await asyncio.sleep(10)
+
+    with pytest.raises(ValueError, match="stream stalled"):
+        asyncio.run(_watch_l0_during_motor(
+            StalledSession([shadow(1, "NO_KNOWN_URGENT_SIGNAL")]),
+            duration_s=0.1, session_id="s15-session",
+        ))
+
+
+def test_late_hazard_after_clear_ack_does_not_reopen_completed_motor():
+    cmd = command()
+
+    class TimedSession(base.FakeSession):
+        async def receive(self):
+            # Hold the next frame past the normal motor deadline. Cancellation
+            # must leave it for the original cleanup/post-action receiver.
+            if len(self._messages) == 3 and not self.sent[-1][0] == "clear_controls":
+                await asyncio.sleep(1)
+            return await super().receive()
+
+    session = TimedSession([
+        base.observation(1, 0, 0),
+        base.effect(2, cmd.action_id, "set_control"),
+        shadow(3, "NO_KNOWN_URGENT_SIGNAL"),
+        base.effect(4, cmd.cleanup_action_id, "clear_controls"),
+        shadow(5, "LOW_HEALTH"),
+        base.observation(6, 0, 0.15),
+    ])
+    result = asyncio.run(execute_mineflayer_command(
+        session, cmd, timeout_s=0.1, provenance=base.provenance("late-shadow"),
+        l0_interrupt_dev=True,
+    ))
+    assert result.status is WorldConsequenceStatus.EXECUTED
     assert session.sent.count(("clear_controls", cmd.cleanup_action_id)) == 1

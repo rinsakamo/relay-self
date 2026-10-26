@@ -11,8 +11,8 @@ from adapters.mineflayer.m02_paper_dev.paper_tick_transport import (
 )
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterProtocolError,
-    MineflayerPaperTickSample,
     MineflayerPaperL0Shadow,
+    MineflayerPaperTickSample,
     MineflayerStreamDecoder,
     parse_mineflayer_line,
 )
@@ -56,9 +56,9 @@ def packet(i, **changes):
         "world_full_time": data["world_full_time"],
         "wall_nanos": data["wall_nanos"],
         "world": data["world"], "player": data["player"],
-        "bridge_recv_monotonic_ns": str(100000 + 1000 * i),
+        "bridge_recv_monotonic_ns": data.get("bridge_recv_monotonic_ns", str(100000 + 1000 * i)),
         "l0_checked": data["l0_checked"], "action_bound": data["action_bound"],
-        "paper_native_source_authenticated": False,
+        "paper_native_source_authenticated": data.get("paper_native_source_authenticated", False),
     }
 
 

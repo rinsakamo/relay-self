@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { lstatSync } from 'node:fs'
+import { lstatSync, openSync, writeSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import readline from 'node:readline'
 
@@ -85,9 +85,21 @@ let lastObservedDay = null
 let lastObservedIsDay = null
 const seenActionIds = new Set()
 const seenProbeRequestIds = new Set()
+// Optional bounded DEV timing journal. Both L0 emission and actual local
+// clear completion use this Node clock; never subtract a Paper/JVM clock.
+const paperTracePath = process.env.RELAYSELF_PAPER_TICK_TRACE_DEV
+if (paperTracePath && (paperTickOptIn !== '1' || !isAbsolute(paperTracePath))) {
+  throw new Error('Paper timing trace requires explicit DEV and absolute fresh path')
+}
+const paperTraceFd = paperTracePath ? openSync(paperTracePath, 'wx', 0o600) : null
 
 function emit (type, payload = {}) {
   const message = makeEnvelope(sessionId, seq, type, payload)
+  if (paperTraceFd !== null && ['paper_tick_sample', 'paper_l0_shadow',
+    'effect_result', 'adapter_error'].includes(type)) {
+    writeSync(paperTraceFd, JSON.stringify({ node_monotonic_ns: process.hrtime.bigint().toString(),
+      ...message }) + '\n')
+  }
   seq += 1
   process.stdout.write(JSON.stringify(message) + '\n')
 }
