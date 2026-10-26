@@ -126,24 +126,22 @@ def review_inter_action_stillness_dev(
     # Therefore even the candidate is NOT proof of no physical Action.
     low = arm + first_count + 7
     high = applied - 6
-    streaks = []
-    current = None
+    # Derive candidate spans directly from eligible consecutive tick IDs.
+    # Never interpolate missing ticks or accept one-frame stillness.
+    static_tick_ids = []
     for tick in range(low, high + 1):
         if tick not in paper or tick - 1 not in paper:
             raise InterActionStillnessRejected("candidate missing Paper predecessor")
-        x, z = paper[t]
-        px, pz = paper[t-1]
-        delta = math.hypot(x-px, z-pz)
-        if delta <= .002:
-            if current is None:
-                current = [tick, tick]
-            else:
-                current[1] = tick
-        elif current is not None:
-            streaks.append(current)
-            current = None
-    if current is not None:
-        streaks.append(current)
+        x, z = paper[tick]
+        px, pz = paper[tick - 1]
+        if math.hypot(x - px, z - pz) <= .002:
+            static_tick_ids.append(tick)
+    streaks = []
+    for tick in static_tick_ids:
+        if streaks and streaks[-1][1] == tick - 1:
+            streaks[-1][1] = tick
+        else:
+            streaks.append([tick, tick])
     viable = [v for v in streaks if v[1]-v[0]+1 >= min_still_ticks]
     if not viable:
         return {
