@@ -109,8 +109,10 @@ The same CLI now additionally accepts `t1h_pre_stop`, `t1h_lost_ack`,
   original wire bytes remain. They are not proof of a network packet-loss model.
 - Input-residual case alone sets the explicit DEV fault token
   `RELAYSELF_T1H_CLEAR_FAULT_DEV=T1E-DISPOSABLE-DEV-ONLY`, also requiring both
-  existing Paper DEV flags. The original bridge intentionally omits clear and
-  emits a false applied ACK. No new movement writer is installed. Paper must
+  existing Paper DEV flags. The original bridge intentionally omits clear, injects stuck sneak through
+  the same Mineflayer API, and emits a false applied ACK. This exposes actual
+  nonidle input to Paper; back-only Mineflayer physics did not set Paper input
+  bits in the earlier fault run. No new movement writer is installed. Paper must
   reject ongoing input; bridge shutdown always performs the genuine clear.
   The runner removes the fault token before every other case.
 - Motion-residual case applies a temporary environmental levitation effect

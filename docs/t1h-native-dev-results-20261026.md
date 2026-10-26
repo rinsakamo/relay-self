@@ -13,8 +13,10 @@ ActionはFAILED、SupervisorはUNKNOWNを維持する。shutdown ACKをSTOP ACK�
 - Branch: `self/dev-t1h-s49-stop-20261026`
 - 開始HEAD: `9743c16136dbcecfff8bbfc2628fa52d24b45857`
 - 基底T1g: `9f97473227bc839413f5ee31bc5469dcb425fa5b`、祖先関係確認済み。
-- 最終実装・実World確認HEAD: `307caf2baff16b9c3acdb5c35f1dd440cd841f2d`。
-  この報告を加える後続commitは文書・測定JSONのみ。
+- 最終実装HEAD: `1fea532623b9bf2c9a449c01dab73b4e44e9c59c`。
+  最終正常STOPは `307caf2baff16b9c3acdb5c35f1dd440cd841f2d`、
+  最終入力故障試験は前記最終実装HEAD。後者の差はDEV故障入力とラベルだけであり、正常経路は同一。
+  最終報告commitは文書・測定JSONのみ。
 - 専用worktree: `/home/rinsa/work/relay-self-t1h-20261026`。
   元checkoutのmain `32fe105fc12cbf54abd11bfba7c8a75d319939df` は変更しない。
 - Windows 11のWSL2ホスト `RIN-DESKTOP`、Ubuntu側Python **3.12.3**、
@@ -39,7 +41,7 @@ ActionはFAILED、SupervisorはUNKNOWNを維持する。shutdown ACKをSTOP ACK�
 5. 既存DEV入口へ負対照とPython単調時計の測定を追加。
    最終stale試験は新規positive Worldの実native原本から旧session/Action ACKを読み出して再提示した。
 
-**Python 3.12 FAST 482 PASS**（27ファイル、41.77秒）。
+**Python 3.12 FAST 482 PASS**（27ファイル、最終実装HEADで実施）。
 指定focused4ファイル **52 PASS**、指定関連回帰3ファイル **52 PASS**。
 FASTの選択リスト・全stdoutは外部証拠rootに保存。
 Node 22関連 **73 PASS**（既存top-level 68件＋既存packet trace 5件）、
@@ -52,8 +54,8 @@ Java buildの初回2回はJREのみの環境でrelease21コンパイラを選べ
 
 ## 実World全履歴
 
-**20 World試行、report PASS 17 / FAIL 3**。DEV STOP ACK発行 **7**。
-期待どおりSTOP ACKを拒否した負対照は延べ **12**（通信断FAIL2件を含む）。
+**21 World試行、report PASS 18 / FAIL 3**。DEV STOP ACK発行 **7**。
+期待どおりSTOP ACKを拒否した負対照は延べ **13**（通信断FAIL2件を含む）。
 残るFAIL1件はmarker到着前に検査した初期fixture不整合で、原本を保持し新Worldで修正再試験済み。
 
 負対照の`PASS`は期待した拒否を意味し、STOP成功ではない。
@@ -82,6 +84,7 @@ report FAIL / cleanup_complete=falseを維持した。プロセス回収と正�
 | `run-004/t1h_stop_move` | PASS | あり | 正常STOP（又はACK二重確定拒否） |
 | `run-005/t1h_stale_ack` | PASS | なし | no matching acknowledged original S49 clear |
 | `run-005/t1h_stop_move` | PASS | あり | 正常STOP（又はACK二重確定拒否） |
+| `run-006/t1h_input_residual` | PASS | なし | no 8 consecutive motion-free Paper tick transitions |
 
 発行前STOPでset_control/clear_controls各0、STOP前の正常Action発行は可能。
 MOVE中STOP、ACK欠落、ACK遅延、早期/静止後の切断、Paper観測不足、
@@ -90,7 +93,9 @@ MOVE中STOP、ACK欠落、ACK遅延、早期/静止後の切断、Paper観測不
 - ACK欠落・0.7秒遅延は**Python consumerでの故障注入**。実bridge原ACKは原本に残る。
   ネットワークパケット損失・遅延の実測とは主張しない。
 - 入力残存は明示DEV tokenと既存DEV flagsが揃う場合だけ、元bridgeが意図的にclearを省略し
-  偽のapplied ACKを返す負対照。Paperにbackward入力と移動が残り、STOP ACKは発行されない。
+  偽のapplied ACKを返す負対照。初回run-002ではPaper入力はfalseで、移動残存によって拒否した。
+  原本照合でこの観測限界を発見し、run-006では同じbridge/API内でstuck sneakを注入。
+  Paperのsneak=trueと移動残存を原ログで確認し、STOP ACKを拒否した。
   shutdownは常に実clearを行う。別Motor issuerや2回目のset_controlは追加しない。
 - 移動残存は既存Paper consoleから環境側levitationを適用。入力が解除済みでも静止認定を拒否する。
 - 初期run-002のstaleケースはconsumerでIDを書き換えた形状負対照。
@@ -100,7 +105,7 @@ MOVE中STOP、ACK欠落、ACK遅延、早期/静止後の切断、Paper観測不
 
 ## 最終正常STOPの測定
 
-対象: `run-005/t1h_stop_move`、上記最終実装HEAD。
+対象: `run-005/t1h_stop_move`、正常経路確認HEAD `307caf2b`。
 
 - session: `9b4c7d6f-af6d-4860-bafd-bd72f6e7827c`
 - World: `122315df-50d7-4cc2-b53f-9fd45f35220e`
@@ -131,9 +136,9 @@ Paper `Bukkit server_tick` とWorld `getFullTime`を別々に保存し、同一�
 
 ## 全体の安全・cleanup・保護
 
-全20件で所有Java/NodeのPID消失とport再bindを確認。
-正常cleanup **18/20**（Java0/Node0＋native正常終端）。
-注入通信断 **2/20**はJava0/Node3、connection_endあり・shutdown_ackなしで正常cleanup未成立。
+全21件で所有Java/NodeのPID消失とport再bindを確認。
+正常cleanup **19/21**（Java0/Node0＋native正常終端）。
+注入通信断 **2/21**はJava0/Node3、connection_endあり・shutdown_ackなしで正常cleanup未成立。
 全session内のAction/effect ID重複 **0**、effect receipt重複 **0**、STOP後の次Action effect **0**。
 別session間では固定fixture ID文字列を再利用するため、重複判定のキーは(session_id, action_id)である。
 
@@ -147,7 +152,7 @@ TPS actuator・高TPS Motorは引き続き無効。
 各trialに`server/`、`paper.log`、`native.jsonl`、`commands.jsonl`、
 `python_timing.jsonl`、`node_timing.jsonl`、`report.json`、`source_hashes.json`を保存。
 各batchの`subject.json`はその時点のHEAD・dirty diff・runner hashを記録し、
-最終run-004/005はclean実装commitに対応する。初期dirty実装での試行を最終HEAD試行と表示しない。
+最終run-004/005/006はclean実装commitに対応する。初期dirty実装での試行を最終HEAD試行と表示しない。
 
 全trialのsource_hashesを読み戻して検証済み。
 `reduce_results.py`は原本をread-onlyで再計算し、外部`final-measurements.json`へ出力する。
