@@ -12,6 +12,7 @@ import {
 } from './bridge_hooks.mjs'
 import { attachV6NativeClockPackets } from './v6_native_clock.mjs'
 import { attachPaperTickChannel } from './paper_tick_channel.mjs'
+import { evaluatePaperL0Shadow } from './paper_l0_shadow.mjs'
 import {
   admitProbeRequestId,
   makeEnvelope,
@@ -130,7 +131,12 @@ const bot = mineflayer.createBot(options)
 if (paperTickOptIn === '1') {
   attachPaperTickChannel(
     bot,
-    (sample) => emit('paper_tick_sample', sample),
+    (sample) => {
+      // One bounded deterministic cache-only L0 shadow evaluation in the
+      // existing native receive turn. Never a physical Action writer.
+      emit('paper_tick_sample', sample)
+      emit('paper_l0_shadow', evaluatePaperL0Shadow(sample, bot))
+    },
     (error) => emitAdapterError(error)
   )
 }
