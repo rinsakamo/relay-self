@@ -192,12 +192,22 @@ def test_replayed_foreign_or_fabricated_two_action_world_time_denied(fault):
             lines[20] = lines[20].replace("first_dash_modifier_present=false",
                                           "first_dash_modifier_present=true")
         elif fault == "nan_pos":
-            lines[20] = lines[20].replace("x=3.25", "x=nan")
+            lines[20] = " ".join(
+                "x=nan" if field.startswith("x=") else field
+                for field in lines[20].split()
+            )
         elif fault == "teleport":
             lines[20] = lines[20].replace("x=", "x=90", 1)
         else:
+            # Deliberately freeze the second claimed movement window.
+            # Keep ticks/markers intact; geometrically no real MOVE signal.
+            x_prev = next(part for part in lines[29].split()
+                          if part.startswith("x="))
             for i in range(30, 42):
-                lines[i] = lines[i].replace("x=", "x=1", 1)
+                lines[i] = " ".join(
+                    x_prev if field.startswith("x=") else field
+                    for field in lines[i].split()
+                )
         k["raw"] = "\n".join(lines)
     elif fault.startswith("missing_") and fault != "missing_basal_owner":
         tag = "S49_DASH_DEV_TRAIL_EDGE "
