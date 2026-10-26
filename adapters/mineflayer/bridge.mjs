@@ -11,6 +11,7 @@ import {
   resolveAttackEntity
 } from './bridge_hooks.mjs'
 import { attachV6NativeClockPackets } from './v6_native_clock.mjs'
+import { projectS49DevMovementSpeed } from './s49_speed_attribute_bridge_dev.mjs'
 import {
   admitProbeRequestId,
   makeEnvelope,
@@ -127,6 +128,8 @@ emit('adapter_started', {
 })
 
 const bot = mineflayer.createBot(options)
+const attrSyncDev = process.env.S49_SPEED_ATTR_SYNC_DEV_ONLY === '1' &&
+  process.env.S49_SPRINT_MOTOR_DEV_ONLY === '1' && config.version === '1.21.8'
 const attrDiag = process.env.S49_SPEED_ATTR_DIAG_DEV_ONLY === '1' &&
   process.env.S49_SPRINT_MOTOR_DEV_ONLY === '1' && config.version === '1.21.8'
 let attrDiagActive = false
@@ -173,6 +176,24 @@ if (attrDiag) {
       controlSprint: bot.getControlState('sprint'),
       pos: bot.entity.position,
       velocity: bot.entity.velocity
+    })
+  })
+}
+if (attrSyncDev) {
+  bot.on('entityAttributes', entity => {
+    if (!attrDiagActive || !bot.entity || entity.id !== bot.entity.id) return
+    const attrs = entity.attributes
+    const projected = projectS49DevMovementSpeed(attrs && attrs['generic.scale'])
+    if (projected === null) {
+      delete attrs['minecraft:movement_speed']
+      traceDevAttr('SPEED_SYNC_REJECTED')
+      return
+    }
+    attrs['minecraft:movement_speed'] = projected.attribute
+    traceDevAttr('SPEED_SYNC_APPLIED', {
+      projectedDash: projected.dash,
+      projectedValue: projected.attribute.value,
+      projectedModifiers: projected.attribute.modifiers
     })
   })
 }
@@ -317,6 +338,9 @@ async function handleEffect (command) {
 
     if (command.effect === 'clear_controls') {
       bot.clearControlStates()
+      if (attrSyncDev && bot.entity && bot.entity.attributes) {
+        delete bot.entity.attributes['minecraft:movement_speed']
+      }
       traceDevAttr('ACTION_CLEAR')
       attrDiagActive = false
       emitEffectResult(command, 'applied')
@@ -379,6 +403,9 @@ function handleShutdown () {
   closing = true
   if (spawned) {
     bot.clearControlStates()
+    if (attrSyncDev && bot.entity && bot.entity.attributes) {
+      delete bot.entity.attributes['minecraft:movement_speed']
+    }
   }
   emit('shutdown_ack')
   if (inputReader !== null) inputReader.close()

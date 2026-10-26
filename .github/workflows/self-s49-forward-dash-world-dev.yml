@@ -10,6 +10,8 @@ on:
       - tests/test_s49_paper_forward_dash_dev.py
       - adapters/mineflayer/execution.py
       - adapters/mineflayer/bridge.mjs
+      - adapters/mineflayer/s49_speed_attribute_bridge_dev.mjs
+      - adapters/mineflayer/s49_speed_attribute_bridge_dev.test.mjs
       - tests/test_s49_forward_motor_admission_dev.py
 
 permissions:
@@ -30,6 +32,7 @@ jobs:
       S49_FORWARD_MOTOR_DEV_ONLY: '1'
       S49_SPRINT_MOTOR_DEV_ONLY: '1'
       S49_SPEED_ATTR_DIAG_DEV_ONLY: '1'
+      S49_SPEED_ATTR_SYNC_DEV_ONLY: '1'
       DEV_OUTPUT: '/tmp/s49-paper-forward-dash-${{ github.run_id }}-${{ github.run_attempt }}'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -61,6 +64,7 @@ jobs:
         run: |
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
           node --check adapters/mineflayer/bridge.mjs
+          node --test adapters/mineflayer/s49_speed_attribute_bridge_dev.test.mjs
           python -m compileall -q adapters/mineflayer/s49_paper_forward_dash_dev.py tests/test_s49_paper_forward_dash_dev.py
           ruff check adapters/mineflayer/s49_paper_forward_dash_dev.py tests/test_s49_paper_forward_dash_dev.py
           python -m pytest -q tests/test_s49_paper_forward_dash_dev.py tests/test_s49_forward_motor_admission_dev.py
