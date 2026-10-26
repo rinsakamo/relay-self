@@ -57,6 +57,16 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
     private double lastZ;
     private BukkitTask task;
     private BukkitTask postReleaseTask;
+    // Separate passive 2-Action timeline; no motor/P1/M0 or native issuer.
+    private BukkitTask twoActionTrailTask;
+    private long trailStartTick;
+    private long trailLastTick;
+    private int trailSamples;
+    private String secondNativeActionId;
+    private boolean secondAppliedMarked;
+    private boolean secondClearedMarked;
+    private int lastTrailNativeAckSeq = -1;
+    private int secondCleanupTrailTick = -1;
     private long postReleaseStartTick;
     private long postReleaseLastTick;
     private double postReleaseLastX;
@@ -82,13 +92,14 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         boolean start = command.getName().equalsIgnoreCase("relays49dasharm");
         boolean stop = command.getName().equalsIgnoreCase("relays49dashoff");
         boolean mark = command.getName().equalsIgnoreCase("relays49dashmark");
-        if (!start && !stop && !mark) {
+        boolean trailMark = command.getName().equalsIgnoreCase("relays49dashtrailmark");
+        if (!start && !stop && !mark && !trailMark) {
             return false;
         }
         if (!(sender instanceof ConsoleCommandSender)
                 || !Bukkit.isPrimaryThread()
                 || !getConfig().getBoolean("enabled", false)
-                || args.length != (start ? 4 : mark ? 5 : 3)
+                || args.length != (start ? 4 : (mark || trailMark) ? 5 : 3)
                 || !validId(args[0]) || !validId(args[1])) {
             getLogger().warning("S49_DASH_DEV_DENIED console_or_input");
             return true;
@@ -104,6 +115,8 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             arm(args, uuid);
         } else if (mark) {
             markNativeEffect(args, uuid);
+        } else if (trailMark) {
+            markSecondNativeEffect(args, uuid);
         } else {
             if (!armed || !uuid.equals(playerId)
                     || !args[0].equals(actionId) || !args[1].equals(sessionId)) {
@@ -179,6 +192,19 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             key, 0.5 * requestedPower, AttributeModifier.Operation.MULTIPLY_SCALAR_1
         );
         task = Bukkit.getScheduler().runTaskTimer(this, this::sample, 1L, 1L);
+        if (getConfig().getBoolean("two-action-trace-dev", false)) {
+            trailStartTick = armTick;
+            trailLastTick = armTick;
+            trailSamples = 0;
+            secondNativeActionId = null;
+            secondAppliedMarked = false;
+            secondClearedMarked = false;
+            lastTrailNativeAckSeq = -1;
+            secondCleanupTrailTick = -1;
+            twoActionTrailTask = Bukkit.getScheduler().runTaskTimer(
+                this, this::sampleTwoActionTrail, 1L, 1L
+            );
+        }
         getLogger().info("S49_DASH_DEV_ARM action_id=" + actionId
             + " session_id=" + sessionId + " player_uuid=" + playerId
             + " world=" + worldId + " tick=" + armTick
@@ -230,6 +256,106 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " tick=" + subject.getWorld().getFullTime()
             + " marker_after_native_ack=true"
             + " synchronized_native_effect_tick=false");
+    }
+
+    private void markSecondNativeEffect(String[] args, UUID uuid) {
+        if (!getConfig().getBoolean("two-action-trace-dev", false)
+                || twoActionTrailTask == null || !safeSubject()
+                || !uuid.equals(playerId)
+                || !args[1].equals(sessionId)
+                || !nativeAppliedMarked || !nativeClearedMarked
+                || !args[0].matches("s49-native-move-[0-9]{1,16}")
+                || args[0].equals(actionId)
+                || (secondNativeActionId != null
+                    && !secondNativeActionId.equals(args[0]))) {
+            getLogger().warning("S49_DASH_DEV_TRAIL_DENIED wrong_actor_or_order");
+            return;
+        }
+        boolean applied = args[3].equals("APPLIED");
+        boolean cleared = args[3].equals("CLEARED");
+        if ((!applied && !cleared)
+                || (applied && secondAppliedMarked)
+                || (cleared && (!secondAppliedMarked || secondClearedMarked))) {
+            getLogger().warning("S49_DASH_DEV_TRAIL_DENIED replay_or_phase");
+            return;
+        }
+        int seq;
+        try {
+            seq = Integer.parseInt(args[4]);
+        } catch (NumberFormatException exception) {
+            getLogger().warning("S49_DASH_DEV_TRAIL_DENIED invalid_seq");
+            return;
+        }
+        if (seq <= lastTrailNativeAckSeq || seq < 0) {
+            getLogger().warning("S49_DASH_DEV_TRAIL_DENIED ack_seq_replay");
+            return;
+        }
+        secondNativeActionId = args[0];
+        lastTrailNativeAckSeq = seq;
+        if (applied) {
+            secondAppliedMarked = true;
+        } else {
+            secondClearedMarked = true;
+            secondCleanupTrailTick = (int) subject.getWorld().getFullTime();
+        }
+        getLogger().info("S49_DASH_DEV_TRAIL_EDGE action_id=" + secondNativeActionId
+            + " session_id=" + sessionId
+            + " world=" + worldId + " player_uuid=" + playerId
+            + " phase=" + (applied ? "APPLIED" : "CLEARED")
+            + " native_seq=" + seq
+            + " tick=" + subject.getWorld().getFullTime()
+            + " delivered_after_original_native_ack=true"
+            + " exact_client_effect_tick_attested=false");
+    }
+
+    private void sampleTwoActionTrail() {
+        if (twoActionTrailTask == null) return;
+        if (!Bukkit.isPrimaryThread() || !safeSubject()) {
+            endTwoActionTrail("ACTOR_OR_WORLD_CHANGED");
+            return;
+        }
+        long tick = subject.getWorld().getFullTime();
+        if (tick == trailStartTick && trailSamples == 0) return;
+        if (tick != trailLastTick + 1 || tick - trailStartTick > 1200L) {
+            endTwoActionTrail("WORLD_TICK_GAP_OR_MAX");
+            return;
+        }
+        AttributeInstance speed = subject.getAttribute(Attribute.MOVEMENT_SPEED);
+        if (speed == null || (secondAppliedMarked && (
+                armed || boosted || modifier == null
+                || speed.getModifier(modifier.getKey()) != null))) {
+            endTwoActionTrail("DASH_MODIFIER_RETAINED_IN_SECOND");
+            return;
+        }
+        trailSamples++;
+        trailLastTick = tick;
+        getLogger().info("S49_DASH_DEV_TRAIL_TICK action_id=" + actionId
+            + " session_id=" + sessionId
+            + " world=" + worldId + " player_uuid=" + playerId
+            + " tick=" + tick + " index=" + trailSamples
+            + " second_applied_marker_seen=" + secondAppliedMarked
+            + " second_cleared_marker_seen=" + secondClearedMarked
+            + " first_dash_modifier_present="
+            + (modifier != null && speed.getModifier(modifier.getKey()) != null)
+            + " x=" + subject.getLocation().getX()
+            + " z=" + subject.getLocation().getZ()
+            + " motor_write=false M0_POSTED=false P1_APPLIED=false WAIT_ATTESTED=false");
+        if (secondClearedMarked && tick >= secondCleanupTrailTick + 5) {
+            endTwoActionTrail("SECOND_NATIVE_ACK_MARKER_PLUS_FIVE");
+        }
+    }
+
+    private void endTwoActionTrail(String reason) {
+        if (twoActionTrailTask == null) return;
+        twoActionTrailTask.cancel();
+        twoActionTrailTask = null;
+        getLogger().info("S49_DASH_DEV_TRAIL_COMPLETE action_id=" + actionId
+            + " session_id=" + sessionId + " second_action_id="
+            + (secondNativeActionId == null ? "NONE" : secondNativeActionId)
+            + " world=" + worldId + " player_uuid=" + playerId
+            + " tick=" + trailLastTick + " samples=" + trailSamples
+            + " reason=" + reason + " motor_write=false"
+            + " M0_POSTED=false P1_APPLIED=false WAIT_ATTESTED=false");
     }
 
     private boolean safeSubject() {
@@ -521,6 +647,7 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             postReleaseTask.cancel();
             postReleaseTask = null;
         }
+        endTwoActionTrail("PLUGIN_DISABLED");
         getLogger().info("S49_DASH_DEV_STOPPED");
     }
 }
