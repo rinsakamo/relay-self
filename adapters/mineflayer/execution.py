@@ -15,12 +15,12 @@ from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
     MineflayerPaperL0Shadow,
 )
-from relay_self.action import ActionLifecycle, ActionState
-from relay_self.execution_binding import ExecutionBindingResult
 from adapters.mineflayer.s49_l0_interrupt_dev import (
     L0Interruption,
     classify_s49_l0_interrupt,
 )
+from relay_self.action import ActionLifecycle, ActionState
+from relay_self.execution_binding import ExecutionBindingResult
 from relay_self.provenance import Provenance
 
 MOVE_BACKWARD_ACTION_REF = "MOVE_BACKWARD"
