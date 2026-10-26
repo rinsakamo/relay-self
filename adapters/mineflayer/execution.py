@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import math
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import Enum
-from collections.abc import Awaitable, Callable
 from typing import Protocol
 
 from adapters.mineflayer.python_protocol import (
