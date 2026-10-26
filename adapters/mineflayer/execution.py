@@ -4,7 +4,7 @@ import asyncio
 import math
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol
+from typing import Callable, Protocol
 
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterErrorMessage,
@@ -265,6 +265,7 @@ async def execute_mineflayer_command(
     timeout_s: float = 2.0,
     provenance: Provenance,
     l0_interrupt_dev: bool = False,
+    stop_requested_dev: Callable[[], bool] | None = None,
 ) -> WorldConsequence:
     """Execute one bounded MOVE_BACKWARD command with structured observation.
 
@@ -280,6 +281,12 @@ async def execute_mineflayer_command(
     _require_positive_number("timeout_s", timeout_s)
     if type(l0_interrupt_dev) is not bool:
         raise InvalidMineflayerExecutionData("L0 interrupt DEV opt-in must be bool")
+    if stop_requested_dev is not None and (
+        not l0_interrupt_dev or not callable(stop_requested_dev)
+    ):
+        raise InvalidMineflayerExecutionData(
+            "T1h STOP callback requires explicit S49 L0 DEV owner"
+        )
     _require_provenance("execution provenance", provenance)
     started = _require_adapter(adapter)
     session_id = started.session_id
@@ -293,6 +300,7 @@ async def execute_mineflayer_command(
     movement_distance: float | None = None
 
     try:
+        _require_not_stopping(stop_requested_dev)
         await adapter.send_observe()
         before = await _receive_until(
             adapter,
@@ -303,8 +311,10 @@ async def execute_mineflayer_command(
             ),
             l0_interrupt_dev=l0_interrupt_dev,
             expected_session_id=session_id,
+            stop_requested_dev=stop_requested_dev,
         )
 
+        _require_not_stopping(stop_requested_dev)
         movement_command_attempted = True
         await adapter.send_set_control(
             command.action_id,
@@ -321,6 +331,7 @@ async def execute_mineflayer_command(
             ),
             l0_interrupt_dev=l0_interrupt_dev,
             expected_session_id=session_id,
+            stop_requested_dev=stop_requested_dev,
         )
         if dispatch.result != "applied":
             raise MineflayerExecutionError(
@@ -331,10 +342,12 @@ async def execute_mineflayer_command(
         if l0_interrupt_dev:
             await _watch_l0_during_motor(
                 adapter, duration_s=command.duration_s, session_id=session_id,
+                stop_requested_dev=stop_requested_dev,
             )
         else:
             await asyncio.sleep(command.duration_s)
 
+        _require_not_stopping(stop_requested_dev)
         cleanup_attempted = True
         await adapter.send_clear_controls(command.cleanup_action_id)
         cleanup = await _receive_until(
@@ -363,6 +376,7 @@ async def execute_mineflayer_command(
             ),
             l0_interrupt_dev=False,
         )
+        _require_not_stopping(stop_requested_dev)
         movement_distance = _horizontal_distance(
             before.snapshot.position.x,
             before.snapshot.position.z,
@@ -431,6 +445,7 @@ async def _watch_l0_during_motor(
     adapter: MineflayerExecutionSession, *,
     duration_s: float,
     session_id: str,
+    stop_requested_dev: Callable[[], bool] | None = None,
 ) -> None:
     """DEV motor wait consuming the same native receiver, no second writer.
 
@@ -444,6 +459,7 @@ async def _watch_l0_during_motor(
     last_shadow = None
     silence_deadline = loop.time() + L0_DEV_MAX_SILENCE_S
     while True:
+        _require_not_stopping(stop_requested_dev)
         remaining = deadline - loop.time()
         if remaining <= 0:
             break
@@ -452,11 +468,17 @@ async def _watch_l0_during_motor(
             raise MineflayerExecutionError("L0 DEV shadow stream stalled during motor")
         try:
             message = await asyncio.wait_for(
-                adapter.receive(), timeout=min(remaining, silence_remaining),
+                adapter.receive(), timeout=min(
+                    remaining, silence_remaining,
+                    0.025 if stop_requested_dev is not None else remaining,
+                ),
             )
         except TimeoutError:
+            _require_not_stopping(stop_requested_dev)
             if loop.time() >= silence_deadline:
                 raise MineflayerExecutionError("L0 DEV shadow stream stalled during motor")
+            if stop_requested_dev is not None and loop.time() < deadline:
+                continue
             break
         if _check_l0_interrupt(message, session_id=session_id):
             if last_shadow is not None and (
@@ -505,6 +527,13 @@ def _check_l0_interrupt(message: object, *, session_id: str) -> bool:
     return True
 
 
+def _require_not_stopping(stop_requested_dev: Callable[[], bool] | None) -> None:
+    if stop_requested_dev is not None:
+        current = stop_requested_dev()
+        if type(current) is not bool or current:
+            raise MineflayerExecutionError("T1h high-level STOP requested or invalid")
+
+
 async def _receive_until(
     adapter: MineflayerExecutionSession,
     *,
@@ -512,16 +541,28 @@ async def _receive_until(
     predicate,
     l0_interrupt_dev: bool = False,
     expected_session_id: str | None = None,
+    stop_requested_dev: Callable[[], bool] | None = None,
 ):
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout_s
     while True:
+        _require_not_stopping(stop_requested_dev)
         remaining = deadline - loop.time()
         if remaining <= 0:
             raise TimeoutError(
                 "timed out waiting for required Mineflayer execution evidence"
             )
-        message = await asyncio.wait_for(adapter.receive(), timeout=remaining)
+        try:
+            message = await asyncio.wait_for(
+                adapter.receive(), timeout=min(
+                    remaining, 0.025 if stop_requested_dev is not None else remaining,
+                ),
+            )
+        except TimeoutError:
+            _require_not_stopping(stop_requested_dev)
+            if stop_requested_dev is not None and loop.time() < deadline:
+                continue
+            raise
         if isinstance(message, MineflayerConnectionEnd):
             raise MineflayerExecutionError(
                 f"Mineflayer connection ended: {message.reason}"
