@@ -104,7 +104,7 @@ async def settled(session, after_seq):
     raise RuntimeError("Paper residual motion/input did not settle")
 
 
-async def native_meal(session, server, supervisor, report, *, time_base):
+async def native_meal(session, server, supervisor, report, *, time_base, stop_owner=None):
     from adapters.mineflayer.eat_execution import IssuedEatingExecutor
     from relay_self.eat_hunger import EatCursor, EatStatus
 
@@ -123,12 +123,18 @@ async def native_meal(session, server, supervisor, report, *, time_base):
                 break
     else:
         raise RuntimeError("native hunger/food source absent")
+    from adapters.mineflayer.t1i_session_stop_dev import require_stop_permits_action
+    require_stop_permits_action(stop_owner)
     issued = _issue(supervisor, "t2-native-meal", "eat", "t2-meal-intent",
                     "eat provided steak on actual hunger", time_base=time_base)
     owner = session.tick_owner
     owner.begin(issued.action_id)
+    if stop_owner is not None:
+        session.t1i_eat_action_id = issued.action_id
     eating = await IssuedEatingExecutor().execute(
-        session, supervisor, issued, choice, probe, paper_tick_dev=True)
+        session, supervisor, issued, choice, probe, paper_tick_dev=True,
+        stop_requested_dev=(lambda: stop_owner.requested) if stop_owner else None)
+    require_stop_permits_action(stop_owner)
     owner.active_action = None
     owner.terminal_seq = eating.outcome.after_probe_seq
     owner.queue_meal(eating)
@@ -138,7 +144,16 @@ async def native_meal(session, server, supervisor, report, *, time_base):
     return fresh
 
 
-async def run_continuation(session, server, report, root, *, observe_only, accounting, normal_epochs=2):
+async def run_continuation(session, server, report, root, *,
+                           observe_only, accounting, normal_epochs=2,
+                           stop_owner=None, stop_mode=None):
+    from adapters.mineflayer.t1i_session_stop_dev import (
+        finish_multi_epoch_move_stop, require_stop_permits_action,
+    )
+    from adapters.mineflayer.t1h_stop_owner_dev import StopDevRejected
+    from relay_self.action import ActionState
+    if stop_mode not in (None, "MOVE", "EAT") or (stop_mode and stop_owner is None):
+        raise ValueError("T1i STOP requires an exact original S49 owner")
     supervisor = ActionSupervisor()
     report.update(action_source="PAPER_L0_DESIGNED_POLICY_EXISTING_S51_ISSUER_S49_EXECUTOR",
                   epochs=[], model_calls=0, tps_actuator=False)
@@ -153,14 +168,41 @@ async def run_continuation(session, server, report, root, *, observe_only, accou
         report["status"] = "PASS"
     else:
         for epoch in range(normal_epochs + 2):
+            require_stop_permits_action(stop_owner)
             if accounting and epoch == normal_epochs:
-                fresh = await native_meal(session, server, supervisor, report, time_base=normal_epochs * 100 - 40)
+                try:
+                    fresh = await native_meal(
+                        session, server, supervisor, report,
+                        time_base=normal_epochs * 100 - 40,
+                        stop_owner=stop_owner,
+                    )
+                except Exception as exc:
+                    if not (stop_mode == "EAT" and stop_owner.requested
+                            and supervisor.get("t2-native-meal").state is ActionState.UNKNOWN):
+                        raise
+                    # Consume is non-idempotent. A STOP while its receipt is
+                    # pending CANNOT prove that Minecraft did not eat. Preserve
+                    # UNKNOWN and never fabricate a food/inventory or M0 credit.
+                    owner = session.tick_owner
+                    owner.failed = True
+                    report["t1i"] = {
+                        "mode": "EAT", "stop_requested": True,
+                        "action_state": "unknown", "consumption": "UNDETERMINED",
+                        "physical_eat_interruption": "UNVERIFIED",
+                        "stop_ack_dev": None, "meal_credit_issued": False,
+                        "remaining_action_effects": "FORBIDDEN",
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                    report["status"] = "PASS"
+                    break
+            require_stop_permits_action(stop_owner)
             if supervisor.open_actions:
                 raise ValueError("previous Action still open")
             if fresh.data["assessment"] != "NO_KNOWN_URGENT_SIGNAL":
                 report["epochs"].append({"epoch": epoch, "decision": "WAIT_NO_ACTION",
                                          "source_seq": fresh.seq, "assessment": fresh.data["assessment"]})
                 break
+            require_stop_permits_action(stop_owner)
             issued = _issue(supervisor, f"t1f-epoch-{epoch}", "paper-l0-move", "t1f-dev-intent",
                             "DEV bounded move selected from current Paper L0", time_base=epoch * 100 + 10)
             step = {"epoch": epoch, "source_seq": fresh.seq,
@@ -170,8 +212,10 @@ async def run_continuation(session, server, report, root, *, observe_only, accou
             report["epochs"].append(step)
             if accounting:
                 session.tick_owner.begin(issued.action_id)
+            if stop_mode == "MOVE" and epoch == normal_epochs:
+                session.t1i_stop_arm_action_id = issued.action_id
             fixture = None
-            if epoch == normal_epochs:
+            if epoch == normal_epochs and stop_mode != "MOVE":
                 async def hazard():
                     await asyncio.sleep(.08)
                     _command(server, "damage RelaySelf 15 minecraft:generic")
@@ -183,7 +227,9 @@ async def run_continuation(session, server, report, root, *, observe_only, accou
                     action_ref="MOVE_BACKWARD", effect="set_control", control="back", state=True,
                     duration_s=.6 if epoch == normal_epochs else .2,
                     cleanup_action_id=issued.action_id + "-clear"),
-                    timeout_s=.5, provenance=_p(f"t1f-epoch-{epoch}"), l0_interrupt_dev=True)
+                    timeout_s=.5, provenance=_p(f"t1f-epoch-{epoch}"),
+                    l0_interrupt_dev=True,
+                    stop_requested_dev=(lambda: stop_owner.requested) if stop_owner else None)
             finally:
                 if fixture:
                     await fixture
@@ -193,8 +239,19 @@ async def run_continuation(session, server, report, root, *, observe_only, accou
             step["terminal"] = asdict(terminal)
             if accounting:
                 session.tick_owner.finish(result, terminal)
+            if stop_mode == "MOVE" and stop_owner.requested:
+                report["t1i"] = {
+                    "mode": "MOVE", "stop_requested": True,
+                    **(await finish_multi_epoch_move_stop(
+                        session, server, fresh.data["snapshot"], result,
+                        terminal, stop_owner, root / "paper.log",
+                    )),
+                }
+                report["status"] = "PASS"
+                break
             if result.cleanup_receipt is None:
                 raise RuntimeError("clear ACK absent; next epoch forbidden")
+            require_stop_permits_action(stop_owner)
             if hasattr(session, "boundary_fault"):
                 await session.boundary_fault()
             fresh, frames = await settled(session, result.cleanup_receipt.seq)
@@ -206,8 +263,11 @@ async def run_continuation(session, server, report, root, *, observe_only, accou
                 raise RuntimeError("benign Action failed")
             if epoch == normal_epochs and (result.status.value != "failed" or fresh.data["assessment"] != "LOW_HEALTH"):
                 raise RuntimeError("Paper hazard did not interrupt")
-        decisions = [e["decision"] for e in report["epochs"]]
-        report["status"] = "PASS" if decisions == ["MOVE_BACKWARD"] * (normal_epochs + 1) + ["WAIT_NO_ACTION"] else "FAIL"
+        if stop_mode is None:
+            decisions = [e["decision"] for e in report["epochs"]]
+            report["status"] = "PASS" if decisions == ["MOVE_BACKWARD"] * (normal_epochs + 1) + ["WAIT_NO_ACTION"] else "FAIL"
+        elif "t1i" not in report or not report["t1i"]["stop_requested"]:
+            report["status"] = "FAIL"
     frames = session.paper_frames or []
     data = [f.data for f in frames]
     admitted = [r for r in data if r["status"] == "ADMITTED"]
