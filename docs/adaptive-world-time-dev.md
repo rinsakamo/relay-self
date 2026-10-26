@@ -57,3 +57,46 @@ For every `paper_tick_sample`, the bridge immediately emits a `paper_l0_shadow` 
 Local available tool runtime: Python3.13.5, Node22.16.0, Java21; Python3.12 and Maven unavailable, GitHub direct clone blocked by DNS, no Paper jar/native World. **4 Node 22 focused shadow tests PASS** on exact source and test Git blob SHA (2/2 matched): normal sample, bodily urgency/nearby threat, unknown/missing cached state, malformed Paper sample. Existing Python-side newly-added shadow protocol/join negative tests have been committed but **NOT RUN in an exact checkout**. This is an offline engineering implementation result; Java/Paper/Node *integrated* execution is unverified.
 
 **Next prerequisite before any TPS actuator or action-side 200TPS motor:** a truly source-bound per-WorldTick sensor snapshot with a bounded completed local L0 reflex/STOP handoff and measured update-to-action deadline. The Minecraft native path's traffic, scheduling and remote entity state may remain stale even when every received Paper plugin message produces a cache-only scan. The rate policy must fail closed until that boundary is satisfied.
+
+## T1d — native receiver local L0 deadline guard (2026-10-26)
+
+The existing Mineflayer callback now runs `handleBudgetedPaperTick` from
+`adapters/mineflayer/paper_tick_deadline.mjs`. It checks the cache-only L0
+shadow, then a **Node monotonic-clock, receive-to-completion** local deadline
+before emitting either of the paired `paper_tick_sample` /
+`paper_l0_shadow` stream records.
+
+The first tick is explicitly `INITIAL_CADENCE_UNKNOWN`; later ticks are
+`HOST_LOCAL_BUDGET_MET_ONLY` iff the local processing duration is **strictly
+less than half** the *previous-to-current measured Node receive interval*.
+This 1/2 is a conservative **DEV policy parameter** subject to later
+measurement, *not* a certified physiological L0 response bound. Both 20TPS
+and 200TPS nominal cases use their actually measured arrival intervals,
+not requested server TPS. Server/JVM monotonic timestamps and Node monotonic
+timestamps are **never subtracted across clock domains**.
+
+Bad/missing/out-of-order ticks, invalid input and locally slow processing
+fail closed: `PaperTickDeadlineGuard` latches permanently and the existing
+Paper channel converts the failure into `adapter_error`, invalidating
+subsequent ticks. The triggering tick emits **no accepted tick/L0 pair**.
+The mechanism does not issue STOP or other physical effects, and it cannot
+recover when accelerated World gameplay outruns the cognitive controller.
+During this phase **there is no live TPS actuator at all**.
+
+This demonstrates only that the synchronous **cached** shadow scan was
+completed within an **observed local receive cadence**. It does **not**
+establish server-to-client network delay, queue lateness, fresh World
+observations, near-threat coverage, native S49 Action causality, 20/200TPS
+physical Motor support or a per-tick real-time reflex guarantee.
+`l0_fresh_world_tick_attested=false` and
+`tps_admission_granted=false` stay mandatory. A native Paper World
+trial with original packet/logs is still required for further claims.
+
+**Validation:** Node 22.16.0 `node --check` for source and test files and
+`node --test adapters/mineflayer/paper_tick_deadline.test.mjs`:
+**7/7 PASS**, including unknown first cadence, 20/200TPS relative
+intervals, deadline exceedance, sticky failure, missing/reordered tick,
+forged authority and no partial receipt on refusal. Exact tested source
+and test Git blob SHA both match the remote branch blobs (2/2).
+Python 3.12, Maven/Paper API compile, physical World/Mineflayer execution,
+exact-HEAD full-suite CI, R qualification and V science: **NOT RUN**.
