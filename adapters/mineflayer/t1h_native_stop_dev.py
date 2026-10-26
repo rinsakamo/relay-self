@@ -6,6 +6,8 @@ Faults are explicit DEV injections; raw native evidence remains unmodified.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import time
 from dataclasses import asdict, replace
 
@@ -15,6 +17,7 @@ from adapters.mineflayer.execution import (
     execute_mineflayer_command,
 )
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _issue, _p
+from adapters.mineflayer.python_protocol import MineflayerEffectResult
 from adapters.mineflayer.s31a_real_server_ci import _command, _correlated_observe
 from adapters.mineflayer.t1f_continuation_dev import next_tick
 from adapters.mineflayer.t1h_stop_owner_dev import S49DevStopOwner, StopDevRejected
@@ -44,10 +47,11 @@ async def run_stop_move_dev(session, server, report, root) -> None:
             report.setdefault("stop_recognized_python_ns", time.monotonic_ns())
         return owner.requested
 
+    action_id = "t1h-stale-guard-move" if case == "t1h_stale_ack" else "t1h-owned-move"
     cmd = MineflayerCommand(
-        action_id="t1h-owned-move", binding_id="t1h-owned-move-binding",
+        action_id=action_id, binding_id="t1h-owned-move-binding",
         action_ref="MOVE_BACKWARD", effect="set_control", control="back", state=True,
-        duration_s=0.75, cleanup_action_id="t1h-owned-move-clear",
+        duration_s=0.75, cleanup_action_id=action_id + "-clear",
     )
     if case == "t1h_pre_stop":
         report["stop_requested_python_ns"] = time.monotonic_ns()
@@ -115,11 +119,22 @@ async def run_stop_move_dev(session, server, report, root) -> None:
             receipt = result.cleanup_receipt
             clear_id = cmd.cleanup_action_id
             if case == "t1h_stale_ack":
-                # Consumer-only stale session/Action replay, explicitly labelled.
-                # The original applied receipt and wire bytes stay in journals.
-                receipt = replace(receipt, session_id="old-session", action_id="old-action-clear")
+                # Re-present an ACTUAL older session/Action receipt from the
+                # earlier fresh positive World in this same DEV batch. Read
+                # only; never execute that World or rewrite either journal.
+                old_path = root.parent / "t1h_stop_move" / "native.jsonl"
+                old_bytes = old_path.read_bytes()
+                old_rows = [json.loads(line) for line in old_bytes.splitlines()]
+                old = [row for row in old_rows if row.get("type") == "effect_result"
+                       and row.get("effect") == "clear_controls" and row.get("result") == "applied"]
+                if len(old) != 1 or old[0]["session_id"] == sid or old[0]["action_id"] == cmd.cleanup_action_id:
+                    raise StopDevRejected("genuine older session and Action receipt required")
+                receipt = MineflayerEffectResult(**{key: old[0][key] for key in
+                    ("session_id", "seq", "action_id", "effect", "result", "error")})
                 clear_id = receipt.action_id
-                detail["consumer_fault"] = "REPLAY_FOREIGN_SESSION_AND_ACTION_CLEAR"
+                detail["consumer_fault"] = "REPLAY_ORIGINAL_OLDER_SESSION_AND_ACTION_CLEAR"
+                detail["replay_source"] = str(old_path)
+                detail["replay_source_sha256"] = hashlib.sha256(old_bytes).hexdigest()
                 detail["replayed_receipt"] = asdict(receipt)
             owner.accept_clear(receipt, clear_action_id=clear_id)
         if result.cleanup_receipt is None:
