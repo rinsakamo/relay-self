@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { lstatSync } from 'node:fs'
+import { lstatSync, writeFileSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import readline from 'node:readline'
 
@@ -132,6 +132,59 @@ const attrSyncDev = process.env.S49_SPEED_ATTR_SYNC_DEV_ONLY === '1' &&
   process.env.S49_SPRINT_MOTOR_DEV_ONLY === '1' && config.version === '1.21.8'
 const attrDiag = process.env.S49_SPEED_ATTR_DIAG_DEV_ONLY === '1' &&
   process.env.S49_SPRINT_MOTOR_DEV_ONLY === '1' && config.version === '1.21.8'
+// S49 DEV_ONLY producer-local Node physics witness, NOT a protocol message.
+// Ring-buffer first original forward sprint only, seal on 5 physicsTicks
+// following clearControls. No extra native reader, Action or server command.
+const nativePhysicsTracePath = process.env.S49_NODE_PHYSICS_TRACE_DEV_PATH
+const nativePhysicsTraceEnabled =
+  process.env.S49_NODE_PHYSICS_TRACE_DEV_ONLY === '1' &&
+  process.env.S49_SPRINT_MOTOR_DEV_ONLY === '1' &&
+  config.version === '1.21.8' &&
+  typeof nativePhysicsTracePath === 'string' &&
+  isAbsolute(nativePhysicsTracePath)
+let nativePhysicsTrace = null
+let nativePhysicsSealed = false
+let nativePhysicsIndex = 0
+function captureNativePhysicsDev (phase) {
+  if (!nativePhysicsTrace || nativePhysicsSealed || !bot.entity) return
+  if (nativePhysicsTrace.rows.length >= 100) return
+  const pos = bot.entity.position
+  const vel = bot.entity.velocity
+  if (!pos || !vel) return
+  nativePhysicsTrace.rows.push({
+    phase, index: nativePhysicsIndex,
+    monotonic_ms: Number(process.hrtime.bigint() / 1000000n),
+    forward: bot.getControlState('forward'),
+    sprint: bot.getControlState('sprint'),
+    back: bot.getControlState('back'),
+    left: bot.getControlState('left'),
+    right: bot.getControlState('right'),
+    x: pos.x, z: pos.z, vx: vel.x, vz: vel.z,
+    // Mineflayer time is a cached client snapshot, NOT a per-tick Paper clock.
+    client_time_of_day_cached: bot.time ? bot.time.timeOfDay : null
+  })
+}
+if (nativePhysicsTraceEnabled) {
+  bot.on('physicsTick', () => {
+    if (!nativePhysicsTrace || nativePhysicsSealed) return
+    nativePhysicsIndex++
+    const phase = nativePhysicsTrace.clear_seen ? 'POST_CLEAR' : 'ACTIVE'
+    captureNativePhysicsDev(phase)
+    if (phase !== 'POST_CLEAR') return
+    nativePhysicsTrace.post_clear_ticks++
+    if (nativePhysicsTrace.post_clear_ticks !== 5) return
+    nativePhysicsSealed = true
+    nativePhysicsTrace.complete = true
+    try {
+      // Exclusive create: a stale, duplicated or foreign trace cannot be
+      // overwritten. Source evidence is Node-local and stays DEV_ONLY.
+      writeFileSync(nativePhysicsTracePath, JSON.stringify(nativePhysicsTrace) + '\\n',
+        { flag: 'wx', encoding: 'utf8', mode: 0o600 })
+    } catch (error) {
+      emitAdapterError(new Error('S49_NODE_PHYSICS_TRACE_WRITE_FAILED'))
+    }
+  })
+}
 let attrDiagActive = false
 let attrDiagSamples = 0
 function traceDevAttr (stage, info = {}) {
@@ -329,6 +382,16 @@ async function handleEffect (command) {
         bot.clearControlStates()
         throw error
       }
+      if (nativePhysicsTraceEnabled && nativePhysicsTrace === null) {
+        nativePhysicsTrace = {
+          version: 'S49_NODE_PHYSICS_POST_CLEAR_DEV_V1',
+          action_id: command.action_id,
+          session_id: sessionId,
+          post_clear_ticks: 0, clear_seen: false,
+          complete: false, source_attested: false, rows: []
+        }
+        captureNativePhysicsDev('SET')
+      }
       attrDiagActive = true
       attrDiagSamples = 0
       traceDevAttr('SPRINT_DISPATCH_APPLIED')
@@ -338,6 +401,11 @@ async function handleEffect (command) {
 
     if (command.effect === 'clear_controls') {
       bot.clearControlStates()
+      if (nativePhysicsTraceEnabled && nativePhysicsTrace !== null &&
+          !nativePhysicsTrace.clear_seen) {
+        nativePhysicsTrace.clear_seen = true
+        captureNativePhysicsDev('CLEAR')
+      }
       if (attrSyncDev && bot.entity && bot.entity.attributes) {
         delete bot.entity.attributes['minecraft:movement_speed']
       }
