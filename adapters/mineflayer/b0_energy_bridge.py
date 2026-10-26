@@ -14,12 +14,10 @@ from adapters.mineflayer.b0_ground_foraging import (
     select_ground_target,
 )
 from adapters.mineflayer.eat_execution import EatingActionReceipt
-from adapters.mineflayer.python_protocol import MineflayerObservation
-from adapters.mineflayer.normal_action import NormalActionReceipt
 from adapters.mineflayer.execution import WorldConsequenceStatus
-from adapters.mineflayer.self_action_evidence import (
-    verify_native_action_evidence,
-)
+from adapters.mineflayer.normal_action import NormalActionReceipt
+from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.self_action_evidence import verify_native_action_evidence
 from experiments.metabolism_viability import (
     BodyState,
     EnergyTransition,
