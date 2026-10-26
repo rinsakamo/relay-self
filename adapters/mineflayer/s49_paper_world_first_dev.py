@@ -600,7 +600,7 @@ async def run(
                     server, "relays49dasharm "
                     + command.action_id + " "
                     + session.started.session_id + " " + offline_uuid(BOT_USERNAME)
-                    + " 1.0",
+                    + " 1.0 back",
                 )
                 await server.stdin.drain()
                 await _await_dash_dev_line(
@@ -910,17 +910,29 @@ async def run(
             complete = [line for line in window.splitlines()
                         if "S49_DASH_DEV_COMPLETE " in line
                         and "action_id=" + action + " " in line]
-            if (not rows or len(complete) != 1
+            arm = [line for line in paper_log.read_text(encoding="utf-8").splitlines()
+                   if "S49_DASH_DEV_ARM " in line
+                   and "action_id=" + action + " " in line]
+            if (not rows or len(complete) != 1 or len(arm) != 1
                     or any("modifier_applied=true" in line for line in rows)
+                    or any("issued_direction=back" not in line for line in rows)
+                    or any("cap_modifier_applied=true" not in line for line in rows)
+                    or "cap_modifier_applied=true" not in arm[0]
+                    or "direction_cap_multiplier=0.75" not in arm[0]
                     or "forward_boost_ticks=0" not in complete[0]
+                    or "issued_direction=back" not in complete[0]
+                    or "cap_modifier_applied=false" not in complete[0]
                     or "modifier_applied=false" not in complete[0]):
-                raise S49PaperDevBlocked("unwanted backward DASH bonus or missing ticks")
+                raise S49PaperDevBlocked("backward DASH cap absent or forward bonus leaked")
             report["dash_negative_control_result_dev"] = {
-                "status": "DEV_S49_BACKWARD_MOTION_NO_DASH_BOOST_OBSERVED",
+                "status": "DEV_S49_BACKWARD_NEGATIVE_DIRECTION_CAP_APPLIED",
                 "original_issued_action_id": action,
                 "source_session_id": source.get("session_id"),
                 "paper_gait_ticks_observed": len(rows),
                 "forward_modifier_active_ticks": 0,
+                "backward_cap_modifier_active_ticks": len(rows),
+                "backward_speed_attribute_multiplier": 0.75,
+                "backward_speed_m_s_attested": False,
                 "dash_stance_kept_during_backward": True,
                 "m0_posted": False,
                 "p1_native_updated": False,
