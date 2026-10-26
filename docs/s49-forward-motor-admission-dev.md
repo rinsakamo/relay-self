@@ -48,3 +48,25 @@ This permits a motor smoke test, **not** Paper-positive DASH, velocity
 calibration, lateral cap proof, M0 posting, or P1 native settlement.
 \n## Paper Input flag discrepancy / forward-vector DEV fallback\n\nFirst disposable Paper trial [40284347094](https://github.com/rinsakamo/relay-self/actions/runs/40284347094): original S49 forward+sprint 2/2 OUTCOME, ~0.815m per Action, but 0/5 Paper boost ticks. Diagnostic rerun [40284653105](https://github.com/rinsakamo/relay-self/actions/runs/40284653105): all Paper input flags false despite `player_sprinting=true`, and physically measured +Z motion (up to ~5.11 nominal m/s). The DEV Paper plugin therefore permits a separately labelled **MOTION_PROJECTION** speed modifier only when sprinting, the Paper input bitset is entirely empty, and actual XZ displacement strongly aligns with player yaw. Contradictory lateral/backwards movement is denied. This is NOT evidence that the client sent a forward Input packet, nor a qualified directional hard cap. Test actual motion and release with a new disposable World.\n
 \n## 0.60-second targeted DEV sprint contrast\n\nThe original bounded S49 issued-action path now uses 0.60 seconds only for\n`MOVE_FORWARD_SPRINT_DEV`; all historical `MOVE_BACKWARD` / `MOVE_FORWARD`\ncontinue at 0.20s. A single fresh Paper trial compares two originally issued\nforward+sprint action distances: the first action is modifier-armed, the second\nis not. That distance contrast is **uncontrolled DEV evidence**, not a\nmatched-speed causal experiment, an authenticated Paper-to-client clock link,\nor established 8.42m/s.\n
+## Measured 0.60-second real World outcome — 2026-10-26
+
+Focused Python 3.12/Ruff/Node checks: [PASS run 40285529924](https://github.com/rinsakamo/relay-self/actions/runs/40285529924). Real disposable Paper 1.21.8 trial: [PASS for modifier/cleanup, run 40285529938](https://github.com/rinsakamo/relay-self/actions/runs/40285529938) on exact source `c09a8e98b860fff5ecb6c2235b8af92b292af707`.
+
+S49 original issued Action and S16 OUTCOME 2/2; 13 Paper callback ticks,
+11 modifier-on, all 11 categorized `MOTION_PROJECTION` rather than observed
+forward packet Input. Node/Java exited 0, modifier removed.
+
+**Physical-speed contrast did not improve:** first (modifier-armed)
+`3.0301571644943626`m versus second (unarmed)
+`3.030157164494363`m — delta effectively 0. Maximum Paper sampled
+horizontal speed was approximately `5.6084`m/s (nominal 20TPS
+calculation), not the design target `8.415`m/s. This is a same-run DEV
+comparison, not a controlled scientific attribution; the null contrast
+is an explicit reason **not** to assert native DASH speed gain.
+The Paper attribute applied flag proves only modifier presence.
+
+Next owner-bound work is to reconcile the Paper movement-speed attribute
+with the pinned Mineflayer 4.39.0/prismarine-physics 1.11.1 motor model
+without teleportation or a second issuer. Do not connect native M0/P1
+settlement or claim physical directional caps before observing actual
+World-effective velocity and authoritative tick correspondence.
