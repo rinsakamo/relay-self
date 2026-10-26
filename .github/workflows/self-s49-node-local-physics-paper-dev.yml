@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/self-s49-node-local-physics-paper-dev.yml
       - adapters/mineflayer/bridge.mjs
+      - adapters/mineflayer/execution.py
       - adapters/mineflayer/s49_node_physics_postclear_dev.py
       - adapters/mineflayer/s49_paper_forward_dash_dev.py
       - tests/test_s49_node_physics_postclear_dev.py
