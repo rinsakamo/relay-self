@@ -322,6 +322,24 @@ async def run_case(args, case):
         report["cleanup_complete"] = (report.get("java_exit") == report.get("node_exit") == 0
                                       and report["java_pid_absent"] and report["node_pid_absent"]
                                       and report["port_rebind"])
+        if t1f:
+            # Read the ORIGINAL bridge stream after the single shutdown owner
+            # drains it. Node shutdown_ack is NOT S49 high-level STOP ACK, and
+            # exit=0 is not enough when the native terminal trail is incomplete.
+            from adapters.mineflayer.t1g_terminal_liveness_dev import audit_bridge_terminal
+            try:
+                if "session_id" not in report or not (root / "native.jsonl").is_file():
+                    raise ValueError("original native terminal source absent")
+                journal = [json.loads(line) for line in
+                           (root / "native.jsonl").read_text().splitlines()]
+                report["terminal_transport"] = asdict(audit_bridge_terminal(
+                    journal, session_id=report["session_id"],
+                ))
+                if not report["terminal_transport"]["bridge_transport_closed"]:
+                    report["cleanup_complete"] = False
+            except (ValueError, TypeError, KeyError, UnicodeError) as exc:
+                report["terminal_transport_error"] = f"{type(exc).__name__}: {exc}"
+                report["cleanup_complete"] = False
         if not report["cleanup_complete"]:
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
