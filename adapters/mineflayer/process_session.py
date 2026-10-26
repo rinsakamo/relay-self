@@ -13,9 +13,9 @@ from adapters.mineflayer.python_protocol import (
     encode_clear_controls,
     encode_consume_held,
     encode_equip_item,
+    encode_forward_sprint_dev,
     encode_look,
     encode_observe,
-    encode_forward_sprint_dev,
     encode_set_control,
     encode_shutdown,
 )
