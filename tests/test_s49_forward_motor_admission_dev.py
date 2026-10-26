@@ -125,8 +125,8 @@ def test_forward_s16_evidence_requires_separate_dev_flag():
 def test_sprint_one_effect_schema_and_bound_direction():
     import json
 
-    from adapters.mineflayer.python_protocol import encode_forward_sprint_dev
     from adapters.mineflayer.execution import MOVE_FORWARD_SPRINT_DEV_REF
+    from adapters.mineflayer.python_protocol import encode_forward_sprint_dev
 
     payload = json.loads(encode_forward_sprint_dev("s49-native-move-19"))
     assert payload == {
@@ -175,7 +175,8 @@ def test_forward_sprint_s16_receipt_is_dev_gated():
 
     import test_action_feedback_qualification as s17
     from adapters.mineflayer.self_action_evidence import (
-        NativeEvidenceRejected, capture_native_action_evidence,
+        NativeEvidenceRejected,
+        capture_native_action_evidence,
         verify_native_action_evidence,
     )
 

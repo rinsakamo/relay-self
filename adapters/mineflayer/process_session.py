@@ -15,8 +15,8 @@ from adapters.mineflayer.python_protocol import (
     encode_equip_item,
     encode_look,
     encode_observe,
-    encode_set_control,
     encode_forward_sprint_dev,
+    encode_set_control,
     encode_shutdown,
 )
 from adapters.mineflayer.self_world_stage_w3_capture import W3RawNodeStdoutCapture
