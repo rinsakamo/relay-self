@@ -5,6 +5,7 @@ on:
       - self/dev-s49-forward-motor-admission-20261026
     paths:
       - .github/workflows/self-s49-forward-dash-world-dev.yml
+      - 'adapters/mineflayer/s49_paper_dash_dev/**'
 
 permissions:
   contents: read

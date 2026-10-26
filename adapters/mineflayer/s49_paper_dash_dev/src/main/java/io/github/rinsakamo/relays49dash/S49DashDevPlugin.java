@@ -45,6 +45,8 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
     private int forwardTicks;
     private int cappedTicks;
     private double requestedPower;
+    private double lastX;
+    private double lastZ;
     private BukkitTask task;
     private AttributeModifier modifier;
 
@@ -138,6 +140,8 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         requestedPower = power;
         armTick = player.getWorld().getFullTime();
         lastTick = armTick;
+        lastX = player.getLocation().getX();
+        lastZ = player.getLocation().getZ();
         forwardTicks = 0;
         cappedTicks = 0;
         modifier = new AttributeModifier(
@@ -178,6 +182,13 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             disarm("TICK_GAP_OR_MAX_WINDOW");
             return;
         }
+        double x = subject.getLocation().getX();
+        double z = subject.getLocation().getZ();
+        double dx = x - lastX;
+        double dz = z - lastZ;
+        double sampledSpeedMps = 20.0 * Math.hypot(dx, dz) / (tick - lastTick);
+        lastX = x;
+        lastZ = z;
         lastTick = tick;
         Input input = subject.getCurrentInput();
         // Never assume Paper input and Mineflayer physics ticks align.
@@ -201,7 +212,16 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " input_forward_only=" + forwardOnly
             + " modifier_applied=" + boosted
             + " dash_stance_active=true"
-            + " input_edge_attested=false");
+            + " input_edge_attested=false"
+            + " input_present=" + (input != null)
+            + " packet_forward=" + (input != null && input.isForward())
+            + " packet_back=" + (input != null && input.isBackward())
+            + " packet_left=" + (input != null && input.isLeft())
+            + " packet_right=" + (input != null && input.isRight())
+            + " packet_sprint=" + (input != null && input.isSprint())
+            + " player_sprinting=" + subject.isSprinting()
+            + " delta_x_m=" + dx + " delta_z_m=" + dz
+            + " sampled_speed_mps=" + sampledSpeedMps);
     }
 
     private boolean setBoost(boolean shouldBoost) {
