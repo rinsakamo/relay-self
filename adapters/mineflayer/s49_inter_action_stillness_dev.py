@@ -151,6 +151,10 @@ def review_inter_action_stillness_dev(
             "action_ids": [first_action_id, second_action_id],
             "session_id": session_id,
             "paper_valid_stillness_found": False,
+            "paper_max_low_motion_run_ticks": max(
+                (v[1] - v[0] + 1 for v in streaks), default=0,
+            ),
+            "paper_candidate_search_interval": [low, high],
             "node_all_controls_off_until_second_set": True,
             "node_physics_samples": len(nodes),
             "physical_WAIT_admitted": False,
