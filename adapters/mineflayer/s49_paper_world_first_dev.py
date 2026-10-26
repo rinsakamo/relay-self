@@ -24,6 +24,10 @@ from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.s31a_real_server_ci import BOT_USERNAME
+from adapters.mineflayer.s49_dash_client_cap_dev import (
+    instrument_backward_sneak_dev,
+    remove_backward_sneak_dev,
+)
 from adapters.mineflayer.s49_motor_clock_review_dev import review_native_motor_clock_dev
 from adapters.mineflayer.s49_native_motor_clock_dev import (
     instrument_native_bridge_dev,
@@ -173,6 +177,7 @@ async def run(
     motion_uncertainty_dev: bool = False,
     dash_negative_control_dev: bool = False,
     dash_cap_settle_dev: bool = False,
+    dash_client_sneak_dev: bool = False,
     dash_jar: Path | None = None,
     dash_sha: str | None = None,
 ) -> int:
@@ -197,6 +202,7 @@ async def run(
         "motion_uncertainty_dev": motion_uncertainty_dev,
         "dash_negative_control_dev": dash_negative_control_dev,
         "dash_cap_settle_dev": dash_cap_settle_dev,
+        "dash_client_sneak_dev": dash_client_sneak_dev,
     }
     created = False
     dev_bridge = None
@@ -241,6 +247,10 @@ async def run(
             )
         if dash_cap_settle_dev and not dash_negative_control_dev:
             raise S49PaperDevBlocked("cap settle experiment requires issued BACK control")
+        if dash_client_sneak_dev and (
+            not dash_negative_control_dev or dash_cap_settle_dev or motor_clock_dev
+        ):
+            raise S49PaperDevBlocked("client cap requires exclusive original BACK DEV")
         if dash_negative_control_dev:
             if not isinstance(dash_jar, Path) or not isinstance(dash_sha, str):
                 raise S49PaperDevBlocked("explicit DASH DEV plugin asset and SHA required")
@@ -260,6 +270,10 @@ async def run(
         if motor_clock_dev:
             dev_bridge = instrument_native_bridge_dev(
                 output_dir / "native_motor_clock_dev.jsonl",
+            )
+        elif dash_client_sneak_dev:
+            dev_bridge = instrument_backward_sneak_dev(
+                output_dir / "dash_client_cap_dev.jsonl",
             )
         report.update(
             paper_jar_sha256=paper_sha,
@@ -877,7 +891,7 @@ async def run(
               }),
               (patch.object(MineflayerProcessSession, "launch",
                             one_existing_session_with_dev_bridge)
-               if motor_clock_dev else nullcontext()),
+               if (motor_clock_dev or dash_client_sneak_dev) else nullcontext()),
               patch.object(original, "_fetch_official_server", paper_fetch),
               patch.object(original, "_write_config", paper_config),
               patch.object(original, "_ready_server", paper_ready),
@@ -951,11 +965,49 @@ async def run(
                 ),
                 "within_session_displacement_is_speed_cap_proof": False,
                 "dash_stance_kept_during_backward": True,
+                "client_sneak_cap_dev": dash_client_sneak_dev,
                 "m0_posted": False,
                 "p1_native_updated": False,
                 "forward_dash_verified": False,
                 "sideways_cap_verified": False,
                 "server_effective_tick_alignment_attested": False,
+                "qualification_go": False,
+                "science_go": False,
+            }
+        if dash_client_sneak_dev:
+            cap_file = output_dir / "dash_client_cap_dev.jsonl"
+            if not cap_file.is_file() or cap_file.is_symlink():
+                raise S49PaperDevBlocked("DEV client motor gait receipt missing")
+            raw_rows = cap_file.read_text(encoding="utf-8").splitlines()
+            if len(raw_rows) != 1:
+                raise S49PaperDevBlocked("DEV client gait must be single-use")
+            cap_row = json.loads(raw_rows[0])
+            first_move, second_move = source["actual_native_actions"][:2]
+            if (cap_row != {
+                    "schema": "S49_DASH_CLIENT_BACK_SNEAK_DEV_V1",
+                    "action_id": second_move["action"],
+                    "original_control": "back",
+                    "additional_gait_control": "sneak",
+                    "original_effect_count": 1,
+                    "new_action_issuer": False,
+                    "server_tick_attested": False,
+                    "source_authenticated_by_file_alone": False,
+                }
+                    or first_move["terminal"] != "outcome"
+                    or second_move["terminal"] != "outcome"
+                    or not 0.05 < second_move["movement_m"] < first_move["movement_m"]):
+                raise S49PaperDevBlocked("DEV SNEAK did not lower original S49 BACK displacement")
+            report["dash_client_cap_dev_result"] = {
+                "status": "DEV_ORIGINAL_S49_BACK_SNEAK_ACTUAL_DISPLACEMENT_REDUCED",
+                "original_issued_action_id": second_move["action"],
+                "first_back_m": first_move["movement_m"],
+                "second_back_sneak_m": second_move["movement_m"],
+                "client_gait_receipt": cap_row,
+                "paper_physical_speed_m_s_attested": False,
+                "original_action_terminal": second_move["terminal"],
+                "new_action_issuer": False,
+                "m0_posted": False,
+                "p1_native_updated": False,
                 "qualification_go": False,
                 "science_go": False,
             }
@@ -1484,7 +1536,10 @@ async def run(
         return 2
     finally:
         if dev_bridge is not None:
-            remove_native_bridge_dev(dev_bridge)
+            if dash_client_sneak_dev:
+                remove_backward_sneak_dev(dev_bridge)
+            else:
+                remove_native_bridge_dev(dev_bridge)
         if created:
             # Reuse original S49's own process cleanup; never perform
             # second terminate/reap on a process owned by qualify().
@@ -1545,6 +1600,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="DEV: original authorized BACK Action while DASH stance remains")
     parser.add_argument("--dash-cap-settle-dev", action="store_true",
                         help="DEV: 0.5s host packet-settle diagnostic before original BACK Action")
+    parser.add_argument("--dash-client-sneak-dev", action="store_true",
+                        help="DEV: cap second original BACK motor with SNEAK in one Node effect")
     parser.add_argument("--dash-jar", type=Path)
     parser.add_argument("--dash-sha256")
     parser.add_argument(
@@ -1569,6 +1626,7 @@ def main(argv: list[str] | None = None) -> int:
         motion_uncertainty_dev=args.motion_uncertainty_dev,
         dash_negative_control_dev=args.dash_negative_control_dev,
         dash_cap_settle_dev=args.dash_cap_settle_dev,
+        dash_client_sneak_dev=args.dash_client_sneak_dev,
         dash_jar=args.dash_jar,
         dash_sha=args.dash_sha256,
     ))
