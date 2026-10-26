@@ -323,6 +323,83 @@ def review_original_s49_native_effect_edges_dev(
     }
 
 
+def review_post_release_motion_dev(
+    raw: str, *, action_id: str, session_id: str, bracket: dict, edges: dict,
+) -> dict:
+    """Conservative Paper translation witness through five post-release ticks.
+
+    Not a client's control bit or L0 WAIT. A post-release translation may be
+    inertia, packet timing, or another cause; the plugin never changes speed,
+    P1, M0 or the original S49 Action in this passive window.
+    """
+    rows = []
+    for line in raw.splitlines():
+        tag = "S49_DASH_DEV_POST_RELEASE "
+        if tag not in line:
+            continue
+        fields = dict(t.split("=", 1) for t in line.split(tag, 1)[1].split()
+                      if t.count("=") == 1)
+        if fields.get("action_id") == action_id:
+            rows.append(fields)
+    if (
+        len(rows) != 5
+        or bracket.get("action_id") != action_id
+        or bracket.get("session_id") != session_id
+        or edges.get("action_id") != action_id
+        or edges.get("session_id") != session_id
+        or edges.get("paper_release_tick") != bracket.get("release_tick")
+        or edges.get("native_single_reader") is not True
+        or edges.get("independent_source_attested") is not False
+    ):
+        raise ForwardDashDevRejected("post-release witness not source joined")
+    observed = []
+    for i, row in enumerate(rows, 1):
+        try:
+            tick = int(row["tick"])
+            index = int(row["index"])
+            delta = float(row["horizontal_delta_m"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ForwardDashDevRejected("malformed passive Paper sample") from exc
+        if (
+            row.get("session_id") != session_id
+            or row.get("world") != bracket["world_uuid"]
+            or row.get("player_uuid") != bracket["player_uuid"]
+            or tick != bracket["release_tick"] + i
+            or index != i
+            or not math.isfinite(delta)
+            or not 0 <= delta <= 2.0
+            or row.get("boundary") != ("MIXED" if i == 1 else "POST_RELEASE")
+            or row.get("modifier_present") != "false"
+            or row.get("motor_write") != "false"
+            or row.get("P1_APPLIED") != "false"
+            or row.get("M0_POSTED") != "false"
+            or row.get("WAIT_ATTESTED") != "false"
+        ):
+            raise ForwardDashDevRejected("post-release World tick/actor/motor violation")
+        observed.append(delta)
+    # The first delta may contain movement before the clear-controls ACK.
+    # Include it in disclosure but exclude it from post-release translation.
+    # Even 4 consecutive small deltas cannot establish zero control inputs.
+    return {
+        "classification": "PAPER_PASSIVE_POST_RELEASE_TRANSLATION_DEV_ONLY",
+        "action_id": action_id,
+        "session_id": session_id,
+        "first_sample_tick": bracket["release_tick"] + 1,
+        "last_sample_tick": bracket["release_tick"] + 5,
+        "paper_callbacks": 5,
+        "first_delta_m_mixed_boundary": observed[0],
+        "post_release_deltas_m": observed[1:],
+        "post_release_positive_translation_ticks": sum(v > 0.002 for v in observed[1:]),
+        "post_release_low_delta_ticks": sum(v <= 0.002 for v in observed[1:]),
+        "speed_modifier_present": False,
+        "action_authority": False,
+        "P1_posted": False,
+        "M0_posted": False,
+        "WAIT_sourcebound_admitted": False,
+        "native_control_effect_tick_attested": False,
+    }
+
+
 def review_forward_dash_rows(raw: str, *, action_id: str, session_id: str) -> dict:
     """Parse only relevant native Paper lines, never invent missing positive ticks."""
     rows = []
@@ -426,6 +503,7 @@ async def run(
     m0_live_dev: bool = False,
     m0_move_dev: bool = False,
     native_edges_dev: bool = False,
+    post_release_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -436,6 +514,11 @@ async def run(
         or type(m0_live_dev) is not bool
         or type(m0_move_dev) is not bool
         or type(native_edges_dev) is not bool
+        or type(post_release_dev) is not bool
+        or (post_release_dev and (
+            not native_edges_dev
+            or os.environ.get("S49_POST_RELEASE_MOTION_DEV_ONLY") != "1"
+        ))
         or (native_edges_dev and (
             not m0_move_dev
             or os.environ.get("S49_NATIVE_EFFECT_EDGE_DEV_ONLY") != "1"
@@ -480,7 +563,8 @@ async def run(
         (cfg / "config.yml").write_text(
             "enabled: true\nexpected-player-name: RelaySelf\n"
             + ("p1-live-dev: true\np1-initial-fatigue: 0.6\n" if p1_live_dev else "")
-            + ("native-edge-dev: true\n" if native_edges_dev else ""),
+            + ("native-edge-dev: true\n" if native_edges_dev else "")
+            + ("post-release-motion-dev: true\n" if post_release_dev else ""),
             encoding="utf-8"
         )
 
@@ -647,6 +731,14 @@ async def run(
                 )
                 if report["original_s49_effect_ack_paper_edges"] is None:
                     raise ForwardDashDevRejected("original native ACK markers absent")
+                if post_release_dev:
+                    report["post_release_paper_motion_dev"] = review_post_release_motion_dev(
+                        paper_log.read_text(encoding="utf-8"),
+                        action_id=subject["action_id"],
+                        session_id=subject["session"],
+                        bracket=report["paper_action_bracket"],
+                        edges=report["original_s49_effect_ack_paper_edges"],
+                    )
         if m0_live_dev:
             report["m0_s49_original_owner_postings"] = (
                 original_bytes.get(
@@ -763,6 +855,7 @@ def main() -> int:
     parser.add_argument("--m0-live-dev", action="store_true")
     parser.add_argument("--m0-move-dev", action="store_true")
     parser.add_argument("--native-edges-dev", action="store_true")
+    parser.add_argument("--post-release-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -771,6 +864,7 @@ def main() -> int:
         m0_live_dev=a.m0_live_dev,
         m0_move_dev=a.m0_move_dev,
         native_edges_dev=a.native_edges_dev,
+        post_release_dev=a.post_release_dev,
     ))
 
 
