@@ -424,11 +424,65 @@ async def execute_mineflayer_command(
         )
 
 
+async def _watch_l0_during_motor(
+    adapter: MineflayerExecutionSession, *,
+    duration_s: float,
+    session_id: str,
+) -> None:
+    """DEV motor wait consuming the same native receiver, no second writer.
+
+    A delivered cache-shadow can request interruption, never permit an Action.
+    One shadow is required during this bounded interval; missing evidence
+    fails closed rather than pretending the World was monitored.
+    """
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + duration_s
+    checked = 0
+    while True:
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            break
+        try:
+            message = await asyncio.wait_for(adapter.receive(), timeout=remaining)
+        except TimeoutError:
+            break
+        if _check_l0_interrupt(message, session_id=session_id):
+            checked += 1
+    if checked == 0:
+        raise MineflayerExecutionError(
+            "L0 DEV opt-in observed no shadow during motor interval"
+        )
+
+
+def _check_l0_interrupt(message: object, *, session_id: str) -> bool:
+    """Typed cache-only L0 may abort an issued Action, never create one."""
+    if isinstance(message, MineflayerConnectionEnd):
+        raise MineflayerExecutionError("L0 DEV client connection ended")
+    if isinstance(message, (MineflayerAdapterErrorMessage, MineflayerCommandError)):
+        raise MineflayerExecutionError("L0 DEV receiver signalled failure")
+    if not isinstance(message, MineflayerPaperL0Shadow):
+        return False
+    if message.session_id != session_id:
+        raise MineflayerExecutionError("L0 DEV shadow from foreign session")
+    result = classify_s49_l0_interrupt(
+        message.assessment,
+        l0_shadow_evaluated=message.l0_shadow_evaluated,
+        l0_fresh_world_tick_attested=message.l0_fresh_world_tick_attested,
+        authorized_action_issued=message.authorized_action_issued,
+        tps_admission_granted=message.tps_admission_granted,
+    )
+    if result is not L0Interruption.CONTINUE_UNVERIFIED:
+        raise MineflayerExecutionError(f"L0 DEV abort request: {result.value}")
+    return True
+
+
 async def _receive_until(
     adapter: MineflayerExecutionSession,
     *,
     timeout_s: float,
     predicate,
+    l0_interrupt_dev: bool = False,
+    expected_session_id: str | None = None,
 ):
     loop = asyncio.get_running_loop()
     deadline = loop.time() + timeout_s
@@ -451,6 +505,9 @@ async def _receive_until(
             raise MineflayerExecutionError(
                 f"Mineflayer command error: {message.message}"
             )
+        if l0_interrupt_dev:
+            assert expected_session_id is not None
+            _check_l0_interrupt(message, session_id=expected_session_id)
         if predicate(message):
             return message
 
