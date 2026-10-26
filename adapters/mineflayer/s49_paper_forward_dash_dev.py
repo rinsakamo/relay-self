@@ -17,6 +17,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from adapters.mineflayer import normal_action as action_owner
+from adapters.mineflayer.b0_energy_bridge import DashM0InvoiceDev
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.s49_paper_world_first_dev import (
@@ -243,6 +244,7 @@ async def run(
     output_dir: Path, paper_jar: Path, paper_sha: str,
     dash_jar: Path, dash_sha: str, *, confirm: str,
     p1_live_dev: bool = False,
+    m0_live_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -250,6 +252,10 @@ async def run(
         or os.environ.get("S49_FORWARD_MOTOR_DEV_ONLY") != "1"
         or os.environ.get("S49_SPRINT_MOTOR_DEV_ONLY") != "1"
         or type(p1_live_dev) is not bool
+        or type(m0_live_dev) is not bool
+        or (m0_live_dev and (
+            not p1_live_dev or os.environ.get("S49_M0_DASH_DEBIT_DEV_ONLY") != "1"
+        ))
         or (p1_live_dev and os.environ.get("S49_P1_LIVE_DASH_DEV_ONLY") != "1")
     ):
         raise ForwardDashDevRejected("explicit isolated one-World/sprint gates required")
@@ -334,6 +340,34 @@ async def run(
                     paper_log, offset, marker="COMPLETE",
                     action_id=command.action_id,
                 )
+    def invoice_from_original_outcome(receipt):
+        # S49 only invokes this after the original Action reached S16 OUTCOME.
+        # No second Action issue or adapter reader exists in this callback.
+        if receipt.terminal.action_id != subject["action_id"]:
+            return None  # The second unboosted original Action incurs no DASH extra.
+        if subject["complete"] is None:
+            raise ForwardDashDevRejected("Paper cleanup must precede M0 posting")
+        raw = paper_log.read_text(encoding="utf-8")
+        paper = review_forward_dash_rows(
+            raw, action_id=subject["action_id"], session_id=subject["session"],
+        )
+        p1 = audit_native_paper_p1_dev(
+            raw, action_id=subject["action_id"], session_id=subject["session"],
+        )
+        if (paper["paper_gait_ticks_observed"] != p1["world_ticks_replayed"]
+                or paper["paper_forward_boost_ticks"] < 1
+                or not paper["paper_modifier_removed"]
+                or p1["m0_ledger_posted"] is not False):
+            raise ForwardDashDevRejected("M0 invoice lacked Paper/P1 same-source proof")
+        return DashM0InvoiceDev(
+            session_id=subject["session"], action_id=subject["action_id"],
+            first_world_tick=paper["paper_first_tick"],
+            last_world_tick=paper["paper_last_tick"],
+            observed_world_ticks=p1["world_ticks_replayed"],
+            boost_ticks=paper["paper_forward_boost_ticks"],
+            charge=p1["m0_charge_proposal_not_posted"],
+        )
+
     try:
         with (
             patch.object(original, "_fetch_official_server", paper_fetch),
@@ -345,6 +379,7 @@ async def run(
             rc = await original.qualify(
                 original_report, paper_log,
                 dev_forward_motor=True, dev_sprint_motor=True,
+                dev_m0_dash_invoice=invoice_from_original_outcome if m0_live_dev else None,
             )
         original_bytes = json.loads(original_report.read_text(encoding="utf-8"))
         report["original_s49_rc"] = rc
@@ -371,10 +406,49 @@ async def run(
             action_id=subject["action_id"], session_id=subject["session"],
         )
         report["paper"] = review
+        if m0_live_dev:
+            postings = original_bytes.get("dev_m0_dash_postings", [])
+            if (len(postings) != 1 or
+                    postings[0]["action_id"] != subject["action_id"] or
+                    not math.isclose(
+                        postings[0]["posted_extra"],
+                        report.get("p1_paper_motor_dev", {}).get(
+                            "m0_charge_proposal_not_posted", -1),
+                        abs_tol=1e-10,
+                    )):
+                # P1 review is populated below; this precheck is deferred.
+                pass
+            report["m0_s49_original_owner_postings"] = postings
+            report["m0_s49_original_owner_remaining"] = (
+                original_bytes.get("dev_m0_dash_energy_remaining")
+            )
         if p1_live_dev:
             report["p1_paper_motor_dev"] = audit_native_paper_p1_dev(
                 paper_log.read_text(encoding="utf-8"),
                 action_id=subject["action_id"], session_id=subject["session"],
+            )
+        if m0_live_dev:
+            postings = report["m0_s49_original_owner_postings"]
+            expected_charge = report["p1_paper_motor_dev"]["m0_charge_proposal_not_posted"]
+            if (len(postings) != 1
+                    or postings[0]["action_id"] != subject["action_id"]
+                    or postings[0]["session_id"] != subject["session"]
+                    or not math.isclose(postings[0]["posted_extra"],
+                                        expected_charge, abs_tol=1e-10)
+                    or not math.isclose(
+                        postings[0]["energy_before"] - postings[0]["energy_after"],
+                        expected_charge, abs_tol=1e-10)
+                    or original_bytes.get("dev_m0_dash_m0_tick") != 1
+                    or not math.isclose(
+                        original_bytes["dev_m0_dash_energy_initial"]
+                        - original_bytes["dev_m0_dash_energy_remaining"],
+                        expected_charge, abs_tol=1e-10)
+                    or len(original_bytes["dev_m0_dash_unboosted_actions"]) != 1
+                    or original_bytes["dev_m0_dash_unboosted_actions"][0]
+                       != actions[1]["action"]):
+                raise ForwardDashDevRejected("Original S49 M0 ledger debit not source bound")
+            report["m0_debit_classification"] = (
+                "ORIGINAL_S49_LOCAL_B0_OWNER_POSTED_DEV_NOT_ATTESTED"
             )
         report["original_action_distances_m"] = [a["movement_m"] for a in actions]
         report["first_minus_unboosted_second_distance_m"] = (
@@ -422,11 +496,13 @@ def main() -> int:
     parser.add_argument("--dash-sha256", required=True)
     parser.add_argument("--confirm", required=True)
     parser.add_argument("--p1-live-dev", action="store_true")
+    parser.add_argument("--m0-live-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
         a.dash_jar, a.dash_sha256, confirm=a.confirm,
         p1_live_dev=a.p1_live_dev,
+        m0_live_dev=a.m0_live_dev,
     ))
 
 

@@ -4,7 +4,8 @@ No Action authorization or World attestation originates here. Pickup != EAT.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from adapters.mineflayer.b0_ground_foraging import (
@@ -14,6 +15,11 @@ from adapters.mineflayer.b0_ground_foraging import (
 )
 from adapters.mineflayer.eat_execution import EatingActionReceipt
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.normal_action import NormalActionReceipt
+from adapters.mineflayer.execution import WorldConsequenceStatus
+from adapters.mineflayer.self_action_evidence import (
+    verify_native_action_evidence,
+)
 from experiments.metabolism_viability import (
     BodyState,
     EnergyTransition,
@@ -43,6 +49,38 @@ class B0Decision:
     ground_target: GroundTarget | None = None
 
 
+
+@dataclass(frozen=True, slots=True)
+class DashM0InvoiceDev:
+    """Source-joined, P1-replayed Paper callback charge. DEV, not R-attested."""
+
+    session_id: str
+    action_id: str
+    first_world_tick: int
+    last_world_tick: int
+    observed_world_ticks: int
+    boost_ticks: int
+    charge: float
+    source_scope: str = "PAPER_P1_CALLBACK_S49_SOURCE_JOIN_DEV_ONLY"
+
+
+@dataclass(frozen=True, slots=True)
+class DashM0DebitDev:
+    """Mutation of the *existing B0 ledger* after original native OUTCOME."""
+
+    action_id: str
+    session_id: str
+    energy_before: float
+    energy_after: float
+    posted_extra: float
+    m0_tick_before: int
+    m0_tick_after: int
+    world_first_tick: int
+    world_last_tick: int
+    world_ticks: int
+    source_scope: str = "PRODUCER_LOCAL_DEV_NOT_INDEPENDENTLY_ATTESTED"
+
+
 class B0EnergyLedger:
     """Session-scoped owner; only verified S51 EAT may mint one food unit."""
 
@@ -53,7 +91,10 @@ class B0EnergyLedger:
         config: MetabolismConfig | None = None,
         sensor: Interoception | None = None,
         forage_policy: Literal["native_only", "sensor_gate", "no_ground_seek"] = "native_only",
+        dev_dash_extra_debit: bool = False,
     ) -> None:
+        if type(dev_dash_extra_debit) is not bool:
+            raise B0EnergyRejected("DEV DASH debit gate must be boolean")
         if not isinstance(session_id, str) or not session_id:
             raise B0EnergyRejected("nonempty session required")
         if forage_policy not in ("native_only", "sensor_gate", "no_ground_seek"):
@@ -66,12 +107,83 @@ class B0EnergyLedger:
         self.forage_policy = forage_policy
         self.body: BodyState = initial_body(self.config)
         self._credits: set[str] = set()
+        self._dev_dash_extra_debit = dev_dash_extra_debit
+        self._dev_dash_debited_actions: set[str] = set()
+        self._dev_dash_last_world_tick: int | None = None
         self._last_eat_seq = -1
         self._last_decision_seq = -1
 
     @property
     def credit_count(self) -> int:
         return len(self._credits)
+
+    def post_dash_extra_dev(
+        self, receipt: NormalActionReceipt, invoice: DashM0InvoiceDev,
+        *, native_evidence: dict,
+    ) -> DashM0DebitDev:
+        """Original S49-ledger owner posts DASH *extra* only after S16 OUTCOME.
+
+        This is ONE M0 transaction for all Paper ticks (not fabricated basal
+        transitions for 13 Paper ticks). It cannot mint EAT energy, bypass
+        terminal state, or replay an Action/tick. The source is producer-local
+        Paper and remains unqualified even when all receipts join.
+        """
+        if (
+            not self._dev_dash_extra_debit
+            or not isinstance(receipt, NormalActionReceipt)
+            or not isinstance(invoice, DashM0InvoiceDev)
+            or receipt.terminal.state is not ActionState.OUTCOME
+            or receipt.terminal.action_id != invoice.action_id
+            or receipt.consequence.action_id != invoice.action_id
+            or receipt.consequence.session_id != self.session_id
+            or receipt.consequence.status is not WorldConsequenceStatus.EXECUTED
+            or receipt.consequence.movement_distance is None
+            or receipt.consequence.movement_distance <= 0.05
+            or invoice.session_id != self.session_id
+            or not isinstance(invoice.action_id, str) or not invoice.action_id
+            or invoice.action_id in self._dev_dash_debited_actions
+            or type(invoice.first_world_tick) is not int
+            or type(invoice.last_world_tick) is not int
+            or type(invoice.observed_world_ticks) is not int
+            or not 1 <= invoice.observed_world_ticks <= 80
+            or invoice.first_world_tick < 0
+            or invoice.last_world_tick != invoice.first_world_tick
+                + invoice.observed_world_ticks - 1
+            or type(invoice.boost_ticks) is not int
+            or not 1 <= invoice.boost_ticks <= invoice.observed_world_ticks
+            or type(invoice.charge) not in (int, float)
+            or not math.isfinite(invoice.charge)
+            or not 0 < invoice.charge <=
+                0.20 * 0.05 * invoice.observed_world_ticks + 1e-10
+            or invoice.source_scope != "PAPER_P1_CALLBACK_S49_SOURCE_JOIN_DEV_ONLY"
+            or self.body.terminal or self.body.energy <= invoice.charge
+            or (self._dev_dash_last_world_tick is not None
+                and invoice.first_world_tick <= self._dev_dash_last_world_tick)
+            or type(native_evidence) is not dict
+        ):
+            raise B0EnergyRejected("DASH extra source/ownership/energy debit denied")
+        verify_native_action_evidence(
+            native_evidence, action_id=invoice.action_id,
+            session_id=self.session_id,
+            movement_m=receipt.consequence.movement_distance,
+            allow_dev_forward=True, allow_dev_sprint=True,
+        )
+        before = self.body
+        after = replace(
+            before,
+            energy=before.energy - invoice.charge,
+            tick=before.tick + 1,
+        )
+        # Atomic local owner mutation ONLY after all native and Paper review.
+        self.body = after
+        self._dev_dash_debited_actions.add(invoice.action_id)
+        self._dev_dash_last_world_tick = invoice.last_world_tick
+        return DashM0DebitDev(
+            invoice.action_id, self.session_id, before.energy, after.energy,
+            invoice.charge, before.tick, after.tick,
+            invoice.first_world_tick, invoice.last_world_tick,
+            invoice.observed_world_ticks,
+        )
 
     def step(
         self, action: Literal["WAIT", "MOVE"], *,

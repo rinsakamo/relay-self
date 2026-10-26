@@ -13,14 +13,20 @@ import json
 import os
 import sys
 import tempfile
+from dataclasses import asdict
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
 import test_postmain_two_epoch_continuation as s19
+from adapters.mineflayer.b0_energy_bridge import (
+    B0EnergyLedger,
+    DashM0InvoiceDev,
+)
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import (
     NormalActionAuthorization,
+    NormalActionReceipt,
     NormalActionStage,
     NormalSessionActionExecutor,
     NormalWorldL0,
@@ -274,6 +280,7 @@ async def qualify(
     dev_sixth_epoch: str | None = None,
     dev_forward_motor: bool = False,
     dev_sprint_motor: bool = False,
+    dev_m0_dash_invoice: Callable[[NormalActionReceipt], DashM0InvoiceDev | None] | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -283,6 +290,7 @@ async def qualify(
         "actual_native_actions": [],
         "dev_forward_motor": dev_forward_motor,
         "dev_sprint_motor": dev_sprint_motor,
+        "dev_m0_dash_owner": dev_m0_dash_invoice is not None,
         "decisions": [],
         "real_model_calls": 0,
         "learning_in_world": False,
@@ -292,11 +300,18 @@ async def qualify(
     }
     server = collector = session = staging = temp = None
     stage_r = None
+    dev_m0_owner = None
     rc = 2
     cancellations: list[asyncio.CancelledError] = []
     try:
         if os.environ.get("S49_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
+        if dev_m0_dash_invoice is not None and (
+            not callable(dev_m0_dash_invoice)
+            or not dev_sprint_motor
+            or os.environ.get("S49_M0_DASH_DEBIT_DEV_ONLY") != "1"
+        ):
+            raise S31ABlocked("M0 extra debit requires exact original S49 sprint DEV gate")
         if type(dev_sprint_motor) is not bool or (
             dev_sprint_motor and (
                 not dev_forward_motor
@@ -347,6 +362,11 @@ async def qualify(
         )
         sid = session.started.session_id
         report["session_id"] = sid
+        if dev_m0_dash_invoice is not None:
+            # The ORIGINAL S49 owner creates ONE existing B0 M0 owner;
+            # wrapper/transport code can neither mint nor mutate energy.
+            dev_m0_owner = B0EnergyLedger(sid, dev_dash_extra_debit=True)
+            report["dev_m0_dash_energy_initial"] = dev_m0_owner.body.energy
         _, committed, _, _, _, _ = await asyncio.to_thread(s19._epoch_one)
         retained = committed.new_state
         if retained.target_id != "risk_weight" or retained.revision != 1 or retained.value != 4:
@@ -504,6 +524,22 @@ async def qualify(
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
             if stage_r is not None:
                 stage_r.seal_original_action(step, receipt)
+            if dev_m0_owner is not None:
+                invoice = dev_m0_dash_invoice(receipt)
+                if invoice is not None:
+                    posted = dev_m0_owner.post_dash_extra_dev(
+                        receipt, invoice,
+                        native_evidence=capture_native_action_evidence(
+                            receipt.consequence, allow_dev_forward=True,
+                            allow_dev_sprint=True,
+                        ),
+                    )
+                    report.setdefault("dev_m0_dash_postings", []).append(asdict(posted))
+                    report["dev_m0_dash_energy_remaining"] = dev_m0_owner.body.energy
+                else:
+                    report.setdefault("dev_m0_dash_unboosted_actions", []).append(
+                        receipt.terminal.action_id,
+                    )
             report["actual_native_actions"].append({
                 "action": receipt.terminal.action_id,
                 "terminal": receipt.terminal.state.value,
@@ -550,6 +586,14 @@ async def qualify(
         report["ignored_hurt_frames"] = observation_source.ignored_hurt_frames
         report["ignored_non_target_entities"] = observation_source.ignored_non_target_entities
         report["ignored_duplicate_target_updates"] = observation_source.ignored_duplicate_target_updates
+        if dev_m0_owner is not None:
+            if (len(report.get("dev_m0_dash_postings", [])) != 1
+                    or len(report.get("dev_m0_dash_unboosted_actions", [])) != 1
+                    or dev_m0_owner.body.tick != 1
+                    or dev_m0_owner.body.meals != 0
+                    or dev_m0_owner.body.terminal):
+                raise S49PhysicalFailure("DEV M0 owner DASH posting count/terminal mismatch")
+            report["dev_m0_dash_m0_tick"] = dev_m0_owner.body.tick
         report["decisions"] = [{
             "event_seq": s.event_seq,
             "entity_id": s.choice.entity_id,
