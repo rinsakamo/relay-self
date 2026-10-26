@@ -1,0 +1,270 @@
+name: S49 Node Physics Control Clear vs Paper DEV
+on:
+  push:
+    branches:
+      - self/dev-s49-forward-motor-admission-20261026
+    paths:
+      - .github/workflows/self-s49-node-local-physics-paper-dev.yml
+      - adapters/mineflayer/bridge.mjs
+      - adapters/mineflayer/s49_node_physics_postclear_dev.py
+      - adapters/mineflayer/s49_paper_forward_dash_dev.py
+      - tests/test_s49_node_physics_postclear_dev.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s49-node-control-physics-once-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  world-first-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      S49_REAL_SERVER_CI: '1'
+      S49_FORWARD_MOTOR_DEV_ONLY: '1'
+      S49_SPRINT_MOTOR_DEV_ONLY: '1'
+      S49_SPEED_ATTR_DIAG_DEV_ONLY: '1'
+      S49_SPEED_ATTR_SYNC_DEV_ONLY: '1'
+      S49_P1_LIVE_DASH_DEV_ONLY: '1'
+      S49_M0_DASH_DEBIT_DEV_ONLY: '1'
+      S49_M0_ACTION_STEP_DEV_ONLY: '1'
+      S49_NATIVE_EFFECT_EDGE_DEV_ONLY: '1'
+      S49_POST_RELEASE_MOTION_DEV_ONLY: '1'
+      S49_NODE_PHYSICS_TRACE_DEV_ONLY: '1'
+      DEV_OUTPUT: '/tmp/s49-node-control-${{ github.run_id }}-${{ github.run_attempt }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify DEV observer config, dependencies and loopback isolation
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          grep -q '^enabled: false$' adapters/mineflayer/s49_paper_wait_observer_dev/src/main/resources/config.yml
+          python - <<'PY'
+          import socket
+          with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+              s.bind(("127.0.0.1", 25565))
+          print("Fresh loopback Minecraft port available; no external process touched")
+          PY
+      - name: Python 3.12 focused and Ruff BEFORE any World
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          node --check adapters/mineflayer/bridge.mjs
+          node --test adapters/mineflayer/s49_speed_attribute_bridge_dev.test.mjs
+          python -m compileall -q adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_s49_post_release_motion_dev.py tests/test_s49_node_physics_postclear_dev.py
+          ruff check adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py tests/test_s49_m0_dash_extra_owner_dev.py
+          python -m pytest -q tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_b0_energy_bridge.py tests/test_s49_p1_paper_motor_dev.py tests/test_p1_gait_dev.py tests/test_s49_paper_forward_dash_dev.py tests/test_s49_forward_motor_admission_dev.py
+      - name: Compile independent Paper DASH modifier plugin
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/s49_paper_dash_dev/pom.xml -DskipTests package
+          test -f adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-dash-dev-0.1.0-dev.jar
+      - name: Verify original Node bridge parses
+        run: node --check adapters/mineflayer/bridge.mjs
+      - name: Install original Mineflayer package (unmodified bridge)
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: Fetch official stable Paper 1.21.8 build 60 and verify published SHA256
+        id: paper
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, urllib.parse, urllib.request
+          version = "1.21.8"
+          api = f"https://fill.papermc.io/v3/projects/paper/versions/{version}/builds"
+          ua = "RelaySelf-S49-P1-WORLD-FIRST-DEV/0.1 (https://github.com/rinsakamo/relay-self)"
+          req = urllib.request.Request(api, headers={"User-Agent": ua})
+          with urllib.request.urlopen(req, timeout=50) as rsp:
+              builds = json.loads(rsp.read(3_000_000))
+          stable = [b for b in builds if b.get("channel") == "STABLE" and b.get("id") == 60]
+          if len(stable) != 1:
+              raise RuntimeError("Pinned Paper 1.21.8 stable build 60 unavailable")
+          artifact = stable[0]["downloads"]["server:default"]
+          expected = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          if (artifact["checksums"]["sha256"] != expected
+                  or artifact["size"] != 52811717):
+              raise RuntimeError("Pinned original Paper build metadata mismatch")
+          url = artifact["url"]
+          parsed = urllib.parse.urlparse(url)
+          if (parsed.scheme != "https" or parsed.hostname != "fill-data.papermc.io"
+                  or not parsed.path.startswith("/v1/objects/")):
+              raise RuntimeError("Untrusted Paper binary URL")
+          target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "paper-1.21.8-dev.jar"
+          hash_ = hashlib.sha256()
+          total = 0
+          with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": ua}), timeout=120) as src, target.open("xb") as dst:
+              while chunk := src.read(1048576):
+                  total += len(chunk)
+                  if total > 52811717: raise RuntimeError("Paper size exceeded")
+                  dst.write(chunk)
+                  hash_.update(chunk)
+          if total != 52811717 or hash_.hexdigest() != expected:
+              raise RuntimeError("Paper downloaded bytes mismatch")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"jar={target}\nsha256={expected}\n")
+          print("PAPER_DEV_PINNED", total, expected)
+          PY
+      - name: One real Paper World — original S49 M0 owner debits P1 verified DASH
+        env:
+          PAPER_JAR: ${{ steps.paper.outputs.jar }}
+          PAPER_SHA: ${{ steps.paper.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          DASH="$PWD/adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-dash-dev-0.1.0-dev.jar"
+          DASH_SHA="$(sha256sum "$DASH" | cut -d' ' -f1)"
+          python -m adapters.mineflayer.s49_paper_forward_dash_dev \
+            --output-dir "$DEV_OUTPUT" \
+            --paper-jar "$PAPER_JAR" --paper-sha256 "$PAPER_SHA" \
+            --dash-jar "$DASH" --dash-sha256 "$DASH_SHA" \
+            --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD --p1-live-dev --m0-live-dev --m0-move-dev --native-edges-dev --post-release-dev --node-physics-dev
+      - name: Verify original forward+sprint S16 and Paper positive modifier ticks
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from adapters.mineflayer.self_action_evidence import verify_native_action_evidence
+          root=Path(os.environ["DEV_OUTPUT"])
+          report=json.loads((root/"paper_forward_dash_dev_report.json").read_text())
+          source=json.loads((root/"original_s49_report.json").read_text())
+          assert report["status"] in ("DEV_FORWARD_SPRINT_POSITIVE_PAPER_DASH_OBSERVED", "DEV_FORWARD_SPRINT_MOTION_GATED_PAPER_DASH_OBSERVED"), report
+          assert source["status"] == "PASS" and source["node_exit"] == 0 and source["server_exit"] == 0
+          assert source["dev_sprint_motor"] is True
+          assert len(source["actual_native_actions"]) == 2
+          for a in source["actual_native_actions"]:
+              e=a["execution_evidence"]
+              assert a["terminal"] == "outcome" and a["movement_m"] > 0.05
+              assert e["action_ref"] == "MOVE_FORWARD_SPRINT_DEV"
+              verify_native_action_evidence(
+                  e, action_id=a["action"], session_id=source["session_id"],
+                  movement_m=a["movement_m"],
+                  allow_dev_forward=True, allow_dev_sprint=True,
+              )
+          p=report["paper"]
+          assert p["paper_forward_boost_ticks"] >= 1
+          assert p["paper_forward_boost_ticks"] >= p["paper_motion_inferred_boost_ticks"]
+          assert p["paper_modifier_removed"] is True
+          p1=report["p1_paper_motor_dev"]
+          assert p1["single_p1_model_replayed"] is True
+          assert p1["world_ticks_replayed"] >= 10
+          assert p1["actual_power_fade"] > 0.01
+          assert 0 < p1["last_boost_power"] < p1["initial_boost_power"] < 1
+          assert p1["m0_charge_proposal_not_posted"] > 0
+          assert p1["p1_ledger_posted"] is False
+          assert p1["m0_ledger_posted"] is False
+          assert p1["source_qualified"] is False
+          posted=report["m0_s49_original_owner_postings"]
+          assert len(posted) == 2
+          debit=posted[0]
+          second=posted[1]
+          assert source["dev_m0_dash_owner"] is True
+          assert source["dev_m0_dash_m0_tick"] == 2
+          assert debit["session_id"] == source["session_id"]
+          assert debit["action_id"] == source["actual_native_actions"][0]["action"]
+          assert debit["m0_tick_before"] == 0 and debit["m0_tick_after"] == 1
+          assert second["m0_tick_before"] == 1 and second["m0_tick_after"] == 2
+          assert debit["basal_debit"] == second["basal_debit"] == .5
+          assert debit["move_debit"] == second["move_debit"] == .25
+          assert debit["dash_extra_debit"] > 0 and second["dash_extra_debit"] == 0
+          assert debit["paper_world_ticks_for_dash"] == p1["world_ticks_replayed"]
+          assert second["paper_world_ticks_for_dash"] == 0
+          assert abs(debit["dash_extra_debit"]-p1["m0_charge_proposal_not_posted"]) < 1e-10
+          assert abs(debit["energy_before"]-debit["energy_after"]-(.75+debit["dash_extra_debit"])) < 1e-10
+          assert abs(second["energy_before"]-second["energy_after"]-.75) < 1e-10
+          assert len(source["dev_m0_dash_unboosted_actions"]) == 1
+          assert source["dev_m0_dash_unboosted_actions"] == [source["actual_native_actions"][1]["action"]]
+          assert report["m0_debit_classification"] == "S49_NATIVE_OUTCOME_TWO_M0_MOVE_STEPS_PAPER_BRACKET_DEV_ONLY"
+          assert report["m0_world_tick_basal_accounted"] is False
+          bracket=report["paper_action_bracket"]
+          assert bracket["elapsed_callbacks"] == p1["world_ticks_replayed"]
+          assert bracket["boosted_callbacks"] == p["paper_forward_boost_ticks"]
+          assert bracket["arm_tick"] < bracket["first_tick"] <= bracket["last_tick"] <= bracket["release_tick"]
+          assert bracket["original_owner_release"] is True
+          assert bracket["independent_source_attested"] is False
+          ack=report["original_s49_effect_ack_paper_edges"]
+          native=source["actual_native_actions"][0]["execution_evidence"]
+          assert ack["native_dispatch_ack_seq"] == native["dispatch_receipt"]["seq"]
+          assert ack["native_cleanup_ack_seq"] == native["cleanup_receipt"]["seq"]
+          assert bracket["arm_tick"] <= ack["paper_dispatch_ack_marker_tick"] <= ack["paper_cleanup_ack_marker_tick"] <= bracket["release_tick"]
+          assert ack["marker_after_native_ack"] is True
+          assert ack["native_single_reader"] is True
+          assert ack["cross_host_clock_synchronized"] is False
+          assert ack["client_effect_world_tick_attested"] is False
+          assert ack["independent_source_attested"] is False
+          post=report["post_release_paper_motion_dev"]
+          assert post["classification"] == "PAPER_PASSIVE_POST_RELEASE_TRANSLATION_DEV_ONLY"
+          assert post["paper_callbacks"] == 5
+          assert post["first_sample_tick"] == bracket["release_tick"] + 1
+          assert post["last_sample_tick"] == bracket["release_tick"] + 5
+          assert len(post["post_release_deltas_m"]) == 4
+          assert post["first_delta_m_mixed_boundary"] >= 0
+          assert all(0 <= v <= 2 for v in post["post_release_deltas_m"])
+          assert post["speed_modifier_present"] is False
+          assert post["action_authority"] is False
+          assert post["WAIT_sourcebound_admitted"] is False
+          assert post["P1_posted"] is False and post["M0_posted"] is False
+          assert post["native_control_effect_tick_attested"] is False
+          node=report["node_physics_postclear_dev"]
+          assert node["classification"] == "NODE_LOCAL_PHYSICS_AFTER_CONTROL_CLEAR_DEV_ONLY"
+          assert node["action_id"] == source["actual_native_actions"][0]["action"]
+          assert node["session_id"] == source["session_id"]
+          assert node["node_active_physics_ticks"] >= 2
+          assert node["node_postclear_physics_ticks"] == 5
+          assert node["node_forward_sprint_at_set"] is True
+          assert node["node_forward_sprint_at_clear"] is False
+          assert node["node_postclear_forward_sprint_all_false"] is True
+          assert len(node["node_postclear_horizontal_deltas_m"]) == 5
+          assert node["node_paper_tick_join_attested"] is False
+          assert node["client_packet_world_tick_attested"] is False
+          assert node["WAIT_sourcebound_admitted"] is False
+          assert node["M0_posted"] is False and node["P1_posted"] is False
+
+
+
+
+          gain=report["physical_gain_dev"]
+          assert gain["native_gain_observed_dev"] is True
+          assert gain["native_displacement_gain_m"] >= 0.40
+          assert gain["paper_sampled_peak_mps"] >= 7.5
+          assert gain["speed_cap_or_direction_qualified"] is False
+          assert p["m0_posted"] is False and p["p1_native_updated"] is False # Paper itself never owns M0
+          assert p["qualification_go"] is False and p["science_go"] is False
+          print("S49_ORIGINAL_FORWARD_SPRINT_PAPER_DASH_DEV_PASS",p)
+          PY
+      - name: Print bounded Paper speed attribute trace for source debugging
+        if: always()
+        run: |
+          if test -f "$DEV_OUTPUT/paper_server.log"; then
+            grep -E 'S49_DASH_SPEED_ATTRIBUTE_DEV' "$DEV_OUTPUT/paper_server.log" | head -n 32 || true
+          fi
+      - name: Print bounded Paper DEV plugin log for failure diagnosis
+        if: failure()
+        run: |
+          if test -f "$DEV_OUTPUT/paper_server.log"; then
+            grep -E 'S49_DASH_DEV|RelayS49DashDev|S49 FAIL|SEVERE' "$DEV_OUTPUT/paper_server.log" | tail -n 70 || true
+          fi
+      - name: Preserve native S49/Paper/Node and three-clock review
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-node-physics-paper-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEV_OUTPUT }}/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: DEV epistemic boundary
+        if: always()
+        run: |
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+          echo 'Node-local physicsTick shows real Mineflayer control state after clearing, Paper 5-tick release view stays separate clock; no authority, M0/P1/WAIT updates.'
