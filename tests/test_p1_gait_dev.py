@@ -191,3 +191,21 @@ def test_nonconsecutive_other_session_off_profile_and_rates_fail_closed():
     ):
         with pytest.raises(FatigueRejected):
             GaitRatesDev(**kwargs)
+
+def test_p1_motor_power_limit_uses_only_existing_fatigue_state():
+    from experiments.p1_gait_dev import p1_motor_power_limit_dev
+
+    for initial, expected in ((0, 1), (.5, 1), (.6, .8), (.75, .5),
+                              (.95, .1), (1.0, 0)):
+        profile = FatigueProfile(enabled=True, initial=initial)
+        state = initial_state(profile, "p1-motor")
+        assert p1_motor_power_limit_dev(profile, state, 1, 1) == pytest.approx(expected)
+        assert not hasattr(state, "sprint_stamina")
+    profile = FatigueProfile(enabled=True, initial=.6)
+    state = initial_state(profile, "p1-motor")
+    power = p1_motor_power_limit_dev(profile, state, 1, 1)
+    result = tick(profile, state, "DASH", power=power, extra=1)
+    assert p1_motor_power_limit_dev(profile, result.after, 1, 1) < power
+    assert result.added_m0_charge > 0
+    assert result.m0_ledger_posted is False
+    assert p1_motor_power_limit_dev(profile, state, 1, 0) == 0

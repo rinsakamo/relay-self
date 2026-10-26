@@ -170,6 +170,24 @@ def dash_budget_dev(
     )
 
 
+def p1_motor_power_limit_dev(
+    profile: FatigueProfile, state: FatigueState,
+    requested_power: float, available_extra_m0_energy: float,
+    *, rates: GaitRatesDev = GaitRatesDev(),
+) -> float:
+    """Single existing P1 fatigue dimension limits applied forward DASH.
+
+    DEV-only motor fade: full power to F=0.5 capacity, linearly declining
+    to zero at capacity. No new fatigue gauge or Action authorization.
+    """
+    budget = dash_budget_dev(
+        profile, state, requested_power, available_extra_m0_energy,
+        rates=rates, direction="forward",
+    )
+    fatigue_bound = min(1.0, max(0.0, 2 * (1 - state.fatigue / profile.capacity)))
+    return min(budget.permitted_power, fatigue_bound)
+
+
 def advance_gait_dev(
     profile: FatigueProfile,
     state: FatigueState,
