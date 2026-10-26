@@ -52,7 +52,7 @@ TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop", "t2_disconnect_move",
               "t1h_pre_stop", "t1h_lost_ack", "t1h_delayed_ack",
               "t1h_disconnect", "t1h_paper_short", "t1h_input_residual",
               "t1h_motion_residual", "t1h_stale_ack", "t1h_double_ack",
-              "t1h_disconnect_after_idle")
+              "t1h_disconnect_after_idle", "t1i_stop_loop", "t1i_stop_eat")
 
 
 def write(path, value):
@@ -129,7 +129,7 @@ def measure(root, report):
 
 
 async def run_case(args, case):
-    t1f = case.startswith(("t1f_", "t2_", "t1h_"))
+    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_"))
     root = args.output / case
     root.mkdir()
     world = root / "server"
@@ -285,7 +285,17 @@ async def run_case(args, case):
                     raise RuntimeError("T1g lost source forbids new Action effect")
                 report["dispatch_python_ns"] = time.monotonic_ns()
                 await super().send_set_control(*a, **kw)
-                if case.startswith("t1h_"):
+                if case == "t1i_stop_loop" and (
+                    getattr(self, "t1i_stop_arm_action_id", None) == a[0]
+                ):
+                    async def t1i_stop_move():
+                        await asyncio.sleep(.08)
+                        self.t1i_stop_owner.request(
+                            "t1i-multi-epoch-stop", active_action_id=a[0],
+                            expected_clear_action_id=a[0] + "-clear",
+                        )
+                    fixture = asyncio.create_task(t1i_stop_move())
+                elif case.startswith("t1h_"):
                     # Host owner requests STOP; only original S49 writes Motor.
                     async def request_owner_stop():
                         await asyncio.sleep(0.08)
@@ -296,8 +306,22 @@ async def run_case(args, case):
                             expected_clear_action_id=self.t1h_active_action_id + "-clear",
                         )
                     fixture = asyncio.create_task(request_owner_stop())
-                elif case != "normal":
+                elif not case.startswith("t1i_") and case != "normal":
                     fixture = asyncio.create_task(stage())
+
+            async def send_consume_held(self, *a, **kw):
+                nonlocal fixture
+                await super().send_consume_held(*a, **kw)
+                if case == "t1i_stop_eat" and (
+                    getattr(self, "t1i_eat_action_id", None) is not None
+                    and a[0] == self.t1i_eat_action_id + "-consume"
+                ):
+                    async def t1i_stop_eating():
+                        await asyncio.sleep(.08)
+                        self.t1i_stop_owner.request(
+                            "t1i-eat-stop", active_action_id=self.t1i_eat_action_id,
+                        )
+                    fixture = asyncio.create_task(t1i_stop_eating())
 
             async def send_clear_controls(self, *a, **kw):
                 report["clear_send_python_ns"] = time.monotonic_ns()
@@ -332,9 +356,20 @@ async def run_case(args, case):
             return report
         if t1f:
             from adapters.mineflayer.t1f_continuation_dev import run_continuation
-            await run_continuation(session, server, report, root, observe_only=case == "t1f_observe",
-                                   accounting=case.startswith("t2_"),
-                                   normal_epochs=args.loop_moves)
+            stop_mode = ("MOVE" if case == "t1i_stop_loop" else
+                         "EAT" if case == "t1i_stop_eat" else None)
+            stop_owner = None
+            if stop_mode:
+                from adapters.mineflayer.t1h_stop_owner_dev import S49DevStopOwner
+                stop_owner = S49DevStopOwner(session.started.session_id)
+                session.t1i_stop_owner = stop_owner
+            await run_continuation(
+                session, server, report, root,
+                observe_only=case == "t1f_observe",
+                accounting=case.startswith(("t2_", "t1i_")),
+                normal_epochs=args.loop_moves,
+                stop_owner=stop_owner, stop_mode=stop_mode,
+            )
             return report
         supervisor = ActionSupervisor()
         issued = _issue(supervisor, "t1e-" + case, "fixed-dev-move", "t1e-move-intent",
@@ -453,6 +488,24 @@ async def run_case(args, case):
         if not report["cleanup_complete"]:
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
+        if case.startswith("t1i_"):
+            detail = report.get("t1i", {})
+            sends = report["metrics"]["set_control_sends"]
+            clears = report["metrics"]["clear_control_sends"]
+            expected_moves = args.loop_moves + (1 if case == "t1i_stop_loop" else 0)
+            if (not detail.get("stop_requested")
+                    or sends != expected_moves or clears != expected_moves
+                    or len([e for e in report.get("epochs", [])
+                            if e.get("consequence", {}).get("status") == "executed"])
+                        != args.loop_moves
+                    or (case == "t1i_stop_loop" and
+                        (not detail.get("stop_ack_dev")
+                         or detail.get("action_status") != "failed"))
+                    or (case == "t1i_stop_eat" and
+                        (detail.get("stop_ack_dev") is not None
+                         or detail.get("meal_credit_issued") is not False
+                         or report.get("t2_final", {}).get("credit_count", 0) != 0))):
+                report["status"] = "FAIL"
         if case.startswith("t1h_"):
             positive = case in ("t1h_stop_move", "t1h_double_ack")
             detail = report.get("t1h", {})
