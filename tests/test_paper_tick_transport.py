@@ -5,10 +5,14 @@ from dataclasses import replace
 import pytest
 
 from adapters.mineflayer.m02_paper_dev.paper_tick_probe import PaperTickProbeRejected
-from adapters.mineflayer.m02_paper_dev.paper_tick_transport import join_paper_tick_transport
+from adapters.mineflayer.m02_paper_dev.paper_tick_transport import (
+    join_paper_l0_shadow,
+    join_paper_tick_transport,
+)
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterProtocolError,
     MineflayerPaperTickSample,
+    MineflayerPaperL0Shadow,
     MineflayerStreamDecoder,
     parse_mineflayer_line,
 )
@@ -138,3 +142,81 @@ def test_extra_protocol_key_or_wrong_expected_scope_rejected():
             expected_world=WORLD, expected_player=PLAYER,
             expected_session="wrong",
         )
+
+
+def shadow(i, *, assessment="NO_KNOWN_URGENT_SIGNAL", **changes):
+    body = {
+        "type": "paper_l0_shadow", "session_id": SESSION, "seq": 2 * i,
+        "source": "MINEFLAYER_CACHE_SHADOW_L0_DEV",
+        "observation_precision": "CLIENT_CACHE_POST_PAPER_MESSAGE_NOT_EPOCH_FRESH",
+        "paper_sample_index": i, "paper_server_tick": str(100 + i),
+        "paper_world": WORLD, "paper_player": PLAYER,
+        "evaluation_duration_ns": "1234", "assessment": assessment,
+        "cached_body_observed": assessment != "UNKNOWN",
+        "l0_shadow_evaluated": True,
+        "l0_fresh_world_tick_attested": False,
+        "authorized_action_issued": False, "tps_admission_granted": False,
+    }
+    body.update(changes)
+    return parse_mineflayer_line(json.dumps(body))
+
+
+def shadow_match(*, delivered=None, shadows=None):
+    delivered = (tuple(replace(message(i), seq=2 * i - 1) for i in range(1, 5))
+                 if delivered is None else delivered)
+    shadows = (tuple(shadow(i) for i in range(1, 5))
+               if shadows is None else shadows)
+    return join_paper_l0_shadow(
+        log(), delivered, shadows,
+        expected_world=WORLD, expected_player=PLAYER,
+        expected_session=SESSION,
+    )
+
+
+def test_one_cache_l0_evaluation_per_paper_message_still_no_tps_permission():
+    receipt = shadow_match()
+    assert receipt.paired_server_ticks == (101, 102, 103, 104)
+    assert receipt.shadow_cache_evaluated_ticks == (101, 102, 103, 104)
+    assert receipt.unknown_or_uncovered_ticks == ()
+    assert receipt.l0_fresh_world_tick_attested is False
+    assert receipt.tps_change_admitted is False
+    assert isinstance(shadow(1), MineflayerPaperL0Shadow)
+
+
+def test_unknown_cached_body_is_not_counted_as_fresh_world_l0():
+    shadows = tuple(shadow(i, assessment="UNKNOWN") if i == 3 else shadow(i)
+                    for i in range(1, 5))
+    r = shadow_match(shadows=shadows)
+    assert r.unknown_or_uncovered_ticks == (103,)
+    assert not r.l0_fresh_world_tick_attested
+
+
+@pytest.mark.parametrize("bad", [
+    {"l0_shadow_evaluated": False},
+    {"l0_fresh_world_tick_attested": True},
+    {"authorized_action_issued": True},
+    {"tps_admission_granted": True},
+    {"paper_sample_index": True},
+    {"assessment": "SAFETY_GRANTED"},
+    {"evaluation_duration_ns": "-5"},
+    {"observation_precision": "FRESH_WORLD"},
+    {"cached_body_observed": False},
+])
+def test_shadow_forged_permission_or_invalid_state_is_rejected(bad):
+    with pytest.raises(MineflayerAdapterProtocolError):
+        shadow(1, **bad)
+
+
+@pytest.mark.parametrize("change", [
+    lambda ms: (replace(ms[0], session_id="other"), *ms[1:]),
+    lambda ms: (*ms[:1], replace(ms[1], seq=9), *ms[2:]),
+    lambda ms: (*ms[:1], replace(ms[1], paper_server_tick="999"), *ms[2:]),
+    lambda ms: (*ms[:1], replace(ms[1], paper_world=PLAYER), *ms[2:]),
+    lambda ms: (*ms[:1], replace(ms[1], paper_player=WORLD), *ms[2:]),
+    lambda ms: (ms[0], ms[2], ms[1], ms[3]),
+    lambda ms: ms[:-1],
+])
+def test_shadow_missing_reordered_unbound_receipts_reject(change):
+    shards = tuple(shadow(i) for i in range(1, 5))
+    with pytest.raises(PaperTickProbeRejected):
+        shadow_match(shadows=tuple(change(shards)))
