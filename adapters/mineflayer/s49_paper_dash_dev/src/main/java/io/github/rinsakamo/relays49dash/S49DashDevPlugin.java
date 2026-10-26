@@ -265,9 +265,21 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
                 }
                 speed.addTransientModifier(modifier);
                 boosted = true;
+                getLogger().info("S49_DASH_SPEED_ATTRIBUTE_DEV "
+                    + "action_id=" + actionId
+                    + " tick=" + subject.getWorld().getFullTime()
+                    + " base=" + speed.getBaseValue()
+                    + " effective=" + speed.getValue()
+                    + " modifier_added=true");
             } else if (!shouldBoost && boosted) {
                 speed.removeModifier(modifier);
                 boosted = false;
+                getLogger().info("S49_DASH_SPEED_ATTRIBUTE_DEV "
+                    + "action_id=" + actionId
+                    + " tick=" + subject.getWorld().getFullTime()
+                    + " base=" + speed.getBaseValue()
+                    + " effective=" + speed.getValue()
+                    + " modifier_added=false");
             }
             return true;
         } catch (RuntimeException exception) {

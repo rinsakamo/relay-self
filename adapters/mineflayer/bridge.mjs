@@ -127,6 +127,50 @@ emit('adapter_started', {
 })
 
 const bot = mineflayer.createBot(options)
+const attrDiag = process.env.S49_SPEED_ATTR_DIAG_DEV_ONLY === '1' &&
+  process.env.S49_SPRINT_MOTOR_DEV_ONLY === '1' && config.version === '1.21.8'
+let attrDiagActive = false
+let attrDiagSamples = 0
+function traceDevAttr (stage, info = {}) {
+  if (!attrDiag) return
+  const entity = bot.entity
+  const attrs = entity && entity.attributes ? entity.attributes : {}
+  const selected = Object.fromEntries(Object.entries(attrs)
+    .filter(([key]) => /movement.?speed|movementSpeed/.test(key))
+    .map(([key, value]) => [key, {
+      value: value && value.value,
+      modifiers: value && value.modifiers
+    }]))
+  process.stderr.write('S49_SPEED_ATTR_DIAG ' + JSON.stringify({
+    stage, selfEntityId: entity && entity.id,
+    knownKeys: Object.keys(attrs).filter(key => /speed|movement/.test(key)),
+    speedAttributes: selected,
+    ...info
+  }) + '\\n')
+}
+if (attrDiag) {
+  bot._client.on('entity_update_attributes', packet => {
+    if (bot.entity && packet.entityId === bot.entity.id) {
+      traceDevAttr('RAW_SPEED_PACKET', {
+        properties: (packet.properties || []).filter(p => /speed|movement/.test(p.key))
+      })
+    }
+  })
+  bot.on('entityAttributes', entity => {
+    if (bot.entity && entity.id === bot.entity.id) traceDevAttr('DECODED_SPEED_PACKET')
+  })
+  bot.on('physicsTick', () => {
+    if (!attrDiagActive || attrDiagSamples >= 20) return
+    attrDiagSamples++
+    traceDevAttr('MOTOR_PHYSICS', {
+      sample: attrDiagSamples, onGround: bot.entity.onGround,
+      controlForward: bot.getControlState('forward'),
+      controlSprint: bot.getControlState('sprint'),
+      pos: bot.entity.position,
+      velocity: bot.entity.velocity
+    })
+  })
+}
 if (clockOptIn === '1') {
   attachV6NativeClockPackets(
     bot,
@@ -259,12 +303,17 @@ async function handleEffect (command) {
         bot.clearControlStates()
         throw error
       }
+      attrDiagActive = true
+      attrDiagSamples = 0
+      traceDevAttr('SPRINT_DISPATCH_APPLIED')
       emitEffectResult(command, 'applied')
       return
     }
 
     if (command.effect === 'clear_controls') {
       bot.clearControlStates()
+      traceDevAttr('ACTION_CLEAR')
+      attrDiagActive = false
       emitEffectResult(command, 'applied')
       return
     }
