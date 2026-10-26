@@ -146,7 +146,7 @@ function traceDevAttr (stage, info = {}) {
     knownKeys: Object.keys(attrs).filter(key => /speed|movement/.test(key)),
     speedAttributes: selected,
     ...info
-  }) + '\\n')
+  }) + '\n')
 }
 if (attrDiag) {
   bot._client.on('entity_update_attributes', packet => {
