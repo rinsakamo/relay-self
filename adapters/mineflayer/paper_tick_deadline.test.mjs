@@ -68,3 +68,47 @@ test('invalid fractions and impossible samples fail closed', () => {
     { completedMonoNs: 2n }))
   assert.equal(guard.failed, true)
 })
+
+
+test('budgeted receipt emits one tick and one L0 shadow, no motor output', async () => {
+  const { handleBudgetedPaperTick } = await import('./paper_tick_deadline.mjs')
+  const guard = new PaperTickDeadlineGuard()
+  const emitted = []
+  const scan = (tick) => ({
+    source: 'MINEFLAYER_CACHE_SHADOW_L0_DEV',
+    paper_sample_index: tick.index, paper_server_tick: tick.server_tick,
+    paper_world: tick.world, paper_player: tick.player,
+    l0_shadow_evaluated: true, l0_fresh_world_tick_attested: false,
+    authorized_action_issued: false, tps_admission_granted: false
+  })
+  const args = (ns) => ({guard, evaluateShadow: scan,
+    emit: (type, value) => emitted.push({ type, value }), clock: () => ns})
+  const status = handleBudgetedPaperTick(sample(1, 10_000), null, args(10_100n))
+  assert.equal(status.status, 'INITIAL_CADENCE_UNKNOWN')
+  const next = handleBudgetedPaperTick(sample(2, 20_000), null, args(21_000n))
+  assert.equal(next.status, 'HOST_LOCAL_BUDGET_MET_ONLY')
+  assert.deepEqual(emitted.map(e=>e.type), [
+    'paper_tick_sample', 'paper_l0_shadow', 'paper_tick_sample', 'paper_l0_shadow'
+  ])
+  assert.equal(emitted.every(e => e.value.tps_admission_granted !== true), true)
+  assert.throws(() => handleBudgetedPaperTick(sample(3, 30_000), null, args(39_000n)),
+    /over measured tick budget/)
+  assert.equal(emitted.length, 4)
+  assert.equal(guard.failed, true)
+})
+
+test('forged fresh L0 claim cannot emit even first tick', async () => {
+  const { handleBudgetedPaperTick } = await import('./paper_tick_deadline.mjs')
+  const guard = new PaperTickDeadlineGuard()
+  const emitted = []
+  assert.throws(() => handleBudgetedPaperTick(sample(1,10_000),null,{
+    guard, evaluateShadow: (s) => ({
+      source: 'MINEFLAYER_CACHE_SHADOW_L0_DEV',
+      paper_sample_index: s.index, paper_server_tick: s.server_tick,
+      paper_world: s.world, paper_player: s.player,
+      l0_shadow_evaluated: true, l0_fresh_world_tick_attested: true,
+      authorized_action_issued: false, tps_admission_granted: false
+    }), emit: (...values)=>emitted.push(values), clock: ()=> 10_100n
+  }), /may not claim/)
+  assert.equal(emitted.length,0)
+})
