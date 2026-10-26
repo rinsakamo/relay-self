@@ -449,6 +449,12 @@ async def run_case(args, case):
         if not report["cleanup_complete"]:
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
+        if case == "t1h_stop_move" and (
+            report["metrics"]["set_control_sends"] != 1
+            or report["metrics"]["clear_control_sends"] != 1
+            or "stop_ack_dev" not in report.get("t1h", {})
+        ):
+            report["status"] = "FAIL"
         if not t1f and (report["metrics"]["set_control_sends"] != 1
                 or report["metrics"]["clear_control_sends"] != 1):
             report["status"] = "FAIL"
