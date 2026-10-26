@@ -135,7 +135,7 @@ async def _await_dash_dev_line(
     paper_log: Path, offset: int, *, marker: str, action_id: str,
     timeout: float = 15,
 ) -> str:
-    if marker not in ("ARM", "COMPLETE"):
+    if marker not in ("ARM", "COMPLETE", "EDGE"):
         raise S49PaperDevBlocked("unknown DASH diagnostic marker")
     until = time.monotonic() + timeout
     while time.monotonic() < until:
