@@ -120,7 +120,7 @@ jobs:
             --observer-jar "$OBSERVER" --observer-sha256 "$OBSERVER_SHA" \
             --dash-jar "$DASH" --dash-sha256 "$DASH_SHA" \
             --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD \
-            --dash-negative-control-dev
+            --dash-negative-control-dev --dash-cap-settle-dev
       - name: Verify original S49 issued BACKWARD effect and no DASH bonus
         run: |
           python - <<'PY'
@@ -142,6 +142,12 @@ jobs:
           assert n["backward_cap_modifier_active_ticks"] == n["paper_gait_ticks_observed"]
           assert n["backward_speed_attribute_multiplier"] == 0.75
           assert n["backward_speed_m_s_attested"] is False
+          assert n["host_settle_seconds_before_action"] == 0.5
+          assert n["within_session_displacement_is_speed_cap_proof"] is False
+          print("S49_DASH_BACKWARD_DISTANCE_COMPARISON",
+                n["first_unmodified_original_move_m"],
+                n["capped_second_original_move_m"],
+                n["capped_minus_first_displacement_m"])
           assert n["dash_stance_kept_during_backward"] is True
           assert n["m0_posted"] is False and n["p1_native_updated"] is False
           assert n["forward_dash_verified"] is False and n["sideways_cap_verified"] is False
