@@ -177,8 +177,14 @@ async def run_continuation(session, server, report, root, *,
                         stop_owner=stop_owner,
                     )
                 except Exception as exc:
-                    if not (stop_mode == "EAT" and stop_owner.requested
-                            and supervisor.get("t2-native-meal").state is ActionState.UNKNOWN):
+                    from adapters.mineflayer.eat_execution import EatingExecutionRejected
+                    if not (
+                        stop_mode == "EAT" and stop_owner.requested
+                        and not getattr(session, "source_lost", False)
+                        and isinstance(exc, EatingExecutionRejected)
+                        and "T1i owner STOP" in str(exc)
+                        and supervisor.get("t2-native-meal").state is ActionState.UNKNOWN
+                    ):
                         raise
                     # Consume is non-idempotent. A STOP while its receipt is
                     # pending CANNOT prove that Minecraft did not eat. Preserve
