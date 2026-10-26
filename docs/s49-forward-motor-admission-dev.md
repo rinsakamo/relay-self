@@ -70,3 +70,46 @@ with the pinned Mineflayer 4.39.0/prismarine-physics 1.11.1 motor model
 without teleportation or a second issuer. Do not connect native M0/P1
 settlement or claim physical directional caps before observing actual
 World-effective velocity and authoritative tick correspondence.
+
+## Root-cause evidence and source-bound physical speed fix (2026-10-26)
+
+Pinned Minecraft 1.21.8 attribute `entity_update_attributes` frames decoded the
+**player movement speed** as the misleading `generic.scale` key: base ~0.1,
+`minecraft:sprinting` operation-2 +0.3, and the genuine Paper modifier
+`relays49dashdev:forward_dash_only` operation-2 +0.5. The vendor physics
+`prismarine-physics 1.11.1` instead looks for
+`minecraft:movement_speed` and silently falls back to 0.1 if that key is
+absent. This explains why the server registered its transient speed attribute
+while Mineflayer remained near RUN speed.
+
+DEV bridge `s49_speed_attribute_bridge_dev.mjs` permits the narrowly
+identified packet source to be mapped **only** during the original issued
+forward+sprint S49 Action when `S49_SPEED_ATTR_SYNC_DEV_ONLY=1` and
+`S49_SPRINT_MOTOR_DEV_ONLY=1` and Minecraft=1.21.8. It rejects unknown
+source base, modifier names, operations, duplicate or exaggerated bonuses.
+It strips the raw `minecraft:sprinting` modifier because prismarine-physics
+already applies its own local +0.3 sprint modifier. It does not
+invent a client speed, bypass Paper source, send a new command, or
+inject another Action issuer. The mapped attribute is removed on original
+clear-controls and process shutdown. All default launch behavior is unchanged.
+The exact mis-labelled packet bridge is **not** a broadly qualified
+Minecraft compatibility fix.
+
+[Real disposable Minecraft PASS — run 40293458189](https://github.com/rinsakamo/relay-self/actions/runs/40293458189)
+at exact source HEAD `c5f9f805e99e0d1dad435a4ab3ab1eda74bb2176`:
+- original S49 bound `MOVE_FORWARD_SPRINT_DEV` native 2/2 OUTCOME,
+  Java/Node exit 0;
+- first 0.60s first Action with Paper modifier: 4.264897828m;
+  second 0.60s Action without Paper modifier: 3.030157205m;
+  difference **1.234740623m**;
+- Paper 11/13 ticks modifier present and removed, measured
+  peak sampled 20TPS XZ speed **8.407958462m/s** vs 8.415 target;
+- data-derived DEV evidence is a same-run **uncontrolled** ON/OFF contrast.
+  Client input forward bits were empty; 11 boosted Paper ticks used
+  labelled `MOTION_PROJECTION`, which does not qualify side/back hard caps.
+- M0 ledger and native P1 expenditure each 0. R/SCI runs 0.
+
+Subsequent focused CI adds fail-closed gates that require BOTH
+real displacement gain (>=0.40m same-run) and Paper 20TPS peak
+(>=7.5m/s), so merely observing the modifier cannot produce a green
+speed-gain result.

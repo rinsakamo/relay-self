@@ -32,6 +32,31 @@ class ForwardDashDevRejected(RuntimeError):
     pass
 
 
+def evaluate_native_dash_gain_dev(
+    *, armed_m: float, unarmed_m: float, peak_mps: float | None,
+    boost_ticks: int,
+) -> dict:
+    """Require native displacement and Paper velocity, not modifier presence."""
+    if (any(type(value) not in (int, float) or not math.isfinite(value)
+            for value in (armed_m, unarmed_m))
+            or type(boost_ticks) is not int or boost_ticks < 1
+            or type(peak_mps) not in (int, float)
+            or not math.isfinite(peak_mps)
+            or armed_m < 0.05 or unarmed_m < 0.05):
+        raise ForwardDashDevRejected("native DASH gain inputs absent or nonfinite")
+    delta = armed_m - unarmed_m
+    # Conservative DEV smoke gate; NOT a calibration or terminal speed cap.
+    if delta < 0.40 or peak_mps < 7.5:
+        raise ForwardDashDevRejected("Paper attribute on, but native DASH gain absent")
+    return {
+        "native_displacement_gain_m": delta,
+        "native_gain_observed_dev": True,
+        "paper_sampled_peak_mps": peak_mps,
+        "uncontrolled_single_world_comparison": True,
+        "speed_cap_or_direction_qualified": False,
+    }
+
+
 def review_forward_dash_rows(raw: str, *, action_id: str, session_id: str) -> dict:
     """Parse only relevant native Paper lines, never invent missing positive ticks."""
     rows = []
@@ -264,6 +289,17 @@ async def run(
         )
         if review["paper_forward_boost_ticks"] < 1:
             report["status"] = "DEV_SPRINT_NO_POSITIVE_PAPER_BOOST"
+            return 1
+        try:
+            report["physical_gain_dev"] = evaluate_native_dash_gain_dev(
+                armed_m=actions[0]["movement_m"],
+                unarmed_m=actions[1]["movement_m"],
+                peak_mps=review["sampled_peak_server_horizontal_speed_m_s"],
+                boost_ticks=review["paper_forward_boost_ticks"],
+            )
+        except ForwardDashDevRejected as exc:
+            report["status"] = "DEV_PAPER_BOOST_BUT_NO_NATIVE_SPEED_GAIN"
+            report["error"] = str(exc)
             return 1
         report["status"] = (
             "DEV_FORWARD_SPRINT_MOTION_GATED_PAPER_DASH_OBSERVED"

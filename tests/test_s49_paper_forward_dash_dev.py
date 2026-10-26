@@ -83,3 +83,38 @@ def test_server_motion_inference_is_labeled_not_packet_input():
             original.replace("boost_source=MOTION_PROJECTION", "boost_source=PACKET"),
             action_id=ACTION, session_id=SESSION,
         )
+
+
+def test_measured_native_dash_gain_requires_distance_and_peak():
+    from adapters.mineflayer.s49_paper_forward_dash_dev import (
+        evaluate_native_dash_gain_dev,
+    )
+
+    result = evaluate_native_dash_gain_dev(
+        armed_m=4.264897828, unarmed_m=3.030157205,
+        peak_mps=8.407958, boost_ticks=11,
+    )
+    assert 1.23 < result["native_displacement_gain_m"] < 1.24
+    assert result["native_gain_observed_dev"] is True
+    assert result["speed_cap_or_direction_qualified"] is False
+
+
+@pytest.mark.parametrize("armed,unarmed,peak,ticks", [
+    (3.03, 3.03, 8.4, 11),
+    (4.3, 3.0, 5.6, 11),
+    (4.3, 3.0, None, 11),
+    (4.3, 3.0, 8.4, 0),
+    (float("nan"), 3.0, 8.4, 11),
+    (4.3, 3.0, float("inf"), 11),
+    (4.3, 3.0, 8.4, True),
+])
+def test_no_false_dash_pass_with_modifier_only(armed, unarmed, peak, ticks):
+    from adapters.mineflayer.s49_paper_forward_dash_dev import (
+        evaluate_native_dash_gain_dev,
+    )
+
+    with pytest.raises(ForwardDashDevRejected):
+        evaluate_native_dash_gain_dev(
+            armed_m=armed, unarmed_m=unarmed, peak_mps=peak,
+            boost_ticks=ticks,
+        )

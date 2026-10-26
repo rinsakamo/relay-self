@@ -152,6 +152,11 @@ jobs:
           assert p["paper_forward_boost_ticks"] >= 1
           assert p["paper_forward_boost_ticks"] >= p["paper_motion_inferred_boost_ticks"]
           assert p["paper_modifier_removed"] is True
+          gain=report["physical_gain_dev"]
+          assert gain["native_gain_observed_dev"] is True
+          assert gain["native_displacement_gain_m"] >= 0.40
+          assert gain["paper_sampled_peak_mps"] >= 7.5
+          assert gain["speed_cap_or_direction_qualified"] is False
           assert p["m0_posted"] is False and p["p1_native_updated"] is False
           assert p["qualification_go"] is False and p["science_go"] is False
           print("S49_ORIGINAL_FORWARD_SPRINT_PAPER_DASH_DEV_PASS",p)
