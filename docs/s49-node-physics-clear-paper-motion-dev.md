@@ -5,6 +5,23 @@ Date 2026-10-26. Branch: `self/dev-s49-forward-motor-admission-20261026`.
 
 ## Completed real Minecraft result
 
+**Latest source-tested exact HEAD** `1953f9085dd4556394bad51d02931179a914049b`:
+[real Paper/Node/P1/M0 trial #40323157470 — SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/40323157470).
+Python3.12 focused+negative controls, Ruff, Java21 and Node22 compilation,
+original S49 2/2 S16 OUTCOME, Paper release, and cleanup all PASS.
+Node original first Action recorded 12 active physics ticks; all 5
+postclear ticks had forward=false/sprint=false and nonzero movement
+**0.21214275, 0.11582994, 0.06324315, 0.03453076,
+0.01885379 meters**. Paper registered its own post-release ticks
+262–266: mixed-boundary first delta 0.32797269m, then
+0.06324315, 0.03453076, 0.01885379, 0m.
+The two independent producer-local clocks remain unsynchronized.
+S49/P1 DASH charge 0.08633238849; original B0 owner M0 remaining
+10.413667611509306. This trial's native S49 action distances were
+3.8892309m / 2.74973734m; separate-run distance comparisons are
+uncontrolled. The earlier measurements below refer to the earlier
+real World #40322594341, not this latest run.
+
 Source result: `eea4888d8b1bf3d39d299b8ccdd9b3e2dcf9d9b9`.
 [Real Paper 1.21.8 + Node22 + Java21 + Python3.12 focused validation run #40322594341: SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/40322594341).
 Additional exact-branch regression after S15 import sorting:
