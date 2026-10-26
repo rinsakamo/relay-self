@@ -20,6 +20,7 @@ from adapters.mineflayer import normal_action as action_owner
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.b0_energy_bridge import DashM0InvoiceDev
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
+from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from adapters.mineflayer.s49_paper_world_first_dev import (
     _await_dash_dev_line,
     _fresh_output,
@@ -204,6 +205,98 @@ def review_paper_action_bracket_dev(raw: str, *, action_id: str, session_id: str
     }
 
 
+def review_original_s49_native_effect_edges_dev(
+    raw: str, *, action_id: str, session_id: str, native_evidence: dict,
+    bracket: dict,
+) -> dict:
+    """Join native typed ACKs to Paper marker *delivery* time, not effect time.
+
+    Both receipts were consumed in the ORIGINAL S15 reader. The owner writes
+    Paper timestamps only AFTER receiving each ACK. Hence their World tick
+    values are upper bounds on operator receipt/marker delivery; no clock
+    synchronization, native effect tick, or packet timestamp is attested.
+    """
+    found = []
+    for row in raw.splitlines():
+        tag = "S49_DASH_DEV_EDGE "
+        if tag not in row:
+            continue
+        fields = dict(
+            token.split("=", 1) for token in row.split(tag, 1)[1].split()
+            if token.count("=") == 1
+        )
+        if fields.get("action_id") == action_id:
+            found.append(fields)
+    if (len(found) != 2
+            or [x.get("phase") for x in found] != ["APPLIED", "CLEARED"]
+            or bracket.get("action_id") != action_id
+            or bracket.get("session_id") != session_id
+            or not bracket.get("original_owner_release")
+            or bracket.get("independent_source_attested") is not False
+            or type(native_evidence) is not dict
+            or native_evidence.get("action_id") != action_id
+            or native_evidence.get("session_id") != session_id
+            or native_evidence.get("action_ref") != "MOVE_FORWARD_SPRINT_DEV"
+            or native_evidence.get("status") != "executed"):
+        raise ForwardDashDevRejected("native effect markers missing or foreign")
+    receipts = [
+        native_evidence.get("dispatch_receipt"),
+        native_evidence.get("cleanup_receipt"),
+    ]
+    if any(type(x) is not dict for x in receipts):
+        raise ForwardDashDevRejected("original S49 typed ACK receipts absent")
+    times = []
+    for i, row in enumerate(found):
+        receipt = receipts[i]
+        try:
+            native_seq = int(row["native_seq"])
+            paper_tick = int(row["tick"])
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ForwardDashDevRejected("invalid native/Paper ACK lineage") from exc
+        if (row.get("session_id") != session_id
+                or row.get("world") != bracket["world_uuid"]
+                or row.get("player_uuid") != bracket["player_uuid"]
+                or row.get("marker_after_native_ack") != "true"
+                or row.get("synchronized_native_effect_tick") != "false"
+                or native_seq != receipt.get("seq")
+                or str(native_seq) != row["native_seq"]
+                or receipt.get("session_id") != session_id
+                or receipt.get("result") != "applied"
+                or receipt.get("effect") != (
+                    "set_forward_sprint_dev" if i == 0 else "clear_controls"
+                )
+                or receipt.get("action_id") != (
+                    action_id if i == 0 else action_id + "-s15-clear"
+                )
+                or paper_tick < bracket["arm_tick"]
+                or paper_tick > bracket["release_tick"]):
+            raise ForwardDashDevRejected("Paper marker not same original native ACK")
+        times.append(paper_tick)
+    if (receipts[1]["seq"] <= receipts[0]["seq"]
+            or times[1] < times[0]):
+        raise ForwardDashDevRejected("native dispatch/cleanup ACK order inverted")
+    elapsed_in_bracket = max(
+        0, min(bracket["last_tick"], times[1])
+        - max(bracket["first_tick"], times[0]) + 1,
+    )
+    return {
+        "classification": "S49_NATIVE_ACK_TO_PAPER_MARKER_DELIVERY_DEV_ONLY",
+        "action_id": action_id, "session_id": session_id,
+        "native_dispatch_ack_seq": receipts[0]["seq"],
+        "native_cleanup_ack_seq": receipts[1]["seq"],
+        "paper_dispatch_ack_marker_tick": times[0],
+        "paper_cleanup_ack_marker_tick": times[1],
+        "paper_sample_ticks_within_marker_window": elapsed_in_bracket,
+        "paper_arm_tick": bracket["arm_tick"],
+        "paper_release_tick": bracket["release_tick"],
+        "native_single_reader": True,
+        "marker_after_native_ack": True,
+        "client_effect_world_tick_attested": False,
+        "cross_host_clock_synchronized": False,
+        "independent_source_attested": False,
+    }
+
+
 def review_forward_dash_rows(raw: str, *, action_id: str, session_id: str) -> dict:
     """Parse only relevant native Paper lines, never invent missing positive ticks."""
     rows = []
@@ -306,6 +399,7 @@ async def run(
     p1_live_dev: bool = False,
     m0_live_dev: bool = False,
     m0_move_dev: bool = False,
+    native_edges_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -315,6 +409,11 @@ async def run(
         or type(p1_live_dev) is not bool
         or type(m0_live_dev) is not bool
         or type(m0_move_dev) is not bool
+        or type(native_edges_dev) is not bool
+        or (native_edges_dev and (
+            not m0_move_dev
+            or os.environ.get("S49_NATIVE_EFFECT_EDGE_DEV_ONLY") != "1"
+        ))
         or (m0_move_dev and (
             not m0_live_dev
             or os.environ.get("S49_M0_ACTION_STEP_DEV_ONLY") != "1"
@@ -354,7 +453,8 @@ async def run(
         cfg.mkdir()
         (cfg / "config.yml").write_text(
             "enabled: true\nexpected-player-name: RelaySelf\n"
-            + ("p1-live-dev: true\np1-initial-fatigue: 0.6\n" if p1_live_dev else ""),
+            + ("p1-live-dev: true\np1-initial-fatigue: 0.6\n" if p1_live_dev else "")
+            + ("native-edge-dev: true\n" if native_edges_dev else ""),
             encoding="utf-8"
         )
 
@@ -390,9 +490,32 @@ async def run(
             await _await_dash_dev_line(
                 paper_log, offset, marker="ARM", action_id=command.action_id,
             )
+        async def paper_effect_ack_marker(phase, result):
+            # Already-consumed by the SAME original S15 Mineflayer receiver.
+            # Only mark operator receipt delivery on Paper; do not issue Action.
+            if (result.action_id != (
+                command.action_id if phase == "APPLIED"
+                else command.cleanup_action_id
+            ) or result.session_id != subject["session"]):
+                raise ForwardDashDevRejected("foreign native S15 effect ACK")
+            offset = paper_log.stat().st_size if paper_log.exists() else 0
+            original._command(
+                server, "relays49dashmark " + command.action_id + " "
+                + subject["session"] + " " + offline_uuid("RelaySelf")
+                + " " + phase + " " + str(result.seq),
+            )
+            await server.stdin.drain()
+            marker = await _await_dash_dev_line(
+                paper_log, offset, marker="EDGE", action_id=command.action_id,
+            )
+            if ("phase=" + phase not in marker
+                    or "native_seq=" + str(result.seq) not in marker):
+                raise ForwardDashDevRejected("Paper acknowledged wrong native effect ACK")
         try:
             return await base_execute(
                 session, command, timeout_s=timeout_s, provenance=provenance,
+                **({"on_effect_ack_dev": paper_effect_ack_marker}
+                   if native_edges_dev and first else {}),
             )
         finally:
             if first:
@@ -426,6 +549,15 @@ async def run(
             )
             if bracket["elapsed_callbacks"] != p1["world_ticks_replayed"]:
                 raise ForwardDashDevRejected("Paper Action bracket/P1 tick mismatch")
+            if native_edges_dev:
+                receipt_evidence = capture_native_action_evidence(
+                    receipt.consequence, allow_dev_forward=True, allow_dev_sprint=True,
+                )
+                subject["edge_review"] = review_original_s49_native_effect_edges_dev(
+                    raw, action_id=subject["action_id"],
+                    session_id=subject["session"],
+                    native_evidence=receipt_evidence, bracket=bracket,
+                )
         if (paper["paper_gait_ticks_observed"] != p1["world_ticks_replayed"]
                 or paper["paper_forward_boost_ticks"] < 1
                 or not paper["paper_modifier_removed"]
@@ -484,6 +616,12 @@ async def run(
                 paper_log.read_text(encoding="utf-8"),
                 action_id=subject["action_id"], session_id=subject["session"],
             )
+            if native_edges_dev:
+                report["original_s49_effect_ack_paper_edges"] = subject.get(
+                    "edge_review",
+                )
+                if report["original_s49_effect_ack_paper_edges"] is None:
+                    raise ForwardDashDevRejected("original native ACK markers absent")
         if m0_live_dev:
             report["m0_s49_original_owner_postings"] = (
                 original_bytes.get(
@@ -599,6 +737,7 @@ def main() -> int:
     parser.add_argument("--p1-live-dev", action="store_true")
     parser.add_argument("--m0-live-dev", action="store_true")
     parser.add_argument("--m0-move-dev", action="store_true")
+    parser.add_argument("--native-edges-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -606,6 +745,7 @@ def main() -> int:
         p1_live_dev=a.p1_live_dev,
         m0_live_dev=a.m0_live_dev,
         m0_move_dev=a.m0_move_dev,
+        native_edges_dev=a.native_edges_dev,
     ))
 
 
