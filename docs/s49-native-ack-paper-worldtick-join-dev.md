@@ -4,6 +4,22 @@
 
 ### Scope and exact tested source
 
+Final DEV code + negative-control HEAD
+`7dc8a0171e0c5c48097678f3cb4afd60649a1c39`,
+[real Paper World run #40317696394 — SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/40317696394).
+The final run independently repeated the essential observations: Paper
+ARM tick 249; native dispatch seq22 → Paper marker tick251;
+native cleanup seq35 → marker tick263; RELEASE tick263;
+13 complete Paper callbacks, **11 actual DASH boosts inside the marker
+window**; S16 original Action OUTCOME 2/2;
+native first/second movement 4.005292280m/3.030157205m;
+P1 initial/final fatigue 0.600000→0.617712241;
+one B0 DASH extra 0.08633238849, and original owner M0 balance
+12.0→10.413667611509306 (two logical MOVE transactions).
+Negative control for **ACK markers without overlapping physical DASH**
+is included and passed. These are distinct World executions, not the
+same physical timeline.
+
 Isolated branch `self/dev-s49-forward-motor-admission-20261026`.
 Source HEAD for positive Paper-callback overlap `b9a3a696b88a9d8d556efba2d3929047359a6845`,
 [real disposable Paper Minecraft run #40317670460 — SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/40317670460).
