@@ -407,18 +407,9 @@ async def run(
         )
         report["paper"] = review
         if m0_live_dev:
-            postings = original_bytes.get("dev_m0_dash_postings", [])
-            if (len(postings) != 1 or
-                    postings[0]["action_id"] != subject["action_id"] or
-                    not math.isclose(
-                        postings[0]["posted_extra"],
-                        report.get("p1_paper_motor_dev", {}).get(
-                            "m0_charge_proposal_not_posted", -1),
-                        abs_tol=1e-10,
-                    )):
-                # P1 review is populated below; this precheck is deferred.
-                pass
-            report["m0_s49_original_owner_postings"] = postings
+            report["m0_s49_original_owner_postings"] = (
+                original_bytes.get("dev_m0_dash_postings", [])
+            )
             report["m0_s49_original_owner_remaining"] = (
                 original_bytes.get("dev_m0_dash_energy_remaining")
             )
