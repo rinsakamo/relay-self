@@ -411,6 +411,61 @@ class MineflayerPaperTickSample(MineflayerMessage):
 
 
 @dataclass(frozen=True, slots=True)
+class MineflayerPaperL0Shadow(MineflayerMessage):
+    """Synchronous client-cache scan after a delivered Paper tick.
+
+    Source freshness, origin authentication and physical motor outcome are
+    explicitly NOT claimed. Not an Action issuer nor T0 TPS admission.
+    """
+
+    source: str
+    observation_precision: str
+    paper_sample_index: int
+    paper_server_tick: str
+    paper_world: str
+    paper_player: str
+    evaluation_duration_ns: str
+    assessment: str
+    cached_body_observed: bool
+    l0_shadow_evaluated: bool
+    l0_fresh_world_tick_attested: bool
+    authorized_action_issued: bool
+    tps_admission_granted: bool
+
+    def __post_init__(self) -> None:
+        MineflayerMessage.__post_init__(self)
+        positive = r"(0|[1-9][0-9]*)"
+        uuid = r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}"
+        if (
+            self.source != "MINEFLAYER_CACHE_SHADOW_L0_DEV"
+            or self.observation_precision != "CLIENT_CACHE_POST_PAPER_MESSAGE_NOT_EPOCH_FRESH"
+            or type(self.paper_sample_index) is not int
+            or not 1 <= self.paper_sample_index <= 256
+            or type(self.paper_server_tick) is not str
+            or re.fullmatch(positive, self.paper_server_tick) is None
+            or int(self.paper_server_tick) >= 2**63
+            or type(self.paper_world) is not str
+            or re.fullmatch(uuid, self.paper_world) is None
+            or type(self.paper_player) is not str
+            or re.fullmatch(uuid, self.paper_player) is None
+            or type(self.evaluation_duration_ns) is not str
+            or re.fullmatch(positive, self.evaluation_duration_ns) is None
+            or int(self.evaluation_duration_ns) >= 2**63
+            or self.assessment not in {
+                "UNKNOWN", "LOW_HEALTH", "LOW_FOOD",
+                "KNOWN_NEAR_HOSTILE", "NO_KNOWN_URGENT_SIGNAL",
+            }
+            or type(self.cached_body_observed) is not bool
+            or self.l0_shadow_evaluated is not True
+            or self.l0_fresh_world_tick_attested is not False
+            or self.authorized_action_issued is not False
+            or self.tps_admission_granted is not False
+            or (not self.cached_body_observed and self.assessment != "UNKNOWN")
+        ):
+            raise MineflayerAdapterProtocolError("unqualified Paper L0 cache shadow")
+
+
+@dataclass(frozen=True, slots=True)
 class MineflayerEntityHurt(MineflayerMessage):
     entity_id: int
     source_entity_id: int | None
@@ -497,6 +552,7 @@ MineflayerDecodedMessage = Union[
     MineflayerObservation,
     MineflayerNativeClockPacket,
     MineflayerPaperTickSample,
+    MineflayerPaperL0Shadow,
     MineflayerEntityHurt,
     MineflayerEffectResult,
     MineflayerConnectionEnd,
@@ -649,6 +705,35 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
             l0_checked=payload["l0_checked"],
             action_bound=payload["action_bound"],
             paper_native_source_authenticated=payload["paper_native_source_authenticated"],
+        )
+
+    if message_type == "paper_l0_shadow":
+        _require_exact_keys(
+            "paper_l0_shadow", payload,
+            {
+                "type", "session_id", "seq", "source",
+                "observation_precision", "paper_sample_index",
+                "paper_server_tick", "paper_world", "paper_player",
+                "evaluation_duration_ns", "assessment", "cached_body_observed",
+                "l0_shadow_evaluated", "l0_fresh_world_tick_attested",
+                "authorized_action_issued", "tps_admission_granted",
+            },
+        )
+        return MineflayerPaperL0Shadow(
+            session_id=session_id, seq=seq,
+            source=payload["source"],
+            observation_precision=payload["observation_precision"],
+            paper_sample_index=payload["paper_sample_index"],
+            paper_server_tick=payload["paper_server_tick"],
+            paper_world=payload["paper_world"],
+            paper_player=payload["paper_player"],
+            evaluation_duration_ns=payload["evaluation_duration_ns"],
+            assessment=payload["assessment"],
+            cached_body_observed=payload["cached_body_observed"],
+            l0_shadow_evaluated=payload["l0_shadow_evaluated"],
+            l0_fresh_world_tick_attested=payload["l0_fresh_world_tick_attested"],
+            authorized_action_issued=payload["authorized_action_issued"],
+            tps_admission_granted=payload["tps_admission_granted"],
         )
 
     if message_type == "entity_hurt":
