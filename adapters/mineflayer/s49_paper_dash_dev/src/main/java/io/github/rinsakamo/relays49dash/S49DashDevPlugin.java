@@ -23,18 +23,24 @@ import org.bukkit.scheduler.BukkitTask;
  *
  * The owning S49 runner must independently prove an issued forward MOVE
  * before requesting arm. Console text is not authenticated Action evidence.
- * While armed, retain DASH stance during lateral/back/idle movement, but
- * only ever apply the transient +speed modifier on an unambiguous forward
- * sprint input. Unknown input fails closed to vanilla speed.
+ * While armed, retain DASH stance across directional motor commands.
+ * The S49 owner supplies the command's issued direction: forward may use
+ * a +speed modifier only under matching observed input; side/back receive
+ * a conservative negative MOVEMENT_SPEED modifier for the whole command.
+ * This is a speed-reduction prototype, NOT proof of hard directional caps.
+ * A foreign/unknown input never receives a forward bonus.
  *
  * Does NOT cap other plugins' modifiers or attest server-effective input
  * timing. One-shot disposable profile, timeout, identity checks, cleanup.
  */
 public final class S49DashDevPlugin extends JavaPlugin implements Listener {
     private static final long MAX_ARM_TICKS = 80L; // one 4s DEV motor window
+    private static final double SIDE_BACK_CAP_MODIFIER = -0.25;
     private boolean consumed = false;
     private boolean armed = false;
     private boolean boosted = false;
+    private boolean capped = false;
+    private String issuedDirection;
     private Player subject;
     private UUID playerId;
     private UUID worldId;
@@ -47,6 +53,7 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
     private double requestedPower;
     private BukkitTask task;
     private AttributeModifier modifier;
+    private AttributeModifier capModifier;
 
     @Override
     public void onEnable() {
@@ -71,7 +78,7 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         if (!(sender instanceof ConsoleCommandSender)
                 || !Bukkit.isPrimaryThread()
                 || !getConfig().getBoolean("enabled", false)
-                || args.length != (start ? 4 : 3)
+                || args.length != (start ? 5 : 3)
                 || !validId(args[0]) || !validId(args[1])) {
             getLogger().warning("S49_DASH_DEV_DENIED console_or_input");
             return true;
@@ -112,6 +119,11 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             getLogger().warning("S49_DASH_DEV_DENIED power_out_of_range");
             return;
         }
+        if (!args[4].equals("forward") && !args[4].equals("side")
+                && !args[4].equals("back")) {
+            getLogger().warning("S49_DASH_DEV_DENIED issued_direction");
+            return;
+        }
         Player player = Bukkit.getPlayer(uuid);
         if (player == null || !player.isOnline() || player.isDead()
                 || !uuid.equals(player.getUniqueId())
@@ -123,13 +135,16 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         }
         NamespacedKey key = new NamespacedKey(this, "forward_dash_only");
         AttributeInstance speed = player.getAttribute(Attribute.MOVEMENT_SPEED);
-        if (speed.getModifier(key) != null) {
+        if (speed.getModifier(key) != null
+                || speed.getModifier(new NamespacedKey(this, "side_back_cap")) != null) {
             getLogger().warning("S49_DASH_DEV_DENIED colliding_modifier");
             return;
         }
         consumed = true;
         armed = true;
         boosted = false;
+        capped = false;
+        issuedDirection = args[4];
         subject = player;
         playerId = uuid;
         worldId = player.getWorld().getUID();
@@ -143,11 +158,24 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         modifier = new AttributeModifier(
             key, 0.5 * requestedPower, AttributeModifier.Operation.MULTIPLY_SCALAR_1
         );
+        capModifier = new AttributeModifier(
+            new NamespacedKey(this, "side_back_cap"), SIDE_BACK_CAP_MODIFIER,
+            AttributeModifier.Operation.MULTIPLY_SCALAR_1
+        );
+        // Original S49 single-owner declared SIDE/BACK: apply the cap BEFORE
+        // first native control dispatch, not after the first Paper tick.
+        if (!issuedDirection.equals("forward") && !setCap(true)) {
+            disarm("CAP_APPLY_FAILED");
+            return;
+        }
         task = Bukkit.getScheduler().runTaskTimer(this, this::sample, 1L, 1L);
         getLogger().info("S49_DASH_DEV_ARM action_id=" + actionId
             + " session_id=" + sessionId + " player_uuid=" + playerId
             + " world=" + worldId + " tick=" + armTick
-            + " power=" + power + " authority=NONE");
+            + " power=" + power + " issued_direction=" + issuedDirection
+            + " direction_cap_multiplier=" + (1.0 + SIDE_BACK_CAP_MODIFIER)
+            + " cap_modifier_applied=" + capped
+            + " authority=NONE");
     }
 
     private boolean safeSubject() {
@@ -182,11 +210,13 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         Input input = subject.getCurrentInput();
         // Never assume Paper input and Mineflayer physics ticks align.
         // Ambiguous/unknown, side+forward, reverse or idle => NO DASH BONUS.
-        boolean forwardOnly = input != null && input.isForward()
+        boolean forwardOnly = issuedDirection.equals("forward")
+            && input != null && input.isForward()
             && !input.isBackward() && !input.isLeft() && !input.isRight()
             && !input.isSneak() && !input.isJump()
             && (input.isSprint() || subject.isSprinting());
-        if (!setBoost(forwardOnly)) {
+        if (!setBoost(forwardOnly)
+                || (!issuedDirection.equals("forward") && !setCap(true))) {
             disarm("MODIFIER_SET_FAILED");
             return;
         }
@@ -199,7 +229,9 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " session_id=" + sessionId + " tick=" + tick
             + " index=" + (forwardTicks + cappedTicks)
             + " input_forward_only=" + forwardOnly
+            + " issued_direction=" + issuedDirection
             + " modifier_applied=" + boosted
+            + " cap_modifier_applied=" + capped
             + " dash_stance_active=true"
             + " input_edge_attested=false");
     }
@@ -229,6 +261,31 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         }
     }
 
+    private boolean setCap(boolean shouldCap) {
+        AttributeInstance speed = subject == null ? null
+            : subject.getAttribute(Attribute.MOVEMENT_SPEED);
+        if (speed == null || capModifier == null) {
+            return false;
+        }
+        try {
+            if (shouldCap && !capped) {
+                if (speed.getModifier(capModifier.getKey()) != null) {
+                    return false;
+                }
+                speed.addTransientModifier(capModifier);
+                capped = true;
+            } else if (!shouldCap && capped) {
+                speed.removeModifier(capModifier);
+                capped = false;
+            }
+            return true;
+        } catch (RuntimeException exception) {
+            getLogger().warning("S49_DASH_DEV_CAP_FAILURE "
+                + exception.getClass().getSimpleName());
+            return false;
+        }
+    }
+
     private void disarm(String reason) {
         if (!armed) {
             return;
@@ -249,12 +306,26 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
                 }
             }
         }
+        if (subject != null && capModifier != null) {
+            AttributeInstance speed = subject.getAttribute(Attribute.MOVEMENT_SPEED);
+            if (speed != null && speed.getModifier(capModifier.getKey()) != null) {
+                try {
+                    speed.removeModifier(capModifier);
+                } catch (RuntimeException exception) {
+                    getLogger().severe("S49_DASH_DEV_CLEANUP_UNCONFIRMED cap_"
+                        + exception.getClass().getSimpleName());
+                }
+            }
+        }
         boosted = false;
+        capped = false;
         getLogger().info("S49_DASH_DEV_COMPLETE action_id=" + actionId
             + " session_id=" + sessionId + " reason=" + reason
             + " forward_boost_ticks=" + forwardTicks
             + " other_direction_or_ambiguous_ticks=" + cappedTicks
-            + " modifier_applied=false"
+            + " issued_direction=" + issuedDirection
+            + " direction_cap_multiplier=" + (1.0 + SIDE_BACK_CAP_MODIFIER)
+            + " modifier_applied=false cap_modifier_applied=false"
             + " authority=NONE P1_APPLIED=false M0_POSTED=false");
     }
 
