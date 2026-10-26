@@ -281,8 +281,10 @@ async def run_case(args, case):
                 nonlocal fixture
                 if (self.source_lost or (self.tick_owner and self.tick_owner.failed)
                         or (getattr(self, "t1h_stop_owner", None) is not None
-                            and not self.t1h_stop_owner.allows_action)):
-                    raise RuntimeError("T1g lost source forbids new Action effect")
+                            and not self.t1h_stop_owner.allows_action)
+                        or (getattr(self, "t1i_stop_owner", None) is not None
+                            and not self.t1i_stop_owner.allows_action)):
+                    raise RuntimeError("T1g/T1i source or STOP forbids new Action effect")
                 report["dispatch_python_ns"] = time.monotonic_ns()
                 await super().send_set_control(*a, **kw)
                 if case == "t1i_stop_loop" and (
@@ -309,8 +311,23 @@ async def run_case(args, case):
                 elif not case.startswith("t1i_") and case != "normal":
                     fixture = asyncio.create_task(stage())
 
+            async def send_equip_item(self, *a, **kw):
+                if getattr(self, "t1i_stop_owner", None) is not None and (
+                    not self.t1i_stop_owner.allows_action
+                    or self.source_lost
+                ):
+                    from adapters.mineflayer.eat_execution import EatingExecutionRejected
+                    raise EatingExecutionRejected("T1i owner STOP: equip IO refused")
+                await super().send_equip_item(*a, **kw)
+
             async def send_consume_held(self, *a, **kw):
                 nonlocal fixture
+                if getattr(self, "t1i_stop_owner", None) is not None and (
+                    not self.t1i_stop_owner.allows_action
+                    or self.source_lost
+                ):
+                    from adapters.mineflayer.eat_execution import EatingExecutionRejected
+                    raise EatingExecutionRejected("T1i owner STOP: consume IO refused")
                 await super().send_consume_held(*a, **kw)
                 if case == "t1i_stop_eat" and (
                     getattr(self, "t1i_eat_action_id", None) is not None
