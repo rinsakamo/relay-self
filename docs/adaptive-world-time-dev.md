@@ -100,3 +100,63 @@ forged authority and no partial receipt on refusal. Exact tested source
 and test Git blob SHA both match the remote branch blobs (2/2).
 Python 3.12, Maven/Paper API compile, physical World/Mineflayer execution,
 exact-HEAD full-suite CI, R qualification and V science: **NOT RUN**.
+
+
+## T1e — opt-in S49 Action interrupt through sole native receiver (2026-10-26)
+
+**Purpose:** Close the previously exposed gap where S49 \`_receive_until\`
+ignored all non-target native bridge messages, including danger-bearing
+\`paper_l0_shadow\` messages. The previous T1d cache-only shadow is **not**
+native full-tick/World-fresh L0 evidence and cannot authorize physical
+movement, adaptive TPS, or new Action issuance. It can, however, *request
+conservative early abort of an Action that was already independently ISSUED*.
+
+### Contract
+
+- \`adapters/mineflayer/s49_l0_interrupt_dev.py\` performs **interrupt-only**
+  triage of strictly typed L0 Shadow assessments. \`UNKNOWN\`,
+  \`LOW_HEALTH\`, \`LOW_FOOD\`, \`KNOWN_NEAR_HOSTILE\` mean abort the active
+  Action. \`NO_KNOWN_URGENT_SIGNAL\` means only
+  \`CONTINUE_UNVERIFIED\`, **not** "World safe".
+- \`execute_mineflayer_command(..., l0_interrupt_dev=False)\` and
+  \`NormalSessionActionExecutor.execute(..., l0_interrupt_dev=False)\`
+  preserve old behavior by default. An explicit **DEV-only** \`True\`
+  uses the existing \`adapter.receive()\` coroutine during the short held
+  motor interval, without creating a second reader, owner, or physical
+  command source. It also examines L0 messages received while waiting for
+  pre-action and dispatch receipts, and refuses a held motor interval without
+  at least one shadow receipt.
+- On abort, only the already-authorized **S49 Executor** sends its existing
+  \`clear_controls\` command. In the DEV path it attempts to read the
+  original client \`effect_result(clear_controls)\` ACK before concluding
+  \`WorldConsequenceStatus.FAILED\`. A client ACK **does not prove** a
+  subsequent Paper whole-tick STOP or a qualified World OUTCOME. Unreceived
+  ACK = incomplete cleanup, not success. Consumed cleanup command IDs
+  are **never resent** just because their ACK was lost.
+- This does not guarantee that a queued native packet or a stopped motor
+  was processed *within the server WorldTick*; transport latency, source
+  freshness, and server-side control clearance need physical DEV measurement.
+  It is **not** a real TPS actuator. It never grants WorldTick high-rate RUN.
+
+### Tests / evidence
+
+The pure interrupt triage and negative-control unit tests were executed on
+this tool's **Python 3.13.5**, with **18 PASS / 0 FAIL**, source/test SHA
+matched exact new GitHub blobs (2/2). An additional **opt-in S49 executor
+integration test module** (\`tests/test_s49_l0_interrupt_owner_dev.py\`) was
+written for the repository's existing \`FakeSession\` fixtures; covers four
+hazards, pre-dispatch interruption, empty L0 input, benign shadow, unchanged
+default execution and lost clear-controls ACK. **These integrated cases have
+NOT been executed** against an exact repository checkout in the tool runtime.
+
+Python **3.12**, existing focused suite, Node full suite, JDK21/Paper Maven
+build, actual Paper/Mineflayer World, genuine L0-to-STOP timing and R/V
+qualification remain **NOT RUN**. Do not claim \`T1e_NATIVE_VERIFIED\` or
+\`WORLD_STOP_PROVEN\`. Only isolated DEV source publication and pure triage
+tests are verified. #545/#634/main remain untouched.
+
+**Next:** on the owner's Windows/WSL2 runtime, execute Python3.12 focused
+tests including this new integration test, Java21 Paper compile and isolated
+DEV World telemetry; verify actual clear ACK, server-native post-clear
+observations and latency. Then separately qualify a source-bound fresh
+per-WorldTick L0 sensor and rate adaptation.
