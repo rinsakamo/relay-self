@@ -105,7 +105,7 @@ def test_long_stillness_node_controls_off_but_not_wait(tmp_path):
     raw, path, timeline, node, first, second, sid = fixture(tmp_path)
     before = deepcopy(timeline)
     result = read(raw, path, timeline, first, second, sid)
-    assert result["classification"] == "S49_INTER_ACTION_STILLNESS_CANDIDATE_DEV_ONLY", result
+    assert result["classification"] == "S49_INTER_ACTION_STILLNESS_CANDIDATE_DEV_ONLY", (result["paper_candidate_search_interval"], result["paper_max_low_motion_run_ticks"])
     assert result["paper_consecutive_low_motion_ticks"] >= 80
     assert result["node_physics_samples"] == 154
     assert result["node_all_controls_off_until_second_set"] is True
