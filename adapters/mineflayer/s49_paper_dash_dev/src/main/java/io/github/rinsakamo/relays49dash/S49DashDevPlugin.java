@@ -464,8 +464,16 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             return;
         }
         long tick = subject.getWorld().getFullTime();
+        // Like the original ARM callback, Bukkit may invoke a scheduled
+        // observer within its registration World tick. This is zero elapsed
+        // World time and must NOT be reported as a post-release tick.
+        if (postReleaseCount == 0 && tick == postReleaseStartTick) {
+            return;
+        }
         if (tick <= postReleaseLastTick || tick != postReleaseStartTick + postReleaseCount + 1) {
-            getLogger().warning("S49_DASH_DEV_POST_ABORT tick_gap_or_replay");
+            getLogger().warning("S49_DASH_DEV_POST_ABORT tick_gap_or_replay"
+                + " current=" + tick + " start=" + postReleaseStartTick
+                + " last=" + postReleaseLastTick + " count=" + postReleaseCount);
             postReleaseTask.cancel();
             postReleaseTask = null;
             return;
