@@ -13,6 +13,7 @@ import {
 import { attachV6NativeClockPackets } from './v6_native_clock.mjs'
 import { attachPaperTickChannel } from './paper_tick_channel.mjs'
 import { evaluatePaperL0Shadow } from './paper_l0_shadow.mjs'
+import { PaperTickDeadlineGuard } from './paper_tick_deadline.mjs'
 import {
   admitProbeRequestId,
   makeEnvelope,
@@ -129,13 +130,19 @@ emit('adapter_started', {
 
 const bot = mineflayer.createBot(options)
 if (paperTickOptIn === '1') {
+  const deadline = new PaperTickDeadlineGuard()
   attachPaperTickChannel(
     bot,
     (sample) => {
-      // One bounded deterministic cache-only L0 shadow evaluation in the
-      // existing native receive turn. Never a physical Action writer.
+      // The first tick has no arrival-rate baseline. Subsequent local
+      // callbacks must finish within a fraction of observed interarrival.
+      // This does NOT certify freshness, server-tick completion or TPS.
+      const shadow = evaluatePaperL0Shadow(sample, bot)
+      deadline.observe(sample, { completedMonoNs: process.hrtime.bigint() })
+      // Emit only AFTER both checks passed. Any timing fault causes
+      // attachPaperTickChannel to poison this session and emit adapter_error.
       emit('paper_tick_sample', sample)
-      emit('paper_l0_shadow', evaluatePaperL0Shadow(sample, bot))
+      emit('paper_l0_shadow', shadow)
     },
     (error) => emitAdapterError(error)
   )
