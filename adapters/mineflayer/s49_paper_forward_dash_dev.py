@@ -13,8 +13,8 @@ import json
 import math
 import os
 import shutil
-from pathlib import Path
 from contextlib import nullcontext
+from pathlib import Path
 from unittest.mock import patch
 
 from adapters.mineflayer import normal_action as action_owner
