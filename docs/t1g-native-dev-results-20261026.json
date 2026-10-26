@@ -1,0 +1,1236 @@
+[
+  {
+    "run": "run-001",
+    "case": "t2_loop",
+    "verdict": "NORMAL_OR_REPLAY_DEV_ACCEPTED",
+    "subject": {
+      "head": "636fb2dbd7a5786a6083858db7293d9426136a7f",
+      "node": "v22.22.2",
+      "python": "Python 3.12.3",
+      "runner_sha256": "b6aa8910d59dfeff1dc9a8b94cdf963a4985cc31fb8cdb9008a3088a24387d33",
+      "worktree_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "world": "df2c6a9c-9e99-44dc-929e-b94028454367",
+    "session_id": "a99f984f-db23-442d-8546-a68d52e7a19d",
+    "status": "PASS",
+    "error": null,
+    "normal_actions": 32,
+    "movement_each": [
+      0.6269065734210613,
+      0.8322911817508141,
+      0.6269065734210617,
+      0.6269065734210608,
+      0.6269065734210608,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.832291181750815,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635
+    ],
+    "set_control": 33,
+    "clear_controls": 33,
+    "duplicates": {
+      "set_control": [],
+      "clear_controls": []
+    },
+    "ticks": 887,
+    "first_tick": 1034,
+    "last_tick": 1920,
+    "statuses_raw": {
+      "ADMITTED": 909
+    },
+    "t1f": {
+      "admitted": 907,
+      "cache_mismatch_frames": 17,
+      "frames": 907,
+      "max_causal_age_upper_ms": 102.107344,
+      "max_node_processing_ms": 0.943752,
+      "paper_to_node_exact_delay": "UNKNOWN",
+      "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "source": "PAPER_CALLBACK_BODY_NOT_CACHE",
+      "statuses": {
+        "ADMITTED": 907,
+        "LATE": 0,
+        "MISSING": 0,
+        "STALE": 0,
+        "UNDETERMINED": 0
+      },
+      "world": "df2c6a9c-9e99-44dc-929e-b94028454367"
+    },
+    "t2": {
+      "P1_qualified_WAIT": false,
+      "credit_count": 1,
+      "energy": {
+        "energy": 14.967718348461501,
+        "knockouts": 0,
+        "meals": 1,
+        "terminal": false,
+        "tick": 887
+      },
+      "fatigue": {
+        "fatigue": 0.0,
+        "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+        "session_id": "a99f984f-db23-442d-8546-a68d52e7a19d",
+        "world_tick": 1920
+      },
+      "first_tick": 1034,
+      "intake": 4.0,
+      "last_tick": 1920,
+      "latched": false,
+      "m0_basal": 0.887,
+      "m0_cognition": 0.0887,
+      "m0_move": 0.05658165153902893,
+      "p1_accumulated": 1.1316330307805786,
+      "p1_recovered": 1.1316330307805786,
+      "ticks": 887,
+      "wait_dev_ticks": 521,
+      "world_seconds": 44.35
+    },
+    "fault": null,
+    "source_loss": null,
+    "m0_basal": 0.887,
+    "m0_motion": 0.05658165153902893,
+    "m0_cognition": 0.0887,
+    "intake": 4.0,
+    "p1_accumulated": 1.1316330307805786,
+    "p1_recovered": 1.1316330307805786,
+    "wait_dev_ticks": 521,
+    "l0_completed_to_clear_ms": 0.767113,
+    "terminal_transport": {
+      "bridge_shutdown_ack_seen": true,
+      "bridge_transport_closed": true,
+      "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+      "connection_end_seen": true,
+      "high_level_stop_ack_attested": false,
+      "native_source_authenticated": false,
+      "paper_world_stopped_attested": false,
+      "session_id": "a99f984f-db23-442d-8546-a68d52e7a19d"
+    },
+    "process": {
+      "java_pid": 714642,
+      "java_starttime": null,
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "node_pid": 714762,
+      "node_starttime": null,
+      "node_exit": 0,
+      "node_pid_absent": true,
+      "node_cleanup_error": null,
+      "port_rebind": true,
+      "cleanup_complete": true
+    },
+    "source_hashes": {
+      "commands.jsonl": "982e67963a2c1337d7887e2b861bd701b58f4cab08412ad3bbde84b73bb9c977",
+      "native.jsonl": "874b702267f3b7c8e5bfd1d3ced607b5500cbb03c3d97e929d843d3eb85d71a6",
+      "node_timing.jsonl": "053ed2cd4a33d1d6a849aac8b5639766b79531f8d441fad85fcdcaeba116e61a",
+      "paper.log": "3021932fa7f2f90fea1574036b7ffa4102c85fbd07c31aad0dc6ef4df25c1c2b",
+      "python_timing.jsonl": "e3c1de3cec71e97c996bd5ac5d234c723a3e9265df063ad9c30a4ade730b30d1",
+      "report.json": "4ad2e650aa62ce00b349347ace6e4dfcc2937a99fa731107f5161a2384cb1bdb",
+      "t2_ticks.json": "ec68aac2d14e1ebf82b3096d8565c70adafc09d31cbcc453496610195b6ed7ff"
+    }
+  },
+  {
+    "run": "run-002",
+    "case": "t2_delayed_ack",
+    "verdict": "EXPECTED_ACK_FAULT_FAIL_CLOSED",
+    "subject": {
+      "head": "636fb2dbd7a5786a6083858db7293d9426136a7f",
+      "node": "v22.22.2",
+      "python": "Python 3.12.3",
+      "runner_sha256": "a0ba6e525cdae4097999ad71ba381d196c3ad1cdc98b94e0cc63ef4dc91507bf",
+      "worktree_diff_sha256": "876d5a2781714cc128df02b23dcaf5a60342ff0613289ad7330a061c6ba62b4f"
+    },
+    "world": "0cca771a-1067-4e90-8e13-4bcda59b1629",
+    "session_id": "699553f4-ab42-4815-a870-b00b5f3ff7d3",
+    "status": "FAIL",
+    "error": "RuntimeError: clear ACK absent; next epoch forbidden",
+    "normal_actions": 0,
+    "movement_each": [],
+    "set_control": 1,
+    "clear_controls": 1,
+    "duplicates": {
+      "set_control": [],
+      "clear_controls": []
+    },
+    "ticks": 4,
+    "first_tick": 1031,
+    "last_tick": 1034,
+    "statuses_raw": {
+      "ADMITTED": 35
+    },
+    "t1f": null,
+    "t2": {
+      "P1_qualified_WAIT": false,
+      "active_action": "t1f-epoch-0",
+      "credit_count": 0,
+      "energy": {
+        "energy": 11.994346186853157,
+        "knockouts": 0,
+        "meals": 0,
+        "terminal": false,
+        "tick": 4
+      },
+      "fatigue": {
+        "fatigue": 0.025076262936842453,
+        "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+        "session_id": "699553f4-ab42-4815-a870-b00b5f3ff7d3",
+        "world_tick": 1034
+      },
+      "latched": true,
+      "ticks": 4
+    },
+    "fault": null,
+    "source_loss": null,
+    "m0_basal": 0.004,
+    "m0_motion": 0.0012538131468421226,
+    "m0_cognition": 0.0004,
+    "intake": 0.0,
+    "p1_accumulated": 0.025076262936842453,
+    "p1_recovered": 0.0,
+    "wait_dev_ticks": 0,
+    "l0_completed_to_clear_ms": null,
+    "terminal_transport": {
+      "bridge_shutdown_ack_seen": true,
+      "bridge_transport_closed": true,
+      "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+      "connection_end_seen": true,
+      "high_level_stop_ack_attested": false,
+      "native_source_authenticated": false,
+      "paper_world_stopped_attested": false,
+      "session_id": "699553f4-ab42-4815-a870-b00b5f3ff7d3"
+    },
+    "process": {
+      "java_pid": 715736,
+      "java_starttime": null,
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "node_pid": 715846,
+      "node_starttime": null,
+      "node_exit": 0,
+      "node_pid_absent": true,
+      "node_cleanup_error": null,
+      "port_rebind": true,
+      "cleanup_complete": true
+    },
+    "source_hashes": {
+      "commands.jsonl": "a456e36888778a6890b758d0dfe63bcfd531edc23ee453cb292cd890c69cda04",
+      "native.jsonl": "7155eddca4dbac58069f27cb4e7e673ad445534b860a11b0caf4a2610a730175",
+      "node_timing.jsonl": "c482a524ea00c66dbb2718c51064cc954bfe16548b06cbb7fa84030311cbfb42",
+      "paper.log": "1cc444d155a111098eeb7a4cb1de7ebbb3d9678b9dcbb19bfeac3e98a1053443",
+      "python_timing.jsonl": "b1faefa5d3a57b938660c7a10b08c77120c5675f94ec663da461f95ca3cf3aec",
+      "report.json": "3bd2ac6f3505a60d3cfeb5e6c8d520bf50a96569569fed9c26e60878bb7c07b1",
+      "t2_ticks.json": "d88cbca9bd7efa491b8dbcdb92370190920fb15bb86ab235514c7a18162dee7f"
+    }
+  },
+  {
+    "run": "run-002",
+    "case": "t2_disconnect_boundary",
+    "verdict": "PRECONDITION_FAIL_NOT_INJECTED",
+    "subject": {
+      "head": "636fb2dbd7a5786a6083858db7293d9426136a7f",
+      "node": "v22.22.2",
+      "python": "Python 3.12.3",
+      "runner_sha256": "a0ba6e525cdae4097999ad71ba381d196c3ad1cdc98b94e0cc63ef4dc91507bf",
+      "worktree_diff_sha256": "876d5a2781714cc128df02b23dcaf5a60342ff0613289ad7330a061c6ba62b4f"
+    },
+    "world": null,
+    "session_id": "4fe73beb-ecef-4e1d-a12c-f5ad0c11a317",
+    "status": "FAIL",
+    "error": "ValueError: T1f refusal: UNDETERMINED / SESSION_LATCHED",
+    "normal_actions": 0,
+    "movement_each": [],
+    "set_control": 0,
+    "clear_controls": 0,
+    "duplicates": {
+      "set_control": [],
+      "clear_controls": []
+    },
+    "ticks": 0,
+    "first_tick": null,
+    "last_tick": null,
+    "statuses_raw": {
+      "STALE": 2,
+      "UNDETERMINED": 22
+    },
+    "t1f": null,
+    "t2": {
+      "P1_qualified_WAIT": false,
+      "active_action": null,
+      "credit_count": 0,
+      "energy": {
+        "energy": 12.0,
+        "knockouts": 0,
+        "meals": 0,
+        "terminal": false,
+        "tick": 0
+      },
+      "fatigue": null,
+      "latched": true,
+      "ticks": 0
+    },
+    "fault": null,
+    "source_loss": null,
+    "m0_basal": 0,
+    "m0_motion": 0,
+    "m0_cognition": 0,
+    "intake": 0,
+    "p1_accumulated": 0,
+    "p1_recovered": 0,
+    "wait_dev_ticks": 0,
+    "l0_completed_to_clear_ms": null,
+    "terminal_transport": {
+      "bridge_shutdown_ack_seen": true,
+      "bridge_transport_closed": true,
+      "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+      "connection_end_seen": true,
+      "high_level_stop_ack_attested": false,
+      "native_source_authenticated": false,
+      "paper_world_stopped_attested": false,
+      "session_id": "4fe73beb-ecef-4e1d-a12c-f5ad0c11a317"
+    },
+    "process": {
+      "java_pid": 715051,
+      "java_starttime": null,
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "node_pid": 715209,
+      "node_starttime": null,
+      "node_exit": 0,
+      "node_pid_absent": true,
+      "node_cleanup_error": null,
+      "port_rebind": true,
+      "cleanup_complete": true
+    },
+    "source_hashes": {
+      "commands.jsonl": "16d4f3da9b968414e7b5bbbf1a20483ddfc8cc1b5ffed092bd5d219c888e17d1",
+      "native.jsonl": "ebbe877868cb0112388c38ef7b242732660f88d4ac1160ef0c7acebd89927780",
+      "node_timing.jsonl": "0b28bc0a5e9f4d93857c4da8316859b3b2cdce587de0c4158023ad7213fc6eca",
+      "paper.log": "d6dc944f8c24e74cd2d0d14f82f35b6c2d3e682ca67e467449b247860dd3d0c4",
+      "python_timing.jsonl": "e0bdf9ab4797bcb69f3e7f493db548e2479f9140ed91bb663836b71320520fd4",
+      "report.json": "e4284db879ceb231d3f040e0e9b712e11cd91de77863b06b02184fd319b75b9d",
+      "t2_ticks.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    }
+  },
+  {
+    "run": "run-002",
+    "case": "t2_disconnect_move",
+    "verdict": "EXPECTED_DISCONNECT_FAIL_CLOSED",
+    "subject": {
+      "head": "636fb2dbd7a5786a6083858db7293d9426136a7f",
+      "node": "v22.22.2",
+      "python": "Python 3.12.3",
+      "runner_sha256": "a0ba6e525cdae4097999ad71ba381d196c3ad1cdc98b94e0cc63ef4dc91507bf",
+      "worktree_diff_sha256": "876d5a2781714cc128df02b23dcaf5a60342ff0613289ad7330a061c6ba62b4f"
+    },
+    "world": "6bbfddbb-8490-4252-aeba-90cf16e05579",
+    "session_id": "a2fd5177-6a2b-4c48-abd8-1c3796d6d743",
+    "status": "FAIL",
+    "error": "RuntimeError: clear ACK absent; next epoch forbidden",
+    "normal_actions": 0,
+    "movement_each": [],
+    "set_control": 1,
+    "clear_controls": 1,
+    "duplicates": {
+      "set_control": [],
+      "clear_controls": []
+    },
+    "ticks": 1,
+    "first_tick": 1031,
+    "last_tick": 1031,
+    "statuses_raw": {
+      "ADMITTED": 21
+    },
+    "t1f": null,
+    "t2": {
+      "P1_qualified_WAIT": false,
+      "active_action": "t1f-epoch-0",
+      "credit_count": 0,
+      "energy": {
+        "energy": 11.998703999922935,
+        "knockouts": 0,
+        "meals": 0,
+        "terminal": false,
+        "tick": 1
+      },
+      "fatigue": {
+        "fatigue": 0.003920001541303315,
+        "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+        "session_id": "a2fd5177-6a2b-4c48-abd8-1c3796d6d743",
+        "world_tick": 1031
+      },
+      "latched": true,
+      "ticks": 1
+    },
+    "fault": {
+      "accounted_ticks": 0,
+      "action": "t1f-epoch-0",
+      "kind": "AFTER_SET_CONTROL_APPLIED",
+      "python_ns": 1039748242431345
+    },
+    "source_loss": {
+      "accounted_ticks": 1,
+      "python_ns": 1039748303498340,
+      "seq": 32,
+      "type": "MineflayerConnectionEnd"
+    },
+    "m0_basal": 0.001,
+    "m0_motion": 0.00019600007706516577,
+    "m0_cognition": 0.0001,
+    "intake": 0.0,
+    "p1_accumulated": 0.003920001541303315,
+    "p1_recovered": 0.0,
+    "wait_dev_ticks": 0,
+    "l0_completed_to_clear_ms": null,
+    "terminal_transport": {
+      "bridge_shutdown_ack_seen": false,
+      "bridge_transport_closed": false,
+      "classification": "UNEXPECTED_DISCONNECT_NO_SHUTDOWN_ACK",
+      "connection_end_seen": true,
+      "high_level_stop_ack_attested": false,
+      "native_source_authenticated": false,
+      "paper_world_stopped_attested": false,
+      "session_id": "a2fd5177-6a2b-4c48-abd8-1c3796d6d743"
+    },
+    "process": {
+      "java_pid": 714857,
+      "java_starttime": null,
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "node_pid": 715027,
+      "node_starttime": null,
+      "node_exit": 3,
+      "node_pid_absent": true,
+      "node_cleanup_error": null,
+      "port_rebind": true,
+      "cleanup_complete": false
+    },
+    "source_hashes": {
+      "commands.jsonl": "a6df524bdf7a14de2e65679fbd40acb7555f2105e6d4ac2b46979b21d29167cf",
+      "native.jsonl": "3827f77b0b1e2d4e80a92ea5bdace6738d7fa1f4d2d2f52cb077fd33bda17e13",
+      "node_timing.jsonl": "e846be7ca53f3e354eaffcb7118a1908848d920098ba91c4068e4b54d682ad8b",
+      "paper.log": "602ec74858c293d97b0e49a4b3b798fab86c4264513b990565266cc6cdf0ca8e",
+      "python_timing.jsonl": "52d5c364fc42bbbb36edcf91aa548b3651e1f528dde067fe60cd09711fd1c3c3",
+      "report.json": "f40e6da1d528f634095859e0ed1fca9bc7fe3f6777f1832003e0f5c78dbeac05",
+      "t2_ticks.json": "c979d02855a3d59e10700305a8184ac9e70a7b0727d3cfe272a89f7b0fa14a11"
+    }
+  },
+  {
+    "run": "run-002",
+    "case": "t2_disconnect_wait",
+    "verdict": "EXPECTED_DISCONNECT_FAIL_CLOSED",
+    "subject": {
+      "head": "636fb2dbd7a5786a6083858db7293d9426136a7f",
+      "node": "v22.22.2",
+      "python": "Python 3.12.3",
+      "runner_sha256": "a0ba6e525cdae4097999ad71ba381d196c3ad1cdc98b94e0cc63ef4dc91507bf",
+      "worktree_diff_sha256": "876d5a2781714cc128df02b23dcaf5a60342ff0613289ad7330a061c6ba62b4f"
+    },
+    "world": "d2c38279-905c-4991-88f0-c02902d212f9",
+    "session_id": "2179f0c7-2a0c-476f-a168-a7771423535d",
+    "status": "FAIL",
+    "error": "RuntimeError: T1g terminal native frame before next Action: MineflayerConnectionEnd",
+    "normal_actions": 1,
+    "movement_each": [
+      0.6269065734210613
+    ],
+    "set_control": 1,
+    "clear_controls": 1,
+    "duplicates": {
+      "set_control": [],
+      "clear_controls": []
+    },
+    "ticks": 13,
+    "first_tick": 1031,
+    "last_tick": 1043,
+    "statuses_raw": {
+      "ADMITTED": 33
+    },
+    "t1f": null,
+    "t2": {
+      "P1_qualified_WAIT": false,
+      "active_action": null,
+      "credit_count": 0,
+      "energy": {
+        "energy": 11.984050127646531,
+        "knockouts": 0,
+        "meals": 0,
+        "terminal": false,
+        "tick": 13
+      },
+      "fatigue": {
+        "fatigue": 0.0,
+        "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+        "session_id": "2179f0c7-2a0c-476f-a168-a7771423535d",
+        "world_tick": 1043
+      },
+      "latched": true,
+      "ticks": 13
+    },
+    "fault": {
+      "accounted_ticks": 12,
+      "action": null,
+      "kind": "DURING_OBSERVED_WAIT_DEV",
+      "python_ns": 1039786264122727
+    },
+    "source_loss": {
+      "accounted_ticks": 13,
+      "python_ns": 1039786318886997,
+      "seq": 56,
+      "type": "MineflayerConnectionEnd"
+    },
+    "m0_basal": 0.013000000000000001,
+    "m0_motion": 0.0016498723534742778,
+    "m0_cognition": 0.0013000000000000002,
+    "intake": 0.0,
+    "p1_accumulated": 0.032997447069485555,
+    "p1_recovered": 0.032997447069485555,
+    "wait_dev_ticks": 2,
+    "l0_completed_to_clear_ms": null,
+    "terminal_transport": {
+      "bridge_shutdown_ack_seen": false,
+      "bridge_transport_closed": false,
+      "classification": "UNEXPECTED_DISCONNECT_NO_SHUTDOWN_ACK",
+      "connection_end_seen": true,
+      "high_level_stop_ack_attested": false,
+      "native_source_authenticated": false,
+      "paper_world_stopped_attested": false,
+      "session_id": "2179f0c7-2a0c-476f-a168-a7771423535d"
+    },
+    "process": {
+      "java_pid": 715256,
+      "java_starttime": null,
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "node_pid": 715474,
+      "node_starttime": null,
+      "node_exit": 3,
+      "node_pid_absent": true,
+      "node_cleanup_error": null,
+      "port_rebind": true,
+      "cleanup_complete": false
+    },
+    "source_hashes": {
+      "commands.jsonl": "0656b2c5b598dade1cfebdd0feb738d3a2497dec2034d5998960421cf9b77e78",
+      "native.jsonl": "945d90375f2b5bc26c1db6efe856faadbf3f7ff1d1fe33785030ff4e18070317",
+      "node_timing.jsonl": "76ff8f2008d8d06ac478dd94b26ad4707e1ec9cbebf889c45be371bd21d393d8",
+      "paper.log": "dca7a1802c69267423f36851bf04835580fcf956942b0a6126437db842a5bcb6",
+      "python_timing.jsonl": "c6ccc1f8f6569955acf7ad27889afeb6a4b6eada3f57d18e544e3d9e21a24fcd",
+      "report.json": "316697556379f8186b272da5e1a56963a82def040bcc1f01cf0594e068cb9cca",
+      "t2_ticks.json": "70f937523f0a1a8acb930ed2e2afcca654934ef6d44c219123776048cd43bb6d"
+    }
+  },
+  {
+    "run": "run-002",
+    "case": "t2_lost_ack",
+    "verdict": "EXPECTED_ACK_FAULT_FAIL_CLOSED",
+    "subject": {
+      "head": "636fb2dbd7a5786a6083858db7293d9426136a7f",
+      "node": "v22.22.2",
+      "python": "Python 3.12.3",
+      "runner_sha256": "a0ba6e525cdae4097999ad71ba381d196c3ad1cdc98b94e0cc63ef4dc91507bf",
+      "worktree_diff_sha256": "876d5a2781714cc128df02b23dcaf5a60342ff0613289ad7330a061c6ba62b4f"
+    },
+    "world": "5a59dd70-3225-4ab0-ac9c-cb0b13427f1c",
+    "session_id": "a68230d2-0a2d-4d15-a909-6fd0d210d390",
+    "status": "FAIL",
+    "error": "RuntimeError: clear ACK absent; next epoch forbidden",
+    "normal_actions": 0,
+    "movement_each": [],
+    "set_control": 1,
+    "clear_controls": 1,
+    "duplicates": {
+      "set_control": [],
+      "clear_controls": []
+    },
+    "ticks": 14,
+    "first_tick": 1030,
+    "last_tick": 1043,
+    "statuses_raw": {
+      "ADMITTED": 33
+    },
+    "t1f": null,
+    "t2": {
+      "P1_qualified_WAIT": false,
+      "active_action": "t1f-epoch-0",
+      "credit_count": 0,
+      "energy": {
+        "energy": 11.982950127646532,
+        "knockouts": 0,
+        "meals": 0,
+        "terminal": false,
+        "tick": 14
+      },
+      "fatigue": {
+        "fatigue": 0.032997447069485555,
+        "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+        "session_id": "a68230d2-0a2d-4d15-a909-6fd0d210d390",
+        "world_tick": 1043
+      },
+      "latched": true,
+      "ticks": 14
+    },
+    "fault": null,
+    "source_loss": null,
+    "m0_basal": 0.014,
+    "m0_motion": 0.0016498723534742778,
+    "m0_cognition": 0.0014,
+    "intake": 0.0,
+    "p1_accumulated": 0.032997447069485555,
+    "p1_recovered": 0.0,
+    "wait_dev_ticks": 0,
+    "l0_completed_to_clear_ms": null,
+    "terminal_transport": {
+      "bridge_shutdown_ack_seen": true,
+      "bridge_transport_closed": true,
+      "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+      "connection_end_seen": true,
+      "high_level_stop_ack_attested": false,
+      "native_source_authenticated": false,
+      "paper_world_stopped_attested": false,
+      "session_id": "a68230d2-0a2d-4d15-a909-6fd0d210d390"
+    },
+    "process": {
+      "java_pid": 715499,
+      "java_starttime": null,
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "node_pid": 715710,
+      "node_starttime": null,
+      "node_exit": 0,
+      "node_pid_absent": true,
+      "node_cleanup_error": null,
+      "port_rebind": true,
+      "cleanup_complete": true
+    },
+    "source_hashes": {
+      "commands.jsonl": "a456e36888778a6890b758d0dfe63bcfd531edc23ee453cb292cd890c69cda04",
+      "native.jsonl": "b9d27d3b772d30721fb310b4d5ef047535640f79d9c30b827fbe42f06eea940c",
+      "node_timing.jsonl": "7292377cef7efde9ddb4b2352f318559786a7a4551ab0e606b85b8b0675b8dd5",
+      "paper.log": "011501c9405915e2c9cffe963a85867e5bf69ec743487fa61059d75b456481ab",
+      "python_timing.jsonl": "f6a661318e4a228838aa6acc7d464e84e357781e6a576a1d9c7d3473802a669f",
+      "report.json": "98297df97e328d1c4ec0a91c18239384d3a00b33bcb3390e60d9bf381d5dcd62",
+      "t2_ticks.json": "b8d74d55d21a55dafc2636c4392ba388e59fbd2533f950e38b13d5a10511fd70"
+    }
+  },
+  {
+    "run": "run-003",
+    "case": "t2_disconnect_boundary",
+    "verdict": "EXPECTED_DISCONNECT_FAIL_CLOSED",
+    "subject": {
+      "head": "636fb2dbd7a5786a6083858db7293d9426136a7f",
+      "node": "v22.22.2",
+      "python": "Python 3.12.3",
+      "runner_sha256": "1cf3aa5def49ef5ef6f62267e5e016de754fac4399987bff2c155bb14d0253f2",
+      "worktree_diff_sha256": "c5c9749eee48ae58de143b28c42e248c20901708cf5a5fdbbab1c6e8501fef89"
+    },
+    "world": "def3d36e-b32b-42bd-a7fc-dcc79a463754",
+    "session_id": "b9c3709c-bd11-41bb-b041-a6c30247620d",
+    "status": "FAIL",
+    "error": "RuntimeError: T1g terminal native frame before next Action: MineflayerConnectionEnd",
+    "normal_actions": 1,
+    "movement_each": [
+      0.6269065734210613
+    ],
+    "set_control": 1,
+    "clear_controls": 1,
+    "duplicates": {
+      "set_control": [],
+      "clear_controls": []
+    },
+    "ticks": 5,
+    "first_tick": 1031,
+    "last_tick": 1035,
+    "statuses_raw": {
+      "ADMITTED": 24
+    },
+    "t1f": null,
+    "t2": {
+      "P1_qualified_WAIT": false,
+      "active_action": null,
+      "credit_count": 0,
+      "energy": {
+        "energy": 11.993031417713564,
+        "knockouts": 0,
+        "meals": 0,
+        "terminal": false,
+        "tick": 5
+      },
+      "fatigue": {
+        "fatigue": 0.029371645728729245,
+        "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+        "session_id": "b9c3709c-bd11-41bb-b041-a6c30247620d",
+        "world_tick": 1035
+      },
+      "latched": true,
+      "ticks": 5
+    },
+    "fault": {
+      "accounted_ticks": 4,
+      "action": null,
+      "kind": "AFTER_TERMINAL_CLEAR_BEFORE_NEXT_ACTION",
+      "python_ns": 1039865422872768
+    },
+    "source_loss": {
+      "accounted_ticks": 5,
+      "python_ns": 1039865466679166,
+      "seq": 41,
+      "type": "MineflayerConnectionEnd"
+    },
+    "m0_basal": 0.005,
+    "m0_motion": 0.0014685822864364622,
+    "m0_cognition": 0.0005,
+    "intake": 0.0,
+    "p1_accumulated": 0.029371645728729245,
+    "p1_recovered": 0.0,
+    "wait_dev_ticks": 0,
+    "l0_completed_to_clear_ms": null,
+    "terminal_transport": {
+      "bridge_shutdown_ack_seen": false,
+      "bridge_transport_closed": false,
+      "classification": "UNEXPECTED_DISCONNECT_NO_SHUTDOWN_ACK",
+      "connection_end_seen": true,
+      "high_level_stop_ack_attested": false,
+      "native_source_authenticated": false,
+      "paper_world_stopped_attested": false,
+      "session_id": "b9c3709c-bd11-41bb-b041-a6c30247620d"
+    },
+    "process": {
+      "java_pid": 715999,
+      "java_starttime": "103984813",
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "node_pid": 716106,
+      "node_starttime": "103986366",
+      "node_exit": 3,
+      "node_pid_absent": true,
+      "node_cleanup_error": null,
+      "port_rebind": true,
+      "cleanup_complete": false
+    },
+    "source_hashes": {
+      "commands.jsonl": "7dba3ec3b9a2cd9a591322c5c07fb5e96b2f95f26d066a108ffc2e2d1755626b",
+      "native.jsonl": "15c7a30ef98d2620e92ff5befb4d3d36021079dd7f809e9ff0122ba73d04cdf5",
+      "node_timing.jsonl": "aa9b5bf14341650a4be62d12a7c87d8f0d22bcbc241e571ce31cbfc27206ed00",
+      "paper.log": "ca5ad79e85780503e60c30f87fe1a16b624137476091c491dd249a3361bf3244",
+      "python_timing.jsonl": "89fa6511a68f792b57fd459be638312c8f0745e23a73486679dc038ad74c8532",
+      "report.json": "553b04ef714e5f5dff4b43d9cd9287a2e019ada85c54b57b16a9f263eb0565fe",
+      "t2_ticks.json": "146bce01c579b089c4b5b1018d60b8bbea0e8c7c5682f83c46f9077cf325acfd"
+    }
+  },
+  {
+    "run": "run-003",
+    "case": "t2_disconnect_move",
+    "verdict": "EXPECTED_DISCONNECT_FAIL_CLOSED",
+    "subject": {
+      "head": "636fb2dbd7a5786a6083858db7293d9426136a7f",
+      "node": "v22.22.2",
+      "python": "Python 3.12.3",
+      "runner_sha256": "1cf3aa5def49ef5ef6f62267e5e016de754fac4399987bff2c155bb14d0253f2",
+      "worktree_diff_sha256": "c5c9749eee48ae58de143b28c42e248c20901708cf5a5fdbbab1c6e8501fef89"
+    },
+    "world": "98ba456b-cfbd-4a63-91fb-bc864d2bd05a",
+    "session_id": "fc385a64-dbf1-4e46-91d2-348c4b46a517",
+    "status": "FAIL",
+    "error": "RuntimeError: clear ACK absent; next epoch forbidden",
+    "normal_actions": 0,
+    "movement_each": [],
+    "set_control": 1,
+    "clear_controls": 1,
+    "duplicates": {
+      "set_control": [],
+      "clear_controls": []
+    },
+    "ticks": 1,
+    "first_tick": 1031,
+    "last_tick": 1031,
+    "statuses_raw": {
+      "ADMITTED": 21
+    },
+    "t1f": null,
+    "t2": {
+      "P1_qualified_WAIT": false,
+      "active_action": "t1f-epoch-0",
+      "credit_count": 0,
+      "energy": {
+        "energy": 11.998703999922935,
+        "knockouts": 0,
+        "meals": 0,
+        "terminal": false,
+        "tick": 1
+      },
+      "fatigue": {
+        "fatigue": 0.003920001541303315,
+        "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+        "session_id": "fc385a64-dbf1-4e46-91d2-348c4b46a517",
+        "world_tick": 1031
+      },
+      "latched": true,
+      "ticks": 1
+    },
+    "fault": {
+      "accounted_ticks": 0,
+      "action": "t1f-epoch-0",
+      "kind": "AFTER_SET_CONTROL_APPLIED",
+      "python_ns": 1039883810663301
+    },
+    "source_loss": {
+      "accounted_ticks": 1,
+      "python_ns": 1039883860712190,
+      "seq": 32,
+      "type": "MineflayerAdapterErrorMessage"
+    },
+    "m0_basal": 0.001,
+    "m0_motion": 0.00019600007706516577,
+    "m0_cognition": 0.0001,
+    "intake": 0.0,
+    "p1_accumulated": 0.003920001541303315,
+    "p1_recovered": 0.0,
+    "wait_dev_ticks": 0,
+    "l0_completed_to_clear_ms": null,
+    "terminal_transport": {
+      "bridge_shutdown_ack_seen": false,
+      "bridge_transport_closed": false,
+      "classification": "UNEXPECTED_DISCONNECT_NO_SHUTDOWN_ACK",
+      "connection_end_seen": true,
+      "high_level_stop_ack_attested": false,
+      "native_source_authenticated": false,
+      "paper_world_stopped_attested": false,
+      "session_id": "fc385a64-dbf1-4e46-91d2-348c4b46a517"
+    },
+    "process": {
+      "java_pid": 716130,
+      "java_starttime": "103986684",
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "node_pid": 716277,
+      "node_starttime": "103988225",
+      "node_exit": 3,
+      "node_pid_absent": true,
+      "node_cleanup_error": null,
+      "port_rebind": true,
+      "cleanup_complete": false
+    },
+    "source_hashes": {
+      "commands.jsonl": "a6df524bdf7a14de2e65679fbd40acb7555f2105e6d4ac2b46979b21d29167cf",
+      "native.jsonl": "51fe319d813b38719c97b8c4456d86d76f0e10c86d3ab0eeefd5b4410b782d1e",
+      "node_timing.jsonl": "5414196c18ff8d475c90d0ad9e57923e46e08681a6ad6ad12507d3169451589a",
+      "paper.log": "d7061fad65c47239e52d8f11aa1582cb8172bd47b10a8875bab876ae08b88522",
+      "python_timing.jsonl": "f03a92b1bda1c125bf6c15a0fadbb29be1d88487f0814794dfb23cba554b1692",
+      "report.json": "8dafa65d168f29da556115c609b0dd2053608818a33d20fe3f8fbeca173d10f0",
+      "t2_ticks.json": "1bcedfc2b9da08428b8f3ff5a572acf1daf42110af929e5603b7a978073b5cc1"
+    }
+  },
+  {
+    "run": "run-003",
+    "case": "t2_disconnect_wait",
+    "verdict": "EXPECTED_DISCONNECT_FAIL_CLOSED",
+    "subject": {
+      "head": "636fb2dbd7a5786a6083858db7293d9426136a7f",
+      "node": "v22.22.2",
+      "python": "Python 3.12.3",
+      "runner_sha256": "1cf3aa5def49ef5ef6f62267e5e016de754fac4399987bff2c155bb14d0253f2",
+      "worktree_diff_sha256": "c5c9749eee48ae58de143b28c42e248c20901708cf5a5fdbbab1c6e8501fef89"
+    },
+    "world": "ac67e2e0-ff21-48b3-8fb7-68227a08affa",
+    "session_id": "9abcba16-bb61-4a9c-b363-d66e57fab858",
+    "status": "FAIL",
+    "error": "RuntimeError: T1g terminal native frame before next Action: MineflayerConnectionEnd",
+    "normal_actions": 1,
+    "movement_each": [
+      0.6269065734210613
+    ],
+    "set_control": 1,
+    "clear_controls": 1,
+    "duplicates": {
+      "set_control": [],
+      "clear_controls": []
+    },
+    "ticks": 12,
+    "first_tick": 1031,
+    "last_tick": 1042,
+    "statuses_raw": {
+      "ADMITTED": 32
+    },
+    "t1f": null,
+    "t2": {
+      "P1_qualified_WAIT": false,
+      "active_action": null,
+      "credit_count": 0,
+      "energy": {
+        "energy": 11.98515012764653,
+        "knockouts": 0,
+        "meals": 0,
+        "terminal": false,
+        "tick": 12
+      },
+      "fatigue": {
+        "fatigue": 0.0,
+        "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+        "session_id": "9abcba16-bb61-4a9c-b363-d66e57fab858",
+        "world_tick": 1042
+      },
+      "latched": true,
+      "ticks": 12
+    },
+    "fault": {
+      "accounted_ticks": 11,
+      "action": null,
+      "kind": "DURING_OBSERVED_WAIT_DEV",
+      "python_ns": 1039903590197294
+    },
+    "source_loss": {
+      "accounted_ticks": 12,
+      "python_ns": 1039903645970390,
+      "seq": 55,
+      "type": "MineflayerConnectionEnd"
+    },
+    "m0_basal": 0.012,
+    "m0_motion": 0.0016498723534742778,
+    "m0_cognition": 0.0012000000000000001,
+    "intake": 0.0,
+    "p1_accumulated": 0.032997447069485555,
+    "p1_recovered": 0.032997447069485555,
+    "wait_dev_ticks": 2,
+    "l0_completed_to_clear_ms": null,
+    "terminal_transport": {
+      "bridge_shutdown_ack_seen": false,
+      "bridge_transport_closed": false,
+      "classification": "UNEXPECTED_DISCONNECT_NO_SHUTDOWN_ACK",
+      "connection_end_seen": true,
+      "high_level_stop_ack_attested": false,
+      "native_source_authenticated": false,
+      "paper_world_stopped_attested": false,
+      "session_id": "9abcba16-bb61-4a9c-b363-d66e57fab858"
+    },
+    "process": {
+      "java_pid": 716301,
+      "java_starttime": "103988524",
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "node_pid": 716412,
+      "node_starttime": "103990149",
+      "node_exit": 3,
+      "node_pid_absent": true,
+      "node_cleanup_error": null,
+      "port_rebind": true,
+      "cleanup_complete": false
+    },
+    "source_hashes": {
+      "commands.jsonl": "0656b2c5b598dade1cfebdd0feb738d3a2497dec2034d5998960421cf9b77e78",
+      "native.jsonl": "2cb300fd6d1a80d74f9c44cb60c9d16affdfb80feadb4c4af19b9a3250e721b2",
+      "node_timing.jsonl": "61278dd4fdac1ef3151bd87359873ae7d88a0e72355bb9befc8dd5365a61925e",
+      "paper.log": "3a6f1272f714159997eaf70e6aad01f9e8a489e93e2e3658d516eeafff4fea72",
+      "python_timing.jsonl": "ec84e86168e6a5569d19b1dabd5f5ab48f961d14659cda751d81de8298a0fb08",
+      "report.json": "83f75eb9634bd65d7241182374e6ec1102b6011fcb7bc66ebd1aa82602b03bae",
+      "t2_ticks.json": "288d8b10c4336e66cfbf4e9659c0437d6b0233ea9c8b484a0db89093bdd3e8ac"
+    }
+  },
+  {
+    "run": "run-004",
+    "case": "t2_loop",
+    "verdict": "NORMAL_OR_REPLAY_DEV_ACCEPTED",
+    "subject": {
+      "head": "eb15d33a492afbd0cf4f944d735a7067558ef34b",
+      "node": "v22.22.2",
+      "python": "Python 3.12.3",
+      "runner_sha256": "e85255518763410b6421bc1be0b8a2e7b0a28390bc325b24e1980d8ca793c88f",
+      "worktree_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "world": "8481a74a-93e5-41ac-95cd-4cc9bb020aa0",
+    "session_id": "61292add-37cf-4cc5-b75c-2bb9bb0e5b70",
+    "status": "PASS",
+    "error": null,
+    "normal_actions": 32,
+    "movement_each": [
+      0.6269065734210613,
+      0.6269065734210615,
+      0.6269065734210613,
+      0.6269065734210608,
+      0.6269065734210608,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210626,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.832291181750815,
+      0.8322911817508132,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.832291181750815,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635
+    ],
+    "set_control": 33,
+    "clear_controls": 33,
+    "duplicates": {
+      "set_control": [],
+      "clear_controls": []
+    },
+    "ticks": 887,
+    "first_tick": 1032,
+    "last_tick": 1918,
+    "statuses_raw": {
+      "ADMITTED": 909
+    },
+    "t1f": {
+      "admitted": 907,
+      "cache_mismatch_frames": 11,
+      "frames": 907,
+      "max_causal_age_upper_ms": 85.255626,
+      "max_node_processing_ms": 0.712491,
+      "paper_to_node_exact_delay": "UNKNOWN",
+      "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "source": "PAPER_CALLBACK_BODY_NOT_CACHE",
+      "statuses": {
+        "ADMITTED": 907,
+        "LATE": 0,
+        "MISSING": 0,
+        "STALE": 0,
+        "UNDETERMINED": 0
+      },
+      "world": "8481a74a-93e5-41ac-95cd-4cc9bb020aa0"
+    },
+    "t2": {
+      "P1_qualified_WAIT": false,
+      "active_action": null,
+      "credit_count": 1,
+      "energy": {
+        "energy": 14.967287185263915,
+        "knockouts": 0,
+        "meals": 1,
+        "terminal": false,
+        "tick": 887
+      },
+      "fatigue": {
+        "fatigue": 0.0,
+        "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+        "session_id": "61292add-37cf-4cc5-b75c-2bb9bb0e5b70",
+        "world_tick": 1918
+      },
+      "latched": false,
+      "ticks": 887
+    },
+    "fault": null,
+    "source_loss": null,
+    "m0_basal": 0.887,
+    "m0_motion": 0.05701281473661447,
+    "m0_cognition": 0.0887,
+    "intake": 4.0,
+    "p1_accumulated": 1.1402562947322894,
+    "p1_recovered": 1.1402562947322896,
+    "wait_dev_ticks": 521,
+    "l0_completed_to_clear_ms": 0.857629,
+    "terminal_transport": {
+      "bridge_shutdown_ack_seen": true,
+      "bridge_transport_closed": true,
+      "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+      "connection_end_seen": true,
+      "high_level_stop_ack_attested": false,
+      "native_source_authenticated": false,
+      "paper_world_stopped_attested": false,
+      "session_id": "61292add-37cf-4cc5-b75c-2bb9bb0e5b70"
+    },
+    "process": {
+      "java_pid": 716469,
+      "java_starttime": "103991861",
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "node_pid": 716627,
+      "node_starttime": "103993415",
+      "node_exit": 0,
+      "node_pid_absent": true,
+      "node_cleanup_error": null,
+      "port_rebind": true,
+      "cleanup_complete": true
+    },
+    "source_hashes": {
+      "commands.jsonl": "382509dd0a4782c67bf95523205d09c2794ae13993e0a45f779444163f664c44",
+      "native.jsonl": "67e8f17e791a31e49f882d5feecd8bb9b873e12fc4fb3edf133847d75a121ad4",
+      "node_timing.jsonl": "31bd04e8ee998bc54c0b417a16821bf0fae438a532b5354afda8c7fc7c59b61d",
+      "paper.log": "f0da320fd3995c89bb0bfbd64e1c0637022f25ee5346a9aeade4f53a028d6228",
+      "python_timing.jsonl": "2373980becd1e5c262b56bea095f91ef640449d7dd157a06f247f40e63217c39",
+      "report.json": "87560e17959cd645f6a75fda85c7109d756cdfc4ea8f5ddfb49453a3e25395a2",
+      "t2_ticks.json": "dcbf88b7c8299f9b8a79686d91ed64dd69a995492f3965e0eab586e2eb3bff39"
+    }
+  },
+  {
+    "run": "run-004",
+    "case": "t2_old_effect",
+    "verdict": "NORMAL_OR_REPLAY_DEV_ACCEPTED",
+    "subject": {
+      "head": "eb15d33a492afbd0cf4f944d735a7067558ef34b",
+      "node": "v22.22.2",
+      "python": "Python 3.12.3",
+      "runner_sha256": "e85255518763410b6421bc1be0b8a2e7b0a28390bc325b24e1980d8ca793c88f",
+      "worktree_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "world": "0174c8da-e708-456e-8969-f7efd37c5c21",
+    "session_id": "7a13f6b1-d989-49b2-96e8-c6a32137aef6",
+    "status": "PASS",
+    "error": null,
+    "normal_actions": 32,
+    "movement_each": [
+      0.6269065734210613,
+      0.6269065734210615,
+      0.6269065734210613,
+      0.6269065734210608,
+      0.7342911432182304,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210626,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210617,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.43023153716250917,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635,
+      0.6269065734210635
+    ],
+    "set_control": 33,
+    "clear_controls": 33,
+    "duplicates": {
+      "set_control": [],
+      "clear_controls": []
+    },
+    "ticks": 887,
+    "first_tick": 1032,
+    "last_tick": 1918,
+    "statuses_raw": {
+      "ADMITTED": 908
+    },
+    "t1f": {
+      "admitted": 907,
+      "cache_mismatch_frames": 16,
+      "frames": 907,
+      "max_causal_age_upper_ms": 92.693565,
+      "max_node_processing_ms": 0.695295,
+      "paper_to_node_exact_delay": "UNKNOWN",
+      "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "source": "PAPER_CALLBACK_BODY_NOT_CACHE",
+      "statuses": {
+        "ADMITTED": 907,
+        "LATE": 0,
+        "MISSING": 0,
+        "STALE": 0,
+        "UNDETERMINED": 0
+      },
+      "world": "0174c8da-e708-456e-8969-f7efd37c5c21"
+    },
+    "t2": {
+      "P1_qualified_WAIT": false,
+      "active_action": null,
+      "credit_count": 1,
+      "energy": {
+        "energy": 14.969011376542614,
+        "knockouts": 0,
+        "meals": 1,
+        "terminal": false,
+        "tick": 887
+      },
+      "fatigue": {
+        "fatigue": 0.0,
+        "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+        "session_id": "7a13f6b1-d989-49b2-96e8-c6a32137aef6",
+        "world_tick": 1918
+      },
+      "latched": false,
+      "ticks": 887
+    },
+    "fault": null,
+    "source_loss": null,
+    "m0_basal": 0.887,
+    "m0_motion": 0.0552886234579229,
+    "m0_cognition": 0.0887,
+    "intake": 4.0,
+    "p1_accumulated": 1.105772469158458,
+    "p1_recovered": 1.105772469158458,
+    "wait_dev_ticks": 523,
+    "l0_completed_to_clear_ms": 0.967111,
+    "terminal_transport": {
+      "bridge_shutdown_ack_seen": true,
+      "bridge_transport_closed": true,
+      "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+      "connection_end_seen": true,
+      "high_level_stop_ack_attested": false,
+      "native_source_authenticated": false,
+      "paper_world_stopped_attested": false,
+      "session_id": "7a13f6b1-d989-49b2-96e8-c6a32137aef6"
+    },
+    "process": {
+      "java_pid": 716727,
+      "java_starttime": "103998166",
+      "java_exit": 0,
+      "java_pid_absent": true,
+      "node_pid": 716827,
+      "node_starttime": "103999664",
+      "node_exit": 0,
+      "node_pid_absent": true,
+      "node_cleanup_error": null,
+      "port_rebind": true,
+      "cleanup_complete": true
+    },
+    "source_hashes": {
+      "commands.jsonl": "90900326fef212a825485c142875fc6829a8af6e00066aa9d05ed6f746685a37",
+      "native.jsonl": "2289128d2fb5063283fc8da14853440d4074ac382d7ad36b8e3997ad9f2ef68b",
+      "node_timing.jsonl": "196ee97582dd07d3a130a653cb0e9a8c7d4b62240d8fa363538b03d1216cff2c",
+      "paper.log": "f4f82a4b3535f2494b97136e3607de6530bb03d30d6c6ac44eeab95714143dda",
+      "python_timing.jsonl": "8c9f99b57e72b0c7f761f42f6be7ca0276c825a927880f04c9e366f0dc0c2979",
+      "report.json": "1b25d4ff135e7ab909a8568eab81e34a56d7e9afa6222d3e0242e9e9f449da15",
+      "t2_ticks.json": "15c9e0454fab244f79f489c67ee45ba758e92466cc1d201051d573e678fbcbcb"
+    }
+  }
+]

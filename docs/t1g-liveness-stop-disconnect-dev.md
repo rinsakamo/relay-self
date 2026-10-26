@@ -1,5 +1,9 @@
 # T1g — S49/T1f long-run and terminal-custody DEV preparation
 
+This file retains the preparation-stage record below. Subsequent Python 3.12,
+32-MOVE native regression and disconnect/ACK fault results are recorded in
+[the 2026-10-26 native DEV report](t1g-native-dev-results-20261026.md).
+
 Refs: #150, #627, #537, #616, #626. Starting DEV_WORLD_OBSERVED source:
 `self/dev-t1f-s49-t2-20261026` at `488fcd3576bb4f4f147dc37434bf71b51f0b02e4`.
 
