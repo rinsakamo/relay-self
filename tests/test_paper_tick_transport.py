@@ -198,6 +198,7 @@ def test_unknown_cached_body_is_not_counted_as_fresh_world_l0():
     {"tps_admission_granted": True},
     {"paper_sample_index": True},
     {"assessment": "SAFETY_GRANTED"},
+    {"assessment": ["UNKNOWN"]},
     {"evaluation_duration_ns": "-5"},
     {"observation_precision": "FRESH_WORLD"},
     {"cached_body_observed": False},
