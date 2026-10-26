@@ -19,7 +19,7 @@ from adapters.mineflayer.t1h_stop_owner_dev import S49DevStopOwner, StopDevRejec
 from relay_self.action_supervision import ActionSupervisor
 
 
-async def run_stop_move_dev(session, server, report) -> None:
+async def run_stop_move_dev(session, server, report, root) -> None:
     """Only owner-local DEV fixture; no new S49 Action authority or reader."""
     supervisor = ActionSupervisor()
     probe = await _correlated_observe(session, "t1h-start-source")
@@ -86,4 +86,13 @@ async def run_stop_move_dev(session, server, report) -> None:
         paper_ack_pending=True,
     )
     await asyncio.sleep(0.85)
-    report["status"] = "T1H_PENDING_POST_SHUTDOWN_PAPER_AUDIT"
+    # The independent Paper stdout collector flushes each line. Audit native
+    # Paper evidence before process shutdown while the S49 owner is still
+    # in charge; absence or inconsistency leaves this STOP unacknowledged.
+    ack = owner.finalize(
+        (root / "paper.log").read_text(), marker_id=marker,
+        world=report["t1h"]["world"], player=report["t1h"]["player"],
+    )
+    report["t1h"]["stop_ack_dev"] = asdict(ack)
+    report["t1h"]["paper_ack_pending"] = False
+    report["status"] = "T1H_OWNER_STOP_ACKED_AWAITING_CLEAN_RESOURCE_SHUTDOWN"
