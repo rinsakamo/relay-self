@@ -14,3 +14,6 @@ commands:
   relays49dashmark:
     description: 'DEV Paper timestamp AFTER already received original Mineflayer control ACK'
     usage: '/relays49dashmark <action_id> <session_id> <player_uuid> <APPLIED|CLEARED> <native_seq>'
+  relays49dashtrailmark:
+    description: 'Read-only Paper delivery tick after second native S49 ACK, no DASH motor mutation'
+    usage: '/relays49dashtrailmark <action_id> <session_id> <player_uuid> <APPLIED|CLEARED> <native_seq>'
