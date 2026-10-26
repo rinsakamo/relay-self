@@ -626,10 +626,6 @@ async def run(
             raise ForwardDashDevRejected("original Paper owner unavailable")
         if first:
             subject["action_id"] = command.action_id
-        elif two_action_timeline_dev:
-            if subject["second_action_id"] is not None:
-                raise ForwardDashDevRejected("only two original native Actions allowed")
-            subject["second_action_id"] = command.action_id
             offset = paper_log.stat().st_size if paper_log.exists() else 0
             original._command(
                 server, "relays49dasharm " + command.action_id + " "
@@ -639,6 +635,10 @@ async def run(
             await _await_dash_dev_line(
                 paper_log, offset, marker="ARM", action_id=command.action_id,
             )
+        elif two_action_timeline_dev:
+            if subject["second_action_id"] is not None:
+                raise ForwardDashDevRejected("only two original native Actions allowed")
+            subject["second_action_id"] = command.action_id
         async def paper_effect_ack_marker(phase, result):
             # Already-consumed by the SAME original S15 Mineflayer receiver.
             # Only mark operator receipt delivery on Paper; do not issue Action.
