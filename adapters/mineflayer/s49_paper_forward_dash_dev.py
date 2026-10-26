@@ -26,6 +26,7 @@ from adapters.mineflayer.s49_m0_world_time_shadow_dev import (
     project_s49_world_time_m0_shadow_dev,
 )
 from adapters.mineflayer.s49_node_physics_postclear_dev import (
+    NativePhysicsTraceRejected,
     audit_node_paper_motion_fingerprint_dev,
     audit_node_physics_postclear_dev,
 )
@@ -815,14 +816,32 @@ async def run(
                                 paper_post_release=report["post_release_paper_motion_dev"],
                             )
                         )
-                        report["node_paper_motion_fingerprint_dev"] = (
-                            audit_node_paper_motion_fingerprint_dev(
-                                report["node_physics_postclear_dev"],
-                                report["post_release_paper_motion_dev"],
-                                action_id=subject["action_id"],
-                                session_id=subject["session"],
+                        try:
+                            report["node_paper_motion_fingerprint_dev"] = (
+                                audit_node_paper_motion_fingerprint_dev(
+                                    report["node_physics_postclear_dev"],
+                                    report["post_release_paper_motion_dev"],
+                                    action_id=subject["action_id"],
+                                    session_id=subject["session"],
+                                )
                             )
-                        )
+                        except NativePhysicsTraceRejected as exc:
+                            if not two_action_timeline_dev:
+                                raise
+                            # With a continuous Paper callback per World tick,
+                            # the separately scheduled producer-local Node
+                            # callbacks can shift. Keep failed 1um correlation
+                            # as UNDETERMINED, never mint matching evidence.
+                            report["node_paper_motion_fingerprint_dev"] = {
+                                "classification": (
+                                    "NODE_PAPER_GEOMETRIC_FINGERPRINT_UNDETERMINED"
+                                ),
+                                "diagnostic": str(exc),
+                                "exact_match_confirmed": False,
+                                "native_Paper_tick_correspondence_attested": False,
+                                "WAIT_sourcebound_admitted": False,
+                                "P1_posted": False, "M0_posted": False,
+                            }
         if m0_live_dev:
             report["m0_s49_original_owner_postings"] = (
                 original_bytes.get(
@@ -867,7 +886,10 @@ async def run(
                     "S49_NATIVE_OUTCOME_TWO_M0_MOVE_STEPS_PAPER_BRACKET_DEV_ONLY"
                 )
                 report["m0_world_tick_basal_accounted"] = False
-                if m0_worldtime_shadow_dev:
+                if (m0_worldtime_shadow_dev
+                        and report["node_paper_motion_fingerprint_dev"].get(
+                            "exact_match_confirmed", True
+                        )):
                     report["m0_worldtime_basal_shadow_dev"] = (
                         project_s49_world_time_m0_shadow_dev(
                             action_id=subject["action_id"],
@@ -887,26 +909,26 @@ async def run(
                             rate=M0WorldRateDev(basal_energy_per_world_second=0.5),
                         )
                     )
-                    if two_action_timeline_dev:
-                        if subject["second_action_id"] != actions[1]["action"]:
-                            raise ForwardDashDevRejected("second original Action timeline ID mismatch")
-                        report["m0_two_action_worldtime_shadow_dev"] = (
-                            review_two_action_world_timeline_dev(
-                                paper_log.read_text(encoding="utf-8"),
-                                action_id=subject["action_id"],
-                                session_id=subject["session"],
-                                bracket=report["paper_action_bracket"],
-                                passive=report["post_release_paper_motion_dev"],
-                                first_native_ack=report[
-                                    "original_s49_effect_ack_paper_edges"
-                                ],
-                                original_actions=actions,
-                                original_m0_postings=postings,
-                                final_original_energy=report[
-                                    "m0_s49_original_owner_remaining"
-                                ],
-                            )
+                if two_action_timeline_dev:
+                    if subject["second_action_id"] != actions[1]["action"]:
+                        raise ForwardDashDevRejected("second original Action timeline ID mismatch")
+                    report["m0_two_action_worldtime_shadow_dev"] = (
+                        review_two_action_world_timeline_dev(
+                            paper_log.read_text(encoding="utf-8"),
+                            action_id=subject["action_id"],
+                            session_id=subject["session"],
+                            bracket=report["paper_action_bracket"],
+                            passive=report["post_release_paper_motion_dev"],
+                            first_native_ack=report[
+                                "original_s49_effect_ack_paper_edges"
+                            ],
+                            original_actions=actions,
+                            original_m0_postings=postings,
+                            final_original_energy=report[
+                                "m0_s49_original_owner_remaining"
+                            ],
                         )
+                    )
             else:
                 if (len(postings) != 1
                         or postings[0]["action_id"] != subject["action_id"]
