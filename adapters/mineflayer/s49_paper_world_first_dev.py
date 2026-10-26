@@ -914,7 +914,7 @@ async def run(
                    if "S49_DASH_DEV_ARM " in line
                    and "action_id=" + action + " " in line]
             if (not rows or len(complete) != 1 or len(arm) != 1
-                    or any("modifier_applied=true" in line for line in rows)
+                    or any(" modifier_applied=true " in line for line in rows)
                     or any("issued_direction=back" not in line for line in rows)
                     or any("cap_modifier_applied=true" not in line for line in rows)
                     or "cap_modifier_applied=true" not in arm[0]
