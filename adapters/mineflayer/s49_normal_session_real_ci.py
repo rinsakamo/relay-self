@@ -281,6 +281,7 @@ async def qualify(
     dev_forward_motor: bool = False,
     dev_sprint_motor: bool = False,
     dev_m0_dash_invoice: Callable[[NormalActionReceipt], DashM0InvoiceDev | None] | None = None,
+    dev_m0_action_move_step: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -291,6 +292,7 @@ async def qualify(
         "dev_forward_motor": dev_forward_motor,
         "dev_sprint_motor": dev_sprint_motor,
         "dev_m0_dash_owner": dev_m0_dash_invoice is not None,
+        "dev_m0_action_move_step": dev_m0_action_move_step,
         "decisions": [],
         "real_model_calls": 0,
         "learning_in_world": False,
@@ -306,6 +308,13 @@ async def qualify(
     try:
         if os.environ.get("S49_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
+        if type(dev_m0_action_move_step) is not bool or (
+            dev_m0_action_move_step and (
+                dev_m0_dash_invoice is None
+                or os.environ.get("S49_M0_ACTION_STEP_DEV_ONLY") != "1"
+            )
+        ):
+            raise S31ABlocked("action-level M0 MOVE requires separate original DEV owner gate")
         if dev_m0_dash_invoice is not None and (
             not callable(dev_m0_dash_invoice)
             or not dev_sprint_motor
@@ -526,13 +535,25 @@ async def qualify(
                 stage_r.seal_original_action(step, receipt)
             if dev_m0_owner is not None:
                 invoice = dev_m0_dash_invoice(receipt)
-                if invoice is not None:
+                proof = capture_native_action_evidence(
+                    receipt.consequence, allow_dev_forward=True,
+                    allow_dev_sprint=True,
+                )
+                if dev_m0_action_move_step:
+                    transaction = dev_m0_owner.post_s49_move_step_dev(
+                        receipt, invoice, native_evidence=proof,
+                    )
+                    report.setdefault("dev_m0_action_move_postings", []).append(
+                        asdict(transaction),
+                    )
+                    report["dev_m0_dash_energy_remaining"] = dev_m0_owner.body.energy
+                    if invoice is None:
+                        report.setdefault("dev_m0_dash_unboosted_actions", []).append(
+                            receipt.terminal.action_id,
+                        )
+                elif invoice is not None:
                     posted = dev_m0_owner.post_dash_extra_dev(
-                        receipt, invoice,
-                        native_evidence=capture_native_action_evidence(
-                            receipt.consequence, allow_dev_forward=True,
-                            allow_dev_sprint=True,
-                        ),
+                        receipt, invoice, native_evidence=proof,
                     )
                     report.setdefault("dev_m0_dash_postings", []).append(asdict(posted))
                     report["dev_m0_dash_energy_remaining"] = dev_m0_owner.body.energy
@@ -587,12 +608,18 @@ async def qualify(
         report["ignored_non_target_entities"] = observation_source.ignored_non_target_entities
         report["ignored_duplicate_target_updates"] = observation_source.ignored_duplicate_target_updates
         if dev_m0_owner is not None:
-            if (len(report.get("dev_m0_dash_postings", [])) != 1
+            expected_transactions = (
+                report.get("dev_m0_action_move_postings", [])
+                if dev_m0_action_move_step
+                else report.get("dev_m0_dash_postings", [])
+            )
+            expected_ticks = 2 if dev_m0_action_move_step else 1
+            if (len(expected_transactions) != expected_ticks
                     or len(report.get("dev_m0_dash_unboosted_actions", [])) != 1
-                    or dev_m0_owner.body.tick != 1
+                    or dev_m0_owner.body.tick != expected_ticks
                     or dev_m0_owner.body.meals != 0
                     or dev_m0_owner.body.terminal):
-                raise S49PhysicalFailure("DEV M0 owner DASH posting count/terminal mismatch")
+                raise S49PhysicalFailure("DEV M0 original owner posting count/terminal mismatch")
             report["dev_m0_dash_m0_tick"] = dev_m0_owner.body.tick
         report["decisions"] = [{
             "event_seq": s.event_seq,
