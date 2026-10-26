@@ -46,6 +46,11 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
     private int cappedTicks;
     private int motionProjectedBoostTicks;
     private double requestedPower;
+    // P1 motor calculation applies to the single fatigue dimension.
+    private boolean p1MotorDev;
+    private double p1Fatigue;
+    private double activeDashPower;
+    private int p1WorldTicks;
     private double lastX;
     private double lastZ;
     private BukkitTask task;
@@ -139,6 +144,15 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         actionId = args[0];
         sessionId = args[1];
         requestedPower = power;
+        p1MotorDev = getConfig().getBoolean("p1-live-dev", false);
+        if (p1MotorDev &&
+            Math.abs(getConfig().getDouble("p1-initial-fatigue", -1) - 0.6) > 1e-9) {
+            disarm("P1_DEV_PROFILE_INVALID");
+            return;
+        }
+        p1Fatigue = p1MotorDev ? 0.6 : 0.0;
+        activeDashPower = 0.0;
+        p1WorldTicks = 0;
         armTick = player.getWorld().getFullTime();
         lastTick = armTick;
         lastX = player.getLocation().getX();
@@ -153,7 +167,9 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         getLogger().info("S49_DASH_DEV_ARM action_id=" + actionId
             + " session_id=" + sessionId + " player_uuid=" + playerId
             + " world=" + worldId + " tick=" + armTick
-            + " power=" + power + " authority=NONE");
+            + " power=" + power + " authority=NONE"
+            + " p1_motor_dev=" + p1MotorDev
+            + " p1_initial_fatigue=" + p1Fatigue);
     }
 
     private boolean safeSubject() {
@@ -216,7 +232,27 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             && Math.abs(sideDelta) <= 0.10 * forwardDelta
             && sampledSpeedMps > 0.70;
         boolean shouldBoost = forwardOnly || motionForwardInferred;
-        if (!setBoost(shouldBoost)) {
+        double p1Before = p1Fatigue;
+        double previousPower = activeDashPower;
+        if (p1MotorDev) {
+            // Previous applied Paper modifier, not the requested gait,
+            // determines the P1 load for this actual elapsed World tick.
+            double k = previousPower > 0 ? 0.02 : 0.025;
+            double fullLoad = 0.02 / (-Math.expm1(-0.02 * 20.0));
+            double load = previousPower > 0
+                ? 0.004 + (fullLoad - 0.004) * Math.pow(previousPower, 1.2)
+                : 0.004;
+            double decay = -Math.expm1(-k * 0.05);
+            p1Fatigue = Math.min(1.0, Math.max(0.0,
+                p1Fatigue * (1 - decay) + load / k * decay));
+            p1WorldTicks++;
+        }
+        double allowedPower = p1MotorDev
+            ? Math.min(requestedPower, Math.max(0.0,
+                Math.min(1.0, 2.0 * (1.0 - p1Fatigue))))
+            : requestedPower;
+        if (allowedPower <= 0) shouldBoost = false;
+        if (!setBoost(shouldBoost, allowedPower)) {
             disarm("MODIFIER_SET_FAILED");
             return;
         }
@@ -249,19 +285,35 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " sampled_speed_mps=" + sampledSpeedMps
             + " projected_forward_delta_m=" + forwardDelta
             + " projected_side_delta_m=" + sideDelta
-            + " yaw_degrees=" + subject.getLocation().getYaw());
+            + " yaw_degrees=" + subject.getLocation().getYaw()
+            + " p1_motor_dev=" + p1MotorDev
+            + " p1_world_ticks=" + p1WorldTicks
+            + " p1_before=" + p1Before
+            + " p1_after=" + p1Fatigue
+            + " p1_prev_applied_power=" + previousPower
+            + " p1_current_applied_power=" + activeDashPower);
     }
 
-    private boolean setBoost(boolean shouldBoost) {
+    private boolean setBoost(boolean shouldBoost, double allowedPower) {
         AttributeInstance speed = subject == null ? null
             : subject.getAttribute(Attribute.MOVEMENT_SPEED);
         if (speed == null || modifier == null) {
             return false;
         }
         try {
+            if (p1MotorDev && shouldBoost && boosted) {
+                speed.removeModifier(modifier);
+                boosted = false;
+            }
             if (shouldBoost && !boosted) {
                 if (speed.getModifier(modifier.getKey()) != null) {
                     return false;
+                }
+                if (p1MotorDev) {
+                    modifier = new AttributeModifier(
+                        modifier.getKey(), 0.5 * allowedPower,
+                        AttributeModifier.Operation.MULTIPLY_SCALAR_1
+                    );
                 }
                 speed.addTransientModifier(modifier);
                 boosted = true;
@@ -281,6 +333,7 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
                     + " effective=" + speed.getValue()
                     + " modifier_added=false");
             }
+            activeDashPower = shouldBoost ? allowedPower : 0.0;
             return true;
         } catch (RuntimeException exception) {
             getLogger().warning("S49_DASH_DEV_MODIFIER_FAILURE "
@@ -316,6 +369,9 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " motion_estimated_boost_ticks=" + motionProjectedBoostTicks
             + " other_direction_or_ambiguous_ticks=" + cappedTicks
             + " modifier_applied=false"
+            + " p1_motor_dev=" + p1MotorDev
+            + " p1_final_fatigue=" + p1Fatigue
+            + " p1_world_ticks=" + p1WorldTicks
             + " authority=NONE P1_APPLIED=false M0_POSTED=false");
     }
 
