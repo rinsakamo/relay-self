@@ -267,6 +267,7 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         getLogger().info("S49_DASH_DEV_TICK action_id=" + actionId
             + " session_id=" + sessionId + " tick=" + tick
             + " index=" + (forwardTicks + cappedTicks)
+            + " world=" + worldId + " player_uuid=" + playerId
             + " input_forward_only=" + forwardOnly
             + " motion_forward_inferred=" + motionForwardInferred
             + " boost_source=" + (forwardOnly ? "PACKET" :
@@ -365,6 +366,8 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         boosted = false;
         getLogger().info("S49_DASH_DEV_COMPLETE action_id=" + actionId
             + " session_id=" + sessionId + " reason=" + reason
+            + " world=" + worldId + " player_uuid=" + playerId
+            + " tick=" + (subject != null ? subject.getWorld().getFullTime() : -1)
             + " forward_boost_ticks=" + forwardTicks
             + " motion_estimated_boost_ticks=" + motionProjectedBoostTicks
             + " other_direction_or_ambiguous_ticks=" + cappedTicks
