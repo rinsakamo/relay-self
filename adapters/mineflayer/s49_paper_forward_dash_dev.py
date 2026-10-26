@@ -21,6 +21,10 @@ from adapters.mineflayer import normal_action as action_owner
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.b0_energy_bridge import DashM0InvoiceDev
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
+from adapters.mineflayer.s49_m0_world_time_shadow_dev import (
+    M0WorldRateDev,
+    project_s49_world_time_m0_shadow_dev,
+)
 from adapters.mineflayer.s49_node_physics_postclear_dev import (
     audit_node_paper_motion_fingerprint_dev,
     audit_node_physics_postclear_dev,
@@ -510,6 +514,7 @@ async def run(
     native_edges_dev: bool = False,
     post_release_dev: bool = False,
     node_physics_dev: bool = False,
+    m0_worldtime_shadow_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -522,6 +527,11 @@ async def run(
         or type(native_edges_dev) is not bool
         or type(post_release_dev) is not bool
         or type(node_physics_dev) is not bool
+        or type(m0_worldtime_shadow_dev) is not bool
+        or (m0_worldtime_shadow_dev and (
+            not node_physics_dev
+            or os.environ.get("S49_M0_WORLDTIME_SHADOW_DEV_ONLY") != "1"
+        ))
         or (node_physics_dev and (
             not post_release_dev
             or os.environ.get("S49_NODE_PHYSICS_TRACE_DEV_ONLY") != "1"
@@ -818,6 +828,26 @@ async def run(
                     "S49_NATIVE_OUTCOME_TWO_M0_MOVE_STEPS_PAPER_BRACKET_DEV_ONLY"
                 )
                 report["m0_world_tick_basal_accounted"] = False
+                if m0_worldtime_shadow_dev:
+                    report["m0_worldtime_basal_shadow_dev"] = (
+                        project_s49_world_time_m0_shadow_dev(
+                            action_id=subject["action_id"],
+                            session_id=subject["session"],
+                            paper_action_bracket=report["paper_action_bracket"],
+                            passive_post_release=report["post_release_paper_motion_dev"],
+                            native_edges=report["original_s49_effect_ack_paper_edges"],
+                            node_paper_moving_footprint=report[
+                                "node_paper_motion_fingerprint_dev"
+                            ],
+                            original_m0_postings=postings,
+                            original_energy_remaining=report[
+                                "m0_s49_original_owner_remaining"
+                            ],
+                            # Explicit DEV World-second assumption. Never
+                            # derive the real M0 rate from legacy 0.5/Action.
+                            rate=M0WorldRateDev(basal_energy_per_world_second=0.5),
+                        )
+                    )
             else:
                 if (len(postings) != 1
                         or postings[0]["action_id"] != subject["action_id"]
@@ -892,6 +922,7 @@ def main() -> int:
     parser.add_argument("--native-edges-dev", action="store_true")
     parser.add_argument("--post-release-dev", action="store_true")
     parser.add_argument("--node-physics-dev", action="store_true")
+    parser.add_argument("--m0-worldtime-shadow-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -902,6 +933,7 @@ def main() -> int:
         native_edges_dev=a.native_edges_dev,
         post_release_dev=a.post_release_dev,
         node_physics_dev=a.node_physics_dev,
+        m0_worldtime_shadow_dev=a.m0_worldtime_shadow_dev,
     ))
 
 
