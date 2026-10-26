@@ -11,3 +11,6 @@ commands:
   relays49dashoff:
     description: 'Disposable console DEV release; clears the own transient modifier'
     usage: '/relays49dashoff <action_id> <session_id> <player_uuid>'
+  relays49dashmark:
+    description: 'DEV Paper timestamp AFTER already received original Mineflayer control ACK'
+    usage: '/relays49dashmark <action_id> <session_id> <player_uuid> <APPLIED|CLEARED> <native_seq>'
