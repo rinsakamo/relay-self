@@ -69,7 +69,6 @@ test('invalid fractions and impossible samples fail closed', () => {
   assert.equal(guard.failed, true)
 })
 
-
 test('budgeted receipt emits one tick and one L0 shadow, no motor output', async () => {
   const { handleBudgetedPaperTick } = await import('./paper_tick_deadline.mjs')
   const guard = new PaperTickDeadlineGuard()
