@@ -6,6 +6,20 @@ Branch: `self/dev-s49-forward-motor-admission-20261026`.
 **First full physical success, exact source HEAD `4954895ef57ec72614b4e0c5b46ab85b35864c67`:**
 [GitHub Actions real Paper 1.21.8 World #40335084843 — SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/40335084843).
 
+**Final workflow/readback verification, tested HEAD `ca25e43866b4367cc2615c4f0c483eab62b68172`:**
+[Real two-Action Paper World run #40335184537 — SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/40335184537).
+The final run independently reproduced **217 contiguous ticks**
+(tick 248–464), first DASH callback count 13, bridge 187,
+second native ACK-delivery window 12 (APPLIED tick 447,
+CLEARED tick 459), and final passive tail 5. Source Action IDs
+`s49-native-move-19` and `s49-native-move-57` both achieved
+S16 OUTCOME. It also reproduced shadow basal 5.425 without
+posting, geometric MOVE shadow 0.1625+0.1500 without posting,
+original B0 M0 energy 12→10.413667611509306, and
+original Node/Paper consecutive motion fingerprint matching 2 samples.
+Python3.12 focused, Ruff, Node22 syntax/bridge,
+Java21 plugin compile and physical World all SUCCESS.
+
 ## New DEV engineering scope
 
 Prior original S49 native Action/Paper/P1/M0 integration already showed:
