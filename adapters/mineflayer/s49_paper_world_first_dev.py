@@ -172,6 +172,7 @@ async def run(
     paper_motion_ticks_dev: bool = False,
     motion_uncertainty_dev: bool = False,
     dash_negative_control_dev: bool = False,
+    dash_cap_settle_dev: bool = False,
     dash_jar: Path | None = None,
     dash_sha: str | None = None,
 ) -> int:
@@ -195,6 +196,7 @@ async def run(
         "paper_motion_ticks_dev": paper_motion_ticks_dev,
         "motion_uncertainty_dev": motion_uncertainty_dev,
         "dash_negative_control_dev": dash_negative_control_dev,
+        "dash_cap_settle_dev": dash_cap_settle_dev,
     }
     created = False
     dev_bridge = None
@@ -237,6 +239,8 @@ async def run(
             raise S49PaperDevBlocked(
                 "uncertainty damping requires original S49 SelfBody Motion Feedback"
             )
+        if dash_cap_settle_dev and not dash_negative_control_dev:
+            raise S49PaperDevBlocked("cap settle experiment requires issued BACK control")
         if dash_negative_control_dev:
             if not isinstance(dash_jar, Path) or not isinstance(dash_sha, str):
                 raise S49PaperDevBlocked("explicit DASH DEV plugin asset and SHA required")
@@ -606,6 +610,11 @@ async def run(
                 await _await_dash_dev_line(
                     paper_log, offset, marker="ARM", action_id=command.action_id,
                 )
+                if dash_cap_settle_dev:
+                    # Controlled DEV perturbation: could the Paper attribute
+                    # update reach Mineflayer before physical movement?
+                    # This host time is not evidence of World ticks or M0/P1.
+                    await asyncio.sleep(0.5)
             if paper_motion_ticks_dev and observed["count"] == 1:
                 server = observed["server"]
                 if (observed["paper_motion_offset"] is not None
@@ -933,6 +942,14 @@ async def run(
                 "backward_cap_modifier_active_ticks": len(rows),
                 "backward_speed_attribute_multiplier": 0.75,
                 "backward_speed_m_s_attested": False,
+                "host_settle_seconds_before_action": 0.5 if dash_cap_settle_dev else 0.0,
+                "first_unmodified_original_move_m": source["actual_native_actions"][0]["movement_m"],
+                "capped_second_original_move_m": source["actual_native_actions"][1]["movement_m"],
+                "capped_minus_first_displacement_m": (
+                    source["actual_native_actions"][1]["movement_m"]
+                    - source["actual_native_actions"][0]["movement_m"]
+                ),
+                "within_session_displacement_is_speed_cap_proof": False,
                 "dash_stance_kept_during_backward": True,
                 "m0_posted": False,
                 "p1_native_updated": False,
@@ -1526,6 +1543,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--dash-negative-control-dev", action="store_true",
                         help="DEV: original authorized BACK Action while DASH stance remains")
+    parser.add_argument("--dash-cap-settle-dev", action="store_true",
+                        help="DEV: 0.5s host packet-settle diagnostic before original BACK Action")
     parser.add_argument("--dash-jar", type=Path)
     parser.add_argument("--dash-sha256")
     parser.add_argument(
@@ -1549,6 +1568,7 @@ def main(argv: list[str] | None = None) -> int:
         paper_motion_ticks_dev=args.paper_motion_ticks_dev,
         motion_uncertainty_dev=args.motion_uncertainty_dev,
         dash_negative_control_dev=args.dash_negative_control_dev,
+        dash_cap_settle_dev=args.dash_cap_settle_dev,
         dash_jar=args.dash_jar,
         dash_sha=args.dash_sha256,
     ))
