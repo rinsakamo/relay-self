@@ -4,6 +4,7 @@ import asyncio
 import math
 from dataclasses import dataclass
 from enum import Enum
+from collections.abc import Awaitable, Callable
 from typing import Protocol
 
 from adapters.mineflayer.python_protocol import (
@@ -280,6 +281,9 @@ async def execute_mineflayer_command(
     *,
     timeout_s: float = 2.0,
     provenance: Provenance,
+    on_effect_ack_dev: (
+        Callable[[str, MineflayerEffectResult], Awaitable[None]] | None
+    ) = None,
 ) -> WorldConsequence:
     """Execute one bounded, explicitly bound movement command with observation.
 
@@ -294,6 +298,8 @@ async def execute_mineflayer_command(
         )
     _require_positive_number("timeout_s", timeout_s)
     _require_provenance("execution provenance", provenance)
+    if on_effect_ack_dev is not None and not callable(on_effect_ack_dev):
+        raise InvalidMineflayerExecutionData("DEV effect ACK observer must be callable")
     started = _require_adapter(adapter)
     session_id = started.session_id
 
@@ -339,6 +345,11 @@ async def execute_mineflayer_command(
                 "Mineflayer rejected bound movement dispatch: "
                 f"{dispatch.error}"
             )
+        if on_effect_ack_dev is not None:
+            # Only the existing S15 native receive loop owns this typed ACK.
+            # Callback marks external Paper time AFTER ACK delivery; it does
+            # not prove the client's effect happened in that Paper tick.
+            await on_effect_ack_dev("APPLIED", dispatch)
 
         await asyncio.sleep(command.duration_s)
 
@@ -358,6 +369,8 @@ async def execute_mineflayer_command(
                 "Mineflayer rejected movement cleanup: "
                 f"{cleanup.error}"
             )
+        if on_effect_ack_dev is not None:
+            await on_effect_ack_dev("CLEARED", cleanup)
 
         await adapter.send_observe()
         after = await _receive_until(
