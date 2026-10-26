@@ -14,12 +14,14 @@ import math
 import os
 import shutil
 from pathlib import Path
+from contextlib import nullcontext
 from unittest.mock import patch
 
 from adapters.mineflayer import normal_action as action_owner
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.b0_energy_bridge import DashM0InvoiceDev
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
+from adapters.mineflayer.s49_node_physics_postclear_dev import audit_node_physics_postclear_dev
 from adapters.mineflayer.s49_paper_world_first_dev import (
     _await_dash_dev_line,
     _fresh_output,
@@ -504,6 +506,7 @@ async def run(
     m0_move_dev: bool = False,
     native_edges_dev: bool = False,
     post_release_dev: bool = False,
+    node_physics_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -515,6 +518,11 @@ async def run(
         or type(m0_move_dev) is not bool
         or type(native_edges_dev) is not bool
         or type(post_release_dev) is not bool
+        or type(node_physics_dev) is not bool
+        or (node_physics_dev and (
+            not post_release_dev
+            or os.environ.get("S49_NODE_PHYSICS_TRACE_DEV_ONLY") != "1"
+        ))
         or (post_release_dev and (
             not native_edges_dev
             or os.environ.get("S49_POST_RELEASE_MOTION_DEV_ONLY") != "1"
@@ -541,6 +549,9 @@ async def run(
     paper_log = output_dir / "paper_server.log"
     original_report = output_dir / "original_s49_report.json"
     results = output_dir / "paper_forward_dash_dev_report.json"
+    node_physics_path = output_dir.resolve() / "node_local_physics_dev.json"
+    if node_physics_dev and node_physics_path.exists():
+        raise ForwardDashDevRejected("Node physics DEV trace preexisting")
     report: dict = {"status": "FAIL_CLOSED", "classification": "DEV_ONLY",
                     "qualification_go": False, "science_go": False}
     subject = {"server": None, "session": None, "action_id": None, "complete": None}
@@ -688,6 +699,10 @@ async def run(
             patch.object(original, "_ready_server", paper_ready),
             patch.object(action_owner, "execute_mineflayer_command",
                          issued_original_transport),
+            (patch.dict(os.environ, {
+                "S49_NODE_PHYSICS_TRACE_DEV_ONLY": "1",
+                "S49_NODE_PHYSICS_TRACE_DEV_PATH": str(node_physics_path),
+            }) if node_physics_dev else nullcontext()),
         ):
             rc = await original.qualify(
                 original_report, paper_log,
@@ -739,6 +754,15 @@ async def run(
                         bracket=report["paper_action_bracket"],
                         edges=report["original_s49_effect_ack_paper_edges"],
                     )
+                    if node_physics_dev:
+                        report["node_physics_postclear_dev"] = (
+                            audit_node_physics_postclear_dev(
+                                node_physics_path,
+                                action_id=subject["action_id"],
+                                session_id=subject["session"],
+                                paper_post_release=report["post_release_paper_motion_dev"],
+                            )
+                        )
         if m0_live_dev:
             report["m0_s49_original_owner_postings"] = (
                 original_bytes.get(
@@ -856,6 +880,7 @@ def main() -> int:
     parser.add_argument("--m0-move-dev", action="store_true")
     parser.add_argument("--native-edges-dev", action="store_true")
     parser.add_argument("--post-release-dev", action="store_true")
+    parser.add_argument("--node-physics-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -865,6 +890,7 @@ def main() -> int:
         m0_move_dev=a.m0_move_dev,
         native_edges_dev=a.native_edges_dev,
         post_release_dev=a.post_release_dev,
+        node_physics_dev=a.node_physics_dev,
     ))
 
 
