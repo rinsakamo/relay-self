@@ -8,9 +8,11 @@ on:
       - adapters/mineflayer/bridge.mjs
       - adapters/mineflayer/execution.py
       - adapters/mineflayer/s49_node_physics_postclear_dev.py
+      - adapters/mineflayer/s49_m0_world_time_shadow_dev.py
       - adapters/mineflayer/s49_paper_forward_dash_dev.py
       - tests/test_s49_node_physics_postclear_dev.py
       - tests/test_s49_node_paper_motion_fingerprint_dev.py
+      - tests/test_s49_m0_world_time_shadow_dev.py
 
 permissions:
   contents: read
@@ -37,6 +39,7 @@ jobs:
       S49_NATIVE_EFFECT_EDGE_DEV_ONLY: '1'
       S49_POST_RELEASE_MOTION_DEV_ONLY: '1'
       S49_NODE_PHYSICS_TRACE_DEV_ONLY: '1'
+      S49_M0_WORLDTIME_SHADOW_DEV_ONLY: '1'
       DEV_OUTPUT: '/tmp/s49-node-control-${{ github.run_id }}-${{ github.run_attempt }}'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -69,9 +72,9 @@ jobs:
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
           node --check adapters/mineflayer/bridge.mjs
           node --test adapters/mineflayer/s49_speed_attribute_bridge_dev.test.mjs
-          python -m compileall -q adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_s49_post_release_motion_dev.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py
-          ruff check adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py adapters/mineflayer/s49_node_physics_postclear_dev.py adapters/mineflayer/execution.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_m0_dash_extra_owner_dev.py
-          python -m pytest -q tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_s49_post_release_motion_dev.py tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_b0_energy_bridge.py tests/test_s49_p1_paper_motor_dev.py tests/test_p1_gait_dev.py tests/test_s49_paper_forward_dash_dev.py tests/test_s49_forward_motor_admission_dev.py
+          python -m compileall -q adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_s49_post_release_motion_dev.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_m0_world_time_shadow_dev.py
+          ruff check adapters/mineflayer/s49_m0_world_time_shadow_dev.py tests/test_s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py adapters/mineflayer/s49_node_physics_postclear_dev.py adapters/mineflayer/execution.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_m0_dash_extra_owner_dev.py
+          python -m pytest -q tests/test_s49_m0_world_time_shadow_dev.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_s49_post_release_motion_dev.py tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_b0_energy_bridge.py tests/test_s49_p1_paper_motor_dev.py tests/test_p1_gait_dev.py tests/test_s49_paper_forward_dash_dev.py tests/test_s49_forward_motor_admission_dev.py
       - name: Compile independent Paper DASH modifier plugin
         run: |
           mvn -B -ntp -f adapters/mineflayer/s49_paper_dash_dev/pom.xml -DskipTests package
@@ -131,7 +134,7 @@ jobs:
             --output-dir "$DEV_OUTPUT" \
             --paper-jar "$PAPER_JAR" --paper-sha256 "$PAPER_SHA" \
             --dash-jar "$DASH" --dash-sha256 "$DASH_SHA" \
-            --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD --p1-live-dev --m0-live-dev --m0-move-dev --native-edges-dev --post-release-dev --node-physics-dev
+            --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD --p1-live-dev --m0-live-dev --m0-move-dev --native-edges-dev --post-release-dev --node-physics-dev --m0-worldtime-shadow-dev
       - name: Verify original forward+sprint S16 and Paper positive modifier ticks
         run: |
           python - <<'PY'
@@ -244,6 +247,30 @@ jobs:
           assert motion["independent_source_trust_attested"] is False
           assert motion["physical_WAIT_qualified"] is False
           assert motion["M0_posted"] is False and motion["P1_posted"] is False
+          shadow=report["m0_worldtime_basal_shadow_dev"]
+          assert shadow["classification"] == "M0_PAPER_WORLD_TICK_BASAL_SHADOW_NOT_POSTED_DEV_ONLY"
+          assert shadow["calibration"] == "DEV_EXPLICIT_ASSUMPTION_NOT_CANONICAL"
+          assert shadow["world_ticks_per_world_second"] == 20
+          assert shadow["explicit_basal_energy_per_world_second"] == 0.5
+          assert shadow["basal_energy_per_observed_world_tick"] == .025
+          assert shadow["original_action_observed_ticks"] == bracket["elapsed_callbacks"]
+          assert shadow["passive_post_release_observed_ticks"] == 5
+          assert shadow["unsampled_between_intervals_ticks"] == bracket["release_tick"]-bracket["last_tick"]
+          assert shadow["unsampled_between_intervals_billed"] is False
+          assert shadow["observed_distinct_world_ticks"] == bracket["elapsed_callbacks"] + 5
+          assert abs(shadow["combined_basal_projection_not_posted"] -
+                     .025 * shadow["observed_distinct_world_ticks"]) < 1e-10
+          assert shadow["original_action_basal_posted"] == 1.0
+          assert shadow["original_energy_remaining_unchanged"] == report["m0_s49_original_owner_remaining"]
+          assert shadow["original_energy_remaining_unchanged"] == source["dev_m0_dash_energy_remaining"]
+          assert shadow["legacy_action_m0_replaced"] is False
+          assert shadow["double_charged"] is False
+          assert shadow["world_tick_basal_posted"] is False
+          assert shadow["wall_clock_seconds_attested"] is False
+          assert shadow["source_world_clock_authoritative_across_processes"] is False
+          assert shadow["WAIT_admitted"] is False and shadow["P1_recovery_posted"] is False
+          assert shadow["M0_posted"] is False
+          assert shadow["qualification_go"] is False and shadow["science_go"] is False
 
 
 
@@ -282,4 +309,4 @@ jobs:
         if: always()
         run: |
           echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
-          echo 'Node-local physicsTick shows real Mineflayer control state after clearing, Paper 5-tick release view stays separate clock; no authority, M0/P1/WAIT updates.'
+          echo 'Paper 20-tick World-second explicit basal .5 shadow: source bounded 13+5 samples, any unsampled release tick unbilled, no M0 state change or WAIT/P1 update.'
