@@ -143,7 +143,7 @@ function traceDevAttr (stage, info = {}) {
     }]))
   process.stderr.write('S49_SPEED_ATTR_DIAG ' + JSON.stringify({
     stage, selfEntityId: entity && entity.id,
-    knownKeys: Object.keys(attrs).filter(key => /speed|movement/.test(key)),
+    knownKeys: Object.keys(attrs).slice(0, 36),
     speedAttributes: selected,
     ...info
   }) + '\n')
@@ -152,7 +152,12 @@ if (attrDiag) {
   bot._client.on('entity_update_attributes', packet => {
     if (bot.entity && packet.entityId === bot.entity.id) {
       traceDevAttr('RAW_SPEED_PACKET', {
-        properties: (packet.properties || []).filter(p => /speed|movement/.test(p.key))
+        rawPropertyCount: Array.isArray(packet.properties) ? packet.properties.length : null,
+        properties: (packet.properties || []).slice(0, 36).map(p => ({
+          key: p.key, base: p.value,
+          modifierCount: Array.isArray(p.modifiers) ? p.modifiers.length : null,
+          modifiers: (p.modifiers || []).slice(0, 3)
+        }))
       })
     }
   })

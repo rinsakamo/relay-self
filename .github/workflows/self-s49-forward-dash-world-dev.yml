@@ -152,6 +152,12 @@ jobs:
           assert p["qualification_go"] is False and p["science_go"] is False
           print("S49_ORIGINAL_FORWARD_SPRINT_PAPER_DASH_DEV_PASS",p)
           PY
+      - name: Print bounded Paper speed attribute trace for source debugging
+        if: always()
+        run: |
+          if test -f "$DEV_OUTPUT/paper_server.log"; then
+            grep -E 'S49_DASH_SPEED_ATTRIBUTE_DEV' "$DEV_OUTPUT/paper_server.log" | head -n 32 || true
+          fi
       - name: Print bounded Paper DEV plugin log for failure diagnosis
         if: failure()
         run: |
