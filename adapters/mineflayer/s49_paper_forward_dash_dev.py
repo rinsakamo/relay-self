@@ -21,6 +21,7 @@ from adapters.mineflayer import normal_action as action_owner
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.b0_energy_bridge import DashM0InvoiceDev
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
+from adapters.mineflayer.s49_inter_action_stillness_dev import review_inter_action_stillness_dev
 from adapters.mineflayer.s49_m0_world_time_shadow_dev import (
     M0WorldRateDev,
     project_s49_world_time_m0_shadow_dev,
@@ -520,6 +521,7 @@ async def run(
     node_physics_dev: bool = False,
     m0_worldtime_shadow_dev: bool = False,
     two_action_timeline_dev: bool = False,
+    inter_action_stillness_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -534,6 +536,11 @@ async def run(
         or type(node_physics_dev) is not bool
         or type(m0_worldtime_shadow_dev) is not bool
         or type(two_action_timeline_dev) is not bool
+        or type(inter_action_stillness_dev) is not bool
+        or (inter_action_stillness_dev and (
+            not two_action_timeline_dev
+            or os.environ.get("S49_INTER_ACTION_CONTROL_DEV_ONLY") != "1"
+        ))
         or (two_action_timeline_dev and (
             not m0_worldtime_shadow_dev
             or os.environ.get("S49_TWO_ACTION_WORLD_TIMELINE_DEV_ONLY") != "1"
@@ -573,6 +580,9 @@ async def run(
     original_report = output_dir / "original_s49_report.json"
     results = output_dir / "paper_forward_dash_dev_report.json"
     node_physics_path = output_dir.resolve() / "node_local_physics_dev.json"
+    inter_action_path = output_dir.resolve() / "node_inter_action_controls_dev.json"
+    if inter_action_stillness_dev and inter_action_path.exists():
+        raise ForwardDashDevRejected("Node original inter-Action file already exists")
     if node_physics_dev and node_physics_path.exists():
         raise ForwardDashDevRejected("Node physics DEV trace preexisting")
     report: dict = {"status": "FAIL_CLOSED", "classification": "DEV_ONLY",
@@ -755,6 +765,10 @@ async def run(
             (patch.dict(os.environ, {
                 "S49_NODE_PHYSICS_TRACE_DEV_ONLY": "1",
                 "S49_NODE_PHYSICS_TRACE_DEV_PATH": str(node_physics_path),
+                **({
+                    "S49_INTER_ACTION_CONTROL_DEV_ONLY": "1",
+                    "S49_INTER_ACTION_CONTROL_DEV_PATH": str(inter_action_path),
+                } if inter_action_stillness_dev else {}),
             }) if node_physics_dev else nullcontext()),
         ):
             rc = await original.qualify(
@@ -929,6 +943,17 @@ async def run(
                             ],
                         )
                     )
+                if inter_action_stillness_dev:
+                    report["inter_action_stillness_dev"] = (
+                        review_inter_action_stillness_dev(
+                            paper_log.read_text(encoding="utf-8"),
+                            inter_action_path,
+                            timeline=report["m0_two_action_worldtime_shadow_dev"],
+                            first_action_id=actions[0]["action"],
+                            second_action_id=actions[1]["action"],
+                            session_id=subject["session"],
+                        )
+                    )
             else:
                 if (len(postings) != 1
                         or postings[0]["action_id"] != subject["action_id"]
@@ -1005,6 +1030,7 @@ def main() -> int:
     parser.add_argument("--node-physics-dev", action="store_true")
     parser.add_argument("--m0-worldtime-shadow-dev", action="store_true")
     parser.add_argument("--two-action-timeline-dev", action="store_true")
+    parser.add_argument("--inter-action-stillness-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -1017,6 +1043,7 @@ def main() -> int:
         node_physics_dev=a.node_physics_dev,
         m0_worldtime_shadow_dev=a.m0_worldtime_shadow_dev,
         two_action_timeline_dev=a.two_action_timeline_dev,
+        inter_action_stillness_dev=a.inter_action_stillness_dev,
     ))
 
 
