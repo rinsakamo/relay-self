@@ -515,6 +515,7 @@ async def run(
     post_release_dev: bool = False,
     node_physics_dev: bool = False,
     m0_worldtime_shadow_dev: bool = False,
+    two_action_timeline_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -528,6 +529,11 @@ async def run(
         or type(post_release_dev) is not bool
         or type(node_physics_dev) is not bool
         or type(m0_worldtime_shadow_dev) is not bool
+        or type(two_action_timeline_dev) is not bool
+        or (two_action_timeline_dev and (
+            not m0_worldtime_shadow_dev
+            or os.environ.get("S49_TWO_ACTION_WORLD_TIMELINE_DEV_ONLY") != "1"
+        ))
         or (m0_worldtime_shadow_dev and (
             not node_physics_dev
             or os.environ.get("S49_M0_WORLDTIME_SHADOW_DEV_ONLY") != "1"
@@ -567,7 +573,8 @@ async def run(
         raise ForwardDashDevRejected("Node physics DEV trace preexisting")
     report: dict = {"status": "FAIL_CLOSED", "classification": "DEV_ONLY",
                     "qualification_go": False, "science_go": False}
-    subject = {"server": None, "session": None, "action_id": None, "complete": None}
+    subject = {"server": None, "session": None, "action_id": None, "complete": None,
+               "second_action_id": None}
     base_config = original._write_config
     base_ready = original._ready_server
     base_execute = action_owner.execute_mineflayer_command
@@ -588,7 +595,8 @@ async def run(
             "enabled: true\nexpected-player-name: RelaySelf\n"
             + ("p1-live-dev: true\np1-initial-fatigue: 0.6\n" if p1_live_dev else "")
             + ("native-edge-dev: true\n" if native_edges_dev else "")
-            + ("post-release-motion-dev: true\n" if post_release_dev else ""),
+            + ("post-release-motion-dev: true\n" if post_release_dev else "")
+            + ("two-action-trace-dev: true\n" if two_action_timeline_dev else ""),
             encoding="utf-8"
         )
 
@@ -615,6 +623,10 @@ async def run(
             raise ForwardDashDevRejected("original Paper owner unavailable")
         if first:
             subject["action_id"] = command.action_id
+        elif two_action_timeline_dev:
+            if subject["second_action_id"] is not None:
+                raise ForwardDashDevRejected("only two original native Actions allowed")
+            subject["second_action_id"] = command.action_id
             offset = paper_log.stat().st_size if paper_log.exists() else 0
             original._command(
                 server, "relays49dasharm " + command.action_id + " "
@@ -644,11 +656,29 @@ async def run(
                 + " " + phase + " " + str(result.seq),
             )
             await server.stdin.drain()
+        async def paper_second_native_ack_marker(phase, result):
+            # The same original S49 S15 reader has already received the
+            # typed native effect result. Paper only timestamps its receipt.
+            if (first or not two_action_timeline_dev
+                    or result.action_id != (
+                        command.action_id if phase == "APPLIED"
+                        else command.cleanup_action_id
+                    ) or result.session_id != subject["session"]):
+                raise ForwardDashDevRejected("second original native ACK identity mismatch")
+            original._command(
+                server, "relays49dashtrailmark " + command.action_id + " "
+                + subject["session"] + " " + offline_uuid("RelaySelf")
+                + " " + phase + " " + str(result.seq),
+            )
+            # No Paper round-trip or log polling while the Action is moving.
+            await server.stdin.drain()
+
         try:
             return await base_execute(
                 session, command, timeout_s=timeout_s, provenance=provenance,
-                **({"on_effect_ack_dev": paper_effect_ack_marker}
-                   if native_edges_dev and first else {}),
+                **({"on_effect_ack_dev": paper_effect_ack_marker
+                    if first else paper_second_native_ack_marker}
+                   if native_edges_dev and (first or two_action_timeline_dev) else {}),
             )
         finally:
             if first:
@@ -923,6 +953,7 @@ def main() -> int:
     parser.add_argument("--post-release-dev", action="store_true")
     parser.add_argument("--node-physics-dev", action="store_true")
     parser.add_argument("--m0-worldtime-shadow-dev", action="store_true")
+    parser.add_argument("--two-action-timeline-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -934,6 +965,7 @@ def main() -> int:
         post_release_dev=a.post_release_dev,
         node_physics_dev=a.node_physics_dev,
         m0_worldtime_shadow_dev=a.m0_worldtime_shadow_dev,
+        two_action_timeline_dev=a.two_action_timeline_dev,
     ))
 
 
