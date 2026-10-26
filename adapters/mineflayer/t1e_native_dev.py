@@ -24,10 +24,14 @@ from pathlib import Path
 from adapters.mineflayer.execution import MineflayerCommand, execute_mineflayer_command
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _issue, _p
 from adapters.mineflayer.python_protocol import (
+    MineflayerAdapterErrorMessage,
+    MineflayerCommandError,
+    MineflayerConnectionEnd,
     MineflayerEffectResult,
     MineflayerLaunchConfig,
     MineflayerPaperL0Shadow,
     MineflayerPaperSnapshot,
+    MineflayerShutdownAck,
 )
 from adapters.mineflayer.s31a_real_server_ci import (
     _await_spawn,
@@ -42,7 +46,9 @@ from relay_self.action_supervision import ActionSupervisor
 
 CONFIRM = "T1E-DISPOSABLE-DEV-ONLY"
 CASES = ("normal", "low_health", "hostile", "unknown", "lost_ack")
-TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop")
+TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop", "t2_disconnect_move",
+              "t2_disconnect_boundary", "t2_disconnect_wait", "t2_lost_ack",
+              "t2_delayed_ack", "t2_old_effect")
 
 
 def write(path, value):
@@ -152,6 +158,7 @@ async def run_case(args, case):
     try:
         server, collector, _ = await _ready_server(world, world / "paper.jar", log)
         report["java_pid"] = server.pid
+        report["java_starttime"] = Path(f"/proc/{server.pid}/stat").read_text().split()[21]
         for command in ("gamerule doMobSpawning false", "gamerule spawnRadius 0",
                         "gamerule naturalRegeneration false", "time set day"):
             _command(server, command)
@@ -180,11 +187,50 @@ async def run_case(args, case):
             latest_paper = None
             paper_frames = None
             consume_tick_accounting = True
+            source_lost = False
+            previous_clear = None
+            deferred_effect = None
+
+            async def inject_disconnect(self, boundary):
+                if "fault_injection" in report:
+                    return
+                report["fault_injection"] = {"kind": boundary, "python_ns": time.monotonic_ns(),
+                    "accounted_ticks": len(self.tick_owner.rows),
+                    "action": self.tick_owner.active_action}
+                _command(server, 'kick RelaySelf T1g disposable DEV disconnect')
+                await server.stdin.drain()
+
+            async def boundary_fault(self):
+                if case == "t2_disconnect_boundary" and "fault_injection" not in report:
+                    await self.inject_disconnect("AFTER_TERMINAL_CLEAR_BEFORE_NEXT_ACTION")
+                    # Drain queued old observations through the sole reader until
+                    # actual terminal evidence; none may grant another Action.
+                    from adapters.mineflayer.t1f_continuation_dev import next_tick
+                    async with asyncio.timeout(3):
+                        while True:
+                            await next_tick(self)
 
             async def receive(self):
+                if self.deferred_effect is not None:
+                    message, self.deferred_effect = self.deferred_effect, None
+                    return message
                 while True:
-                    message = await super().receive()
+                    try:
+                        message = await super().receive()
+                    except Exception:
+                        if t1f:
+                            from adapters.mineflayer.t1f_continuation_dev import _latch_source_loss
+                            _latch_source_loss(self)
+                        raise
                     now = time.monotonic_ns()
+                    if t1f and isinstance(message, (MineflayerConnectionEnd,
+                            MineflayerAdapterErrorMessage, MineflayerCommandError,
+                            MineflayerShutdownAck)):
+                        from adapters.mineflayer.t1f_continuation_dev import _latch_source_loss
+                        _latch_source_loss(self)
+                        report.setdefault("source_loss", {"type": type(message).__name__,
+                            "seq": message.seq, "python_ns": now,
+                            "accounted_ticks": len(self.tick_owner.rows) if self.tick_owner else 0})
                     if isinstance(message, MineflayerPaperSnapshot) and self.consume_tick_accounting:
                         self.latest_paper = message
                         if self.paper_frames is None:
@@ -192,6 +238,9 @@ async def run_case(args, case):
                         self.paper_frames.append(message)
                         if self.tick_owner is not None:
                             self.tick_owner.observe(message)
+                            if (case == "t2_disconnect_wait" and self.tick_owner.rows
+                                    and self.tick_owner.rows[-1]["activity"] == "WAIT_DEV"):
+                                await self.inject_disconnect("DURING_OBSERVED_WAIT_DEV")
                     timing.write(json.dumps({"python_monotonic_ns": now,
                                              "message": asdict(message)}) + "\n")
                     timing.flush()
@@ -202,14 +251,32 @@ async def run_case(args, case):
                             report.setdefault("danger_assessment", message.assessment)
                             report.setdefault("danger_tick", message.paper_server_tick)
                     if isinstance(message, MineflayerEffectResult) and message.effect == "clear_controls":
+                        self.previous_clear = message
                         report["clear_ack_received_python_ns"] = now
-                        if case == "lost_ack":
+                        if case in ("lost_ack", "t2_lost_ack"):
                             report["ack_fault"] = "DROP_AT_PYTHON_CONSUMER_ORIGINAL_RAW_RETAINED"
                             continue
+                        if case == "t2_delayed_ack" and "ack_fault" not in report:
+                            report["ack_fault"] = "DELAY_0.7S_AT_CONSUMER_RAW_RETAINED"
+                            await asyncio.sleep(.7)
+                    if (case == "t2_disconnect_move" and isinstance(message, MineflayerEffectResult)
+                            and message.effect == "set_control" and message.result == "applied"):
+                        await self.inject_disconnect("AFTER_SET_CONTROL_APPLIED")
+                    if (case == "t2_old_effect" and self.previous_clear is not None
+                            and isinstance(message, MineflayerEffectResult)
+                            and message.effect == "set_control" and "ack_fault" not in report):
+                        # Consumer replay only: original wire bytes are retained,
+                        # and no second Motor effect is sent to Minecraft.
+                        report["ack_fault"] = "REPLAY_PREVIOUS_EPOCH_CLEAR_BEFORE_CURRENT_DISPATCH_ACK"
+                        report["replayed_effect"] = asdict(self.previous_clear)
+                        self.deferred_effect = message
+                        return self.previous_clear
                     return message
 
             async def send_set_control(self, *a, **kw):
                 nonlocal fixture
+                if self.source_lost or (self.tick_owner and self.tick_owner.failed):
+                    raise RuntimeError("T1g lost source forbids new Action effect")
                 report["dispatch_python_ns"] = time.monotonic_ns()
                 await super().send_set_control(*a, **kw)
                 if case != "normal":
@@ -230,6 +297,7 @@ async def run_case(args, case):
                                    username="RelaySelf", version="1.21.8"),
             startup_timeout_s=25)
         report["node_pid"] = session._process.pid
+        report["node_starttime"] = Path(f"/proc/{session._process.pid}/stat").read_text().split()[21]
         report["session_id"] = session.started.session_id
         await _await_spawn(session)
         _command(server, "tp RelaySelf 0.5 -60 0.5 0 0")
@@ -240,7 +308,7 @@ async def run_case(args, case):
         if t1f:
             from adapters.mineflayer.t1f_continuation_dev import run_continuation
             await run_continuation(session, server, report, root, observe_only=case == "t1f_observe",
-                                   accounting=case == "t2_loop",
+                                   accounting=case.startswith("t2_"),
                                    normal_epochs=args.loop_moves)
             return report
         supervisor = ActionSupervisor()
@@ -297,12 +365,19 @@ async def run_case(args, case):
             session.consume_tick_accounting = False
             if session.tick_owner is not None:
                 write(root / "t2_ticks.json", session.tick_owner.rows)
+                owner = session.tick_owner
+                report["t2_final"] = {"ticks": len(owner.rows), "latched": owner.failed,
+                    "energy": asdict(owner.energy.body),
+                    "fatigue": asdict(owner.fatigue) if owner.fatigue else None,
+                    "active_action": owner.active_action,
+                    "credit_count": owner.energy.credit_count,
+                    "P1_qualified_WAIT": False}
         if session is not None:
             try:
                 report["node_exit"] = await session.shutdown(timeout_s=12)
             except Exception as exc:
                 report["node_cleanup_error"] = repr(exc)
-                await session.terminate()
+                report["node_exit"] = await session.terminate()
         await _shutdown_server(server, collector)
         if server is not None:
             report["java_exit"] = server.returncode

@@ -28,6 +28,7 @@ from relay_self.action_supervision import ActionSupervisor
 
 def _latch_source_loss(session):
     """No next Action / WAIT_DEV admission after this owner loses its source."""
+    session.source_lost = True
     owner = getattr(session, "tick_owner", None)
     if owner is not None:
         owner.failed = True
@@ -39,6 +40,8 @@ async def next_tick(session, *, after_seq=-1, timeout=3):
     Only admitted, session-matched Paper samples can continue an epoch.
     An EOF or shutdown acknowledgment is not proof of high-level STOP.
     """
+    if getattr(session, "source_lost", False):
+        raise RuntimeError("T1g source already lost; continuation forbidden")
     deadline = asyncio.get_running_loop().time() + timeout
     while True:
         remaining = deadline - asyncio.get_running_loop().time()
@@ -192,6 +195,8 @@ async def run_continuation(session, server, report, root, *, observe_only, accou
                 session.tick_owner.finish(result, terminal)
             if result.cleanup_receipt is None:
                 raise RuntimeError("clear ACK absent; next epoch forbidden")
+            if hasattr(session, "boundary_fault"):
+                await session.boundary_fault()
             fresh, frames = await settled(session, result.cleanup_receipt.seq)
             step["post_clear"] = frames
             step["next_source_seq"] = fresh.seq

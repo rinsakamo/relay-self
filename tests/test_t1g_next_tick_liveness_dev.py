@@ -9,7 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 import test_t1f_t2_dev as t1f
-from adapters.mineflayer.process_session import MineflayerProcessEnded
+from adapters.mineflayer.process_session import MineflayerProcessEnded, MineflayerProcessIOError
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterErrorMessage,
     MineflayerCommandError,
@@ -94,3 +94,16 @@ def test_stale_old_seq_cannot_hide_a_later_disconnect():
     with pytest.raises(RuntimeError):
         asyncio.run(next_tick(s, after_seq=10, timeout=0.02))
     assert s.tick_owner.failed
+
+
+@pytest.mark.parametrize("loss", [
+    MineflayerConnectionEnd("test-session", 20, "end"),
+    MineflayerProcessIOError("read failed"),
+])
+def test_latched_source_cannot_resume_from_queued_admitted_snapshot(loss):
+    s = Stream([loss, t1f.frame()])
+    with pytest.raises((RuntimeError, MineflayerProcessIOError)):
+        run(s)
+    with pytest.raises(RuntimeError, match="already lost"):
+        run(s)
+    assert len(s.frames) == 1
