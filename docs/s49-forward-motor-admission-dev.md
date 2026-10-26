@@ -34,3 +34,15 @@ reinterpret the previously recorded backward negative control.
 S16 `self_action_evidence` now retains the historical strict default
 `MOVE_BACKWARD`; forward evidence must pass an explicit DEV-only flag at
 capture and subsequent verification. Previous consumers are unchanged.
+
+## DEV forward+sprint under one issued Action
+
+A distinct S14 `MOVE_FORWARD_SPRINT_DEV` binding produces the one-ACK
+`set_forward_sprint_dev` effect with exact `forward=true,sprint=true`.
+Both S49 DEV flags and `S49_SPRINT_MOTOR_DEV_ONLY=1` are required.
+Bridge rejects missing opt-in and invalid pair. S16 still requires its
+same-Action clear ACK. The historical decoded S16 reader needs separate
+explicit forward+sprint opt-ins; defaults remain backward-only.
+
+This permits a motor smoke test, **not** Paper-positive DASH, velocity
+calibration, lateral cap proof, M0 posting, or P1 native settlement.

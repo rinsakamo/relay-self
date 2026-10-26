@@ -273,6 +273,7 @@ async def qualify(
     dev_fifth_epoch: str | None = None,
     dev_sixth_epoch: str | None = None,
     dev_forward_motor: bool = False,
+    dev_sprint_motor: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -281,6 +282,7 @@ async def qualify(
         "mineflayer_version": MINEFLAYER_VERSION,
         "actual_native_actions": [],
         "dev_forward_motor": dev_forward_motor,
+        "dev_sprint_motor": dev_sprint_motor,
         "decisions": [],
         "real_model_calls": 0,
         "learning_in_world": False,
@@ -295,6 +297,13 @@ async def qualify(
     try:
         if os.environ.get("S49_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
+        if type(dev_sprint_motor) is not bool or (
+            dev_sprint_motor and (
+                not dev_forward_motor
+                or os.environ.get("S49_SPRINT_MOTOR_DEV_ONLY") != "1"
+            )
+        ):
+            raise S31ABlocked("sprint requires same original forward DEV gate")
         if type(dev_forward_motor) is not bool or (
             dev_forward_motor and (
                 os.environ.get("S49_FORWARD_MOTOR_DEV_ONLY") != "1"
@@ -361,6 +370,7 @@ async def qualify(
         )
         executor = NormalSessionActionExecutor(
             sid, intent, dev_forward_motor=dev_forward_motor,
+            dev_sprint_motor=dev_sprint_motor,
         )
         if stage_r_dev:
             # Explicit S49-owned extension; never install a read-only
@@ -454,7 +464,10 @@ async def qualify(
                 candidate_ref="MOVE_AWAY", required_intent_id="escape-threat",
                 skill_execution_id=f"s49-skill-{step.event_seq}",
                 skill_ref="escape-movement", action_id=step.action_request_id,
-                action_ref="MOVE_FORWARD" if dev_forward_motor else "MOVE_BACKWARD",
+                action_ref=(
+                    "MOVE_FORWARD_SPRINT_DEV" if dev_sprint_motor
+                    else "MOVE_FORWARD" if dev_forward_motor else "MOVE_BACKWARD"
+                ),
                 provenance=source(f"binding-{step.event_seq}"),
             )
             bound = resolve_execution_binding(
@@ -503,6 +516,7 @@ async def qualify(
                 # Legacy reports have no such field and remain EVIDENCE_PARTIAL.
                 "execution_evidence": capture_native_action_evidence(
                     receipt.consequence, allow_dev_forward=dev_forward_motor,
+                    allow_dev_sprint=dev_sprint_motor,
                 ),
             })
 
@@ -644,6 +658,8 @@ async def qualify(
             report["learning_in_world"] = True  # HOLD revision, NOT gain
         report["status"] = "PASS"
         report["classification"] = (
+            "DEV_ONLY_S49_FORWARD_SPRINT_MOTOR_UNCALIBRATED"
+            if dev_sprint_motor else
             "DEV_ONLY_S49_FORWARD_MOTOR_NOT_DIRECTIONALLY_QUALIFIED"
             if dev_forward_motor else
             "DEV_ONLY_S49_SIXTH_MOTOR_DEV_AFTER_FIFTH_WAIT"
@@ -755,6 +771,7 @@ async def qualify(
             "DEV_ONLY_S49_ORIGINAL_FIFTH_WAIT_AFTER_THIRD_MOVE",
             "DEV_ONLY_S49_SIXTH_MOTOR_DEV_AFTER_FIFTH_WAIT",
             "DEV_ONLY_S49_FORWARD_MOTOR_NOT_DIRECTIONALLY_QUALIFIED",
+            "DEV_ONLY_S49_FORWARD_SPRINT_MOTOR_UNCALIBRATED",
         ):
             # No pre-existing FAILURE/BLOCKED is allowed to retain the
             # provisional qualified label, nor be upgraded to PASS.
@@ -783,9 +800,12 @@ def main() -> int:
     parser.add_argument("--server-log", type=Path, required=True)
     parser.add_argument("--dev-forward-motor", action="store_true",
                         help="isolated DEV MOVE_FORWARD motor, not DASH or escape qualification")
+    parser.add_argument("--dev-sprint-motor", action="store_true",
+                        help="original issued Action with forward+sprint DEV effect")
     args = parser.parse_args()
     return asyncio.run(qualify(
         args.report, args.server_log, dev_forward_motor=args.dev_forward_motor,
+        dev_sprint_motor=args.dev_sprint_motor,
     ))
 
 

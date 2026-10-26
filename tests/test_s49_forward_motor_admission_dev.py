@@ -121,3 +121,84 @@ def test_forward_s16_evidence_requires_separate_dev_flag():
     )
     with pytest.raises(NativeEvidenceRejected):
         capture_native_action_evidence(forward, allow_dev_forward=1)
+
+def test_sprint_one_effect_schema_and_bound_direction():
+    import json
+
+    from adapters.mineflayer.python_protocol import encode_forward_sprint_dev
+    from adapters.mineflayer.execution import MOVE_FORWARD_SPRINT_DEV_REF
+
+    payload = json.loads(encode_forward_sprint_dev("s49-native-move-19"))
+    assert payload == {
+        "type": "effect", "action_id": "s49-native-move-19",
+        "effect": "set_forward_sprint_dev", "forward": True, "sprint": True,
+    }
+    obj = MineflayerCommand(
+        action_id="s49-native-move-19", binding_id="s49-binding-19",
+        action_ref=MOVE_FORWARD_SPRINT_DEV_REF,
+        effect="set_forward_sprint_dev", control="forward", state=True,
+        duration_s=0.2, cleanup_action_id="s49-native-move-19-s15-clear",
+    )
+    assert obj.control == "forward"
+    for eff, direction in [
+        ("set_control", "forward"), ("set_forward_sprint_dev", "back"),
+        ("set_forward_sprint_dev", "sprint"),
+    ]:
+        with pytest.raises(InvalidMineflayerExecutionData):
+            MineflayerCommand(
+                action_id=obj.action_id, binding_id=obj.binding_id,
+                action_ref=obj.action_ref, effect=eff, control=direction,
+                state=True, duration_s=0.2, cleanup_action_id=obj.cleanup_action_id,
+            )
+
+
+def test_sprint_dev_gate_blocks_before_minecraft(monkeypatch, tmp_path):
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.setenv("S49_FORWARD_MOTOR_DEV_ONLY", "1")
+    monkeypatch.delenv("S49_SPRINT_MOTOR_DEV_ONLY", raising=False)
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    monkeypatch.setattr(
+        original, "_fetch_official_server",
+        lambda *a, **kw: pytest.fail("unauthorized sprint World"),
+    )
+    p = tmp_path / "gated.json"
+    rc = asyncio.run(original.qualify(
+        p, tmp_path / "paper.log", dev_forward_motor=True,
+        dev_sprint_motor=True,
+    ))
+    assert rc == 2
+    assert json.loads(p.read_text())["actual_native_actions"] == []
+
+
+def test_forward_sprint_s16_receipt_is_dev_gated():
+    from dataclasses import replace
+
+    import test_action_feedback_qualification as s17
+    from adapters.mineflayer.self_action_evidence import (
+        NativeEvidenceRejected, capture_native_action_evidence,
+        verify_native_action_evidence,
+    )
+
+    *_, before, _, _ = s17.executed_closed_chain()
+    sprint = replace(
+        before, action_ref="MOVE_FORWARD_SPRINT_DEV",
+        dispatch_receipt=replace(
+            before.dispatch_receipt, effect="set_forward_sprint_dev",
+        ),
+    )
+    with pytest.raises(NativeEvidenceRejected):
+        capture_native_action_evidence(sprint, allow_dev_forward=True)
+    evidence = capture_native_action_evidence(
+        sprint, allow_dev_forward=True, allow_dev_sprint=True,
+    )
+    with pytest.raises(NativeEvidenceRejected):
+        verify_native_action_evidence(
+            evidence, action_id=sprint.action_id,
+            session_id=sprint.session_id, movement_m=sprint.movement_distance,
+            allow_dev_forward=True,
+        )
+    verify_native_action_evidence(
+        evidence, action_id=sprint.action_id, session_id=sprint.session_id,
+        movement_m=sprint.movement_distance,
+        allow_dev_forward=True, allow_dev_sprint=True,
+    )

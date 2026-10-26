@@ -32,9 +32,11 @@ def verify_native_action_evidence(
     session_id: str,
     movement_m: float,
     allow_dev_forward: bool = False,
+    allow_dev_sprint: bool = False,
 ) -> None:
     """Check source/seq/dispatch/cleanup and independently recalc xz."""
-    if type(allow_dev_forward) is not bool:
+    if (type(allow_dev_forward) is not bool or type(allow_dev_sprint) is not bool
+            or (allow_dev_sprint and not allow_dev_forward)):
         raise NativeEvidenceRejected("explicit DEV forward evidence flag must be bool")
     if not isinstance(value, dict) or set(value) != {
         "schema", "action_id", "binding_id", "action_ref", "session_id",
@@ -51,8 +53,10 @@ def verify_native_action_evidence(
         or not isinstance(value["binding_id"], str)
         or not value["binding_id"]
         or value["action_ref"] not in (
-            ("MOVE_BACKWARD", "MOVE_FORWARD")
-            if allow_dev_forward else ("MOVE_BACKWARD",)
+            ("MOVE_BACKWARD", "MOVE_FORWARD", "MOVE_FORWARD_SPRINT_DEV")
+            if allow_dev_sprint
+            else ("MOVE_BACKWARD", "MOVE_FORWARD") if allow_dev_forward
+            else ("MOVE_BACKWARD",)
         )
         or value["status"] != "executed"
         or value["cleanup_attempted"] is not True
@@ -94,7 +98,11 @@ def verify_native_action_evidence(
     dispatch, cleanup = frames[1], frames[2]
     if (
         dispatch.get("action_id") != action_id
-        or dispatch.get("effect") != "set_control"
+        or dispatch.get("effect") != (
+            "set_forward_sprint_dev"
+            if value["action_ref"] == "MOVE_FORWARD_SPRINT_DEV"
+            else "set_control"
+        )
         or dispatch.get("result") != "applied"
         or dispatch.get("error") is not None
         or cleanup.get("action_id") != f"{action_id}-s15-clear"
@@ -137,6 +145,7 @@ def _source_frame(message: Any) -> dict[str, Any]:
 
 def capture_native_action_evidence(
     consequence: WorldConsequence, *, allow_dev_forward: bool = False,
+    allow_dev_sprint: bool = False,
 ) -> dict[str, Any]:
     """Read existing immutable S16 result; never trigger a new native probe."""
     if (
@@ -170,5 +179,6 @@ def capture_native_action_evidence(
         session_id=consequence.session_id,
         movement_m=consequence.movement_distance,
         allow_dev_forward=allow_dev_forward,
+        allow_dev_sprint=allow_dev_sprint,
     )
     return result

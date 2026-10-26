@@ -246,6 +246,23 @@ async function handleEffect (command) {
       return
     }
 
+    if (command.effect === 'set_forward_sprint_dev') {
+      if (process.env.S49_SPRINT_MOTOR_DEV_ONLY !== '1' ||
+          command.forward !== true || command.sprint !== true) {
+        emitEffectResult(command, 'rejected', 'sprint_dev_gate_or_pair')
+        return
+      }
+      try {
+        bot.setControlState('sprint', true)
+        bot.setControlState('forward', true)
+      } catch (error) {
+        bot.clearControlStates()
+        throw error
+      }
+      emitEffectResult(command, 'applied')
+      return
+    }
+
     if (command.effect === 'clear_controls') {
       bot.clearControlStates()
       emitEffectResult(command, 'applied')

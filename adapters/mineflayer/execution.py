@@ -20,6 +20,7 @@ from relay_self.provenance import Provenance
 
 MOVE_BACKWARD_ACTION_REF = "MOVE_BACKWARD"
 MOVE_FORWARD_ACTION_REF = "MOVE_FORWARD"  # explicit bounded S49 DEV-only caller
+MOVE_FORWARD_SPRINT_DEV_REF = "MOVE_FORWARD_SPRINT_DEV"
 MOVE_BACKWARD_EFFECT = "set_control"
 MOVE_BACKWARD_CONTROL = "back"
 MOVE_BACKWARD_DURATION_S = 0.20
@@ -56,6 +57,8 @@ class MineflayerExecutionSession(Protocol):
         state: bool,
     ) -> None: ...
 
+    async def send_forward_sprint_dev(self, action_id: str) -> None: ...
+
     async def send_clear_controls(self, action_id: str) -> None: ...
 
 
@@ -82,14 +85,20 @@ class MineflayerCommand:
         expected_control = {
             MOVE_BACKWARD_ACTION_REF: MOVE_BACKWARD_CONTROL,
             MOVE_FORWARD_ACTION_REF: "forward",
+            MOVE_FORWARD_SPRINT_DEV_REF: "forward",
         }.get(self.action_ref)
         if expected_control is None:
             raise InvalidMineflayerExecutionData(
                 f"unsupported S15 action_ref: {self.action_ref}"
             )
-        if self.effect != MOVE_BACKWARD_EFFECT:
+        expected_effect = (
+            "set_forward_sprint_dev"
+            if self.action_ref == MOVE_FORWARD_SPRINT_DEV_REF
+            else MOVE_BACKWARD_EFFECT
+        )
+        if self.effect != expected_effect:
             raise InvalidMineflayerExecutionData(
-                "MOVE_BACKWARD command effect must be set_control"
+                "physical effect mismatches exact action_ref"
             )
         if self.control != expected_control:
             raise InvalidMineflayerExecutionData(
@@ -241,6 +250,7 @@ def build_mineflayer_command(
     controls = {
         MOVE_BACKWARD_ACTION_REF: MOVE_BACKWARD_CONTROL,
         MOVE_FORWARD_ACTION_REF: "forward",
+        MOVE_FORWARD_SPRINT_DEV_REF: "forward",
     }
     if binding_result.action_ref not in controls:
         raise InvalidMineflayerExecutionData(
@@ -251,7 +261,9 @@ def build_mineflayer_command(
         action_id=issued_action.action_id,
         binding_id=binding_result.binding_id,
         action_ref=binding_result.action_ref,
-        effect=MOVE_BACKWARD_EFFECT,
+        effect=("set_forward_sprint_dev"
+                if binding_result.action_ref == MOVE_FORWARD_SPRINT_DEV_REF
+                else MOVE_BACKWARD_EFFECT),
         control=controls[binding_result.action_ref],
         state=True,
         duration_s=MOVE_BACKWARD_DURATION_S,
@@ -302,11 +314,14 @@ async def execute_mineflayer_command(
         )
 
         movement_command_attempted = True
-        await adapter.send_set_control(
-            command.action_id,
-            control=command.control,
-            state=command.state,
-        )
+        if command.action_ref == MOVE_FORWARD_SPRINT_DEV_REF:
+            await adapter.send_forward_sprint_dev(command.action_id)
+        else:
+            await adapter.send_set_control(
+                command.action_id,
+                control=command.control,
+                state=command.state,
+            )
         dispatch = await _receive_until(
             adapter,
             timeout_s=timeout_s,

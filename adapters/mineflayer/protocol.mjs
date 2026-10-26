@@ -10,6 +10,7 @@ const CONTROLS = new Set([
 
 const EFFECTS = new Set([
   'set_control',
+  'set_forward_sprint_dev',
   'clear_controls',
   'equip_item',
   'consume_held',
@@ -141,6 +142,18 @@ export function parseCommand (raw) {
         effect: value.effect,
         control: value.control,
         state: value.state
+      })
+    }
+
+    if (value.effect === 'set_forward_sprint_dev') {
+      requireExactKeys('set_forward_sprint_dev command', value,
+        ['type', 'action_id', 'effect', 'forward', 'sprint'])
+      if (value.forward !== true || value.sprint !== true) {
+        throw new Error('sprint DEV requires forward=true and sprint=true')
+      }
+      return Object.freeze({
+        type: 'effect', action_id: value.action_id, effect: value.effect,
+        forward: true, sprint: true
       })
     }
 

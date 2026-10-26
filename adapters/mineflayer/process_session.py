@@ -16,6 +16,7 @@ from adapters.mineflayer.python_protocol import (
     encode_look,
     encode_observe,
     encode_set_control,
+    encode_forward_sprint_dev,
     encode_shutdown,
 )
 from adapters.mineflayer.self_world_stage_w3_capture import W3RawNodeStdoutCapture
@@ -220,6 +221,9 @@ class MineflayerProcessSession:
                 state=state,
             )
         )
+
+    async def send_forward_sprint_dev(self, action_id: str) -> None:
+        await self._send(encode_forward_sprint_dev(action_id))
 
     async def send_clear_controls(self, action_id: str) -> None:
         await self._send(encode_clear_controls(action_id))

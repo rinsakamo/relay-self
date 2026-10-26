@@ -333,9 +333,12 @@ class NormalSessionActionExecutor:
     def __init__(
         self, session_id: str, intent: IntentCommitment, *,
         dev_forward_motor: bool = False,
+        dev_sprint_motor: bool = False,
     ) -> None:
         if (
             type(dev_forward_motor) is not bool
+            or type(dev_sprint_motor) is not bool
+            or (dev_sprint_motor and not dev_forward_motor)
             or not isinstance(session_id, str) or not session_id
             or not isinstance(intent, IntentCommitment)
             or intent.current_intent is None
@@ -345,6 +348,7 @@ class NormalSessionActionExecutor:
         self.intent = intent
         # Default remains the original physically bound backward S49 path.
         self._dev_forward_motor = dev_forward_motor
+        self._dev_sprint_motor = dev_sprint_motor
         self.supervisor = ActionSupervisor()
         self._dispatched: set[str] = set()
         self._count = 0
@@ -393,7 +397,9 @@ class NormalSessionActionExecutor:
             )
             or bound.candidate_ref != "MOVE_AWAY"
             or bound.binding.action_ref != (
-                "MOVE_FORWARD" if self._dev_forward_motor else "MOVE_BACKWARD"
+                "MOVE_FORWARD_SPRINT_DEV" if self._dev_sprint_motor
+                else "MOVE_FORWARD" if self._dev_forward_motor
+                else "MOVE_BACKWARD"
             )
             or bound.binding.action_id != step.action_request_id
             or bound.binding.action_id in self._dispatched

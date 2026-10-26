@@ -32,6 +32,7 @@ _OBSERVATION_KINDS = frozenset(
 _EFFECTS = frozenset(
     {
         "set_control",
+        "set_forward_sprint_dev",
         "clear_controls",
         "equip_item",
         "consume_held",
@@ -736,6 +737,15 @@ def encode_set_control(
             "state": state,
         }
     )
+
+
+def encode_forward_sprint_dev(action_id: str) -> str:
+    """One fixed DEV control pair, never generic command injection."""
+    _require_text("action_id", action_id)
+    return _encode_command({
+        "type": "effect", "action_id": action_id,
+        "effect": "set_forward_sprint_dev", "forward": True, "sprint": True,
+    })
 
 
 def encode_clear_controls(action_id: str) -> str:
