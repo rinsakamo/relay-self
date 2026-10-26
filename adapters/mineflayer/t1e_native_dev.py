@@ -306,7 +306,7 @@ async def run_case(args, case):
         os.environ.pop("RELAYSELF_T1H_CLEAR_FAULT_DEV", None)
         if case == "t1h_input_residual":
             os.environ["RELAYSELF_T1H_CLEAR_FAULT_DEV"] = CONFIRM
-            report["motor_fault"] = "DEV_CLEAR_NOOP_FALSE_APPLIED_ACK_INPUT_HELD"
+            report["motor_fault"] = "DEV_CLEAR_NOOP_STUCK_SNEAK_FALSE_APPLIED_ACK"
         os.environ["RELAYSELF_PAPER_TICK_DEV"] = "1"
         os.environ["RELAYSELF_PAPER_TICK_TRACE_DEV"] = str(root / "node_timing.jsonl")
         if t1f:

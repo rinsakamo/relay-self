@@ -293,7 +293,14 @@ async function handleEffect (command) {
       const t1hClearFault = process.env.RELAYSELF_T1H_CLEAR_FAULT_DEV === 'T1E-DISPOSABLE-DEV-ONLY' &&
         process.env.RELAYSELF_T1F_DEV === '1' &&
         process.env.RELAYSELF_PAPER_TICK_DEV === '1'
-      if (!t1hClearFault) bot.clearControlStates()
+      if (t1hClearFault) {
+        // Mineflayer 4.39 back-only physics does not publish Paper input
+        // bits. Inject stuck sneak through this SAME bridge/API so the
+        // independent Paper callback can observe a real nonidle input.
+        bot.setControlState('sneak', true)
+      } else {
+        bot.clearControlStates()
+      }
       t1fControl = { phase: "CLEARED", since_ns: process.hrtime.bigint().toString(), generation: t1fControl.generation + 1 }
       emitEffectResult(command, 'applied')
       return
