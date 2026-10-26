@@ -89,7 +89,6 @@ export class PaperTickDeadlineGuard {
   }
 }
 
-
 // The single bridge caller supplies its existing emit() seam. Both receipts
 // are emitted atomically with respect to a *budget refusal*: no accepted
 // Paper/L0 pair escapes before the deadline check. Still no native authority.
