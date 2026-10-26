@@ -305,6 +305,7 @@ async def run(
     dash_jar: Path, dash_sha: str, *, confirm: str,
     p1_live_dev: bool = False,
     m0_live_dev: bool = False,
+    m0_move_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -313,6 +314,11 @@ async def run(
         or os.environ.get("S49_SPRINT_MOTOR_DEV_ONLY") != "1"
         or type(p1_live_dev) is not bool
         or type(m0_live_dev) is not bool
+        or type(m0_move_dev) is not bool
+        or (m0_move_dev and (
+            not m0_live_dev
+            or os.environ.get("S49_M0_ACTION_STEP_DEV_ONLY") != "1"
+        ))
         or (m0_live_dev and (
             not p1_live_dev or os.environ.get("S49_M0_DASH_DEBIT_DEV_ONLY") != "1"
         ))
@@ -446,6 +452,7 @@ async def run(
                 original_report, paper_log,
                 dev_forward_motor=True, dev_sprint_motor=True,
                 dev_m0_dash_invoice=invoice_from_original_outcome if m0_live_dev else None,
+                dev_m0_action_move_step=m0_move_dev,
             )
         original_bytes = json.loads(original_report.read_text(encoding="utf-8"))
         report["original_s49_rc"] = rc
@@ -479,7 +486,10 @@ async def run(
             )
         if m0_live_dev:
             report["m0_s49_original_owner_postings"] = (
-                original_bytes.get("dev_m0_dash_postings", [])
+                original_bytes.get(
+                    "dev_m0_action_move_postings" if m0_move_dev
+                    else "dev_m0_dash_postings", [],
+                )
             )
             report["m0_s49_original_owner_remaining"] = (
                 original_bytes.get("dev_m0_dash_energy_remaining")
@@ -492,26 +502,55 @@ async def run(
         if m0_live_dev:
             postings = report["m0_s49_original_owner_postings"]
             expected_charge = report["p1_paper_motor_dev"]["m0_charge_proposal_not_posted"]
-            if (len(postings) != 1
-                    or postings[0]["action_id"] != subject["action_id"]
-                    or postings[0]["session_id"] != subject["session"]
-                    or not math.isclose(postings[0]["posted_extra"],
-                                        expected_charge, abs_tol=1e-10)
-                    or not math.isclose(
-                        postings[0]["energy_before"] - postings[0]["energy_after"],
-                        expected_charge, abs_tol=1e-10)
-                    or original_bytes.get("dev_m0_dash_m0_tick") != 1
-                    or not math.isclose(
-                        original_bytes["dev_m0_dash_energy_initial"]
-                        - original_bytes["dev_m0_dash_energy_remaining"],
-                        expected_charge, abs_tol=1e-10)
-                    or len(original_bytes["dev_m0_dash_unboosted_actions"]) != 1
-                    or original_bytes["dev_m0_dash_unboosted_actions"][0]
-                       != actions[1]["action"]):
-                raise ForwardDashDevRejected("Original S49 M0 ledger debit not source bound")
-            report["m0_debit_classification"] = (
-                "ORIGINAL_S49_LOCAL_B0_OWNER_POSTED_DEV_NOT_ATTESTED"
-            )
+            if m0_move_dev:
+                if (len(postings) != 2
+                        or [a["action_id"] for a in postings]
+                           != [a["action"] for a in actions]
+                        or any(a["session_id"] != subject["session"] for a in postings)
+                        or postings[0]["dash_extra_debit"] <= 0
+                        or not math.isclose(postings[0]["dash_extra_debit"],
+                                            expected_charge, abs_tol=1e-10)
+                        or postings[1]["dash_extra_debit"] != 0
+                        or postings[0]["m0_tick_after"] != 1
+                        or postings[1]["m0_tick_after"] != 2
+                        or any(not math.isclose(a["basal_debit"], 0.5)
+                               or not math.isclose(a["move_debit"], 0.25)
+                               for a in postings)
+                        or not math.isclose(
+                            original_bytes["dev_m0_dash_energy_initial"]
+                            - original_bytes["dev_m0_dash_energy_remaining"],
+                            1.5 + expected_charge, abs_tol=1e-10)
+                        or original_bytes.get("dev_m0_dash_m0_tick") != 2
+                        or report["paper_action_bracket"]["elapsed_callbacks"]
+                           != report["p1_paper_motor_dev"]["world_ticks_replayed"]):
+                    raise ForwardDashDevRejected("S49 original owner MOVE step/M0 source mismatch")
+                report["m0_debit_classification"] = (
+                    "S49_NATIVE_OUTCOME_TWO_M0_MOVE_STEPS_PAPER_BRACKET_DEV_ONLY"
+                )
+                report["m0_world_tick_basal_accounted"] = False
+            else:
+                if (len(postings) != 1
+                        or postings[0]["action_id"] != subject["action_id"]
+                        or postings[0]["session_id"] != subject["session"]
+                        or not math.isclose(
+                            postings[0]["posted_extra"], expected_charge,
+                            abs_tol=1e-10,
+                        )
+                        or not math.isclose(
+                            postings[0]["energy_before"] - postings[0]["energy_after"],
+                            expected_charge, abs_tol=1e-10)
+                        or original_bytes.get("dev_m0_dash_m0_tick") != 1
+                        or not math.isclose(
+                            original_bytes["dev_m0_dash_energy_initial"]
+                            - original_bytes["dev_m0_dash_energy_remaining"],
+                            expected_charge, abs_tol=1e-10)
+                        or len(original_bytes["dev_m0_dash_unboosted_actions"]) != 1
+                        or original_bytes["dev_m0_dash_unboosted_actions"][0]
+                           != actions[1]["action"]):
+                    raise ForwardDashDevRejected("Original S49 M0 DASH extra not source bound")
+                report["m0_debit_classification"] = (
+                    "ORIGINAL_S49_LOCAL_B0_OWNER_POSTED_DEV_NOT_ATTESTED"
+                )
         report["original_action_distances_m"] = [a["movement_m"] for a in actions]
         report["first_minus_unboosted_second_distance_m"] = (
             actions[0]["movement_m"] - actions[1]["movement_m"]
@@ -559,12 +598,14 @@ def main() -> int:
     parser.add_argument("--confirm", required=True)
     parser.add_argument("--p1-live-dev", action="store_true")
     parser.add_argument("--m0-live-dev", action="store_true")
+    parser.add_argument("--m0-move-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
         a.dash_jar, a.dash_sha256, confirm=a.confirm,
         p1_live_dev=a.p1_live_dev,
         m0_live_dev=a.m0_live_dev,
+        m0_move_dev=a.m0_move_dev,
     ))
 
 
