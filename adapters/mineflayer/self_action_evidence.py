@@ -31,8 +31,11 @@ def verify_native_action_evidence(
     action_id: str,
     session_id: str,
     movement_m: float,
+    allow_dev_forward: bool = False,
 ) -> None:
-    """Check exact source/seq/dispatch/cleanup and independently recalc xz."""
+    """Check source/seq/dispatch/cleanup and independently recalc xz."""
+    if type(allow_dev_forward) is not bool:
+        raise NativeEvidenceRejected("explicit DEV forward evidence flag must be bool")
     if not isinstance(value, dict) or set(value) != {
         "schema", "action_id", "binding_id", "action_ref", "session_id",
         "status", "before_observation", "dispatch_receipt",
@@ -47,7 +50,10 @@ def verify_native_action_evidence(
         or value["session_id"] != session_id
         or not isinstance(value["binding_id"], str)
         or not value["binding_id"]
-        or value["action_ref"] != "MOVE_BACKWARD"
+        or value["action_ref"] not in (
+            ("MOVE_BACKWARD", "MOVE_FORWARD")
+            if allow_dev_forward else ("MOVE_BACKWARD",)
+        )
         or value["status"] != "executed"
         or value["cleanup_attempted"] is not True
         or value["goal_success_attested"] is not False
@@ -130,7 +136,7 @@ def _source_frame(message: Any) -> dict[str, Any]:
 
 
 def capture_native_action_evidence(
-    consequence: WorldConsequence,
+    consequence: WorldConsequence, *, allow_dev_forward: bool = False,
 ) -> dict[str, Any]:
     """Read existing immutable S16 result; never trigger a new native probe."""
     if (
@@ -163,5 +169,6 @@ def capture_native_action_evidence(
         result, action_id=consequence.action_id,
         session_id=consequence.session_id,
         movement_m=consequence.movement_distance,
+        allow_dev_forward=allow_dev_forward,
     )
     return result

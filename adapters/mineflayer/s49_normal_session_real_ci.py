@@ -502,7 +502,7 @@ async def qualify(
                 # receipts, captured BEFORE the immutable consequence is lost.
                 # Legacy reports have no such field and remain EVIDENCE_PARTIAL.
                 "execution_evidence": capture_native_action_evidence(
-                    receipt.consequence
+                    receipt.consequence, allow_dev_forward=dev_forward_motor,
                 ),
             })
 

@@ -30,3 +30,7 @@ No automatic claim of avoiding the zombie is permitted here.
 
 Do not merge to main / PR #545 / PR #634, update R qualification, or
 reinterpret the previously recorded backward negative control.
+
+S16 `self_action_evidence` now retains the historical strict default
+`MOVE_BACKWARD`; forward evidence must pass an explicit DEV-only flag at
+capture and subsequent verification. Previous consumers are unchanged.

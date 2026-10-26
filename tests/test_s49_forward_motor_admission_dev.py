@@ -91,3 +91,33 @@ def test_forward_cannot_combine_with_original_next_epoch(monkeypatch, tmp_path):
         dev_forward_motor=True, dev_next_epoch="MOVE_AWAY",
     ))
     assert rc == 2
+
+def test_forward_s16_evidence_requires_separate_dev_flag():
+    from dataclasses import replace
+
+    import test_action_feedback_qualification as s17
+    from adapters.mineflayer.self_action_evidence import (
+        NativeEvidenceRejected,
+        capture_native_action_evidence,
+        verify_native_action_evidence,
+    )
+
+    *_, original, _, _ = s17.executed_closed_chain()
+    forward = replace(original, action_ref="MOVE_FORWARD")
+    with pytest.raises(NativeEvidenceRejected):
+        capture_native_action_evidence(forward)
+    evidence = capture_native_action_evidence(forward, allow_dev_forward=True)
+    assert evidence["action_ref"] == "MOVE_FORWARD"
+    assert evidence["goal_success_attested"] is False
+    with pytest.raises(NativeEvidenceRejected):
+        verify_native_action_evidence(
+            evidence, action_id=forward.action_id,
+            session_id=forward.session_id, movement_m=forward.movement_distance,
+        )
+    verify_native_action_evidence(
+        evidence, action_id=forward.action_id,
+        session_id=forward.session_id, movement_m=forward.movement_distance,
+        allow_dev_forward=True,
+    )
+    with pytest.raises(NativeEvidenceRejected):
+        capture_native_action_evidence(forward, allow_dev_forward=1)
