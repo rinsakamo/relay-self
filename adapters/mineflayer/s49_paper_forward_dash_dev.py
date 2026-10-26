@@ -29,6 +29,7 @@ from adapters.mineflayer.s49_node_physics_postclear_dev import (
     audit_node_paper_motion_fingerprint_dev,
     audit_node_physics_postclear_dev,
 )
+from adapters.mineflayer.s49_two_action_world_timeline_dev import review_two_action_world_timeline_dev
 from adapters.mineflayer.s49_paper_world_first_dev import (
     _await_dash_dev_line,
     _fresh_output,
@@ -674,12 +675,18 @@ async def run(
             await server.stdin.drain()
 
         try:
-            return await base_execute(
+            result = await base_execute(
                 session, command, timeout_s=timeout_s, provenance=provenance,
                 **({"on_effect_ack_dev": paper_effect_ack_marker
                     if first else paper_second_native_ack_marker}
                    if native_edges_dev and (first or two_action_timeline_dev) else {}),
             )
+            if two_action_timeline_dev and not first:
+                # Native control is already cleared and S15 ACK received;
+                # allow five genuine Paper callbacks BEFORE the original
+                # S49 session shutdown, not a second Action or extra reader.
+                await asyncio.sleep(0.35)
+            return result
         finally:
             if first:
                 offset = paper_log.stat().st_size if paper_log.exists() else 0
@@ -878,6 +885,26 @@ async def run(
                             rate=M0WorldRateDev(basal_energy_per_world_second=0.5),
                         )
                     )
+                    if two_action_timeline_dev:
+                        if subject["second_action_id"] != actions[1]["action"]:
+                            raise ForwardDashDevRejected("second original Action timeline ID mismatch")
+                        report["m0_two_action_worldtime_shadow_dev"] = (
+                            review_two_action_world_timeline_dev(
+                                paper_log.read_text(encoding="utf-8"),
+                                action_id=subject["action_id"],
+                                session_id=subject["session"],
+                                bracket=report["paper_action_bracket"],
+                                passive=report["post_release_paper_motion_dev"],
+                                first_native_ack=report[
+                                    "original_s49_effect_ack_paper_edges"
+                                ],
+                                original_actions=actions,
+                                original_m0_postings=postings,
+                                final_original_energy=report[
+                                    "m0_s49_original_owner_remaining"
+                                ],
+                            )
+                        )
             else:
                 if (len(postings) != 1
                         or postings[0]["action_id"] != subject["action_id"]
