@@ -83,6 +83,8 @@ def test_owner_acks_bounded_paper_idle_but_not_qualification(tmp_path,monkeypatc
     assert result["next_action_issued"] is False
     assert case[-1] == ["relaydevsnapshot " + MARKER]
     with pytest.raises(StopDevRejected):
+        t1i.require_stop_permits_action(case[0])
+    with pytest.raises(StopDevRejected):
         run(case)
 
 

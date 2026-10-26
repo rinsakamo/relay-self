@@ -3,8 +3,9 @@
 Base: `self/dev-t1h-s49-stop-20261026`,
 `2531ba0a08ac77aca79f4d939122784e8556f3e5`.
 **DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**.
-New T1i is not yet proven in a native Minecraft World. Prior T1h result
-remains separately `DEV_WORLD_OBSERVED`.
+T1i native results are now recorded in
+[`t1i-native-dev-results-20261027.md`](t1i-native-dev-results-20261027.md).
+The observed ceiling is `DEV_WORLD_OBSERVED`; prior T1h remains separate.
 
 ## What is connected
 
@@ -38,8 +39,10 @@ remains separately `DEV_WORLD_OBSERVED`.
   receipt; `EAT physical interruption=UNVERIFIED`. Therefore EAT STOP
   never generates the high-level DEV STOP ACK; it is only a fail-closed
   *decision/effect admission* test. A future Node native cancellation
-  design and an independent post-STOP consumption/Body observation are
-  needed for affirmative physical EAT interruption.
+  design remains needed for affirmative physical EAT interruption.
+  The original receiver now performs bounded passive post-STOP probes and
+  retains the independent Paper callback stream. These observations never
+  reopen UNKNOWN or create an EatingOutcome/credit.
 - No new native reader, plugin, Action issuer, TPS actuator,
   high-TPS Motor, R/V grant, or P1 profile/gait law is added.
   `WAIT_DEV` never becomes qualified P1 WAIT.
@@ -96,7 +99,15 @@ T1g/T1h. Do not operate on existing Worlds.
    modified code in NEW disposable Worlds. Existing earlier Worlds
    must remain unchanged.
 
-This chat's GitHub edits are committed and source read back. **No new
-T1i Python3.12 focused/FAST, Node/Java build, or native Minecraft DEV
-trials were run here.** Do not claim new DEV_WORLD_OBSERVED for T1i
-until that local native result is received and independently checked.
+## STOP accounting and boundary probes
+
+`--eat-stop-stage` selects before_equip, after_equip, consume_send,
+consume_wait (default), after_receipt, or after_observe in fresh DEV Worlds.
+At STOP the existing DEV tick consumer freezes M0/P1 and retains exact
+energy/fatigue/tick/credit values; subsequent raw native/Paper frames remain
+available as observations without fabricated WAIT or catch-up ticks. World
+metabolism continues independently; this frozen Self ledger is incomplete
+beyond STOP and must not be interpreted as zero World cost. Resume remains
+forbidden. No M0/P1 equation or profile changes.
+
+See the dated results for actual runs, original failures, cleanup and limits.

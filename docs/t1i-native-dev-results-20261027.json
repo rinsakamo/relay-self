@@ -1,0 +1,897 @@
+{
+  "classification": "DEV_ONLY / DEV_WORLD_OBSERVED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN",
+  "world_trials": 13,
+  "statuses": {
+    "PASS": 12,
+    "FAIL": 1
+  },
+  "normal_moves": 24,
+  "successful_eat": 3,
+  "unknown": 12,
+  "stop_acks": 3,
+  "consume_reissues": 0,
+  "effect_id_duplicates": 0,
+  "trials": [
+    {
+      "run": "run-002/t1i_stop_eat",
+      "status": "PASS",
+      "error": null,
+      "mode": "EAT",
+      "stage": "consume_wait",
+      "session": "ecbfa41c-bbe5-406e-972e-971af91f09b4",
+      "world": "43e64d97-5a8c-44f1-8ac4-103d7702fc0d",
+      "normal_moves": 2,
+      "successful_eat": 0,
+      "unknown": 1,
+      "set_control": 2,
+      "clear": 2,
+      "consume": 1,
+      "equip": 1,
+      "effect_id_duplicates": 0,
+      "consume_reissues": 0,
+      "consume_receipts": [
+        {
+          "type": "effect_result",
+          "session_id": "ecbfa41c-bbe5-406e-972e-971af91f09b4",
+          "seq": 421,
+          "action_id": "t2-native-meal-consume",
+          "effect": "consume_held",
+          "result": "applied",
+          "error": null
+        }
+      ],
+      "stop_ack": null,
+      "post_stop_new_actions": 0,
+      "before_food": null,
+      "after_food": null,
+      "before_inventory": null,
+      "after_inventory": null,
+      "passive_status": "NATIVE_UNVERIFIED",
+      "post_stop_paper_food": [],
+      "normal_eat": null,
+      "m0_move": 0.003364211793147172,
+      "m0_basal": 0.305,
+      "p1_accumulated": 0.06728423586294344,
+      "p1_recovered": 0.06728423586294344,
+      "credit_count": 0,
+      "intake_ticks": 0,
+      "stop_accounting_frozen": false,
+      "post_marker_residual_path": null,
+      "request_to_clear_ack_ms": null,
+      "cleanup": true,
+      "java_exit": 0,
+      "node_exit": 0,
+      "pids_absent": true,
+      "port_rebind": true,
+      "source_hashes_verified": true
+    },
+    {
+      "run": "run-002/t1i_stop_loop",
+      "status": "PASS",
+      "error": null,
+      "mode": "MOVE",
+      "stage": "consume_wait",
+      "session": "0061fa9c-af93-4c2c-93d7-0668909a099d",
+      "world": "6b3314a9-43fd-4f99-a687-cd0286e52e7c",
+      "normal_moves": 2,
+      "successful_eat": 1,
+      "unknown": 1,
+      "set_control": 3,
+      "clear": 3,
+      "consume": 1,
+      "equip": 1,
+      "effect_id_duplicates": 0,
+      "consume_reissues": 0,
+      "consume_receipts": [
+        {
+          "type": "effect_result",
+          "session_id": "0061fa9c-af93-4c2c-93d7-0668909a099d",
+          "seq": 420,
+          "action_id": "t2-native-meal-consume",
+          "effect": "consume_held",
+          "result": "applied",
+          "error": null
+        }
+      ],
+      "stop_ack": {
+        "active_action_id": "t1f-epoch-2",
+        "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+        "clear_ack_seq": 435,
+        "clear_action_id": "t1f-epoch-2-clear",
+        "first_idle_tick": 384,
+        "full_tick_stillness_qualified": false,
+        "high_level_dev_stop_ack": true,
+        "last_idle_tick": 391,
+        "marker_id": "T1I_MULTI_AFTER_CLEAR",
+        "native_source_independently_authenticated": false,
+        "observed_idle_ticks": 8,
+        "p1_qualified_wait": false,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "session_id": "0061fa9c-af93-4c2c-93d7-0668909a099d",
+        "stop_id": "t1i-multi-epoch-stop",
+        "world": "6b3314a9-43fd-4f99-a687-cd0286e52e7c"
+      },
+      "post_stop_new_actions": 0,
+      "before_food": null,
+      "after_food": null,
+      "before_inventory": null,
+      "after_inventory": null,
+      "passive_status": "NATIVE_UNVERIFIED",
+      "post_stop_paper_food": [],
+      "normal_eat": {
+        "action_id": "t2-native-meal",
+        "after_probe_seq": 428,
+        "consumed_item": "cooked_beef",
+        "count_after": 2,
+        "count_before": 3,
+        "food_after": 20.0,
+        "food_before": 18.0,
+        "provenance": {
+          "reference": "0061fa9c-af93-4c2c-93d7-0668909a099d:428",
+          "source": "mineflayer"
+        },
+        "session_id": "0061fa9c-af93-4c2c-93d7-0668909a099d"
+      },
+      "m0_move": 0.004232798168522398,
+      "m0_basal": 0.359,
+      "p1_accumulated": 0.08465596337044795,
+      "p1_recovered": 0.08465596337044795,
+      "credit_count": 1,
+      "intake_ticks": 1,
+      "stop_accounting_frozen": false,
+      "post_marker_residual_path": 0.09465916498850291,
+      "request_to_clear_ack_ms": null,
+      "cleanup": true,
+      "java_exit": 0,
+      "node_exit": 0,
+      "pids_absent": true,
+      "port_rebind": true,
+      "source_hashes_verified": true
+    },
+    {
+      "run": "run-003/t1i_stop_eat",
+      "status": "PASS",
+      "error": null,
+      "mode": "EAT",
+      "stage": "consume_wait",
+      "session": "0a2ed489-0b49-441d-99be-c05e6c862c31",
+      "world": "7b952034-48ef-475e-a5d2-88c49d0d1e8c",
+      "normal_moves": 2,
+      "successful_eat": 0,
+      "unknown": 1,
+      "set_control": 2,
+      "clear": 2,
+      "consume": 1,
+      "equip": 1,
+      "effect_id_duplicates": 0,
+      "consume_reissues": 0,
+      "consume_receipts": [
+        {
+          "type": "effect_result",
+          "session_id": "0a2ed489-0b49-441d-99be-c05e6c862c31",
+          "seq": 419,
+          "action_id": "t2-native-meal-consume",
+          "effect": "consume_held",
+          "result": "applied",
+          "error": null
+        }
+      ],
+      "stop_ack": null,
+      "post_stop_new_actions": 0,
+      "before_food": 18.0,
+      "after_food": 20.0,
+      "before_inventory": [
+        {
+          "count": 3,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "after_inventory": [
+        {
+          "count": 2,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "passive_status": "DEV_WORLD_OBSERVED",
+      "post_stop_paper_food": [
+        18,
+        20
+      ],
+      "normal_eat": null,
+      "m0_move": 0.003364211793147172,
+      "m0_basal": 0.303,
+      "p1_accumulated": 0.06728423586294344,
+      "p1_recovered": 0.06728423586294344,
+      "credit_count": 0,
+      "intake_ticks": 0,
+      "stop_accounting_frozen": true,
+      "post_marker_residual_path": null,
+      "request_to_clear_ack_ms": null,
+      "cleanup": true,
+      "java_exit": 0,
+      "node_exit": 0,
+      "pids_absent": true,
+      "port_rebind": true,
+      "source_hashes_verified": true
+    },
+    {
+      "run": "run-003/t1i_stop_loop",
+      "status": "PASS",
+      "error": null,
+      "mode": "MOVE",
+      "stage": "consume_wait",
+      "session": "82d174bc-458d-4668-8e61-04b485dfba2e",
+      "world": "d0253b21-665c-429a-8f94-de60bf36b908",
+      "normal_moves": 2,
+      "successful_eat": 1,
+      "unknown": 1,
+      "set_control": 3,
+      "clear": 3,
+      "consume": 1,
+      "equip": 1,
+      "effect_id_duplicates": 0,
+      "consume_reissues": 0,
+      "consume_receipts": [
+        {
+          "type": "effect_result",
+          "session_id": "82d174bc-458d-4668-8e61-04b485dfba2e",
+          "seq": 419,
+          "action_id": "t2-native-meal-consume",
+          "effect": "consume_held",
+          "result": "applied",
+          "error": null
+        }
+      ],
+      "stop_ack": {
+        "active_action_id": "t1f-epoch-2",
+        "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+        "clear_ack_seq": 434,
+        "clear_action_id": "t1f-epoch-2-clear",
+        "first_idle_tick": 380,
+        "full_tick_stillness_qualified": false,
+        "high_level_dev_stop_ack": true,
+        "last_idle_tick": 387,
+        "marker_id": "T1I_MULTI_AFTER_CLEAR",
+        "native_source_independently_authenticated": false,
+        "observed_idle_ticks": 8,
+        "p1_qualified_wait": false,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "session_id": "82d174bc-458d-4668-8e61-04b485dfba2e",
+        "stop_id": "t1i-multi-epoch-stop",
+        "world": "d0253b21-665c-429a-8f94-de60bf36b908"
+      },
+      "post_stop_new_actions": 0,
+      "before_food": 18.0,
+      "after_food": null,
+      "before_inventory": [
+        {
+          "count": 3,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "after_inventory": null,
+      "passive_status": "NATIVE_UNVERIFIED",
+      "post_stop_paper_food": [
+        20
+      ],
+      "normal_eat": {
+        "action_id": "t2-native-meal",
+        "after_probe_seq": 427,
+        "consumed_item": "cooked_beef",
+        "count_after": 2,
+        "count_before": 3,
+        "food_after": 20.0,
+        "food_before": 18.0,
+        "provenance": {
+          "reference": "82d174bc-458d-4668-8e61-04b485dfba2e:427",
+          "source": "mineflayer"
+        },
+        "session_id": "82d174bc-458d-4668-8e61-04b485dfba2e"
+      },
+      "m0_move": 0.0036246789564109536,
+      "m0_basal": 0.341,
+      "p1_accumulated": 0.07249357912821906,
+      "p1_recovered": 0.06728423586294344,
+      "credit_count": 1,
+      "intake_ticks": 1,
+      "stop_accounting_frozen": true,
+      "post_marker_residual_path": 0.049492188301323514,
+      "request_to_clear_ack_ms": 11.731358,
+      "cleanup": true,
+      "java_exit": 0,
+      "node_exit": 0,
+      "pids_absent": true,
+      "port_rebind": true,
+      "source_hashes_verified": true
+    },
+    {
+      "run": "run-004/t1i_stop_eat",
+      "status": "PASS",
+      "error": null,
+      "mode": "EAT",
+      "stage": "before_equip",
+      "session": "707d3b90-6c2d-44cd-a3e5-99f8663c8cfa",
+      "world": "6a375512-b88d-41fc-8a45-538e14c2326c",
+      "normal_moves": 2,
+      "successful_eat": 0,
+      "unknown": 1,
+      "set_control": 2,
+      "clear": 2,
+      "consume": 0,
+      "equip": 0,
+      "effect_id_duplicates": 0,
+      "consume_reissues": 0,
+      "consume_receipts": [],
+      "stop_ack": null,
+      "post_stop_new_actions": 0,
+      "before_food": 18.0,
+      "after_food": 18.0,
+      "before_inventory": [
+        {
+          "count": 3,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "after_inventory": [
+        {
+          "count": 3,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "passive_status": "DEV_WORLD_OBSERVED",
+      "post_stop_paper_food": [
+        18
+      ],
+      "normal_eat": null,
+      "m0_move": 0.003364211793147172,
+      "m0_basal": 0.303,
+      "p1_accumulated": 0.06728423586294344,
+      "p1_recovered": 0.06728423586294344,
+      "credit_count": 0,
+      "intake_ticks": 0,
+      "stop_accounting_frozen": true,
+      "post_marker_residual_path": null,
+      "request_to_clear_ack_ms": null,
+      "cleanup": true,
+      "java_exit": 0,
+      "node_exit": 0,
+      "pids_absent": true,
+      "port_rebind": true,
+      "source_hashes_verified": true
+    },
+    {
+      "run": "run-005/t1i_stop_eat",
+      "status": "PASS",
+      "error": null,
+      "mode": "EAT",
+      "stage": "after_equip",
+      "session": "e0ae3593-ab99-4c5f-85b1-7309b87e51ce",
+      "world": "86d7cf51-27bc-4ac3-a8a7-9b271e8367d3",
+      "normal_moves": 2,
+      "successful_eat": 0,
+      "unknown": 1,
+      "set_control": 2,
+      "clear": 2,
+      "consume": 0,
+      "equip": 1,
+      "effect_id_duplicates": 0,
+      "consume_reissues": 0,
+      "consume_receipts": [],
+      "stop_ack": null,
+      "post_stop_new_actions": 0,
+      "before_food": 18.0,
+      "after_food": 18.0,
+      "before_inventory": [
+        {
+          "count": 3,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "after_inventory": [
+        {
+          "count": 3,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "passive_status": "DEV_WORLD_OBSERVED",
+      "post_stop_paper_food": [
+        18
+      ],
+      "normal_eat": null,
+      "m0_move": 0.003364211793147172,
+      "m0_basal": 0.303,
+      "p1_accumulated": 0.06728423586294344,
+      "p1_recovered": 0.06728423586294344,
+      "credit_count": 0,
+      "intake_ticks": 0,
+      "stop_accounting_frozen": true,
+      "post_marker_residual_path": null,
+      "request_to_clear_ack_ms": null,
+      "cleanup": true,
+      "java_exit": 0,
+      "node_exit": 0,
+      "pids_absent": true,
+      "port_rebind": true,
+      "source_hashes_verified": true
+    },
+    {
+      "run": "run-006/t1i_stop_eat",
+      "status": "PASS",
+      "error": null,
+      "mode": "EAT",
+      "stage": "consume_send",
+      "session": "0236d368-e723-470e-951f-3a21e3abc38c",
+      "world": "e92e6b62-0e77-4d72-898b-1d050666d819",
+      "normal_moves": 2,
+      "successful_eat": 0,
+      "unknown": 1,
+      "set_control": 2,
+      "clear": 2,
+      "consume": 1,
+      "equip": 1,
+      "effect_id_duplicates": 0,
+      "consume_reissues": 0,
+      "consume_receipts": [
+        {
+          "type": "effect_result",
+          "session_id": "0236d368-e723-470e-951f-3a21e3abc38c",
+          "seq": 419,
+          "action_id": "t2-native-meal-consume",
+          "effect": "consume_held",
+          "result": "applied",
+          "error": null
+        }
+      ],
+      "stop_ack": null,
+      "post_stop_new_actions": 0,
+      "before_food": 18.0,
+      "after_food": 20.0,
+      "before_inventory": [
+        {
+          "count": 3,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "after_inventory": [
+        {
+          "count": 2,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "passive_status": "DEV_WORLD_OBSERVED",
+      "post_stop_paper_food": [
+        18,
+        20
+      ],
+      "normal_eat": null,
+      "m0_move": 0.003364211793147172,
+      "m0_basal": 0.303,
+      "p1_accumulated": 0.06728423586294344,
+      "p1_recovered": 0.06728423586294344,
+      "credit_count": 0,
+      "intake_ticks": 0,
+      "stop_accounting_frozen": true,
+      "post_marker_residual_path": null,
+      "request_to_clear_ack_ms": null,
+      "cleanup": true,
+      "java_exit": 0,
+      "node_exit": 0,
+      "pids_absent": true,
+      "port_rebind": true,
+      "source_hashes_verified": true
+    },
+    {
+      "run": "run-007/t1i_stop_eat",
+      "status": "FAIL",
+      "error": "ValueError: T1f refusal: UNDETERMINED / SESSION_LATCHED",
+      "mode": null,
+      "stage": "after_receipt",
+      "session": "1d057769-773f-452e-968d-5d04d9cc41fc",
+      "world": null,
+      "normal_moves": 0,
+      "successful_eat": 0,
+      "unknown": 0,
+      "set_control": 0,
+      "clear": 0,
+      "consume": 0,
+      "equip": 0,
+      "effect_id_duplicates": 0,
+      "consume_reissues": 0,
+      "consume_receipts": [],
+      "stop_ack": null,
+      "post_stop_new_actions": "UNAVAILABLE",
+      "before_food": null,
+      "after_food": null,
+      "before_inventory": null,
+      "after_inventory": null,
+      "passive_status": "NATIVE_UNVERIFIED",
+      "post_stop_paper_food": [],
+      "normal_eat": null,
+      "m0_move": 0,
+      "m0_basal": 0,
+      "p1_accumulated": 0,
+      "p1_recovered": 0,
+      "credit_count": 0,
+      "intake_ticks": 0,
+      "stop_accounting_frozen": false,
+      "post_marker_residual_path": null,
+      "request_to_clear_ack_ms": null,
+      "cleanup": true,
+      "java_exit": 0,
+      "node_exit": 0,
+      "pids_absent": true,
+      "port_rebind": true,
+      "source_hashes_verified": true
+    },
+    {
+      "run": "run-008/t1i_stop_eat",
+      "status": "PASS",
+      "error": null,
+      "mode": "EAT",
+      "stage": "after_observe",
+      "session": "743bfa67-365e-4afe-8a53-96b8bd267b7b",
+      "world": "8d2fe5d3-f057-42d1-84d7-bedc14b4ec1d",
+      "normal_moves": 2,
+      "successful_eat": 0,
+      "unknown": 1,
+      "set_control": 2,
+      "clear": 2,
+      "consume": 1,
+      "equip": 1,
+      "effect_id_duplicates": 0,
+      "consume_reissues": 0,
+      "consume_receipts": [
+        {
+          "type": "effect_result",
+          "session_id": "743bfa67-365e-4afe-8a53-96b8bd267b7b",
+          "seq": 418,
+          "action_id": "t2-native-meal-consume",
+          "effect": "consume_held",
+          "result": "applied",
+          "error": null
+        }
+      ],
+      "stop_ack": null,
+      "post_stop_new_actions": 0,
+      "before_food": 18.0,
+      "after_food": 20.0,
+      "before_inventory": [
+        {
+          "count": 3,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "after_inventory": [
+        {
+          "count": 2,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "passive_status": "DEV_WORLD_OBSERVED",
+      "post_stop_paper_food": [
+        20
+      ],
+      "normal_eat": null,
+      "m0_move": 0.003364211793147172,
+      "m0_basal": 0.334,
+      "p1_accumulated": 0.06728423586294344,
+      "p1_recovered": 0.06728423586294344,
+      "credit_count": 0,
+      "intake_ticks": 0,
+      "stop_accounting_frozen": true,
+      "post_marker_residual_path": null,
+      "request_to_clear_ack_ms": null,
+      "cleanup": true,
+      "java_exit": 0,
+      "node_exit": 0,
+      "pids_absent": true,
+      "port_rebind": true,
+      "source_hashes_verified": true
+    },
+    {
+      "run": "run-009/t1i_stop_eat",
+      "status": "PASS",
+      "error": null,
+      "mode": "EAT",
+      "stage": "consume_wait",
+      "session": "15c44173-1c06-49fa-88b0-413ee26d5a77",
+      "world": "ea4cae08-e716-4b59-874f-2ee04888ce5c",
+      "normal_moves": 2,
+      "successful_eat": 0,
+      "unknown": 1,
+      "set_control": 2,
+      "clear": 2,
+      "consume": 1,
+      "equip": 1,
+      "effect_id_duplicates": 0,
+      "consume_reissues": 0,
+      "consume_receipts": [
+        {
+          "type": "effect_result",
+          "session_id": "15c44173-1c06-49fa-88b0-413ee26d5a77",
+          "seq": 419,
+          "action_id": "t2-native-meal-consume",
+          "effect": "consume_held",
+          "result": "applied",
+          "error": null
+        }
+      ],
+      "stop_ack": null,
+      "post_stop_new_actions": 0,
+      "before_food": 18.0,
+      "after_food": 20.0,
+      "before_inventory": [
+        {
+          "count": 3,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "after_inventory": [
+        {
+          "count": 2,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "passive_status": "DEV_WORLD_OBSERVED",
+      "post_stop_paper_food": [
+        18,
+        20
+      ],
+      "normal_eat": null,
+      "m0_move": 0.003364211793147172,
+      "m0_basal": 0.303,
+      "p1_accumulated": 0.06728423586294344,
+      "p1_recovered": 0.06728423586294344,
+      "credit_count": 0,
+      "intake_ticks": 0,
+      "stop_accounting_frozen": true,
+      "post_marker_residual_path": null,
+      "request_to_clear_ack_ms": null,
+      "cleanup": true,
+      "java_exit": 0,
+      "node_exit": 0,
+      "pids_absent": true,
+      "port_rebind": true,
+      "source_hashes_verified": true
+    },
+    {
+      "run": "run-010/t1i_stop_eat",
+      "status": "PASS",
+      "error": null,
+      "mode": "EAT",
+      "stage": "after_receipt",
+      "session": "56d50efa-420c-4581-a4fc-60f4c70e4ff5",
+      "world": "33063881-2ef7-4ee2-9187-7850e38d657e",
+      "normal_moves": 2,
+      "successful_eat": 0,
+      "unknown": 1,
+      "set_control": 2,
+      "clear": 2,
+      "consume": 1,
+      "equip": 1,
+      "effect_id_duplicates": 0,
+      "consume_reissues": 0,
+      "consume_receipts": [
+        {
+          "type": "effect_result",
+          "session_id": "56d50efa-420c-4581-a4fc-60f4c70e4ff5",
+          "seq": 421,
+          "action_id": "t2-native-meal-consume",
+          "effect": "consume_held",
+          "result": "applied",
+          "error": null
+        }
+      ],
+      "stop_ack": null,
+      "post_stop_new_actions": 0,
+      "before_food": 18.0,
+      "after_food": 20.0,
+      "before_inventory": [
+        {
+          "count": 3,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "after_inventory": [
+        {
+          "count": 2,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "passive_status": "DEV_WORLD_OBSERVED",
+      "post_stop_paper_food": [
+        20
+      ],
+      "normal_eat": null,
+      "m0_move": 0.003364211793147172,
+      "m0_basal": 0.336,
+      "p1_accumulated": 0.06728423586294344,
+      "p1_recovered": 0.06728423586294344,
+      "credit_count": 0,
+      "intake_ticks": 0,
+      "stop_accounting_frozen": true,
+      "post_marker_residual_path": null,
+      "request_to_clear_ack_ms": null,
+      "cleanup": true,
+      "java_exit": 0,
+      "node_exit": 0,
+      "pids_absent": true,
+      "port_rebind": true,
+      "source_hashes_verified": true
+    },
+    {
+      "run": "run-011/t1i_stop_eat",
+      "status": "PASS",
+      "error": null,
+      "mode": "EAT",
+      "stage": "consume_wait",
+      "session": "b54ab888-ac34-4286-8e12-f47bb9476979",
+      "world": "9c5ab9d7-5a2a-4a87-8a00-b480d4e19a7d",
+      "normal_moves": 2,
+      "successful_eat": 0,
+      "unknown": 1,
+      "set_control": 2,
+      "clear": 2,
+      "consume": 1,
+      "equip": 1,
+      "effect_id_duplicates": 0,
+      "consume_reissues": 0,
+      "consume_receipts": [
+        {
+          "type": "effect_result",
+          "session_id": "b54ab888-ac34-4286-8e12-f47bb9476979",
+          "seq": 419,
+          "action_id": "t2-native-meal-consume",
+          "effect": "consume_held",
+          "result": "applied",
+          "error": null
+        }
+      ],
+      "stop_ack": null,
+      "post_stop_new_actions": 0,
+      "before_food": 18.0,
+      "after_food": 20.0,
+      "before_inventory": [
+        {
+          "count": 3,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "after_inventory": [
+        {
+          "count": 2,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "passive_status": "DEV_WORLD_OBSERVED",
+      "post_stop_paper_food": [
+        18,
+        20
+      ],
+      "normal_eat": null,
+      "m0_move": 0.003364211793147172,
+      "m0_basal": 0.303,
+      "p1_accumulated": 0.06728423586294344,
+      "p1_recovered": 0.06728423586294344,
+      "credit_count": 0,
+      "intake_ticks": 0,
+      "stop_accounting_frozen": true,
+      "post_marker_residual_path": null,
+      "request_to_clear_ack_ms": null,
+      "cleanup": true,
+      "java_exit": 0,
+      "node_exit": 0,
+      "pids_absent": true,
+      "port_rebind": true,
+      "source_hashes_verified": true
+    },
+    {
+      "run": "run-011/t1i_stop_loop",
+      "status": "PASS",
+      "error": null,
+      "mode": "MOVE",
+      "stage": "consume_wait",
+      "session": "0c5b02ed-9eb2-44d0-acb6-800a3cbeaf3d",
+      "world": "fbdc46c6-98df-4c60-933f-0f1b73f4c1a4",
+      "normal_moves": 2,
+      "successful_eat": 1,
+      "unknown": 1,
+      "set_control": 3,
+      "clear": 3,
+      "consume": 1,
+      "equip": 1,
+      "effect_id_duplicates": 0,
+      "consume_reissues": 0,
+      "consume_receipts": [
+        {
+          "type": "effect_result",
+          "session_id": "0c5b02ed-9eb2-44d0-acb6-800a3cbeaf3d",
+          "seq": 419,
+          "action_id": "t2-native-meal-consume",
+          "effect": "consume_held",
+          "result": "applied",
+          "error": null
+        }
+      ],
+      "stop_ack": {
+        "active_action_id": "t1f-epoch-2",
+        "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+        "clear_ack_seq": 435,
+        "clear_action_id": "t1f-epoch-2-clear",
+        "first_idle_tick": 382,
+        "full_tick_stillness_qualified": false,
+        "high_level_dev_stop_ack": true,
+        "last_idle_tick": 389,
+        "marker_id": "T1I_MULTI_AFTER_CLEAR",
+        "native_source_independently_authenticated": false,
+        "observed_idle_ticks": 8,
+        "p1_qualified_wait": false,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "session_id": "0c5b02ed-9eb2-44d0-acb6-800a3cbeaf3d",
+        "stop_id": "t1i-multi-epoch-stop",
+        "world": "fbdc46c6-98df-4c60-933f-0f1b73f4c1a4"
+      },
+      "post_stop_new_actions": 0,
+      "before_food": 18.0,
+      "after_food": null,
+      "before_inventory": [
+        {
+          "count": 3,
+          "name": "cooked_beef",
+          "slot": 36
+        }
+      ],
+      "after_inventory": null,
+      "passive_status": "NATIVE_UNVERIFIED",
+      "post_stop_paper_food": [
+        20
+      ],
+      "normal_eat": {
+        "action_id": "t2-native-meal",
+        "after_probe_seq": 427,
+        "consumed_item": "cooked_beef",
+        "count_after": 2,
+        "count_before": 3,
+        "food_after": 20.0,
+        "food_before": 18.0,
+        "provenance": {
+          "reference": "0c5b02ed-9eb2-44d0-acb6-800a3cbeaf3d:427",
+          "source": "mineflayer"
+        },
+        "session_id": "0c5b02ed-9eb2-44d0-acb6-800a3cbeaf3d"
+      },
+      "m0_move": 0.0036246789564109536,
+      "m0_basal": 0.341,
+      "p1_accumulated": 0.07249357912821906,
+      "p1_recovered": 0.06728423586294344,
+      "credit_count": 1,
+      "intake_ticks": 1,
+      "stop_accounting_frozen": true,
+      "post_marker_residual_path": 0.049492188301323514,
+      "request_to_clear_ack_ms": 18.083442,
+      "cleanup": true,
+      "java_exit": 0,
+      "node_exit": 0,
+      "pids_absent": true,
+      "port_rebind": true,
+      "source_hashes_verified": true
+    }
+  ]
+}

@@ -154,6 +154,7 @@ def test_receipt_fault_cannot_complete_eat_or_retry(monkeypatch, fault):
         if session.messages:
             return await original()
         if fault == "source_loss":
+            owner.request("t1i-test-stop", active_action_id=issued.action_id)
             raise MineflayerProcessEnded("injected source loss racing STOP")
         if fault in ("missing", "delayed"):
             await asyncio.sleep(.01)
