@@ -7,7 +7,7 @@ load: POSTWORLD
 commands:
   relays49dasharm:
     description: 'Disposable console DEV arm, not an Action permission'
-    usage: '/relays49dasharm <action_id> <session_id> <player_uuid> <power>'
+    usage: '/relays49dasharm <action_id> <session_id> <player_uuid> <power> <issued_direction>'
   relays49dashoff:
     description: 'Disposable console DEV release; clears the own transient modifier'
     usage: '/relays49dashoff <action_id> <session_id> <player_uuid>'
