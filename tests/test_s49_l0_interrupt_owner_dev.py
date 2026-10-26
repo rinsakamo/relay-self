@@ -128,3 +128,22 @@ def test_default_action_execution_remains_unchanged():
     assert result.status is WorldConsequenceStatus.EXECUTED
     assert result.cleanup_attempted
     assert result.cleanup_receipt is not None
+
+
+def test_missing_clear_ack_never_reissues_duplicate_action_id():
+    cmd = command()
+    session = base.FakeSession([
+        base.observation(1, 0, 0),
+        base.effect(2, cmd.action_id, "set_control"),
+        shadow(3, "LOW_HEALTH"),
+        # Original owner clear send succeeds locally, but client ACK is absent.
+    ])
+    result = asyncio.run(execute_mineflayer_command(
+        session, cmd, timeout_s=0.01,
+        provenance=base.provenance("clear-ack-lost"),
+        l0_interrupt_dev=True,
+    ))
+    assert result.status is WorldConsequenceStatus.FAILED
+    assert result.cleanup_attempted
+    assert result.cleanup_receipt is None
+    assert session.sent.count(("clear_controls", cmd.cleanup_action_id)) == 1
