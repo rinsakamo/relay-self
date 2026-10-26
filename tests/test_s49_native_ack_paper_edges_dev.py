@@ -68,6 +68,7 @@ def test_native_original_ack_seq_paper_delivery_bracket_no_clock_claim():
     assert result["paper_dispatch_ack_marker_tick"] == 102
     assert result["paper_cleanup_ack_marker_tick"] == 112
     assert result["paper_sample_ticks_within_marker_window"] == 11
+    assert result["boosted_paper_callbacks_inside_ack_marker_window"] == 10
     assert result["native_single_reader"]
     assert not result["client_effect_world_tick_attested"]
     assert not result["cross_host_clock_synchronized"]
@@ -77,7 +78,7 @@ def test_native_original_ack_seq_paper_delivery_bracket_no_clock_claim():
     "missing", "duplicate", "reversed", "different_world",
     "foreign_session", "wrong_dispatch_seq", "wrong_cleanup_seq",
     "before_arm", "after_release", "marker_implies_sync",
-    "bad_source_receipt", "wrong_player",
+    "bad_source_receipt", "wrong_player", "no_boost_overlap",
 ])
 def test_native_paper_effect_marker_corruption_denied(fault):
     native, bracket = original_source()
@@ -107,6 +108,9 @@ def test_native_paper_effect_marker_corruption_denied(fault):
             "synchronized_native_effect_tick=false",
             "synchronized_native_effect_tick=true",
         )
+    elif fault == "no_boost_overlap":
+        lines[m0] = lines[m0].replace("tick=102", "tick=114")
+        lines[m1] = lines[m1].replace("tick=112", "tick=114")
     elif fault == "bad_source_receipt":
         native["cleanup_receipt"] = dict(native["cleanup_receipt"])
         native["cleanup_receipt"]["result"] = "rejected"
