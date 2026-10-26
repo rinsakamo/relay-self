@@ -1,0 +1,130 @@
+"""S-owned DEV WorldTick -> existing M0/P1; no qualification/source promotion.
+
+20 ticks = 1 reference World second. No target TPS parameter. M0 E is virtual,
+separate from Paper M0.2 exhaustion. Costs below are explicit uncalibrated DEV
+bridge units. P1 source is bounded callback/input evidence, not R full-tick proof.
+"""
+from __future__ import annotations
+
+import math
+from dataclasses import asdict, replace
+
+from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+from adapters.mineflayer.python_protocol import MineflayerPaperSnapshot
+from experiments.fatigue_p1 import FatigueFrame, FatigueProfile, advance, initial_state
+from experiments.metabolism_viability import MetabolismConfig
+
+
+class TickAccounting:
+    def __init__(self, session_id):
+        self.session_id = session_id
+        self.energy = B0EnergyLedger(session_id, config=MetabolismConfig(
+            basal_cost=.001, move_cost=.002, fight_cost=.01))
+        self.profile = FatigueProfile(enabled=True)
+        self.fatigue = None
+        self.previous = None
+        self.active_action = None
+        self.clear_seq = None
+        self.terminal_seq = None
+        self.pending_meal = None
+        self.rows = []
+        self.failed = False
+
+    def begin(self, action_id):
+        if self.active_action is not None or self.failed:
+            raise ValueError("prior motor/action not closed")
+        self.active_action = action_id
+        self.clear_seq = self.terminal_seq = None
+
+    def finish(self, result, terminal):
+        if result.action_id != self.active_action or terminal.action_id != self.active_action:
+            raise ValueError("foreign epoch outcome")
+        ack = result.cleanup_receipt
+        if ack is None or ack.result != "applied" or ack.effect != "clear_controls":
+            self.failed = True
+            return
+        self.clear_seq = ack.seq
+        # Account only snapshots received AFTER the actual supervisor terminal.
+        self.terminal_seq = max(ack.seq, result.after_observation.seq if result.after_observation else ack.seq)
+        self.active_action = None
+
+    def queue_meal(self, receipt):
+        if self.pending_meal is not None:
+            raise ValueError("uncredited previous meal")
+        self.pending_meal = receipt
+
+    def observe(self, frame):
+        if not isinstance(frame, MineflayerPaperSnapshot) or frame.session_id != self.session_id:
+            raise ValueError("foreign source")
+        d, s = frame.data, frame.data["snapshot"]
+        if d["status"] != "ADMITTED":
+            if self.previous is not None:
+                self.failed = True
+            return
+        if self.failed:
+            raise ValueError("tick accounting latched after lost source")
+        if self.previous is None:
+            self.previous = frame
+            self.fatigue = initial_state(self.profile, self.session_id, world_tick=s["world_tick"])
+            return
+        p, pd = self.previous.data["snapshot"], self.previous.data
+        if (any(s[k] != p[k] for k in ("world", "player", "boot"))
+                or s["world_tick"] != p["world_tick"] + 1 or s["tick"] != p["tick"] + 1
+                or s["index"] != p["index"] + 1 or frame.seq <= self.previous.seq):
+            self.failed = True
+            raise ValueError("nonconsecutive T2 source; no invented zero/WAIT ticks")
+        chord = math.dist([s[k] for k in ("x", "z")], [p[k] for k in ("x", "z")])
+        blocks = s["motion_blocks"] - p["motion_blocks"]
+        if (blocks < 0 or s["basal_ticks"] != p["basal_ticks"] + 1
+                or s["basal_exhaustion"] < p["basal_exhaustion"]
+                or s["motion_exhaustion"] < p["motion_exhaustion"]):
+            self.failed = True
+            raise ValueError("Paper metabolism counter discontinuity")
+        phase = d["control"]
+        old_phase = pd["control"]
+        causal_clear = (
+            self.active_action is None and self.clear_seq is not None
+            and self.terminal_seq is not None and self.previous.seq > self.terminal_seq
+            and phase["phase"] == old_phase["phase"] == "CLEARED"
+            and phase["generation"] == old_phase["generation"]
+            and int(pd["challenge_sent_ns"]) > int(old_phase["since_ns"])
+            and int(d["challenge_sent_ns"]) > int(phase["since_ns"]))
+        idle = (s["input"] == p["input"] == 0 and chord < 1e-9
+                and abs(s["y"] - p["y"]) < 1e-9
+                and s["motion_blocks"] == p["motion_blocks"])
+        wait = causal_clear and idle and not s["threats"] and not p["threats"]
+        # Unknown/blocked/clearing intervals NEVER recover. Feed MOVE with zero
+        # measured displacement to preserve P1's consecutive clock, retaining
+        # UNDETERMINED in the source ledger instead of calling it WAIT.
+        activity = "WAIT" if wait else "MOVE"
+        fatigue_step = advance(self.profile, self.fatigue, FatigueFrame(
+            self.session_id, s["world_tick"], activity, observed_blocks=0 if wait else blocks,
+            blocked=not wait and blocks < 1e-9))
+        cognition = .0001  # one bounded L0 evaluation, symbolic bridge, not joules
+        self.energy.config = replace(self.energy.config, basal_cost=.001 + cognition,
+                                     move_cost=blocks * .002)
+        meal = self.pending_meal
+        if meal is not None and frame.seq <= meal.outcome.after_probe_seq:
+            meal = None
+        if meal is not None and (blocks > 1e-9 or chord > 1e-9 or self.active_action is not None):
+            raise ValueError("meal credit requires stationary post-EAT source tick")
+        energy_step = self.energy.step("WAIT" if wait or meal else "MOVE", eating=meal)
+        if meal is not None:
+            self.pending_meal = None
+        self.fatigue = fatigue_step.after
+        self.rows.append({"session_id": self.session_id, "world": s["world"],
+            "world_tick": s["world_tick"], "server_tick": s["tick"], "source_seq": frame.seq,
+            "sim_seconds": 1 / 20, "activity": "WAIT_DEV" if wait else "MOVE_OR_UNDETERMINED",
+            "motor_mode": "WALK" if phase["phase"] == "MOVING" else "UNDETERMINED",
+            "blocks_chord": chord, "native_motion_blocks": blocks, "active_action": self.active_action,
+            "clear_seq": self.clear_seq, "terminal_seq": self.terminal_seq,
+            "wait_causal_clear": causal_clear, "input_idle": idle,
+            "m0_basal": .001, "m0_cognition": cognition,
+            "l0_work_units": 1, "node_evaluation_ns": int(d["evaluation_completed_ns"]) - int(d["evaluation_start_ns"]),
+            "m0_move": 0 if wait or meal else blocks * .002,
+            "m0": asdict(energy_step), "p1": asdict(fatigue_step),
+            "paper_basal_ticks": s["basal_ticks"],
+            "paper_basal_exhaustion": s["basal_exhaustion"],
+            "paper_motion_exhaustion": s["motion_exhaustion"],
+            "full_tick_R_attested": False, "qualification": False})
+        self.previous = frame

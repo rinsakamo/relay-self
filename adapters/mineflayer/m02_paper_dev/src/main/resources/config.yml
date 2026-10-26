@@ -3,6 +3,8 @@
 dev-enabled: false
 # #150 T1: bounded passive tick samples, NOT an L0/motor witness.
 adaptive-tick-observer-dev: false
+# T1f same-channel causal snapshot challenge, no Action or TPS authority.
+t1f-snapshot-dev: false
 version: M0.2
 minecraft-version: 1.21.8
 calibration-status: candidate_uncalibrated

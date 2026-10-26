@@ -14,6 +14,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerObservation,
     MineflayerPaperL0Shadow,
+    MineflayerPaperSnapshot,
 )
 from adapters.mineflayer.s49_l0_interrupt_dev import (
     L0Interruption,
@@ -480,6 +481,14 @@ def _check_l0_interrupt(message: object, *, session_id: str) -> bool:
         raise MineflayerExecutionError("L0 DEV client connection ended")
     if isinstance(message, (MineflayerAdapterErrorMessage, MineflayerCommandError)):
         raise MineflayerExecutionError("L0 DEV receiver signalled failure")
+    if isinstance(message, MineflayerPaperSnapshot):
+        if message.session_id != session_id:
+            raise MineflayerExecutionError("T1f foreign session")
+        if (message.data["status"] != "ADMITTED"
+                or message.data["assessment"] != "NO_KNOWN_URGENT_SIGNAL"):
+            raise MineflayerExecutionError(
+                f"T1f abort: {message.data['status']} / {message.data['assessment']}")
+        return True
     if not isinstance(message, MineflayerPaperL0Shadow):
         return False
     if message.session_id != session_id:

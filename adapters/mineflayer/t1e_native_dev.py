@@ -27,6 +27,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerLaunchConfig,
     MineflayerPaperL0Shadow,
+    MineflayerPaperSnapshot,
 )
 from adapters.mineflayer.s31a_real_server_ci import (
     _await_spawn,
@@ -41,6 +42,7 @@ from relay_self.action_supervision import ActionSupervisor
 
 CONFIRM = "T1E-DISPOSABLE-DEV-ONLY"
 CASES = ("normal", "low_health", "hostile", "unknown", "lost_ack")
+TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop")
 
 
 def write(path, value):
@@ -102,6 +104,7 @@ def measure(root, report):
 
 
 async def run_case(args, case):
+    t1f = case.startswith(("t1f_", "t2_"))
     root = args.output / case
     root.mkdir()
     world = root / "server"
@@ -120,6 +123,8 @@ async def run_case(args, case):
     template = Path(__file__).parent / "m02_paper_dev/src/main/resources/config.yml"
     config = template.read_text().replace("dev-enabled: false", "dev-enabled: true").replace(
         "adaptive-tick-observer-dev: false", "adaptive-tick-observer-dev: true")
+    if t1f:
+        config = config.replace("t1f-snapshot-dev: false", "t1f-snapshot-dev: true")
     (plugins / "config.yml").write_text(config)
     log = root / "paper.log"
     report = {"case": case, "status": "INCOMPLETE", "mode": "DEV_ONLY",
@@ -156,10 +161,21 @@ async def run_case(args, case):
             await server.stdin.drain()
 
         class MeasuredSession(base):
+            tick_owner = None
+            latest_paper = None
+            paper_frames = None
+
             async def receive(self):
                 while True:
                     message = await super().receive()
                     now = time.monotonic_ns()
+                    if isinstance(message, MineflayerPaperSnapshot):
+                        self.latest_paper = message
+                        if self.paper_frames is None:
+                            self.paper_frames = []
+                        self.paper_frames.append(message)
+                        if self.tick_owner is not None:
+                            self.tick_owner.observe(message)
                     timing.write(json.dumps({"python_monotonic_ns": now,
                                              "message": asdict(message)}) + "\n")
                     timing.flush()
@@ -189,6 +205,10 @@ async def run_case(args, case):
 
         os.environ["RELAYSELF_PAPER_TICK_DEV"] = "1"
         os.environ["RELAYSELF_PAPER_TICK_TRACE_DEV"] = str(root / "node_timing.jsonl")
+        if t1f:
+            os.environ["RELAYSELF_T1F_DEV"] = "1"
+        else:
+            os.environ.pop("RELAYSELF_T1F_DEV", None)
         session = await MeasuredSession.launch(
             MineflayerLaunchConfig(host="127.0.0.1", port=25565,
                                    username="RelaySelf", version="1.21.8"),
@@ -201,6 +221,12 @@ async def run_case(args, case):
         await asyncio.sleep(0.8)
         probe = await _correlated_observe(session, "t1e-initial")
         report["initial_probe"] = asdict(probe)
+        if t1f:
+            from adapters.mineflayer.t1f_continuation_dev import run_continuation
+            await run_continuation(session, server, report, root, observe_only=case == "t1f_observe",
+                                   accounting=case == "t2_loop",
+                                   normal_epochs=args.loop_moves)
+            return report
         supervisor = ActionSupervisor()
         issued = _issue(supervisor, "t1e-" + case, "fixed-dev-move", "t1e-move-intent",
                         "bounded MOVE_BACKWARD in disposable DEV", time_base=10)
@@ -251,6 +277,8 @@ async def run_case(args, case):
     finally:
         if fixture is not None:
             await fixture
+        if t1f and session is not None and session.tick_owner is not None:
+            write(root / "t2_ticks.json", session.tick_owner.rows)
         if session is not None:
             try:
                 report["node_exit"] = await session.shutdown(timeout_s=12)
@@ -279,7 +307,7 @@ async def run_case(args, case):
         if not report["cleanup_complete"]:
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
-        if (report["metrics"]["set_control_sends"] != 1
+        if not t1f and (report["metrics"]["set_control_sends"] != 1
                 or report["metrics"]["clear_control_sends"] != 1):
             report["status"] = "FAIL"
         write(root / "report.json", report)
@@ -297,7 +325,8 @@ async def main():
     parser.add_argument("--plugin", type=Path, required=True)
     parser.add_argument("--bootstrap", type=Path)
     parser.add_argument("--confirm", required=True, choices=[CONFIRM])
-    parser.add_argument("--cases", nargs="+", choices=CASES, default=list(CASES))
+    parser.add_argument("--loop-moves", type=int, choices=range(2, 33), default=2)
+    parser.add_argument("--cases", nargs="+", choices=CASES + TICK_CASES, default=list(CASES))
     args = parser.parse_args()
     if not args.output.is_absolute() or args.output.exists() or os.environ.get("NODE_OPTIONS"):
         parser.error("fresh absolute output and no Node shim required")

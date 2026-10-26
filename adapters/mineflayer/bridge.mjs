@@ -11,6 +11,7 @@ import {
   resolveAttackEntity
 } from './bridge_hooks.mjs'
 import { attachV6NativeClockPackets } from './v6_native_clock.mjs'
+import { attachPaperSnapshotChannel } from './paper_snapshot_admission.mjs'
 import { attachPaperTickChannel } from './paper_tick_channel.mjs'
 import { evaluatePaperL0Shadow } from './paper_l0_shadow.mjs'
 import { PaperTickDeadlineGuard, handleBudgetedPaperTick } from './paper_tick_deadline.mjs'
@@ -96,7 +97,7 @@ const paperTraceFd = paperTracePath ? openSync(paperTracePath, 'wx', 0o600) : nu
 function emit (type, payload = {}) {
   const message = makeEnvelope(sessionId, seq, type, payload)
   if (paperTraceFd !== null && ['paper_tick_sample', 'paper_l0_shadow',
-    'effect_result', 'adapter_error'].includes(type)) {
+    'effect_result', 'adapter_error', 'paper_snapshot'].includes(type)) {
     writeSync(paperTraceFd, JSON.stringify({ node_monotonic_ns: process.hrtime.bigint().toString(),
       ...message }) + '\n')
   }
@@ -140,8 +141,15 @@ emit('adapter_started', {
   config
 })
 
+const t1fOptIn = process.env.RELAYSELF_T1F_DEV
+if (t1fOptIn !== undefined && !['0', '1'].includes(t1fOptIn)) throw Error('invalid T1f opt-in')
+if (t1fOptIn === '1' && paperTickOptIn !== '1') throw Error('T1f needs Paper tick opt-in')
+let t1fAdmission = null
+let t1fControl = { phase: "INITIAL", since_ns: "0", generation: 0 }
 const bot = mineflayer.createBot(options)
-if (paperTickOptIn === '1') {
+if (process.env.RELAYSELF_T1F_DEV === '1' && paperTickOptIn === '1') {
+  t1fAdmission = attachPaperSnapshotChannel(bot, emit, emitAdapterError, () => process.hrtime.bigint(), () => ({ ...t1fControl }))
+} else if (paperTickOptIn === '1') {
   const deadline = new PaperTickDeadlineGuard()
   attachPaperTickChannel(
     bot,
@@ -268,13 +276,19 @@ async function handleEffect (command) {
 
   try {
     if (command.effect === 'set_control') {
+      if (t1fAdmission && !t1fAdmission.canDispatch()) {
+        emitEffectResult(command, 'rejected', 't1f_current_fresh_benign_observation_required')
+        return
+      }
       bot.setControlState(command.control, command.state)
+      t1fControl = { phase: "MOVING", since_ns: process.hrtime.bigint().toString(), generation: t1fControl.generation + 1 }
       emitEffectResult(command, 'applied')
       return
     }
 
     if (command.effect === 'clear_controls') {
       bot.clearControlStates()
+      t1fControl = { phase: "CLEARED", since_ns: process.hrtime.bigint().toString(), generation: t1fControl.generation + 1 }
       emitEffectResult(command, 'applied')
       return
     }

@@ -411,6 +411,35 @@ class MineflayerPaperTickSample(MineflayerMessage):
 
 
 @dataclass(frozen=True, slots=True)
+class MineflayerPaperSnapshot(MineflayerMessage):
+    data: dict
+
+    def __post_init__(self):
+        MineflayerMessage.__post_init__(self)
+        from adapters.mineflayer.t1f_protocol import validate_result
+        try:
+            validate_result(self.data)
+        except (ValueError, TypeError, KeyError) as exc:
+            raise MineflayerAdapterProtocolError(str(exc)) from exc
+
+    @property
+    def paper_sample_index(self):
+        return self.data["snapshot"]["index"]
+
+    @property
+    def paper_server_tick(self):
+        return str(self.data["snapshot"]["tick"])
+
+    @property
+    def paper_world(self):
+        return self.data["snapshot"]["world"]
+
+    @property
+    def paper_player(self):
+        return self.data["snapshot"]["player"]
+
+
+@dataclass(frozen=True, slots=True)
 class MineflayerPaperL0Shadow(MineflayerMessage):
     """Synchronous client-cache scan after a delivered Paper tick.
 
@@ -554,6 +583,7 @@ MineflayerDecodedMessage = Union[
     MineflayerNativeClockPacket,
     MineflayerPaperTickSample,
     MineflayerPaperL0Shadow,
+    MineflayerPaperSnapshot,
     MineflayerEntityHurt,
     MineflayerEffectResult,
     MineflayerConnectionEnd,
@@ -681,6 +711,10 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
             host_monotonic_ns=payload["host_monotonic_ns"],
             command_effect_tick_attested=payload["command_effect_tick_attested"],
         )
+
+    if message_type == "paper_snapshot":
+        _require_exact_keys("paper_snapshot", payload, {"type", "session_id", "seq", "data"})
+        return MineflayerPaperSnapshot(session_id=session_id, seq=seq, data=payload["data"])
 
     if message_type == "paper_tick_sample":
         _require_exact_keys(

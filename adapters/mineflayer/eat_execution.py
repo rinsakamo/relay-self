@@ -12,6 +12,7 @@ from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerObservation,
+    MineflayerPaperSnapshot,
 )
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_supervision import ActionSupervisor
@@ -32,7 +33,13 @@ class EatingActionReceipt:
     outcome: EatingOutcome
 
 
-async def _expect(session, action_id: str, effect: str) -> MineflayerEffectResult:
+def _check_eat_paper(frame, session_id):
+    if (frame.session_id != session_id or frame.data["status"] != "ADMITTED"
+            or frame.data["assessment"] not in {"NO_KNOWN_URGENT_SIGNAL", "LOW_FOOD"}):
+        raise EatingExecutionRejected("EAT Paper monitor refused freshness/safety")
+
+
+async def _expect(session, action_id: str, effect: str, *, paper_tick_dev=False) -> MineflayerEffectResult:
     for _ in range(100):
         frame = await asyncio.wait_for(session.receive(), timeout=9)
         if isinstance(frame, MineflayerEffectResult):
@@ -40,12 +47,14 @@ async def _expect(session, action_id: str, effect: str) -> MineflayerEffectResul
                 if frame.result != "applied":
                     raise EatingExecutionRejected(f"native {effect} rejected: {frame.error}")
                 return frame
+        elif paper_tick_dev and isinstance(frame, MineflayerPaperSnapshot):
+            _check_eat_paper(frame, session.started.session_id)
         elif not isinstance(frame, MineflayerObservation):
             raise EatingExecutionRejected("source lost before EAT receipt")
     raise EatingExecutionRejected("EAT effect receipt absent")
 
 
-async def _observed_after(session, request_id: str) -> MineflayerObservation:
+async def _observed_after(session, request_id: str, *, paper_tick_dev=False) -> MineflayerObservation:
     for _ in range(100):
         frame = await asyncio.wait_for(session.receive(), timeout=9)
         if isinstance(frame, MineflayerObservation):
@@ -53,6 +62,8 @@ async def _observed_after(session, request_id: str) -> MineflayerObservation:
                 if frame.request_id != request_id:
                     raise EatingExecutionRejected("foreign after-EAT probe")
                 return frame
+        elif paper_tick_dev and isinstance(frame, MineflayerPaperSnapshot):
+            _check_eat_paper(frame, session.started.session_id)
         else:
             raise EatingExecutionRejected("EAT source ended")
     raise EatingExecutionRejected("after-EAT probe missing")
@@ -141,6 +152,7 @@ class IssuedEatingExecutor:
         issued: ActionLifecycle,
         choice: EatChoice,
         before: MineflayerObservation,
+        *, paper_tick_dev: bool = False,
     ) -> EatingActionReceipt:
         if (
             not isinstance(session, MineflayerProcessSession)
@@ -162,6 +174,8 @@ class IssuedEatingExecutor:
             or choice.item_name is None
         ):
             raise EatingExecutionRejected("requires fresh issued current EAT authority")
+        if type(paper_tick_dev) is not bool:
+            raise EatingExecutionRejected("Paper DEV opt-in must be boolean")
         # Consume the Action ID before any potentially irreversible IO.
         self._attempted.add(issued.action_id)
         at_ns = (supervisor.last_at_ns or 0) + 1
@@ -169,16 +183,16 @@ class IssuedEatingExecutor:
             equip_id = issued.action_id + "-equip"
             consume_id = issued.action_id + "-consume"
             await session.send_equip_item(equip_id, item_name=choice.item_name)
-            equip = await _expect(session, equip_id, "equip_item")
+            equip = await _expect(session, equip_id, "equip_item", paper_tick_dev=paper_tick_dev)
             await session.send_consume_held(consume_id)
-            consume = await _expect(session, consume_id, "consume_held")
+            consume = await _expect(session, consume_id, "consume_held", paper_tick_dev=paper_tick_dev)
             # Poll new correlated observations only; NEVER repeat consume.
             # Server food/slot sync may lag behind applied consume receipt.
             last_error: EatingExecutionRejected | None = None
             for attempt in range(8):
                 request_id = f"{issued.action_id}-after-eating-{attempt:02d}"
                 await session.send_observe(request_id)
-                after = await _observed_after(session, request_id)
+                after = await _observed_after(session, request_id, paper_tick_dev=paper_tick_dev)
                 try:
                     outcome = verify_eating_subactions(
                         issued.action_id, choice, before, equip, consume, after,

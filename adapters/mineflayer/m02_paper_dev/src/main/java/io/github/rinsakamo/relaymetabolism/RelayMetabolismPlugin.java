@@ -1,6 +1,9 @@
 package io.github.rinsakamo.relaymetabolism;
 
 import java.nio.charset.StandardCharsets;
+import com.google.gson.Gson;
+import java.util.LinkedHashMap;
+import java.util.UUID;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -89,6 +92,57 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private final long adaptiveTickClockOriginNanos = System.nanoTime();
     private static final int ADAPTIVE_TICK_ROWS_MAX = 256;
     private static final String ADAPTIVE_TICK_CHANNEL = "relayself:world_tick_dev";
+    private boolean t1fDev = false;
+    private String t1fChallenge = null;
+    private final String t1fBoot = UUID.randomUUID().toString();
+
+    // One existing plugin channel, snapshot challenge only; never motor input.
+    private String t1fSnapshot(Player p) {
+        Location pos = p.getLocation();
+        org.bukkit.Input input = p.getCurrentInput();
+        int bits = (input.isForward() ? 1 : 0) | (input.isBackward() ? 2 : 0)
+            | (input.isLeft() ? 4 : 0) | (input.isRight() ? 8 : 0)
+            | (input.isJump() ? 16 : 0) | (input.isSneak() ? 32 : 0)
+            | (input.isSprint() ? 64 : 0);
+        List<Map<String, Object>> threats = new ArrayList<>();
+        List<Entity> nearby = p.getNearbyEntities(4, 4, 4);
+        boolean complete = nearby.size() <= 128;
+        if (complete) {
+            for (Entity e : nearby) {
+                if (!(e instanceof org.bukkit.entity.Monster)
+                        && !(e instanceof org.bukkit.entity.Slime)
+                        && !(e instanceof org.bukkit.entity.Phantom)) continue;
+                Location ep = e.getLocation();
+                double distance = ep.distance(pos);
+                if (distance > 4) continue;
+                threats.add(Map.of("id", e.getUniqueId().toString(),
+                    "kind", e.getType().name(), "x", ep.getX(), "y", ep.getY(),
+                    "z", ep.getZ(), "distance", distance));
+            }
+        }
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("version", 1);
+        row.put("boot", t1fBoot);
+        row.put("index", adaptiveTickRows);
+        row.put("tick", Bukkit.getCurrentTick());
+        row.put("world_tick", p.getWorld().getFullTime());
+        row.put("paper_ns", System.nanoTime() - adaptiveTickClockOriginNanos);
+        row.put("world", p.getWorld().getUID().toString());
+        row.put("player", p.getUniqueId().toString());
+        row.put("challenge", t1fChallenge == null ? "NONE" : t1fChallenge);
+        // Reuse latest challenge across catch-up ticks: each later snapshot
+        // is still causally AFTER its receipt; Node retains a bounded history.
+        row.put("x", pos.getX()); row.put("y", pos.getY()); row.put("z", pos.getZ());
+        row.put("health", p.getHealth()); row.put("food", p.getFoodLevel());
+        row.put("input", bits); row.put("threats_complete", complete);
+        row.put("threats", threats);
+        row.put("basal_ticks", appliedTicks);
+        row.put("basal_exhaustion", requestedBasalExhaustion);
+        row.put("motion_blocks", observedMotionBlocks);
+        row.put("motion_exhaustion", chargedMotionExhaustion);
+        return new Gson().toJson(row);
+    }
+
     private boolean s50TickMeterArmed = false;
     private Location s50TickMeterLast;
     private long s50TickMeterRows = 0;
@@ -225,6 +279,18 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             }
             adaptiveTickObserverDev = getConfig().getBoolean(
                 "adaptive-tick-observer-dev", false);
+            t1fDev = getConfig().getBoolean("t1f-snapshot-dev", false);
+            if (t1fDev && !adaptiveTickObserverDev) {
+                throw new IllegalStateException("T1f needs existing tick channel opt-in");
+            }
+            if (t1fDev) {
+                getServer().getMessenger().registerIncomingPluginChannel(
+                    this, ADAPTIVE_TICK_CHANNEL, (channel, player, bytes) -> {
+                        if (!player.getName().equals("RelaySelf") || bytes.length > 80) return;
+                        String value = new String(bytes, StandardCharsets.US_ASCII);
+                        if (value.matches("[0-9a-f]{32}:[1-9][0-9]{0,3}")) t1fChallenge = value;
+                    });
+            }
             if (adaptiveTickObserverDev) {
                 // Client receives on its existing Mineflayer transport.
                 // Server receives NO tick input commands or Action effects.
@@ -274,7 +340,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 // Passive Paper callback sample only. A real Self-side L0
                 // decision was NOT executed or confirmed in this callback.
                 // Never infer S49 Action ID/session or use as a motor writer.
-                if (adaptiveTickObserverDev && adaptiveTickRows < ADAPTIVE_TICK_ROWS_MAX
+                if (adaptiveTickObserverDev && adaptiveTickRows < (t1fDev ? 2400 : ADAPTIVE_TICK_ROWS_MAX)
                         && p.getListeningPluginChannels().contains(ADAPTIVE_TICK_CHANNEL)) {
                     adaptiveTickRows++;
                     String tickWire = "index=" + adaptiveTickRows
@@ -303,7 +369,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     // Paper callback must never be mistaken for an L0 check.
                     if (p.getListeningPluginChannels().contains(ADAPTIVE_TICK_CHANNEL)) {
                         p.sendPluginMessage(this, ADAPTIVE_TICK_CHANNEL,
-                            tickWire.getBytes(StandardCharsets.US_ASCII));
+                            (t1fDev ? t1fSnapshot(p) : tickWire).getBytes(StandardCharsets.US_ASCII));
                     }
                 }
                 if (s50TickMeterArmed) {
