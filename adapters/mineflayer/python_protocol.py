@@ -451,6 +451,7 @@ class MineflayerPaperL0Shadow(MineflayerMessage):
             or type(self.evaluation_duration_ns) is not str
             or re.fullmatch(positive, self.evaluation_duration_ns) is None
             or int(self.evaluation_duration_ns) >= 2**63
+            or type(self.assessment) is not str
             or self.assessment not in {
                 "UNKNOWN", "LOW_HEALTH", "LOW_FOOD",
                 "KNOWN_NEAR_HOSTILE", "NO_KNOWN_URGENT_SIGNAL",
