@@ -117,3 +117,99 @@ def audit_node_physics_postclear_dev(
         "WAIT_sourcebound_admitted": False,
         "science_go": False, "qualification_go": False,
     }
+
+
+
+def audit_node_paper_motion_fingerprint_dev(
+    node: dict, paper: dict, *, action_id: str, session_id: str,
+) -> dict:
+    """Match two consecutive *nonzero translations*, not absolute tick IDs.
+
+    Both are source-local producer readbacks from ONE original native S49
+    session. Without synchronized clocks, their relative sample index is
+    unknown. A matching physical displacement footprint demonstrates
+    changing, mutually consistent motion state; it neither proves exact
+    frame correspondence nor attests packet/origin trust.
+    """
+    if (
+        type(node) is not dict or type(paper) is not dict
+        or not isinstance(action_id, str) or not action_id
+        or not isinstance(session_id, str) or not session_id
+        or node.get("classification")
+           != "NODE_LOCAL_PHYSICS_AFTER_CONTROL_CLEAR_DEV_ONLY"
+        or paper.get("classification")
+           != "PAPER_PASSIVE_POST_RELEASE_TRANSLATION_DEV_ONLY"
+        or node.get("action_id") != action_id
+        or paper.get("action_id") != action_id
+        or node.get("session_id") != session_id
+        or paper.get("session_id") != session_id
+        or node.get("node_paper_tick_join_attested") is not False
+        or node.get("node_postclear_forward_sprint_all_false") is not True
+        or node.get("node_postclear_physics_ticks") != 5
+        or paper.get("paper_callbacks") != 5
+        or paper.get("speed_modifier_present") is not False
+        or node.get("WAIT_sourcebound_admitted") is not False
+        or paper.get("WAIT_sourcebound_admitted") is not False
+        or node.get("M0_posted") is not False
+        or paper.get("M0_posted") is not False
+        or node.get("P1_posted") is not False
+        or paper.get("P1_posted") is not False
+    ):
+        raise NativePhysicsTraceRejected("Node/Paper motion comparison not source joined")
+    n, p = (
+        node.get("node_postclear_horizontal_deltas_m"),
+        paper.get("post_release_deltas_m"),
+    )
+    if (
+        type(n) is not list or len(n) != 5
+        or type(p) is not list or len(p) != 4
+        or any(type(x) not in (int, float) or not math.isfinite(x)
+               or not 0 <= x <= 1.5 for x in n + p)
+    ):
+        raise NativePhysicsTraceRejected("invalid finite Node/Paper translation windows")
+
+    # Coherent pairs must be both physically nontrivial and adjacent IN EACH
+    # producer's own ordinal sequence. A single coincidence, 0==0,
+    # shifting or cherry-picking disjoint rows cannot pass.
+    candidates = []
+    for ni in range(5):
+        for pi in range(4):
+            length = 0
+            while (
+                ni + length < 5 and pi + length < 4
+                and n[ni + length] > 0.01
+                and p[pi + length] > 0.01
+                and math.isclose(
+                    n[ni + length], p[pi + length],
+                    rel_tol=0.0, abs_tol=1e-6,
+                )
+            ):
+                length += 1
+            if length >= 2:
+                candidates.append((length, ni, pi))
+    if not candidates:
+        raise NativePhysicsTraceRejected(
+            "no two adjacent nontrivial Node/Paper motion displacements match"
+        )
+    length, ni, pi = max(candidates, key=lambda t: (t[0], -t[1], -t[2]))
+    return {
+        "classification": "S49_NODE_PAPER_CONSECUTIVE_TRANSLATION_FOOTPRINT_DEV_ONLY",
+        "action_id": action_id,
+        "session_id": session_id,
+        "matched_consecutive_nonzero_deltas": length,
+        "node_relative_start_index": ni + 1,
+        "paper_relative_start_index_excluding_mixed": pi + 1,
+        "node_matched_deltas_m": n[ni:ni + length],
+        "paper_matched_deltas_m": p[pi:pi + length],
+        "matched_tolerance_m": 1e-6,
+        "node_controls_held_off_throughout": True,
+        "paper_dash_modifier_removed": True,
+        "two_producer_local_motion_views_consistent": True,
+        "native_Paper_tick_correspondence_attested": False,
+        "independent_source_trust_attested": False,
+        "physical_WAIT_qualified": False,
+        "P1_posted": False,
+        "M0_posted": False,
+        "qualification_go": False,
+        "science_go": False,
+    }
