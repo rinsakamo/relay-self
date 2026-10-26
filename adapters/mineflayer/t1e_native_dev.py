@@ -316,7 +316,7 @@ async def run_case(args, case):
         report["initial_probe"] = asdict(probe)
         if case == "t1h_stop_move":
             from adapters.mineflayer.t1h_native_stop_dev import run_stop_move_dev
-            await run_stop_move_dev(session, server, report)
+            await run_stop_move_dev(session, server, report, root)
             return report
         if t1f:
             from adapters.mineflayer.t1f_continuation_dev import run_continuation
@@ -429,23 +429,11 @@ async def run_case(args, case):
                 report["terminal_transport_error"] = f"{type(exc).__name__}: {exc}"
                 report["cleanup_complete"] = False
         if case == "t1h_stop_move" and report.get("status") == (
-            "T1H_PENDING_POST_SHUTDOWN_PAPER_AUDIT"
+            "T1H_OWNER_STOP_ACKED_AWAITING_CLEAN_RESOURCE_SHUTDOWN"
         ):
-            from adapters.mineflayer.t1h_stop_owner_dev import StopDevRejected
-            try:
-                details = report["t1h"]
-                if not report["cleanup_complete"] or session is None:
-                    raise StopDevRejected("S49 stop without clean bridge/server close")
-                stop_ack = session.t1h_stop_owner.finalize(
-                    log.read_text(), marker_id=details["marker_id"],
-                    world=details["world"], player=details["player"],
-                )
-                report["t1h"]["stop_ack_dev"] = asdict(stop_ack)
-                report["t1h"]["paper_ack_pending"] = False
-                report["status"] = "PASS"
-            except (StopDevRejected, OSError, UnicodeError, KeyError) as exc:
-                report["t1h_stop_error"] = f"{type(exc).__name__}: {exc}"
-                report["status"] = "FAIL"
+            # Owner already committed the bounded DEV ACK while Paper lived.
+            # Normal transport custody is a separate, additional condition.
+            report["status"] = "PASS" if report["cleanup_complete"] else "FAIL"
         if not report["cleanup_complete"]:
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
