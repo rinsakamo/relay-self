@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from typing import Callable
 
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import (
@@ -39,9 +40,38 @@ def _check_eat_paper(frame, session_id):
         raise EatingExecutionRejected("EAT Paper monitor refused freshness/safety")
 
 
-async def _expect(session, action_id: str, effect: str, *, paper_tick_dev=False) -> MineflayerEffectResult:
+def _eat_stop_check(stop_requested_dev: Callable[[], bool] | None) -> None:
+    if stop_requested_dev is None:
+        return
+    result = stop_requested_dev()
+    if type(result) is not bool or result:
+        raise EatingExecutionRejected(
+            "T1i owner STOP: EAT physical completion undetermined; never retry consume"
+        )
+
+
+async def _eat_receive(session, stop_requested_dev: Callable[[], bool] | None):
+    if stop_requested_dev is None:
+        return await asyncio.wait_for(session.receive(), timeout=9)
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + 9
+    while True:
+        _eat_stop_check(stop_requested_dev)
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            raise TimeoutError("T1i native EAT receipt deadline exceeded")
+        try:
+            return await asyncio.wait_for(session.receive(), timeout=min(.025, remaining))
+        except TimeoutError:
+            _eat_stop_check(stop_requested_dev)
+            if loop.time() >= deadline:
+                raise
+
+
+async def _expect(session, action_id: str, effect: str, *, paper_tick_dev=False,
+                  stop_requested_dev: Callable[[], bool] | None = None) -> MineflayerEffectResult:
     for _ in range(100):
-        frame = await asyncio.wait_for(session.receive(), timeout=9)
+        frame = await _eat_receive(session, stop_requested_dev)
         if isinstance(frame, MineflayerEffectResult):
             if frame.action_id == action_id and frame.effect == effect:
                 if frame.result != "applied":
@@ -54,9 +84,10 @@ async def _expect(session, action_id: str, effect: str, *, paper_tick_dev=False)
     raise EatingExecutionRejected("EAT effect receipt absent")
 
 
-async def _observed_after(session, request_id: str, *, paper_tick_dev=False) -> MineflayerObservation:
+async def _observed_after(session, request_id: str, *, paper_tick_dev=False,
+                          stop_requested_dev: Callable[[], bool] | None = None) -> MineflayerObservation:
     for _ in range(100):
-        frame = await asyncio.wait_for(session.receive(), timeout=9)
+        frame = await _eat_receive(session, stop_requested_dev)
         if isinstance(frame, MineflayerObservation):
             if frame.kind == "probe":
                 if frame.request_id != request_id:
@@ -153,6 +184,7 @@ class IssuedEatingExecutor:
         choice: EatChoice,
         before: MineflayerObservation,
         *, paper_tick_dev: bool = False,
+        stop_requested_dev: Callable[[], bool] | None = None,
     ) -> EatingActionReceipt:
         if (
             not isinstance(session, MineflayerProcessSession)
@@ -176,23 +208,41 @@ class IssuedEatingExecutor:
             raise EatingExecutionRejected("requires fresh issued current EAT authority")
         if type(paper_tick_dev) is not bool:
             raise EatingExecutionRejected("Paper DEV opt-in must be boolean")
+        if stop_requested_dev is not None and (
+            not paper_tick_dev or not callable(stop_requested_dev)
+        ):
+            raise EatingExecutionRejected("T1i EAT STOP requires explicit Paper DEV owner")
+        _eat_stop_check(stop_requested_dev)
         # Consume the Action ID before any potentially irreversible IO.
         self._attempted.add(issued.action_id)
         at_ns = (supervisor.last_at_ns or 0) + 1
         try:
             equip_id = issued.action_id + "-equip"
             consume_id = issued.action_id + "-consume"
+            _eat_stop_check(stop_requested_dev)
             await session.send_equip_item(equip_id, item_name=choice.item_name)
-            equip = await _expect(session, equip_id, "equip_item", paper_tick_dev=paper_tick_dev)
+            equip = await _expect(
+                session, equip_id, "equip_item", paper_tick_dev=paper_tick_dev,
+                stop_requested_dev=stop_requested_dev,
+            )
+            _eat_stop_check(stop_requested_dev)
             await session.send_consume_held(consume_id)
-            consume = await _expect(session, consume_id, "consume_held", paper_tick_dev=paper_tick_dev)
+            consume = await _expect(
+                session, consume_id, "consume_held", paper_tick_dev=paper_tick_dev,
+                stop_requested_dev=stop_requested_dev,
+            )
+            _eat_stop_check(stop_requested_dev)
             # Poll new correlated observations only; NEVER repeat consume.
             # Server food/slot sync may lag behind applied consume receipt.
             last_error: EatingExecutionRejected | None = None
             for attempt in range(8):
                 request_id = f"{issued.action_id}-after-eating-{attempt:02d}"
+                _eat_stop_check(stop_requested_dev)
                 await session.send_observe(request_id)
-                after = await _observed_after(session, request_id, paper_tick_dev=paper_tick_dev)
+                after = await _observed_after(
+                    session, request_id, paper_tick_dev=paper_tick_dev,
+                    stop_requested_dev=stop_requested_dev,
+                )
                 try:
                     outcome = verify_eating_subactions(
                         issued.action_id, choice, before, equip, consume, after,
@@ -207,6 +257,7 @@ class IssuedEatingExecutor:
                     f"native food/inventory not jointly observed in "
                     f"8 correlated probes: {last_error}"
                 )
+            _eat_stop_check(stop_requested_dev)
             closed = supervisor.record_outcome(
                 issued.action_id, at_ns=at_ns, provenance=after.provenance,
             )
