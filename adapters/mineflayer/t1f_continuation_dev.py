@@ -14,21 +14,60 @@ from dataclasses import asdict
 
 from adapters.mineflayer.execution import MineflayerCommand, execute_mineflayer_command
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _issue, _p
-from adapters.mineflayer.python_protocol import MineflayerPaperSnapshot
+from adapters.mineflayer.process_session import MineflayerProcessEnded, MineflayerProcessIOError
+from adapters.mineflayer.python_protocol import (
+    MineflayerAdapterErrorMessage,
+    MineflayerCommandError,
+    MineflayerConnectionEnd,
+    MineflayerPaperSnapshot,
+    MineflayerShutdownAck,
+)
 from adapters.mineflayer.s31a_real_server_ci import _command, _correlated_observe
 from relay_self.action_supervision import ActionSupervisor
 
 
+def _latch_source_loss(session):
+    """No next Action / WAIT_DEV admission after this owner loses its source."""
+    owner = getattr(session, "tick_owner", None)
+    if owner is not None:
+        owner.failed = True
+
+
 async def next_tick(session, *, after_seq=-1, timeout=3):
+    """Read through the sole session; NEVER skip terminal/error frames.
+
+    Only admitted, session-matched Paper samples can continue an epoch.
+    An EOF or shutdown acknowledgment is not proof of high-level STOP.
+    """
     deadline = asyncio.get_running_loop().time() + timeout
     while True:
         remaining = deadline - asyncio.get_running_loop().time()
         if remaining <= 0:
-            raise TimeoutError("fresh Paper tick absent")
-        frame = await asyncio.wait_for(session.receive(), remaining)
-        if isinstance(frame, MineflayerPaperSnapshot) and frame.seq > after_seq:
+            _latch_source_loss(session)
+            raise TimeoutError("fresh Paper tick absent; T1g source latched")
+        try:
+            frame = await asyncio.wait_for(session.receive(), remaining)
+        except (TimeoutError, MineflayerProcessEnded, MineflayerProcessIOError):
+            _latch_source_loss(session)
+            raise
+        if isinstance(frame, (MineflayerConnectionEnd,
+                              MineflayerAdapterErrorMessage,
+                              MineflayerCommandError, MineflayerShutdownAck)):
+            _latch_source_loss(session)
+            raise RuntimeError(
+                f"T1g terminal native frame before next Action: {type(frame).__name__}"
+            )
+        if isinstance(frame, MineflayerPaperSnapshot):
+            if frame.session_id != session.started.session_id:
+                _latch_source_loss(session)
+                raise RuntimeError("foreign T1g Paper session")
+            if frame.seq <= after_seq:
+                continue
             if frame.data["status"] != "ADMITTED":
-                raise ValueError(f"T1f refusal: {frame.data['status']} / {frame.data['reason']}")
+                _latch_source_loss(session)
+                raise ValueError(
+                    f"T1f refusal: {frame.data['status']} / {frame.data['reason']}"
+                )
             return frame
 
 
