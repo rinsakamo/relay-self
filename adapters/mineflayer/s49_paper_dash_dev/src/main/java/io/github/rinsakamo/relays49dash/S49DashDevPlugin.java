@@ -56,6 +56,12 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
     private double lastX;
     private double lastZ;
     private BukkitTask task;
+    private BukkitTask postReleaseTask;
+    private long postReleaseStartTick;
+    private long postReleaseLastTick;
+    private double postReleaseLastX;
+    private double postReleaseLastZ;
+    private int postReleaseCount;
     private AttributeModifier modifier;
 
     @Override
@@ -430,6 +436,67 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " p1_final_fatigue=" + p1Fatigue
             + " p1_world_ticks=" + p1WorldTicks
             + " authority=NONE P1_APPLIED=false M0_POSTED=false");
+        if ("OWNER_RELEASE".equals(reason)
+                && getConfig().getBoolean("post-release-motion-dev", false)
+                && safeSubject() && postReleaseTask == null) {
+            // This callback can neither issue new native Action nor alter
+            // motor/P1/M0. First delta may straddle clear-controls receipt
+            // (MIXED); subsequent deltas are purely post-release samples.
+            postReleaseStartTick = subject.getWorld().getFullTime();
+            postReleaseLastTick = postReleaseStartTick;
+            postReleaseLastX = subject.getLocation().getX();
+            postReleaseLastZ = subject.getLocation().getZ();
+            postReleaseCount = 0;
+            postReleaseTask = Bukkit.getScheduler().runTaskTimer(
+                this, this::samplePostRelease, 1L, 1L
+            );
+        }
+    }
+
+    private void samplePostRelease() {
+        if (postReleaseTask == null) {
+            return;
+        }
+        if (!Bukkit.isPrimaryThread() || !safeSubject()) {
+            getLogger().warning("S49_DASH_DEV_POST_ABORT actor_or_thread_changed");
+            postReleaseTask.cancel();
+            postReleaseTask = null;
+            return;
+        }
+        long tick = subject.getWorld().getFullTime();
+        if (tick <= postReleaseLastTick || tick != postReleaseStartTick + postReleaseCount + 1) {
+            getLogger().warning("S49_DASH_DEV_POST_ABORT tick_gap_or_replay");
+            postReleaseTask.cancel();
+            postReleaseTask = null;
+            return;
+        }
+        AttributeInstance speed = subject.getAttribute(Attribute.MOVEMENT_SPEED);
+        if (speed == null || modifier == null
+                || speed.getModifier(modifier.getKey()) != null) {
+            getLogger().warning("S49_DASH_DEV_POST_ABORT modifier_not_removed");
+            postReleaseTask.cancel();
+            postReleaseTask = null;
+            return;
+        }
+        double x = subject.getLocation().getX();
+        double z = subject.getLocation().getZ();
+        double delta = Math.hypot(x - postReleaseLastX, z - postReleaseLastZ);
+        postReleaseCount++;
+        getLogger().info("S49_DASH_DEV_POST_RELEASE action_id=" + actionId
+            + " session_id=" + sessionId + " tick=" + tick
+            + " index=" + postReleaseCount
+            + " world=" + worldId + " player_uuid=" + playerId
+            + " horizontal_delta_m=" + delta
+            + " boundary=" + (postReleaseCount == 1 ? "MIXED" : "POST_RELEASE")
+            + " modifier_present=false motor_write=false"
+            + " P1_APPLIED=false M0_POSTED=false WAIT_ATTESTED=false");
+        postReleaseLastTick = tick;
+        postReleaseLastX = x;
+        postReleaseLastZ = z;
+        if (postReleaseCount == 5) {
+            postReleaseTask.cancel();
+            postReleaseTask = null;
+        }
     }
 
     @EventHandler
@@ -442,6 +509,10 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
         disarm("PLUGIN_DISABLED");
+        if (postReleaseTask != null) {
+            postReleaseTask.cancel();
+            postReleaseTask = null;
+        }
         getLogger().info("S49_DASH_DEV_STOPPED");
     }
 }
