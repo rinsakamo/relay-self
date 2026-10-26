@@ -16,6 +16,13 @@ import shutil
 from pathlib import Path
 from unittest.mock import patch
 
+from experiments.fatigue_p1 import FatigueProfile, initial_state
+from experiments.p1_gait_dev import (
+    GaitTickDev,
+    advance_gait_dev,
+    p1_motor_power_limit_dev,
+)
+
 from adapters.mineflayer import normal_action as action_owner
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
@@ -54,6 +61,86 @@ def evaluate_native_dash_gain_dev(
         "paper_sampled_peak_mps": peak_mps,
         "uncontrolled_single_world_comparison": True,
         "speed_cap_or_direction_qualified": False,
+    }
+
+
+def audit_native_paper_p1_dev(raw: str, *, action_id: str, session_id: str) -> dict:
+    """Independently replay Paper World callbacks against existing single P1.
+
+    Paper's motor outcome is DEV evidence only; host custody of every actual
+    World tick and P1/M0 ledger authorization are not inferred.
+    """
+    rows = []
+    for line in raw.splitlines():
+        if "S49_DASH_DEV_TICK " not in line:
+            continue
+        data = dict(t.split("=", 1)
+                    for t in line.split("S49_DASH_DEV_TICK ", 1)[1].split()
+                    if t.count("=") == 1)
+        if data.get("action_id") != action_id:
+            continue
+        if data.get("session_id") != session_id or data.get("p1_motor_dev") != "true":
+            raise ForwardDashDevRejected("foreign/non-P1 Paper tick")
+        rows.append(data)
+    if len(rows) < 5:
+        raise ForwardDashDevRejected("too few P1 Paper ticks")
+    cfg = FatigueProfile(enabled=True, initial=0.6)
+    state = initial_state(cfg, session_id)
+    prev_power = 0.0
+    last_world = None
+    proposed_m0 = 0.0
+    boosts = []
+    for i, line in enumerate(rows, 1):
+        try:
+            world = int(line["tick"])
+            index = int(line["p1_world_ticks"])
+            before = float(line["p1_before"])
+            after = float(line["p1_after"])
+            prev = float(line["p1_prev_applied_power"])
+            output = float(line["p1_current_applied_power"])
+        except (KeyError, ValueError) as exc:
+            raise ForwardDashDevRejected("malformed P1 World tick") from exc
+        if (index != i or world <= 0
+                or (last_world is not None and world != last_world + 1)
+                or not all(math.isfinite(v) for v in (before, after, prev, output))
+                or not math.isclose(prev_power, prev, abs_tol=2e-10)
+                or not math.isclose(state.fatigue, before, abs_tol=2e-10)):
+            raise ForwardDashDevRejected("P1 state / World tick continuity violation")
+        result = advance_gait_dev(
+            cfg, state,
+            GaitTickDev(session_id, i,
+                        "DASH" if prev_power > 0 else "RUN", "forward",
+                        prev_power, 1.0 if prev_power > 0 else None),
+        )
+        if not math.isclose(result.after.fatigue, after, abs_tol=2e-10):
+            raise ForwardDashDevRejected("Paper fatigue is not one-P1 transition")
+        state = result.after
+        proposed_m0 += result.added_m0_charge
+        requested = p1_motor_power_limit_dev(cfg, state, 1.0, 1.0)
+        if (line.get("modifier_applied") not in ("true", "false")
+                or not math.isclose(
+                    output, requested if line["modifier_applied"] == "true" else 0.0,
+                    abs_tol=2e-10,
+                )):
+            raise ForwardDashDevRejected("Paper output does not obey single P1 bound")
+        if output > 0:
+            boosts.append(output)
+        prev_power = output
+        last_world = world
+    if len(boosts) < 3 or boosts[0] - boosts[-1] < 0.01:
+        raise ForwardDashDevRejected("P1 power fade unobserved")
+    return {
+        "world_ticks_replayed": len(rows),
+        "fatigue_initial": cfg.initial,
+        "fatigue_final": state.fatigue,
+        "initial_boost_power": boosts[0],
+        "last_boost_power": boosts[-1],
+        "actual_power_fade": boosts[0] - boosts[-1],
+        "m0_charge_proposal_not_posted": proposed_m0,
+        "single_p1_model_replayed": True,
+        "source_qualified": False,
+        "p1_ledger_posted": False,
+        "m0_ledger_posted": False,
     }
 
 
@@ -156,12 +243,15 @@ def review_forward_dash_rows(raw: str, *, action_id: str, session_id: str) -> di
 async def run(
     output_dir: Path, paper_jar: Path, paper_sha: str,
     dash_jar: Path, dash_sha: str, *, confirm: str,
+    p1_live_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
         or os.environ.get("S49_REAL_SERVER_CI") != "1"
         or os.environ.get("S49_FORWARD_MOTOR_DEV_ONLY") != "1"
         or os.environ.get("S49_SPRINT_MOTOR_DEV_ONLY") != "1"
+        or type(p1_live_dev) is not bool
+        or (p1_live_dev and os.environ.get("S49_P1_LIVE_DASH_DEV_ONLY") != "1")
     ):
         raise ForwardDashDevRejected("explicit isolated one-World/sprint gates required")
     paper_jar = _fresh_asset(paper_jar, paper_sha)
@@ -192,7 +282,9 @@ async def run(
         cfg = plugins / "RelayS49DashDev"
         cfg.mkdir()
         (cfg / "config.yml").write_text(
-            "enabled: true\nexpected-player-name: RelaySelf\n", encoding="utf-8"
+            "enabled: true\nexpected-player-name: RelaySelf\n"
+            + ("p1-live-dev: true\np1-initial-fatigue: 0.6\n" if p1_live_dev else ""),
+            encoding="utf-8"
         )
 
     async def paper_ready(*args):
@@ -280,6 +372,11 @@ async def run(
             action_id=subject["action_id"], session_id=subject["session"],
         )
         report["paper"] = review
+        if p1_live_dev:
+            report["p1_paper_motor_dev"] = audit_native_paper_p1_dev(
+                paper_log.read_text(encoding="utf-8"),
+                action_id=subject["action_id"], session_id=subject["session"],
+            )
         report["original_action_distances_m"] = [a["movement_m"] for a in actions]
         report["first_minus_unboosted_second_distance_m"] = (
             actions[0]["movement_m"] - actions[1]["movement_m"]
@@ -325,10 +422,12 @@ def main() -> int:
     parser.add_argument("--dash-jar", type=Path, required=True)
     parser.add_argument("--dash-sha256", required=True)
     parser.add_argument("--confirm", required=True)
+    parser.add_argument("--p1-live-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
         a.dash_jar, a.dash_sha256, confirm=a.confirm,
+        p1_live_dev=a.p1_live_dev,
     ))
 
 
