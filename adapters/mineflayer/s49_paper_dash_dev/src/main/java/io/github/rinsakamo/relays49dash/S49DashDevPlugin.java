@@ -51,6 +51,8 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
     private double p1Fatigue;
     private double activeDashPower;
     private int p1WorldTicks;
+    private boolean nativeAppliedMarked;
+    private boolean nativeClearedMarked;
     private double lastX;
     private double lastZ;
     private BukkitTask task;
@@ -73,13 +75,14 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
                              String label, String[] args) {
         boolean start = command.getName().equalsIgnoreCase("relays49dasharm");
         boolean stop = command.getName().equalsIgnoreCase("relays49dashoff");
-        if (!start && !stop) {
+        boolean mark = command.getName().equalsIgnoreCase("relays49dashmark");
+        if (!start && !stop && !mark) {
             return false;
         }
         if (!(sender instanceof ConsoleCommandSender)
                 || !Bukkit.isPrimaryThread()
                 || !getConfig().getBoolean("enabled", false)
-                || args.length != (start ? 4 : 3)
+                || args.length != (start ? 4 : mark ? 5 : 3)
                 || !validId(args[0]) || !validId(args[1])) {
             getLogger().warning("S49_DASH_DEV_DENIED console_or_input");
             return true;
@@ -93,13 +96,17 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         }
         if (start) {
             arm(args, uuid);
+        } else if (mark) {
+            markNativeEffect(args, uuid);
         } else {
             if (!armed || !uuid.equals(playerId)
                     || !args[0].equals(actionId) || !args[1].equals(sessionId)) {
                 getLogger().warning("S49_DASH_DEV_DENIED foreign_release");
                 return true;
             }
-            disarm("OWNER_RELEASE");
+            disarm(getConfig().getBoolean("native-edge-dev", false)
+                && (!nativeAppliedMarked || !nativeClearedMarked)
+                ? "NATIVE_EFFECT_ACK_MARKER_MISSING" : "OWNER_RELEASE");
         }
         return true;
     }
@@ -153,6 +160,8 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         p1Fatigue = p1MotorDev ? 0.6 : 0.0;
         activeDashPower = 0.0;
         p1WorldTicks = 0;
+        nativeAppliedMarked = false;
+        nativeClearedMarked = false;
         armTick = player.getWorld().getFullTime();
         lastTick = armTick;
         lastX = player.getLocation().getX();
@@ -170,6 +179,51 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " power=" + power + " authority=NONE"
             + " p1_motor_dev=" + p1MotorDev
             + " p1_initial_fatigue=" + p1Fatigue);
+    }
+
+    private void markNativeEffect(String[] args, UUID uuid) {
+        if (!getConfig().getBoolean("native-edge-dev", false)
+                || !armed || !safeSubject()
+                || !uuid.equals(playerId)
+                || !args[0].equals(actionId) || !args[1].equals(sessionId)) {
+            getLogger().warning("S49_DASH_DEV_DENIED native_ack_foreign");
+            return;
+        }
+        boolean applied = args[3].equals("APPLIED");
+        boolean cleared = args[3].equals("CLEARED");
+        if ((!applied && !cleared)
+                || (applied && (nativeAppliedMarked || nativeClearedMarked))
+                || (cleared && (!nativeAppliedMarked || nativeClearedMarked))) {
+            getLogger().warning("S49_DASH_DEV_DENIED native_ack_replay_or_order");
+            return;
+        }
+        int seq;
+        try {
+            seq = Integer.parseInt(args[4]);
+        } catch (NumberFormatException exception) {
+            getLogger().warning("S49_DASH_DEV_DENIED native_ack_seq");
+            return;
+        }
+        if (seq < 0) {
+            getLogger().warning("S49_DASH_DEV_DENIED native_ack_negative_seq");
+            return;
+        }
+        if (applied) {
+            nativeAppliedMarked = true;
+        } else {
+            nativeClearedMarked = true;
+        }
+        // The S49 owner received an existing native effect ACK BEFORE
+        // this console command. Paper time records delivery of the marker,
+        // never physical client-side effect timing or a clock-synced edge.
+        getLogger().info("S49_DASH_DEV_EDGE action_id=" + actionId
+            + " session_id=" + sessionId
+            + " world=" + worldId + " player_uuid=" + playerId
+            + " phase=" + (applied ? "APPLIED" : "CLEARED")
+            + " native_seq=" + seq
+            + " tick=" + subject.getWorld().getFullTime()
+            + " marker_after_native_ack=true"
+            + " synchronized_native_effect_tick=false");
     }
 
     private boolean safeSubject() {
