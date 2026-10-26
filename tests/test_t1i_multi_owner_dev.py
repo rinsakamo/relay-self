@@ -6,10 +6,10 @@ from types import SimpleNamespace
 
 import pytest
 
+from adapters.mineflayer import t1i_session_stop_dev as t1i
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.python_protocol import MineflayerEffectResult
 from adapters.mineflayer.t1h_stop_owner_dev import S49DevStopOwner, StopDevRejected
-from adapters.mineflayer import t1i_session_stop_dev as t1i
 from relay_self.action import ActionState
 
 SID = "t1i-session"
@@ -101,3 +101,37 @@ def test_no_stop_ack_on_missing_native_or_paper_evidence(tmp_path,monkeypatch,fa
     with pytest.raises(StopDevRejected):
         run(case)
     assert case[0].ack is None
+
+
+@pytest.mark.parametrize("foreign", [False, True])
+def test_stopped_eat_passive_observation_never_promotes_outcome(tmp_path, monkeypatch, foreign):
+    from dataclasses import dataclass
+
+    @dataclass
+    class Probe:
+        session_id: str
+        seq: int
+
+    commands = []
+    monkeypatch.setattr(t1i, "_command", lambda _server, line: commands.append(line))
+
+    async def drain():
+        pass
+
+    async def sleep(_seconds):
+        pass
+
+    async def observe(_session, request_id):
+        return Probe("foreign" if foreign else SID, int(request_id.rsplit("-", 1)[1]) + 20)
+
+    monkeypatch.setattr(t1i.asyncio, "sleep", sleep)
+    monkeypatch.setattr(t1i, "_correlated_observe", observe)
+    session = SimpleNamespace(started=SimpleNamespace(session_id=SID))
+    server = SimpleNamespace(stdin=SimpleNamespace(drain=drain))
+    log = tmp_path / "paper.log"
+    log.write_text("S_V8_DEV_SNAPSHOT marker_id=T1I_EAT_AFTER_STOP server_tick=100\n")
+    result = asyncio.run(t1i.observe_stopped_eat(session, server, {"seq": 10}, log))
+    assert result["creates_outcome"] is False and result["credits"] == 0
+    assert result["status"] == ("NATIVE_UNVERIFIED" if foreign else "DEV_WORLD_OBSERVED")
+    assert len(result["probes"]) == (0 if foreign else 12)
+    assert commands == ["relaydevsnapshot T1I_EAT_AFTER_STOP"]

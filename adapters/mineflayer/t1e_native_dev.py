@@ -155,6 +155,7 @@ async def run_case(args, case):
     report = {"case": case, "status": "INCOMPLETE", "mode": "DEV_ONLY",
               "qualification": False, "science": False, "target_tps": 20,
               "action_source": "EXPLICIT_OPERATOR_FIXED_MOVE_NOT_AUTONOMOUS_POLICY",
+              "eat_stop_stage": args.eat_stop_stage,
               "fixture_duration_s": 0.2 if case == "normal" else 1.0,
               "paper_sha256": sha(args.paper), "plugin_sha256": sha(args.plugin)}
     server = collector = session = fixture = None
@@ -195,6 +196,18 @@ async def run_case(args, case):
             previous_clear = None
             deferred_effect = None
 
+            def request_t1i_stop(self, stop_id, **kwargs):
+                self.t1i_stop_owner.request(stop_id, **kwargs)
+                self.consume_tick_accounting = False
+                self.tick_owner.failed = True
+                report["stop_requested_python_ns"] = time.monotonic_ns()
+                report["accounting_at_stop"] = {
+                    "ticks": len(self.tick_owner.rows),
+                    "credit_count": self.tick_owner.energy.credit_count,
+                    "energy": asdict(self.tick_owner.energy.body),
+                    "fatigue": asdict(self.tick_owner.fatigue),
+                }
+
             async def inject_disconnect(self, boundary):
                 if "fault_injection" in report:
                     return
@@ -227,6 +240,15 @@ async def run_case(args, case):
                             _latch_source_loss(self)
                         raise
                     now = time.monotonic_ns()
+                    if (case == "t1i_stop_eat" and isinstance(message, MineflayerEffectResult)
+                            and message.effect == "consume_held"):
+                        report.setdefault("eat_native_receipts", []).append(asdict(message))
+                        if args.eat_stop_stage == "after_receipt":
+                            self.request_t1i_stop("t1i-eat-stop", active_action_id=self.t1i_eat_action_id)
+                    if (case == "t1i_stop_eat" and args.eat_stop_stage == "after_observe"
+                            and getattr(message, "request_id", "")
+                            and message.request_id.startswith("t2-native-meal-after-eating")):
+                        self.request_t1i_stop("t1i-eat-stop", active_action_id=self.t1i_eat_action_id)
                     if t1f and isinstance(message, (MineflayerConnectionEnd,
                             MineflayerAdapterErrorMessage, MineflayerCommandError,
                             MineflayerShutdownAck)):
@@ -292,7 +314,7 @@ async def run_case(args, case):
                 ):
                     async def t1i_stop_move():
                         await asyncio.sleep(.08)
-                        self.t1i_stop_owner.request(
+                        self.request_t1i_stop(
                             "t1i-multi-epoch-stop", active_action_id=a[0],
                             expected_clear_action_id=a[0] + "-clear",
                         )
@@ -312,6 +334,8 @@ async def run_case(args, case):
                     fixture = asyncio.create_task(stage())
 
             async def send_equip_item(self, *a, **kw):
+                if case == "t1i_stop_eat" and args.eat_stop_stage == "before_equip":
+                    self.request_t1i_stop("t1i-eat-stop", active_action_id=self.t1i_eat_action_id)
                 if getattr(self, "t1i_stop_owner", None) is not None and (
                     not self.t1i_stop_owner.allows_action
                     or self.source_lost
@@ -319,6 +343,8 @@ async def run_case(args, case):
                     from adapters.mineflayer.eat_execution import EatingExecutionRejected
                     raise EatingExecutionRejected("T1i owner STOP: equip IO refused")
                 await super().send_equip_item(*a, **kw)
+                if case == "t1i_stop_eat" and args.eat_stop_stage == "after_equip":
+                    self.request_t1i_stop("t1i-eat-stop", active_action_id=self.t1i_eat_action_id)
 
             async def send_consume_held(self, *a, **kw):
                 nonlocal fixture
@@ -329,13 +355,13 @@ async def run_case(args, case):
                     from adapters.mineflayer.eat_execution import EatingExecutionRejected
                     raise EatingExecutionRejected("T1i owner STOP: consume IO refused")
                 await super().send_consume_held(*a, **kw)
-                if case == "t1i_stop_eat" and (
+                if case == "t1i_stop_eat" and args.eat_stop_stage in ("consume_send", "consume_wait") and (
                     getattr(self, "t1i_eat_action_id", None) is not None
                     and a[0] == self.t1i_eat_action_id + "-consume"
                 ):
                     async def t1i_stop_eating():
-                        await asyncio.sleep(.08)
-                        self.t1i_stop_owner.request(
+                        await asyncio.sleep(.08 if args.eat_stop_stage == "consume_wait" else 0)
+                        self.request_t1i_stop(
                             "t1i-eat-stop", active_action_id=self.t1i_eat_action_id,
                         )
                     fixture = asyncio.create_task(t1i_stop_eating())
@@ -510,6 +536,18 @@ async def run_case(args, case):
             sends = report["metrics"]["set_control_sends"]
             clears = report["metrics"]["clear_control_sends"]
             expected_moves = args.loop_moves + (1 if case == "t1i_stop_loop" else 0)
+            original_commands = [json.loads(line) for line in
+                                 (root / "commands.jsonl").read_text().splitlines()]
+            effect_ids = [c["action_id"] for c in original_commands if c["type"] == "effect"]
+            report["effect_id_duplicates"] = len(effect_ids) - len(set(effect_ids))
+            report["consume_sends"] = sum(c.get("effect") == "consume_held" for c in original_commands)
+            frozen = report.get("accounting_at_stop", {})
+            final = report.get("t2_final", {})
+            report["accounting_frozen_after_stop"] = bool(frozen) and all(
+                frozen[k] == final.get(k) for k in ("ticks", "credit_count", "energy", "fatigue"))
+            if (report["effect_id_duplicates"] or report["consume_sends"] > 1
+                    or not report["accounting_frozen_after_stop"]):
+                report["status"] = "FAIL"
             if (not detail.get("stop_requested")
                     or sends != expected_moves or clears != expected_moves
                     or len([e for e in report.get("epochs", [])
@@ -552,6 +590,8 @@ async def main():
     parser.add_argument("--bootstrap", type=Path)
     parser.add_argument("--confirm", required=True, choices=[CONFIRM])
     parser.add_argument("--loop-moves", type=int, choices=range(2, 33), default=2)
+    parser.add_argument("--eat-stop-stage", default="consume_wait", choices=(
+        "before_equip", "after_equip", "consume_send", "consume_wait", "after_receipt", "after_observe"))
     parser.add_argument("--cases", nargs="+", choices=CASES + TICK_CASES, default=list(CASES))
     args = parser.parse_args()
     if not args.output.is_absolute() or args.output.exists() or os.environ.get("NODE_OPTIONS"):

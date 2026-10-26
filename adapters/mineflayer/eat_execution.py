@@ -73,6 +73,8 @@ async def _expect(session, action_id: str, effect: str, *, paper_tick_dev=False,
     for _ in range(100):
         frame = await _eat_receive(session, stop_requested_dev)
         if isinstance(frame, MineflayerEffectResult):
+            if frame.session_id != session.started.session_id:
+                raise EatingExecutionRejected("foreign EAT receipt session")
             if frame.action_id == action_id and frame.effect == effect:
                 if frame.result != "applied":
                     raise EatingExecutionRejected(f"native {effect} rejected: {frame.error}")

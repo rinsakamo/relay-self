@@ -131,6 +131,7 @@ async def native_meal(session, server, supervisor, report, *, time_base, stop_ow
     owner.begin(issued.action_id)
     if stop_owner is not None:
         session.t1i_eat_action_id = issued.action_id
+    report["meal_before"] = asdict(probe)
     eating = await IssuedEatingExecutor().execute(
         session, supervisor, issued, choice, probe, paper_tick_dev=True,
         stop_requested_dev=(lambda: stop_owner.requested) if stop_owner else None)
@@ -148,9 +149,9 @@ async def run_continuation(session, server, report, root, *,
                            observe_only, accounting, normal_epochs=2,
                            stop_owner=None, stop_mode=None):
     from adapters.mineflayer.t1i_session_stop_dev import (
-        finish_multi_epoch_move_stop, require_stop_permits_action,
+        finish_multi_epoch_move_stop,
+        require_stop_permits_action,
     )
-    from adapters.mineflayer.t1h_stop_owner_dev import StopDevRejected
     from relay_self.action import ActionState
     if stop_mode not in (None, "MOVE", "EAT") or (stop_mode and stop_owner is None):
         raise ValueError("T1i STOP requires an exact original S49 owner")
@@ -199,6 +200,11 @@ async def run_continuation(session, server, report, root, *,
                         "remaining_action_effects": "FORBIDDEN",
                         "error": f"{type(exc).__name__}: {exc}",
                     }
+                    from adapters.mineflayer.t1i_session_stop_dev import observe_stopped_eat
+                    report["t1i"]["passive_observation"] = await observe_stopped_eat(
+                        session, server, report["meal_before"], root / "paper.log",
+                    )
+                    report["t1i"]["classification"] = "EAT_STOP_FAIL_CLOSED_DEV_PASS"
                     report["status"] = "PASS"
                     break
             require_stop_permits_action(stop_owner)

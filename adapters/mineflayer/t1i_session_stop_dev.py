@@ -10,7 +10,7 @@ import asyncio
 from dataclasses import asdict
 from pathlib import Path
 
-from adapters.mineflayer.execution import WorldConsequenceStatus, WorldConsequence
+from adapters.mineflayer.execution import WorldConsequence, WorldConsequenceStatus
 from adapters.mineflayer.s31a_real_server_ci import _command, _correlated_observe
 from adapters.mineflayer.t1h_stop_owner_dev import S49DevStopOwner, StopDevRejected
 from relay_self.action import ActionState
@@ -66,3 +66,30 @@ async def finish_multi_epoch_move_stop(
         "next_action_issued": False, "p1_wait_qualified": False,
         "independent_full_tick_census": False,
     }
+
+
+async def observe_stopped_eat(session, server, before: dict, paper_log: Path) -> dict:
+    """Sequential passive probes via the original receiver; no outcome/credit.
+
+    Even an applied consume receipt plus later food does not reopen UNKNOWN.
+    Paper callbacks remain independent observations in the original log.
+    """
+    result = {"status": "NATIVE_UNVERIFIED", "probes": [],
+              "before": before, "creates_outcome": False, "credits": 0}
+    marker = "T1I_EAT_AFTER_STOP"
+    _command(server, f"relaydevsnapshot {marker}")
+    await server.stdin.drain()
+    try:
+        async with asyncio.timeout(5):
+            for i in range(12):
+                await asyncio.sleep(.25)
+                probe = await _correlated_observe(session, f"t1i-stopped-eat-{i}")
+                if probe.session_id != session.started.session_id:
+                    raise StopDevRejected("foreign stopped-EAT passive probe")
+                result["probes"].append(asdict(probe))
+            result["status"] = "DEV_WORLD_OBSERVED"
+    except Exception as exc:
+        result["error"] = f"{type(exc).__name__}: {exc}"
+    result["paper_marker"] = marker
+    result["paper_marker_observed"] = f"marker_id={marker} " in paper_log.read_text()
+    return result
