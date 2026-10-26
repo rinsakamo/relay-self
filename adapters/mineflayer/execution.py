@@ -13,10 +13,15 @@ from adapters.mineflayer.python_protocol import (
     MineflayerConnectionEnd,
     MineflayerEffectResult,
     MineflayerObservation,
+    MineflayerPaperL0Shadow,
 )
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.execution_binding import ExecutionBindingResult
 from relay_self.provenance import Provenance
+from adapters.mineflayer.s49_l0_interrupt_dev import (
+    L0Interruption,
+    classify_s49_l0_interrupt,
+)
 
 MOVE_BACKWARD_ACTION_REF = "MOVE_BACKWARD"
 MOVE_BACKWARD_EFFECT = "set_control"
@@ -256,6 +261,7 @@ async def execute_mineflayer_command(
     *,
     timeout_s: float = 2.0,
     provenance: Provenance,
+    l0_interrupt_dev: bool = False,
 ) -> WorldConsequence:
     """Execute one bounded MOVE_BACKWARD command with structured observation.
 
@@ -269,6 +275,8 @@ async def execute_mineflayer_command(
             "command must be MineflayerCommand"
         )
     _require_positive_number("timeout_s", timeout_s)
+    if type(l0_interrupt_dev) is not bool:
+        raise InvalidMineflayerExecutionData("L0 interrupt DEV opt-in must be bool")
     _require_provenance("execution provenance", provenance)
     started = _require_adapter(adapter)
     session_id = started.session_id
@@ -290,6 +298,8 @@ async def execute_mineflayer_command(
                 isinstance(message, MineflayerObservation)
                 and message.kind == "probe"
             ),
+            l0_interrupt_dev=l0_interrupt_dev,
+            expected_session_id=session_id,
         )
 
         movement_command_attempted = True
@@ -306,6 +316,8 @@ async def execute_mineflayer_command(
                 and message.action_id == command.action_id
                 and message.effect == command.effect
             ),
+            l0_interrupt_dev=l0_interrupt_dev,
+            expected_session_id=session_id,
         )
         if dispatch.result != "applied":
             raise MineflayerExecutionError(
@@ -313,7 +325,12 @@ async def execute_mineflayer_command(
                 f"{dispatch.error}"
             )
 
-        await asyncio.sleep(command.duration_s)
+        if l0_interrupt_dev:
+            await _watch_l0_during_motor(
+                adapter, duration_s=command.duration_s, session_id=session_id,
+            )
+        else:
+            await asyncio.sleep(command.duration_s)
 
         cleanup_attempted = True
         await adapter.send_clear_controls(command.cleanup_action_id)
@@ -325,6 +342,7 @@ async def execute_mineflayer_command(
                 and message.action_id == command.cleanup_action_id
                 and message.effect == "clear_controls"
             ),
+            l0_interrupt_dev=False,
         )
         if cleanup.result != "applied":
             raise MineflayerExecutionError(
@@ -340,6 +358,8 @@ async def execute_mineflayer_command(
                 isinstance(message, MineflayerObservation)
                 and message.kind == "probe"
             ),
+            l0_interrupt_dev=l0_interrupt_dev,
+            expected_session_id=session_id,
         )
         movement_distance = _horizontal_distance(
             before.snapshot.position.x,
@@ -374,6 +394,17 @@ async def execute_mineflayer_command(
                 cleanup_attempted = True
             try:
                 await adapter.send_clear_controls(command.cleanup_action_id)
+                if l0_interrupt_dev:
+                    # A client-side clear ACK is not a Paper stop witness.
+                    # Failure to receive ACK leaves action outcome FAILED.
+                    cleanup = await _receive_until(
+                        adapter, timeout_s=timeout_s,
+                        predicate=lambda message: (
+                            isinstance(message, MineflayerEffectResult)
+                            and message.action_id == command.cleanup_action_id
+                            and message.effect == "clear_controls"
+                        ),
+                    )
             except Exception:
                 pass
         return WorldConsequence(
