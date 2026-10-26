@@ -144,6 +144,66 @@ def audit_native_paper_p1_dev(raw: str, *, action_id: str, session_id: str) -> d
     }
 
 
+def review_paper_action_bracket_dev(raw: str, *, action_id: str, session_id: str) -> dict:
+    """Paper-only arm/tick/release custody; NOT a cross-host clock attestation."""
+    groups = {"ARM": [], "TICK": [], "COMPLETE": []}
+    for line in raw.splitlines():
+        for kind in groups:
+            mark = "S49_DASH_DEV_" + kind + " "
+            if mark not in line:
+                continue
+            fields = dict(t.split("=", 1) for t in line.split(mark, 1)[1].split()
+                          if t.count("=") == 1)
+            if fields.get("action_id") == action_id:
+                if fields.get("session_id") != session_id:
+                    raise ForwardDashDevRejected("Paper cross-session Action bracket")
+                groups[kind].append(fields)
+            break
+    arm, rows, stop = groups["ARM"], groups["TICK"], groups["COMPLETE"]
+    if len(arm) != 1 or len(stop) != 1 or not 5 <= len(rows) <= 80:
+        raise ForwardDashDevRejected("missing/duplicated Paper Action bracket")
+    start, release = arm[0], stop[0]
+    try:
+        arm_tick = int(start["tick"])
+        release_tick = int(release["tick"])
+    except (ValueError, KeyError) as exc:
+        raise ForwardDashDevRejected("malformed Paper start/release tick") from exc
+    world, player = start.get("world"), start.get("player_uuid")
+    if (not isinstance(world, str) or len(world) != 36
+            or not isinstance(player, str) or len(player) != 36
+            or release.get("reason") != "OWNER_RELEASE"
+            or release.get("world") != world or release.get("player_uuid") != player
+            or release_tick < arm_tick or release_tick - arm_tick > 80):
+        raise ForwardDashDevRejected("Paper owner/world/release changed")
+    prior = arm_tick
+    positives = 0
+    for fields in rows:
+        try:
+            tick = int(fields["tick"])
+        except (ValueError, KeyError) as exc:
+            raise ForwardDashDevRejected("invalid Paper observed tick") from exc
+        if (fields.get("world") != world or fields.get("player_uuid") != player
+                or tick != prior + 1 or tick > release_tick
+                or fields.get("modifier_applied") not in ("true", "false")):
+            raise ForwardDashDevRejected("Paper duplicated/foreign/gapped World tick")
+        positives += fields["modifier_applied"] == "true"
+        prior = tick
+    if (not 0 <= release_tick - prior <= 20 or positives < 1
+            or int(release.get("forward_boost_ticks", "-1")) != positives):
+        raise ForwardDashDevRejected("Paper boost count or release delay mismatch")
+    return {
+        "classification": "PAPER_LOCAL_ARM_TICK_RELEASE_BRACKET_DEV_ONLY",
+        "action_id": action_id, "session_id": session_id,
+        "world_uuid": world, "player_uuid": player,
+        "arm_tick": arm_tick, "first_tick": arm_tick + 1,
+        "last_tick": prior, "release_tick": release_tick,
+        "elapsed_callbacks": len(rows), "boosted_callbacks": positives,
+        "original_owner_release": True,
+        "independent_source_attested": False,
+        "mineflayer_paper_tick_synchronized": False,
+    }
+
+
 def review_forward_dash_rows(raw: str, *, action_id: str, session_id: str) -> dict:
     """Parse only relevant native Paper lines, never invent missing positive ticks."""
     rows = []
@@ -354,6 +414,12 @@ async def run(
         p1 = audit_native_paper_p1_dev(
             raw, action_id=subject["action_id"], session_id=subject["session"],
         )
+        if m0_move_dev:
+            bracket = review_paper_action_bracket_dev(
+                raw, action_id=subject["action_id"], session_id=subject["session"],
+            )
+            if bracket["elapsed_callbacks"] != p1["world_ticks_replayed"]:
+                raise ForwardDashDevRejected("Paper Action bracket/P1 tick mismatch")
         if (paper["paper_gait_ticks_observed"] != p1["world_ticks_replayed"]
                 or paper["paper_forward_boost_ticks"] < 1
                 or not paper["paper_modifier_removed"]
@@ -406,6 +472,11 @@ async def run(
             action_id=subject["action_id"], session_id=subject["session"],
         )
         report["paper"] = review
+        if m0_move_dev:
+            report["paper_action_bracket"] = review_paper_action_bracket_dev(
+                paper_log.read_text(encoding="utf-8"),
+                action_id=subject["action_id"], session_id=subject["session"],
+            )
         if m0_live_dev:
             report["m0_s49_original_owner_postings"] = (
                 original_bytes.get("dev_m0_dash_postings", [])
