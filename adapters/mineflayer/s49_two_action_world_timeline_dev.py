@@ -165,10 +165,19 @@ def review_two_action_world_timeline_dev(
                 or row.get("session_id") != session_id
                 or row.get("world") != world
                 or row.get("player_uuid") != player
-                or row.get("second_applied_marker_seen")
-                   != ("true" if tick > applied else "false")
-                or row.get("second_cleared_marker_seen")
-                   != ("true" if tick > cleared else "false")
+                # Console marker and scheduler may execute in either order
+                # *within the SAME Paper fullTime*. Never claim a precise
+                # order for equality at that tick.
+                or (tick < applied and
+                    row.get("second_applied_marker_seen") != "false")
+                or (tick > applied and
+                    row.get("second_applied_marker_seen") != "true")
+                or (tick < cleared and
+                    row.get("second_cleared_marker_seen") != "false")
+                or (tick > cleared and
+                    row.get("second_cleared_marker_seen") != "true")
+                or row.get("second_applied_marker_seen") not in ("true", "false")
+                or row.get("second_cleared_marker_seen") not in ("true", "false")
                 or (tick > release and
                     row.get("first_dash_modifier_present") != "false")
                 or any(row.get(name) != "false" for name in
