@@ -212,11 +212,12 @@ class IssuedEatingExecutor:
             not paper_tick_dev or not callable(stop_requested_dev)
         ):
             raise EatingExecutionRejected("T1i EAT STOP requires explicit Paper DEV owner")
-        _eat_stop_check(stop_requested_dev)
-        # Consume the Action ID before any potentially irreversible IO.
+        # Reserve even a STOP-before-send Action; it is already ISSUED in the
+        # original Supervisor and must become UNKNOWN, never remain ISSUED.
         self._attempted.add(issued.action_id)
         at_ns = (supervisor.last_at_ns or 0) + 1
         try:
+            _eat_stop_check(stop_requested_dev)
             equip_id = issued.action_id + "-equip"
             consume_id = issued.action_id + "-consume"
             _eat_stop_check(stop_requested_dev)
