@@ -1,0 +1,100 @@
+name: S49 Forward Motor Original Action Real World DEV
+on:
+  push:
+    branches:
+      - self/dev-s49-forward-motor-admission-20261026
+    paths:
+      - .github/workflows/self-s49-forward-motor-world-dev.yml
+permissions:
+  contents: read
+concurrency:
+  group: s49-forward-motor-world-once-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  original-forward-world:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      S49_REAL_SERVER_CI: '1'
+      S49_FORWARD_MOTOR_DEV_ONLY: '1'
+      DEV_OUTPUT: '/tmp/s49-forward-motor-${{ github.run_id }}-${{ github.run_attempt }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Confirm exact DEV HEAD and loopback isolation
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test -z "${NODE_OPTIONS:-}"
+          python - <<'PY'
+          import socket
+          with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+              sock.bind(("127.0.0.1", 25565))
+          print("Fresh local Minecraft bind available")
+          PY
+      - name: Original forward binding focused pre-world negative controls
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/execution.py adapters/mineflayer/self_action_evidence.py adapters/mineflayer/normal_action.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_s49_forward_motor_admission_dev.py
+          python -m pytest -q tests/test_s49_forward_motor_admission_dev.py
+      - name: Install unmodified original Mineflayer
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: One disposable Mojang Minecraft World with original S49 forward Action
+        run: |
+          mkdir -p "$DEV_OUTPUT"
+          python -m adapters.mineflayer.s49_normal_session_real_ci \
+            --report "$DEV_OUTPUT/original_s49_forward_report.json" \
+            --server-log "$DEV_OUTPUT/minecraft_server.log" \
+            --dev-forward-motor
+      - name: Verify issued forward binding, S16 outcome and full cleanup
+        run: |
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from adapters.mineflayer.self_action_evidence import verify_native_action_evidence
+          root = Path(os.environ["DEV_OUTPUT"])
+          report = json.loads((root/"original_s49_forward_report.json").read_text())
+          assert report["status"] == "PASS", report.get("error")
+          assert report["classification"] == "DEV_ONLY_S49_FORWARD_MOTOR_NOT_DIRECTIONALLY_QUALIFIED"
+          assert report["dev_forward_motor"] is True
+          assert report["node_exit"] == 0 and report["server_exit"] == 0
+          actions=report["actual_native_actions"]
+          assert len(actions) == 2
+          for action in actions:
+              assert action["terminal"] == "outcome"
+              assert action["movement_m"] >= 0.05
+              ev=action["execution_evidence"]
+              assert ev["action_ref"] == "MOVE_FORWARD"
+              verify_native_action_evidence(
+                  ev, action_id=action["action"],
+                  session_id=report["session_id"], movement_m=action["movement_m"],
+                  allow_dev_forward=True,
+              )
+          print("S49_FORWARD_ISSUED_ORIGINAL_WORLD_DEV_PASS", [x["movement_m"] for x in actions])
+          PY
+      - name: Preserve raw original S49 and disposable World logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-forward-motor-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEV_OUTPUT }}/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Bound interpretation
+        if: always()
+        run: |
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+          echo 'MOVE_FORWARD world smoke does not prove sprint, Paper DASH speed, escape direction or M0/P1.'
