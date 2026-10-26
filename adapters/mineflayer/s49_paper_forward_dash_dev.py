@@ -256,6 +256,12 @@ async def run(
         )
         report["paper"] = review
         report["original_action_distances_m"] = [a["movement_m"] for a in actions]
+        report["first_minus_unboosted_second_distance_m"] = (
+            actions[0]["movement_m"] - actions[1]["movement_m"]
+        )
+        report["comparison_classification"] = (
+            "UNCONTROLLED_SAME_RUN_DISTANCE_COMPARISON_DEV_ONLY"
+        )
         if review["paper_forward_boost_ticks"] < 1:
             report["status"] = "DEV_SPRINT_NO_POSITIVE_PAPER_BOOST"
             return 1

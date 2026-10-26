@@ -266,7 +266,10 @@ def build_mineflayer_command(
                 else MOVE_BACKWARD_EFFECT),
         control=controls[binding_result.action_ref],
         state=True,
-        duration_s=MOVE_BACKWARD_DURATION_S,
+        duration_s=(
+            0.60 if binding_result.action_ref == MOVE_FORWARD_SPRINT_DEV_REF
+            else MOVE_BACKWARD_DURATION_S
+        ),
         cleanup_action_id=f"{issued_action.action_id}-s15-clear",
     )
 

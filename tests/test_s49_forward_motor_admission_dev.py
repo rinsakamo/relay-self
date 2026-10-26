@@ -203,3 +203,15 @@ def test_forward_sprint_s16_receipt_is_dev_gated():
         movement_m=sprint.movement_distance,
         allow_dev_forward=True, allow_dev_sprint=True,
     )
+
+
+def test_sprint_longer_bounded_duration_does_not_change_backward_default():
+    from adapters.mineflayer.execution import (
+        MOVE_BACKWARD_DURATION_S,
+        MOVE_FORWARD_SPRINT_DEV_REF,
+    )
+
+    assert MOVE_BACKWARD_DURATION_S == 0.20
+    original_backward = _command("MOVE_BACKWARD", "back")
+    assert original_backward.duration_s == MOVE_BACKWARD_DURATION_S
+    assert MOVE_FORWARD_SPRINT_DEV_REF == "MOVE_FORWARD_SPRINT_DEV"

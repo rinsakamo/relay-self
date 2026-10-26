@@ -8,6 +8,8 @@ on:
       - 'adapters/mineflayer/s49_paper_dash_dev/**'
       - adapters/mineflayer/s49_paper_forward_dash_dev.py
       - tests/test_s49_paper_forward_dash_dev.py
+      - adapters/mineflayer/execution.py
+      - tests/test_s49_forward_motor_admission_dev.py
 
 permissions:
   contents: read
