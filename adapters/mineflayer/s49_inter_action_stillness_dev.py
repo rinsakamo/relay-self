@@ -155,6 +155,13 @@ def review_inter_action_stillness_dev(
                 (v[1] - v[0] + 1 for v in streaks), default=0,
             ),
             "paper_candidate_search_interval": [low, high],
+            "paper_motion_probe": [
+                [t, list(paper.get(t, ())),
+                 math.hypot(paper[t][0] - paper[t-1][0],
+                            paper[t][1] - paper[t-1][1])]
+                for t in (low, low + 1, low + 10, low + 20, high)
+                if t in paper and t - 1 in paper
+            ],
             "node_all_controls_off_until_second_set": True,
             "node_physics_samples": len(nodes),
             "physical_WAIT_admitted": False,
