@@ -1,0 +1,185 @@
+name: P1 Original S49 Action Paper World Tick Hold DEV
+on:
+  push:
+    branches:
+      - self/dev-p1-owner-worldtick-hold-20261027
+    paths:
+      - .github/workflows/self-p1-original-owner-tick-hold-dev.yml
+      - adapters/mineflayer/s49_paper_forward_dash_dev.py
+      - adapters/mineflayer/s49_speed_attr_boundary_dev.py
+      - adapters/mineflayer/s49_p1_synced_motor_pair_dev.py
+      - adapters/mineflayer/s49_p1_matched_boost_review_dev.py
+      - adapters/mineflayer/s49_p1_steady_phase_review_dev.py
+      - adapters/mineflayer/s49_p1_original_owner_hold_dev.py
+      - adapters/mineflayer/s49_p1_original_owner_hold_review_dev.py
+      - adapters/mineflayer/execution.py
+      - adapters/mineflayer/s49_p1_dash_pair_review_dev.py
+      - tests/test_s49_p1_synced_motor_pair_dev.py
+      - tests/test_s49_p1_matched_boost_review_dev.py
+      - tests/test_s49_p1_steady_phase_review_dev.py
+      - tests/test_s49_p1_original_owner_hold_dev.py
+      - tests/test_s49_p1_original_owner_hold_review_dev.py
+      - tests/test_mineflayer_execution_qualification.py
+      - tests/test_s49_speed_attr_boundary_dev.py
+      - adapters/mineflayer/bridge.mjs
+      - adapters/mineflayer/s49_speed_attribute_bridge_dev.mjs
+      - 'adapters/mineflayer/s49_paper_dash_dev/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p1-original-s15-held-tick-worlds-once-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  world-pair-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      S49_REAL_SERVER_CI: '1'
+      S49_FORWARD_MOTOR_DEV_ONLY: '1'
+      S49_SPRINT_MOTOR_DEV_ONLY: '1'
+      S49_P1_LIVE_DASH_DEV_ONLY: '1'
+      S49_M0_DASH_DEBIT_DEV_ONLY: '1'
+      S49_M0_ACTION_STEP_DEV_ONLY: '1'
+      S49_NATIVE_EFFECT_EDGE_DEV_ONLY: '1'
+      S49_P1_DASH_PAIR_DEV_ONLY: '1'
+      S49_SPEED_ATTR_BOUNDARY_DEV_ONLY: '1'
+      S49_SPEED_ATTR_SYNC_DEV_ONLY: '1'
+      S49_P1_MATCHED_BOOST_DEV_ONLY: '1'
+      S49_ORIGINAL_OWNER_TICK_HOLD_DEV_ONLY: '1'
+      DEV_OUTPUT: '/tmp/p1-original-owner-held-tick-pair-${{ github.run_id }}-${{ github.run_attempt }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Focused Python 3.12, Ruff and bridge syntax BEFORE any World
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          python -m compileall -q adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_speed_attr_boundary_dev.py adapters/mineflayer/s49_p1_synced_motor_pair_dev.py adapters/mineflayer/s49_p1_matched_boost_review_dev.py adapters/mineflayer/s49_p1_steady_phase_review_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_p1_matched_boost_review_dev.py tests/test_s49_p1_steady_phase_review_dev.py adapters/mineflayer/execution.py adapters/mineflayer/s49_p1_original_owner_hold_dev.py adapters/mineflayer/s49_p1_original_owner_hold_review_dev.py tests/test_s49_p1_original_owner_hold_dev.py tests/test_s49_p1_original_owner_hold_review_dev.py
+          ruff check adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_speed_attr_boundary_dev.py adapters/mineflayer/s49_p1_synced_motor_pair_dev.py adapters/mineflayer/s49_p1_matched_boost_review_dev.py adapters/mineflayer/s49_p1_steady_phase_review_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_p1_matched_boost_review_dev.py tests/test_s49_p1_steady_phase_review_dev.py adapters/mineflayer/execution.py adapters/mineflayer/s49_p1_original_owner_hold_dev.py adapters/mineflayer/s49_p1_original_owner_hold_review_dev.py tests/test_s49_p1_original_owner_hold_dev.py tests/test_s49_p1_original_owner_hold_review_dev.py
+          python -m pytest -q tests/test_s49_p1_original_owner_hold_dev.py tests/test_s49_p1_original_owner_hold_review_dev.py tests/test_mineflayer_execution_qualification.py tests/test_s49_p1_steady_phase_review_dev.py tests/test_s49_p1_matched_boost_review_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_dash_pair_review_dev.py tests/test_s49_p1_paper_motor_dev.py tests/test_s49_paper_forward_dash_dev.py tests/test_s49_m0_dash_extra_owner_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_p1_gait_dev.py tests/test_self_action_evidence.py
+          node --check adapters/mineflayer/bridge.mjs
+          node --check adapters/mineflayer/s49_speed_attribute_bridge_dev.mjs
+          node --test adapters/mineflayer/s49_speed_attribute_bridge_dev.test.mjs
+      - name: Compile one-shot Paper DASH model preload plugin
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/s49_paper_dash_dev/pom.xml -DskipTests package
+          test -f adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-dash-dev-0.1.0-dev.jar
+      - name: Install original Mineflayer unchanged
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: Fetch official stable Paper 1.21.8 build 60 and verify published SHA256
+        id: paper
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, urllib.parse, urllib.request
+          version = "1.21.8"
+          api = f"https://fill.papermc.io/v3/projects/paper/versions/{version}/builds"
+          ua = "RelaySelf-S49-P1-WORLD-FIRST-DEV/0.1 (https://github.com/rinsakamo/relay-self)"
+          req = urllib.request.Request(api, headers={"User-Agent": ua})
+          with urllib.request.urlopen(req, timeout=50) as rsp:
+              builds = json.loads(rsp.read(3_000_000))
+          stable = [b for b in builds if b.get("channel") == "STABLE" and b.get("id") == 60]
+          if len(stable) != 1:
+              raise RuntimeError("Pinned Paper 1.21.8 stable build 60 unavailable")
+          artifact = stable[0]["downloads"]["server:default"]
+          expected = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          if (artifact["checksums"]["sha256"] != expected
+                  or artifact["size"] != 52811717):
+              raise RuntimeError("Pinned original Paper build metadata mismatch")
+          url = artifact["url"]
+          parsed = urllib.parse.urlparse(url)
+          if (parsed.scheme != "https" or parsed.hostname != "fill-data.papermc.io"
+                  or not parsed.path.startswith("/v1/objects/")):
+              raise RuntimeError("Untrusted Paper binary URL")
+          target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "paper-1.21.8-dev.jar"
+          hash_ = hashlib.sha256()
+          total = 0
+          with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": ua}), timeout=120) as src, target.open("xb") as dst:
+              while chunk := src.read(1048576):
+                  total += len(chunk)
+                  if total > 52811717: raise RuntimeError("Paper size exceeded")
+                  dst.write(chunk)
+                  hash_.update(chunk)
+          if total != 52811717 or hash_.hexdigest() != expected:
+              raise RuntimeError("Paper downloaded bytes mismatch")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"jar={target}\nsha256={expected}\n")
+          print("PAPER_DEV_PINNED", total, expected)
+          PY
+      - name: Two original S49 Worlds with same Paper 15 tick hold boundary and seven boost ticks
+        env:
+          PAPER_JAR: ${{ steps.paper.outputs.jar }}
+          PAPER_SHA: ${{ steps.paper.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$DEV_OUTPUT"
+          DASH="$PWD/adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-dash-dev-0.1.0-dev.jar"
+          DASH_SHA="$(sha256sum "$DASH" | cut -d' ' -f1)"
+          for CASE in CARRY WAIT_ASSUMED; do
+            echo "Fresh original S49 World: $CASE / client speed attribute ON"
+            python -m adapters.mineflayer.s49_paper_forward_dash_dev \
+              --output-dir "$DEV_OUTPUT/$CASE" \
+              --paper-jar "$PAPER_JAR" --paper-sha256 "$PAPER_SHA" \
+              --dash-jar "$DASH" --dash-sha256 "$DASH_SHA" \
+              --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD \
+              --p1-live-dev --m0-live-dev --m0-move-dev --native-edges-dev \
+              --p1-model-pair-case-dev "$CASE" --speed-attr-boundary-dev --p1-matched-boost-dev --original-owner-paper-tick-hold-dev
+          done
+      - name: Validate original S15 tick hold and both independent Paper and Node sources
+        run: |
+          set -euo pipefail
+          python -m adapters.mineflayer.s49_p1_original_owner_hold_review_dev --root "$DEV_OUTPUT"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["DEV_OUTPUT"])
+          x = json.loads((root/"p1_original_s15_tick_hold_comparison_dev.json").read_text())
+          assert x["classification"] == "P1_TWO_WORLDS_ORIGINAL_S49_OWNER_PAPER_HOLD_TICK_DEV_ONLY"
+          assert x["paper_owner_first_action_hold_target_index"] == 15
+          assert x["original_s15_waited_for_Paper_tick_before_own_native_clear"] is True
+          assert x["same_paper_hold_target_both_worlds"] is True
+          assert x["same_paper_positive_boost_ticks"] is True
+          assert len(x["paper_steady_speed_delta_by_ordinal_mps"]) == 6
+          assert x["same_native_action_elapsed_world_ticks_proven"] is False
+          assert x["client_paper_effect_ticks_joined"] is False
+          assert x["worlds_paper_ticks_synchronized"] is False
+          assert x["native_wall_time_movement_phase_matched"] is False
+          assert x["hypothesis_preloads_not_actual_P1_fatigue_sensor"] is True
+          assert x["original_s49_sole_native_action_issuer"] is True
+          assert x["physical_L0_DASH_admission"] is None
+          assert x["new_issuers_or_native_readers"] == 0
+          assert x["qualification_go"] is False and x["science_go"] is False
+          print("ORIGINAL_S49_S15_PAPER_TICK_HOLD_DEV_PASS", json.dumps(x,sort_keys=True))
+          PY
+      - name: Preserve both World sources whether PASS or FAIL
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: p1-original-owner-tick-hold-pair-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEV_OUTPUT }}/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Unchanged DEV-only epistemic boundary
+        if: always()
+        run: |
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+          echo 'Original S49 S15 alone clears both Actions; Paper callback index 15 gates first S15 hold in DEV.'
+          echo 'Paper hold target is producer-local only: not native effect tick matching, qualified WAIT or real P1 recovery.'

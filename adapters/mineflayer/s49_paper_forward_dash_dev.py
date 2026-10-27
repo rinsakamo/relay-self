@@ -46,6 +46,9 @@ from adapters.mineflayer.s49_p1_fenced_recovery_shadow_dev import (
 from adapters.mineflayer.s49_p1_native_l0_comparison_dev import (
     review_next_native_p1_l0_comparison_dev,
 )
+from adapters.mineflayer.s49_p1_original_owner_hold_dev import (
+    await_original_paper_hold_dev,
+)
 from adapters.mineflayer.s49_p1_selfbody_epoch_shadow_dev import (
     project_p1_static_next_body_epoch_dev,
 )
@@ -584,6 +587,7 @@ async def run(
     p1_model_pair_case_dev: str | None = None,
     speed_attr_boundary_dev: bool = False,
     p1_matched_boost_dev: bool = False,
+    original_owner_paper_tick_hold_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -606,6 +610,12 @@ async def run(
         or type(p1_next_native_l0_review_dev) is not bool
         or type(speed_attr_boundary_dev) is not bool
         or type(p1_matched_boost_dev) is not bool
+        or type(original_owner_paper_tick_hold_dev) is not bool
+        or (original_owner_paper_tick_hold_dev and (
+            not p1_matched_boost_dev
+            or not native_edges_dev
+            or os.environ.get('S49_ORIGINAL_OWNER_TICK_HOLD_DEV_ONLY') != '1'
+        ))
         or (p1_matched_boost_dev and (
             p1_model_pair_case_dev not in PAIR_FATIGUE
             or not speed_attr_boundary_dev
@@ -850,9 +860,26 @@ async def run(
             # No Paper round-trip or log polling while the Action is moving.
             await server.stdin.drain()
 
+        async def paper_hold_dev(held_command):
+            if (
+                not first or held_command.action_id != subject["action_id"]
+                or held_command.action_id != command.action_id
+                or held_command.action_ref != "MOVE_FORWARD_SPRINT_DEV"
+                or subject["complete"] is not None
+            ):
+                raise ForwardDashDevRejected("foreign original first S15 hold")
+            result = await await_original_paper_hold_dev(
+                paper_log, action_id=command.action_id,
+                session_id=subject["session"],
+            )
+            subject["original_owner_paper_tick_hold_dev"] = result
+
         try:
             result = await base_execute(
                 session, command, timeout_s=timeout_s, provenance=provenance,
+                **({"on_original_hold_dev": paper_hold_dev}
+                   if first and original_owner_paper_tick_hold_dev else {}),
+
                 **({"on_effect_ack_dev": paper_effect_ack_marker
                     if first else paper_second_native_ack_marker}
                    if native_edges_dev and (first or two_action_timeline_dev) else {}),
@@ -1276,6 +1303,20 @@ async def run(
                 "additional_action_issuers": 0,
                 "qualification_go": False, "science_go": False,
             }
+        if original_owner_paper_tick_hold_dev:
+            receipt = subject.get("original_owner_paper_tick_hold_dev")
+            if (
+                type(receipt) is not dict
+                or receipt.get("action_id") != actions[0]["action"]
+                or receipt.get("session_id") != subject["session"]
+                or receipt.get("paper_hold_target_sample_index") != 15
+                or receipt.get("paper_positive_boost_ticks_before_release") != 7
+                or receipt.get("same_original_s15_clear_owner") is not True
+                or receipt.get("qualification_go") is not False
+                or receipt.get("science_go") is not False
+            ):
+                raise ForwardDashDevRejected("original S15 owner Paper hold receipt absent")
+            report["original_s15_paper_owner_hold_dev"] = receipt
         report["original_action_distances_m"] = [a["movement_m"] for a in actions]
         report["first_minus_unboosted_second_distance_m"] = (
             actions[0]["movement_m"] - actions[1]["movement_m"]
@@ -1346,6 +1387,7 @@ def main() -> int:
     parser.add_argument("--p1-model-pair-case-dev", choices=tuple(PAIR_FATIGUE))
     parser.add_argument("--speed-attr-boundary-dev", action="store_true")
     parser.add_argument("--p1-matched-boost-dev", action="store_true")
+    parser.add_argument("--original-owner-paper-tick-hold-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -1367,6 +1409,7 @@ def main() -> int:
         p1_model_pair_case_dev=a.p1_model_pair_case_dev,
         speed_attr_boundary_dev=a.speed_attr_boundary_dev,
         p1_matched_boost_dev=a.p1_matched_boost_dev,
+        original_owner_paper_tick_hold_dev=a.original_owner_paper_tick_hold_dev,
     ))
 
 

@@ -284,6 +284,9 @@ async def execute_mineflayer_command(
     on_effect_ack_dev: (
         Callable[[str, MineflayerEffectResult], Awaitable[None]] | None
     ) = None,
+    on_original_hold_dev: (
+        Callable[[MineflayerCommand], Awaitable[None]] | None
+    ) = None,
 ) -> WorldConsequence:
     """Execute one bounded, explicitly bound movement command with observation.
 
@@ -300,6 +303,13 @@ async def execute_mineflayer_command(
     _require_provenance("execution provenance", provenance)
     if on_effect_ack_dev is not None and not callable(on_effect_ack_dev):
         raise InvalidMineflayerExecutionData("DEV effect ACK observer must be callable")
+    if on_original_hold_dev is not None and (
+        not callable(on_original_hold_dev)
+        or command.action_ref != MOVE_FORWARD_SPRINT_DEV_REF
+    ):
+        raise InvalidMineflayerExecutionData(
+            "original S49 DEV hold is valid only for original sprint action"
+        )
     started = _require_adapter(adapter)
     session_id = started.session_id
 
@@ -351,7 +361,13 @@ async def execute_mineflayer_command(
             # not prove the client's effect happened in that Paper tick.
             await on_effect_ack_dev("APPLIED", dispatch)
 
-        await asyncio.sleep(command.duration_s)
+        if on_original_hold_dev is None:
+            await asyncio.sleep(command.duration_s)
+        else:
+            # Still within the ONE original S15 Action owner. This callback
+            # may only await a passive Paper producer-local tick marker;
+            # it cannot issue, clear or own a second native Action.
+            await asyncio.wait_for(on_original_hold_dev(command), timeout=3.0)
 
         cleanup_attempted = True
         await adapter.send_clear_controls(command.cleanup_action_id)
