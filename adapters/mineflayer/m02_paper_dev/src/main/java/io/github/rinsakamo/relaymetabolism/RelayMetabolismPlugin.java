@@ -348,6 +348,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             Bukkit.getPluginManager().registerEvents(this, this);
             devActive = true;
             Bukkit.getScheduler().runTaskTimer(this, () -> {
+                long t1mCallbackStart = t1mTimingDev ? System.nanoTime() : 0L;
                 Player p = Bukkit.getPlayerExact(target);
                 if (p == null || !p.isOnline() || p.isDead()) {
                     return;
@@ -385,7 +386,6 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     if (p.getListeningPluginChannels().contains(ADAPTIVE_TICK_CHANNEL)) {
                         // Same-JVM durations only. Do not subtract these values
                         // from Node process.hrtime() or assert wire send/receive.
-                        long t1mCallbackStart = t1mTimingDev ? System.nanoTime() : 0L;
                         String t1mSampleChallenge = t1fChallenge;
                         long t1mReceived = t1mChallengeReceiveNanos;
                         String payload = t1fDev ? t1fSnapshot(p) : tickWire;
@@ -399,6 +399,10 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                                 + " challenge=" + (t1mSampleChallenge == null
                                     ? "NONE" : t1mSampleChallenge)
                                 + " world_tick=" + p.getWorld().getFullTime()
+                                + " server_tick=" + Bukkit.getCurrentTick()
+                                + " boot=" + t1fBoot
+                                + " world=" + p.getWorld().getUID()
+                                + " player=" + p.getUniqueId()
                                 + " rx_to_callback_ns=" + rxToCallback
                                 + " callback_to_send_return_ns=" + (afterSend - t1mCallbackStart)
                                 + " jvm_rel_ns=" + (afterSend - adaptiveTickClockOriginNanos)

@@ -3,8 +3,10 @@
 基底：`self/dev-t1l-source-continuity-20261027` /
 `59092920ff91678ed3589646857890619d9ec546`。
 
-**DEV_ONLY / OFFLINE_IMPL_ADDED / T1M_NATIVE_UNVERIFIED /
+**DEV_ONLY / DEV_WORLD_OBSERVED / NATIVE_SOURCE_REFUSAL_OBSERVED /
 QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**。
+
+実行結果・原本索引は [T1m実Minecraft DEV結果](t1m-native-dev-results-20261027.md)。
 T1l の既存 1,200/2,000 WorldTick PASS は別の
 `DEV_WORLD_OBSERVED` として維持する。
 
@@ -94,9 +96,28 @@ no synthetic gap/WAIT、S18保護、QUALIFICATION_NO_GO。
    Sidecarを入れたことで測定分布が変わる観測バイアスも記録し、
    T1l非計測結果と一概に比較しない。
 
-### 今回のChatGPT環境で成立していること
+### WSL2での実検証と追加境界
 
-GitHub隔離DEVへのソース・テスト・runbookのcommit/push。
-実WSL2/Paper試験、Python3.12/Node22/Java21のテストはこの環境では
-まだ行っていない。JVM/Node実原本のjoin、性能原因の確定、
-source長期安定性の新たな実証はまだ主張しない。
+実Paper1.21.8で通常負荷2試行と固定CPU負荷比較を行う。
+最初の失敗原本は別保存し、read-only再結合で元reportを置換しない。
+J1はscheduler callback先頭で取得する。Eには既存のcallbackログや
+snapshot生成も含み、T1m callbackログ自体はsend復帰計測後に書く。
+
+**Dは受信challengeからcallbackまでの経過時間であり、常にscheduler待ち時間とは限らない。**
+challenge再使用時は、前callbackからの追加tick時間もDに含まれる。
+未適用challengeが後続challengeに上書きされる履歴、および
+shutdown中のPaper-only末尾は別分類して保存する。
+Node受信snapshotのsidecar欠損は成功にしない。
+
+初回原本で評価完了→次challenge発行まで約267msを観測したため、
+Node timing revision2でemit復帰・診断hook開始/復帰も記録する。
+この区間は元のA/B/C分解では別途可視化されていなかった。
+`post_eval_emit_ms`はemit呼出し復帰まで、`diagnostic_hook_ms`は
+sidecar hook呼出し全体の経過時間（OS待機も含む）。
+いずれも純CPU時間やストレージI/O時間そのものとは断定しない。
+既存ADMITTED/STALE判定後の診断hook例外はsourceラッチへ波及させず、
+原本結合の欠損として別にFAILを保持する。
+JVM gc/safepointの受動ログも保存するが、異種時計の減算や
+個別packetとの未証明の時間整列には使わない。
+
+詳しい分布・限界・最終結果は上記実行報告を参照。

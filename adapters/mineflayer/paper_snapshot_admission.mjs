@@ -92,13 +92,17 @@ export class SnapshotAdmission {
 export function attachPaperSnapshotChannel (bot, emit, onInvalid, clock = () => process.hrtime.bigint(), controlState = () => ({ phase: "INITIAL", since_ns: "0", generation: 0 }), onDiagnostic = null) {
   const guard = new SnapshotAdmission()
   let lastResult = null
-  const challenge = () => {
+  // Diagnostic I/O is never a source admission or transport failure.
+  const diagnostic = event => {
+    try { onDiagnostic?.(event) } catch { /* missing sidecar is audited after cleanup */ }
+  }
+  const challenge = (previousTiming = {}) => {
     const bytes = guard.issue(clock())
     bot._client.write('custom_payload', {
       channel: PAPER_TICK_CHANNEL, data: bytes
     })
-    if (onDiagnostic) onDiagnostic({
-      kind: 'challenge_write_return', challenge: bytes.toString('ascii'),
+    if (onDiagnostic) diagnostic({
+      ...previousTiming, timing_revision: 2, kind: 'challenge_write_return', challenge: bytes.toString('ascii'),
       node_sent_ns: guard.challenge.sent.toString(),
       node_write_return_ns: clock().toString(),
       challenge_index: guard.counter
@@ -134,14 +138,23 @@ export function attachPaperSnapshotChannel (bot, emit, onInvalid, clock = () => 
       result.control = controlState()
       lastResult = result
       emit('paper_snapshot', { data: result })
-      if (onDiagnostic) onDiagnostic({
+      const emitted = onDiagnostic ? clock() : end
+      const diagnosticStart = onDiagnostic ? clock() : end
+      if (onDiagnostic) diagnostic({
         kind: 'snapshot_callback', challenge: s.challenge, index: s.index,
         server_tick: s.tick, world_tick: s.world_tick,
         node_received_ns: received.toString(), node_complete_ns: end.toString(),
         age_upper_ns: result.age_upper_ns, status: result.status,
-        reason: result.reason, source_boot: s.boot, source_world: s.world
+        reason: result.reason, source_boot: s.boot, source_world: s.world, source_player: s.player
       })
-      challenge()
+      const diagnosticEnd = onDiagnostic ? clock() : end
+      challenge(onDiagnostic ? {
+        previous_index: s.index,
+        previous_complete_ns: end.toString(),
+        previous_emit_return_ns: emitted.toString(),
+        previous_diagnostic_start_ns: diagnosticStart.toString(),
+        previous_diagnostic_return_ns: diagnosticEnd.toString()
+      } : {})
     } catch (error) { guard.failed = true; onInvalid(error) }
   })
   return { canDispatch: () => lastResult?.status === 'ADMITTED' && !guard.failed &&

@@ -657,14 +657,24 @@ async def run_case(args, case):
                 report["status"] = "FAIL"
         if case == "t1m_source_soak":
             from adapters.mineflayer.t1m_timing_join_dev import analyze_t1m_timing
-            original_native = [json.loads(line) for line in
-                               (root / "native.jsonl").read_text().splitlines()]
-            sidecar = [json.loads(line) for line in
-                       (root / "t1m_node_timing.jsonl").read_text().splitlines()]
-            report["t1m_timing"] = analyze_t1m_timing(
-                (root / "paper.log").read_text().splitlines(),
-                sidecar, original_native,
-            )
+            report["t1m_physical_source_status"] = report["status"]
+            try:
+                original_native = [json.loads(line) for line in
+                                   (root / "native.jsonl").read_text().splitlines()]
+                sidecar = [json.loads(line) for line in
+                           (root / "t1m_node_timing.jsonl").read_text().splitlines()]
+                report["t1m_timing"] = analyze_t1m_timing(
+                    (root / "paper.log").read_text().splitlines(),
+                    sidecar, original_native,
+                )
+            except (OSError, ValueError, TypeError, KeyError) as error:
+                # Preserve physical source and cleanup results even if diagnostic
+                # originals are missing/corrupt. Never synthesize a sidecar.
+                report["t1m_timing"] = {
+                    "matched_positive_jvm_samples": 0,
+                    "source_integrity_violations": ["diagnostic_original_unreadable"],
+                    "diagnostic_error": str(error),
+                }
             if (not report["t1m_timing"]["matched_positive_jvm_samples"]
                     or report["t1m_timing"]["source_integrity_violations"]):
                 report["status"] = "FAIL"

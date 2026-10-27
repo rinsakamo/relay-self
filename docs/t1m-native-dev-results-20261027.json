@@ -1,0 +1,2421 @@
+{
+  "run-001": {
+    "status": "FAIL",
+    "error": "ValueError: T1f refusal: STALE / CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+    "session": "945e8d3a-3dbd-40bb-9bd7-cc4d81621e25",
+    "world": "595b57af-0c5a-48e1-979b-b1e37a8794ea",
+    "plugin_sha256": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81",
+    "paper_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "native_seq": [
+      0,
+      378
+    ],
+    "seq_gaps": 0,
+    "paper_frames": 356,
+    "world_tick_range": [
+      1014,
+      1369
+    ],
+    "source_violations": [],
+    "identity_count": 1,
+    "statuses": {
+      "ADMITTED": 351,
+      "STALE": 5
+    },
+    "over150": 5,
+    "admitted_after_latch": 0,
+    "first_refusal": {
+      "seq": 372,
+      "index": 352,
+      "server_tick": 367,
+      "world_tick": 1365,
+      "boot": "8e6e4598-d697-42db-9251-2235e03d95bf",
+      "world": "595b57af-0c5a-48e1-979b-b1e37a8794ea",
+      "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "challenge_id": "873d62dd8e4b483b11b00d1fc5477f3e:351",
+      "challenge_index": "351",
+      "status": "STALE",
+      "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+      "received_ns": "1127284956068218",
+      "receive_to_complete_ms": 0.139157,
+      "node_queue_ms": 0.039501,
+      "node_evaluation_ms": 0.099656,
+      "challenge_to_receive_ms": 319.586159,
+      "causal_upper_ms": 319.725316
+    },
+    "node_age": {
+      "n": 356,
+      "min": 3.473831,
+      "median": 49.852902,
+      "p95": 51.06626,
+      "p99": 320.232138,
+      "max": 321.13942
+    },
+    "join": {
+      "startup_none_callbacks": 0,
+      "unmatched_java_callbacks": 1,
+      "shutdown_java_without_node_receipt": [
+        [
+          357,
+          "873d62dd8e4b483b11b00d1fc5477f3e:357"
+        ]
+      ],
+      "unmatched_node_callbacks": 0,
+      "superseded_unapplied_challenges": [
+        "873d62dd8e4b483b11b00d1fc5477f3e:3",
+        "873d62dd8e4b483b11b00d1fc5477f3e:352",
+        "873d62dd8e4b483b11b00d1fc5477f3e:353",
+        "873d62dd8e4b483b11b00d1fc5477f3e:354",
+        "873d62dd8e4b483b11b00d1fc5477f3e:355",
+        "873d62dd8e4b483b11b00d1fc5477f3e:356",
+        "873d62dd8e4b483b11b00d1fc5477f3e:5"
+      ],
+      "terminal_unapplied_node_challenges": [
+        "873d62dd8e4b483b11b00d1fc5477f3e:357"
+      ],
+      "terminal_unapplied_java_challenges": [
+        "873d62dd8e4b483b11b00d1fc5477f3e:357"
+      ],
+      "java_challenge_rx_count": 357,
+      "node_challenge_issue_count": 357,
+      "classification": "T1M_PASSIVE_JVM_NODE_DIAGNOSTIC_ONLY",
+      "qualification": false,
+      "protocol_snapshot_schema_unchanged": true,
+      "source_statuses_original": {
+        "ADMITTED": 351,
+        "STALE": 5
+      },
+      "original_native_paper_count": 356,
+      "matched_positive_jvm_samples": 356,
+      "source_integrity_violations": [],
+      "distributions_ms": {
+        "node_a_ms": {
+          "n": 356,
+          "min": 3.386126,
+          "median": 49.795648,
+          "p95": 50.981382,
+          "p99": 320.194729,
+          "max": 321.098167
+        },
+        "node_write_ms": {
+          "n": 357,
+          "min": 0.091342,
+          "median": 0.166046,
+          "p95": 0.26803,
+          "p99": 0.425136,
+          "max": 0.450134
+        },
+        "jvm_rx_to_callback_ms": {
+          "n": 356,
+          "min": 0.198382,
+          "median": 46.986137,
+          "p95": 47.874519,
+          "p99": 147.957333,
+          "max": 297.852229
+        },
+        "jvm_callback_to_send_return_ms": {
+          "n": 356,
+          "min": 0.331974,
+          "median": 0.583523,
+          "p95": 1.072663,
+          "p99": 1.338178,
+          "max": 8.70961
+        },
+        "event_loop_delay_window_max_ms": {
+          "n": 356,
+          "min": 0.0,
+          "median": 10.477567,
+          "p95": 10.739711,
+          "p99": 10.969087,
+          "max": 99.352575
+        },
+        "post_eval_to_next_issue_ms": {
+          "n": 356,
+          "min": 0.055488,
+          "median": 0.148242,
+          "p95": 0.251238,
+          "p99": 0.330139,
+          "max": 267.361214
+        },
+        "post_eval_emit_ms": {
+          "n": 0,
+          "min": null,
+          "median": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        },
+        "diagnostic_hook_ms": {
+          "n": 0,
+          "min": null,
+          "median": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        },
+        "post_hook_to_issue_ms": {
+          "n": 0,
+          "min": null,
+          "median": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        }
+      },
+      "node_clock_comparable_to_jvm_clock": false,
+      "jvm_to_node_one_way_latency_known": false,
+      "event_loop_delay_correlated_to_exact_packet": false,
+      "root_cause": "UNKNOWN"
+    },
+    "correlation_with_a_descriptive_only": {
+      "jvm_d_ms": 0.8910726380746372,
+      "jvm_e_ms": -0.0013425526855289991,
+      "event_loop_window_max_ms": -0.17184023571099563
+    },
+    "max_a_frames": [
+      {
+        "index": 356,
+        "challenge": "873d62dd8e4b483b11b00d1fc5477f3e:351",
+        "world_tick": 1369,
+        "status": "STALE",
+        "node_a_ms": 321.098167,
+        "node_write_ms": 0.163118,
+        "jvm_d_ms": 297.852229,
+        "jvm_e_ms": 0.331974,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.070927
+      },
+      {
+        "index": 355,
+        "challenge": "873d62dd8e4b483b11b00d1fc5477f3e:351",
+        "world_tick": 1368,
+        "status": "STALE",
+        "node_a_ms": 320.821631,
+        "node_write_ms": 0.163118,
+        "jvm_d_ms": 247.895983,
+        "jvm_e_ms": 0.377792,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.055488
+      },
+      {
+        "index": 354,
+        "challenge": "873d62dd8e4b483b11b00d1fc5477f3e:351",
+        "world_tick": 1367,
+        "status": "STALE",
+        "node_a_ms": 320.51699,
+        "node_write_ms": 0.163118,
+        "jvm_d_ms": 197.90344,
+        "jvm_e_ms": 0.465204,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.070874
+      },
+      {
+        "index": 353,
+        "challenge": "873d62dd8e4b483b11b00d1fc5477f3e:351",
+        "world_tick": 1366,
+        "status": "STALE",
+        "node_a_ms": 320.194729,
+        "node_write_ms": 0.163118,
+        "jvm_d_ms": 147.957333,
+        "jvm_e_ms": 0.457343,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.087995
+      },
+      {
+        "index": 352,
+        "challenge": "873d62dd8e4b483b11b00d1fc5477f3e:351",
+        "world_tick": 1365,
+        "status": "STALE",
+        "node_a_ms": 319.586159,
+        "node_write_ms": 0.163118,
+        "jvm_d_ms": 97.796037,
+        "jvm_e_ms": 0.525099,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.1394
+      },
+      {
+        "index": 2,
+        "challenge": "873d62dd8e4b483b11b00d1fc5477f3e:1",
+        "world_tick": 1015,
+        "status": "ADMITTED",
+        "node_a_ms": 89.752714,
+        "node_write_ms": 0.443611,
+        "jvm_d_ms": 53.794196,
+        "jvm_e_ms": 0.853605,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.163636
+      },
+      {
+        "index": 1,
+        "challenge": "873d62dd8e4b483b11b00d1fc5477f3e:1",
+        "world_tick": 1014,
+        "status": "ADMITTED",
+        "node_a_ms": 85.404867,
+        "node_write_ms": 0.443611,
+        "jvm_d_ms": 6.809486,
+        "jvm_e_ms": 8.70961,
+        "event_loop_window_max_ms": 99.352575,
+        "post_eval_to_next_issue_ms": 0.253571
+      },
+      {
+        "index": 20,
+        "challenge": "873d62dd8e4b483b11b00d1fc5477f3e:20",
+        "world_tick": 1033,
+        "status": "ADMITTED",
+        "node_a_ms": 57.431596,
+        "node_write_ms": 0.225409,
+        "jvm_d_ms": 45.477676,
+        "jvm_e_ms": 1.055401,
+        "event_loop_window_max_ms": 10.452991,
+        "post_eval_to_next_issue_ms": 0.153354
+      }
+    ],
+    "tps": 20.16834563523853,
+    "accounting": {
+      "rows": 349,
+      "final": {
+        "P1_qualified_WAIT": false,
+        "active_action": null,
+        "credit_count": 0,
+        "energy": {
+          "energy": 11.616100000000275,
+          "knockouts": 0,
+          "meals": 0,
+          "terminal": false,
+          "tick": 349
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "945e8d3a-3dbd-40bb-9bd7-cc4d81621e25",
+          "world_tick": 1364
+        },
+        "latched": true,
+        "ticks": 349
+      },
+      "cost_equations_match": true,
+      "basal_total": 0.34900000000000003,
+      "cognition_total": 0.0349,
+      "movement_total": 0.0,
+      "recovery_total": 0.0,
+      "first_world_tick": 1016,
+      "last_world_tick": 1364
+    },
+    "effect_sends": 0,
+    "metrics": {
+      "clear_control_sends": 0,
+      "node_admitted_ticks": 351,
+      "node_received_ticks": 356,
+      "paper_sent_ticks": 357,
+      "paper_ticks_without_node_snapshot": [
+        372
+      ],
+      "paper_to_node_exact_delay": "UNKNOWN",
+      "qualification": false,
+      "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+      "set_control_sends": 0
+    },
+    "cleanup": {
+      "java_exit": 0,
+      "node_exit": 0,
+      "java_pid": 785038,
+      "node_pid": 785173,
+      "java_pid_absent": true,
+      "node_pid_absent": true,
+      "port_rebind": true,
+      "process_reap_complete": true,
+      "cleanup_complete": true,
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "945e8d3a-3dbd-40bb-9bd7-cc4d81621e25"
+      }
+    },
+    "paper_stop_saved": true,
+    "original_sha256": {
+      "native.jsonl": "7fa80a58c673220483605c9f46877408230c0560a29599b655f91337d03aedb0",
+      "paper.log": "1378e50f5b9f74b6e06c45b711536b5849a36d1bbc9010fecd87af749b9e6c8f",
+      "t1m_node_timing.jsonl": "5fd82789bceeb60aa5bbcc0b64d3cff9ff7bc2722deb25a214ef863fce6b2228",
+      "node_timing.jsonl": "72a3de236e402d00aac3b5ac6e2bd2f3f8e7a5deeb606cb292f4381da648057c",
+      "python_timing.jsonl": "ba469f2b2b6cc1a8b00d877886f8121a259764c12c20745f3c8eb5380c9439f3",
+      "report.json": "d6e3de5f93b0e18d4c336cfaf8358b594931a141e32a2996c49d965f375bdd13",
+      "source_hashes.json": "d082c9bb68240fd978407b022d7a4921d5c0513a6a413eb5182f8f496afdb35c",
+      "t2_ticks.json": "ee5b2174f707e41dee4711bf2a50debe34e781265f02f494bdadb71fec632a5e",
+      "loaded_plugin.jar": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81"
+    },
+    "jvm_runtime": null,
+    "original_manifest_verified_count": 8
+  },
+  "run-002": {
+    "status": "PASS",
+    "error": null,
+    "session": "3fbbdcb7-d1ae-46b0-9942-feaffe563e03",
+    "world": "968eb338-33b5-4076-a5dc-5f490a689383",
+    "plugin_sha256": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81",
+    "paper_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "native_seq": [
+      0,
+      1266
+    ],
+    "seq_gaps": 0,
+    "paper_frames": 1202,
+    "world_tick_range": [
+      1011,
+      2212
+    ],
+    "source_violations": [],
+    "identity_count": 1,
+    "statuses": {
+      "ADMITTED": 1202
+    },
+    "over150": 0,
+    "admitted_after_latch": 0,
+    "first_refusal": null,
+    "node_age": {
+      "n": 1202,
+      "min": 7.362801,
+      "median": 49.8437105,
+      "p95": 50.618781,
+      "p99": 51.954675,
+      "max": 86.743806
+    },
+    "join": {
+      "startup_none_callbacks": 0,
+      "unmatched_java_callbacks": 1,
+      "shutdown_java_without_node_receipt": [
+        [
+          1203,
+          "66876522c831775aa20235200251828e:1203"
+        ]
+      ],
+      "unmatched_node_callbacks": 0,
+      "superseded_unapplied_challenges": [
+        "66876522c831775aa20235200251828e:3"
+      ],
+      "terminal_unapplied_node_challenges": [
+        "66876522c831775aa20235200251828e:1203"
+      ],
+      "terminal_unapplied_java_challenges": [
+        "66876522c831775aa20235200251828e:1203"
+      ],
+      "java_challenge_rx_count": 1203,
+      "node_challenge_issue_count": 1203,
+      "classification": "T1M_PASSIVE_JVM_NODE_DIAGNOSTIC_ONLY",
+      "qualification": false,
+      "protocol_snapshot_schema_unchanged": true,
+      "source_statuses_original": {
+        "ADMITTED": 1202
+      },
+      "original_native_paper_count": 1202,
+      "matched_positive_jvm_samples": 1202,
+      "source_integrity_violations": [],
+      "distributions_ms": {
+        "node_a_ms": {
+          "n": 1202,
+          "min": 7.206185,
+          "median": 49.78886,
+          "p95": 50.567163,
+          "p99": 51.917838,
+          "max": 86.55513
+        },
+        "node_write_ms": {
+          "n": 1203,
+          "min": 0.092687,
+          "median": 0.148943,
+          "p95": 0.240743,
+          "p99": 0.361576,
+          "max": 0.493055
+        },
+        "jvm_rx_to_callback_ms": {
+          "n": 1202,
+          "min": 0.276423,
+          "median": 47.841138,
+          "p95": 48.426828,
+          "p99": 48.573266,
+          "max": 48.805656
+        },
+        "jvm_callback_to_send_return_ms": {
+          "n": 1202,
+          "min": 0.235761,
+          "median": 0.415191,
+          "p95": 0.863529,
+          "p99": 1.173382,
+          "max": 6.495576
+        },
+        "event_loop_delay_window_max_ms": {
+          "n": 1202,
+          "min": 0.0,
+          "median": 10.358783,
+          "p95": 10.682367,
+          "p99": 10.928127,
+          "max": 73.793535
+        },
+        "post_eval_to_next_issue_ms": {
+          "n": 1202,
+          "min": 0.095951,
+          "median": 0.141887,
+          "p95": 0.254036,
+          "p99": 0.444757,
+          "max": 16.990924
+        },
+        "post_eval_emit_ms": {
+          "n": 0,
+          "min": null,
+          "median": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        },
+        "diagnostic_hook_ms": {
+          "n": 0,
+          "min": null,
+          "median": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        },
+        "post_hook_to_issue_ms": {
+          "n": 0,
+          "min": null,
+          "median": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        }
+      },
+      "node_clock_comparable_to_jvm_clock": false,
+      "jvm_to_node_one_way_latency_known": false,
+      "event_loop_delay_correlated_to_exact_packet": false,
+      "root_cause": "UNKNOWN"
+    },
+    "correlation_with_a_descriptive_only": {
+      "jvm_d_ms": 0.10085432542723685,
+      "jvm_e_ms": 0.2775678577585654,
+      "event_loop_window_max_ms": 0.4391107217643091
+    },
+    "max_a_frames": [
+      {
+        "index": 2,
+        "challenge": "66876522c831775aa20235200251828e:1",
+        "world_tick": 1012,
+        "status": "ADMITTED",
+        "node_a_ms": 86.55513,
+        "node_write_ms": 0.481472,
+        "jvm_d_ms": 19.542924,
+        "jvm_e_ms": 0.829772,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.179033
+      },
+      {
+        "index": 1,
+        "challenge": "66876522c831775aa20235200251828e:1",
+        "world_tick": 1011,
+        "status": "ADMITTED",
+        "node_a_ms": 82.747706,
+        "node_write_ms": 0.481472,
+        "jvm_d_ms": 6.919932,
+        "jvm_e_ms": 6.495576,
+        "event_loop_window_max_ms": 73.793535,
+        "post_eval_to_next_issue_ms": 0.314312
+      },
+      {
+        "index": 9,
+        "challenge": "66876522c831775aa20235200251828e:9",
+        "world_tick": 1019,
+        "status": "ADMITTED",
+        "node_a_ms": 62.391611,
+        "node_write_ms": 0.290127,
+        "jvm_d_ms": 45.111198,
+        "jvm_e_ms": 1.16467,
+        "event_loop_window_max_ms": 10.231807,
+        "post_eval_to_next_issue_ms": 0.18199
+      },
+      {
+        "index": 19,
+        "challenge": "66876522c831775aa20235200251828e:19",
+        "world_tick": 1029,
+        "status": "ADMITTED",
+        "node_a_ms": 57.139358,
+        "node_write_ms": 0.186195,
+        "jvm_d_ms": 42.125167,
+        "jvm_e_ms": 0.741716,
+        "event_loop_window_max_ms": 10.510335,
+        "post_eval_to_next_issue_ms": 0.204076
+      },
+      {
+        "index": 589,
+        "challenge": "66876522c831775aa20235200251828e:589",
+        "world_tick": 1599,
+        "status": "ADMITTED",
+        "node_a_ms": 53.945497,
+        "node_write_ms": 0.20203,
+        "jvm_d_ms": 46.728672,
+        "jvm_e_ms": 0.806929,
+        "event_loop_window_max_ms": 10.207231,
+        "post_eval_to_next_issue_ms": 0.24849
+      },
+      {
+        "index": 7,
+        "challenge": "66876522c831775aa20235200251828e:7",
+        "world_tick": 1017,
+        "status": "ADMITTED",
+        "node_a_ms": 53.895811,
+        "node_write_ms": 0.240743,
+        "jvm_d_ms": 45.587512,
+        "jvm_e_ms": 0.969377,
+        "event_loop_window_max_ms": 10.371071,
+        "post_eval_to_next_issue_ms": 0.154016
+      },
+      {
+        "index": 264,
+        "challenge": "66876522c831775aa20235200251828e:264",
+        "world_tick": 1274,
+        "status": "ADMITTED",
+        "node_a_ms": 53.111665,
+        "node_write_ms": 0.131181,
+        "jvm_d_ms": 47.805224,
+        "jvm_e_ms": 1.216863,
+        "event_loop_window_max_ms": 10.215423,
+        "post_eval_to_next_issue_ms": 0.203103
+      },
+      {
+        "index": 11,
+        "challenge": "66876522c831775aa20235200251828e:11",
+        "world_tick": 1021,
+        "status": "ADMITTED",
+        "node_a_ms": 52.694676,
+        "node_write_ms": 0.151363,
+        "jvm_d_ms": 43.857061,
+        "jvm_e_ms": 1.331166,
+        "event_loop_window_max_ms": 10.166271,
+        "post_eval_to_next_issue_ms": 0.212119
+      }
+    ],
+    "tps": 20.03402269991574,
+    "accounting": {
+      "rows": 1200,
+      "final": {
+        "P1_qualified_WAIT": false,
+        "active_action": null,
+        "credit_count": 0,
+        "energy": {
+          "energy": 10.680000000000945,
+          "knockouts": 0,
+          "meals": 0,
+          "terminal": false,
+          "tick": 1200
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "3fbbdcb7-d1ae-46b0-9942-feaffe563e03",
+          "world_tick": 2211
+        },
+        "latched": false,
+        "ticks": 1200
+      },
+      "cost_equations_match": true,
+      "basal_total": 1.2,
+      "cognition_total": 0.12000000000000001,
+      "movement_total": 0.0,
+      "recovery_total": 0.0,
+      "first_world_tick": 1012,
+      "last_world_tick": 2211
+    },
+    "effect_sends": 0,
+    "metrics": {
+      "clear_control_sends": 0,
+      "node_admitted_ticks": 1202,
+      "node_received_ticks": 1202,
+      "paper_sent_ticks": 1203,
+      "paper_ticks_without_node_snapshot": [
+        1215
+      ],
+      "paper_to_node_exact_delay": "UNKNOWN",
+      "qualification": false,
+      "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+      "set_control_sends": 0
+    },
+    "cleanup": {
+      "java_exit": 0,
+      "node_exit": 0,
+      "java_pid": 785412,
+      "node_pid": 785540,
+      "java_pid_absent": true,
+      "node_pid_absent": true,
+      "port_rebind": true,
+      "process_reap_complete": true,
+      "cleanup_complete": true,
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "3fbbdcb7-d1ae-46b0-9942-feaffe563e03"
+      }
+    },
+    "paper_stop_saved": true,
+    "original_sha256": {
+      "native.jsonl": "fb74e3a733a731348848e62af67ff9a45dd5e18e80716e93e9a81e40ee371ced",
+      "paper.log": "3caed29d3324fcbcdf3b9f8e3a178608caaf1d4f6238850852e336b321711141",
+      "t1m_node_timing.jsonl": "b58bd0cb5e101883a64d9ecc9e29b852a16448590b3a14ec8f99c7f19969ef8c",
+      "node_timing.jsonl": "00f64e33335c0b2023aafe9bd6e2782946b78cb667fa31c63a72561645126bfe",
+      "python_timing.jsonl": "60701ba9fe2357defb5bf3bee71cffa799f9425e9553d1fc2e34fe75d4c1b260",
+      "report.json": "84481196a811057b381fab70bdea485c29d406732e0f0135ca8aabfe7db2de53",
+      "source_hashes.json": "93e2de6233c30505c12c4359fef589dac6c7f9873504e2970c4125c499c7417c",
+      "t2_ticks.json": "d5c99a3c974ec30da0832d62331d908276c52cef5ff4542700f335d20824ca2e",
+      "loaded_plugin.jar": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81"
+    },
+    "jvm_runtime": {
+      "gc_pause_count": 59,
+      "max_gc_pause_ms": 22.367,
+      "safepoint_count": 148,
+      "max_safepoint_ms": 22.468378,
+      "clock": "JVM uptime; includes startup, not exact-packet alignment"
+    },
+    "original_manifest_verified_count": 8
+  },
+  "run-003": {
+    "status": "PASS",
+    "error": null,
+    "session": "25ca4981-5bc1-4dde-a3e6-1adbda6309cc",
+    "world": "b2275d75-19fc-4690-bde3-9de8bc24fcfb",
+    "plugin_sha256": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81",
+    "paper_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "native_seq": [
+      0,
+      1266
+    ],
+    "seq_gaps": 0,
+    "paper_frames": 1202,
+    "world_tick_range": [
+      1012,
+      2213
+    ],
+    "source_violations": [],
+    "identity_count": 1,
+    "statuses": {
+      "ADMITTED": 1202
+    },
+    "over150": 0,
+    "admitted_after_latch": 0,
+    "first_refusal": null,
+    "node_age": {
+      "n": 1202,
+      "min": 5.8515,
+      "median": 49.838455499999995,
+      "p95": 51.03011,
+      "p99": 52.766139,
+      "max": 123.952535
+    },
+    "join": {
+      "startup_none_callbacks": 0,
+      "unmatched_java_callbacks": 1,
+      "shutdown_java_without_node_receipt": [
+        [
+          1203,
+          "bf446f27adf94973dc4e49ea74437ad5:1203"
+        ]
+      ],
+      "unmatched_node_callbacks": 0,
+      "superseded_unapplied_challenges": [
+        "bf446f27adf94973dc4e49ea74437ad5:253",
+        "bf446f27adf94973dc4e49ea74437ad5:5"
+      ],
+      "terminal_unapplied_node_challenges": [
+        "bf446f27adf94973dc4e49ea74437ad5:1203"
+      ],
+      "terminal_unapplied_java_challenges": [
+        "bf446f27adf94973dc4e49ea74437ad5:1203"
+      ],
+      "java_challenge_rx_count": 1203,
+      "node_challenge_issue_count": 1203,
+      "classification": "T1M_PASSIVE_JVM_NODE_DIAGNOSTIC_ONLY",
+      "qualification": false,
+      "protocol_snapshot_schema_unchanged": true,
+      "source_statuses_original": {
+        "ADMITTED": 1202
+      },
+      "original_native_paper_count": 1202,
+      "matched_positive_jvm_samples": 1202,
+      "source_integrity_violations": [],
+      "distributions_ms": {
+        "node_a_ms": {
+          "n": 1202,
+          "min": 5.759616,
+          "median": 49.786453,
+          "p95": 50.984509,
+          "p99": 52.701801,
+          "max": 123.889345
+        },
+        "node_write_ms": {
+          "n": 1203,
+          "min": 0.092185,
+          "median": 0.154658,
+          "p95": 0.27334,
+          "p99": 0.420773,
+          "max": 0.625727
+        },
+        "jvm_rx_to_callback_ms": {
+          "n": 1202,
+          "min": 0.201172,
+          "median": 47.767648,
+          "p95": 48.421918,
+          "p99": 48.630723,
+          "max": 97.196328
+        },
+        "jvm_callback_to_send_return_ms": {
+          "n": 1202,
+          "min": 0.223547,
+          "median": 0.451434,
+          "p95": 0.930951,
+          "p99": 1.62576,
+          "max": 13.698851
+        },
+        "event_loop_delay_window_max_ms": {
+          "n": 1202,
+          "min": 0.0,
+          "median": 10.280959,
+          "p95": 10.657791,
+          "p99": 10.928127,
+          "max": 80.412671
+        },
+        "post_eval_to_next_issue_ms": {
+          "n": 1202,
+          "min": 0.105297,
+          "median": 0.145612,
+          "p95": 0.268753,
+          "p99": 0.398086,
+          "max": 72.451179
+        },
+        "post_eval_emit_ms": {
+          "n": 0,
+          "min": null,
+          "median": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        },
+        "diagnostic_hook_ms": {
+          "n": 0,
+          "min": null,
+          "median": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        },
+        "post_hook_to_issue_ms": {
+          "n": 0,
+          "min": null,
+          "median": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        }
+      },
+      "node_clock_comparable_to_jvm_clock": false,
+      "jvm_to_node_one_way_latency_known": false,
+      "event_loop_delay_correlated_to_exact_packet": false,
+      "root_cause": "UNKNOWN"
+    },
+    "correlation_with_a_descriptive_only": {
+      "jvm_d_ms": 0.29227161688975006,
+      "jvm_e_ms": 0.27970559645511794,
+      "event_loop_window_max_ms": 0.33684046704491954
+    },
+    "max_a_frames": [
+      {
+        "index": 253,
+        "challenge": "bf446f27adf94973dc4e49ea74437ad5:252",
+        "world_tick": 1264,
+        "status": "ADMITTED",
+        "node_a_ms": 123.889345,
+        "node_write_ms": 0.113774,
+        "jvm_d_ms": 97.196328,
+        "jvm_e_ms": 0.568955,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.149576
+      },
+      {
+        "index": 2,
+        "challenge": "bf446f27adf94973dc4e49ea74437ad5:1",
+        "world_tick": 1013,
+        "status": "ADMITTED",
+        "node_a_ms": 109.797496,
+        "node_write_ms": 0.370363,
+        "jvm_d_ms": 20.920766,
+        "jvm_e_ms": 0.783269,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.153426
+      },
+      {
+        "index": 1,
+        "challenge": "bf446f27adf94973dc4e49ea74437ad5:1",
+        "world_tick": 1012,
+        "status": "ADMITTED",
+        "node_a_ms": 106.225769,
+        "node_write_ms": 0.370363,
+        "jvm_d_ms": 7.412876,
+        "jvm_e_ms": 7.962208,
+        "event_loop_window_max_ms": 80.412671,
+        "post_eval_to_next_issue_ms": 0.374041
+      },
+      {
+        "index": 418,
+        "challenge": "bf446f27adf94973dc4e49ea74437ad5:418",
+        "world_tick": 1429,
+        "status": "ADMITTED",
+        "node_a_ms": 64.258139,
+        "node_write_ms": 0.139828,
+        "jvm_d_ms": 47.941903,
+        "jvm_e_ms": 13.698851,
+        "event_loop_window_max_ms": 10.854399,
+        "post_eval_to_next_issue_ms": 0.183396
+      },
+      {
+        "index": 27,
+        "challenge": "bf446f27adf94973dc4e49ea74437ad5:27",
+        "world_tick": 1038,
+        "status": "ADMITTED",
+        "node_a_ms": 57.161166,
+        "node_write_ms": 0.207501,
+        "jvm_d_ms": 42.827419,
+        "jvm_e_ms": 1.091919,
+        "event_loop_window_max_ms": 10.674175,
+        "post_eval_to_next_issue_ms": 0.538659
+      },
+      {
+        "index": 38,
+        "challenge": "bf446f27adf94973dc4e49ea74437ad5:38",
+        "world_tick": 1049,
+        "status": "ADMITTED",
+        "node_a_ms": 56.566759,
+        "node_write_ms": 0.271917,
+        "jvm_d_ms": 41.202882,
+        "jvm_e_ms": 0.784988,
+        "event_loop_window_max_ms": 10.706943,
+        "post_eval_to_next_issue_ms": 0.206736
+      },
+      {
+        "index": 8,
+        "challenge": "bf446f27adf94973dc4e49ea74437ad5:8",
+        "world_tick": 1019,
+        "status": "ADMITTED",
+        "node_a_ms": 55.437048,
+        "node_write_ms": 0.169263,
+        "jvm_d_ms": 45.138366,
+        "jvm_e_ms": 1.248829,
+        "event_loop_window_max_ms": 10.313727,
+        "post_eval_to_next_issue_ms": 0.234915
+      },
+      {
+        "index": 33,
+        "challenge": "bf446f27adf94973dc4e49ea74437ad5:33",
+        "world_tick": 1044,
+        "status": "ADMITTED",
+        "node_a_ms": 55.252537,
+        "node_write_ms": 0.171976,
+        "jvm_d_ms": 42.237275,
+        "jvm_e_ms": 3.327848,
+        "event_loop_window_max_ms": 11.075583,
+        "post_eval_to_next_issue_ms": 0.389615
+      }
+    ],
+    "tps": 20.052792432846672,
+    "accounting": {
+      "rows": 1200,
+      "final": {
+        "P1_qualified_WAIT": false,
+        "active_action": null,
+        "credit_count": 0,
+        "energy": {
+          "energy": 10.680000000000945,
+          "knockouts": 0,
+          "meals": 0,
+          "terminal": false,
+          "tick": 1200
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "25ca4981-5bc1-4dde-a3e6-1adbda6309cc",
+          "world_tick": 2212
+        },
+        "latched": false,
+        "ticks": 1200
+      },
+      "cost_equations_match": true,
+      "basal_total": 1.2,
+      "cognition_total": 0.12000000000000001,
+      "movement_total": 0.0,
+      "recovery_total": 0.0,
+      "first_world_tick": 1013,
+      "last_world_tick": 2212
+    },
+    "effect_sends": 0,
+    "metrics": {
+      "clear_control_sends": 0,
+      "node_admitted_ticks": 1202,
+      "node_received_ticks": 1202,
+      "paper_sent_ticks": 1203,
+      "paper_ticks_without_node_snapshot": [
+        1216
+      ],
+      "paper_to_node_exact_delay": "UNKNOWN",
+      "qualification": false,
+      "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+      "set_control_sends": 0
+    },
+    "cleanup": {
+      "java_exit": 0,
+      "node_exit": 0,
+      "java_pid": 785710,
+      "node_pid": 785826,
+      "java_pid_absent": true,
+      "node_pid_absent": true,
+      "port_rebind": true,
+      "process_reap_complete": true,
+      "cleanup_complete": true,
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "25ca4981-5bc1-4dde-a3e6-1adbda6309cc"
+      }
+    },
+    "paper_stop_saved": true,
+    "original_sha256": {
+      "native.jsonl": "8538b5064283bed3573876a2ebd1a54e83bf7279343d78dfe6f2910a504568ed",
+      "paper.log": "2bf1c2f233247bb0d3e96de0c4449db7e40b24d04d0ea5f08699d914e0b45aa1",
+      "t1m_node_timing.jsonl": "8484e5897da012bd3aa1bf0869c267dc29e1cdf93effbaaf08df38ef958e7226",
+      "node_timing.jsonl": "b8da754f1313262a9cd22f6d573134cce894338e79db424d283b63df6e17a94e",
+      "python_timing.jsonl": "6ef905476db0067efd6e8e7a2b499e99dce9065a0e99a19bf98206c29ddd8d55",
+      "report.json": "b5c713c6cdf47e12b3be01643774aed75c41ec695b86b21d52aa8db87cdbd2c3",
+      "source_hashes.json": "b661f8857dca24be8a665ab179ca2d5fdcbc613f870e3fae065a88ce3c1fead5",
+      "t2_ticks.json": "229e428dcbb2eb0b8303ea57cb90d769bf42b21321bd0f9c49f5b631cded6773",
+      "loaded_plugin.jar": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81"
+    },
+    "jvm_runtime": {
+      "gc_pause_count": 44,
+      "max_gc_pause_ms": 30.009,
+      "safepoint_count": 138,
+      "max_safepoint_ms": 30.178271,
+      "clock": "JVM uptime; includes startup, not exact-packet alignment"
+    },
+    "original_manifest_verified_count": 8
+  },
+  "run-004": {
+    "status": "PASS",
+    "error": null,
+    "session": "5f5e5c66-02e1-45f0-8ccf-ca8365934b26",
+    "world": "ee0eaee2-f094-4974-8dbd-20a52fe5eb40",
+    "plugin_sha256": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81",
+    "paper_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "native_seq": [
+      0,
+      1266
+    ],
+    "seq_gaps": 0,
+    "paper_frames": 1202,
+    "world_tick_range": [
+      1011,
+      2212
+    ],
+    "source_violations": [],
+    "identity_count": 1,
+    "statuses": {
+      "ADMITTED": 1202
+    },
+    "over150": 0,
+    "admitted_after_latch": 0,
+    "first_refusal": null,
+    "node_age": {
+      "n": 1202,
+      "min": 4.684919,
+      "median": 49.849990500000004,
+      "p95": 50.527417,
+      "p99": 51.625097,
+      "max": 93.564911
+    },
+    "join": {
+      "startup_none_callbacks": 0,
+      "unmatched_java_callbacks": 1,
+      "shutdown_java_without_node_receipt": [
+        [
+          1203,
+          "9bdb78e163c00fd52c954b0c81c54576:1203"
+        ]
+      ],
+      "unmatched_node_callbacks": 0,
+      "superseded_unapplied_challenges": [
+        "9bdb78e163c00fd52c954b0c81c54576:3"
+      ],
+      "terminal_unapplied_node_challenges": [
+        "9bdb78e163c00fd52c954b0c81c54576:1203"
+      ],
+      "terminal_unapplied_java_challenges": [
+        "9bdb78e163c00fd52c954b0c81c54576:1203"
+      ],
+      "java_challenge_rx_count": 1203,
+      "node_challenge_issue_count": 1203,
+      "classification": "T1M_PASSIVE_JVM_NODE_DIAGNOSTIC_ONLY",
+      "qualification": false,
+      "protocol_snapshot_schema_unchanged": true,
+      "source_statuses_original": {
+        "ADMITTED": 1202
+      },
+      "original_native_paper_count": 1202,
+      "matched_positive_jvm_samples": 1202,
+      "source_integrity_violations": [],
+      "distributions_ms": {
+        "node_a_ms": {
+          "n": 1202,
+          "min": 4.610762,
+          "median": 49.79895,
+          "p95": 50.46883,
+          "p99": 51.524029,
+          "max": 93.451131
+        },
+        "node_write_ms": {
+          "n": 1203,
+          "min": 0.081547,
+          "median": 0.141795,
+          "p95": 0.209074,
+          "p99": 0.251464,
+          "max": 0.481399
+        },
+        "jvm_rx_to_callback_ms": {
+          "n": 1202,
+          "min": 0.245191,
+          "median": 47.966577,
+          "p95": 48.515326,
+          "p99": 48.642111,
+          "max": 49.084655
+        },
+        "jvm_callback_to_send_return_ms": {
+          "n": 1202,
+          "min": 0.206759,
+          "median": 0.376969,
+          "p95": 0.804558,
+          "p99": 1.059078,
+          "max": 7.888523
+        },
+        "event_loop_delay_window_max_ms": {
+          "n": 1202,
+          "min": 0.0,
+          "median": 10.354687,
+          "p95": 10.633215,
+          "p99": 10.788863,
+          "max": 77.725695
+        },
+        "post_eval_to_next_issue_ms": {
+          "n": 1202,
+          "min": 0.094342,
+          "median": 0.136045,
+          "p95": 0.198267,
+          "p99": 0.250005,
+          "max": 1.562398
+        },
+        "post_eval_emit_ms": {
+          "n": 0,
+          "min": null,
+          "median": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        },
+        "diagnostic_hook_ms": {
+          "n": 0,
+          "min": null,
+          "median": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        },
+        "post_hook_to_issue_ms": {
+          "n": 0,
+          "min": null,
+          "median": null,
+          "p95": null,
+          "p99": null,
+          "max": null
+        }
+      },
+      "node_clock_comparable_to_jvm_clock": false,
+      "jvm_to_node_one_way_latency_known": false,
+      "event_loop_delay_correlated_to_exact_packet": false,
+      "root_cause": "UNKNOWN"
+    },
+    "correlation_with_a_descriptive_only": {
+      "jvm_d_ms": -0.021159330054649587,
+      "jvm_e_ms": 0.4090717117913862,
+      "event_loop_window_max_ms": 0.5020614253344978
+    },
+    "max_a_frames": [
+      {
+        "index": 2,
+        "challenge": "9bdb78e163c00fd52c954b0c81c54576:1",
+        "world_tick": 1012,
+        "status": "ADMITTED",
+        "node_a_ms": 93.451131,
+        "node_write_ms": 0.316276,
+        "jvm_d_ms": 19.766356,
+        "jvm_e_ms": 0.723411,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.132749
+      },
+      {
+        "index": 1,
+        "challenge": "9bdb78e163c00fd52c954b0c81c54576:1",
+        "world_tick": 1011,
+        "status": "ADMITTED",
+        "node_a_ms": 90.627468,
+        "node_write_ms": 0.316276,
+        "jvm_d_ms": 6.650097,
+        "jvm_e_ms": 7.888523,
+        "event_loop_window_max_ms": 77.725695,
+        "post_eval_to_next_issue_ms": 0.373502
+      },
+      {
+        "index": 7,
+        "challenge": "9bdb78e163c00fd52c954b0c81c54576:7",
+        "world_tick": 1017,
+        "status": "ADMITTED",
+        "node_a_ms": 53.802126,
+        "node_write_ms": 0.164996,
+        "jvm_d_ms": 45.873808,
+        "jvm_e_ms": 1.110497,
+        "event_loop_window_max_ms": 10.420223,
+        "post_eval_to_next_issue_ms": 0.166643
+      },
+      {
+        "index": 11,
+        "challenge": "9bdb78e163c00fd52c954b0c81c54576:11",
+        "world_tick": 1021,
+        "status": "ADMITTED",
+        "node_a_ms": 53.622156,
+        "node_write_ms": 0.121734,
+        "jvm_d_ms": 44.671554,
+        "jvm_e_ms": 1.170106,
+        "event_loop_window_max_ms": 10.444799,
+        "post_eval_to_next_issue_ms": 0.220984
+      },
+      {
+        "index": 18,
+        "challenge": "9bdb78e163c00fd52c954b0c81c54576:18",
+        "world_tick": 1028,
+        "status": "ADMITTED",
+        "node_a_ms": 52.617326,
+        "node_write_ms": 0.216832,
+        "jvm_d_ms": 44.876194,
+        "jvm_e_ms": 1.481436,
+        "event_loop_window_max_ms": 10.567679,
+        "post_eval_to_next_issue_ms": 0.193473
+      },
+      {
+        "index": 242,
+        "challenge": "9bdb78e163c00fd52c954b0c81c54576:242",
+        "world_tick": 1252,
+        "status": "ADMITTED",
+        "node_a_ms": 52.432612,
+        "node_write_ms": 0.101293,
+        "jvm_d_ms": 48.223938,
+        "jvm_e_ms": 0.809571,
+        "event_loop_window_max_ms": 10.108927,
+        "post_eval_to_next_issue_ms": 0.328565
+      },
+      {
+        "index": 224,
+        "challenge": "9bdb78e163c00fd52c954b0c81c54576:224",
+        "world_tick": 1234,
+        "status": "ADMITTED",
+        "node_a_ms": 52.105765,
+        "node_write_ms": 0.158126,
+        "jvm_d_ms": 47.91224,
+        "jvm_e_ms": 1.025589,
+        "event_loop_window_max_ms": 10.174463,
+        "post_eval_to_next_issue_ms": 0.166919
+      },
+      {
+        "index": 16,
+        "challenge": "9bdb78e163c00fd52c954b0c81c54576:16",
+        "world_tick": 1026,
+        "status": "ADMITTED",
+        "node_a_ms": 52.006258,
+        "node_write_ms": 0.175322,
+        "jvm_d_ms": 45.203484,
+        "jvm_e_ms": 0.979472,
+        "event_loop_window_max_ms": 10.543103,
+        "post_eval_to_next_issue_ms": 0.174287
+      }
+    ],
+    "tps": 20.036842436129955,
+    "accounting": {
+      "rows": 1200,
+      "final": {
+        "P1_qualified_WAIT": false,
+        "active_action": null,
+        "credit_count": 0,
+        "energy": {
+          "energy": 10.680000000000945,
+          "knockouts": 0,
+          "meals": 0,
+          "terminal": false,
+          "tick": 1200
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "5f5e5c66-02e1-45f0-8ccf-ca8365934b26",
+          "world_tick": 2211
+        },
+        "latched": false,
+        "ticks": 1200
+      },
+      "cost_equations_match": true,
+      "basal_total": 1.2,
+      "cognition_total": 0.12000000000000001,
+      "movement_total": 0.0,
+      "recovery_total": 0.0,
+      "first_world_tick": 1012,
+      "last_world_tick": 2211
+    },
+    "effect_sends": 0,
+    "metrics": {
+      "clear_control_sends": 0,
+      "node_admitted_ticks": 1202,
+      "node_received_ticks": 1202,
+      "paper_sent_ticks": 1203,
+      "paper_ticks_without_node_snapshot": [
+        1215
+      ],
+      "paper_to_node_exact_delay": "UNKNOWN",
+      "qualification": false,
+      "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+      "set_control_sends": 0
+    },
+    "cleanup": {
+      "java_exit": 0,
+      "node_exit": 0,
+      "java_pid": 785994,
+      "node_pid": 786115,
+      "java_pid_absent": true,
+      "node_pid_absent": true,
+      "port_rebind": true,
+      "process_reap_complete": true,
+      "cleanup_complete": true,
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "5f5e5c66-02e1-45f0-8ccf-ca8365934b26"
+      }
+    },
+    "paper_stop_saved": true,
+    "original_sha256": {
+      "native.jsonl": "6b73f40c41a7a1989e5bf9e00cdb8c64d8c8ad6276237af2c588cbc87e177a6d",
+      "paper.log": "d0f5d71aa6d5ad555da97b4b4d519d0b5b7f6f150d7758621951af76c233eba5",
+      "t1m_node_timing.jsonl": "eadf001a2fde75e0e3db371b99297dc2ede347e2512d4efcb736b9156676f72a",
+      "node_timing.jsonl": "d68207b017b5617a52def35704864e0119f06bfc25b208e63268e90c306462c4",
+      "python_timing.jsonl": "cb3f09e5fffa8e305b03c288b48e3e33ecd35f3f6098d5af3259ba24311789f5",
+      "report.json": "fa9fdf718a42bc0a209a23dd6fd01848fddd5cfa187ae9d8428cff66ab8a7188",
+      "source_hashes.json": "f01f4f43d5e311803f099726b2ed534b2467169d1e6feed446c831ede09c42d3",
+      "t2_ticks.json": "f890ff407c1adf1f3c788f628bc8bda8beafe8b62598e5a727ee449a793f0b1d",
+      "loaded_plugin.jar": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81"
+    },
+    "jvm_runtime": {
+      "gc_pause_count": 64,
+      "max_gc_pause_ms": 24.352,
+      "safepoint_count": 152,
+      "max_safepoint_ms": 24.445616,
+      "clock": "JVM uptime; includes startup, not exact-packet alignment"
+    },
+    "original_manifest_verified_count": 8
+  },
+  "run-005": {
+    "status": "PASS",
+    "error": null,
+    "session": "57e35ab8-d47d-42a6-a8bc-987ac5f07d7c",
+    "world": "94e79fbe-77f8-44ff-990f-8065b656f48e",
+    "plugin_sha256": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81",
+    "paper_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "native_seq": [
+      0,
+      1266
+    ],
+    "seq_gaps": 0,
+    "paper_frames": 1202,
+    "world_tick_range": [
+      1011,
+      2212
+    ],
+    "source_violations": [],
+    "identity_count": 1,
+    "statuses": {
+      "ADMITTED": 1202
+    },
+    "over150": 0,
+    "admitted_after_latch": 0,
+    "first_refusal": null,
+    "node_age": {
+      "n": 1202,
+      "min": 5.736938,
+      "median": 49.842624,
+      "p95": 50.488483,
+      "p99": 51.834451,
+      "max": 106.712237
+    },
+    "join": {
+      "startup_none_callbacks": 0,
+      "unmatched_java_callbacks": 1,
+      "shutdown_java_without_node_receipt": [
+        [
+          1203,
+          "dca1c0dc2810ec494a21d4b3cd260815:1203"
+        ]
+      ],
+      "unmatched_node_callbacks": 0,
+      "superseded_unapplied_challenges": [
+        "dca1c0dc2810ec494a21d4b3cd260815:4"
+      ],
+      "terminal_unapplied_node_challenges": [
+        "dca1c0dc2810ec494a21d4b3cd260815:1203"
+      ],
+      "terminal_unapplied_java_challenges": [
+        "dca1c0dc2810ec494a21d4b3cd260815:1203"
+      ],
+      "java_challenge_rx_count": 1203,
+      "node_challenge_issue_count": 1203,
+      "classification": "T1M_PASSIVE_JVM_NODE_DIAGNOSTIC_ONLY",
+      "qualification": false,
+      "protocol_snapshot_schema_unchanged": true,
+      "source_statuses_original": {
+        "ADMITTED": 1202
+      },
+      "original_native_paper_count": 1202,
+      "matched_positive_jvm_samples": 1202,
+      "source_integrity_violations": [],
+      "distributions_ms": {
+        "node_a_ms": {
+          "n": 1202,
+          "min": 5.645353,
+          "median": 49.783096,
+          "p95": 50.422935,
+          "p99": 51.766498,
+          "max": 106.524513
+        },
+        "node_write_ms": {
+          "n": 1203,
+          "min": 0.094098,
+          "median": 0.154163,
+          "p95": 0.271423,
+          "p99": 0.401677,
+          "max": 0.722996
+        },
+        "jvm_rx_to_callback_ms": {
+          "n": 1202,
+          "min": 0.228625,
+          "median": 47.799099,
+          "p95": 48.408227,
+          "p99": 48.5223,
+          "max": 48.778147
+        },
+        "jvm_callback_to_send_return_ms": {
+          "n": 1202,
+          "min": 0.241107,
+          "median": 0.413026,
+          "p95": 0.924473,
+          "p99": 1.332538,
+          "max": 10.23447
+        },
+        "event_loop_delay_window_max_ms": {
+          "n": 1202,
+          "min": 0.0,
+          "median": 10.403839,
+          "p95": 10.674175,
+          "p99": 10.977279,
+          "max": 69.664767
+        },
+        "post_eval_to_next_issue_ms": {
+          "n": 1202,
+          "min": 0.106127,
+          "median": 0.148786,
+          "p95": 0.280669,
+          "p99": 0.431846,
+          "max": 1.215289
+        },
+        "post_eval_emit_ms": {
+          "n": 1202,
+          "min": 0.068899,
+          "median": 0.098106,
+          "p95": 0.200157,
+          "p99": 0.286204,
+          "max": 1.165432
+        },
+        "diagnostic_hook_ms": {
+          "n": 1202,
+          "min": 0.032673,
+          "median": 0.046007,
+          "p95": 0.091754,
+          "p99": 0.130703,
+          "max": 0.254031
+        },
+        "post_hook_to_issue_ms": {
+          "n": 1202,
+          "min": 0.000645,
+          "median": 0.001677,
+          "p95": 0.004196,
+          "p99": 0.01601,
+          "max": 0.059327
+        }
+      },
+      "node_clock_comparable_to_jvm_clock": false,
+      "jvm_to_node_one_way_latency_known": false,
+      "event_loop_delay_correlated_to_exact_packet": false,
+      "root_cause": "UNKNOWN"
+    },
+    "correlation_with_a_descriptive_only": {
+      "jvm_d_ms": 0.13140419794234112,
+      "jvm_e_ms": 0.4134959707261569,
+      "event_loop_window_max_ms": 0.5444182741324458
+    },
+    "max_a_frames": [
+      {
+        "index": 2,
+        "challenge": "dca1c0dc2810ec494a21d4b3cd260815:1",
+        "world_tick": 1012,
+        "status": "ADMITTED",
+        "node_a_ms": 106.524513,
+        "node_write_ms": 0.429752,
+        "jvm_d_ms": 25.158838,
+        "jvm_e_ms": 1.05256,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.172674,
+        "post_eval_emit_ms": 0.111308,
+        "diagnostic_hook_ms": 0.055387,
+        "post_hook_to_issue_ms": 0.005687
+      },
+      {
+        "index": 1,
+        "challenge": "dca1c0dc2810ec494a21d4b3cd260815:1",
+        "world_tick": 1011,
+        "status": "ADMITTED",
+        "node_a_ms": 102.466665,
+        "node_write_ms": 0.429752,
+        "jvm_d_ms": 8.676726,
+        "jvm_e_ms": 10.23447,
+        "event_loop_window_max_ms": 69.664767,
+        "post_eval_to_next_issue_ms": 0.443195,
+        "post_eval_emit_ms": 0.269819,
+        "diagnostic_hook_ms": 0.149074,
+        "post_hook_to_issue_ms": 0.023638
+      },
+      {
+        "index": 36,
+        "challenge": "dca1c0dc2810ec494a21d4b3cd260815:36",
+        "world_tick": 1046,
+        "status": "ADMITTED",
+        "node_a_ms": 54.454101,
+        "node_write_ms": 0.204707,
+        "jvm_d_ms": 45.52332,
+        "jvm_e_ms": 1.94633,
+        "event_loop_window_max_ms": 10.412031,
+        "post_eval_to_next_issue_ms": 0.35191,
+        "post_eval_emit_ms": 0.204234,
+        "diagnostic_hook_ms": 0.140142,
+        "post_hook_to_issue_ms": 0.006009
+      },
+      {
+        "index": 7,
+        "challenge": "dca1c0dc2810ec494a21d4b3cd260815:7",
+        "world_tick": 1017,
+        "status": "ADMITTED",
+        "node_a_ms": 54.058964,
+        "node_write_ms": 0.325399,
+        "jvm_d_ms": 45.220504,
+        "jvm_e_ms": 1.256534,
+        "event_loop_window_max_ms": 10.223615,
+        "post_eval_to_next_issue_ms": 0.16856,
+        "post_eval_emit_ms": 0.121094,
+        "diagnostic_hook_ms": 0.043373,
+        "post_hook_to_issue_ms": 0.00388
+      },
+      {
+        "index": 352,
+        "challenge": "dca1c0dc2810ec494a21d4b3cd260815:352",
+        "world_tick": 1362,
+        "status": "ADMITTED",
+        "node_a_ms": 52.422687,
+        "node_write_ms": 0.151712,
+        "jvm_d_ms": 47.766394,
+        "jvm_e_ms": 1.352089,
+        "event_loop_window_max_ms": 10.256383,
+        "post_eval_to_next_issue_ms": 0.297955,
+        "post_eval_emit_ms": 0.204541,
+        "diagnostic_hook_ms": 0.088967,
+        "post_hook_to_issue_ms": 0.003973
+      },
+      {
+        "index": 37,
+        "challenge": "dca1c0dc2810ec494a21d4b3cd260815:37",
+        "world_tick": 1047,
+        "status": "ADMITTED",
+        "node_a_ms": 52.276306,
+        "node_write_ms": 0.611074,
+        "jvm_d_ms": 39.422216,
+        "jvm_e_ms": 1.764278,
+        "event_loop_window_max_ms": 10.387455,
+        "post_eval_to_next_issue_ms": 0.461161,
+        "post_eval_emit_ms": 0.381174,
+        "diagnostic_hook_ms": 0.077247,
+        "post_hook_to_issue_ms": 0.001497
+      },
+      {
+        "index": 1001,
+        "challenge": "dca1c0dc2810ec494a21d4b3cd260815:1001",
+        "world_tick": 2011,
+        "status": "ADMITTED",
+        "node_a_ms": 52.103892,
+        "node_write_ms": 0.131922,
+        "jvm_d_ms": 48.065097,
+        "jvm_e_ms": 1.173249,
+        "event_loop_window_max_ms": 10.158079,
+        "post_eval_to_next_issue_ms": 0.347824,
+        "post_eval_emit_ms": 0.238778,
+        "diagnostic_hook_ms": 0.104781,
+        "post_hook_to_issue_ms": 0.003839
+      },
+      {
+        "index": 678,
+        "challenge": "dca1c0dc2810ec494a21d4b3cd260815:678",
+        "world_tick": 1688,
+        "status": "ADMITTED",
+        "node_a_ms": 52.074876,
+        "node_write_ms": 0.217563,
+        "jvm_d_ms": 48.499029,
+        "jvm_e_ms": 0.800661,
+        "event_loop_window_max_ms": 10.895359,
+        "post_eval_to_next_issue_ms": 0.305391,
+        "post_eval_emit_ms": 0.207911,
+        "diagnostic_hook_ms": 0.09363,
+        "post_hook_to_issue_ms": 0.003467
+      }
+    ],
+    "tps": 20.04729285589508,
+    "accounting": {
+      "rows": 1200,
+      "final": {
+        "P1_qualified_WAIT": false,
+        "active_action": null,
+        "credit_count": 0,
+        "energy": {
+          "energy": 10.680000000000945,
+          "knockouts": 0,
+          "meals": 0,
+          "terminal": false,
+          "tick": 1200
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "57e35ab8-d47d-42a6-a8bc-987ac5f07d7c",
+          "world_tick": 2211
+        },
+        "latched": false,
+        "ticks": 1200
+      },
+      "cost_equations_match": true,
+      "basal_total": 1.2,
+      "cognition_total": 0.12000000000000001,
+      "movement_total": 0.0,
+      "recovery_total": 0.0,
+      "first_world_tick": 1012,
+      "last_world_tick": 2211
+    },
+    "effect_sends": 0,
+    "metrics": {
+      "clear_control_sends": 0,
+      "node_admitted_ticks": 1202,
+      "node_received_ticks": 1202,
+      "paper_sent_ticks": 1203,
+      "paper_ticks_without_node_snapshot": [
+        1215
+      ],
+      "paper_to_node_exact_delay": "UNKNOWN",
+      "qualification": false,
+      "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+      "set_control_sends": 0
+    },
+    "cleanup": {
+      "java_exit": 0,
+      "node_exit": 0,
+      "java_pid": 786381,
+      "node_pid": 786492,
+      "java_pid_absent": true,
+      "node_pid_absent": true,
+      "port_rebind": true,
+      "process_reap_complete": true,
+      "cleanup_complete": true,
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "57e35ab8-d47d-42a6-a8bc-987ac5f07d7c"
+      }
+    },
+    "paper_stop_saved": true,
+    "original_sha256": {
+      "native.jsonl": "d185e3605c575160823b2ad48aad6660da99027e0c7ed0ca2e1e848043709c93",
+      "paper.log": "9d9ec6f5e4e51028f9b8fc303715a516ae931940e50e73ab7e3a784940d3d58f",
+      "t1m_node_timing.jsonl": "5c380f9e668f6a9f4a078328466c45f7711d9a84dc323ec2cd963ac596486ebc",
+      "node_timing.jsonl": "480d462ab6135b408051ae37d078e4bba9e14c4433da96ac5e9d23bfed79d1ee",
+      "python_timing.jsonl": "b3ab4df6249b70adf69cde625edaea564e421c144aa938a2d885c61ca4ae897f",
+      "report.json": "fd0dd70b2eb616911d0ad0e0a7ec1a5eb19a053e495361828064833aa03a3009",
+      "source_hashes.json": "653e14ba266ca104278af32dcdc3180d318c2021405e5424c67c914bb9ae3eba",
+      "t2_ticks.json": "738eff084fc9abea47bcfbb44e13293e6de0e2fe00a11d80389dcddf5ec21e35",
+      "loaded_plugin.jar": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81"
+    },
+    "jvm_runtime": {
+      "gc_pause_count": 42,
+      "max_gc_pause_ms": 29.629,
+      "safepoint_count": 136,
+      "max_safepoint_ms": 29.859202,
+      "clock": "JVM uptime; includes startup, not exact-packet alignment"
+    },
+    "original_manifest_verified_count": 8
+  },
+  "run-006": {
+    "status": "PASS",
+    "error": null,
+    "session": "a76c6515-fe0f-4f9f-96ba-ff02cbf4b834",
+    "world": "4cbaca8d-b5d3-42f5-913c-eae0846090c8",
+    "plugin_sha256": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81",
+    "paper_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "native_seq": [
+      0,
+      1266
+    ],
+    "seq_gaps": 0,
+    "paper_frames": 1202,
+    "world_tick_range": [
+      1013,
+      2214
+    ],
+    "source_violations": [],
+    "identity_count": 1,
+    "statuses": {
+      "ADMITTED": 1202
+    },
+    "over150": 0,
+    "admitted_after_latch": 0,
+    "first_refusal": null,
+    "node_age": {
+      "n": 1202,
+      "min": 4.807325,
+      "median": 49.846071499999994,
+      "p95": 50.984566,
+      "p99": 53.077773,
+      "max": 103.72196
+    },
+    "join": {
+      "startup_none_callbacks": 0,
+      "unmatched_java_callbacks": 1,
+      "shutdown_java_without_node_receipt": [
+        [
+          1203,
+          "87484e03dac6b7c950a3440388092394:1203"
+        ]
+      ],
+      "unmatched_node_callbacks": 0,
+      "superseded_unapplied_challenges": [
+        "87484e03dac6b7c950a3440388092394:3",
+        "87484e03dac6b7c950a3440388092394:355"
+      ],
+      "terminal_unapplied_node_challenges": [
+        "87484e03dac6b7c950a3440388092394:1203"
+      ],
+      "terminal_unapplied_java_challenges": [
+        "87484e03dac6b7c950a3440388092394:1203"
+      ],
+      "java_challenge_rx_count": 1203,
+      "node_challenge_issue_count": 1203,
+      "classification": "T1M_PASSIVE_JVM_NODE_DIAGNOSTIC_ONLY",
+      "qualification": false,
+      "protocol_snapshot_schema_unchanged": true,
+      "source_statuses_original": {
+        "ADMITTED": 1202
+      },
+      "original_native_paper_count": 1202,
+      "matched_positive_jvm_samples": 1202,
+      "source_integrity_violations": [],
+      "distributions_ms": {
+        "node_a_ms": {
+          "n": 1202,
+          "min": 4.731926,
+          "median": 49.797897,
+          "p95": 50.922505,
+          "p99": 53.02017,
+          "max": 103.683703
+        },
+        "node_write_ms": {
+          "n": 1203,
+          "min": 0.093655,
+          "median": 0.151851,
+          "p95": 0.253228,
+          "p99": 0.365521,
+          "max": 0.475353
+        },
+        "jvm_rx_to_callback_ms": {
+          "n": 1202,
+          "min": 0.282994,
+          "median": 47.713577,
+          "p95": 48.325493,
+          "p99": 48.506052,
+          "max": 97.829808
+        },
+        "jvm_callback_to_send_return_ms": {
+          "n": 1202,
+          "min": 0.246082,
+          "median": 0.435049,
+          "p95": 0.97711,
+          "p99": 1.397227,
+          "max": 8.328968
+        },
+        "event_loop_delay_window_max_ms": {
+          "n": 1202,
+          "min": 0.0,
+          "median": 10.231807,
+          "p95": 10.682367,
+          "p99": 11.018239,
+          "max": 83.820543
+        },
+        "post_eval_to_next_issue_ms": {
+          "n": 1202,
+          "min": 0.095494,
+          "median": 0.151348,
+          "p95": 0.266154,
+          "p99": 0.45578,
+          "max": 52.513781
+        },
+        "post_eval_emit_ms": {
+          "n": 1202,
+          "min": 0.06288,
+          "median": 0.101149,
+          "p95": 0.190626,
+          "p99": 0.308897,
+          "max": 52.418903
+        },
+        "diagnostic_hook_ms": {
+          "n": 1202,
+          "min": 0.030152,
+          "median": 0.045338,
+          "p95": 0.073791,
+          "p99": 0.095659,
+          "max": 1.690435
+        },
+        "post_hook_to_issue_ms": {
+          "n": 1202,
+          "min": 0.000727,
+          "median": 0.001917,
+          "p95": 0.003852,
+          "p99": 0.015102,
+          "max": 0.077272
+        }
+      },
+      "node_clock_comparable_to_jvm_clock": false,
+      "jvm_to_node_one_way_latency_known": false,
+      "event_loop_delay_correlated_to_exact_packet": false,
+      "root_cause": "UNKNOWN"
+    },
+    "correlation_with_a_descriptive_only": {
+      "jvm_d_ms": 0.4133869424974478,
+      "jvm_e_ms": 0.25635908722525635,
+      "event_loop_window_max_ms": 0.34391268974217115
+    },
+    "max_a_frames": [
+      {
+        "index": 355,
+        "challenge": "87484e03dac6b7c950a3440388092394:354",
+        "world_tick": 1367,
+        "status": "ADMITTED",
+        "node_a_ms": 103.683703,
+        "node_write_ms": 0.163823,
+        "jvm_d_ms": 97.829808,
+        "jvm_e_ms": 0.513033,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.135497,
+        "post_eval_emit_ms": 0.078647,
+        "diagnostic_hook_ms": 0.05538,
+        "post_hook_to_issue_ms": 0.001327
+      },
+      {
+        "index": 2,
+        "challenge": "87484e03dac6b7c950a3440388092394:1",
+        "world_tick": 1014,
+        "status": "ADMITTED",
+        "node_a_ms": 95.271745,
+        "node_write_ms": 0.382774,
+        "jvm_d_ms": 20.049261,
+        "jvm_e_ms": 0.66242,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.196,
+        "post_eval_emit_ms": 0.123447,
+        "diagnostic_hook_ms": 0.065769,
+        "post_hook_to_issue_ms": 0.006319
+      },
+      {
+        "index": 1,
+        "challenge": "87484e03dac6b7c950a3440388092394:1",
+        "world_tick": 1013,
+        "status": "ADMITTED",
+        "node_a_ms": 92.580616,
+        "node_write_ms": 0.382774,
+        "jvm_d_ms": 5.879452,
+        "jvm_e_ms": 8.328968,
+        "event_loop_window_max_ms": 83.820543,
+        "post_eval_to_next_issue_ms": 0.395654,
+        "post_eval_emit_ms": 0.235129,
+        "diagnostic_hook_ms": 0.131785,
+        "post_hook_to_issue_ms": 0.02805
+      },
+      {
+        "index": 1106,
+        "challenge": "87484e03dac6b7c950a3440388092394:1106",
+        "world_tick": 2118,
+        "status": "ADMITTED",
+        "node_a_ms": 80.694599,
+        "node_write_ms": 0.123984,
+        "jvm_d_ms": 48.536636,
+        "jvm_e_ms": 0.384974,
+        "event_loop_window_max_ms": 10.477567,
+        "post_eval_to_next_issue_ms": 0.163012,
+        "post_eval_emit_ms": 0.118153,
+        "diagnostic_hook_ms": 0.041365,
+        "post_hook_to_issue_ms": 0.00337
+      },
+      {
+        "index": 79,
+        "challenge": "87484e03dac6b7c950a3440388092394:79",
+        "world_tick": 1091,
+        "status": "ADMITTED",
+        "node_a_ms": 65.723778,
+        "node_write_ms": 0.167616,
+        "jvm_d_ms": 46.907629,
+        "jvm_e_ms": 0.667835,
+        "event_loop_window_max_ms": 14.106623,
+        "post_eval_to_next_issue_ms": 0.216738,
+        "post_eval_emit_ms": 0.163343,
+        "diagnostic_hook_ms": 0.051221,
+        "post_hook_to_issue_ms": 0.001899
+      },
+      {
+        "index": 177,
+        "challenge": "87484e03dac6b7c950a3440388092394:177",
+        "world_tick": 1189,
+        "status": "ADMITTED",
+        "node_a_ms": 56.283041,
+        "node_write_ms": 0.1585,
+        "jvm_d_ms": 47.601846,
+        "jvm_e_ms": 1.902675,
+        "event_loop_window_max_ms": 10.272767,
+        "post_eval_to_next_issue_ms": 0.117116,
+        "post_eval_emit_ms": 0.082335,
+        "diagnostic_hook_ms": 0.032769,
+        "post_hook_to_issue_ms": 0.001871
+      },
+      {
+        "index": 167,
+        "challenge": "87484e03dac6b7c950a3440388092394:167",
+        "world_tick": 1179,
+        "status": "ADMITTED",
+        "node_a_ms": 54.415463,
+        "node_write_ms": 0.212461,
+        "jvm_d_ms": 46.887151,
+        "jvm_e_ms": 0.580249,
+        "event_loop_window_max_ms": 10.551295,
+        "post_eval_to_next_issue_ms": 0.165456,
+        "post_eval_emit_ms": 0.106479,
+        "diagnostic_hook_ms": 0.05643,
+        "post_hook_to_issue_ms": 0.002335
+      },
+      {
+        "index": 7,
+        "challenge": "87484e03dac6b7c950a3440388092394:7",
+        "world_tick": 1019,
+        "status": "ADMITTED",
+        "node_a_ms": 53.732688,
+        "node_write_ms": 0.173935,
+        "jvm_d_ms": 44.920094,
+        "jvm_e_ms": 1.193149,
+        "event_loop_window_max_ms": 10.280959,
+        "post_eval_to_next_issue_ms": 0.238053,
+        "post_eval_emit_ms": 0.163112,
+        "diagnostic_hook_ms": 0.065137,
+        "post_hook_to_issue_ms": 0.009255
+      }
+    ],
+    "tps": 20.04361051628642,
+    "accounting": {
+      "rows": 1200,
+      "final": {
+        "P1_qualified_WAIT": false,
+        "active_action": null,
+        "credit_count": 0,
+        "energy": {
+          "energy": 10.680000000000945,
+          "knockouts": 0,
+          "meals": 0,
+          "terminal": false,
+          "tick": 1200
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "a76c6515-fe0f-4f9f-96ba-ff02cbf4b834",
+          "world_tick": 2213
+        },
+        "latched": false,
+        "ticks": 1200
+      },
+      "cost_equations_match": true,
+      "basal_total": 1.2,
+      "cognition_total": 0.12000000000000001,
+      "movement_total": 0.0,
+      "recovery_total": 0.0,
+      "first_world_tick": 1014,
+      "last_world_tick": 2213
+    },
+    "effect_sends": 0,
+    "metrics": {
+      "clear_control_sends": 0,
+      "node_admitted_ticks": 1202,
+      "node_received_ticks": 1202,
+      "paper_sent_ticks": 1203,
+      "paper_ticks_without_node_snapshot": [
+        1217
+      ],
+      "paper_to_node_exact_delay": "UNKNOWN",
+      "qualification": false,
+      "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+      "set_control_sends": 0
+    },
+    "cleanup": {
+      "java_exit": 0,
+      "node_exit": 0,
+      "java_pid": 786682,
+      "node_pid": 786798,
+      "java_pid_absent": true,
+      "node_pid_absent": true,
+      "port_rebind": true,
+      "process_reap_complete": true,
+      "cleanup_complete": true,
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "a76c6515-fe0f-4f9f-96ba-ff02cbf4b834"
+      }
+    },
+    "paper_stop_saved": true,
+    "original_sha256": {
+      "native.jsonl": "95e73f7259467df7c45631d040ceaa6ce8d412b71e97c99da80bdc42c67c8514",
+      "paper.log": "b88cc05171e515f4920646587a9dde8003b79d7b2ab83fccecb24519d81ca649",
+      "t1m_node_timing.jsonl": "c070aa2078ad4b25ca8b7413acb3ba95cbbd59605572900b89e3f2134b2839af",
+      "node_timing.jsonl": "fcbe58482945003e86e4cf9ad499f4d40c38aae2445d23881c93d96013208947",
+      "python_timing.jsonl": "1c51786a0e0b85d06f41543f7831b3a9de659b2d0e98e8a1c39444a6cf6387b0",
+      "report.json": "dfc5c483077b284fe19625c42b7d9a925a4135df9c544dfd2642338926f457a0",
+      "source_hashes.json": "f76941ba51e747d9bf042624cfeb7ed90ca7cb85f787e92c5f528c3b9a68def0",
+      "t2_ticks.json": "c10584a80c2df5c377af708a87aba6d6ad2d0b07eae698b8d6ab67bbedcff3ba",
+      "loaded_plugin.jar": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81"
+    },
+    "jvm_runtime": {
+      "gc_pause_count": 64,
+      "max_gc_pause_ms": 24.091,
+      "safepoint_count": 152,
+      "max_safepoint_ms": 24.224976,
+      "clock": "JVM uptime; includes startup, not exact-packet alignment"
+    },
+    "original_manifest_verified_count": 8
+  },
+  "run-007": {
+    "status": "PASS",
+    "error": null,
+    "session": "cb606abc-cf97-4ffc-838d-219127c898f2",
+    "world": "654717e3-e39f-493a-9aeb-49e83f32c2d9",
+    "plugin_sha256": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81",
+    "paper_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "native_seq": [
+      0,
+      1266
+    ],
+    "seq_gaps": 0,
+    "paper_frames": 1202,
+    "world_tick_range": [
+      1011,
+      2212
+    ],
+    "source_violations": [],
+    "identity_count": 1,
+    "statuses": {
+      "ADMITTED": 1202
+    },
+    "over150": 0,
+    "admitted_after_latch": 0,
+    "first_refusal": null,
+    "node_age": {
+      "n": 1202,
+      "min": 4.860846,
+      "median": 49.8521485,
+      "p95": 50.66531,
+      "p99": 52.162191,
+      "max": 108.671337
+    },
+    "join": {
+      "startup_none_callbacks": 0,
+      "unmatched_java_callbacks": 1,
+      "shutdown_java_without_node_receipt": [
+        [
+          1203,
+          "29bb3e7eda4bdb18e74bdb87c4ed639e:1203"
+        ]
+      ],
+      "unmatched_node_callbacks": 0,
+      "superseded_unapplied_challenges": [
+        "29bb3e7eda4bdb18e74bdb87c4ed639e:3",
+        "29bb3e7eda4bdb18e74bdb87c4ed639e:841"
+      ],
+      "terminal_unapplied_node_challenges": [
+        "29bb3e7eda4bdb18e74bdb87c4ed639e:1203"
+      ],
+      "terminal_unapplied_java_challenges": [
+        "29bb3e7eda4bdb18e74bdb87c4ed639e:1203"
+      ],
+      "java_challenge_rx_count": 1203,
+      "node_challenge_issue_count": 1203,
+      "classification": "T1M_PASSIVE_JVM_NODE_DIAGNOSTIC_ONLY",
+      "qualification": false,
+      "protocol_snapshot_schema_unchanged": true,
+      "source_statuses_original": {
+        "ADMITTED": 1202
+      },
+      "original_native_paper_count": 1202,
+      "matched_positive_jvm_samples": 1202,
+      "source_integrity_violations": [],
+      "distributions_ms": {
+        "node_a_ms": {
+          "n": 1202,
+          "min": 4.791497,
+          "median": 49.802651,
+          "p95": 50.611473,
+          "p99": 52.111671,
+          "max": 108.631185
+        },
+        "node_write_ms": {
+          "n": 1203,
+          "min": 0.076151,
+          "median": 0.141342,
+          "p95": 0.202811,
+          "p99": 0.256572,
+          "max": 0.515305
+        },
+        "jvm_rx_to_callback_ms": {
+          "n": 1202,
+          "min": 0.22861,
+          "median": 47.964613,
+          "p95": 48.568817,
+          "p99": 48.749044,
+          "max": 98.110349
+        },
+        "jvm_callback_to_send_return_ms": {
+          "n": 1202,
+          "min": 0.208655,
+          "median": 0.379757,
+          "p95": 0.795082,
+          "p99": 1.048481,
+          "max": 6.466683
+        },
+        "event_loop_delay_window_max_ms": {
+          "n": 1202,
+          "min": 0.0,
+          "median": 10.412031,
+          "p95": 10.665983,
+          "p99": 10.821631,
+          "max": 78.577663
+        },
+        "post_eval_to_next_issue_ms": {
+          "n": 1202,
+          "min": 0.094887,
+          "median": 0.135981,
+          "p95": 0.187777,
+          "p99": 0.243856,
+          "max": 57.787309
+        },
+        "post_eval_emit_ms": {
+          "n": 1202,
+          "min": 0.059079,
+          "median": 0.090359,
+          "p95": 0.129611,
+          "p99": 0.177437,
+          "max": 57.706166
+        },
+        "diagnostic_hook_ms": {
+          "n": 1202,
+          "min": 0.028238,
+          "median": 0.042457,
+          "p95": 0.061225,
+          "p99": 0.080621,
+          "max": 0.125679
+        },
+        "post_hook_to_issue_ms": {
+          "n": 1202,
+          "min": 0.00071,
+          "median": 0.001922,
+          "p95": 0.003201,
+          "p99": 0.008125,
+          "max": 0.057505
+        }
+      },
+      "node_clock_comparable_to_jvm_clock": false,
+      "jvm_to_node_one_way_latency_known": false,
+      "event_loop_delay_correlated_to_exact_packet": false,
+      "root_cause": "UNKNOWN"
+    },
+    "correlation_with_a_descriptive_only": {
+      "jvm_d_ms": 0.40156878933599705,
+      "jvm_e_ms": 0.22963990496253103,
+      "event_loop_window_max_ms": 0.24360591991369826
+    },
+    "max_a_frames": [
+      {
+        "index": 841,
+        "challenge": "29bb3e7eda4bdb18e74bdb87c4ed639e:840",
+        "world_tick": 1851,
+        "status": "ADMITTED",
+        "node_a_ms": 108.631185,
+        "node_write_ms": 0.135174,
+        "jvm_d_ms": 98.110349,
+        "jvm_e_ms": 0.270971,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.101473,
+        "post_eval_emit_ms": 0.071675,
+        "diagnostic_hook_ms": 0.028238,
+        "post_hook_to_issue_ms": 0.001442
+      },
+      {
+        "index": 2,
+        "challenge": "29bb3e7eda4bdb18e74bdb87c4ed639e:1",
+        "world_tick": 1012,
+        "status": "ADMITTED",
+        "node_a_ms": 82.726191,
+        "node_write_ms": 0.515305,
+        "jvm_d_ms": 18.372862,
+        "jvm_e_ms": 0.59812,
+        "event_loop_window_max_ms": 0.0,
+        "post_eval_to_next_issue_ms": 0.157251,
+        "post_eval_emit_ms": 0.097803,
+        "diagnostic_hook_ms": 0.053211,
+        "post_hook_to_issue_ms": 0.00568
+      },
+      {
+        "index": 1,
+        "challenge": "29bb3e7eda4bdb18e74bdb87c4ed639e:1",
+        "world_tick": 1011,
+        "status": "ADMITTED",
+        "node_a_ms": 79.894099,
+        "node_write_ms": 0.515305,
+        "jvm_d_ms": 6.455257,
+        "jvm_e_ms": 6.466683,
+        "event_loop_window_max_ms": 78.577663,
+        "post_eval_to_next_issue_ms": 0.353667,
+        "post_eval_emit_ms": 0.207398,
+        "diagnostic_hook_ms": 0.125679,
+        "post_hook_to_issue_ms": 0.020118
+      },
+      {
+        "index": 48,
+        "challenge": "29bb3e7eda4bdb18e74bdb87c4ed639e:48",
+        "world_tick": 1058,
+        "status": "ADMITTED",
+        "node_a_ms": 58.060605,
+        "node_write_ms": 0.136968,
+        "jvm_d_ms": 46.145634,
+        "jvm_e_ms": 0.706463,
+        "event_loop_window_max_ms": 10.649599,
+        "post_eval_to_next_issue_ms": 0.141369,
+        "post_eval_emit_ms": 0.100777,
+        "diagnostic_hook_ms": 0.03836,
+        "post_hook_to_issue_ms": 0.001972
+      },
+      {
+        "index": 19,
+        "challenge": "29bb3e7eda4bdb18e74bdb87c4ed639e:19",
+        "world_tick": 1029,
+        "status": "ADMITTED",
+        "node_a_ms": 54.675009,
+        "node_write_ms": 0.157934,
+        "jvm_d_ms": 43.514606,
+        "jvm_e_ms": 0.82242,
+        "event_loop_window_max_ms": 10.207231,
+        "post_eval_to_next_issue_ms": 0.187932,
+        "post_eval_emit_ms": 0.132801,
+        "diagnostic_hook_ms": 0.0532,
+        "post_hook_to_issue_ms": 0.001733
+      },
+      {
+        "index": 7,
+        "challenge": "29bb3e7eda4bdb18e74bdb87c4ed639e:7",
+        "world_tick": 1017,
+        "status": "ADMITTED",
+        "node_a_ms": 53.347119,
+        "node_write_ms": 0.296744,
+        "jvm_d_ms": 44.931482,
+        "jvm_e_ms": 1.119398,
+        "event_loop_window_max_ms": 10.371071,
+        "post_eval_to_next_issue_ms": 0.146532,
+        "post_eval_emit_ms": 0.098678,
+        "diagnostic_hook_ms": 0.042749,
+        "post_hook_to_issue_ms": 0.00489
+      },
+      {
+        "index": 11,
+        "challenge": "29bb3e7eda4bdb18e74bdb87c4ed639e:11",
+        "world_tick": 1021,
+        "status": "ADMITTED",
+        "node_a_ms": 53.047263,
+        "node_write_ms": 0.200713,
+        "jvm_d_ms": 44.998767,
+        "jvm_e_ms": 1.035957,
+        "event_loop_window_max_ms": 10.715135,
+        "post_eval_to_next_issue_ms": 0.243856,
+        "post_eval_emit_ms": 0.143973,
+        "diagnostic_hook_ms": 0.092913,
+        "post_hook_to_issue_ms": 0.006698
+      },
+      {
+        "index": 242,
+        "challenge": "29bb3e7eda4bdb18e74bdb87c4ed639e:242",
+        "world_tick": 1252,
+        "status": "ADMITTED",
+        "node_a_ms": 53.03206,
+        "node_write_ms": 0.122081,
+        "jvm_d_ms": 47.469823,
+        "jvm_e_ms": 1.294179,
+        "event_loop_window_max_ms": 10.510335,
+        "post_eval_to_next_issue_ms": 0.164567,
+        "post_eval_emit_ms": 0.120617,
+        "diagnostic_hook_ms": 0.041257,
+        "post_hook_to_issue_ms": 0.002399
+      }
+    ],
+    "tps": 20.03465267320662,
+    "accounting": {
+      "rows": 1200,
+      "final": {
+        "P1_qualified_WAIT": false,
+        "active_action": null,
+        "credit_count": 0,
+        "energy": {
+          "energy": 10.680000000000945,
+          "knockouts": 0,
+          "meals": 0,
+          "terminal": false,
+          "tick": 1200
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "cb606abc-cf97-4ffc-838d-219127c898f2",
+          "world_tick": 2211
+        },
+        "latched": false,
+        "ticks": 1200
+      },
+      "cost_equations_match": true,
+      "basal_total": 1.2,
+      "cognition_total": 0.12000000000000001,
+      "movement_total": 0.0,
+      "recovery_total": 0.0,
+      "first_world_tick": 1012,
+      "last_world_tick": 2211
+    },
+    "effect_sends": 0,
+    "metrics": {
+      "clear_control_sends": 0,
+      "node_admitted_ticks": 1202,
+      "node_received_ticks": 1202,
+      "paper_sent_ticks": 1203,
+      "paper_ticks_without_node_snapshot": [
+        1215
+      ],
+      "paper_to_node_exact_delay": "UNKNOWN",
+      "qualification": false,
+      "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+      "set_control_sends": 0
+    },
+    "cleanup": {
+      "java_exit": 0,
+      "node_exit": 0,
+      "java_pid": 787008,
+      "node_pid": 787125,
+      "java_pid_absent": true,
+      "node_pid_absent": true,
+      "port_rebind": true,
+      "process_reap_complete": true,
+      "cleanup_complete": true,
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "cb606abc-cf97-4ffc-838d-219127c898f2"
+      }
+    },
+    "paper_stop_saved": true,
+    "original_sha256": {
+      "native.jsonl": "a078b667d627fad1da27fef67c28de46e574c5c60f753ca1a902d111ec075cd7",
+      "paper.log": "9b784c7c2b618a92b62588729541798a1720734f5da4b6feb5edca70f6093045",
+      "t1m_node_timing.jsonl": "414be7f76ac827c6a4e7929d89220e0e971b0748b9afcd79dfbacb894f7dec71",
+      "node_timing.jsonl": "bdb93af48a0f04dfd509d61b4ad122fd911878848c04b73ec1b1d4e611565220",
+      "python_timing.jsonl": "67d7630c008c9c6a9067b61dee943be2fc506e51dd20d16595635bb76299423b",
+      "report.json": "4fd129b53cf2ef60b2e130ccd1d0d4419c66c152cf56c0484bd010ba396435c0",
+      "source_hashes.json": "bec2f38b976f10c687fb019490d1a9237c2e8e06bc5a03b111e6c9880d7bba6d",
+      "t2_ticks.json": "955990ee0996a93f72d47c38dad8dacf9ed3c60b15e2405620c0308773e510f7",
+      "loaded_plugin.jar": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81"
+    },
+    "jvm_runtime": {
+      "gc_pause_count": 63,
+      "max_gc_pause_ms": 25.136,
+      "safepoint_count": 153,
+      "max_safepoint_ms": 25.238328,
+      "clock": "JVM uptime; includes startup, not exact-packet alignment"
+    },
+    "original_manifest_verified_count": 8
+  }
+}

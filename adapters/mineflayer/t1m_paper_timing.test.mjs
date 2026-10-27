@@ -76,3 +76,45 @@ test('T1m diagnostic hook cannot promote an aged Paper snapshot', () => {
   assert.equal(dev[1].reason, 'CAUSAL_AGE_UPPER_BOUND_EXCEEDED')
   assert.equal(native.length, 1)
 })
+
+test('diagnostic write failure cannot poison source admission or suppress next challenge', () => {
+  const callbacks = {}; const sent = []; const native = []; const invalid = []
+  let now = 0n
+  const bot = { once: (n, cb) => { callbacks[n] = cb }, _client: {
+    on: (n, cb) => { callbacks[n] = cb }, registerChannel: () => {},
+    write: (_n, p) => sent.push(p.data.toString('ascii'))
+  } }
+  const channel = attachPaperSnapshotChannel(bot,
+    (type, body) => native.push(body.data), e => invalid.push(e),
+    () => now, undefined, () => { throw Error('sidecar write failed') })
+  callbacks.login()
+  now = 50000000n
+  callbacks['relayself:world_tick_dev'](Buffer.from(JSON.stringify(snapshot(sent[0]))))
+  assert.equal(native[0].status, 'ADMITTED')
+  assert.equal(sent.length, 2)
+  assert.equal(invalid.length, 0)
+  assert.equal(channel.canDispatch(), true)
+})
+
+test('post-evaluation diagnostics measure emit and hook separately from admission', () => {
+  const callbacks = {}; const sent = []; const dev = []
+  let now = 0n
+  const bot = { once: (n, cb) => { callbacks[n] = cb }, _client: {
+    on: (n, cb) => { callbacks[n] = cb }, registerChannel: () => {},
+    write: (_n, p) => sent.push(p.data.toString('ascii'))
+  } }
+  attachPaperSnapshotChannel(bot, () => { now += 1000000n },
+    e => { throw e }, () => now, undefined,
+    e => { dev.push(e); now += 2000000n })
+  callbacks.login()
+  now = 50000000n
+  callbacks['relayself:world_tick_dev'](Buffer.from(JSON.stringify(snapshot(sent[0]))))
+  const next = dev.at(-1)
+  assert.equal(next.previous_complete_ns, '50000000')
+  assert.equal(next.previous_emit_return_ns, '51000000')
+  assert.equal(next.previous_diagnostic_start_ns, '51000000')
+  assert.equal(next.previous_diagnostic_return_ns, '53000000')
+  assert.equal(next.node_sent_ns, '53000000')
+  assert.equal(dev[1].status, 'ADMITTED')
+  assert.equal(dev[1].node_complete_ns, '50000000')
+})
