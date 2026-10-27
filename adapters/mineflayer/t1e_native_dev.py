@@ -420,6 +420,12 @@ async def run_case(args, case):
                 from adapters.mineflayer.t1h_stop_owner_dev import S49DevStopOwner
                 stop_owner = S49DevStopOwner(session.started.session_id)
                 session.t1i_stop_owner = stop_owner
+            if case == "t1j_resume_move":
+                session.t1j_reauthorization = (
+                    "DEV_EXPLICIT_OPERATOR_REAUTHORIZE"
+                    if args.t1j_reauthorize == "T1J-DEV-EXPLICIT-REAUTHORIZE-ONCE"
+                    else None
+                )
             await run_continuation(
                 session, server, report, root,
                 observe_only=case == "t1f_observe",
@@ -621,12 +627,18 @@ async def main():
     parser.add_argument("--bootstrap", type=Path)
     parser.add_argument("--confirm", required=True, choices=[CONFIRM])
     parser.add_argument("--loop-moves", type=int, choices=range(2, 33), default=2)
+    parser.add_argument("--t1j-reauthorize", choices=[
+        "T1J-DEV-EXPLICIT-REAUTHORIZE-ONCE",
+    ], help="Separate explicit operator grant for exactly one post-STOP T1j MOVE")
     parser.add_argument("--eat-stop-stage", default="consume_wait", choices=(
         "before_equip", "after_equip", "consume_send", "consume_wait", "after_receipt", "after_observe"))
     parser.add_argument("--cases", nargs="+", choices=CASES + TICK_CASES, default=list(CASES))
     args = parser.parse_args()
     if not args.output.is_absolute() or args.output.exists() or os.environ.get("NODE_OPTIONS"):
         parser.error("fresh absolute output and no Node shim required")
+    if (("t1j_resume_move" in args.cases) !=
+            (args.t1j_reauthorize == "T1J-DEV-EXPLICIT-REAUTHORIZE-ONCE")):
+        parser.error("T1j reauthorization must be separately opted in exactly for T1j")
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 25565))
     args.output.mkdir()
