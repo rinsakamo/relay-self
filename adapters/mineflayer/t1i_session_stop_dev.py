@@ -23,7 +23,8 @@ def require_stop_permits_action(owner: S49DevStopOwner | None) -> None:
 
 async def finish_multi_epoch_move_stop(
     session, server, original_paper: dict, outcome: WorldConsequence,
-    terminal, owner: S49DevStopOwner, paper_log: Path,
+    terminal, owner: S49DevStopOwner, paper_log: Path, *,
+    marker_id: str = "T1I_MULTI_AFTER_CLEAR",
 ) -> dict:
     """Observe S49 clear → separate Paper marker → live probe → bounded ACK."""
     if (
@@ -39,7 +40,7 @@ async def finish_multi_epoch_move_stop(
     owner.accept_clear(
         outcome.cleanup_receipt, clear_action_id=outcome.action_id + "-clear",
     )
-    marker = "T1I_MULTI_AFTER_CLEAR"
+    marker = marker_id
     _command(server, f"relaydevsnapshot {marker}")
     await server.stdin.drain()
     await asyncio.sleep(.85)
