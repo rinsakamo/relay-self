@@ -10,12 +10,16 @@ from adapters.mineflayer.s49_p1_dash_pair_review_dev import (
     compare_p1_pair_dev,
 )
 from adapters.mineflayer.s49_paper_forward_dash_dev import (
-    PAIR_FATIGUE, PAIR_SOURCE_DIGEST, ForwardDashDevRejected,
+    PAIR_FATIGUE,
+    PAIR_SOURCE_DIGEST,
+    ForwardDashDevRejected,
     audit_native_paper_p1_dev,
 )
 from experiments.fatigue_p1 import FatigueProfile, initial_state
 from experiments.p1_gait_dev import (
-    GaitTickDev, advance_gait_dev, p1_motor_power_limit_dev,
+    GaitTickDev,
+    advance_gait_dev,
+    p1_motor_power_limit_dev,
 )
 
 
