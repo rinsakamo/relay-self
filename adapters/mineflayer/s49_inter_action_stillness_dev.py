@@ -182,6 +182,9 @@ def review_inter_action_stillness_dev(
         "node_all_controls_off_until_second_set": True,
         "node_first_clear_local_monotonic_ms": nodes[0]["monotonic_ms"],
         "node_last_before_second_set_monotonic_ms": nodes[-1]["monotonic_ms"],
+        "node_inter_action_observed_duration_ms": (
+            nodes[-1]["monotonic_ms"] - nodes[0]["monotonic_ms"]
+        ),
         "paper_observer_motor_write": False,
         "node_paper_tick_join_attested": False,
         "second_native_effect_tick_attested": False,
@@ -244,6 +247,18 @@ def review_original_owner_no_issued_action_gap_dev(
             or not 0 < duration <= 120_000_000_000
             or end - start != duration):
         raise InterActionStillnessRejected("original S49 owner clock malformed")
+    # Compare locally measured *durations*, never identify clock epochs
+    # or certify individual Node physicsTick == Paper World tick.
+    node_duration = stillness.get("node_inter_action_observed_duration_ms")
+    host_duration_ms = duration / 1_000_000
+    if (
+        type(node_duration) is not int or node_duration <= 0
+        or node_duration > 120_000
+        or abs(host_duration_ms - node_duration) > 1000
+    ):
+        raise InterActionStillnessRejected(
+            "original owner and Node input-off duration not boundedly consistent"
+        )
     return {
         "classification": "S49_ORIGINAL_OWNER_NO_ACTION_ISSUE_PLUS_NODE_PAPER_STATIC_CANDIDATE_DEV_ONLY",
         "action_ids": [first_action_id, second_action_id],
@@ -254,7 +269,11 @@ def review_original_owner_no_issued_action_gap_dev(
         "at_next_action_request_count": 1,
         "after_second_terminal_count": 2,
         "open_actions_at_bookends": [0, 0, 0],
-        "original_owner_gap_monotonic_ms": duration / 1_000_000,
+        "original_owner_gap_monotonic_ms": host_duration_ms,
+        "node_input_off_observed_duration_ms": node_duration,
+        "host_node_duration_difference_ms": host_duration_ms - node_duration,
+        "host_node_duration_difference_bound_ms": 1000,
+        "bounded_source_local_duration_consistency": True,
         "paper_candidate_first_tick":
             stillness["paper_first_candidate_tick"],
         "paper_candidate_last_tick":
