@@ -46,7 +46,7 @@ authenticate non-S49 issuers or an unsampled World-wide state.
 | Original S49 Action counts at first terminal / next request / final terminal | **1 / 1 / 2** |
 | Original ActionSupervisor open Actions at each bookend | **0 / 0 / 0** |
 | Original Node input-off callbacks after first native clear, before second original SET | **186 continuous physicsTick ordinals** |
-| Node locally observed source timestamps | **210,?** not asserted as host/Paper aligned |
+| Node input-OFF clock | Node producer-local monotonic, not synchronized to Paper |
 | Paper original World fullTime samples | **217/217 consecutive** |
 | Paper stillness candidate | **173 consecutive ticks, 259–431**, <=0.002m XZ per tick |
 | Second Action Paper ACK marker | original native S15 APPLIED delivery tick 437 |
@@ -72,6 +72,27 @@ Action. Python monotonic, Node process.hrtime and Paper fullTime
 are separate clock interfaces with no attested mapping.
 This DEV prototype **does NOT admit** the candidate to P1 WAIT or M0
 billing. The 173 Paper callbacks are a candidate only.
+
+## Final bounded-duration exact HEAD: actual Minecraft #40434679235
+
+**[Real Paper Minecraft 1.21.8 #40434679235 — SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/40434679235)**, source-tested code/workflow HEAD `afc81087dc81a98e25734203f3139745a5f56d5a`.
+
+| Same original session source | Real measured value |
+| --- | --- |
+| First and second original native S16 OUTCOME IDs | `s49-native-move-19`, `s49-native-move-57` |
+| Original executor count first terminal / next issue request / second terminal | **1 / 1 / 2**; zero open Actions at all bookends |
+| Original S49 host `time.monotonic_ns` no-new-issue window duration | **9,189.148423 ms** |
+| Original Node local `hrtime` input OFF observed duration | **9,260 ms** (186 contiguous physics callbacks) |
+| Owner interval minus Node control interval duration | **−70.851577 ms**, inside explicit **±1,000ms** DEV bound |
+| Paper contiguous World time | **217/217 fullTime callbacks**, 249–465 |
+| Paper body-stillness candidate | **174 ticks**, 269–442, all XZ motion <=0.002m |
+| Original B0/M0 energy after both Action logical steps | **12 → 10.413667611509306**, untouched by shadow |
+| Source-bound physical WAIT, P1 recovery, M0 new billing | **NO / NO / NO** |
+
+Elapsed-time consistency rejects gross mismatches but does **not**
+calibrate Node/host absolute clock epoch offsets, link an individual
+Node physics tick to a Paper World tick or independently attest an
+inactive World. The status is **DEV candidate, not admitted WAIT**.
 
 ### Bounded elapsed-duration consistency
 
