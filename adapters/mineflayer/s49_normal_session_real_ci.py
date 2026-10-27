@@ -284,6 +284,9 @@ async def qualify(
     dev_m0_dash_invoice: Callable[[NormalActionReceipt], DashM0InvoiceDev | None] | None = None,
     dev_m0_action_move_step: bool = False,
     dev_inter_action_owner_gap: bool = False,
+    dev_inter_action_owner_paper_fence: (
+        Callable[[str, str, str], Awaitable[None]] | None
+    ) = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -311,6 +314,13 @@ async def qualify(
     try:
         if os.environ.get("S49_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
+        if (
+            dev_inter_action_owner_paper_fence is not None
+            and (not dev_inter_action_owner_gap
+                 or not callable(dev_inter_action_owner_paper_fence)
+                 or os.environ.get("S49_CAUSAL_OWNER_PAPER_FENCE_DEV_ONLY") != "1")
+        ):
+            raise S31ABlocked("original owner Paper fence requires exact DEV opt-in")
         if type(dev_inter_action_owner_gap) is not bool or (
             dev_inter_action_owner_gap and (
                 not dev_sprint_motor
@@ -515,6 +525,24 @@ async def qualify(
                     "M0_posted": False,
                 }
                 owner_gap_end_first = None
+                if dev_inter_action_owner_paper_fence is not None:
+                    # The original second Action has not been issued. The
+                    # Paper console must record END BEFORE this coroutine
+                    # resumes to grant and issue through original S14/S15.
+                    await dev_inter_action_owner_paper_fence(
+                        "END", prior_id, step.action_request_id,
+                    )
+                    if (
+                        executor._count != 1
+                        or executor._dispatched != {prior_id}
+                        or executor.supervisor.open_actions
+                    ):
+                        raise S49PhysicalFailure(
+                            "original issuer changed while waiting for Paper END"
+                        )
+                    report["dev_inter_action_original_owner_gap"][
+                        "causal_paper_end_received_before_original_second_issue"
+                    ] = True
             probe = probes[step.choice.probe_seq]
             native = _native_threat(
                 probe, probe.request_id, expected_entity_id=step.choice.entity_id,
@@ -640,6 +668,27 @@ async def qualify(
                     allow_dev_sprint=dev_sprint_motor,
                 ),
             })
+            if (
+                dev_inter_action_owner_paper_fence is not None
+                and len(report["actual_native_actions"]) == 1
+            ):
+                # Original first S16 terminal + M0 state are complete.
+                # Await Paper START delivery: causal start after native
+                # clear and original Action release, no new Action owner.
+                await dev_inter_action_owner_paper_fence(
+                    "START", receipt.terminal.action_id, "NONE",
+                )
+                if (
+                    executor._count != 1
+                    or executor._dispatched != {receipt.terminal.action_id}
+                    or executor.supervisor.open_actions
+                ):
+                    raise S49PhysicalFailure(
+                        "original issuer changed while awaiting Paper START"
+                    )
+                report["dev_inter_action_original_owner_gap"][
+                    "causal_paper_start_received_after_first_outcome"
+                ] = True
 
         async def stage_world():
             assert server is not None and server.stdin is not None
@@ -671,6 +720,15 @@ async def qualify(
         if dev_inter_action_owner_gap:
             owner = report.get("dev_inter_action_original_owner_gap")
             ids = [a["action"] for a in report["actual_native_actions"]]
+            if (
+                dev_inter_action_owner_paper_fence is not None
+                and (owner is None
+                     or owner.get("causal_paper_start_received_after_first_outcome")
+                        is not True
+                     or owner.get("causal_paper_end_received_before_original_second_issue")
+                        is not True)
+            ):
+                raise S49PhysicalFailure("original owner causal Paper fences incomplete")
             if (
                 owner is None or owner_gap_end_first is not None
                 or len(ids) != 2
