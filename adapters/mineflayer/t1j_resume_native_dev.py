@@ -28,6 +28,9 @@ async def resume_one_move_dev(
     """Same S49 owner/session; no new native IO writer or read task."""
     if type(generation) is not int or generation not in (1, 2):
         raise ResumeDevRejected('T1k bounded DEV generations only')
+    lineage = getattr(session, "t1k_lineage", None)
+    if lineage is not None:
+        lineage.begin(old_owner, generation)
     old_ledger = session.tick_owner
     if (getattr(session, "source_lost", False)
             or session.process_returncode is not None
@@ -91,6 +94,8 @@ async def resume_one_move_dev(
     session.t1j_resume_permission = permit
     new_stop_owner = S49DevStopOwner(sid)
     session.t1j_new_stop_owner = new_stop_owner
+    if lineage is not None:
+        lineage.admit(permit, new_stop_owner)
     report["t1j_old_ledger"] = {
         "rows": list(old_ledger.rows),
         "energy": asdict(old_ledger.energy.body),
@@ -151,6 +156,9 @@ async def resume_one_move_dev(
                 after.data["snapshot"], result, terminal, new_stop_owner,
                 session.t1k_paper_log,
             )
+            if lineage is not None:
+                lineage.finish(expected_second_stop=True,
+                               stop_ack=new_stop_owner.ack)
             return {
                 "classification": "T1K_RESUMED_MOVE_STOP_DEV",
                 "permit": asdict(permit), "rebase": new_ledger.segment_origin_dev,
@@ -168,6 +176,8 @@ async def resume_one_move_dev(
         fresh, idle = await settled(session, result.cleanup_receipt.seq)
         if fresh.data["assessment"] != "NO_KNOWN_URGENT_SIGNAL":
             raise ResumeDevRejected("T1j post-resume hazard")
+        if lineage is not None:
+            lineage.finish(expected_second_stop=False)
         return {
             "classification": "T1J_EXPLICIT_REOBSERVED_RESUME_DEV",
             "permit": asdict(permit),
