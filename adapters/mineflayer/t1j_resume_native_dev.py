@@ -160,6 +160,7 @@ async def resume_one_move_dev(
                 session, session.t1k_server,
                 after.data["snapshot"], result, terminal, new_stop_owner,
                 session.t1k_paper_log,
+                marker_id=f"T1K_R{generation}_AFTER_CLEAR",
             )
             if lineage is not None:
                 lineage.finish(expected_second_stop=True,
