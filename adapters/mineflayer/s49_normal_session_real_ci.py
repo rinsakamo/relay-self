@@ -686,7 +686,12 @@ async def qualify(
                     raise S49PhysicalFailure(
                         "original issuer changed while awaiting Paper START"
                     )
-                report["dev_inter_action_original_owner_gap"][
+                # The original gap report is constructed only when the
+                # second Action request arrives. Preserve first fence proof
+                # in the pending owner-local record until that moment.
+                if owner_gap_end_first is None:
+                    raise S49PhysicalFailure("original first owner gap missing after START")
+                owner_gap_end_first[
                     "causal_paper_start_received_after_first_outcome"
                 ] = True
 
