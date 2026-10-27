@@ -584,7 +584,7 @@ async def run(
         or type(p1_next_native_l0_review_dev) is not bool
         or type(speed_attr_boundary_dev) is not bool
         or (speed_attr_boundary_dev and (
-            p1_model_pair_case_dev != 'CARRY'
+            p1_model_pair_case_dev not in PAIR_FATIGUE
             or os.environ.get('S49_SPEED_ATTR_BOUNDARY_DEV_ONLY') != '1'
         ))
         or (p1_model_pair_case_dev is not None and (
