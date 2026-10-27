@@ -94,6 +94,9 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private static final String ADAPTIVE_TICK_CHANNEL = "relayself:world_tick_dev";
     private boolean t1fDev = false;
     private String t1fChallenge = null;
+    // T1m: opt-in JVM-only passive timing. Never written to the T1f wire schema.
+    private boolean t1mTimingDev = false;
+    private long t1mChallengeReceiveNanos = -1L;
     private final String t1fBoot = UUID.randomUUID().toString();
 
     // One existing plugin channel, snapshot challenge only; never motor input.
@@ -280,6 +283,10 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             adaptiveTickObserverDev = getConfig().getBoolean(
                 "adaptive-tick-observer-dev", false);
             t1fDev = getConfig().getBoolean("t1f-snapshot-dev", false);
+            t1mTimingDev = getConfig().getBoolean("t1m-timing-dev", false);
+            if (t1mTimingDev && (!t1fDev || !adaptiveTickObserverDev)) {
+                throw new IllegalStateException("T1m passive timing requires existing T1f DEV");
+            }
             if (t1fDev && !adaptiveTickObserverDev) {
                 throw new IllegalStateException("T1f needs existing tick channel opt-in");
             }
@@ -288,7 +295,15 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     this, ADAPTIVE_TICK_CHANNEL, (channel, player, bytes) -> {
                         if (!player.getName().equals("RelaySelf") || bytes.length > 80) return;
                         String value = new String(bytes, StandardCharsets.US_ASCII);
-                        if (value.matches("[0-9a-f]{32}:[1-9][0-9]{0,3}")) t1fChallenge = value;
+                        if (value.matches("[0-9a-f]{32}:[1-9][0-9]{0,3}")) {
+                            t1fChallenge = value;
+                            if (t1mTimingDev) {
+                                t1mChallengeReceiveNanos = System.nanoTime();
+                                getLogger().info("T1M_DEV_JVM_CHALLENGE_RX challenge=" + value
+                                    + " jvm_rel_ns=" + (t1mChallengeReceiveNanos
+                                        - adaptiveTickClockOriginNanos));
+                            }
+                        }
                     });
             }
             if (adaptiveTickObserverDev) {
@@ -368,8 +383,27 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     // No client subscription means no wire receipt. A logged
                     // Paper callback must never be mistaken for an L0 check.
                     if (p.getListeningPluginChannels().contains(ADAPTIVE_TICK_CHANNEL)) {
+                        // Same-JVM durations only. Do not subtract these values
+                        // from Node process.hrtime() or assert wire send/receive.
+                        long t1mCallbackStart = t1mTimingDev ? System.nanoTime() : 0L;
+                        String t1mSampleChallenge = t1fChallenge;
+                        long t1mReceived = t1mChallengeReceiveNanos;
+                        String payload = t1fDev ? t1fSnapshot(p) : tickWire;
                         p.sendPluginMessage(this, ADAPTIVE_TICK_CHANNEL,
-                            (t1fDev ? t1fSnapshot(p) : tickWire).getBytes(StandardCharsets.US_ASCII));
+                            payload.getBytes(StandardCharsets.US_ASCII));
+                        if (t1mTimingDev) {
+                            long afterSend = System.nanoTime();
+                            long rxToCallback = t1mReceived < 0L ? -1L
+                                : t1mCallbackStart - t1mReceived;
+                            getLogger().info("T1M_DEV_JVM_CALLBACK index=" + adaptiveTickRows
+                                + " challenge=" + (t1mSampleChallenge == null
+                                    ? "NONE" : t1mSampleChallenge)
+                                + " world_tick=" + p.getWorld().getFullTime()
+                                + " rx_to_callback_ns=" + rxToCallback
+                                + " callback_to_send_return_ns=" + (afterSend - t1mCallbackStart)
+                                + " jvm_rel_ns=" + (afterSend - adaptiveTickClockOriginNanos)
+                                + " qualification=false");
+                        }
                     }
                 }
                 if (s50TickMeterArmed) {
