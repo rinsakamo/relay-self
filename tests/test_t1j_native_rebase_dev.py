@@ -5,8 +5,8 @@ import pytest
 
 from adapters.mineflayer.python_protocol import MineflayerEffectResult
 from adapters.mineflayer.t1h_stop_owner_dev import S49DevStopOwner, StopDevAck
-from adapters.mineflayer.t1j_resume_gate_dev import S49DevResumeGate, ResumeDevRejected
 from adapters.mineflayer.t1j_resume_accounting_dev import rebase_tick_accounting_dev
+from adapters.mineflayer.t1j_resume_gate_dev import ResumeDevRejected, S49DevResumeGate
 from adapters.mineflayer.t2_tick_accounting import TickAccounting
 from test_t1f_t2_dev import frame
 
@@ -41,7 +41,7 @@ def test_t1j_admitted_native_boundary_rebases_without_minting_gap_ticks():
     before = frame(10)
     native = S(session_id="test-session", seq=110, kind="probe",
                request_id="t1j-R01-reobserve", provenance=S(source="mineflayer"),
-               snapshot=S(food=20))
+               snapshot=S(food=20, health=20, position=S(**{k: before.data["snapshot"][k] for k in ("x", "y", "z")} )))
     after = frame(12)
     permit = gate.reobserve(
         before=before, native_probe=native, after=after,

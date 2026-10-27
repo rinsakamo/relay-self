@@ -58,7 +58,7 @@ def _paper(frame: Any, session_id: str, world: str, player: str, *,
             and type(s['input']) is int and s['input'] == 0
             and c['phase'] == 'CLEARED' and type(c['generation']) is int
             and int(d['challenge_sent_ns']) > int(c['since_ns'])
-            and int(d['age_upper_ns']) < 150_000_000
+            and 0 <= int(d['age_upper_ns']) < 150_000_000
             and 0 <= s['food'] <= 20 and s['health'] > 6
         )
     except (AttributeError, KeyError, ValueError, TypeError, OverflowError) as e:
@@ -93,6 +93,7 @@ class S49DevResumeGate:
         self.stopped_owner = stopped_owner
         self.frozen_ledger = frozen_ledger
         self.ack = ack
+        self.freeze_boot = s['boot']
         self.freeze_world_tick = s['world_tick']
         self.freeze_source_seq = ledger_frame.seq
         self.retired_action_ids = frozenset(retired_action_ids)
@@ -111,6 +112,7 @@ class S49DevResumeGate:
                 or session_id != self.ack.session_id
                 or _identifier(next_action_id, 'next_action_id') != f't1j-{resume_id}-move'
                 or next_action_id in self.retired_action_ids
+                or next_action_id + "-clear" in self.retired_action_ids
                 or next_action_id in {self.ack.active_action_id, self.ack.clear_action_id}):
             raise ResumeDevRejected('not newly bound explicit DEV reauthorization')
         self.requested = (resume_id, next_action_id)
@@ -142,11 +144,16 @@ class S49DevResumeGate:
                 or native_probe.request_id != expected_probe_request_id
                 or getattr(native_probe, 'provenance', None) is None
                 or native_probe.provenance.source != 'mineflayer'
+                or first['boot'] != self.freeze_boot
                 or first['boot'] != second['boot']
                 or second['world_tick'] <= first['world_tick']
                 or second['world_tick'] <= self.freeze_world_tick
                 or first['food'] != second['food']
                 or native_probe.snapshot.food != second['food']
+                or first['health'] != second['health']
+                or native_probe.snapshot.health != second['health']
+                or any(getattr(native_probe.snapshot.position, k) != second[k]
+                       for k in ('x', 'y', 'z'))
                 or any(first[k] != second[k] for k in ('x', 'y', 'z'))
                 or first['motion_blocks'] != second['motion_blocks']
                 or before.data['control']['generation'] != after.data['control']['generation']):

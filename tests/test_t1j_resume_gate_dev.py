@@ -1,8 +1,9 @@
 """T1j one-shot DEV resume, stale source, authority and replay negatives."""
 from types import SimpleNamespace as S
+
 import pytest
 
-from adapters.mineflayer.t1j_resume_gate_dev import S49DevResumeGate, ResumeDevRejected
+from adapters.mineflayer.t1j_resume_gate_dev import ResumeDevRejected, S49DevResumeGate
 
 
 def row(seq, tick, wt=None, food=20, *, status="ADMITTED", input=0,
@@ -37,7 +38,7 @@ def fixture(unresolved=False):
 def fresh():
     return (row(75, 90),
             S(session_id="s", seq=76, kind="probe", request_id="R",
-              provenance=S(source="mineflayer"), snapshot=S(food=20)),
+              provenance=S(source="mineflayer"), snapshot=S(food=20, health=20, position=S(x=0, y=0, z=0))),
             row(77, 92))
 
 
@@ -120,3 +121,41 @@ def test_native_probe_request_cannot_be_replayed():
     with pytest.raises(ResumeDevRejected):
         g.reobserve(before=before, native_probe=native, after=after,
                     expected_probe_request_id="foreign-request")
+
+@pytest.mark.parametrize('fault', ['native_position', 'native_health', 'old_boot', 'negative_age', 'missing_native', 'native_order', 'stale_age'])
+def test_reobservation_matches_frozen_boot_and_native_body(fault):
+    g, _, _ = fixture()
+    authorize(g)
+    before, native, after = fresh()
+    if fault == 'native_position':
+        native.snapshot.position.x = 1
+    elif fault == 'native_health':
+        native.snapshot.health = 19
+    elif fault == 'old_boot':
+        before.data['snapshot']['boot'] = after.data['snapshot']['boot'] = 'foreign'
+    elif fault == 'negative_age':
+        before.data['age_upper_ns'] = '-1'
+    elif fault == 'stale_age':
+        after.data['age_upper_ns'] = '150000000'
+    elif fault == 'native_order':
+        native.seq = before.seq
+    else:
+        native = None
+    with pytest.raises(ResumeDevRejected):
+        g.reobserve(before=before, native_probe=native, after=after,
+                    expected_probe_request_id='R')
+    assert g.permit is None and not g.consumed
+
+@pytest.mark.parametrize('fault', ['old_stop', 'foreign_session', 'duplicate', 'effect_collision'])
+def test_authorization_binding_and_effect_collision_issue_no_permit(fault):
+    g, _, _ = fixture()
+    if fault == 'duplicate':
+        authorize(g)
+    if fault == 'effect_collision':
+        g.retired_action_ids = frozenset({'t1j-R1-move-clear'})
+    with pytest.raises(ResumeDevRejected):
+        g.authorize(authority='DEV_EXPLICIT_OPERATOR_REAUTHORIZE', resume_id='R1',
+                    stop_id='OLD' if fault == 'old_stop' else 'STOP1',
+                    session_id='foreign' if fault == 'foreign_session' else 's',
+                    next_action_id='t1j-R1-move')
+    assert g.permit is None and not g.consumed

@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from adapters.mineflayer.t2_tick_accounting import TickAccounting
 from adapters.mineflayer.t1j_resume_gate_dev import ResumeDevPermit, ResumeDevRejected
+from adapters.mineflayer.t2_tick_accounting import TickAccounting
 
 
 def rebase_tick_accounting_dev(

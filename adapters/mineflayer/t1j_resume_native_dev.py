@@ -8,13 +8,17 @@ from __future__ import annotations
 
 from dataclasses import asdict
 
-from adapters.mineflayer.execution import MineflayerCommand, WorldConsequenceStatus, execute_mineflayer_command
+from adapters.mineflayer.execution import (
+    MineflayerCommand,
+    WorldConsequenceStatus,
+    execute_mineflayer_command,
+)
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _issue, _p
 from adapters.mineflayer.s31a_real_server_ci import _correlated_observe
 from adapters.mineflayer.t1f_continuation_dev import next_tick, settled
 from adapters.mineflayer.t1h_stop_owner_dev import S49DevStopOwner
 from adapters.mineflayer.t1j_resume_accounting_dev import rebase_tick_accounting_dev
-from adapters.mineflayer.t1j_resume_gate_dev import S49DevResumeGate, ResumeDevRejected
+from adapters.mineflayer.t1j_resume_gate_dev import ResumeDevRejected, S49DevResumeGate
 
 
 async def resume_one_move_dev(
@@ -28,10 +32,18 @@ async def resume_one_move_dev(
             or not getattr(old_ledger, "failed", False)
             or getattr(session, "consume_tick_accounting", True)):
         raise ResumeDevRejected("T1j old S49 action/source/accounting not closed")
-    prior = frozenset([
-        e["issued_action"]["action_id"]
-        for e in report.get("epochs", []) if "issued_action" in e
-    ] + ["t2-native-meal"])
+    def prior_ids(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if key in {"action_id", "clear_action_id"} and isinstance(item, str):
+                    yield item
+                else:
+                    yield from prior_ids(item)
+        elif isinstance(value, (list, tuple)):
+            for item in value:
+                yield from prior_ids(item)
+
+    prior = frozenset(prior_ids(report))
     gate = S49DevResumeGate(
         stopped_owner=old_owner, frozen_ledger=old_ledger,
         unresolved_eat=False, retired_action_ids=prior,
@@ -62,6 +74,8 @@ async def resume_one_move_dev(
         raise ResumeDevRejected("T1j no Paper tick after old DEV STOP window")
     probe_request = "t1j-R1-reobserve"
     native = await _correlated_observe(session, probe_request)
+    if type(getattr(native, "seq", None)) is not int:
+        raise ResumeDevRejected("T1j correlated native probe absent")
     after = await next_tick(session, after_seq=native.seq)
     permit = gate.reobserve(
         before=before, native_probe=native, after=after,
@@ -74,6 +88,13 @@ async def resume_one_move_dev(
     session.t1j_resume_permission = permit
     new_stop_owner = S49DevStopOwner(sid)
     session.t1j_new_stop_owner = new_stop_owner
+    report["t1j_old_ledger"] = {
+        "rows": list(old_ledger.rows),
+        "energy": asdict(old_ledger.energy.body),
+        "fatigue": asdict(old_ledger.fatigue),
+        "credit_ids": sorted(old_ledger.energy._credits),
+        "failed": old_ledger.failed,
+    }
     session.tick_owner = new_ledger
     session.consume_tick_accounting = True
     result = None
