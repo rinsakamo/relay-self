@@ -70,3 +70,26 @@ Important comparative result from a separate, already-verified follow-on branch:
 **Next DEV action:** explicitly control original S15 hold using producer-local Node physics tick observation, keep the original single SET/CLEAR owner and bounded cleanup, and independently check the actual resulting Node and Paper intervals. Observational matching cannot be presented as owner-enforced tick matching.
 
 DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN. No original production P1 state update, R WAIT qualification, physical L0 DASH grant, SCIENCE, main or Draft PR merge.
+
+## Independent second real-World repeat at the *same* exact test HEAD
+
+A separate registered workflow trigger also ran the **same** exact SHA `0d90873db025372d8ee249411256fe067554db27`; this is an independent second two-World draw, not a replay of artifact bytes. [GitHub Actions #40529004783](https://github.com/rinsakamo/relay-self/actions/runs/40529004783): **SUCCESS**, including the genuine negative-readback classification below. Both original S49 World pairs completed all native and source review stages.
+
+| Audited item | CARRY | WAIT_ASSUMED |
+| --- | ---: | ---: |
+| Original Node SET→CLEAR, ms | 602 | 601 |
+| Original Node active physicsTick callbacks | **11** | **12** |
+| Node active callbacks with visible DASH attribute | **8** | **6** |
+| Original Paper P1 gait callbacks | 13 | 13 |
+| Original Paper positive modifier callbacks | 7 | 7 |
+| First S16 distance difference from CARRY, m | baseline | +0.2831018145320452 |
+
+**Independent reviewer classification:** `P1_FIRST_ACTION_NODE_HOLD_MATCH_NOT_ESTABLISHED_DEV_ONLY`, not a false exact-match PASS. The measured elapsed durations differ by only 1 ms and both Paper clocks yielded 13 first Action gait callbacks, but Node active tick counts and visible DASH attribute tick counts differ. Near-equal 0.60-second durations are therefore insufficient to force equal native physics callback counts or aligned speed attribution.
+
+Evidence artifact `p1-node-hold-audit-pair-40529004783-1`, ID **12743884989**, SHA256 `153f6c510b57f87c4245eae2d7eb90535992fd9280c00e44542772c1d474d746`.
+
+Both runs are **DEV tool/job successes**, while their scientific/engineering *hypothesis outcomes differ*. The second is explicitly **not** a source failure and must be preserved. The registered prior seven-boost workflow branch filter has been restored to its old branch; only the new native-hold workflow watches this isolated development branch for future pushes.
+
+**Combined takeaway:** one independent pair had 601/601 ms, 12/12 Node active ticks, 8/8 DASH attribute-visible ticks; the next had 602/601 ms, 11/12 Node active ticks, 8/6 DASH-visible ticks. Both had 7/7 Paper positive ticks. Neither provides synchronized Node/Paper phase or owner-enforced native tick-count matching. Next native-physicsTick-controlled S15 hold is a new engineering stage, not an already satisfied qualification.
+
+DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.
