@@ -21,7 +21,10 @@ from adapters.mineflayer import normal_action as action_owner
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.b0_energy_bridge import DashM0InvoiceDev
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
-from adapters.mineflayer.s49_inter_action_stillness_dev import review_inter_action_stillness_dev
+from adapters.mineflayer.s49_inter_action_stillness_dev import (
+    review_inter_action_stillness_dev,
+    review_original_owner_no_issued_action_gap_dev,
+)
 from adapters.mineflayer.s49_m0_world_time_shadow_dev import (
     M0WorldRateDev,
     project_s49_world_time_m0_shadow_dev,
@@ -776,6 +779,7 @@ async def run(
                 dev_forward_motor=True, dev_sprint_motor=True,
                 dev_m0_dash_invoice=invoice_from_original_outcome if m0_live_dev else None,
                 dev_m0_action_move_step=m0_move_dev,
+                dev_inter_action_owner_gap=inter_action_stillness_dev,
             )
         original_bytes = json.loads(original_report.read_text(encoding="utf-8"))
         report["original_s49_rc"] = rc
@@ -949,6 +953,15 @@ async def run(
                             paper_log.read_text(encoding="utf-8"),
                             inter_action_path,
                             timeline=report["m0_two_action_worldtime_shadow_dev"],
+                            first_action_id=actions[0]["action"],
+                            second_action_id=actions[1]["action"],
+                            session_id=subject["session"],
+                        )
+                    )
+                    report["original_owner_inputoff_static_join_dev"] = (
+                        review_original_owner_no_issued_action_gap_dev(
+                            original_bytes["dev_inter_action_original_owner_gap"],
+                            report["inter_action_stillness_dev"],
                             first_action_id=actions[0]["action"],
                             second_action_id=actions[1]["action"],
                             session_id=subject["session"],
