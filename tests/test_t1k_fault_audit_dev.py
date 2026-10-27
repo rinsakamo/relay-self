@@ -31,7 +31,8 @@ def fixture(case):
         attempt.update(terminal={"state": "unknown"},
                        consequence={"status": "failed", "cleanup_receipt": None})
     report = {"session_id": "s", "status": "FAIL", "fault_injection": {"kind": case},
-              "resume_attempts_dev": [attempt], "dropped_clear_receipts": [clear] if drop else []}
+              "resume_attempts_dev": [attempt],
+              "dropped_clear_receipts": [{k: v for k, v in clear.items() if k != "type"}] if drop else []}
     return commands, native, report
 
 

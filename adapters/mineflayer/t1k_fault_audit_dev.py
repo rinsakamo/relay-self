@@ -35,8 +35,15 @@ def audit_fault_dev(case, commands, native, report):
         boundary = ("AFTER_SET_APPLIED_ACK" if applied else "AFTER_SEND_ACK_UNCONFIRMED") if observed else "UNDETERMINED"
         closed = observed and terminal == "unknown" and consequence.get("status") == "failed"
     else:
+        # Native wire objects carry `type`; parsed consumer dataclasses do
+        # not. Bind the same receipt identity/content, not wire-only fields.
+        dropped_matching = any(
+            all(x.get(k) == receipt.get(k) for k in (
+                "session_id", "seq", "action_id", "effect", "result", "error"))
+            for x in dropped for receipt in clear_receipts
+        )
         observed = bool(permitted and len(sends) == len(clears) == 1
-                        and clear_receipts and any(x in clear_receipts for x in dropped))
+                        and clear_receipts and dropped_matching)
         boundary = "CLEAR_APPLIED_ACK_DROPPED_AT_PYTHON" if observed else "UNDETERMINED"
         closed = (observed and terminal == "unknown" and consequence.get("status") == "failed"
                   and consequence.get("cleanup_receipt") is None)
