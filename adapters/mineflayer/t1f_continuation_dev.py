@@ -147,7 +147,8 @@ async def native_meal(session, server, supervisor, report, *, time_base, stop_ow
 
 async def run_continuation(session, server, report, root, *,
                            observe_only, accounting, normal_epochs=2,
-                           stop_owner=None, stop_mode=None, resume_mode=False):
+                           stop_owner=None, stop_mode=None, resume_mode=False,
+                           multi_resume_mode=False):
     from adapters.mineflayer.t1i_session_stop_dev import (
         finish_multi_epoch_move_stop,
         require_stop_permits_action,
@@ -155,7 +156,8 @@ async def run_continuation(session, server, report, root, *,
     from relay_self.action import ActionState
     if (stop_mode not in (None, "MOVE", "EAT")
             or (stop_mode and stop_owner is None)
-            or (resume_mode and (stop_mode != "MOVE" or not accounting))):
+            or (resume_mode and (stop_mode != "MOVE" or not accounting))
+            or (multi_resume_mode and not resume_mode)):
         raise ValueError("T1i/T1j STOP requires exact original S49 owner/accounting")
     supervisor = ActionSupervisor()
     report.update(action_source="PAPER_L0_DESIGNED_POLICY_EXISTING_S51_ISSUER_S49_EXECUTOR",
@@ -263,10 +265,29 @@ async def run_continuation(session, server, report, root, *,
                 }
                 if resume_mode:
                     from adapters.mineflayer.t1j_resume_native_dev import resume_one_move_dev
-                    report["t1j"] = await resume_one_move_dev(
-                        session, supervisor, stop_owner, report,
-                        time_base=(normal_epochs + 2) * 100 + 10,
-                    )
+                    if multi_resume_mode:
+                        report["t1k"] = {}
+                        first = await resume_one_move_dev(
+                            session, supervisor, stop_owner, report,
+                            time_base=(normal_epochs + 2) * 100 + 10,
+                            generation=1, stop_on_resumed_move=True,
+                        )
+                        report["t1k"]["first"] = first
+                        # The second grant is a separate explicit DEV operator
+                        # token, never derived from the prior STOP ACK.
+                        session.t1j_reauthorization = session.t1k_second_reauthorization
+                        session.t1k_second_reauthorization = None
+                        second = await resume_one_move_dev(
+                            session, supervisor, session.t1j_new_stop_owner, report,
+                            time_base=(normal_epochs + 3) * 100 + 10,
+                            generation=2,
+                        )
+                        report["t1k"]["second"] = second
+                    else:
+                        report["t1j"] = await resume_one_move_dev(
+                            session, supervisor, stop_owner, report,
+                            time_base=(normal_epochs + 2) * 100 + 10,
+                        )
                 report["status"] = "PASS"
                 break
             if result.cleanup_receipt is None:
