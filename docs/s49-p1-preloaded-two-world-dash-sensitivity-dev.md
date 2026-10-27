@@ -30,3 +30,62 @@ The experiment **can** identify a physical output sensitivity to explicitly prel
 - `.github/workflows/self-p1-dash-preloaded-pair-dev.yml`: Python 3.12 focused and Ruff before any World, Java 21 plugin, Node 22 source, pinned stable Paper 1.21.8 build 60, two fresh original S49 sessions in independent Worlds, an honest comparison and both raw artifacts.
 
 No main, protected Draft PR, QUAL or SCI changes. Exact tested commit/run/results will be appended *after* real DEV validation.
+
+## Real two-World result — 2026-10-27
+
+**Exact tested code HEAD**: `4979de71aaf5310458c46413b2e195486a0c82b9`.
+GitHub Actions [#40479045528](https://github.com/rinsakamo/relay-self/actions/runs/40479045528) **SUCCESS**.
+Python 3.12 focused **134 PASS**, Ruff PASS, Node 22 **3 PASS**,
+Java 21 **BUILD SUCCESS**. Two independent, genuine disposable
+Paper 1.21.8 Worlds; each original S49 had two native S16 OUTCOMEs,
+Java/Node exits 0, original issuer intact.
+
+| Observed measure | CARRY model preload | WAIT_ASSUMED model preload |
+| --- | ---: | ---: |
+| P1 hypothetical initial F | 0.6177122410202606 | 0.21616083122103735 |
+| Paper first actual applied DASH power | 0.7668612208455023 | 1.0 |
+| Paper mean actual applied DASH power | 0.7507923508241346 | 1.0 |
+| Paper sampled peak velocity m/s | 5.608397378309609 | 5.608397378309604 |
+| Paper sampled mean velocity (boosted ticks) m/s | 5.277740208003646 | 5.27774020800364 |
+| First original S49 S16 displacement m | 3.0301571644943626 | 3.0301571644943603 |
+| Second, unboosted original S49 displacement m | 3.030157164494363 | 3.030157164494362 |
+| Paper forward boost tick samples | 11 | 11 |
+| P1 model after first action F | 0.6339858478899532 | 0.24684025162550322 |
+| Original S49 DEV M0 remaining | 10.417412841409345 | 10.39 |
+
+The two World sessions/UUIDs differ. Starting native y=-60,
+health=20, food=20, and zombie distance=2.0 were matched. The
+Paper first power difference is **0.23313877915449766**, but measured
+native distance difference is **-2.220446049250313e-15 m** and mean
+sampled Paper-speed difference **-6.217248937900877e-15 m/s**.
+Under these conditions the **physical output separation is
+NOT_ESTABLISHED**. Both cases had Paper's modifier applied for
+11 World tick samples and original S49 S15/S16 source evidence PASS.
+
+Neither condition passed the *preexisting* separate "DASH produces
+native speed gain" threshold; the outer DEV paired-run audit explicitly
+retained that genuine negative as
+`DEV_PAIR_PAPER_OUTPUT_REAL_WORLD_NO_NATIVE_GAIN`, rather than
+suppressing it or asserting physical gain. The ordinary/non-pair
+speed-gain gate remains unchanged.
+
+**Interpretation:** a real server-side Paper speed attribute change
+and model-dependent applied power were verified. That alone does not
+demonstrate a corresponding causal change in Mineflayer movement;
+possible client-control physics, attribute propagation, and
+measurement/tick alignment mechanisms need *new targeted tests*.
+It is not evidence that physical P1 recovered or failed to recover.
+L0 physical DASH permission is still `null`; R WAIT=0; no new
+native reader/Action; QUAL/SCI not run.
+
+Artifact `p1-preloaded-world-pair-40479045528-1`,
+ID **12722116467**, digest
+`sha256:baa6850a74320762efc4c0b1ca0df998d6354940dac2ceb2a19e2f080abe9f28`.
+
+Prior failure evidence is preserved: #40478547015 stopped before World
+on Ruff import organization; #40478651235 ran one genuine CARRY
+World with S49 S16 PASS and Paper power 0.766861→0.735079 but
+no actual native speed gain, then stopped at the *ordinary* speed-gain
+gate before second World. The DEV paired negative-response audit was
+subsequently implemented and **both fresh Worlds rerun** successfully
+in #40479045528. Neither prior failure was reclassified as PASS.
