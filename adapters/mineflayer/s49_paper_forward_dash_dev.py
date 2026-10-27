@@ -40,11 +40,11 @@ from adapters.mineflayer.s49_node_physics_postclear_dev import (
 from adapters.mineflayer.s49_p1_dev_wait_observed import (
     replay_p1_observed_static_wait_dev,
 )
-from adapters.mineflayer.s49_p1_selfbody_epoch_shadow_dev import (
-    project_p1_static_next_body_epoch_dev,
-)
 from adapters.mineflayer.s49_p1_fenced_recovery_shadow_dev import (
     project_p1_fenced_wait_shadow_dev,
+)
+from adapters.mineflayer.s49_p1_selfbody_epoch_shadow_dev import (
+    project_p1_static_next_body_epoch_dev,
 )
 from adapters.mineflayer.s49_paper_world_first_dev import (
     _await_dash_dev_line,
