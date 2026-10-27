@@ -134,7 +134,6 @@ def compare_attr_pair_dev(off: dict, on: dict) -> dict:
         or on.get("paper_boosted_ticks", 0) < 3
     ):
         raise AttributePairRejected("cannot isolate same-F speed projection DEV arms")
-    off_boundary = off["first_node_boundary"]
     on_boundary = on["first_node_boundary"]
     projected_in_client = on_boundary["node_active_physics_key_dash_seen_count"] > 0
     native_delta = _number(on["first_native_distance_m"]) - _number(
