@@ -31,6 +31,9 @@ def review_original_owner_causal_paper_fence_dev(
         or owner.get("session_id") != session_id
         or owner.get("original_owner_no_new_issue_between_bookends") is not True
         or owner.get("open_actions_at_bookends") != [0, 0, 0]
+        or owner.get("first_terminal_count") != 1
+        or owner.get("at_next_action_request_count") != 1
+        or owner.get("after_second_terminal_count") != 2
         or owner.get("physical_WAIT_admitted") is not False
         or owner.get("node_all_inputs_off_at_local_callbacks") is not True
         or owner.get("bounded_source_local_duration_consistency") is not True
