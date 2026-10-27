@@ -41,6 +41,14 @@ a separate fresh `t1n_emit_timing.jsonl`. T1m's
 residual diagnostic write/return duration to be bounded in the same
 Node clock, where the next T1m challenge record is available.
 
+The post-evaluation boundary is explicitly split as
+`node_complete_ns → entry_ns` (pre-emit entry delay),
+`entry_ns → stdout_write_return_ns` (measured canonical native work),
+and `stdout_write_return_ns → previous_emit_return_ns` (CPU accounting,
+T1n sidecar write and other residual, only when T1m next-issue
+metadata exists). `process.stdout.write()` returning false is reported as
+backpressure, **not** native receipt or server ACK.
+
 All of these wall times MAY include Node GC or OS scheduling stalls
 inside a call. `writeSync` duration does not by itself prove disk
 latency; `stdout.write` return is NOT a Python receipt, flushing
