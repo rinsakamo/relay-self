@@ -3,6 +3,7 @@ import { createRequire } from 'node:module'
 import { lstatSync, openSync, writeSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import readline from 'node:readline'
+import { monitorEventLoopDelay } from 'node:perf_hooks'
 
 import {
   attachHealthSynchronizedSpawnListeners,
@@ -144,11 +145,28 @@ emit('adapter_started', {
 const t1fOptIn = process.env.RELAYSELF_T1F_DEV
 if (t1fOptIn !== undefined && !['0', '1'].includes(t1fOptIn)) throw Error('invalid T1f opt-in')
 if (t1fOptIn === '1' && paperTickOptIn !== '1') throw Error('T1f needs Paper tick opt-in')
+// T1m DEV only: separate wx sidecar. Never emits additional source envelopes.
+const t1mTracePath = process.env.RELAYSELF_T1M_TRACE_DEV
+if (t1mTracePath && (t1fOptIn !== '1' || !isAbsolute(t1mTracePath))) {
+  throw Error('T1m requires existing T1f DEV and fresh absolute sidecar path')
+}
+const t1mTraceFd = t1mTracePath ? openSync(t1mTracePath, 'wx', 0o600) : null
+const t1mEventLoopDelay = t1mTraceFd === null ? null : monitorEventLoopDelay({ resolution: 10 })
+if (t1mEventLoopDelay) t1mEventLoopDelay.enable()
+const t1mDiagnostic = t1mTraceFd === null ? null : event => {
+  // histogram samples reflect a monitoring WINDOW, not this exact packet.
+  const eventLoopDelayMaxNs = t1mEventLoopDelay.max
+  writeSync(t1mTraceFd, JSON.stringify({
+    ...event, event_loop_delay_window_max_ns: eventLoopDelayMaxNs,
+    monitoring_interval_exact: false, source_qualification: false
+  }) + '\n')
+  if (event.kind === 'snapshot_callback') t1mEventLoopDelay.reset()
+}
 let t1fAdmission = null
 let t1fControl = { phase: "INITIAL", since_ns: "0", generation: 0 }
 const bot = mineflayer.createBot(options)
 if (process.env.RELAYSELF_T1F_DEV === '1' && paperTickOptIn === '1') {
-  t1fAdmission = attachPaperSnapshotChannel(bot, emit, emitAdapterError, () => process.hrtime.bigint(), () => ({ ...t1fControl }))
+  t1fAdmission = attachPaperSnapshotChannel(bot, emit, emitAdapterError, () => process.hrtime.bigint(), () => ({ ...t1fControl }), t1mDiagnostic)
 } else if (paperTickOptIn === '1') {
   const deadline = new PaperTickDeadlineGuard()
   attachPaperTickChannel(
