@@ -658,6 +658,22 @@ async def run_case(args, case):
         if not report["cleanup_complete"]:
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
+        if case == "t1l_source_soak":
+            # T1o A/B: an OFF World must have NO Node trace file;
+            # an ON World must have the same original native envelopes.
+            from adapters.mineflayer.t1o_trace_policy_dev import audit_trace_pair
+            native_for_trace = [json.loads(line) for line in
+                                (root / "native.jsonl").read_text().splitlines()]
+            trace_file = root / "node_timing.jsonl"
+            timing_for_trace = ([json.loads(line) for line in trace_file.read_text().splitlines()]
+                                if trace_file.is_file() else [])
+            report["t1o_node_trace"] = audit_trace_pair(
+                native_for_trace, timing_for_trace,
+                enabled=report.get("node_trace_enabled", False),
+                trace_exists=trace_file.is_file(),
+            )
+            if not report["t1o_node_trace"]["valid"]:
+                report["status"] = "FAIL"
         if case in ("t1l_source_soak", "t1m_source_soak", "t1n_source_soak"):
             from adapters.mineflayer.t1l_source_diagnostic_dev import analyze_paper_records
             original_native = ([json.loads(line) for line in
