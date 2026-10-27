@@ -39,11 +39,15 @@ async def resume_one_move_dev(
     sid = session.started.session_id
     resume_id = "T1J-R1"
     next_action_id = f"t1j-{resume_id}-move"
+    # This authorization MUST come from a separate explicit DEV CLI opt-in.
+    # Merely selecting a STOP test case never authorizes a new physical action.
+    authority = getattr(session, "t1j_reauthorization", None)
     gate.authorize(
-        authority="DEV_EXPLICIT_OPERATOR_REAUTHORIZE",
+        authority=authority,
         resume_id=resume_id, stop_id=old_owner.stop_id,
         session_id=sid, next_action_id=next_action_id,
     )
+    session.t1j_reauthorization = None  # one authorization per stop, consumed
     # The old STOP owner is STILL latched throughout the entire reobservation.
     # The sole original receive owner consumes prior queued Paper ticks.
     lower_bound = max(old_owner.ack.clear_ack_seq, old_ledger.previous.seq)
