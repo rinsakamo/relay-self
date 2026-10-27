@@ -39,3 +39,34 @@ Workflow: `.github/workflows/self-p1-native-hold-pair-dev.yml` on branch `self/d
 Pinned Python 3.12 / Node 22 / Java 21, original Mineflayer 4.39.0, Paper 1.21.8 build 60 with exact hash, and two disposable Worlds. Prior 7-Paper-boost reviewer and new native hold reviewer run sequentially. Both outcome reports and raw traces are stored as a GitHub Actions artifact even on failure.
 
 This is a new measurement of an unresolved confound. Do not modify main or Draft #545/#634. Preserve unsuccessful attempts and their raw evidence. Do not report real-World PASS before verifying the exact workflow execution and sources.
+
+## Exact two-real-World result (2026-10-28 JST)
+
+World-tested code HEAD: `0d90873db025372d8ee249411256fe067554db27`.
+[GitHub Actions #40529005012](https://github.com/rinsakamo/relay-self/actions/runs/40529005012): **SUCCESS** on the full original two-World DEV job, including new independent read-only original Node hold review.
+
+- Python 3.12 focused **239 PASS** (72 + 72 + 72 + 23 reported, no failures); Ruff **All checks passed**; Node 22 **3 PASS**; Java 21 **BUILD SUCCESS**.
+- Both independent Worlds completed the original S49 **two S15/S16 native Actions**, original cleanup, source-replayed Paper P1 and source-bound DEV M0 ownership; no additional native readers or issuers.
+- Exactly seven positive Paper modifier callbacks and 13 full Paper gait callbacks per first original Action.
+- Both original first Action Node-local SET→CLEAR elapsed windows measured **601 ms**.
+- Both Node first Action traces contained **12 active physicsTicks**. The physical speed attribute was visibly DASH-positive in **8 Node active physicsTick callbacks per World**. The latter is source-visible attribute state, not proof of a synchronized Paper physics effect.
+- Original first S16 displacement delta, WAIT_ASSUMED minus CARRY: **+0.2601302369458587 m**.
+- Cross-process Paper/Node effect phase, exact original native control duration in Paper World ticks, true same-Self recovery, and physiological P1 causality remain unverified.
+- **Classification:** `P1_FIRST_ACTION_OBSERVED_NODE_HOLD_AND_TICKS_MATCH_DEV_ONLY`.
+
+| Audited item | CARRY | WAIT_ASSUMED |
+| --- | ---: | ---: |
+| Original Node SET→CLEAR, ms | 601 | 601 |
+| Original Node active physicsTick callbacks | 12 | 12 |
+| Node active callbacks with visible DASH attribute | 8 | 8 |
+| Original Paper P1 gait callbacks | 13 | 13 |
+| Original Paper positive bonus callbacks | 7 | 7 |
+| Original first S16 distance difference from CARRY, m | baseline | +0.2601302369458587 |
+
+Evidence artifact: `p1-node-hold-audit-pair-40529005012-1`, artifact ID **12744884048**, uploaded SHA256 `11ff9a557bb5517f3b59d2b1c4a0db5dabcde88b12302931796de80d6532d440`.
+
+Important comparative result from a separate, already-verified follow-on branch: [Paper producer index-15 owner-held run #40511721549](https://github.com/rinsakamo/relay-self/actions/runs/40511721549) matched the original S15 Paper hold target but recorded **16 versus 15 Node active physicsTicks** and a **negative −0.07868426623641867 m** whole-S16 distance delta. This is evidence against treating either individual positive motor delta as a robust isolated fatigue effect.
+
+**Next DEV action:** explicitly control original S15 hold using producer-local Node physics tick observation, keep the original single SET/CLEAR owner and bounded cleanup, and independently check the actual resulting Node and Paper intervals. Observational matching cannot be presented as owner-enforced tick matching.
+
+DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN. No original production P1 state update, R WAIT qualification, physical L0 DASH grant, SCIENCE, main or Draft PR merge.
