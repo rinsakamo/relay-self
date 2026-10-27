@@ -53,7 +53,8 @@ TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop", "t2_disconnect_move",
               "t1h_disconnect", "t1h_paper_short", "t1h_input_residual",
               "t1h_motion_residual", "t1h_stale_ack", "t1h_double_ack",
               "t1h_disconnect_after_idle", "t1i_stop_loop", "t1i_stop_eat",
-              "t1j_resume_move")
+              "t1j_resume_move", "t1k_stop_resume_twice",
+              "t1k_fault_before_send", "t1k_fault_set_ack", "t1k_fault_clear_ack")
 
 
 def write(path, value):
@@ -130,7 +131,7 @@ def measure(root, report):
 
 
 async def run_case(args, case):
-    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_"))
+    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_"))
     root = args.output / case
     root.mkdir()
     world = root / "server"
@@ -280,7 +281,9 @@ async def run_case(args, case):
                     if isinstance(message, MineflayerEffectResult) and message.effect == "clear_controls":
                         self.previous_clear = message
                         report["clear_ack_received_python_ns"] = now
-                        if case in ("lost_ack", "t2_lost_ack", "t1h_lost_ack"):
+                        if (case in ("lost_ack", "t2_lost_ack", "t1h_lost_ack")
+                                or (case == "t1k_fault_clear_ack"
+                                    and message.action_id.startswith("t1j-"))):
                             report["ack_fault"] = "DROP_AT_PYTHON_CONSUMER_ORIGINAL_RAW_RETAINED"
                             continue
                         if case in ("t2_delayed_ack", "t1h_delayed_ack") and "ack_fault" not in report:
@@ -304,11 +307,14 @@ async def run_case(args, case):
                 nonlocal fixture
                 resume_grant = getattr(self, "t1j_resume_permission", None)
                 fresh_owner = getattr(self, "t1j_new_stop_owner", None)
+                prior_sends = getattr(self, "t1k_resume_sent_ids", None)
+                if prior_sends is None:
+                    prior_sends = self.t1k_resume_sent_ids = set()
                 authorized_resume_send = (
-                    case == "t1j_resume_move" and resume_grant is not None
+                    case.startswith(("t1j_", "t1k_")) and resume_grant is not None
                     and fresh_owner is not None and fresh_owner.allows_action
                     and a and a[0] == resume_grant.next_action_id
-                    and not getattr(self, "t1j_resume_effect_started", False)
+                    and a[0] not in prior_sends
                 )
                 if (self.source_lost or (self.tick_owner and self.tick_owner.failed)
                         or (getattr(self, "t1h_stop_owner", None) is not None
@@ -320,10 +326,12 @@ async def run_case(args, case):
                 if authorized_resume_send:
                     # Exactly one physical writer/Action ID after one consumed
                     # explicit reauthorization; never re-send on ACK loss.
-                    self.t1j_resume_effect_started = True
+                    prior_sends.add(a[0])
                 report["dispatch_python_ns"] = time.monotonic_ns()
                 await super().send_set_control(*a, **kw)
-                if case in ("t1i_stop_loop", "t1j_resume_move") and (
+                if case in ("t1i_stop_loop", "t1j_resume_move",
+                             "t1k_stop_resume_twice", "t1k_fault_before_send",
+                             "t1k_fault_set_ack", "t1k_fault_clear_ack") and (
                     getattr(self, "t1i_stop_arm_action_id", None) == a[0]
                 ):
                     async def t1i_stop_move():
@@ -333,6 +341,25 @@ async def run_case(args, case):
                             expected_clear_action_id=a[0] + "-clear",
                         )
                     fixture = asyncio.create_task(t1i_stop_move())
+                elif case == "t1k_stop_resume_twice" and (
+                    getattr(self, "t1k_interrupt_action_id", None) == a[0]
+                ):
+                    async def t1k_second_stop():
+                        await asyncio.sleep(.08)
+                        self.t1j_new_stop_owner.request(
+                            "t1k-second-stop", active_action_id=a[0],
+                            expected_clear_action_id=a[0] + "-clear",
+                        )
+                        # Freeze new ledger but retain native receive custody.
+                        self.consume_tick_accounting = False
+                        self.tick_owner.failed = True
+                        report["t1k_second_stop_requested"] = True
+                    fixture = asyncio.create_task(t1k_second_stop())
+                elif case == "t1k_fault_set_ack" and authorized_resume_send:
+                    async def disconnect_after_resume_set():
+                        await asyncio.sleep(.08)
+                        await self.inject_disconnect("T1K_AFTER_RESUME_SET_SEND")
+                    fixture = asyncio.create_task(disconnect_after_resume_set())
                 elif case.startswith("t1h_"):
                     # Host owner requests STOP; only original S49 writes Motor.
                     async def request_owner_stop():
@@ -344,7 +371,7 @@ async def run_case(args, case):
                             expected_clear_action_id=self.t1h_active_action_id + "-clear",
                         )
                     fixture = asyncio.create_task(request_owner_stop())
-                elif not case.startswith(("t1i_", "t1j_")) and case != "normal":
+                elif not case.startswith(("t1i_", "t1j_", "t1k_")) and case != "normal":
                     fixture = asyncio.create_task(stage())
 
             async def send_equip_item(self, *a, **kw):
@@ -413,26 +440,44 @@ async def run_case(args, case):
             return report
         if t1f:
             from adapters.mineflayer.t1f_continuation_dev import run_continuation
-            stop_mode = ("MOVE" if case in ("t1i_stop_loop", "t1j_resume_move") else
+            stop_mode = ("MOVE" if case in (
+                             "t1i_stop_loop", "t1j_resume_move",
+                             "t1k_stop_resume_twice", "t1k_fault_before_send",
+                             "t1k_fault_set_ack", "t1k_fault_clear_ack",
+                         ) else
                          "EAT" if case == "t1i_stop_eat" else None)
             stop_owner = None
             if stop_mode:
                 from adapters.mineflayer.t1h_stop_owner_dev import S49DevStopOwner
                 stop_owner = S49DevStopOwner(session.started.session_id)
                 session.t1i_stop_owner = stop_owner
-            if case == "t1j_resume_move":
+            if case.startswith(("t1j_", "t1k_")):
                 session.t1j_reauthorization = (
                     "DEV_EXPLICIT_OPERATOR_REAUTHORIZE"
                     if args.t1j_reauthorize == "T1J-DEV-EXPLICIT-REAUTHORIZE-ONCE"
                     else None
                 )
+            if case.startswith("t1k_"):
+                session.t1k_second_reauthorization = (
+                    "DEV_EXPLICIT_OPERATOR_REAUTHORIZE"
+                    if args.t1k_second_reauthorize
+                    == "T1K-DEV-EXPLICIT-SECOND-REAUTHORIZE-ONCE"
+                    else None
+                )
+                session.t1k_server = server
+                session.t1k_paper_log = root / "paper.log"
+                session.t1k_fault = (
+                    "BEFORE_RESUME_SEND"
+                    if case == "t1k_fault_before_send" else None
+                )
             await run_continuation(
                 session, server, report, root,
                 observe_only=case == "t1f_observe",
-                accounting=case.startswith(("t2_", "t1i_", "t1j_")),
+                accounting=case.startswith(("t2_", "t1i_", "t1j_", "t1k_")),
                 normal_epochs=args.loop_moves,
                 stop_owner=stop_owner, stop_mode=stop_mode,
-                resume_mode=(case == "t1j_resume_move"),
+                resume_mode=case.startswith(("t1j_", "t1k_")),
+                multi_resume_mode=(case == "t1k_stop_resume_twice"),
             )
             return report
         supervisor = ActionSupervisor()
@@ -630,15 +675,25 @@ async def main():
     parser.add_argument("--t1j-reauthorize", choices=[
         "T1J-DEV-EXPLICIT-REAUTHORIZE-ONCE",
     ], help="Separate explicit operator grant for exactly one post-STOP T1j MOVE")
+    parser.add_argument("--t1k-second-reauthorize", choices=[
+        "T1K-DEV-EXPLICIT-SECOND-REAUTHORIZE-ONCE",
+    ], help="Separate additional permit for a second STOP/Resume generation")
     parser.add_argument("--eat-stop-stage", default="consume_wait", choices=(
         "before_equip", "after_equip", "consume_send", "consume_wait", "after_receipt", "after_observe"))
     parser.add_argument("--cases", nargs="+", choices=CASES + TICK_CASES, default=list(CASES))
     args = parser.parse_args()
     if not args.output.is_absolute() or args.output.exists() or os.environ.get("NODE_OPTIONS"):
         parser.error("fresh absolute output and no Node shim required")
-    if (("t1j_resume_move" in args.cases) !=
+    resume_cases = [c for c in args.cases if c.startswith(("t1j_", "t1k_"))]
+    if (bool(resume_cases) !=
             (args.t1j_reauthorize == "T1J-DEV-EXPLICIT-REAUTHORIZE-ONCE")):
-        parser.error("T1j reauthorization must be separately opted in exactly for T1j")
+        parser.error("T1j/T1k first reauthorization requires separate opt-in")
+    if ((("t1k_stop_resume_twice" in args.cases) !=
+         (args.t1k_second_reauthorize
+          == "T1K-DEV-EXPLICIT-SECOND-REAUTHORIZE-ONCE"))):
+        parser.error("T1k second-generation authorization must be explicit")
+    if len(resume_cases) != len(set(resume_cases)) or len(resume_cases) > 1:
+        parser.error("One bounded resume case per DEV invocation")
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 25565))
     args.output.mkdir()
