@@ -55,7 +55,7 @@ TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop", "t2_disconnect_move",
               "t1h_disconnect_after_idle", "t1i_stop_loop", "t1i_stop_eat",
               "t1j_resume_move", "t1k_stop_resume_twice",
               "t1k_fault_before_send", "t1k_fault_set_ack", "t1k_fault_clear_ack",
-              "t1l_source_soak")
+              "t1l_source_soak", "t1m_source_soak")
 
 
 def write(path, value):
@@ -132,7 +132,7 @@ def measure(root, report):
 
 
 async def run_case(args, case):
-    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_", "t1l_"))
+    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_", "t1l_", "t1m_"))
     root = args.output / case
     root.mkdir()
     world = root / "server"
@@ -153,6 +153,8 @@ async def run_case(args, case):
         "adaptive-tick-observer-dev: false", "adaptive-tick-observer-dev: true")
     if t1f:
         config = config.replace("t1f-snapshot-dev: false", "t1f-snapshot-dev: true")
+    if case == "t1m_source_soak":
+        config = config.replace("t1m-timing-dev: false", "t1m-timing-dev: true")
     (plugins / "config.yml").write_text(config)
     log = root / "paper.log"
     report = {"case": case, "status": "INCOMPLETE", "mode": "DEV_ONLY",
@@ -431,6 +433,10 @@ async def run_case(args, case):
             report["motor_fault"] = "DEV_CLEAR_NOOP_STUCK_SNEAK_FALSE_APPLIED_ACK"
         os.environ["RELAYSELF_PAPER_TICK_DEV"] = "1"
         os.environ["RELAYSELF_PAPER_TICK_TRACE_DEV"] = str(root / "node_timing.jsonl")
+        if case == "t1m_source_soak":
+            os.environ["RELAYSELF_T1M_TRACE_DEV"] = str(root / "t1m_node_timing.jsonl")
+        else:
+            os.environ.pop("RELAYSELF_T1M_TRACE_DEV", None)
         if t1f:
             os.environ["RELAYSELF_T1F_DEV"] = "1"
         else:
@@ -443,7 +449,7 @@ async def run_case(args, case):
         report["node_starttime"] = Path(f"/proc/{session._process.pid}/stat").read_text().split()[21]
         report["session_id"] = session.started.session_id
         await _await_spawn(session)
-        if case == "t1l_source_soak":
+        if case in ("t1l_source_soak", "t1m_source_soak"):
             # Start the sole source/ledger owner immediately: no legacy MOVE
             # fixture teleport, 0.8s sleep or barrier may discard startup ticks.
             from adapters.mineflayer.t1l_source_soak_dev import run_source_soak
@@ -626,7 +632,7 @@ async def run_case(args, case):
         if not report["cleanup_complete"]:
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
-        if case == "t1l_source_soak":
+        if case in ("t1l_source_soak", "t1m_source_soak"):
             from adapters.mineflayer.t1l_source_diagnostic_dev import analyze_paper_records
             original_native = ([json.loads(line) for line in
                                 (root / "native.jsonl").read_text().splitlines()]
@@ -648,6 +654,19 @@ async def run_case(args, case):
                     or report["metrics"]["set_control_sends"] != 0
                     or report["metrics"]["clear_control_sends"] != 0
                     or not report["cleanup_complete"]):
+                report["status"] = "FAIL"
+        if case == "t1m_source_soak":
+            from adapters.mineflayer.t1m_timing_join_dev import analyze_t1m_timing
+            original_native = [json.loads(line) for line in
+                               (root / "native.jsonl").read_text().splitlines()]
+            sidecar = [json.loads(line) for line in
+                       (root / "t1m_node_timing.jsonl").read_text().splitlines()]
+            report["t1m_timing"] = analyze_t1m_timing(
+                (root / "paper.log").read_text().splitlines(),
+                sidecar, original_native,
+            )
+            if (not report["t1m_timing"]["matched_positive_jvm_samples"]
+                    or report["t1m_timing"]["source_integrity_violations"]):
                 report["status"] = "FAIL"
         if case.startswith("t1k_fault_"):
             from adapters.mineflayer.t1k_fault_audit_dev import audit_fault_dev
