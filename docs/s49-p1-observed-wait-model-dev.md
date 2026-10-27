@@ -38,3 +38,44 @@ or independent R/SCI claims.
 The earlier real reference is run #40440197581, with 175 static Paper ticks,
 but the new code must pass its own fresh World run before claiming
 `DEV_WORLD_OBSERVED` for this step.
+
+## Real disposable Minecraft result — source-exact
+
+- **Workflow:** [#40446269000 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/40446269000)
+- **Tested code HEAD:** `c63c3688c593fe2a0f978b10bf2c8a22c49974a8`
+- Python 3.12 focused tests and Ruff passed; Node 22 tests and Java 21
+  plugin `BUILD SUCCESS`; original S49 Java/Node cleanup and two native
+  S16 OUTCOMEs passed.
+- Original S49 Actions: `s49-native-move-18` and `s49-native-move-56`.
+  Paper START delivery tick 258; END delivery tick 443. Newly captured
+  conservative **static Paper ticks 263–438 inclusive: 176/176**,
+  each re-screened from its native log line and predecessor.
+  Maximum Paper XZ per-tick delta in accepted candidate: `0.0m`.
+- Original Node all-control-OFF callbacks: 188 physicsTick samples.
+  Original host owner 9240.290249ms unissued interval; Node 9360ms
+  local input-OFF sample duration, differing by about -119.71ms.
+  Clocks are NOT synchronized or converted between these sources.
+- Original first DASH P1 finished tick 255 at model fatigue
+  `0.6177122410202606`; intervening 7 ticks before tick 263 remain
+  unclassified. A held-state assumption remains explicit.
+- DEV copy-only P1 gait replay: 176 assumed WAIT ticks / 8.8 normalized
+  World-seconds. `p1_dev_model_before=0.6177122410202606`,
+  `p1_dev_model_after=0.2148677493585419`,
+  `p1_dev_model_recovered=0.40284449166171865`.
+  This matches the independent earlier aggregate shadow computation.
+- Exact row-evidence SHA256:
+  `69e1133518d07c603d51d3e3b83ef1dda38e8cc902c44ccbf7a4ca498b65d039`.
+  This fingerprint detects changes to the reviewed raw row bytes; it
+  does not constitute independent source authentication.
+- Real original M0 end balance: `10.413667611509306`, no new
+  per-World-tick M0 posting. `live_p1_owner_state_modified=false`,
+  `r_qualified_wait_ticks=0`, `r_qualified_p1_recovery=0`,
+  `actual_physical_recovery_attested=false`,
+  `source_bound_tick_created=false`. No R qualification/SCI/FULL.
+
+**Final:** `DEV_WORLD_OBSERVED` for the tick-local single-P1 *model*
+replay; `DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN` for
+physical WAIT, state posting, independent custody and causal science.
+The next engineering goal is a bounded, source-preserving DEV sidecar
+handoff to SelfBody or next action preflight, without pretending this
+model recovery is an R-qualified physical observation.
