@@ -597,6 +597,61 @@ async def run_case(args, case):
         if not report["cleanup_complete"]:
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
+        if case.startswith("t1k_fault_"):
+            cmds = [json.loads(line) for line in
+                    (root / "commands.jsonl").read_text().splitlines()]
+            resume_sends = [
+                x for x in cmds if x.get("effect") == "set_control"
+                and x.get("action_id", "").startswith("t1j-")
+            ]
+            effect_ids = [x["action_id"] for x in cmds if x.get("type") == "effect"]
+            report["t1k_fault_audit"] = {
+                "fault_case": case,
+                "expected_refusal_not_normal_shutdown_pass": True,
+                "resume_motor_sends": len(resume_sends),
+                "effect_id_duplicates": len(effect_ids) - len(set(effect_ids)),
+                "no_resume_action_reissued": len(resume_sends) <= 1,
+                "raw_cleanup_separate": report["cleanup_complete"],
+                "classification": "T1K_FAULT_INJECTED_DEV_NOT_NORMAL_PASS",
+            }
+            if (len(resume_sends) > 1
+                    or len(effect_ids) != len(set(effect_ids))
+                    or (case == "t1k_fault_before_send" and resume_sends)):
+                report["t1k_fault_audit"]["safety_violation"] = True
+        if case == "t1k_stop_resume_twice":
+            details = report.get("t1k", {})
+            first, second = details.get("first", {}), details.get("second", {})
+            cmds = [json.loads(line) for line in
+                    (root / "commands.jsonl").read_text().splitlines()]
+            effect_ids = [x["action_id"] for x in cmds if x.get("type") == "effect"]
+            move_ids = [x["action_id"] for x in cmds if x.get("effect") == "set_control"]
+            clear_ids = [x["action_id"] for x in cmds if x.get("effect") == "clear_controls"]
+            details["generation_audit"] = {
+                "first_resume": first.get("new_action", {}).get("action_id"),
+                "second_resume": second.get("new_action", {}).get("action_id"),
+                "distinct_resume_ids": (first.get("permit", {}).get("resume_id")
+                                        != second.get("permit", {}).get("resume_id")),
+                "original_stop_latched": first.get("old_owner_still_latched"),
+                "intermediate_stop_latched": second.get("old_owner_still_latched"),
+                "each_resume_motor_once": all(move_ids.count(x) == 1 for x in (
+                    first.get("new_action", {}).get("action_id"),
+                    second.get("new_action", {}).get("action_id"))),
+                "all_effect_ids_unique": len(effect_ids) == len(set(effect_ids)),
+                "motor_sends": len(move_ids), "clear_sends": len(clear_ids),
+            }
+            if (not first.get("stop_ack_dev")
+                    or first.get("consequence", {}).get("status") != "failed"
+                    or first.get("terminal", {}).get("state") != "unknown"
+                    or second.get("consequence", {}).get("status") != "executed"
+                    or second.get("terminal", {}).get("state") != "outcome"
+                    or not all(details["generation_audit"][x] for x in (
+                        "distinct_resume_ids", "original_stop_latched",
+                        "intermediate_stop_latched", "each_resume_motor_once",
+                        "all_effect_ids_unique"))
+                    or len(move_ids) != args.loop_moves + 3
+                    or len(clear_ids) != args.loop_moves + 3
+                    or not report["cleanup_complete"]):
+                report["status"] = "FAIL"
         if case == "t1j_resume_move":
             detail = report.get("t1j", {})
             cmds = [json.loads(line) for line in
