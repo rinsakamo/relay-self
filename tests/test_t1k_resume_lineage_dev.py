@@ -1,5 +1,6 @@
 """T1k deterministic generation ownership and replay negative controls."""
 from dataclasses import replace
+
 import pytest
 
 from adapters.mineflayer.t1h_stop_owner_dev import S49DevStopOwner, StopDevAck
@@ -101,3 +102,27 @@ def test_second_generation_cannot_be_issued_without_first_closure():
     with pytest.raises(ResumeDevRejected):
         chain.begin(owner, 2)
     assert chain.failed
+
+
+@pytest.mark.parametrize("fault", ["marker", "stop", "session", "action", "clear",
+                                  "seq", "world", "player", "idle", "failed_owner"])
+def test_second_stop_requires_independent_bound_evidence(fault):
+    chain, old, owner = first_generation()
+    aid = "t1j-T1J-R1-move"
+    owner.request("STOP2", active_action_id=aid)
+    ack = StopDevAck("STOP2", "session", aid, aid + "-clear", 151,
+                     "marker2", "world", "player", 130, 137)
+    changes = {
+        "marker": {"marker_id": old.ack.marker_id},
+        "stop": {"stop_id": old.stop_id}, "session": {"session_id": "foreign"},
+        "action": {"active_action_id": "old-move"},
+        "clear": {"clear_action_id": "old-move-clear"},
+        "seq": {"clear_ack_seq": 102}, "world": {"world": "foreign"},
+        "player": {"player": "foreign"}, "idle": {"first_idle_tick": 97},
+        "failed_owner": {},
+    }
+    owner.ack = replace(ack, **changes[fault])
+    owner.failed = fault == "failed_owner"
+    with pytest.raises(ResumeDevRejected):
+        chain.finish(expected_second_stop=True, stop_ack=owner.ack)
+    assert chain.failed and not old.allows_action and not owner.allows_action

@@ -71,10 +71,21 @@ class T1kStopResumeLineage:
             raise ResumeDevRejected("T1k generation not authorized to finish")
         owner = slot["new_owner"]
         if expected_second_stop:
+            prior_ack = slot["stopped_owner"].ack
+            permit = slot["permit"]
             if (stop_ack is None or owner.ack is None
                     or owner.ack is not stop_ack
+                    or owner.failed
                     or not owner.requested or owner.allows_action
-                    or owner.ack.stop_id == slot["stopped_owner"].stop_id):
+                    or stop_ack.stop_id != owner.stop_id
+                    or stop_ack.stop_id in self.all_stop_ids
+                    or stop_ack.session_id != self.session_id
+                    or stop_ack.active_action_id != permit.next_action_id
+                    or stop_ack.clear_action_id != permit.next_action_id + "-clear"
+                    or stop_ack.clear_ack_seq <= permit.after_source_seq
+                    or stop_ack.marker_id == prior_ack.marker_id
+                    or stop_ack.world != permit.world or stop_ack.player != permit.player
+                    or stop_ack.first_idle_tick <= prior_ack.last_idle_tick):
                 self.failed = True
                 raise ResumeDevRejected("T1k missing independent second STOP ACK")
         elif stop_ack is not None or owner.requested or not owner.allows_action:

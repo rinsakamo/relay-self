@@ -15,7 +15,7 @@ from test_t1f_t2_dev import frame
 from test_t1j_native_rebase_dev import stopped
 
 
-@pytest.mark.parametrize('fault', ['missing_ack', 'old_ack', 'disconnect'])
+@pytest.mark.parametrize('fault', ['missing_ack', 'old_ack', 'disconnect', 'before_send'])
 def test_resumed_motor_fault_is_unknown_and_permit_cannot_retry(monkeypatch, fault):
     owner, old = stopped()
     aid = 't1j-T1J-R1-move'
@@ -32,9 +32,19 @@ def test_resumed_motor_fault_is_unknown_and_permit_cannot_retry(monkeypatch, fau
     session.consume_tick_accounting = False
     session.tick_owner = old
     session.t1j_reauthorization = 'DEV_EXPLICIT_OPERATOR_REAUTHORIZE'
+    if fault == 'before_send':
+        session.t1k_fault = 'BEFORE_RESUME_SEND'
+
+        async def disconnect(_boundary):
+            assert not session.consume_tick_accounting
+            session.source_lost = True
+
+        session.inject_disconnect = disconnect
     ticks = iter([frame(10), frame(12)])
 
     async def next_tick(*a, **kw):
+        if session.source_lost:
+            raise RuntimeError('original receiver observed injected disconnect')
         return next(ticks)
 
     async def observe(*a, **kw):
@@ -55,7 +65,22 @@ def test_resumed_motor_fault_is_unknown_and_permit_cannot_retry(monkeypatch, fau
     report = {'epochs': []}
     with pytest.raises(ResumeDevRejected):
         asyncio.run(resume.resume_one_move_dev(session, supervisor, owner, report, time_base=400))
+    if fault == 'before_send':
+        attempt = report['resume_attempts_dev'][0]
+        assert attempt['permit_consumed'] and not attempt['motor_send_attempted']
+        assert attempt['permission_cleared'] and attempt['old_ledger_unchanged']
+        assert attempt['ledger']['rows'] == []
+        assert not supervisor.open_actions and not session.sent
+        with pytest.raises(ResumeDevRejected):
+            asyncio.run(resume.resume_one_move_dev(session, supervisor, owner, report, time_base=500))
+        assert not session.sent
+        return
     assert supervisor.get(aid).state is ActionState.UNKNOWN
+    attempt = report['resume_attempts_dev'][0]
+    assert attempt['terminal']['state'] == 'unknown'
+    assert attempt['terminal']['_events'][-1]['state'] == 'unknown'
+    assert attempt['permit_consumed'] and attempt['permission_cleared']
+    assert attempt['old_ledger_unchanged']
     assert old.failed and owner.requested and not owner.allows_action
     assert session.tick_owner.failed and session.t1j_resume_permission is None
     assert sum(x[0] == 'set_control' for x in session.sent) == 1

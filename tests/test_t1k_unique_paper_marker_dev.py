@@ -2,11 +2,13 @@
 from __future__ import annotations
 
 import asyncio
+from types import SimpleNamespace
+
 import pytest
 
 from adapters.mineflayer import t1i_session_stop_dev as stop
 from adapters.mineflayer.t1h_stop_owner_dev import StopDevRejected
-from test_t1i_multi_owner_dev import setup, paper_text, WORLD, PLAYER
+from test_t1i_multi_owner_dev import PLAYER, WORLD, paper_text, setup
 
 SECOND = "T1K_R1_AFTER_CLEAR"
 
@@ -48,3 +50,26 @@ def test_repeated_second_marker_never_mints_stop_ack(tmp_path, monkeypatch):
             outcome, terminal, owner, p, marker_id=SECOND,
         ))
     assert owner.ack is None
+
+
+def test_two_stop_closures_use_distinct_native_probe_ids(tmp_path, monkeypatch):
+    requests = set()
+    for marker in ("T1I_MULTI_AFTER_CLEAR", SECOND):
+        owner, session, server, p, outcome, terminal, _ = setup(
+            tmp_path, monkeypatch, log=(paper_text() if marker == "T1I_MULTI_AFTER_CLEAR"
+                                       else paper_with_two_different_stop_markers()))
+
+        async def probe(_session, request_id):
+            # Same native session permanently rejects a repeated request ID.
+            if request_id in requests:
+                raise RuntimeError("duplicate_probe_request_id")
+            requests.add(request_id)
+            return SimpleNamespace(session_id=owner.session_id, seq=200)
+
+        monkeypatch.setattr(stop, "_correlated_observe", probe)
+        result = asyncio.run(stop.finish_multi_epoch_move_stop(
+            session, server, {"world": WORLD, "player": PLAYER},
+            outcome, terminal, owner, p, marker_id=marker,
+        ))
+        assert result["stop_ack_dev"]["marker_id"] == marker
+    assert len(requests) == 2

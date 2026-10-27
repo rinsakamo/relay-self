@@ -50,7 +50,7 @@ async def finish_multi_epoch_move_stop(
         if getattr(session, "source_lost", False) or session.process_returncode is not None:
             raise StopDevRejected("T1i native source lost")
         live = await asyncio.wait_for(
-            _correlated_observe(session, "t1i-before-stop-ack"), timeout=.75,
+            _correlated_observe(session, f"t1i-before-stop-ack-{marker}"), timeout=.75,
         )
         if live.session_id != owner.session_id:
             raise StopDevRejected("foreign T1i liveness probe")

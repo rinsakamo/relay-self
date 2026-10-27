@@ -285,6 +285,7 @@ async def run_case(args, case):
                                 or (case == "t1k_fault_clear_ack"
                                     and message.action_id.startswith("t1j-"))):
                             report["ack_fault"] = "DROP_AT_PYTHON_CONSUMER_ORIGINAL_RAW_RETAINED"
+                            report.setdefault("dropped_clear_receipts", []).append(asdict(message))
                             continue
                         if case in ("t2_delayed_ack", "t1h_delayed_ack") and "ack_fault" not in report:
                             report["ack_fault"] = "DELAY_0.7S_AT_CONSUMER_RAW_RETAINED"
@@ -327,6 +328,9 @@ async def run_case(args, case):
                     # Exactly one physical writer/Action ID after one consumed
                     # explicit reauthorization; never re-send on ACK loss.
                     prior_sends.add(a[0])
+                    attempt = self.t1j_resume_attempt
+                    attempt.update(motor_send_attempted=True,
+                                   motor_send_python_ns=time.monotonic_ns())
                 report["dispatch_python_ns"] = time.monotonic_ns()
                 await super().send_set_control(*a, **kw)
                 if case in ("t1i_stop_loop", "t1j_resume_move",
@@ -354,6 +358,15 @@ async def run_case(args, case):
                         self.consume_tick_accounting = False
                         self.tick_owner.failed = True
                         report["t1k_second_stop_requested"] = True
+                        report["t1k_second_stop_requested_python_ns"] = time.monotonic_ns()
+                        report["t1k_accounting_at_second_stop"] = {
+                            "ticks": len(self.tick_owner.rows),
+                            "energy": asdict(self.tick_owner.energy.body),
+                            "fatigue": asdict(self.tick_owner.fatigue),
+                            "credit_ids": sorted(self.tick_owner.energy._credits),
+                            "world_tick": self.tick_owner.previous.data["snapshot"]["world_tick"],
+                            "unknown_action_id": a[0],
+                        }
                     fixture = asyncio.create_task(t1k_second_stop())
                 elif case == "t1k_fault_set_ack" and authorized_resume_send:
                     async def disconnect_after_resume_set():
@@ -532,7 +545,10 @@ async def run_case(args, case):
         report.update(status="FAIL", error=f"{type(exc).__name__}: {exc}")
     finally:
         if fixture is not None:
-            await fixture
+            try:
+                await fixture
+            except Exception as exc:
+                report.update(status="FAIL", fixture_error=f"{type(exc).__name__}: {exc}")
         if t1f and session is not None:
             session.consume_tick_accounting = False
             if session.tick_owner is not None:
@@ -601,26 +617,12 @@ async def run_case(args, case):
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
         if case.startswith("t1k_fault_"):
+            from adapters.mineflayer.t1k_fault_audit_dev import audit_fault_dev
             cmds = [json.loads(line) for line in
                     (root / "commands.jsonl").read_text().splitlines()]
-            resume_sends = [
-                x for x in cmds if x.get("effect") == "set_control"
-                and x.get("action_id", "").startswith("t1j-")
-            ]
-            effect_ids = [x["action_id"] for x in cmds if x.get("type") == "effect"]
-            report["t1k_fault_audit"] = {
-                "fault_case": case,
-                "expected_refusal_not_normal_shutdown_pass": True,
-                "resume_motor_sends": len(resume_sends),
-                "effect_id_duplicates": len(effect_ids) - len(set(effect_ids)),
-                "no_resume_action_reissued": len(resume_sends) <= 1,
-                "raw_cleanup_separate": report["cleanup_complete"],
-                "classification": "T1K_FAULT_INJECTED_DEV_NOT_NORMAL_PASS",
-            }
-            if (len(resume_sends) > 1
-                    or len(effect_ids) != len(set(effect_ids))
-                    or (case == "t1k_fault_before_send" and resume_sends)):
-                report["t1k_fault_audit"]["safety_violation"] = True
+            raw = [json.loads(line) for line in
+                   (root / "native.jsonl").read_text().splitlines()]
+            report["t1k_fault_audit"] = audit_fault_dev(case, cmds, raw, report)
         if case == "t1k_stop_resume_twice":
             details = report.get("t1k", {})
             if session is not None and hasattr(session, "t1k_lineage"):

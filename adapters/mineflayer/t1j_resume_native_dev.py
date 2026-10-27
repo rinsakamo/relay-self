@@ -6,6 +6,8 @@ No unknown EAT is resumed, no missing World ticks are reconciled as fact.
 """
 from __future__ import annotations
 
+import asyncio
+import time
 from dataclasses import asdict
 
 from adapters.mineflayer.execution import (
@@ -66,6 +68,11 @@ async def resume_one_move_dev(
         session_id=sid, next_action_id=next_action_id,
     )
     session.t1j_reauthorization = None  # one authorization per stop, consumed
+    attempt = {"generation": generation, "resume_id": resume_id,
+               "stop_id": old_owner.stop_id, "authorization_consumed": True,
+               "authorized_python_ns": time.monotonic_ns(),
+               "permit_consumed": False, "motor_send_attempted": False}
+    report.setdefault("resume_attempts_dev", []).append(attempt)
     # The old STOP owner is STILL latched throughout the entire reobservation.
     # The sole original receive owner consumes prior queued Paper ticks.
     lower_bound = max(old_owner.ack.clear_ack_seq, old_ledger.previous.seq)
@@ -88,6 +95,9 @@ async def resume_one_move_dev(
         expected_probe_request_id=probe_request,
     )
     gate.consume(permit)
+    attempt.update(permit=asdict(permit), permit_consumed=True,
+                   permit_consumed_python_ns=time.monotonic_ns())
+    session.t1j_resume_attempt = attempt
     new_ledger = rebase_tick_accounting_dev(
         old_ledger, baseline=after, permit=permit,
     )
@@ -113,7 +123,16 @@ async def resume_one_move_dev(
     result = None
     try:
         if getattr(session, "t1k_fault", None) == "BEFORE_RESUME_SEND":
+            session.consume_tick_accounting = False
             await session.inject_disconnect("T1K_BEFORE_RESUME_MOTOR_SEND")
+            # Observe the real kick through the sole receiver before shutdown
+            # can race it. No stopped-gap accounting or Motor may run here.
+            try:
+                async with asyncio.timeout(3):
+                    while True:
+                        await next_tick(session)
+            except Exception as exc:
+                attempt["disconnect_receive_error"] = f"{type(exc).__name__}: {exc}"
             raise ResumeDevRejected("T1k pre-Motor injected disconnect; no Action issued")
         if (getattr(session, "source_lost", False)
                 or old_owner.allows_action or not new_stop_owner.allows_action):
@@ -147,10 +166,14 @@ async def resume_one_move_dev(
             issued.action_id, at_ns=time_base + 20,
             provenance=_p("t1j-resumed-terminal"),
         )
+        terminal_record = {**asdict(terminal), "state": terminal.state.value}
+        # Preserve the actual failed consequence and UNKNOWN even if closure
+        # raises; the successful return value is never built in that case.
+        attempt.update(consequence=asdict(result), terminal=terminal_record)
         new_ledger.finish(result, terminal)
         if stop_on_resumed_move:
-            from relay_self.action import ActionState
             from adapters.mineflayer.t1i_session_stop_dev import finish_multi_epoch_move_stop
+            from relay_self.action import ActionState
             if (not new_stop_owner.requested
                     or result.status is not WorldConsequenceStatus.FAILED
                     or terminal.state is not ActionState.UNKNOWN
@@ -169,7 +192,7 @@ async def resume_one_move_dev(
                 "classification": "T1K_RESUMED_MOVE_STOP_DEV",
                 "permit": asdict(permit), "rebase": new_ledger.segment_origin_dev,
                 "new_action": asdict(issued), "consequence": asdict(result),
-                "terminal": asdict(terminal), "stop_ack_dev": closure["stop_ack_dev"],
+                "terminal": terminal_record, "stop_ack_dev": closure["stop_ack_dev"],
                 "post_stop_source_seq": closure["post_clear_live_probe_seq"],
                 "old_owner_still_latched": old_owner.requested and not old_owner.allows_action,
                 "new_owner_is_distinct": new_stop_owner is not old_owner,
@@ -190,7 +213,7 @@ async def resume_one_move_dev(
             "rebase": new_ledger.segment_origin_dev,
             "new_action": asdict(issued),
             "consequence": asdict(result),
-            "terminal": asdict(terminal),
+            "terminal": terminal_record,
             "post_move_idle": idle,
             "next_paper_seq": fresh.seq,
             "old_owner_still_latched": old_owner.requested and not old_owner.allows_action,
@@ -199,9 +222,24 @@ async def resume_one_move_dev(
             "historical_m0_p1_retroactively_filled": False,
             "p1_wait_qualified": False,
         }
-    except BaseException:
+    except BaseException as exc:
+        attempt["error"] = f"{type(exc).__name__}: {exc}"
         new_ledger.failed = True
         raise
     finally:
         # The explicit permit only authorizes the single new physical send.
         session.t1j_resume_permission = None
+        attempt["permission_cleared"] = True
+        attempt["old_owner_still_latched"] = old_owner.requested and not old_owner.allows_action
+        attempt["new_owner_requested"] = new_stop_owner.requested
+        attempt["ledger"] = {
+            "rows": list(new_ledger.rows), "energy": asdict(new_ledger.energy.body),
+            "fatigue": asdict(new_ledger.fatigue),
+            "credit_ids": sorted(new_ledger.energy._credits),
+            "failed": new_ledger.failed, "rebase": new_ledger.segment_origin_dev,
+        }
+        attempt["old_ledger_unchanged"] = frozen_snapshot == {
+            "rows": list(old_ledger.rows), "energy": asdict(old_ledger.energy.body),
+            "fatigue": asdict(old_ledger.fatigue),
+            "credit_ids": sorted(old_ledger.energy._credits), "failed": old_ledger.failed,
+        }
