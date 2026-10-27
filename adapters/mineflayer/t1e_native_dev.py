@@ -85,9 +85,8 @@ def measure(root, report):
     trace = report.get("node_trace_enabled", (root / "node_timing.jsonl").is_file())
     if type(trace) is not bool:
         raise ValueError("node trace mode must be explicit boolean")
-    selected = journal_name(enabled=trace)
-    if trace and not (root / selected).exists():
-        raise ValueError("explicit Node timing trace missing")
+    trace_available = trace and (root / journal_name(enabled=True)).is_file()
+    selected = journal_name(enabled=trace_available)
     node = journal(selected)
     commands = journal("commands.jsonl")
     snapshots = [r for r in node if r["type"] == "paper_snapshot"]
@@ -97,7 +96,7 @@ def measure(root, report):
         received_ticks = {r["data"]["snapshot"]["tick"] for r in snapshots}
         return {
             "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
-            "journal_source": selected, "node_clock_trace_available": trace,
+            "journal_source": selected, "node_clock_trace_available": trace_available,
             "paper_sent_ticks": len(sent), "node_received_ticks": len(snapshots),
             "node_admitted_ticks": sum(r["data"]["status"] == "ADMITTED" for r in snapshots),
             "paper_ticks_without_node_snapshot": sorted(sent_ticks - received_ticks),
@@ -117,7 +116,7 @@ def measure(root, report):
               and dispatches[0]["seq"] < r["seq"] < clears[0]["seq"]]
     hazards = [r for r in active if r["assessment"] != "NO_KNOWN_URGENT_SIGNAL"]
     metrics = {
-        "journal_source": selected, "node_clock_trace_available": trace,
+        "journal_source": selected, "node_clock_trace_available": trace_available,
         "paper_sent_ticks": len(sent), "node_received_ticks": len(received),
         "node_emitted_shadow_ticks": len(shadows), "active_shadow_ticks": len(active),
         "paper_ticks_without_emitted_l0": sorted(sent_ticks - checked_ticks, key=int),
@@ -134,7 +133,7 @@ def measure(root, report):
                                           (int(sent[-1]["wall_nanos"]) - int(sent[0]["wall_nanos"])))
     if hazards:
         metrics["active_danger_assessment"] = hazards[0]["assessment"]
-        if (trace and clears and "node_monotonic_ns" in clears[0]
+        if (trace_available and clears and "node_monotonic_ns" in clears[0]
                 and "node_monotonic_ns" in hazards[0]):
             metrics["node_shadow_emit_to_clear_applied_ms"] = (
                 int(clears[0]["node_monotonic_ns"]) - int(hazards[0]["node_monotonic_ns"])) / 1e6
@@ -658,20 +657,31 @@ async def run_case(args, case):
         if not report["cleanup_complete"]:
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
+        if (report.get("node_trace_enabled", False)
+                and not report["metrics"]["node_clock_trace_available"]):
+            report["status"] = "FAIL"
+            report["node_trace_error"] = "explicit_timing_trace_missing"
         if case == "t1l_source_soak":
             # T1o A/B: an OFF World must have NO Node trace file;
             # an ON World must have the same original native envelopes.
             from adapters.mineflayer.t1o_trace_policy_dev import audit_trace_pair
-            native_for_trace = [json.loads(line) for line in
-                                (root / "native.jsonl").read_text().splitlines()]
             trace_file = root / "node_timing.jsonl"
-            timing_for_trace = ([json.loads(line) for line in trace_file.read_text().splitlines()]
-                                if trace_file.is_file() else [])
-            report["t1o_node_trace"] = audit_trace_pair(
-                native_for_trace, timing_for_trace,
-                enabled=report.get("node_trace_enabled", False),
-                trace_exists=trace_file.is_file(),
-            )
+            try:
+                native_for_trace = [json.loads(line) for line in
+                                    (root / "native.jsonl").read_text().splitlines()]
+                timing_for_trace = ([json.loads(line) for line in
+                                    trace_file.read_text().splitlines()]
+                                    if trace_file.is_file() else [])
+                report["t1o_node_trace"] = audit_trace_pair(
+                    native_for_trace, timing_for_trace,
+                    enabled=report.get("node_trace_enabled", False),
+                    trace_exists=trace_file.is_file(),
+                )
+            except (OSError, ValueError, TypeError, KeyError) as error:
+                report["t1o_node_trace"] = {
+                    "valid": False, "error": f"{type(error).__name__}: {error}",
+                    "mode": "ON" if report.get("node_trace_enabled", False) else "OFF",
+                }
             if not report["t1o_node_trace"]["valid"]:
                 report["status"] = "FAIL"
         if case in ("t1l_source_soak", "t1m_source_soak", "t1n_source_soak"):
