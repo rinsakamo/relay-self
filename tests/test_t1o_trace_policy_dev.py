@@ -56,6 +56,8 @@ def test_trace_off_reads_original_native_source_without_creating_trace(tmp_path)
 
 
 def test_explicit_trace_on_missing_journal_is_unavailable_not_zero_observations(tmp_path):
+    (tmp_path / "paper.log").write_text("")
+    (tmp_path / "commands.jsonl").write_text("")
     metrics = measure(tmp_path, {"node_trace_enabled": True})
     assert metrics["node_clock_trace_available"] is False
     assert metrics["journal_source"] == "native.jsonl"
