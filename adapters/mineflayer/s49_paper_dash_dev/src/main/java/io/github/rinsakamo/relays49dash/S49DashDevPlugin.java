@@ -177,12 +177,25 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         sessionId = args[1];
         requestedPower = power;
         p1MotorDev = getConfig().getBoolean("p1-live-dev", false);
-        if (p1MotorDev &&
-            Math.abs(getConfig().getDouble("p1-initial-fatigue", -1) - 0.6) > 1e-9) {
+        // Explicit DEV scenario preloads an earlier *counterfactual* model F
+        // into a NEW disposable World. This is not an actual recovered Body.
+        boolean pairPreload = getConfig().getBoolean("p1-model-pair-dev", false);
+        double configuredF = getConfig().getDouble("p1-initial-fatigue", -1);
+        if (pairPreload && !p1MotorDev) {
+            disarm("P1_PAIR_REQUIRES_MODEL");
+            return;
+        }
+        if (p1MotorDev && (
+            !Double.isFinite(configuredF)
+            || (pairPreload
+                ? (Math.abs(configuredF - 0.6177122410202606) > 1e-9
+                    && Math.abs(configuredF - 0.21616083122103735) > 1e-9)
+                : Math.abs(configuredF - 0.6) > 1e-9)
+        )) {
             disarm("P1_DEV_PROFILE_INVALID");
             return;
         }
-        p1Fatigue = p1MotorDev ? 0.6 : 0.0;
+        p1Fatigue = p1MotorDev ? configuredF : 0.0;
         activeDashPower = 0.0;
         p1WorldTicks = 0;
         nativeAppliedMarked = false;
@@ -219,7 +232,8 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " world=" + worldId + " tick=" + armTick
             + " power=" + power + " authority=NONE"
             + " p1_motor_dev=" + p1MotorDev
-            + " p1_initial_fatigue=" + p1Fatigue);
+            + " p1_initial_fatigue=" + p1Fatigue
+            + " p1_model_pair_preloaded=" + pairPreload);
     }
 
     private void markNativeEffect(String[] args, UUID uuid) {

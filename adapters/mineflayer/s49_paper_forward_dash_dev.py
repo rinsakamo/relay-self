@@ -66,6 +66,9 @@ from experiments.p1_gait_dev import (
 )
 
 CONFIRM = "S49-P1-DEV-DISPOSABLE-PAPER-WORLD"
+# Earlier *model*, not observed P1 Body. Frozen from World #40476376338.
+PAIR_FATIGUE = {"CARRY": 0.6177122410202606, "WAIT_ASSUMED": 0.21616083122103735}
+PAIR_SOURCE_DIGEST = "f126d16f42caa27230a02e4c818d7b7ae3c1d2e39e8ad75c55cd2ce9ddc16bd4"
 
 
 class ForwardDashDevRejected(RuntimeError):
@@ -97,7 +100,8 @@ def evaluate_native_dash_gain_dev(
     }
 
 
-def audit_native_paper_p1_dev(raw: str, *, action_id: str, session_id: str) -> dict:
+def audit_native_paper_p1_dev(raw: str, *, action_id: str, session_id: str,
+                              model_initial: float = 0.6) -> dict:
     """Independently replay Paper World callbacks against existing single P1.
 
     Paper's motor outcome is DEV evidence only; host custody of every actual
@@ -117,7 +121,10 @@ def audit_native_paper_p1_dev(raw: str, *, action_id: str, session_id: str) -> d
         rows.append(data)
     if len(rows) < 5:
         raise ForwardDashDevRejected("too few P1 Paper ticks")
-    cfg = FatigueProfile(enabled=True, initial=0.6)
+    if (type(model_initial) is not float
+            or model_initial not in (0.6, *PAIR_FATIGUE.values())):
+        raise ForwardDashDevRejected("unadmitted P1 preload state")
+    cfg = FatigueProfile(enabled=True, initial=model_initial)
     state = initial_state(cfg, session_id)
     prev_power = 0.0
     last_world = None
@@ -160,8 +167,13 @@ def audit_native_paper_p1_dev(raw: str, *, action_id: str, session_id: str) -> d
             boosts.append(output)
         prev_power = output
         last_world = world
-    if len(boosts) < 3 or boosts[0] - boosts[-1] < 0.01:
-        raise ForwardDashDevRejected("P1 power fade unobserved")
+    if len(boosts) < 3:
+        raise ForwardDashDevRejected("P1 forward boost never observed")
+    if model_initial > 0.5 and boosts[0] - boosts[-1] < 0.01:
+        raise ForwardDashDevRejected("high-fatigue P1 fade unobserved")
+    if model_initial < 0.5 and (state.fatigue >= 0.5 or
+                                not all(math.isclose(v, 1.0, abs_tol=1e-10) for v in boosts)):
+        raise ForwardDashDevRejected("low-fatigue full power DEV plateau mismatch")
     return {
         "world_ticks_replayed": len(rows),
         "fatigue_initial": cfg.initial,
@@ -545,6 +557,7 @@ async def run(
     p1_observed_wait_model_dev: bool = False,
     p1_next_selfbody_epoch_dev: bool = False,
     p1_next_native_l0_review_dev: bool = False,
+    p1_model_pair_case_dev: str | None = None,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -565,6 +578,13 @@ async def run(
         or type(p1_observed_wait_model_dev) is not bool
         or type(p1_next_selfbody_epoch_dev) is not bool
         or type(p1_next_native_l0_review_dev) is not bool
+        or (p1_model_pair_case_dev is not None and (
+            type(p1_model_pair_case_dev) is not str
+            or p1_model_pair_case_dev not in PAIR_FATIGUE
+            or not p1_live_dev
+            or os.environ.get("S49_P1_DASH_PAIR_DEV_ONLY") != "1"
+            or p1_fenced_recovery_shadow_dev
+        ))
         or (p1_next_native_l0_review_dev and (
             not p1_next_selfbody_epoch_dev
             or os.environ.get("S49_P1_NEXT_NATIVE_L0_REVIEW_DEV_ONLY") != "1"
@@ -655,7 +675,10 @@ async def run(
         cfg.mkdir()
         (cfg / "config.yml").write_text(
             "enabled: true\nexpected-player-name: RelaySelf\n"
-            + ("p1-live-dev: true\np1-initial-fatigue: 0.6\n" if p1_live_dev else "")
+            + ("p1-live-dev: true\np1-initial-fatigue: "
+               + (repr(PAIR_FATIGUE[p1_model_pair_case_dev]) if p1_model_pair_case_dev else "0.6")
+               + "\np1-model-pair-dev: " + ("true" if p1_model_pair_case_dev else "false")
+               + "\n" if p1_live_dev else "")
             + ("native-edge-dev: true\n" if native_edges_dev else "")
             + ("post-release-motion-dev: true\n" if post_release_dev else "")
             + ("two-action-trace-dev: true\n" if two_action_timeline_dev else "")
@@ -823,6 +846,7 @@ async def run(
         )
         p1 = audit_native_paper_p1_dev(
             raw, action_id=subject["action_id"], session_id=subject["session"],
+            model_initial=(PAIR_FATIGUE[p1_model_pair_case_dev] if p1_model_pair_case_dev else 0.6),
         )
         if m0_move_dev:
             bracket = review_paper_action_bracket_dev(
@@ -980,6 +1004,7 @@ async def run(
             report["p1_paper_motor_dev"] = audit_native_paper_p1_dev(
                 paper_log.read_text(encoding="utf-8"),
                 action_id=subject["action_id"], session_id=subject["session"],
+                model_initial=(PAIR_FATIGUE[p1_model_pair_case_dev] if p1_model_pair_case_dev else 0.6),
             )
         if m0_live_dev:
             postings = report["m0_s49_original_owner_postings"]
@@ -1161,6 +1186,17 @@ async def run(
                 report["m0_debit_classification"] = (
                     "ORIGINAL_S49_LOCAL_B0_OWNER_POSTED_DEV_NOT_ATTESTED"
                 )
+        if p1_model_pair_case_dev:
+            report["p1_pair_preloaded_model_dev"] = {
+                "case": p1_model_pair_case_dev,
+                "input_fatigue": PAIR_FATIGUE[p1_model_pair_case_dev],
+                "frozen_candidate_source_sha256": PAIR_SOURCE_DIGEST,
+                "model_preloaded_in_new_disposable_world": True,
+                "actual_same_self_wait_recovery_attested": False,
+                "production_p1_state_updated": False,
+                "additional_action_issuers": 0,
+                "qualification_go": False, "science_go": False,
+            }
         report["original_action_distances_m"] = [a["movement_m"] for a in actions]
         report["first_minus_unboosted_second_distance_m"] = (
             actions[0]["movement_m"] - actions[1]["movement_m"]
@@ -1220,6 +1256,7 @@ def main() -> int:
     parser.add_argument("--p1-observed-wait-model-dev", action="store_true")
     parser.add_argument("--p1-next-selfbody-epoch-dev", action="store_true")
     parser.add_argument("--p1-next-native-l0-review-dev", action="store_true")
+    parser.add_argument("--p1-model-pair-case-dev", choices=tuple(PAIR_FATIGUE))
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -1238,6 +1275,7 @@ def main() -> int:
         p1_observed_wait_model_dev=a.p1_observed_wait_model_dev,
         p1_next_selfbody_epoch_dev=a.p1_next_selfbody_epoch_dev,
         p1_next_native_l0_review_dev=a.p1_next_native_l0_review_dev,
+        p1_model_pair_case_dev=a.p1_model_pair_case_dev,
     ))
 
 
