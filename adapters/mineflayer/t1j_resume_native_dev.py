@@ -96,13 +96,18 @@ async def resume_one_move_dev(
     session.t1j_new_stop_owner = new_stop_owner
     if lineage is not None:
         lineage.admit(permit, new_stop_owner)
-    report["t1j_old_ledger"] = {
+    frozen_snapshot = {
         "rows": list(old_ledger.rows),
         "energy": asdict(old_ledger.energy.body),
         "fatigue": asdict(old_ledger.fatigue),
         "credit_ids": sorted(old_ledger.energy._credits),
         "failed": old_ledger.failed,
     }
+    if lineage is not None:
+        # Do not overwrite the first frozen ledger at generation two.
+        report.setdefault("t1k_old_ledgers", {})[resume_id] = frozen_snapshot
+    else:
+        report["t1j_old_ledger"] = frozen_snapshot
     session.tick_owner = new_ledger
     session.consume_tick_accounting = True
     result = None
