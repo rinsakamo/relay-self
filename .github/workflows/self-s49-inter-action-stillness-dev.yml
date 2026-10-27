@@ -3,12 +3,15 @@ on:
   push:
     branches:
       - self/dev-s49-forward-motor-admission-20261026
+      - self/dev-p1-causal-wait-shadow-20261027
     paths:
       - .github/workflows/self-s49-inter-action-stillness-dev.yml
       - adapters/mineflayer/bridge.mjs
       - adapters/mineflayer/s49_normal_session_real_ci.py
       - adapters/mineflayer/s49_inter_action_stillness_dev.py
       - adapters/mineflayer/s49_causal_wait_fence_dev.py
+      - adapters/mineflayer/s49_p1_fenced_recovery_shadow_dev.py
+      - tests/test_s49_p1_fenced_recovery_shadow_dev.py
       - 'adapters/mineflayer/s49_paper_dash_dev/**'
       - adapters/mineflayer/s49_paper_forward_dash_dev.py
       - tests/test_s49_inter_action_stillness_dev.py
@@ -45,6 +48,7 @@ jobs:
       S49_INTER_ACTION_CONTROL_DEV_ONLY: '1'
       S49_INTER_ACTION_OWNER_GAP_DEV_ONLY: '1'
       S49_CAUSAL_OWNER_PAPER_FENCE_DEV_ONLY: '1'
+      S49_P1_FENCED_SHADOW_DEV_ONLY: '1'
       DEV_OUTPUT: '/tmp/s49-stillness-${{ github.run_id }}-${{ github.run_attempt }}'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -77,9 +81,9 @@ jobs:
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
           node --check adapters/mineflayer/bridge.mjs
           node --test adapters/mineflayer/s49_speed_attribute_bridge_dev.test.mjs
-          python -m compileall -q adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_s49_post_release_motion_dev.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_two_action_world_timeline_dev.py tests/test_s49_two_action_world_timeline_dev.py adapters/mineflayer/s49_inter_action_stillness_dev.py tests/test_s49_inter_action_stillness_dev.py tests/test_s49_original_owner_gap_dev.py tests/test_s49_causal_wait_fence_dev.py adapters/mineflayer/s49_causal_wait_fence_dev.py
-          ruff check adapters/mineflayer/s49_causal_wait_fence_dev.py tests/test_s49_causal_wait_fence_dev.py adapters/mineflayer/s49_inter_action_stillness_dev.py tests/test_s49_inter_action_stillness_dev.py tests/test_s49_original_owner_gap_dev.py adapters/mineflayer/s49_two_action_world_timeline_dev.py tests/test_s49_two_action_world_timeline_dev.py adapters/mineflayer/s49_m0_world_time_shadow_dev.py tests/test_s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py adapters/mineflayer/s49_node_physics_postclear_dev.py adapters/mineflayer/execution.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_m0_dash_extra_owner_dev.py
-          python -m pytest -q tests/test_s49_causal_wait_fence_dev.py tests/test_s49_original_owner_gap_dev.py tests/test_s49_inter_action_stillness_dev.py tests/test_s49_two_action_world_timeline_dev.py tests/test_s49_m0_world_time_shadow_dev.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_s49_post_release_motion_dev.py tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_b0_energy_bridge.py tests/test_s49_p1_paper_motor_dev.py tests/test_p1_gait_dev.py tests/test_s49_paper_forward_dash_dev.py tests/test_s49_forward_motor_admission_dev.py
+          python -m compileall -q adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_s49_post_release_motion_dev.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_two_action_world_timeline_dev.py tests/test_s49_two_action_world_timeline_dev.py adapters/mineflayer/s49_inter_action_stillness_dev.py tests/test_s49_inter_action_stillness_dev.py tests/test_s49_original_owner_gap_dev.py tests/test_s49_causal_wait_fence_dev.py adapters/mineflayer/s49_causal_wait_fence_dev.py adapters/mineflayer/s49_p1_fenced_recovery_shadow_dev.py tests/test_s49_p1_fenced_recovery_shadow_dev.py
+          ruff check adapters/mineflayer/s49_p1_fenced_recovery_shadow_dev.py tests/test_s49_p1_fenced_recovery_shadow_dev.py adapters/mineflayer/s49_causal_wait_fence_dev.py tests/test_s49_causal_wait_fence_dev.py adapters/mineflayer/s49_inter_action_stillness_dev.py tests/test_s49_inter_action_stillness_dev.py tests/test_s49_original_owner_gap_dev.py adapters/mineflayer/s49_two_action_world_timeline_dev.py tests/test_s49_two_action_world_timeline_dev.py adapters/mineflayer/s49_m0_world_time_shadow_dev.py tests/test_s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py adapters/mineflayer/s49_node_physics_postclear_dev.py adapters/mineflayer/execution.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_m0_dash_extra_owner_dev.py
+          python -m pytest -q tests/test_s49_p1_fenced_recovery_shadow_dev.py tests/test_s49_causal_wait_fence_dev.py tests/test_s49_original_owner_gap_dev.py tests/test_s49_inter_action_stillness_dev.py tests/test_s49_two_action_world_timeline_dev.py tests/test_s49_m0_world_time_shadow_dev.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_s49_post_release_motion_dev.py tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_b0_energy_bridge.py tests/test_s49_p1_paper_motor_dev.py tests/test_p1_gait_dev.py tests/test_s49_paper_forward_dash_dev.py tests/test_s49_forward_motor_admission_dev.py
       - name: Compile independent Paper DASH modifier plugin
         run: |
           mvn -B -ntp -f adapters/mineflayer/s49_paper_dash_dev/pom.xml -DskipTests package
@@ -139,7 +143,7 @@ jobs:
             --output-dir "$DEV_OUTPUT" \
             --paper-jar "$PAPER_JAR" --paper-sha256 "$PAPER_SHA" \
             --dash-jar "$DASH" --dash-sha256 "$DASH_SHA" \
-            --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD --p1-live-dev --m0-live-dev --m0-move-dev --native-edges-dev --post-release-dev --node-physics-dev --m0-worldtime-shadow-dev --two-action-timeline-dev --inter-action-stillness-dev --causal-owner-fence-dev
+            --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD --p1-live-dev --m0-live-dev --m0-move-dev --native-edges-dev --post-release-dev --node-physics-dev --m0-worldtime-shadow-dev --two-action-timeline-dev --inter-action-stillness-dev --causal-owner-fence-dev --p1-fenced-recovery-shadow-dev
       - name: Verify original forward+sprint S16 and Paper positive modifier ticks
         run: |
           python - <<'PY'
@@ -351,6 +355,18 @@ jobs:
           assert fence["P1_recovery_posted"] is False and fence["M0_posted"] is False
           assert fence["qualification_go"] is False and fence["science_go"] is False
           print("S49_CAUSAL_OWNER_PAPER_STATIC_SUBWINDOW_DEV_PASS", fence)
+          p1_shadow=report["p1_fenced_recovery_shadow_dev"]
+          assert p1_shadow["classification"] == "P1_CAUSALLY_FENCED_STATIC_WAIT_COUNTERFACTUAL_UNAPPLIED_DEV_ONLY"
+          assert p1_shadow["candidate_ticks"] == fence["paper_causal_subwindow_contiguous_still_ticks"]
+          assert p1_shadow["counterfactual_p1_recovered_if_all_wait"] > 0
+          assert p1_shadow["verified_physical_WAIT_ticks"] == 0
+          assert p1_shadow["p1_recovery_applied"] == 0
+          assert p1_shadow["actual_p1_state_updated"] is False
+          assert p1_shadow["m0_posted"] is False
+          assert p1_shadow["original_m0_energy_remaining_unchanged"] == source["dev_m0_dash_energy_remaining"]
+          assert p1_shadow["physical_wait_admitted"] is False
+          assert p1_shadow["qualification_go"] is False and p1_shadow["science_go"] is False
+          print("S49_P1_FENCED_WAIT_COUNTERFACTUAL_UNAPPLIED_DEV_PASS", p1_shadow)
 
           gain=report["physical_gain_dev"]
           assert gain["native_gain_observed_dev"] is True

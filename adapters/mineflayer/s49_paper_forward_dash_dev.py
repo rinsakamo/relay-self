@@ -24,6 +24,9 @@ from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.s49_causal_wait_fence_dev import (
     review_original_owner_causal_paper_fence_dev,
 )
+from adapters.mineflayer.s49_p1_fenced_recovery_shadow_dev import (
+    project_p1_fenced_wait_shadow_dev,
+)
 from adapters.mineflayer.s49_inter_action_stillness_dev import (
     review_inter_action_stillness_dev,
     review_original_owner_no_issued_action_gap_dev,
@@ -529,6 +532,7 @@ async def run(
     two_action_timeline_dev: bool = False,
     inter_action_stillness_dev: bool = False,
     causal_owner_fence_dev: bool = False,
+    p1_fenced_recovery_shadow_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -545,6 +549,11 @@ async def run(
         or type(two_action_timeline_dev) is not bool
         or type(inter_action_stillness_dev) is not bool
         or type(causal_owner_fence_dev) is not bool
+        or type(p1_fenced_recovery_shadow_dev) is not bool
+        or (p1_fenced_recovery_shadow_dev and (
+            not causal_owner_fence_dev or not p1_live_dev
+            or os.environ.get("S49_P1_FENCED_SHADOW_DEV_ONLY") != "1"
+        ))
         or (causal_owner_fence_dev and (
             not inter_action_stillness_dev
             or os.environ.get("S49_CAUSAL_OWNER_PAPER_FENCE_DEV_ONLY") != "1"
@@ -1052,6 +1061,21 @@ async def run(
                                 session_id=subject["session"],
                             )
                         )
+                        if p1_fenced_recovery_shadow_dev:
+                            report["p1_fenced_recovery_shadow_dev"] = (
+                                project_p1_fenced_wait_shadow_dev(
+                                    fence=report["original_owner_causal_paper_wait_candidate_dev"],
+                                    p1_replay=report["p1_paper_motor_dev"],
+                                    action_bracket=report["paper_action_bracket"],
+                                    profile=FatigueProfile(enabled=True, initial=0.6),
+                                    session_id=subject["session"],
+                                    first_action_id=actions[0]["action"],
+                                    second_action_id=actions[1]["action"],
+                                    original_m0_energy_remaining=report[
+                                        "m0_s49_original_owner_remaining"
+                                    ],
+                                )
+                            )
             else:
                 if (len(postings) != 1
                         or postings[0]["action_id"] != subject["action_id"]
@@ -1130,6 +1154,7 @@ def main() -> int:
     parser.add_argument("--two-action-timeline-dev", action="store_true")
     parser.add_argument("--inter-action-stillness-dev", action="store_true")
     parser.add_argument("--causal-owner-fence-dev", action="store_true")
+    parser.add_argument("--p1-fenced-recovery-shadow-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -1144,6 +1169,7 @@ def main() -> int:
         two_action_timeline_dev=a.two_action_timeline_dev,
         inter_action_stillness_dev=a.inter_action_stillness_dev,
         causal_owner_fence_dev=a.causal_owner_fence_dev,
+        p1_fenced_recovery_shadow_dev=a.p1_fenced_recovery_shadow_dev,
     ))
 
 
