@@ -190,3 +190,87 @@ def review_inter_action_stillness_dev(
         "independent_source_attested": False,
         "qualification_go": False, "science_go": False,
     }
+
+
+def review_original_owner_no_issued_action_gap_dev(
+    owner: dict, stillness: dict, *, first_action_id: str,
+    second_action_id: str, session_id: str,
+) -> dict:
+    """Readback from SAME original S49 NormalSessionActionExecutor.
+
+    There is no new Action owner or receiver. No assumed equality between
+    Python monotonic_ns, Node process.hrtime and Paper fullTime clocks.
+    """
+    if (
+        type(owner) is not dict or type(stillness) is not dict
+        or owner.get("classification")
+           != "S49_ORIGINAL_EXECUTOR_NO_ISSUE_GAP_DEV_ONLY"
+        or owner.get("session_id") != session_id
+        or stillness.get("session_id") != session_id
+        or owner.get("first_terminal_action_id") != first_action_id
+        or owner.get("second_requested_action_id") != second_action_id
+        or stillness.get("action_ids") != [first_action_id, second_action_id]
+        or stillness.get("classification")
+           != "S49_INTER_ACTION_STILLNESS_CANDIDATE_DEV_ONLY"
+        or stillness.get("node_all_controls_off_until_second_set") is not True
+        or stillness.get("paper_consecutive_low_motion_ticks", 0) < 8
+        or stillness.get("node_paper_tick_join_attested") is not False
+        or stillness.get("physical_WAIT_admitted") is not False
+        or owner.get("same_original_S49_executor") is not True
+        or owner.get("first_terminal_outcome") is not True
+        or owner.get("native_action_count_at_first_terminal") != 1
+        or owner.get("native_open_actions_at_first_terminal") != 0
+        or owner.get("native_action_count_at_next_request") != 1
+        or owner.get("native_open_actions_at_next_request") != 0
+        or owner.get("native_action_count_after_second_terminal") != 2
+        or owner.get("native_open_actions_after_second_terminal") != 0
+        or owner.get("native_dispatched_action_ids") != [first_action_id]
+        or owner.get("all_actions_globally_absent_attested") is not False
+        or owner.get("paper_world_tick_bound_attested") is not False
+        or owner.get("node_control_epoch_aligned_attested") is not False
+        or owner.get("WAIT_admitted") is not False
+        or owner.get("P1_recovery_posted") is not False
+        or owner.get("M0_posted") is not False
+        or stillness.get("P1_recovery_posted") is not False
+        or stillness.get("M0_posted") is not False
+    ):
+        raise InterActionStillnessRejected(
+            "original sole S49 Action owner or static/control candidate not bound"
+        )
+    start = owner.get("host_first_outcome_monotonic_ns")
+    end = owner.get("host_next_action_request_monotonic_ns")
+    duration = owner.get("elapsed_owner_local_monotonic_ns")
+    if (any(type(n) is not int or n < 0 for n in (start, end, duration))
+            or not 0 < duration <= 120_000_000_000
+            or end - start != duration):
+        raise InterActionStillnessRejected("original S49 owner clock malformed")
+    return {
+        "classification": "S49_ORIGINAL_OWNER_NO_ACTION_ISSUE_PLUS_NODE_PAPER_STATIC_CANDIDATE_DEV_ONLY",
+        "action_ids": [first_action_id, second_action_id],
+        "session_id": session_id,
+        "same_original_executor": True,
+        "original_owner_no_new_issue_between_bookends": True,
+        "first_terminal_count": 1,
+        "at_next_action_request_count": 1,
+        "after_second_terminal_count": 2,
+        "open_actions_at_bookends": [0, 0, 0],
+        "original_owner_gap_monotonic_ms": duration / 1_000_000,
+        "paper_candidate_first_tick":
+            stillness["paper_first_candidate_tick"],
+        "paper_candidate_last_tick":
+            stillness["paper_last_candidate_tick"],
+        "paper_candidate_consecutive_still_ticks":
+            stillness["paper_consecutive_low_motion_ticks"],
+        "node_input_off_physics_callbacks": stillness["node_physics_samples"],
+        "node_all_inputs_off_at_local_callbacks": True,
+        "host_node_monotonic_clocks_calibrated": False,
+        "host_paper_world_tick_clocks_calibrated": False,
+        "physical_overlap_time_attested": False,
+        "global_issuer_absence_attested": False,
+        "physical_WAIT_admitted": False,
+        "P1_recovery_posted": False,
+        "M0_posted": False,
+        "independent_source_attested": False,
+        "qualification_go": False,
+        "science_go": False,
+    }
