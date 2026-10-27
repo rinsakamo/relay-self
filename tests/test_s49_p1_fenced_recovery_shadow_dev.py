@@ -55,7 +55,7 @@ def inputs():
         action_bracket={
             "original_owner_release": True,
             "independent_source_attested": False,
-            "last_tick": 260,
+            "last_tick": 255,
             "elapsed_callbacks": 13,
         },
         profile=FatigueProfile(enabled=True, initial=0.6),
@@ -71,7 +71,7 @@ def test_174_tick_hypothetical_recovery_is_only_shadow():
     assert data == original
     assert out["candidate_ticks"] == 174
     assert out["paper_stillness_tick_interval"] == [264, 437]
-    assert out["unclassified_world_ticks_after_first_dash_before_candidate"] == 3
+    assert out["unclassified_world_ticks_after_first_dash_before_candidate"] == 8
     assert out["normalized_world_seconds_if_20tps"] == 8.7
     assert out["counterfactual_end_fatigue"] == pytest.approx(
         data["p1_replay"]["fatigue_final"] * math.exp(-0.12 * 8.7), abs=1e-12,
