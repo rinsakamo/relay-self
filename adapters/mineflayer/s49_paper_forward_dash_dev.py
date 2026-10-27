@@ -40,6 +40,9 @@ from adapters.mineflayer.s49_node_physics_postclear_dev import (
 from adapters.mineflayer.s49_p1_dev_wait_observed import (
     replay_p1_observed_static_wait_dev,
 )
+from adapters.mineflayer.s49_p1_selfbody_epoch_shadow_dev import (
+    project_p1_static_next_body_epoch_dev,
+)
 from adapters.mineflayer.s49_p1_fenced_recovery_shadow_dev import (
     project_p1_fenced_wait_shadow_dev,
 )
@@ -537,6 +540,7 @@ async def run(
     causal_owner_fence_dev: bool = False,
     p1_fenced_recovery_shadow_dev: bool = False,
     p1_observed_wait_model_dev: bool = False,
+    p1_next_selfbody_epoch_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -555,6 +559,11 @@ async def run(
         or type(causal_owner_fence_dev) is not bool
         or type(p1_fenced_recovery_shadow_dev) is not bool
         or type(p1_observed_wait_model_dev) is not bool
+        or type(p1_next_selfbody_epoch_dev) is not bool
+        or (p1_next_selfbody_epoch_dev and (
+            not p1_observed_wait_model_dev
+            or os.environ.get("S49_P1_NEXT_SELFBODY_EPOCH_DEV_ONLY") != "1"
+        ))
         or (p1_observed_wait_model_dev and (
             not p1_fenced_recovery_shadow_dev
             or os.environ.get("S49_P1_OBSERVED_WAIT_MODEL_DEV_ONLY") != "1"
@@ -1099,6 +1108,17 @@ async def run(
                                         second_action_id=actions[1]["action"],
                                     )
                                 )
+                                if p1_next_selfbody_epoch_dev:
+                                    report["p1_next_selfbody_epoch_shadow_dev"] = (
+                                        project_p1_static_next_body_epoch_dev(
+                                            report["p1_observed_wait_model_dev"],
+                                            report["original_owner_causal_paper_wait_candidate_dev"],
+                                            profile=FatigueProfile(enabled=True, initial=0.6),
+                                            session_id=subject["session"],
+                                            first_action_id=actions[0]["action"],
+                                            second_action_id=actions[1]["action"],
+                                        )
+                                    )
             else:
                 if (len(postings) != 1
                         or postings[0]["action_id"] != subject["action_id"]
@@ -1179,6 +1199,7 @@ def main() -> int:
     parser.add_argument("--causal-owner-fence-dev", action="store_true")
     parser.add_argument("--p1-fenced-recovery-shadow-dev", action="store_true")
     parser.add_argument("--p1-observed-wait-model-dev", action="store_true")
+    parser.add_argument("--p1-next-selfbody-epoch-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -1195,6 +1216,7 @@ def main() -> int:
         causal_owner_fence_dev=a.causal_owner_fence_dev,
         p1_fenced_recovery_shadow_dev=a.p1_fenced_recovery_shadow_dev,
         p1_observed_wait_model_dev=a.p1_observed_wait_model_dev,
+        p1_next_selfbody_epoch_dev=a.p1_next_selfbody_epoch_dev,
     ))
 
 

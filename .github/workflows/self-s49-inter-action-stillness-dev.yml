@@ -5,6 +5,7 @@ on:
       - self/dev-s49-forward-motor-admission-20261026
       - self/dev-p1-causal-wait-shadow-20261027
       - self/dev-p1-observed-wait-frames-20261027
+      - self/dev-p1-selfbody-next-epoch-20261027
     paths:
       - .github/workflows/self-s49-inter-action-stillness-dev.yml
       - adapters/mineflayer/bridge.mjs
@@ -15,6 +16,8 @@ on:
       - tests/test_s49_p1_fenced_recovery_shadow_dev.py
       - adapters/mineflayer/s49_p1_dev_wait_observed.py
       - tests/test_s49_p1_dev_wait_observed.py
+      - adapters/mineflayer/s49_p1_selfbody_epoch_shadow_dev.py
+      - tests/test_s49_p1_selfbody_epoch_shadow_dev.py
       - 'adapters/mineflayer/s49_paper_dash_dev/**'
       - adapters/mineflayer/s49_paper_forward_dash_dev.py
       - tests/test_s49_inter_action_stillness_dev.py
@@ -53,6 +56,7 @@ jobs:
       S49_CAUSAL_OWNER_PAPER_FENCE_DEV_ONLY: '1'
       S49_P1_FENCED_SHADOW_DEV_ONLY: '1'
       S49_P1_OBSERVED_WAIT_MODEL_DEV_ONLY: '1'
+      S49_P1_NEXT_SELFBODY_EPOCH_DEV_ONLY: '1'
       DEV_OUTPUT: '/tmp/s49-stillness-${{ github.run_id }}-${{ github.run_attempt }}'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -85,9 +89,9 @@ jobs:
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
           node --check adapters/mineflayer/bridge.mjs
           node --test adapters/mineflayer/s49_speed_attribute_bridge_dev.test.mjs
-          python -m compileall -q adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_s49_post_release_motion_dev.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_two_action_world_timeline_dev.py tests/test_s49_two_action_world_timeline_dev.py adapters/mineflayer/s49_inter_action_stillness_dev.py tests/test_s49_inter_action_stillness_dev.py tests/test_s49_original_owner_gap_dev.py tests/test_s49_causal_wait_fence_dev.py adapters/mineflayer/s49_causal_wait_fence_dev.py adapters/mineflayer/s49_p1_fenced_recovery_shadow_dev.py tests/test_s49_p1_fenced_recovery_shadow_dev.py adapters/mineflayer/s49_p1_dev_wait_observed.py tests/test_s49_p1_dev_wait_observed.py
-          ruff check adapters/mineflayer/s49_p1_dev_wait_observed.py tests/test_s49_p1_dev_wait_observed.py adapters/mineflayer/s49_p1_fenced_recovery_shadow_dev.py tests/test_s49_p1_fenced_recovery_shadow_dev.py adapters/mineflayer/s49_causal_wait_fence_dev.py tests/test_s49_causal_wait_fence_dev.py adapters/mineflayer/s49_inter_action_stillness_dev.py tests/test_s49_inter_action_stillness_dev.py tests/test_s49_original_owner_gap_dev.py adapters/mineflayer/s49_two_action_world_timeline_dev.py tests/test_s49_two_action_world_timeline_dev.py adapters/mineflayer/s49_m0_world_time_shadow_dev.py tests/test_s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py adapters/mineflayer/s49_node_physics_postclear_dev.py adapters/mineflayer/execution.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_m0_dash_extra_owner_dev.py
-          python -m pytest -q tests/test_s49_p1_dev_wait_observed.py tests/test_s49_p1_fenced_recovery_shadow_dev.py tests/test_s49_causal_wait_fence_dev.py tests/test_s49_original_owner_gap_dev.py tests/test_s49_inter_action_stillness_dev.py tests/test_s49_two_action_world_timeline_dev.py tests/test_s49_m0_world_time_shadow_dev.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_s49_post_release_motion_dev.py tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_b0_energy_bridge.py tests/test_s49_p1_paper_motor_dev.py tests/test_p1_gait_dev.py tests/test_s49_paper_forward_dash_dev.py tests/test_s49_forward_motor_admission_dev.py
+          python -m compileall -q adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_s49_post_release_motion_dev.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_two_action_world_timeline_dev.py tests/test_s49_two_action_world_timeline_dev.py adapters/mineflayer/s49_inter_action_stillness_dev.py tests/test_s49_inter_action_stillness_dev.py tests/test_s49_original_owner_gap_dev.py tests/test_s49_causal_wait_fence_dev.py adapters/mineflayer/s49_causal_wait_fence_dev.py adapters/mineflayer/s49_p1_fenced_recovery_shadow_dev.py tests/test_s49_p1_fenced_recovery_shadow_dev.py adapters/mineflayer/s49_p1_dev_wait_observed.py tests/test_s49_p1_dev_wait_observed.py adapters/mineflayer/s49_p1_selfbody_epoch_shadow_dev.py tests/test_s49_p1_selfbody_epoch_shadow_dev.py
+          ruff check adapters/mineflayer/s49_p1_selfbody_epoch_shadow_dev.py tests/test_s49_p1_selfbody_epoch_shadow_dev.py adapters/mineflayer/s49_p1_dev_wait_observed.py tests/test_s49_p1_dev_wait_observed.py adapters/mineflayer/s49_p1_fenced_recovery_shadow_dev.py tests/test_s49_p1_fenced_recovery_shadow_dev.py adapters/mineflayer/s49_causal_wait_fence_dev.py tests/test_s49_causal_wait_fence_dev.py adapters/mineflayer/s49_inter_action_stillness_dev.py tests/test_s49_inter_action_stillness_dev.py tests/test_s49_original_owner_gap_dev.py adapters/mineflayer/s49_two_action_world_timeline_dev.py tests/test_s49_two_action_world_timeline_dev.py adapters/mineflayer/s49_m0_world_time_shadow_dev.py tests/test_s49_m0_world_time_shadow_dev.py adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/b0_energy_bridge.py adapters/mineflayer/s49_node_physics_postclear_dev.py adapters/mineflayer/execution.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_m0_dash_extra_owner_dev.py
+          python -m pytest -q tests/test_s49_p1_selfbody_epoch_shadow_dev.py tests/test_s49_p1_dev_wait_observed.py tests/test_s49_p1_fenced_recovery_shadow_dev.py tests/test_s49_causal_wait_fence_dev.py tests/test_s49_original_owner_gap_dev.py tests/test_s49_inter_action_stillness_dev.py tests/test_s49_two_action_world_timeline_dev.py tests/test_s49_m0_world_time_shadow_dev.py tests/test_s49_node_physics_postclear_dev.py tests/test_s49_node_paper_motion_fingerprint_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_s49_post_release_motion_dev.py tests/test_s49_m0_action_steps_dev.py tests/test_s49_paper_action_bracket_dev.py tests/test_b0_energy_bridge.py tests/test_s49_p1_paper_motor_dev.py tests/test_p1_gait_dev.py tests/test_s49_paper_forward_dash_dev.py tests/test_s49_forward_motor_admission_dev.py
       - name: Compile independent Paper DASH modifier plugin
         run: |
           mvn -B -ntp -f adapters/mineflayer/s49_paper_dash_dev/pom.xml -DskipTests package
@@ -147,7 +151,7 @@ jobs:
             --output-dir "$DEV_OUTPUT" \
             --paper-jar "$PAPER_JAR" --paper-sha256 "$PAPER_SHA" \
             --dash-jar "$DASH" --dash-sha256 "$DASH_SHA" \
-            --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD --p1-live-dev --m0-live-dev --m0-move-dev --native-edges-dev --post-release-dev --node-physics-dev --m0-worldtime-shadow-dev --two-action-timeline-dev --inter-action-stillness-dev --causal-owner-fence-dev --p1-fenced-recovery-shadow-dev --p1-observed-wait-model-dev
+            --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD --p1-live-dev --m0-live-dev --m0-move-dev --native-edges-dev --post-release-dev --node-physics-dev --m0-worldtime-shadow-dev --two-action-timeline-dev --inter-action-stillness-dev --causal-owner-fence-dev --p1-fenced-recovery-shadow-dev --p1-observed-wait-model-dev --p1-next-selfbody-epoch-dev
       - name: Verify original forward+sprint S16 and Paper positive modifier ticks
         run: |
           python - <<'PY'
@@ -385,6 +389,27 @@ jobs:
           assert model["m0_posted"] is False and model["source_bound_tick_created"] is False
           assert model["qualification_go"] is False and model["science_go"] is False
           print("S49_P1_SOURCE_TICK_DEV_MODEL_REPLAY_PASS", model)
+
+          body=report["p1_next_selfbody_epoch_shadow_dev"]
+          assert body["classification"] == "P1_RETROSPECTIVE_NEXT_SELFBODY_HYPOTHESES_DEV_ONLY"
+          assert body["session_id"] == source["session_id"]
+          assert body["action_ids"] == [a["action"] for a in source["actual_native_actions"]]
+          assert body["epoch_hypotheses_count"] == 2
+          assert body["paper_candidate_source_sha256"] == model["paper_candidate_source_sha256"]
+          assert body["unclassified_gap_ticks_before_candidate"] >= 1
+          assert body["no_recovery_carry_fatigue_bp"] > body["wait_assumed_fatigue_bp"]
+          assert body["wait_assumed_forward_dash_ceiling_bp"] >= body["no_recovery_forward_dash_ceiling_bp"]
+          assert body["model_ceiling_gain_bp"] > 0
+          assert body["model_not_actual_fatigue_bounds"] is True
+          assert body["next_original_action_is_historical"] is True
+          assert body["native_present_or_postcandidate_p1_sensor"] is None
+          assert body["physically_admitted_next_action_power"] is None
+          assert body["original_s49_action_policy_modified"] is False
+          assert body["new_action_issuers"] == 0 and body["additional_native_reads"] == 0
+          assert body["live_p1_state_modified"] is False and body["m0_posted"] is False
+          assert body["qualified_wait_ticks"] == 0
+          assert body["qualification_go"] is False and body["science_go"] is False
+          print("P1_NEXT_SELFBODY_HYPOTHETICAL_CAPACITY_DEV_PASS", body)
 
           gain=report["physical_gain_dev"]
           assert gain["native_gain_observed_dev"] is True
