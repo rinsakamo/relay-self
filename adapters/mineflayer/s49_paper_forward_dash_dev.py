@@ -54,6 +54,9 @@ from adapters.mineflayer.s49_paper_world_first_dev import (
     _fresh_output,
     offline_uuid,
 )
+from adapters.mineflayer.s49_speed_attr_boundary_dev import (
+    review_speed_attr_boundary_dev,
+)
 from adapters.mineflayer.s49_two_action_world_timeline_dev import (
     review_two_action_world_timeline_dev,
 )
@@ -558,6 +561,7 @@ async def run(
     p1_next_selfbody_epoch_dev: bool = False,
     p1_next_native_l0_review_dev: bool = False,
     p1_model_pair_case_dev: str | None = None,
+    speed_attr_boundary_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -578,6 +582,11 @@ async def run(
         or type(p1_observed_wait_model_dev) is not bool
         or type(p1_next_selfbody_epoch_dev) is not bool
         or type(p1_next_native_l0_review_dev) is not bool
+        or type(speed_attr_boundary_dev) is not bool
+        or (speed_attr_boundary_dev and (
+            p1_model_pair_case_dev != 'CARRY'
+            or os.environ.get('S49_SPEED_ATTR_BOUNDARY_DEV_ONLY') != '1'
+        ))
         or (p1_model_pair_case_dev is not None and (
             type(p1_model_pair_case_dev) is not str
             or p1_model_pair_case_dev not in PAIR_FATIGUE
@@ -649,6 +658,9 @@ async def run(
     results = output_dir / "paper_forward_dash_dev_report.json"
     node_physics_path = output_dir.resolve() / "node_local_physics_dev.json"
     inter_action_path = output_dir.resolve() / "node_inter_action_controls_dev.json"
+    attr_boundary_path = output_dir.resolve() / "node_speed_attr_boundary_dev.json"
+    if speed_attr_boundary_dev and attr_boundary_path.exists():
+        raise ForwardDashDevRejected("stale DEV attribute boundary source")
     if inter_action_stillness_dev and inter_action_path.exists():
         raise ForwardDashDevRejected("Node original inter-Action file already exists")
     if node_physics_dev and node_physics_path.exists():
@@ -892,6 +904,10 @@ async def run(
                     "S49_INTER_ACTION_CONTROL_DEV_PATH": str(inter_action_path),
                 } if inter_action_stillness_dev else {}),
             }) if node_physics_dev else nullcontext()),
+            (patch.dict(os.environ, {
+                'S49_SPEED_ATTR_BOUNDARY_DEV_ONLY': '1',
+                'S49_SPEED_ATTR_BOUNDARY_DEV_PATH': str(attr_boundary_path),
+            }) if speed_attr_boundary_dev else nullcontext()),
         ):
             rc = await original.qualify(
                 original_report, paper_log,
@@ -921,6 +937,14 @@ async def run(
                 or len(original_bytes["actual_native_actions"]) != 2):
             raise ForwardDashDevRejected("original S49 cleanup/outcome mismatch")
         actions = original_bytes["actual_native_actions"]
+        if speed_attr_boundary_dev:
+            report["node_speed_attribute_boundary_dev"] = (
+                review_speed_attr_boundary_dev(
+                    attr_boundary_path, session_id=subject["session"],
+                    action_id=subject["action_id"],
+                    sync_expected=os.environ.get("S49_SPEED_ATTR_SYNC_DEV_ONLY") == "1",
+                )
+            )
         if any(
             a["terminal"] != "outcome"
             or a["execution_evidence"]["action_ref"] != "MOVE_FORWARD_SPRINT_DEV"
@@ -1265,6 +1289,7 @@ def main() -> int:
     parser.add_argument("--p1-next-selfbody-epoch-dev", action="store_true")
     parser.add_argument("--p1-next-native-l0-review-dev", action="store_true")
     parser.add_argument("--p1-model-pair-case-dev", choices=tuple(PAIR_FATIGUE))
+    parser.add_argument("--speed-attr-boundary-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -1284,6 +1309,7 @@ def main() -> int:
         p1_next_selfbody_epoch_dev=a.p1_next_selfbody_epoch_dev,
         p1_next_native_l0_review_dev=a.p1_next_native_l0_review_dev,
         p1_model_pair_case_dev=a.p1_model_pair_case_dev,
+        speed_attr_boundary_dev=a.speed_attr_boundary_dev,
     ))
 
 

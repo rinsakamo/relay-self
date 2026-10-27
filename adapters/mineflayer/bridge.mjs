@@ -296,6 +296,87 @@ if (attrSyncDev) {
     })
   })
 }
+// Source-local DEV probe: which speed attribute did the existing Mineflayer
+// entity receive, and was it exposed under the prismarine-physics key?
+// This only samples already-consumed client packets and physicsTick callbacks.
+const attrBoundaryPath = process.env.S49_SPEED_ATTR_BOUNDARY_DEV_PATH
+const attrBoundaryEnabled =
+  process.env.S49_SPEED_ATTR_BOUNDARY_DEV_ONLY === '1' &&
+  process.env.S49_SPRINT_MOTOR_DEV_ONLY === '1' &&
+  config.version === '1.21.8' &&
+  typeof attrBoundaryPath === 'string' && isAbsolute(attrBoundaryPath)
+let attrBoundary = null
+let attrBoundarySealed = false
+function attrBoundaryValue (attrs, key) {
+  const v = attrs && attrs[key]
+  if (!v || typeof v.value !== 'number' || !Number.isFinite(v.value) ||
+      !Array.isArray(v.modifiers)) return null
+  return {
+    value: v.value,
+    modifiers: v.modifiers.slice(0, 5).map(m => ({
+      uuid: m.uuid, amount: m.amount, operation: m.operation
+    }))
+  }
+}
+function attrBoundarySample (kind, extra = {}) {
+  if (!attrBoundary || attrBoundarySealed || attrBoundary.rows.length >= 120) return
+  const attrs = bot.entity && bot.entity.attributes
+  attrBoundary.rows.push({
+    kind, ordinal: attrBoundary.rows.length + 1,
+    monotonic_ms: Number(process.hrtime.bigint() / 1000000n),
+    raw_generic_scale: attrBoundaryValue(attrs, 'generic.scale'),
+    physics_movement_speed: attrBoundaryValue(attrs, 'minecraft:movement_speed'),
+    ...extra
+  })
+}
+if (attrBoundaryEnabled) {
+  bot._client.on('entity_update_attributes', packet => {
+    if (!attrBoundary || attrBoundarySealed || !bot.entity ||
+        packet.entityId !== bot.entity.id) return
+    const interesting = (packet.properties || []).filter(
+      p => p.key === 'generic.scale' || p.key === 'minecraft:movement_speed'
+    )
+    if (interesting.length < 1) return
+    attrBoundarySample('RAW_PACKET', {
+      packet_properties: interesting.slice(0, 4).map(p => ({
+        key: p.key, value: p.value,
+        modifiers: (p.modifiers || []).slice(0, 5).map(m => ({
+          uuid: m.uuid, amount: m.amount, operation: m.operation
+        }))
+      }))
+    })
+  })
+  // Registered AFTER existing DEV sync listener, so DECODED is post-project.
+  bot.on('entityAttributes', entity => {
+    if (!attrBoundary || attrBoundarySealed || !bot.entity ||
+        entity.id !== bot.entity.id) return
+    attrBoundarySample('DECODED_ATTR')
+  })
+  bot.on('physicsTick', () => {
+    if (!attrBoundary || attrBoundarySealed || !bot.entity) return
+    if (!bot.getControlState('forward') || !bot.getControlState('sprint')) return
+    const pos = bot.entity.position
+    const vel = bot.entity.velocity
+    if (!pos || !vel) return
+    attrBoundarySample('ACTIVE_PHYSICS', {
+      physics_ordinal: ++attrBoundary.physics_ticks,
+      forward: true, sprint: true,
+      x: pos.x, z: pos.z, vx: vel.x, vz: vel.z
+    })
+  })
+}
+function attrBoundaryClose () {
+  if (!attrBoundary || attrBoundarySealed) return
+  attrBoundarySample('FIRST_ORIGINAL_CLEAR')
+  attrBoundarySealed = true
+  attrBoundary.complete = true
+  try {
+    writeFileSync(attrBoundaryPath, JSON.stringify(attrBoundary) + '\n',
+      { flag: 'wx', encoding: 'utf8', mode: 0o600 })
+  } catch (error) {
+    emitAdapterError(new Error('S49_SPEED_ATTR_BOUNDARY_WRITE_FAILED'))
+  }
+}
 if (clockOptIn === '1') {
   attachV6NativeClockPackets(
     bot,
@@ -439,6 +520,19 @@ async function handleEffect (command) {
         }
         captureNativePhysicsDev('SET')
       }
+      if (attrBoundaryEnabled && !attrBoundary && !attrBoundarySealed) {
+        attrBoundary = {
+          version: 'S49_SPEED_ATTR_NATIVE_BOUNDARY_DEV_V1',
+          session_id: sessionId, action_id: command.action_id,
+          sync_enabled: attrSyncDev, source_attested: false,
+          paper_clock_synchronized: false,
+          added_issuers: 0, added_readers: 0,
+          physics_ticks: 0, rows: [], complete: false
+        }
+        attrBoundarySample('FIRST_ORIGINAL_SET', {
+          forward: true, sprint: true
+        })
+      }
       attrDiagActive = true
       attrDiagSamples = 0
       traceDevAttr('SPRINT_DISPATCH_APPLIED')
@@ -465,6 +559,7 @@ async function handleEffect (command) {
           }
         }
       }
+      attrBoundaryClose()
       if (attrSyncDev && bot.entity && bot.entity.attributes) {
         delete bot.entity.attributes['minecraft:movement_speed']
       }
