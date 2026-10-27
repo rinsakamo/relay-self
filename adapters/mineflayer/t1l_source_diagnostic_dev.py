@@ -43,10 +43,21 @@ def analyze_paper_records(records, *, session_id=None):
               "node_evaluation_ms": None}
     samples = []
     prev = None
+    native_previous_seq = None
+    native_sequenced_records = 0
     observed_session = session_id
     for record in records:
         if not isinstance(record, dict):
             raise ContinuityRejected("native journal record not an object")
+        native_seq = record.get("seq")
+        if type(native_seq) is int:
+            native_sequenced_records += 1
+            if native_previous_seq is not None:
+                if native_seq <= native_previous_seq:
+                    violations.append("native_stream_seq_reordered_or_duplicate")
+                elif native_seq != native_previous_seq + 1:
+                    violations.append("native_stream_seq_gap")
+            native_previous_seq = native_seq
         if record.get("type") != "paper_snapshot":
             continue
         count += 1
@@ -124,6 +135,8 @@ def analyze_paper_records(records, *, session_id=None):
         "qualification": False, "source_independently_authenticated": False,
         "age_limit_ms_unchanged": 150, "challenge_limit_unchanged": CHALLENGE_CAP,
         "source_session": observed_session, "paper_frames": count,
+        "native_sequenced_records": native_sequenced_records,
+        "native_last_seq": native_previous_seq,
         "statuses": dict(statuses), "reasons": dict(reasons),
         "maxima_ms": {k: round(v, 6) if v is not None else None
                       for k, v in maxima.items()},
