@@ -41,6 +41,7 @@ def _case(directory: Path, case: str) -> dict:
         report.get("status") not in (
             "DEV_FORWARD_SPRINT_POSITIVE_PAPER_DASH_OBSERVED",
             "DEV_FORWARD_SPRINT_MOTION_GATED_PAPER_DASH_OBSERVED",
+            "DEV_PAIR_PAPER_OUTPUT_REAL_WORLD_NO_NATIVE_GAIN",
         )
         or original.get("status") != "PASS"
         or original.get("node_exit") != 0 or original.get("server_exit") != 0
@@ -66,6 +67,14 @@ def _case(directory: Path, case: str) -> dict:
         }
     ):
         raise P1DashPairRejected("DEV preload source not a successful original World")
+    if report["status"] == "DEV_PAIR_PAPER_OUTPUT_REAL_WORLD_NO_NATIVE_GAIN":
+        if (report.get("physical_gain_dev", "missing") is not None
+                or report.get("native_gain_unobserved_reason")
+                   != "Paper attribute on, but native DASH gain absent"):
+            raise P1DashPairRejected("negative native response misclassified")
+    else:
+        if not isinstance(report.get("physical_gain_dev"), dict):
+            raise P1DashPairRejected("positive native response lacked evidence")
     actions = original["actual_native_actions"]
     sid = original["session_id"]
     for action in actions:
@@ -161,6 +170,9 @@ def _case(directory: Path, case: str) -> dict:
         "preloaded_hypothetical_fatigue": PAIR_FATIGUE[case],
         "actual_source_frames_verified": True,
         "model_replay_verified": True,
+        "native_boost_relative_gain_gate_passed": (
+            report["status"] != "DEV_PAIR_PAPER_OUTPUT_REAL_WORLD_NO_NATIVE_GAIN"
+        ),
     }
 
 

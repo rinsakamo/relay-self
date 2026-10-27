@@ -1215,6 +1215,14 @@ async def run(
                 boost_ticks=review["paper_forward_boost_ticks"],
             )
         except ForwardDashDevRejected as exc:
+            if p1_model_pair_case_dev:
+                # A genuine negative native motor response is DATA in this
+                # preloaded MODEL sensitivity comparison, not an imaginary
+                # recovered-fatigue success or a violation of the sole owner.
+                report["status"] = "DEV_PAIR_PAPER_OUTPUT_REAL_WORLD_NO_NATIVE_GAIN"
+                report["native_gain_unobserved_reason"] = str(exc)
+                report["physical_gain_dev"] = None
+                return 0
             report["status"] = "DEV_PAPER_BOOST_BUT_NO_NATIVE_SPEED_GAIN"
             report["error"] = str(exc)
             return 1
