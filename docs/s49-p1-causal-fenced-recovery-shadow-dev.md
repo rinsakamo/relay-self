@@ -52,3 +52,44 @@ human physiology or a proven 20-TPS wall-clock mapping.
 Python 3.12 focused tests and negative controls, Ruff, syntax, and a disposable
 Paper World workflow on this new DEV branch. No FULL, main merge, PR #545/#634
 update, R qualification, or SCI run is authorized by this shadow report.
+
+## Completed real DEV result — exact tested HEAD
+
+**GitHub Actions #40440197581 SUCCESS** on exact tested source
+`9b454a9071cb6a3e773bd3a2b4a75d13479bf964`:
+https://github.com/rinsakamo/relay-self/actions/runs/40440197581
+
+- Python 3.12 focused and Ruff passed, Node 22 tests passed, Java 21
+  build succeeded before disposable Paper 1.21.8 World startup.
+- Original S49 native two authorized Actions: `s49-native-move-19` and
+  `s49-native-move-57`, both S16 terminal outcomes, original M0 final
+  readback `10.413667611509306` unchanged by this new shadow.
+- Actual **new** World START Paper tick **266**, END Paper tick **450**,
+  static subwindow **271..445** = **175 consecutive** Paper World ticks.
+  Node independently sampled controls OFF on **188** physicsTick callbacks.
+  Original first DASH Paper callback ticks 251..263 (13 ticks).
+- Seven intervening Paper ticks from first DASH replay end through the
+  last tick before the candidate are *unclassified*. The shadow
+  hypothesizes first DASH replay final P1 value `0.6177122410202606`
+  stays fixed over them. It does **not** assign those seven ticks WAIT.
+- For those **175** hypothetical WAIT ticks / **8.75** normalized
+  World-seconds, the existing single-P1 DEV gait dynamics calculates
+  hypothetical end `0.21616083122103735` and recovered amount
+  `0.4015514097992232`; it does not apply the result.
+- Report fields: `verified_physical_WAIT_ticks=0`,
+  `p1_recovery_applied=0.0`, `actual_p1_state_updated=false`,
+  `m0_posted=false`, `source_bound_tick_created=false`,
+  `physical_wait_admitted=false`, `qualification_go=false`,
+  `science_go=false`. Nothing on the action/energy owner changed.
+- Source artifact is `s49-inter-action-static-40440197581-1`,
+  GitHub artifact ID `12705218482`. Retention-limited workflow output;
+  the report numbers above come from the completed runner logs.
+
+Earlier runs on the same DEV branch failed **before** Minecraft launch:
+#40439979639 (Ruff import sorting) and #40440065790
+(synthetic fixture placed first DASH tick after Paper START). Both remain
+failed records, corrected with normal commits; the successful run is a
+new session and a new World, not reinterpretation of prior evidence.
+
+Final status: **DEV_WORLD_OBSERVED / DEV_ONLY / QUALIFICATION_NO_GO /
+SCIENCE_NOT_RUN**. No FULL or main/PR #545/#634 merge.
