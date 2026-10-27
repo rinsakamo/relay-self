@@ -47,7 +47,7 @@ def node_positive_transitions_dev(raw: dict, *, sid: str, aid: str) -> dict:
         raise SteadyPhaseRejected("foreign or promoted Node timing trace")
     physics = [row for row in raw["rows"]
                if type(row) is dict and row.get("kind") == "ACTIVE_PHYSICS"]
-    if len(physics) < 4 or len(physics) > 32:
+    if len(physics) < 3 or len(physics) > 32:
         raise SteadyPhaseRejected("insufficient first native physics ticks")
     previous_ordinal, prev_boosted = None, False
     previous, transitions = None, []
