@@ -458,6 +458,9 @@ async def run_case(args, case):
                     else None
                 )
             if case.startswith("t1k_"):
+                if case == "t1k_stop_resume_twice":
+                    from adapters.mineflayer.t1k_resume_lineage_dev import T1kStopResumeLineage
+                    session.t1k_lineage = T1kStopResumeLineage(session.started.session_id)
                 session.t1k_second_reauthorization = (
                     "DEV_EXPLICIT_OPERATOR_REAUTHORIZE"
                     if args.t1k_second_reauthorize
@@ -620,6 +623,8 @@ async def run_case(args, case):
                 report["t1k_fault_audit"]["safety_violation"] = True
         if case == "t1k_stop_resume_twice":
             details = report.get("t1k", {})
+            if session is not None and hasattr(session, "t1k_lineage"):
+                details["lineage"] = session.t1k_lineage.summary()
             first, second = details.get("first", {}), details.get("second", {})
             cmds = [json.loads(line) for line in
                     (root / "commands.jsonl").read_text().splitlines()]
@@ -648,6 +653,9 @@ async def run_case(args, case):
                         "distinct_resume_ids", "original_stop_latched",
                         "intermediate_stop_latched", "each_resume_motor_once",
                         "all_effect_ids_unique"))
+                    or not details.get("lineage", {}).get("old_owners_still_latched")
+                    or details.get("lineage", {}).get("generations") != 2
+                    or details.get("lineage", {}).get("failed") is not False
                     or len(move_ids) != args.loop_moves + 3
                     or len(clear_ids) != args.loop_moves + 3
                     or not report["cleanup_complete"]):
