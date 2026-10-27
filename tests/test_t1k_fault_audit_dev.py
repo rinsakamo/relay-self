@@ -49,9 +49,12 @@ def test_only_observed_fault_with_unknown_or_no_action_is_fail_closed(case):
 
 
 @pytest.mark.parametrize("fault", ["foreign_session", "shutdown_only", "clear_not_dropped",
+                                  "old_dropped_ack", "foreign_dropped_seq",
                                   "duplicate_motor", "forged_outcome", "second_grant"])
 def test_no_false_native_fault_pass_or_fabricated_outcome(fault):
-    case = "t1k_fault_clear_ack" if fault == "clear_not_dropped" else "t1k_fault_set_ack"
+    case = ("t1k_fault_clear_ack" if fault in {
+        "clear_not_dropped", "old_dropped_ack", "foreign_dropped_seq"}
+        else "t1k_fault_set_ack")
     commands, native, report = fixture(case)
     if fault == "foreign_session":
         for row in native:
@@ -60,6 +63,10 @@ def test_no_false_native_fault_pass_or_fabricated_outcome(fault):
         native[-1]["reason"] = "RelaySelf adapter shutdown"
     elif fault == "clear_not_dropped":
         report["dropped_clear_receipts"] = []
+    elif fault == "old_dropped_ack":
+        report["dropped_clear_receipts"][0]["action_id"] = "old-move-clear"
+    elif fault == "foreign_dropped_seq":
+        report["dropped_clear_receipts"][0]["seq"] -= 1
     elif fault == "duplicate_motor":
         commands.append(deepcopy(commands[0]))
     elif fault == "forged_outcome":

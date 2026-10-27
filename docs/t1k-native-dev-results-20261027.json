@@ -1,0 +1,3157 @@
+{
+  "classification": "DEV_ONLY / DEV_WORLD_OBSERVED",
+  "fault_classification": "NATIVE_FAULT_OBSERVED (run-005/007/010 only; other original classifications retained)",
+  "qualification": "QUALIFICATION_NO_GO / SCIENCE_NOT_RUN",
+  "implementation_heads": [
+    "564869429c8bf17d25afe8a5b31ed090c054cb16",
+    "0b95ac6a46fd0b79d4305da7821be181413c18a5"
+  ],
+  "evidence_root": "/home/rinsa/work/t1k-evidence-20261027",
+  "tests": {
+    "python": "3.12.3",
+    "focused_initial_pass": 123,
+    "focused_final_pass": 158,
+    "fast_final_pass": 587,
+    "node": "22.22.2",
+    "node_pass": 68,
+    "java": "21.0.12.1",
+    "java_build": "BUILD SUCCESS",
+    "FULL": "NOT_RUN"
+  },
+  "runs": [
+    {
+      "original_report_sha256": "e328d1110a256d10ef11161056b03ca43dc5cd390354aee04260f631d7b3bda0",
+      "source_hash_index_sha256": "dcc8764a2a51d261004e407216dd76539ecf2f169beca57f98b412761bc86885",
+      "run": "run-001",
+      "evidence_path": "/home/rinsa/work/t1k-evidence-20261027/run-001/t1k_stop_resume_twice",
+      "case": "t1k_stop_resume_twice",
+      "status": "FAIL",
+      "error": "S31AQualificationError: Mineflayer command rejected: duplicate_probe_request_id",
+      "session": "811ad7e4-d616-481b-9bf5-bdc3978b6c40",
+      "world": "51b1134c-d795-4e7e-9def-59baf7af0776",
+      "source_seq_strictly_monotone": true,
+      "source_seq_no_gaps": true,
+      "paper_world_ticks_continuous": true,
+      "raw_snapshot_count": 398,
+      "raw_admission_status_counts": {
+        "ADMITTED": 398
+      },
+      "max_age_upper_ms": 146.74069,
+      "motor_sends": 4,
+      "clear_sends": 4,
+      "consume_sends": 1,
+      "effect_id_duplicates": 0,
+      "move_terminals": [
+        {
+          "action_id": "t1f-epoch-0",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210613
+        },
+        {
+          "action_id": "t1f-epoch-1",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210615
+        },
+        {
+          "action_id": "t1f-epoch-2",
+          "terminal": "unknown",
+          "movement_distance": null
+        }
+      ],
+      "meal_terminal": "outcome",
+      "meal_receipt": {
+        "action_id": "t2-native-meal",
+        "after_probe_seq": 427,
+        "consumed_item": "cooked_beef",
+        "count_after": 2,
+        "count_before": 3,
+        "food_after": 20.0,
+        "food_before": 18.0,
+        "provenance": {
+          "reference": "811ad7e4-d616-481b-9bf5-bdc3978b6c40:427",
+          "source": "mineflayer"
+        },
+        "session_id": "811ad7e4-d616-481b-9bf5-bdc3978b6c40"
+      },
+      "stop_acks": [
+        {
+          "active_action_id": "t1f-epoch-2",
+          "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+          "clear_ack_seq": 434,
+          "clear_action_id": "t1f-epoch-2-clear",
+          "first_idle_tick": 384,
+          "full_tick_stillness_qualified": false,
+          "high_level_dev_stop_ack": true,
+          "last_idle_tick": 391,
+          "marker_id": "T1I_MULTI_AFTER_CLEAR",
+          "native_source_independently_authenticated": false,
+          "observed_idle_ticks": 8,
+          "p1_qualified_wait": false,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "session_id": "811ad7e4-d616-481b-9bf5-bdc3978b6c40",
+          "stop_id": "t1i-multi-epoch-stop",
+          "world": "51b1134c-d795-4e7e-9def-59baf7af0776"
+        }
+      ],
+      "stop_requested_python_ns": 1098874365610701,
+      "second_stop_requested_python_ns": null,
+      "accounting_at_stop": {
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.620175321043847,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 342
+        },
+        "fatigue": {
+          "fatigue": 0.0052093432652756365,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "811ad7e4-d616-481b-9bf5-bdc3978b6c40",
+          "world_tick": 1374
+        },
+        "ticks": 342
+      },
+      "accounting_at_second_stop": null,
+      "attempts": [],
+      "old_ledgers": {
+        "T1J-R1": {
+          "energy": {
+            "energy": 15.620175321043847,
+            "knockouts": 0,
+            "meals": 1,
+            "terminal": false,
+            "tick": 342
+          },
+          "fatigue": {
+            "fatigue": 0.0052093432652756365,
+            "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+            "session_id": "811ad7e4-d616-481b-9bf5-bdc3978b6c40",
+            "world_tick": 1374
+          },
+          "credit_ids": [
+            "t2-native-meal"
+          ],
+          "failed": true,
+          "row_count": 342,
+          "first_world_tick": 1033,
+          "frozen_world_tick": 1374,
+          "rows_sha256": "a00f0661770cd5d6495d6c8f431488281607123049711e448a483d12bdbf6fb4"
+        }
+      },
+      "final_ledger": {
+        "P1_qualified_WAIT": false,
+        "active_action": null,
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.618829658928721,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 343
+        },
+        "fatigue": {
+          "fatigue": 0.01012258556778389,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "811ad7e4-d616-481b-9bf5-bdc3978b6c40",
+          "world_tick": 1394
+        },
+        "latched": true,
+        "ticks": 1
+      },
+      "lineage": {
+        "classification": "T1K_BOUNDED_TWO_GENERATION_DEV",
+        "failed": false,
+        "generations": 0,
+        "has_open_generation": true,
+        "old_owners_still_latched": true,
+        "resume_id_count": 1,
+        "retired_effect_id_count": 2,
+        "stopped_owner_ids_distinct": false
+      },
+      "source_loss": {
+        "accounted_ticks": 1,
+        "python_ns": 1098876228572103,
+        "seq": 491,
+        "type": "MineflayerCommandError"
+      },
+      "fault_injection": null,
+      "set_ack_received_before_injection_request": null,
+      "fault_audit": null,
+      "cleanup": {
+        "cleanup_complete": true,
+        "process_reap_complete": true,
+        "java_exit": 0,
+        "node_exit": 0,
+        "java_pid_absent": true,
+        "node_pid_absent": true,
+        "port_rebind": true,
+        "node_cleanup_error": null
+      },
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "811ad7e4-d616-481b-9bf5-bdc3978b6c40"
+      },
+      "original_hashes_verified": true
+    },
+    {
+      "original_report_sha256": "ff945c7e57ddf2ed1ef3883333bd9ee77122283ceaa4e7058c1db340237f9ce5",
+      "source_hash_index_sha256": "9e5eb4cb5b401c66320db53d8f01467fc4b2e0090afc6b70baee97cba5612e92",
+      "run": "run-002",
+      "evidence_path": "/home/rinsa/work/t1k-evidence-20261027/run-002/t1k_stop_resume_twice",
+      "case": "t1k_stop_resume_twice",
+      "status": "FAIL",
+      "error": null,
+      "session": "c8c798a1-68f7-4873-b374-bd2d9842cd33",
+      "world": "5abd7db6-7ecb-4e59-8ffd-95b2478b599b",
+      "source_seq_strictly_monotone": true,
+      "source_seq_no_gaps": true,
+      "paper_world_ticks_continuous": true,
+      "raw_snapshot_count": 419,
+      "raw_admission_status_counts": {
+        "ADMITTED": 419
+      },
+      "max_age_upper_ms": 109.23444,
+      "motor_sends": 5,
+      "clear_sends": 5,
+      "consume_sends": 1,
+      "effect_id_duplicates": 0,
+      "move_terminals": [
+        {
+          "action_id": "t1f-epoch-0",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210613
+        },
+        {
+          "action_id": "t1f-epoch-1",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210615
+        },
+        {
+          "action_id": "t1f-epoch-2",
+          "terminal": "unknown",
+          "movement_distance": null
+        },
+        {
+          "action_id": "t1j-T1J-R1-move",
+          "terminal": "unknown",
+          "movement_distance": null
+        },
+        {
+          "action_id": "t1j-T1J-R2-move",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210608
+        }
+      ],
+      "meal_terminal": "outcome",
+      "meal_receipt": {
+        "action_id": "t2-native-meal",
+        "after_probe_seq": 428,
+        "consumed_item": "cooked_beef",
+        "count_after": 2,
+        "count_before": 3,
+        "food_after": 20.0,
+        "food_before": 18.0,
+        "provenance": {
+          "reference": "c8c798a1-68f7-4873-b374-bd2d9842cd33:428",
+          "source": "mineflayer"
+        },
+        "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33"
+      },
+      "stop_acks": [
+        {
+          "active_action_id": "t1f-epoch-2",
+          "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+          "clear_ack_seq": 436,
+          "clear_action_id": "t1f-epoch-2-clear",
+          "first_idle_tick": 381,
+          "full_tick_stillness_qualified": false,
+          "high_level_dev_stop_ack": true,
+          "last_idle_tick": 388,
+          "marker_id": "T1I_MULTI_AFTER_CLEAR",
+          "native_source_independently_authenticated": false,
+          "observed_idle_ticks": 8,
+          "p1_qualified_wait": false,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33",
+          "stop_id": "t1i-multi-epoch-stop",
+          "world": "5abd7db6-7ecb-4e59-8ffd-95b2478b599b"
+        },
+        {
+          "active_action_id": "t1j-T1J-R1-move",
+          "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+          "clear_ack_seq": 468,
+          "clear_action_id": "t1j-T1J-R1-move-clear",
+          "first_idle_tick": 401,
+          "full_tick_stillness_qualified": false,
+          "high_level_dev_stop_ack": true,
+          "last_idle_tick": 408,
+          "marker_id": "T1K_R1_AFTER_CLEAR",
+          "native_source_independently_authenticated": false,
+          "observed_idle_ticks": 8,
+          "p1_qualified_wait": false,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33",
+          "stop_id": "t1k-second-stop",
+          "world": "5abd7db6-7ecb-4e59-8ffd-95b2478b599b"
+        }
+      ],
+      "stop_requested_python_ns": 1098989672126558,
+      "second_stop_requested_python_ns": null,
+      "accounting_at_stop": {
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.620175321043847,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 342
+        },
+        "fatigue": {
+          "fatigue": 0.0052093432652756365,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33",
+          "world_tick": 1371
+        },
+        "ticks": 342
+      },
+      "accounting_at_second_stop": null,
+      "attempts": [
+        {
+          "generation": 1,
+          "resume_id": "T1J-R1",
+          "stop_id": "t1i-multi-epoch-stop",
+          "authorization_consumed": true,
+          "authorized_python_ns": 1098990550495857,
+          "permit_consumed": true,
+          "permit_consumed_python_ns": 1098990590925727,
+          "motor_send_attempted": true,
+          "motor_send_python_ns": 1098990591787754,
+          "permission_cleared": true,
+          "old_owner_still_latched": true,
+          "old_ledger_unchanged": true,
+          "error": null,
+          "permit": {
+            "after_source_seq": 462,
+            "after_world_tick": 1390,
+            "before_source_seq": 460,
+            "classification": "DEV_EXPLICIT_REAUTHORIZE_REOBSERVED_GAP",
+            "native_probe_seq": 461,
+            "native_source_independently_authenticated": false,
+            "next_action_id": "t1j-T1J-R1-move",
+            "no_retrospective_m0_or_p1": true,
+            "old_stop_ack_last_server_tick": 388,
+            "original_owner_latch_retained": true,
+            "p1_wait_qualified": false,
+            "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+            "resume_id": "T1J-R1",
+            "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33",
+            "stop_id": "t1i-multi-epoch-stop",
+            "unobserved_world_ticks": 18,
+            "world": "5abd7db6-7ecb-4e59-8ffd-95b2478b599b"
+          },
+          "reobservations": [
+            {
+              "seq": 460,
+              "kind": "paper_snapshot",
+              "server_tick": 391,
+              "world_tick": 1389,
+              "age_upper_ns": "52560842"
+            },
+            {
+              "seq": 461,
+              "kind": "observation",
+              "server_tick": null,
+              "world_tick": null,
+              "age_upper_ns": null
+            },
+            {
+              "seq": 462,
+              "kind": "paper_snapshot",
+              "server_tick": 392,
+              "world_tick": 1390,
+              "age_upper_ns": "46819981"
+            }
+          ],
+          "terminal": "unknown",
+          "consequence": {
+            "status": "failed",
+            "movement_distance": null,
+            "error": "MineflayerExecutionError: T1h high-level STOP requested or invalid",
+            "dispatch_receipt": {
+              "action_id": "t1j-T1J-R1-move",
+              "effect": "set_control",
+              "error": null,
+              "result": "applied",
+              "seq": 464,
+              "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33"
+            },
+            "cleanup_receipt": {
+              "action_id": "t1j-T1J-R1-move-clear",
+              "effect": "clear_controls",
+              "error": null,
+              "result": "applied",
+              "seq": 468,
+              "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33"
+            }
+          },
+          "ledger": {
+            "energy": {
+              "energy": 15.618829658928721,
+              "knockouts": 0,
+              "meals": 1,
+              "terminal": false,
+              "tick": 343
+            },
+            "fatigue": {
+              "fatigue": 0.01012258556778389,
+              "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+              "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33",
+              "world_tick": 1391
+            },
+            "credit_ids": [
+              "t2-native-meal"
+            ],
+            "failed": true,
+            "rebase": {
+              "kind": "PROVISIONAL_LAST_KNOWN_CARRY_WITH_UNOBSERVED_GAP",
+              "new_origin_world_tick": 1390,
+              "p1_wait_qualified": false,
+              "prior_energy_last_known": 15.620175321043847,
+              "prior_fatigue_last_known": 0.0052093432652756365,
+              "prior_ledger_rows": 342,
+              "resume_id": "T1J-R1",
+              "resumed_m0_p1_qualified": false,
+              "stop_gap_debit_and_credit": 0,
+              "stop_id": "t1i-multi-epoch-stop",
+              "unobserved_world_ticks": 18,
+              "world_fatigue_during_gap": "UNKNOWN",
+              "world_physical_energy_during_gap": "UNKNOWN"
+            },
+            "row_count": 1,
+            "world_ticks": [
+              1391
+            ]
+          }
+        },
+        {
+          "generation": 2,
+          "resume_id": "T1J-R2",
+          "stop_id": "t1k-second-stop",
+          "authorization_consumed": true,
+          "authorized_python_ns": 1098991535137681,
+          "permit_consumed": true,
+          "permit_consumed_python_ns": 1098991590639994,
+          "motor_send_attempted": true,
+          "motor_send_python_ns": 1098991591302914,
+          "permission_cleared": true,
+          "old_owner_still_latched": true,
+          "old_ledger_unchanged": true,
+          "error": null,
+          "permit": {
+            "after_source_seq": 495,
+            "after_world_tick": 1410,
+            "before_source_seq": 493,
+            "classification": "DEV_EXPLICIT_REAUTHORIZE_REOBSERVED_GAP",
+            "native_probe_seq": 494,
+            "native_source_independently_authenticated": false,
+            "next_action_id": "t1j-T1J-R2-move",
+            "no_retrospective_m0_or_p1": true,
+            "old_stop_ack_last_server_tick": 408,
+            "original_owner_latch_retained": true,
+            "p1_wait_qualified": false,
+            "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+            "resume_id": "T1J-R2",
+            "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33",
+            "stop_id": "t1k-second-stop",
+            "unobserved_world_ticks": 18,
+            "world": "5abd7db6-7ecb-4e59-8ffd-95b2478b599b"
+          },
+          "reobservations": [
+            {
+              "seq": 493,
+              "kind": "paper_snapshot",
+              "server_tick": 411,
+              "world_tick": 1409,
+              "age_upper_ns": "52281339"
+            },
+            {
+              "seq": 494,
+              "kind": "observation",
+              "server_tick": null,
+              "world_tick": null,
+              "age_upper_ns": null
+            },
+            {
+              "seq": 495,
+              "kind": "paper_snapshot",
+              "server_tick": 412,
+              "world_tick": 1410,
+              "age_upper_ns": "47406292"
+            }
+          ],
+          "terminal": "outcome",
+          "consequence": {
+            "status": "executed",
+            "movement_distance": 0.6269065734210608,
+            "error": null,
+            "dispatch_receipt": {
+              "action_id": "t1j-T1J-R2-move",
+              "effect": "set_control",
+              "error": null,
+              "result": "applied",
+              "seq": 497,
+              "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33"
+            },
+            "cleanup_receipt": {
+              "action_id": "t1j-T1J-R2-move-clear",
+              "effect": "clear_controls",
+              "error": null,
+              "result": "applied",
+              "seq": 506,
+              "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33"
+            }
+          },
+          "ledger": {
+            "energy": {
+              "energy": 15.597330124537196,
+              "knockouts": 0,
+              "meals": 1,
+              "terminal": false,
+              "tick": 361
+            },
+            "fatigue": {
+              "fatigue": 0.0,
+              "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+              "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33",
+              "world_tick": 1428
+            },
+            "credit_ids": [
+              "t2-native-meal"
+            ],
+            "failed": false,
+            "rebase": {
+              "kind": "PROVISIONAL_LAST_KNOWN_CARRY_WITH_UNOBSERVED_GAP",
+              "new_origin_world_tick": 1410,
+              "p1_wait_qualified": false,
+              "prior_energy_last_known": 15.618829658928721,
+              "prior_fatigue_last_known": 0.01012258556778389,
+              "prior_ledger_rows": 1,
+              "resume_id": "T1J-R2",
+              "resumed_m0_p1_qualified": false,
+              "stop_gap_debit_and_credit": 0,
+              "stop_id": "t1k-second-stop",
+              "unobserved_world_ticks": 18,
+              "world_fatigue_during_gap": "UNKNOWN",
+              "world_physical_energy_during_gap": "UNKNOWN"
+            },
+            "row_count": 18,
+            "world_ticks": [
+              1411,
+              1412,
+              1413,
+              1414,
+              1415,
+              1416,
+              1417,
+              1418,
+              1419,
+              1420,
+              1421,
+              1422,
+              1423,
+              1424,
+              1425,
+              1426,
+              1427,
+              1428
+            ]
+          }
+        }
+      ],
+      "old_ledgers": {
+        "T1J-R1": {
+          "energy": {
+            "energy": 15.620175321043847,
+            "knockouts": 0,
+            "meals": 1,
+            "terminal": false,
+            "tick": 342
+          },
+          "fatigue": {
+            "fatigue": 0.0052093432652756365,
+            "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+            "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33",
+            "world_tick": 1371
+          },
+          "credit_ids": [
+            "t2-native-meal"
+          ],
+          "failed": true,
+          "row_count": 342,
+          "first_world_tick": 1030,
+          "frozen_world_tick": 1371,
+          "rows_sha256": "6e41dc33b44483a20d4ca4c503769e7d03a8bac3e03aa3e8f68eca5214081e61"
+        },
+        "T1J-R2": {
+          "energy": {
+            "energy": 15.618829658928721,
+            "knockouts": 0,
+            "meals": 1,
+            "terminal": false,
+            "tick": 343
+          },
+          "fatigue": {
+            "fatigue": 0.01012258556778389,
+            "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+            "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33",
+            "world_tick": 1391
+          },
+          "credit_ids": [
+            "t2-native-meal"
+          ],
+          "failed": true,
+          "row_count": 1,
+          "first_world_tick": 1391,
+          "frozen_world_tick": 1391,
+          "rows_sha256": "3b9e359fb2c1e5c57f368c0182a4fab6f612df86fe628d8635aa56c4ed2adc14"
+        }
+      },
+      "final_ledger": {
+        "P1_qualified_WAIT": false,
+        "active_action": null,
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.597330124537196,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 361
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33",
+          "world_tick": 1428
+        },
+        "latched": false,
+        "ticks": 18
+      },
+      "lineage": {
+        "classification": "T1K_BOUNDED_TWO_GENERATION_DEV",
+        "failed": false,
+        "generations": 2,
+        "has_open_generation": false,
+        "old_owners_still_latched": true,
+        "resume_id_count": 2,
+        "retired_effect_id_count": 4,
+        "stopped_owner_ids_distinct": true
+      },
+      "source_loss": null,
+      "fault_injection": null,
+      "set_ack_received_before_injection_request": null,
+      "fault_audit": null,
+      "cleanup": {
+        "cleanup_complete": true,
+        "process_reap_complete": true,
+        "java_exit": 0,
+        "node_exit": 0,
+        "java_pid_absent": true,
+        "node_pid_absent": true,
+        "port_rebind": true,
+        "node_cleanup_error": null
+      },
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "c8c798a1-68f7-4873-b374-bd2d9842cd33"
+      },
+      "original_hashes_verified": true,
+      "r1_paper_baseline_to_stop_idle_displacement_m": 0.42689066361842953
+    },
+    {
+      "original_report_sha256": "c23a4222ad8004cd22a74eb5c68b5e516ff90d3e9cdbd0ec2eb138c9497ae1f1",
+      "source_hash_index_sha256": "b7d6244f2a361ac1b8b78feb7180c71d2f10a61badead4ea54922cbbae8440a3",
+      "run": "run-003",
+      "evidence_path": "/home/rinsa/work/t1k-evidence-20261027/run-003/t1k_stop_resume_twice",
+      "case": "t1k_stop_resume_twice",
+      "status": "PASS",
+      "error": null,
+      "session": "9d83fb10-4228-4560-9c3f-27260a7a6eff",
+      "world": "49a70a2a-f991-4fae-b137-b931ac9baa90",
+      "source_seq_strictly_monotone": true,
+      "source_seq_no_gaps": true,
+      "paper_world_ticks_continuous": true,
+      "raw_snapshot_count": 422,
+      "raw_admission_status_counts": {
+        "ADMITTED": 422
+      },
+      "max_age_upper_ms": 77.519445,
+      "motor_sends": 5,
+      "clear_sends": 5,
+      "consume_sends": 1,
+      "effect_id_duplicates": 0,
+      "move_terminals": [
+        {
+          "action_id": "t1f-epoch-0",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210613
+        },
+        {
+          "action_id": "t1f-epoch-1",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210615
+        },
+        {
+          "action_id": "t1f-epoch-2",
+          "terminal": "unknown",
+          "movement_distance": null
+        },
+        {
+          "action_id": "t1j-T1J-R1-move",
+          "terminal": "unknown",
+          "movement_distance": null
+        },
+        {
+          "action_id": "t1j-T1J-R2-move",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210608
+        }
+      ],
+      "meal_terminal": "outcome",
+      "meal_receipt": {
+        "action_id": "t2-native-meal",
+        "after_probe_seq": 430,
+        "consumed_item": "cooked_beef",
+        "count_after": 2,
+        "count_before": 3,
+        "food_after": 20.0,
+        "food_before": 18.0,
+        "provenance": {
+          "reference": "9d83fb10-4228-4560-9c3f-27260a7a6eff:430",
+          "source": "mineflayer"
+        },
+        "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff"
+      },
+      "stop_acks": [
+        {
+          "active_action_id": "t1f-epoch-2",
+          "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+          "clear_ack_seq": 438,
+          "clear_action_id": "t1f-epoch-2-clear",
+          "first_idle_tick": 383,
+          "full_tick_stillness_qualified": false,
+          "high_level_dev_stop_ack": true,
+          "last_idle_tick": 390,
+          "marker_id": "T1I_MULTI_AFTER_CLEAR",
+          "native_source_independently_authenticated": false,
+          "observed_idle_ticks": 8,
+          "p1_qualified_wait": false,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff",
+          "stop_id": "t1i-multi-epoch-stop",
+          "world": "49a70a2a-f991-4fae-b137-b931ac9baa90"
+        },
+        {
+          "active_action_id": "t1j-T1J-R1-move",
+          "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+          "clear_ack_seq": 471,
+          "clear_action_id": "t1j-T1J-R1-move-clear",
+          "first_idle_tick": 404,
+          "full_tick_stillness_qualified": false,
+          "high_level_dev_stop_ack": true,
+          "last_idle_tick": 411,
+          "marker_id": "T1K_R1_AFTER_CLEAR",
+          "native_source_independently_authenticated": false,
+          "observed_idle_ticks": 8,
+          "p1_qualified_wait": false,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff",
+          "stop_id": "t1k-second-stop",
+          "world": "49a70a2a-f991-4fae-b137-b931ac9baa90"
+        }
+      ],
+      "stop_requested_python_ns": 1099138510752429,
+      "second_stop_requested_python_ns": null,
+      "accounting_at_stop": {
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.61907532104385,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 343
+        },
+        "fatigue": {
+          "fatigue": 0.0052093432652756365,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff",
+          "world_tick": 1373
+        },
+        "ticks": 343
+      },
+      "accounting_at_second_stop": null,
+      "attempts": [
+        {
+          "generation": 1,
+          "resume_id": "T1J-R1",
+          "stop_id": "t1i-multi-epoch-stop",
+          "authorization_consumed": true,
+          "authorized_python_ns": 1099139386109997,
+          "permit_consumed": true,
+          "permit_consumed_python_ns": 1099139478487100,
+          "motor_send_attempted": true,
+          "motor_send_python_ns": 1099139479192612,
+          "permission_cleared": true,
+          "old_owner_still_latched": true,
+          "old_ledger_unchanged": true,
+          "error": null,
+          "permit": {
+            "after_source_seq": 465,
+            "after_world_tick": 1393,
+            "before_source_seq": 463,
+            "classification": "DEV_EXPLICIT_REAUTHORIZE_REOBSERVED_GAP",
+            "native_probe_seq": 464,
+            "native_source_independently_authenticated": false,
+            "next_action_id": "t1j-T1J-R1-move",
+            "no_retrospective_m0_or_p1": true,
+            "old_stop_ack_last_server_tick": 390,
+            "original_owner_latch_retained": true,
+            "p1_wait_qualified": false,
+            "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+            "resume_id": "T1J-R1",
+            "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff",
+            "stop_id": "t1i-multi-epoch-stop",
+            "unobserved_world_ticks": 19,
+            "world": "49a70a2a-f991-4fae-b137-b931ac9baa90"
+          },
+          "reobservations": [
+            {
+              "seq": 463,
+              "kind": "paper_snapshot",
+              "server_tick": 394,
+              "world_tick": 1392,
+              "age_upper_ns": "50570212"
+            },
+            {
+              "seq": 464,
+              "kind": "observation",
+              "server_tick": null,
+              "world_tick": null,
+              "age_upper_ns": null
+            },
+            {
+              "seq": 465,
+              "kind": "paper_snapshot",
+              "server_tick": 395,
+              "world_tick": 1393,
+              "age_upper_ns": "49109806"
+            }
+          ],
+          "terminal": "unknown",
+          "consequence": {
+            "status": "failed",
+            "movement_distance": null,
+            "error": "MineflayerExecutionError: T1h high-level STOP requested or invalid",
+            "dispatch_receipt": {
+              "action_id": "t1j-T1J-R1-move",
+              "effect": "set_control",
+              "error": null,
+              "result": "applied",
+              "seq": 467,
+              "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff"
+            },
+            "cleanup_receipt": {
+              "action_id": "t1j-T1J-R1-move-clear",
+              "effect": "clear_controls",
+              "error": null,
+              "result": "applied",
+              "seq": 471,
+              "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff"
+            }
+          },
+          "ledger": {
+            "energy": {
+              "energy": 15.617729658928724,
+              "knockouts": 0,
+              "meals": 1,
+              "terminal": false,
+              "tick": 344
+            },
+            "fatigue": {
+              "fatigue": 0.01012258556778389,
+              "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+              "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff",
+              "world_tick": 1394
+            },
+            "credit_ids": [
+              "t2-native-meal"
+            ],
+            "failed": true,
+            "rebase": {
+              "kind": "PROVISIONAL_LAST_KNOWN_CARRY_WITH_UNOBSERVED_GAP",
+              "new_origin_world_tick": 1393,
+              "p1_wait_qualified": false,
+              "prior_energy_last_known": 15.61907532104385,
+              "prior_fatigue_last_known": 0.0052093432652756365,
+              "prior_ledger_rows": 343,
+              "resume_id": "T1J-R1",
+              "resumed_m0_p1_qualified": false,
+              "stop_gap_debit_and_credit": 0,
+              "stop_id": "t1i-multi-epoch-stop",
+              "unobserved_world_ticks": 19,
+              "world_fatigue_during_gap": "UNKNOWN",
+              "world_physical_energy_during_gap": "UNKNOWN"
+            },
+            "row_count": 1,
+            "world_ticks": [
+              1394
+            ]
+          }
+        },
+        {
+          "generation": 2,
+          "resume_id": "T1J-R2",
+          "stop_id": "t1k-second-stop",
+          "authorization_consumed": true,
+          "authorized_python_ns": 1099140426910223,
+          "permit_consumed": true,
+          "permit_consumed_python_ns": 1099140478490407,
+          "motor_send_attempted": true,
+          "motor_send_python_ns": 1099140479110157,
+          "permission_cleared": true,
+          "old_owner_still_latched": true,
+          "old_ledger_unchanged": true,
+          "error": null,
+          "permit": {
+            "after_source_seq": 498,
+            "after_world_tick": 1413,
+            "before_source_seq": 496,
+            "classification": "DEV_EXPLICIT_REAUTHORIZE_REOBSERVED_GAP",
+            "native_probe_seq": 497,
+            "native_source_independently_authenticated": false,
+            "next_action_id": "t1j-T1J-R2-move",
+            "no_retrospective_m0_or_p1": true,
+            "old_stop_ack_last_server_tick": 411,
+            "original_owner_latch_retained": true,
+            "p1_wait_qualified": false,
+            "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+            "resume_id": "T1J-R2",
+            "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff",
+            "stop_id": "t1k-second-stop",
+            "unobserved_world_ticks": 18,
+            "world": "49a70a2a-f991-4fae-b137-b931ac9baa90"
+          },
+          "reobservations": [
+            {
+              "seq": 496,
+              "kind": "paper_snapshot",
+              "server_tick": 414,
+              "world_tick": 1412,
+              "age_upper_ns": "50279505"
+            },
+            {
+              "seq": 497,
+              "kind": "observation",
+              "server_tick": null,
+              "world_tick": null,
+              "age_upper_ns": null
+            },
+            {
+              "seq": 498,
+              "kind": "paper_snapshot",
+              "server_tick": 415,
+              "world_tick": 1413,
+              "age_upper_ns": "49314770"
+            }
+          ],
+          "terminal": "outcome",
+          "consequence": {
+            "status": "executed",
+            "movement_distance": 0.6269065734210608,
+            "error": null,
+            "dispatch_receipt": {
+              "action_id": "t1j-T1J-R2-move",
+              "effect": "set_control",
+              "error": null,
+              "result": "applied",
+              "seq": 500,
+              "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff"
+            },
+            "cleanup_receipt": {
+              "action_id": "t1j-T1J-R2-move-clear",
+              "effect": "clear_controls",
+              "error": null,
+              "result": "applied",
+              "seq": 509,
+              "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff"
+            }
+          },
+          "ledger": {
+            "energy": {
+              "energy": 15.596230124537199,
+              "knockouts": 0,
+              "meals": 1,
+              "terminal": false,
+              "tick": 362
+            },
+            "fatigue": {
+              "fatigue": 0.0,
+              "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+              "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff",
+              "world_tick": 1431
+            },
+            "credit_ids": [
+              "t2-native-meal"
+            ],
+            "failed": false,
+            "rebase": {
+              "kind": "PROVISIONAL_LAST_KNOWN_CARRY_WITH_UNOBSERVED_GAP",
+              "new_origin_world_tick": 1413,
+              "p1_wait_qualified": false,
+              "prior_energy_last_known": 15.617729658928724,
+              "prior_fatigue_last_known": 0.01012258556778389,
+              "prior_ledger_rows": 1,
+              "resume_id": "T1J-R2",
+              "resumed_m0_p1_qualified": false,
+              "stop_gap_debit_and_credit": 0,
+              "stop_id": "t1k-second-stop",
+              "unobserved_world_ticks": 18,
+              "world_fatigue_during_gap": "UNKNOWN",
+              "world_physical_energy_during_gap": "UNKNOWN"
+            },
+            "row_count": 18,
+            "world_ticks": [
+              1414,
+              1415,
+              1416,
+              1417,
+              1418,
+              1419,
+              1420,
+              1421,
+              1422,
+              1423,
+              1424,
+              1425,
+              1426,
+              1427,
+              1428,
+              1429,
+              1430,
+              1431
+            ]
+          }
+        }
+      ],
+      "old_ledgers": {
+        "T1J-R1": {
+          "energy": {
+            "energy": 15.61907532104385,
+            "knockouts": 0,
+            "meals": 1,
+            "terminal": false,
+            "tick": 343
+          },
+          "fatigue": {
+            "fatigue": 0.0052093432652756365,
+            "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+            "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff",
+            "world_tick": 1373
+          },
+          "credit_ids": [
+            "t2-native-meal"
+          ],
+          "failed": true,
+          "row_count": 343,
+          "first_world_tick": 1031,
+          "frozen_world_tick": 1373,
+          "rows_sha256": "1ffd43cb5700085c7bf3d1323da3205b2516a73e35639ee993fcdd66a3347254"
+        },
+        "T1J-R2": {
+          "energy": {
+            "energy": 15.617729658928724,
+            "knockouts": 0,
+            "meals": 1,
+            "terminal": false,
+            "tick": 344
+          },
+          "fatigue": {
+            "fatigue": 0.01012258556778389,
+            "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+            "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff",
+            "world_tick": 1394
+          },
+          "credit_ids": [
+            "t2-native-meal"
+          ],
+          "failed": true,
+          "row_count": 1,
+          "first_world_tick": 1394,
+          "frozen_world_tick": 1394,
+          "rows_sha256": "97f4a1c3bb8dcadd81cbbf5cbda8b7cf314229abd802f386e717071ee7c3411d"
+        }
+      },
+      "final_ledger": {
+        "P1_qualified_WAIT": false,
+        "active_action": null,
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.596230124537199,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 362
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff",
+          "world_tick": 1431
+        },
+        "latched": false,
+        "ticks": 18
+      },
+      "lineage": {
+        "classification": "T1K_BOUNDED_TWO_GENERATION_DEV",
+        "failed": false,
+        "generations": 2,
+        "has_open_generation": false,
+        "old_owners_still_latched": true,
+        "resume_id_count": 2,
+        "retired_effect_id_count": 4,
+        "stopped_owner_ids_distinct": true
+      },
+      "source_loss": null,
+      "fault_injection": null,
+      "set_ack_received_before_injection_request": null,
+      "fault_audit": null,
+      "cleanup": {
+        "cleanup_complete": true,
+        "process_reap_complete": true,
+        "java_exit": 0,
+        "node_exit": 0,
+        "java_pid_absent": true,
+        "node_pid_absent": true,
+        "port_rebind": true,
+        "node_cleanup_error": null
+      },
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "9d83fb10-4228-4560-9c3f-27260a7a6eff"
+      },
+      "original_hashes_verified": true,
+      "r1_paper_baseline_to_stop_idle_displacement_m": 0.42689066361842953
+    },
+    {
+      "original_report_sha256": "ece3d23417497ec2e90bc970525182fbcb69186b05bb6e3abe3660f1cc30a7d9",
+      "source_hash_index_sha256": "0d5e7078bcbdb64592d9ae6a0e4f57ad05ab53bc40d6583d6846871e2daac07f",
+      "run": "run-004",
+      "evidence_path": "/home/rinsa/work/t1k-evidence-20261027/run-004/t1k_stop_resume_twice",
+      "case": "t1k_stop_resume_twice",
+      "status": "PASS",
+      "error": null,
+      "session": "29b84ce8-ee53-4fbc-b874-a44f7e135440",
+      "world": "66ec0da9-5d77-4f8b-94e8-12b4451eaf17",
+      "source_seq_strictly_monotone": true,
+      "source_seq_no_gaps": true,
+      "paper_world_ticks_continuous": true,
+      "raw_snapshot_count": 417,
+      "raw_admission_status_counts": {
+        "ADMITTED": 417
+      },
+      "max_age_upper_ms": 118.300402,
+      "motor_sends": 5,
+      "clear_sends": 5,
+      "consume_sends": 1,
+      "effect_id_duplicates": 0,
+      "move_terminals": [
+        {
+          "action_id": "t1f-epoch-0",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210613
+        },
+        {
+          "action_id": "t1f-epoch-1",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210615
+        },
+        {
+          "action_id": "t1f-epoch-2",
+          "terminal": "unknown",
+          "movement_distance": null
+        },
+        {
+          "action_id": "t1j-T1J-R1-move",
+          "terminal": "unknown",
+          "movement_distance": null
+        },
+        {
+          "action_id": "t1j-T1J-R2-move",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210608
+        }
+      ],
+      "meal_terminal": "outcome",
+      "meal_receipt": {
+        "action_id": "t2-native-meal",
+        "after_probe_seq": 426,
+        "consumed_item": "cooked_beef",
+        "count_after": 2,
+        "count_before": 3,
+        "food_after": 20.0,
+        "food_before": 18.0,
+        "provenance": {
+          "reference": "29b84ce8-ee53-4fbc-b874-a44f7e135440:426",
+          "source": "mineflayer"
+        },
+        "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440"
+      },
+      "stop_acks": [
+        {
+          "active_action_id": "t1f-epoch-2",
+          "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+          "clear_ack_seq": 433,
+          "clear_action_id": "t1f-epoch-2-clear",
+          "first_idle_tick": 380,
+          "full_tick_stillness_qualified": false,
+          "high_level_dev_stop_ack": true,
+          "last_idle_tick": 387,
+          "marker_id": "T1I_MULTI_AFTER_CLEAR",
+          "native_source_independently_authenticated": false,
+          "observed_idle_ticks": 8,
+          "p1_qualified_wait": false,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440",
+          "stop_id": "t1i-multi-epoch-stop",
+          "world": "66ec0da9-5d77-4f8b-94e8-12b4451eaf17"
+        },
+        {
+          "active_action_id": "t1j-T1J-R1-move",
+          "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+          "clear_ack_seq": 466,
+          "clear_action_id": "t1j-T1J-R1-move-clear",
+          "first_idle_tick": 400,
+          "full_tick_stillness_qualified": false,
+          "high_level_dev_stop_ack": true,
+          "last_idle_tick": 407,
+          "marker_id": "T1K_R1_AFTER_CLEAR",
+          "native_source_independently_authenticated": false,
+          "observed_idle_ticks": 8,
+          "p1_qualified_wait": false,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440",
+          "stop_id": "t1k-second-stop",
+          "world": "66ec0da9-5d77-4f8b-94e8-12b4451eaf17"
+        }
+      ],
+      "stop_requested_python_ns": 1099230024233508,
+      "second_stop_requested_python_ns": 1099231025030386,
+      "accounting_at_stop": {
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.621275321043846,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 341
+        },
+        "fatigue": {
+          "fatigue": 0.0052093432652756365,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440",
+          "world_tick": 1370
+        },
+        "ticks": 341
+      },
+      "accounting_at_second_stop": {
+        "credit_ids": [
+          "t2-native-meal"
+        ],
+        "energy": {
+          "energy": 15.61992965892872,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 342
+        },
+        "fatigue": {
+          "fatigue": 0.01012258556778389,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440",
+          "world_tick": 1390
+        },
+        "ticks": 1,
+        "unknown_action_id": "t1j-T1J-R1-move",
+        "world_tick": 1390
+      },
+      "attempts": [
+        {
+          "generation": 1,
+          "resume_id": "T1J-R1",
+          "stop_id": "t1i-multi-epoch-stop",
+          "authorization_consumed": true,
+          "authorized_python_ns": 1099230885109165,
+          "permit_consumed": true,
+          "permit_consumed_python_ns": 1099230943423773,
+          "motor_send_attempted": true,
+          "motor_send_python_ns": 1099230944514153,
+          "permission_cleared": true,
+          "old_owner_still_latched": true,
+          "old_ledger_unchanged": true,
+          "error": null,
+          "permit": {
+            "after_source_seq": 460,
+            "after_world_tick": 1389,
+            "before_source_seq": 458,
+            "classification": "DEV_EXPLICIT_REAUTHORIZE_REOBSERVED_GAP",
+            "native_probe_seq": 459,
+            "native_source_independently_authenticated": false,
+            "next_action_id": "t1j-T1J-R1-move",
+            "no_retrospective_m0_or_p1": true,
+            "old_stop_ack_last_server_tick": 387,
+            "original_owner_latch_retained": true,
+            "p1_wait_qualified": false,
+            "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+            "resume_id": "T1J-R1",
+            "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440",
+            "stop_id": "t1i-multi-epoch-stop",
+            "unobserved_world_ticks": 18,
+            "world": "66ec0da9-5d77-4f8b-94e8-12b4451eaf17"
+          },
+          "reobservations": [
+            {
+              "seq": 458,
+              "kind": "paper_snapshot",
+              "server_tick": 390,
+              "world_tick": 1388,
+              "age_upper_ns": "50142254"
+            },
+            {
+              "seq": 459,
+              "kind": "observation",
+              "server_tick": null,
+              "world_tick": null,
+              "age_upper_ns": null
+            },
+            {
+              "seq": 460,
+              "kind": "paper_snapshot",
+              "server_tick": 391,
+              "world_tick": 1389,
+              "age_upper_ns": "50510195"
+            }
+          ],
+          "terminal": "unknown",
+          "consequence": {
+            "status": "failed",
+            "movement_distance": null,
+            "error": "MineflayerExecutionError: T1h high-level STOP requested or invalid",
+            "dispatch_receipt": {
+              "action_id": "t1j-T1J-R1-move",
+              "effect": "set_control",
+              "error": null,
+              "result": "applied",
+              "seq": 462,
+              "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440"
+            },
+            "cleanup_receipt": {
+              "action_id": "t1j-T1J-R1-move-clear",
+              "effect": "clear_controls",
+              "error": null,
+              "result": "applied",
+              "seq": 466,
+              "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440"
+            }
+          },
+          "ledger": {
+            "energy": {
+              "energy": 15.61992965892872,
+              "knockouts": 0,
+              "meals": 1,
+              "terminal": false,
+              "tick": 342
+            },
+            "fatigue": {
+              "fatigue": 0.01012258556778389,
+              "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+              "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440",
+              "world_tick": 1390
+            },
+            "credit_ids": [
+              "t2-native-meal"
+            ],
+            "failed": true,
+            "rebase": {
+              "kind": "PROVISIONAL_LAST_KNOWN_CARRY_WITH_UNOBSERVED_GAP",
+              "new_origin_world_tick": 1389,
+              "p1_wait_qualified": false,
+              "prior_energy_last_known": 15.621275321043846,
+              "prior_fatigue_last_known": 0.0052093432652756365,
+              "prior_ledger_rows": 341,
+              "resume_id": "T1J-R1",
+              "resumed_m0_p1_qualified": false,
+              "stop_gap_debit_and_credit": 0,
+              "stop_id": "t1i-multi-epoch-stop",
+              "unobserved_world_ticks": 18,
+              "world_fatigue_during_gap": "UNKNOWN",
+              "world_physical_energy_during_gap": "UNKNOWN"
+            },
+            "row_count": 1,
+            "world_ticks": [
+              1390
+            ]
+          }
+        },
+        {
+          "generation": 2,
+          "resume_id": "T1J-R2",
+          "stop_id": "t1k-second-stop",
+          "authorization_consumed": true,
+          "authorized_python_ns": 1099231893652249,
+          "permit_consumed": true,
+          "permit_consumed_python_ns": 1099231942329421,
+          "motor_send_attempted": true,
+          "motor_send_python_ns": 1099231942910917,
+          "permission_cleared": true,
+          "old_owner_still_latched": true,
+          "old_ledger_unchanged": true,
+          "error": null,
+          "permit": {
+            "after_source_seq": 493,
+            "after_world_tick": 1409,
+            "before_source_seq": 491,
+            "classification": "DEV_EXPLICIT_REAUTHORIZE_REOBSERVED_GAP",
+            "native_probe_seq": 492,
+            "native_source_independently_authenticated": false,
+            "next_action_id": "t1j-T1J-R2-move",
+            "no_retrospective_m0_or_p1": true,
+            "old_stop_ack_last_server_tick": 407,
+            "original_owner_latch_retained": true,
+            "p1_wait_qualified": false,
+            "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+            "resume_id": "T1J-R2",
+            "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440",
+            "stop_id": "t1k-second-stop",
+            "unobserved_world_ticks": 18,
+            "world": "66ec0da9-5d77-4f8b-94e8-12b4451eaf17"
+          },
+          "reobservations": [
+            {
+              "seq": 491,
+              "kind": "paper_snapshot",
+              "server_tick": 410,
+              "world_tick": 1408,
+              "age_upper_ns": "50018353"
+            },
+            {
+              "seq": 492,
+              "kind": "observation",
+              "server_tick": null,
+              "world_tick": null,
+              "age_upper_ns": null
+            },
+            {
+              "seq": 493,
+              "kind": "paper_snapshot",
+              "server_tick": 411,
+              "world_tick": 1409,
+              "age_upper_ns": "49597265"
+            }
+          ],
+          "terminal": "outcome",
+          "consequence": {
+            "status": "executed",
+            "movement_distance": 0.6269065734210608,
+            "error": null,
+            "dispatch_receipt": {
+              "action_id": "t1j-T1J-R2-move",
+              "effect": "set_control",
+              "error": null,
+              "result": "applied",
+              "seq": 495,
+              "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440"
+            },
+            "cleanup_receipt": {
+              "action_id": "t1j-T1J-R2-move-clear",
+              "effect": "clear_controls",
+              "error": null,
+              "result": "applied",
+              "seq": 504,
+              "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440"
+            }
+          },
+          "ledger": {
+            "energy": {
+              "energy": 15.598430124537195,
+              "knockouts": 0,
+              "meals": 1,
+              "terminal": false,
+              "tick": 360
+            },
+            "fatigue": {
+              "fatigue": 0.0,
+              "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+              "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440",
+              "world_tick": 1427
+            },
+            "credit_ids": [
+              "t2-native-meal"
+            ],
+            "failed": false,
+            "rebase": {
+              "kind": "PROVISIONAL_LAST_KNOWN_CARRY_WITH_UNOBSERVED_GAP",
+              "new_origin_world_tick": 1409,
+              "p1_wait_qualified": false,
+              "prior_energy_last_known": 15.61992965892872,
+              "prior_fatigue_last_known": 0.01012258556778389,
+              "prior_ledger_rows": 1,
+              "resume_id": "T1J-R2",
+              "resumed_m0_p1_qualified": false,
+              "stop_gap_debit_and_credit": 0,
+              "stop_id": "t1k-second-stop",
+              "unobserved_world_ticks": 18,
+              "world_fatigue_during_gap": "UNKNOWN",
+              "world_physical_energy_during_gap": "UNKNOWN"
+            },
+            "row_count": 18,
+            "world_ticks": [
+              1410,
+              1411,
+              1412,
+              1413,
+              1414,
+              1415,
+              1416,
+              1417,
+              1418,
+              1419,
+              1420,
+              1421,
+              1422,
+              1423,
+              1424,
+              1425,
+              1426,
+              1427
+            ]
+          }
+        }
+      ],
+      "old_ledgers": {
+        "T1J-R1": {
+          "energy": {
+            "energy": 15.621275321043846,
+            "knockouts": 0,
+            "meals": 1,
+            "terminal": false,
+            "tick": 341
+          },
+          "fatigue": {
+            "fatigue": 0.0052093432652756365,
+            "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+            "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440",
+            "world_tick": 1370
+          },
+          "credit_ids": [
+            "t2-native-meal"
+          ],
+          "failed": true,
+          "row_count": 341,
+          "first_world_tick": 1030,
+          "frozen_world_tick": 1370,
+          "rows_sha256": "bc40cf70dd56f35f93eb78e61c09da745664e24dfc696614411e34c0dd28cecd"
+        },
+        "T1J-R2": {
+          "energy": {
+            "energy": 15.61992965892872,
+            "knockouts": 0,
+            "meals": 1,
+            "terminal": false,
+            "tick": 342
+          },
+          "fatigue": {
+            "fatigue": 0.01012258556778389,
+            "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+            "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440",
+            "world_tick": 1390
+          },
+          "credit_ids": [
+            "t2-native-meal"
+          ],
+          "failed": true,
+          "row_count": 1,
+          "first_world_tick": 1390,
+          "frozen_world_tick": 1390,
+          "rows_sha256": "25b8920f5ec30eeacdbd0bbfcf9241aa9e8f79f003c8864c276502f20a5e3ad0"
+        }
+      },
+      "final_ledger": {
+        "P1_qualified_WAIT": false,
+        "active_action": null,
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.598430124537195,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 360
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440",
+          "world_tick": 1427
+        },
+        "latched": false,
+        "ticks": 18
+      },
+      "lineage": {
+        "classification": "T1K_BOUNDED_TWO_GENERATION_DEV",
+        "failed": false,
+        "generations": 2,
+        "has_open_generation": false,
+        "old_owners_still_latched": true,
+        "resume_id_count": 2,
+        "retired_effect_id_count": 4,
+        "stopped_owner_ids_distinct": true
+      },
+      "source_loss": null,
+      "fault_injection": null,
+      "set_ack_received_before_injection_request": null,
+      "fault_audit": null,
+      "cleanup": {
+        "cleanup_complete": true,
+        "process_reap_complete": true,
+        "java_exit": 0,
+        "node_exit": 0,
+        "java_pid_absent": true,
+        "node_pid_absent": true,
+        "port_rebind": true,
+        "node_cleanup_error": null
+      },
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "29b84ce8-ee53-4fbc-b874-a44f7e135440"
+      },
+      "original_hashes_verified": true,
+      "r1_paper_baseline_to_stop_idle_displacement_m": 0.42689066361842953
+    },
+    {
+      "original_report_sha256": "cc10b021a94779a8e588d3fc0a82d814b295e306906d2706f1d2738f5eecf8cc",
+      "source_hash_index_sha256": "7deee5237d081d9fed19f050aa36636d7b6107df8d9281c3fc742ccbafb45bfc",
+      "run": "run-005",
+      "evidence_path": "/home/rinsa/work/t1k-evidence-20261027/run-005/t1k_fault_before_send",
+      "case": "t1k_fault_before_send",
+      "status": "FAIL",
+      "error": "ResumeDevRejected: T1k pre-Motor injected disconnect; no Action issued",
+      "session": "e7b62911-b0bc-41e5-bce1-dab9c18760b9",
+      "world": "145e47be-e755-4023-82e5-a080aa679f1b",
+      "source_seq_strictly_monotone": true,
+      "source_seq_no_gaps": true,
+      "paper_world_ticks_continuous": true,
+      "raw_snapshot_count": 382,
+      "raw_admission_status_counts": {
+        "ADMITTED": 382
+      },
+      "max_age_upper_ms": 91.761666,
+      "motor_sends": 3,
+      "clear_sends": 3,
+      "consume_sends": 1,
+      "effect_id_duplicates": 0,
+      "move_terminals": [
+        {
+          "action_id": "t1f-epoch-0",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210613
+        },
+        {
+          "action_id": "t1f-epoch-1",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210615
+        },
+        {
+          "action_id": "t1f-epoch-2",
+          "terminal": "unknown",
+          "movement_distance": null
+        }
+      ],
+      "meal_terminal": "outcome",
+      "meal_receipt": {
+        "action_id": "t2-native-meal",
+        "after_probe_seq": 427,
+        "consumed_item": "cooked_beef",
+        "count_after": 2,
+        "count_before": 3,
+        "food_after": 20.0,
+        "food_before": 18.0,
+        "provenance": {
+          "reference": "e7b62911-b0bc-41e5-bce1-dab9c18760b9:427",
+          "source": "mineflayer"
+        },
+        "session_id": "e7b62911-b0bc-41e5-bce1-dab9c18760b9"
+      },
+      "stop_acks": [
+        {
+          "active_action_id": "t1f-epoch-2",
+          "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+          "clear_ack_seq": 435,
+          "clear_action_id": "t1f-epoch-2-clear",
+          "first_idle_tick": 380,
+          "full_tick_stillness_qualified": false,
+          "high_level_dev_stop_ack": true,
+          "last_idle_tick": 387,
+          "marker_id": "T1I_MULTI_AFTER_CLEAR",
+          "native_source_independently_authenticated": false,
+          "observed_idle_ticks": 8,
+          "p1_qualified_wait": false,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "session_id": "e7b62911-b0bc-41e5-bce1-dab9c18760b9",
+          "stop_id": "t1i-multi-epoch-stop",
+          "world": "145e47be-e755-4023-82e5-a080aa679f1b"
+        }
+      ],
+      "stop_requested_python_ns": 1099300922384553,
+      "second_stop_requested_python_ns": null,
+      "accounting_at_stop": {
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.621275321043846,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 341
+        },
+        "fatigue": {
+          "fatigue": 0.0052093432652756365,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "e7b62911-b0bc-41e5-bce1-dab9c18760b9",
+          "world_tick": 1370
+        },
+        "ticks": 341
+      },
+      "accounting_at_second_stop": null,
+      "attempts": [
+        {
+          "generation": 1,
+          "resume_id": "T1J-R1",
+          "stop_id": "t1i-multi-epoch-stop",
+          "authorization_consumed": true,
+          "authorized_python_ns": 1099301798203160,
+          "permit_consumed": true,
+          "permit_consumed_python_ns": 1099301890177253,
+          "motor_send_attempted": false,
+          "motor_send_python_ns": null,
+          "permission_cleared": true,
+          "old_owner_still_latched": true,
+          "old_ledger_unchanged": true,
+          "error": "ResumeDevRejected: T1k pre-Motor injected disconnect; no Action issued",
+          "permit": {
+            "after_source_seq": 462,
+            "after_world_tick": 1390,
+            "before_source_seq": 460,
+            "classification": "DEV_EXPLICIT_REAUTHORIZE_REOBSERVED_GAP",
+            "native_probe_seq": 461,
+            "native_source_independently_authenticated": false,
+            "next_action_id": "t1j-T1J-R1-move",
+            "no_retrospective_m0_or_p1": true,
+            "old_stop_ack_last_server_tick": 387,
+            "original_owner_latch_retained": true,
+            "p1_wait_qualified": false,
+            "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+            "resume_id": "T1J-R1",
+            "session_id": "e7b62911-b0bc-41e5-bce1-dab9c18760b9",
+            "stop_id": "t1i-multi-epoch-stop",
+            "unobserved_world_ticks": 19,
+            "world": "145e47be-e755-4023-82e5-a080aa679f1b"
+          },
+          "reobservations": [
+            {
+              "seq": 460,
+              "kind": "paper_snapshot",
+              "server_tick": 391,
+              "world_tick": 1389,
+              "age_upper_ns": "50238670"
+            },
+            {
+              "seq": 461,
+              "kind": "observation",
+              "server_tick": null,
+              "world_tick": null,
+              "age_upper_ns": null
+            },
+            {
+              "seq": 462,
+              "kind": "paper_snapshot",
+              "server_tick": 392,
+              "world_tick": 1390,
+              "age_upper_ns": "49188353"
+            }
+          ],
+          "terminal": null,
+          "consequence": {
+            "status": null,
+            "movement_distance": null,
+            "error": null,
+            "dispatch_receipt": null,
+            "cleanup_receipt": null
+          },
+          "ledger": {
+            "energy": {
+              "energy": 15.621275321043846,
+              "knockouts": 0,
+              "meals": 1,
+              "terminal": false,
+              "tick": 341
+            },
+            "fatigue": {
+              "fatigue": 0.0052093432652756365,
+              "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+              "session_id": "e7b62911-b0bc-41e5-bce1-dab9c18760b9",
+              "world_tick": 1390
+            },
+            "credit_ids": [
+              "t2-native-meal"
+            ],
+            "failed": true,
+            "rebase": {
+              "kind": "PROVISIONAL_LAST_KNOWN_CARRY_WITH_UNOBSERVED_GAP",
+              "new_origin_world_tick": 1390,
+              "p1_wait_qualified": false,
+              "prior_energy_last_known": 15.621275321043846,
+              "prior_fatigue_last_known": 0.0052093432652756365,
+              "prior_ledger_rows": 341,
+              "resume_id": "T1J-R1",
+              "resumed_m0_p1_qualified": false,
+              "stop_gap_debit_and_credit": 0,
+              "stop_id": "t1i-multi-epoch-stop",
+              "unobserved_world_ticks": 19,
+              "world_fatigue_during_gap": "UNKNOWN",
+              "world_physical_energy_during_gap": "UNKNOWN"
+            },
+            "row_count": 0,
+            "world_ticks": []
+          }
+        }
+      ],
+      "old_ledgers": {
+        "T1J-R1": {
+          "energy": {
+            "energy": 15.621275321043846,
+            "knockouts": 0,
+            "meals": 1,
+            "terminal": false,
+            "tick": 341
+          },
+          "fatigue": {
+            "fatigue": 0.0052093432652756365,
+            "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+            "session_id": "e7b62911-b0bc-41e5-bce1-dab9c18760b9",
+            "world_tick": 1370
+          },
+          "credit_ids": [
+            "t2-native-meal"
+          ],
+          "failed": true,
+          "row_count": 341,
+          "first_world_tick": 1030,
+          "frozen_world_tick": 1370,
+          "rows_sha256": "8a7d56f86c0a9925831eb4f77b64c391d341e1e291c77dbecd8103d90e79dec9"
+        }
+      },
+      "final_ledger": {
+        "P1_qualified_WAIT": false,
+        "active_action": null,
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.621275321043846,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 341
+        },
+        "fatigue": {
+          "fatigue": 0.0052093432652756365,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "e7b62911-b0bc-41e5-bce1-dab9c18760b9",
+          "world_tick": 1390
+        },
+        "latched": true,
+        "ticks": 0
+      },
+      "lineage": null,
+      "source_loss": {
+        "accounted_ticks": 0,
+        "python_ns": 1099301944277428,
+        "seq": 464,
+        "type": "MineflayerConnectionEnd"
+      },
+      "fault_injection": {
+        "accounted_ticks": 0,
+        "action": null,
+        "kind": "T1K_BEFORE_RESUME_MOTOR_SEND",
+        "python_ns": 1099301890276677
+      },
+      "set_ack_received_before_injection_request": false,
+      "fault_audit": {
+        "classification": "FAULT_INJECTED_FAIL_CLOSED_DEV_OBSERVED",
+        "clear_receipts": [],
+        "disconnects": [
+          {
+            "reason": "socketClosed",
+            "seq": 464,
+            "session_id": "e7b62911-b0bc-41e5-bce1-dab9c18760b9",
+            "type": "connection_end"
+          }
+        ],
+        "effect_id_duplicates": 0,
+        "expected_refusal_not_normal_shutdown_pass": true,
+        "fault_boundary": "BEFORE_MOTOR_SEND",
+        "fault_case": "t1k_fault_before_send",
+        "native_classification": "NATIVE_FAULT_OBSERVED",
+        "native_fault_observed": true,
+        "no_resume_action_reissued": true,
+        "raw_cleanup_separate": false,
+        "resume_clear_sends": 0,
+        "resume_motor_sends": 0,
+        "safety_violation": false,
+        "set_receipts": []
+      },
+      "cleanup": {
+        "cleanup_complete": false,
+        "process_reap_complete": true,
+        "java_exit": 0,
+        "node_exit": 3,
+        "java_pid_absent": true,
+        "node_pid_absent": true,
+        "port_rebind": true,
+        "node_cleanup_error": null
+      },
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": false,
+        "bridge_transport_closed": false,
+        "classification": "UNEXPECTED_DISCONNECT_NO_SHUTDOWN_ACK",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "e7b62911-b0bc-41e5-bce1-dab9c18760b9"
+      },
+      "original_hashes_verified": true
+    },
+    {
+      "original_report_sha256": "fa40c7fcfdd0243372dd80889563112362b2625339a24b9e2d559cd809952b17",
+      "source_hash_index_sha256": "d89780729d8c0ebbcb214afc6496b11159898ffa1ff1cc2583eae0a8586ae3ed",
+      "run": "run-006",
+      "evidence_path": "/home/rinsa/work/t1k-evidence-20261027/run-006/t1k_fault_set_ack",
+      "case": "t1k_fault_set_ack",
+      "status": "FAIL",
+      "error": "ValueError: T1f refusal: UNDETERMINED / SESSION_LATCHED",
+      "session": "fc582520-622e-4c7e-b3c3-41f989e3f37c",
+      "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+      "source_seq_strictly_monotone": true,
+      "source_seq_no_gaps": true,
+      "paper_world_ticks_continuous": true,
+      "raw_snapshot_count": 19,
+      "raw_admission_status_counts": {
+        "STALE": 2,
+        "ADMITTED": 5,
+        "UNDETERMINED": 12
+      },
+      "max_age_upper_ms": 99.09797,
+      "motor_sends": 0,
+      "clear_sends": 0,
+      "consume_sends": 0,
+      "effect_id_duplicates": 0,
+      "move_terminals": [],
+      "meal_terminal": null,
+      "meal_receipt": {},
+      "stop_acks": [],
+      "stop_requested_python_ns": null,
+      "second_stop_requested_python_ns": null,
+      "accounting_at_stop": null,
+      "accounting_at_second_stop": null,
+      "attempts": [],
+      "old_ledgers": {},
+      "final_ledger": {
+        "P1_qualified_WAIT": false,
+        "active_action": null,
+        "credit_count": 0,
+        "energy": {
+          "energy": 12.0,
+          "knockouts": 0,
+          "meals": 0,
+          "terminal": false,
+          "tick": 0
+        },
+        "fatigue": null,
+        "latched": true,
+        "ticks": 0
+      },
+      "lineage": null,
+      "source_loss": null,
+      "fault_injection": null,
+      "set_ack_received_before_injection_request": null,
+      "fault_audit": {
+        "classification": "NATIVE_FAULT_UNDETERMINED",
+        "clear_receipts": [],
+        "disconnects": [],
+        "effect_id_duplicates": 0,
+        "expected_refusal_not_normal_shutdown_pass": true,
+        "fault_boundary": "UNDETERMINED",
+        "fault_case": "t1k_fault_set_ack",
+        "native_classification": "NATIVE_UNVERIFIED",
+        "native_fault_observed": false,
+        "no_resume_action_reissued": true,
+        "raw_cleanup_separate": true,
+        "resume_clear_sends": 0,
+        "resume_motor_sends": 0,
+        "safety_violation": false,
+        "set_receipts": []
+      },
+      "cleanup": {
+        "cleanup_complete": true,
+        "process_reap_complete": true,
+        "java_exit": 0,
+        "node_exit": 0,
+        "java_pid_absent": true,
+        "node_pid_absent": true,
+        "port_rebind": true,
+        "node_cleanup_error": null
+      },
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "fc582520-622e-4c7e-b3c3-41f989e3f37c"
+      },
+      "original_hashes_verified": true
+    },
+    {
+      "original_report_sha256": "df7ee20ee44a83c1de50d65ecf86c740580699949168f8dc4458844726911239",
+      "source_hash_index_sha256": "36748853d2dca7ae1b87735491ce15761e47acee6b8f54b37cf08c1faff4e74c",
+      "run": "run-007",
+      "evidence_path": "/home/rinsa/work/t1k-evidence-20261027/run-007/t1k_fault_set_ack",
+      "case": "t1k_fault_set_ack",
+      "status": "FAIL",
+      "error": "ResumeDevRejected: T1j resumed Action not executed/cleared",
+      "session": "d052d590-ee02-438d-b124-b5b5c88e1a63",
+      "world": "ff082caf-005c-4db4-ba69-4dcb32cca85a",
+      "source_seq_strictly_monotone": true,
+      "source_seq_no_gaps": true,
+      "paper_world_ticks_continuous": true,
+      "raw_snapshot_count": 383,
+      "raw_admission_status_counts": {
+        "ADMITTED": 383
+      },
+      "max_age_upper_ms": 95.212981,
+      "motor_sends": 4,
+      "clear_sends": 4,
+      "consume_sends": 1,
+      "effect_id_duplicates": 0,
+      "move_terminals": [
+        {
+          "action_id": "t1f-epoch-0",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210613
+        },
+        {
+          "action_id": "t1f-epoch-1",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210615
+        },
+        {
+          "action_id": "t1f-epoch-2",
+          "terminal": "unknown",
+          "movement_distance": null
+        },
+        {
+          "action_id": "t1j-T1J-R1-move",
+          "terminal": "unknown",
+          "movement_distance": null
+        }
+      ],
+      "meal_terminal": "outcome",
+      "meal_receipt": {
+        "action_id": "t2-native-meal",
+        "after_probe_seq": 428,
+        "consumed_item": "cooked_beef",
+        "count_after": 2,
+        "count_before": 3,
+        "food_after": 20.0,
+        "food_before": 18.0,
+        "provenance": {
+          "reference": "d052d590-ee02-438d-b124-b5b5c88e1a63:428",
+          "source": "mineflayer"
+        },
+        "session_id": "d052d590-ee02-438d-b124-b5b5c88e1a63"
+      },
+      "stop_acks": [
+        {
+          "active_action_id": "t1f-epoch-2",
+          "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+          "clear_ack_seq": 435,
+          "clear_action_id": "t1f-epoch-2-clear",
+          "first_idle_tick": 382,
+          "full_tick_stillness_qualified": false,
+          "high_level_dev_stop_ack": true,
+          "last_idle_tick": 389,
+          "marker_id": "T1I_MULTI_AFTER_CLEAR",
+          "native_source_independently_authenticated": false,
+          "observed_idle_ticks": 8,
+          "p1_qualified_wait": false,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "session_id": "d052d590-ee02-438d-b124-b5b5c88e1a63",
+          "stop_id": "t1i-multi-epoch-stop",
+          "world": "ff082caf-005c-4db4-ba69-4dcb32cca85a"
+        }
+      ],
+      "stop_requested_python_ns": 1099402901388510,
+      "second_stop_requested_python_ns": null,
+      "accounting_at_stop": {
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.620175321043847,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 342
+        },
+        "fatigue": {
+          "fatigue": 0.0052093432652756365,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "d052d590-ee02-438d-b124-b5b5c88e1a63",
+          "world_tick": 1372
+        },
+        "ticks": 342
+      },
+      "accounting_at_second_stop": null,
+      "attempts": [
+        {
+          "generation": 1,
+          "resume_id": "T1J-R1",
+          "stop_id": "t1i-multi-epoch-stop",
+          "authorization_consumed": true,
+          "authorized_python_ns": 1099403762304568,
+          "permit_consumed": true,
+          "permit_consumed_python_ns": 1099403819803737,
+          "motor_send_attempted": true,
+          "motor_send_python_ns": 1099403820593130,
+          "permission_cleared": true,
+          "old_owner_still_latched": true,
+          "old_ledger_unchanged": true,
+          "error": "ResumeDevRejected: T1j resumed Action not executed/cleared",
+          "permit": {
+            "after_source_seq": 462,
+            "after_world_tick": 1391,
+            "before_source_seq": 460,
+            "classification": "DEV_EXPLICIT_REAUTHORIZE_REOBSERVED_GAP",
+            "native_probe_seq": 461,
+            "native_source_independently_authenticated": false,
+            "next_action_id": "t1j-T1J-R1-move",
+            "no_retrospective_m0_or_p1": true,
+            "old_stop_ack_last_server_tick": 389,
+            "original_owner_latch_retained": true,
+            "p1_wait_qualified": false,
+            "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+            "resume_id": "T1J-R1",
+            "session_id": "d052d590-ee02-438d-b124-b5b5c88e1a63",
+            "stop_id": "t1i-multi-epoch-stop",
+            "unobserved_world_ticks": 18,
+            "world": "ff082caf-005c-4db4-ba69-4dcb32cca85a"
+          },
+          "reobservations": [
+            {
+              "seq": 460,
+              "kind": "paper_snapshot",
+              "server_tick": 392,
+              "world_tick": 1390,
+              "age_upper_ns": "49719874"
+            },
+            {
+              "seq": 461,
+              "kind": "observation",
+              "server_tick": null,
+              "world_tick": null,
+              "age_upper_ns": null
+            },
+            {
+              "seq": 462,
+              "kind": "paper_snapshot",
+              "server_tick": 393,
+              "world_tick": 1391,
+              "age_upper_ns": "49121142"
+            }
+          ],
+          "terminal": "unknown",
+          "consequence": {
+            "status": "failed",
+            "movement_distance": null,
+            "error": "MineflayerExecutionError: L0 DEV client connection ended",
+            "dispatch_receipt": {
+              "action_id": "t1j-T1J-R1-move",
+              "effect": "set_control",
+              "error": null,
+              "result": "applied",
+              "seq": 464,
+              "session_id": "d052d590-ee02-438d-b124-b5b5c88e1a63"
+            },
+            "cleanup_receipt": null
+          },
+          "ledger": {
+            "energy": {
+              "energy": 15.617426642809578,
+              "knockouts": 0,
+              "meals": 1,
+              "terminal": false,
+              "tick": 344
+            },
+            "fatigue": {
+              "fatigue": 0.016182907950638824,
+              "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+              "session_id": "d052d590-ee02-438d-b124-b5b5c88e1a63",
+              "world_tick": 1393
+            },
+            "credit_ids": [
+              "t2-native-meal"
+            ],
+            "failed": true,
+            "rebase": {
+              "kind": "PROVISIONAL_LAST_KNOWN_CARRY_WITH_UNOBSERVED_GAP",
+              "new_origin_world_tick": 1391,
+              "p1_wait_qualified": false,
+              "prior_energy_last_known": 15.620175321043847,
+              "prior_fatigue_last_known": 0.0052093432652756365,
+              "prior_ledger_rows": 342,
+              "resume_id": "T1J-R1",
+              "resumed_m0_p1_qualified": false,
+              "stop_gap_debit_and_credit": 0,
+              "stop_id": "t1i-multi-epoch-stop",
+              "unobserved_world_ticks": 18,
+              "world_fatigue_during_gap": "UNKNOWN",
+              "world_physical_energy_during_gap": "UNKNOWN"
+            },
+            "row_count": 2,
+            "world_ticks": [
+              1392,
+              1393
+            ]
+          }
+        }
+      ],
+      "old_ledgers": {
+        "T1J-R1": {
+          "energy": {
+            "energy": 15.620175321043847,
+            "knockouts": 0,
+            "meals": 1,
+            "terminal": false,
+            "tick": 342
+          },
+          "fatigue": {
+            "fatigue": 0.0052093432652756365,
+            "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+            "session_id": "d052d590-ee02-438d-b124-b5b5c88e1a63",
+            "world_tick": 1372
+          },
+          "credit_ids": [
+            "t2-native-meal"
+          ],
+          "failed": true,
+          "row_count": 342,
+          "first_world_tick": 1031,
+          "frozen_world_tick": 1372,
+          "rows_sha256": "001b1fbdd146d7678fb82628c3fc5d05825f45b0d7c49698a964f8b5c70f8ccf"
+        }
+      },
+      "final_ledger": {
+        "P1_qualified_WAIT": false,
+        "active_action": "t1j-T1J-R1-move",
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.617426642809578,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 344
+        },
+        "fatigue": {
+          "fatigue": 0.016182907950638824,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "d052d590-ee02-438d-b124-b5b5c88e1a63",
+          "world_tick": 1393
+        },
+        "latched": true,
+        "ticks": 2
+      },
+      "lineage": null,
+      "source_loss": {
+        "accounted_ticks": 2,
+        "python_ns": 1099403924423646,
+        "seq": 469,
+        "type": "MineflayerConnectionEnd"
+      },
+      "fault_injection": {
+        "accounted_ticks": 1,
+        "action": "t1j-T1J-R1-move",
+        "kind": "T1K_AFTER_RESUME_SET_SEND",
+        "python_ns": 1099403901657468
+      },
+      "set_ack_received_before_injection_request": true,
+      "fault_audit": {
+        "classification": "FAULT_INJECTED_FAIL_CLOSED_DEV_OBSERVED",
+        "clear_receipts": [],
+        "disconnects": [
+          {
+            "reason": "socketClosed",
+            "seq": 469,
+            "session_id": "d052d590-ee02-438d-b124-b5b5c88e1a63",
+            "type": "connection_end"
+          }
+        ],
+        "effect_id_duplicates": 0,
+        "expected_refusal_not_normal_shutdown_pass": true,
+        "fault_boundary": "AFTER_SET_APPLIED_ACK",
+        "fault_case": "t1k_fault_set_ack",
+        "native_classification": "NATIVE_FAULT_OBSERVED",
+        "native_fault_observed": true,
+        "no_resume_action_reissued": true,
+        "raw_cleanup_separate": false,
+        "resume_clear_sends": 1,
+        "resume_motor_sends": 1,
+        "safety_violation": false,
+        "set_receipts": [
+          {
+            "action_id": "t1j-T1J-R1-move",
+            "effect": "set_control",
+            "error": null,
+            "result": "applied",
+            "seq": 464,
+            "session_id": "d052d590-ee02-438d-b124-b5b5c88e1a63",
+            "type": "effect_result"
+          }
+        ]
+      },
+      "cleanup": {
+        "cleanup_complete": false,
+        "process_reap_complete": true,
+        "java_exit": 0,
+        "node_exit": 3,
+        "java_pid_absent": true,
+        "node_pid_absent": true,
+        "port_rebind": true,
+        "node_cleanup_error": null
+      },
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": false,
+        "bridge_transport_closed": false,
+        "classification": "UNEXPECTED_DISCONNECT_NO_SHUTDOWN_ACK",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "d052d590-ee02-438d-b124-b5b5c88e1a63"
+      },
+      "original_hashes_verified": true
+    },
+    {
+      "original_report_sha256": "b8a00b62a577b851387c14a82d877c156321a8ac3d02e0c2f74d02b4037eae35",
+      "source_hash_index_sha256": "ec00668b026dd5a47cba50bee5a29ce35e12754eeb51b775ce32d6a9921868b6",
+      "run": "run-008",
+      "evidence_path": "/home/rinsa/work/t1k-evidence-20261027/run-008/t1k_fault_clear_ack",
+      "case": "t1k_fault_clear_ack",
+      "status": "FAIL",
+      "error": "ResumeDevRejected: T1j resumed Action not executed/cleared",
+      "session": "7dfcc981-a6d4-4b78-8981-3ca87d9c9312",
+      "world": "469c64f6-94f8-423f-8cf9-ff8babba3b23",
+      "source_seq_strictly_monotone": true,
+      "source_seq_no_gaps": true,
+      "paper_world_ticks_continuous": true,
+      "raw_snapshot_count": 395,
+      "raw_admission_status_counts": {
+        "ADMITTED": 395
+      },
+      "max_age_upper_ms": 82.862654,
+      "motor_sends": 4,
+      "clear_sends": 4,
+      "consume_sends": 1,
+      "effect_id_duplicates": 0,
+      "move_terminals": [
+        {
+          "action_id": "t1f-epoch-0",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210613
+        },
+        {
+          "action_id": "t1f-epoch-1",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210615
+        },
+        {
+          "action_id": "t1f-epoch-2",
+          "terminal": "unknown",
+          "movement_distance": null
+        },
+        {
+          "action_id": "t1j-T1J-R1-move",
+          "terminal": "unknown",
+          "movement_distance": null
+        }
+      ],
+      "meal_terminal": "outcome",
+      "meal_receipt": {
+        "action_id": "t2-native-meal",
+        "after_probe_seq": 428,
+        "consumed_item": "cooked_beef",
+        "count_after": 2,
+        "count_before": 3,
+        "food_after": 20.0,
+        "food_before": 18.0,
+        "provenance": {
+          "reference": "7dfcc981-a6d4-4b78-8981-3ca87d9c9312:428",
+          "source": "mineflayer"
+        },
+        "session_id": "7dfcc981-a6d4-4b78-8981-3ca87d9c9312"
+      },
+      "stop_acks": [
+        {
+          "active_action_id": "t1f-epoch-2",
+          "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+          "clear_ack_seq": 435,
+          "clear_action_id": "t1f-epoch-2-clear",
+          "first_idle_tick": 381,
+          "full_tick_stillness_qualified": false,
+          "high_level_dev_stop_ack": true,
+          "last_idle_tick": 388,
+          "marker_id": "T1I_MULTI_AFTER_CLEAR",
+          "native_source_independently_authenticated": false,
+          "observed_idle_ticks": 8,
+          "p1_qualified_wait": false,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "session_id": "7dfcc981-a6d4-4b78-8981-3ca87d9c9312",
+          "stop_id": "t1i-multi-epoch-stop",
+          "world": "469c64f6-94f8-423f-8cf9-ff8babba3b23"
+        }
+      ],
+      "stop_requested_python_ns": 1099444511638396,
+      "second_stop_requested_python_ns": null,
+      "accounting_at_stop": {
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.620175321043847,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 342
+        },
+        "fatigue": {
+          "fatigue": 0.0052093432652756365,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "7dfcc981-a6d4-4b78-8981-3ca87d9c9312",
+          "world_tick": 1371
+        },
+        "ticks": 342
+      },
+      "accounting_at_second_stop": null,
+      "attempts": [
+        {
+          "generation": 1,
+          "resume_id": "T1J-R1",
+          "stop_id": "t1i-multi-epoch-stop",
+          "authorization_consumed": true,
+          "authorized_python_ns": 1099445387024347,
+          "permit_consumed": true,
+          "permit_consumed_python_ns": 1099445429475691,
+          "motor_send_attempted": true,
+          "motor_send_python_ns": 1099445430104616,
+          "permission_cleared": true,
+          "old_owner_still_latched": true,
+          "old_ledger_unchanged": true,
+          "error": "ResumeDevRejected: T1j resumed Action not executed/cleared",
+          "permit": {
+            "after_source_seq": 462,
+            "after_world_tick": 1390,
+            "before_source_seq": 460,
+            "classification": "DEV_EXPLICIT_REAUTHORIZE_REOBSERVED_GAP",
+            "native_probe_seq": 461,
+            "native_source_independently_authenticated": false,
+            "next_action_id": "t1j-T1J-R1-move",
+            "no_retrospective_m0_or_p1": true,
+            "old_stop_ack_last_server_tick": 388,
+            "original_owner_latch_retained": true,
+            "p1_wait_qualified": false,
+            "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+            "resume_id": "T1J-R1",
+            "session_id": "7dfcc981-a6d4-4b78-8981-3ca87d9c9312",
+            "stop_id": "t1i-multi-epoch-stop",
+            "unobserved_world_ticks": 18,
+            "world": "469c64f6-94f8-423f-8cf9-ff8babba3b23"
+          },
+          "reobservations": [
+            {
+              "seq": 460,
+              "kind": "paper_snapshot",
+              "server_tick": 391,
+              "world_tick": 1389,
+              "age_upper_ns": "49922930"
+            },
+            {
+              "seq": 461,
+              "kind": "observation",
+              "server_tick": null,
+              "world_tick": null,
+              "age_upper_ns": null
+            },
+            {
+              "seq": 462,
+              "kind": "paper_snapshot",
+              "server_tick": 392,
+              "world_tick": 1390,
+              "age_upper_ns": "49421614"
+            }
+          ],
+          "terminal": "unknown",
+          "consequence": {
+            "status": "failed",
+            "movement_distance": null,
+            "error": "TimeoutError: ",
+            "dispatch_receipt": {
+              "action_id": "t1j-T1J-R1-move",
+              "effect": "set_control",
+              "error": null,
+              "result": "applied",
+              "seq": 464,
+              "session_id": "7dfcc981-a6d4-4b78-8981-3ca87d9c9312"
+            },
+            "cleanup_receipt": null
+          },
+          "ledger": {
+            "energy": {
+              "energy": 15.603075786652319,
+              "knockouts": 0,
+              "meals": 1,
+              "terminal": false,
+              "tick": 356
+            },
+            "fatigue": {
+              "fatigue": 0.03920003109596615,
+              "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+              "session_id": "7dfcc981-a6d4-4b78-8981-3ca87d9c9312",
+              "world_tick": 1404
+            },
+            "credit_ids": [
+              "t2-native-meal"
+            ],
+            "failed": true,
+            "rebase": {
+              "kind": "PROVISIONAL_LAST_KNOWN_CARRY_WITH_UNOBSERVED_GAP",
+              "new_origin_world_tick": 1390,
+              "p1_wait_qualified": false,
+              "prior_energy_last_known": 15.620175321043847,
+              "prior_fatigue_last_known": 0.0052093432652756365,
+              "prior_ledger_rows": 342,
+              "resume_id": "T1J-R1",
+              "resumed_m0_p1_qualified": false,
+              "stop_gap_debit_and_credit": 0,
+              "stop_id": "t1i-multi-epoch-stop",
+              "unobserved_world_ticks": 18,
+              "world_fatigue_during_gap": "UNKNOWN",
+              "world_physical_energy_during_gap": "UNKNOWN"
+            },
+            "row_count": 14,
+            "world_ticks": [
+              1391,
+              1392,
+              1393,
+              1394,
+              1395,
+              1396,
+              1397,
+              1398,
+              1399,
+              1400,
+              1401,
+              1402,
+              1403,
+              1404
+            ]
+          }
+        }
+      ],
+      "old_ledgers": {
+        "T1J-R1": {
+          "energy": {
+            "energy": 15.620175321043847,
+            "knockouts": 0,
+            "meals": 1,
+            "terminal": false,
+            "tick": 342
+          },
+          "fatigue": {
+            "fatigue": 0.0052093432652756365,
+            "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+            "session_id": "7dfcc981-a6d4-4b78-8981-3ca87d9c9312",
+            "world_tick": 1371
+          },
+          "credit_ids": [
+            "t2-native-meal"
+          ],
+          "failed": true,
+          "row_count": 342,
+          "first_world_tick": 1030,
+          "frozen_world_tick": 1371,
+          "rows_sha256": "a1594b385f5d5ff801ef5aa85c9ea24cf65ea21aba22b12b4da1368922f2c3d0"
+        }
+      },
+      "final_ledger": {
+        "P1_qualified_WAIT": false,
+        "active_action": "t1j-T1J-R1-move",
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.603075786652319,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 356
+        },
+        "fatigue": {
+          "fatigue": 0.03920003109596615,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "7dfcc981-a6d4-4b78-8981-3ca87d9c9312",
+          "world_tick": 1404
+        },
+        "latched": true,
+        "ticks": 14
+      },
+      "lineage": null,
+      "source_loss": null,
+      "fault_injection": null,
+      "set_ack_received_before_injection_request": null,
+      "fault_audit": {
+        "classification": "NATIVE_FAULT_UNDETERMINED",
+        "clear_receipts": [
+          {
+            "action_id": "t1j-T1J-R1-move-clear",
+            "effect": "clear_controls",
+            "error": null,
+            "result": "applied",
+            "seq": 473,
+            "session_id": "7dfcc981-a6d4-4b78-8981-3ca87d9c9312",
+            "type": "effect_result"
+          }
+        ],
+        "disconnects": [],
+        "effect_id_duplicates": 0,
+        "expected_refusal_not_normal_shutdown_pass": true,
+        "fault_boundary": "UNDETERMINED",
+        "fault_case": "t1k_fault_clear_ack",
+        "native_classification": "NATIVE_UNVERIFIED",
+        "native_fault_observed": false,
+        "no_resume_action_reissued": true,
+        "raw_cleanup_separate": true,
+        "resume_clear_sends": 1,
+        "resume_motor_sends": 1,
+        "safety_violation": false,
+        "set_receipts": [
+          {
+            "action_id": "t1j-T1J-R1-move",
+            "effect": "set_control",
+            "error": null,
+            "result": "applied",
+            "seq": 464,
+            "session_id": "7dfcc981-a6d4-4b78-8981-3ca87d9c9312",
+            "type": "effect_result"
+          }
+        ]
+      },
+      "cleanup": {
+        "cleanup_complete": true,
+        "process_reap_complete": true,
+        "java_exit": 0,
+        "node_exit": 0,
+        "java_pid_absent": true,
+        "node_pid_absent": true,
+        "port_rebind": true,
+        "node_cleanup_error": null
+      },
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "7dfcc981-a6d4-4b78-8981-3ca87d9c9312"
+      },
+      "original_hashes_verified": true
+    },
+    {
+      "original_report_sha256": "24bcdfe7e0e2ce1b6ec9811cf90457aaa1007520fc5af32dc45e80dfe624de5e",
+      "source_hash_index_sha256": "3dc90721e3e4668e20335b1ac8594c9d0bea3ef18b1e13c0fbc925a59d118bef",
+      "run": "run-009",
+      "evidence_path": "/home/rinsa/work/t1k-evidence-20261027/run-009/t1k_fault_clear_ack",
+      "case": "t1k_fault_clear_ack",
+      "status": "FAIL",
+      "error": "EatingExecutionRejected: EAT Paper monitor refused freshness/safety",
+      "session": "e3c6232d-1f86-4bb8-9fd7-a4f073652ee1",
+      "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+      "source_seq_strictly_monotone": true,
+      "source_seq_no_gaps": true,
+      "paper_world_ticks_continuous": true,
+      "raw_snapshot_count": 364,
+      "raw_admission_status_counts": {
+        "STALE": 8,
+        "ADMITTED": 355,
+        "UNDETERMINED": 1
+      },
+      "max_age_upper_ms": 95.041583,
+      "motor_sends": 2,
+      "clear_sends": 2,
+      "consume_sends": 1,
+      "effect_id_duplicates": 0,
+      "move_terminals": [
+        {
+          "action_id": "t1f-epoch-0",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210613
+        },
+        {
+          "action_id": "t1f-epoch-1",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210615
+        }
+      ],
+      "meal_terminal": null,
+      "meal_receipt": {},
+      "stop_acks": [],
+      "stop_requested_python_ns": null,
+      "second_stop_requested_python_ns": null,
+      "accounting_at_stop": null,
+      "accounting_at_second_stop": null,
+      "attempts": [],
+      "old_ledgers": {},
+      "final_ledger": {
+        "P1_qualified_WAIT": false,
+        "active_action": "t2-native-meal",
+        "credit_count": 0,
+        "energy": {
+          "energy": 11.628135788207107,
+          "knockouts": 0,
+          "meals": 0,
+          "terminal": false,
+          "tick": 335
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "e3c6232d-1f86-4bb8-9fd7-a4f073652ee1",
+          "world_tick": 1365
+        },
+        "latched": true,
+        "ticks": 335
+      },
+      "lineage": null,
+      "source_loss": null,
+      "fault_injection": null,
+      "set_ack_received_before_injection_request": null,
+      "fault_audit": {
+        "classification": "NATIVE_FAULT_UNDETERMINED",
+        "clear_receipts": [],
+        "disconnects": [],
+        "effect_id_duplicates": 0,
+        "expected_refusal_not_normal_shutdown_pass": true,
+        "fault_boundary": "UNDETERMINED",
+        "fault_case": "t1k_fault_clear_ack",
+        "native_classification": "NATIVE_UNVERIFIED",
+        "native_fault_observed": false,
+        "no_resume_action_reissued": true,
+        "raw_cleanup_separate": true,
+        "resume_clear_sends": 0,
+        "resume_motor_sends": 0,
+        "safety_violation": false,
+        "set_receipts": []
+      },
+      "cleanup": {
+        "cleanup_complete": true,
+        "process_reap_complete": true,
+        "java_exit": 0,
+        "node_exit": 0,
+        "java_pid_absent": true,
+        "node_pid_absent": true,
+        "port_rebind": true,
+        "node_cleanup_error": null
+      },
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "e3c6232d-1f86-4bb8-9fd7-a4f073652ee1"
+      },
+      "original_hashes_verified": true
+    },
+    {
+      "original_report_sha256": "851e84fff46361a1c25bd71b69a83154af6419fb2d7034b01f360c867f651f0b",
+      "source_hash_index_sha256": "527a5711d45b30a1d2650e689e21f04849c091d6bf313605287b3db31988bd75",
+      "run": "run-010",
+      "evidence_path": "/home/rinsa/work/t1k-evidence-20261027/run-010/t1k_fault_clear_ack",
+      "case": "t1k_fault_clear_ack",
+      "status": "FAIL",
+      "error": "ResumeDevRejected: T1j resumed Action not executed/cleared",
+      "session": "c5702764-62fe-4395-add2-9136da7becf8",
+      "world": "357a59ae-0f6c-4698-9862-bbea0d9d3277",
+      "source_seq_strictly_monotone": true,
+      "source_seq_no_gaps": true,
+      "paper_world_ticks_continuous": true,
+      "raw_snapshot_count": 394,
+      "raw_admission_status_counts": {
+        "ADMITTED": 394
+      },
+      "max_age_upper_ms": 89.659966,
+      "motor_sends": 4,
+      "clear_sends": 4,
+      "consume_sends": 1,
+      "effect_id_duplicates": 0,
+      "move_terminals": [
+        {
+          "action_id": "t1f-epoch-0",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210613
+        },
+        {
+          "action_id": "t1f-epoch-1",
+          "terminal": "outcome",
+          "movement_distance": 0.6269065734210615
+        },
+        {
+          "action_id": "t1f-epoch-2",
+          "terminal": "unknown",
+          "movement_distance": null
+        },
+        {
+          "action_id": "t1j-T1J-R1-move",
+          "terminal": "unknown",
+          "movement_distance": null
+        }
+      ],
+      "meal_terminal": "outcome",
+      "meal_receipt": {
+        "action_id": "t2-native-meal",
+        "after_probe_seq": 427,
+        "consumed_item": "cooked_beef",
+        "count_after": 2,
+        "count_before": 3,
+        "food_after": 20.0,
+        "food_before": 18.0,
+        "provenance": {
+          "reference": "c5702764-62fe-4395-add2-9136da7becf8:427",
+          "source": "mineflayer"
+        },
+        "session_id": "c5702764-62fe-4395-add2-9136da7becf8"
+      },
+      "stop_acks": [
+        {
+          "active_action_id": "t1f-epoch-2",
+          "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+          "clear_ack_seq": 434,
+          "clear_action_id": "t1f-epoch-2-clear",
+          "first_idle_tick": 382,
+          "full_tick_stillness_qualified": false,
+          "high_level_dev_stop_ack": true,
+          "last_idle_tick": 389,
+          "marker_id": "T1I_MULTI_AFTER_CLEAR",
+          "native_source_independently_authenticated": false,
+          "observed_idle_ticks": 8,
+          "p1_qualified_wait": false,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "session_id": "c5702764-62fe-4395-add2-9136da7becf8",
+          "stop_id": "t1i-multi-epoch-stop",
+          "world": "357a59ae-0f6c-4698-9862-bbea0d9d3277"
+        }
+      ],
+      "stop_requested_python_ns": 1099641474818117,
+      "second_stop_requested_python_ns": null,
+      "accounting_at_stop": {
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.620435788207113,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 342
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "c5702764-62fe-4395-add2-9136da7becf8",
+          "world_tick": 1371
+        },
+        "ticks": 342
+      },
+      "accounting_at_second_stop": null,
+      "attempts": [
+        {
+          "generation": 1,
+          "resume_id": "T1J-R1",
+          "stop_id": "t1i-multi-epoch-stop",
+          "authorization_consumed": true,
+          "authorized_python_ns": 1099642349786607,
+          "permit_consumed": true,
+          "permit_consumed_python_ns": 1099642393654806,
+          "motor_send_attempted": true,
+          "motor_send_python_ns": 1099642394544643,
+          "permission_cleared": true,
+          "old_owner_still_latched": true,
+          "old_ledger_unchanged": true,
+          "error": "ResumeDevRejected: T1j resumed Action not executed/cleared",
+          "permit": {
+            "after_source_seq": 461,
+            "after_world_tick": 1390,
+            "before_source_seq": 459,
+            "classification": "DEV_EXPLICIT_REAUTHORIZE_REOBSERVED_GAP",
+            "native_probe_seq": 460,
+            "native_source_independently_authenticated": false,
+            "next_action_id": "t1j-T1J-R1-move",
+            "no_retrospective_m0_or_p1": true,
+            "old_stop_ack_last_server_tick": 389,
+            "original_owner_latch_retained": true,
+            "p1_wait_qualified": false,
+            "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+            "resume_id": "T1J-R1",
+            "session_id": "c5702764-62fe-4395-add2-9136da7becf8",
+            "stop_id": "t1i-multi-epoch-stop",
+            "unobserved_world_ticks": 18,
+            "world": "357a59ae-0f6c-4698-9862-bbea0d9d3277"
+          },
+          "reobservations": [
+            {
+              "seq": 459,
+              "kind": "paper_snapshot",
+              "server_tick": 391,
+              "world_tick": 1389,
+              "age_upper_ns": "51458850"
+            },
+            {
+              "seq": 460,
+              "kind": "observation",
+              "server_tick": null,
+              "world_tick": null,
+              "age_upper_ns": null
+            },
+            {
+              "seq": 461,
+              "kind": "paper_snapshot",
+              "server_tick": 392,
+              "world_tick": 1390,
+              "age_upper_ns": "48491484"
+            }
+          ],
+          "terminal": "unknown",
+          "consequence": {
+            "status": "failed",
+            "movement_distance": null,
+            "error": "TimeoutError: ",
+            "dispatch_receipt": {
+              "action_id": "t1j-T1J-R1-move",
+              "effect": "set_control",
+              "error": null,
+              "result": "applied",
+              "seq": 463,
+              "session_id": "c5702764-62fe-4395-add2-9136da7becf8"
+            },
+            "cleanup_receipt": null
+          },
+          "ledger": {
+            "energy": {
+              "energy": 15.603336253815584,
+              "knockouts": 0,
+              "meals": 1,
+              "terminal": false,
+              "tick": 356
+            },
+            "fatigue": {
+              "fatigue": 0.033990687830690515,
+              "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+              "session_id": "c5702764-62fe-4395-add2-9136da7becf8",
+              "world_tick": 1404
+            },
+            "credit_ids": [
+              "t2-native-meal"
+            ],
+            "failed": true,
+            "rebase": {
+              "kind": "PROVISIONAL_LAST_KNOWN_CARRY_WITH_UNOBSERVED_GAP",
+              "new_origin_world_tick": 1390,
+              "p1_wait_qualified": false,
+              "prior_energy_last_known": 15.620435788207113,
+              "prior_fatigue_last_known": 0.0,
+              "prior_ledger_rows": 342,
+              "resume_id": "T1J-R1",
+              "resumed_m0_p1_qualified": false,
+              "stop_gap_debit_and_credit": 0,
+              "stop_id": "t1i-multi-epoch-stop",
+              "unobserved_world_ticks": 18,
+              "world_fatigue_during_gap": "UNKNOWN",
+              "world_physical_energy_during_gap": "UNKNOWN"
+            },
+            "row_count": 14,
+            "world_ticks": [
+              1391,
+              1392,
+              1393,
+              1394,
+              1395,
+              1396,
+              1397,
+              1398,
+              1399,
+              1400,
+              1401,
+              1402,
+              1403,
+              1404
+            ]
+          }
+        }
+      ],
+      "old_ledgers": {
+        "T1J-R1": {
+          "energy": {
+            "energy": 15.620435788207113,
+            "knockouts": 0,
+            "meals": 1,
+            "terminal": false,
+            "tick": 342
+          },
+          "fatigue": {
+            "fatigue": 0.0,
+            "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+            "session_id": "c5702764-62fe-4395-add2-9136da7becf8",
+            "world_tick": 1371
+          },
+          "credit_ids": [
+            "t2-native-meal"
+          ],
+          "failed": true,
+          "row_count": 342,
+          "first_world_tick": 1030,
+          "frozen_world_tick": 1371,
+          "rows_sha256": "f9e9c60b2cc36b0f35ca43ea76be602742c019e9f7d9fc7ac7ecafd4ddd83b11"
+        }
+      },
+      "final_ledger": {
+        "P1_qualified_WAIT": false,
+        "active_action": "t1j-T1J-R1-move",
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.603336253815584,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 356
+        },
+        "fatigue": {
+          "fatigue": 0.033990687830690515,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "c5702764-62fe-4395-add2-9136da7becf8",
+          "world_tick": 1404
+        },
+        "latched": true,
+        "ticks": 14
+      },
+      "lineage": null,
+      "source_loss": null,
+      "fault_injection": null,
+      "set_ack_received_before_injection_request": null,
+      "fault_audit": {
+        "classification": "FAULT_INJECTED_FAIL_CLOSED_DEV_OBSERVED",
+        "clear_receipts": [
+          {
+            "action_id": "t1j-T1J-R1-move-clear",
+            "effect": "clear_controls",
+            "error": null,
+            "result": "applied",
+            "seq": 472,
+            "session_id": "c5702764-62fe-4395-add2-9136da7becf8",
+            "type": "effect_result"
+          }
+        ],
+        "disconnects": [],
+        "effect_id_duplicates": 0,
+        "expected_refusal_not_normal_shutdown_pass": true,
+        "fault_boundary": "CLEAR_APPLIED_ACK_DROPPED_AT_PYTHON",
+        "fault_case": "t1k_fault_clear_ack",
+        "native_classification": "NATIVE_FAULT_OBSERVED",
+        "native_fault_observed": true,
+        "no_resume_action_reissued": true,
+        "raw_cleanup_separate": true,
+        "resume_clear_sends": 1,
+        "resume_motor_sends": 1,
+        "safety_violation": false,
+        "set_receipts": [
+          {
+            "action_id": "t1j-T1J-R1-move",
+            "effect": "set_control",
+            "error": null,
+            "result": "applied",
+            "seq": 463,
+            "session_id": "c5702764-62fe-4395-add2-9136da7becf8",
+            "type": "effect_result"
+          }
+        ]
+      },
+      "cleanup": {
+        "cleanup_complete": true,
+        "process_reap_complete": true,
+        "java_exit": 0,
+        "node_exit": 0,
+        "java_pid_absent": true,
+        "node_pid_absent": true,
+        "port_rebind": true,
+        "node_cleanup_error": null
+      },
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "c5702764-62fe-4395-add2-9136da7becf8"
+      },
+      "original_hashes_verified": true
+    }
+  ]
+}

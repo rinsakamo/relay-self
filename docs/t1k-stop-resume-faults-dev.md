@@ -3,8 +3,11 @@
 Source: `self/dev-t1j-explicit-resume-20261027` at
 `8b02e27bf9ec11a10077b39e41bfa850c52a5f9d`.
 
-**DEV_ONLY / OFFLINE_IMPL_ADDED / T1K_NATIVE_UNVERIFIED /
-QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**.
+**DEV_ONLY / DEV_WORLD_OBSERVED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**.
+WSL2 integration completed on 2026-10-27: two normal multi-generation PASS
+Worlds and three observed fail-closed fault cases; all failed originals retained.
+See [native results](t1k-native-dev-results-20261027.md) and
+[measurements](t1k-native-dev-results-20261027.json) for exact scope and failures.
 Prior **T1j** successful 2/2 disposable Worlds remain independently
 `DEV_WORLD_OBSERVED`, not a claim for this new T1k code.
 
@@ -113,7 +116,7 @@ raw journal and exact failure category.
    plan a longer continuous source/ledger DEV soak in an independently
    scoped task. This commit does not claim multi-minute stability.
 
-### Verification actually completed with ChatGPT tools
+### Initial publication status (historical, superseded by native results above)
 
 Branch/source publication through GitHub and read-back, source contract
 review and isolated DEV test authoring. **New T1k tests have NOT been
