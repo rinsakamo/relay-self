@@ -67,7 +67,7 @@ R/V/SCIENCE permissions. Default OFF for all normal cases.
   isolated one-use native emitter with stage timestamps. Original
   `bridge.mjs` calls it only for `paper_snapshot` when
   `RELAYSELF_T1N_EMIT_TRACE_DEV` is set, and keeps the historical
-  code path for ordinary cases. T1n sidecar write errors are swallowed,
+  code path for ordinary cases. T1n sidecar open/write errors leave native emission intact,
   but the reducer will classify absent rows as diagnostic failure;
   no successful source or shutdown claim is synthesized.
 - `adapters/mineflayer/t1n_emit_diagnostic_dev.py`:
@@ -89,7 +89,8 @@ R/V/SCIENCE permissions. Default OFF for all normal cases.
 ## LocalCodex DEV acceptance
 
 Check exact T1n HEAD/isolated clean worktree, JDK21/Node22/Python3.12,
-the already built Paper1.21.8 JAR and **newly built** patched Java Plugin.
+the already built Paper1.21.8 JAR and source-compatible T1m Java Plugin
+with verified SHA256; rebuild with Java21 only if required.
 Test:
 
 ```sh
@@ -106,7 +107,7 @@ PYTHONPATH=src:tests python3.12 -m pytest -q \
 
 Fix any focused failures without relaxing original source admission or
 changing historic originals; then run module FAST/related Node tests,
-Ruff/contracts and Java21 build. FULL is reserved for main merge.
+Ruff/contracts and verify the Java21 artifact. FULL is reserved for main merge.
 
 Run two ordinary DEV fresh disposable Worlds (1200 source/accounting
 ticks each); a controlled light-load separate World only if normal

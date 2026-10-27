@@ -56,7 +56,14 @@ def analyze_t1n_emit(native, emit_sidecar, t1m_sidecar):
         else:
             emitted_by_seq[seq] = row
     t1m_by_key = {}
+    next_by_index = {}
     for row in t1m_sidecar:
+        if row.get("kind") == "challenge_write_return" and "previous_index" in row:
+            index = row["previous_index"]
+            if index in next_by_index:
+                issues.append("duplicate_post_emit_record")
+            else:
+                next_by_index[index] = row
         if row.get("kind") != "snapshot_callback":
             continue
         key = (row.get("index"), row.get("challenge"))
@@ -71,6 +78,8 @@ def analyze_t1n_emit(native, emit_sidecar, t1m_sidecar):
         "stdout_serialize_ms": [], "stdout_call_ms": [],
         "emit_native_call_total_ms": [], "post_eval_to_emit_entry_ms": [],
         "post_stdout_to_emit_return_ms": [],
+        "emit_return_to_next_issue_ms": [], "post_eval_to_next_issue_ms": [],
+        "emit_total_ms": [],
         "cpu_user_ms": [], "cpu_system_ms": [],
     }
     matched = 0
@@ -102,11 +111,19 @@ def analyze_t1n_emit(native, emit_sidecar, t1m_sidecar):
             stdout_json = _ns(side["stdout_serialize_return_ns"])
             stdout_end = _ns(side["stdout_write_return_ns"])
             complete = _ns(snap["node_complete_ns"])
-            event_emitted = next((row for row in t1m_sidecar
-                                  if row.get("kind") == "challenge_write_return"
-                                  and row.get("previous_index") == source["index"]), None)
+            if ("evaluation_completed_ns" in raw["data"]
+                    and raw["data"]["evaluation_completed_ns"] != snap["node_complete_ns"]):
+                raise ValueError("native evaluation completion mismatch")
+            event_emitted = next_by_index.get(source["index"])
             emit_return = (_ns(event_emitted["previous_emit_return_ns"])
                            if event_emitted else None)
+            issue_time = _ns(event_emitted["node_sent_ns"]) if event_emitted else None
+            if event_emitted and (
+                    _ns(event_emitted["previous_complete_ns"]) != complete
+                    or not stdout_end <= emit_return
+                    <= _ns(event_emitted["previous_diagnostic_start_ns"])
+                    <= _ns(event_emitted["previous_diagnostic_return_ns"]) <= issue_time):
+                raise ValueError("inconsistent next challenge timing")
             if (None in (entry, envelope, trace_json, trace_end, stdout_json, stdout_end)
                     or not complete <= entry <= envelope <= trace_json <= trace_end
                     <= stdout_json <= stdout_end
@@ -125,8 +142,13 @@ def analyze_t1n_emit(native, emit_sidecar, t1m_sidecar):
         if side.get("stdout_write_accepted") is False:
             stdout_backpressure += 1
         sample = {
-            "seq": seq, "source_index": source["index"],
+            "session_id": raw.get("session_id"), "seq": seq,
+            "challenge": source.get("challenge"),
+            "world_tick": source.get("world_tick"), "source_index": source["index"],
             "source_status": raw["data"]["status"],
+            "node_a_ms": (int(raw["data"]["age_upper_ns"]) / 1e6
+                          if raw["data"].get("age_upper_ns") is not None else None),
+            "event_loop_window_max_ns": snap.get("event_loop_delay_window_max_ns"),
             "envelope_ms": (envelope-entry)/1e6,
             "trace_serialize_ms": (trace_json-envelope)/1e6,
             "trace_sync_write_ms": (trace_end-trace_json)/1e6,
@@ -139,12 +161,24 @@ def analyze_t1n_emit(native, emit_sidecar, t1m_sidecar):
         }
         if emit_return is not None:
             sample["post_stdout_to_emit_return_ms"] = (emit_return-stdout_end)/1e6
+            sample["emit_return_to_next_issue_ms"] = (issue_time-emit_return)/1e6
+            sample["post_eval_to_next_issue_ms"] = (issue_time-complete)/1e6
+            sample["emit_total_ms"] = (emit_return-entry)/1e6
+        else:
+            sample["post_stdout_to_emit_return_ms"] = None
+            sample["emit_total_ms"] = None
+        following = t1m_by_key.values()
+        sample["next_tick_reuses_challenge"] = next((
+            row.get("challenge") == source.get("challenge") for row in following
+            if row.get("index") == source["index"] + 1), None)
         for k,v in sample.items():
             if k in fields:
-                fields[k].append(v)
+                if v is not None:
+                    fields[k].append(v)
         events.append(sample)
         matched += 1
-    large = sorted(events, key=lambda x: x["emit_native_call_total_ms"], reverse=True)[:20]
+    large = sorted(events, key=lambda x: x["emit_total_ms"] if x["emit_total_ms"] is not None
+                   else x["emit_native_call_total_ms"], reverse=True)[:20]
     return {
         "classification": "T1N_NODE_EMIT_SUBPHASE_DIAGNOSTIC_ONLY",
         "source_qualification": False,

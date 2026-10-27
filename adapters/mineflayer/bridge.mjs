@@ -4,7 +4,7 @@ import { lstatSync, openSync, writeSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import readline from 'node:readline'
 import { monitorEventLoopDelay } from 'node:perf_hooks'
-import { emitWithT1nTiming } from './t1n_emit_timing_dev.mjs'
+import { emitWithT1nTiming, openT1nSidecar } from './t1n_emit_timing_dev.mjs'
 
 import {
   attachHealthSynchronizedSpawnListeners,
@@ -100,7 +100,7 @@ if (t1nTracePath && (paperTickOptIn !== '1' || !paperTracePath ||
     !isAbsolute(t1nTracePath) || t1nTracePath === paperTracePath)) {
   throw Error('T1n needs original DEV paper trace and fresh separate absolute path')
 }
-const t1nTraceFd = t1nTracePath ? openSync(t1nTracePath, 'wx', 0o600) : null
+const t1nTraceFd = t1nTracePath ? openT1nSidecar(t1nTracePath, openSync) : null
 
 function emit (type, payload = {}) {
   if (t1nTraceFd !== null && type === 'paper_snapshot') {
@@ -161,7 +161,7 @@ emit('adapter_started', {
 })
 
 const t1fOptIn = process.env.RELAYSELF_T1F_DEV
-if (t1nTraceFd !== null && t1fOptIn !== '1') {
+if (t1nTracePath && t1fOptIn !== '1') {
   throw Error('T1n emit trace needs original T1f DEV admission')
 }
 if (t1fOptIn !== undefined && !['0', '1'].includes(t1fOptIn)) throw Error('invalid T1f opt-in')

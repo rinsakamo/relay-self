@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { emitWithT1nTiming } from './t1n_emit_timing_dev.mjs'
+import { emitWithT1nTiming, openT1nSidecar } from './t1n_emit_timing_dev.mjs'
 
 function scenario ({ diagnosticFails = false, traceWaitMs = 0n,
                      stdoutWaitMs = 0n } = {}) {
@@ -77,4 +77,36 @@ test('T1n instrumented emitter refuses use for non-Paper messages', () => {
     advanceSequence: () => {}, stdoutWriter: () => {},
     diagnosticWriter: () => {}, traceEnabled: false
   }), /Paper-only/)
+})
+
+
+test('sidecar open failure leaves instrumentation disabled and old path available', () => {
+  assert.equal(openT1nSidecar('/missing/file', () => { throw Error('ENOENT') }), null)
+  assert.equal(openT1nSidecar('/fresh/file', (...args) => {
+    assert.deepEqual(args, ['/fresh/file', 'wx', 0o600]); return 42
+  }), 42)
+})
+
+
+test('instrumented native operations preserve legacy order, bytes and STALE status', () => {
+  const legacy = []; const instrumented = []
+  const body = { data: { status: 'STALE', snapshot: { index: 1, challenge: 'old' } } }
+  const envelope = (session_id, seq, type, payload) => ({ session_id, seq, type, ...payload })
+  const msg = envelope('S', 7, 'paper_snapshot', body)
+  legacy.push(['envelope', msg], ['trace', JSON.stringify({ node_monotonic_ns: '1', ...msg }) + '\n'],
+    ['advance'], ['stdout', JSON.stringify(msg) + '\n'])
+  const d = []
+  emitWithT1nTiming({
+    sessionId: 'S', seq: 7, type: 'paper_snapshot', payload: body,
+    makeEnvelope: (...args) => { const m = envelope(...args); instrumented.push(['envelope', m]); return m },
+    traceEnabled: true, clock: () => 1n,
+    traceWriter: line => instrumented.push(['trace', line]),
+    advanceSequence: () => instrumented.push(['advance']),
+    stdoutWriter: line => { instrumented.push(['stdout', line]); return false },
+    diagnosticWriter: line => d.push(JSON.parse(line))
+  })
+  assert.deepEqual(instrumented, legacy)
+  assert.equal(d[0].source_status, 'STALE')
+  assert.equal(d[0].stdout_write_accepted, false)
+  assert.equal(d[0].stdout_write_return_is_delivery_ack, false)
 })

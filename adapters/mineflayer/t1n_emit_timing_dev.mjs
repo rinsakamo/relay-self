@@ -1,6 +1,11 @@
 // T1n DEV-only instrumentation of the EXISTING bridge emit() path.
 // This helper is called only for paper_snapshot with explicit native-sidecar
 // opt-in. The canonical envelope, source seq, stream, and admission stay intact.
+export function openT1nSidecar (path, open) {
+  // Missing diagnostics are a reducer FAIL, never a native startup failure.
+  try { return open(path, 'wx', 0o600) } catch { return null }
+}
+
 export function emitWithT1nTiming ({
   sessionId, seq, type, payload, makeEnvelope, advanceSequence,
   traceEnabled, traceWriter, stdoutWriter, diagnosticWriter,

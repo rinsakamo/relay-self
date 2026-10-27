@@ -31,7 +31,9 @@ def fixture():
          "challenge": challenge, "status": "ADMITTED",
          "node_complete_ns": "99900000"},
         {"kind": "challenge_write_return", "previous_index": 17,
-         "previous_emit_return_ns": "152700000"},
+         "previous_emit_return_ns": "152700000", "previous_complete_ns": "99900000",
+         "previous_diagnostic_start_ns": "152710000",
+         "previous_diagnostic_return_ns": "152800000", "node_sent_ns": "152900000"},
     ]
     return native, emit, sidecar
 
@@ -109,3 +111,47 @@ def test_stdout_false_is_only_backpressure_signal_not_receive_confirmation():
     assert audit["matched_paper_count"] == 1
     assert audit["stdout_write_returned_false_count"] == 1
     assert audit["native_stdout_write_acknowledged_by_python"] is False
+
+
+def test_seq_challenge_status_and_native_completion_mismatch():
+    for field, value in (("seq", 9), ("challenge", "foreign"),
+                         ("source_status", "STALE")):
+        native, side, other = fixture()
+        side[0][field] = value
+        audit = analyze_t1n_emit(native, side, other)
+        assert audit["matched_paper_count"] == 0
+        assert audit["source_integrity_violations"]
+    native, side, other = fixture()
+    native[0]["data"]["evaluation_completed_ns"] = "1"
+    assert analyze_t1n_emit(native, side, other)["matched_paper_count"] == 0
+
+
+def test_post_emit_duplicate_or_forged_complete_refused():
+    native, side, other = fixture()
+    assert "duplicate_post_emit_record" in analyze_t1n_emit(
+        native, side, other + [deepcopy(other[1])])["source_integrity_violations"]
+    other[1]["previous_complete_ns"] = "1"
+    assert analyze_t1n_emit(native, side, other)["matched_paper_count"] == 0
+
+
+def test_missing_next_issue_is_unknown_not_zero():
+    native, side, other = fixture()
+    audit = analyze_t1n_emit(native, side, other[:1])
+    assert audit["source_integrity_violations"] == []
+    assert audit["matched_paper_count"] == 1
+    assert audit["distributions_ms"]["post_stdout_to_emit_return_ms"]["n"] == 0
+    assert audit["largest_emit_events"][0]["emit_total_ms"] is None
+
+
+def test_reused_challenge_and_unapplied_issue_do_not_change_snapshot_join():
+    native, side, other = fixture()
+    n, s, callback = deepcopy(native[0]), deepcopy(side[0]), deepcopy(other[0])
+    n["seq"] += 1
+    n["data"]["snapshot"]["index"] += 1
+    s.update(seq=n["seq"], source_index=18)
+    callback["index"] = 18
+    audit = analyze_t1n_emit(native + [n], side + [s], other + [callback,
+        {"kind": "challenge_write_return", "challenge": "unused"}])
+    assert audit["source_integrity_violations"] == []
+    assert audit["matched_paper_count"] == 2
+    assert audit["largest_emit_events"][0]["next_tick_reuses_challenge"] is True
