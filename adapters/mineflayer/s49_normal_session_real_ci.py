@@ -13,6 +13,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict
 from pathlib import Path
@@ -282,6 +283,7 @@ async def qualify(
     dev_sprint_motor: bool = False,
     dev_m0_dash_invoice: Callable[[NormalActionReceipt], DashM0InvoiceDev | None] | None = None,
     dev_m0_action_move_step: bool = False,
+    dev_inter_action_owner_gap: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -293,6 +295,7 @@ async def qualify(
         "dev_sprint_motor": dev_sprint_motor,
         "dev_m0_dash_owner": dev_m0_dash_invoice is not None,
         "dev_m0_action_move_step": dev_m0_action_move_step,
+        "dev_inter_action_owner_gap": dev_inter_action_owner_gap,
         "decisions": [],
         "real_model_calls": 0,
         "learning_in_world": False,
@@ -308,6 +311,14 @@ async def qualify(
     try:
         if os.environ.get("S49_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
+        if type(dev_inter_action_owner_gap) is not bool or (
+            dev_inter_action_owner_gap and (
+                not dev_sprint_motor
+                or not dev_m0_action_move_step
+                or os.environ.get("S49_INTER_ACTION_OWNER_GAP_DEV_ONLY") != "1"
+            )
+        ):
+            raise S31ABlocked("original S49 no-issued-Action owner proof requires DEV opt-in")
         if type(dev_m0_action_move_step) is not bool or (
             dev_m0_action_move_step and (
                 dev_m0_dash_invoice is None
@@ -415,6 +426,9 @@ async def qualify(
             stage_r = StageRDevSingleWriter(host, executor, intent, learning_issuer)
             report["stage_r_dev_enabled"] = True
         probes = {}
+        # No new Action issuer: only a gated readback of THIS original host
+        # and its original NormalSessionActionExecutor before/after issue.
+        owner_gap_end_first: dict[str, Any] | None = None
 
         async def reprobe(frame):
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
@@ -467,6 +481,40 @@ async def qualify(
             )
 
         async def on_action(step):
+            nonlocal owner_gap_end_first
+            if dev_inter_action_owner_gap and owner_gap_end_first is not None:
+                if len(report["actual_native_actions"]) != 1:
+                    raise S49PhysicalFailure("original owner gap ambiguous Action count")
+                prior_id = report["actual_native_actions"][0]["action"]
+                if (
+                    executor._count != 1
+                    or executor._dispatched != {prior_id}
+                    or executor.supervisor.open_actions
+                    or step.action_request_id == prior_id
+                ):
+                    raise S49PhysicalFailure("original owner issued Action during claimed gap")
+                started = time.monotonic_ns()
+                if started <= owner_gap_end_first["host_first_outcome_monotonic_ns"]:
+                    raise S49PhysicalFailure("nonmonotonic native original owner gap")
+                report["dev_inter_action_original_owner_gap"] = {
+                    **owner_gap_end_first,
+                    "second_requested_action_id": step.action_request_id,
+                    "host_next_action_request_monotonic_ns": started,
+                    "elapsed_owner_local_monotonic_ns": (
+                        started - owner_gap_end_first["host_first_outcome_monotonic_ns"]
+                    ),
+                    "same_original_S49_executor": True,
+                    "native_action_count_at_next_request": 1,
+                    "native_dispatched_action_ids": [prior_id],
+                    "native_open_actions_at_next_request": 0,
+                    "all_actions_globally_absent_attested": False,
+                    "paper_world_tick_bound_attested": False,
+                    "node_control_epoch_aligned_attested": False,
+                    "WAIT_admitted": False,
+                    "P1_recovery_posted": False,
+                    "M0_posted": False,
+                }
+                owner_gap_end_first = None
             probe = probes[step.choice.probe_seq]
             native = _native_threat(
                 probe, probe.request_id, expected_entity_id=step.choice.entity_id,
@@ -561,6 +609,22 @@ async def qualify(
                     report.setdefault("dev_m0_dash_unboosted_actions", []).append(
                         receipt.terminal.action_id,
                     )
+            if dev_inter_action_owner_gap and not report["actual_native_actions"]:
+                if (
+                    executor._count != 1
+                    or executor._dispatched != {receipt.terminal.action_id}
+                    or executor.supervisor.open_actions
+                ):
+                    raise S49PhysicalFailure("first original OUTCOME not a closed Action")
+                owner_gap_end_first = {
+                    "classification": "S49_ORIGINAL_EXECUTOR_NO_ISSUE_GAP_DEV_ONLY",
+                    "session_id": sid,
+                    "first_terminal_action_id": receipt.terminal.action_id,
+                    "host_first_outcome_monotonic_ns": time.monotonic_ns(),
+                    "first_terminal_outcome": True,
+                    "native_action_count_at_first_terminal": 1,
+                    "native_open_actions_at_first_terminal": 0,
+                }
             report["actual_native_actions"].append({
                 "action": receipt.terminal.action_id,
                 "terminal": receipt.terminal.state.value,
@@ -604,6 +668,21 @@ async def qualify(
             ),
             timeout=95,
         )
+        if dev_inter_action_owner_gap:
+            owner = report.get("dev_inter_action_original_owner_gap")
+            ids = [a["action"] for a in report["actual_native_actions"]]
+            if (
+                owner is None or owner_gap_end_first is not None
+                or len(ids) != 2
+                or owner["first_terminal_action_id"] != ids[0]
+                or owner["second_requested_action_id"] != ids[1]
+                or executor._count != 2
+                or executor._dispatched != set(ids)
+                or executor.supervisor.open_actions
+            ):
+                raise S49PhysicalFailure("DEV original S49 owner gap unclosed")
+            owner["native_action_count_after_second_terminal"] = 2
+            owner["native_open_actions_after_second_terminal"] = 0
         report["ignored_hurt_frames"] = observation_source.ignored_hurt_frames
         report["ignored_non_target_entities"] = observation_source.ignored_non_target_entities
         report["ignored_duplicate_target_updates"] = observation_source.ignored_duplicate_target_updates
