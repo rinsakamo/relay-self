@@ -61,6 +61,9 @@ def test_same_original_action_owner_no_intervening_issues_not_physical_wait(tmp_
     assert result["original_owner_no_new_issue_between_bookends"] is True
     assert result["open_actions_at_bookends"] == [0, 0, 0]
     assert result["original_owner_gap_monotonic_ms"] == 8300
+    assert result["node_input_off_observed_duration_ms"] == 7650
+    assert result["host_node_duration_difference_ms"] == 650
+    assert result["bounded_source_local_duration_consistency"] is True
     assert result["paper_candidate_consecutive_still_ticks"] >= 8
     assert result["node_input_off_physics_callbacks"] == 154
     assert result["host_node_monotonic_clocks_calibrated"] is False
@@ -81,6 +84,7 @@ def test_same_original_action_owner_no_intervening_issues_not_physical_wait(tmp_
     "invalid_clock", "forged_time", "no_stillness", "controls_on",
     "clock_sync_minted", "global_action_attested", "paper_bound_attested",
     "wait_minted", "p1_minted", "m0_minted", "paper_wait_minted",
+    "owner_duration_mismatch", "node_duration_missing",
 ])
 def test_foreign_clock_action_or_fake_wait_refused(tmp_path, fault):
     o, st, first, second, sid = make(tmp_path)
@@ -123,6 +127,11 @@ def test_foreign_clock_action_or_fake_wait_refused(tmp_path, fault):
         o["host_next_action_request_monotonic_ns"] = 12.5
     elif fault == "forged_time":
         o["elapsed_owner_local_monotonic_ns"] += 1
+    elif fault == "owner_duration_mismatch":
+        o["host_next_action_request_monotonic_ns"] += 2_000_000_000
+        o["elapsed_owner_local_monotonic_ns"] += 2_000_000_000
+    elif fault == "node_duration_missing":
+        st.pop("node_inter_action_observed_duration_ms")
     elif fault == "no_stillness":
         st["classification"] = "S49_INTER_ACTION_STILLNESS_CANDIDATE_ABSENT_DEV_ONLY"
     elif fault == "controls_on":
