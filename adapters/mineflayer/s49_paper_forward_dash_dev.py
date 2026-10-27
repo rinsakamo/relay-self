@@ -525,6 +525,7 @@ async def run(
     m0_worldtime_shadow_dev: bool = False,
     two_action_timeline_dev: bool = False,
     inter_action_stillness_dev: bool = False,
+    causal_owner_fence_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -540,6 +541,11 @@ async def run(
         or type(m0_worldtime_shadow_dev) is not bool
         or type(two_action_timeline_dev) is not bool
         or type(inter_action_stillness_dev) is not bool
+        or type(causal_owner_fence_dev) is not bool
+        or (causal_owner_fence_dev and (
+            not inter_action_stillness_dev
+            or os.environ.get("S49_CAUSAL_OWNER_PAPER_FENCE_DEV_ONLY") != "1"
+        ))
         or (inter_action_stillness_dev and (
             not two_action_timeline_dev
             or os.environ.get("S49_INTER_ACTION_CONTROL_DEV_ONLY") != "1"
@@ -613,7 +619,8 @@ async def run(
             + ("p1-live-dev: true\np1-initial-fatigue: 0.6\n" if p1_live_dev else "")
             + ("native-edge-dev: true\n" if native_edges_dev else "")
             + ("post-release-motion-dev: true\n" if post_release_dev else "")
-            + ("two-action-trace-dev: true\n" if two_action_timeline_dev else ""),
+            + ("two-action-trace-dev: true\n" if two_action_timeline_dev else "")
+            + ("causal-owner-fence-dev: true\n" if causal_owner_fence_dev else ""),
             encoding="utf-8"
         )
 
@@ -621,6 +628,55 @@ async def run(
         ready = await base_ready(*args)
         subject["server"] = ready[0]
         return ready
+
+    async def original_owner_paper_fence(phase: str, first_id: str, second_id: str):
+        if (
+            not causal_owner_fence_dev
+            or phase not in ("START", "END")
+            or first_id != subject["action_id"]
+            or subject["session"] is None
+            or (phase == "START" and second_id != "NONE")
+            or (phase == "END" and (
+                subject["second_action_id"] is not None
+                or not second_id.startswith("s49-native-move-")
+                or second_id == first_id
+            ))
+        ):
+            raise ForwardDashDevRejected("foreign original S49 owner fence")
+        server = subject["server"]
+        if server is None or server.stdin is None:
+            raise ForwardDashDevRejected("original S49 Paper fence owner missing")
+        offset = paper_log.stat().st_size if paper_log.exists() else 0
+        original._command(
+            server,
+            "relays49dashownerfence " + first_id + " "
+            + subject["session"] + " " + offline_uuid("RelaySelf")
+            + " " + phase + " " + second_id,
+        )
+        await server.stdin.drain()
+        # Only await the original Paper console's ACK before the second
+        # original Action proceeds. No new native reader or Paper Action.
+        end = asyncio.get_running_loop().time() + 8
+        while asyncio.get_running_loop().time() < end:
+            if paper_log.is_file() and not paper_log.is_symlink():
+                with paper_log.open("rb") as stream:
+                    stream.seek(offset)
+                    b = stream.read(65537)
+                if len(b) > 65536:
+                    raise ForwardDashDevRejected("Paper fence log overflow")
+                window = b.decode("utf-8")
+                if "S49_DASH_DEV_OWNER_FENCE_DENIED" in window:
+                    raise ForwardDashDevRejected("Paper rejected original owner fence")
+                for line in window.splitlines():
+                    if ("S49_DASH_DEV_OWNER_FENCE " in line
+                            and "action_id=" + first_id + " " in line
+                            and "session_id=" + subject["session"] + " " in line
+                            and "phase=" + phase + " " in line
+                            and "second_action_id=" + second_id + " " in line):
+                        subject.setdefault("owner_fences", []).append(phase)
+                        return
+            await asyncio.sleep(0.04)
+        raise ForwardDashDevRejected("Paper did not acknowledge original owner " + phase)
 
     async def issued_original_transport(session, command, *, timeout_s, provenance):
         if (
@@ -780,6 +836,9 @@ async def run(
                 dev_m0_dash_invoice=invoice_from_original_outcome if m0_live_dev else None,
                 dev_m0_action_move_step=m0_move_dev,
                 dev_inter_action_owner_gap=inter_action_stillness_dev,
+                dev_inter_action_owner_paper_fence=(
+                    original_owner_paper_fence if causal_owner_fence_dev else None
+                ),
             )
         original_bytes = json.loads(original_report.read_text(encoding="utf-8"))
         report["original_s49_rc"] = rc
@@ -1044,6 +1103,7 @@ def main() -> int:
     parser.add_argument("--m0-worldtime-shadow-dev", action="store_true")
     parser.add_argument("--two-action-timeline-dev", action="store_true")
     parser.add_argument("--inter-action-stillness-dev", action="store_true")
+    parser.add_argument("--causal-owner-fence-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -1057,6 +1117,7 @@ def main() -> int:
         m0_worldtime_shadow_dev=a.m0_worldtime_shadow_dev,
         two_action_timeline_dev=a.two_action_timeline_dev,
         inter_action_stillness_dev=a.inter_action_stillness_dev,
+        causal_owner_fence_dev=a.causal_owner_fence_dev,
     ))
 
 
