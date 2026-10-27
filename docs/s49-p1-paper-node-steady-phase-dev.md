@@ -35,7 +35,7 @@ Exact tested SHA, run ID and resulting real measurements to be appended only aft
 ## Real disposable Paper / Node stable-phase verification — 2026-10-27
 
 **Exact tested code HEAD:** `2c544cfef905236f66c088dd167bb8dd80cf94d9`.
-[GitHub Actions #40503444978](https://github.com/rinsakamo/relay-self/actions/runs/40503444978) **SUCCESS**. Python 3.12 focused and Ruff PASS, Node 22 **3 PASS**, Java 21 **BUILD SUCCESS**, two original S49-controlled disposable Paper 1.21.8 Worlds and the read-only posterior original S15/S16/Node/Paper source review all PASS.
+[GitHub Actions #40503444978](https://github.com/rinsakamo/relay-self/actions/runs/40503444978) **SUCCESS**. Python 3.12 focused **241 PASS** (72+72+72+25 tests, no FAIL/SKIP), Ruff **All checks passed**, Node 22 **3 PASS**, Java 21 **BUILD SUCCESS**, two original S49-controlled disposable Paper 1.21.8 Worlds and the read-only posterior original S15/S16/Node/Paper source review all PASS.
 
 | Genuine observation | CARRY preloaded F=0.6177122410 | WAIT_ASSUMED F=0.2161608312 |
 | --- | ---: | ---: |
