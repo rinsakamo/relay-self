@@ -1,19 +1,17 @@
-name: P1 Original S49 First Action Node Hold Audit Two Worlds DEV
+name: P1 Seven Matched Paper DASH Bonus Ticks Two Worlds DEV
 on:
   push:
     branches:
-      - self/dev-p1-node-hold-audit-20261028
+      - self/dev-p1-matched-boost-7ticks-20261027
     paths:
       - .github/workflows/self-p1-matched-boost-7ticks-dev.yml
       - adapters/mineflayer/s49_paper_forward_dash_dev.py
       - adapters/mineflayer/s49_speed_attr_boundary_dev.py
       - adapters/mineflayer/s49_p1_synced_motor_pair_dev.py
       - adapters/mineflayer/s49_p1_matched_boost_review_dev.py
-      - adapters/mineflayer/s49_p1_native_hold_pair_dev.py
       - adapters/mineflayer/s49_p1_dash_pair_review_dev.py
       - tests/test_s49_p1_synced_motor_pair_dev.py
       - tests/test_s49_p1_matched_boost_review_dev.py
-      - tests/test_s49_p1_native_hold_pair_dev.py
       - tests/test_s49_speed_attr_boundary_dev.py
       - adapters/mineflayer/bridge.mjs
       - adapters/mineflayer/s49_speed_attribute_bridge_dev.mjs
@@ -23,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: p1-node-hold-first-s49-worlds-once-${{ github.ref }}
+  group: p1-7boost-original-s49-worlds-once-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -66,9 +64,9 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
-          python -m compileall -q adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_speed_attr_boundary_dev.py adapters/mineflayer/s49_p1_synced_motor_pair_dev.py adapters/mineflayer/s49_p1_matched_boost_review_dev.py adapters/mineflayer/s49_p1_native_hold_pair_dev.py tests/test_s49_p1_native_hold_pair_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_p1_matched_boost_review_dev.py
-          ruff check adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_speed_attr_boundary_dev.py adapters/mineflayer/s49_p1_synced_motor_pair_dev.py adapters/mineflayer/s49_p1_matched_boost_review_dev.py adapters/mineflayer/s49_p1_native_hold_pair_dev.py tests/test_s49_p1_native_hold_pair_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_p1_matched_boost_review_dev.py
-          python -m pytest -q tests/test_s49_p1_native_hold_pair_dev.py tests/test_s49_p1_matched_boost_review_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_dash_pair_review_dev.py tests/test_s49_p1_paper_motor_dev.py tests/test_s49_paper_forward_dash_dev.py tests/test_s49_m0_dash_extra_owner_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_p1_gait_dev.py tests/test_self_action_evidence.py
+          python -m compileall -q adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_speed_attr_boundary_dev.py adapters/mineflayer/s49_p1_synced_motor_pair_dev.py adapters/mineflayer/s49_p1_matched_boost_review_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_p1_matched_boost_review_dev.py
+          ruff check adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_speed_attr_boundary_dev.py adapters/mineflayer/s49_p1_synced_motor_pair_dev.py adapters/mineflayer/s49_p1_matched_boost_review_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_p1_matched_boost_review_dev.py
+          python -m pytest -q tests/test_s49_p1_matched_boost_review_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_dash_pair_review_dev.py tests/test_s49_p1_paper_motor_dev.py tests/test_s49_paper_forward_dash_dev.py tests/test_s49_m0_dash_extra_owner_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_p1_gait_dev.py tests/test_self_action_evidence.py
           node --check adapters/mineflayer/bridge.mjs
           node --check adapters/mineflayer/s49_speed_attribute_bridge_dev.mjs
           node --test adapters/mineflayer/s49_speed_attribute_bridge_dev.test.mjs
@@ -117,7 +115,7 @@ jobs:
               out.write(f"jar={target}\nsha256={expected}\n")
           print("PAPER_DEV_PINNED", total, expected)
           PY
-      - name: Two fresh Worlds same seven Paper-positive boost callbacks, unchanged original S49
+      - name: Two fresh Worlds same seven positive Paper DASH callbacks with client mapping ON
         env:
           PAPER_JAR: ${{ steps.paper.outputs.jar }}
           PAPER_SHA: ${{ steps.paper.outputs.sha256 }}
@@ -136,11 +134,10 @@ jobs:
               --p1-live-dev --m0-live-dev --m0-move-dev --native-edges-dev \
               --p1-model-pair-case-dev "$CASE" --speed-attr-boundary-dev --p1-matched-boost-dev
           done
-      - name: Independently audit Paper seven-boost and original S49 Node-local hold for BOTH arms
+      - name: Verify seven Paper-boost ticks and independent Node/S16 sources for BOTH arms
         run: |
           set -euo pipefail
           python -m adapters.mineflayer.s49_p1_matched_boost_review_dev --root "$DEV_OUTPUT"
-          python -m adapters.mineflayer.s49_p1_native_hold_pair_dev --root "$DEV_OUTPUT"
           python - <<'PY'
           import json, os
           from pathlib import Path
@@ -166,25 +163,12 @@ jobs:
           assert r["new_action_issuers"] == 0 and r["r_qualified_wait_ticks"] == 0
           assert r["qualification_go"] is False and r["science_go"] is False
           print("P1_SEVEN_MATCHED_PAPER_DASH_BONUS_TICKS_DEV_PASS", json.dumps(r, sort_keys=True))
-          node = json.loads((root / "p1_first_native_hold_pair_dev.json").read_text())
-          assert node["classification"] in (
-              "P1_FIRST_ACTION_OBSERVED_NODE_HOLD_AND_TICKS_MATCH_DEV_ONLY",
-              "P1_FIRST_ACTION_NODE_HOLD_MATCH_NOT_ESTABLISHED_DEV_ONLY",
-          )
-          assert node["original_action_duration_tick_controlled_by_node"] is False
-          assert node["original_action_tick_controlled_by_paper"] is False
-          assert node["paper_and_node_phase_aligned"] is False
-          assert node["hypothetical_preload_not_measured_recovery"] is True
-          assert node["additional_action_issuers"] == 0
-          assert node["additional_native_readers"] == 0
-          assert node["qualification_go"] is False and node["science_go"] is False
-          print("P1_ORIGINAL_S49_NODE_HOLD_AUDIT_DEV_COMPLETE", json.dumps(node, sort_keys=True))
           PY
       - name: Preserve both World sources whether PASS or FAIL
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: p1-node-hold-audit-pair-${{ github.run_id }}-${{ github.run_attempt }}
+          name: p1-7matched-model-motor-pair-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ env.DEV_OUTPUT }}/
           if-no-files-found: warn
           retention-days: 7
@@ -193,4 +177,4 @@ jobs:
         run: |
           echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
           echo 'Two fresh model-F Worlds use original S49 and the identical Paper seven-positive-tick speed-modifier cap.'
-          echo 'Seven positive Paper samples and equal Node counts cannot attest synchronized phase, tick-controlled Action holding or real WAIT recovery.'
+          echo 'Seven positive Paper samples do not align Node physics tick phase or prove a true WAIT recovery.'
