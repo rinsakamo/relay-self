@@ -10,7 +10,15 @@ from adapters.mineflayer.s49_p1_matched_boost_review_dev import (
     compare_matched_boost_pairs_dev,
     matched_boost_rows_dev,
 )
+from adapters.mineflayer.s49_p1_synced_motor_pair_dev import (
+    validate_synced_pair_dev,
+)
 from test_s49_p1_synced_motor_pair_dev import example
+
+
+def synced_example():
+    prior, witnesses = example()
+    return validate_synced_pair_dev(prior, witnesses)
 
 
 def synthetic_paper_ticks(*, arm="A", sid="sid", case="CARRY"):
@@ -117,7 +125,7 @@ def test_paper_source_rejects_unbounded_or_forged_p1_boost(fault):
 
 
 def test_p1_two_source_synced_native_and_paper_matched_pair():
-    synced, _ = example()
+    synced = synced_example()
     sources = {
         case: synthetic_source(case, synced)
         for case in ("CARRY", "WAIT_ASSUMED")
@@ -141,7 +149,7 @@ def test_p1_two_source_synced_native_and_paper_matched_pair():
     "fake_qualified", "case_missing", "new_issuer", "l0_admitted",
 ])
 def test_matched_Paper_model_pair_fails_closed(fault):
-    synced, _ = example()
+    synced = synced_example()
     sources = {
         case: synthetic_source(case, synced)
         for case in ("CARRY", "WAIT_ASSUMED")
