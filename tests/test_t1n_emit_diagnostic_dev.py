@@ -46,6 +46,8 @@ def test_original_paper_status_is_preserved_and_trace_stall_is_isolated():
     assert ms["trace_sync_write_ms"]["max"] == 52
     assert ms["stdout_call_ms"]["max"] == .2
     assert ms["post_stdout_to_emit_return_ms"]["max"] == .2
+    assert ms["post_eval_to_emit_entry_ms"]["max"] == .1
+    assert audit["stdout_write_returned_false_count"] == 0
     assert ms["emit_native_call_total_ms"]["max"] == 52.5
     assert not audit["native_stdout_write_acknowledged_by_python"]
     assert audit["scheduler_or_gc_root_cause"] == "UNKNOWN"
@@ -98,3 +100,12 @@ def test_no_stdout_receipt_claim_from_write_return():
     audit = analyze_t1n_emit(native, side, other)
     assert audit["matched_paper_count"] == 0
     assert "invalid_emit_clock_or_cpu" in audit["source_integrity_violations"]
+
+
+def test_stdout_false_is_only_backpressure_signal_not_receive_confirmation():
+    native, side, other = fixture()
+    side[0]["stdout_write_accepted"] = False
+    audit = analyze_t1n_emit(native, side, other)
+    assert audit["matched_paper_count"] == 1
+    assert audit["stdout_write_returned_false_count"] == 1
+    assert audit["native_stdout_write_acknowledged_by_python"] is False
