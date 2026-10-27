@@ -2,7 +2,9 @@
 import json
 import pytest
 
-from adapters.mineflayer.t1o_trace_policy_dev import trace_enabled, journal_name
+from adapters.mineflayer.t1o_trace_policy_dev import (
+    trace_enabled, journal_name, audit_trace_pair,
+)
 from adapters.mineflayer.t1e_native_dev import measure
 
 
@@ -53,9 +55,11 @@ def test_trace_off_reads_original_native_source_without_creating_trace(tmp_path)
     assert not (tmp_path / "node_timing.jsonl").exists()
 
 
-def test_explicit_trace_on_missing_journal_does_not_claim_zero_observations(tmp_path):
-    with pytest.raises(ValueError, match="timing trace missing"):
-        measure(tmp_path, {"node_trace_enabled": True})
+def test_explicit_trace_on_missing_journal_is_unavailable_not_zero_observations(tmp_path):
+    metrics = measure(tmp_path, {"node_trace_enabled": True})
+    assert metrics["node_clock_trace_available"] is False
+    assert metrics["journal_source"] == "native.jsonl"
+    assert not audit_trace_pair([], [], enabled=True, trace_exists=False)["valid"]
 
 
 def test_trace_on_preserves_historical_t1e_metrics(tmp_path):
@@ -90,3 +94,36 @@ def test_trace_off_never_claims_legacy_node_clock_latency(tmp_path):
     assert metrics["node_shadow_emit_to_clear_applied_ms"] is None
     assert metrics["active_danger_assessment"] == "LOW_HEALTH"
     assert metrics["set_control_sends"] == 0
+
+
+def test_trace_off_although_expected_native_rows_do_not_write_sync_trace():
+    native = [{"type": "paper_snapshot", "seq": 7, "session_id": "S",
+               "data": {"status": "ADMITTED"}}]
+    audit = audit_trace_pair(native, [], enabled=False, trace_exists=False)
+    assert audit["valid"] and audit["trace_count"] == 0
+    assert audit["source_native_paper_count"] == 1
+    assert not audit["timing_metrics_available"]
+
+
+def test_off_mode_refuses_unexpected_timing_trace_file():
+    assert not audit_trace_pair([], [], enabled=False, trace_exists=True)["valid"]
+
+
+def test_on_mode_requires_exact_canonical_native_rows_and_node_clock_field():
+    native = [{"type": "adapter_started", "seq": 0},
+              {"type": "paper_snapshot", "seq": 1, "session_id": "S",
+               "data": {"status": "ADMITTED"}}]
+    recorded = [{"node_monotonic_ns": "1000000", **native[1]}]
+    audit = audit_trace_pair(native, recorded, enabled=True, trace_exists=True)
+    assert audit["valid"]
+    assert audit["trace_count"] == 1
+    assert audit["timing_metrics_available"]
+
+
+def test_on_mode_refuses_missing_or_mutated_trace_without_source_promotion():
+    native = [{"type": "paper_snapshot", "seq": 1, "session_id": "S",
+               "data": {"status": "STALE"}}]
+    assert not audit_trace_pair(native, [], enabled=True, trace_exists=True)["valid"]
+    mismatch = [{"node_monotonic_ns": "1", **native[0], "seq": 2}]
+    audit = audit_trace_pair(native, mismatch, enabled=True, trace_exists=True)
+    assert not audit["valid"]
