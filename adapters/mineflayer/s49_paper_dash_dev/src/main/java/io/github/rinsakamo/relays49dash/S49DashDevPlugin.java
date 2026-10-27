@@ -51,6 +51,8 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
     private double p1Fatigue;
     private double activeDashPower;
     private int p1WorldTicks;
+    // Exactly seven positive Paper callbacks, opt-in DEV comparison only.
+    private int matchedBoostCap;
     private boolean nativeAppliedMarked;
     private boolean nativeClearedMarked;
     private double lastX;
@@ -195,6 +197,14 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             disarm("P1_DEV_PROFILE_INVALID");
             return;
         }
+        matchedBoostCap = getConfig().getInt("p1-matched-boost-cap-dev", 0);
+        if (matchedBoostCap != 0 && (
+            matchedBoostCap != 7 || !pairPreload || !p1MotorDev
+            || !getConfig().getBoolean("p1-model-pair-dev", false)
+        )) {
+            disarm("P1_MATCHED_BOOST_CAP_INVALID");
+            return;
+        }
         p1Fatigue = p1MotorDev ? configuredF : 0.0;
         activeDashPower = 0.0;
         p1WorldTicks = 0;
@@ -233,7 +243,8 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " power=" + power + " authority=NONE"
             + " p1_motor_dev=" + p1MotorDev
             + " p1_initial_fatigue=" + p1Fatigue
-            + " p1_model_pair_preloaded=" + pairPreload);
+            + " p1_model_pair_preloaded=" + pairPreload
+            + " p1_matched_boost_cap=" + matchedBoostCap);
     }
 
     private void markNativeEffect(String[] args, UUID uuid) {
@@ -508,6 +519,11 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
                 Math.min(1.0, 2.0 * (1.0 - p1Fatigue))))
             : requestedPower;
         if (allowedPower <= 0) shouldBoost = false;
+        if (matchedBoostCap > 0 && forwardTicks >= matchedBoostCap) {
+            // Unlike first Action ownership, this is just the producer-local
+            // transient speed modifier. Vanilla sprint continues unmodified.
+            shouldBoost = false;
+        }
         if (!setBoost(shouldBoost, allowedPower)) {
             disarm("MODIFIER_SET_FAILED");
             return;
@@ -624,6 +640,9 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " session_id=" + sessionId + " reason=" + reason
             + " world=" + worldId + " player_uuid=" + playerId
             + " tick=" + (subject != null ? subject.getWorld().getFullTime() : -1)
+            + " p1_matched_boost_cap=" + matchedBoostCap
+            + " p1_matched_boost_cap_reached="
+            + (matchedBoostCap > 0 && forwardTicks == matchedBoostCap)
             + " forward_boost_ticks=" + forwardTicks
             + " motion_estimated_boost_ticks=" + motionProjectedBoostTicks
             + " other_direction_or_ambiguous_ticks=" + cappedTicks

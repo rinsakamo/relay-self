@@ -562,6 +562,7 @@ async def run(
     p1_next_native_l0_review_dev: bool = False,
     p1_model_pair_case_dev: str | None = None,
     speed_attr_boundary_dev: bool = False,
+    p1_matched_boost_dev: bool = False,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -583,6 +584,13 @@ async def run(
         or type(p1_next_selfbody_epoch_dev) is not bool
         or type(p1_next_native_l0_review_dev) is not bool
         or type(speed_attr_boundary_dev) is not bool
+        or type(p1_matched_boost_dev) is not bool
+        or (p1_matched_boost_dev and (
+            p1_model_pair_case_dev not in PAIR_FATIGUE
+            or not speed_attr_boundary_dev
+            or os.environ.get('S49_SPEED_ATTR_SYNC_DEV_ONLY') != '1'
+            or os.environ.get('S49_P1_MATCHED_BOOST_DEV_ONLY') != '1'
+        ))
         or (speed_attr_boundary_dev and (
             p1_model_pair_case_dev not in PAIR_FATIGUE
             or os.environ.get('S49_SPEED_ATTR_BOUNDARY_DEV_ONLY') != '1'
@@ -691,6 +699,7 @@ async def run(
                + (repr(PAIR_FATIGUE[p1_model_pair_case_dev]) if p1_model_pair_case_dev else "0.6")
                + "\np1-model-pair-dev: " + ("true" if p1_model_pair_case_dev else "false")
                + "\n" if p1_live_dev else "")
+            + ("p1-matched-boost-cap-dev: 7\n" if p1_matched_boost_dev else "")
             + ("native-edge-dev: true\n" if native_edges_dev else "")
             + ("post-release-motion-dev: true\n" if post_release_dev else "")
             + ("two-action-trace-dev: true\n" if two_action_timeline_dev else "")
@@ -1210,6 +1219,31 @@ async def run(
                 report["m0_debit_classification"] = (
                     "ORIGINAL_S49_LOCAL_B0_OWNER_POSTED_DEV_NOT_ATTESTED"
                 )
+        if p1_matched_boost_dev:
+            completion_lines = [
+                line for line in subject["complete"].splitlines()
+                if "S49_DASH_DEV_COMPLETE " in line
+                and "action_id=" + subject["action_id"] + " " in line
+                and "session_id=" + subject["session"] + " " in line
+            ]
+            if (
+                review["paper_forward_boost_ticks"] != 7
+                or len(completion_lines) != 1
+                or "p1_matched_boost_cap=7 " not in completion_lines[0]
+                or "p1_matched_boost_cap_reached=true " not in completion_lines[0]
+            ):
+                raise ForwardDashDevRejected(
+                    "Paper failed to reach exact 7 matched positive boost World ticks"
+                )
+            report["p1_matched_paper_boost_dev"] = {
+                "paper_positive_boost_ticks": 7,
+                "paper_dev_modifier_only_capped": True,
+                "original_native_action_issuer_changed": False,
+                "client_world_tick_synchronized": False,
+                "physical_p1_wait_recovery_attested": False,
+                "qualification_go": False,
+                "science_go": False,
+            }
         if p1_model_pair_case_dev:
             report["p1_pair_preloaded_model_dev"] = {
                 "case": p1_model_pair_case_dev,
@@ -1290,6 +1324,7 @@ def main() -> int:
     parser.add_argument("--p1-next-native-l0-review-dev", action="store_true")
     parser.add_argument("--p1-model-pair-case-dev", choices=tuple(PAIR_FATIGUE))
     parser.add_argument("--speed-attr-boundary-dev", action="store_true")
+    parser.add_argument("--p1-matched-boost-dev", action="store_true")
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -1310,6 +1345,7 @@ def main() -> int:
         p1_next_native_l0_review_dev=a.p1_next_native_l0_review_dev,
         p1_model_pair_case_dev=a.p1_model_pair_case_dev,
         speed_attr_boundary_dev=a.speed_attr_boundary_dev,
+        p1_matched_boost_dev=a.p1_matched_boost_dev,
     ))
 
 
