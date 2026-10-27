@@ -93,3 +93,24 @@ Both runs are **DEV tool/job successes**, while their scientific/engineering *hy
 **Combined takeaway:** one independent pair had 601/601 ms, 12/12 Node active ticks, 8/8 DASH attribute-visible ticks; the next had 602/601 ms, 11/12 Node active ticks, 8/6 DASH-visible ticks. Both had 7/7 Paper positive ticks. Neither provides synchronized Node/Paper phase or owner-enforced native tick-count matching. Next native-physicsTick-controlled S15 hold is a new engineering stage, not an already satisfied qualification.
 
 DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.
+
+## Third independent two-World repeat: same Node ticks, different DASH exposure
+
+A workflow-triggered third DEV draw, using unchanged observer code at tested SHA `33094fe89e56f11a321ae367a07809cc1681b6a3`, also completed all original S49/Paper/Node checks: [GitHub Actions #40530004527](https://github.com/rinsakamo/relay-self/actions/runs/40530004527) **SUCCESS**.
+
+| Original first native Action source | CARRY | WAIT_ASSUMED |
+| --- | ---: | ---: |
+| Node-local SET to CLEAR elapsed (ms) | **602** | **602** |
+| Node active physicsTick callbacks | **12** | **12** |
+| Node active physicsTick with visible Paper DASH attribute | **6** | **8** |
+| Paper total P1 gait callback ticks | **13** | **13** |
+| Paper positive DASH modifier callback ticks | **7** | **7** |
+| First S16 displacement delta from CARRY (m) | baseline | **+0.45531884163487035** |
+
+Reviewer classification: `P1_FIRST_ACTION_NODE_HOLD_MATCH_NOT_ESTABLISHED_DEV_ONLY`, correctly **not** an exact observational match. Equal nominal elapsed duration, equal physics callback count and equal Paper positive modifier callbacks **do not guarantee equal Node speed-attribute exposure**. Equal 602ms and 12 Node active physics callbacks still yielded **6 versus 8** positive-attribute callbacks.
+
+Evidence artifact `p1-node-hold-audit-pair-40530004527-1`, ID **12745482883**, uploaded SHA256 `b3b75a9efbdc1df1258a30bd457f3f1300e79488fe871cd6ff5b3f2b5857a09e`.
+
+**Across three independent two-World draws** at the same observer implementation, all CI workflows and genuine original-S49 two-Action executions completed successfully, but **only the first pair** had matched observed hold duration and both Node active/DASH-visible callback counts; second had 11/12 active, 8/6 attribute-visible; third had 12/12 active, 6/8 attribute-visible. All maintained Paper 7/7 modifier callbacks. No controlled Node-to-Paper epoch synchronization or native physicsTick-owned hold has been implemented. The next DEV step is an original S49 S15 owner-controlled Node producer-local hold boundary with bounded original cleanup, without adding a second Action issuer/reader and without converting synthetic preloads into actual WAIT recovery.
+
+**Unchanged final classification: DEV_WORLD_OBSERVED / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**.
