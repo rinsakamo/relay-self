@@ -4,6 +4,7 @@ import { lstatSync, openSync, writeSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import readline from 'node:readline'
 import { monitorEventLoopDelay } from 'node:perf_hooks'
+import { emitWithT1nTiming } from './t1n_emit_timing_dev.mjs'
 
 import {
   attachHealthSynchronizedSpawnListeners,
@@ -94,8 +95,25 @@ if (paperTracePath && (paperTickOptIn !== '1' || !isAbsolute(paperTracePath))) {
   throw new Error('Paper timing trace requires explicit DEV and absolute fresh path')
 }
 const paperTraceFd = paperTracePath ? openSync(paperTracePath, 'wx', 0o600) : null
+const t1nTracePath = process.env.RELAYSELF_T1N_EMIT_TRACE_DEV
+if (t1nTracePath && (paperTickOptIn !== '1' || !paperTracePath ||
+    !isAbsolute(t1nTracePath) || t1nTracePath === paperTracePath)) {
+  throw Error('T1n needs original DEV paper trace and fresh separate absolute path')
+}
+const t1nTraceFd = t1nTracePath ? openSync(t1nTracePath, 'wx', 0o600) : null
 
 function emit (type, payload = {}) {
+  if (t1nTraceFd !== null && type === 'paper_snapshot') {
+    emitWithT1nTiming({
+      sessionId, seq, type, payload, makeEnvelope,
+      advanceSequence: () => { seq += 1 },
+      traceEnabled: paperTraceFd !== null,
+      traceWriter: line => writeSync(paperTraceFd, line),
+      stdoutWriter: line => process.stdout.write(line),
+      diagnosticWriter: line => writeSync(t1nTraceFd, line)
+    })
+    return
+  }
   const message = makeEnvelope(sessionId, seq, type, payload)
   if (paperTraceFd !== null && ['paper_tick_sample', 'paper_l0_shadow',
     'effect_result', 'adapter_error', 'paper_snapshot'].includes(type)) {
@@ -143,6 +161,9 @@ emit('adapter_started', {
 })
 
 const t1fOptIn = process.env.RELAYSELF_T1F_DEV
+if (t1nTraceFd !== null && t1fOptIn !== '1') {
+  throw Error('T1n emit trace needs original T1f DEV admission')
+}
 if (t1fOptIn !== undefined && !['0', '1'].includes(t1fOptIn)) throw Error('invalid T1f opt-in')
 if (t1fOptIn === '1' && paperTickOptIn !== '1') throw Error('T1f needs Paper tick opt-in')
 // T1m DEV only: separate wx sidecar. Never emits additional source envelopes.
