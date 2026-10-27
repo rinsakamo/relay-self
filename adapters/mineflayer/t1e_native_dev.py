@@ -52,7 +52,8 @@ TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop", "t2_disconnect_move",
               "t1h_pre_stop", "t1h_lost_ack", "t1h_delayed_ack",
               "t1h_disconnect", "t1h_paper_short", "t1h_input_residual",
               "t1h_motion_residual", "t1h_stale_ack", "t1h_double_ack",
-              "t1h_disconnect_after_idle", "t1i_stop_loop", "t1i_stop_eat")
+              "t1h_disconnect_after_idle", "t1i_stop_loop", "t1i_stop_eat",
+              "t1j_resume_move")
 
 
 def write(path, value):
@@ -129,7 +130,7 @@ def measure(root, report):
 
 
 async def run_case(args, case):
-    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_"))
+    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_"))
     root = args.output / case
     root.mkdir()
     world = root / "server"
@@ -301,15 +302,28 @@ async def run_case(args, case):
 
             async def send_set_control(self, *a, **kw):
                 nonlocal fixture
+                resume_grant = getattr(self, "t1j_resume_permission", None)
+                fresh_owner = getattr(self, "t1j_new_stop_owner", None)
+                authorized_resume_send = (
+                    case == "t1j_resume_move" and resume_grant is not None
+                    and fresh_owner is not None and fresh_owner.allows_action
+                    and a and a[0] == resume_grant.next_action_id
+                    and not getattr(self, "t1j_resume_effect_started", False)
+                )
                 if (self.source_lost or (self.tick_owner and self.tick_owner.failed)
                         or (getattr(self, "t1h_stop_owner", None) is not None
                             and not self.t1h_stop_owner.allows_action)
                         or (getattr(self, "t1i_stop_owner", None) is not None
-                            and not self.t1i_stop_owner.allows_action)):
-                    raise RuntimeError("T1g/T1i source or STOP forbids new Action effect")
+                            and not self.t1i_stop_owner.allows_action
+                            and not authorized_resume_send)):
+                    raise RuntimeError("T1g/T1j lost source or STOP forbids Action effect")
+                if authorized_resume_send:
+                    # Exactly one physical writer/Action ID after one consumed
+                    # explicit reauthorization; never re-send on ACK loss.
+                    self.t1j_resume_effect_started = True
                 report["dispatch_python_ns"] = time.monotonic_ns()
                 await super().send_set_control(*a, **kw)
-                if case == "t1i_stop_loop" and (
+                if case in ("t1i_stop_loop", "t1j_resume_move") and (
                     getattr(self, "t1i_stop_arm_action_id", None) == a[0]
                 ):
                     async def t1i_stop_move():
@@ -330,7 +344,7 @@ async def run_case(args, case):
                             expected_clear_action_id=self.t1h_active_action_id + "-clear",
                         )
                     fixture = asyncio.create_task(request_owner_stop())
-                elif not case.startswith("t1i_") and case != "normal":
+                elif not case.startswith(("t1i_", "t1j_")) and case != "normal":
                     fixture = asyncio.create_task(stage())
 
             async def send_equip_item(self, *a, **kw):
@@ -399,7 +413,7 @@ async def run_case(args, case):
             return report
         if t1f:
             from adapters.mineflayer.t1f_continuation_dev import run_continuation
-            stop_mode = ("MOVE" if case == "t1i_stop_loop" else
+            stop_mode = ("MOVE" if case in ("t1i_stop_loop", "t1j_resume_move") else
                          "EAT" if case == "t1i_stop_eat" else None)
             stop_owner = None
             if stop_mode:
@@ -409,9 +423,10 @@ async def run_case(args, case):
             await run_continuation(
                 session, server, report, root,
                 observe_only=case == "t1f_observe",
-                accounting=case.startswith(("t2_", "t1i_")),
+                accounting=case.startswith(("t2_", "t1i_", "t1j_")),
                 normal_epochs=args.loop_moves,
                 stop_owner=stop_owner, stop_mode=stop_mode,
+                resume_mode=(case == "t1j_resume_move"),
             )
             return report
         supervisor = ActionSupervisor()
@@ -531,6 +546,22 @@ async def run_case(args, case):
         if not report["cleanup_complete"]:
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
+        if case == "t1j_resume_move":
+            detail = report.get("t1j", {})
+            cmds = [json.loads(line) for line in
+                    (root / "commands.jsonl").read_text().splitlines()]
+            motor = [x for x in cmds if x.get("effect") == "set_control"]
+            clears = [x for x in cmds if x.get("effect") == "clear_controls"]
+            if (not detail or not detail.get("old_owner_still_latched")
+                    or not detail.get("new_owner_is_distinct")
+                    or detail.get("consequence", {}).get("status") != "executed"
+                    or len(motor) != args.loop_moves + 2
+                    or len(clears) != args.loop_moves + 2
+                    or len({x["action_id"] for x in cmds if x.get("type") == "effect"})
+                       != len([x for x in cmds if x.get("type") == "effect"])
+                    or detail.get("permit", {}).get("unobserved_world_ticks", 0) < 1
+                    or detail.get("historical_m0_p1_retroactively_filled") is not False):
+                report["status"] = "FAIL"
         if case.startswith("t1i_"):
             detail = report.get("t1i", {})
             sends = report["metrics"]["set_control_sends"]
