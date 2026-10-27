@@ -69,11 +69,13 @@ def analyze_t1n_emit(native, emit_sidecar, t1m_sidecar):
     fields = {
         "envelope_ms": [], "trace_serialize_ms": [], "trace_sync_write_ms": [],
         "stdout_serialize_ms": [], "stdout_call_ms": [],
-        "emit_native_call_total_ms": [], "post_stdout_to_emit_return_ms": [],
+        "emit_native_call_total_ms": [], "post_eval_to_emit_entry_ms": [],
+        "post_stdout_to_emit_return_ms": [],
         "cpu_user_ms": [], "cpu_system_ms": [],
     }
     matched = 0
     events = []
+    stdout_backpressure = 0
     for seq, raw in native_by_seq.items():
         side = emitted_by_seq.get(seq)
         if side is None:
@@ -120,6 +122,8 @@ def analyze_t1n_emit(native, emit_sidecar, t1m_sidecar):
         except (KeyError, TypeError, ValueError):
             issues.append("invalid_emit_clock_or_cpu")
             continue
+        if side.get("stdout_write_accepted") is False:
+            stdout_backpressure += 1
         sample = {
             "seq": seq, "source_index": source["index"],
             "source_status": raw["data"]["status"],
@@ -129,6 +133,7 @@ def analyze_t1n_emit(native, emit_sidecar, t1m_sidecar):
             "stdout_serialize_ms": (stdout_json-trace_end)/1e6,
             "stdout_call_ms": (stdout_end-stdout_json)/1e6,
             "emit_native_call_total_ms": (stdout_end-entry)/1e6,
+            "post_eval_to_emit_entry_ms": (entry-complete)/1e6,
             "cpu_user_ms": cpu_user/1000,
             "cpu_system_ms": cpu_sys/1000,
         }
@@ -146,6 +151,7 @@ def analyze_t1n_emit(native, emit_sidecar, t1m_sidecar):
         "original_statuses": dict(stats),
         "native_paper_count": len(native_by_seq),
         "matched_paper_count": matched,
+        "stdout_write_returned_false_count": stdout_backpressure,
         "source_integrity_violations": sorted(set(issues)),
         "distributions_ms": {key: _stats(values) for key, values in fields.items()},
         "largest_emit_events": large,
