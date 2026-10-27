@@ -67,6 +67,9 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
     private boolean secondClearedMarked;
     private int lastTrailNativeAckSeq = -1;
     private int secondCleanupTrailTick = -1;
+    private boolean ownerFenceStartSeen = false;
+    private boolean ownerFenceEndSeen = false;
+    private long ownerFenceStartTick = -1L;
     private long postReleaseStartTick;
     private long postReleaseLastTick;
     private double postReleaseLastX;
@@ -93,13 +96,14 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
         boolean stop = command.getName().equalsIgnoreCase("relays49dashoff");
         boolean mark = command.getName().equalsIgnoreCase("relays49dashmark");
         boolean trailMark = command.getName().equalsIgnoreCase("relays49dashtrailmark");
-        if (!start && !stop && !mark && !trailMark) {
+        boolean ownerFence = command.getName().equalsIgnoreCase("relays49dashownerfence");
+        if (!start && !stop && !mark && !trailMark && !ownerFence) {
             return false;
         }
         if (!(sender instanceof ConsoleCommandSender)
                 || !Bukkit.isPrimaryThread()
                 || !getConfig().getBoolean("enabled", false)
-                || args.length != (start ? 4 : (mark || trailMark) ? 5 : 3)
+                || args.length != (start ? 4 : (mark || trailMark || ownerFence) ? 5 : 3)
                 || !validId(args[0]) || !validId(args[1])) {
             getLogger().warning("S49_DASH_DEV_DENIED console_or_input");
             return true;
@@ -117,6 +121,8 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             markNativeEffect(args, uuid);
         } else if (trailMark) {
             markSecondNativeEffect(args, uuid);
+        } else if (ownerFence) {
+            markOriginalOwnerFence(args, uuid);
         } else {
             if (!armed || !uuid.equals(playerId)
                     || !args[0].equals(actionId) || !args[1].equals(sessionId)) {
@@ -201,6 +207,9 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             secondClearedMarked = false;
             lastTrailNativeAckSeq = -1;
             secondCleanupTrailTick = -1;
+            ownerFenceStartSeen = false;
+            ownerFenceEndSeen = false;
+            ownerFenceStartTick = -1L;
             twoActionTrailTask = Bukkit.getScheduler().runTaskTimer(
                 this, this::sampleTwoActionTrail, 1L, 1L
             );
@@ -306,6 +315,53 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " tick=" + subject.getWorld().getFullTime()
             + " delivered_after_original_native_ack=true"
             + " exact_client_effect_tick_attested=false");
+    }
+
+    private void markOriginalOwnerFence(String[] args, UUID uuid) {
+        // This is ONLY a Paper producer-local delivery witness. The
+        // original S49 owner must await each logged acceptance before
+        // issuing the next native Action; Paper issues no Action itself.
+        if (!getConfig().getBoolean("causal-owner-fence-dev", false)
+                || !getConfig().getBoolean("two-action-trace-dev", false)
+                || twoActionTrailTask == null || !safeSubject()
+                || !uuid.equals(playerId)
+                || !args[0].equals(actionId) || !args[1].equals(sessionId)
+                || !nativeAppliedMarked || !nativeClearedMarked
+                || armed || boosted || secondAppliedMarked || secondClearedMarked) {
+            getLogger().warning("S49_DASH_DEV_OWNER_FENCE_DENIED actor_or_state");
+            return;
+        }
+        boolean begin = "START".equals(args[3]);
+        boolean finish = "END".equals(args[3]);
+        if ((!begin && !finish)
+                || (begin && (ownerFenceStartSeen || ownerFenceEndSeen
+                              || !"NONE".equals(args[4])))
+                || (finish && (!ownerFenceStartSeen || ownerFenceEndSeen
+                               || !args[4].matches("s49-native-move-[0-9]{1,16}")
+                               || args[4].equals(actionId)))) {
+            getLogger().warning("S49_DASH_DEV_OWNER_FENCE_DENIED replay_or_phase");
+            return;
+        }
+        long tick = subject.getWorld().getFullTime();
+        if (begin) {
+            ownerFenceStartSeen = true;
+            ownerFenceStartTick = tick;
+        } else {
+            if (tick <= ownerFenceStartTick + 8L) {
+                getLogger().warning("S49_DASH_DEV_OWNER_FENCE_DENIED short_interval");
+                return;
+            }
+            ownerFenceEndSeen = true;
+        }
+        getLogger().info("S49_DASH_DEV_OWNER_FENCE action_id=" + actionId
+            + " session_id=" + sessionId + " world=" + worldId
+            + " player_uuid=" + playerId
+            + " phase=" + (begin ? "START" : "END")
+            + " second_action_id=" + args[4] + " tick=" + tick
+            + " original_owner_paper_delivery_only=true"
+            + " native_effect_tick_attested=false"
+            + " motor_write=false M0_POSTED=false P1_APPLIED=false"
+            + " WAIT_ATTESTED=false");
     }
 
     private void sampleTwoActionTrail() {
