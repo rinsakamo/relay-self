@@ -80,7 +80,9 @@ def measure(root, report):
         path = root / name
         return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
 
-    trace = report.get("node_trace_enabled", False)
+    # Legacy DEV reports/tests can be replayed from their existing trace;
+    # a new T1o run always records an explicit True/False mode.
+    trace = report.get("node_trace_enabled", (root / "node_timing.jsonl").is_file())
     if type(trace) is not bool:
         raise ValueError("node trace mode must be explicit boolean")
     selected = journal_name(enabled=trace)
@@ -445,9 +447,10 @@ async def run_case(args, case):
             report["motor_fault"] = "DEV_CLEAR_NOOP_STUCK_SNEAK_FALSE_APPLIED_ACK"
         os.environ["RELAYSELF_PAPER_TICK_DEV"] = "1"
         from adapters.mineflayer.t1o_trace_policy_dev import trace_enabled
-        timing_trace = trace_enabled(case, args.node_trace)
+        trace_requested = getattr(args, "node_trace", "off")
+        timing_trace = trace_enabled(case, trace_requested)
         report["node_trace_enabled"] = timing_trace
-        report["node_trace_requested"] = args.node_trace
+        report["node_trace_requested"] = trace_requested
         if timing_trace:
             os.environ["RELAYSELF_PAPER_TICK_TRACE_DEV"] = str(root / "node_timing.jsonl")
         else:
