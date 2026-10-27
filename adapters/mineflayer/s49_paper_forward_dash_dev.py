@@ -844,12 +844,18 @@ async def run(
                 ),
             )
         original_bytes = json.loads(original_report.read_text(encoding="utf-8"))
-        if causal_owner_fence_dev and subject.get("owner_fences") != ["START", "END"]:
-            raise ForwardDashDevRejected("original owner Paper causal fences missing/order")
         report["original_s49_rc"] = rc
         report["original_s49_status"] = original_bytes.get("status")
         if rc != 0 or original_bytes.get("status") != "PASS":
-            raise ForwardDashDevRejected("original S49 single Action World did not PASS")
+            raise ForwardDashDevRejected(
+                "original S49 sole issuer FAIL_CLOSED: "
+                + str(original_bytes.get("error", original_bytes.get("stage")))[:300]
+            )
+        if causal_owner_fence_dev and subject.get("owner_fences") != ["START", "END"]:
+            raise ForwardDashDevRejected(
+                "original owner Paper causal fences missing/order: "
+                + repr(subject.get("owner_fences"))
+            )
         if (original_bytes.get("node_exit") != 0
                 or original_bytes.get("server_exit") != 0
                 or len(original_bytes["actual_native_actions"]) != 2):
