@@ -54,7 +54,8 @@ TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop", "t2_disconnect_move",
               "t1h_motion_residual", "t1h_stale_ack", "t1h_double_ack",
               "t1h_disconnect_after_idle", "t1i_stop_loop", "t1i_stop_eat",
               "t1j_resume_move", "t1k_stop_resume_twice",
-              "t1k_fault_before_send", "t1k_fault_set_ack", "t1k_fault_clear_ack")
+              "t1k_fault_before_send", "t1k_fault_set_ack", "t1k_fault_clear_ack",
+              "t1l_source_soak")
 
 
 def write(path, value):
@@ -131,7 +132,7 @@ def measure(root, report):
 
 
 async def run_case(args, case):
-    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_"))
+    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_", "t1l_"))
     root = args.output / case
     root.mkdir()
     world = root / "server"
@@ -451,6 +452,10 @@ async def run_case(args, case):
             from adapters.mineflayer.t1h_native_stop_dev import run_stop_move_dev
             await run_stop_move_dev(session, server, report, root)
             return report
+        if case == "t1l_source_soak":
+            from adapters.mineflayer.t1l_source_soak_dev import run_source_soak
+            await run_source_soak(session, report, accounted_ticks=args.soak_ticks)
+            return report
         if t1f:
             from adapters.mineflayer.t1f_continuation_dev import run_continuation
             stop_mode = ("MOVE" if case in (
@@ -616,6 +621,24 @@ async def run_case(args, case):
         if not report["cleanup_complete"]:
             report["status"] = "FAIL"
         report["metrics"] = measure(root, report)
+        if case == "t1l_source_soak":
+            from adapters.mineflayer.t1l_source_diagnostic_dev import analyze_paper_records
+            original_native = [json.loads(line) for line in
+                               (root / "native.jsonl").read_text().splitlines()]
+            diagnostic = analyze_paper_records(
+                original_native, session_id=report["session_id"],
+            )
+            report["t1l_source_diagnostic"] = diagnostic
+            t1l = report.get("t1l", {})
+            if (not diagnostic["source_continuous"]
+                    or diagnostic["statuses"].get("ADMITTED", 0)
+                       != diagnostic["paper_frames"]
+                    or t1l.get("accounted_ticks") != args.soak_ticks
+                    or not t1l.get("accounted_world_ticks_consecutive")
+                    or report["metrics"]["set_control_sends"] != 0
+                    or report["metrics"]["clear_control_sends"] != 0
+                    or not report["cleanup_complete"]):
+                report["status"] = "FAIL"
         if case.startswith("t1k_fault_"):
             from adapters.mineflayer.t1k_fault_audit_dev import audit_fault_dev
             cmds = [json.loads(line) for line in
@@ -737,6 +760,9 @@ async def main():
     parser.add_argument("--bootstrap", type=Path)
     parser.add_argument("--confirm", required=True, choices=[CONFIRM])
     parser.add_argument("--loop-moves", type=int, choices=range(2, 33), default=2)
+    parser.add_argument("--soak-ticks", type=int, choices=range(100, 2001),
+                        default=1200,
+                        help="T1l bounded Paper source/accounting ticks, no actions")
     parser.add_argument("--t1j-reauthorize", choices=[
         "T1J-DEV-EXPLICIT-REAUTHORIZE-ONCE",
     ], help="Separate explicit operator grant for exactly one post-STOP T1j MOVE")
