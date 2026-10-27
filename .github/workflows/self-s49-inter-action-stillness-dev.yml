@@ -311,6 +311,10 @@ jobs:
           assert owner["after_second_terminal_count"] == 2
           assert owner["open_actions_at_bookends"] == [0,0,0]
           assert owner["original_owner_gap_monotonic_ms"] > 100
+          assert owner["node_input_off_observed_duration_ms"] > 100
+          assert abs(owner["host_node_duration_difference_ms"]) <= 1000
+          assert owner["host_node_duration_difference_bound_ms"] == 1000
+          assert owner["bounded_source_local_duration_consistency"] is True
           assert owner["paper_candidate_consecutive_still_ticks"] >= 8
           assert owner["node_input_off_physics_callbacks"] >= 20
           assert owner["host_node_monotonic_clocks_calibrated"] is False
