@@ -43,7 +43,7 @@ def _attr_boost(value: object) -> float | None:
 def review_speed_attr_boundary_dev(
     path: Path, *, session_id: str, action_id: str, sync_expected: bool,
 ) -> dict:
-    if (type(path) is not Path or path.is_symlink() or not path.is_file()
+    if (not isinstance(path, Path) or path.is_symlink() or not path.is_file()
             or path.stat().st_size > 170_000 or path.stat().st_size < 200
             or type(session_id) is not str or not session_id
             or type(action_id) is not str or not action_id
