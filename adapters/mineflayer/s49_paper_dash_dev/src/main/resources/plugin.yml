@@ -17,3 +17,6 @@ commands:
   relays49dashtrailmark:
     description: 'Read-only Paper delivery tick after second native S49 ACK, no DASH motor mutation'
     usage: '/relays49dashtrailmark <action_id> <session_id> <player_uuid> <APPLIED|CLEARED> <native_seq>'
+  relays49dashownerfence:
+    description: 'Original S49 owner START/END causal marker, passive Paper fullTime only'
+    usage: '/relays49dashownerfence <first_action_id> <session_id> <player_uuid> <START|END> <second_action_id|NONE>'
