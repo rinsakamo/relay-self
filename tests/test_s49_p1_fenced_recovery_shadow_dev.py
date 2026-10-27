@@ -7,7 +7,8 @@ from copy import deepcopy
 import pytest
 
 from adapters.mineflayer.s49_p1_fenced_recovery_shadow_dev import (
-    P1CausalShadowRejected, project_p1_fenced_wait_shadow_dev,
+    P1CausalShadowRejected,
+    project_p1_fenced_wait_shadow_dev,
 )
 from experiments.fatigue_p1 import FatigueProfile
 

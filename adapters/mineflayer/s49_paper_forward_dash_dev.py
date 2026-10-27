@@ -24,9 +24,6 @@ from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
 from adapters.mineflayer.s49_causal_wait_fence_dev import (
     review_original_owner_causal_paper_fence_dev,
 )
-from adapters.mineflayer.s49_p1_fenced_recovery_shadow_dev import (
-    project_p1_fenced_wait_shadow_dev,
-)
 from adapters.mineflayer.s49_inter_action_stillness_dev import (
     review_inter_action_stillness_dev,
     review_original_owner_no_issued_action_gap_dev,
@@ -39,6 +36,9 @@ from adapters.mineflayer.s49_node_physics_postclear_dev import (
     NativePhysicsTraceRejected,
     audit_node_paper_motion_fingerprint_dev,
     audit_node_physics_postclear_dev,
+)
+from adapters.mineflayer.s49_p1_fenced_recovery_shadow_dev import (
+    project_p1_fenced_wait_shadow_dev,
 )
 from adapters.mineflayer.s49_paper_world_first_dev import (
     _await_dash_dev_line,
