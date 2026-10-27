@@ -47,8 +47,7 @@ def synthetic_paper_ticks(*, arm="A", sid="sid", case="CARRY"):
 
 
 def synthetic_source(case, pair):
-    key = "carry_world" if case == "CARRY" else "wait_assumed_world"
-    arm = pair[key]
+    arm = pair["arms"][case]
     source = matched_boost_rows_dev(
         synthetic_paper_ticks(arm=arm["first_action_id"],
                               sid=arm["session_id"], case=case),
