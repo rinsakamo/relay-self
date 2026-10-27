@@ -87,7 +87,23 @@ def measure(root, report):
         raise ValueError("node trace mode must be explicit boolean")
     trace_available = trace and (root / journal_name(enabled=True)).is_file()
     selected = journal_name(enabled=trace_available)
-    node = journal(selected)
+    try:
+        node = journal(selected)
+        if trace_available and (root / "native.jsonl").is_file():
+            from adapters.mineflayer.t1o_trace_policy_dev import audit_trace_pair
+            canonical = journal("native.jsonl")
+            if not audit_trace_pair(canonical, node, enabled=True, trace_exists=True)["valid"]:
+                trace_available = False
+                selected = journal_name(enabled=False)
+                node = canonical
+    except (OSError, ValueError, TypeError, KeyError):
+        if not trace_available:
+            raise
+        # Preserve canonical source metrics and let the independent trace audit
+        # record a diagnostic FAIL, even for truncated/invalid JSON sidecars.
+        trace_available = False
+        selected = journal_name(enabled=False)
+        node = journal(selected)
     commands = journal("commands.jsonl")
     snapshots = [r for r in node if r["type"] == "paper_snapshot"]
     if snapshots:
@@ -445,15 +461,12 @@ async def run_case(args, case):
             os.environ["RELAYSELF_T1H_CLEAR_FAULT_DEV"] = CONFIRM
             report["motor_fault"] = "DEV_CLEAR_NOOP_STUCK_SNEAK_FALSE_APPLIED_ACK"
         os.environ["RELAYSELF_PAPER_TICK_DEV"] = "1"
-        from adapters.mineflayer.t1o_trace_policy_dev import trace_enabled
+        from adapters.mineflayer.t1o_trace_policy_dev import configure_trace, trace_enabled
         trace_requested = getattr(args, "node_trace", "off")
         timing_trace = trace_enabled(case, trace_requested)
         report["node_trace_enabled"] = timing_trace
         report["node_trace_requested"] = trace_requested
-        if timing_trace:
-            os.environ["RELAYSELF_PAPER_TICK_TRACE_DEV"] = str(root / "node_timing.jsonl")
-        else:
-            os.environ.pop("RELAYSELF_PAPER_TICK_TRACE_DEV", None)
+        configure_trace(os.environ, root, enabled=timing_trace)
         if case in ("t1m_source_soak", "t1n_source_soak"):
             os.environ["RELAYSELF_T1M_TRACE_DEV"] = str(root / "t1m_node_timing.jsonl")
         else:

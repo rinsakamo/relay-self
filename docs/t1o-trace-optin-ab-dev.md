@@ -78,3 +78,10 @@ PYTHONPATH=src:tests python3.12 -m adapters.mineflayer.t1e_native_dev \
 commit/push、local/remote/clean照合、Issue #150/#627/#537/#616へ結果報告・本文読み戻し。#626はモデル式未変更なら不要。
 
 最終判定は実測結果に応じて `DEV_ONLY / DEV_WORLD_OBSERVED` または FAIL保持、常に `QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`。T1o実World未実施時は `T1O_NATIVE_UNVERIFIED` を維持する。
+
+## 実機検証前の補強
+
+traceの環境設定を単一helperで検査し、継承済み環境変数のOFF削除とON絶対パスをテストする。
+破損JSONやnativeと不一致のtraceは`measure()`の例外で報告保存を中断せず、
+正規nativeへ戻してsource件数・元STALEを保持し、独立auditで診断FAILとする。
+過去のtraceのみの原本は従来どおりread-only再解析できる。

@@ -1,11 +1,14 @@
 """T1o: trace defaults OFF, native source metrics remain available."""
 import json
+
 import pytest
 
-from adapters.mineflayer.t1o_trace_policy_dev import (
-    trace_enabled, journal_name, audit_trace_pair,
-)
 from adapters.mineflayer.t1e_native_dev import measure
+from adapters.mineflayer.t1o_trace_policy_dev import (
+    audit_trace_pair,
+    journal_name,
+    trace_enabled,
+)
 
 
 @pytest.mark.parametrize(("case", "requested", "expected"), [
@@ -129,3 +132,76 @@ def test_on_mode_refuses_missing_or_mutated_trace_without_source_promotion():
     mismatch = [{"node_monotonic_ns": "1", **native[0], "seq": 2}]
     audit = audit_trace_pair(native, mismatch, enabled=True, trace_exists=True)
     assert not audit["valid"]
+
+
+def test_trace_environment_removes_inherited_value_and_binds_absolute_path(tmp_path):
+    from adapters.mineflayer.t1o_trace_policy_dev import configure_trace
+    env = {"RELAYSELF_PAPER_TICK_TRACE_DEV": "/old/trace", "other": "preserved"}
+    configure_trace(env, tmp_path, enabled=False)
+    assert env == {"other": "preserved"}
+    configure_trace(env, tmp_path, enabled=True)
+    assert env["RELAYSELF_PAPER_TICK_TRACE_DEV"] == str(tmp_path / "node_timing.jsonl")
+    with pytest.raises(ValueError, match="absolute"):
+        configure_trace(env, "relative", enabled=True)
+
+
+@pytest.mark.parametrize("fault", [
+    "missing", "duplicate", "seq", "session", "status", "clock_missing",
+    "clock_negative", "clock_numeric", "clock_reverse", "payload",
+])
+def test_synthetic_original_copy_negatives_preserve_stale(fault):
+    from copy import deepcopy
+    native = [{"type": "paper_snapshot", "seq": i, "session_id": "S",
+               "data": {"status": "STALE", "snapshot": {"tick": i}}}
+              for i in (1, 2)]
+    original = deepcopy(native)
+    traced = [{"node_monotonic_ns": str(i * 100), **deepcopy(row)}
+              for i, row in enumerate(native, 1)]
+    assert audit_trace_pair(native, traced, enabled=True, trace_exists=True)["valid"]
+    if fault == "missing":
+        traced.pop()
+    elif fault == "duplicate":
+        traced.append(deepcopy(traced[-1]))
+    elif fault == "seq":
+        traced[0]["seq"] = 99
+    elif fault == "session":
+        traced[0]["session_id"] = "OTHER"
+    elif fault == "status":
+        traced[0]["data"]["status"] = "ADMITTED"
+    elif fault == "payload":
+        traced[0]["data"]["snapshot"]["tick"] = 99
+    elif fault == "clock_missing":
+        del traced[0]["node_monotonic_ns"]
+    elif fault == "clock_negative":
+        traced[0]["node_monotonic_ns"] = "-1"
+    elif fault == "clock_numeric":
+        traced[0]["node_monotonic_ns"] = 100
+    else:
+        traced[1]["node_monotonic_ns"] = "1"
+    assert not audit_trace_pair(native, traced, enabled=True, trace_exists=True)["valid"]
+    assert native == original
+
+
+def test_corrupt_trace_keeps_native_metrics_available_for_failure_report(tmp_path):
+    native = {"type": "paper_snapshot", "seq": 1,
+              "data": {"status": "STALE", "snapshot": {"tick": 11}}}
+    (tmp_path / "native.jsonl").write_text(json.dumps(native) + "\n")
+    (tmp_path / "node_timing.jsonl").write_text('{"truncated":')
+    (tmp_path / "paper.log").write_text("")
+    result = measure(tmp_path, {"node_trace_enabled": True})
+    assert result["journal_source"] == "native.jsonl"
+    assert result["node_clock_trace_available"] is False
+    assert result["node_received_ticks"] == 1
+    assert result["node_admitted_ticks"] == 0
+
+
+def test_cli_defaults_to_off():
+    import ast
+    from pathlib import Path
+
+    from adapters.mineflayer import t1e_native_dev
+    tree = ast.parse(Path(t1e_native_dev.__file__).read_text())
+    option = next(n for n in ast.walk(tree) if isinstance(n, ast.Call)
+                  and any(isinstance(a, ast.Constant) and a.value == "--node-trace"
+                          for a in n.args))
+    assert next(k.value.value for k in option.keywords if k.arg == "default") == "off"

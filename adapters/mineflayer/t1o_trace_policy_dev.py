@@ -5,6 +5,8 @@ Every other T1e case defaults to no synchronous timing trace, and may
 explicitly opt in for an isolated A/B comparison. No source/protocol changes.
 """
 
+from pathlib import Path
+
 DIAGNOSTIC_CASES = frozenset({"t1m_source_soak", "t1n_source_soak"})
 
 
@@ -15,6 +17,18 @@ def trace_enabled(case: str, requested: str = "off") -> bool:
         # Explicit diagnostic case selection is itself a trace opt-in.
         return True
     return requested == "on"
+
+
+def configure_trace(environment, root, *, enabled: bool):
+    """Remove inherited trace opt-in, or bind one fresh absolute trace path."""
+    key = "RELAYSELF_PAPER_TICK_TRACE_DEV"
+    if enabled:
+        path = Path(root) / "node_timing.jsonl"
+        if not path.is_absolute():
+            raise ValueError("trace path must be absolute")
+        environment[key] = str(path)
+    else:
+        environment.pop(key, None)
 
 
 def journal_name(*, enabled: bool) -> str:
