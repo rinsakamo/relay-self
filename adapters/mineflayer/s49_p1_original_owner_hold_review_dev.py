@@ -9,12 +9,12 @@ import json
 import math
 from pathlib import Path
 
+from adapters.mineflayer.s49_p1_original_owner_hold_dev import (
+    TARGET_PAPER_INDEX,
+    inspect_original_paper_hold_dev,
+)
 from adapters.mineflayer.s49_p1_steady_phase_review_dev import (
     review_p1_steady_phase_worlds_dev,
-)
-from adapters.mineflayer.s49_p1_original_owner_hold_dev import (
-    inspect_original_paper_hold_dev,
-    TARGET_PAPER_INDEX,
 )
 
 
