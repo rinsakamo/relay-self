@@ -5,6 +5,8 @@ dev-enabled: false
 adaptive-tick-observer-dev: false
 # T1f same-channel causal snapshot challenge, no Action or TPS authority.
 t1f-snapshot-dev: false
+# T1m opt-in sidecar JVM timing; logs only, NEVER source or Action authority.
+t1m-timing-dev: false
 version: M0.2
 minecraft-version: 1.21.8
 calibration-status: candidate_uncalibrated
