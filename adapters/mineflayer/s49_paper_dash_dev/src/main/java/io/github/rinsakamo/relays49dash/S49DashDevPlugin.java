@@ -519,9 +519,11 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
                 Math.min(1.0, 2.0 * (1.0 - p1Fatigue))))
             : requestedPower;
         if (allowedPower <= 0) shouldBoost = false;
-        if (matchedBoostCap > 0 && forwardTicks >= matchedBoostCap) {
-            // Unlike first Action ownership, this is just the producer-local
-            // transient speed modifier. Vanilla sprint continues unmodified.
+        boolean capExhaustedBeforeSample =
+            matchedBoostCap > 0 && forwardTicks >= matchedBoostCap;
+        if (capExhaustedBeforeSample) {
+            // Native forward input remains true; ONLY the transient Paper
+            // DEV speed bonus is capped after seven actual positive ticks.
             shouldBoost = false;
         }
         if (!setBoost(shouldBoost, allowedPower)) {
@@ -545,6 +547,8 @@ public final class S49DashDevPlugin extends JavaPlugin implements Listener {
             + " boost_source=" + (forwardOnly ? "PACKET" :
                 motionForwardInferred ? "MOTION_PROJECTION" : "NONE")
             + " modifier_applied=" + boosted
+            + " p1_matched_boost_cap=" + matchedBoostCap
+            + " p1_matched_boost_exhausted_before_sample=" + capExhaustedBeforeSample
             + " dash_stance_active=true"
             + " input_edge_attested=false"
             + " input_present=" + (input != null)

@@ -13,6 +13,10 @@ from adapters.mineflayer.s49_p1_matched_boost_review_dev import (
 from adapters.mineflayer.s49_p1_synced_motor_pair_dev import (
     validate_synced_pair_dev,
 )
+from adapters.mineflayer.s49_paper_forward_dash_dev import (
+    ForwardDashDevRejected,
+    review_forward_dash_rows,
+)
 from test_s49_p1_synced_motor_pair_dev import example
 
 
@@ -26,11 +30,18 @@ def synthetic_paper_ticks(*, arm="A", sid="sid", case="CARRY"):
     rows = []
     for i in range(1, 14):
         boosted = 3 <= i <= 9
+        motion = i >= 3
+        exhausted = i >= 10
         rows.append(
             "S49_DASH_DEV_TICK "
             f"action_id={arm} session_id={sid} world=world-{sid} "
             f"player_uuid=uuid-{sid} tick={300+i} index={i} "
             f"p1_world_ticks={i} p1_motor_dev=true "
+            f"dash_stance_active=true input_forward_only=false "
+            f"motion_forward_inferred={'true' if motion else 'false'} "
+            f"boost_source={'MOTION_PROJECTION' if motion else 'NONE'} "
+            f"p1_matched_boost_cap=7 "
+            f"p1_matched_boost_exhausted_before_sample={'true' if exhausted else 'false'} "
             f"modifier_applied={'true' if boosted else 'false'} "
             f"sampled_speed_mps={5+i*.2} "
             f"p1_current_applied_power={power if boosted else 0.0}"
@@ -40,10 +51,33 @@ def synthetic_paper_ticks(*, arm="A", sid="sid", case="CARRY"):
         f"action_id={arm} session_id={sid} world=world-{sid} "
         f"player_uuid=uuid-{sid} reason=OWNER_RELEASE "
         "p1_matched_boost_cap=7 p1_matched_boost_cap_reached=true "
-        "forward_boost_ticks=7 modifier_applied=false "
+        "forward_boost_ticks=7 other_direction_or_ambiguous_ticks=6 "
+        "motion_estimated_boost_ticks=7 modifier_applied=false "
         "p1_world_ticks=13 P1_APPLIED=false M0_POSTED=false"
     )
     return "\n".join(rows)
+
+
+def test_original_s49_Paper_source_accepts_true_motion_after_bonus_cap():
+    reviewed = review_forward_dash_rows(
+        synthetic_paper_ticks(), action_id="A", session_id="sid",
+    )
+    assert reviewed["paper_forward_boost_ticks"] == 7
+    assert reviewed["paper_other_or_ambiguous_ticks"] == 6
+    assert reviewed["paper_motion_inferred_boost_ticks"] == 7
+    assert reviewed["paper_modifier_removed"] is True
+
+
+def test_native_motion_not_silently_mislabeled_after_seven_bonus_ticks():
+    bad = synthetic_paper_ticks().splitlines()
+    bad[9] = bad[9].replace(
+        "p1_matched_boost_exhausted_before_sample=true",
+        "p1_matched_boost_exhausted_before_sample=false",
+    )
+    with pytest.raises(ForwardDashDevRejected):
+        review_forward_dash_rows(
+            "\n".join(bad), action_id="A", session_id="sid",
+        )
 
 
 def synthetic_source(case, pair):

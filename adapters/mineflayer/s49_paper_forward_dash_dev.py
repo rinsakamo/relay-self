@@ -483,11 +483,32 @@ def review_forward_dash_rows(raw: str, *, action_id: str, session_id: str) -> di
             motion = data.get("motion_forward_inferred") == "true"
             applied = data["modifier_applied"] == "true"
             source = data.get("boost_source", "PACKET" if packet else "NONE")
-            if (applied != (packet or motion) or (packet and motion)
-                    or source != (
-                        "PACKET" if packet else "MOTION_PROJECTION"
-                        if motion else "NONE"
-                    )):
+            # Preserve true input/motion signals even after the explicit
+            # seven-positive-Paper-tick DEV motor modifier cap expires.
+            # The original S49 native Action is NOT canceled by this cap.
+            cap = data.get("p1_matched_boost_cap", "0")
+            exhausted = data.get(
+                "p1_matched_boost_exhausted_before_sample", "false"
+            )
+            prior_positive = sum(row[1] for row in rows)
+            if (
+                cap not in ("0", "7")
+                or exhausted not in ("true", "false")
+                or (cap == "0" and exhausted != "false")
+                or (cap == "7") != (
+                    data.get("p1_motor_dev") == "true"
+                ) and exhausted == "true"
+                or (cap == "7" and (
+                    (prior_positive >= 7) != (exhausted == "true")
+                    or prior_positive > 7
+                ))
+                or applied != ((packet or motion) and exhausted != "true")
+                or (packet and motion)
+                or source != (
+                    "PACKET" if packet else "MOTION_PROJECTION"
+                    if motion else "NONE"
+                )
+            ):
                 raise ForwardDashDevRejected("invalid DASH source/motor classification")
             speed = data.get("sampled_speed_mps")
             if speed is not None:
@@ -520,11 +541,11 @@ def review_forward_dash_rows(raw: str, *, action_id: str, session_id: str) -> di
         raise ForwardDashDevRejected("DASH completion disagrees with observed ticks")
     if ("motion_estimated_boost_ticks" in c
             and int(c["motion_estimated_boost_ticks"])
-            != sum(row[2] for row in rows)):
+            != sum(row[2] and row[1] for row in rows)):
         raise ForwardDashDevRejected("inferred boost source count mismatch")
     speeds = [row[3] for row in rows if row[3] is not None]
     return {
-        "paper_motion_inferred_boost_ticks": sum(row[2] for row in rows),
+        "paper_motion_inferred_boost_ticks": sum(row[2] and row[1] for row in rows),
         "sampled_peak_server_horizontal_speed_m_s": max(speeds) if speeds else None,
         "paper_gait_ticks_observed": len(rows),
         "paper_forward_boost_ticks": sum(row[1] for row in rows),
