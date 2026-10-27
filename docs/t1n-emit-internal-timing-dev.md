@@ -2,10 +2,13 @@
 
 Baseline T1m `037d37325b5019ae9c28156ef8cacf6a1828a304`.
 
-**DEV_ONLY / OFFLINE_IMPL_ADDED / T1N_NATIVE_UNVERIFIED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
-Prior T1m 7 new Minecraft Worlds, 6 PASS/1 STALE-refused original,
-remain independent `DEV_WORLD_OBSERVED / NATIVE_SOURCE_REFUSAL_OBSERVED`.
-This T1n code has NOT been run in a new native World.
+**DEV_ONLY / DEV_WORLD_OBSERVED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
+
+[実Minecraft DEV結果・分布・原本索引](t1n-native-dev-results-20261027.md)
+（同名JSONに全分布と上位20件）。通常2World＋固定軽度CPU負荷1Worldで
+各1200行PASS。軽度負荷Worldではemit59.091475msのうち58.896873msを
+既存同期trace `writeSync()`呼出し区間へ局所化。根本原因はUNKNOWN。
+別の初回起動FAIL Worldは原本を保持している。
 
 ## Motivation
 
