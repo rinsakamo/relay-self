@@ -125,7 +125,7 @@ def test_no_body_projection_from_mismatched_sources(tmp_path, fault):
         project_p1_static_next_body_epoch_dev(**d)
 
 
-@pytest.mark.parametrize("value", ["", "bad session", "other\\nsession"])
+@pytest.mark.parametrize("value", ["", "bad session", "other\nsession"])
 def test_bad_self_identity_rejected(tmp_path, value):
     d = inputs(tmp_path)
     d["self_id"] = value
