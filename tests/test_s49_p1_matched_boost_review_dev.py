@@ -43,7 +43,7 @@ def synthetic_paper_ticks(*, arm="A", sid="sid", case="CARRY"):
             f"p1_matched_boost_cap=7 "
             f"p1_matched_boost_exhausted_before_sample={'true' if exhausted else 'false'} "
             f"modifier_applied={'true' if boosted else 'false'} "
-            f"sampled_speed_mps={5+i*.2} "
+            f"sampled_speed_mps={0.0 if i == 1 else 5+i*.2} "
             f"p1_current_applied_power={power if boosted else 0.0}"
         )
     rows.append(

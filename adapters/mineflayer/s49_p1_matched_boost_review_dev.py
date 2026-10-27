@@ -79,7 +79,7 @@ def matched_boost_rows_dev(
         if (
             index != last_index + 1 or p1_index != index
             or (last_tick is not None and wtick != last_tick + 1)
-            or not 0 < speed < 100 or not math.isfinite(speed)
+            or not 0 <= speed < 100 or not math.isfinite(speed)
             or not math.isfinite(power) or not 0 <= power <= 1
             or boosted not in ("true", "false")
             or (boosted == "true") != (power > 0)
