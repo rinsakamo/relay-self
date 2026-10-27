@@ -23,7 +23,7 @@ One isolated `t1k_stop_resume_twice` case attempts:
 3. **separate** T1j R1 explicit grant + Paper→native→Paper → first resumed
    MOVE, interrupted by second explicit STOP request → original S49
    `clear_controls` exactly once → independent Paper marker and scoped
-   **second** DEV STOP ACK; first and second STOP owner remain latched;
+   **second** DEV STOP ACK using a distinct `T1K_R1_AFTER_CLEAR` Paper marker (never reuse `T1I_MULTI_AFTER_CLEAR`); first and second STOP owner remain latched;
 4. **another separate** R2 explicit grant + fresh Paper→native→Paper
    → second resumed MOVE OUTCOME and post-clear idle; neither UNKNOWN
    interrupted MOVE is retroactively promoted to OUTCOME.
