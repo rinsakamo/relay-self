@@ -2,8 +2,8 @@
 
 Baseline: T1n HEAD `9e5b98e5379cf89efb86dabe2383c94fd536993e`.
 
-**DEV_ONLY / OFFLINE_IMPL_ADDED / T1O_NATIVE_UNVERIFIED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**。
-T1nの3正常World＋1起動FAILと約59ms writeSync局所化は**独立した既存証拠**。T1o新Worldは、この実装の時点ではまだ観測していない。
+**DEV_ONLY / DEV_WORLD_OBSERVED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**。
+[実Minecraft A/B結果・原本索引](t1o-native-dev-results-20261028.md)：新規OFF/ON各1World、両方1200連続会計行PASS。通常DEVはOFF既定。T1nの既存原本は前後不変。
 
 ## 設計変更は最小限
 
