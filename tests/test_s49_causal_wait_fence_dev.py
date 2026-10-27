@@ -9,6 +9,9 @@ from adapters.mineflayer.s49_causal_wait_fence_dev import (
     OriginalOwnerFenceRejected,
     review_original_owner_causal_paper_fence_dev,
 )
+from adapters.mineflayer.s49_inter_action_stillness_dev import (
+    review_original_owner_no_issued_action_gap_dev,
+)
 from test_s49_inter_action_stillness_dev import fixture
 from test_s49_original_owner_gap_dev import make
 
@@ -16,6 +19,10 @@ from test_s49_original_owner_gap_dev import make
 def source(tmp_path):
     o, still, first, second, sid = make(tmp_path)
     raw, _, timeline, _, _, _, _ = fixture(tmp_path)
+    owner = review_original_owner_no_issued_action_gap_dev(
+        o, still, first_action_id=first,
+        second_action_id=second, session_id=sid,
+    )
     original = deepcopy(o)
     original["causal_paper_start_received_after_first_outcome"] = True
     original["causal_paper_end_received_before_original_second_issue"] = True
@@ -37,7 +44,7 @@ def source(tmp_path):
                      " ".join(f"{k}={v}" for k, v in params.items()))
     return {
         "raw": raw + "\n" + "\n".join(lines),
-        "owner": o,
+        "owner": owner,
         "original_owner": original,
         "stillness": still,
         "timeline": timeline,
