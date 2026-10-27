@@ -1,0 +1,317 @@
+{
+  "classification": [
+    "DEV_ONLY",
+    "DEV_WORLD_OBSERVED",
+    "QUALIFICATION_NO_GO",
+    "SCIENCE_NOT_RUN"
+  ],
+  "implementation_head": "56cbae622fd0bb7c2b54df2827a30fd2eb93278f",
+  "evidence_root": "/home/rinsa/work/t1j-integration-evidence-20261027",
+  "python312_focused": 93,
+  "python312_fast": 553,
+  "node22_pass": 68,
+  "java21": "BUILD SUCCESS",
+  "native_worlds": 2,
+  "native_pass": 2,
+  "native_fail": 0,
+  "offline_resume_execution_faults": 12,
+  "native_fault_combinations": "NATIVE_UNVERIFIED",
+  "runs": [
+    {
+      "run": "run-001",
+      "status": "PASS",
+      "error": null,
+      "world": "ca2d5ac5-50f2-4c2e-9d35-05d06aa1deef",
+      "session": "0ad94cb5-1755-45b9-923c-1e701c6e2672",
+      "stop_ack": {
+        "active_action_id": "t1f-epoch-2",
+        "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+        "clear_ack_seq": 434,
+        "clear_action_id": "t1f-epoch-2-clear",
+        "first_idle_tick": 384,
+        "full_tick_stillness_qualified": false,
+        "high_level_dev_stop_ack": true,
+        "last_idle_tick": 391,
+        "marker_id": "T1I_MULTI_AFTER_CLEAR",
+        "native_source_independently_authenticated": false,
+        "observed_idle_ticks": 8,
+        "p1_qualified_wait": false,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "session_id": "0ad94cb5-1755-45b9-923c-1e701c6e2672",
+        "stop_id": "t1i-multi-epoch-stop",
+        "world": "ca2d5ac5-50f2-4c2e-9d35-05d06aa1deef"
+      },
+      "reobservations": [
+        {
+          "source_seq": 459,
+          "world_tick": 1393,
+          "server_tick": 395,
+          "age_upper_ns": "50569430"
+        },
+        {
+          "source_seq": 460,
+          "world_tick": null,
+          "server_tick": null,
+          "age_upper_ns": null
+        },
+        {
+          "source_seq": 461,
+          "world_tick": 1394,
+          "server_tick": 396,
+          "age_upper_ns": "49075597"
+        }
+      ],
+      "permit": {
+        "after_source_seq": 461,
+        "after_world_tick": 1394,
+        "before_source_seq": 459,
+        "classification": "DEV_EXPLICIT_REAUTHORIZE_REOBSERVED_GAP",
+        "native_probe_seq": 460,
+        "native_source_independently_authenticated": false,
+        "next_action_id": "t1j-T1J-R1-move",
+        "no_retrospective_m0_or_p1": true,
+        "old_stop_ack_last_server_tick": 391,
+        "original_owner_latch_retained": true,
+        "p1_wait_qualified": false,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "resume_id": "T1J-R1",
+        "session_id": "0ad94cb5-1755-45b9-923c-1e701c6e2672",
+        "stop_id": "t1i-multi-epoch-stop",
+        "unobserved_world_ticks": 19,
+        "world": "ca2d5ac5-50f2-4c2e-9d35-05d06aa1deef"
+      },
+      "old_owner_still_latched": true,
+      "movement_distance": 0.6269065734210615,
+      "terminal": "outcome",
+      "frozen_world_tick": 1374,
+      "old_ledger_rows": 341,
+      "old_energy": {
+        "energy": 15.621275321043846,
+        "knockouts": 0,
+        "meals": 1,
+        "terminal": false,
+        "tick": 341
+      },
+      "old_fatigue": {
+        "fatigue": 0.0052093432652756365,
+        "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+        "session_id": "0ad94cb5-1755-45b9-923c-1e701c6e2672",
+        "world_tick": 1374
+      },
+      "old_credit_ids": [
+        "t2-native-meal"
+      ],
+      "old_values_equal_stop": true,
+      "new_accounting": {
+        "P1_qualified_WAIT": false,
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.599775786652321,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 359
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "0ad94cb5-1755-45b9-923c-1e701c6e2672",
+          "world_tick": 1412
+        },
+        "first_tick": 1395,
+        "intake": 0.0,
+        "last_tick": 1412,
+        "latched": false,
+        "m0_basal": 0.018000000000000002,
+        "m0_cognition": 0.0018000000000000002,
+        "m0_move": 0.0016995343915345257,
+        "p1_accumulated": 0.033990687830690515,
+        "p1_recovered": 0.03920003109596615,
+        "ticks": 18,
+        "wait_dev_ticks": 8,
+        "world_seconds": 0.9
+      },
+      "meal": {
+        "action_id": "t2-native-meal",
+        "after_probe_seq": 426,
+        "consumed_item": "cooked_beef",
+        "count_after": 2,
+        "count_before": 3,
+        "food_after": 20.0,
+        "food_before": 18.0,
+        "provenance": {
+          "reference": "0ad94cb5-1755-45b9-923c-1e701c6e2672:426",
+          "source": "mineflayer"
+        },
+        "session_id": "0ad94cb5-1755-45b9-923c-1e701c6e2672"
+      },
+      "effect_id_duplicates": 0,
+      "set_control_sends": 4,
+      "resume_sends": 1,
+      "consume_sends": 1,
+      "cleanup_complete": true,
+      "java_pid_absent": true,
+      "node_pid_absent": true,
+      "port_rebind": true,
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "0ad94cb5-1755-45b9-923c-1e701c6e2672"
+      },
+      "original_hashes_verified": true
+    },
+    {
+      "run": "run-002",
+      "status": "PASS",
+      "error": null,
+      "world": "8a68d553-cc1e-4e42-a342-2eb138523830",
+      "session": "ca4e63db-823a-4fcd-8e0a-6c78ba90343f",
+      "stop_ack": {
+        "active_action_id": "t1f-epoch-2",
+        "classification": "S49_DEV_STOP_ACK_PAPER_IDLE_WINDOW",
+        "clear_ack_seq": 436,
+        "clear_action_id": "t1f-epoch-2-clear",
+        "first_idle_tick": 382,
+        "full_tick_stillness_qualified": false,
+        "high_level_dev_stop_ack": true,
+        "last_idle_tick": 389,
+        "marker_id": "T1I_MULTI_AFTER_CLEAR",
+        "native_source_independently_authenticated": false,
+        "observed_idle_ticks": 8,
+        "p1_qualified_wait": false,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "session_id": "ca4e63db-823a-4fcd-8e0a-6c78ba90343f",
+        "stop_id": "t1i-multi-epoch-stop",
+        "world": "8a68d553-cc1e-4e42-a342-2eb138523830"
+      },
+      "reobservations": [
+        {
+          "source_seq": 461,
+          "world_tick": 1390,
+          "server_tick": 392,
+          "age_upper_ns": "49464761"
+        },
+        {
+          "source_seq": 462,
+          "world_tick": null,
+          "server_tick": null,
+          "age_upper_ns": null
+        },
+        {
+          "source_seq": 463,
+          "world_tick": 1391,
+          "server_tick": 393,
+          "age_upper_ns": "50030575"
+        }
+      ],
+      "permit": {
+        "after_source_seq": 463,
+        "after_world_tick": 1391,
+        "before_source_seq": 461,
+        "classification": "DEV_EXPLICIT_REAUTHORIZE_REOBSERVED_GAP",
+        "native_probe_seq": 462,
+        "native_source_independently_authenticated": false,
+        "next_action_id": "t1j-T1J-R1-move",
+        "no_retrospective_m0_or_p1": true,
+        "old_stop_ack_last_server_tick": 389,
+        "original_owner_latch_retained": true,
+        "p1_wait_qualified": false,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "resume_id": "T1J-R1",
+        "session_id": "ca4e63db-823a-4fcd-8e0a-6c78ba90343f",
+        "stop_id": "t1i-multi-epoch-stop",
+        "unobserved_world_ticks": 18,
+        "world": "8a68d553-cc1e-4e42-a342-2eb138523830"
+      },
+      "old_owner_still_latched": true,
+      "movement_distance": 0.8322911817508143,
+      "terminal": "outcome",
+      "frozen_world_tick": 1372,
+      "old_ledger_rows": 342,
+      "old_energy": {
+        "energy": 15.620175321043847,
+        "knockouts": 0,
+        "meals": 1,
+        "terminal": false,
+        "tick": 342
+      },
+      "old_fatigue": {
+        "fatigue": 0.0052093432652756365,
+        "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+        "session_id": "ca4e63db-823a-4fcd-8e0a-6c78ba90343f",
+        "world_tick": 1372
+      },
+      "old_credit_ids": [
+        "t2-native-meal"
+      ],
+      "old_values_equal_stop": true,
+      "new_accounting": {
+        "P1_qualified_WAIT": false,
+        "credit_count": 1,
+        "energy": {
+          "energy": 15.598247478320019,
+          "knockouts": 0,
+          "meals": 1,
+          "terminal": false,
+          "tick": 360
+        },
+        "fatigue": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "ca4e63db-823a-4fcd-8e0a-6c78ba90343f",
+          "world_tick": 1409
+        },
+        "first_tick": 1392,
+        "intake": 0.0,
+        "last_tick": 1409,
+        "latched": false,
+        "m0_basal": 0.018000000000000002,
+        "m0_cognition": 0.0018000000000000002,
+        "m0_move": 0.0021278427238349716,
+        "p1_accumulated": 0.042556854476699435,
+        "p1_recovered": 0.047766197741975075,
+        "ticks": 18,
+        "wait_dev_ticks": 8,
+        "world_seconds": 0.9
+      },
+      "meal": {
+        "action_id": "t2-native-meal",
+        "after_probe_seq": 429,
+        "consumed_item": "cooked_beef",
+        "count_after": 2,
+        "count_before": 3,
+        "food_after": 20.0,
+        "food_before": 18.0,
+        "provenance": {
+          "reference": "ca4e63db-823a-4fcd-8e0a-6c78ba90343f:429",
+          "source": "mineflayer"
+        },
+        "session_id": "ca4e63db-823a-4fcd-8e0a-6c78ba90343f"
+      },
+      "effect_id_duplicates": 0,
+      "set_control_sends": 4,
+      "resume_sends": 1,
+      "consume_sends": 1,
+      "cleanup_complete": true,
+      "java_pid_absent": true,
+      "node_pid_absent": true,
+      "port_rebind": true,
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "ca4e63db-823a-4fcd-8e0a-6c78ba90343f"
+      },
+      "original_hashes_verified": true
+    }
+  ]
+}

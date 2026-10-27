@@ -3,7 +3,10 @@
 Based on T1i source branch `self/dev-t1i-self-stop-eat-20261026`
 at `0c77688ade3e028aead023d1454375e9dda5a4f5`.
 
-**DEV_ONLY / T1J_NATIVE_UNVERIFIED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
+**DEV_ONLY / DEV_WORLD_OBSERVED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
+
+WSL2 native results: [2026-10-27 report](t1j-native-dev-results-20261027.md).
+The two observed successful Worlds do not verify native fault combinations.
 The prior T1i World result remains independently `DEV_WORLD_OBSERVED`.
 
 ## What T1j changes
@@ -65,7 +68,7 @@ missing ticks still fail closed. P1 profile/energy formula is unchanged.
   `tests/test_t1j_resume_accounting_dev.py`,
   `tests/test_t1j_native_rebase_dev.py`.
 
-Locally executed in the chat environment: **6 PASS** independent pure
+Historical pre-integration evidence (superseded by the dated native report): **6 PASS** independent pure
 resume-gate tests on Python 3.13.5. Same *core source blob SHA* was
 confirmed after publication. **Not run** in this environment: these
 newly committed repository tests against the exact branch, Python 3.12
