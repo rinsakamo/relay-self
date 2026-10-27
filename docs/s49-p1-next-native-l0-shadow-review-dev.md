@@ -47,3 +47,42 @@ one-tick demanded DASH power or speed capability. There is no validated
 WAIT/P1 source-bound recovery and therefore no actual L0 physical constraint.
 
 No production S49, S42, SelfBody, P1, M0 or R source was modified.
+
+## Real disposable World evidence — 2026-10-27
+
+**Tested code HEAD:** `5c4bc58b82b1abcd2fef04e6b9d6e4d888250e13`.
+[GitHub Actions run #40476376338](https://github.com/rinsakamo/relay-self/actions/runs/40476376338):
+**SUCCESS**. Python 3.12 focused 478 PASS, Ruff PASS; Node 22 3 PASS;
+Java 21 Maven `BUILD SUCCESS`, then genuine disposable Paper 1.21.8
+World and source join PASS.
+
+- Original S49 session `452a088a-6096-445e-acbc-aca4cb563a0c`,
+  native Actions `s49-native-move-18` / `s49-native-move-56`
+  with original-owner S16 OUTCOMEs.
+- Paper causal owner START delivery tick 262, END 446; static candidate
+  **267–441 (175 contiguous)**, Paper local XZ delta 0, Node local
+  input OFF 187 samples. Seven World ticks unclassified before candidate.
+- Conditional single P1 model: F `0.6177122410202606` →
+  `0.21616083122103735` (model recovery
+  `0.4015514097992232`), **not applied**.
+- Next SelfBody hypothesis forward-DASH model power ceiling:
+  `7646` versus `10000` basis points (+2354 bp).
+- Source SHA: `f126d16f42caa27230a02e4c818d7b7ae3c1d2e39e8ad75c55cd2ce9ddc16bd4`.
+- **Independent original native second Action evidence:** S42 L0
+  `MOVE_AWAY`, event seq 56, probe seq 57; native S15/S16
+  before/after seq **58 → 73**, observed XZ displacement
+  **3.030157209647223 m**. The second original Action was unboosted by
+  the special Paper DASH plugin; this displacement cannot identify either
+  counterfactual P1 DASH ceiling.
+- L0 shadow `UNDETERMINED_SOURCE_NEEDED_BEFORE_ACTUATION`, physical
+  power permission `null`. No actual P1 fatigue reading, P1 posting,
+  M0 posting by sidecar, R WAIT qualification or SourceBoundTick.
+- Artifact `s49-inter-action-static-40476376338-1`, ID
+  **12720787475**, digest
+  `sha256:d78b18fe3e13655efd4ec96bd17a419575700cd0499fa4e40fdc0686e42d9a89`.
+
+**Epistemic conclusion:** original native **movement and L0 decision
+are verified**, but the observed unboosted movement is not an experiment
+that discriminates between the two P1 recovery hypotheses. The only
+admissible physical DASH power conclusion is **UNDETERMINED**.
+No new Action/receiver, production changes, QUAL or SCI.
