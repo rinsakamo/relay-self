@@ -73,12 +73,20 @@ def rows(log, prefix):
 
 
 def measure(root, report):
-    """Read original journals; same-domain differences only, no R promotion."""
+    """Read canonical native journal when Node timing trace is OFF."""
+    from adapters.mineflayer.t1o_trace_policy_dev import journal_name
+
     def journal(name):
         path = root / name
         return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
 
-    node = journal("node_timing.jsonl")
+    trace = report.get("node_trace_enabled", False)
+    if type(trace) is not bool:
+        raise ValueError("node trace mode must be explicit boolean")
+    selected = journal_name(enabled=trace)
+    if trace and not (root / selected).exists():
+        raise ValueError("explicit Node timing trace missing")
+    node = journal(selected)
     commands = journal("commands.jsonl")
     snapshots = [r for r in node if r["type"] == "paper_snapshot"]
     if snapshots:
@@ -87,6 +95,7 @@ def measure(root, report):
         received_ticks = {r["data"]["snapshot"]["tick"] for r in snapshots}
         return {
             "schema": "T1F_PAPER_SNAPSHOT_DEV_NOT_LEGACY_CACHE_SHADOW",
+            "journal_source": selected, "node_clock_trace_available": trace,
             "paper_sent_ticks": len(sent), "node_received_ticks": len(snapshots),
             "node_admitted_ticks": sum(r["data"]["status"] == "ADMITTED" for r in snapshots),
             "paper_ticks_without_node_snapshot": sorted(sent_ticks - received_ticks),
@@ -106,6 +115,7 @@ def measure(root, report):
               and dispatches[0]["seq"] < r["seq"] < clears[0]["seq"]]
     hazards = [r for r in active if r["assessment"] != "NO_KNOWN_URGENT_SIGNAL"]
     metrics = {
+        "journal_source": selected, "node_clock_trace_available": trace,
         "paper_sent_ticks": len(sent), "node_received_ticks": len(received),
         "node_emitted_shadow_ticks": len(shadows), "active_shadow_ticks": len(active),
         "paper_ticks_without_emitted_l0": sorted(sent_ticks - checked_ticks, key=int),
@@ -122,8 +132,10 @@ def measure(root, report):
                                           (int(sent[-1]["wall_nanos"]) - int(sent[0]["wall_nanos"])))
     if hazards:
         metrics["active_danger_assessment"] = hazards[0]["assessment"]
-        metrics["node_shadow_emit_to_clear_applied_ms"] = (
-            int(clears[0]["node_monotonic_ns"]) - int(hazards[0]["node_monotonic_ns"])) / 1e6
+        if (trace and clears and "node_monotonic_ns" in clears[0]
+                and "node_monotonic_ns" in hazards[0]):
+            metrics["node_shadow_emit_to_clear_applied_ms"] = (
+                int(clears[0]["node_monotonic_ns"]) - int(hazards[0]["node_monotonic_ns"])) / 1e6
     for target, field in (("send", "clear_send_python_ns"), ("ack", "clear_ack_received_python_ns")):
         if field in report and "danger_received_python_ns" in report:
             metrics[f"python_danger_receive_to_clear_{target}_ms"] = (
@@ -432,7 +444,14 @@ async def run_case(args, case):
             os.environ["RELAYSELF_T1H_CLEAR_FAULT_DEV"] = CONFIRM
             report["motor_fault"] = "DEV_CLEAR_NOOP_STUCK_SNEAK_FALSE_APPLIED_ACK"
         os.environ["RELAYSELF_PAPER_TICK_DEV"] = "1"
-        os.environ["RELAYSELF_PAPER_TICK_TRACE_DEV"] = str(root / "node_timing.jsonl")
+        from adapters.mineflayer.t1o_trace_policy_dev import trace_enabled
+        timing_trace = trace_enabled(case, args.node_trace)
+        report["node_trace_enabled"] = timing_trace
+        report["node_trace_requested"] = args.node_trace
+        if timing_trace:
+            os.environ["RELAYSELF_PAPER_TICK_TRACE_DEV"] = str(root / "node_timing.jsonl")
+        else:
+            os.environ.pop("RELAYSELF_PAPER_TICK_TRACE_DEV", None)
         if case in ("t1m_source_soak", "t1n_source_soak"):
             os.environ["RELAYSELF_T1M_TRACE_DEV"] = str(root / "t1m_node_timing.jsonl")
         else:
@@ -828,6 +847,8 @@ async def main():
     parser.add_argument("--soak-ticks", type=int, choices=range(100, 2001),
                         default=1200,
                         help="T1l bounded Paper source/accounting ticks, no actions")
+    parser.add_argument("--node-trace", choices=("off", "on"), default="off",
+                        help="Sync Node timing trace (default OFF); T1m/T1n cases explicitly require ON")
     parser.add_argument("--t1j-reauthorize", choices=[
         "T1J-DEV-EXPLICIT-REAUTHORIZE-ONCE",
     ], help="Separate explicit operator grant for exactly one post-STOP T1j MOVE")
