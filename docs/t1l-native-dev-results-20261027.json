@@ -1,0 +1,1895 @@
+{
+  "classification": "T1L_SOURCE_LEDGER_REAL_MINECRAFT_DEV_OBSERVED",
+  "qualification": false,
+  "science": false,
+  "branch": "self/dev-t1l-source-continuity-20261027",
+  "start_head": "1cb5b982aaa52117c32abda667ec0a889d5b26a9",
+  "base_t1k_head": "2efabc7b901189418ac99e3a0ce37661568ccd35",
+  "evidence_root": "/home/rinsa/work/t1l-evidence-20261027",
+  "verification": {
+    "python": "3.12.3",
+    "focused": 50,
+    "focused_extended": 52,
+    "fast": 615,
+    "node": "22.22.2",
+    "node_pass": 68,
+    "java": "21.0.12.1",
+    "java_build": "BUILD SUCCESS",
+    "paper": "1.21.8",
+    "full": "NOT_RUN"
+  },
+  "t1k_diagnostics": {
+    "004": {
+      "admitted_after_source_latch": 0,
+      "age_limit_ms_unchanged": 150,
+      "challenge_limit_unchanged": 2400,
+      "classification": "T1L_BOUNDED_NODE_CLOCK_SOURCE_DIAGNOSTIC_DEV",
+      "distributions_ms": {
+        "causal_upper_ms": {
+          "max": 118.300402,
+          "median": 49.903228,
+          "min": 5.235665,
+          "n": 417,
+          "p95": 51.214777,
+          "p99": 60.615432
+        },
+        "challenge_to_receive_ms": {
+          "max": 118.263552,
+          "median": 49.846824,
+          "min": 5.093387,
+          "n": 417,
+          "p95": 51.162952,
+          "p99": 60.547685
+        },
+        "node_evaluation_ms": {
+          "max": 0.25041,
+          "median": 0.015348,
+          "min": 0.010302,
+          "n": 417,
+          "p95": 0.030396,
+          "p99": 0.068327
+        },
+        "node_queue_ms": {
+          "max": 0.284027,
+          "median": 0.039234,
+          "min": 0.026169,
+          "n": 417,
+          "p95": 0.067742,
+          "p99": 0.118797
+        },
+        "receive_to_complete_ms": {
+          "max": 0.534437,
+          "median": 0.055384,
+          "min": 0.03685,
+          "n": 417,
+          "p95": 0.093937,
+          "p99": 0.146601
+        }
+      },
+      "first_paper": {
+        "boot": "aacf5aa4-f22d-4466-82a2-2713e5f009f0",
+        "index": 1,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "seq": 2,
+        "server_tick": 13,
+        "world": "66ec0da9-5d77-4f8b-94e8-12b4451eaf17",
+        "world_tick": 1011
+      },
+      "first_refusal": null,
+      "first_refusal_context": [],
+      "last_paper": {
+        "boot": "aacf5aa4-f22d-4466-82a2-2713e5f009f0",
+        "index": 417,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "seq": 526,
+        "server_tick": 429,
+        "world": "66ec0da9-5d77-4f8b-94e8-12b4451eaf17",
+        "world_tick": 1427
+      },
+      "maxima_ms": {
+        "causal_upper_ms": 118.300402,
+        "challenge_to_receive_ms": 118.263552,
+        "node_evaluation_ms": 0.25041,
+        "node_queue_ms": 0.284027,
+        "receive_to_complete_ms": 0.534437
+      },
+      "native_first_seq": 0,
+      "native_last_seq": 528,
+      "native_sequenced_records": 529,
+      "node_received_effective_tps": 20.108254991051457,
+      "normal_20tps_claim": false,
+      "one_way_latency_known": false,
+      "over_150ms": [],
+      "p1_wait_qualified": false,
+      "paper_frames": 417,
+      "percentile_method": "nearest_rank; median midpoint",
+      "qualification": false,
+      "reasons": {
+        "CAUSAL_AGE_UPPER_BOUND_MET": 417
+      },
+      "remaining_snapshot_budget": 1983,
+      "source_continuous": true,
+      "source_independently_authenticated": false,
+      "source_latch_observed": false,
+      "source_session": "29b84ce8-ee53-4fbc-b874-a44f7e135440",
+      "source_violations": [],
+      "statuses": {
+        "ADMITTED": 417
+      }
+    },
+    "006": {
+      "admitted_after_source_latch": 0,
+      "age_limit_ms_unchanged": 150,
+      "challenge_limit_unchanged": 2400,
+      "classification": "T1L_BOUNDED_NODE_CLOCK_SOURCE_DIAGNOSTIC_DEV",
+      "distributions_ms": {
+        "causal_upper_ms": {
+          "max": 199.451933,
+          "median": 49.75745,
+          "min": 7.914827,
+          "n": 19,
+          "p95": 199.451933,
+          "p99": 199.451933
+        },
+        "challenge_to_receive_ms": {
+          "max": 199.3792,
+          "median": 49.703561,
+          "min": 7.820748,
+          "n": 19,
+          "p95": 199.3792,
+          "p99": 199.3792
+        },
+        "node_evaluation_ms": {
+          "max": 0.286261,
+          "median": 0.026766,
+          "min": 0.012212,
+          "n": 19,
+          "p95": 0.286261,
+          "p99": 0.286261
+        },
+        "node_queue_ms": {
+          "max": 0.442985,
+          "median": 0.050931,
+          "min": 0.041597,
+          "n": 19,
+          "p95": 0.442985,
+          "p99": 0.442985
+        },
+        "receive_to_complete_ms": {
+          "max": 0.729246,
+          "median": 0.072733,
+          "min": 0.053889,
+          "n": 19,
+          "p95": 0.729246,
+          "p99": 0.729246
+        }
+      },
+      "first_paper": {
+        "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+        "index": 1,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "seq": 2,
+        "server_tick": 13,
+        "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+        "world_tick": 1011
+      },
+      "first_refusal": {
+        "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+        "causal_upper_ms": 191.280799,
+        "challenge_id": "baaac1b41595b89968e3a5043ab27855:6",
+        "challenge_index": "6",
+        "challenge_to_receive_ms": 191.076364,
+        "index": 6,
+        "node_evaluation_ms": 0.137482,
+        "node_queue_ms": 0.066953,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+        "receive_to_complete_ms": 0.204435,
+        "received_ns": "1099335677571728",
+        "seq": 10,
+        "server_tick": 18,
+        "status": "STALE",
+        "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+        "world_tick": 1016
+      },
+      "first_refusal_context": [
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 95.436343,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:1",
+          "challenge_index": "1",
+          "challenge_to_receive_ms": 94.707097,
+          "index": 1,
+          "node_evaluation_ms": 0.286261,
+          "node_queue_ms": 0.442985,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_MET",
+          "receive_to_complete_ms": 0.729246,
+          "received_ns": "1099335400935612",
+          "seq": 2,
+          "server_tick": 13,
+          "status": "ADMITTED",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1011
+        },
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 99.09797,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:1",
+          "challenge_index": "1",
+          "challenge_to_receive_ms": 98.983713,
+          "index": 2,
+          "node_evaluation_ms": 0.030886,
+          "node_queue_ms": 0.083371,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_MET",
+          "receive_to_complete_ms": 0.114257,
+          "received_ns": "1099335405212228",
+          "seq": 5,
+          "server_tick": 14,
+          "status": "ADMITTED",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1012
+        },
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 7.914827,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:2",
+          "challenge_index": "2",
+          "challenge_to_receive_ms": 7.820748,
+          "index": 3,
+          "node_evaluation_ms": 0.036762,
+          "node_queue_ms": 0.057317,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_MET",
+          "receive_to_complete_ms": 0.094079,
+          "received_ns": "1099335409747095",
+          "seq": 6,
+          "server_tick": 15,
+          "status": "ADMITTED",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1013
+        },
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 25.457743,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:4",
+          "challenge_index": "4",
+          "challenge_to_receive_ms": 25.385513,
+          "index": 4,
+          "node_evaluation_ms": 0.026766,
+          "node_queue_ms": 0.045464,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_MET",
+          "receive_to_complete_ms": 0.07223,
+          "received_ns": "1099335435361300",
+          "seq": 8,
+          "server_tick": 16,
+          "status": "ADMITTED",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1014
+        },
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 50.731915,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:5",
+          "challenge_index": "5",
+          "challenge_to_receive_ms": 50.536324,
+          "index": 5,
+          "node_evaluation_ms": 0.057106,
+          "node_queue_ms": 0.138485,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_MET",
+          "receive_to_complete_ms": 0.195591,
+          "received_ns": "1099335486139981",
+          "seq": 9,
+          "server_tick": 17,
+          "status": "ADMITTED",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1015
+        },
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 191.280799,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:6",
+          "challenge_index": "6",
+          "challenge_to_receive_ms": 191.076364,
+          "index": 6,
+          "node_evaluation_ms": 0.137482,
+          "node_queue_ms": 0.066953,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.204435,
+          "received_ns": "1099335677571728",
+          "seq": 10,
+          "server_tick": 18,
+          "status": "STALE",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1016
+        },
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 199.451933,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:6",
+          "challenge_index": "6",
+          "challenge_to_receive_ms": 199.3792,
+          "index": 7,
+          "node_evaluation_ms": 0.025857,
+          "node_queue_ms": 0.046876,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.072733,
+          "received_ns": "1099335685874564",
+          "seq": 11,
+          "server_tick": 19,
+          "status": "STALE",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1017
+        },
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 13.945159,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:7",
+          "challenge_index": "7",
+          "challenge_to_receive_ms": 13.857238,
+          "index": 8,
+          "node_evaluation_ms": 0.030301,
+          "node_queue_ms": 0.05762,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "SESSION_LATCHED",
+          "receive_to_complete_ms": 0.087921,
+          "received_ns": "1099335691778550",
+          "seq": 12,
+          "server_tick": 20,
+          "status": "UNDETERMINED",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1018
+        },
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 11.58302,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:8",
+          "challenge_index": "8",
+          "challenge_to_receive_ms": 11.371698,
+          "index": 9,
+          "node_evaluation_ms": 0.066786,
+          "node_queue_ms": 0.144536,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "SESSION_LATCHED",
+          "receive_to_complete_ms": 0.211322,
+          "received_ns": "1099335697444135",
+          "seq": 13,
+          "server_tick": 21,
+          "status": "UNDETERMINED",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1019
+        },
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 38.99583,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:10",
+          "challenge_index": "10",
+          "challenge_to_receive_ms": 38.881424,
+          "index": 10,
+          "node_evaluation_ms": 0.037585,
+          "node_queue_ms": 0.076821,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "SESSION_LATCHED",
+          "receive_to_complete_ms": 0.114406,
+          "received_ns": "1099335736663583",
+          "seq": 15,
+          "server_tick": 22,
+          "status": "UNDETERMINED",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1020
+        },
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 53.318809,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:11",
+          "challenge_index": "11",
+          "challenge_to_receive_ms": 53.234614,
+          "index": 11,
+          "node_evaluation_ms": 0.037335,
+          "node_queue_ms": 0.04686,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "SESSION_LATCHED",
+          "receive_to_complete_ms": 0.084195,
+          "received_ns": "1099335790120654",
+          "seq": 16,
+          "server_tick": 23,
+          "status": "UNDETERMINED",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1021
+        },
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 45.853661,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:12",
+          "challenge_index": "12",
+          "challenge_to_receive_ms": 45.788276,
+          "index": 12,
+          "node_evaluation_ms": 0.0148,
+          "node_queue_ms": 0.050585,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "SESSION_LATCHED",
+          "receive_to_complete_ms": 0.065385,
+          "received_ns": "1099335836136135",
+          "seq": 17,
+          "server_tick": 24,
+          "status": "UNDETERMINED",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1022
+        },
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 52.486891,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:13",
+          "challenge_index": "13",
+          "challenge_to_receive_ms": 52.427534,
+          "index": 13,
+          "node_evaluation_ms": 0.012526,
+          "node_queue_ms": 0.046831,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "SESSION_LATCHED",
+          "receive_to_complete_ms": 0.059357,
+          "received_ns": "1099335888834775",
+          "seq": 18,
+          "server_tick": 25,
+          "status": "UNDETERMINED",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1023
+        },
+        {
+          "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+          "causal_upper_ms": 48.724482,
+          "challenge_id": "baaac1b41595b89968e3a5043ab27855:14",
+          "challenge_index": "14",
+          "challenge_to_receive_ms": 48.655406,
+          "index": 14,
+          "node_evaluation_ms": 0.020028,
+          "node_queue_ms": 0.049048,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "SESSION_LATCHED",
+          "receive_to_complete_ms": 0.069076,
+          "received_ns": "1099335937691878",
+          "seq": 19,
+          "server_tick": 26,
+          "status": "UNDETERMINED",
+          "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+          "world_tick": 1024
+        }
+      ],
+      "last_paper": {
+        "boot": "c7138ba9-9721-4dba-96b6-d7fc6042bbf4",
+        "index": 19,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "seq": 26,
+        "server_tick": 31,
+        "world": "e58ac3f5-6f56-48a8-acd7-5389182680b9",
+        "world_tick": 1029
+      },
+      "maxima_ms": {
+        "causal_upper_ms": 199.451933,
+        "challenge_to_receive_ms": 199.3792,
+        "node_evaluation_ms": 0.286261,
+        "node_queue_ms": 0.442985,
+        "receive_to_complete_ms": 0.729246
+      },
+      "native_first_seq": 0,
+      "native_last_seq": 28,
+      "native_sequenced_records": 29,
+      "node_received_effective_tps": 22.776802494778607,
+      "normal_20tps_claim": false,
+      "one_way_latency_known": false,
+      "over_150ms": [
+        {
+          "causal_upper_ms": 191.280799,
+          "challenge_to_receive_ms": 191.076364,
+          "index": 6,
+          "node_evaluation_ms": 0.137482,
+          "node_queue_ms": 0.066953,
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.204435,
+          "seq": 10,
+          "server_tick": 18,
+          "status": "STALE",
+          "world_tick": 1016
+        },
+        {
+          "causal_upper_ms": 199.451933,
+          "challenge_to_receive_ms": 199.3792,
+          "index": 7,
+          "node_evaluation_ms": 0.025857,
+          "node_queue_ms": 0.046876,
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.072733,
+          "seq": 11,
+          "server_tick": 19,
+          "status": "STALE",
+          "world_tick": 1017
+        }
+      ],
+      "p1_wait_qualified": false,
+      "paper_frames": 19,
+      "percentile_method": "nearest_rank; median midpoint",
+      "qualification": false,
+      "reasons": {
+        "CAUSAL_AGE_UPPER_BOUND_EXCEEDED": 2,
+        "CAUSAL_AGE_UPPER_BOUND_MET": 5,
+        "SESSION_LATCHED": 12
+      },
+      "remaining_snapshot_budget": 2381,
+      "source_continuous": true,
+      "source_independently_authenticated": false,
+      "source_latch_observed": true,
+      "source_session": "fc582520-622e-4c7e-b3c3-41f989e3f37c",
+      "source_violations": [],
+      "statuses": {
+        "ADMITTED": 5,
+        "STALE": 2,
+        "UNDETERMINED": 12
+      }
+    },
+    "009": {
+      "admitted_after_source_latch": 0,
+      "age_limit_ms_unchanged": 150,
+      "challenge_limit_unchanged": 2400,
+      "classification": "T1L_BOUNDED_NODE_CLOCK_SOURCE_DIAGNOSTIC_DEV",
+      "distributions_ms": {
+        "causal_upper_ms": {
+          "max": 490.98631,
+          "median": 49.9301685,
+          "min": 5.470287,
+          "n": 364,
+          "p95": 52.175673,
+          "p99": 490.659087
+        },
+        "challenge_to_receive_ms": {
+          "max": 490.971118,
+          "median": 49.874642,
+          "min": 5.402117,
+          "n": 364,
+          "p95": 52.095425,
+          "p99": 490.643863
+        },
+        "node_evaluation_ms": {
+          "max": 0.264446,
+          "median": 0.0159525,
+          "min": 0.001511,
+          "n": 364,
+          "p95": 0.029151,
+          "p99": 0.052678
+        },
+        "node_queue_ms": {
+          "max": 0.440983,
+          "median": 0.040093000000000004,
+          "min": 0.007445,
+          "n": 364,
+          "p95": 0.061944,
+          "p99": 0.097184
+        },
+        "receive_to_complete_ms": {
+          "max": 0.705429,
+          "median": 0.056299,
+          "min": 0.008956,
+          "n": 364,
+          "p95": 0.087483,
+          "p99": 0.125735
+        }
+      },
+      "first_paper": {
+        "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+        "index": 1,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "seq": 2,
+        "server_tick": 13,
+        "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+        "world_tick": 1011
+      },
+      "first_refusal": {
+        "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+        "causal_upper_ms": 488.350516,
+        "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:355",
+        "challenge_index": "355",
+        "challenge_to_receive_ms": 488.270247,
+        "index": 356,
+        "node_evaluation_ms": 0.054042,
+        "node_queue_ms": 0.026227,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+        "receive_to_complete_ms": 0.080269,
+        "received_ns": "1099535623221120",
+        "seq": 421,
+        "server_tick": 368,
+        "status": "STALE",
+        "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+        "world_tick": 1366
+      },
+      "first_refusal_context": [
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 49.609028,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:348",
+          "challenge_index": "348",
+          "challenge_to_receive_ms": 49.548834,
+          "index": 348,
+          "node_evaluation_ms": 0.016067,
+          "node_queue_ms": 0.044127,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_MET",
+          "receive_to_complete_ms": 0.060194,
+          "received_ns": "1099534834813437",
+          "seq": 409,
+          "server_tick": 360,
+          "status": "ADMITTED",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1358
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 50.179527,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:349",
+          "challenge_index": "349",
+          "challenge_to_receive_ms": 50.117097,
+          "index": 349,
+          "node_evaluation_ms": 0.01668,
+          "node_queue_ms": 0.04575,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_MET",
+          "receive_to_complete_ms": 0.06243,
+          "received_ns": "1099534885105374",
+          "seq": 411,
+          "server_tick": 361,
+          "status": "ADMITTED",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1359
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 49.037067,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:350",
+          "challenge_index": "350",
+          "challenge_to_receive_ms": 48.993052,
+          "index": 350,
+          "node_evaluation_ms": 0.013674,
+          "node_queue_ms": 0.030341,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_MET",
+          "receive_to_complete_ms": 0.044015,
+          "received_ns": "1099534934275573",
+          "seq": 412,
+          "server_tick": 362,
+          "status": "ADMITTED",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1360
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 50.054114,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:351",
+          "challenge_index": "351",
+          "challenge_to_receive_ms": 50.005501,
+          "index": 351,
+          "node_evaluation_ms": 0.01296,
+          "node_queue_ms": 0.035653,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_MET",
+          "receive_to_complete_ms": 0.048613,
+          "received_ns": "1099534984410590",
+          "seq": 413,
+          "server_tick": 363,
+          "status": "ADMITTED",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1361
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 50.120185,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:352",
+          "challenge_index": "352",
+          "challenge_to_receive_ms": 50.060335,
+          "index": 352,
+          "node_evaluation_ms": 0.013596,
+          "node_queue_ms": 0.046254,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_MET",
+          "receive_to_complete_ms": 0.05985,
+          "received_ns": "1099535034639062",
+          "seq": 414,
+          "server_tick": 364,
+          "status": "ADMITTED",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1362
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 49.933633,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:353",
+          "challenge_index": "353",
+          "challenge_to_receive_ms": 49.879719,
+          "index": 353,
+          "node_evaluation_ms": 0.016504,
+          "node_queue_ms": 0.03741,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_MET",
+          "receive_to_complete_ms": 0.053914,
+          "received_ns": "1099535084698625",
+          "seq": 415,
+          "server_tick": 365,
+          "status": "ADMITTED",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1363
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 49.969187,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:354",
+          "challenge_index": "354",
+          "challenge_to_receive_ms": 49.897847,
+          "index": 354,
+          "node_evaluation_ms": 0.01724,
+          "node_queue_ms": 0.0541,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_MET",
+          "receive_to_complete_ms": 0.07134,
+          "received_ns": "1099535134760975",
+          "seq": 416,
+          "server_tick": 366,
+          "status": "ADMITTED",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1364
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 52.525253,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:355",
+          "challenge_index": "355",
+          "challenge_to_receive_ms": 52.455864,
+          "index": 355,
+          "node_evaluation_ms": 0.016915,
+          "node_queue_ms": 0.052474,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_MET",
+          "receive_to_complete_ms": 0.069389,
+          "received_ns": "1099535187406737",
+          "seq": 417,
+          "server_tick": 367,
+          "status": "ADMITTED",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1365
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 488.350516,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:355",
+          "challenge_index": "355",
+          "challenge_to_receive_ms": 488.270247,
+          "index": 356,
+          "node_evaluation_ms": 0.054042,
+          "node_queue_ms": 0.026227,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.080269,
+          "received_ns": "1099535623221120",
+          "seq": 421,
+          "server_tick": 368,
+          "status": "STALE",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1366
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 490.189573,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:355",
+          "challenge_index": "355",
+          "challenge_to_receive_ms": 490.162378,
+          "index": 357,
+          "node_evaluation_ms": 0.007029,
+          "node_queue_ms": 0.020166,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.027195,
+          "received_ns": "1099535625113251",
+          "seq": 423,
+          "server_tick": 369,
+          "status": "STALE",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1367
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 490.381706,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:355",
+          "challenge_index": "355",
+          "challenge_to_receive_ms": 490.36435,
+          "index": 358,
+          "node_evaluation_ms": 0.003795,
+          "node_queue_ms": 0.013561,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.017356,
+          "received_ns": "1099535625315223",
+          "seq": 424,
+          "server_tick": 370,
+          "status": "STALE",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1368
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 490.500537,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:355",
+          "challenge_index": "355",
+          "challenge_to_receive_ms": 490.485769,
+          "index": 359,
+          "node_evaluation_ms": 0.00273,
+          "node_queue_ms": 0.012038,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.014768,
+          "received_ns": "1099535625436642",
+          "seq": 425,
+          "server_tick": 371,
+          "status": "STALE",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1369
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 490.659087,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:355",
+          "challenge_index": "355",
+          "challenge_to_receive_ms": 490.643863,
+          "index": 360,
+          "node_evaluation_ms": 0.004116,
+          "node_queue_ms": 0.011108,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.015224,
+          "received_ns": "1099535625594736",
+          "seq": 426,
+          "server_tick": 372,
+          "status": "STALE",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1370
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 490.75047,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:355",
+          "challenge_index": "355",
+          "challenge_to_receive_ms": 490.740559,
+          "index": 361,
+          "node_evaluation_ms": 0.001952,
+          "node_queue_ms": 0.007959,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.009911,
+          "received_ns": "1099535625691432",
+          "seq": 427,
+          "server_tick": 373,
+          "status": "STALE",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1371
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 490.821043,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:355",
+          "challenge_index": "355",
+          "challenge_to_receive_ms": 490.812087,
+          "index": 362,
+          "node_evaluation_ms": 0.001511,
+          "node_queue_ms": 0.007445,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.008956,
+          "received_ns": "1099535625762960",
+          "seq": 428,
+          "server_tick": 374,
+          "status": "STALE",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1372
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 490.98631,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:355",
+          "challenge_index": "355",
+          "challenge_to_receive_ms": 490.971118,
+          "index": 363,
+          "node_evaluation_ms": 0.004306,
+          "node_queue_ms": 0.010886,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.015192,
+          "received_ns": "1099535625921991",
+          "seq": 429,
+          "server_tick": 375,
+          "status": "STALE",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1373
+        },
+        {
+          "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+          "causal_upper_ms": 8.113677,
+          "challenge_id": "5dfb5545ca813d0bc1845c44bb869444:364",
+          "challenge_index": "364",
+          "challenge_to_receive_ms": 8.06477,
+          "index": 364,
+          "node_evaluation_ms": 0.017652,
+          "node_queue_ms": 0.031255,
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "reason": "SESSION_LATCHED",
+          "receive_to_complete_ms": 0.048907,
+          "received_ns": "1099535634025123",
+          "seq": 431,
+          "server_tick": 376,
+          "status": "UNDETERMINED",
+          "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+          "world_tick": 1374
+        }
+      ],
+      "last_paper": {
+        "boot": "465a2784-1fa8-49aa-a0ae-52930faa6848",
+        "index": 364,
+        "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+        "seq": 431,
+        "server_tick": 376,
+        "world": "cee6d8a5-8c61-4b83-a5d6-dae4c2210c58",
+        "world_tick": 1374
+      },
+      "maxima_ms": {
+        "causal_upper_ms": 490.98631,
+        "challenge_to_receive_ms": 490.971118,
+        "node_evaluation_ms": 0.264446,
+        "node_queue_ms": 0.440983,
+        "receive_to_complete_ms": 0.705429
+      },
+      "native_first_seq": 0,
+      "native_last_seq": 433,
+      "native_sequenced_records": 434,
+      "node_received_effective_tps": 20.14509706390332,
+      "normal_20tps_claim": false,
+      "one_way_latency_known": false,
+      "over_150ms": [
+        {
+          "causal_upper_ms": 488.350516,
+          "challenge_to_receive_ms": 488.270247,
+          "index": 356,
+          "node_evaluation_ms": 0.054042,
+          "node_queue_ms": 0.026227,
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.080269,
+          "seq": 421,
+          "server_tick": 368,
+          "status": "STALE",
+          "world_tick": 1366
+        },
+        {
+          "causal_upper_ms": 490.189573,
+          "challenge_to_receive_ms": 490.162378,
+          "index": 357,
+          "node_evaluation_ms": 0.007029,
+          "node_queue_ms": 0.020166,
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.027195,
+          "seq": 423,
+          "server_tick": 369,
+          "status": "STALE",
+          "world_tick": 1367
+        },
+        {
+          "causal_upper_ms": 490.381706,
+          "challenge_to_receive_ms": 490.36435,
+          "index": 358,
+          "node_evaluation_ms": 0.003795,
+          "node_queue_ms": 0.013561,
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.017356,
+          "seq": 424,
+          "server_tick": 370,
+          "status": "STALE",
+          "world_tick": 1368
+        },
+        {
+          "causal_upper_ms": 490.500537,
+          "challenge_to_receive_ms": 490.485769,
+          "index": 359,
+          "node_evaluation_ms": 0.00273,
+          "node_queue_ms": 0.012038,
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.014768,
+          "seq": 425,
+          "server_tick": 371,
+          "status": "STALE",
+          "world_tick": 1369
+        },
+        {
+          "causal_upper_ms": 490.659087,
+          "challenge_to_receive_ms": 490.643863,
+          "index": 360,
+          "node_evaluation_ms": 0.004116,
+          "node_queue_ms": 0.011108,
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.015224,
+          "seq": 426,
+          "server_tick": 372,
+          "status": "STALE",
+          "world_tick": 1370
+        },
+        {
+          "causal_upper_ms": 490.75047,
+          "challenge_to_receive_ms": 490.740559,
+          "index": 361,
+          "node_evaluation_ms": 0.001952,
+          "node_queue_ms": 0.007959,
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.009911,
+          "seq": 427,
+          "server_tick": 373,
+          "status": "STALE",
+          "world_tick": 1371
+        },
+        {
+          "causal_upper_ms": 490.821043,
+          "challenge_to_receive_ms": 490.812087,
+          "index": 362,
+          "node_evaluation_ms": 0.001511,
+          "node_queue_ms": 0.007445,
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.008956,
+          "seq": 428,
+          "server_tick": 374,
+          "status": "STALE",
+          "world_tick": 1372
+        },
+        {
+          "causal_upper_ms": 490.98631,
+          "challenge_to_receive_ms": 490.971118,
+          "index": 363,
+          "node_evaluation_ms": 0.004306,
+          "node_queue_ms": 0.010886,
+          "reason": "CAUSAL_AGE_UPPER_BOUND_EXCEEDED",
+          "receive_to_complete_ms": 0.015192,
+          "seq": 429,
+          "server_tick": 375,
+          "status": "STALE",
+          "world_tick": 1373
+        }
+      ],
+      "p1_wait_qualified": false,
+      "paper_frames": 364,
+      "percentile_method": "nearest_rank; median midpoint",
+      "qualification": false,
+      "reasons": {
+        "CAUSAL_AGE_UPPER_BOUND_EXCEEDED": 8,
+        "CAUSAL_AGE_UPPER_BOUND_MET": 355,
+        "SESSION_LATCHED": 1
+      },
+      "remaining_snapshot_budget": 2036,
+      "source_continuous": true,
+      "source_independently_authenticated": false,
+      "source_latch_observed": true,
+      "source_session": "e3c6232d-1f86-4bb8-9fd7-a4f073652ee1",
+      "source_violations": [],
+      "statuses": {
+        "ADMITTED": 355,
+        "STALE": 8,
+        "UNDETERMINED": 1
+      }
+    }
+  },
+  "runs": {
+    "run-001": {
+      "status": "PASS",
+      "error": null,
+      "session": "dfaeba63-7136-492b-9ae2-792b6a8777c9",
+      "boot": "4f58d07d-1208-48de-a3d0-0f038579facf",
+      "world": "313322b4-15f5-41db-a920-6dc41257876c",
+      "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "native_seq": [
+        0,
+        1289
+      ],
+      "native_records": 1290,
+      "native_seq_gaps": 0,
+      "paper_frames": 1221,
+      "paper_index": [
+        1,
+        1221
+      ],
+      "paper_source_seq": [
+        2,
+        1287
+      ],
+      "world_tick": [
+        1015,
+        2235
+      ],
+      "world_tick_gaps": 0,
+      "echoed_challenge_ids": [
+        "8c81eb104766f34a9d14fb16f301714c:1",
+        "8c81eb104766f34a9d14fb16f301714c:1221"
+      ],
+      "challenge_issued_count_from_single_login_and_callback_source": 1222,
+      "remaining_challenge_budget_from_source": 1178,
+      "challenge_budget_derivation": "one issue at login plus one per original received snapshot; source-bound reconstruction, no separate send timestamp",
+      "baseline": 1034,
+      "baseline_explicit_in_report": false,
+      "node_ms": {
+        "causal_upper_ms": {
+          "n": 1221,
+          "min": 5.062603,
+          "median": 49.894786,
+          "p95": 50.694849,
+          "p99": 52.714346,
+          "max": 106.355669
+        },
+        "challenge_to_receive_ms": {
+          "n": 1221,
+          "min": 4.975017,
+          "median": 49.837436,
+          "p95": 50.629453,
+          "p99": 52.619286,
+          "max": 106.228781
+        },
+        "receive_to_complete_ms": {
+          "n": 1221,
+          "min": 0.034803,
+          "median": 0.050736,
+          "p95": 0.101668,
+          "p99": 0.174023,
+          "max": 0.904868
+        },
+        "node_queue_ms": {
+          "n": 1221,
+          "min": 0.023887,
+          "median": 0.03614,
+          "p95": 0.070832,
+          "p99": 0.126282,
+          "max": 0.486351
+        },
+        "node_evaluation_ms": {
+          "n": 1221,
+          "min": 0.008177,
+          "median": 0.013947,
+          "p95": 0.028891,
+          "p99": 0.060582,
+          "max": 0.418517
+        }
+      },
+      "paper_elapsed_s": 59.997567134,
+      "paper_effective_tps": 20.000810988217093,
+      "accounting": {
+        "rows": 1200,
+        "first_world_tick": 1035,
+        "last_world_tick": 2234,
+        "consecutive": true,
+        "m0_energy": {
+          "energy": 10.680000000000945,
+          "knockouts": 0,
+          "meals": 0,
+          "terminal": false,
+          "tick": 1200
+        },
+        "p1": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "dfaeba63-7136-492b-9ae2-792b6a8777c9",
+          "world_tick": 2234
+        },
+        "credit_count": 0,
+        "basal_total": 1.2,
+        "cognition_total": 0.12000000000000001,
+        "l0_work_units": 1200,
+        "move_total": 0.0,
+        "native_motion_blocks_total": 0,
+        "p1_recovery_total": 0.0,
+        "activities": [
+          "MOVE_OR_UNDETERMINED"
+        ],
+        "zero_intake": true,
+        "row_energy_matches_cost": true,
+        "checkpoints_saved": 0,
+        "checkpoints_match_report": false
+      },
+      "effect_sends": 0,
+      "set_control_sends": 0,
+      "clear_control_sends": 0,
+      "model_calls": null,
+      "tps_actuator": null,
+      "cleanup": {
+        "java_exit": 0,
+        "node_exit": 0,
+        "java_pid": 778674,
+        "node_pid": 778800,
+        "java_starttime": "111955511",
+        "node_starttime": "111957043",
+        "java_pid_absent": true,
+        "node_pid_absent": true,
+        "port_rebind": true,
+        "cleanup_complete": true,
+        "process_reap_complete": true,
+        "terminal_transport": {
+          "bridge_shutdown_ack_seen": true,
+          "bridge_transport_closed": true,
+          "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+          "connection_end_seen": true,
+          "high_level_stop_ack_attested": false,
+          "native_source_authenticated": false,
+          "paper_world_stopped_attested": false,
+          "session_id": "dfaeba63-7136-492b-9ae2-792b6a8777c9"
+        },
+        "paper_normal_stop_logged": true,
+        "paper_all_dimensions_saved": true
+      },
+      "original_manifest_verified": {
+        "commands.jsonl": true,
+        "native.jsonl": true,
+        "node_timing.jsonl": true,
+        "paper.log": true,
+        "python_timing.jsonl": true,
+        "report.json": true,
+        "t2_ticks.json": true
+      },
+      "shutdown_tail_unreceived_server_ticks": [
+        1238
+      ],
+      "diagnostic": {
+        "classification": "T1L_BOUNDED_NODE_CLOCK_SOURCE_DIAGNOSTIC_DEV",
+        "qualification": false,
+        "source_independently_authenticated": false,
+        "age_limit_ms_unchanged": 150,
+        "challenge_limit_unchanged": 2400,
+        "source_session": "dfaeba63-7136-492b-9ae2-792b6a8777c9",
+        "paper_frames": 1221,
+        "native_sequenced_records": 1290,
+        "native_first_seq": 0,
+        "native_last_seq": 1289,
+        "first_paper": {
+          "seq": 2,
+          "index": 1,
+          "server_tick": 17,
+          "world_tick": 1015,
+          "boot": "4f58d07d-1208-48de-a3d0-0f038579facf",
+          "world": "313322b4-15f5-41db-a920-6dc41257876c",
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738"
+        },
+        "last_paper": {
+          "seq": 1287,
+          "index": 1221,
+          "server_tick": 1237,
+          "world_tick": 2235,
+          "boot": "4f58d07d-1208-48de-a3d0-0f038579facf",
+          "world": "313322b4-15f5-41db-a920-6dc41257876c",
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738"
+        },
+        "remaining_snapshot_budget": 1179,
+        "distributions_ms": {
+          "causal_upper_ms": {
+            "n": 1221,
+            "min": 5.062603,
+            "median": 49.894786,
+            "p95": 50.694849,
+            "p99": 52.714346,
+            "max": 106.355669
+          },
+          "challenge_to_receive_ms": {
+            "n": 1221,
+            "min": 4.975017,
+            "median": 49.837436,
+            "p95": 50.629453,
+            "p99": 52.619286,
+            "max": 106.228781
+          },
+          "receive_to_complete_ms": {
+            "n": 1221,
+            "min": 0.034803,
+            "median": 0.050736,
+            "p95": 0.101668,
+            "p99": 0.174023,
+            "max": 0.904868
+          },
+          "node_queue_ms": {
+            "n": 1221,
+            "min": 0.023887,
+            "median": 0.03614,
+            "p95": 0.070832,
+            "p99": 0.126282,
+            "max": 0.486351
+          },
+          "node_evaluation_ms": {
+            "n": 1221,
+            "min": 0.008177,
+            "median": 0.013947,
+            "p95": 0.028891,
+            "p99": 0.060582,
+            "max": 0.418517
+          }
+        },
+        "percentile_method": "nearest_rank; median midpoint",
+        "first_refusal": null,
+        "first_refusal_context": [],
+        "source_latch_observed": false,
+        "admitted_after_source_latch": 0,
+        "node_received_effective_tps": 20.055284497522294,
+        "statuses": {
+          "ADMITTED": 1221
+        },
+        "reasons": {
+          "CAUSAL_AGE_UPPER_BOUND_MET": 1221
+        },
+        "maxima_ms": {
+          "causal_upper_ms": 106.355669,
+          "challenge_to_receive_ms": 106.228781,
+          "receive_to_complete_ms": 0.904868,
+          "node_queue_ms": 0.486351,
+          "node_evaluation_ms": 0.418517
+        },
+        "over_150ms": [],
+        "source_violations": [],
+        "source_continuous": true,
+        "normal_20tps_claim": false,
+        "one_way_latency_known": false,
+        "p1_wait_qualified": false
+      },
+      "qualification": false,
+      "p1_qualified_wait": false
+    },
+    "run-002": {
+      "status": "PASS",
+      "error": null,
+      "session": "bbe5e5e7-a3e8-4d6c-8237-18b46f1bf89b",
+      "boot": "c09a883d-378f-4029-9bee-d56265993c5b",
+      "world": "a5d65280-b90c-42fa-b8c6-a932f5f2daad",
+      "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "native_seq": [
+        0,
+        1266
+      ],
+      "native_records": 1267,
+      "native_seq_gaps": 0,
+      "paper_frames": 1202,
+      "paper_index": [
+        1,
+        1202
+      ],
+      "paper_source_seq": [
+        2,
+        1264
+      ],
+      "world_tick": [
+        1011,
+        2212
+      ],
+      "world_tick_gaps": 0,
+      "echoed_challenge_ids": [
+        "f3134f98f420a4ef4b59cca8625faa88:1",
+        "f3134f98f420a4ef4b59cca8625faa88:1202"
+      ],
+      "challenge_issued_count_from_single_login_and_callback_source": 1203,
+      "remaining_challenge_budget_from_source": 1197,
+      "challenge_budget_derivation": "one issue at login plus one per original received snapshot; source-bound reconstruction, no separate send timestamp",
+      "baseline": 1011,
+      "baseline_explicit_in_report": true,
+      "node_ms": {
+        "causal_upper_ms": {
+          "n": 1202,
+          "min": 6.622697,
+          "median": 49.9015995,
+          "p95": 51.2522,
+          "p99": 52.469644,
+          "max": 96.767654
+        },
+        "challenge_to_receive_ms": {
+          "n": 1202,
+          "min": 6.513857,
+          "median": 49.845923,
+          "p95": 51.189724,
+          "p99": 52.406151,
+          "max": 96.553756
+        },
+        "receive_to_complete_ms": {
+          "n": 1202,
+          "min": 0.034977,
+          "median": 0.0519985,
+          "p95": 0.087355,
+          "p99": 0.118673,
+          "max": 0.66275
+        },
+        "node_queue_ms": {
+          "n": 1202,
+          "min": 0.022554,
+          "median": 0.037305,
+          "p95": 0.062428,
+          "p99": 0.088993,
+          "max": 0.412658
+        },
+        "node_evaluation_ms": {
+          "n": 1202,
+          "min": 0.008955,
+          "median": 0.014161,
+          "p95": 0.028055,
+          "p99": 0.041831,
+          "max": 0.250092
+        }
+      },
+      "paper_elapsed_s": 59.86088676,
+      "paper_effective_tps": 20.046478843708996,
+      "accounting": {
+        "rows": 1200,
+        "first_world_tick": 1012,
+        "last_world_tick": 2211,
+        "consecutive": true,
+        "m0_energy": {
+          "energy": 10.680000000000945,
+          "knockouts": 0,
+          "meals": 0,
+          "terminal": false,
+          "tick": 1200
+        },
+        "p1": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "bbe5e5e7-a3e8-4d6c-8237-18b46f1bf89b",
+          "world_tick": 2211
+        },
+        "credit_count": 0,
+        "basal_total": 1.2,
+        "cognition_total": 0.12000000000000001,
+        "l0_work_units": 1200,
+        "move_total": 0.0,
+        "native_motion_blocks_total": 0,
+        "p1_recovery_total": 0.0,
+        "activities": [
+          "MOVE_OR_UNDETERMINED"
+        ],
+        "zero_intake": true,
+        "row_energy_matches_cost": true,
+        "checkpoints_saved": 6,
+        "checkpoints_match_report": true
+      },
+      "effect_sends": 0,
+      "set_control_sends": 0,
+      "clear_control_sends": 0,
+      "model_calls": 0,
+      "tps_actuator": false,
+      "cleanup": {
+        "java_exit": 0,
+        "node_exit": 0,
+        "java_pid": 779026,
+        "node_pid": 779220,
+        "java_starttime": "111970818",
+        "node_starttime": "111972406",
+        "java_pid_absent": true,
+        "node_pid_absent": true,
+        "port_rebind": true,
+        "cleanup_complete": true,
+        "process_reap_complete": true,
+        "terminal_transport": {
+          "bridge_shutdown_ack_seen": true,
+          "bridge_transport_closed": true,
+          "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+          "connection_end_seen": true,
+          "high_level_stop_ack_attested": false,
+          "native_source_authenticated": false,
+          "paper_world_stopped_attested": false,
+          "session_id": "bbe5e5e7-a3e8-4d6c-8237-18b46f1bf89b"
+        },
+        "paper_normal_stop_logged": true,
+        "paper_all_dimensions_saved": true
+      },
+      "original_manifest_verified": {
+        "commands.jsonl": true,
+        "native.jsonl": true,
+        "node_timing.jsonl": true,
+        "paper.log": true,
+        "python_timing.jsonl": true,
+        "report.json": true,
+        "t2_ticks.json": true
+      },
+      "shutdown_tail_unreceived_server_ticks": [
+        1215
+      ],
+      "diagnostic": {
+        "classification": "T1L_BOUNDED_NODE_CLOCK_SOURCE_DIAGNOSTIC_DEV",
+        "qualification": false,
+        "source_independently_authenticated": false,
+        "age_limit_ms_unchanged": 150,
+        "challenge_limit_unchanged": 2400,
+        "source_session": "bbe5e5e7-a3e8-4d6c-8237-18b46f1bf89b",
+        "paper_frames": 1202,
+        "native_sequenced_records": 1267,
+        "native_first_seq": 0,
+        "native_last_seq": 1266,
+        "first_paper": {
+          "seq": 2,
+          "index": 1,
+          "server_tick": 13,
+          "world_tick": 1011,
+          "boot": "c09a883d-378f-4029-9bee-d56265993c5b",
+          "world": "a5d65280-b90c-42fa-b8c6-a932f5f2daad",
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738"
+        },
+        "last_paper": {
+          "seq": 1264,
+          "index": 1202,
+          "server_tick": 1214,
+          "world_tick": 2212,
+          "boot": "c09a883d-378f-4029-9bee-d56265993c5b",
+          "world": "a5d65280-b90c-42fa-b8c6-a932f5f2daad",
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738"
+        },
+        "remaining_snapshot_budget": 1198,
+        "distributions_ms": {
+          "causal_upper_ms": {
+            "n": 1202,
+            "min": 6.622697,
+            "median": 49.9015995,
+            "p95": 51.2522,
+            "p99": 52.469644,
+            "max": 96.767654
+          },
+          "challenge_to_receive_ms": {
+            "n": 1202,
+            "min": 6.513857,
+            "median": 49.845923,
+            "p95": 51.189724,
+            "p99": 52.406151,
+            "max": 96.553756
+          },
+          "receive_to_complete_ms": {
+            "n": 1202,
+            "min": 0.034977,
+            "median": 0.0519985,
+            "p95": 0.087355,
+            "p99": 0.118673,
+            "max": 0.66275
+          },
+          "node_queue_ms": {
+            "n": 1202,
+            "min": 0.022554,
+            "median": 0.037305,
+            "p95": 0.062428,
+            "p99": 0.088993,
+            "max": 0.412658
+          },
+          "node_evaluation_ms": {
+            "n": 1202,
+            "min": 0.008955,
+            "median": 0.014161,
+            "p95": 0.028055,
+            "p99": 0.041831,
+            "max": 0.250092
+          }
+        },
+        "percentile_method": "nearest_rank; median midpoint",
+        "first_refusal": null,
+        "first_refusal_context": [],
+        "source_latch_observed": false,
+        "admitted_after_source_latch": 0,
+        "node_received_effective_tps": 20.047250613542538,
+        "statuses": {
+          "ADMITTED": 1202
+        },
+        "reasons": {
+          "CAUSAL_AGE_UPPER_BOUND_MET": 1202
+        },
+        "maxima_ms": {
+          "causal_upper_ms": 96.767654,
+          "challenge_to_receive_ms": 96.553756,
+          "receive_to_complete_ms": 0.66275,
+          "node_queue_ms": 0.412658,
+          "node_evaluation_ms": 0.250092
+        },
+        "over_150ms": [],
+        "source_violations": [],
+        "source_continuous": true,
+        "normal_20tps_claim": false,
+        "one_way_latency_known": false,
+        "p1_wait_qualified": false
+      },
+      "qualification": false,
+      "p1_qualified_wait": false
+    },
+    "run-003": {
+      "status": "PASS",
+      "error": null,
+      "session": "5185312d-c8cc-4e13-b7fc-78c5fdcf5e77",
+      "boot": "f4cb35e2-b85e-4f72-a431-8988497bce76",
+      "world": "97f006eb-218d-451f-bf25-d67281e543b3",
+      "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "native_seq": [
+        0,
+        2107
+      ],
+      "native_records": 2108,
+      "native_seq_gaps": 0,
+      "paper_frames": 2003,
+      "paper_index": [
+        1,
+        2003
+      ],
+      "paper_source_seq": [
+        2,
+        2105
+      ],
+      "world_tick": [
+        1011,
+        3013
+      ],
+      "world_tick_gaps": 0,
+      "echoed_challenge_ids": [
+        "0774302966ac164cba794d43a86432f5:1",
+        "0774302966ac164cba794d43a86432f5:2003"
+      ],
+      "challenge_issued_count_from_single_login_and_callback_source": 2004,
+      "remaining_challenge_budget_from_source": 396,
+      "challenge_budget_derivation": "one issue at login plus one per original received snapshot; source-bound reconstruction, no separate send timestamp",
+      "baseline": 1011,
+      "baseline_explicit_in_report": true,
+      "node_ms": {
+        "causal_upper_ms": {
+          "n": 2003,
+          "min": 4.006355,
+          "median": 49.898139,
+          "p95": 50.639469,
+          "p99": 51.473581,
+          "max": 80.661213
+        },
+        "challenge_to_receive_ms": {
+          "n": 2003,
+          "min": 3.945253,
+          "median": 49.847844,
+          "p95": 50.565796,
+          "p99": 51.375805,
+          "max": 80.541359
+        },
+        "receive_to_complete_ms": {
+          "n": 2003,
+          "min": 0.032116,
+          "median": 0.050725,
+          "p95": 0.084866,
+          "p99": 0.127047,
+          "max": 0.809457
+        },
+        "node_queue_ms": {
+          "n": 2003,
+          "min": 0.023397,
+          "median": 0.036507,
+          "p95": 0.061606,
+          "p99": 0.093145,
+          "max": 0.495189
+        },
+        "node_evaluation_ms": {
+          "n": 2003,
+          "min": 0.008585,
+          "median": 0.01358,
+          "p95": 0.027476,
+          "p99": 0.041431,
+          "max": 0.314268
+        }
+      },
+      "paper_elapsed_s": 99.901208286,
+      "paper_effective_tps": 20.019777881708333,
+      "accounting": {
+        "rows": 2000,
+        "first_world_tick": 1012,
+        "last_world_tick": 3011,
+        "consecutive": true,
+        "m0_energy": {
+          "energy": 9.800000000001575,
+          "knockouts": 0,
+          "meals": 0,
+          "terminal": false,
+          "tick": 2000
+        },
+        "p1": {
+          "fatigue": 0.0,
+          "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+          "session_id": "5185312d-c8cc-4e13-b7fc-78c5fdcf5e77",
+          "world_tick": 3011
+        },
+        "credit_count": 0,
+        "basal_total": 2.0,
+        "cognition_total": 0.2,
+        "l0_work_units": 2000,
+        "move_total": 0.0,
+        "native_motion_blocks_total": 0,
+        "p1_recovery_total": 0.0,
+        "activities": [
+          "MOVE_OR_UNDETERMINED"
+        ],
+        "zero_intake": true,
+        "row_energy_matches_cost": true,
+        "checkpoints_saved": 10,
+        "checkpoints_match_report": true
+      },
+      "effect_sends": 0,
+      "set_control_sends": 0,
+      "clear_control_sends": 0,
+      "model_calls": 0,
+      "tps_actuator": false,
+      "cleanup": {
+        "java_exit": 0,
+        "node_exit": 0,
+        "java_pid": 779446,
+        "node_pid": 779578,
+        "java_starttime": "111981367",
+        "node_starttime": "111982906",
+        "java_pid_absent": true,
+        "node_pid_absent": true,
+        "port_rebind": true,
+        "cleanup_complete": true,
+        "process_reap_complete": true,
+        "terminal_transport": {
+          "bridge_shutdown_ack_seen": true,
+          "bridge_transport_closed": true,
+          "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+          "connection_end_seen": true,
+          "high_level_stop_ack_attested": false,
+          "native_source_authenticated": false,
+          "paper_world_stopped_attested": false,
+          "session_id": "5185312d-c8cc-4e13-b7fc-78c5fdcf5e77"
+        },
+        "paper_normal_stop_logged": true,
+        "paper_all_dimensions_saved": true
+      },
+      "original_manifest_verified": {
+        "commands.jsonl": true,
+        "native.jsonl": true,
+        "node_timing.jsonl": true,
+        "paper.log": true,
+        "python_timing.jsonl": true,
+        "report.json": true,
+        "t2_ticks.json": true
+      },
+      "shutdown_tail_unreceived_server_ticks": [
+        2016
+      ],
+      "diagnostic": {
+        "classification": "T1L_BOUNDED_NODE_CLOCK_SOURCE_DIAGNOSTIC_DEV",
+        "qualification": false,
+        "source_independently_authenticated": false,
+        "age_limit_ms_unchanged": 150,
+        "challenge_limit_unchanged": 2400,
+        "source_session": "5185312d-c8cc-4e13-b7fc-78c5fdcf5e77",
+        "paper_frames": 2003,
+        "native_sequenced_records": 2108,
+        "native_first_seq": 0,
+        "native_last_seq": 2107,
+        "first_paper": {
+          "seq": 2,
+          "index": 1,
+          "server_tick": 13,
+          "world_tick": 1011,
+          "boot": "f4cb35e2-b85e-4f72-a431-8988497bce76",
+          "world": "97f006eb-218d-451f-bf25-d67281e543b3",
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738"
+        },
+        "last_paper": {
+          "seq": 2105,
+          "index": 2003,
+          "server_tick": 2015,
+          "world_tick": 3013,
+          "boot": "f4cb35e2-b85e-4f72-a431-8988497bce76",
+          "world": "97f006eb-218d-451f-bf25-d67281e543b3",
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738"
+        },
+        "remaining_snapshot_budget": 397,
+        "distributions_ms": {
+          "causal_upper_ms": {
+            "n": 2003,
+            "min": 4.006355,
+            "median": 49.898139,
+            "p95": 50.639469,
+            "p99": 51.473581,
+            "max": 80.661213
+          },
+          "challenge_to_receive_ms": {
+            "n": 2003,
+            "min": 3.945253,
+            "median": 49.847844,
+            "p95": 50.565796,
+            "p99": 51.375805,
+            "max": 80.541359
+          },
+          "receive_to_complete_ms": {
+            "n": 2003,
+            "min": 0.032116,
+            "median": 0.050725,
+            "p95": 0.084866,
+            "p99": 0.127047,
+            "max": 0.809457
+          },
+          "node_queue_ms": {
+            "n": 2003,
+            "min": 0.023397,
+            "median": 0.036507,
+            "p95": 0.061606,
+            "p99": 0.093145,
+            "max": 0.495189
+          },
+          "node_evaluation_ms": {
+            "n": 2003,
+            "min": 0.008585,
+            "median": 0.01358,
+            "p95": 0.027476,
+            "p99": 0.041431,
+            "max": 0.314268
+          }
+        },
+        "percentile_method": "nearest_rank; median midpoint",
+        "first_refusal": null,
+        "first_refusal_context": [],
+        "source_latch_observed": false,
+        "admitted_after_source_latch": 0,
+        "node_received_effective_tps": 20.020163024988317,
+        "statuses": {
+          "ADMITTED": 2003
+        },
+        "reasons": {
+          "CAUSAL_AGE_UPPER_BOUND_MET": 2003
+        },
+        "maxima_ms": {
+          "causal_upper_ms": 80.661213,
+          "challenge_to_receive_ms": 80.541359,
+          "receive_to_complete_ms": 0.809457,
+          "node_queue_ms": 0.495189,
+          "node_evaluation_ms": 0.314268
+        },
+        "over_150ms": [],
+        "source_violations": [],
+        "source_continuous": true,
+        "normal_20tps_claim": false,
+        "one_way_latency_known": false,
+        "p1_wait_qualified": false
+      },
+      "qualification": false,
+      "p1_qualified_wait": false
+    }
+  },
+  "host": {
+    "run-001": {
+      "samples": 79,
+      "load1_max": 2.04,
+      "cpu_busy_fraction_whole_launch": 0.12716630799779605
+    },
+    "run-002": {
+      "samples": 78,
+      "load1_max": 1.7,
+      "cpu_busy_fraction_whole_launch": 0.12968066307640524
+    },
+    "run-003": {
+      "samples": 118,
+      "load1_max": 2.25,
+      "cpu_busy_fraction_whole_launch": 0.10203174691349448
+    }
+  },
+  "root_cause": "UNKNOWN; A challenge-to-Node-receive composite interval is dominant; no one-way latency inference",
+  "age_limit_ms": 150,
+  "evaluation_budget_ms": 25,
+  "challenge_cap": 2400,
+  "safe_stop_index": 2300,
+  "changes": [
+    "T1l starts sole ledger owner immediately after spawn without legacy teleport/sleep/barrier",
+    "persist each 200-tick checkpoint before any later failure",
+    "budget projection includes next issued challenge; maximum_index cannot exceed 2300",
+    "offline original-journal diagnostics include distributions, first refusal context, full native sequence/session/identity and false admission controls",
+    "source-only effect count audit; cleanup reporting tolerates absent startup journal"
+  ],
+  "claim_limits": [
+    "DEV source and virtual M0/P1 bookkeeping only",
+    "No P1 qualified WAIT or full-subtick stillness",
+    "No R/V qualification, long autonomy, scientific or Physical Control advancement",
+    "Historical A root cause unresolved; Windows host scheduling not measured"
+  ],
+  "retained_non_native_errors": [
+    "External diagnostic script initially lacked repo root on PYTHONPATH; fixed to .:src:tests",
+    "External reducer initially assumed nonexistent EnergyTransition.before; original shape uses expenditure/after; fixed reducer, originals unchanged"
+  ],
+  "native_failures": 0,
+  "original_tests_failed": 0
+}

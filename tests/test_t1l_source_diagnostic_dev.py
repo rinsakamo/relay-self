@@ -1,6 +1,7 @@
 """T1l Node-clock causal age diagnosis and raw Paper continuity controls."""
 from adapters.mineflayer.t1l_source_diagnostic_dev import (
-    analyze_paper_records, AGE_LIMIT_NS,
+    AGE_LIMIT_NS,
+    analyze_paper_records,
 )
 
 
@@ -111,3 +112,61 @@ def test_native_journal_seq_gap_is_distinct_from_paper_tick_gap():
     assert not audit["source_continuous"]
     assert "native_stream_seq_gap" in audit["source_violations"]
     assert "paper_index_or_worldtick_gap" not in audit["source_violations"]
+
+
+def test_observed_distributions_and_first_refusal_context():
+    records = [paper(i, age_ms=100 + i) for i in range(1, 10)]
+    records.append(paper(10, status="STALE", age_ms=150,
+                         reason="CAUSAL_AGE_UPPER_BOUND_EXCEEDED"))
+    audit = analyze_paper_records(records)
+    assert audit["distributions_ms"]["causal_upper_ms"] == {
+        "n": 10, "min": 101, "median": 105.5, "p95": 150, "p99": 150, "max": 150}
+    assert audit["first_refusal"]["index"] == 10
+    assert audit["first_refusal_context"][0]["index"] == 2
+    assert audit["source_latch_observed"]
+    assert audit["admitted_after_source_latch"] == 0
+
+
+def test_admission_after_latched_refusal_and_processing_overrun_are_corrupt():
+    audit = analyze_paper_records([
+        paper(1, status="STALE", age_ms=150),
+        paper(2, recv_to_complete_ms=25),
+    ])
+    assert "admitted_after_source_latch" in audit["source_violations"]
+    assert "false_admitted_over_processing_budget" in audit["source_violations"]
+
+
+def test_identity_changes_cannot_be_hidden_by_consecutive_ticks():
+    for key in ("boot", "world", "player"):
+        changed = paper(2)
+        changed["data"]["snapshot"][key] = "foreign"
+        audit = analyze_paper_records([paper(1), changed])
+        assert "paper_identity_changed" in audit["source_violations"]
+
+
+def test_malformed_refusal_clock_still_preserves_first_refusal():
+    bad = paper(2, status="STALE", age_ms=150)
+    bad["data"]["received_ns"] = "invalid"
+    audit = analyze_paper_records([paper(1), bad])
+    assert audit["first_refusal"]["index"] == 2
+    assert "invalid_node_clock_fields" in audit["source_violations"]
+    assert audit["distributions_ms"]["causal_upper_ms"]["n"] == 1
+    assert audit["node_received_effective_tps"] is None
+
+
+def test_nonpaper_foreign_session_or_invalid_seq_also_breaks_native_journal():
+    for extra in (
+        {"type": "effect_result", "seq": 2, "session_id": "foreign"},
+        {"type": "effect_result", "seq": None, "session_id": "s"},
+    ):
+        audit = analyze_paper_records([paper(1), extra, paper(2, seq=3)])
+        assert not audit["source_continuous"]
+
+
+def test_missing_identity_and_contradictory_age_cannot_be_continuous():
+    bad = paper(1)
+    bad["data"]["snapshot"].pop("boot")
+    bad["data"]["age_upper_ns"] = None
+    audit = analyze_paper_records([bad])
+    assert "missing_paper_identity" in audit["source_violations"]
+    assert "causal_age_bound_inconsistent" in audit["source_violations"]

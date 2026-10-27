@@ -443,6 +443,15 @@ async def run_case(args, case):
         report["node_starttime"] = Path(f"/proc/{session._process.pid}/stat").read_text().split()[21]
         report["session_id"] = session.started.session_id
         await _await_spawn(session)
+        if case == "t1l_source_soak":
+            # Start the sole source/ledger owner immediately: no legacy MOVE
+            # fixture teleport, 0.8s sleep or barrier may discard startup ticks.
+            from adapters.mineflayer.t1l_source_soak_dev import run_source_soak
+            report.update(action_source="SOURCE_ONLY_NO_MOTOR_ACTION", model_calls=0,
+                          tps_actuator=False)
+            await run_source_soak(session, report, accounted_ticks=args.soak_ticks,
+                                  checkpoint_path=root / "checkpoints")
+            return report
         _command(server, "tp RelaySelf 0.5 -60 0.5 0 0")
         await server.stdin.drain()
         await asyncio.sleep(0.8)
@@ -451,10 +460,6 @@ async def run_case(args, case):
         if case.startswith("t1h_"):
             from adapters.mineflayer.t1h_native_stop_dev import run_stop_move_dev
             await run_stop_move_dev(session, server, report, root)
-            return report
-        if case == "t1l_source_soak":
-            from adapters.mineflayer.t1l_source_soak_dev import run_source_soak
-            await run_source_soak(session, report, accounted_ticks=args.soak_ticks)
             return report
         if t1f:
             from adapters.mineflayer.t1f_continuation_dev import run_continuation
@@ -623,14 +628,19 @@ async def run_case(args, case):
         report["metrics"] = measure(root, report)
         if case == "t1l_source_soak":
             from adapters.mineflayer.t1l_source_diagnostic_dev import analyze_paper_records
-            original_native = [json.loads(line) for line in
-                               (root / "native.jsonl").read_text().splitlines()]
+            original_native = ([json.loads(line) for line in
+                                (root / "native.jsonl").read_text().splitlines()]
+                               if (root / "native.jsonl").exists() else [])
             diagnostic = analyze_paper_records(
-                original_native, session_id=report["session_id"],
+                original_native, session_id=report.get("session_id"),
             )
             report["t1l_source_diagnostic"] = diagnostic
             t1l = report.get("t1l", {})
-            if (not diagnostic["source_continuous"]
+            issued_commands = [json.loads(line) for line in
+                               (root / "commands.jsonl").read_text().splitlines()] if (
+                                   root / "commands.jsonl").exists() else []
+            report["t1l_effect_sends"] = sum(c.get("type") == "effect" for c in issued_commands)
+            if (report["t1l_effect_sends"] != 0 or not diagnostic["source_continuous"]
                     or diagnostic["statuses"].get("ADMITTED", 0)
                        != diagnostic["paper_frames"]
                     or t1l.get("accounted_ticks") != args.soak_ticks

@@ -2,8 +2,12 @@
 
 Base branch: `self/dev-t1k-stop-resume-faults-20261027`, exact
 `2efabc7b901189418ac99e3a0ce37661568ccd35`.
-**DEV_ONLY / OFFLINE_IMPL_ADDED / T1L_NATIVE_UNVERIFIED /
+**DEV_ONLY / DEV_WORLD_OBSERVED /
 QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
+
+WSL2 execution results: [2026-10-27 native report](t1l-native-dev-results-20261027.md)
+and [measurements](t1l-native-dev-results-20261027.json). Three fresh Worlds;
+final first-snapshot-baseline 1,200 and separate 2,000 tick runs PASS.
 T1k's 2 positive 2-generation Minecraft Worlds and 3 native fault examples
 remain independently `DEV_WORLD_OBSERVED / NATIVE_FAULT_OBSERVED`.
 
@@ -76,7 +80,7 @@ be measured independently, not inferred from the target count.
 **Hard lifecycle bound:** Paper T1f protocol v1 and Node challenge
 generation currently support at most **2,400 indexed challenges per
 session**. The DEV soak refuses a projection reaching **index 2,300**
-before starting and checks that guard during the run. It does not bump
+before starting (including the next issued challenge) and checks that guard during the run. It does not bump
 the protocol cap, wrap/restart a counter, reconstruct an interrupted
 session or call a shorter run "longer than 2,400 challenges".
 
@@ -84,7 +88,10 @@ T2 may label no-Action samples `MOVE_OR_UNDETERMINED`; this case
 does not infer P1-qualified WAIT merely because no control was sent.
 M0 and P1 formulas are unchanged. All per-tick rows are saved by
 the existing T1e shutdown owner in `t2_ticks.json`, while checkpoint,
-Node-age and source continuity metadata are included in report.
+Node-age and source continuity metadata are included in report. Each 200-tick
+checkpoint is also saved immediately in `checkpoints/`, preserving it across a later failure.
+The source-only case starts immediately after spawn, without the legacy
+teleport, startup sleep or observe barrier discarding early Paper samples.
 
 New fresh, disposable 20TPS Minecraft World example (reusing the
 *already built* Paper1.21.8 assets, not a prior saved World):
@@ -122,9 +129,10 @@ PYTHONPATH=src:tests python3.12 -m pytest -q \
 
 Repair any new test errors, then do Python3.12 FAST after the module
 is complete, related Node22 tests and Java21 Plugin build if required
-for native execution. This T1l code has been pushed from ChatGPT by
-GitHub tools but **has not been run on the user's WSL2/Minecraft**.
-The new tests have also **not yet been executed** in the repository.
+for native execution. The initial pushed T1l code was unverified. It has now been exercised on
+WSL2/Python 3.12 and in fresh Minecraft Worlds; see the linked execution report.
+The final focused selection passes 50 tests, existing FAST plus T1l passes 615,
+Node22 passes 68, and the Java21 Plugin build succeeds.
 FULL regression remains main-merge-only.
 
 Report run-004 vs run-006/009 original Node-domain age component

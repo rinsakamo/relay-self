@@ -6,9 +6,11 @@ silently wrap/reset its sequence or extend its source lifetime.
 """
 from __future__ import annotations
 
-from adapters.mineflayer.t1f_continuation_dev import next_tick, _latch_source_loss
-from adapters.mineflayer.t2_tick_accounting import TickAccounting
+import json
+
+from adapters.mineflayer.t1f_continuation_dev import _latch_source_loss, next_tick
 from adapters.mineflayer.t1l_source_diagnostic_dev import CHALLENGE_CAP
+from adapters.mineflayer.t2_tick_accounting import TickAccounting
 
 
 class SoakDevRejected(ValueError):
@@ -16,10 +18,11 @@ class SoakDevRejected(ValueError):
 
 
 async def run_source_soak(session, report, *, accounted_ticks: int,
-                          maximum_index: int = 2300, checkpoint_every: int = 200):
+                          maximum_index: int = 2300, checkpoint_every: int = 200,
+                          checkpoint_path=None):
     if (type(accounted_ticks) is not int or not 100 <= accounted_ticks <= 2000
             or type(maximum_index) is not int
-            or not 100 <= maximum_index <= CHALLENGE_CAP
+            or not 100 <= maximum_index <= 2300
             or checkpoint_every != 200
             or getattr(session, "source_lost", False)
             or getattr(session, "tick_owner", None) is not None):
@@ -36,12 +39,23 @@ async def run_source_soak(session, report, *, accounted_ticks: int,
     }
     last_seq = -1
     try:
+        if checkpoint_path is not None:
+            checkpoint_path.mkdir()
         # The normal T1e owner already subscribed on the same session.
         # The first Paper sample establishes a baseline, not a charged tick.
         first = await next_tick(session)
         last_seq = first.seq
         index = first.data["snapshot"]["index"]
-        if index + accounted_ticks >= maximum_index:
+        report["t1l"].update(
+            baseline_source_seq=first.seq,
+            baseline_world_tick=first.data["snapshot"]["world_tick"],
+            baseline_index=index, projected_last_index=index + accounted_ticks,
+            projected_next_issued_index=index + accounted_ticks + 1,
+            baseline_accounted_ticks=len(owner.rows),
+        )
+        # Login issues challenge 1, each received snapshot issues one more.
+        # Include that next issued challenge, not only the echoed challenge ID.
+        if index + accounted_ticks + 1 >= maximum_index:
             raise SoakDevRejected("T1l requested soak would reach challenge budget")
         while len(owner.rows) < accounted_ticks:
             frame = await next_tick(session, after_seq=last_seq)
@@ -55,14 +69,18 @@ async def run_source_soak(session, report, *, accounted_ticks: int,
                 if (not report["t1l"]["checkpoints"]
                         or report["t1l"]["checkpoints"][-1]["accounted_ticks"]
                         != len(owner.rows)):
-                    report["t1l"]["checkpoints"].append({
+                    checkpoint = {
                         "accounted_ticks": len(owner.rows),
                         "source_seq": end["source_seq"],
                         "world_tick": end["world_tick"],
                         "energy_last_known": owner.energy.body.energy,
                         "fatigue_last_known": owner.fatigue.fatigue,
                         "credit_count": owner.energy.credit_count,
-                    })
+                    }
+                    report["t1l"]["checkpoints"].append(checkpoint)
+                    if checkpoint_path is not None:
+                        with (checkpoint_path / f"checkpoint-{len(owner.rows):06d}.json").open("x") as out:
+                            out.write(json.dumps(checkpoint, indent=2) + "\n")
         if (owner.failed or owner.active_action is not None or owner.pending_meal
                 or owner.previous is None or len(owner.rows) != accounted_ticks
                 or getattr(session, "source_lost", False)
@@ -78,6 +96,8 @@ async def run_source_soak(session, report, *, accounted_ticks: int,
             "accounted_world_ticks_consecutive": (
                 owner.rows[-1]["world_tick"] - owner.rows[0]["world_tick"] + 1
                 == len(owner.rows)),
+            "last_snapshot_index": frame.data["snapshot"]["index"],
+            "projected_remaining_challenges": CHALLENGE_CAP - frame.data["snapshot"]["index"] - 1,
             "m0_credit_count": owner.energy.credit_count,
             "m0_energy_last_known": owner.energy.body.energy,
             "p1_fatigue_last_known": owner.fatigue.fatigue,

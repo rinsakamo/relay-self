@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from collections import Counter
 from pathlib import Path
 
@@ -27,6 +28,18 @@ def _integer(value, name, *, allow_none=False):
     return int(value)
 
 
+def distribution(values):
+    """Observed samples, nearest-rank percentiles (no invented samples)."""
+    ordered = sorted(values)
+    if not ordered:
+        return {"n": 0, "min": None, "median": None, "p95": None, "p99": None, "max": None}
+    n = len(ordered)
+    return {"n": n, "min": ordered[0],
+            "median": (ordered[(n - 1) // 2] + ordered[n // 2]) / 2,
+            "p95": ordered[math.ceil(.95 * n) - 1],
+            "p99": ordered[math.ceil(.99 * n) - 1], "max": ordered[-1]}
+
+
 def analyze_paper_records(records, *, session_id=None):
     """Describe the source, including rejected frames; never certify it.
 
@@ -42,6 +55,14 @@ def analyze_paper_records(records, *, session_id=None):
               "receive_to_complete_ms": None, "node_queue_ms": None,
               "node_evaluation_ms": None}
     samples = []
+    timeline = []
+    valid_received = []
+    values = {k: [] for k in maxima}
+    first_refusal_position = None
+    first_paper = last_paper = None
+    native_first_seq = None
+    admitted_after_latch = 0
+    latched = False
     prev = None
     native_previous_seq = None
     native_sequenced_records = 0
@@ -50,8 +71,19 @@ def analyze_paper_records(records, *, session_id=None):
         if not isinstance(record, dict):
             raise ContinuityRejected("native journal record not an object")
         native_seq = record.get("seq")
+        if type(native_seq) is not int or native_seq < 0:
+            violations.append("invalid_native_stream_seq")
+        native_session = record.get("session_id")
+        if type(native_session) is not str or not native_session:
+            violations.append("missing_native_session")
+        elif observed_session is None:
+            observed_session = native_session
+        elif native_session != observed_session:
+            violations.append("foreign_session")
         if type(native_seq) is int:
             native_sequenced_records += 1
+            if native_first_seq is None:
+                native_first_seq = native_seq
             if native_previous_seq is not None:
                 if native_seq <= native_previous_seq:
                     violations.append("native_stream_seq_reordered_or_duplicate")
@@ -89,9 +121,35 @@ def analyze_paper_records(records, *, session_id=None):
                 violations.append("paper_identity_changed")
         prev = (record["seq"], snap["index"], snap["tick"], snap["world_tick"],
                 (snap.get("boot"), snap.get("world"), snap.get("player")))
+        last_paper = {"seq": record["seq"], "index": snap["index"],
+                      "server_tick": snap["tick"], "world_tick": snap["world_tick"],
+                      "boot": snap.get("boot"), "world": snap.get("world"),
+                      "player": snap.get("player")}
+        if first_paper is None:
+            first_paper = last_paper
+        if any(type(snap.get(k)) is not str or not snap[k] for k in ("boot", "world", "player")):
+            violations.append("missing_paper_identity")
         status = d.get("status")
+        startup_none = (count == 1 and snap["index"] == 1
+                        and snap.get("challenge") == "NONE"
+                        and status == "UNDETERMINED"
+                        and d.get("reason") == "NO_MATCHING_CAUSAL_CHALLENGE")
+        if status != "ADMITTED" and not startup_none:
+            if first_refusal_position is None:
+                first_refusal_position = len(timeline)
+            latched = True
+        elif status == "ADMITTED" and latched:
+            admitted_after_latch += 1
+            violations.append("admitted_after_source_latch")
         statuses[str(status)] += 1
         reasons[str(d.get("reason"))] += 1
+        detail = {
+            **last_paper, "challenge_id": snap.get("challenge"),
+            "challenge_index": str(snap.get("challenge", "")).rsplit(":", 1)[-1],
+            "status": status, "reason": d.get("reason"),
+            "received_ns": d.get("received_ns"),
+        }
+        timeline.append(detail)
         try:
             sent = _integer(d.get("challenge_sent_ns"), "challenge", allow_none=True)
             received = _integer(d.get("received_ns"), "received")
@@ -116,13 +174,18 @@ def analyze_paper_records(records, *, session_id=None):
                 continue
             elapsed["challenge_to_receive_ms"] = (received - sent) / 1e6
             elapsed["causal_upper_ms"] = (completed - sent) / 1e6
-            if upper is not None and upper != completed - sent:
+            if upper != completed - sent:
                 violations.append("causal_age_bound_inconsistent")
         if status == "ADMITTED":
+            if completed - received >= 25_000_000:
+                violations.append("false_admitted_over_processing_budget")
             if upper is None or sent is None or upper >= AGE_LIMIT_NS:
                 violations.append("false_admitted_over_age_limit")
         for key, value in elapsed.items():
+            values[key].append(value)
             maxima[key] = value if maxima[key] is None else max(maxima[key], value)
+        detail.update({k: round(v, 6) for k, v in elapsed.items()})
+        valid_received.append(received)
         if upper is not None and upper >= AGE_LIMIT_NS:
             samples.append({
                 "seq": record["seq"], "index": snap["index"],
@@ -136,7 +199,20 @@ def analyze_paper_records(records, *, session_id=None):
         "age_limit_ms_unchanged": 150, "challenge_limit_unchanged": CHALLENGE_CAP,
         "source_session": observed_session, "paper_frames": count,
         "native_sequenced_records": native_sequenced_records,
-        "native_last_seq": native_previous_seq,
+        "native_first_seq": native_first_seq, "native_last_seq": native_previous_seq,
+        "first_paper": first_paper, "last_paper": last_paper,
+        "remaining_snapshot_budget": CHALLENGE_CAP - last_paper["index"] if last_paper else None,
+        "distributions_ms": {k: distribution(v) for k, v in values.items()},
+        "percentile_method": "nearest_rank; median midpoint",
+        "first_refusal": timeline[first_refusal_position] if first_refusal_position is not None else None,
+        "first_refusal_context": (timeline[max(0, first_refusal_position - 8):first_refusal_position + 9]
+                                  if first_refusal_position is not None else []),
+        "source_latch_observed": latched,
+        "admitted_after_source_latch": admitted_after_latch,
+        "node_received_effective_tps": (
+            (len(valid_received) - 1) * 1e9 / (valid_received[-1] - valid_received[0])
+            if len(valid_received) > 1 and valid_received[-1] > valid_received[0]
+            else None),
         "statuses": dict(statuses), "reasons": dict(reasons),
         "maxima_ms": {k: round(v, 6) if v is not None else None
                       for k, v in maxima.items()},
