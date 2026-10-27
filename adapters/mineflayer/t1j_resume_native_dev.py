@@ -23,8 +23,11 @@ from adapters.mineflayer.t1j_resume_gate_dev import ResumeDevRejected, S49DevRes
 
 async def resume_one_move_dev(
     session, supervisor, old_owner, report, *, time_base: int,
+    generation: int = 1, stop_on_resumed_move: bool = False,
 ) -> dict:
     """Same S49 owner/session; no new native IO writer or read task."""
+    if type(generation) is not int or generation not in (1, 2):
+        raise ResumeDevRejected('T1k bounded DEV generations only')
     old_ledger = session.tick_owner
     if (getattr(session, "source_lost", False)
             or session.process_returncode is not None
@@ -49,7 +52,7 @@ async def resume_one_move_dev(
         unresolved_eat=False, retired_action_ids=prior,
     )
     sid = session.started.session_id
-    resume_id = "T1J-R1"
+    resume_id = f"T1J-R{generation}"
     next_action_id = f"t1j-{resume_id}-move"
     # This authorization MUST come from a separate explicit DEV CLI opt-in.
     # Merely selecting a STOP test case never authorizes a new physical action.
@@ -72,7 +75,7 @@ async def resume_one_move_dev(
             break
     if before is None:
         raise ResumeDevRejected("T1j no Paper tick after old DEV STOP window")
-    probe_request = "t1j-R1-reobserve"
+    probe_request = f"t1j-R{generation}-reobserve"
     native = await _correlated_observe(session, probe_request)
     if type(getattr(native, "seq", None)) is not int:
         raise ResumeDevRejected("T1j correlated native probe absent")
@@ -99,6 +102,9 @@ async def resume_one_move_dev(
     session.consume_tick_accounting = True
     result = None
     try:
+        if getattr(session, "t1k_fault", None) == "BEFORE_RESUME_SEND":
+            await session.inject_disconnect("T1K_BEFORE_RESUME_MOTOR_SEND")
+            raise ResumeDevRejected("T1k pre-Motor injected disconnect; no Action issued")
         if (getattr(session, "source_lost", False)
                 or old_owner.allows_action or not new_stop_owner.allows_action):
             raise ResumeDevRejected("T1j source/new owner invalidated before issue")
@@ -111,6 +117,8 @@ async def resume_one_move_dev(
         if issued.action_id != permit.next_action_id:
             raise ResumeDevRejected("T1j Supervisor did not issue exact action")
         new_ledger.begin(issued.action_id)
+        if stop_on_resumed_move:
+            session.t1k_interrupt_action_id = issued.action_id
         command = MineflayerCommand(
             action_id=issued.action_id, binding_id="t1j-explicit-resume-binding",
             action_ref="MOVE_BACKWARD", effect="set_control", control="back",
@@ -130,6 +138,30 @@ async def resume_one_move_dev(
             provenance=_p("t1j-resumed-terminal"),
         )
         new_ledger.finish(result, terminal)
+        if stop_on_resumed_move:
+            from relay_self.action import ActionState
+            from adapters.mineflayer.t1i_session_stop_dev import finish_multi_epoch_move_stop
+            if (not new_stop_owner.requested
+                    or result.status is not WorldConsequenceStatus.FAILED
+                    or terminal.state is not ActionState.UNKNOWN
+                    or result.cleanup_receipt is None):
+                raise ResumeDevRejected("T1k first resumed MOVE did not STOP/UNKNOWN")
+            closure = await finish_multi_epoch_move_stop(
+                session, session.t1k_server,
+                after.data["snapshot"], result, terminal, new_stop_owner,
+                session.t1k_paper_log,
+            )
+            return {
+                "classification": "T1K_RESUMED_MOVE_STOP_DEV",
+                "permit": asdict(permit), "rebase": new_ledger.segment_origin_dev,
+                "new_action": asdict(issued), "consequence": asdict(result),
+                "terminal": asdict(terminal), "stop_ack_dev": closure["stop_ack_dev"],
+                "post_stop_source_seq": closure["post_clear_live_probe_seq"],
+                "old_owner_still_latched": old_owner.requested and not old_owner.allows_action,
+                "new_owner_is_distinct": new_stop_owner is not old_owner,
+                "historical_m0_p1_retroactively_filled": False,
+                "p1_wait_qualified": False,
+            }
         if (result.status is not WorldConsequenceStatus.EXECUTED
                 or result.cleanup_receipt is None or new_ledger.failed):
             raise ResumeDevRejected("T1j resumed Action not executed/cleared")
