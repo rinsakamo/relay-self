@@ -147,14 +147,16 @@ async def native_meal(session, server, supervisor, report, *, time_base, stop_ow
 
 async def run_continuation(session, server, report, root, *,
                            observe_only, accounting, normal_epochs=2,
-                           stop_owner=None, stop_mode=None):
+                           stop_owner=None, stop_mode=None, resume_mode=False):
     from adapters.mineflayer.t1i_session_stop_dev import (
         finish_multi_epoch_move_stop,
         require_stop_permits_action,
     )
     from relay_self.action import ActionState
-    if stop_mode not in (None, "MOVE", "EAT") or (stop_mode and stop_owner is None):
-        raise ValueError("T1i STOP requires an exact original S49 owner")
+    if (stop_mode not in (None, "MOVE", "EAT")
+            or (stop_mode and stop_owner is None)
+            or (resume_mode and (stop_mode != "MOVE" or not accounting))):
+        raise ValueError("T1i/T1j STOP requires exact original S49 owner/accounting")
     supervisor = ActionSupervisor()
     report.update(action_source="PAPER_L0_DESIGNED_POLICY_EXISTING_S51_ISSUER_S49_EXECUTOR",
                   epochs=[], model_calls=0, tps_actuator=False)
@@ -259,6 +261,12 @@ async def run_continuation(session, server, report, root, *,
                         terminal, stop_owner, root / "paper.log",
                     )),
                 }
+                if resume_mode:
+                    from adapters.mineflayer.t1j_resume_native_dev import resume_one_move_dev
+                    report["t1j"] = await resume_one_move_dev(
+                        session, supervisor, stop_owner, report,
+                        time_base=(normal_epochs + 2) * 100 + 10,
+                    )
                 report["status"] = "PASS"
                 break
             if result.cleanup_receipt is None:
