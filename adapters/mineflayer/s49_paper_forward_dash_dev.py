@@ -21,6 +21,9 @@ from adapters.mineflayer import normal_action as action_owner
 from adapters.mineflayer import s49_normal_session_real_ci as original
 from adapters.mineflayer.b0_energy_bridge import DashM0InvoiceDev
 from adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev import _fresh_asset
+from adapters.mineflayer.s49_causal_wait_fence_dev import (
+    review_original_owner_causal_paper_fence_dev,
+)
 from adapters.mineflayer.s49_inter_action_stillness_dev import (
     review_inter_action_stillness_dev,
     review_original_owner_no_issued_action_gap_dev,
@@ -841,6 +844,8 @@ async def run(
                 ),
             )
         original_bytes = json.loads(original_report.read_text(encoding="utf-8"))
+        if causal_owner_fence_dev and subject.get("owner_fences") != ["START", "END"]:
+            raise ForwardDashDevRejected("original owner Paper causal fences missing/order")
         report["original_s49_rc"] = rc
         report["original_s49_status"] = original_bytes.get("status")
         if rc != 0 or original_bytes.get("status") != "PASS":
@@ -1026,6 +1031,21 @@ async def run(
                             session_id=subject["session"],
                         )
                     )
+                    if causal_owner_fence_dev:
+                        report["original_owner_causal_paper_wait_candidate_dev"] = (
+                            review_original_owner_causal_paper_fence_dev(
+                                paper_log.read_text(encoding="utf-8"),
+                                owner=report["original_owner_inputoff_static_join_dev"],
+                                original_owner=original_bytes[
+                                    "dev_inter_action_original_owner_gap"
+                                ],
+                                stillness=report["inter_action_stillness_dev"],
+                                timeline=report["m0_two_action_worldtime_shadow_dev"],
+                                first_action_id=actions[0]["action"],
+                                second_action_id=actions[1]["action"],
+                                session_id=subject["session"],
+                            )
+                        )
             else:
                 if (len(postings) != 1
                         or postings[0]["action_id"] != subject["action_id"]
