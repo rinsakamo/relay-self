@@ -89,12 +89,21 @@ export class SnapshotAdmission {
       qualification: false, tps_admission_granted: false }
   }
 }
-export function attachPaperSnapshotChannel (bot, emit, onInvalid, clock = () => process.hrtime.bigint(), controlState = () => ({ phase: "INITIAL", since_ns: "0", generation: 0 })) {
+export function attachPaperSnapshotChannel (bot, emit, onInvalid, clock = () => process.hrtime.bigint(), controlState = () => ({ phase: "INITIAL", since_ns: "0", generation: 0 }), onDiagnostic = null) {
   const guard = new SnapshotAdmission()
   let lastResult = null
-  const challenge = () => bot._client.write('custom_payload', {
-    channel: PAPER_TICK_CHANNEL, data: guard.issue(clock())
-  })
+  const challenge = () => {
+    const bytes = guard.issue(clock())
+    bot._client.write('custom_payload', {
+      channel: PAPER_TICK_CHANNEL, data: bytes
+    })
+    if (onDiagnostic) onDiagnostic({
+      kind: 'challenge_write_return', challenge: bytes.toString('ascii'),
+      node_sent_ns: guard.challenge.sent.toString(),
+      node_write_return_ns: clock().toString(),
+      challenge_index: guard.counter
+    })
+  }
   bot.once('login', () => {
     bot._client.registerChannel(PAPER_TICK_CHANNEL, null, true)
     challenge()
@@ -125,6 +134,13 @@ export function attachPaperSnapshotChannel (bot, emit, onInvalid, clock = () => 
       result.control = controlState()
       lastResult = result
       emit('paper_snapshot', { data: result })
+      if (onDiagnostic) onDiagnostic({
+        kind: 'snapshot_callback', challenge: s.challenge, index: s.index,
+        server_tick: s.tick, world_tick: s.world_tick,
+        node_received_ns: received.toString(), node_complete_ns: end.toString(),
+        age_upper_ns: result.age_upper_ns, status: result.status,
+        reason: result.reason, source_boot: s.boot, source_world: s.world
+      })
       challenge()
     } catch (error) { guard.failed = true; onInvalid(error) }
   })
