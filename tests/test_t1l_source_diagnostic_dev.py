@@ -13,7 +13,7 @@ def paper(i, *, seq=None, status="ADMITTED", age_ms=120,
     received = completed - int(recv_to_complete_ms * 1e6)
     start = received + 1_000_000
     return {
-        "type": "paper_snapshot", "session_id": source, "seq": seq or i * 3,
+        "type": "paper_snapshot", "session_id": source, "seq": seq if seq is not None else i,
         "data": {
             "snapshot": {
                 "index": i, "tick": 100 + i, "world_tick": 1000 + i,
@@ -104,3 +104,10 @@ def test_challenge_index_never_exceeds_existing_v1_protocol_limit():
     audit = analyze_paper_records([bad])
     assert not audit["source_continuous"]
     assert "challenge_index_out_of_bounds" in audit["source_violations"]
+
+
+def test_native_journal_seq_gap_is_distinct_from_paper_tick_gap():
+    audit = analyze_paper_records([paper(1, seq=4), paper(2, seq=6)])
+    assert not audit["source_continuous"]
+    assert "native_stream_seq_gap" in audit["source_violations"]
+    assert "paper_index_or_worldtick_gap" not in audit["source_violations"]
