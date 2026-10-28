@@ -53,13 +53,20 @@ def test_original_wait_refuses_unproven_s16(monkeypatch,fault):
     }
     if fault=="no_optin":
         monkeypatch.delenv("S49_L0_GOAL_WAIT_DEV_ONLY")
-    elif fault=="wrong_session":kw["session_id"]="other"
-    elif fault=="wrong_action":kw["second_action_id"]="foreign"
-    elif fault=="stale_event":h.events=2
-    elif fault=="missing_first_grant":h._used_action_ids.clear()
-    elif fault=="outside_deadband":kw["residual_m"]=0.4
-    elif fault=="bad_tolerance":kw["tolerance_m"]=1
-    else:kw["residual_m"]=float("nan")
+    elif fault=="wrong_session":
+        kw["session_id"]="other"
+    elif fault=="wrong_action":
+        kw["second_action_id"]="foreign"
+    elif fault=="stale_event":
+        h.events=2
+    elif fault=="missing_first_grant":
+        h._used_action_ids.clear()
+    elif fault=="outside_deadband":
+        kw["residual_m"]=0.4
+    elif fault=="bad_tolerance":
+        kw["tolerance_m"]=1
+    else:
+        kw["residual_m"]=float("nan")
     with pytest.raises(NormalActionRejected):
         h.bind_s16_stop_dev(**kw)
 
