@@ -202,7 +202,7 @@ def summarize_isolation(arms: dict[str, dict]) -> dict:
 
 
 def review_worlds(root: Path) -> dict:
-    if type(root) is not Path or root.is_symlink() or not root.is_dir():
+    if not isinstance(root, Path) or root.is_symlink() or not root.is_dir():
         raise P1TraceIsolationRejected("missing six-World root")
     arms = {name: _load_one(root, name) for name in ARMS}
     # Existing original S49 pair reviewer replays real Paper origin, preloads
