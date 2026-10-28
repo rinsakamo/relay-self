@@ -28,7 +28,9 @@ function packetPose (packet) {
 // intentionally separate from both canonical native.jsonl and sync T1n trace.
 export function openT1wSidecar (path, createStream = createWriteStream) {
   if (typeof path !== 'string' || !isAbsolute(path)) throw Error('T1w trace requires absolute path')
-  const stream = createStream(path, { flags: 'wx', mode: 0o600 })
+  const stream = createStream(path, {
+    flags: 'wx', mode: 0o600, highWaterMark: 4 * 1024 * 1024
+  })
   let rows = 0
   let lost = false
   let closed = false
