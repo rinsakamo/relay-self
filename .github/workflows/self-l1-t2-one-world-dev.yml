@@ -1,4 +1,4 @@
-name: S49 G1 Applied Gait Paired Paper Worlds DEV
+name: S49 G1 G2 Same Paper World Applied Gait DEV
 on:
   push:
     branches:
@@ -11,7 +11,7 @@ permissions:
 jobs:
   actual-l1-t2-world:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     env:
       PYTHONPATH: 'src:tests:.'
       PYTHONDONTWRITEBYTECODE: '1'
@@ -104,6 +104,20 @@ jobs:
               cat "$DEV_OUTPUT/producer-world2.stdout"; exit 1;
             }
           cat "$DEV_OUTPUT/producer-world2.stdout"
+          # WORLD3 changes only the originally-authorized first physical
+          # Action to the existing S49 forward+sprint motor reference.
+          # It never issues an unowned direct control command.
+          S49_GOAL_G2_SPRINT_FIRST_DEV_ONLY=1 S49_SPRINT_MOTOR_DEV_ONLY=1 \
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/WORLD3" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
+            --paper-plugin-dev "$PLUGIN" --paper-gait-observation-dev \
+            --offset-m 4.0 --g2-sprint-first-dev \
+            > "$DEV_OUTPUT/producer-world3.stdout" 2>&1 || {
+              cat "$DEV_OUTPUT/producer-world3.stdout"; exit 1;
+            }
+          cat "$DEV_OUTPUT/producer-world3.stdout"
           python - <<'PY'
           import json,os,pathlib
           report=json.loads((pathlib.Path(os.environ["DEV_OUTPUT"])/"WORLD1/goal_report.json").read_text())
@@ -160,6 +174,21 @@ jobs:
           assert other["l1_t2_ledger_dev"]["original_action_boundary_receipts"]>=2
           print("S49_L1_T2_SAME_PAPER_REFRESH_DEV_PASS",
                 other["l1_t2_ledger_dev"],other["detour"]["final_parent_goal_error_m"])
+          sprint=verify_derived("WORLD3")
+          assert sprint["status"]=="PASS"
+          assert sprint["g2_sprint_first_dev"] is True
+          first=sprint["g2_first_original_motor_dev"]
+          assert first["dispatch_effect"]=="set_forward_sprint_dev"
+          assert first["dispatch_applied"] is True
+          assert first["actual_gait_not_inferred_from_action"] is True
+          g=sprint["g1_applied_gait_observation_dev"]
+          # Requested sprint is NOT a physical claim. A matching stable
+          # server + client observation is a separate physical candidate.
+          assert g["kinds"].get("STABLE_SPRINT_FORWARD_CANDIDATE",0)>=1
+          assert sprint["l1_t2_ledger_dev"]["owner_failed"] is False
+          assert sprint["l1_t2_ledger_dev"]["original_action_boundary_receipts"]>=1
+          print("S49_G2_ORIGINAL_S49_SPRINT_AND_T1U_PAPER_CANDIDATE_DEV_PASS",
+                first,g["kinds"])
           PY
       - name: Preserve all attempts and original DEV World
         if: always()
