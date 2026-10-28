@@ -1,0 +1,17 @@
+{
+  "base_head": "d071b06d0c959768efd781ceceef1e739ed53a38",
+  "python": "3.12.3",
+  "node": "22.22.2",
+  "minecraft": "1.21.8",
+  "mineflayer": "4.39.0",
+  "qualification_go": false,
+  "science_go": false,
+  "port_25565_rebind": true,
+  "tested_code_sha256": {
+    "src/relay_self/goal_grid_search_dev.py": "20c3b370e0c7d07d4440614a833f7a98a7dfaa2bb53d5c0db2a3a889654f9a0d",
+    "src/relay_self/goal_grid_refresh_dev.py": "3b432fa860a20da2e096782544d82b7a6b2e103788104338dc738d0172db3b9f",
+    "adapters/mineflayer/s49_goal_loop_real_dev.py": "beb9df4127e3cab7c82106a3f4335aee3217bcceb074d181a828b0d507b13320",
+    "adapters/mineflayer/s49_goal_waypoint_route_dev.py": "68b35c8e9c754bc03229c2ae4f7be6ff86e286fddbaa15042e3b216b16073e90",
+    "adapters/mineflayer/s49_grid_layouts_dev.py": "1d2d652c11c62f4a07d753816af862cafa72e3952ef9259f2a84384a7410ba26"
+  }
+}

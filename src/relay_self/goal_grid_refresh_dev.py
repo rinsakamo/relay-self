@@ -14,6 +14,7 @@ from relay_self.goal_grid_search_dev import (
     L1GridSearchDecisionDev,
     _find_path,
     _turns,
+    swept_body_safe_dev,
 )
 from relay_self.goal_local_voxel_dev import NativeVoxelPresentDev
 from relay_self.goal_navigation import GoalControlRejected
@@ -71,7 +72,10 @@ def refresh_grid_route_dev(
     ):
         raise GoalControlRejected("grid refresh body outside centered native map")
     path, visited = _find_path(present, start, (0, 4))
-    if len(path) < 2:
+    if (len(path) < 2 or not swept_body_safe_dev(
+        present, (present.player_x-present.origin_x,
+                  present.player_z-present.origin_z), start
+    )):
         return L1GridSearchDecisionDev(
             "DEFER", "NO_OBSERVED_BODY_SAFE_GRID_ROUTE",
             present.native_seq, 42, visited, (), None,
@@ -103,7 +107,7 @@ def refresh_grid_route_dev(
         source_voxel_request_id=present.request_id,
         cell_path=path,
         no_diagonal_edges=True,
-        body_radius_m=0.30,
+        body_radius_m=0.30,source_grid=present,
     )
     return L1GridSearchDecisionDev(
         "SELECTED", "BFS_CARDINAL_NATIVE_REFRESH_GRID",

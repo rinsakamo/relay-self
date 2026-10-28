@@ -1,9 +1,8 @@
 """Bounded 4-neighbour L1 path search from native observer-local voxel Present.
 
 Grid has 42 candidate XZ cells. Only exact loaded, body/head CLEAR and solid
-floor support columns may be entered. A 0.30m avatar radius at cell centers
-has at least 0.19m clearance from the XZ cell edge; cardinal moves never cut
-diagonal corners. No new movement authority, learning or complete-world claim.
+floor support columns may be entered. A continuous radius 0.30m sweep is conservatively bounded by a rectangle;
+every touched column requires observed body/head clearance and support. No new movement authority, learning or complete-world claim.
 """
 from __future__ import annotations
 
@@ -37,6 +36,7 @@ class L1GridRoutePlanDev:
     cell_path: tuple[tuple[int,int],...]
     no_diagonal_edges: bool
     body_radius_m: float
+    source_grid: NativeVoxelPresentDev
 
     def __post_init__(self) -> None:
         if (
@@ -56,6 +56,8 @@ class L1GridRoutePlanDev:
             or self.no_diagonal_edges is not True
             or type(self.body_radius_m) is not float
             or self.body_radius_m!=0.30
+            or not isinstance(self.source_grid, NativeVoxelPresentDev)
+            or self.source_grid.native_seq != self.source_voxel_seq
             or not isinstance(self.cell_path,tuple)
             or not 2<=len(self.cell_path)<=42
             or any(not isinstance(p,tuple) or len(p)!=2
@@ -117,6 +119,31 @@ def _walkable(grid:NativeVoxelPresentDev,node:tuple[int,int])->bool:
     )
 
 
+def swept_body_safe_dev(
+    grid: NativeVoxelPresentDev,
+    start: tuple[float, float], end: tuple[float, float],
+) -> bool:
+    """Conservative bounding box of the continuous radius .30m sweep.
+
+    Coordinates are relative to the observed origin. Every touched column
+    must have CLEAR body/head and BLOCKED support. The box overapproximates
+    diagonal entry correction; missing coverage fails closed. Flat only.
+    """
+    if any(not math.isfinite(v) for v in (*start, *end)):
+        return False
+    radius = 0.30
+    xmin = math.floor(grid.origin_x + min(start[0], end[0]) - radius)
+    xmax = math.ceil(grid.origin_x + max(start[0], end[0]) + radius) - 1
+    zmin = math.floor(grid.origin_z + min(start[1], end[1]) - radius)
+    zmax = math.ceil(grid.origin_z + max(start[1], end[1]) + radius) - 1
+    ox, oz = math.floor(grid.origin_x), math.floor(grid.origin_z)
+    return all(
+        _walkable(grid, (x - ox, z - oz))
+        for x in range(xmin, xmax + 1)
+        for z in range(zmin, zmax + 1)
+    )
+
+
 def _find_path(
     grid:NativeVoxelPresentDev,start:tuple[int,int],
     end:tuple[int,int],
@@ -134,7 +161,8 @@ def _find_path(
             break
         for dx,dz in delta:
             candidate=(node[0]+dx,node[1]+dz)
-            if candidate in previous or not _walkable(grid,candidate):
+            if (candidate in previous or not _walkable(grid,candidate)
+                or not swept_body_safe_dev(grid, node, candidate)):
                 continue
             previous[candidate]=node
             frontier.append(candidate)
@@ -197,7 +225,10 @@ def choose_grid_route_dev(
         raise GoalControlRejected("native body outside centered local voxel grid")
     goal=(0,4)
     path,visited=_find_path(present,nearest,goal)
-    if not path or len(path)<2:
+    if (not path or len(path)<2 or not swept_body_safe_dev(
+        present, (present.player_x-present.origin_x,
+                  present.player_z-present.origin_z), nearest
+    )):
         return L1GridSearchDecisionDev(
             "DEFER","NO_OBSERVED_BODY_SAFE_GRID_ROUTE",
             present.native_seq,42,visited,(),None,
@@ -224,7 +255,7 @@ def choose_grid_route_dev(
         source_voxel_seq=present.native_seq,
         source_voxel_request_id=present.request_id,
         cell_path=path,no_diagonal_edges=True,
-        body_radius_m=0.30,
+        body_radius_m=0.30,source_grid=present,
     )
     return L1GridSearchDecisionDev(
         "SELECTED","BFS_CARDINAL_NATIVE_OBSERVED_GRID",

@@ -1,0 +1,15 @@
+{
+  "additional_action_after_interrupt": false,
+  "classification": "S49_L1_GRID_REFRESH_PLUS_L0_INFLIGHT_PHYSICAL_DEV",
+  "goal_reached": false,
+  "interrupted_action_id": "goal-approach-demo-grid-2-grid-turn-0-step-6",
+  "native_clear_seq": 107,
+  "native_probe_seq": 106,
+  "native_replans": 1,
+  "original_parent_goal_preserved": true,
+  "original_waypoint_outcomes": 3,
+  "qualification_go": false,
+  "science_go": false,
+  "session_id": "da6c2ed0-7a7e-4028-81ba-645a46a186ac",
+  "terminal": "UNKNOWN"
+}

@@ -231,7 +231,7 @@ async def qualify(
             or type(grid_midroute_obstacle_dev) is not bool
             or type(grid_inflight_hazard_dev) is not bool
             or (grid_inflight_hazard_dev and (
-                not grid_refresh_dev or grid_midroute_obstacle_dev
+                not grid_refresh_dev
                 or os.environ.get("S49_L0_INFLIGHT_PREEMPT_DEV_ONLY")!="1"
             ))
             or (grid_refresh_dev and (
@@ -293,7 +293,7 @@ async def qualify(
         _command(server,"gamerule doMobSpawning false")
         _command(server,"kill @e[type=minecraft:zombie]")
         await server.stdin.drain()
-        session=await _new_session()
+        session=await _new_session(raw_capture_root=report_path.parent)
         sid=session.started.session_id
         report["session_id"]=sid
         intent=IntentCommitment()
@@ -733,9 +733,25 @@ async def qualify(
                     elif native_voxel_map_dev:
                         voxel_source=await _correlated_native_voxels_dev(
                             session,
-                            f"goal-{sid}-native-voxels-after-{receipt.consequence.after_observation.seq}",
+                            f"goal-{sid}-native-voxels-after-{receipt.consequence.after_observation.seq}"
+                            + ("-before-layouts" if grid_midroute_obstacle_dev and grid_inflight_hazard_dev else ""),
                             origin_x=float(start.x),origin_z=float(start.z),
                         )
+                        if grid_midroute_obstacle_dev and grid_inflight_hazard_dev:
+                            from adapters.mineflayer.s49_grid_layouts_dev import (
+                                exercise_layouts_dev,
+                            )
+                            report["seeded_layouts_dev"], voxel_source = await exercise_layouts_dev(
+                                server, session, voxel_source, proposal,
+                                receipt.consequence.after_observation.seq,
+                                receipt.terminal.action_id, _correlated_native_voxels_dev,
+                            )
+                            # Keep the canonical initial-map request lineage.
+                            voxel_source = await _correlated_native_voxels_dev(
+                                session,
+                                f"goal-{sid}-native-voxels-after-{receipt.consequence.after_observation.seq}",
+                                origin_x=float(start.x), origin_z=float(start.z),
+                            )
                         if voxel_source.seq<=receipt.consequence.after_observation.seq:
                             raise RuntimeError("stale native voxel map")
                         voxel_present=NativeVoxelPresentDev(

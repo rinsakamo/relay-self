@@ -1,0 +1,510 @@
+{
+  "L1_source": "DETERMINISTIC_DEV_POLICY_NOT_LEARNED",
+  "L2_source": "EXPLICIT_DEV_OPERATOR_NOT_LIVE_L2",
+  "classification": "DEV_ONLY_S49_L1_GRID_NO_ROUTE_DEFER",
+  "cleanup_steps": [
+    "node_cleanup",
+    "node_reap",
+    "server_cleanup",
+    "server_reap",
+    "collector_cleanup"
+  ],
+  "detour_after_wall_dev": true,
+  "detour_left_dev": false,
+  "download_host": "piston-data.mojang.com",
+  "existing_S49_action_supervisor_reused": true,
+  "experience_requested_dev": false,
+  "experience_selection_dev": null,
+  "goal_S14_dev_admission": true,
+  "goal_handoff": null,
+  "goal_l1": {
+    "max_actions": 6,
+    "max_observations": 18,
+    "proposal": {
+      "danger_interrupt_m": 1.5,
+      "goal_id": "approach-demo",
+      "intent_id": "goal-navigate",
+      "maximum_tolerance_m": 0.55,
+      "minimum_tolerance_m": 0.3,
+      "provenance": {
+        "reference": "l2-proposed-fixed-xz",
+        "source": "s49-goal-dev-operator"
+      },
+      "purpose": "approach",
+      "session_id": "7e69b421-97fd-4f67-adc5-884ffb295bdc",
+      "target_x": 0.5,
+      "target_z": 5.5
+    },
+    "provenance": {
+      "reference": "l1-derives-precision-from-distance",
+      "source": "s49-goal-dev-operator"
+    },
+    "tolerance_m": 0.55
+  },
+  "goal_l2": {
+    "danger_interrupt_m": 1.5,
+    "goal_id": "approach-demo",
+    "intent_id": "goal-navigate",
+    "maximum_tolerance_m": 0.55,
+    "minimum_tolerance_m": 0.3,
+    "provenance": {
+      "reference": "l2-proposed-fixed-xz",
+      "source": "s49-goal-dev-operator"
+    },
+    "purpose": "approach",
+    "session_id": "7e69b421-97fd-4f67-adc5-884ffb295bdc",
+    "target_x": 0.5,
+    "target_z": 5.5
+  },
+  "goal_turn_dx_dev": 0.0,
+  "goal_unit_forward": {
+    "look_effect_not_orientation_attestation": true,
+    "requested_yaw_rad": -3.141592653589793,
+    "x": 0.0,
+    "z": 1.0
+  },
+  "grid_inflight_hazard_dev": true,
+  "grid_midroute_obstacle_dev": true,
+  "grid_refresh_dev": true,
+  "inflight_l0": null,
+  "initial_native_xz": {
+    "seq": 2,
+    "x": 0.5,
+    "z": 1.5
+  },
+  "java_major_version": 21,
+  "l0_decisions": [
+    {
+      "cross_track_m": 0.0,
+      "forward_remaining_m": 4.0,
+      "goal_error_m": 4.0,
+      "input_duration_s": 0.35,
+      "kind": "MOVE",
+      "reason": "OBSERVED_GOAL_DISTANCE",
+      "source_seq": 2,
+      "x": 0.5,
+      "z": 1.5
+    },
+    {
+      "cross_track_m": -2.681188604469753e-13,
+      "forward_remaining_m": 2.8,
+      "goal_error_m": 2.8,
+      "input_duration_s": 0.35,
+      "kind": "MOVE",
+      "reason": "OBSERVED_GOAL_DISTANCE",
+      "source_seq": 18,
+      "x": 0.5000000000002681,
+      "z": 2.7
+    }
+  ],
+  "learned_L1_attested": false,
+  "left_lane_block_dev": true,
+  "left_lane_block_world_stimulus_requested": true,
+  "legacy_zombie_S14_admission_reused": false,
+  "local_grid_search_dev": true,
+  "manifest_version_url_host": "piston-meta.mojang.com",
+  "minecraft_version": "1.21.8",
+  "native_actions": [
+    {
+      "action_id": "goal-approach-demo-step-1",
+      "after_seq": 17,
+      "before_seq": 5,
+      "duration_s": 0.35,
+      "end_x": 0.5000000000002681,
+      "end_z": 2.7,
+      "goal_error_at_S16_end_m": 2.8,
+      "native_alignment_to_goal": 1.0,
+      "native_displacement_m": 1.2000000000000002,
+      "native_travel_x": 2.681188604469753e-13,
+      "native_travel_z": 1.2000000000000002,
+      "s16_status": "executed",
+      "s16_terminal": "outcome"
+    },
+    {
+      "action_id": "goal-approach-demo-step-2",
+      "end_x": 0.5000000000005362,
+      "end_z": 2.7,
+      "native_displacement_m": 2.681188604469753e-13,
+      "s16_status": "undetermined",
+      "s16_terminal": "unknown",
+      "uncertain_motor_not_success": true
+    }
+  ],
+  "native_goal_looks": [
+    {
+      "action_id": "goal-approach-demo-step-1-s15-look",
+      "effect": "look",
+      "requested_yaw_rad": -3.141592653589793,
+      "result": "applied",
+      "seq": 7,
+      "signed_yaw_not_measured": true
+    },
+    {
+      "action_id": "goal-approach-demo-step-2-s15-look",
+      "effect": "look",
+      "requested_yaw_rad": -3.141592653589793,
+      "result": "applied",
+      "seq": 20,
+      "signed_yaw_not_measured": true
+    }
+  ],
+  "native_grid_refresh_observations_dev": [],
+  "native_grid_search_choice_dev": {
+    "chosen_cell_path": [],
+    "evaluated_columns": 42,
+    "new_motor_issuer": false,
+    "no_diagonal_edges": true,
+    "plan_from_current_observation": true,
+    "reason": "NO_OBSERVED_BODY_SAFE_GRID_ROUTE",
+    "source_seq": 31,
+    "status": "DEFER",
+    "visited_cells": 27
+  },
+  "native_local_voxel_choice_dev": null,
+  "native_local_voxel_observation_dev": {
+    "cells": [
+      {
+        "dx": -3,
+        "dz": 0,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": -2,
+        "dz": 0,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": -1,
+        "dz": 0,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 0,
+        "dz": 0,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 1,
+        "dz": 0,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 2,
+        "dz": 0,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 3,
+        "dz": 0,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": -3,
+        "dz": 1,
+        "feet": "BLOCKED",
+        "floor": "BLOCKED",
+        "head": "BLOCKED"
+      },
+      {
+        "dx": -2,
+        "dz": 1,
+        "feet": "BLOCKED",
+        "floor": "BLOCKED",
+        "head": "BLOCKED"
+      },
+      {
+        "dx": -1,
+        "dz": 1,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 0,
+        "dz": 1,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 1,
+        "dz": 1,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 2,
+        "dz": 1,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 3,
+        "dz": 1,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": -3,
+        "dz": 2,
+        "feet": "BLOCKED",
+        "floor": "BLOCKED",
+        "head": "BLOCKED"
+      },
+      {
+        "dx": -2,
+        "dz": 2,
+        "feet": "BLOCKED",
+        "floor": "BLOCKED",
+        "head": "BLOCKED"
+      },
+      {
+        "dx": -1,
+        "dz": 2,
+        "feet": "BLOCKED",
+        "floor": "BLOCKED",
+        "head": "BLOCKED"
+      },
+      {
+        "dx": 0,
+        "dz": 2,
+        "feet": "BLOCKED",
+        "floor": "BLOCKED",
+        "head": "BLOCKED"
+      },
+      {
+        "dx": 1,
+        "dz": 2,
+        "feet": "BLOCKED",
+        "floor": "BLOCKED",
+        "head": "BLOCKED"
+      },
+      {
+        "dx": 2,
+        "dz": 2,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 3,
+        "dz": 2,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": -3,
+        "dz": 3,
+        "feet": "BLOCKED",
+        "floor": "BLOCKED",
+        "head": "BLOCKED"
+      },
+      {
+        "dx": -2,
+        "dz": 3,
+        "feet": "BLOCKED",
+        "floor": "BLOCKED",
+        "head": "BLOCKED"
+      },
+      {
+        "dx": -1,
+        "dz": 3,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 0,
+        "dz": 3,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 1,
+        "dz": 3,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 2,
+        "dz": 3,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 3,
+        "dz": 3,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": -3,
+        "dz": 4,
+        "feet": "BLOCKED",
+        "floor": "BLOCKED",
+        "head": "BLOCKED"
+      },
+      {
+        "dx": -2,
+        "dz": 4,
+        "feet": "BLOCKED",
+        "floor": "BLOCKED",
+        "head": "BLOCKED"
+      },
+      {
+        "dx": -1,
+        "dz": 4,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 0,
+        "dz": 4,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 1,
+        "dz": 4,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 2,
+        "dz": 4,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 3,
+        "dz": 4,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": -3,
+        "dz": 5,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": -2,
+        "dz": 5,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": -1,
+        "dz": 5,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 0,
+        "dz": 5,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 1,
+        "dz": 5,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 2,
+        "dz": 5,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      },
+      {
+        "dx": 3,
+        "dz": 5,
+        "feet": "CLEAR",
+        "floor": "BLOCKED",
+        "head": "CLEAR"
+      }
+    ],
+    "coverage": "mineflayer_loaded_cache_fixed_7x6x3",
+    "origin_x": 0.5,
+    "origin_z": 1.5,
+    "player_x": 0.5000000000005362,
+    "player_y": -60.0,
+    "player_z": 2.7,
+    "request_id": "goal-7e69b421-97fd-4f67-adc5-884ffb295bdc-native-voxels-after-30",
+    "seq": 31,
+    "session_id": "7e69b421-97fd-4f67-adc5-884ffb295bdc",
+    "source": "mineflayer",
+    "unknown_is_not_clear": true,
+    "x_max": 3,
+    "x_min": -3,
+    "z_max": 5,
+    "z_min": 0
+  },
+  "native_route_blocks_observation_dev": null,
+  "native_route_present_dev": false,
+  "native_voxel_map_dev": true,
+  "node_exit": 0,
+  "obstacle_wall_dev": true,
+  "pre_cleanup_status": "PASS",
+  "qualification_go": false,
+  "real_model_calls": 0,
+  "real_world": true,
+  "right_lane_block_dev": false,
+  "science_go": false,
+  "selfworld_memory_selection_dev": null,
+  "server_exit": 0,
+  "server_sha1": "6bce4ef400e4efaa63a13d5e6f6b500be969ef81",
+  "server_size_bytes": 57555044,
+  "session_id": "7e69b421-97fd-4f67-adc5-884ffb295bdc",
+  "stage": "L1_GRID_DEFER",
+  "status": "PASS",
+  "threat_inflight_dev": false,
+  "threat_injection_dev": false,
+  "upper_layer_replan_executed": false,
+  "wall_handoff": {
+    "client_obstacle_block_detection_attested": false,
+    "native_after_seq": 30,
+    "no_additional_action_issued": true,
+    "original_actions": 2,
+    "reason": "MOTOR_CONSEQUENCE_UNDETERMINED",
+    "retained_target_x": 0.5,
+    "retained_target_z": 5.5,
+    "upper_layer_replan_executed": false
+  },
+  "wall_world_stimulus_requested": true,
+  "zombie_events_needed_for_continuation": false
+}

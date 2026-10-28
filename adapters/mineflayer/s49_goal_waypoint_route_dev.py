@@ -21,7 +21,7 @@ from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
 from relay_self.action import ActionState
 from relay_self.goal_detour_dev import L1DetourPlanDev
 from relay_self.goal_grid_refresh_dev import refresh_grid_route_dev
-from relay_self.goal_grid_search_dev import L1GridRoutePlanDev
+from relay_self.goal_grid_search_dev import L1GridRoutePlanDev, swept_body_safe_dev
 from relay_self.goal_navigation import (
     GoalDecisionKind,
     ObservedGoalL0,
@@ -158,6 +158,22 @@ async def follow_l1_detour_dev(
                 continue
             if choice.kind is not GoalDecisionKind.MOVE:
                 raise DetourRunRejected("invalid native L0 waypoint choice")
+            if isinstance(plan, L1GridRoutePlanDev):
+                grid = plan.source_grid
+                position = probe.snapshot.position
+                safe = swept_body_safe_dev(
+                    grid,
+                    (position.x-grid.origin_x, position.z-grid.origin_z),
+                    (goal.target_x-grid.origin_x, goal.target_z-grid.origin_z),
+                )
+                stage.setdefault("swept_checks", []).append({
+                    "probe_seq": probe.seq, "voxel_seq": grid.native_seq,
+                    "radius_m": 0.30, "safe": safe,
+                })
+                if not safe:
+                    stage["result"] = "DEFER"
+                    result["route_status"] = "DEFER"
+                    return result
             count=executor._count+1
             action_id=f"goal-{goal.goal_id}-step-{count}"
             def grant(which:NormalActionStage)->NormalActionAuthorization:

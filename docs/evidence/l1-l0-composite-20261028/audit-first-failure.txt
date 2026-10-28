@@ -1,0 +1,4 @@
+First composite auditor execution failed with KeyError: entity_id.
+The unmodified native entity schema uses id; the derived incident uses entity_id.
+Only the independent auditor field lookup was corrected, then the same saved bytes were re-audited. No World or Action replay.
+Attempt02 runner reported PASS for safe DEFER, but composite mission acceptance was NOT met. Its original evidence is preserved.
