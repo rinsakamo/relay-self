@@ -835,7 +835,13 @@ async def qualify(
             _command(server, "gamerule doMobSpawning false")
             await server.stdin.drain()
             await asyncio.sleep(2)
-            for distance_m, hold in ((10, 5), (2, 8), (2, 8)):
+            # This original host needs four genuine native entity epochs:
+            # WAIT and three independently authorized MOVE requests. Only
+            # this isolated DEV input supplies the additional fourth stimulus.
+            world_epochs = [(10, 5), (2, 8), (2, 8)]
+            if dev_l0_residual_third_dev:
+                world_epochs.append((2, 8))
+            for distance_m, hold in world_epochs:
                 _command(server, "kill @e[type=minecraft:zombie]")
                 await server.stdin.drain()
                 await asyncio.sleep(2)
