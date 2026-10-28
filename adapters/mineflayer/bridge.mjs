@@ -615,6 +615,31 @@ async function handleEffect (command) {
       return
     }
 
+    if (command.effect === 'set_forward_sneak_dev') {
+      if (t1fAdmission && !t1fAdmission.canDispatch()) {
+        emitEffectResult(command, 'rejected', 't1f_fresh_benign_source_required')
+        return
+      }
+      if (process.env.S49_GOAL_G2_SNEAK_DEV_ONLY !== '1' ||
+          command.forward !== true || command.sneak !== true) {
+        emitEffectResult(command, 'rejected', 'g2_sneak_dev_gate_or_pair')
+        return
+      }
+      try {
+        bot.setControlState('sneak', true)
+        bot.setControlState('forward', true)
+      } catch (error) {
+        bot.clearControlStates()
+        throw error
+      }
+      if (t1fAdmission) t1fControl = {
+        phase: 'MOVING', since_ns: process.hrtime.bigint().toString(),
+        generation: t1fControl.generation + 1
+      }
+      emitEffectResult(command, 'applied')
+      return
+    }
+
     if (command.effect === 'set_forward_sprint_dev') {
       if (t1fAdmission && !t1fAdmission.canDispatch()) {
         emitEffectResult(command, 'rejected', 't1f_fresh_benign_source_required')
