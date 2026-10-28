@@ -86,12 +86,15 @@ def explicit_l1_detour_dev(
     original:L2GoalProposal, *,start_x:float,start_z:float,
     blocked_action_id:str,blocked_s16_seq:int,
     provenance:Provenance,
+    lateral_offset_dev:float=2.5,
 ) -> L1DetourPlanDev:
     """The DEV operator supplies geometry; no world-block sensor is inferred."""
     if (
         not isinstance(original,L2GoalProposal)
         or type(start_x) is not float or not math.isfinite(start_x)
         or type(start_z) is not float or not math.isfinite(start_z)
+        or type(lateral_offset_dev) is not float
+        or lateral_offset_dev not in (-2.5,2.5)
         or not math.isclose(original.target_x,start_x,abs_tol=1e-9)
         or not math.isclose(original.target_z,start_z+4.0,abs_tol=1e-9)
     ):
@@ -102,8 +105,8 @@ def explicit_l1_detour_dev(
         source_s16_seq=blocked_s16_seq,
         reason="NATIVE_MOTOR_UNDETERMINED_NO_BLOCK_SENSOR",
         stages=(
-            L1DetourStageDev("lateral-before-wall",start_x+2.5,start_z+1.1),
-            L1DetourStageDev("past-wall",start_x+2.5,start_z+3.8),
+            L1DetourStageDev("lateral-before-wall",start_x+lateral_offset_dev,start_z+1.1),
+            L1DetourStageDev("past-wall",start_x+lateral_offset_dev,start_z+3.8),
             L1DetourStageDev("original-destination",start_x,start_z+4.0),
         ),
         provenance=provenance,
