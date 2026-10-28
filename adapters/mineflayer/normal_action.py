@@ -439,7 +439,9 @@ class NormalSessionActionExecutor:
             type(dev_next_duration_s) is not float
             or not math.isfinite(dev_next_duration_s)
             or not 0.10 <= dev_next_duration_s <= 0.60
-            or self._count != 1
+            or self._count not in (1, 2)
+            or (self._count == 2 and
+                os.environ.get("S49_L0_RESIDUAL_THIRD_DEV_ONLY") != "1")
             or not self._dev_forward_motor
             or not self._dev_sprint_motor
             or os.environ.get("S49_L0_OBSERVED_FEEDBACK_DEV_ONLY") != "1"
