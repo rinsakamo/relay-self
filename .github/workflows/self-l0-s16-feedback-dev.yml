@@ -1,0 +1,183 @@
+name: S49 L0 Original S16 Observed Input Feedback Four Worlds DEV
+on:
+  push:
+    branches:
+      - self/dev-l0-observed-motion-feedback-20261028
+    paths:
+      - .github/workflows/self-l0-s16-feedback-dev.yml
+      - adapters/mineflayer/s49_l0_observed_step_dev.py
+      - adapters/mineflayer/s49_l0_observed_step_review_dev.py
+      - adapters/mineflayer/s49_normal_session_real_ci.py
+      - adapters/mineflayer/normal_action.py
+      - adapters/mineflayer/s49_paper_forward_dash_dev.py
+      - tests/test_s49_l0_observed_step_dev.py
+      - 'adapters/mineflayer/s49_paper_dash_dev/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s49-l0-observed-s16-four-worlds-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  world-pair-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      S49_REAL_SERVER_CI: '1'
+      S49_FORWARD_MOTOR_DEV_ONLY: '1'
+      S49_SPRINT_MOTOR_DEV_ONLY: '1'
+      S49_P1_LIVE_DASH_DEV_ONLY: '1'
+      S49_M0_DASH_DEBIT_DEV_ONLY: '1'
+      S49_M0_ACTION_STEP_DEV_ONLY: '1'
+      S49_NATIVE_EFFECT_EDGE_DEV_ONLY: '1'
+      S49_P1_DASH_PAIR_DEV_ONLY: '1'
+      S49_SPEED_ATTR_BOUNDARY_DEV_ONLY: '1'
+      S49_SPEED_ATTR_SYNC_DEV_ONLY: '1'
+      S49_P1_MATCHED_BOOST_DEV_ONLY: '1'
+      S49_L0_OBSERVED_FEEDBACK_DEV_ONLY: '1'
+      # Attr projection stays ON; only the explicit per-World OFF opt-in masks the trace.
+      DEV_OUTPUT: '/tmp/s49-l0-s16-feedback-${{ github.run_id }}-${{ github.run_attempt }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Focused Python 3.12, Ruff and bridge syntax BEFORE any World
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          python -m compileall -q adapters/mineflayer/s49_l0_observed_step_dev.py adapters/mineflayer/s49_l0_observed_step_review_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/normal_action.py tests/test_s49_l0_observed_step_dev.py adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_speed_attr_boundary_dev.py adapters/mineflayer/s49_p1_synced_motor_pair_dev.py adapters/mineflayer/s49_p1_matched_boost_review_dev.py adapters/mineflayer/s49_p1_native_hold_pair_dev.py tests/test_s49_p1_native_hold_pair_dev.py adapters/mineflayer/s49_p1_attr_trace_ab_review_dev.py tests/test_s49_p1_attr_trace_ab_review_dev.py adapters/mineflayer/s49_p1_attr_trace_ab_review_dev.py tests/test_s49_p1_attr_trace_ab_review_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_p1_matched_boost_review_dev.py
+          ruff check adapters/mineflayer/s49_l0_observed_step_dev.py adapters/mineflayer/s49_l0_observed_step_review_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/normal_action.py tests/test_s49_l0_observed_step_dev.py adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_speed_attr_boundary_dev.py adapters/mineflayer/s49_p1_synced_motor_pair_dev.py adapters/mineflayer/s49_p1_matched_boost_review_dev.py adapters/mineflayer/s49_p1_native_hold_pair_dev.py tests/test_s49_p1_native_hold_pair_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_p1_matched_boost_review_dev.py
+          python -m pytest -q tests/test_s49_l0_observed_step_dev.py tests/test_s49_p1_attr_trace_ab_review_dev.py tests/test_s49_p1_native_hold_pair_dev.py tests/test_s49_p1_matched_boost_review_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_dash_pair_review_dev.py tests/test_s49_p1_paper_motor_dev.py tests/test_s49_paper_forward_dash_dev.py tests/test_s49_m0_dash_extra_owner_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_p1_gait_dev.py tests/test_self_action_evidence.py
+          node --check adapters/mineflayer/bridge.mjs
+          node --check adapters/mineflayer/s49_speed_attribute_bridge_dev.mjs
+          node --test adapters/mineflayer/s49_speed_attribute_bridge_dev.test.mjs
+      - name: Compile one-shot Paper DASH model preload plugin
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/s49_paper_dash_dev/pom.xml -DskipTests package
+          test -f adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-dash-dev-0.1.0-dev.jar
+      - name: Install original Mineflayer unchanged
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: Fetch official stable Paper 1.21.8 build 60 and verify published SHA256
+        id: paper
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, urllib.parse, urllib.request
+          version = "1.21.8"
+          api = f"https://fill.papermc.io/v3/projects/paper/versions/{version}/builds"
+          ua = "RelaySelf-S49-P1-WORLD-FIRST-DEV/0.1 (https://github.com/rinsakamo/relay-self)"
+          req = urllib.request.Request(api, headers={"User-Agent": ua})
+          with urllib.request.urlopen(req, timeout=50) as rsp:
+              builds = json.loads(rsp.read(3_000_000))
+          stable = [b for b in builds if b.get("channel") == "STABLE" and b.get("id") == 60]
+          if len(stable) != 1:
+              raise RuntimeError("Pinned Paper 1.21.8 stable build 60 unavailable")
+          artifact = stable[0]["downloads"]["server:default"]
+          expected = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          if (artifact["checksums"]["sha256"] != expected
+                  or artifact["size"] != 52811717):
+              raise RuntimeError("Pinned original Paper build metadata mismatch")
+          url = artifact["url"]
+          parsed = urllib.parse.urlparse(url)
+          if (parsed.scheme != "https" or parsed.hostname != "fill-data.papermc.io"
+                  or not parsed.path.startswith("/v1/objects/")):
+              raise RuntimeError("Untrusted Paper binary URL")
+          target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "paper-1.21.8-dev.jar"
+          hash_ = hashlib.sha256()
+          total = 0
+          with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": ua}), timeout=120) as src, target.open("xb") as dst:
+              while chunk := src.read(1048576):
+                  total += len(chunk)
+                  if total > 52811717: raise RuntimeError("Paper size exceeded")
+                  dst.write(chunk)
+                  hash_.update(chunk)
+          if total != 52811717 or hash_.hexdigest() != expected:
+              raise RuntimeError("Paper downloaded bytes mismatch")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"jar={target}\nsha256={expected}\n")
+          print("PAPER_DEV_PINNED", total, expected)
+          PY
+      - name: Four fresh Worlds - fixed input versus prior S16 observed feedback
+        env:
+          PAPER_JAR: ${{ steps.paper.outputs.jar }}
+          PAPER_SHA: ${{ steps.paper.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$DEV_OUTPUT"
+          DASH="$PWD/adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-dash-dev-0.1.0-dev.jar"
+          DASH_SHA="$(sha256sum "$DASH" | cut -d' ' -f1)"
+          for ARM in FIXED_CARRY FEEDBACK_CARRY FEEDBACK_WAIT_ASSUMED FIXED_WAIT_ASSUMED; do
+            CASE="${ARM#*_}"
+            MODE="${ARM%%_*}"
+            echo "Original single-S49-owner DEV $ARM; second step target 1m if feedback"
+            if [[ "$MODE" == "FEEDBACK" ]]; then
+              EXTRA=(--l0-observed-next-step-m-dev 1.0)
+            else
+              EXTRA=()
+            fi
+            python -m adapters.mineflayer.s49_paper_forward_dash_dev \
+              --output-dir "$DEV_OUTPUT/$ARM" \
+              --paper-jar "$PAPER_JAR" --paper-sha256 "$PAPER_SHA" \
+              --dash-jar "$DASH" --dash-sha256 "$DASH_SHA" \
+              --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD \
+              --p1-live-dev --m0-live-dev --m0-move-dev --native-edges-dev \
+              --p1-model-pair-case-dev "$CASE" --speed-attr-boundary-dev \
+              --p1-matched-boost-dev "${EXTRA[@]}"
+          done
+      - name: Independently audit real original S16 feedback and next second outcome
+        run: |
+          set -euo pipefail
+          python -m adapters.mineflayer.s49_l0_observed_step_review_dev --root "$DEV_OUTPUT"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["DEV_OUTPUT"])
+          r = json.loads((root / "s49_l0_observed_step_comparison_dev.json").read_text())
+          assert r["classification"] == "S49_L0_S16_OBSERVED_NEXT_INPUT_FOUR_WORLD_DEV_ONLY"
+          assert r["native_feedback_from_prior_original_S16"] is True
+          assert r["original_L0_and_S14_S15_S16_retained"] is True
+          assert r["new_action_issuers"] == 0 and r["new_packet_readers"] == 0
+          assert r["feedback_causally_better_proven"] is False
+          assert r["observed_tick_count_matched"] is False
+          assert r["qualification_go"] is False and r["science_go"] is False
+          assert len({a["session_id"] for a in r["arms"].values()}) == 4
+          assert len({a["world_uuid"] for a in r["arms"].values()}) == 4
+          for case in ("CARRY","WAIT_ASSUMED"):
+              f = r["arms"]["FEEDBACK_"+case]
+              c = r["arms"]["FIXED_"+case]
+              assert c["second_input_duration_s"] == 0.60
+              assert 0.10 <= f["second_input_duration_s"] <= 0.60
+              assert c["paper_first_positive_boost_ticks"] == 7
+              assert f["paper_first_positive_boost_ticks"] == 7
+          print("S49_L0_REAL_OBSERVED_S16_SECOND_INPUT_DEV_PASS", json.dumps(r, sort_keys=True))
+          PY
+      - name: Preserve both World sources whether PASS or FAIL
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-l0-s16-feedback-four-worlds-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEV_OUTPUT }}/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Unchanged DEV-only epistemic boundary
+        if: always()
+        run: |
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+          echo 'Four fresh model-F Worlds use original S49 with second input calibrated from first real S16 observation.'
+          echo 'Native tick phase is not equated; feedback cannot issue its own Action or post P1 state.'
