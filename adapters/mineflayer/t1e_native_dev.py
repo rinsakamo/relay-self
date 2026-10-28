@@ -56,7 +56,7 @@ TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop", "t2_disconnect_move",
               "t1j_resume_move", "t1k_stop_resume_twice",
               "t1k_fault_before_send", "t1k_fault_set_ack", "t1k_fault_clear_ack",
               "t1l_source_soak", "t1m_source_soak", "t1n_source_soak",
-              "t1p_body_loop")
+              "t1p_body_loop", "t1q_body_loop")
 
 
 def write(path, value):
@@ -162,7 +162,7 @@ def measure(root, report):
 
 
 async def run_case(args, case):
-    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_", "t1l_", "t1m_", "t1n_", "t1p_"))
+    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_", "t1l_", "t1m_", "t1n_", "t1p_", "t1q_"))
     root = args.output / case
     root.mkdir()
     world = root / "server"
@@ -417,7 +417,7 @@ async def run_case(args, case):
                             expected_clear_action_id=self.t1h_active_action_id + "-clear",
                         )
                     fixture = asyncio.create_task(request_owner_stop())
-                elif not case.startswith(("t1i_", "t1j_", "t1k_", "t1p_")) and case != "normal":
+                elif not case.startswith(("t1i_", "t1j_", "t1k_", "t1p_", "t1q_")) and case != "normal":
                     fixture = asyncio.create_task(stage())
 
             async def send_equip_item(self, *a, **kw):
@@ -505,6 +505,10 @@ async def run_case(args, case):
         if case.startswith("t1h_"):
             from adapters.mineflayer.t1h_native_stop_dev import run_stop_move_dev
             await run_stop_move_dev(session, server, report, root)
+            return report
+        if case == "t1q_body_loop":
+            from adapters.mineflayer.t1q_interoception_dev import run_t1q_body_loop_dev
+            await run_t1q_body_loop_dev(session, report, move_limit=args.loop_moves)
             return report
         if case == "t1p_body_loop":
             from adapters.mineflayer.t1p_body_runtime_dev import run_body_loop_dev
@@ -770,7 +774,7 @@ async def run_case(args, case):
                     or report["t1n_emit"]["matched_paper_count"] !=
                        report.get("t1l_source_diagnostic", {}).get("paper_frames")):
                 report["status"] = "FAIL"
-        if case == "t1p_body_loop":
+        if case in ("t1p_body_loop", "t1q_body_loop"):
             # Bounded product DEV acceptance belongs to the original T1e owner,
             # after shutdown has closed and flushed the canonical command log.
             # Do not count a Python-side decision as a physical Action.
@@ -806,6 +810,28 @@ async def run_case(args, case):
                     or detail.get("source_latched") is not False
                     or report.get("t2_final", {}).get("credit_count") != 0):
                 report["status"] = "FAIL"
+        if case == "t1q_body_loop":
+            # The sensor receipt is a read-only cognition record and must have
+            # exactly the original source/epoch lineage, never extra Motor IO.
+            data = report.get("t1q", {})
+            rows = data.get("readings", [])
+            epochs = report.get("t1p", {}).get("epochs", [])
+            if (report.get("status") == "PASS" and
+                    (data.get("decision_count") != args.loop_moves
+                     or len(rows) != len(epochs)
+                     or any(
+                         r.get("native_seq") != e.get("source_seq")
+                         or r.get("world_tick") != e.get("source_world_tick")
+                         or r.get("host_decision") != "MOVE"
+                         or r.get("sensed_decision") != "MOVE"
+                         or r.get("energy_origin") != "interoception"
+                         or r.get("fatigue_origin") != "interoception"
+                         or r.get("physical_permission_from_view") is not False
+                         for r, e in zip(rows, epochs)))):
+                report["status"] = "FAIL"
+                report["t1q_source_audit"] = "Cognition projection missing/misaligned"
+            else:
+                report["t1q_source_audit"] = "SOURCE_BOUND_PRODUCER_LOCAL_DEV"
         if case.startswith("t1k_fault_"):
             from adapters.mineflayer.t1k_fault_audit_dev import audit_fault_dev
             cmds = [json.loads(line) for line in
