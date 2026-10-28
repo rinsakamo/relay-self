@@ -65,6 +65,7 @@ async def qualify(
     experience_source_report_dev:Path|None=None,
     selfworld_memory_snapshot_dev:Path|None=None,
     selfworld_memory_catalog_dev:Path|None=None,
+    detour_left_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -85,6 +86,7 @@ async def qualify(
         "upper_layer_replan_executed":False,
         "goal_turn_dx_dev":goal_turn_dx_dev,
         "obstacle_wall_dev":obstacle_wall_dev,
+        "detour_left_dev":detour_left_dev,
         "detour_after_wall_dev":detour_after_wall_dev,
         "experience_requested_dev":experience_memory_dev is not None,
         "experience_selection_dev":None,
@@ -125,6 +127,13 @@ async def qualify(
                 or not detour_after_wall_dev
                 or experience_memory_dev is not None
                 or os.environ.get("S49_L1_SELFWORLD_MEMORY_DEV_ONLY")!="1"
+            ))
+            or type(detour_left_dev) is not bool
+            or (detour_left_dev and (
+                not detour_after_wall_dev
+                or selfworld_memory_snapshot_dev is not None
+                or experience_memory_dev is not None
+                or os.environ.get("S49_L1_CONFLICT_ROUTE_DEV_ONLY")!="1"
             ))
             or type(detour_after_wall_dev) is not bool
             or (detour_after_wall_dev and (
@@ -549,6 +558,7 @@ async def qualify(
                             blocked_action_id=receipt.terminal.action_id,
                             blocked_s16_seq=receipt.consequence.after_observation.seq,
                             provenance=source("l1-explicit-detour-after-unknown"),
+                            lateral_offset_dev=-2.5 if detour_left_dev else 2.5,
                         )
                     else:
                         # RECALL only after a NEW genuine blocked physical S16.
@@ -709,6 +719,7 @@ def main()->int:
     p.add_argument("--goal-turn-dx-dev",type=float,default=0.0)
     p.add_argument("--obstacle-wall-dev",action="store_true")
     p.add_argument("--detour-after-wall-dev",action="store_true")
+    p.add_argument("--detour-left-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -728,6 +739,7 @@ def main()->int:
         goal_turn_dx_dev=args.goal_turn_dx_dev,
         obstacle_wall_dev=args.obstacle_wall_dev,
         detour_after_wall_dev=args.detour_after_wall_dev,
+        detour_left_dev=args.detour_left_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
