@@ -58,10 +58,12 @@ async def follow_l1_detour_dev(
         "stages":[],"reached_final_goal":False,
         "learned_l1_attested":False,
         "real_l2_replan_attested":False,
-        "obstacle_block_perception_attested":isinstance(plan,L1GridRoutePlanDev),
+        "obstacle_block_perception_attested":False,
         "extra_action_issuer":False,
         "extra_native_reader":False,
     }
+    if isinstance(plan,L1GridRoutePlanDev):
+        result["obstacle_block_perception_attested"]=True
     closed_id=first_blocked_action_id
     native_seq=blocked_after_seq
     for index in range(len(plan.stages)):
