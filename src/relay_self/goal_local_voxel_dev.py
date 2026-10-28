@@ -47,6 +47,8 @@ class NativeVoxelPresentDev:
     origin_x: float
     origin_z: float
     player_y: float
+    player_x: float
+    player_z: float
     coverage: str
     cells: tuple[VoxelColumnDev,...]
     provenance: Provenance
@@ -58,7 +60,7 @@ class NativeVoxelPresentDev:
             or not isinstance(self.request_id,str) or not self.request_id
             or len(self.request_id)>128
             or any(type(v) is not float or not math.isfinite(v)
-                   for v in (self.origin_x,self.origin_z,self.player_y))
+                   for v in (self.origin_x,self.origin_z,self.player_x,self.player_z,self.player_y))
             or self.coverage!="mineflayer_loaded_cache_fixed_7x6x3"
             or not isinstance(self.cells,tuple) or len(self.cells)!=42
             or tuple((cell.dx,cell.dz) for cell in self.cells)!=tuple(
