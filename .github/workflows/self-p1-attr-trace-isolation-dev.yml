@@ -1,0 +1,178 @@
+name: P1 S49 Node Attribute Observer OFF-MEM-FILE Six Worlds DEV
+on:
+  push:
+    branches:
+      - self/dev-p1-attr-trace-isolation-20261028
+    paths:
+      - .github/workflows/self-p1-attr-trace-isolation-dev.yml
+      - adapters/mineflayer/bridge.mjs
+      - adapters/mineflayer/s49_paper_forward_dash_dev.py
+      - adapters/mineflayer/s49_p1_attr_trace_isolation_review_dev.py
+      - tests/test_s49_p1_attr_trace_isolation_review_dev.py
+      - 'adapters/mineflayer/s49_paper_dash_dev/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p1-attr-trace-isolation-six-worlds-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  world-pair-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      S49_REAL_SERVER_CI: '1'
+      S49_FORWARD_MOTOR_DEV_ONLY: '1'
+      S49_SPRINT_MOTOR_DEV_ONLY: '1'
+      S49_P1_LIVE_DASH_DEV_ONLY: '1'
+      S49_M0_DASH_DEBIT_DEV_ONLY: '1'
+      S49_M0_ACTION_STEP_DEV_ONLY: '1'
+      S49_NATIVE_EFFECT_EDGE_DEV_ONLY: '1'
+      S49_P1_DASH_PAIR_DEV_ONLY: '1'
+      S49_SPEED_ATTR_BOUNDARY_DEV_ONLY: '1'
+      S49_SPEED_ATTR_SYNC_DEV_ONLY: '1'
+      S49_P1_MATCHED_BOOST_DEV_ONLY: '1'
+      # Attr projection stays ON; only the explicit per-World OFF opt-in masks the trace.
+      DEV_OUTPUT: '/tmp/p1-attr-trace-isolation-${{ github.run_id }}-${{ github.run_attempt }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Focused Python 3.12, Ruff and bridge syntax BEFORE any World
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          python -m compileall -q adapters/mineflayer/s49_p1_attr_trace_isolation_review_dev.py tests/test_s49_p1_attr_trace_isolation_review_dev.py adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_speed_attr_boundary_dev.py adapters/mineflayer/s49_p1_synced_motor_pair_dev.py adapters/mineflayer/s49_p1_matched_boost_review_dev.py adapters/mineflayer/s49_p1_native_hold_pair_dev.py tests/test_s49_p1_native_hold_pair_dev.py adapters/mineflayer/s49_p1_attr_trace_ab_review_dev.py tests/test_s49_p1_attr_trace_ab_review_dev.py adapters/mineflayer/s49_p1_attr_trace_ab_review_dev.py tests/test_s49_p1_attr_trace_ab_review_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_p1_matched_boost_review_dev.py
+          ruff check adapters/mineflayer/s49_p1_attr_trace_isolation_review_dev.py tests/test_s49_p1_attr_trace_isolation_review_dev.py adapters/mineflayer/s49_paper_forward_dash_dev.py adapters/mineflayer/s49_speed_attr_boundary_dev.py adapters/mineflayer/s49_p1_synced_motor_pair_dev.py adapters/mineflayer/s49_p1_matched_boost_review_dev.py adapters/mineflayer/s49_p1_native_hold_pair_dev.py tests/test_s49_p1_native_hold_pair_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_p1_matched_boost_review_dev.py
+          python -m pytest -q tests/test_s49_p1_attr_trace_isolation_review_dev.py tests/test_s49_p1_attr_trace_ab_review_dev.py tests/test_s49_p1_native_hold_pair_dev.py tests/test_s49_p1_matched_boost_review_dev.py tests/test_s49_p1_synced_motor_pair_dev.py tests/test_s49_speed_attr_boundary_dev.py tests/test_s49_p1_dash_pair_review_dev.py tests/test_s49_p1_paper_motor_dev.py tests/test_s49_paper_forward_dash_dev.py tests/test_s49_m0_dash_extra_owner_dev.py tests/test_s49_native_ack_paper_edges_dev.py tests/test_p1_gait_dev.py tests/test_self_action_evidence.py
+          node --check adapters/mineflayer/bridge.mjs
+          node --check adapters/mineflayer/s49_speed_attribute_bridge_dev.mjs
+          node --test adapters/mineflayer/s49_speed_attribute_bridge_dev.test.mjs
+      - name: Compile one-shot Paper DASH model preload plugin
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/s49_paper_dash_dev/pom.xml -DskipTests package
+          test -f adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-dash-dev-0.1.0-dev.jar
+      - name: Install original Mineflayer unchanged
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: Fetch official stable Paper 1.21.8 build 60 and verify published SHA256
+        id: paper
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, urllib.parse, urllib.request
+          version = "1.21.8"
+          api = f"https://fill.papermc.io/v3/projects/paper/versions/{version}/builds"
+          ua = "RelaySelf-S49-P1-WORLD-FIRST-DEV/0.1 (https://github.com/rinsakamo/relay-self)"
+          req = urllib.request.Request(api, headers={"User-Agent": ua})
+          with urllib.request.urlopen(req, timeout=50) as rsp:
+              builds = json.loads(rsp.read(3_000_000))
+          stable = [b for b in builds if b.get("channel") == "STABLE" and b.get("id") == 60]
+          if len(stable) != 1:
+              raise RuntimeError("Pinned Paper 1.21.8 stable build 60 unavailable")
+          artifact = stable[0]["downloads"]["server:default"]
+          expected = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          if (artifact["checksums"]["sha256"] != expected
+                  or artifact["size"] != 52811717):
+              raise RuntimeError("Pinned original Paper build metadata mismatch")
+          url = artifact["url"]
+          parsed = urllib.parse.urlparse(url)
+          if (parsed.scheme != "https" or parsed.hostname != "fill-data.papermc.io"
+                  or not parsed.path.startswith("/v1/objects/")):
+              raise RuntimeError("Untrusted Paper binary URL")
+          target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "paper-1.21.8-dev.jar"
+          hash_ = hashlib.sha256()
+          total = 0
+          with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": ua}), timeout=120) as src, target.open("xb") as dst:
+              while chunk := src.read(1048576):
+                  total += len(chunk)
+                  if total > 52811717: raise RuntimeError("Paper size exceeded")
+                  dst.write(chunk)
+                  hash_.update(chunk)
+          if total != 52811717 or hash_.hexdigest() != expected:
+              raise RuntimeError("Paper downloaded bytes mismatch")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"jar={target}\nsha256={expected}\n")
+          print("PAPER_DEV_PINNED", total, expected)
+          PY
+      - name: Six new original S49 Worlds with only observer OFF MEM FILE varied
+        env:
+          PAPER_JAR: ${{ steps.paper.outputs.jar }}
+          PAPER_SHA: ${{ steps.paper.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$DEV_OUTPUT"
+          DASH="$PWD/adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-dash-dev-0.1.0-dev.jar"
+          DASH_SHA="$(sha256sum "$DASH" | cut -d' ' -f1)"
+          # Mirror order: FILE -> MEM -> OFF for CARRY and OFF -> MEM -> FILE
+          # for WAIT_ASSUMED. Different Worlds, not randomized causal matching.
+          for ARM in FILE_CARRY MEM_CARRY OFF_CARRY OFF_WAIT_ASSUMED MEM_WAIT_ASSUMED FILE_WAIT_ASSUMED; do
+            CASE="${ARM#*_}"
+            MODE="${ARM%%_*}"
+            echo "Original S49 DEV World $ARM: projection ON; observer $MODE"
+            S49_P1_TRACE_ISOLATE_DEV_ONLY="$MODE" python -m adapters.mineflayer.s49_paper_forward_dash_dev \
+              --output-dir "$DEV_OUTPUT/$ARM" \
+              --paper-jar "$PAPER_JAR" --paper-sha256 "$PAPER_SHA" \
+              --dash-jar "$DASH" --dash-sha256 "$DASH_SHA" \
+              --confirm S49-P1-DEV-DISPOSABLE-PAPER-WORLD \
+              --p1-live-dev --m0-live-dev --m0-move-dev --native-edges-dev \
+              --p1-model-pair-case-dev "$CASE" --speed-attr-boundary-dev --p1-matched-boost-dev
+          done
+      - name: Independently review original S49 six-World physical outcome and trace mode
+        run: |
+          set -euo pipefail
+          python -m adapters.mineflayer.s49_p1_attr_trace_isolation_review_dev --root "$DEV_OUTPUT"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["DEV_OUTPUT"])
+          r = json.loads((root / "p1_node_attr_trace_isolation_dev.json").read_text())
+          assert r["classification"] == "P1_NODE_ATTRIBUTE_OBSERVER_OFF_MEMORY_FILE_SIX_WORLD_DEV_ONLY"
+          assert r["projection_enabled_all_arms"] is True
+          assert r["paper_seven_positive_modifier_ticks_all_arms"] is True
+          assert r["MEM_and_FILE_same_sampling_code_path"] is True
+          assert r["MEM_sync_trace_write_on_CLEAR"] is False
+          assert r["FILE_sync_trace_write_on_CLEAR"] is True
+          assert r["file_write_causally_changes_movement_proven"] is False
+          assert r["sampling_causally_changes_movement_proven"] is False
+          assert r["native_packet_readers_added"] == 0
+          assert r["native_action_issuers_added"] == 0
+          assert r["qualification_go"] is False and r["science_go"] is False
+          assert len({a["session_id"] for a in r["arms"].values()}) == 6
+          assert len({a["world_uuid"] for a in r["arms"].values()}) == 6
+          for mode in ("OFF","MEM"):
+              for case in ("CARRY","WAIT_ASSUMED"):
+                  a = r["arms"][f"{mode}_{case}"]
+                  assert a["node_observed_physics_ticks"] is None
+                  assert a["trace_file_exists"] is False
+          print("P1_NODE_TRACE_SIX_WORLD_REVIEW_PASS", json.dumps(r, sort_keys=True))
+          PY
+      - name: Preserve both World sources whether PASS or FAIL
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: p1-attr-isolation-six-worlds-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEV_OUTPUT }}/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Unchanged DEV-only epistemic boundary
+        if: always()
+        run: |
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+          echo 'Six fresh model-F Worlds use original S49, same Paper seven-tick speed cap and active speed projection.'
+          echo 'OFF and MEM Node files absent; MEM samples only in memory; no phase or P1 recovery inference.'
