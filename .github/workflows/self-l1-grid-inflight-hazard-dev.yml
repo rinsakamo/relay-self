@@ -1,0 +1,79 @@
+name: S49 L1 Grid Refresh with L0 Inflight Threat DEV
+on:
+  push:
+    branches:
+      - self/dev-l1-grid-refresh-inflight-l0-20261028
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s49-l1-grid-l0-preempt-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  focused-and-one-world:
+    runs-on: ubuntu-latest
+    timeout-minutes: 29
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      S49_REAL_SERVER_CI: '1'
+      S49_FORWARD_MOTOR_DEV_ONLY: '1'
+      S49_L0_GOAL_LOOP_DEV_ONLY: '1'
+      S49_L0_TURN_DEV_ONLY: '1'
+      S49_L0_WALL_DEV_ONLY: '1'
+      S49_L1_WAYPOINT_DEV_ONLY: '1'
+      S49_L1_VOXEL_DEV_ONLY: '1'
+      S49_L1_GRID_SEARCH_DEV_ONLY: '1'
+      S49_L1_GRID_REFRESH_DEV_ONLY: '1'
+      S49_L0_INFLIGHT_PREEMPT_DEV_ONLY: '1'
+      DEV_OUTPUT: '/tmp/s49-grid-l0-hazard-${{ github.run_id }}-${{ github.run_attempt }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Focused Python3.12 Ruff and test
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          python -m compileall -q src/relay_self/goal_grid_search_dev.py src/relay_self/goal_grid_refresh_dev.py adapters/mineflayer/s49_goal_executor_dev.py adapters/mineflayer/s49_goal_waypoint_route_dev.py adapters/mineflayer/s49_goal_loop_real_dev.py adapters/mineflayer/s49_l1_grid_inflight_review_dev.py
+          ruff check src/relay_self/goal_grid_search_dev.py src/relay_self/goal_grid_refresh_dev.py adapters/mineflayer/s49_goal_executor_dev.py adapters/mineflayer/s49_goal_waypoint_route_dev.py adapters/mineflayer/s49_goal_loop_real_dev.py adapters/mineflayer/s49_l1_grid_inflight_review_dev.py
+          python -m pytest -q tests/test_s49_l1_grid_refresh_dev.py tests/test_s49_l1_grid_search_dev.py tests/test_s49_l1_local_voxel_dev.py tests/test_s49_goal_navigation_dev.py
+          node --check adapters/mineflayer/bridge.mjs
+      - name: Install original Mineflayer 4.39.0
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: Original S49 in-flight hazard during revised L1 physical route
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$DEV_OUTPUT"
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/HAZARD" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --offset-m 4.0 --obstacle-wall-dev --detour-after-wall-dev \
+            --native-voxel-map-dev --local-grid-search-dev --left-lane-block-dev \
+            --grid-refresh-dev --grid-inflight-hazard-dev
+          python -m adapters.mineflayer.s49_l1_grid_inflight_review_dev \
+            --root "$DEV_OUTPUT"
+      - name: Preserve unmodified native evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-grid-l0-inflight-hazard-world-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEV_OUTPUT }}
+          retention-days: 7
+      - name: DEV-only no qualification promotion
+        if: always()
+        run: echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
