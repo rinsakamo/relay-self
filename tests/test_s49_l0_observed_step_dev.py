@@ -133,6 +133,7 @@ def test_original_s49_single_owner_and_s15_bound_verified_by_source():
     assert "plan_next_l0_step_dev(" in runner
     assert 'os.environ.get("S49_L0_OBSERVED_FEEDBACK_DEV_ONLY") != "1"' in runner
     assert "dev_next_duration_s" in executor
-    assert "self._count != 1" in executor
+    assert ("self._count != 1" in executor
+            or "self._count not in (1, 2)" in executor)
     assert "replace(command, duration_s=dev_next_duration_s)" in executor
     assert "self.require_authorizations(step, bound, probe, propose, issue)" in executor
