@@ -375,6 +375,15 @@ async def qualify(
             if t2_owner.previous is None or t2_owner.fatigue is None:
                 raise RuntimeError("no source-admitted T2 Paper WorldTick")
             executor.bind_t2_owner_dev(t2_owner)
+            # The first L1 probe may precede T2's first Paper snapshot.
+            # Retake an original native probe AFTER anchor admission, rather
+            # than weakening the existing source-order Action guard.
+            initial=await _correlated_observe(
+                session,f"goal-{sid}-post-paper-anchor-{t2_owner.previous.seq}",
+            )
+            if initial.seq<=t2_owner.previous.seq:
+                raise RuntimeError("first L1 probe not newer than T2 Paper anchor")
+            report["l1_t2_reanchored_probe_seq_dev"]=initial.seq
             report["l1_t2_anchor_dev"]={
                 "session_id":sid,
                 "source_seq":t2_owner.previous.seq,
