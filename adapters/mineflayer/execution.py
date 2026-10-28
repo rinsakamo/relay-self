@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import math
+import os
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import Enum
@@ -284,6 +285,7 @@ async def execute_mineflayer_command(
     on_effect_ack_dev: (
         Callable[[str, MineflayerEffectResult], Awaitable[None]] | None
     ) = None,
+    on_live_probe_dev: Callable[[MineflayerObservation], bool] | None = None,
 ) -> WorldConsequence:
     """Execute one bounded, explicitly bound movement command with observation.
 
@@ -300,6 +302,16 @@ async def execute_mineflayer_command(
     _require_provenance("execution provenance", provenance)
     if on_effect_ack_dev is not None and not callable(on_effect_ack_dev):
         raise InvalidMineflayerExecutionData("DEV effect ACK observer must be callable")
+    if on_live_probe_dev is not None and (
+        not callable(on_live_probe_dev)
+        or os.environ.get("S49_L0_GOAL_LOOP_DEV_ONLY") != "1"
+        or os.environ.get("S49_L0_INFLIGHT_PREEMPT_DEV_ONLY") != "1"
+        or command.action_ref != MOVE_FORWARD_ACTION_REF
+        or not 0.1 <= command.duration_s <= 1.0
+    ):
+        raise InvalidMineflayerExecutionData(
+            "DEV in-flight probe requires bounded original forward Action"
+        )
     started = _require_adapter(adapter)
     session_id = started.session_id
 
@@ -310,6 +322,8 @@ async def execute_mineflayer_command(
     cleanup_attempted = False
     movement_command_attempted = False
     movement_distance: float | None = None
+    preempted_dev = False
+    last_live_probe_seq = -1
 
     try:
         await adapter.send_observe()
@@ -351,7 +365,39 @@ async def execute_mineflayer_command(
             # not prove the client's effect happened in that Paper tick.
             await on_effect_ack_dev("APPLIED", dispatch)
 
-        await asyncio.sleep(command.duration_s)
+        if on_live_probe_dev is None:
+            await asyncio.sleep(command.duration_s)
+        else:
+            # Same S15 reader. No concurrent session.receive() task, no
+            # second packet consumer, no synthetic sensor assertion.
+            loop = asyncio.get_running_loop()
+            deadline = loop.time() + command.duration_s
+            while loop.time() < deadline:
+                await asyncio.sleep(min(0.06, max(0.0, deadline - loop.time())))
+                if loop.time() >= deadline:
+                    break
+                await adapter.send_observe()
+                live_probe = await _receive_until(
+                    adapter, timeout_s=timeout_s,
+                    predicate=lambda message: (
+                        isinstance(message, MineflayerObservation)
+                        and message.kind == "probe"
+                    ),
+                )
+                if (
+                    live_probe.session_id != session_id
+                    or live_probe.provenance.source != "mineflayer"
+                    or live_probe.seq <= last_live_probe_seq
+                    or (before is not None and live_probe.seq <= before.seq)
+                    or live_probe.snapshot.nearby_entities_coverage.truncated
+                ):
+                    raise MineflayerExecutionError(
+                        "stale or incomplete DEV in-flight native observation"
+                    )
+                last_live_probe_seq = live_probe.seq
+                if on_live_probe_dev(live_probe) is True:
+                    preempted_dev = True
+                    break
 
         cleanup_attempted = True
         await adapter.send_clear_controls(command.cleanup_action_id)
@@ -389,7 +435,8 @@ async def execute_mineflayer_command(
         )
 
         status = (
-            WorldConsequenceStatus.EXECUTED
+            WorldConsequenceStatus.FAILED if preempted_dev
+            else WorldConsequenceStatus.EXECUTED
             if movement_distance >= MOVE_BACKWARD_MINIMUM_DISTANCE
             else WorldConsequenceStatus.UNDETERMINED
         )
@@ -405,7 +452,8 @@ async def execute_mineflayer_command(
             after_observation=after,
             movement_distance=movement_distance,
             cleanup_attempted=True,
-            error=None,
+            error=("DEV_L0_INFLIGHT_NATIVE_THREAT_PREEMPTED"
+                   if preempted_dev else None),
             provenance=provenance,
         )
     except Exception as exc:
