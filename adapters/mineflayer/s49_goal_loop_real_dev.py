@@ -20,6 +20,7 @@ from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalA
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
     MineflayerObservation,
+    MineflayerPaperSnapshot,
     MineflayerRouteBlocksDev,
 )
 from adapters.mineflayer.s31a_real_server_ci import (
@@ -32,6 +33,7 @@ from adapters.mineflayer.s31a_real_server_ci import (
 from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
 from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
 from adapters.mineflayer.s49_goal_waypoint_route_dev import follow_l1_detour_dev
+from adapters.mineflayer.t2_tick_accounting import TickAccounting
 from adapters.mineflayer.s49_l1_experience_export_dev import load_episode_dev
 from adapters.mineflayer.s49_l1_selfworld_memory_dev import recall_from_selfworld_dev
 from adapters.mineflayer.s49_normal_session_real_ci import (
@@ -163,6 +165,7 @@ async def qualify(
         "local_grid_search_dev":local_grid_search_dev,
         "grid_refresh_dev":grid_refresh_dev,
         "grid_midroute_obstacle_dev":grid_midroute_obstacle_dev,
+        "l1_t2_shared_channel_dev":os.environ.get("S49_L1_T2_CHANNEL_DEV_ONLY")=="1",
         "native_grid_refresh_observations_dev":[],
         "native_grid_search_choice_dev":None,
         "native_local_voxel_observation_dev":None,
@@ -175,6 +178,7 @@ async def qualify(
         "native_goal_looks":[],
     }
     server=collector=session=temp=None
+    t2_owner=None
     cleanup_cancel=[]
     rc=2
     try:
@@ -295,8 +299,45 @@ async def qualify(
             at_ns=1,provenance=source("intent-goal-navigate"),
         )
         executor=S49GoalExecutorDev(sid,intent)
+        if os.environ.get("S49_L1_T2_CHANNEL_DEV_ONLY")=="1":
+            if not (
+                os.environ.get("RELAYSELF_T1F_DEV")=="1"
+                and os.environ.get("RELAYSELF_PAPER_TICK_DEV")=="1"
+                and os.environ.get("S49_L1_T2_BOUNDARY_DEV_ONLY")=="1"
+            ):
+                raise RuntimeError("same-World L1/T2 DEV requires explicit T1f/T2/S49 gates")
+            t2_owner=TickAccounting(sid)
+            session.bind_l1_t2_owner_dev(t2_owner)
         # Single native probe anchors a DEV L2 target at a fixed World XZ.
         initial=await _correlated_observe(session,f"goal-{sid}-initial")
+        if t2_owner is not None:
+            # Read through the SAME existing session. No background consumer,
+            # fabricated initial Paper tick or second native receiver.
+            for _ in range(48):
+                if t2_owner.previous is not None:
+                    break
+                frame=await asyncio.wait_for(session.receive(),timeout=3.0)
+                if type(frame).__name__ in (
+                    "MineflayerAdapterErrorMessage","MineflayerConnectionEnd",
+                    "MineflayerCommandError","MineflayerShutdownAck",
+                ):
+                    raise RuntimeError("T2 anchor source ended before first admitted Paper tick")
+                if isinstance(frame,MineflayerPaperSnapshot) and (
+                    frame.data["status"]!="ADMITTED" or t2_owner.failed
+                ):
+                    raise RuntimeError("unadmitted initial T2 Paper source")
+            if t2_owner.previous is None or t2_owner.fatigue is None:
+                raise RuntimeError("no source-admitted T2 Paper WorldTick")
+            executor.bind_t2_owner_dev(t2_owner)
+            report["l1_t2_anchor_dev"]={
+                "session_id":sid,
+                "source_seq":t2_owner.previous.seq,
+                "world_tick":t2_owner.previous.data["snapshot"]["world_tick"],
+                "status":t2_owner.previous.data["status"],
+                "single_original_reader":True,
+                "p1_native_gait_attested":False,
+                "qualification":False,
+            }
         start=initial.snapshot.position
         proposal=L2GoalProposal(
             goal_id="approach-demo",intent_id="goal-navigate",session_id=sid,
@@ -1058,6 +1099,28 @@ async def qualify(
         report["status"]="FAIL"
         report["exception"]=f"{type(exc).__name__}: {exc}"
     finally:
+        if t2_owner is not None:
+            report["l1_t2_ledger_dev"]={
+                "session_id":t2_owner.session_id,
+                "source_admitted":t2_owner.previous is not None,
+                "owner_failed":t2_owner.failed,
+                "rows":len(t2_owner.rows),
+                "source_seq_last":(
+                    t2_owner.previous.seq if t2_owner.previous is not None else None
+                ),
+                "last_paper_world_tick":(
+                    t2_owner.previous.data["snapshot"]["world_tick"]
+                    if t2_owner.previous is not None else None
+                ),
+                "original_action_boundary_receipts":(
+                    len(executor._t2_boundary_dev.receipts)
+                    if session is not None and "executor" in locals()
+                    and executor._t2_boundary_dev is not None else 0
+                ),
+                "continuous_gait_attested":False,
+                "qualified_wait_attested":False,
+                "one_native_reader":True,
+            }
         report["pre_cleanup_status"]=report["status"]
         await _cleanup_session(
             report,server,collector,session,None,temp,None,None,cleanup_cancel,
