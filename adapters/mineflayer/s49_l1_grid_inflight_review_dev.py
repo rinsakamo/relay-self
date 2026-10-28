@@ -60,8 +60,13 @@ def audit_grid_inflight_dev(root: Path) -> dict:
         or incident.get("native_threat", {}).get("provenance_source")
            != "mineflayer"
         or incident.get("applied_ack", {}).get("result") != "applied"
+        or incident["applied_ack"].get("action_id") != incident["action_id"]
         or incident.get("clear_ack", {}).get("result") != "applied"
+        or incident["clear_ack"].get("action_id") != (
+            f"{incident['action_id']}-s15-clear"
+        )
         or incident["clear_ack"]["seq"] <= incident["native_threat"]["probe_seq"]
+        or incident["after_s16_seq"] <= incident["clear_ack"]["seq"]
         or incident.get("live_probe_count", 0) < 1
         or report.get("grid_inflight_hazard_stimulus_dev", {})
             .get("after_actual_applied_action_id") != incident["action_id"]
