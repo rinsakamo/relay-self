@@ -125,6 +125,7 @@ def test_g2_sneak_cannot_masquerade_as_normal_control():
 
 def test_g2_sneak_wire_command_is_exact_pair():
     import json
+
     from adapters.mineflayer.python_protocol import encode_forward_sneak_dev
     value=json.loads(encode_forward_sneak_dev("g2-sneak"))
     assert value == {
