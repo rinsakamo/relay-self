@@ -10,9 +10,10 @@ import math
 import os
 from dataclasses import asdict, replace
 
+from adapters.mineflayer.t1v_physical_idle_dev import physical_idle_witness_dev
+
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.python_protocol import MineflayerPaperSnapshot
-from adapters.mineflayer.t1v_physical_idle_dev import physical_idle_witness_dev
 from experiments.fatigue_p1 import FatigueFrame, FatigueProfile, advance, initial_state
 from experiments.metabolism_viability import MetabolismConfig
 from experiments.p1_gait_dev import GaitTickDev, advance_gait_dev
