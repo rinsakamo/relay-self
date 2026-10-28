@@ -98,6 +98,7 @@ jobs:
           anchor=report["l1_t2_anchor_dev"]
           ledger=report["l1_t2_ledger_dev"]
           assert anchor["status"]=="ADMITTED"
+          assert report["l1_t2_reanchored_probe_seq_dev"] > anchor["source_seq"]
           assert ledger["owner_failed"] is False
           assert ledger["rows"]>=1
           assert ledger["original_action_boundary_receipts"]>=2
