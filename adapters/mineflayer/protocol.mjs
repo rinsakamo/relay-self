@@ -11,6 +11,7 @@ const CONTROLS = new Set([
 const EFFECTS = new Set([
   'set_control',
   'set_forward_sprint_dev',
+  'set_forward_sneak_dev',
   'clear_controls',
   'equip_item',
   'consume_held',
@@ -154,6 +155,21 @@ export function parseCommand (raw) {
       return Object.freeze({
         type: 'effect', action_id: value.action_id, effect: value.effect,
         forward: true, sprint: true
+      })
+    }
+
+    if (value.effect === 'set_forward_sneak_dev') {
+      if (process.env.S49_GOAL_G2_SNEAK_DEV_ONLY !== '1') {
+        throw new Error('G2 forward sneak requires explicit DEV opt-in')
+      }
+      requireExactKeys('set_forward_sneak_dev command', value,
+        ['type', 'action_id', 'effect', 'forward', 'sneak'])
+      if (value.forward !== true || value.sneak !== true) {
+        throw new Error('sneak DEV requires forward=true and sneak=true')
+      }
+      return Object.freeze({
+        type: 'effect', action_id: value.action_id, effect: value.effect,
+        forward: true, sneak: true
       })
     }
 
