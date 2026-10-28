@@ -10,6 +10,7 @@ on:
       - adapters/mineflayer/s49_l0_observed_step_dev.py
       - adapters/mineflayer/s49_l0_residual_three_real_dev.py
       - tests/test_s49_l0_residual_third_dev.py
+      - tests/test_s49_l0_observed_step_dev.py
 
 permissions:
   contents: read
