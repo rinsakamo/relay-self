@@ -47,6 +47,14 @@ new energy source, Paper-side Motor writer, retry of ambiguous effects, or
 retroactive debits for missing ticks. Unexpected source failure latches the
 session and the run reports FAIL (even when physical resources reap cleanly).
 
+`decide_l0` combines the admitted Paper safety decision with a **host-side
+capability guard** over exact virtual M0 Energy and P1 fatigue. These exact
+ledger values are evaluator/safety state, not SelfBody interoceptive observations;
+this case does not establish a fallible SelfBody perception of energy/fatigue.
+They must not be exported as perceived body truth in a future cognition loop.
+The per-tick M0 cognition debit is the inherited symbolic L0 work allowance,
+not a measured count of policy calls, CPU energy, or Minecraft exhaustion.
+
 ## Tests (to run on the machine that has the repository/runtime)
 
 ```sh

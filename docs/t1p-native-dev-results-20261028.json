@@ -1,0 +1,245 @@
+{
+  "classification": [
+    "DEV_ONLY",
+    "DEV_WORLD_OBSERVED",
+    "QUALIFICATION_NO_GO",
+    "SCIENCE_NOT_RUN"
+  ],
+  "branch": "self/dev-t1p-l0-body-loop-20261028",
+  "start_head": "c214d629cad958063dd7cda05a80173222ff0b95",
+  "runtime_head": "c214d629cad958063dd7cda05a80173222ff0b95",
+  "t1o_baseline": "ef1cd01a36e8ca9e9621e470ce64e3cde9db60b8",
+  "runtime_code_changes": false,
+  "tests": {
+    "focused_initial_pass": 78,
+    "focused_initial_fail": 1,
+    "focused_final_pass": 79,
+    "FAST_pass": 692,
+    "FAST_files": 43,
+    "ruff": "PASS",
+    "syntax_files": 480,
+    "syntax": "PASS",
+    "contracts": "PASS",
+    "node_tests": "NOT_RUN_BRIDGE_UNCHANGED",
+    "java_build": "NOT_RUN_SOURCE_UNCHANGED",
+    "FULL": "NOT_RUN"
+  },
+  "environment": {
+    "python": "Python 3.12.3",
+    "node": "v22.22.2",
+    "java": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)",
+    "mineflayer": "4.39.0"
+  },
+  "physical_runtime": "/home/rinsa/work/t1e-integration-evidence-20261026/node-runtime",
+  "asset_hashes": {
+    "/home/rinsa/work/t1h-integration-evidence-20261026/run-006/t1h_input_residual/server/paper.jar": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "/home/rinsa/work/t1m-evidence-20261027/generated-build-and-cache/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar": "7b24265e2a8087b12ff11351ef91d5db21250bce7fd1a220cfcd2e573cf69d81"
+  },
+  "evidence_root": "/home/rinsa/work/t1p-evidence-20261028",
+  "originals": {
+    "verified_files": 206,
+    "all_match": true,
+    "manifest_sha256": "cf971472f23a7676cd750f17ccc333b073f758bfce6a5a4b40e411a966c4c40e"
+  },
+  "world_attempts": 1,
+  "world_pass": 1,
+  "world_fail": 0,
+  "audit": {
+    "run_id": "T1P-001",
+    "status": "PASS",
+    "session": "846852fd-2908-439b-85db-5e618562b07b",
+    "checks": {
+      "report_pass": true,
+      "all_source_admitted": true,
+      "source_continuous": true,
+      "age_budget": true,
+      "consecutive_accounting": true,
+      "admitted_rows": true,
+      "cost_equations": true,
+      "energy_conserved": true,
+      "p1_conserved": true,
+      "wait_causal": true,
+      "no_unqualified_recovery": true,
+      "original_effects": true,
+      "trace_off": true,
+      "no_food_llm_tps": true,
+      "cleanup": true,
+      "independent_port_rebind": true,
+      "terminal_transport": true,
+      "world_saved": true,
+      "runner_hash_readback": true,
+      "epoch_0": true,
+      "epoch_1": true,
+      "next_epoch_after_wait": true
+    },
+    "epochs": [
+      {
+        "epoch": 0,
+        "source_seq": 27,
+        "source_tick": 1032,
+        "action_id": "t1p-epoch-0",
+        "action_status": "executed",
+        "terminal": "outcome",
+        "outcome_distance": 0.6269065734210613,
+        "paper_settled_displacement": 0.8571697198364467,
+        "paper_motion_blocks": 0.8249361767371388,
+        "dispatch_seq": 29,
+        "clear_ack_seq": 38,
+        "settled_seq": 60,
+        "settled_tick": 1050,
+        "post_wait_tick": 1062,
+        "wait_dev_ticks": 20,
+        "p1_accumulated": 0.032997447069485555,
+        "p1_recovered": 0.032997447069485555,
+        "p1_peak": 0.032997447069485555,
+        "p1_final": 0.0
+      },
+      {
+        "epoch": 1,
+        "source_seq": 73,
+        "source_tick": 1062,
+        "action_id": "t1p-epoch-1",
+        "action_status": "executed",
+        "terminal": "outcome",
+        "outcome_distance": 0.6269065734210615,
+        "paper_settled_displacement": 0.857169719836447,
+        "paper_motion_blocks": 0.857169719836447,
+        "dispatch_seq": 75,
+        "clear_ack_seq": 84,
+        "settled_seq": 106,
+        "settled_tick": 1080,
+        "post_wait_tick": 1092,
+        "wait_dev_ticks": 20,
+        "p1_accumulated": 0.03428678879345788,
+        "p1_recovered": 0.03428678879345788,
+        "p1_peak": 0.03428678879345788,
+        "p1_final": 0.0
+      }
+    ],
+    "source": {
+      "paper_frames": 80,
+      "statuses": {
+        "ADMITTED": 80
+      },
+      "violations": [],
+      "distributions_ms": {
+        "causal_upper_ms": {
+          "n": 80,
+          "min": 4.943397,
+          "median": 49.899403,
+          "p95": 54.589142,
+          "p99": 88.687888,
+          "max": 88.687888
+        },
+        "challenge_to_receive_ms": {
+          "n": 80,
+          "min": 4.848928,
+          "median": 49.834531,
+          "p95": 54.523858,
+          "p99": 88.582816,
+          "max": 88.582816
+        },
+        "receive_to_complete_ms": {
+          "n": 80,
+          "min": 0.041308,
+          "median": 0.0614295,
+          "p95": 0.114172,
+          "p99": 0.688382,
+          "max": 0.688382
+        },
+        "node_queue_ms": {
+          "n": 80,
+          "min": 0.029606,
+          "median": 0.042487,
+          "p95": 0.09224,
+          "p99": 0.447234,
+          "max": 0.447234
+        },
+        "node_evaluation_ms": {
+          "n": 80,
+          "min": 0.010646,
+          "median": 0.0161065,
+          "p95": 0.036961,
+          "p99": 0.241148,
+          "max": 0.241148
+        }
+      },
+      "world": "ca23688f-3360-4d1b-a1ad-5ab207efb31c",
+      "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "boot": "2eb4c3e3-5059-469f-a25d-eb2b95e24f37",
+      "accounted_ticks": 60,
+      "first_accounted_tick": 1033,
+      "last_accounted_tick": 1092,
+      "effective_tps": 20.00165017614283
+    },
+    "m0": {
+      "initial": 12,
+      "basal": 0.06,
+      "cognition": 0.006,
+      "movement": 0.003364211793147172,
+      "total_cost": 0.06936421179314718,
+      "final": 11.93063578820689,
+      "food_credit": 0,
+      "wait_basal": 0.04,
+      "paper_basal_exhaustion_delta": 0.060000000000000046,
+      "paper_motion_exhaustion_delta": 0.016821058965735856
+    },
+    "p1": {
+      "initial": 0,
+      "accumulated": 0.06728423586294344,
+      "recovered": 0.06728423586294344,
+      "final": 0.0,
+      "wait_dev_ticks": 40,
+      "qualified_wait": false
+    },
+    "distances": {
+      "outcome_sum": 1.2538131468421227,
+      "paper_settled_sum": 1.7143394396728937,
+      "native_motion_blocks_sum": 1.6821058965735858
+    },
+    "trace_audit": {
+      "mode": "OFF",
+      "source_native_paper_count": 80,
+      "trace_count": 0,
+      "valid": true,
+      "timing_metrics_available": false
+    },
+    "cleanup": {
+      "java_pid": 822891,
+      "node_pid": 823004,
+      "java_exit": 0,
+      "node_exit": 0,
+      "java_pid_absent": true,
+      "node_pid_absent": true,
+      "port_rebind": true,
+      "cleanup_complete": true,
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "846852fd-2908-439b-85db-5e618562b07b"
+      }
+    },
+    "source_hashes": {
+      "commands.jsonl": "23e9ecd0714a9176cab62a0101887fdc897574f897b54ff95c20949dd1b6fe4d",
+      "native.jsonl": "56082b2b0c4f327f75adfe2299b770a45aaeb84d0f91bc4f176c5a3d5fb88642",
+      "paper.log": "f250c201ffb57742c3d455a99bbcad48e32195a44dee55d7d02a1ffc49e041c1",
+      "python_timing.jsonl": "a5c959a7bbf99e324f2a9079a7639a7669bfb9d369851390a63219bff28433aa",
+      "report.json": "e1f1533b8fb0d71951341aa0fcf13ca64144a14544b3cfef55dc2e43bd387891",
+      "t2_ticks.json": "471ff1f218cd5e85af2bbbe98dcad552098a52d1195eb8e9895f8af7ac39baf0"
+    }
+  },
+  "limits": {
+    "P1_qualified_WAIT": false,
+    "high_level_STOP_ack": false,
+    "SelfBody_interoceptive_energy_fatigue": "NOT_IMPLEMENTED_IN_THIS_CASE_HOST_GUARD_ONLY",
+    "M0_units": "SYMBOLIC_DEV_NOT_MINECRAFT_EXHAUSTION_OR_JOULES",
+    "performance_causal_improvement": "NOT_TESTED",
+    "source_independent_authentication": false,
+    "science": "NOT_RUN"
+  }
+}

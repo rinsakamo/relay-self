@@ -16,7 +16,7 @@ def sample():
               "snapshot": {"input": 0, "world_tick": 120},
               "control": {"phase": "INITIAL"}})
     owner = SimpleNamespace(
-        session_id="owned-session", previous=frame, failed=False,
+        session_id="owned-session", previous=deepcopy(frame), failed=False,
         active_action=None, pending_meal=None, clear_seq=None,
         fatigue=SimpleNamespace(fatigue=0.0),
         profile=SimpleNamespace(capacity=1.0),
