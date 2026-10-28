@@ -97,10 +97,14 @@ def test_stale_and_foreign_world_probe_fail_closed(fault):
     l0=ObservedGoalL0(directive(),start_x=0.0,start_z=0.0)
     l0.decide(native(10))
     r=native(11)
-    if fault=="old_seq":r.seq=10
-    elif fault=="foreign_session":r.session_id="foreign"
-    elif fault=="truncated":r.snapshot.nearby_entities_coverage.truncated=True
-    else:r.kind="entities"
+    if fault=="old_seq":
+        r.seq=10
+    elif fault=="foreign_session":
+        r.session_id="foreign"
+    elif fault=="truncated":
+        r.snapshot.nearby_entities_coverage.truncated=True
+    else:
+        r.kind="entities"
     with pytest.raises(GoalControlRejected):
         l0.decide(r)
 
@@ -115,7 +119,8 @@ def test_l0_nonprogress_and_action_capacity_escalate_to_l1_l2():
     l0=ObservedGoalL0(directive(),start_x=0.0,start_z=0.0)
     for seq,z in ((10,0),(20,0.005),(30,0.009)):
         c=l0.decide(native(seq,z=z))
-        if seq!=30:l0.admitted(c)
+        if seq!=30:
+            l0.admitted(c)
     assert c.kind is GoalDecisionKind.NEEDS_REPLAN
     assert c.reason=="NONPROGRESS_WORLD"
 
