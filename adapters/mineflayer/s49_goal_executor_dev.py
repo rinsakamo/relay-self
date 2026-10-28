@@ -13,6 +13,7 @@ from dataclasses import replace
 
 from adapters.mineflayer.action_outcome import interpret_world_consequence
 from adapters.mineflayer.execution import (
+    MOVE_FORWARD_SNEAK_DEV_REF,
     MOVE_FORWARD_SPRINT_DEV_REF,
     build_mineflayer_command,
     execute_mineflayer_command,
@@ -162,8 +163,22 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         look_yaw_dev:float|None=None,
         on_look_ack_dev:Callable[[MineflayerEffectResult],None]|None=None,
         g2_sprint_first_dev:bool=False,
+        g2_sneak_prefix_dev:bool=False,
     )->NormalActionReceipt:
         goal=directive.proposal if isinstance(directive,L1GoalDirective) else None
+        if type(g2_sneak_prefix_dev) is not bool or (
+            g2_sneak_prefix_dev and (
+                g2_sprint_first_dev
+                or os.environ.get("S49_GOAL_G2_SNEAK_DEV_ONLY")!="1"
+                or os.environ.get("S49_L1_G1_OBSERVATION_DEV_ONLY")!="1"
+                or self._count>=3
+                or look_yaw_dev is not None
+                or on_live_probe_dev is not None
+            )
+        ):
+            raise NormalActionRejected(
+                "G2 sneak requires first three original S49 Actions, gated and non-rotating"
+            )
         if type(g2_sprint_first_dev) is not bool or (
             g2_sprint_first_dev and (
                 os.environ.get("S49_GOAL_G2_SPRINT_FIRST_DEV_ONLY")!="1"
@@ -247,6 +262,7 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         t=100+10*self._count
         origin=Provenance("normal-action-runtime",f"{self.session_id}:goal:{t}")
         gait_requested_action_ref=(
+            MOVE_FORWARD_SNEAK_DEV_REF if g2_sneak_prefix_dev else
             MOVE_FORWARD_SPRINT_DEV_REF if g2_sprint_first_dev else "MOVE_FORWARD"
         )
         binding=ExecutionBinding(
@@ -255,7 +271,8 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
             required_intent_id=goal.intent_id,
             skill_execution_id=f"goal-skill-{self._count+1}",
             skill_ref=(
-                "goal-forward-sprint-dev" if g2_sprint_first_dev
+                "goal-forward-sneak-dev" if g2_sneak_prefix_dev
+                else "goal-forward-sprint-dev" if g2_sprint_first_dev
                 else "goal-forward-walk"
             ),action_id=action_id,
             action_ref=gait_requested_action_ref,
