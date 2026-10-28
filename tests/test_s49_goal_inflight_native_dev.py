@@ -67,6 +67,8 @@ def test_exclusive_s15_reader_no_second_issuer_and_unknown_on_stop():
     runner=Path("adapters/mineflayer/s49_goal_loop_real_dev.py").read_text()
     assert "on_live_probe_dev" in source
     assert "await adapter.send_observe(request_id)" in source
+    assert "deadline - loop.time()" in source
+    assert "timeout_s=min(" in source
     assert "await _receive_until(" in source
     assert 'error=("DEV_L0_INFLIGHT_NATIVE_THREAT_PREEMPTED"' in source
     assert "on_live_probe_dev=on_live_probe_dev" in owner
