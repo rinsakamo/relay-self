@@ -40,7 +40,9 @@ def _read(path:Path)->bytes:
     return path.read_bytes()
 
 
-def build_selfworld_memory_dev(root:Path)->dict:
+def build_selfworld_memory_dev(
+    root:Path, *, require_conflicting_success_dev:bool=False,
+)->dict:
     """Two genuine successful source Worlds, one genuine blocked control."""
     if not isinstance(root,Path) or not root.is_dir() or root.is_symlink():
         raise GoalControlRejected("fresh real World root needed")
@@ -70,6 +72,18 @@ def build_selfworld_memory_dev(root:Path)->dict:
     episode_b,e_b=load_episode_dev(
         b_path,secondary/"DETOUR"/"goal_report.json",
     )
+    if type(require_conflicting_success_dev) is not bool:
+        raise GoalControlRejected("explicit DEV conflict mode required")
+    a_geometry=tuple((name,dx,dz) for name,dx,dz in episode_a.stages)
+    b_geometry=tuple((name,dx,dz) for name,dx,dz in episode_b.stages)
+    if require_conflicting_success_dev and (
+        a_geometry==b_geometry
+        or a_geometry[0][1]!=2.5
+        or b_geometry[0][1]!=-2.5
+        or episode_a.source_native_actions<3
+        or episode_b.source_native_actions<3
+    ):
+        raise GoalControlRejected("requires two actually different successful native routes")
     control_path=root/"WALL_STOP"/"goal_report.json"
     control=json.loads(_read(control_path))
     if (
@@ -151,6 +165,9 @@ def build_selfworld_memory_dev(root:Path)->dict:
         "source_count":3,"success_count":2,"failed_blocked_count":1,
         "memory_owner":"PersistentCognition",
         "selfworld_role":"REMEMBERED_READ_ONLY",
+        "conflicting_successes_dev":a_geometry!=b_geometry,
+        "success_route_a":list(map(list,a_geometry)),
+        "success_route_b":list(map(list,b_geometry)),
     }
 
 
