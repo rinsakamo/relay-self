@@ -49,7 +49,7 @@ class MineflayerExecutionSession(Protocol):
 
     async def receive(self): ...
 
-    async def send_observe(self) -> None: ...
+    async def send_observe(self, request_id: str | None = None) -> None: ...
 
     async def send_set_control(
         self,
@@ -376,12 +376,16 @@ async def execute_mineflayer_command(
                 await asyncio.sleep(min(0.06, max(0.0, deadline - loop.time())))
                 if loop.time() >= deadline:
                     break
-                await adapter.send_observe()
+                request_id = (
+                    f"{command.action_id}-inflight-{last_live_probe_seq+2}"
+                )
+                await adapter.send_observe(request_id)
                 live_probe = await _receive_until(
                     adapter, timeout_s=timeout_s,
                     predicate=lambda message: (
                         isinstance(message, MineflayerObservation)
                         and message.kind == "probe"
+                        and message.request_id == request_id
                     ),
                 )
                 if (
