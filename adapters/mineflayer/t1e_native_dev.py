@@ -770,6 +770,42 @@ async def run_case(args, case):
                     or report["t1n_emit"]["matched_paper_count"] !=
                        report.get("t1l_source_diagnostic", {}).get("paper_frames")):
                 report["status"] = "FAIL"
+        if case == "t1p_body_loop":
+            # Bounded product DEV acceptance belongs to the original T1e owner,
+            # after shutdown has closed and flushed the canonical command log.
+            # Do not count a Python-side decision as a physical Action.
+            detail = report.get("t1p", {})
+            original_commands = [json.loads(line) for line in
+                                 (root / "commands.jsonl").read_text().splitlines()]
+            effects = [x for x in original_commands if x.get("type") == "effect"]
+            ids = [x.get("action_id") for x in effects]
+            motor = [x for x in effects if x.get("effect") == "set_control"]
+            clear = [x for x in effects if x.get("effect") == "clear_controls"]
+            report["t1p_original_effect_audit"] = {
+                "motor_sends": len(motor),
+                "clear_sends": len(clear),
+                "unique_effect_ids": len(ids) == len(set(ids)),
+                "unexpected_effects": [
+                    x.get("effect") for x in effects
+                    if x.get("effect") not in ("set_control", "clear_controls")],
+                "trace_off_file_absent": (
+                    report.get("node_trace_enabled", False)
+                    or not (root / "node_timing.jsonl").exists()),
+                "final_ledger_ticks_match": (
+                    detail.get("accounted_ticks") ==
+                    report.get("t2_final", {}).get("ticks")),
+            }
+            audit = report["t1p_original_effect_audit"]
+            if (detail.get("completed_moves") != args.loop_moves
+                    or not audit["unique_effect_ids"]
+                    or audit["unexpected_effects"]
+                    or not audit["trace_off_file_absent"]
+                    or not audit["final_ledger_ticks_match"]
+                    or audit["motor_sends"] != args.loop_moves
+                    or audit["clear_sends"] != args.loop_moves
+                    or detail.get("source_latched") is not False
+                    or report.get("t2_final", {}).get("credit_count") != 0):
+                report["status"] = "FAIL"
         if case.startswith("t1k_fault_"):
             from adapters.mineflayer.t1k_fault_audit_dev import audit_fault_dev
             cmds = [json.loads(line) for line in
