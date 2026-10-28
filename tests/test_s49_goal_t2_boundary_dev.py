@@ -128,11 +128,21 @@ def test_unadmitted_or_stale_paper_anchor_refused():
     assert owner.failed
 
 
+def _active_intent():
+    from relay_self.intent import IntentCommitment
+    from relay_self.provenance import Provenance
+    intent = IntentCommitment()
+    intent.commit(
+        "goal-navigate", objective="source-qualified movement",
+        at_ns=1, provenance=Provenance("test-owner", "goal-commit"),
+    )
+    return intent
+
+
 def test_default_s49_goal_unbound(monkeypatch):
     from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
-    from relay_self.intent import IntentCommitment
     monkeypatch.setenv("S49_L0_GOAL_LOOP_DEV_ONLY", "1")
-    executor = S49GoalExecutorDev("world-A", IntentCommitment())
+    executor = S49GoalExecutorDev("world-A", _active_intent())
     assert executor._t2_boundary_dev is None
     with pytest.raises(Exception):
         executor.bind_t2_owner_dev(ExistingTickOwner())
@@ -140,10 +150,9 @@ def test_default_s49_goal_unbound(monkeypatch):
 
 def test_bind_once_only_before_first_action(monkeypatch):
     from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
-    from relay_self.intent import IntentCommitment
     monkeypatch.setenv("S49_L0_GOAL_LOOP_DEV_ONLY", "1")
     monkeypatch.setenv("S49_L1_T2_BOUNDARY_DEV_ONLY", "1")
-    executor = S49GoalExecutorDev("world-A", IntentCommitment())
+    executor = S49GoalExecutorDev("world-A", _active_intent())
     bound = executor.bind_t2_owner_dev(ExistingTickOwner())
     assert bound.session_id == executor.session_id
     with pytest.raises(Exception):
