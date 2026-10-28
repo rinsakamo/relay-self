@@ -1,0 +1,82 @@
+name: S49 Goal L0 Native Inflight Physical Preemption DEV
+on:
+  push:
+    branches:
+      - self/dev-goal-l0-inflight-preemption-20261028
+    paths:
+      - .github/workflows/self-goal-inflight-preempt-dev.yml
+      - adapters/mineflayer/execution.py
+      - adapters/mineflayer/s49_goal_executor_dev.py
+      - adapters/mineflayer/s49_goal_loop_real_dev.py
+      - adapters/mineflayer/s49_goal_inflight_review_dev.py
+      - tests/test_s49_goal_inflight_native_dev.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s49-goal-inflight-native-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  native-goal-preempt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      S49_REAL_SERVER_CI: '1'
+      S49_FORWARD_MOTOR_DEV_ONLY: '1'
+      S49_L0_GOAL_LOOP_DEV_ONLY: '1'
+      S49_L0_INFLIGHT_PREEMPT_DEV_ONLY: '1'
+      DEV_OUTPUT: '/tmp/s49-inflight-l0-${{ github.run_id }}-${{ github.run_attempt }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Focused Python3.12 Ruff Node22 before any physical World
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          python -m compileall -q adapters/mineflayer/execution.py adapters/mineflayer/s49_goal_executor_dev.py adapters/mineflayer/s49_goal_loop_real_dev.py adapters/mineflayer/s49_goal_inflight_review_dev.py tests/test_s49_goal_inflight_native_dev.py
+          ruff check adapters/mineflayer/execution.py adapters/mineflayer/s49_goal_executor_dev.py adapters/mineflayer/s49_goal_loop_real_dev.py adapters/mineflayer/s49_goal_inflight_review_dev.py tests/test_s49_goal_inflight_native_dev.py
+          python -m pytest -q tests/test_s49_goal_inflight_native_dev.py tests/test_s49_goal_real_threat_dev.py tests/test_s49_goal_navigation_dev.py
+          node --check adapters/mineflayer/bridge.mjs
+      - name: Install original Mineflayer unchanged
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: Two fresh official Minecraft Worlds original GOAL vs physical in-flight interrupt
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$DEV_OUTPUT"
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/BASELINE" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --offset-m 2.6
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/INFLIGHT" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --offset-m 2.6 --threat-during-first-dev
+          python -m adapters.mineflayer.s49_goal_inflight_review_dev --root "$DEV_OUTPUT"
+      - name: Archive original physical sources including failures
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-goal-inflight-two-worlds-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEV_OUTPUT }}
+          retention-days: 7
+      - name: DEV only classification
+        if: always()
+        run: echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
