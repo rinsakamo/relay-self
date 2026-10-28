@@ -1205,6 +1205,19 @@ async def qualify(
             kinds={}
             for row in gait_observer.rows:
                 kinds[row.kind]=kinds.get(row.kind,0)+1
+            if "g2_first_original_motor_dev" in report:
+                # This is source-derived at the END of the World, never
+                # inferred from the initial motor request/ACK. Do not
+                # claim individual client packet -> Paper tick correlation.
+                sprint_rows=[
+                    item for item in gait_observer.rows
+                    if item.kind=="STABLE_SPRINT_FORWARD_CANDIDATE"
+                ]
+                report["g2_first_original_motor_dev"].update({
+                    "paper_sprint_seen":bool(sprint_rows),
+                    "paper_sprint_candidate_source_seqs":[x.source_seq for x in sprint_rows],
+                    "same_packet_paper_tick_attested":False,
+                })
             report["g1_applied_gait_observation_dev"]={
                 "source_session_id":gait_observer.session_id,
                 "source_bound":True,
