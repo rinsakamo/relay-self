@@ -300,7 +300,9 @@ async def run_case(args, case):
                         if self.tick_owner is not None:
                             self.tick_owner.observe(message)
                             observer = getattr(self, "passive_body_tick_observer", None)
-                            if observer is not None and self.tick_owner.previous is message:
+                            if (observer is not None and self.tick_owner.previous is message
+                                    and self.tick_owner.rows
+                                    and self.tick_owner.rows[-1]["source_seq"] == message.seq):
                                 # A single passive read of this already-accounted
                                 # frame; errors fail closed and never issue Motor.
                                 try:
