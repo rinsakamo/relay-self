@@ -133,6 +133,8 @@ async def qualify(
     native_voxel_map_dev:bool=False,
     right_lane_block_dev:bool=False,
     local_grid_search_dev:bool=False,
+    grid_refresh_dev:bool=False,
+    grid_midroute_obstacle_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -159,6 +161,9 @@ async def qualify(
         "native_voxel_map_dev":native_voxel_map_dev,
         "right_lane_block_dev":right_lane_block_dev,
         "local_grid_search_dev":local_grid_search_dev,
+        "grid_refresh_dev":grid_refresh_dev,
+        "grid_midroute_obstacle_dev":grid_midroute_obstacle_dev,
+        "native_grid_refresh_observations_dev":[],
         "native_grid_search_choice_dev":None,
         "native_local_voxel_observation_dev":None,
         "native_local_voxel_choice_dev":None,
@@ -220,6 +225,16 @@ async def qualify(
             or type(native_voxel_map_dev) is not bool
             or type(right_lane_block_dev) is not bool
             or type(local_grid_search_dev) is not bool
+            or type(grid_refresh_dev) is not bool
+            or type(grid_midroute_obstacle_dev) is not bool
+            or (grid_refresh_dev and (
+                not local_grid_search_dev
+                or os.environ.get("S49_L1_GRID_REFRESH_DEV_ONLY")!="1"
+            ))
+            or (grid_midroute_obstacle_dev and (
+                not grid_refresh_dev or not left_lane_block_dev
+                or right_lane_block_dev
+            ))
             or (left_lane_block_dev and right_lane_block_dev
                 and not local_grid_search_dev)
             or (local_grid_search_dev and (
@@ -851,12 +866,104 @@ async def qualify(
                             "learned_general_policy":False,
                             "wall_block_sensed":False,
                         }
+                    # Fresh voxel cache is read by the SAME original Mineflayer
+                    # owner, after each reached waypoint and closed S16.
+                    async def on_grid_refresh(old_plan,stage,closed_id):
+                        if not isinstance(old_plan,type(plan)) or (
+                            executor.supervisor.open_actions
+                            or not stage["actions"]
+                            or closed_id!=stage["actions"][-1]["action_id"]
+                        ):
+                            raise RuntimeError("grid refresh without original Action")
+                        if (
+                            grid_midroute_obstacle_dev
+                            and not report.get("midroute_stone_stimulus_dev")
+                        ):
+                            # DEV operator alters only physical World state;
+                            # native packet must independently observe it.
+                            stone_x=math.floor(start.x)+2
+                            stone_y=math.floor(start.y)
+                            stone_z=math.floor(start.z)+2
+                            _command(
+                                server,
+                                f"setblock {stone_x} {stone_y} {stone_z} minecraft:stone",
+                            )
+                            await server.stdin.drain()
+                            await asyncio.sleep(0.35)
+                            report["midroute_stone_stimulus_dev"]={
+                                "x":stone_x,"y":stone_y,"z":stone_z,
+                                "after_s16_action_id":closed_id,
+                                "native_confirmed":False,
+                            }
+                        last_s16=stage["actions"][-1]["after_seq"]
+                        source_packet=await _correlated_native_voxels_dev(
+                            session,
+                            f"goal-{sid}-grid-refresh-{old_plan.revision}-after-{last_s16}",
+                            origin_x=float(start.x),origin_z=float(start.z),
+                        )
+                        if source_packet.seq<=last_s16:
+                            raise RuntimeError("grid refresh not newer than original S16")
+                        latest=NativeVoxelPresentDev(
+                            session_id=source_packet.session_id,
+                            native_seq=source_packet.seq,
+                            request_id=source_packet.request_id,
+                            origin_x=float(source_packet.origin_x),
+                            origin_z=float(source_packet.origin_z),
+                            player_y=float(source_packet.player_y),
+                            player_x=float(source_packet.player_x),
+                            player_z=float(source_packet.player_z),
+                            coverage=source_packet.coverage,
+                            cells=tuple(VoxelColumnDev(
+                                dx=c.dx,dz=c.dz,feet=c.feet,
+                                head=c.head,floor=c.floor,
+                            ) for c in source_packet.cells),
+                            provenance=source_packet.provenance,
+                        )
+                        report["native_grid_refresh_observations_dev"].append({
+                            "after_stage_index":stage["index"],
+                            "after_stage_goal_id":stage["goal_id"],
+                            "last_s16_after_seq":last_s16,
+                            "last_closed_action_id":closed_id,
+                            "previous_revision":old_plan.revision,
+                            "session_id":source_packet.session_id,
+                            "seq":source_packet.seq,
+                            "request_id":source_packet.request_id,
+                            "origin_x":source_packet.origin_x,
+                            "origin_z":source_packet.origin_z,
+                            "player_x":source_packet.player_x,
+                            "player_z":source_packet.player_z,
+                            "player_y":source_packet.player_y,
+                            "coverage":source_packet.coverage,
+                            "cells":[asdict(c) for c in source_packet.cells],
+                        })
+                        if grid_midroute_obstacle_dev:
+                            block=latest.observed(2,2).value
+                            if block is None or block.feet!="BLOCKED":
+                                raise RuntimeError("real midroute stone unseen in native grid")
+                            report["midroute_stone_stimulus_dev"][
+                                "native_confirmed"
+                            ]=True
+                        return latest
                     report["stage"]="FOLLOW_L1_WAYPOINTS"
                     report["detour"]=await follow_l1_detour_dev(
                         session,executor,plan,
                         first_blocked_action_id=receipt.terminal.action_id,
                         blocked_after_seq=receipt.consequence.after_observation.seq,
+                        on_grid_refresh_dev=(
+                            on_grid_refresh if grid_refresh_dev else None
+                        ),
                     )
+                    if report["detour"]["route_status"]=="DEFER":
+                        if not grid_refresh_dev or executor.supervisor.open_actions:
+                            raise RuntimeError("unexpected grid replan DEFER")
+                        report["classification"]=(
+                            "DEV_ONLY_S49_L1_GRID_REFRESH_NO_ROUTE_DEFER"
+                        )
+                        report["stage"]="L1_GRID_REFRESH_DEFER"
+                        report["status"]="PASS"
+                        report["real_world"]=True
+                        rc=0
+                        break
                     if (
                         not report["detour"]["reached_final_goal"]
                         or executor.supervisor.open_actions
@@ -865,7 +972,9 @@ async def qualify(
                     ):
                         raise RuntimeError("native L1 route failed parent L2 goal")
                     report["classification"]=(
-                        "DEV_ONLY_S49_L1_NATIVE_GRID_GOAL_REACHED"
+                        "DEV_ONLY_S49_L1_NATIVE_GRID_REFRESH_GOAL_REACHED"
+                        if grid_refresh_dev
+                        else "DEV_ONLY_S49_L1_NATIVE_GRID_GOAL_REACHED"
                         if local_grid_search_dev
                         else "DEV_ONLY_S49_L1_VOXEL_GOAL_REACHED"
                         if native_voxel_map_dev
@@ -981,6 +1090,8 @@ def main()->int:
     p.add_argument("--native-route-present-dev",action="store_true")
     p.add_argument("--native-voxel-map-dev",action="store_true")
     p.add_argument("--local-grid-search-dev",action="store_true")
+    p.add_argument("--grid-refresh-dev",action="store_true")
+    p.add_argument("--grid-midroute-obstacle-dev",action="store_true")
     p.add_argument("--right-lane-block-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
@@ -1006,6 +1117,8 @@ def main()->int:
         native_route_present_dev=args.native_route_present_dev,
         native_voxel_map_dev=args.native_voxel_map_dev,
         local_grid_search_dev=args.local_grid_search_dev,
+        grid_refresh_dev=args.grid_refresh_dev,
+        grid_midroute_obstacle_dev=args.grid_midroute_obstacle_dev,
         right_lane_block_dev=args.right_lane_block_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
