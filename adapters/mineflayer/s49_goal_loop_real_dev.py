@@ -27,8 +27,8 @@ from adapters.mineflayer.s31a_real_server_ci import (
 )
 from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
 from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
-from adapters.mineflayer.s49_l1_experience_export_dev import load_episode_dev
 from adapters.mineflayer.s49_goal_waypoint_route_dev import follow_l1_detour_dev
+from adapters.mineflayer.s49_l1_experience_export_dev import load_episode_dev
 from adapters.mineflayer.s49_normal_session_real_ci import (
     _cleanup_session,
     _write_final_report,
