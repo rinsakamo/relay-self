@@ -16,6 +16,7 @@ from adapters.mineflayer.python_protocol import (
     encode_forward_sprint_dev,
     encode_look,
     encode_observe,
+    encode_route_blocks_dev,
     encode_set_control,
     encode_shutdown,
 )
@@ -275,6 +276,16 @@ class MineflayerProcessSession:
     async def send_observe(self, request_id: str | None = None) -> None:
         """Legacy probe when absent; correlated observe on explicit request ID."""
         await self._send(encode_observe(request_id))
+
+    async def send_route_blocks_dev(
+        self, request_id: str, *, origin_x: float, origin_z: float,
+    ) -> None:
+        """Sole original session writer, DEV bounded cached-block read only."""
+        if os.environ.get("S49_L1_NATIVE_BLOCKS_DEV_ONLY") != "1":
+            raise MineflayerProcessIOError("native block observation requires DEV gate")
+        await self._send(encode_route_blocks_dev(
+            request_id, origin_x=origin_x, origin_z=origin_z,
+        ))
 
     async def shutdown(self, *, timeout_s: float = 5.0) -> int:
         """Request one clean bridge shutdown, with bounded termination fallback."""
