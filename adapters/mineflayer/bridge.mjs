@@ -117,6 +117,43 @@ function emitRouteBlocksDev (command) {
   })
 }
 
+// A fixed 7x6 observer-local voxel area, with two-body-high occupancy
+// and floor support. This is a cache read, not a collision-free path proof.
+function emitLocalVoxelsDev (command) {
+  const pos = bot.entity && bot.entity.position
+  if (!pos || !Number.isFinite(pos.y) ||
+      Math.hypot(pos.x - command.origin_x, pos.z - command.origin_z) > 6) {
+    emit('command_error', { message: 'local_voxels_origin_not_in_reach' })
+    return
+  }
+  const footY = Math.floor(pos.y)
+  const baseX = Math.floor(command.origin_x)
+  const baseZ = Math.floor(command.origin_z)
+  const cells = []
+  const air = new Set(['air', 'cave_air', 'void_air'])
+  for (let dz = 0; dz <= 5; dz++) {
+    for (let dx = -3; dx <= 3; dx++) {
+      const xx = baseX + dx
+      const zz = baseZ + dz
+      const occupancy = [footY, footY + 1, footY - 1].map(y => {
+        const block = bot.blockAt(
+          pos.offset(xx - pos.x, y - pos.y, zz - pos.z).floored(), false)
+        if (block === null || block === undefined) return 'UNKNOWN'
+        return air.has(block.name) ? 'CLEAR' : 'BLOCKED'
+      })
+      cells.push({ dx, dz, feet: occupancy[0],
+        head: occupancy[1], floor: occupancy[2] })
+    }
+  }
+  emit('local_voxels_dev', {
+    request_id: command.request_id, origin_x: command.origin_x,
+    origin_z: command.origin_z, player_y: pos.y,
+    coverage: 'mineflayer_loaded_cache_fixed_7x6x3',
+    x_min: -3, x_max: 3, z_min: 0, z_max: 5,
+    cells, unknown_is_not_clear: true
+  })
+}
+
 function emit (type, payload = {}) {
   const message = makeEnvelope(sessionId, seq, type, payload)
   seq += 1
@@ -736,6 +773,19 @@ async function handleLine (line) {
     return
   }
 
+  if (command.type === 'observe_local_voxels_dev') {
+    if (!spawned || !bot.entity ||
+        process.env.S49_L1_VOXEL_DEV_ONLY !== '1') {
+      emit('command_error', { message: 'local_voxels_dev_not_admitted' })
+      return
+    }
+    if (!admitProbeRequestId(seenProbeRequestIds, command.request_id)) {
+      emit('command_error', { message: 'duplicate_local_voxel_probe_id' })
+      return
+    }
+    emitLocalVoxelsDev(command)
+    return
+  }
   if (command.type === 'shutdown') {
     handleShutdown()
   }
