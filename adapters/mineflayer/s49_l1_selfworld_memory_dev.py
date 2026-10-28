@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+from dataclasses import asdict
 from pathlib import Path
 
 from adapters.mineflayer.s49_goal_l1_detour_review_dev import review
@@ -213,7 +214,6 @@ def recall_from_selfworld_dev(
                 raise GoalControlRejected("unsafe stored episode reference")
             episode,_=load_episode_dev(root/entry["episode_path"],source)
             item=json.loads(memory.content)
-            from dataclasses import asdict
             if item.get("episode")!=asdict(episode):
                 raise GoalControlRejected("remembered route differs from RAW source")
         else:
