@@ -16,7 +16,6 @@ from adapters.mineflayer.s49_l1_experience_export_dev import (
     load_episode_dev,
 )
 from relay_self.goal_memory_choice_dev import (
-    L1RecallStatusDev,
     make_route_memory_dev,
     select_selfworld_route_dev,
 )
@@ -182,7 +181,8 @@ def recall_from_selfworld_dev(
         or cat["snapshot_sha256"]!=hashlib.sha256(_read(snapshot_path)).hexdigest()
         or cat["fixture_scope"]!=SCOPE
         or not isinstance(cat["source_entries"],list)
-        or len(cat["source_entries"])!=len(owner.memories)==3
+        or len(cat["source_entries"])!=3
+        or len(owner.memories)!=3
         or {e["memory_id"] for e in cat["source_entries"]} !={
             m.memory_id for m in owner.memories
         }
@@ -212,8 +212,10 @@ def recall_from_selfworld_dev(
             ):
                 raise GoalControlRejected("unsafe stored episode reference")
             episode,_=load_episode_dev(root/entry["episode_path"],source)
-            if episode.source_session_id not in memory.content:
-                raise GoalControlRejected("episode source not in retained Memory")
+            item=json.loads(memory.content)
+            from dataclasses import asdict
+            if item.get("episode")!=asdict(episode):
+                raise GoalControlRejected("remembered route differs from RAW source")
         else:
             source_report=json.loads(_read(source))
             if (
