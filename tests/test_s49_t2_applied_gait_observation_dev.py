@@ -122,3 +122,35 @@ def test_physical_idle_candidate_is_not_R_qualified_wait(monkeypatch):
     assert observer.rows[-1].kind=="STABLE_PHYSICAL_IDLE_CANDIDATE"
     assert not observer.rows[-1].full_tick_gait_attested
     assert not observer.rows[-1].m0_extra_charge_posted
+
+
+def test_g2_crouch_forward_requires_server_and_original_client_applied(monkeypatch):
+    observer=G1AppliedGaitObserverDev(SID)
+    for t,x in [(1,0.0),(2,0.05),(3,0.10)]:
+        observer.observe(
+            _frame(monkeypatch,t,controls=_controls("forward","sneak"),
+                   x=x,blocks=x,sneak=True),t2_activity="MOVE_OR_UNDETERMINED",
+        )
+    assert [r.kind for r in observer.rows] == [
+        "INITIAL_NO_INTERVAL",
+        "STABLE_SNEAK_FORWARD_CANDIDATE",
+        "STABLE_SNEAK_FORWARD_CANDIDATE",
+    ]
+    assert all(not row.p1_transition_posted for row in observer.rows)
+
+
+def test_sneak_control_without_paper_sneak_is_not_physical_walk(monkeypatch):
+    observer=G1AppliedGaitObserverDev(SID)
+    for t,x in [(1,0.0),(2,0.05)]:
+        observer.observe(_frame(monkeypatch,t,controls=_controls("forward","sneak"),
+                                x=x,blocks=x,sneak=False),t2_activity=None)
+    assert observer.rows[-1].kind=="MOVING_MODE_UNDETERMINED"
+
+
+def test_sneak_mode_transition_not_a_stable_tick(monkeypatch):
+    observer=G1AppliedGaitObserverDev(SID)
+    observer.observe(_frame(monkeypatch,1,controls=_controls("forward"),
+                            x=0.0,blocks=0.0),t2_activity=None)
+    observer.observe(_frame(monkeypatch,2,controls=_controls("forward","sneak"),
+                            x=0.03,blocks=0.03,sneak=True),t2_activity=None)
+    assert observer.rows[-1].kind=="TRANSITION_OR_UNDETERMINED"
