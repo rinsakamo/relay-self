@@ -70,6 +70,8 @@ def test_motion_and_wait_views_capture_real_fatigue_timecourse():
     assert audit["rest_preferred_samples"] == 2
     assert audit["ready_feeling_samples"] == 1
     assert audit["observed_change_in_sensed_preference"] is True
+    assert audit["first_fatigue_rest_tick"] == 202
+    assert audit["recovered_ready_tick"] == 204
 
 
 def test_original_strict_t1q_action_guard_stays_in_place():
@@ -106,6 +108,9 @@ def test_missing_body_sensors_remain_unknown_and_cannot_grant_movement():
     lambda r: r.update(physical_permission_from_view=True),
     lambda r: r.update(p1_qualified_wait=True),
     lambda r: r.update(fatigue_origin="observation"),
+    lambda r: r.update(sensed_rest_preference="READY_FEELING"),
+    lambda r: r.update(original_action_id="foreign-action"),
+    lambda r: r.update(original_activity="WAIT_DEV"),
 ])
 def test_replay_audit_rejects_forged_view_or_cross_clock(damage):
     owner, entries = _physical_timeline()
