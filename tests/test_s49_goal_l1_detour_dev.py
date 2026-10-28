@@ -8,10 +8,13 @@ from pathlib import Path
 import pytest
 
 from relay_self.goal_detour_dev import (
-    L1DetourPlanDev, L1DetourStageDev, explicit_l1_detour_dev,
+    L1DetourStageDev,
+    explicit_l1_detour_dev,
 )
 from relay_self.goal_navigation import (
-    GoalControlRejected, GoalPurpose, L2GoalProposal,
+    GoalControlRejected,
+    GoalPurpose,
+    L2GoalProposal,
 )
 from relay_self.provenance import Provenance
 
@@ -74,7 +77,6 @@ def test_no_fake_block_observation_and_no_new_motor_issuer():
     owner=Path("adapters/mineflayer/s49_goal_executor_dev.py").read_text()
     loop=Path("adapters/mineflayer/s49_goal_waypoint_route_dev.py").read_text()
     assert "explicit_l1_detour_dev(" in runner
-    assert "after real wall S16" not in loop or True
     assert "follow_l1_detour_dev(" in runner
     assert "executor.adopt_waypoint_dev(" in loop
     assert "executor.execute_goal_step(" in loop
