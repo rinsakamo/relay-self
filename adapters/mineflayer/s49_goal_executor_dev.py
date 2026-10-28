@@ -21,6 +21,7 @@ from adapters.mineflayer.normal_action import (
     NormalSessionActionExecutor,
 )
 from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.s49_goal_t2_boundary_dev import GoalT2ActionBoundaryDev
 from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerObservation,
@@ -57,6 +58,20 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         self._phase_action_count=0
         self._route_plan: L1DetourPlanDev | L1GridRoutePlanDev | None=None
         self._route_stage=-1
+        self._t2_boundary_dev: GoalT2ActionBoundaryDev | None = None
+
+    def bind_t2_owner_dev(self, owner) -> GoalT2ActionBoundaryDev:
+        """Optional existing T2 owner; no second motor/reader/P1 is created."""
+        if (
+            os.environ.get("S49_L1_T2_BOUNDARY_DEV_ONLY") != "1"
+            or self._t2_boundary_dev is not None
+            or self._count != 0
+            or self.supervisor.open_actions
+        ):
+            raise NormalActionRejected("T2 owner binding must precede first S49 goal Action")
+        handoff = GoalT2ActionBoundaryDev(owner, session_id=self.session_id)
+        self._t2_boundary_dev = handoff
+        return handoff
 
     def adopt_waypoint_dev(
         self, plan:L1DetourPlanDev|L1GridRoutePlanDev, stage_index:int, *,
@@ -182,6 +197,7 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
             or self.intent.pending_reconsideration is not None
             or self._phase_action_count>=directive.max_actions
             or self.supervisor.open_actions
+            or (self._t2_boundary_dev is not None and self._t2_boundary_dev.latched)
             or type(decision.input_duration_s) is not float
             or not math.isfinite(decision.input_duration_s)
             or not 0.10<=decision.input_duration_s<=0.35
@@ -246,6 +262,19 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
             build_mineflayer_command(issued,result),
             duration_s=decision.input_duration_s,
         )
+        # Existing T2 owner observes the original issued Action boundary.
+        # A refused handoff consumes the S49 issuance as UNKNOWN without IO.
+        if self._t2_boundary_dev is not None:
+            try:
+                self._t2_boundary_dev.before_issue(
+                    command.action_id, probe_seq=probe.seq,
+                )
+            except BaseException:
+                if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
+                    self.supervisor.mark_unknown(
+                        issued.action_id, at_ns=t+3, provenance=origin,
+                    )
+                raise
         # Consumed BEFORE external IO. No automatic retry after unknown.
         self._dispatched.add(command.action_id)
         self._count+=1
@@ -269,8 +298,13 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
                 terminal=record_interpreted_action_outcome(
                     self.supervisor,interpretation,at_ns=t+3,
                 )
-            return NormalActionReceipt(terminal,consequence,probe.provenance)
+            receipt = NormalActionReceipt(terminal,consequence,probe.provenance)
+            if self._t2_boundary_dev is not None:
+                self._t2_boundary_dev.after_terminal(receipt)
+            return receipt
         except BaseException:
+            if self._t2_boundary_dev is not None:
+                self._t2_boundary_dev.latch()
             if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
                 self.supervisor.mark_unknown(
                     issued.action_id,at_ns=t+3,provenance=origin,
