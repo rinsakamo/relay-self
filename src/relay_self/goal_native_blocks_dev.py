@@ -62,7 +62,7 @@ class NativeRouteBlockPresentDev:
             or self.coverage!="loaded_client_cache_only"
             or not isinstance(self.lanes,tuple)
             or len(self.lanes)!=2
-            or tuple(l.side for l in self.lanes)!=("LEFT","RIGHT")
+            or tuple(lane.side for lane in self.lanes)!=("LEFT","RIGHT")
             or self.provenance!=Provenance(
                 "mineflayer",f"{self.session_id}:{self.native_seq}",
             )
@@ -72,7 +72,7 @@ class NativeRouteBlockPresentDev:
     def observed_lane(self, side:str) -> WorldReading:
         if side not in ("LEFT","RIGHT"):
             raise GoalControlRejected("unknown source lane")
-        lane=next(l for l in self.lanes if l.side==side)
+        lane=next(lane for lane in self.lanes if lane.side==side)
         # The WorldReading is observer-local. SelfWorld's ordinary entity
         # schema is unchanged; this typed DEV extension cannot act on World.
         return WorldReading(
