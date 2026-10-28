@@ -46,7 +46,10 @@ def source(tag:str)->Provenance:
     return Provenance("s49-goal-dev-operator",tag)
 
 
-async def qualify(report_path:Path, server_log:Path, *, offset_m:float=2.6)->int:
+async def qualify(
+    report_path:Path, server_log:Path, *, offset_m:float=2.6,
+    inject_threat_after_first_dev:bool=False,
+)->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
         "status":"BLOCKED","stage":"START",
@@ -59,6 +62,9 @@ async def qualify(report_path:Path, server_log:Path, *, offset_m:float=2.6)->int
         "legacy_zombie_S14_admission_reused":False,
         "goal_S14_dev_admission":True,
         "qualification_go":False,"science_go":False,
+        "threat_injection_dev":inject_threat_after_first_dev,
+        "goal_handoff":None,
+        "upper_layer_replan_executed":False,
     }
     server=collector=session=temp=None
     cleanup_cancel=[]
@@ -70,6 +76,9 @@ async def qualify(report_path:Path, server_log:Path, *, offset_m:float=2.6)->int
             or os.environ.get("S49_FORWARD_MOTOR_DEV_ONLY")!="1"
             or os.environ.get("NODE_OPTIONS")
             or type(offset_m) is not float or not 1.8<=offset_m<=4.0
+            or type(inject_threat_after_first_dev) is not bool
+            or (inject_threat_after_first_dev and
+                os.environ.get("S49_L0_REAL_THREAT_DEV_ONLY")!="1")
         ):
             raise RuntimeError("original S49 goal DEV gates missing")
         temp=tempfile.TemporaryDirectory(prefix="s49-l0-goal-world-")
@@ -135,6 +144,55 @@ async def qualify(report_path:Path, server_log:Path, *, offset_m:float=2.6)->int
             if choice.kind in (GoalDecisionKind.INTERRUPT,GoalDecisionKind.NEEDS_REPLAN):
                 report["stage"]=choice.kind.value
                 report["last_failure"]=choice.reason
+                if inject_threat_after_first_dev and (
+                    choice.kind is GoalDecisionKind.INTERRUPT
+                ):
+                    threats=[
+                        e for e in probe.snapshot.nearby_entities
+                        if e.name=="zombie" and e.distance<proposal.danger_interrupt_m
+                    ]
+                    if (
+                        len(threats)!=1 or len(report["native_actions"])!=1
+                        or not report.get("hazard_injection_after_first_s16")
+                        or executor._count!=1
+                        or executor.supervisor.open_actions
+                        or probe.session_id!=proposal.session_id
+                        or l0.closed is not True
+                    ):
+                        raise RuntimeError(
+                            "real L0 interrupt did not match original S16 hazard source"
+                        )
+                    report["hazard_injection_after_first_s16"]["native_confirmed"]=True
+                    report["goal_handoff"]={
+                        "kind":"INTERRUPT",
+                        "reason":choice.reason,
+                        "goal_id":proposal.goal_id,
+                        "intent_id":proposal.intent_id,
+                        "session_id":sid,
+                        "target_x":proposal.target_x,
+                        "target_z":proposal.target_z,
+                        "tolerance_m":directive.tolerance_m,
+                        "probe_seq":probe.seq,
+                        "probe_request_id":probe.request_id,
+                        "probe_provenance_source":probe.provenance.source,
+                        "observed_current_x":choice.x,
+                        "observed_current_z":choice.z,
+                        "remaining_goal_error_m":choice.goal_error_m,
+                        "threat_entity_id":threats[0].entity_id,
+                        "threat_distance_m":threats[0].distance,
+                        "native_actions_before_handoff":executor._count,
+                        "additional_action_issued_after_interrupt":False,
+                        "original_goal_retained_for_upper_layer":True,
+                        "upper_layer_replan_executed":False,
+                        "owner_open_actions":len(executor.supervisor.open_actions),
+                        "L0_goal_following_closed":l0.closed,
+                    }
+                    report["status"]="PASS"
+                    report["real_world"]=True
+                    report["classification"]=(
+                        "DEV_ONLY_S49_NATIVE_GOAL_REAL_THREAT_INTERRUPTED"
+                    )
+                    rc=0
                 break
             if choice.kind is GoalDecisionKind.WAIT_VERIFY:
                 await asyncio.sleep(0.20)
@@ -180,8 +238,28 @@ async def qualify(report_path:Path, server_log:Path, *, offset_m:float=2.6)->int
                     end.x-proposal.target_x,end.z-proposal.target_z,
                 ),
             })
-            # The World may keep moving after S16/clear. Sample again.
-            await asyncio.sleep(0.20)
+            if inject_threat_after_first_dev and executor._count==1:
+                # DEV operator changes only the physical disposable World.
+                # This writes no sensor values. A genuine Mineflayer probe
+                # must later witness the entity or the run FAILS, not PASS.
+                if executor.supervisor.open_actions:
+                    raise RuntimeError("cannot inject before first closed S16")
+                _command(
+                    server,
+                    "execute at RelaySelf run summon minecraft:zombie "
+                    "~0.65 ~ ~ "
+                    "{NoAI:1b,Silent:1b,PersistenceRequired:1b,Invulnerable:1b}",
+                )
+                await server.stdin.drain()
+                report["hazard_injection_after_first_s16"]={
+                    "world_command_requested":True,
+                    "after_terminal_action_id":receipt.terminal.action_id,
+                    "native_confirmed":False,
+                }
+                await asyncio.sleep(0.50)
+            else:
+                # World can keep moving after S16/CLEAR. Sample again.
+                await asyncio.sleep(0.20)
         else:
             report["stage"]="OBSERVATION_BUDGET_EXHAUSTED"
     except BaseException as exc:
@@ -210,6 +288,7 @@ def main()->int:
     p.add_argument("--output-dir",type=Path,required=True)
     p.add_argument("--confirm",required=True)
     p.add_argument("--offset-m",type=float,default=2.6)
+    p.add_argument("--threat-after-first-dev",action="store_true")
     args=p.parse_args()
     if (
         args.confirm!="S49-GOAL-L0-DEV-DISPOSABLE-WORLD"
@@ -220,6 +299,7 @@ def main()->int:
     return asyncio.run(qualify(
         args.output_dir/"goal_report.json",
         args.output_dir/"minecraft_server.log",offset_m=args.offset_m,
+        inject_threat_after_first_dev=args.threat_after_first_dev,
     ))
 
 
