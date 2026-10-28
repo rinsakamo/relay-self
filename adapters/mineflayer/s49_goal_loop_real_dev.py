@@ -27,6 +27,8 @@ from adapters.mineflayer.s31a_real_server_ci import (
 )
 from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
 from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
+from adapters.mineflayer.s49_goal_waypoint_route_dev import follow_l1_detour_dev
+from relay_self.goal_detour_dev import explicit_l1_detour_dev
 from adapters.mineflayer.s49_normal_session_real_ci import (
     _cleanup_session,
     _write_final_report,
@@ -54,6 +56,7 @@ async def qualify(
     inject_threat_during_first_dev:bool=False,
     goal_turn_dx_dev:float=0.0,
     obstacle_wall_dev:bool=False,
+    detour_after_wall_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -74,6 +77,7 @@ async def qualify(
         "upper_layer_replan_executed":False,
         "goal_turn_dx_dev":goal_turn_dx_dev,
         "obstacle_wall_dev":obstacle_wall_dev,
+        "detour_after_wall_dev":detour_after_wall_dev,
         "native_goal_looks":[],
     }
     server=collector=session=temp=None
@@ -94,6 +98,12 @@ async def qualify(
             or type(goal_turn_dx_dev) is not float
             or not math.isfinite(goal_turn_dx_dev)
             or goal_turn_dx_dev not in (0.0, 1.4)
+            or type(detour_after_wall_dev) is not bool
+            or (detour_after_wall_dev and (
+                not obstacle_wall_dev or goal_turn_dx_dev!=0.0
+                or offset_m!=4.0
+                or os.environ.get("S49_L1_WAYPOINT_DEV_ONLY")!="1"
+            ))
             or type(obstacle_wall_dev) is not bool
             or (goal_turn_dx_dev!=0.0 and obstacle_wall_dev)
             or ((goal_turn_dx_dev!=0.0 or obstacle_wall_dev) and (
@@ -462,11 +472,40 @@ async def qualify(
                     "client_obstacle_block_detection_attested":False,
                     "upper_layer_replan_executed":False,
                 }
-                report["classification"]="DEV_ONLY_S49_WALL_MOTOR_UNKNOWN_REPLAN"
-                report["stage"]="NEEDS_REPLAN"
-                report["status"]="PASS"
-                report["real_world"]=True
-                rc=0
+                if detour_after_wall_dev:
+                    # This is an explicit L1-style OPERATOR-supplied plan,
+                    # NOT a native claim that Self perceived a stone block.
+                    # A closed original UNKNOWN is never silently retried.
+                    plan=explicit_l1_detour_dev(
+                        proposal,start_x=float(start.x),start_z=float(start.z),
+                        blocked_action_id=receipt.terminal.action_id,
+                        blocked_s16_seq=receipt.consequence.after_observation.seq,
+                        provenance=source("l1-explicit-detour-after-unknown"),
+                    )
+                    report["stage"]="FOLLOW_L1_WAYPOINTS"
+                    report["detour"]=await follow_l1_detour_dev(
+                        session,executor,plan,
+                        first_blocked_action_id=receipt.terminal.action_id,
+                        blocked_after_seq=receipt.consequence.after_observation.seq,
+                    )
+                    if (
+                        not report["detour"]["reached_final_goal"]
+                        or executor.supervisor.open_actions
+                        or report["detour"]["final_parent_goal_error_m"]
+                           > report["detour"]["stages"][-1]["tolerance_m"]
+                    ):
+                        raise RuntimeError("native L1 route failed parent L2 goal")
+                    report["classification"]="DEV_ONLY_S49_L1_DETOUR_PARENT_GOAL_REACHED"
+                    report["stage"]="L1_DETOUR_ORIGINAL_GOAL_REACHED"
+                    report["status"]="PASS"
+                    report["real_world"]=True
+                    rc=0
+                else:
+                    report["classification"]="DEV_ONLY_S49_WALL_MOTOR_UNKNOWN_REPLAN"
+                    report["stage"]="NEEDS_REPLAN"
+                    report["status"]="PASS"
+                    report["real_world"]=True
+                    rc=0
                 break
             if (
                 receipt.terminal.state is not ActionState.OUTCOME
@@ -557,6 +596,7 @@ def main()->int:
     p.add_argument("--threat-during-first-dev",action="store_true")
     p.add_argument("--goal-turn-dx-dev",type=float,default=0.0)
     p.add_argument("--obstacle-wall-dev",action="store_true")
+    p.add_argument("--detour-after-wall-dev",action="store_true")
     args=p.parse_args()
     if (
         args.confirm!="S49-GOAL-L0-DEV-DISPOSABLE-WORLD"
@@ -571,6 +611,7 @@ def main()->int:
         inject_threat_during_first_dev=args.threat_during_first_dev,
         goal_turn_dx_dev=args.goal_turn_dx_dev,
         obstacle_wall_dev=args.obstacle_wall_dev,
+        detour_after_wall_dev=args.detour_after_wall_dev,
     ))
 
 
