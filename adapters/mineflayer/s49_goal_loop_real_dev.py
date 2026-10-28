@@ -135,6 +135,7 @@ async def qualify(
     local_grid_search_dev:bool=False,
     grid_refresh_dev:bool=False,
     grid_midroute_obstacle_dev:bool=False,
+    grid_inflight_hazard_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -163,6 +164,7 @@ async def qualify(
         "local_grid_search_dev":local_grid_search_dev,
         "grid_refresh_dev":grid_refresh_dev,
         "grid_midroute_obstacle_dev":grid_midroute_obstacle_dev,
+        "grid_inflight_hazard_dev":grid_inflight_hazard_dev,
         "native_grid_refresh_observations_dev":[],
         "native_grid_search_choice_dev":None,
         "native_local_voxel_observation_dev":None,
@@ -227,6 +229,11 @@ async def qualify(
             or type(local_grid_search_dev) is not bool
             or type(grid_refresh_dev) is not bool
             or type(grid_midroute_obstacle_dev) is not bool
+            or type(grid_inflight_hazard_dev) is not bool
+            or (grid_inflight_hazard_dev and (
+                not grid_refresh_dev or grid_midroute_obstacle_dev
+                or os.environ.get("S49_L0_INFLIGHT_PREEMPT_DEV_ONLY")!="1"
+            ))
             or (grid_refresh_dev and (
                 not local_grid_search_dev
                 or os.environ.get("S49_L1_GRID_REFRESH_DEV_ONLY")!="1"
@@ -944,6 +951,23 @@ async def qualify(
                                 "native_confirmed"
                             ]=True
                         return latest
+                    async def on_route_inflight_hazard(action_id):
+                        if (
+                            not grid_inflight_hazard_dev
+                            or report.get("grid_inflight_hazard_stimulus_dev")
+                        ):
+                            raise RuntimeError("hazard injection reused or outside DEV")
+                        _command(
+                            server,
+                            "execute at RelaySelf run summon minecraft:zombie "
+                            "~0.65 ~ ~ "
+                            "{NoAI:1b,Silent:1b,PersistenceRequired:1b,Invulnerable:1b}",
+                        )
+                        await server.stdin.drain()
+                        report["grid_inflight_hazard_stimulus_dev"]={
+                            "after_actual_applied_action_id":action_id,
+                            "world_command_requested":True,
+                        }
                     report["stage"]="FOLLOW_L1_WAYPOINTS"
                     report["detour"]=await follow_l1_detour_dev(
                         session,executor,plan,
@@ -952,7 +976,33 @@ async def qualify(
                         on_grid_refresh_dev=(
                             on_grid_refresh if grid_refresh_dev else None
                         ),
+                        on_inflight_hazard_dev=(
+                            on_route_inflight_hazard if grid_inflight_hazard_dev
+                            else None
+                        ),
                     )
+                    if report["detour"]["route_status"]=="INTERRUPT":
+                        interruption=report["detour"]["l0_inflight_interrupt"]
+                        if (
+                            not grid_inflight_hazard_dev
+                            or interruption is None
+                            or interruption.get("next_action_issued") is not False
+                            or report.get("grid_inflight_hazard_stimulus_dev", {})
+                                .get("after_actual_applied_action_id")
+                                !=interruption["action_id"]
+                            or executor.supervisor.open_actions
+                            or report["detour"]["reached_final_goal"]
+                            or len(report["detour"]["replan_events"])<1
+                        ):
+                            raise RuntimeError("unsafe or unobserved L0 grid stop")
+                        report["classification"]=(
+                            "DEV_ONLY_S49_L1_GRID_REFRESH_L0_INFLIGHT_PREEMPTED"
+                        )
+                        report["stage"]="L0_GRID_INFLIGHT_INTERRUPTED"
+                        report["status"]="PASS"
+                        report["real_world"]=True
+                        rc=0
+                        break
                     if report["detour"]["route_status"]=="DEFER":
                         if not grid_refresh_dev or executor.supervisor.open_actions:
                             raise RuntimeError("unexpected grid replan DEFER")
@@ -1092,6 +1142,7 @@ def main()->int:
     p.add_argument("--local-grid-search-dev",action="store_true")
     p.add_argument("--grid-refresh-dev",action="store_true")
     p.add_argument("--grid-midroute-obstacle-dev",action="store_true")
+    p.add_argument("--grid-inflight-hazard-dev",action="store_true")
     p.add_argument("--right-lane-block-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
@@ -1119,6 +1170,7 @@ def main()->int:
         local_grid_search_dev=args.local_grid_search_dev,
         grid_refresh_dev=args.grid_refresh_dev,
         grid_midroute_obstacle_dev=args.grid_midroute_obstacle_dev,
+        grid_inflight_hazard_dev=args.grid_inflight_hazard_dev,
         right_lane_block_dev=args.right_lane_block_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
