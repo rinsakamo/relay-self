@@ -131,8 +131,8 @@ class TickAccounting:
                 # The existing Paper input bitmap can disprove obvious
                 # contradictions, but it cannot independently authenticate
                 # speed attributes, sprint or complete control state.
-                if (s["input"] == 2 and gait_tick.direction == "forward"
-                        or s["input"] == 1 and gait_tick.direction == "back"):
+                if ((s["input"] == 2 and gait_tick.direction == "forward")
+                        or (s["input"] == 1 and gait_tick.direction == "back")):
                     raise ValueError("applied gait direction contradicts Paper input")
                 fatigue_step = advance_gait_dev(
                     self.profile, self.fatigue, gait_tick)
