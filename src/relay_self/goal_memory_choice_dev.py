@@ -14,6 +14,7 @@ from relay_self.goal_experience_dev import (
     L1RouteEpisodeDev,
     select_route_from_episode_dev,
 )
+from relay_self.goal_native_blocks_dev import NativeRouteBlockPresentDev
 from relay_self.goal_navigation import GoalControlRejected, L2GoalProposal
 from relay_self.persistent_cognition import (
     Memory,
@@ -119,6 +120,7 @@ def select_selfworld_route_dev(
     fixture_scope:str,blocked_action_id:str,blocked_s16_seq:int,
     blocked_reason:str,blocked_terminal:str,
     blocked_consequence:str,provenance:Provenance,
+    route_present_dev:NativeRouteBlockPresentDev|None=None,
 ) -> L1RouteRecallDev:
     """Select only one unambiguous source-attested route template.
 
@@ -140,6 +142,14 @@ def select_selfworld_route_dev(
         or not view.epoch_id
     ):
         raise GoalControlRejected("read-only SelfWorld identity/epoch boundary missing")
+    if route_present_dev is not None and (
+        not isinstance(route_present_dev,NativeRouteBlockPresentDev)
+        or route_present_dev.session_id!=goal.session_id
+        or route_present_dev.native_seq<=blocked_s16_seq
+        or not math.isclose(route_present_dev.origin_x,start_x,abs_tol=1e-8)
+        or not math.isclose(route_present_dev.origin_z,start_z,abs_tol=1e-8)
+    ):
+        raise GoalControlRejected("native geometry must be fresh original World Present")
     eligible=[]
     failures=0
     ids=[]
@@ -192,6 +202,46 @@ def select_selfworld_route_dev(
             0,failures,None,tuple(ids),None,
         )
     signatures={s for _,_,_,s in eligible}
+    if len(signatures)!=1 and route_present_dev is not None:
+        left=route_present_dev.observed_lane("LEFT")
+        right=route_present_dev.observed_lane("RIGHT")
+        if (
+            left.origin is not WorldOrigin.OBSERVED
+            or right.origin is not WorldOrigin.OBSERVED
+            or left.source_refs==right.source_refs
+            or len(left.source_provenance)!=1
+            or left.source_provenance!=right.source_provenance
+        ):
+            raise GoalControlRejected("unbound SelfWorld OBSERVED block Present")
+        # No learned preference or false absence: a route is admissible
+        # only when all 3 actual sampled columns were loaded and CLEAR.
+        # Another candidate must be *actually BLOCKED*, not UNKNOWN.
+        lane_states={"LEFT":left.value,"RIGHT":right.value}
+        clear=[side for side,state in lane_states.items() if state=="CLEAR"]
+        blocked=[side for side,state in lane_states.items() if state=="BLOCKED"]
+        if len(clear)==1 and len(blocked)==1:
+            def side_of(episode:L1RouteEpisodeDev)->str|None:
+                x=episode.stages[0][1]
+                if not math.isclose(abs(x),2.5,abs_tol=1e-8):
+                    return None
+                if any(not math.isclose(row[1],x,abs_tol=1e-8)
+                       for row in episode.stages[:2]):
+                    return None
+                return "RIGHT" if x>0 else "LEFT"
+            matching=[x for x in eligible if side_of(x[1])==clear[0]]
+            if matching and len({x[3] for x in matching})==1:
+                winner=min(
+                    matching,
+                    key=lambda x:(
+                        x[1].source_native_actions,
+                        x[1].source_final_error_m,x[0],
+                    ),
+                )
+                return L1RouteRecallDev(
+                    L1RecallStatusDev.SELECTED,
+                    "NATIVE_PRESENT_RESOLVED_CONFLICT",
+                    len(eligible),failures,winner[0],tuple(ids),winner[2],
+                )
     if len(signatures)!=1:
         return L1RouteRecallDev(
             L1RecallStatusDev.DEFER,"CONFLICTING_RECALLED_ROUTES",
