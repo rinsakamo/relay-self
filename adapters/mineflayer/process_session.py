@@ -14,6 +14,7 @@ from adapters.mineflayer.python_protocol import (
     encode_clear_controls,
     encode_consume_held,
     encode_equip_item,
+    encode_forward_sneak_dev,
     encode_forward_sprint_dev,
     encode_local_voxels_dev,
     encode_look,
@@ -276,6 +277,9 @@ class MineflayerProcessSession:
 
     async def send_forward_sprint_dev(self, action_id: str) -> None:
         await self._send(encode_forward_sprint_dev(action_id))
+
+    async def send_forward_sneak_dev(self, action_id: str) -> None:
+        await self._send(encode_forward_sneak_dev(action_id))
 
     async def send_clear_controls(self, action_id: str) -> None:
         await self._send(encode_clear_controls(action_id))
