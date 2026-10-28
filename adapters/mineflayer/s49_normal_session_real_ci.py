@@ -57,6 +57,12 @@ from adapters.mineflayer.s49_l0_observed_step_dev import (
     plan_next_l0_step_dev,
     plan_residual_after_second_s16_dev,
 )
+from adapters.mineflayer.s49_l0_xz_goal_dev import (
+    assess_closed_second_xz,
+    lock_goal_after_first_s16,
+    plan_third_walk_xz,
+    read_xz_goal,
+)
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
@@ -291,6 +297,7 @@ async def qualify(
     dev_l0_residual_third_dev: bool = False,
     dev_l0_walk_third_dev: bool = False,
     dev_l0_goal_wait_dev: bool = False,
+    dev_l0_xz_goal_m: float | None = None,
     dev_inter_action_owner_gap: bool = False,
     dev_inter_action_owner_paper_fence: (
         Callable[[str, str, str], Awaitable[None]] | None
@@ -310,6 +317,7 @@ async def qualify(
         "dev_l0_residual_third_dev": dev_l0_residual_third_dev,
         "dev_l0_walk_third_dev": dev_l0_walk_third_dev,
         "dev_l0_goal_wait_dev": dev_l0_goal_wait_dev,
+        "dev_l0_xz_goal_m": dev_l0_xz_goal_m,
         "dev_inter_action_owner_gap": dev_inter_action_owner_gap,
         "decisions": [],
         "real_model_calls": 0,
@@ -372,6 +380,17 @@ async def qualify(
             ))
         ):
             raise S31ABlocked("WALK/WAIT requires separate original L0 opt-in")
+        if dev_l0_xz_goal_m is not None and (
+            type(dev_l0_xz_goal_m) not in (float, int)
+            or dev_l0_xz_goal_m not in (1.0, 2.0)
+            or dev_l0_next_step_m != 1.0
+            or not dev_sprint_motor or not dev_forward_motor
+            or not (dev_l0_goal_wait_dev or (
+                dev_l0_residual_third_dev and dev_l0_walk_third_dev
+            ))
+            or os.environ.get("S49_L0_XZ_GOAL_DEV_ONLY") != "1"
+        ):
+            raise S31ABlocked("XZ goal needs original S49 L0 WALK/WAIT owner opt-in")
         if type(dev_l0_residual_third_dev) is not bool or (
             dev_l0_residual_third_dev and (
             dev_l0_next_step_m is None
@@ -496,6 +515,7 @@ async def qualify(
         owner_gap_end_first: dict[str, Any] | None = None
         first_feedback_receipt: NormalActionReceipt | None = None
         second_feedback_receipt: NormalActionReceipt | None = None
+        xz_goal = None
 
         async def reprobe(frame):
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
@@ -548,7 +568,7 @@ async def qualify(
             )
 
         async def on_action(step):
-            nonlocal owner_gap_end_first, first_feedback_receipt, second_feedback_receipt
+            nonlocal owner_gap_end_first, first_feedback_receipt, second_feedback_receipt, xz_goal
             if dev_inter_action_owner_gap and owner_gap_end_first is not None:
                 if len(report["actual_native_actions"]) != 1:
                     raise S49PhysicalFailure("original owner gap ambiguous Action count")
@@ -655,6 +675,26 @@ async def qualify(
                     ):
                         raise S49PhysicalFailure("stale or duplicate S16 feedback source")
                     feedback_duration = plan.requested_duration_s
+                    if dev_l0_xz_goal_m is not None:
+                        if xz_goal is not None:
+                            raise S49PhysicalFailure("XZ goal already locked")
+                        xz_goal = lock_goal_after_first_s16(
+                            first_feedback_receipt.consequence,
+                            target_offset_m=dev_l0_xz_goal_m,
+                        )
+                        if xz_goal.session_id != sid or (
+                            xz_goal.first_action_id
+                            != first_feedback_receipt.terminal.action_id
+                        ):
+                            raise S49PhysicalFailure("XZ goal has foreign first S16")
+                        report["dev_l0_native_xz_goal"] = {
+                            **asdict(xz_goal),
+                            "locked_before_second_action_id": step.action_request_id,
+                            "locked_before_second_physical_dispatch": True,
+                            "goal_from_first_native_s16": True,
+                            "position_reference": "first_s16_after_world_xz",
+                            "tick_phase_synchronized": False,
+                        }
                     report["dev_l0_observed_feedback"] = {
                         **asdict(plan), "second_action_id": step.action_request_id,
                         "same_original_S49_issuer": True,
@@ -672,26 +712,47 @@ async def qualify(
                         or executor.supervisor.open_actions
                     ):
                         raise S49PhysicalFailure("third original feedback authority stale")
-                    third_plan = plan_residual_after_second_s16_dev(
-                        second_feedback_receipt.consequence,
-                        second_input_s=second["second_input_duration_s"],
-                        total_target_m=dev_l0_next_step_m,
-                        current_threat_distance_m=native.distance_m,
-                    )
-                    # An independent L0 Action request already exists:
-                    # STOP must NOT be silently converted into a new issue.
-                    if third_plan.proposed_duration_s is None:
-                        raise S49PhysicalFailure(
-                            "third L0 requested action despite STOP/danger feedback"
+                    if dev_l0_xz_goal_m is not None:
+                        if xz_goal is None or xz_goal.session_id != sid:
+                            raise S49PhysicalFailure("no pre-committed native XZ goal")
+                        reading, feedback_duration = plan_third_walk_xz(
+                            xz_goal, second_feedback_receipt.consequence,
+                            second_input_s=second["second_input_duration_s"],
+                            live_position=probe.snapshot.position,
+                            live_probe_session_id=probe.session_id,
+                            live_probe_seq=probe.seq,
+                            current_threat_distance_m=native.distance_m,
                         )
-                    feedback_duration = third_plan.proposed_duration_s
-                    report["dev_l0_residual_third"] = {
-                        **asdict(third_plan),
-                        "third_action_id": step.action_request_id,
-                        "third_gait": "WALK" if dev_l0_walk_third_dev else "SPRINT",
-                        "original_sole_action_issuer": True,
-                        "new_packet_reader": False,
-                    }
+                        report["dev_l0_residual_third"] = {
+                            "decision": "FRESH_XZ_FORWARD_WALK",
+                            "second_action_id": second_feedback_receipt.terminal.action_id,
+                            "session_id": sid,
+                            "third_action_id": step.action_request_id,
+                            "third_gait": "WALK",
+                            "proposed_duration_s": feedback_duration,
+                            "xz_live_pre_issue": asdict(reading),
+                            "original_sole_action_issuer": True,
+                            "new_packet_reader": False,
+                        }
+                    else:
+                        third_plan = plan_residual_after_second_s16_dev(
+                            second_feedback_receipt.consequence,
+                            second_input_s=second["second_input_duration_s"],
+                            total_target_m=dev_l0_next_step_m,
+                            current_threat_distance_m=native.distance_m,
+                        )
+                        if third_plan.proposed_duration_s is None:
+                            raise S49PhysicalFailure(
+                                "third L0 requested action despite STOP/danger feedback"
+                            )
+                        feedback_duration = third_plan.proposed_duration_s
+                        report["dev_l0_residual_third"] = {
+                            **asdict(third_plan),
+                            "third_action_id": step.action_request_id,
+                            "third_gait": "WALK" if dev_l0_walk_third_dev else "SPRINT",
+                            "original_sole_action_issuer": True,
+                            "new_packet_reader": False,
+                        }
                 else:
                     raise S49PhysicalFailure("unexpected third original feedback request")
             if stage_r is None:
@@ -749,7 +810,33 @@ async def qualify(
                         "goal_reached_attested": False,
                         "world_tick_phase_matched": False,
                     })
-                    if dev_l0_goal_wait_dev:
+                    if dev_l0_xz_goal_m is not None:
+                        if xz_goal is None:
+                            raise S49PhysicalFailure("second S16 without locked XZ target")
+                        second_xz = assess_closed_second_xz(
+                            xz_goal, receipt.consequence,
+                        )
+                        report["dev_l0_native_xz_goal"]["second_after"] = asdict(
+                            second_xz,
+                        )
+                    if dev_l0_goal_wait_dev and dev_l0_xz_goal_m is not None:
+                        if second_xz.stop_reason is None:
+                            raise S49PhysicalFailure(
+                                "true XZ WAIT forbidden: second S16 still short"
+                            )
+                        host.bind_xz_stop_dev(
+                            goal=xz_goal, second_action_id=receipt.terminal.action_id,
+                        )
+                        report["dev_l0_goal_wait"] = {
+                            "decision": second_xz.stop_reason,
+                            "second_action_id": receipt.terminal.action_id,
+                            "session_id": sid,
+                            "xz_second_after": asdict(second_xz),
+                            "original_l0_armed": True,
+                            "native_event_wait_not_yet_observed": True,
+                            "same_original_l0": True,
+                        }
+                    elif dev_l0_goal_wait_dev:
                         stop_plan = plan_residual_after_second_s16_dev(
                             receipt.consequence,
                             second_input_s=(
@@ -798,6 +885,27 @@ async def qualify(
                         "same_original_S49_executor": True,
                         "cross_world_goal_reached_attested": False,
                     })
+                    if dev_l0_xz_goal_m is not None:
+                        if xz_goal is None:
+                            raise S49PhysicalFailure("third S16 without original XZ goal")
+                        third_xz = read_xz_goal(
+                            xz_goal,receipt.consequence.after_observation.snapshot.position,
+                            session_id=sid,source_kind="third_s16_after",
+                            source_seq=receipt.consequence.after_observation.seq,
+                        )
+                        prior = assess_closed_second_xz(
+                            xz_goal,second_feedback_receipt.consequence,
+                        )
+                        report["dev_l0_residual_third"].update({
+                            "third_xz_after":asdict(third_xz),
+                            "second_xz_error_m":prior.euclidean_error_m,
+                            "third_xz_error_m":third_xz.euclidean_error_m,
+                            "coordinate_error_improved": (
+                                third_xz.euclidean_error_m < prior.euclidean_error_m
+                            ),
+                            "native_goal_xz_source":xz_goal.first_action_id,
+                            "scalar_sum_does_not_attest_target":True,
+                        })
             if stage_r is not None:
                 stage_r.seal_original_action(step, receipt)
             if dev_m0_owner is not None:
@@ -1013,10 +1121,17 @@ async def qualify(
                 len(trace) != 4
                 or trace[3].choice.selection is not WorldChoiceKind.WAIT
                 or trace[3].asks_for_action
-                or trace[3].choice.criterion_id
-                   != "s49-closed-s16-relative-step-stop-dev"
+                or trace[3].choice.criterion_id != (
+                    "s49-locked-native-xz-stop-dev"
+                    if dev_l0_xz_goal_m is not None
+                    else "s49-closed-s16-relative-step-stop-dev"
+                )
                 or executor._count != 2
-                or host._s16_stop_source is None
+                or (
+                    host._xz_goal_stop is None
+                    if dev_l0_xz_goal_m is not None
+                    else host._s16_stop_source is None
+                )
             ):
                 raise S49PhysicalFailure("original L0 failed to select real WAIT")
             report["dev_l0_goal_wait"].update({
@@ -1087,6 +1202,10 @@ async def qualify(
             report["learning_in_world"] = True  # HOLD revision, NOT gain
         report["status"] = "PASS"
         report["classification"] = (
+            "DEV_ONLY_S49_LOCKED_XZ_GOAL_WAIT_NO_THIRD_ACTION"
+            if dev_l0_goal_wait_dev and dev_l0_xz_goal_m is not None else
+            "DEV_ONLY_S49_NATIVE_XZ_GOAL_THIRD_WALK"
+            if dev_l0_walk_third_dev and dev_l0_xz_goal_m is not None else
             "DEV_ONLY_S49_CLOSED_S16_GOAL_WAIT_NO_THIRD_ACTION"
             if dev_l0_goal_wait_dev else
             "DEV_ONLY_S49_S16_RESIDUAL_THIRD_WALK_ORIGINAL_OWNER"
@@ -1210,6 +1329,8 @@ async def qualify(
             "DEV_ONLY_S49_S16_RESIDUAL_THIRD_ORIGINAL_OWNER",
             "DEV_ONLY_S49_S16_RESIDUAL_THIRD_WALK_ORIGINAL_OWNER",
             "DEV_ONLY_S49_CLOSED_S16_GOAL_WAIT_NO_THIRD_ACTION",
+            "DEV_ONLY_S49_LOCKED_XZ_GOAL_WAIT_NO_THIRD_ACTION",
+            "DEV_ONLY_S49_NATIVE_XZ_GOAL_THIRD_WALK",
         ):
             # No pre-existing FAILURE/BLOCKED is allowed to retain the
             # provisional qualified label, nor be upgraded to PASS.
