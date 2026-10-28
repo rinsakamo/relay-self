@@ -5,12 +5,12 @@ from planning. Uses frozen S14/S15/S16 owners, never replays uncertain effects.
 """
 from __future__ import annotations
 
+import math
+import os
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, replace
-import math
-import os
 from enum import Enum
 
 from adapters.mineflayer.action_outcome import interpret_world_consequence
