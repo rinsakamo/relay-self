@@ -143,6 +143,7 @@ async def qualify(
     paper_jar_dev:Path|None=None,
     paper_plugin_dev:Path|None=None,
     paper_gait_observation_dev:bool=False,
+    g2_sprint_first_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -174,6 +175,7 @@ async def qualify(
         "l1_t2_shared_channel_dev":os.environ.get("S49_L1_T2_CHANNEL_DEV_ONLY")=="1",
         "paper_server_dev":paper_jar_dev is not None,
         "g1_applied_gait_observation_dev":paper_gait_observation_dev,
+        "g2_sprint_first_dev":g2_sprint_first_dev,
         "native_grid_refresh_observations_dev":[],
         "native_grid_search_choice_dev":None,
         "native_local_voxel_observation_dev":None,
@@ -197,6 +199,14 @@ async def qualify(
             or os.environ.get("S49_FORWARD_MOTOR_DEV_ONLY")!="1"
             or os.environ.get("NODE_OPTIONS")
             or type(offset_m) is not float or not 1.8<=offset_m<=4.0
+            or type(g2_sprint_first_dev) is not bool
+            or (g2_sprint_first_dev and (
+                not paper_gait_observation_dev
+                or obstacle_wall_dev or detour_after_wall_dev
+                or goal_turn_dx_dev!=0.0
+                or os.environ.get("S49_GOAL_G2_SPRINT_FIRST_DEV_ONLY")!="1"
+                or os.environ.get("S49_SPRINT_MOTOR_DEV_ONLY")!="1"
+            ))
             or type(paper_gait_observation_dev) is not bool
             or (paper_gait_observation_dev and (
                 paper_jar_dev is None
@@ -653,6 +663,7 @@ async def qualify(
                 session,directive=directive,decision=choice,probe=probe,
                 propose=grant(NormalActionStage.PROPOSE),
                 issue=grant(NormalActionStage.ISSUE),
+                g2_sprint_first_dev=g2_sprint_first_dev and executor._count==0,
                 **({
                     "on_effect_ack_dev":ack_dev,
                     "on_live_probe_dev":observe_during_action,
@@ -662,6 +673,16 @@ async def qualify(
                     "on_look_ack_dev":on_turn_ack,
                 } if goal_turn_dx_dev!=0.0 or obstacle_wall_dev else {}),
             )
+            if g2_sprint_first_dev and executor._count==1:
+                dispatch=receipt.consequence.dispatch_receipt
+                report["g2_first_original_motor_dev"]={
+                    "action_id":receipt.terminal.action_id,
+                    "dispatch_effect":getattr(dispatch,"effect",None),
+                    "dispatch_applied":getattr(dispatch,"result",None)=="applied",
+                    "terminal_state":receipt.terminal.state.value,
+                    "paper_sprint_seen":False,
+                    "actual_gait_not_inferred_from_action":True,
+                }
             if goal_turn_dx_dev!=0.0 or obstacle_wall_dev:
                 if (
                     turn_ack.get("result")!="applied"
@@ -1279,6 +1300,7 @@ def main()->int:
     p.add_argument("--paper-jar-dev",type=Path)
     p.add_argument("--paper-plugin-dev",type=Path)
     p.add_argument("--paper-gait-observation-dev",action="store_true")
+    p.add_argument("--g2-sprint-first-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -1309,6 +1331,7 @@ def main()->int:
         paper_jar_dev=args.paper_jar_dev,
         paper_plugin_dev=args.paper_plugin_dev,
         paper_gait_observation_dev=args.paper_gait_observation_dev,
+        g2_sprint_first_dev=args.g2_sprint_first_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
