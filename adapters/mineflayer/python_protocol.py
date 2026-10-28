@@ -33,6 +33,7 @@ _EFFECTS = frozenset(
     {
         "set_control",
         "set_forward_sprint_dev",
+        "set_forward_sneak_dev",
         "clear_controls",
         "equip_item",
         "consume_held",
@@ -961,6 +962,15 @@ def encode_forward_sprint_dev(action_id: str) -> str:
     return _encode_command({
         "type": "effect", "action_id": action_id,
         "effect": "set_forward_sprint_dev", "forward": True, "sprint": True,
+    })
+
+
+def encode_forward_sneak_dev(action_id: str) -> str:
+    """One S49-owned DEV crouch+forward pair; not generic control injection."""
+    _require_text("action_id", action_id)
+    return _encode_command({
+        "type": "effect", "action_id": action_id,
+        "effect": "set_forward_sneak_dev", "forward": True, "sneak": True,
     })
 
 
