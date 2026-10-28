@@ -12,10 +12,7 @@ import json
 from pathlib import Path
 
 from adapters.mineflayer.s49_goal_l1_detour_review_dev import review
-from adapters.mineflayer.s49_l1_selfworld_memory_dev import (
-    build_selfworld_memory_dev,
-    recall_from_selfworld_dev,
-)
+from adapters.mineflayer.s49_l1_selfworld_memory_dev import recall_from_selfworld_dev
 from relay_self.goal_memory_choice_dev import L1RecallStatusDev
 from relay_self.goal_navigation import GoalPurpose, L2GoalProposal
 from relay_self.provenance import Provenance
