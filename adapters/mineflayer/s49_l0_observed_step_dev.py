@@ -94,3 +94,82 @@ def plan_next_l0_step_dev(
         requested_next_step_m=next_step_m, observed_mean_mps=observed_speed,
         requested_duration_s=requested, reason="OBSERVED_SPEED_INPUT_CORRECTION",
     )
+
+
+@dataclass(frozen=True, slots=True)
+class L0ResidualStepPlan:
+    """Third original input proposal, sourced from closed second S16."""
+    second_action_id: str
+    session_id: str
+    total_target_m: float
+    second_observed_m: float
+    residual_m: float
+    second_input_s: float
+    proposed_duration_s: float | None
+    decision: str
+    absolute_world_goal_attested: bool = False
+    paper_node_tick_synchronized: bool = False
+    qualification_go: bool = False
+    science_go: bool = False
+
+
+def plan_residual_after_second_s16_dev(
+    second: WorldConsequence, *, second_input_s: float,
+    total_target_m: float, current_threat_distance_m: float,
+    tolerance_m: float = 0.15,
+) -> L0ResidualStepPlan:
+    """Feedback over actual second Action. No invented tick/distance.
+
+    STOP is only a bounded *proposal*. The original L0 must independently
+    choose WAIT/not issue. A third issued Action with STOP must fail closed.
+    """
+    if (
+        not isinstance(second, WorldConsequence)
+        or second.action_ref != "MOVE_FORWARD_SPRINT_DEV"
+        or second.status is not WorldConsequenceStatus.EXECUTED
+        or second.before_observation is None
+        or second.after_observation is None
+        or second.dispatch_receipt is None
+        or second.cleanup_receipt is None
+        or not second.cleanup_attempted
+        or second.session_id != second.before_observation.session_id
+        or second.session_id != second.after_observation.session_id
+    ):
+        raise L0MotionFeedbackRejected("third input needs closed original second S16")
+    if any(
+        type(n) not in (float, int) or not math.isfinite(n)
+        for n in (second_input_s, total_target_m, current_threat_distance_m,
+                  tolerance_m, second.movement_distance)
+    ):
+        raise L0MotionFeedbackRejected("nonnumeric second motion")
+    if (
+        not 0.10 <= second_input_s <= 0.60
+        or not 0.5 <= total_target_m <= 2.5
+        or not 0 < current_threat_distance_m < 4
+        or not 0.05 <= tolerance_m <= 0.25
+        or not 0.05 <= second.movement_distance <= 10.0
+        or not second.action_id
+    ):
+        raise L0MotionFeedbackRejected("out-of-range second observed motion")
+    residual = total_target_m - second.movement_distance
+    base = dict(
+        second_action_id=second.action_id, session_id=second.session_id,
+        total_target_m=total_target_m,
+        second_observed_m=second.movement_distance,
+        residual_m=residual, second_input_s=second_input_s,
+    )
+    if residual <= tolerance_m:
+        return L0ResidualStepPlan(
+            **base, proposed_duration_s=None, decision="STOP_AVOID_OVERSHOOT",
+        )
+    if current_threat_distance_m < 1.5:
+        return L0ResidualStepPlan(
+            **base, proposed_duration_s=None, decision="DANGER_L0_PRIORITY",
+        )
+    # In Minecraft, short input is nonlinear due to acceleration. This is
+    # merely a bounded input candidate, not a target-reach guarantee.
+    observed_speed = second.movement_distance / second_input_s
+    proposed = max(0.10, min(0.60, residual / observed_speed))
+    return L0ResidualStepPlan(
+        **base, proposed_duration_s=proposed, decision="OBSERVED_RESIDUAL_MICRO_STEP",
+    )
