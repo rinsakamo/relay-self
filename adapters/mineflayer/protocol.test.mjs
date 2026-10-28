@@ -647,3 +647,32 @@ test('W4 orientation is opt-in read-only and never alters default snapshot', () 
     /must be boolean/
   )
 })
+
+test('G2 crouch+forward DEV requires strict opt-in and exact two-control shape', () => {
+  const prior = process.env.S49_GOAL_G2_SNEAK_DEV_ONLY
+  const valid = {
+    type: 'effect', action_id: 's49-sneak-1',
+    effect: 'set_forward_sneak_dev', forward: true, sneak: true
+  }
+  try {
+    delete process.env.S49_GOAL_G2_SNEAK_DEV_ONLY
+    assert.throws(() => parseCommand(valid), /explicit DEV opt-in/)
+    process.env.S49_GOAL_G2_SNEAK_DEV_ONLY = '1'
+    assert.deepEqual(parseCommand(valid), valid)
+    assert.throws(
+      () => parseCommand({ ...valid, sneak: false }), /requires forward=true/
+    )
+    assert.throws(
+      () => parseCommand({ ...valid, extra: true }), /keys/
+    )
+    assert.throws(
+      () => parseCommand({ ...valid, sprint: true }), /keys/
+    )
+  } finally {
+    if (prior === undefined) {
+      delete process.env.S49_GOAL_G2_SNEAK_DEV_ONLY
+    } else {
+      process.env.S49_GOAL_G2_SNEAK_DEV_ONLY = prior
+    }
+  }
+})
