@@ -106,6 +106,7 @@ async def follow_l1_detour_dev(
         )
         stage={
             "index":index,
+            "route_revision":plan.revision,
             "stage_id":plan.stages[index].stage_id,
             "goal_id":goal.goal_id,
             "session_id":goal.session_id,
