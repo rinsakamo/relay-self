@@ -757,7 +757,7 @@ async def qualify(
                                 else 0.60
                             ),
                             total_target_m=dev_l0_next_step_m,
-                            current_threat_distance_m=2.0,
+                            current_threat_distance_m=native.distance_m,
                             tolerance_m=0.20,
                         )
                         if stop_plan.decision != "STOP_AVOID_OVERSHOOT":
