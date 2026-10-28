@@ -91,7 +91,7 @@ def test_projection_preserves_two_distinct_time_domains_and_only_sensors():
     lambda f, o: setattr(o, "active_action", "still-moving"),
     lambda f, o: setattr(o, "pending_meal", "unverified-food"),
     lambda f, o: setattr(o, "fatigue", replace(o.fatigue, world_tick=999)),
-    lambda f, o: setattr(f, "session_id", "foreign"),
+    lambda f, o: setattr(o, "session_id", "foreign"),
     lambda f, o: f.data.update(status="STALE"),
     lambda f, o: f.data["snapshot"].update(threats_complete=False),
     lambda f, o: setattr(o.energy, "body", replace(o.energy.body, tick=3)),
