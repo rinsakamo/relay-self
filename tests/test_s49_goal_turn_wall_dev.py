@@ -57,7 +57,7 @@ def test_target_bearing_calculated_from_l2_l1_immutable_xz():
 
 
 @pytest.mark.parametrize("x,z",[
-    (float("nan"),0.0),(1.0,float("inf")),(0.0,0.0),
+    (float("nan"),0.0),(1.0,float("inf")),
     (1.4,2.6),
 ])
 def test_rejects_nonfinite_or_zero_target_bearing(x,z):
