@@ -99,3 +99,37 @@ def test_source_is_not_relabelled_success_or_rewritten():
     assert frame.data == before
     assert owner.active_action is None
     assert owner.energy.body.energy == 12.0
+
+def test_unforced_runtime_does_not_issue_on_real_time_paper_hazard(monkeypatch):
+    """Integration boundary: no motor issuer call on an admitted unsafe frame."""
+    import asyncio
+
+    import adapters.mineflayer.t1p_body_runtime_dev as mod
+
+    source, owner = sample()
+    source.data["assessment"] = "LOW_HEALTH"
+    session = SimpleNamespace(
+        started=SimpleNamespace(session_id="owned-session"),
+        source_lost=False, tick_owner=None)
+
+    async def probe(*_args):
+        return SimpleNamespace(seq=0)
+
+    async def native_tick(*_args, **_kwargs):
+        owner.previous = source
+        return source
+
+    async def must_not_issue(*_args, **_kwargs):
+        raise AssertionError("unsafe source emitted a physical motor effect")
+
+    monkeypatch.setattr(mod, "TickAccounting", lambda _: owner)
+    monkeypatch.setattr(mod, "_correlated_observe", probe)
+    monkeypatch.setattr(mod, "next_tick", native_tick)
+    monkeypatch.setattr(mod, "execute_mineflayer_command", must_not_issue)
+    report = {}
+    asyncio.run(mod.run_body_loop_dev(session, report, move_limit=2))
+    assert session.tick_owner is owner
+    assert report["status"] == "FAIL"
+    assert report["t1p"]["epochs"] == []
+    assert report["t1p"]["halt_reason"] == "HALT"
+    assert report["t1p"]["forced_hazard_count"] == 0
