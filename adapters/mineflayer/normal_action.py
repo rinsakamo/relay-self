@@ -104,6 +104,8 @@ class NormalWorldL0(ReactiveL0):
             session_id, intent_id, retained, max_events=max_events,
             max_action_requests=max_action_requests,
         )
+        # DEV only, bound by the SAME original L0 after its second closed S16.
+        self._s16_stop_source: tuple[str, float] | None = None
         self._stage_r_dev_token: object | None = None
         self._stage_r_dev_commit: LearningCommitResult | None = None
         # Stage T is explicit synthetic OFFLINE rehearsal, NOT S49 live path.
@@ -201,6 +203,26 @@ class NormalWorldL0(ReactiveL0):
         self._stage_t_dev_commit = commit
         self._stage_t_dev_s17 = typed_s17
 
+    def bind_s16_stop_dev(
+        self, *, session_id: str, second_action_id: str,
+        residual_m: float, tolerance_m: float,
+    ) -> None:
+        if (
+            os.environ.get("S49_L0_GOAL_WAIT_DEV_ONLY") != "1"
+            or session_id != self.session_id
+            or not second_action_id or second_action_id not in self._used_action_ids
+            or len(self._used_action_ids) != 2
+            or self.events != 3 or self.action_requests != 2
+            or self._s16_stop_source is not None
+            or type(residual_m) not in (float, int)
+            or type(tolerance_m) not in (float, int)
+            or not math.isfinite(residual_m) or not math.isfinite(tolerance_m)
+            or not 0.05 <= tolerance_m <= 0.25
+            or residual_m > tolerance_m
+        ):
+            raise NormalActionRejected("WAIT needs closed second S16 and bounded residual")
+        self._s16_stop_source = (second_action_id, residual_m)
+
     def _check(self, event, probe):
         if (
             not isinstance(event, MineflayerObservation)
@@ -250,10 +272,25 @@ class NormalWorldL0(ReactiveL0):
                 expected_session_id=self.session_id,
                 expected_entity_id=native.entity_id,
             )
-        return select_world_conditioned_choice(
+        choice = select_world_conditioned_choice(
             native, self.retained,
             expected_session_id=self.session_id, expected_entity_id=native.entity_id,
         )
+        if self._s16_stop_source is not None and self.events == 3:
+            # Fresh real zombie is still assessed. Immediate danger overrides
+            # the relative-step deadband; no "safe world" inference.
+            if native.distance_m >= 1.5:
+                return replace(
+                    choice, selection=WorldChoiceKind.WAIT,
+                    action_authorized=False,
+                    criterion_id="s49-closed-s16-relative-step-stop-dev",
+                    wait_score=0, move_score=7,
+                    provenance=Provenance(
+                        "s49-l0-s16-relative-stop-dev",
+                        f"{self.session_id}:{self._s16_stop_source[0]}:{probe.seq}",
+                    ),
+                )
+        return choice
 
 
 class NormalActionStage(str, Enum):
@@ -336,11 +373,18 @@ class NormalSessionActionExecutor:
         self, session_id: str, intent: IntentCommitment, *,
         dev_forward_motor: bool = False,
         dev_sprint_motor: bool = False,
+        dev_walk_third: bool = False,
     ) -> None:
         if (
             type(dev_forward_motor) is not bool
             or type(dev_sprint_motor) is not bool
             or (dev_sprint_motor and not dev_forward_motor)
+            or type(dev_walk_third) is not bool
+            or (dev_walk_third and (
+                not dev_sprint_motor
+                or os.environ.get("S49_L0_WALK_THIRD_DEV_ONLY") != "1"
+                or os.environ.get("S49_L0_RESIDUAL_THIRD_DEV_ONLY") != "1"
+            ))
             or not isinstance(session_id, str) or not session_id
             or not isinstance(intent, IntentCommitment)
             or intent.current_intent is None
@@ -351,6 +395,7 @@ class NormalSessionActionExecutor:
         # Default remains the original physically bound backward S49 path.
         self._dev_forward_motor = dev_forward_motor
         self._dev_sprint_motor = dev_sprint_motor
+        self._dev_walk_third = dev_walk_third
         self.supervisor = ActionSupervisor()
         self._dispatched: set[str] = set()
         self._count = 0
@@ -399,7 +444,8 @@ class NormalSessionActionExecutor:
             )
             or bound.candidate_ref != "MOVE_AWAY"
             or bound.binding.action_ref != (
-                "MOVE_FORWARD_SPRINT_DEV" if self._dev_sprint_motor
+                "MOVE_FORWARD" if self._dev_walk_third and self._count == 2
+                else "MOVE_FORWARD_SPRINT_DEV" if self._dev_sprint_motor
                 else "MOVE_FORWARD" if self._dev_forward_motor
                 else "MOVE_BACKWARD"
             )
