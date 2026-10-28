@@ -10,8 +10,6 @@ import math
 import os
 from dataclasses import asdict, replace
 
-from adapters.mineflayer.t1v_physical_idle_dev import physical_idle_witness_dev
-
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.python_protocol import MineflayerPaperSnapshot
 from experiments.fatigue_p1 import FatigueFrame, FatigueProfile, advance, initial_state
@@ -176,9 +174,10 @@ class TickAccounting:
                     if isinstance(gait_tick, GaitTickDev) and wait and gait_tick.gait != "WAIT":
                         raise ValueError("applied gait disagrees with WAIT_DEV")
                     if isinstance(gait_tick, GaitTickDev) and gait_tick.gait == "WAIT" and not wait:
-                        # Rest of the *body* before an Action/clear is not a
-                        # causally closed S49 WAIT. Do not mint WAIT_DEV credit.
-                        physical_idle = physical_idle_witness_dev(frame, self.previous)
+                        # No imported T1v physical-idle witness exists on
+                        # this integrated branch. Never grant rest on a gait
+                        # request without the actual S49 causal clear.
+                        raise ValueError("physical idle without causal clear unproven")
                     if (not isinstance(gait_tick, GaitTickDev)
                             or gait_tick.session_id != self.session_id
                             or gait_tick.world_tick != s["world_tick"]
