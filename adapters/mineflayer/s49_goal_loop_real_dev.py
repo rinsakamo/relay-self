@@ -18,6 +18,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from adapters.mineflayer.execution import WorldConsequenceStatus
+from adapters.mineflayer.g3_applied_gait_source_dev import applied_gait_from_original_t1u_dev
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -148,6 +149,7 @@ async def qualify(
     paper_plugin_dev:Path|None=None,
     paper_dash_plugin_dev:Path|None=None,
     g2_dash_first_dev:bool=False,
+    g3_single_owner_dev:bool=False,
     paper_gait_observation_dev:bool=False,
     g2_sprint_first_dev:bool=False,
     g2_sprint_prefix_dev:bool=False,
@@ -187,6 +189,7 @@ async def qualify(
         "g2_sprint_prefix_dev":g2_sprint_prefix_dev,
         "g2_sprint_actions_dev":[],
         "g2_dash_first_dev":g2_dash_first_dev,
+        "g3_single_owner_dev":g3_single_owner_dev,
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -220,6 +223,12 @@ async def qualify(
                 or obstacle_wall_dev or detour_after_wall_dev
                 or goal_turn_dx_dev!=0.0
                 or os.environ.get("S49_GOAL_G2_SNEAK_DEV_ONLY")!="1"
+            ))
+            or type(g3_single_owner_dev) is not bool
+            or (g3_single_owner_dev and (
+                not g2_dash_first_dev
+                or not paper_gait_observation_dev
+                or os.environ.get("S49_L1_G3_T2_DEV_ONLY")!="1"
             ))
             or type(g2_dash_first_dev) is not bool
             or (g2_dash_first_dev and (
@@ -431,7 +440,13 @@ async def qualify(
                 and os.environ.get("S49_L1_T2_BOUNDARY_DEV_ONLY")=="1"
             ):
                 raise RuntimeError("same-World L1/T2 DEV requires explicit T1f/T2/S49 gates")
-            t2_owner=TickAccounting(sid)
+            t2_owner=TickAccounting(
+                sid,
+                **({
+                    "gait_source":applied_gait_from_original_t1u_dev,
+                    "g3_partial_dev":True,
+                } if g3_single_owner_dev else {}),
+            )
             session.bind_l1_t2_owner_dev(t2_owner)
             if paper_gait_observation_dev:
                 gait_observer=G1AppliedGaitObserverDev(sid)
@@ -1313,6 +1328,23 @@ async def qualify(
         report["status"]="FAIL"
         report["exception"]=f"{type(exc).__name__}: {exc}"
     finally:
+        if t2_owner is not None and g3_single_owner_dev:
+            report["g3_single_t2_p1_m0_owner_dev"]={
+                "session_id":sid,
+                "original_p1_owner":True,
+                "original_m0_owner":True,
+                "gait_source":"ORIGINAL_T1U_NODE_PAPER_STABLE_DEV",
+                "single_p1_updates":len(t2_owner.rows),
+                "stable_gait_ticks":t2_owner.g3_applied_gait_ticks_dev,
+                "undetermined_fallback_ticks":t2_owner.g3_unknown_fallback_ticks_dev,
+                "dash_extra_energy_paid":t2_owner.g3_dash_energy_total_dev,
+                "m0_energy_remaining":t2_owner.energy.body.energy,
+                "m0_tick":t2_owner.energy.body.tick,
+                "gait_R_attested":False,
+                "p1_R_qualified":False,
+                "dev_partial_source":True,
+                "owner_failed":t2_owner.failed,
+            }
         if gait_observer is not None:
             rows=[asdict(row) for row in gait_observer.rows]
             file=report_path.parent/"g1_applied_gait_observation_dev.json"
@@ -1437,6 +1469,7 @@ def main()->int:
     p.add_argument("--paper-plugin-dev",type=Path)
     p.add_argument("--paper-dash-plugin-dev",type=Path)
     p.add_argument("--g2-dash-first-dev",action="store_true")
+    p.add_argument("--g3-single-owner-dev",action="store_true")
     p.add_argument("--paper-gait-observation-dev",action="store_true")
     p.add_argument("--g2-sprint-first-dev",action="store_true")
     p.add_argument("--g2-sprint-prefix-dev",action="store_true")
@@ -1472,6 +1505,7 @@ def main()->int:
         paper_plugin_dev=args.paper_plugin_dev,
         paper_dash_plugin_dev=args.paper_dash_plugin_dev,
         g2_dash_first_dev=args.g2_dash_first_dev,
+        g3_single_owner_dev=args.g3_single_owner_dev,
         paper_gait_observation_dev=args.paper_gait_observation_dev,
         g2_sprint_first_dev=args.g2_sprint_first_dev,
         g2_sprint_prefix_dev=args.g2_sprint_prefix_dev,
