@@ -135,10 +135,13 @@ function emitLocalVoxelsDev (command) {
     for (let dx = -3; dx <= 3; dx++) {
       const xx = baseX + dx
       const zz = baseZ + dz
-      const occupancy = [footY, footY + 1, footY - 1].map(y => {
+      const occupancy = [footY, footY + 1, footY - 1].map((y, level) => {
         const block = bot.blockAt(
           pos.offset(xx - pos.x, y - pos.y, zz - pos.z).floored(), false)
         if (block === null || block === undefined) return 'UNKNOWN'
+        // The ground layer requires a collision-supporting full block.
+        // Water, grass and other non-solid material are not floor support.
+        if (level === 2) return block.boundingBox === 'block' ? 'BLOCKED' : 'CLEAR'
         return air.has(block.name) ? 'CLEAR' : 'BLOCKED'
       })
       cells.push({ dx, dz, feet: occupancy[0],
@@ -147,8 +150,8 @@ function emitLocalVoxelsDev (command) {
   }
   emit('local_voxels_dev', {
     request_id: command.request_id, origin_x: command.origin_x,
-    origin_z: command.origin_z, player_y: pos.y,
-    coverage: 'mineflayer_loaded_cache_fixed_7x6x3',
+    origin_z: command.origin_z, player_x: pos.x, player_z: pos.z,
+    player_y: pos.y, coverage: 'mineflayer_loaded_cache_fixed_7x6x3',
     x_min: -3, x_max: 3, z_min: 0, z_max: 5,
     cells, unknown_is_not_clear: true
   })
