@@ -1,0 +1,134 @@
+name: S49 G2 First DASH Paper Callback DEV
+on:
+  push:
+    branches:
+      - self/dev-l1-t2-action-boundary-20261028
+    paths:
+      - .github/workflows/self-g2-dash-same-world-dev.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  g2-paper-dash-world:
+    runs-on: ubuntu-latest
+    timeout-minutes: 26
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DEV_OUTPUT: '/tmp/s49-g2-dash-${{ github.run_id }}-${{ github.run_attempt }}'
+      S49_REAL_SERVER_CI: '1'
+      S49_FORWARD_MOTOR_DEV_ONLY: '1'
+      S49_L0_GOAL_LOOP_DEV_ONLY: '1'
+      S49_L1_T2_CHANNEL_DEV_ONLY: '1'
+      S49_L1_T2_BOUNDARY_DEV_ONLY: '1'
+      S49_L1_G1_OBSERVATION_DEV_ONLY: '1'
+      S49_GOAL_G2_SPRINT_PREFIX_DEV_ONLY: '1'
+      S49_GOAL_G2_DASH_FIRST_DEV_ONLY: '1'
+      S49_SPRINT_MOTOR_DEV_ONLY: '1'
+      S49_SPEED_ATTR_SYNC_DEV_ONLY: '1'
+      RELAYSELF_T1F_DEV: '1'
+      RELAYSELF_PAPER_TICK_DEV: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 2672d0a1fe15584d16c2426540c528410bbb8c27
+          path: t1w-pinned-source
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Strict scoped checks and original existing Paper plugins
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/s49_goal_loop_real_dev.py adapters/mineflayer/s49_t2_applied_gait_observation_dev.py adapters/mineflayer/s49_goal_executor_dev.py
+          python -m compileall -q adapters/mineflayer/s49_goal_loop_real_dev.py adapters/mineflayer/s49_t2_applied_gait_observation_dev.py
+          env -u S49_L1_T2_CHANNEL_DEV_ONLY -u S49_L1_T2_BOUNDARY_DEV_ONLY -u RELAYSELF_T1F_DEV -u RELAYSELF_PAPER_TICK_DEV -u S49_L1_G1_OBSERVATION_DEV_ONLY python -m pytest -q tests/test_s49_t2_applied_gait_observation_dev.py tests/test_s49_g2_sprint_first_dev.py
+          node --check adapters/mineflayer/bridge.mjs
+          node --test adapters/mineflayer/protocol.test.mjs
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          mvn -B -ntp -f t1w-pinned-source/adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+          mvn -B -ntp -f adapters/mineflayer/s49_paper_dash_dev/pom.xml -DskipTests package
+      - name: Fetch pinned Paper 1.21.8
+        run: |
+          set -euo pipefail
+          mkdir -p "$DEV_OUTPUT"
+          python - <<'PY'
+          import hashlib,os,pathlib,urllib.request
+          root=pathlib.Path(os.environ["DEV_OUTPUT"])
+          digest="8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          url=f"https://fill-data.papermc.io/v1/objects/{digest}/paper-1.21.8-60.jar"
+          req=urllib.request.Request(url,headers={"User-Agent":"RelaySelf-G2-DASH-DEV"})
+          with urllib.request.urlopen(req,timeout=120) as response:
+              data=response.read(53_000_000)
+          assert len(data)==52811717 and hashlib.sha256(data).hexdigest()==digest
+          (root/"paper.jar").write_bytes(data)
+          PY
+      - name: One disposable original S49 DASH-prefix Paper World
+        run: |
+          set -euo pipefail
+          PLUGIN="$PWD/t1w-pinned-source/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar"
+          DASH="$PWD/adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-dash-dev-0.1.0-dev.jar"
+          test -s "$PLUGIN" && test -s "$DASH"
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/WORLD-DASH" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
+            --paper-plugin-dev "$PLUGIN" --paper-gait-observation-dev \
+            --paper-dash-plugin-dev "$DASH" --g2-dash-first-dev \
+            --offset-m 4.0 --g2-sprint-prefix-dev \
+            > "$DEV_OUTPUT/producer-dash.stdout" 2>&1 || {
+              cat "$DEV_OUTPUT/producer-dash.stdout"; exit 1;
+            }
+          cat "$DEV_OUTPUT/producer-dash.stdout"
+          python - <<'PY'
+          import hashlib,json,os,pathlib
+          folder=pathlib.Path(os.environ["DEV_OUTPUT"])/"WORLD-DASH"
+          report=json.loads((folder/"goal_report.json").read_text())
+          assert report["status"]=="PASS" and report["stage"]=="GOAL_REACHED"
+          dash=report["g2_dash_modifier_dev"]
+          assert dash["released"] and dash["paper_complete_source_observed"]
+          assert dash["paper_positive_modifier_callbacks"]>=1
+          assert dash["m0_extra_posted"] is False and dash["p1_gait_posted"] is False
+          assert dash["native_packet_to_world_tick_attested"] is False
+          assert len(report["g2_sprint_actions_dev"])==3
+          assert all(a["terminal_state"]=="outcome" for a in report["g2_sprint_actions_dev"])
+          t2=report["l1_t2_ledger_dev"]
+          assert not t2["owner_failed"] and t2["original_action_boundary_receipts"]==3
+          g=report["g1_applied_gait_observation_dev"]
+          assert not g["failed"] and not g["full_tick_gait_attested"]
+          rows=json.loads((folder/g["derived_file"]).read_text())["rows"]
+          assert any(x["paper_gait"]["sprinting"] is True
+                     and x["paper_gait"]["speed_modifiers"]>=2
+                     and x["paper_gait"]["speed_value"]>0.15 for x in rows)
+          for item in (g,t2):
+              f=folder/item["derived_file"]
+              assert hashlib.sha256(f.read_bytes()).hexdigest()==item["derived_file_sha256"]
+          print("G2_DASH_PAPER_MODIFIER_AND_ORIGINAL_S49_DEV_PASS",dash,g["kinds"],t2["rows"])
+          PY
+      - name: Preserve real World and refusal evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-g2-paper-dash-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.DEV_OUTPUT }}/
+            !${{ env.DEV_OUTPUT }}/paper.jar
+            !${{ env.DEV_OUTPUT }}/WORLD-DASH/**/paper.jar
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Classification
+        if: always()
+        run: echo 'DEV_ONLY / PAPER_DASH_MODIFIER_CANDIDATE_ONLY / NATIVE_TICK_GAIT_UNVERIFIED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
