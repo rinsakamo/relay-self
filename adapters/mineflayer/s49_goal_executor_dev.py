@@ -21,11 +21,11 @@ from adapters.mineflayer.normal_action import (
     NormalSessionActionExecutor,
 )
 from adapters.mineflayer.process_session import MineflayerProcessSession
-from adapters.mineflayer.s49_goal_t2_boundary_dev import GoalT2ActionBoundaryDev
 from adapters.mineflayer.python_protocol import (
     MineflayerEffectResult,
     MineflayerObservation,
 )
+from adapters.mineflayer.s49_goal_t2_boundary_dev import GoalT2ActionBoundaryDev
 from relay_self.action import ActionState
 from relay_self.action_outcome import (
     ActionOutcomeDisposition,
