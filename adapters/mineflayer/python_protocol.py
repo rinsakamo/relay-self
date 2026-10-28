@@ -408,6 +408,65 @@ class MineflayerRouteBlocksDev(MineflayerMessage):
 
 
 @dataclass(frozen=True, slots=True)
+class MineflayerVoxelCellDev:
+    dx: int
+    dz: int
+    feet: str
+    head: str
+    floor: str
+
+    def __post_init__(self) -> None:
+        if (
+            type(self.dx) is not int or not -3 <= self.dx <= 3
+            or type(self.dz) is not int or not 0 <= self.dz <= 5
+            or any(
+                state not in ("CLEAR", "BLOCKED", "UNKNOWN")
+                for state in (self.feet, self.head, self.floor)
+            )
+        ):
+            raise MineflayerAdapterProtocolError("invalid bounded voxel cell")
+
+
+@dataclass(frozen=True, slots=True)
+class MineflayerLocalVoxelsDev(MineflayerMessage):
+    """Only already-loaded actual client blocks, 42 cells / three heights."""
+
+    request_id: str
+    origin_x: float
+    origin_z: float
+    player_y: float
+    coverage: str
+    x_min: int
+    x_max: int
+    z_min: int
+    z_max: int
+    cells: tuple[MineflayerVoxelCellDev, ...]
+    unknown_is_not_clear: bool
+
+    def __post_init__(self) -> None:
+        MineflayerMessage.__post_init__(self)
+        _require_probe_request_id(self.request_id)
+        for name in ("origin_x", "origin_z", "player_y"):
+            _require_number(name, getattr(self, name))
+        if (
+            self.coverage != "mineflayer_loaded_cache_fixed_7x6x3"
+            or (self.x_min, self.x_max, self.z_min, self.z_max)
+               != (-3, 3, 0, 5)
+            or self.unknown_is_not_clear is not True
+            or not isinstance(self.cells, tuple)
+            or len(self.cells) != 42
+            or any(not isinstance(cell, MineflayerVoxelCellDev)
+                   for cell in self.cells)
+            or tuple((cell.dx, cell.dz) for cell in self.cells) != tuple(
+                (dx, dz) for dz in range(6) for dx in range(-3, 4)
+            )
+        ):
+            raise MineflayerAdapterProtocolError(
+                "incomplete, reordered, or forged native voxel coverage"
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class MineflayerNativeClockPacket(MineflayerMessage):
     """Original-shaped clientbound time sample, not command-effect authority."""
 
@@ -525,6 +584,7 @@ MineflayerDecodedMessage = Union[
     MineflayerAdapterStarted,
     MineflayerObservation,
     MineflayerRouteBlocksDev,
+    MineflayerLocalVoxelsDev,
     MineflayerNativeClockPacket,
     MineflayerEntityHurt,
     MineflayerEffectResult,
@@ -631,6 +691,41 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
             kind=_decoded_text("observation kind", payload["kind"]),
             snapshot=_decode_snapshot(payload["snapshot"]),
             request_id=payload.get("request_id"),
+        )
+
+    if message_type == "local_voxels_dev":
+        _require_exact_keys(
+            "local_voxels_dev", payload,
+            {
+                "type", "session_id", "seq", "request_id", "origin_x",
+                "origin_z", "player_y", "coverage", "x_min", "x_max",
+                "z_min", "z_max", "cells", "unknown_is_not_clear",
+            },
+        )
+        raw_cells = _require_list("local voxel cells", payload["cells"])
+        cells = []
+        for item in raw_cells:
+            cell = _require_mapping("voxel cell", item)
+            _require_exact_keys(
+                "voxel cell", cell, {"dx", "dz", "feet", "head", "floor"},
+            )
+            cells.append(MineflayerVoxelCellDev(
+                dx=cell["dx"], dz=cell["dz"],
+                feet=_decoded_text("feet", cell["feet"]),
+                head=_decoded_text("head", cell["head"]),
+                floor=_decoded_text("floor", cell["floor"]),
+            ))
+        return MineflayerLocalVoxelsDev(
+            session_id=session_id, seq=seq,
+            request_id=payload["request_id"],
+            origin_x=_decoded_number("origin_x", payload["origin_x"]),
+            origin_z=_decoded_number("origin_z", payload["origin_z"]),
+            player_y=_decoded_number("player_y", payload["player_y"]),
+            coverage=_decoded_text("coverage", payload["coverage"]),
+            x_min=payload["x_min"], x_max=payload["x_max"],
+            z_min=payload["z_min"], z_max=payload["z_max"],
+            cells=tuple(cells),
+            unknown_is_not_clear=payload["unknown_is_not_clear"],
         )
 
     if message_type == "route_blocks_dev":
@@ -908,6 +1003,19 @@ def encode_observe(request_id: str | None = None) -> str:
         return _encode_command({"type": "observe"})
     _require_probe_request_id(request_id)
     return _encode_command({"type": "observe", "request_id": request_id})
+
+
+def encode_local_voxels_dev(
+    request_id: str, *, origin_x: float, origin_z: float,
+) -> str:
+    _require_probe_request_id(request_id)
+    _require_number("origin_x", origin_x)
+    _require_number("origin_z", origin_z)
+    return _encode_command({
+        "type": "observe_local_voxels_dev",
+        "request_id": request_id, "origin_x": origin_x,
+        "origin_z": origin_z,
+    })
 
 
 def encode_route_blocks_dev(
