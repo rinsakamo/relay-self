@@ -16,11 +16,13 @@ from experiments.metabolism_viability import MetabolismConfig
 
 
 class TickAccounting:
-    def __init__(self, session_id):
+    def __init__(self, session_id, *, fatigue_profile: FatigueProfile | None = None):
         self.session_id = session_id
         self.energy = B0EnergyLedger(session_id, config=MetabolismConfig(
             basal_cost=.001, move_cost=.002, fight_cost=.01))
-        self.profile = FatigueProfile(enabled=True)
+        if fatigue_profile is not None and not isinstance(fatigue_profile, FatigueProfile):
+            raise TypeError("fatigue_profile must be an existing P1 profile")
+        self.profile = fatigue_profile if fatigue_profile is not None else FatigueProfile(enabled=True)
         self.fatigue = None
         self.previous = None
         self.active_action = None
