@@ -139,3 +139,30 @@ def review_motion_correspondence_dev(node_lines, paper_lines):
         "p1_transitions_admitted": 0, "m0_debits_posted": 0,
         "r_qualified": False, "science_qualified": False,
     }
+
+
+def main():
+    """Read-only source review; report is a *new* separate DEV file."""
+    import argparse
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--node", required=True, type=Path)
+    parser.add_argument("--paper", required=True, type=Path)
+    parser.add_argument("--output", required=True, type=Path)
+    args = parser.parse_args()
+    if (not all(p.is_absolute() for p in (args.node, args.paper, args.output))
+            or args.output.exists()):
+        parser.error("absolute source paths and a fresh output file required")
+    with args.node.open(encoding="utf-8") as source:
+        node_lines = source.readlines()
+    with args.paper.open(encoding="utf-8") as source:
+        paper_lines = source.readlines()
+    result = review_motion_correspondence_dev(node_lines, paper_lines)
+    with args.output.open("x", encoding="utf-8") as target:
+        json.dump(result, target, indent=2, sort_keys=True)
+        target.write("\n")
+
+
+if __name__ == "__main__":
+    main()
