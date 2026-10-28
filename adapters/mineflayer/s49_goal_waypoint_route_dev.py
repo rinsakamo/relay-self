@@ -18,6 +18,7 @@ from adapters.mineflayer.s31a_real_server_ci import _correlated_observe
 from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
 from relay_self.action import ActionState
 from relay_self.goal_detour_dev import L1DetourPlanDev
+from relay_self.goal_grid_search_dev import L1GridRoutePlanDev
 from relay_self.goal_navigation import (
     GoalDecisionKind,
     ObservedGoalL0,
@@ -32,12 +33,13 @@ class DetourRunRejected(RuntimeError):
 
 
 async def follow_l1_detour_dev(
-    session, executor:S49GoalExecutorDev, plan:L1DetourPlanDev,
+    session, executor:S49GoalExecutorDev,
+    plan:L1DetourPlanDev|L1GridRoutePlanDev,
     *, first_blocked_action_id:str, blocked_after_seq:int,
 )->dict:
     if (
         not isinstance(executor,S49GoalExecutorDev)
-        or not isinstance(plan,L1DetourPlanDev)
+        or not isinstance(plan,(L1DetourPlanDev,L1GridRoutePlanDev))
         or executor.session_id!=session.started.session_id
         or first_blocked_action_id!=plan.source_action_id
         or blocked_after_seq!=plan.source_s16_seq
@@ -62,7 +64,7 @@ async def follow_l1_detour_dev(
     }
     closed_id=first_blocked_action_id
     native_seq=blocked_after_seq
-    for index in range(3):
+    for index in range(len(plan.stages)):
         # Drain input-off world displacement before choosing the next route
         # axis. Never infer the exact latency from the previous S16 scalar.
         await asyncio.sleep(0.22)
