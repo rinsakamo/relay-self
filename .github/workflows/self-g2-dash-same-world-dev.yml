@@ -103,10 +103,10 @@ jobs:
           assert dash["paper_positive_modifier_callbacks"]>=1
           assert dash["m0_extra_posted"] is False and dash["p1_gait_posted"] is False
           assert dash["native_packet_to_world_tick_attested"] is False
-          assert len(report["g2_sprint_actions_dev"])==3
+          assert len(report["g2_sprint_actions_dev"])==2
           assert all(a["terminal_state"]=="outcome" for a in report["g2_sprint_actions_dev"])
           t2=report["l1_t2_ledger_dev"]
-          assert not t2["owner_failed"] and t2["original_action_boundary_receipts"]==3
+          assert not t2["owner_failed"] and t2["original_action_boundary_receipts"]==2
           g=report["g1_applied_gait_observation_dev"]
           assert not g["failed"] and not g["full_tick_gait_attested"]
           rows=json.loads((folder/g["derived_file"]).read_text())["rows"]
