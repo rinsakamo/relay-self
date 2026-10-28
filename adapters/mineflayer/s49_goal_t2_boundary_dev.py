@@ -61,6 +61,7 @@ class GoalT2ActionBoundaryDev:
         self.active_action: str | None = None
         self.last_s16_seq: int | None = None
         self.receipts: list[GoalT2BoundaryReceiptDev] = []
+        self.refusal: dict[str, object] | None = None
         self.latched = False
 
     def latch(self) -> None:
@@ -120,6 +121,31 @@ class GoalT2ActionBoundaryDev:
             or type(ack.seq) is not int or ack.seq > after.seq
             or getattr(self.owner, "active_action", None) != self.active_action
         ):
+            # Diagnostic is a bounded copy of the ORIGINAL S16 receipt fields.
+            # It is not a new source, not a grant, and never fills an UNKNOWN.
+            self.refusal = {
+                "reason": "NATIVE_TERMINAL_NOT_SAFE_FOR_T2",
+                "s49_active_action_id": self.active_action,
+                "terminal_action_id": getattr(terminal, "action_id", None),
+                "terminal_state": getattr(getattr(terminal, "state", None), "value", None),
+                "consequence_action_id": getattr(consequence, "action_id", None),
+                "consequence_status": status,
+                "after_session_matches": (
+                    after is not None and after.session_id == self.session_id
+                ),
+                "after_seq": getattr(after, "seq", None),
+                "clear_ack_session_matches": (
+                    ack is not None and ack.session_id == self.session_id
+                ),
+                "clear_ack_effect": getattr(ack, "effect", None),
+                "clear_ack_result": getattr(ack, "result", None),
+                "clear_ack_seq": getattr(ack, "seq", None),
+                "t2_active_matches": (
+                    getattr(self.owner, "active_action", None) == self.active_action
+                ),
+                "p1_credit_awarded": False,
+                "additional_action_issued": False,
+            }
             self.latch()
             raise GoalT2BoundaryRejected(
                 "unclosed/foreign/inconsistent native S16; P1 admission forbidden"
