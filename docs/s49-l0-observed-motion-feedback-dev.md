@@ -32,3 +32,24 @@ Minecraftの入力ラグ、PaperとNode物理tickの位相揺らぎ、Mineflayer
 一次指標は2回目のS16 XZ移動距離と`abs(actual−1.0m)`。判定は負の結果も保持し、World間の位相一致・乱数化・実P1回復を主張しない。1回目は別のゾンビ脅威から2回目に移るので、絶対位置までの到達保証は無く、次ステップの入力校正のみを比較する。
 
 試験はR/SCIENCEでなくDEV disposable Worlds。main・Draft #545/#634を更新せず、QUALIFICATION_NO_GO。実機結果はcompleted exact SHA Actionsとsource artifactを読み戻して追記する。
+
+## 実Minecraft DEV結果（2026-10-28 JST）— SOURCE_VERIFIED PASS
+
+[GitHub Actions #40622805112](https://github.com/rinsakamo/relay-self/actions/runs/40622805112) `completed / SUCCESS`。実行固定HEAD `b537a3142badc239499e7073c75db5f6971d1f34`。事前Python3.12 focusedとRuff PASS、Node22 3 PASS、Java21 Paper pluginビルドPASS、Paper1.21.8 build60 SHA再検証PASS。4独立World（4独立session UUID / World UUID）を実行。元S49 sole owner各2 native S16 OUTCOME、FIRST Paper modifier正7連続tick、FIRST Paper gait13 tick、第二非ブースト入力を確認。追加Action issuer=0、reader=0。
+
+| ケース | 入力制御 | 1回目実S16移動（m） | 2回目入力保持（s） | 2回目実S16移動（m） | 次ステップ1.0mへの絶対誤差（m） |
+|---|---|---:|---:|---:|---:|
+| CARRY | FIXED | 3.831942780067 | 0.600000 | 3.030157205469 | 2.030157205469 |
+| CARRY | FEEDBACK | 4.123096636187 | 0.145521692297 | 0.559301003145 | 0.440698996855 |
+| WAIT_ASSUMED | FIXED | 3.985247329119 | 0.600000 | 3.030157205469 | 2.030157205469 |
+| WAIT_ASSUMED | FEEDBACK | 4.102717566258 | 0.146244529464 | 0.559301003145 | 0.440698996855 |
+
+独立源監査結果 `S49_L0_S16_OBSERVED_NEXT_INPUT_FOUR_WORLD_DEV_ONLY` と `S49_L0_REAL_OBSERVED_S16_SECOND_INPUT_DEV_PASS`。両仮説で今回の次ステップ絶対誤差がFIXEDより **1.589458208613m小さい**。ただし実移動0.5593mはターゲット1.0mに**未到達**（0.4407m不足）。二つの仮定F値は実際のP1 WAIT回復ではなく、4つは独立World・異なるゾンビイベントを持つので厳密な因果・継続的目標到達を証明しない。
+
+本結果は非同期Worldに対して厳密なtick一致や同期traceを必要とせず、元L0の次Actionが**前回の閉じたS16結果に従って入力を調整し、再度S16で実結果を観測した**というDEV成立を示す。FILE I/O差等を因果説明に使用しない。
+
+Raw artifact: `s49-l0-s16-feedback-four-worlds-40622805112-1`、ID **12788680348**、ZIP SHA256 `231e82c124bcc0a4b2fb30a0bf0bac67f84309a05f455fb03d892ade60c139d8`。
+
+次段階（本DEVでは未実装）：2回目の未到達量を受けて次ステップを再調整する連続L0制御、停止閾値・微移動WALK・障害物/逆進/危険割込み・過補正抑制。単純に0.6秒で移動量を割った平均速度はMinecraft加速・慣性を考慮していないため、精度向上には観測履歴または加減速モデルが必要。これらは別のDEV反証試験で検証する。
+
+**DEV_WORLD_OBSERVED / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**。本番権限およびPaper/Node同期tick一致を主張しない。main、Draft PR #545/#634を更新しない。
