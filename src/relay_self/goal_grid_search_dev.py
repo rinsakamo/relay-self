@@ -180,6 +180,8 @@ def choose_grid_route_dev(
         or not math.isclose(parent.target_z,present.origin_z+4.0,abs_tol=1e-8)
         or abs(present.origin_x-(math.floor(present.origin_x)+0.5))>0.03
         or abs(present.origin_z-(math.floor(present.origin_z)+0.5))>0.03
+        or abs(present.player_x-present.origin_x)>0.65
+        or not 0.0<=present.player_z-present.origin_z<=1.8
     ):
         raise GoalControlRejected("native grid search requires aligned fresh blocked S16")
     nearest=(round(present.player_x-present.origin_x),
