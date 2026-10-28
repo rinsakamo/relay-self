@@ -52,7 +52,8 @@ def decide_l0(frame, owner, *, completed: int, limit: int) -> str:
 
 
 async def run_body_loop_dev(session, report, *, move_limit: int = 2,
-                            wait_ticks: int = 12, l0_decider=None):
+                            wait_ticks: int = 12, l0_decider=None,
+                            fatigue_profile=None):
     """Small non-staged action/WAIT cycle using the original T1e resource owner.
 
     WAIT_DEV is the existing T2 conservative post-clear decision; time since
@@ -64,7 +65,8 @@ async def run_body_loop_dev(session, report, *, move_limit: int = 2,
             or getattr(session, "source_lost", False)
             or getattr(session, "tick_owner", None) is not None):
         raise T1pRejected("fresh bounded T1p DEV session required")
-    owner = TickAccounting(session.started.session_id)
+    owner = TickAccounting(session.started.session_id,
+                           fatigue_profile=fatigue_profile)
     session.tick_owner = owner
     report.update(
         action_source="PAPER_DESIGNED_L0_EXISTING_S51_S49_SINGLE_ISSUER",
