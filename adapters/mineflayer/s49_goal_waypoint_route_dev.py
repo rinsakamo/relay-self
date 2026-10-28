@@ -274,7 +274,22 @@ async def follow_l1_detour_dev(
                     or not l0.closed
                 ):
                     raise DetourRunRejected(
-                        "in-flight L0 hazard missing real native CLEAR + UNKNOWN"
+                        "in-flight L0 hazard missing real native CLEAR + UNKNOWN: "
+                        +repr({
+                            "inflight":inflight,
+                            "terminal":receipt.terminal.state.value,
+                            "S16_status":receipt.consequence.status.value,
+                            "S16_error":receipt.consequence.error,
+                            "cleanup_result":(
+                                receipt.consequence.cleanup_receipt.result
+                                if receipt.consequence.cleanup_receipt else None
+                            ),
+                            "end_session":(
+                                ended.session_id if ended is not None else None
+                            ),
+                            "owner_open":len(executor.supervisor.open_actions),
+                            "l0_closed":l0.closed,
+                        })
                     )
                 stage["result"]="INTERRUPT"
                 stage["inflight_action_id"]=action_id
