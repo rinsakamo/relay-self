@@ -57,7 +57,7 @@ TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop", "t2_disconnect_move",
               "t1k_fault_before_send", "t1k_fault_set_ack", "t1k_fault_clear_ack",
               "t1l_source_soak", "t1m_source_soak", "t1n_source_soak",
               "t1p_body_loop", "t1q_body_loop", "t1r_body_recovery",
-              "t1s_calibrated_body_loop", "t1u_gait_body_loop", "t1u_gait_witness_loop", "t1v_physical_idle_loop")
+              "t1s_calibrated_body_loop", "t1u_gait_body_loop", "t1u_gait_witness_loop", "t1v_physical_idle_loop", "t1w_motion_receipt_probe")
 
 
 def write(path, value):
@@ -163,7 +163,7 @@ def measure(root, report):
 
 
 async def run_case(args, case):
-    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_", "t1l_", "t1m_", "t1n_", "t1p_", "t1q_", "t1r_", "t1s_", "t1u_", "t1v_"))
+    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_", "t1l_", "t1m_", "t1n_", "t1p_", "t1q_", "t1r_", "t1s_", "t1u_", "t1v_", "t1w_"))
     root = args.output / case
     root.mkdir()
     world = root / "server"
@@ -184,7 +184,7 @@ async def run_case(args, case):
         "adaptive-tick-observer-dev: false", "adaptive-tick-observer-dev: true")
     if t1f:
         config = config.replace("t1f-snapshot-dev: false", "t1f-snapshot-dev: true")
-    if case.startswith(("t1u_", "t1v_")):
+    if case.startswith(("t1u_", "t1v_", "t1w_")):
         config = config.replace("t1u-gait-dev: false", "t1u-gait-dev: true")
     if case in ("t1m_source_soak", "t1n_source_soak"):
         config = config.replace("t1m-timing-dev: false", "t1m-timing-dev: true")
@@ -431,7 +431,7 @@ async def run_case(args, case):
                             expected_clear_action_id=self.t1h_active_action_id + "-clear",
                         )
                     fixture = asyncio.create_task(request_owner_stop())
-                elif not case.startswith(("t1i_", "t1j_", "t1k_", "t1p_", "t1q_", "t1r_", "t1s_", "t1u_", "t1v_")) and case != "normal":
+                elif not case.startswith(("t1i_", "t1j_", "t1k_", "t1p_", "t1q_", "t1r_", "t1s_", "t1u_", "t1v_", "t1w_")) and case != "normal":
                     fixture = asyncio.create_task(stage())
 
             async def send_equip_item(self, *a, **kw):
@@ -490,6 +490,16 @@ async def run_case(args, case):
             os.environ["RELAYSELF_T1N_EMIT_TRACE_DEV"] = str(root / "t1n_emit_timing.jsonl")
         else:
             os.environ.pop("RELAYSELF_T1N_EMIT_TRACE_DEV", None)
+        if case == "t1w_motion_receipt_probe":
+            os.environ["RELAYSELF_T1W_MOTION_TRACE_DEV"] = str(root / "t1w_client_motion.jsonl")
+            report["t1w"] = {
+                "classification": "PASSIVE_MOTION_RECEIPTS_NO_TICK_AUTHORITY",
+                "sidecar": "t1w_client_motion.jsonl",
+                "real_time_sync_claim": False,
+                "p1_native_gait_accounting_established": False,
+            }
+        else:
+            os.environ.pop("RELAYSELF_T1W_MOTION_TRACE_DEV", None)
         if t1f:
             os.environ["RELAYSELF_T1F_DEV"] = "1"
         else:
@@ -520,7 +530,7 @@ async def run_case(args, case):
             from adapters.mineflayer.t1h_native_stop_dev import run_stop_move_dev
             await run_stop_move_dev(session, server, report, root)
             return report
-        if case == "t1v_physical_idle_loop":
+        if case in ("t1v_physical_idle_loop", "t1w_motion_receipt_probe"):
             from adapters.mineflayer.t1p_body_runtime_dev import run_body_loop_dev
             from adapters.mineflayer.t1v_physical_idle_dev import applied_gait_or_physical_idle_dev
             from experiments.fatigue_p1 import FatigueProfile
@@ -859,7 +869,7 @@ async def run_case(args, case):
                        report.get("t1l_source_diagnostic", {}).get("paper_frames")):
                 report["status"] = "FAIL"
         if case in ("t1p_body_loop", "t1q_body_loop", "t1r_body_recovery",
-                     "t1s_calibrated_body_loop", "t1u_gait_body_loop", "t1u_gait_witness_loop", "t1v_physical_idle_loop"):
+                     "t1s_calibrated_body_loop", "t1u_gait_body_loop", "t1u_gait_witness_loop", "t1v_physical_idle_loop", "t1w_motion_receipt_probe"):
             # Bounded product DEV acceptance belongs to the original T1e owner,
             # after shutdown has closed and flushed the canonical command log.
             # Do not count a Python-side decision as a physical Action.
