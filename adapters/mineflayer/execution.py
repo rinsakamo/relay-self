@@ -51,6 +51,10 @@ class MineflayerExecutionSession(Protocol):
 
     async def send_observe(self, request_id: str | None = None) -> None: ...
 
+    async def send_look(
+        self, action_id: str, *, yaw: float, pitch: float,
+    ) -> None: ...
+
     async def send_set_control(
         self,
         action_id: str,
@@ -286,6 +290,10 @@ async def execute_mineflayer_command(
         Callable[[str, MineflayerEffectResult], Awaitable[None]] | None
     ) = None,
     on_live_probe_dev: Callable[[MineflayerObservation], bool] | None = None,
+    look_yaw_dev: float | None = None,
+    on_look_ack_dev: (
+        Callable[[MineflayerEffectResult], None] | None
+    ) = None,
 ) -> WorldConsequence:
     """Execute one bounded, explicitly bound movement command with observation.
 
@@ -312,6 +320,20 @@ async def execute_mineflayer_command(
         raise InvalidMineflayerExecutionData(
             "DEV in-flight probe requires bounded original forward Action"
         )
+    if look_yaw_dev is not None and (
+        type(look_yaw_dev) is not float
+        or not math.isfinite(look_yaw_dev)
+        or not -math.pi <= look_yaw_dev <= math.pi
+        or os.environ.get("S49_L0_TURN_DEV_ONLY") != "1"
+        or os.environ.get("S49_L0_GOAL_LOOP_DEV_ONLY") != "1"
+        or command.action_ref != MOVE_FORWARD_ACTION_REF
+        or not callable(on_look_ack_dev)
+    ):
+        raise InvalidMineflayerExecutionData(
+            "goal rotation needs bounded same-owner S15 look DEV grant"
+        )
+    if look_yaw_dev is None and on_look_ack_dev is not None:
+        raise InvalidMineflayerExecutionData("no unbound LOOK ACK observer")
     started = _require_adapter(adapter)
     session_id = started.session_id
 
@@ -335,6 +357,27 @@ async def execute_mineflayer_command(
                 and message.kind == "probe"
             ),
         )
+
+        if look_yaw_dev is not None:
+            look_id = f"{command.action_id}-s15-look"
+            await adapter.send_look(look_id, yaw=look_yaw_dev, pitch=0.0)
+            look_ack = await _receive_until(
+                adapter,
+                timeout_s=timeout_s,
+                predicate=lambda msg: (
+                    isinstance(msg, MineflayerEffectResult)
+                    and msg.action_id == look_id and msg.effect == "look"
+                ),
+            )
+            if (
+                look_ack.result != "applied"
+                or look_ack.session_id != session_id
+            ):
+                raise MineflayerExecutionError(
+                    "original S15 native look not applied before motor"
+                )
+            assert on_look_ack_dev is not None
+            on_look_ack_dev(look_ack)
 
         movement_command_attempted = True
         if command.action_ref == MOVE_FORWARD_SPRINT_DEV_REF:
