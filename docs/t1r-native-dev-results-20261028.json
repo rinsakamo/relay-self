@@ -1,0 +1,412 @@
+{
+  "classification": "DEV_ONLY / DEV_WORLD_OBSERVED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN",
+  "t1r_acceptance": "PASS",
+  "branch": "self/dev-t1r-fatigue-timecourse-20261028",
+  "implementation_commit": "bfc2091e3feabad8ab694075dfcc52b90494743b",
+  "execution_head": "331d0acc0c7b2afca7896b941096cd1a773f98b2",
+  "execution_source": "execution_head + code-diff.patch; T1R-001-launch.json source_hashes match committed implementation",
+  "validation": {
+    "python": "3.12.3",
+    "focused_passed": 125,
+    "fast_passed": 738,
+    "fast_files": 45,
+    "ruff": "PASS",
+    "repository_contracts": "PASS",
+    "syntax_python_files": 486,
+    "full_regression": "NOT_RUN",
+    "node_java_rebuild": "NOT_NEEDED"
+  },
+  "world_runs": {
+    "total": 1,
+    "pass": 1,
+    "fail": 0
+  },
+  "originals": {
+    "root": "/home/rinsa/work/t1r-evidence-20261028/T1R-001/t1r_body_recovery",
+    "manifest": "/home/rinsa/work/t1r-evidence-20261028/originals-manifest.json",
+    "verified_files": 206,
+    "all_match": true,
+    "manifest_sha256": "09c6de37c6ca16b629ea04a8d0a29e6d094c2167e9ced74fc09b7c07e1a908bc"
+  },
+  "audit": {
+    "run_id": "T1R-001",
+    "status": "PASS",
+    "session": "89843f19-fb84-4ff1-ba2a-ef2f63dcad11",
+    "checks": {
+      "report_pass": true,
+      "all_source_admitted": true,
+      "source_continuous": true,
+      "age_budget": true,
+      "consecutive_accounting": true,
+      "admitted_rows": true,
+      "cost_equations": true,
+      "energy_conserved": true,
+      "p1_conserved": true,
+      "wait_causal": true,
+      "no_unqualified_recovery": true,
+      "original_effects": true,
+      "trace_off": true,
+      "no_food_llm_tps": true,
+      "cleanup": true,
+      "independent_port_rebind": true,
+      "terminal_transport": true,
+      "world_saved": true,
+      "runner_hash_readback": true,
+      "epoch_0": true,
+      "epoch_1": true,
+      "next_epoch_after_wait": true,
+      "sensor_epoch_t1q-epoch-0": true,
+      "sensor_epoch_t1q-epoch-1": true,
+      "one_sample_per_tick": true,
+      "independent_sensor_and_p1_replay": true,
+      "both_epochs_ordered_shift": true
+    },
+    "epochs": [
+      {
+        "epoch": 0,
+        "source_seq": 27,
+        "source_tick": 1033,
+        "action_id": "t1p-epoch-0",
+        "action_status": "executed",
+        "terminal": "outcome",
+        "outcome_distance": 0.6269065734210613,
+        "paper_settled_displacement": 0.8571697198364467,
+        "paper_motion_blocks": 0.8249361767371388,
+        "dispatch_seq": 29,
+        "clear_ack_seq": 38,
+        "settled_seq": 60,
+        "settled_tick": 1051,
+        "post_wait_tick": 1063,
+        "wait_dev_ticks": 20,
+        "p1_accumulated": 0.032997447069485555,
+        "p1_recovered": 0.032997447069485555,
+        "p1_peak": 0.032997447069485555,
+        "p1_final": 0.0
+      },
+      {
+        "epoch": 1,
+        "source_seq": 73,
+        "source_tick": 1063,
+        "action_id": "t1p-epoch-1",
+        "action_status": "executed",
+        "terminal": "outcome",
+        "outcome_distance": 0.6269065734210615,
+        "paper_settled_displacement": 0.857169719836447,
+        "paper_motion_blocks": 0.857169719836447,
+        "dispatch_seq": 75,
+        "clear_ack_seq": 84,
+        "settled_seq": 106,
+        "settled_tick": 1081,
+        "post_wait_tick": 1093,
+        "wait_dev_ticks": 20,
+        "p1_accumulated": 0.03428678879345788,
+        "p1_recovered": 0.03428678879345788,
+        "p1_peak": 0.03428678879345788,
+        "p1_final": 0.0
+      }
+    ],
+    "source": {
+      "paper_frames": 80,
+      "statuses": {
+        "ADMITTED": 80
+      },
+      "violations": [],
+      "distributions_ms": {
+        "causal_upper_ms": {
+          "n": 80,
+          "min": 5.049934,
+          "median": 49.9744235,
+          "p95": 56.560898,
+          "p99": 88.224962,
+          "max": 88.224962
+        },
+        "challenge_to_receive_ms": {
+          "n": 80,
+          "min": 4.986555,
+          "median": 49.924799,
+          "p95": 56.497669,
+          "p99": 88.030245,
+          "max": 88.030245
+        },
+        "receive_to_complete_ms": {
+          "n": 80,
+          "min": 0.039075,
+          "median": 0.0630375,
+          "p95": 0.160575,
+          "p99": 0.673541,
+          "max": 0.673541
+        },
+        "node_queue_ms": {
+          "n": 80,
+          "min": 0.02866,
+          "median": 0.043090500000000004,
+          "p95": 0.117909,
+          "p99": 0.398404,
+          "max": 0.398404
+        },
+        "node_evaluation_ms": {
+          "n": 80,
+          "min": 0.010246,
+          "median": 0.016253,
+          "p95": 0.044284,
+          "p99": 0.275137,
+          "max": 0.275137
+        }
+      },
+      "world": "1b687d3d-dacd-40fb-91be-30768725d2af",
+      "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "boot": "bc789615-3a4f-4322-b42b-80985a948c0a",
+      "accounted_ticks": 61,
+      "first_accounted_tick": 1033,
+      "last_accounted_tick": 1093,
+      "effective_tps": 20.005911943758843
+    },
+    "m0": {
+      "initial": 12,
+      "basal": 0.061,
+      "cognition": 0.0061,
+      "movement": 0.003364211793147172,
+      "total_cost": 0.07046421179314717,
+      "final": 11.929535788206891,
+      "food_credit": 0,
+      "wait_basal": 0.04,
+      "paper_basal_exhaustion_delta": 0.06100000000000005,
+      "paper_motion_exhaustion_delta": 0.016821058965735856
+    },
+    "p1": {
+      "initial": 0,
+      "accumulated": 0.06728423586294344,
+      "recovered": 0.06728423586294344,
+      "final": 0.0,
+      "wait_dev_ticks": 40,
+      "qualified_wait": false
+    },
+    "distances": {
+      "outcome_sum": 1.2538131468421227,
+      "paper_settled_sum": 1.7143394396728937,
+      "native_motion_blocks_sum": 1.6821058965735858
+    },
+    "trace_audit": {
+      "mode": "OFF",
+      "source_native_paper_count": 80,
+      "trace_count": 0,
+      "valid": true,
+      "timing_metrics_available": false
+    },
+    "cleanup": {
+      "java_pid": 838303,
+      "node_pid": 838419,
+      "java_exit": 0,
+      "node_exit": 0,
+      "java_pid_absent": true,
+      "node_pid_absent": true,
+      "port_rebind": true,
+      "cleanup_complete": true,
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "89843f19-fb84-4ff1-ba2a-ef2f63dcad11"
+      }
+    },
+    "source_hashes": {
+      "commands.jsonl": "23e9ecd0714a9176cab62a0101887fdc897574f897b54ff95c20949dd1b6fe4d",
+      "native.jsonl": "191fbfc2f2e9ac1674972fab199b36328cdaac2a3e9fe5d08c6cf150e2026a81",
+      "paper.log": "201162aa012c35a108e598db6382112b5fdf66fa1ba032f11626625dfa517766",
+      "python_timing.jsonl": "fb9dc9ec74b62ccc745e24b6ad767ddf911c2c181601e05a94233983ad3e3b33",
+      "report.json": "2a14c66cb14047a937cc2c87144e488267faf6f3d15b065d3e2309e91e272cef",
+      "t2_ticks.json": "10bb8476f704afb397939b0dfd1308c8e08e53ecd8fe819548021fa9d0fbbb9e"
+    },
+    "sensors_with_separate_host_audit": [
+      {
+        "body_session_id": "89843f19-fb84-4ff1-ba2a-ef2f63dcad11",
+        "energy_origin": "interoception",
+        "energy_sensed": 12.0,
+        "energy_source_refs": [
+          "native-probe:89843f19-fb84-4ff1-ba2a-ef2f63dcad11:27:paper-index-20",
+          "body-sensor:89843f19-fb84-4ff1-ba2a-ef2f63dcad11:27:1:paper-index-20"
+        ],
+        "epoch_id": "t1q-epoch-0",
+        "fatigue_origin": "interoception",
+        "fatigue_sensed": 0.0,
+        "fatigue_source_refs": [
+          "native-probe:89843f19-fb84-4ff1-ba2a-ef2f63dcad11:27:paper-index-20",
+          "body-sensor:89843f19-fb84-4ff1-ba2a-ef2f63dcad11:27:1033:paper-index-20"
+        ],
+        "food_observed": 20,
+        "food_origin": "observation",
+        "health_observed": 20,
+        "health_origin": "observation",
+        "host_decision": "MOVE",
+        "m0_clock_kind": "B0_LEDGER_TICKS",
+        "native_seq": 27,
+        "p1_qualified_wait": false,
+        "paper_clock_kind": "WORLD_FULL_TIME",
+        "physical_permission_from_view": false,
+        "sensed_decision": "MOVE",
+        "world_tick": 1033,
+        "host_audit_true_energy": 11.9989,
+        "host_audit_true_fatigue": 0.0,
+        "m0_tick": 1
+      },
+      {
+        "body_session_id": "89843f19-fb84-4ff1-ba2a-ef2f63dcad11",
+        "energy_origin": "interoception",
+        "energy_sensed": 12.0,
+        "energy_source_refs": [
+          "native-probe:89843f19-fb84-4ff1-ba2a-ef2f63dcad11:73:paper-index-50",
+          "body-sensor:89843f19-fb84-4ff1-ba2a-ef2f63dcad11:73:31:paper-index-50"
+        ],
+        "epoch_id": "t1q-epoch-1",
+        "fatigue_origin": "interoception",
+        "fatigue_sensed": 0.0,
+        "fatigue_source_refs": [
+          "native-probe:89843f19-fb84-4ff1-ba2a-ef2f63dcad11:73:paper-index-50",
+          "body-sensor:89843f19-fb84-4ff1-ba2a-ef2f63dcad11:73:1063:paper-index-50"
+        ],
+        "food_observed": 20,
+        "food_origin": "observation",
+        "health_observed": 20,
+        "health_origin": "observation",
+        "host_decision": "MOVE",
+        "m0_clock_kind": "B0_LEDGER_TICKS",
+        "native_seq": 73,
+        "p1_qualified_wait": false,
+        "paper_clock_kind": "WORLD_FULL_TIME",
+        "physical_permission_from_view": false,
+        "sensed_decision": "MOVE",
+        "world_tick": 1063,
+        "host_audit_true_energy": 11.964250127646546,
+        "host_audit_true_fatigue": 0.0,
+        "m0_tick": 31
+      }
+    ],
+    "t1r": {
+      "runner_audit": {
+        "classification": "T1R_PASSIVE_PERCEPTUAL_SHIFT_OBSERVED_DEV",
+        "first_fatigue_rest_tick": 1036,
+        "observed_change_in_sensed_preference": true,
+        "original_fatigue_accumulation_ticks": 12,
+        "original_p1_qualified_wait": false,
+        "physical_action_permission_from_sensor": false,
+        "ready_feeling_samples": 45,
+        "recovered_ready_tick": 1044,
+        "rest_preferred_samples": 16,
+        "source_bound_tick_samples": 61
+      },
+      "per_epoch": [
+        {
+          "epoch": 0,
+          "first_rest_tick": 1036,
+          "first_recovered_ready_tick": 1044,
+          "rest_during_action": true
+        },
+        {
+          "epoch": 1,
+          "first_rest_tick": 1066,
+          "first_recovered_ready_tick": 1074,
+          "rest_during_action": true
+        }
+      ],
+      "maximum_sensed_fatigue": 0.03,
+      "peak_sample_host_audit": [
+        {
+          "native_seq": 37,
+          "world_tick": 1037,
+          "host_audit_true_energy": 11.993246186853158,
+          "host_audit_true_fatigue": 0.025076262936842453
+        },
+        {
+          "native_seq": 42,
+          "world_tick": 1038,
+          "host_audit_true_energy": 11.991931417713564,
+          "host_audit_true_fatigue": 0.029371645728729245
+        },
+        {
+          "native_seq": 44,
+          "world_tick": 1039,
+          "host_audit_true_energy": 11.990831417713565,
+          "host_audit_true_fatigue": 0.029371645728729245
+        },
+        {
+          "native_seq": 46,
+          "world_tick": 1040,
+          "host_audit_true_energy": 11.989550127646527,
+          "host_audit_true_fatigue": 0.032997447069485555
+        },
+        {
+          "native_seq": 48,
+          "world_tick": 1041,
+          "host_audit_true_energy": 11.988450127646528,
+          "host_audit_true_fatigue": 0.032997447069485555
+        },
+        {
+          "native_seq": 50,
+          "world_tick": 1042,
+          "host_audit_true_energy": 11.987350127646529,
+          "host_audit_true_fatigue": 0.032997447069485555
+        },
+        {
+          "native_seq": 52,
+          "world_tick": 1043,
+          "host_audit_true_energy": 11.98625012764653,
+          "host_audit_true_fatigue": 0.032997447069485555
+        },
+        {
+          "native_seq": 83,
+          "world_tick": 1067,
+          "host_audit_true_energy": 11.958531847413504,
+          "host_audit_true_fatigue": 0.02636560466081478
+        },
+        {
+          "native_seq": 88,
+          "world_tick": 1068,
+          "host_audit_true_energy": 11.95721707827391,
+          "host_audit_true_fatigue": 0.03066098745270157
+        },
+        {
+          "native_seq": 90,
+          "world_tick": 1069,
+          "host_audit_true_energy": 11.95611707827391,
+          "host_audit_true_fatigue": 0.03066098745270157
+        },
+        {
+          "native_seq": 92,
+          "world_tick": 1070,
+          "host_audit_true_energy": 11.954835788206873,
+          "host_audit_true_fatigue": 0.03428678879345788
+        },
+        {
+          "native_seq": 94,
+          "world_tick": 1071,
+          "host_audit_true_energy": 11.953735788206874,
+          "host_audit_true_fatigue": 0.03428678879345788
+        },
+        {
+          "native_seq": 96,
+          "world_tick": 1072,
+          "host_audit_true_energy": 11.952635788206875,
+          "host_audit_true_fatigue": 0.03428678879345788
+        },
+        {
+          "native_seq": 98,
+          "world_tick": 1073,
+          "host_audit_true_energy": 11.951535788206876,
+          "host_audit_true_fatigue": 0.03428678879345788
+        }
+      ],
+      "rest_samples": 16,
+      "ready_samples": 45
+    }
+  },
+  "limitations": [
+    "REST is a passive preference, not evidence of Action interruption/delay or rest Action selection.",
+    "WAIT_DEV is not P1-qualified WAIT.",
+    "Producer-local source only; no independent R qualification or science."
+  ],
+  "next_candidate": "Separate next-stage integration of fatigue preference at an existing next-epoch L0 decision; preserve existing authorization and physical model."
+}
