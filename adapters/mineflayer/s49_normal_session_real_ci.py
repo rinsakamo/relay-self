@@ -289,6 +289,8 @@ async def qualify(
     dev_m0_action_move_step: bool = False,
     dev_l0_next_step_m: float | None = None,
     dev_l0_residual_third_dev: bool = False,
+    dev_l0_walk_third_dev: bool = False,
+    dev_l0_goal_wait_dev: bool = False,
     dev_inter_action_owner_gap: bool = False,
     dev_inter_action_owner_paper_fence: (
         Callable[[str, str, str], Awaitable[None]] | None
@@ -306,6 +308,8 @@ async def qualify(
         "dev_m0_action_move_step": dev_m0_action_move_step,
         "dev_l0_observed_next_step_m": dev_l0_next_step_m,
         "dev_l0_residual_third_dev": dev_l0_residual_third_dev,
+        "dev_l0_walk_third_dev": dev_l0_walk_third_dev,
+        "dev_l0_goal_wait_dev": dev_l0_goal_wait_dev,
         "dev_inter_action_owner_gap": dev_inter_action_owner_gap,
         "decisions": [],
         "real_model_calls": 0,
@@ -350,6 +354,24 @@ async def qualify(
             or os.environ.get("S49_M0_DASH_DEBIT_DEV_ONLY") != "1"
         ):
             raise S31ABlocked("M0 extra debit requires exact original S49 sprint DEV gate")
+        if (
+            type(dev_l0_walk_third_dev) is not bool
+            or type(dev_l0_goal_wait_dev) is not bool
+            or (dev_l0_walk_third_dev and (
+                not dev_l0_residual_third_dev
+                or os.environ.get("S49_L0_WALK_THIRD_DEV_ONLY") != "1"
+            ))
+            or (dev_l0_goal_wait_dev and (
+                dev_l0_residual_third_dev
+                or dev_l0_walk_third_dev
+                or dev_l0_next_step_m is None
+                or dev_next_epoch != "WAIT"
+                or dev_m0_dash_invoice is not None
+                or dev_m0_action_move_step
+                or os.environ.get("S49_L0_GOAL_WAIT_DEV_ONLY") != "1"
+            ))
+        ):
+            raise S31ABlocked("WALK/WAIT requires separate original L0 opt-in")
         if type(dev_l0_residual_third_dev) is not bool or (
             dev_l0_residual_third_dev and (
             dev_l0_next_step_m is None
@@ -364,7 +386,9 @@ async def qualify(
             or not 0.30 <= dev_l0_next_step_m <= 2.50
             or not dev_sprint_motor or not dev_forward_motor
             or stage_r_dev
-            or (dev_next_epoch is not None and not dev_l0_residual_third_dev)
+            or (dev_next_epoch is not None and not (
+                dev_l0_residual_third_dev or dev_l0_goal_wait_dev
+            ))
             or dev_fifth_epoch is not None or dev_sixth_epoch is not None
             or os.environ.get("S49_L0_OBSERVED_FEEDBACK_DEV_ONLY") != "1"
         ):
@@ -380,7 +404,9 @@ async def qualify(
             dev_forward_motor and (
                 os.environ.get("S49_FORWARD_MOTOR_DEV_ONLY") != "1"
                 or stage_r_dev
-                or (dev_next_epoch is not None and not dev_l0_residual_third_dev)
+                or (dev_next_epoch is not None and not (
+                dev_l0_residual_third_dev or dev_l0_goal_wait_dev
+            ))
                 or dev_fifth_epoch is not None or dev_sixth_epoch is not None
             )
         ):
@@ -449,6 +475,7 @@ async def qualify(
         executor = NormalSessionActionExecutor(
             sid, intent, dev_forward_motor=dev_forward_motor,
             dev_sprint_motor=dev_sprint_motor,
+            dev_walk_third=dev_l0_walk_third_dev,
         )
         if stage_r_dev:
             # Explicit S49-owned extension; never install a read-only
@@ -600,7 +627,8 @@ async def qualify(
                 skill_execution_id=f"s49-skill-{step.event_seq}",
                 skill_ref="escape-movement", action_id=step.action_request_id,
                 action_ref=(
-                    "MOVE_FORWARD_SPRINT_DEV" if dev_sprint_motor
+                    "MOVE_FORWARD" if dev_l0_walk_third_dev and executor._count == 2
+                    else "MOVE_FORWARD_SPRINT_DEV" if dev_sprint_motor
                     else "MOVE_FORWARD" if dev_forward_motor else "MOVE_BACKWARD"
                 ),
                 provenance=source(f"binding-{step.event_seq}"),
@@ -660,6 +688,7 @@ async def qualify(
                     report["dev_l0_residual_third"] = {
                         **asdict(third_plan),
                         "third_action_id": step.action_request_id,
+                        "third_gait": "WALK" if dev_l0_walk_third_dev else "SPRINT",
                         "original_sole_action_issuer": True,
                         "new_packet_reader": False,
                     }
@@ -720,6 +749,33 @@ async def qualify(
                         "goal_reached_attested": False,
                         "world_tick_phase_matched": False,
                     })
+                    if dev_l0_goal_wait_dev:
+                        stop_plan = plan_residual_after_second_s16_dev(
+                            receipt.consequence,
+                            second_input_s=(
+                                feedback_duration if feedback_duration is not None
+                                else 0.60
+                            ),
+                            total_target_m=dev_l0_next_step_m,
+                            current_threat_distance_m=2.0,
+                            tolerance_m=0.20,
+                        )
+                        if stop_plan.decision != "STOP_AVOID_OVERSHOOT":
+                            raise S49PhysicalFailure(
+                                "native second S16 outside WAIT deadband"
+                            )
+                        host.bind_s16_stop_dev(
+                            session_id=sid,
+                            second_action_id=receipt.terminal.action_id,
+                            residual_m=stop_plan.residual_m,
+                            tolerance_m=0.20,
+                        )
+                        report["dev_l0_goal_wait"] = {
+                            **asdict(stop_plan),
+                            "original_l0_armed": True,
+                            "native_event_wait_not_yet_observed": True,
+                            "same_original_l0": True,
+                        }
                 elif dev_l0_residual_third_dev:
                     third = report.get("dev_l0_residual_third")
                     if (
@@ -839,7 +895,7 @@ async def qualify(
             # WAIT and three independently authorized MOVE requests. Only
             # this isolated DEV input supplies the additional fourth stimulus.
             world_epochs = [(10, 5), (2, 8), (2, 8)]
-            if dev_l0_residual_third_dev:
+            if dev_l0_residual_third_dev or dev_l0_goal_wait_dev:
                 world_epochs.append((2, 8))
             for distance_m, hold in world_epochs:
                 _command(server, "kill @e[type=minecraft:zombie]")
@@ -952,6 +1008,25 @@ async def qualify(
             )
         ):
             raise S49PhysicalFailure("original S49 bounded epoch/Action terminal mismatch")
+        if dev_l0_goal_wait_dev:
+            if (
+                len(trace) != 4
+                or trace[3].choice.selection is not WorldChoiceKind.WAIT
+                or trace[3].asks_for_action
+                or trace[3].choice.criterion_id
+                   != "s49-closed-s16-relative-step-stop-dev"
+                or executor._count != 2
+                or host._s16_stop_source is None
+            ):
+                raise S49PhysicalFailure("original L0 failed to select real WAIT")
+            report["dev_l0_goal_wait"].update({
+                "native_event_wait_not_yet_observed": False,
+                "fourth_native_event_seq": trace[3].event_seq,
+                "fourth_native_probe_seq": trace[3].choice.probe_seq,
+                "actual_l0_choice": trace[3].choice.selection.value,
+                "fourth_action_issued": False,
+                "original_action_count": len(report["actual_native_actions"]),
+            })
         if dev_next_epoch is not None:
             report["dev_original_next_epoch"] = {
                 "actual_original_host_decide": True,
@@ -1012,6 +1087,10 @@ async def qualify(
             report["learning_in_world"] = True  # HOLD revision, NOT gain
         report["status"] = "PASS"
         report["classification"] = (
+            "DEV_ONLY_S49_CLOSED_S16_GOAL_WAIT_NO_THIRD_ACTION"
+            if dev_l0_goal_wait_dev else
+            "DEV_ONLY_S49_S16_RESIDUAL_THIRD_WALK_ORIGINAL_OWNER"
+            if dev_l0_walk_third_dev else
             "DEV_ONLY_S49_S16_RESIDUAL_THIRD_ORIGINAL_OWNER"
             if dev_l0_residual_third_dev else
             "DEV_ONLY_S49_FORWARD_SPRINT_MOTOR_UNCALIBRATED"
@@ -1129,6 +1208,8 @@ async def qualify(
             "DEV_ONLY_S49_FORWARD_MOTOR_NOT_DIRECTIONALLY_QUALIFIED",
             "DEV_ONLY_S49_FORWARD_SPRINT_MOTOR_UNCALIBRATED",
             "DEV_ONLY_S49_S16_RESIDUAL_THIRD_ORIGINAL_OWNER",
+            "DEV_ONLY_S49_S16_RESIDUAL_THIRD_WALK_ORIGINAL_OWNER",
+            "DEV_ONLY_S49_CLOSED_S16_GOAL_WAIT_NO_THIRD_ACTION",
         ):
             # No pre-existing FAILURE/BLOCKED is allowed to retain the
             # provisional qualified label, nor be upgraded to PASS.
