@@ -96,6 +96,9 @@ def audit_t1r_trace(readings, owner, *, completed_moves):
             or len(readings) < completed_moves):
         raise T1rRejected("unmatched original owner tick/sensor stream")
     rest = ready = observed_fatigue = 0
+    first_fatigue_rest_tick = None
+    recovered_ready_tick = None
+    saw_wait_recovery = False
     for index, (rec, row) in enumerate(zip(readings, owner.rows, strict=True)):
         if (rec.get("native_seq") != row["source_seq"]
                 or rec.get("world_tick") != row["world_tick"]
@@ -105,6 +108,9 @@ def audit_t1r_trace(readings, owner, *, completed_moves):
                 or rec.get("fatigue_origin") != "interoception"
                 or rec.get("physical_permission_from_view") is not False
                 or rec.get("p1_qualified_wait") is not False
+                or rec.get("original_activity") != row["activity"]
+                or rec.get("original_action_id") != row["active_action"]
+                or rec.get("original_action_open") is not (row["active_action"] is not None)
                 or not rec.get("energy_source_refs")
                 or not rec.get("fatigue_source_refs")):
             raise T1rRejected("false or ungrounded SelfBody per-tick sensor")
@@ -118,10 +124,18 @@ def audit_t1r_trace(readings, owner, *, completed_moves):
             raise T1rRejected("SelfBody sensor differs from original ledger")
         if row["p1"]["accumulated"] > 0:
             observed_fatigue += 1
+        if row["activity"] == "WAIT_DEV" and row["p1"]["recovered"] > 0:
+            saw_wait_recovery = True
         if rec.get("sensed_rest_preference") == "REST_PREFERRED":
             rest += 1
+            if rec["fatigue_sensed"] >= REST_SENSE_THRESHOLD:
+                if first_fatigue_rest_tick is None:
+                    first_fatigue_rest_tick = rec["world_tick"]
         elif rec.get("sensed_rest_preference") == "READY_FEELING":
             ready += 1
+            if (first_fatigue_rest_tick is not None and saw_wait_recovery
+                    and rec["world_tick"] > first_fatigue_rest_tick):
+                recovered_ready_tick = rec["world_tick"]
         else:
             raise T1rRejected("unexpected/unknown perception in successful run")
     return {
@@ -129,12 +143,18 @@ def audit_t1r_trace(readings, owner, *, completed_moves):
         "rest_preferred_samples": rest,
         "ready_feeling_samples": ready,
         "original_fatigue_accumulation_ticks": observed_fatigue,
-        "observed_change_in_sensed_preference": bool(rest and ready),
+        "first_fatigue_rest_tick": first_fatigue_rest_tick,
+        "recovered_ready_tick": recovered_ready_tick,
+        "observed_change_in_sensed_preference": bool(
+            first_fatigue_rest_tick is not None
+            and recovered_ready_tick is not None and observed_fatigue
+        ),
         "physical_action_permission_from_sensor": False,
         "original_p1_qualified_wait": False,
         "classification": (
             "T1R_PASSIVE_PERCEPTUAL_SHIFT_OBSERVED_DEV"
-            if rest and ready and observed_fatigue
+            if first_fatigue_rest_tick is not None
+            and recovered_ready_tick is not None and observed_fatigue
             else "T1R_PASSIVE_SENSOR_TIMECOURSE_WITHOUT_SHIFT_DEV"
         ),
     }
