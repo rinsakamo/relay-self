@@ -64,7 +64,7 @@ class L1GridRoutePlanDev:
             or any(abs(b[0]-a[0])+abs(b[1]-a[1])!=1
                    for a,b in zip(self.cell_path,self.cell_path[1:]))
             or not isinstance(self.stages,tuple)
-            or not 2<=len(self.stages)<=12
+            or not 1<=len(self.stages)<=12
             or any(not isinstance(s,L1DetourStageDev) for s in self.stages)
             or len({s.stage_id for s in self.stages})!=len(self.stages)
             or not math.isclose(self.stages[-1].target_x,
@@ -200,7 +200,7 @@ def choose_grid_route_dev(
             present.native_seq,42,visited,(),None,
         )
     corners=_turns(path)
-    if not 2<=len(corners)<=12:
+    if not 1<=len(corners)<=12:
         return L1GridSearchDecisionDev(
             "DEFER","GRID_ROUTE_EXCEEDS_WAYPOINT_BUDGET",
             present.native_seq,42,visited,path,None,
