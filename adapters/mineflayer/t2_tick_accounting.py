@@ -7,6 +7,7 @@ bridge units. P1 source is bounded callback/input evidence, not R full-tick proo
 from __future__ import annotations
 
 import math
+import os
 from dataclasses import asdict, replace
 
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
@@ -18,7 +19,7 @@ from experiments.p1_gait_dev import GaitTickDev, advance_gait_dev
 
 class TickAccounting:
     def __init__(self, session_id, *, fatigue_profile: FatigueProfile | None = None,
-                 gait_source=None):
+                 gait_source=None, g3_partial_dev: bool = False):
         self.session_id = session_id
         self.energy = B0EnergyLedger(session_id, config=MetabolismConfig(
             basal_cost=.001, move_cost=.002, fight_cost=.01))
@@ -34,7 +35,18 @@ class TickAccounting:
             # Gait transition already contains its own mode-specific recovery.
             # Never mix the T1s 40s WAIT transition into this state.
             raise ValueError("single gait P1 requires enabled non-tau profile")
+        if (type(g3_partial_dev) is not bool or (
+            g3_partial_dev and (
+                gait_source is None
+                or os.environ.get("S49_L1_G3_T2_DEV_ONLY") != "1"
+            )
+        )):
+            raise ValueError("G3 single-owner partial gait requires explicit opt-in")
         self.gait_source = gait_source
+        self.g3_partial_dev = g3_partial_dev
+        self.g3_dash_energy_total_dev = 0.0
+        self.g3_unknown_fallback_ticks_dev = 0
+        self.g3_applied_gait_ticks_dev = 0
         self.fatigue = None
         self.previous = None
         self.active_action = None
@@ -122,6 +134,8 @@ class TickAccounting:
         activity = "WAIT" if wait else "MOVE"
         gait_tick = None
         physical_idle = False
+        g3_unknown_fallback = False
+        dash_extra = 0.0
         if self.gait_source is None:
             fatigue_step = advance(self.profile, self.fatigue, FatigueFrame(
                 self.session_id, s["world_tick"], activity,
@@ -133,30 +147,55 @@ class TickAccounting:
             # not guess WALK, DASH, or recovery from a motor request alone.
             try:
                 gait_tick = self.gait_source(frame, self.previous, wait)
-                if isinstance(gait_tick, GaitTickDev) and wait and gait_tick.gait != "WAIT":
+                if gait_tick is None and self.g3_partial_dev:
+                    # Source is continuous but the physical mode is not:
+                    # one conservative legacy MOVE/WAIT advance, zero
+                    # DASH debit. Never assume zero movement means rest.
+                    g3_unknown_fallback = True
+                    fatigue_step = advance(self.profile, self.fatigue, FatigueFrame(
+                        self.session_id, s["world_tick"], activity,
+                        observed_blocks=0 if wait else blocks,
+                        blocked=not wait and blocks < 1e-9,
+                    ))
+                else:
+                    if self.g3_partial_dev and isinstance(gait_tick, GaitTickDev):
+                        if gait_tick.gait == "DASH":
+                            # Only the one original M0 owner supplies the
+                            # spendable budget, never the motor request.
+                            gait_tick = replace(
+                                gait_tick,
+                                available_extra_m0_energy=max(
+                                    0.0, self.energy.body.energy
+                                    - self.energy.config.basal_cost
+                                    - self.energy.config.move_cost
+                                    - 1e-9,
+                                ),
+                            )
+                    if isinstance(gait_tick, GaitTickDev) and wait and gait_tick.gait != "WAIT":
                     raise ValueError("applied gait disagrees with WAIT_DEV")
-                if isinstance(gait_tick, GaitTickDev) and gait_tick.gait == "WAIT" and not wait:
-                    # Rest of the *body* before an Action/clear is not a
-                    # causally closed S49 WAIT. Do not mint WAIT_DEV credit.
-                    from adapters.mineflayer.t1v_physical_idle_dev import physical_idle_witness_dev
-                    physical_idle = physical_idle_witness_dev(frame, self.previous)
-                if (not isinstance(gait_tick, GaitTickDev)
-                        or gait_tick.session_id != self.session_id
-                        or gait_tick.world_tick != s["world_tick"]
-                        or (gait_tick.gait == "WAIT") != (wait or physical_idle)):
-                    raise ValueError("applied gait missing, foreign or unproven body rest")
-                # The existing Paper input bitmap can disprove obvious
-                # contradictions, but it cannot independently authenticate
-                # speed attributes, sprint or complete control state.
-                if ((s["input"] == 2 and gait_tick.direction == "forward")
-                        or (s["input"] == 1 and gait_tick.direction == "back")):
-                    raise ValueError("applied gait direction contradicts Paper input")
-                fatigue_step = advance_gait_dev(
-                    self.profile, self.fatigue, gait_tick)
-                if fatigue_step.added_m0_charge != 0:
-                    # The existing M0 owner has no atomic DASH charge posting
-                    # here. Do not adopt a charge proposal as paid energy.
-                    raise ValueError("DASH extra M0 must be posted by existing owner")
+                    if isinstance(gait_tick, GaitTickDev) and gait_tick.gait == "WAIT" and not wait:
+                        # Rest of the *body* before an Action/clear is not a
+                        # causally closed S49 WAIT. Do not mint WAIT_DEV credit.
+                        from adapters.mineflayer.t1v_physical_idle_dev import physical_idle_witness_dev
+                        physical_idle = physical_idle_witness_dev(frame, self.previous)
+                    if (not isinstance(gait_tick, GaitTickDev)
+                            or gait_tick.session_id != self.session_id
+                            or gait_tick.world_tick != s["world_tick"]
+                            or (gait_tick.gait == "WAIT") != (wait or physical_idle)):
+                        raise ValueError("applied gait missing, foreign or unproven body rest")
+                    # The existing Paper input bitmap can disprove obvious
+                    # contradictions, but it cannot independently authenticate
+                    # speed attributes, sprint or complete control state.
+                    if ((s["input"] == 2 and gait_tick.direction == "forward")
+                            or (s["input"] == 1 and gait_tick.direction == "back")):
+                        raise ValueError("applied gait direction contradicts Paper input")
+                    fatigue_step = advance_gait_dev(
+                        self.profile, self.fatigue, gait_tick)
+                    if fatigue_step.added_m0_charge != 0:
+                        if not self.g3_partial_dev:
+                            # Never adopt a charge proposal as already paid.
+                            raise ValueError("DASH extra M0 must be posted by existing owner")
+                        dash_extra = fatigue_step.added_m0_charge
             except Exception as error:
                 self.failed = True
                 self.gait_refusal = {
@@ -173,8 +212,19 @@ class TickAccounting:
             meal = None
         if meal is not None and (blocks > 1e-9 or chord > 1e-9 or self.active_action is not None):
             raise ValueError("meal credit requires stationary post-EAT source tick")
-        energy_step = self.energy.step(
-            "WAIT" if wait or physical_idle or meal else "MOVE", eating=meal)
+        if dash_extra:
+            if meal is not None or wait or physical_idle:
+                raise ValueError("DASH cannot be meal, rest or causal WAIT")
+            energy_step = self.energy.post_g3_observed_dash_tick_dev(
+                world_tick=s["world_tick"], extra=dash_extra,
+            )
+        else:
+            energy_step = self.energy.step(
+                "WAIT" if wait or physical_idle or meal else "MOVE", eating=meal)
+        if self.g3_partial_dev:
+            self.g3_unknown_fallback_ticks_dev += int(g3_unknown_fallback)
+            self.g3_applied_gait_ticks_dev += int(gait_tick is not None)
+            self.g3_dash_energy_total_dev += dash_extra
         if meal is not None:
             self.pending_meal = None
         self.fatigue = fatigue_step.after
@@ -190,6 +240,9 @@ class TickAccounting:
             "m0_basal": .001, "m0_cognition": cognition,
             "l0_work_units": 1, "node_evaluation_ns": int(d["evaluation_completed_ns"]) - int(d["evaluation_start_ns"]),
             "m0_move": 0 if wait or meal else blocks * .002,
+            "g3_extra_m0_paid_dev": dash_extra,
+            "g3_unknown_fallback_dev": g3_unknown_fallback,
+            "g3_single_p1_owner_dev": self.g3_partial_dev,
             "m0": asdict(energy_step), "p1": asdict(fatigue_step),
             "paper_basal_ticks": s["basal_ticks"],
             "paper_basal_exhaustion": s["basal_exhaustion"],
@@ -201,7 +254,7 @@ class TickAccounting:
                 p1_transition="SINGLE_P1_APPLIED_GAIT_DEV",
                 applied_gait=gait_tick.gait, applied_direction=gait_tick.direction,
                 applied_dash_power=gait_tick.applied_dash_power,
-                p1_gait_extra_m0_posted=False,
+                p1_gait_extra_m0_posted=dash_extra > 0,
                 gait_source_authenticated_R=False,
                 physical_idle_model_only=physical_idle,
                 qualified_physical_wait=False,
