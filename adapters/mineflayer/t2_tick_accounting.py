@@ -172,7 +172,7 @@ class TickAccounting:
                                 ),
                             )
                     if isinstance(gait_tick, GaitTickDev) and wait and gait_tick.gait != "WAIT":
-                    raise ValueError("applied gait disagrees with WAIT_DEV")
+                        raise ValueError("applied gait disagrees with WAIT_DEV")
                     if isinstance(gait_tick, GaitTickDev) and gait_tick.gait == "WAIT" and not wait:
                         # Rest of the *body* before an Action/clear is not a
                         # causally closed S49 WAIT. Do not mint WAIT_DEV credit.
