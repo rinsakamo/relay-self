@@ -16,9 +16,12 @@ ADMITTED consecutive Paper snapshot and an initialized fatigue state.
 At every original `execute_goal_step` (including L1-generated waypoints
 and subsequent grid refresh), the single original S49 supervisor first
 issues the one Action. The boundary then calls the existing T2
-`begin(action_id)` before external I/O; on a genuine S16 OUTCOME,
-original `clear_controls` ACK and native readback it calls the existing
-T2 `finish(consequence, terminal)` exactly once. Native UNKNOWN,
+`begin(action_id)` before external I/O; on genuine S16 OUTCOME or
+source-honest S16 UNKNOWN with a verified original `clear_controls` ACK
+and native readback it calls existing T2 `finish(consequence, terminal)`
+exactly once. The UNKNOWN case has **no attested movement OUTCOME** and
+no P1 credit from this bridge, but allows L1 wall replan once a fresh
+same-session admitted Paper source arrives. Inconsistent terminal/ACK,
 lost source, bad lineage or missing post-terminal Paper continuity
 latches the owner and prevents additional Action.
 

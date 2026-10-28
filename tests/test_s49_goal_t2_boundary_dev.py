@@ -53,6 +53,7 @@ def test_original_s16_handoff_does_not_post_or_infer_p1():
     assert receipt.s16_after_seq == 12
     assert receipt.clear_seq == 11
     assert receipt.t2_ledger_rows_at_terminal == 0
+    assert receipt.s16_outcome_attested
     assert not receipt.gait_world_tick_authenticated
     assert not receipt.p1_full_tick_attested
     assert not receipt.m0_or_p1_posting_from_bridge
@@ -64,13 +65,35 @@ def test_original_s16_handoff_does_not_post_or_infer_p1():
     (ActionState.UNKNOWN, "executed"),
     (ActionState.OUTCOME, "undetermined"),
 ])
-def test_native_unknown_latches_owner(bad_state, bad_status):
+def test_inconsistent_native_terminal_latches_owner(bad_state, bad_status):
     owner = ExistingTickOwner()
     boundary = GoalT2ActionBoundaryDev(owner, session_id="world-A")
     boundary.before_issue("goal-A", probe_seq=5)
     with pytest.raises(GoalT2BoundaryRejected):
         boundary.after_terminal(outcome(state=bad_state, status=bad_status))
     assert owner.failed and boundary.latched
+
+
+def test_wall_unknown_clear_allows_l1_replan_only_after_new_paper_source():
+    owner = ExistingTickOwner()
+    boundary = GoalT2ActionBoundaryDev(owner, session_id="world-A")
+    boundary.before_issue("original-wall", probe_seq=5)
+    closed = boundary.after_terminal(outcome(
+        action="original-wall", state=ActionState.UNKNOWN,
+        status="undetermined",
+    ))
+    assert closed.terminal == ActionState.UNKNOWN.value
+    assert not closed.s16_outcome_attested
+    assert not owner.failed and owner.active_action is None
+    # Replanning is allowed only once the original single reader
+    # advances the existing owner past the UNKNOWN S16 source.
+    owner.observe(NS(session_id="world-A", seq=14, data={"status": "ADMITTED"}))
+    boundary.before_issue("l1-detour-step", probe_seq=16)
+    next_receipt = boundary.after_terminal(
+        outcome("l1-detour-step", after_seq=20, clear_seq=19)
+    )
+    assert next_receipt.s16_outcome_attested
+    assert len(boundary.receipts) == 2
 
 
 def test_no_new_goal_action_without_fresh_post_s16_paper_source():

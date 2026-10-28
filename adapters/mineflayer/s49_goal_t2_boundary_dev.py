@@ -24,6 +24,7 @@ class GoalT2BoundaryReceiptDev:
     s16_after_seq: int
     clear_seq: int
     t2_ledger_rows_at_terminal: int
+    s16_outcome_attested: bool = False
     source_scope: str = "S49_S16_TO_T2_ACTION_BOUNDARY_DEV_ONLY"
     gait_world_tick_authenticated: bool = False
     p1_full_tick_attested: bool = False
@@ -107,8 +108,9 @@ class GoalT2ActionBoundaryDev:
             or self.active_action is None
             or terminal.action_id != self.active_action
             or consequence.action_id != self.active_action
-            or terminal.state is not ActionState.OUTCOME
-            or status != "executed"
+            or terminal.state not in (ActionState.OUTCOME, ActionState.UNKNOWN)
+            or (terminal.state is ActionState.OUTCOME and status != "executed")
+            or (terminal.state is ActionState.UNKNOWN and status != "undetermined")
             or after is None or after.session_id != self.session_id
             or type(after.seq) is not int
             or (self.last_s16_seq is not None
@@ -120,7 +122,7 @@ class GoalT2ActionBoundaryDev:
         ):
             self.latch()
             raise GoalT2BoundaryRejected(
-                "unknown/unclosed/foreign native S16; P1 admission forbidden"
+                "unclosed/foreign/inconsistent native S16; P1 admission forbidden"
             )
         try:
             self.owner.finish(consequence, terminal)
@@ -132,6 +134,7 @@ class GoalT2ActionBoundaryDev:
         item = GoalT2BoundaryReceiptDev(
             self.session_id, self.active_action, terminal.state.value,
             after.seq, ack.seq, len(self.owner.rows),
+            s16_outcome_attested=terminal.state is ActionState.OUTCOME,
         )
         self.receipts.append(item)
         self.last_s16_seq = after.seq
