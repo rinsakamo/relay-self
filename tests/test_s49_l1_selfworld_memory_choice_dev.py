@@ -1,8 +1,8 @@
 """DEV SelfWorld REMEMBERED selection: provenance, consensus, abstention."""
 from __future__ import annotations
 
-from dataclasses import replace
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -13,13 +13,16 @@ from relay_self.goal_memory_choice_dev import (
     select_selfworld_route_dev,
 )
 from relay_self.goal_navigation import (
-    GoalControlRejected,GoalPurpose,L2GoalProposal,
+    GoalControlRejected,
+    GoalPurpose,
+    L2GoalProposal,
 )
 from relay_self.persistent_cognition import (
-    IdentitySpecification,PersistentCognition,
+    IdentitySpecification,
+    PersistentCognition,
 )
 from relay_self.provenance import Provenance
-from relay_self.self_world import SelfWorldView,WorldOrigin
+from relay_self.self_world import SelfWorldView, WorldOrigin
 
 
 def _episode(session,actions=8,error=0.12,side=2.5):
