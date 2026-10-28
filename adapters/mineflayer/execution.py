@@ -23,6 +23,7 @@ from relay_self.provenance import Provenance
 MOVE_BACKWARD_ACTION_REF = "MOVE_BACKWARD"
 MOVE_FORWARD_ACTION_REF = "MOVE_FORWARD"  # explicit bounded S49 DEV-only caller
 MOVE_FORWARD_SPRINT_DEV_REF = "MOVE_FORWARD_SPRINT_DEV"
+MOVE_FORWARD_SNEAK_DEV_REF = "MOVE_FORWARD_SNEAK_DEV"
 MOVE_BACKWARD_EFFECT = "set_control"
 MOVE_BACKWARD_CONTROL = "back"
 MOVE_BACKWARD_DURATION_S = 0.20
@@ -65,6 +66,8 @@ class MineflayerExecutionSession(Protocol):
 
     async def send_forward_sprint_dev(self, action_id: str) -> None: ...
 
+    async def send_forward_sneak_dev(self, action_id: str) -> None: ...
+
     async def send_clear_controls(self, action_id: str) -> None: ...
 
 
@@ -92,6 +95,7 @@ class MineflayerCommand:
             MOVE_BACKWARD_ACTION_REF: MOVE_BACKWARD_CONTROL,
             MOVE_FORWARD_ACTION_REF: "forward",
             MOVE_FORWARD_SPRINT_DEV_REF: "forward",
+            MOVE_FORWARD_SNEAK_DEV_REF: "forward",
         }.get(self.action_ref)
         if expected_control is None:
             raise InvalidMineflayerExecutionData(
@@ -100,6 +104,8 @@ class MineflayerCommand:
         expected_effect = (
             "set_forward_sprint_dev"
             if self.action_ref == MOVE_FORWARD_SPRINT_DEV_REF
+            else "set_forward_sneak_dev"
+            if self.action_ref == MOVE_FORWARD_SNEAK_DEV_REF
             else MOVE_BACKWARD_EFFECT
         )
         if self.effect != expected_effect:
@@ -257,6 +263,7 @@ def build_mineflayer_command(
         MOVE_BACKWARD_ACTION_REF: MOVE_BACKWARD_CONTROL,
         MOVE_FORWARD_ACTION_REF: "forward",
         MOVE_FORWARD_SPRINT_DEV_REF: "forward",
+        MOVE_FORWARD_SNEAK_DEV_REF: "forward",
     }
     if binding_result.action_ref not in controls:
         raise InvalidMineflayerExecutionData(
@@ -269,11 +276,14 @@ def build_mineflayer_command(
         action_ref=binding_result.action_ref,
         effect=("set_forward_sprint_dev"
                 if binding_result.action_ref == MOVE_FORWARD_SPRINT_DEV_REF
+                else "set_forward_sneak_dev"
+                if binding_result.action_ref == MOVE_FORWARD_SNEAK_DEV_REF
                 else MOVE_BACKWARD_EFFECT),
         control=controls[binding_result.action_ref],
         state=True,
         duration_s=(
             0.60 if binding_result.action_ref == MOVE_FORWARD_SPRINT_DEV_REF
+            else 0.35 if binding_result.action_ref == MOVE_FORWARD_SNEAK_DEV_REF
             else MOVE_BACKWARD_DURATION_S
         ),
         cleanup_action_id=f"{issued_action.action_id}-s15-clear",
@@ -382,6 +392,8 @@ async def execute_mineflayer_command(
         movement_command_attempted = True
         if command.action_ref == MOVE_FORWARD_SPRINT_DEV_REF:
             await adapter.send_forward_sprint_dev(command.action_id)
+        elif command.action_ref == MOVE_FORWARD_SNEAK_DEV_REF:
+            await adapter.send_forward_sneak_dev(command.action_id)
         else:
             await adapter.send_set_control(
                 command.action_id,
