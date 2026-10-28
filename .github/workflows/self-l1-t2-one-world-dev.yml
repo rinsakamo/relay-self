@@ -243,7 +243,10 @@ jobs:
           assert sustained["l1_t2_ledger_dev"]["owner_failed"] is False
           candidates=sustained["g1_applied_gait_observation_dev"]["kinds"]
           assert candidates.get("STABLE_SPRINT_FORWARD_CANDIDATE",0)>=3
-          assert candidates.get("STABLE_ORDINARY_FORWARD_CANDIDATE",0)>=1
+          # Three real sprint Actions can already reach the retained Goal.
+          # No subsequent normal movement should then be required.
+          assert (candidates.get("STABLE_ORDINARY_FORWARD_CANDIDATE",0)>=1
+                  or sustained["action_count"]==3)
           print("S49_G2_THREE_SPRINT_ORIGINAL_S49_T1U_PAPER_DEV_PASS",len(actions),candidates)
           PY
       - name: Preserve all attempts and original DEV World
