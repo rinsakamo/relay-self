@@ -113,6 +113,46 @@ def test_stale_frame_cannot_piggyback_current_owner():
     assert view.sensed("m0_energy_sensor").value <= 12.0
 
 
+def test_quantized_energy_can_disagree_with_exact_host_state():
+    f, owner = ready()
+    owner.energy.body = replace(owner.energy.body, energy=11.89)
+    view = project_t1q_selfbody(f, owner, epoch_id="quantized")
+    assert view.sensed("m0_energy_sensor").value == 12.0
+    assert owner.energy.body.energy == 11.89
+    assert view.observed("m0_energy_sensor").origin is BodyOrigin.UNKNOWN
+
+
+def test_t1q_wrapper_injects_one_read_only_policy_into_original_loop(monkeypatch):
+    import asyncio
+    from types import SimpleNamespace
+    import adapters.mineflayer.t1q_interoception_dev as mod
+    from test_t1f_t2_dev import release
+
+    calls = []
+
+    async def fake_original_loop(session, report, *, move_limit, l0_decider):
+        calls.append("original_t1p_owner")
+        first, owner = ready()
+        assert l0_decider(first, owner, completed=0, limit=move_limit) == "MOVE"
+        release(owner, seq=1)
+        second = frame(2, seq=20)
+        owner.observe(second)
+        assert l0_decider(second, owner, completed=1, limit=move_limit) == "MOVE"
+        report["t1p"] = {"completed_moves": 2}
+        report["status"] = "PASS"
+
+    monkeypatch.setattr(mod, "run_body_loop_dev", fake_original_loop)
+    report = {}
+    asyncio.run(mod.run_t1q_body_loop_dev(SimpleNamespace(), report, move_limit=2))
+    assert calls == ["original_t1p_owner"]
+    assert report["t1q"]["decision_count"] == 2
+    assert report["t1q"]["additional_native_reads"] == 0
+    assert report["t1q"]["additional_actions"] == 0
+    assert [x["native_seq"] for x in report["t1q"]["readings"]] == [10, 20]
+    assert [x["world_tick"] for x in report["t1q"]["readings"]] == [201, 202]
+
+
+
 def test_producer_projector_has_no_action_or_receive_side_effect(monkeypatch):
     f, owner = ready()
     import adapters.mineflayer.t1q_interoception_dev as mod
