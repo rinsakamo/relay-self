@@ -121,6 +121,7 @@ class TickAccounting:
         # UNDETERMINED in the source ledger instead of calling it WAIT.
         activity = "WAIT" if wait else "MOVE"
         gait_tick = None
+        physical_idle = False
         if self.gait_source is None:
             fatigue_step = advance(self.profile, self.fatigue, FatigueFrame(
                 self.session_id, s["world_tick"], activity,
@@ -132,11 +133,16 @@ class TickAccounting:
             # not guess WALK, DASH, or recovery from a motor request alone.
             try:
                 gait_tick = self.gait_source(frame, self.previous, wait)
+                if isinstance(gait_tick, GaitTickDev) and gait_tick.gait == "WAIT" and not wait:
+                    # Rest of the *body* before an Action/clear is not a
+                    # causally closed S49 WAIT. Do not mint WAIT_DEV credit.
+                    from adapters.mineflayer.t1v_physical_idle_dev import physical_idle_witness_dev
+                    physical_idle = physical_idle_witness_dev(frame, self.previous)
                 if (not isinstance(gait_tick, GaitTickDev)
                         or gait_tick.session_id != self.session_id
                         or gait_tick.world_tick != s["world_tick"]
-                        or (gait_tick.gait == "WAIT") != wait):
-                    raise ValueError("applied gait missing, foreign or disagrees with WAIT_DEV")
+                        or (gait_tick.gait == "WAIT") != (wait or physical_idle)):
+                    raise ValueError("applied gait missing, foreign or unproven body rest")
                 # The existing Paper input bitmap can disprove obvious
                 # contradictions, but it cannot independently authenticate
                 # speed attributes, sprint or complete control state.
@@ -165,17 +171,22 @@ class TickAccounting:
             meal = None
         if meal is not None and (blocks > 1e-9 or chord > 1e-9 or self.active_action is not None):
             raise ValueError("meal credit requires stationary post-EAT source tick")
-        energy_step = self.energy.step("WAIT" if wait or meal else "MOVE", eating=meal)
+        energy_step = self.energy.step(
+            "WAIT" if wait or physical_idle or meal else "MOVE", eating=meal)
         if meal is not None:
             self.pending_meal = None
         self.fatigue = fatigue_step.after
         row = {"session_id": self.session_id, "world": s["world"],
             "world_tick": s["world_tick"], "server_tick": s["tick"], "source_seq": frame.seq,
-            "sim_seconds": 1 / 20, "activity": "WAIT_DEV" if wait else "MOVE_OR_UNDETERMINED",
+            "sim_seconds": 1 / 20, "activity": (
+                "WAIT_DEV" if wait else "PHYSICAL_IDLE_DEV"
+                if physical_idle else "MOVE_OR_UNDETERMINED"),
             "motor_mode": "WALK" if phase["phase"] == "MOVING" else "UNDETERMINED",
             "blocks_chord": chord, "native_motion_blocks": blocks, "active_action": self.active_action,
             "clear_seq": self.clear_seq, "terminal_seq": self.terminal_seq,
             "wait_causal_clear": causal_clear, "input_idle": idle,
+            "physical_idle_model_only": physical_idle,
+            "qualified_physical_wait": False,
             "m0_basal": .001, "m0_cognition": cognition,
             "l0_work_units": 1, "node_evaluation_ns": int(d["evaluation_completed_ns"]) - int(d["evaluation_start_ns"]),
             "m0_move": 0 if wait or meal else blocks * .002,
@@ -192,6 +203,7 @@ class TickAccounting:
                 applied_dash_power=gait_tick.applied_dash_power,
                 p1_gait_extra_m0_posted=False,
                 gait_source_authenticated_R=False,
+                gait_physical_idle_without_action_wait=physical_idle,
                 gait_evidence={"source_seq": frame.seq,
                                "previous_source_seq": self.previous.seq,
                                "paper_input": s["input"],
