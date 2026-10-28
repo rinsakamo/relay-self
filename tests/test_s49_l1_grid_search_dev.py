@@ -9,7 +9,7 @@ from relay_self.goal_grid_search_dev import (
     L1GridRoutePlanDev,
     choose_grid_route_dev,
 )
-from relay_self.goal_local_voxel_dev import NativeVoxelPresentDev, VoxelColumnDev
+from relay_self.goal_local_voxel_dev import NativeVoxelPresentDev
 from relay_self.goal_navigation import (
     GoalControlRejected,
     GoalPurpose,
