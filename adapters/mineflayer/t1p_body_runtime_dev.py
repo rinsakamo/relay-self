@@ -52,7 +52,7 @@ def decide_l0(frame, owner, *, completed: int, limit: int) -> str:
 
 
 async def run_body_loop_dev(session, report, *, move_limit: int = 2,
-                            wait_ticks: int = 12):
+                            wait_ticks: int = 12, l0_decider=None):
     """Small non-staged action/WAIT cycle using the original T1e resource owner.
 
     WAIT_DEV is the existing T2 conservative post-clear decision; time since
@@ -73,17 +73,20 @@ async def run_body_loop_dev(session, report, *, move_limit: int = 2,
              "target_moves": move_limit, "wait_ticks_per_move": wait_ticks,
              "epochs": [], "p1_qualified_wait": False,
              "forced_hazard_count": 0, "gifted_food_count": 0})
+    if l0_decider is not None and not callable(l0_decider):
+        raise T1pRejected("read-only cognition policy must be callable")
+    choose = decide_l0 if l0_decider is None else l0_decider
     supervisor = ActionSupervisor()
     probe = await _correlated_observe(session, "t1p-start-barrier")
     fresh = await next_tick(session, after_seq=probe.seq)
     body = report["t1p"]
     for epoch in range(move_limit):
-        decision = decide_l0(fresh, owner, completed=epoch, limit=move_limit)
+        decision = choose(fresh, owner, completed=epoch, limit=move_limit)
         if decision == "HOLD_BODY":
             # No movement command while capability-limited; observe actual ticks.
             for _ in range(60):
                 fresh = await next_tick(session, after_seq=fresh.seq)
-                decision = decide_l0(fresh, owner, completed=epoch, limit=move_limit)
+                decision = choose(fresh, owner, completed=epoch, limit=move_limit)
                 if decision != "HOLD_BODY":
                     break
         if decision != "MOVE":
