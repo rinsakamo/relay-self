@@ -1,0 +1,3118 @@
+{
+  "classification": "DEV_ONLY / DEV_WORLD_OBSERVED / NATIVE_GAIT_UNVERIFIED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN",
+  "t1u_acceptance": "NOT_ESTABLISHED",
+  "branch": "self/dev-t1u-gait-t2-integration-20261028",
+  "baseline_head": "fa61ca9fe1c84fd8886db8ed6e5cf7e124b67f4a",
+  "t1s_ancestor": "946708c2daab0741b34f3b669efafb4622262a43",
+  "upstream_gait_head": "d2ecdb5c2609615c84ef55a75b1ca2bfb8b382b1",
+  "model_blob": "d241978d0eba1843e3a6caed96c90e3c16e8dc39",
+  "model_test_blob": "4887ccc32b7e0aede95b0301d7778fe9a16f9c45",
+  "single_p1_state": true,
+  "validation": {
+    "focused_initial": 174,
+    "focused_final": 198,
+    "fast_final": 814,
+    "fast_files": 49,
+    "ruff": "PASS",
+    "repository_contracts": "PASS",
+    "syntax": {
+      "status": "PASS",
+      "files": 492
+    },
+    "node_snapshot_tests": 17,
+    "java21_plugin_build": "PASS",
+    "full_regression": "NOT_RUN",
+    "initial_failures_retained": [
+      "system Python has no pytest",
+      "focused-witness-first.log: development edit indentation error",
+      "ruff-first.log",
+      "audit-first.log: audit used wrong level directory name",
+      "audit-second.log: audit assumed nonexistent M0 before field"
+    ]
+  },
+  "runtime": {
+    "python": "Python 3.12.3",
+    "node": "v22.22.2",
+    "java": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)",
+    "mineflayer": "4.39.0",
+    "physical_runtime_not_symlink": true,
+    "paper_1_21_8": true
+  },
+  "world_runs": {
+    "new_worlds": 4,
+    "runner_pass": 2,
+    "runner_fail": 2,
+    "integrated_gait_pass": 0,
+    "witness_legacy_pass": 2
+  },
+  "originals": {
+    "root": "/home/rinsa/work/t1u-evidence-20261028",
+    "manifest": "/home/rinsa/work/t1u-evidence-20261028/originals-manifest.json",
+    "files": 802,
+    "all_match": true,
+    "manifest_sha256": "f9647c6698ca59f9023e0437b6d7dde3eca0cd55e9b511bb8e17439ac93c57d5"
+  },
+  "audit": {
+    "audit": "READ_ONLY_SAVED_ORIGINALS",
+    "classification": "DEV_ONLY / DEV_WORLD_OBSERVED / NATIVE_GAIT_UNVERIFIED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN",
+    "independent_source_authentication": false,
+    "new_worlds": 4,
+    "runner_pass": 2,
+    "runner_fail": 2,
+    "t1u_integration_pass": 0,
+    "integrated_gait_native_replay": "NOT_EXERCISED_ZERO_TRANSITIONS",
+    "independent_port_rebind": true,
+    "protected_originals": {
+      "t1q": {
+        "files": 204,
+        "unchanged": true,
+        "manifest_sha256": "a7cdba55290ec64005e0b35f648862f73cc7caf95c343ce29faea1b23d2a9e75"
+      },
+      "t1r": {
+        "files": 206,
+        "unchanged": true,
+        "manifest_sha256": "09c6de37c6ca16b629ea04a8d0a29e6d094c2167e9ced74fc09b7c07e1a908bc"
+      },
+      "t1s": {
+        "files": 205,
+        "unchanged": true,
+        "manifest_sha256": "4fa490f2963d1bfa018c4bb07d71f680873a8b89c7fc3dc715e88ff8c9997613"
+      }
+    },
+    "runs": [
+      {
+        "run_id": "T1U-001",
+        "case": "t1u_gait_body_loop",
+        "runner_status": "FAIL",
+        "t1u_integration": "NATIVE_GAIT_UNVERIFIED",
+        "legacy_witness_only": false,
+        "checks": {
+          "identity": true,
+          "source_admitted": true,
+          "source_continuity": true,
+          "source_budget": true,
+          "ledger_continuity": true,
+          "world_saved": true,
+          "cleanup": true,
+          "transport": true,
+          "trace_off": true,
+          "no_extra_effects": true,
+          "no_llm_food_tps": true,
+          "runner_hash_readback": true,
+          "executable_source_readback": true,
+          "plugin_readback": true,
+          "p1_m0_independent_replay": true,
+          "integrated_gait_replay_exercised": false,
+          "no_dash_unpaid": true,
+          "first_anchor_uncharged": true,
+          "refusal_reproduced": true,
+          "effect_outcome_counts": true
+        },
+        "session_id": "51742dc3-208b-47da-8345-4eff26cf9a0a",
+        "identity": {
+          "world": "2e899897-8f6e-413c-a7b8-a086c96191a5",
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "boot": "6f8edc1b-be4e-4b45-8af2-a8b23983e39d"
+        },
+        "source": {
+          "frames": 21,
+          "statuses": {
+            "ADMITTED": 21
+          },
+          "first_world_tick": 1014,
+          "last_world_tick": 1034,
+          "max_causal_age_ms": 106.559021,
+          "accounted_ticks": 0,
+          "first_accounted_tick": null,
+          "last_accounted_tick": null,
+          "shutdown_tail_not_backfilled": [
+            37
+          ]
+        },
+        "counts": {
+          "move": 0,
+          "outcome": 0,
+          "unknown_terminal": 0,
+          "clear_ack": 0,
+          "duplicate_effects": 0
+        },
+        "classified_counts": {
+          "JOG": 0,
+          "WAIT": 0
+        },
+        "classified_source_ticks": [],
+        "unknown_ticks": [
+          {
+            "world_tick": 1034,
+            "source_seq": 28,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          }
+        ],
+        "p1": {
+          "transition_model": "T1U_NOT_EXERCISED",
+          "transitions": 0,
+          "accumulated": 0,
+          "internal_recovered": 0,
+          "final": 0.0
+        },
+        "m0": {
+          "initial": 12,
+          "basal": 0,
+          "cognition": 0,
+          "movement": 0,
+          "final": 12.0,
+          "added_dash_charge": 0,
+          "food_credit": 0
+        },
+        "refusal": {
+          "classification": "UNDETERMINED",
+          "m0_updated": false,
+          "p1_updated": false,
+          "previous_source_seq": 26,
+          "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode",
+          "source_seq": 28,
+          "world_tick": 1034
+        },
+        "cleanup": {
+          "cleanup_complete": true,
+          "node_exit": 0,
+          "java_exit": 0,
+          "node_pid_absent": true,
+          "java_pid_absent": true,
+          "port_rebind": true
+        },
+        "trace_off": true
+      },
+      {
+        "run_id": "T1U-002",
+        "case": "t1u_gait_witness_loop",
+        "runner_status": "PASS",
+        "t1u_integration": "NATIVE_GAIT_UNVERIFIED",
+        "legacy_witness_only": true,
+        "checks": {
+          "identity": true,
+          "source_admitted": true,
+          "source_continuity": true,
+          "source_budget": true,
+          "ledger_continuity": true,
+          "world_saved": true,
+          "cleanup": true,
+          "transport": true,
+          "trace_off": true,
+          "no_extra_effects": true,
+          "no_llm_food_tps": true,
+          "runner_hash_readback": true,
+          "executable_source_readback": true,
+          "plugin_readback": true,
+          "p1_m0_independent_replay": true,
+          "integrated_gait_replay_exercised": false,
+          "no_dash_unpaid": true,
+          "first_anchor_uncharged": true,
+          "effect_outcome_counts": true
+        },
+        "session_id": "d6ea9eab-9ad9-4f8d-8447-49ea916236d2",
+        "identity": {
+          "world": "acc5308f-b648-43a9-a9a4-5df68746df81",
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "boot": "206f024e-be23-4cb1-a91a-071f13640293"
+        },
+        "source": {
+          "frames": 80,
+          "statuses": {
+            "ADMITTED": 80
+          },
+          "first_world_tick": 1012,
+          "last_world_tick": 1091,
+          "max_causal_age_ms": 96.647769,
+          "accounted_ticks": 60,
+          "first_accounted_tick": 1032,
+          "last_accounted_tick": 1091,
+          "shutdown_tail_not_backfilled": [
+            94
+          ]
+        },
+        "counts": {
+          "move": 2,
+          "outcome": 2,
+          "unknown_terminal": 0,
+          "clear_ack": 2,
+          "duplicate_effects": 0
+        },
+        "classified_counts": {
+          "JOG": 0,
+          "WAIT": 40
+        },
+        "classified_source_ticks": [
+          {
+            "world_tick": 1042,
+            "source_seq": 52,
+            "previous_source_seq": 51,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1043,
+            "source_seq": 53,
+            "previous_source_seq": 52,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1044,
+            "source_seq": 54,
+            "previous_source_seq": 53,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1045,
+            "source_seq": 55,
+            "previous_source_seq": 54,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1046,
+            "source_seq": 56,
+            "previous_source_seq": 55,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1047,
+            "source_seq": 57,
+            "previous_source_seq": 56,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1048,
+            "source_seq": 58,
+            "previous_source_seq": 57,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1049,
+            "source_seq": 59,
+            "previous_source_seq": 58,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1050,
+            "source_seq": 60,
+            "previous_source_seq": 59,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1051,
+            "source_seq": 61,
+            "previous_source_seq": 60,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1052,
+            "source_seq": 62,
+            "previous_source_seq": 61,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1053,
+            "source_seq": 63,
+            "previous_source_seq": 62,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1054,
+            "source_seq": 64,
+            "previous_source_seq": 63,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1055,
+            "source_seq": 65,
+            "previous_source_seq": 64,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1056,
+            "source_seq": 66,
+            "previous_source_seq": 65,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1057,
+            "source_seq": 67,
+            "previous_source_seq": 66,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1058,
+            "source_seq": 68,
+            "previous_source_seq": 67,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1059,
+            "source_seq": 69,
+            "previous_source_seq": 68,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1060,
+            "source_seq": 70,
+            "previous_source_seq": 69,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1061,
+            "source_seq": 72,
+            "previous_source_seq": 70,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1072,
+            "source_seq": 98,
+            "previous_source_seq": 97,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1073,
+            "source_seq": 99,
+            "previous_source_seq": 98,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1074,
+            "source_seq": 100,
+            "previous_source_seq": 99,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1075,
+            "source_seq": 101,
+            "previous_source_seq": 100,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1076,
+            "source_seq": 102,
+            "previous_source_seq": 101,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1077,
+            "source_seq": 103,
+            "previous_source_seq": 102,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1078,
+            "source_seq": 104,
+            "previous_source_seq": 103,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1079,
+            "source_seq": 105,
+            "previous_source_seq": 104,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1080,
+            "source_seq": 106,
+            "previous_source_seq": 105,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1081,
+            "source_seq": 107,
+            "previous_source_seq": 106,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1082,
+            "source_seq": 108,
+            "previous_source_seq": 107,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1083,
+            "source_seq": 109,
+            "previous_source_seq": 108,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1084,
+            "source_seq": 110,
+            "previous_source_seq": 109,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1085,
+            "source_seq": 111,
+            "previous_source_seq": 110,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1086,
+            "source_seq": 112,
+            "previous_source_seq": 111,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1087,
+            "source_seq": 113,
+            "previous_source_seq": 112,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1088,
+            "source_seq": 114,
+            "previous_source_seq": 113,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1089,
+            "source_seq": 115,
+            "previous_source_seq": 114,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1090,
+            "source_seq": 116,
+            "previous_source_seq": 115,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1091,
+            "source_seq": 118,
+            "previous_source_seq": 116,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_base": 0.10000000149011612,
+              "sprinting": false,
+              "speed_value": 0.10000000149011612,
+              "speed_modifiers": 0,
+              "sneaking": false
+            },
+            "applied_controls_dev": null,
+            "active_action": null,
+            "used_for_t1u_p1": false
+          }
+        ],
+        "unknown_ticks": [
+          {
+            "world_tick": 1032,
+            "source_seq": 31,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1033,
+            "source_seq": 32,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1034,
+            "source_seq": 34,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1035,
+            "source_seq": 36,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1036,
+            "source_seq": 41,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1037,
+            "source_seq": 43,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1038,
+            "source_seq": 45,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1039,
+            "source_seq": 47,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1040,
+            "source_seq": 49,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1041,
+            "source_seq": 51,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1062,
+            "source_seq": 76,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1063,
+            "source_seq": 78,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1064,
+            "source_seq": 80,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1065,
+            "source_seq": 82,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1066,
+            "source_seq": 87,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1067,
+            "source_seq": 89,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1068,
+            "source_seq": 91,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1069,
+            "source_seq": 93,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1070,
+            "source_seq": 95,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1071,
+            "source_seq": 97,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          }
+        ],
+        "p1": {
+          "transition_model": "LEGACY_WITNESS_ONLY",
+          "transitions": 60,
+          "accumulated": 0.05867020214424692,
+          "internal_recovered": 0.05867020214424691,
+          "final": 0.0
+        },
+        "m0": {
+          "initial": 12,
+          "basal": 0.06,
+          "cognition": 0.006,
+          "movement": 0.002933510107212346,
+          "final": 11.931066489892824,
+          "added_dash_charge": 0,
+          "food_credit": 0
+        },
+        "refusal": null,
+        "cleanup": {
+          "cleanup_complete": true,
+          "node_exit": 0,
+          "java_exit": 0,
+          "node_pid_absent": true,
+          "java_pid_absent": true,
+          "port_rebind": true
+        },
+        "trace_off": true
+      },
+      {
+        "run_id": "T1U-003",
+        "case": "t1u_gait_witness_loop",
+        "runner_status": "PASS",
+        "t1u_integration": "NATIVE_GAIT_UNVERIFIED",
+        "legacy_witness_only": true,
+        "checks": {
+          "identity": true,
+          "source_admitted": true,
+          "source_continuity": true,
+          "source_budget": true,
+          "ledger_continuity": true,
+          "world_saved": true,
+          "cleanup": true,
+          "transport": true,
+          "trace_off": true,
+          "no_extra_effects": true,
+          "no_llm_food_tps": true,
+          "runner_hash_readback": true,
+          "executable_source_readback": true,
+          "plugin_readback": true,
+          "p1_m0_independent_replay": true,
+          "integrated_gait_replay_exercised": false,
+          "no_dash_unpaid": true,
+          "first_anchor_uncharged": true,
+          "effect_outcome_counts": true
+        },
+        "session_id": "989f3c41-eac0-48a0-8b1d-14939ecb2537",
+        "identity": {
+          "world": "d180036a-0676-44f5-9142-365de25c0ef5",
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "boot": "fb63530d-3924-451f-8247-9a74889cccb5"
+        },
+        "source": {
+          "frames": 81,
+          "statuses": {
+            "ADMITTED": 81
+          },
+          "first_world_tick": 1010,
+          "last_world_tick": 1090,
+          "max_causal_age_ms": 85.808094,
+          "accounted_ticks": 60,
+          "first_accounted_tick": 1031,
+          "last_accounted_tick": 1090,
+          "shutdown_tail_not_backfilled": [
+            93
+          ]
+        },
+        "counts": {
+          "move": 2,
+          "outcome": 2,
+          "unknown_terminal": 0,
+          "clear_ack": 2,
+          "duplicate_effects": 0
+        },
+        "classified_counts": {
+          "JOG": 4,
+          "WAIT": 40
+        },
+        "classified_source_ticks": [
+          {
+            "world_tick": 1033,
+            "source_seq": 36,
+            "previous_source_seq": 34,
+            "gait": "JOG",
+            "direction": "back",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": true,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": "t1p-epoch-0",
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1034,
+            "source_seq": 38,
+            "previous_source_seq": 36,
+            "gait": "JOG",
+            "direction": "back",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": true,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": "t1p-epoch-0",
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1041,
+            "source_seq": 54,
+            "previous_source_seq": 53,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1042,
+            "source_seq": 55,
+            "previous_source_seq": 54,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1043,
+            "source_seq": 56,
+            "previous_source_seq": 55,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1044,
+            "source_seq": 57,
+            "previous_source_seq": 56,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1045,
+            "source_seq": 58,
+            "previous_source_seq": 57,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1046,
+            "source_seq": 59,
+            "previous_source_seq": 58,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1047,
+            "source_seq": 60,
+            "previous_source_seq": 59,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1048,
+            "source_seq": 61,
+            "previous_source_seq": 60,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1049,
+            "source_seq": 62,
+            "previous_source_seq": 61,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1050,
+            "source_seq": 63,
+            "previous_source_seq": 62,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1051,
+            "source_seq": 64,
+            "previous_source_seq": 63,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1052,
+            "source_seq": 65,
+            "previous_source_seq": 64,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1053,
+            "source_seq": 66,
+            "previous_source_seq": 65,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1054,
+            "source_seq": 67,
+            "previous_source_seq": 66,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1055,
+            "source_seq": 68,
+            "previous_source_seq": 67,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1056,
+            "source_seq": 69,
+            "previous_source_seq": 68,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1057,
+            "source_seq": 70,
+            "previous_source_seq": 69,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1058,
+            "source_seq": 71,
+            "previous_source_seq": 70,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1059,
+            "source_seq": 72,
+            "previous_source_seq": 71,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1060,
+            "source_seq": 74,
+            "previous_source_seq": 72,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1063,
+            "source_seq": 82,
+            "previous_source_seq": 80,
+            "gait": "JOG",
+            "direction": "back",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": true,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": "t1p-epoch-1",
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1064,
+            "source_seq": 84,
+            "previous_source_seq": 82,
+            "gait": "JOG",
+            "direction": "back",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": true,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": "t1p-epoch-1",
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1071,
+            "source_seq": 100,
+            "previous_source_seq": 99,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1072,
+            "source_seq": 101,
+            "previous_source_seq": 100,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1073,
+            "source_seq": 102,
+            "previous_source_seq": 101,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1074,
+            "source_seq": 103,
+            "previous_source_seq": 102,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1075,
+            "source_seq": 104,
+            "previous_source_seq": 103,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1076,
+            "source_seq": 105,
+            "previous_source_seq": 104,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1077,
+            "source_seq": 106,
+            "previous_source_seq": 105,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1078,
+            "source_seq": 107,
+            "previous_source_seq": 106,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1079,
+            "source_seq": 108,
+            "previous_source_seq": 107,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1080,
+            "source_seq": 109,
+            "previous_source_seq": 108,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1081,
+            "source_seq": 110,
+            "previous_source_seq": 109,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1082,
+            "source_seq": 111,
+            "previous_source_seq": 110,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1083,
+            "source_seq": 112,
+            "previous_source_seq": 111,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1084,
+            "source_seq": 113,
+            "previous_source_seq": 112,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1085,
+            "source_seq": 114,
+            "previous_source_seq": 113,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1086,
+            "source_seq": 115,
+            "previous_source_seq": 114,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1087,
+            "source_seq": 116,
+            "previous_source_seq": 115,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1088,
+            "source_seq": 117,
+            "previous_source_seq": 116,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1089,
+            "source_seq": 118,
+            "previous_source_seq": 117,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          },
+          {
+            "world_tick": 1090,
+            "source_seq": 120,
+            "previous_source_seq": 118,
+            "gait": "WAIT",
+            "direction": "forward",
+            "input": 0,
+            "paper_gait_dev": {
+              "speed_value": 0.10000000149011612,
+              "sprinting": false,
+              "speed_base": 0.10000000149011612,
+              "sneaking": false,
+              "speed_modifiers": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "active_action": null,
+            "used_for_t1u_p1": false
+          }
+        ],
+        "unknown_ticks": [
+          {
+            "world_tick": 1031,
+            "source_seq": 32,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1032,
+            "source_seq": 34,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1035,
+            "source_seq": 43,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1036,
+            "source_seq": 45,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1037,
+            "source_seq": 47,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1038,
+            "source_seq": 49,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1039,
+            "source_seq": 51,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1040,
+            "source_seq": 53,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1061,
+            "source_seq": 78,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1062,
+            "source_seq": 80,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1065,
+            "source_seq": 89,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1066,
+            "source_seq": 91,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1067,
+            "source_seq": 93,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1068,
+            "source_seq": 95,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1069,
+            "source_seq": 97,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          },
+          {
+            "world_tick": 1070,
+            "source_seq": 99,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          }
+        ],
+        "p1": {
+          "transition_model": "LEGACY_WITNESS_ONLY",
+          "transitions": 60,
+          "accumulated": 0.06728423586294344,
+          "internal_recovered": 0.06728423586294344,
+          "final": 0.0
+        },
+        "m0": {
+          "initial": 12,
+          "basal": 0.06,
+          "cognition": 0.006,
+          "movement": 0.003364211793147172,
+          "final": 11.93063578820689,
+          "added_dash_charge": 0,
+          "food_credit": 0
+        },
+        "refusal": null,
+        "cleanup": {
+          "cleanup_complete": true,
+          "node_exit": 0,
+          "java_exit": 0,
+          "node_pid_absent": true,
+          "java_pid_absent": true,
+          "port_rebind": true
+        },
+        "trace_off": true
+      },
+      {
+        "run_id": "T1U-004",
+        "case": "t1u_gait_body_loop",
+        "runner_status": "FAIL",
+        "t1u_integration": "NATIVE_GAIT_UNVERIFIED",
+        "legacy_witness_only": false,
+        "checks": {
+          "identity": true,
+          "source_admitted": true,
+          "source_continuity": true,
+          "source_budget": true,
+          "ledger_continuity": true,
+          "world_saved": true,
+          "cleanup": true,
+          "transport": true,
+          "trace_off": true,
+          "no_extra_effects": true,
+          "no_llm_food_tps": true,
+          "runner_hash_readback": true,
+          "executable_source_readback": true,
+          "plugin_readback": true,
+          "p1_m0_independent_replay": true,
+          "integrated_gait_replay_exercised": false,
+          "no_dash_unpaid": true,
+          "first_anchor_uncharged": true,
+          "refusal_reproduced": true,
+          "effect_outcome_counts": true
+        },
+        "session_id": "cdf2b4fa-87fa-44fd-91ba-1892d115b72d",
+        "identity": {
+          "world": "1383f3f4-f95a-45c1-8ad3-094feee7d408",
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "boot": "4116eb9e-1176-4355-bd3e-83ae884e1b75"
+        },
+        "source": {
+          "frames": 22,
+          "statuses": {
+            "ADMITTED": 22
+          },
+          "first_world_tick": 1010,
+          "last_world_tick": 1031,
+          "max_causal_age_ms": 101.209607,
+          "accounted_ticks": 0,
+          "first_accounted_tick": null,
+          "last_accounted_tick": null,
+          "shutdown_tail_not_backfilled": [
+            34
+          ]
+        },
+        "counts": {
+          "move": 1,
+          "outcome": 0,
+          "unknown_terminal": 1,
+          "clear_ack": 1,
+          "duplicate_effects": 0
+        },
+        "classified_counts": {
+          "JOG": 0,
+          "WAIT": 0
+        },
+        "classified_source_ticks": [],
+        "unknown_ticks": [
+          {
+            "world_tick": 1031,
+            "source_seq": 32,
+            "classification": "UNDETERMINED",
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode"
+          }
+        ],
+        "p1": {
+          "transition_model": "T1U_NOT_EXERCISED",
+          "transitions": 0,
+          "accumulated": 0,
+          "internal_recovered": 0,
+          "final": 0.0
+        },
+        "m0": {
+          "initial": 12,
+          "basal": 0,
+          "cognition": 0,
+          "movement": 0,
+          "final": 12.0,
+          "added_dash_charge": 0,
+          "food_credit": 0
+        },
+        "refusal": {
+          "classification": "UNDETERMINED",
+          "m0_updated": false,
+          "p1_updated": false,
+          "previous_source_seq": 28,
+          "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode",
+          "source_seq": 32,
+          "world_tick": 1031
+        },
+        "cleanup": {
+          "cleanup_complete": true,
+          "node_exit": 0,
+          "java_exit": 0,
+          "node_pid_absent": true,
+          "java_pid_absent": true,
+          "port_rebind": true
+        },
+        "trace_off": true
+      }
+    ]
+  },
+  "offline_comparison": {
+    "classification": "OFFLINE_MODEL_COMPARISON_NOT_NATIVE",
+    "profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+    "same_initial_fatigue": 0,
+    "rates": {
+      "walk_speed_m_s": 1.3,
+      "jog_speed_m_s": 4.32,
+      "run_speed_m_s": 5.61,
+      "max_dash_multiplier": 1.5,
+      "full_dash_limit_seconds": 20.0,
+      "dash_load_curve": 1.2,
+      "wait_recovery_per_s": 0.12,
+      "walk_recovery_per_s": 0.1,
+      "jog_recovery_per_s": 0.06,
+      "run_recovery_per_s": 0.025,
+      "dash_recovery_per_s": 0.02,
+      "walk_load_per_s": 0.0,
+      "jog_load_per_s": 0.002,
+      "run_load_per_s": 0.004,
+      "additional_dash_m0_per_s": 0.2
+    },
+    "ordinary": [
+      {
+        "gait": "WALK",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 60.0,
+        "initial_fatigue": 0.0,
+        "accumulated": 0.0,
+        "internal_recovered": 0.0,
+        "net_fatigue": 0.0,
+        "final_fatigue": 0.0,
+        "capability": {
+          "efficiency": 1.0,
+          "max_move_blocks_per_world_tick": 1.0,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "WALK",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 600.0,
+        "initial_fatigue": 0.0,
+        "accumulated": 0.0,
+        "internal_recovered": 0.0,
+        "net_fatigue": 0.0,
+        "final_fatigue": 0.0,
+        "capability": {
+          "efficiency": 1.0,
+          "max_move_blocks_per_world_tick": 1.0,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "WALK",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 3600.0,
+        "initial_fatigue": 0.0,
+        "accumulated": 0.0,
+        "internal_recovered": 0.0,
+        "net_fatigue": 0.0,
+        "final_fatigue": 0.0,
+        "capability": {
+          "efficiency": 1.0,
+          "max_move_blocks_per_world_tick": 1.0,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "JOG",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 60.0,
+        "initial_fatigue": 0.0,
+        "accumulated": 0.11982017986507978,
+        "internal_recovered": 0.08739763727998996,
+        "net_fatigue": 0.03242254258508983,
+        "final_fatigue": 0.03242254258508983,
+        "capability": {
+          "efficiency": 0.9773042201904372,
+          "max_move_blocks_per_world_tick": 0.9773042201904372,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "JOG",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 600.0,
+        "initial_fatigue": 0.0,
+        "accumulated": 1.1982017986509403,
+        "internal_recovered": 1.1648684653176433,
+        "net_fatigue": 0.03333333333333175,
+        "final_fatigue": 0.03333333333333175,
+        "capability": {
+          "efficiency": 0.9766666666666678,
+          "max_move_blocks_per_world_tick": 0.9766666666666678,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "JOG",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 3600.0,
+        "initial_fatigue": 0.0,
+        "accumulated": 7.189210791913801,
+        "internal_recovered": 7.15587745858043,
+        "net_fatigue": 0.03333333333333175,
+        "final_fatigue": 0.03333333333333175,
+        "capability": {
+          "efficiency": 0.9766666666666678,
+          "max_move_blocks_per_world_tick": 0.9766666666666678,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "RUN",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 60.0,
+        "initial_fatigue": 0.0,
+        "accumulated": 0.23985006248047336,
+        "internal_recovered": 0.11555088810422232,
+        "net_fatigue": 0.12429917437625115,
+        "final_fatigue": 0.12429917437625115,
+        "capability": {
+          "efficiency": 0.9129905779366242,
+          "max_move_blocks_per_world_tick": 0.9129905779366242,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "RUN",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 600.0,
+        "initial_fatigue": 0.0,
+        "accumulated": 2.3985006248049974,
+        "internal_recovered": 2.238500673749104,
+        "net_fatigue": 0.1599999510556287,
+        "final_fatigue": 0.1599999510556287,
+        "capability": {
+          "efficiency": 0.8880000342610599,
+          "max_move_blocks_per_world_tick": 0.8880000342610599,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "RUN",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 3600.0,
+        "initial_fatigue": 0.0,
+        "accumulated": 14.391003748807243,
+        "internal_recovered": 14.231003748807774,
+        "net_fatigue": 0.15999999999998868,
+        "final_fatigue": 0.15999999999998868,
+        "capability": {
+          "efficiency": 0.8880000000000079,
+          "max_move_blocks_per_world_tick": 0.8880000000000079,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      }
+    ],
+    "dash_until_limit": [
+      {
+        "gait": "DASH",
+        "direction": "forward",
+        "power": 0.25,
+        "seconds": 3600.0,
+        "initial_fatigue": 0.0,
+        "accumulated": 53.023048530886214,
+        "internal_recovered": 52.28624902431701,
+        "net_fatigue": 0.7367995065788905,
+        "final_fatigue": 0.7367995065788905,
+        "capability": {
+          "efficiency": 0.4842403453947767,
+          "max_move_blocks_per_world_tick": 0.4842403453947767,
+          "fight_mechanically_possible": false
+        },
+        "added_m0_proposal": 179.99999999987256,
+        "m0_posted": false,
+        "motor_power_limit": 0.526400986842219
+      },
+      {
+        "gait": "DASH",
+        "direction": "forward",
+        "power": 0.5,
+        "seconds": 59.85,
+        "initial_fatigue": 0.0,
+        "accumulated": 1.7144720673391638,
+        "internal_recovered": 0.7144720673391632,
+        "net_fatigue": 1.0,
+        "final_fatigue": 1.0,
+        "capability": {
+          "efficiency": 0.30000000000000004,
+          "max_move_blocks_per_world_tick": 0.30000000000000004,
+          "fight_mechanically_possible": false
+        },
+        "added_m0_proposal": 5.984999999999895,
+        "m0_posted": false,
+        "motor_power_limit": 0.0
+      },
+      {
+        "gait": "DASH",
+        "direction": "forward",
+        "power": 0.75,
+        "seconds": 30.2,
+        "initial_fatigue": 0.0,
+        "accumulated": 1.3316219663654147,
+        "internal_recovered": 0.33162196636541436,
+        "net_fatigue": 1.0,
+        "final_fatigue": 1.0,
+        "capability": {
+          "efficiency": 0.30000000000000004,
+          "max_move_blocks_per_world_tick": 0.30000000000000004,
+          "fight_mechanically_possible": false
+        },
+        "added_m0_proposal": 4.5299999999999825,
+        "m0_posted": false,
+        "motor_power_limit": 0.0
+      },
+      {
+        "gait": "DASH",
+        "direction": "forward",
+        "power": 1,
+        "seconds": 20.0,
+        "initial_fatigue": 0.0,
+        "accumulated": 1.2126914658973278,
+        "internal_recovered": 0.2126914658973261,
+        "net_fatigue": 1.0,
+        "final_fatigue": 1.0,
+        "capability": {
+          "efficiency": 0.30000000000000004,
+          "max_move_blocks_per_world_tick": 0.30000000000000004,
+          "fight_mechanically_possible": false
+        },
+        "added_m0_proposal": 3.9999999999999587,
+        "m0_posted": false,
+        "motor_power_limit": 0.0
+      }
+    ],
+    "full_dash_20s": {
+      "gait": "DASH",
+      "direction": "forward",
+      "power": 1,
+      "seconds": 20.0,
+      "initial_fatigue": 0.0,
+      "accumulated": 1.2126914658973278,
+      "internal_recovered": 0.2126914658973261,
+      "net_fatigue": 1.0,
+      "final_fatigue": 1.0,
+      "capability": {
+        "efficiency": 0.30000000000000004,
+        "max_move_blocks_per_world_tick": 0.30000000000000004,
+        "fight_mechanically_possible": false
+      },
+      "added_m0_proposal": 3.9999999999999587,
+      "m0_posted": false,
+      "motor_power_limit": 0.0
+    },
+    "after_full_dash": [
+      {
+        "gait": "RUN",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 60.0,
+        "initial_fatigue": 1.0,
+        "accumulated": 0.23985006248050722,
+        "internal_recovered": 0.8924207279558094,
+        "net_fatigue": -0.6525706654753016,
+        "final_fatigue": 0.3474293345246984,
+        "capability": {
+          "efficiency": 0.7567994658327112,
+          "max_move_blocks_per_world_tick": 0.7567994658327112,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "RUN",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 600.0,
+        "initial_fatigue": 1.0,
+        "accumulated": 2.398500624805047,
+        "internal_recovered": 3.238500367846844,
+        "net_fatigue": -0.8399997430420509,
+        "final_fatigue": 0.160000256957949,
+        "capability": {
+          "efficiency": 0.8879998201294357,
+          "max_move_blocks_per_world_tick": 0.8879998201294357,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "RUN",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 3600.0,
+        "initial_fatigue": 1.0,
+        "accumulated": 14.391003748807293,
+        "internal_recovered": 15.231003748809597,
+        "net_fatigue": -0.8399999999999891,
+        "final_fatigue": 0.16000000000001088,
+        "capability": {
+          "efficiency": 0.8879999999999924,
+          "max_move_blocks_per_world_tick": 0.8879999999999924,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "WALK",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 60.0,
+        "initial_fatigue": 1.0,
+        "accumulated": 4.042712074391747e-15,
+        "internal_recovered": 0.9975212478233328,
+        "net_fatigue": -0.9975212478233336,
+        "final_fatigue": 0.002478752176666354,
+        "capability": {
+          "efficiency": 0.9982648734763335,
+          "max_move_blocks_per_world_tick": 0.9982648734763335,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "WALK",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 600.0,
+        "initial_fatigue": 1.0,
+        "accumulated": 4.052737900104453e-15,
+        "internal_recovered": 0.9999999999999911,
+        "net_fatigue": -1.0,
+        "final_fatigue": 8.75651076269643e-27,
+        "capability": {
+          "efficiency": 1.0,
+          "max_move_blocks_per_world_tick": 1.0,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "WALK",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 3600.0,
+        "initial_fatigue": 1.0,
+        "accumulated": 4.052737900104453e-15,
+        "internal_recovered": 0.9999999999999911,
+        "net_fatigue": -1.0,
+        "final_fatigue": 4.5080270656063776e-157,
+        "capability": {
+          "efficiency": 1.0,
+          "max_move_blocks_per_world_tick": 1.0,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "WAIT",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 60.0,
+        "initial_fatigue": 1.0,
+        "accumulated": 3.1755578594754204e-15,
+        "internal_recovered": 0.9992534141916237,
+        "net_fatigue": -0.9992534141916233,
+        "final_fatigue": 0.0007465858083766787,
+        "capability": {
+          "efficiency": 0.9994773899341364,
+          "max_move_blocks_per_world_tick": 0.9994773899341364,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "WAIT",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 600.0,
+        "initial_fatigue": 1.0,
+        "accumulated": 3.1783881050000926e-15,
+        "internal_recovered": 0.9999999999999934,
+        "net_fatigue": -1.0,
+        "final_fatigue": 5.380186160021104e-32,
+        "capability": {
+          "efficiency": 1.0,
+          "max_move_blocks_per_world_tick": 1.0,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      },
+      {
+        "gait": "WAIT",
+        "direction": "forward",
+        "power": 0,
+        "seconds": 3600.0,
+        "initial_fatigue": 1.0,
+        "accumulated": 3.1783881050000926e-15,
+        "internal_recovered": 0.9999999999999934,
+        "net_fatigue": -1.0,
+        "final_fatigue": 2.425402482737782e-188,
+        "capability": {
+          "efficiency": 1.0,
+          "max_move_blocks_per_world_tick": 1.0,
+          "fight_mechanically_possible": true
+        },
+        "added_m0_proposal": 0.0,
+        "m0_posted": false,
+        "motor_power_limit": 1
+      }
+    ],
+    "direction": {
+      "forward": {
+        "budget": {
+          "permitted_power": 1,
+          "admitted_gait": "DASH",
+          "fatigue_limited": false,
+          "energy_limited": false
+        },
+        "transition": {
+          "gait": "DASH",
+          "direction": "forward",
+          "power": 1,
+          "seconds": 0.05,
+          "initial_fatigue": 0.0,
+          "accumulated": 0.003031728664743314,
+          "internal_recovered": 0.0,
+          "net_fatigue": 0.003031728664743314,
+          "final_fatigue": 0.003031728664743314,
+          "capability": {
+            "efficiency": 0.9978777899346797,
+            "max_move_blocks_per_world_tick": 0.9978777899346797,
+            "fight_mechanically_possible": true
+          },
+          "added_m0_proposal": 0.010000000000000002,
+          "m0_posted": false,
+          "motor_power_limit": 1
+        }
+      },
+      "side": {
+        "budget": {
+          "permitted_power": 0.0,
+          "admitted_gait": "DASH",
+          "fatigue_limited": false,
+          "energy_limited": false
+        },
+        "transition": {
+          "gait": "DASH",
+          "direction": "side",
+          "power": 0,
+          "seconds": 0.05,
+          "initial_fatigue": 0.0,
+          "accumulated": 0.0001998750520670614,
+          "internal_recovered": 0.0,
+          "net_fatigue": 0.0001998750520670614,
+          "final_fatigue": 0.0001998750520670614,
+          "capability": {
+            "efficiency": 0.999860087463553,
+            "max_move_blocks_per_world_tick": 0.999860087463553,
+            "fight_mechanically_possible": true
+          },
+          "added_m0_proposal": 0.0,
+          "m0_posted": false,
+          "motor_power_limit": 1
+        }
+      },
+      "back": {
+        "budget": {
+          "permitted_power": 0.0,
+          "admitted_gait": "DASH",
+          "fatigue_limited": false,
+          "energy_limited": false
+        },
+        "transition": {
+          "gait": "DASH",
+          "direction": "back",
+          "power": 0,
+          "seconds": 0.05,
+          "initial_fatigue": 0.0,
+          "accumulated": 0.0001998750520670614,
+          "internal_recovered": 0.0,
+          "net_fatigue": 0.0001998750520670614,
+          "final_fatigue": 0.0001998750520670614,
+          "capability": {
+            "efficiency": 0.999860087463553,
+            "max_move_blocks_per_world_tick": 0.999860087463553,
+            "fight_mechanically_possible": true
+          },
+          "added_m0_proposal": 0.0,
+          "m0_posted": false,
+          "motor_power_limit": 1
+        }
+      }
+    },
+    "stationary_fatigue": {
+      "WALK": 0,
+      "JOG": 0.03333333333333333,
+      "RUN": 0.16
+    },
+    "limitations": [
+      "Engineered rates, not human physiology.",
+      "DASH constant applied output assumes World/M0 enforcement; charge proposals are not postings.",
+      "20s anchor is a constant-output mathematical limit; motor fade reduces applied output above F=0.5.",
+      "Native DASH remains rejected until existing M0 owner posts additional cost."
+    ]
+  },
+  "next_conditions": [
+    "Define a source-grounded model-compatible treatment of initial/onset/residual unknown intervals without dropping ticks, introducing another P1, or fabricating recovery.",
+    "Complete a new native two-MOVE gait-P1 loop and independent advance_gait_dev replay; current native integrated replay has zero transitions.",
+    "Add separate applied WALK/RUN/DASH evidence; post DASH cost atomically through original M0 owner before accepting forward boost.",
+    "SelfBody -> L0 feedback follows successful integration, not this unverified result."
+  ]
+}

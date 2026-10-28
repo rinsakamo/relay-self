@@ -93,6 +93,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private static final int ADAPTIVE_TICK_ROWS_MAX = 256;
     private static final String ADAPTIVE_TICK_CHANNEL = "relayself:world_tick_dev";
     private boolean t1fDev = false;
+    private boolean t1uGaitDev = false;
     private String t1fChallenge = null;
     // T1m: opt-in JVM-only passive timing. Never written to the T1f wire schema.
     private boolean t1mTimingDev = false;
@@ -143,6 +144,16 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
         row.put("basal_exhaustion", requestedBasalExhaustion);
         row.put("motion_blocks", observedMotionBlocks);
         row.put("motion_exhaustion", chargedMotionExhaustion);
+        if (t1uGaitDev) {
+            // Passive facts on the SAME callback/channel, never a motor request.
+            org.bukkit.attribute.AttributeInstance speed = p.getAttribute(
+                org.bukkit.attribute.Attribute.MOVEMENT_SPEED);
+            if (speed == null) throw new IllegalStateException("missing movement speed");
+            row.put("gait_dev", Map.of(
+                "sneaking", p.isSneaking(), "sprinting", p.isSprinting(),
+                "speed_base", speed.getBaseValue(), "speed_value", speed.getValue(),
+                "speed_modifiers", speed.getModifiers().size()));
+        }
         return new Gson().toJson(row);
     }
 
@@ -283,6 +294,10 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             adaptiveTickObserverDev = getConfig().getBoolean(
                 "adaptive-tick-observer-dev", false);
             t1fDev = getConfig().getBoolean("t1f-snapshot-dev", false);
+            t1uGaitDev = getConfig().getBoolean("t1u-gait-dev", false);
+            if (t1uGaitDev && !t1fDev) {
+                throw new IllegalStateException("T1u requires original T1f snapshot owner");
+            }
             t1mTimingDev = getConfig().getBoolean("t1m-timing-dev", false);
             if (t1mTimingDev && (!t1fDev || !adaptiveTickObserverDev)) {
                 throw new IllegalStateException("T1m passive timing requires existing T1f DEV");

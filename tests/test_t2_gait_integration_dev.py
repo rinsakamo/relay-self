@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import replace
-from types import SimpleNamespace
 
 import pytest
 

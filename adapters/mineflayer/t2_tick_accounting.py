@@ -12,8 +12,8 @@ from dataclasses import asdict, replace
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.python_protocol import MineflayerPaperSnapshot
 from experiments.fatigue_p1 import FatigueFrame, FatigueProfile, advance, initial_state
-from experiments.p1_gait_dev import GaitTickDev, advance_gait_dev
 from experiments.metabolism_viability import MetabolismConfig
+from experiments.p1_gait_dev import GaitTickDev, advance_gait_dev
 
 
 class TickAccounting:
@@ -43,6 +43,7 @@ class TickAccounting:
         self.pending_meal = None
         self.rows = []
         self.failed = False
+        self.gait_refusal = None
 
     def begin(self, action_id):
         if self.active_action is not None or self.failed:
@@ -68,7 +69,15 @@ class TickAccounting:
         self.pending_meal = receipt
 
     def observe(self, frame):
+        try:
+            return self._observe(frame)
+        except Exception:
+            self.failed = True
+            raise
+
+    def _observe(self, frame):
         if not isinstance(frame, MineflayerPaperSnapshot) or frame.session_id != self.session_id:
+            self.failed = True
             raise ValueError("foreign source")
         d, s = frame.data, frame.data["snapshot"]
         if d["status"] != "ADMITTED":
@@ -140,8 +149,13 @@ class TickAccounting:
                     # The existing M0 owner has no atomic DASH charge posting
                     # here. Do not adopt a charge proposal as paid energy.
                     raise ValueError("DASH extra M0 must be posted by existing owner")
-            except Exception:
+            except Exception as error:
                 self.failed = True
+                self.gait_refusal = {
+                    "classification": "UNDETERMINED", "source_seq": frame.seq,
+                    "world_tick": s["world_tick"], "previous_source_seq": self.previous.seq,
+                    "reason": str(error), "p1_updated": False, "m0_updated": False,
+                }
                 raise
         cognition = .0001  # one bounded L0 evaluation, symbolic bridge, not joules
         self.energy.config = replace(self.energy.config, basal_cost=.001 + cognition,
@@ -178,6 +192,12 @@ class TickAccounting:
                 applied_dash_power=gait_tick.applied_dash_power,
                 p1_gait_extra_m0_posted=False,
                 gait_source_authenticated_R=False,
+                gait_evidence={"source_seq": frame.seq,
+                               "previous_source_seq": self.previous.seq,
+                               "paper_input": s["input"],
+                               "paper_gait_dev": s.get("gait_dev"),
+                               "applied_controls_dev": d.get("applied_controls_dev"),
+                               "world": s["world"], "player": s["player"], "boot": s["boot"]},
             )
         self.rows.append(row)
         self.previous = frame

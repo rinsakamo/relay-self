@@ -88,3 +88,22 @@ test('single channel dispatch gate refuses aged snapshot even if Python consumer
   now = 151000000n
   assert.equal(g.canDispatch(), false)
 })
+
+test('T1u optional passive facts are strict and legacy remains accepted', () => {
+  const raw = { version: 1, boot: '11111111-1111-1111-1111-111111111111',
+    index: 1, tick: 1, world_tick: 1, paper_ns: 1,
+    world: '11111111-1111-1111-1111-111111111111',
+    player: '11111111-1111-1111-1111-111111111111', challenge: 'NONE',
+    x: 0, y: 1, z: 0, health: 20, food: 20, input: 0,
+    threats_complete: true, threats: [], basal_ticks: 1, basal_exhaustion: 0,
+    motion_blocks: 0, motion_exhaustion: 0 }
+  const decode = s => decodeSnapshot(Buffer.from(JSON.stringify(s)))
+  assert.equal(decode(raw).input, 0)
+  raw.gait_dev = { sneaking: false, sprinting: false, speed_base: .1,
+    speed_value: .1, speed_modifiers: 0 }
+  assert.equal(decode(raw).gait_dev.speed_value, .1)
+  for (const bad of [{ speed_value: null }, { sprinting: 'false' },
+    { speed_modifiers: -1 }, { extra: true }]) {
+    assert.throws(() => decode({ ...raw, gait_dev: { ...raw.gait_dev, ...bad } }))
+  }
+})

@@ -11,7 +11,7 @@ const nat = n => Number.isSafeInteger(n) && n >= 0
 export function decodeSnapshot (bytes) {
   if (!Buffer.isBuffer(bytes) || bytes.length > 32768) throw Error('snapshot size')
   const s = JSON.parse(bytes.toString('utf8'))
-  if (!s || Object.keys(s).length !== KEYS.length || KEYS.some(k => !Object.hasOwn(s, k)) ||
+  if (!s || Object.keys(s).length !== KEYS.length + (Object.hasOwn(s, 'gait_dev') ? 1 : 0) || KEYS.some(k => !Object.hasOwn(s, k)) ||
       s.version !== 1 || ![s.boot, s.world, s.player].every(v => typeof v === 'string' && UUID.test(v)) ||
       ![s.index, s.tick, s.world_tick, s.paper_ns, s.basal_ticks].every(nat) ||
       s.index < 1 || s.index > 2400 || !nat(s.input) || s.input > 127 ||
@@ -21,6 +21,13 @@ export function decodeSnapshot (bytes) {
       !Array.isArray(s.threats) || s.threats.length > 128 ||
       typeof s.challenge !== 'string' || !/^(NONE|[0-9a-f]{32}:[1-9][0-9]{0,3})$/.test(s.challenge)) {
     throw Error('missing/invalid Paper snapshot values')
+  }
+  if (Object.hasOwn(s, 'gait_dev')) {
+    const g = s.gait_dev
+    if (!g || Object.keys(g).sort().join() !== 'sneaking,speed_base,speed_modifiers,speed_value,sprinting' ||
+        typeof g.sneaking !== 'boolean' || typeof g.sprinting !== 'boolean' ||
+        ![g.speed_base, g.speed_value].every(v => Number.isFinite(v) && v > 0) ||
+        !nat(g.speed_modifiers)) throw Error('invalid T1u passive gait facts')
   }
   for (const t of s.threats) {
     if (!t || Object.keys(t).sort().join() !== 'distance,id,kind,x,y,z' ||
@@ -120,6 +127,13 @@ export function attachPaperSnapshotChannel (bot, emit, onInvalid, clock = () => 
       // Assessment is deliberately tiny and synchronous; record completion
       // AFTER both the input checks and the actual decision have executed.
       const result = guard.evaluate(s, { received, start, completed: clock(), cache: bot })
+      if (Object.hasOwn(s, 'gait_dev')) {
+        // Read applied Mineflayer control state in the existing callback.
+        // Mineflayer 4.39 may move without publishing Paper player-input bits.
+        result.applied_controls_dev = Object.fromEntries(
+          ['forward', 'back', 'left', 'right', 'jump', 'sneak', 'sprint']
+            .map(key => [key, bot.getControlState(key)]))
+      }
       const end = clock()
       result.evaluation_completed_ns = end.toString()
       if (end - received >= guard.evaluationBudgetNs) {

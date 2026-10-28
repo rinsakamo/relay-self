@@ -57,7 +57,7 @@ TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop", "t2_disconnect_move",
               "t1k_fault_before_send", "t1k_fault_set_ack", "t1k_fault_clear_ack",
               "t1l_source_soak", "t1m_source_soak", "t1n_source_soak",
               "t1p_body_loop", "t1q_body_loop", "t1r_body_recovery",
-              "t1s_calibrated_body_loop")
+              "t1s_calibrated_body_loop", "t1u_gait_body_loop", "t1u_gait_witness_loop")
 
 
 def write(path, value):
@@ -163,7 +163,7 @@ def measure(root, report):
 
 
 async def run_case(args, case):
-    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_", "t1l_", "t1m_", "t1n_", "t1p_", "t1q_", "t1r_", "t1s_"))
+    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_", "t1l_", "t1m_", "t1n_", "t1p_", "t1q_", "t1r_", "t1s_", "t1u_"))
     root = args.output / case
     root.mkdir()
     world = root / "server"
@@ -184,6 +184,8 @@ async def run_case(args, case):
         "adaptive-tick-observer-dev: false", "adaptive-tick-observer-dev: true")
     if t1f:
         config = config.replace("t1f-snapshot-dev: false", "t1f-snapshot-dev: true")
+    if case.startswith("t1u_"):
+        config = config.replace("t1u-gait-dev: false", "t1u-gait-dev: true")
     if case in ("t1m_source_soak", "t1n_source_soak"):
         config = config.replace("t1m-timing-dev: false", "t1m-timing-dev: true")
     (plugins / "config.yml").write_text(config)
@@ -429,7 +431,7 @@ async def run_case(args, case):
                             expected_clear_action_id=self.t1h_active_action_id + "-clear",
                         )
                     fixture = asyncio.create_task(request_owner_stop())
-                elif not case.startswith(("t1i_", "t1j_", "t1k_", "t1p_", "t1q_", "t1r_", "t1s_")) and case != "normal":
+                elif not case.startswith(("t1i_", "t1j_", "t1k_", "t1p_", "t1q_", "t1r_", "t1s_", "t1u_")) and case != "normal":
                     fixture = asyncio.create_task(stage())
 
             async def send_equip_item(self, *a, **kw):
@@ -517,6 +519,23 @@ async def run_case(args, case):
         if case.startswith("t1h_"):
             from adapters.mineflayer.t1h_native_stop_dev import run_stop_move_dev
             await run_stop_move_dev(session, server, report, root)
+            return report
+        if case.startswith("t1u_"):
+            from adapters.mineflayer.t1p_body_runtime_dev import run_body_loop_dev
+            from adapters.mineflayer.t1u_gait_source_dev import applied_gait_source_dev
+            from experiments.fatigue_p1 import FatigueProfile
+            profile = FatigueProfile(enabled=True)
+            report["t1u"] = {
+                "classification": "NATIVE_GAIT_UNVERIFIED",
+                "single_p1": True, "profile_sha256": profile.sha256,
+                "model_blob": "d241978d0eba1843e3a6caed96c90e3c16e8dc39",
+                "witness_only_legacy_accounting": case == "t1u_gait_witness_loop",
+            }
+            await run_body_loop_dev(
+                session, report, move_limit=args.loop_moves,
+                fatigue_profile=profile,
+                gait_source=(applied_gait_source_dev if case == "t1u_gait_body_loop" else None),
+            )
             return report
         if case == "t1s_calibrated_body_loop":
             from adapters.mineflayer.t1p_body_runtime_dev import run_body_loop_dev
@@ -656,6 +675,8 @@ async def run_case(args, case):
                     "active_action": owner.active_action,
                     "credit_count": owner.energy.credit_count,
                     "P1_qualified_WAIT": False}
+                if case.startswith("t1u_"):
+                    report["t1u"]["gait_refusal"] = owner.gait_refusal
         if session is not None:
             try:
                 report["node_exit"] = await session.shutdown(timeout_s=12)
@@ -808,7 +829,7 @@ async def run_case(args, case):
                        report.get("t1l_source_diagnostic", {}).get("paper_frames")):
                 report["status"] = "FAIL"
         if case in ("t1p_body_loop", "t1q_body_loop", "t1r_body_recovery",
-                     "t1s_calibrated_body_loop"):
+                     "t1s_calibrated_body_loop", "t1u_gait_body_loop", "t1u_gait_witness_loop"):
             # Bounded product DEV acceptance belongs to the original T1e owner,
             # after shutdown has closed and flushed the canonical command log.
             # Do not count a Python-side decision as a physical Action.

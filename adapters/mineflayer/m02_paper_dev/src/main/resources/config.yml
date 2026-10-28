@@ -32,3 +32,6 @@ actions:
   HUNGER_EFFECT: {unit: event, standard: native, multiplier: 1.0, additional: 0.0, enabled: true}
   UNKNOWN: {unit: event, standard: native, multiplier: 1.0, additional: 0.0, enabled: true}
   COGNITION: {unit: work, standard: 0.0, multiplier: 1.0, additional: 0.0, enabled: false}
+
+# Passive T1u facts on the existing snapshot channel; default OFF.
+t1u-gait-dev: false
