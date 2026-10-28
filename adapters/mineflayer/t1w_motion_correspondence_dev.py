@@ -60,8 +60,10 @@ def _paper_moves(lines):
 
 
 def _node_rows(lines):
+    # Materialize once: the single TRACE_END must be the final nonempty row.
+    lines = [line for line in lines if line.strip()]
     rows = []
-    for line in lines:
+    for position, line in enumerate(lines):
         if not line.strip():
             continue
         try:
@@ -71,6 +73,8 @@ def _node_rows(lines):
         if type(obj) is not dict or obj.get("revision") != 1:
             raise T1wMotionRejected("invalid Node trace revision")
         if obj.get("kind") == "TRACE_END":
+            if position != len(lines) - 1:
+                raise T1wMotionRejected("Node trace appended rows after footer")
             if (obj.get("complete") is not True or obj.get("lost") is not False
                     or obj.get("recorded_rows") != len(rows)
                     or obj.get("motion_authority") is not False):
