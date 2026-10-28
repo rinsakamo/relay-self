@@ -135,3 +135,50 @@ def test_t2_owner_import_reuses_single_original_p1():
     assert isinstance(ledger.profile, FatigueProfile)
     assert ledger.fatigue is None and ledger.previous is None
     assert GaitTickDev.__name__ == "GaitTickDev"
+
+
+def test_passive_g1_does_not_reject_paper_preanchor_refusal(monkeypatch):
+    from adapters.mineflayer import t1f_protocol
+
+    monkeypatch.setattr(t1f_protocol, "validate_result", lambda _: None)
+    msg=parse_mineflayer_line(paper({
+        "status":"UNADMITTED", "snapshot":{"index":3},
+    }))
+    session=session_fixture()
+    owner,calls=owner_fixture()
+    observed=[]
+    session._l1_t2_owner_dev=owner
+    session._l1_t2_gait_observer_dev=NS(observe=lambda *_a,**_kw: observed.append(msg))
+    class Stream:
+        async def readline(self):
+            return b"original pre-anchor Paper frame"
+    session._process=NS(stdout=Stream(),returncode=None)
+    session._raw_capture=None
+    session._decoder=NS(decode=lambda _:msg)
+    assert asyncio.run(session.receive()) is msg
+    assert calls==[msg]
+    assert observed==[]
+    assert owner.failed is False
+
+
+def test_admitted_t2_source_is_still_observed_by_same_g1(monkeypatch):
+    from adapters.mineflayer import t1f_protocol
+
+    monkeypatch.setattr(t1f_protocol, "validate_result", lambda _: None)
+    msg=parse_mineflayer_line(paper({
+        "status":"ADMITTED", "snapshot":{"index":3},
+    }))
+    session=session_fixture()
+    owner,calls=owner_fixture()
+    observed=[]
+    session._l1_t2_owner_dev=owner
+    session._l1_t2_gait_observer_dev=NS(
+        observe=lambda frame,**kw:observed.append((frame,kw["t2_activity"])))
+    class Stream:
+        async def readline(self):
+            return b"original admitted Paper frame"
+    session._process=NS(stdout=Stream(),returncode=None)
+    session._raw_capture=None
+    session._decoder=NS(decode=lambda _:msg)
+    assert asyncio.run(session.receive()) is msg
+    assert calls==[msg] and observed==[(msg,None)]
