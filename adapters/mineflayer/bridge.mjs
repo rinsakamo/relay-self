@@ -305,6 +305,20 @@ const attrBoundaryEnabled =
   process.env.S49_SPRINT_MOTOR_DEV_ONLY === '1' &&
   config.version === '1.21.8' &&
   typeof attrBoundaryPath === 'string' && isAbsolute(attrBoundaryPath)
+// DEV-only: keep the exact same in-memory sampler and source listener in
+// MEMORY and FILE arms. Only FILE persists during original CLEAR.
+const attrBoundaryMemoryOnly =
+  process.env.S49_SPEED_ATTR_BOUNDARY_MEMORY_DEV_ONLY === '1' &&
+  attrBoundaryEnabled
+if (process.env.S49_SPEED_ATTR_BOUNDARY_MEMORY_DEV_ONLY !== undefined &&
+    process.env.S49_SPEED_ATTR_BOUNDARY_MEMORY_DEV_ONLY !== '0' &&
+    process.env.S49_SPEED_ATTR_BOUNDARY_MEMORY_DEV_ONLY !== '1') {
+  throw new Error('S49_SPEED_ATTR_BOUNDARY_MEMORY_DEV_BAD_GATE')
+}
+if (process.env.S49_SPEED_ATTR_BOUNDARY_MEMORY_DEV_ONLY === '1' &&
+    !attrBoundaryEnabled) {
+  throw new Error('S49_SPEED_ATTR_BOUNDARY_MEMORY_DEV_REQUIRES_OBSERVER')
+}
 let attrBoundary = null
 let attrBoundarySealed = false
 function attrBoundaryValue (attrs, key) {
@@ -370,6 +384,7 @@ function attrBoundaryClose () {
   attrBoundarySample('FIRST_ORIGINAL_CLEAR')
   attrBoundarySealed = true
   attrBoundary.complete = true
+  if (attrBoundaryMemoryOnly) return // no serialization, file open or sync I/O
   try {
     writeFileSync(attrBoundaryPath, JSON.stringify(attrBoundary) + '\n',
       { flag: 'wx', encoding: 'utf8', mode: 0o600 })
