@@ -163,6 +163,7 @@ def _active_intent():
 
 
 def test_default_s49_goal_unbound(monkeypatch):
+    monkeypatch.delenv("S49_L1_T2_BOUNDARY_DEV_ONLY", raising=False)
     from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
     monkeypatch.setenv("S49_L0_GOAL_LOOP_DEV_ONLY", "1")
     executor = S49GoalExecutorDev("world-A", _active_intent())
