@@ -56,7 +56,7 @@ TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop", "t2_disconnect_move",
               "t1j_resume_move", "t1k_stop_resume_twice",
               "t1k_fault_before_send", "t1k_fault_set_ack", "t1k_fault_clear_ack",
               "t1l_source_soak", "t1m_source_soak", "t1n_source_soak",
-              "t1p_body_loop", "t1q_body_loop")
+              "t1p_body_loop", "t1q_body_loop", "t1r_body_recovery")
 
 
 def write(path, value):
@@ -162,7 +162,7 @@ def measure(root, report):
 
 
 async def run_case(args, case):
-    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_", "t1l_", "t1m_", "t1n_", "t1p_", "t1q_"))
+    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_", "t1l_", "t1m_", "t1n_", "t1p_", "t1q_", "t1r_"))
     root = args.output / case
     root.mkdir()
     world = root / "server"
@@ -299,6 +299,15 @@ async def run_case(args, case):
                         self.paper_frames.append(message)
                         if self.tick_owner is not None:
                             self.tick_owner.observe(message)
+                            observer = getattr(self, "passive_body_tick_observer", None)
+                            if observer is not None and self.tick_owner.previous is message:
+                                # A single passive read of this already-accounted
+                                # frame; errors fail closed and never issue Motor.
+                                try:
+                                    observer(message, self.tick_owner)
+                                except Exception:
+                                    self.tick_owner.failed = True
+                                    raise
                             if (case == "t2_disconnect_wait" and self.tick_owner.rows
                                     and self.tick_owner.rows[-1]["activity"] == "WAIT_DEV"):
                                 await self.inject_disconnect("DURING_OBSERVED_WAIT_DEV")
@@ -417,7 +426,7 @@ async def run_case(args, case):
                             expected_clear_action_id=self.t1h_active_action_id + "-clear",
                         )
                     fixture = asyncio.create_task(request_owner_stop())
-                elif not case.startswith(("t1i_", "t1j_", "t1k_", "t1p_", "t1q_")) and case != "normal":
+                elif not case.startswith(("t1i_", "t1j_", "t1k_", "t1p_", "t1q_", "t1r_")) and case != "normal":
                     fixture = asyncio.create_task(stage())
 
             async def send_equip_item(self, *a, **kw):
@@ -505,6 +514,10 @@ async def run_case(args, case):
         if case.startswith("t1h_"):
             from adapters.mineflayer.t1h_native_stop_dev import run_stop_move_dev
             await run_stop_move_dev(session, server, report, root)
+            return report
+        if case == "t1r_body_recovery":
+            from adapters.mineflayer.t1r_fatigue_timecourse_dev import run_t1r_body_recovery_dev
+            await run_t1r_body_recovery_dev(session, report, move_limit=args.loop_moves)
             return report
         if case == "t1q_body_loop":
             from adapters.mineflayer.t1q_interoception_dev import run_t1q_body_loop_dev
@@ -774,7 +787,7 @@ async def run_case(args, case):
                     or report["t1n_emit"]["matched_paper_count"] !=
                        report.get("t1l_source_diagnostic", {}).get("paper_frames")):
                 report["status"] = "FAIL"
-        if case in ("t1p_body_loop", "t1q_body_loop"):
+        if case in ("t1p_body_loop", "t1q_body_loop", "t1r_body_recovery"):
             # Bounded product DEV acceptance belongs to the original T1e owner,
             # after shutdown has closed and flushed the canonical command log.
             # Do not count a Python-side decision as a physical Action.
@@ -810,7 +823,7 @@ async def run_case(args, case):
                     or detail.get("source_latched") is not False
                     or report.get("t2_final", {}).get("credit_count") != 0):
                 report["status"] = "FAIL"
-        if case == "t1q_body_loop":
+        if case in ("t1q_body_loop", "t1r_body_recovery"):
             # The sensor receipt is a read-only cognition record and must have
             # exactly the original source/epoch lineage, never extra Motor IO.
             data = report.get("t1q", {})
