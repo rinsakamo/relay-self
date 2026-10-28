@@ -259,7 +259,7 @@ async def follow_l1_detour_dev(
                     or inflight["live_probe_count"]<1
                     or threat is None
                     or cleared is None
-                    or cleared["action_id"]!=action_id
+                    or cleared["action_id"]!=f"{action_id}-s15-clear"
                     or cleared["result"]!="applied"
                     or cleared["seq"]<=threat["probe_seq"]
                     or receipt.terminal.state is not ActionState.UNKNOWN
