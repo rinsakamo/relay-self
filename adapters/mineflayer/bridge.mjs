@@ -83,6 +83,40 @@ let lastObservedIsDay = null
 const seenActionIds = new Set()
 const seenProbeRequestIds = new Set()
 
+// Original bot is the sole native packet consumer; blockAt only inspects its
+// already loaded client chunk cache. Null does NOT assert free space.
+function emitRouteBlocksDev (command) {
+  const pos = bot.entity && bot.entity.position
+  if (!pos || !Number.isFinite(pos.y) ||
+      Math.hypot(pos.x - command.origin_x, pos.z - command.origin_z) > 6) {
+    emit('command_error', { message: 'route_blocks_dev_origin_outside_observer_reach' })
+    return
+  }
+  const footY = Math.floor(pos.y)
+  const lanes = [-2.5, 2.5].map(side => {
+    const states = [1.1, 2.0, 3.8].map(forward => {
+      const x = Math.floor(command.origin_x + side)
+      const z = Math.floor(command.origin_z + forward)
+      const cell = [footY, footY + 1].map(y => {
+        const vec = pos.offset(x - pos.x, y - pos.y, z - pos.z).floored()
+        const block = bot.blockAt(vec, false)
+        if (block === null || block === undefined) return 'UNKNOWN'
+        if (['air', 'cave_air', 'void_air'].includes(block.name)) return 'CLEAR'
+        return 'BLOCKED'
+      })
+      return cell.includes('BLOCKED') ? 'BLOCKED'
+        : cell.includes('UNKNOWN') ? 'UNKNOWN' : 'CLEAR'
+    })
+    return { side: side < 0 ? 'LEFT' : 'RIGHT', states }
+  })
+  emit('route_blocks_dev', {
+    request_id: command.request_id,
+    origin_x: command.origin_x, origin_z: command.origin_z,
+    player_y: pos.y, coverage: 'loaded_client_cache_only',
+    samples_per_lane: 3, unknown_is_not_clear: true, lanes
+  })
+}
+
 function emit (type, payload = {}) {
   const message = makeEnvelope(sessionId, seq, type, payload)
   seq += 1
@@ -685,6 +719,20 @@ async function handleLine (line) {
       }
     }
     emitObservation('probe', command.request_id)
+    return
+  }
+
+  if (command.type === 'observe_route_blocks_dev') {
+    if (!spawned || !bot.entity ||
+        process.env.S49_L1_NATIVE_BLOCKS_DEV_ONLY !== '1') {
+      emit('command_error', { message: 'route_blocks_dev_not_admitted' })
+      return
+    }
+    if (!admitProbeRequestId(seenProbeRequestIds, command.request_id)) {
+      emit('command_error', { message: 'duplicate_route_probe_request_id' })
+      return
+    }
+    emitRouteBlocksDev(command)
     return
   }
 
