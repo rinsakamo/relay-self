@@ -1,4 +1,4 @@
-name: S49 L1 T2 Paired Paper Worlds DEV
+name: S49 G1 Applied Gait Paired Paper Worlds DEV
 on:
   push:
     branches:
@@ -27,6 +27,7 @@ jobs:
       S49_L1_GRID_REFRESH_DEV_ONLY: '1'
       S49_L1_T2_CHANNEL_DEV_ONLY: '1'
       S49_L1_T2_BOUNDARY_DEV_ONLY: '1'
+      S49_L1_G1_OBSERVATION_DEV_ONLY: '1'
       RELAYSELF_T1F_DEV: '1'
       RELAYSELF_PAPER_TICK_DEV: '1'
     steps:
@@ -55,7 +56,7 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git -C t1w-pinned-source rev-parse HEAD)" = 2672d0a1fe15584d16c2426540c528410bbb8c27
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
-          env -u S49_L1_T2_CHANNEL_DEV_ONLY -u S49_L1_T2_BOUNDARY_DEV_ONLY -u RELAYSELF_T1F_DEV -u RELAYSELF_PAPER_TICK_DEV python -m pytest -q tests/test_s49_l1_t2_shared_paper_dev.py tests/test_s49_goal_t2_boundary_dev.py tests/test_s49_l1_grid_search_dev.py
+          env -u S49_L1_T2_CHANNEL_DEV_ONLY -u S49_L1_T2_BOUNDARY_DEV_ONLY -u RELAYSELF_T1F_DEV -u RELAYSELF_PAPER_TICK_DEV -u S49_L1_G1_OBSERVATION_DEV_ONLY python -m pytest -q tests/test_s49_t2_applied_gait_observation_dev.py tests/test_s49_l1_t2_shared_paper_dev.py tests/test_s49_goal_t2_boundary_dev.py tests/test_s49_l1_grid_search_dev.py
           python -m compileall -q adapters/mineflayer/s49_goal_loop_real_dev.py
           node --check adapters/mineflayer/bridge.mjs
           npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
@@ -84,7 +85,7 @@ jobs:
             --output-dir "$DEV_OUTPUT/WORLD1" \
             --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
             --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
-            --paper-plugin-dev "$PLUGIN" \
+            --paper-plugin-dev "$PLUGIN" --paper-gait-observation-dev \
             --offset-m 4.0 --obstacle-wall-dev --detour-after-wall-dev \
             --native-voxel-map-dev --local-grid-search-dev --left-lane-block-dev \
             > "$DEV_OUTPUT/producer.stdout" 2>&1 || {
@@ -95,7 +96,7 @@ jobs:
             --output-dir "$DEV_OUTPUT/WORLD2" \
             --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
             --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
-            --paper-plugin-dev "$PLUGIN" \
+            --paper-plugin-dev "$PLUGIN" --paper-gait-observation-dev \
             --offset-m 4.0 --obstacle-wall-dev --detour-after-wall-dev \
             --native-voxel-map-dev --local-grid-search-dev --left-lane-block-dev \
             --grid-refresh-dev --grid-midroute-obstacle-dev \
@@ -130,6 +131,24 @@ jobs:
               assert all(rows[i]["world_tick"]+1==rows[i+1]["world_tick"] for i in range(len(rows)-1))
               assert all(rows[i]["source_seq"]<rows[i+1]["source_seq"] for i in range(len(rows)-1))
               assert all("p1" in row and "m0" in row for row in rows)
+              g=r["g1_applied_gait_observation_dev"]
+              assert g["failed"] is False
+              assert g["source_bound"] is True
+              assert g["full_tick_gait_attested"] is False
+              assert g["p1_transitions_posted"] == 0
+              assert g["m0_extra_charge_posted"] == 0
+              gfile=folder/g["derived_file"]
+              assert hashlib.sha256(gfile.read_bytes()).hexdigest()==g["derived_file_sha256"]
+              gdata=json.loads(gfile.read_text())
+              grows=gdata["rows"]
+              assert len(grows)==g["rows"]
+              assert len(grows)==len(rows)+1
+              assert all(x["full_tick_gait_attested"] is False for x in grows)
+              assert all(x["p1_transition_posted"] is False for x in grows)
+              assert all(x["m0_extra_charge_posted"] is False for x in grows)
+              assert any(x["kind"]=="STABLE_PHYSICAL_IDLE_CANDIDATE" for x in grows)
+              assert any(x["kind"]=="STABLE_ORDINARY_FORWARD_CANDIDATE" for x in grows)
+              print("S49_G1_SAME_WORLD_OBSERVATION_DEV",name,g["kinds"])
               return r
           verify_derived("WORLD1")
           other=verify_derived("WORLD2")
