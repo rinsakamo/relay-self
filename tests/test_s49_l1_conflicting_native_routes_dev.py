@@ -70,12 +70,12 @@ def test_source_and_owner_handoff_is_explicit():
 
 
 def test_no_physical_evidence_cannot_pass_conflict_audit(tmp_path):
+    from adapters.mineflayer.s49_goal_l1_detour_review_dev import (
+        DetourEvidenceRejected,
+    )
     from adapters.mineflayer.s49_l1_conflicting_routes_review_dev import (
         ConflictingRealRoutesRejected,
         audit_conflicting_real_routes_dev,
-    )
-    from adapters.mineflayer.s49_goal_l1_detour_review_dev import (
-        DetourEvidenceRejected,
     )
     with pytest.raises((
         ConflictingRealRoutesRejected, DetourEvidenceRejected, FileNotFoundError,
