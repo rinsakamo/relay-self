@@ -99,7 +99,7 @@ def test_single_s15_reader_retains_look_and_original_motor_receipts():
     assert "await adapter.send_look(look_id" in src
     assert 'msg.action_id == look_id and msg.effect == "look"' in src
     assert "on_look_ack_dev(look_ack)" in src
-    assert "look_yaw_dev=float(yaw)" in goal
+    assert '"look_yaw_dev":float(yaw)' in goal
     assert "native_alignment_to_goal" in goal
     assert "wall_world_stimulus_requested" in goal
     assert "MOTOR_CONSEQUENCE_UNDETERMINED" in goal
