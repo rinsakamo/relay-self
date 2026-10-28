@@ -18,7 +18,6 @@ from pathlib import Path
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.s31a_real_server_ci import (
-    MINECRAFT_VERSION,
     _command,
     _correlated_observe,
     _fetch_official_server,
@@ -111,7 +110,6 @@ async def qualify(report_path:Path, server_log:Path, *, offset_m:float=2.6)->int
         report["goal_l1"]=asdict(directive)
         report["initial_native_xz"]={"x":start.x,"z":start.z,"seq":initial.seq}
         report["stage"]="UNATTENDED_L0_GOAL_OBSERVE_ACT"
-        previous_probe=None
         for iteration in range(directive.max_observations):
             # Probe, not a new zombie event or fixed tick equivalence, controls
             # each new L0 choice. The single original native reader is reused.
