@@ -435,6 +435,8 @@ class MineflayerLocalVoxelsDev(MineflayerMessage):
     origin_x: float
     origin_z: float
     player_y: float
+    player_x: float
+    player_z: float
     coverage: str
     x_min: int
     x_max: int
@@ -446,7 +448,7 @@ class MineflayerLocalVoxelsDev(MineflayerMessage):
     def __post_init__(self) -> None:
         MineflayerMessage.__post_init__(self)
         _require_probe_request_id(self.request_id)
-        for name in ("origin_x", "origin_z", "player_y"):
+        for name in ("origin_x", "origin_z", "player_x", "player_z", "player_y"):
             _require_number(name, getattr(self, name))
         if (
             self.coverage != "mineflayer_loaded_cache_fixed_7x6x3"
@@ -698,8 +700,9 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
             "local_voxels_dev", payload,
             {
                 "type", "session_id", "seq", "request_id", "origin_x",
-                "origin_z", "player_y", "coverage", "x_min", "x_max",
-                "z_min", "z_max", "cells", "unknown_is_not_clear",
+                "origin_z", "player_x", "player_z", "player_y",
+                "coverage", "x_min", "x_max", "z_min", "z_max",
+                "cells", "unknown_is_not_clear",
             },
         )
         raw_cells = _require_list("local voxel cells", payload["cells"])
@@ -721,6 +724,8 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
             origin_x=_decoded_number("origin_x", payload["origin_x"]),
             origin_z=_decoded_number("origin_z", payload["origin_z"]),
             player_y=_decoded_number("player_y", payload["player_y"]),
+            player_x=_decoded_number("player_x", payload["player_x"]),
+            player_z=_decoded_number("player_z", payload["player_z"]),
             coverage=_decoded_text("coverage", payload["coverage"]),
             x_min=payload["x_min"], x_max=payload["x_max"],
             z_min=payload["z_min"], z_max=payload["z_max"],
