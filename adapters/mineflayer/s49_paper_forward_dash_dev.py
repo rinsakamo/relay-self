@@ -584,6 +584,7 @@ async def run(
     p1_model_pair_case_dev: str | None = None,
     speed_attr_boundary_dev: bool = False,
     p1_matched_boost_dev: bool = False,
+    l0_observed_next_step_m_dev: float | None = None,
 ) -> int:
     if (
         confirm != CONFIRM or os.environ.get("NODE_OPTIONS")
@@ -606,6 +607,13 @@ async def run(
         or type(p1_next_native_l0_review_dev) is not bool
         or type(speed_attr_boundary_dev) is not bool
         or type(p1_matched_boost_dev) is not bool
+        or (l0_observed_next_step_m_dev is not None and (
+            type(l0_observed_next_step_m_dev) not in (int, float)
+            or not 0.30 <= l0_observed_next_step_m_dev <= 2.50
+            or not p1_live_dev or not m0_move_dev or not native_edges_dev
+            or not p1_matched_boost_dev
+            or os.environ.get("S49_L0_OBSERVED_FEEDBACK_DEV_ONLY") != "1"
+        ))
         or os.environ.get("S49_P1_TRACE_AB_OFF_DEV_ONLY") not in (None, "1")
         or os.environ.get("S49_P1_TRACE_ISOLATE_DEV_ONLY") not in (
             None, "OFF", "MEM", "FILE"
@@ -971,6 +979,7 @@ async def run(
                 dev_forward_motor=True, dev_sprint_motor=True,
                 dev_m0_dash_invoice=invoice_from_original_outcome if m0_live_dev else None,
                 dev_m0_action_move_step=m0_move_dev,
+                dev_l0_next_step_m=l0_observed_next_step_m_dev,
                 dev_inter_action_owner_gap=inter_action_stillness_dev,
                 dev_inter_action_owner_paper_fence=(
                     original_owner_paper_fence if causal_owner_fence_dev else None
@@ -1394,6 +1403,7 @@ def main() -> int:
     parser.add_argument("--p1-model-pair-case-dev", choices=tuple(PAIR_FATIGUE))
     parser.add_argument("--speed-attr-boundary-dev", action="store_true")
     parser.add_argument("--p1-matched-boost-dev", action="store_true")
+    parser.add_argument("--l0-observed-next-step-m-dev", type=float)
     a = parser.parse_args()
     return asyncio.run(run(
         a.output_dir, a.paper_jar, a.paper_sha256,
@@ -1415,6 +1425,7 @@ def main() -> int:
         p1_model_pair_case_dev=a.p1_model_pair_case_dev,
         speed_attr_boundary_dev=a.speed_attr_boundary_dev,
         p1_matched_boost_dev=a.p1_matched_boost_dev,
+        l0_observed_next_step_m_dev=a.l0_observed_next_step_m_dev,
     ))
 
 
