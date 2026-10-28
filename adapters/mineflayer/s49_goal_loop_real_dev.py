@@ -1192,6 +1192,11 @@ async def qualify(
                 "continuous_gait_attested":False,
                 "qualified_wait_attested":False,
                 "one_native_reader":True,
+                "s16_refusal_diagnostic_dev":(
+                    executor._t2_boundary_dev.refusal
+                    if session is not None and "executor" in locals()
+                    and executor._t2_boundary_dev is not None else None
+                ),
             }
         report["pre_cleanup_status"]=report["status"]
         await _cleanup_session(
