@@ -213,7 +213,11 @@ def recall_from_selfworld_dev(
                 raise GoalControlRejected("unsafe stored episode reference")
             episode,_=load_episode_dev(root/entry["episode_path"],source)
             item=json.loads(memory.content)
-            if item.get("episode")!=asdict(episode):
+            # PersistentCognition Memory is JSON; normalize dataclass
+            # tuples into the exact JSON array representation before
+            # comparing all fields against the authenticated raw report.
+            canonical=json.loads(json.dumps(asdict(episode),sort_keys=True))
+            if item.get("episode")!=canonical:
                 raise GoalControlRejected("remembered route differs from RAW source")
         else:
             source_report=json.loads(_read(source))
