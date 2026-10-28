@@ -1,4 +1,4 @@
-name: S49 G1 G2 Same Paper World Applied Gait DEV
+name: S49 G2 Sneak Normal Sprint Same Paper DEV
 on:
   push:
     branches:
@@ -11,7 +11,7 @@ permissions:
 jobs:
   actual-l1-t2-world:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     env:
       PYTHONPATH: 'src:tests:.'
       PYTHONDONTWRITEBYTECODE: '1'
@@ -118,6 +118,20 @@ jobs:
               cat "$DEV_OUTPUT/producer-world3.stdout"; exit 1;
             }
           cat "$DEV_OUTPUT/producer-world3.stdout"
+          # WORLD4: the first three regular S49 Action issuances are crouch
+          # forward, then original normal forward until the same L2 goal.
+          # Paper T1u gait observation is independent of this request.
+          S49_GOAL_G2_SNEAK_DEV_ONLY=1 \
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/WORLD4" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
+            --paper-plugin-dev "$PLUGIN" --paper-gait-observation-dev \
+            --offset-m 4.0 --g2-sneak-prefix-dev \
+            > "$DEV_OUTPUT/producer-world4.stdout" 2>&1 || {
+              cat "$DEV_OUTPUT/producer-world4.stdout"; exit 1;
+            }
+          cat "$DEV_OUTPUT/producer-world4.stdout"
           python - <<'PY'
           import json,os,pathlib
           report=json.loads((pathlib.Path(os.environ["DEV_OUTPUT"])/"WORLD1/goal_report.json").read_text())
@@ -189,6 +203,23 @@ jobs:
           assert sprint["l1_t2_ledger_dev"]["original_action_boundary_receipts"]>=1
           print("S49_G2_ORIGINAL_S49_SPRINT_AND_T1U_PAPER_CANDIDATE_DEV_PASS",
                 first,g["kinds"])
+          slow=verify_derived("WORLD4")
+          assert slow["status"]=="PASS"
+          assert slow["stage"]=="GOAL_REACHED"
+          assert slow["g2_sneak_prefix_dev"] is True
+          sneaks=slow["g2_sneak_actions_dev"]
+          assert len(sneaks)==3
+          assert all(x["dispatch_effect"]=="set_forward_sneak_dev" for x in sneaks)
+          assert all(x["dispatch_applied"] for x in sneaks)
+          assert all(x["terminal_state"]=="outcome" for x in sneaks)
+          assert all(x["requested_mode_not_physical_proof"] for x in sneaks)
+          slow_g=slow["g1_applied_gait_observation_dev"]
+          assert slow_g["kinds"].get("STABLE_SNEAK_FORWARD_CANDIDATE",0)>=1
+          assert slow_g["kinds"].get("STABLE_ORDINARY_FORWARD_CANDIDATE",0)>=1
+          assert slow["l1_t2_ledger_dev"]["owner_failed"] is False
+          assert slow["l1_t2_ledger_dev"]["original_action_boundary_receipts"]>=4
+          print("S49_G2_SNEAK_THEN_NORMAL_ORIGINAL_S49_T1U_PAPER_DEV_PASS",
+                len(sneaks),slow_g["kinds"])
           PY
       - name: Preserve all attempts and original DEV World
         if: always()
