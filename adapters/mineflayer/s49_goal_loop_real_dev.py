@@ -18,9 +18,9 @@ from pathlib import Path
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
+    MineflayerLocalVoxelsDev,
     MineflayerObservation,
     MineflayerRouteBlocksDev,
-    MineflayerLocalVoxelsDev,
 )
 from adapters.mineflayer.s31a_real_server_ci import (
     _command,
@@ -41,12 +41,12 @@ from adapters.mineflayer.s49_normal_session_real_ci import (
 from relay_self.action import ActionState
 from relay_self.goal_detour_dev import explicit_l1_detour_dev
 from relay_self.goal_experience_dev import select_route_from_episode_dev
-from relay_self.goal_memory_choice_dev import L1RecallStatusDev
 from relay_self.goal_local_voxel_dev import (
     NativeVoxelPresentDev,
     VoxelColumnDev,
     choose_voxel_waypoint_dev,
 )
+from relay_self.goal_memory_choice_dev import L1RecallStatusDev
 from relay_self.goal_navigation import (
     GoalDecisionKind,
     GoalPurpose,
