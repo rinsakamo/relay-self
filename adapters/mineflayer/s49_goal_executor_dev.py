@@ -35,6 +35,7 @@ from relay_self.execution_binding import (
     ExecutionBinding,
     start_and_propose_bound_execution,
 )
+from relay_self.goal_detour_dev import L1DetourPlanDev
 from relay_self.goal_navigation import (
     GoalDecisionKind,
     L0GoalDecision,
@@ -52,6 +53,58 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         super().__init__(session_id,intent,dev_forward_motor=True)
         self._goal_id: str|None=None
         self._previous_probe_seq=-1
+        self._phase_action_count=0
+        self._route_plan: L1DetourPlanDev | None=None
+        self._route_stage=-1
+
+    def adopt_waypoint_dev(
+        self, plan:L1DetourPlanDev, stage_index:int, *,
+        last_closed_action_id:str, latest_native_seq:int,
+    )->None:
+        """Rebind SAME original Action owner only after a closed previous stage.
+
+        Stage zero must originate from native UNKNOWN, never an untrusted
+        retry of its original physical Action. Later stages need previously
+        committed route order and completed earlier waypoint.
+        """
+        if (
+            os.environ.get("S49_L1_WAYPOINT_DEV_ONLY")!="1"
+            or not isinstance(plan,L1DetourPlanDev)
+            or plan.parent.session_id!=self.session_id
+            or plan.parent.intent_id!=(
+                self.intent.current_intent.intent_id
+                if self.intent.current_intent else None
+            )
+            or type(stage_index) is not int
+            or not 0<=stage_index<3
+            or not isinstance(last_closed_action_id,str)
+            or not last_closed_action_id
+            or type(latest_native_seq) is not int
+            or latest_native_seq<=self._previous_probe_seq
+            or self.supervisor.open_actions
+            or self._count<1
+        ):
+            raise NormalActionRejected("original Action still open or invalid L1 waypoint")
+        prior=self.supervisor.get(last_closed_action_id)
+        if prior.action_id!=last_closed_action_id or (
+            (stage_index==0 and (
+                prior.state is not ActionState.UNKNOWN
+                or plan.source_action_id!=last_closed_action_id
+                or latest_native_seq < plan.source_s16_seq
+                or self._route_plan is not None
+            ))
+            or (stage_index>0 and (
+                prior.state is not ActionState.OUTCOME
+                or self._route_plan!=plan
+                or self._route_stage!=stage_index-1
+            ))
+        ):
+            raise NormalActionRejected("replan cannot reissue unresolved native motor")
+        self._route_plan=plan
+        self._route_stage=stage_index
+        self._goal_id=plan.subgoal(stage_index).goal_id
+        self._phase_action_count=0
+
 
     async def execute_goal_step(
         self,session:MineflayerProcessSession,*,directive:L1GoalDirective,
@@ -101,7 +154,7 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
             or goal.intent_id!=(self.intent.current_intent.intent_id
                                 if self.intent.current_intent else None)
             or self.intent.pending_reconsideration is not None
-            or self._count>=directive.max_actions
+            or self._phase_action_count>=directive.max_actions
             or self.supervisor.open_actions
             or type(decision.input_duration_s) is not float
             or not math.isfinite(decision.input_duration_s)
@@ -170,6 +223,7 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         # Consumed BEFORE external IO. No automatic retry after unknown.
         self._dispatched.add(command.action_id)
         self._count+=1
+        self._phase_action_count+=1
         try:
             consequence=await execute_mineflayer_command(
                 session,command,timeout_s=9,provenance=origin,
