@@ -11,16 +11,18 @@ import math
 from dataclasses import asdict
 
 from adapters.mineflayer.normal_action import (
-    NormalActionAuthorization, NormalActionStage,
+    NormalActionAuthorization,
+    NormalActionStage,
 )
-from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s31a_real_server_ci import _correlated_observe
 from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
 from relay_self.action import ActionState
 from relay_self.goal_detour_dev import L1DetourPlanDev
 from relay_self.goal_navigation import (
-    GoalDecisionKind, ObservedGoalL0,
-    compile_l1_goal_dev, compute_goal_bearing_dev,
+    GoalDecisionKind,
+    ObservedGoalL0,
+    compile_l1_goal_dev,
+    compute_goal_bearing_dev,
 )
 from relay_self.provenance import Provenance
 
