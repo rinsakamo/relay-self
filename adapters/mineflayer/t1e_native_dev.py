@@ -537,6 +537,16 @@ async def run_case(args, case):
                 fatigue_profile=profile,
                 gait_source=applied_gait_or_physical_idle_dev,
             )
+            if session.tick_owner.failed and session.tick_owner.gait_refusal is not None:
+                from adapters.mineflayer.t1v_physical_idle_dev import (
+                    observe_refused_boundary_tail_dev,
+                )
+                tail = await observe_refused_boundary_tail_dev(session)
+                write(root / "t1v_boundary_tail.json", tail)
+                report["t1v"]["boundary_tail"] = {
+                    "file": "t1v_boundary_tail.json", "frames": len(tail["frames"]),
+                    "accounting_resumed": False, "next_action_issued": False,
+                }
             return report
         if case.startswith("t1u_"):
             from adapters.mineflayer.t1p_body_runtime_dev import run_body_loop_dev
@@ -695,6 +705,8 @@ async def run_case(args, case):
                     "P1_qualified_WAIT": False}
                 if case.startswith("t1u_"):
                     report["t1u"]["gait_refusal"] = owner.gait_refusal
+                if case.startswith("t1v_") and "t1v" in report:
+                    report["t1v"]["gait_refusal"] = owner.gait_refusal
         if session is not None:
             try:
                 report["node_exit"] = await session.shutdown(timeout_s=12)

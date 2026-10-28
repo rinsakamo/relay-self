@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+
 import pytest
 
 from adapters.mineflayer.python_protocol import MineflayerPaperSnapshot
@@ -127,3 +128,55 @@ def test_new_case_registered_without_changing_prior_t1u():
     assert "t1u_gait_body_loop" in TICK_CASES
     assert "t1u_gait_witness_loop" in TICK_CASES
     assert "t1v_physical_idle_loop" in TICK_CASES
+
+
+def test_refusal_tail_observes_coasting_without_advancing_or_reauthorizing():
+    import asyncio
+    from dataclasses import asdict
+    from types import SimpleNamespace
+
+    from adapters.mineflayer.t1v_physical_idle_dev import observe_refused_boundary_tail_dev
+
+    owner = TickAccounting("test-session", gait_source=applied_gait_or_physical_idle_dev)
+    owner.observe(witness(1, control="INITIAL"))
+    owner.observe(witness(2, control="INITIAL"))
+    with pytest.raises(ValueError):
+        owner.observe(witness(3, control="MOVING", bits=2, x=.1))
+    owner.clear_seq = 30
+    frozen = (asdict(owner.fatigue), asdict(owner.energy.body), len(owner.rows))
+
+    class Session:
+        tick_owner = owner
+        started = SimpleNamespace(session_id=owner.session_id)
+        consume_tick_accounting = True
+        source_lost = False
+        received = 0
+
+        async def receive(self):
+            self.received += 1
+            f = witness(4 + self.received, control="CLEARED", x=.1 + .001*self.received)
+            assert not self.consume_tick_accounting
+            return f
+
+    session = Session()
+    tail = asyncio.run(observe_refused_boundary_tail_dev(session, ticks=3))
+    assert len(tail["frames"]) == session.received == 3
+    assert tail["p1_current"] == "UNKNOWN_AFTER_REFUSED_TICK"
+    assert frozen == (asdict(owner.fatigue), asdict(owner.energy.body), len(owner.rows))
+    with pytest.raises(ValueError):
+        owner.begin("forbidden-next-action")
+
+
+def test_refusal_tail_cannot_disable_healthy_accounting():
+    import asyncio
+
+    from adapters.mineflayer.t1v_physical_idle_dev import observe_refused_boundary_tail_dev
+
+    class Session:
+        tick_owner = TickAccounting("test-session")
+        consume_tick_accounting = True
+
+    session = Session()
+    with pytest.raises(ValueError, match="latched refusal"):
+        asyncio.run(observe_refused_boundary_tail_dev(session))
+    assert session.consume_tick_accounting

@@ -1,7 +1,13 @@
 # T1v — physical rest before Action != causal S49 WAIT (isolated DEV)
 
-**DEV_ONLY / OFFLINE_IMPL_ADDED / TESTS_NOT_RUN / NEW_WORLD_NOT_RUN /
+**DEV_ONLY / DEV_WORLD_OBSERVED / PHYSICAL_IDLE_VERIFIED /
 NATIVE_GAIT_UNVERIFIED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
+
+Two new disposable Worlds verified initial physical idle (one charged tick each).
+Both runs FAIL at onset; continuous gait accounting remains unestablished.
+The second run records 24 post-refusal diagnostic ticks through the existing
+reader without resuming P1/M0 or issuing a second Action. See
+[actual native results](t1v-native-dev-results-20261028.md).
 
 Base exact T1u HEAD: `754602008010d6cd719a866d54be2df65c8d748a`.
 T1u source report: [docs/t1u-native-dev-results-20261028.md](t1u-native-dev-results-20261028.md).

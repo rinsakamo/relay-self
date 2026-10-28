@@ -7,6 +7,7 @@ Only the existing T1u Paper/Node observations are read; no extra receiver.
 from __future__ import annotations
 
 import math
+from dataclasses import asdict
 
 from adapters.mineflayer.t1u_gait_source_dev import applied_gait_source_dev
 from experiments.p1_gait_dev import GaitTickDev
@@ -68,3 +69,32 @@ def applied_gait_or_physical_idle_dev(current, previous, causal_wait):
         return GaitTickDev(
             current.session_id, current.data["snapshot"]["world_tick"], "WAIT")
     return applied_gait_source_dev(current, previous, causal_wait)
+
+
+async def observe_refused_boundary_tail_dev(session, *, ticks=24):
+    """Observe cleanup/coasting through the sole reader after a latched refusal.
+
+    This cannot resume accounting or issue another Action. The last P1/M0
+    values remain the last known values, NOT estimates for the unknown tail.
+    No sampled post-clear rest is promoted to causal WAIT credit.
+    """
+    from adapters.mineflayer.t1f_continuation_dev import next_tick
+
+    owner = session.tick_owner
+    if (not owner.failed or owner.gait_refusal is None
+            or owner.active_action is not None or owner.clear_seq is None
+            or type(ticks) is not int or not 1 <= ticks <= 24):
+        raise ValueError("diagnostic tail requires latched refusal and completed clear")
+    frozen = (asdict(owner.fatigue), asdict(owner.energy.body), len(owner.rows))
+    session.consume_tick_accounting = False
+    tail = []
+    for _ in range(ticks):
+        frame = await next_tick(session, after_seq=owner.clear_seq if not tail else tail[-1]["seq"])
+        tail.append(asdict(frame))
+        if (not owner.failed or frozen != (
+                asdict(owner.fatigue), asdict(owner.energy.body), len(owner.rows))):
+            raise ValueError("diagnostic tail changed refused accounting")
+    return {"purpose": "READ_ONLY_AFTER_REFUSAL_NO_ACTION_NO_ACCOUNTING",
+            "p1_current": "UNKNOWN_AFTER_REFUSED_TICK",
+            "m0_current": "UNPOSTED_AFTER_REFUSED_TICK",
+            "accounted_ticks_frozen": frozen[2], "frames": tail}

@@ -1,0 +1,484 @@
+{
+  "classification": "DEV_ONLY / DEV_WORLD_OBSERVED / PHYSICAL_IDLE_VERIFIED / NATIVE_GAIT_UNVERIFIED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN",
+  "branch": "self/dev-t1v-physical-idle-boundary-20261028",
+  "baseline_head": "1f14e52b3f8b47b041f653dfffaaef3dca462d43",
+  "execution_provenance": "Baseline HEAD plus exact launch diff and saved source hashes; no claim that dirty execution was a committed HEAD. Delivery HEAD is recorded externally after commit.",
+  "p1_blob": "d241978d0eba1843e3a6caed96c90e3c16e8dc39",
+  "validation": {
+    "python": "3.12.3",
+    "requested_initial": {
+      "pass": 183,
+      "fail": 1
+    },
+    "requested_final": 186,
+    "broader_focused": 215,
+    "fast": 831,
+    "fast_files": 50,
+    "ruff": "PASS",
+    "repository_contracts": "PASS",
+    "syntax": 494,
+    "node": {
+      "pass": 17,
+      "version": "22.22.2"
+    },
+    "java": "21 runtime exercised; unchanged Java source and T1u plugin reused after hash readback; rebuild NOT_NEEDED",
+    "full": "NOT_RUN"
+  },
+  "worlds": {
+    "new": 2,
+    "runner_pass": 0,
+    "runner_fail": 2,
+    "initial_physical_idle_verified": 2,
+    "continuous_accounting_pass": 0
+  },
+  "boundary": {
+    "A": "NOT_ESTABLISHED: no server-tick-bound applied-mode receipt",
+    "B": "NOT_ESTABLISHED: no reliable within-WorldTick mode duration",
+    "onset": "UNDETERMINED; latched, no P1/M0 advancement, no second MOVE",
+    "post_clear": "24 diagnostic frames, one sampled interval with motion increment; no P1 accounting resumed",
+    "fatigue_after_unknown": "UNKNOWN; 0 is only last known pre-onset value",
+    "recovery_ceiling": "Native initial fatigue was 0. Native recovery=0 matches existing formula; positive recovery only offline, not physically demonstrated."
+  },
+  "originals": {
+    "root": "/home/rinsa/work/t1v-evidence-20261028",
+    "manifest": "/home/rinsa/work/t1v-evidence-20261028/originals-manifest.json",
+    "all_match": true,
+    "files": 1999,
+    "manifest_sha256": "724828b892a8c51b67b57e0765907cb69975240aad689572d0b2639681cb1f36"
+  },
+  "audit_script": {
+    "path": "/home/rinsa/work/t1v-evidence-20261028/audit.py",
+    "sha256": "47d0c0c3a234b3d49085c59aa0a10870c34f2512ebe8e7b1a76863f554ee58cb"
+  },
+  "audit": {
+    "manifest": {
+      "files": 1999,
+      "all_match": true,
+      "sha256": "724828b892a8c51b67b57e0765907cb69975240aad689572d0b2639681cb1f36"
+    },
+    "audit": "READ_ONLY_SAVED_ORIGINALS_NO_RUNTIME_LEDGER",
+    "source_authentication_R": false,
+    "classification": "DEV_ONLY / DEV_WORLD_OBSERVED / PHYSICAL_IDLE_VERIFIED / NATIVE_GAIT_UNVERIFIED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN",
+    "independent_port_rebind": true,
+    "protected_originals_unchanged": {
+      "t1q": {
+        "manifest": "/home/rinsa/work/t1q-evidence-20261028/originals-manifest.json",
+        "sha256": "a7cdba55290ec64005e0b35f648862f73cc7caf95c343ce29faea1b23d2a9e75",
+        "files": 204
+      },
+      "t1r": {
+        "manifest": "/home/rinsa/work/t1r-evidence-20261028/originals-manifest.json",
+        "sha256": "09c6de37c6ca16b629ea04a8d0a29e6d094c2167e9ced74fc09b7c07e1a908bc",
+        "files": 206
+      },
+      "t1s": {
+        "manifest": "/home/rinsa/evidence/t1s-20261028/originals-manifest.json",
+        "sha256": "4fa490f2963d1bfa018c4bb07d71f680873a8b89c7fc3dc715e88ff8c9997613",
+        "files": 205
+      },
+      "t1u": {
+        "manifest": "/home/rinsa/work/t1u-evidence-20261028/originals-manifest.json",
+        "sha256": "f9647c6698ca59f9023e0437b6d7dde3eca0cd55e9b511bb8e17439ac93c57d5",
+        "files": 802
+      }
+    },
+    "runs": [
+      {
+        "run_id": "T1V-001",
+        "runner_status": "FAIL",
+        "checks": {
+          "identity": true,
+          "source_continuity": true,
+          "source_admitted_budget": true,
+          "original_hashes": true,
+          "plugin": true,
+          "world_saved": true,
+          "cleanup": true,
+          "transport": true,
+          "trace_off": true,
+          "no_extra_effects": true,
+          "no_llm_food_tps": true,
+          "single_p1_m0_replay": true,
+          "first_anchor_uncharged": true,
+          "onset_refused_no_reanchor": true,
+          "action_unknown_clear_no_next": true,
+          "tail_does_not_resume_p1": true
+        },
+        "identity": {
+          "world": "f2f7e271-7951-4425-813a-97de2d9f3f33",
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "boot": "82fcf6db-e1e5-4931-bbc1-d7251b9c81a1"
+        },
+        "source": {
+          "frames": 21,
+          "first_world_tick": 1015,
+          "last_world_tick": 1035,
+          "max_causal_age_ms": 94.681696,
+          "shutdown_tail_not_backfilled": [
+            38
+          ]
+        },
+        "accounted_range": [
+          1034,
+          1034
+        ],
+        "counts": {
+          "physical_idle": 1,
+          "jog_back": 0,
+          "wait_dev": 0,
+          "move": 1,
+          "outcome": 0,
+          "unknown": 1,
+          "clear_ack": 1,
+          "duplicate": 0
+        },
+        "p1": {
+          "accumulated": 0.0,
+          "internal_recovered": 0.0,
+          "last_known": 0.0,
+          "current_after_refusal": "UNKNOWN"
+        },
+        "m0": {
+          "initial": 12,
+          "basal": 0.001,
+          "cognition": 0.0001,
+          "movement": 0,
+          "last_posted": 11.9989,
+          "tail": "UNPOSTED"
+        },
+        "onset": {
+          "prior": {
+            "source_seq": 27,
+            "control": {
+              "phase": "INITIAL",
+              "since_ns": "0",
+              "generation": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "challenge_sent_ns": "1216400626197887",
+            "received_ns": "1216400673440444",
+            "snapshot": {
+              "version": 1,
+              "boot": "82fcf6db-e1e5-4931-bbc1-d7251b9c81a1",
+              "index": 20,
+              "tick": 36,
+              "world_tick": 1034,
+              "paper_ns": 4453624782,
+              "world": "f2f7e271-7951-4425-813a-97de2d9f3f33",
+              "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+              "challenge": "8a5dfdde5672d28e5e9b73deee276b8f:20",
+              "x": 0.5,
+              "y": -60,
+              "z": 0.5,
+              "health": 20,
+              "food": 20,
+              "input": 0,
+              "threats_complete": true,
+              "threats": [],
+              "basal_ticks": 20,
+              "basal_exhaustion": 0.02000000000000001,
+              "motion_blocks": 0,
+              "motion_exhaustion": 0,
+              "gait_dev": {
+                "speed_modifiers": 0,
+                "speed_value": 0.10000000149011612,
+                "sprinting": false,
+                "speed_base": 0.10000000149011612,
+                "sneaking": false
+              }
+            }
+          },
+          "current": {
+            "source_seq": 31,
+            "control": {
+              "phase": "MOVING",
+              "since_ns": "1216400676193155",
+              "generation": 1
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": true,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "challenge_sent_ns": "1216400673611326",
+            "received_ns": "1216400720526300",
+            "snapshot": {
+              "version": 1,
+              "boot": "82fcf6db-e1e5-4931-bbc1-d7251b9c81a1",
+              "index": 21,
+              "tick": 37,
+              "world_tick": 1035,
+              "paper_ns": 4503141863,
+              "world": "f2f7e271-7951-4425-813a-97de2d9f3f33",
+              "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+              "challenge": "8a5dfdde5672d28e5e9b73deee276b8f:21",
+              "x": 0.5,
+              "y": -60,
+              "z": 0.4019999614674171,
+              "health": 20,
+              "food": 20,
+              "input": 0,
+              "threats_complete": true,
+              "threats": [],
+              "basal_ticks": 21,
+              "basal_exhaustion": 0.02100000000000001,
+              "motion_blocks": 0.09800003853258288,
+              "motion_exhaustion": 0.0009800003853258287,
+              "gait_dev": {
+                "speed_modifiers": 0,
+                "speed_value": 0.10000000149011612,
+                "sprinting": false,
+                "speed_base": 0.10000000149011612,
+                "sneaking": false
+              }
+            }
+          },
+          "refusal": {
+            "classification": "UNDETERMINED",
+            "m0_updated": false,
+            "p1_updated": false,
+            "previous_source_seq": 27,
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode",
+            "source_seq": 31,
+            "world_tick": 1035
+          }
+        },
+        "tail": {
+          "frames": 0,
+          "coasting": [],
+          "sampled_physical_idle_ticks": [],
+          "wait_dev_credited": 0
+        },
+        "cleanup": true,
+        "trace_off": true
+      },
+      {
+        "run_id": "T1V-002",
+        "runner_status": "FAIL",
+        "checks": {
+          "identity": true,
+          "source_continuity": true,
+          "source_admitted_budget": true,
+          "original_hashes": true,
+          "plugin": true,
+          "world_saved": true,
+          "cleanup": true,
+          "transport": true,
+          "trace_off": true,
+          "no_extra_effects": true,
+          "no_llm_food_tps": true,
+          "single_p1_m0_replay": true,
+          "first_anchor_uncharged": true,
+          "onset_refused_no_reanchor": true,
+          "action_unknown_clear_no_next": true,
+          "tail_does_not_resume_p1": true
+        },
+        "identity": {
+          "world": "083cb8a0-ba1a-4a09-b179-920f4ce465b8",
+          "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+          "boot": "25d4d0f3-b2f0-43b8-8bb9-82ff9b5b626d"
+        },
+        "source": {
+          "frames": 46,
+          "first_world_tick": 1012,
+          "last_world_tick": 1057,
+          "max_causal_age_ms": 111.52607,
+          "shutdown_tail_not_backfilled": [
+            60
+          ]
+        },
+        "accounted_range": [
+          1032,
+          1032
+        ],
+        "counts": {
+          "physical_idle": 1,
+          "jog_back": 0,
+          "wait_dev": 0,
+          "move": 1,
+          "outcome": 0,
+          "unknown": 1,
+          "clear_ack": 1,
+          "duplicate": 0
+        },
+        "p1": {
+          "accumulated": 0.0,
+          "internal_recovered": 0.0,
+          "last_known": 0.0,
+          "current_after_refusal": "UNKNOWN"
+        },
+        "m0": {
+          "initial": 12,
+          "basal": 0.001,
+          "cognition": 0.0001,
+          "movement": 0,
+          "last_posted": 11.9989,
+          "tail": "UNPOSTED"
+        },
+        "onset": {
+          "prior": {
+            "source_seq": 28,
+            "control": {
+              "phase": "INITIAL",
+              "since_ns": "0",
+              "generation": 0
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": false,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "challenge_sent_ns": "1216556298830036",
+            "received_ns": "1216556348394158",
+            "snapshot": {
+              "version": 1,
+              "boot": "25d4d0f3-b2f0-43b8-8bb9-82ff9b5b626d",
+              "index": 21,
+              "tick": 34,
+              "world_tick": 1032,
+              "paper_ns": 4556793947,
+              "world": "083cb8a0-ba1a-4a09-b179-920f4ce465b8",
+              "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+              "challenge": "1ac0cdce1ef807364e506bbedba8b6f7:21",
+              "x": 0.5,
+              "y": -60,
+              "z": 0.5,
+              "health": 20,
+              "food": 20,
+              "input": 0,
+              "threats_complete": true,
+              "threats": [],
+              "basal_ticks": 21,
+              "basal_exhaustion": 0.02100000000000001,
+              "motion_blocks": 0,
+              "motion_exhaustion": 0,
+              "gait_dev": {
+                "speed_base": 0.10000000149011612,
+                "sneaking": false,
+                "speed_modifiers": 0,
+                "speed_value": 0.10000000149011612,
+                "sprinting": false
+              }
+            }
+          },
+          "current": {
+            "source_seq": 32,
+            "control": {
+              "phase": "MOVING",
+              "since_ns": "1216556351533664",
+              "generation": 1
+            },
+            "applied_controls_dev": {
+              "forward": false,
+              "back": true,
+              "left": false,
+              "right": false,
+              "jump": false,
+              "sneak": false,
+              "sprint": false
+            },
+            "challenge_sent_ns": "1216556348563071",
+            "received_ns": "1216556398821241",
+            "snapshot": {
+              "version": 1,
+              "boot": "25d4d0f3-b2f0-43b8-8bb9-82ff9b5b626d",
+              "index": 22,
+              "tick": 35,
+              "world_tick": 1033,
+              "paper_ns": 4606706732,
+              "world": "083cb8a0-ba1a-4a09-b179-920f4ce465b8",
+              "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+              "challenge": "1ac0cdce1ef807364e506bbedba8b6f7:22",
+              "x": 0.5,
+              "y": -60,
+              "z": 0.4019999614674171,
+              "health": 20,
+              "food": 20,
+              "input": 0,
+              "threats_complete": true,
+              "threats": [],
+              "basal_ticks": 22,
+              "basal_exhaustion": 0.022000000000000013,
+              "motion_blocks": 0.09800003853258288,
+              "motion_exhaustion": 0.0009800003853258287,
+              "gait_dev": {
+                "speed_base": 0.10000000149011612,
+                "sneaking": false,
+                "speed_modifiers": 0,
+                "speed_value": 0.10000000149011612,
+                "sprinting": false
+              }
+            }
+          },
+          "refusal": {
+            "classification": "UNDETERMINED",
+            "m0_updated": false,
+            "p1_updated": false,
+            "previous_source_seq": 28,
+            "reason": "NATIVE_GAIT_NOT_ATTESTED: initial/edge/residual or unsupported mode",
+            "source_seq": 32,
+            "world_tick": 1033
+          }
+        },
+        "tail": {
+          "frames": 24,
+          "coasting": [
+            {
+              "world_tick": 1035,
+              "blocks": 0.08272340052596977,
+              "classification": "UNDETERMINED_NOT_CHARGED"
+            }
+          ],
+          "sampled_physical_idle_ticks": [
+            1039,
+            1040,
+            1041,
+            1042,
+            1043,
+            1044,
+            1045,
+            1046,
+            1047,
+            1048,
+            1049,
+            1050,
+            1051,
+            1052,
+            1053,
+            1054,
+            1055,
+            1056,
+            1057
+          ],
+          "wait_dev_credited": 0
+        },
+        "cleanup": true,
+        "trace_off": true
+      }
+    ]
+  },
+  "nonclaims": [
+    "QUALIFICATION_NO_GO",
+    "SCIENCE_NOT_RUN",
+    "No R or human physiology claim",
+    "No continuous gait pass",
+    "No WALK/RUN/DASH native coverage",
+    "No second MOVE after refused tick"
+  ]
+}
