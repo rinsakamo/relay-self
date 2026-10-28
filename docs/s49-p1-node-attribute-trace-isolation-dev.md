@@ -25,3 +25,24 @@ Ancestor: `00ba35e694fbc2ea425f108cb4a874b60da9fb8f` from prior four-World OFF/O
 - `.github/workflows/self-p1-attr-trace-isolation-dev.yml`
 
 実機結果はGitHub Actionsのexact SHA job logs、Paper/Node source artifactからのみ追記する。main、Draft PR #545/#634、R/SCIENCE、本番M0/P1は変更しない。
+
+## Pilot first six-World native execution (reviewer FAIL, values from original stdout only)
+
+[Actions #40619481077](https://github.com/rinsakamo/relay-self/actions/runs/40619481077), exact tested HEAD `3f515da543247fc2789990447793975f7ac2adc5`: **FAIL** only in post-World `review_worlds`, because Python checked `type(root) is Path` instead of `isinstance(root, Path)` and rejected an actual `PosixPath`. The six original S49 report outputs were emitted in their order and the always-artifact upload succeeded. This is **not** a source-complete six-World review, and cannot be relabeled workflow SUCCESS.
+
+Pilot native first S16 movement from each original `S49_REPORT` printed during the completed physical stage:
+
+| Arm | first S16 horizontal movement (m) | original unboosted second S16 (m) | Paper positive modifier ticks / total gait |
+|---|---:|---:|---:|
+| FILE_CARRY | 3.6473987246227164 | 3.030157205468642 | 7 / 13 |
+| MEM_CARRY | 3.842587333487872 | 3.030157205468642 | 7 / 13 |
+| OFF_CARRY | 3.647398724622719 | 3.0301572096472205 | 7 / 13 |
+| OFF_WAIT_ASSUMED | 3.8452692791044356 | 3.030157205468642 | 7 / 13 |
+| MEM_WAIT_ASSUMED | 3.845269279104439 | 3.030157205468642 | 7 / 13 |
+| FILE_WAIT_ASSUMED | 3.8452692791044374 | 3.0301572054686403 | 7 / 13 |
+
+CARRY: MEM−OFF +0.195188608865153m; FILE−MEM −0.195188608865156m; FILE−OFF within floating-point noise. WAIT_ASSUMED: all movement deltas effectively zero. These real-source values already **fail to repeat** the previous four-World finding that turning Node trace OFF always increased movement; thus none of the three modes has proven causal effect.
+
+A legacy `p1_trace_ab_dev.native_trace_write_during_first_action=false` field appears in the pilot's all six reports even for FILE. **This field is not reliable for CLEAR-time I/O**; the source `bridge.mjs` unambiguously writes synchronously in FILE on CLEAR and returns before persistence in MEM. Trust mode-specific actual FILE presence and the Node source, not that legacy field. The corrected reviewer explicitly examines source-typed mode and actual files.
+
+Reviewer error correction: `fa17075816bb49988d75ba0582c63489f749bd0d`; new six-World run [#40619793744](https://github.com/rinsakamo/relay-self/actions/runs/40619793744) is independent and must earn PASS on its own. No main/PR merge; QUAL/SCIENCE not run.
