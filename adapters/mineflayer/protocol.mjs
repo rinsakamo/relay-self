@@ -224,6 +224,21 @@ export function parseCommand (raw) {
     return Object.freeze({ type: 'observe' })
   }
 
+  if (value.type === 'observe_route_blocks_dev') {
+    if (process.env.S49_L1_NATIVE_BLOCKS_DEV_ONLY !== '1') {
+      throw new Error('native blocks require explicit DEV opt-in')
+    }
+    requireExactKeys('route blocks DEV command', value,
+      ['type', 'request_id', 'origin_x', 'origin_z'])
+    const originX = requireFiniteNumber('origin_x', value.origin_x)
+    const originZ = requireFiniteNumber('origin_z', value.origin_z)
+    return Object.freeze({
+      type: 'observe_route_blocks_dev',
+      request_id: requireProbeRequestId(value.request_id),
+      origin_x: originX, origin_z: originZ
+    })
+  }
+
   if (value.type === 'shutdown') {
     requireExactKeys('shutdown command', value, ['type'])
     return Object.freeze({ type: 'shutdown' })
