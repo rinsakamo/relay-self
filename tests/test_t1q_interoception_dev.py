@@ -92,6 +92,7 @@ def test_projection_preserves_two_distinct_time_domains_and_only_sensors():
     lambda f, o: setattr(o, "pending_meal", "unverified-food"),
     lambda f, o: setattr(o, "fatigue", replace(o.fatigue, world_tick=999)),
     lambda f, o: setattr(o, "session_id", "foreign"),
+    lambda f, o: setattr(o.energy, "session_id", "foreign"),
     lambda f, o: f.data.update(status="STALE"),
     lambda f, o: f.data["snapshot"].update(threats_complete=False),
     lambda f, o: setattr(o.energy, "body", replace(o.energy.body, tick=3)),
@@ -125,6 +126,7 @@ def test_quantized_energy_can_disagree_with_exact_host_state():
 def test_t1q_wrapper_injects_one_read_only_policy_into_original_loop(monkeypatch):
     import asyncio
     from types import SimpleNamespace
+
     import adapters.mineflayer.t1q_interoception_dev as mod
     from test_t1f_t2_dev import release
 
@@ -168,3 +170,46 @@ def test_producer_projector_has_no_action_or_receive_side_effect(monkeypatch):
     assert mod.decide_sensed_l0(view, host_decision="MOVE") == "MOVE"
     assert owner.energy.body.tick == before_tick
     assert owner.fatigue == before_fatigue
+
+
+def test_view_is_immutable_and_does_not_alias_physical_body():
+    from dataclasses import FrozenInstanceError
+
+    f, owner = ready()
+    view = project_t1q_selfbody(f, owner, epoch_id="e0")
+    before = (owner.energy.body, owner.fatigue)
+    with pytest.raises(FrozenInstanceError):
+        view.interoceptions[0].field.value = 0
+    with pytest.raises(FrozenInstanceError):
+        view.interoceptions[0].owner_tick = 999
+    assert (owner.energy.body, owner.fatigue) == before
+
+
+@pytest.mark.parametrize("mutation", [
+    {"session_id": "foreign"}, {"native_seq": 999},
+    {"request_id": "foreign"},
+])
+def test_selfbody_composer_rejects_mismatched_sensor_source(mutation):
+    from relay_self.self_body import InvalidSelfBodyData
+
+    f, owner = ready()
+    view = project_t1q_selfbody(f, owner, epoch_id="e0")
+    sensor = replace(view.interoceptions[0], **mutation)
+    with pytest.raises(InvalidSelfBodyData):
+        compose_self_body_view(session_id=view.session_id, epoch_id="bad",
+                               observation=view.observation, interoceptions=(sensor,))
+
+
+def test_t1e_launcher_keeps_paper_rows_reader_callable():
+    # A later local named rows shadows the existing Paper marker reader even
+    # on other cases. Compile-time symbol ownership catches that regression.
+    from adapters.mineflayer.t1e_native_dev import run_case
+
+    assert "rows" not in run_case.__code__.co_varnames
+
+
+def test_foreign_physical_fatigue_state_rejected():
+    f, owner = ready()
+    owner.fatigue = replace(owner.fatigue, session_id="foreign")
+    with pytest.raises(T1qRejected):
+        project_t1q_selfbody(f, owner, epoch_id="e0")

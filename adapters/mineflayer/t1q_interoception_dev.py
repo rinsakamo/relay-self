@@ -6,13 +6,13 @@ receives only quantized readings; projection never performs native IO or Action.
 """
 from __future__ import annotations
 
-from dataclasses import asdict
 from math import isfinite
 
 from adapters.mineflayer.python_protocol import MineflayerPaperSnapshot
 from adapters.mineflayer.t1p_body_runtime_dev import decide_l0, run_body_loop_dev
 from adapters.mineflayer.t2_tick_accounting import TickAccounting
-from experiments.fatigue_p1 import FatigueSensor, observe as sense_fatigue
+from experiments.fatigue_p1 import FatigueSensor
+from experiments.fatigue_p1 import observe as sense_fatigue
 from experiments.metabolism_viability import Interoception, observe_energy
 from relay_self.provenance import Provenance
 from relay_self.self_body import (
@@ -24,7 +24,6 @@ from relay_self.self_body import (
     SelfBodyView,
     compose_self_body_view,
 )
-
 
 # Only cognition-side sensor resolution; does not modify the physical P1 model.
 M0_SENSOR = Interoception(quantum=0.25)
@@ -48,12 +47,14 @@ def project_t1q_selfbody(
             or not isinstance(owner, TickAccounting)
             or owner.failed or owner.previous is not frame
             or owner.session_id != frame.session_id
+            or owner.energy.session_id != frame.session_id
             or frame.data["status"] != "ADMITTED"
             or owner.active_action is not None or owner.pending_meal is not None
             or owner.fatigue is None or not owner.rows and owner.energy.body.tick != 0):
         raise T1qRejected("no same-owner admitted native + live body boundary")
     source = frame.data["snapshot"]
-    if (owner.fatigue.world_tick != source["world_tick"]
+    if (owner.fatigue.session_id != frame.session_id
+            or owner.fatigue.world_tick != source["world_tick"]
             or owner.energy.body.tick != len(owner.rows)
             or not source["threats_complete"]
             or not isinstance(epoch_id, str) or not epoch_id

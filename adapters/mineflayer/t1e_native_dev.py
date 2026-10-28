@@ -814,11 +814,11 @@ async def run_case(args, case):
             # The sensor receipt is a read-only cognition record and must have
             # exactly the original source/epoch lineage, never extra Motor IO.
             data = report.get("t1q", {})
-            rows = data.get("readings", [])
+            sensor_rows = data.get("readings", [])
             epochs = report.get("t1p", {}).get("epochs", [])
             if (report.get("status") == "PASS" and
                     (data.get("decision_count") != args.loop_moves
-                     or len(rows) != len(epochs)
+                     or len(sensor_rows) != len(epochs)
                      or any(
                          r.get("native_seq") != e.get("source_seq")
                          or r.get("world_tick") != e.get("source_world_tick")
@@ -827,7 +827,7 @@ async def run_case(args, case):
                          or r.get("energy_origin") != "interoception"
                          or r.get("fatigue_origin") != "interoception"
                          or r.get("physical_permission_from_view") is not False
-                         for r, e in zip(rows, epochs)))):
+                         for r, e in zip(sensor_rows, epochs)))):
                 report["status"] = "FAIL"
                 report["t1q_source_audit"] = "Cognition projection missing/misaligned"
             else:
