@@ -352,7 +352,7 @@ async def qualify(
             raise S31ABlocked("M0 extra debit requires exact original S49 sprint DEV gate")
         if type(dev_l0_residual_third_dev) is not bool or (
             dev_l0_residual_third_dev and (
-            or dev_l0_next_step_m is None
+            dev_l0_next_step_m is None
             or dev_next_epoch != "MOVE_AWAY"
             or dev_m0_dash_invoice is not None
             or dev_m0_action_move_step
