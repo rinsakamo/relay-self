@@ -11,6 +11,7 @@ import {
   resolveAttackEntity
 } from './bridge_hooks.mjs'
 import { attachV6NativeClockPackets } from './v6_native_clock.mjs'
+import { attachPaperSnapshotChannel } from './paper_snapshot_admission.mjs'
 import { projectS49DevMovementSpeed } from './s49_speed_attribute_bridge_dev.mjs'
 import {
   admitProbeRequestId,
@@ -62,6 +63,19 @@ if (clockOptIn !== undefined && !['0', '1'].includes(clockOptIn)) {
 if (clockOptIn === '1' && config.version !== '1.21.8') {
   process.stderr.write('V6 raw source requires explicit Minecraft 1.21.8\n')
   process.exit(2)
+}
+// T1f and Paper share the original native connection, NEVER a second writer.
+const l1T2ChannelDev = process.env.S49_L1_T2_CHANNEL_DEV_ONLY
+const t1fOptIn = process.env.RELAYSELF_T1F_DEV
+const paperTickOptIn = process.env.RELAYSELF_PAPER_TICK_DEV
+if ([l1T2ChannelDev, t1fOptIn, paperTickOptIn].some(v =>
+    v !== undefined && !['0', '1'].includes(v))) {
+  throw Error('invalid L1/T2 Paper opt-in')
+}
+if ([l1T2ChannelDev, t1fOptIn, paperTickOptIn].some(v => v === '1') &&
+    (l1T2ChannelDev !== '1' || t1fOptIn !== '1' ||
+     paperTickOptIn !== '1' || config.version !== '1.21.8')) {
+  throw Error('L1/T2 Paper requires all explicit DEV gates')
 }
 // DEV-only read-side schema opt-in. Never an Action command or signer.
 const w4OrientationOptIn = process.env.RELAYSELF_W4_NH1_ORIENTATION_V0
@@ -202,6 +216,14 @@ emit('adapter_started', {
 })
 
 const bot = mineflayer.createBot(options)
+let t1fAdmission = null
+let t1fControl = { phase: 'INITIAL', since_ns: '0', generation: 0 }
+if (l1T2ChannelDev === '1') {
+  t1fAdmission = attachPaperSnapshotChannel(
+    bot, emit, emitAdapterError, () => process.hrtime.bigint(),
+    () => ({ ...t1fControl })
+  )
+}
 const attrSyncDev = process.env.S49_SPEED_ATTR_SYNC_DEV_ONLY === '1' &&
   process.env.S49_SPRINT_MOTOR_DEV_ONLY === '1' && config.version === '1.21.8'
 const attrDiag = process.env.S49_SPEED_ATTR_DIAG_DEV_ONLY === '1' &&
@@ -580,12 +602,24 @@ async function handleEffect (command) {
 
   try {
     if (command.effect === 'set_control') {
+      if (t1fAdmission && !t1fAdmission.canDispatch()) {
+        emitEffectResult(command, 'rejected', 't1f_fresh_benign_source_required')
+        return
+      }
       bot.setControlState(command.control, command.state)
+      if (t1fAdmission) t1fControl = {
+        phase: 'MOVING', since_ns: process.hrtime.bigint().toString(),
+        generation: t1fControl.generation + 1
+      }
       emitEffectResult(command, 'applied')
       return
     }
 
     if (command.effect === 'set_forward_sprint_dev') {
+      if (t1fAdmission && !t1fAdmission.canDispatch()) {
+        emitEffectResult(command, 'rejected', 't1f_fresh_benign_source_required')
+        return
+      }
       if (process.env.S49_SPRINT_MOTOR_DEV_ONLY !== '1' ||
           command.forward !== true || command.sprint !== true) {
         emitEffectResult(command, 'rejected', 'sprint_dev_gate_or_pair')
@@ -624,6 +658,10 @@ async function handleEffect (command) {
       }
       attrDiagActive = true
       attrDiagSamples = 0
+      if (t1fAdmission) t1fControl = {
+        phase: 'MOVING', since_ns: process.hrtime.bigint().toString(),
+        generation: t1fControl.generation + 1
+      }
       traceDevAttr('SPRINT_DISPATCH_APPLIED')
       emitEffectResult(command, 'applied')
       return
@@ -631,6 +669,10 @@ async function handleEffect (command) {
 
     if (command.effect === 'clear_controls') {
       bot.clearControlStates()
+      if (t1fAdmission) t1fControl = {
+        phase: 'CLEARED', since_ns: process.hrtime.bigint().toString(),
+        generation: t1fControl.generation + 1
+      }
       if (nativePhysicsTraceEnabled && nativePhysicsTrace !== null &&
           !nativePhysicsTrace.clear_seen) {
         nativePhysicsTrace.clear_seen = true
