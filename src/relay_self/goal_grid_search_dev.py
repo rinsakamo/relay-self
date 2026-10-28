@@ -42,10 +42,11 @@ class L1GridRoutePlanDev:
         if (
             not isinstance(self.parent,L2GoalProposal)
             or not isinstance(self.route_id,str) or not self.route_id
-            or type(self.revision) is not int or self.revision!=1
+            or type(self.revision) is not int or not 1<=self.revision<=12
             or not isinstance(self.source_action_id,str) or not self.source_action_id
             or type(self.source_s16_seq) is not int or self.source_s16_seq<1
-            or self.reason!="NATIVE_GRID_SEARCH_AFTER_MOTOR_UNKNOWN"
+            or self.reason not in ("NATIVE_GRID_SEARCH_AFTER_MOTOR_UNKNOWN",
+                                   "NATIVE_GRID_REFRESH_AFTER_SETTLED_WAYPOINT")
             or not isinstance(self.provenance,Provenance)
             or self.provenance.source=="mineflayer"
             or type(self.source_voxel_seq) is not int
