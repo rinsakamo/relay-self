@@ -402,7 +402,7 @@ class MineflayerRouteBlocksDev(MineflayerMessage):
             or self.unknown_is_not_clear is not True
             or not isinstance(self.lanes, tuple)
             or len(self.lanes) != 2
-            or tuple(l.side for l in self.lanes) != ("LEFT", "RIGHT")
+            or tuple(lane.side for lane in self.lanes) != ("LEFT", "RIGHT")
         ):
             raise MineflayerAdapterProtocolError("route block coverage/provenance not bounded")
 
