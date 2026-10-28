@@ -165,6 +165,7 @@ class TickAccounting:
             "paper_motion_exhaustion": s["motion_exhaustion"],
             "full_tick_R_attested": False, "qualification": False}
         if gait_tick is not None:
+            row["motor_mode"] = gait_tick.gait
             row.update(
                 p1_transition="SINGLE_P1_APPLIED_GAIT_DEV",
                 applied_gait=gait_tick.gait, applied_direction=gait_tick.direction,
