@@ -132,3 +132,27 @@ def test_g2_sneak_wire_command_is_exact_pair():
         "type":"effect", "action_id":"g2-sneak",
         "effect":"set_forward_sneak_dev","forward":True,"sneak":True,
     }
+
+
+def test_g2_sprint_prefix_cannot_bypass_original_three_action_limit(monkeypatch):
+    monkeypatch.setenv("S49_GOAL_G2_SPRINT_PREFIX_DEV_ONLY","1")
+    monkeypatch.setenv("S49_SPRINT_MOTOR_DEV_ONLY","1")
+    monkeypatch.setenv("S49_L1_G1_OBSERVATION_DEV_ONLY","1")
+    executor=object.__new__(S49GoalExecutorDev)
+    executor._count=3
+    with pytest.raises(NormalActionRejected,match="G2 sprint prefix requires"):
+        asyncio.run(executor.execute_goal_step(
+            None,directive=None,decision=None,probe=None,propose=None,
+            issue=None,g2_sprint_prefix_dev=True,
+        ))
+
+
+def test_g2_sprint_prefix_requires_explicit_gate(monkeypatch):
+    monkeypatch.delenv("S49_GOAL_G2_SPRINT_PREFIX_DEV_ONLY",raising=False)
+    executor=object.__new__(S49GoalExecutorDev)
+    executor._count=0
+    with pytest.raises(NormalActionRejected,match="G2 sprint prefix requires"):
+        asyncio.run(executor.execute_goal_step(
+            None,directive=None,decision=None,probe=None,propose=None,
+            issue=None,g2_sprint_prefix_dev=True,
+        ))
