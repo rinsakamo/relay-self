@@ -35,10 +35,10 @@ jobs:
           ruff check adapters/mineflayer/s49_goal_t2_boundary_dev.py adapters/mineflayer/s49_goal_executor_dev.py tests/test_s49_goal_t2_boundary_dev.py
           python -m compileall -q adapters/mineflayer/python_protocol.py adapters/mineflayer/process_session.py adapters/mineflayer/t2_tick_accounting.py adapters/mineflayer/t1f_protocol.py tests/test_s49_l1_t2_shared_paper_dev.py
           python -m compileall -q adapters/mineflayer/s49_goal_loop_real_dev.py
-          python -m compileall -q adapters/mineflayer/s49_t2_applied_gait_observation_dev.py tests/test_s49_t2_applied_gait_observation_dev.py tests/test_s49_g2_sprint_first_dev.py
+          python -m compileall -q adapters/mineflayer/s49_t2_applied_gait_observation_dev.py tests/test_s49_t2_applied_gait_observation_dev.py tests/test_s49_g2_sprint_first_dev.py adapters/mineflayer/execution.py
           ruff check adapters/mineflayer/python_protocol.py adapters/mineflayer/process_session.py adapters/mineflayer/t2_tick_accounting.py adapters/mineflayer/t1f_protocol.py tests/test_s49_l1_t2_shared_paper_dev.py
           ruff check adapters/mineflayer/s49_goal_loop_real_dev.py
-          ruff check adapters/mineflayer/s49_t2_applied_gait_observation_dev.py tests/test_s49_t2_applied_gait_observation_dev.py tests/test_s49_g2_sprint_first_dev.py
+          ruff check adapters/mineflayer/s49_t2_applied_gait_observation_dev.py tests/test_s49_t2_applied_gait_observation_dev.py tests/test_s49_g2_sprint_first_dev.py adapters/mineflayer/execution.py
           node --check adapters/mineflayer/bridge.mjs
           node --check adapters/mineflayer/paper_snapshot_admission.mjs
           node --check adapters/mineflayer/paper_tick_channel.mjs
