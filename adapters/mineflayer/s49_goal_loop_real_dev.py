@@ -41,6 +41,7 @@ from adapters.mineflayer.s49_normal_session_real_ci import (
 from relay_self.action import ActionState
 from relay_self.goal_detour_dev import explicit_l1_detour_dev
 from relay_self.goal_experience_dev import select_route_from_episode_dev
+from relay_self.goal_grid_search_dev import choose_grid_route_dev
 from relay_self.goal_local_voxel_dev import (
     NativeVoxelPresentDev,
     VoxelColumnDev,
@@ -131,6 +132,7 @@ async def qualify(
     native_route_present_dev:bool=False,
     native_voxel_map_dev:bool=False,
     right_lane_block_dev:bool=False,
+    local_grid_search_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -156,6 +158,8 @@ async def qualify(
         "native_route_present_dev":native_route_present_dev,
         "native_voxel_map_dev":native_voxel_map_dev,
         "right_lane_block_dev":right_lane_block_dev,
+        "local_grid_search_dev":local_grid_search_dev,
+        "native_grid_search_choice_dev":None,
         "native_local_voxel_observation_dev":None,
         "native_local_voxel_choice_dev":None,
         "native_route_blocks_observation_dev":None,
@@ -215,7 +219,13 @@ async def qualify(
             ))
             or type(native_voxel_map_dev) is not bool
             or type(right_lane_block_dev) is not bool
-            or (left_lane_block_dev and right_lane_block_dev)
+            or type(local_grid_search_dev) is not bool
+            or (left_lane_block_dev and right_lane_block_dev
+                and not local_grid_search_dev)
+            or (local_grid_search_dev and (
+                not native_voxel_map_dev
+                or os.environ.get("S49_L1_GRID_SEARCH_DEV_ONLY")!="1"
+            ))
             or (right_lane_block_dev and not native_voxel_map_dev)
             or (native_voxel_map_dev and (
                 not detour_after_wall_dev or not obstacle_wall_dev
@@ -740,33 +750,60 @@ async def qualify(
                             "cells":[asdict(cell) for cell in voxel_source.cells],
                             "source":"mineflayer",
                         }
-                        voxel_choice=choose_voxel_waypoint_dev(
-                            voxel_present,proposal,
-                            blocked_after_seq=receipt.consequence.after_observation.seq,
-                            blocked_action_id=receipt.terminal.action_id,
-                            provenance=source("l1-observed-local-voxel-waypoints"),
-                        )
-                        report["native_local_voxel_choice_dev"]={
-                            "status":voxel_choice.status,
-                            "reason":voxel_choice.reason,
-                            "left_state":voxel_choice.left_state,
-                            "right_state":voxel_choice.right_state,
-                            "selected_side":voxel_choice.selected_side,
-                            "source_seq":voxel_choice.source_seq,
-                            "sampled_voxel_columns":voxel_choice.sampled_voxel_columns,
-                            "plan_from_current_observation":True,
-                            "learned_l1":False,
-                            "action_authorized_by_map":False,
-                        }
+                        if local_grid_search_dev:
+                            voxel_choice=choose_grid_route_dev(
+                                voxel_present,proposal,
+                                blocked_after_seq=receipt.consequence.after_observation.seq,
+                                blocked_action_id=receipt.terminal.action_id,
+                                provenance=source("l1-native-grid-BFS"),
+                            )
+                            report["native_grid_search_choice_dev"]={
+                                "status":voxel_choice.status,
+                                "reason":voxel_choice.reason,
+                                "source_seq":voxel_choice.voxel_source_seq,
+                                "evaluated_columns":voxel_choice.evaluated_columns,
+                                "visited_cells":voxel_choice.visited_cells,
+                                "chosen_cell_path":[list(pair) for pair in
+                                                    voxel_choice.chosen_cell_path],
+                                "no_diagonal_edges":True,
+                                "plan_from_current_observation":True,
+                                "new_motor_issuer":False,
+                            }
+                        else:
+                            voxel_choice=choose_voxel_waypoint_dev(
+                                voxel_present,proposal,
+                                blocked_after_seq=receipt.consequence.after_observation.seq,
+                                blocked_action_id=receipt.terminal.action_id,
+                                provenance=source("l1-observed-local-voxel-waypoints"),
+                            )
+                            report["native_local_voxel_choice_dev"]={
+                                "status":voxel_choice.status,
+                                "reason":voxel_choice.reason,
+                                "left_state":voxel_choice.left_state,
+                                "right_state":voxel_choice.right_state,
+                                "selected_side":voxel_choice.selected_side,
+                                "source_seq":voxel_choice.source_seq,
+                                "sampled_voxel_columns":voxel_choice.sampled_voxel_columns,
+                                "plan_from_current_observation":True,
+                                "learned_l1":False,
+                                "action_authorized_by_map":False,
+                            }
                         if voxel_choice.status=="DEFER":
-                            report["classification"]="DEV_ONLY_S49_L1_VOXEL_DEFER"
-                            report["stage"]="L1_VOXEL_DEFER"
+                            report["classification"]=(
+                                "DEV_ONLY_S49_L1_GRID_NO_ROUTE_DEFER"
+                                if local_grid_search_dev
+                                else "DEV_ONLY_S49_L1_VOXEL_DEFER"
+                            )
+                            report["stage"]=(
+                                "L1_GRID_DEFER" if local_grid_search_dev
+                                else "L1_VOXEL_DEFER"
+                            )
                             report["status"]="PASS"
                             report["real_world"]=True
                             rc=0
                             break
                         if voxel_choice.status!="SELECTED" or voxel_choice.plan is None:
-                            raise RuntimeError("no typed voxel goal route")
+                            raise RuntimeError("no bounded observed grid route")
                         plan=voxel_choice.plan
                     elif experience_memory_dev is None:
                         plan=explicit_l1_detour_dev(
@@ -828,7 +865,9 @@ async def qualify(
                     ):
                         raise RuntimeError("native L1 route failed parent L2 goal")
                     report["classification"]=(
-                        "DEV_ONLY_S49_L1_VOXEL_GOAL_REACHED"
+                        "DEV_ONLY_S49_L1_NATIVE_GRID_GOAL_REACHED"
+                        if local_grid_search_dev
+                        else "DEV_ONLY_S49_L1_VOXEL_GOAL_REACHED"
                         if native_voxel_map_dev
                         else "DEV_ONLY_S49_L1_SELFWORLD_MEMORY_GOAL_REACHED"
                         if selfworld_memory_snapshot_dev is not None
@@ -941,6 +980,7 @@ def main()->int:
     p.add_argument("--left-lane-block-dev",action="store_true")
     p.add_argument("--native-route-present-dev",action="store_true")
     p.add_argument("--native-voxel-map-dev",action="store_true")
+    p.add_argument("--local-grid-search-dev",action="store_true")
     p.add_argument("--right-lane-block-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
@@ -965,6 +1005,7 @@ def main()->int:
         left_lane_block_dev=args.left_lane_block_dev,
         native_route_present_dev=args.native_route_present_dev,
         native_voxel_map_dev=args.native_voxel_map_dev,
+        local_grid_search_dev=args.local_grid_search_dev,
         right_lane_block_dev=args.right_lane_block_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
