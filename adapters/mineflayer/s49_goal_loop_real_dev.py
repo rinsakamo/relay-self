@@ -34,6 +34,7 @@ from adapters.mineflayer.s31a_real_server_ci import (
 )
 from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
 from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
+from adapters.mineflayer.s49_t2_applied_gait_observation_dev import G1AppliedGaitObserverDev
 from adapters.mineflayer.s49_goal_waypoint_route_dev import follow_l1_detour_dev
 from adapters.mineflayer.s49_l1_experience_export_dev import load_episode_dev
 from adapters.mineflayer.s49_l1_selfworld_memory_dev import recall_from_selfworld_dev
@@ -141,6 +142,7 @@ async def qualify(
     grid_midroute_obstacle_dev:bool=False,
     paper_jar_dev:Path|None=None,
     paper_plugin_dev:Path|None=None,
+    paper_gait_observation_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -171,6 +173,7 @@ async def qualify(
         "grid_midroute_obstacle_dev":grid_midroute_obstacle_dev,
         "l1_t2_shared_channel_dev":os.environ.get("S49_L1_T2_CHANNEL_DEV_ONLY")=="1",
         "paper_server_dev":paper_jar_dev is not None,
+        "g1_applied_gait_observation_dev":paper_gait_observation_dev,
         "native_grid_refresh_observations_dev":[],
         "native_grid_search_choice_dev":None,
         "native_local_voxel_observation_dev":None,
@@ -184,6 +187,7 @@ async def qualify(
     }
     server=collector=session=temp=None
     t2_owner=None
+    gait_observer=None
     cleanup_cancel=[]
     rc=2
     try:
@@ -193,6 +197,12 @@ async def qualify(
             or os.environ.get("S49_FORWARD_MOTOR_DEV_ONLY")!="1"
             or os.environ.get("NODE_OPTIONS")
             or type(offset_m) is not float or not 1.8<=offset_m<=4.0
+            or type(paper_gait_observation_dev) is not bool
+            or (paper_gait_observation_dev and (
+                paper_jar_dev is None
+                or os.environ.get("S49_L1_G1_OBSERVATION_DEV_ONLY")!="1"
+                or os.environ.get("S49_L1_T2_CHANNEL_DEV_ONLY")!="1"
+            ))
             or (paper_jar_dev is None) != (paper_plugin_dev is None)
             or (paper_jar_dev is not None and (
                 os.environ.get("S49_L1_T2_CHANNEL_DEV_ONLY")!="1"
@@ -318,7 +328,9 @@ async def qualify(
             config=config.replace("dev-enabled: false","dev-enabled: true")
             config += ("\nadaptive-tick-observer-dev: true\n"
                        "t1f-snapshot-dev: true\n"
-                       "t1u-gait-dev: false\n")
+                       "t1u-gait-dev: "
+                       +("true" if paper_gait_observation_dev else "false")
+                       +"\n")
             (plugin_dir/"config.yml").write_text(config)
             original=(root/"server.properties").read_text()
             (root/"server.properties").write_text(
@@ -354,6 +366,9 @@ async def qualify(
                 raise RuntimeError("same-World L1/T2 DEV requires explicit T1f/T2/S49 gates")
             t2_owner=TickAccounting(sid)
             session.bind_l1_t2_owner_dev(t2_owner)
+            if paper_gait_observation_dev:
+                gait_observer=G1AppliedGaitObserverDev(sid)
+                session.bind_l1_t2_gait_observer_dev(gait_observer)
         # Single native probe anchors a DEV L2 target at a fixed World XZ.
         initial=await _correlated_observe(session,f"goal-{sid}-initial")
         if t2_owner is not None:
@@ -1154,6 +1169,34 @@ async def qualify(
         report["status"]="FAIL"
         report["exception"]=f"{type(exc).__name__}: {exc}"
     finally:
+        if gait_observer is not None:
+            rows=[asdict(row) for row in gait_observer.rows]
+            file=report_path.parent/"g1_applied_gait_observation_dev.json"
+            with file.open("x",encoding="utf-8") as sink:
+                json.dump({
+                    "source":"ORIGINAL_T1U_PAPER_SNAPSHOT_AND_NODE_APPLIED_CONTROLS",
+                    "full_tick_applied_gait_authenticated":False,
+                    "p1_transitions_authorized":0,
+                    "m0_extra_charge_authorized":0,
+                    "rows":rows,
+                },sink,sort_keys=True)
+                sink.write("\n")
+            kinds={}
+            for row in gait_observer.rows:
+                kinds[row.kind]=kinds.get(row.kind,0)+1
+            report["g1_applied_gait_observation_dev"]={
+                "source_session_id":gait_observer.session_id,
+                "source_bound":True,
+                "single_original_reader":True,
+                "failed":gait_observer.failed,
+                "rows":len(rows),
+                "kinds":kinds,
+                "derived_file":file.name,
+                "derived_file_sha256":hashlib.sha256(file.read_bytes()).hexdigest(),
+                "full_tick_gait_attested":False,
+                "p1_transitions_posted":0,
+                "m0_extra_charge_posted":0,
+            }
         if t2_owner is not None:
             # Derived review material only, written after Actions have ceased.
             # No extra native receive/writer or per-tick sync trace is added.
@@ -1235,6 +1278,7 @@ def main()->int:
     p.add_argument("--right-lane-block-dev",action="store_true")
     p.add_argument("--paper-jar-dev",type=Path)
     p.add_argument("--paper-plugin-dev",type=Path)
+    p.add_argument("--paper-gait-observation-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -1264,6 +1308,7 @@ def main()->int:
         right_lane_block_dev=args.right_lane_block_dev,
         paper_jar_dev=args.paper_jar_dev,
         paper_plugin_dev=args.paper_plugin_dev,
+        paper_gait_observation_dev=args.paper_gait_observation_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
