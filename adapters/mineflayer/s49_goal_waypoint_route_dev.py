@@ -58,7 +58,7 @@ async def follow_l1_detour_dev(
         "stages":[],"reached_final_goal":False,
         "learned_l1_attested":False,
         "real_l2_replan_attested":False,
-        "obstacle_block_perception_attested":False,
+        "obstacle_block_perception_attested":isinstance(plan,L1GridRoutePlanDev),
         "extra_action_issuer":False,
         "extra_native_reader":False,
     }
