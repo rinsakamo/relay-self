@@ -360,6 +360,26 @@ class MineflayerObservation(MineflayerMessage):
 
 
 @dataclass(frozen=True, slots=True)
+class MineflayerPaperSnapshot(MineflayerMessage):
+    """T1f source-validated Paper callback; no R qualification or Action."""
+
+    data: dict
+
+    def __post_init__(self) -> None:
+        MineflayerMessage.__post_init__(self)
+        from adapters.mineflayer.t1f_protocol import validate_result
+
+        try:
+            validate_result(self.data)
+        except (ValueError, TypeError, KeyError) as exc:
+            raise MineflayerAdapterProtocolError(str(exc)) from exc
+
+    @property
+    def paper_sample_index(self) -> int:
+        return self.data["snapshot"]["index"]
+
+
+@dataclass(frozen=True, slots=True)
 class MineflayerRouteLaneDev:
     side: str
     states: tuple[str, ...]
@@ -587,6 +607,7 @@ MineflayerDecodedMessage = Union[
     MineflayerObservation,
     MineflayerRouteBlocksDev,
     MineflayerLocalVoxelsDev,
+    MineflayerPaperSnapshot,
     MineflayerNativeClockPacket,
     MineflayerEntityHurt,
     MineflayerEffectResult,
@@ -658,6 +679,14 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
     message_type = _decoded_text("message type", payload.get("type"))
     session_id = _decoded_text("session_id", payload.get("session_id"))
     seq = _decoded_seq(payload.get("seq"))
+
+    if message_type == "paper_snapshot":
+        _require_exact_keys(
+            "paper_snapshot", payload, {"type", "session_id", "seq", "data"},
+        )
+        return MineflayerPaperSnapshot(
+            session_id=session_id, seq=seq, data=payload["data"],
+        )
 
     if message_type == "adapter_started":
         _require_exact_keys(
