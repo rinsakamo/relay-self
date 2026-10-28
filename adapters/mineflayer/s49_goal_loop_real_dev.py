@@ -202,9 +202,11 @@ async def qualify(
             ))
             or type(left_lane_block_dev) is not bool
             or type(native_route_present_dev) is not bool
-            or (left_lane_block_dev and (
-                not native_route_present_dev
-                or os.environ.get("S49_L1_NATIVE_BLOCKS_DEV_ONLY")!="1"
+            or (left_lane_block_dev and not (
+                (native_route_present_dev and
+                 os.environ.get("S49_L1_NATIVE_BLOCKS_DEV_ONLY")=="1")
+                or (native_voxel_map_dev and
+                    os.environ.get("S49_L1_VOXEL_DEV_ONLY")=="1")
             ))
             or (native_route_present_dev and (
                 not detour_after_wall_dev
