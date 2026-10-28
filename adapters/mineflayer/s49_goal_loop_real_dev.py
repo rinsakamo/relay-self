@@ -713,6 +713,8 @@ async def qualify(
                             origin_x=float(voxel_source.origin_x),
                             origin_z=float(voxel_source.origin_z),
                             player_y=float(voxel_source.player_y),
+                            player_x=float(voxel_source.player_x),
+                            player_z=float(voxel_source.player_z),
                             coverage=voxel_source.coverage,
                             cells=tuple(VoxelColumnDev(
                                 dx=cell.dx,dz=cell.dz,
@@ -727,6 +729,8 @@ async def qualify(
                             "origin_x":voxel_source.origin_x,
                             "origin_z":voxel_source.origin_z,
                             "player_y":voxel_source.player_y,
+                            "player_x":voxel_source.player_x,
+                            "player_z":voxel_source.player_z,
                             "coverage":voxel_source.coverage,
                             "x_min":voxel_source.x_min,
                             "x_max":voxel_source.x_max,
