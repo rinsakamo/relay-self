@@ -24,3 +24,25 @@ Minecraftの入力受付時間やNode/Paper tick位相は変動するWorldの性
 - `.github/workflows/self-l0-s16-three-action-dev.yml`: Python3.12, Ruff, Node22, Java21, native original Mojang World, always archive.
 
 No modification to main, Draft PR #545/#634, qualification or science data. Tests must pass before World trial. No native physicsTick lockstep.
+
+## 実Minecraft 一World / 元S49 3 Action DEV — PASS（2026-10-28）
+
+[GitHub Actions #40627959223](https://github.com/rinsakamo/relay-self/actions/runs/40627959223) 実行固定HEAD `f87ccd1ce951d22533ce24d00c51859105e7bf54` **completed/SUCCESS**。Python3.12 focused / Ruff / Node22 static を実World前に PASS。Java21 official Mojang Minecraft 1.21.8（server SHA1 `6bce4ef400e4efaa63a13d5e6f6b500be969ef81`）、Mineflayer native session、Node/Server cleanup exit 0/0。追加issuer/reader/モデル呼出し0、紙Paper介在なし。
+
+元L0判断（同一session）：
+- event 8: zombie 10m -> WAIT（Actionなし）
+- event 20: zombie 2m -> MOVE_AWAY -> native Action `s49-native-move-20` OUTCOME 3.030157164494362m、入力0.60s
+- event 57: zombie 2m -> MOVE_AWAY -> `s49-native-move-57` OUTCOME 0.8149785454473797m、入力0.19800953133073582s（第一S16から入力調整）
+- event 85: zombie 2m -> MOVE_AWAY -> `s49-native-move-85` OUTCOME 0.3243605275351431m、入力0.10s（第二S16から残差0.1850214545526203mを補正）
+
+比較：元の二度目の次ステップ目標1.0mに対し二度目のみで `abs(0.814978545447−1)=0.185021454553m`、三度目まで累積 `0.814978545447+0.324360527535=1.139339072983m`、誤差 `0.139339072983m`。この一Worldでは絶対誤差 `0.04568238157m`改善。ただし三度目は行き過ぎ、メトリクスは複数Actionの**水平移動距離スカラーの合計**であって絶対座標への到達でも、方向一致でもない。
+
+`S49_REPORT`の正規分類 `DEV_ONLY_S49_S16_RESIDUAL_THIRD_ORIGINAL_OWNER`。元のSingle S49 L0 owner、S14承認、S15 native typed ACK、3回のS16 OUTCOME、original Action supervisor closed、元Node/Server cleanupを確認。反射処理への学習/本番P1/M0/SCIENCE昇格なし。Node/Paper厳密tick同期なし。
+
+**保持した失敗原本**: 最初の2 runは構文・テストパスにより実World前FAIL。run #40627688856 は最初の2つのS16を取得（3.0301571644943603m、0.8149785454473797m）したが、WORLDが三度目の判断に必要な4番目のゾンビイベントを送っていなかったため、元S49 max 95秒で BLOCKED / TimeoutError。後者を隠さず、隔離DEVでのみ4番目のWorld刺激を追加して再実行した。#40627959223 は単独で完全PASS。
+
+次の課題: 微移動WALKへ遷移、慣性/加減速を考慮した下限0.1sの過補正低減、STOP時に**新しいL0 WAIT決定を実際に出す**（現状のSTOPは第三MOVE要求があるとfail-closedであり、正式な停止行動ではない）、絶対目標に対する座標誤差と障害物観測。現状は短いSPRINT入力でありWALK制御を実装・実証していない。
+
+Raw artifact: `s49-l0-native-three-s16-40627959223-1`、GitHub artifact ID **12790760199**、ZIP SHA256 `da6c9a5d3d38ea1c9a5aa01380e132555692a0b267e2b762b66699567c1d29ad`。
+
+**DEV_WORLD_OBSERVED / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**。main、Draft PR #545/#634は変更せず。
