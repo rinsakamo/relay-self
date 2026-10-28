@@ -24,6 +24,7 @@ jobs:
       S49_L1_WAYPOINT_DEV_ONLY: '1'
       S49_L1_VOXEL_DEV_ONLY: '1'
       S49_L1_GRID_SEARCH_DEV_ONLY: '1'
+      S49_L1_GRID_REFRESH_DEV_ONLY: '1'
       S49_L1_T2_CHANNEL_DEV_ONLY: '1'
       S49_L1_T2_BOUNDARY_DEV_ONLY: '1'
       RELAYSELF_T1F_DEV: '1'
@@ -90,6 +91,18 @@ jobs:
               cat "$DEV_OUTPUT/producer.stdout"; exit 1;
             }
           cat "$DEV_OUTPUT/producer.stdout"
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/WORLD2" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
+            --paper-plugin-dev "$PLUGIN" \
+            --offset-m 4.0 --obstacle-wall-dev --detour-after-wall-dev \
+            --native-voxel-map-dev --local-grid-search-dev --left-lane-block-dev \
+            --grid-refresh-dev --grid-midroute-obstacle-dev \
+            > "$DEV_OUTPUT/producer-world2.stdout" 2>&1 || {
+              cat "$DEV_OUTPUT/producer-world2.stdout"; exit 1;
+            }
+          cat "$DEV_OUTPUT/producer-world2.stdout"
           python - <<'PY'
           import json,os,pathlib
           report=json.loads((pathlib.Path(os.environ["DEV_OUTPUT"])/"WORLD1/goal_report.json").read_text())
@@ -105,6 +118,29 @@ jobs:
           assert report["stage"]=="L1_DETOUR_ORIGINAL_GOAL_REACHED"
           assert ledger["continuous_gait_attested"] is False
           print("S49_L1_T2_SAME_PAPER_WORLD_DEV_PASS",anchor,ledger)
+          import hashlib
+          def verify_derived(name):
+              folder=pathlib.Path(os.environ["DEV_OUTPUT"])/name
+              r=json.loads((folder/"goal_report.json").read_text())
+              p=folder/r["l1_t2_ledger_dev"]["derived_file"]
+              raw=p.read_bytes()
+              assert hashlib.sha256(raw).hexdigest()==r["l1_t2_ledger_dev"]["derived_file_sha256"]
+              rows=json.loads(raw)["rows"]
+              assert len(rows)==r["l1_t2_ledger_dev"]["rows"]
+              assert all(rows[i]["world_tick"]+1==rows[i+1]["world_tick"] for i in range(len(rows)-1))
+              assert all(rows[i]["source_seq"]<rows[i+1]["source_seq"] for i in range(len(rows)-1))
+              assert all("p1" in row and "m0" in row for row in rows)
+              return r
+          verify_derived("WORLD1")
+          other=verify_derived("WORLD2")
+          assert other["status"]=="PASS"
+          assert other["stage"]=="L1_DETOUR_ORIGINAL_GOAL_REACHED"
+          assert other["midroute_stone_stimulus_dev"]["native_confirmed"] is True
+          assert len(other["detour"]["replan_events"])>=1
+          assert other["l1_t2_ledger_dev"]["owner_failed"] is False
+          assert other["l1_t2_ledger_dev"]["original_action_boundary_receipts"]>=2
+          print("S49_L1_T2_SAME_PAPER_REFRESH_DEV_PASS",
+                other["l1_t2_ledger_dev"],other["detour"]["final_parent_goal_error_m"])
           PY
       - name: Preserve all attempts and original DEV World
         if: always()
