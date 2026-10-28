@@ -89,18 +89,41 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         ):
             raise NormalActionRejected("original Action still open or invalid L1 waypoint")
         prior=self.supervisor.get(last_closed_action_id)
-        if prior.action_id!=last_closed_action_id or (
-            (stage_index==0 and (
+        if prior.action_id!=last_closed_action_id:
+            raise NormalActionRejected("foreign closed route Action")
+        if stage_index==0 and self._route_plan is None:
+            if (
                 prior.state is not ActionState.UNKNOWN
+                or not isinstance(plan,L1GridRoutePlanDev)
+                   and not isinstance(plan,L1DetourPlanDev)
                 or plan.source_action_id!=last_closed_action_id
-                or latest_native_seq < plan.source_s16_seq
-                or self._route_plan is not None
-            ))
-            or (stage_index>0 and (
-                prior.state is not ActionState.OUTCOME
-                or self._route_plan!=plan
-                or self._route_stage!=stage_index-1
-            ))
+                or latest_native_seq<plan.source_s16_seq
+            ):
+                raise NormalActionRejected("first L1 route needs closed original UNKNOWN")
+        elif stage_index==0:
+            previous=self._route_plan
+            if (
+                os.environ.get("S49_L1_GRID_REFRESH_DEV_ONLY")!="1"
+                or not isinstance(previous,L1GridRoutePlanDev)
+                or not isinstance(plan,L1GridRoutePlanDev)
+                or previous.parent!=plan.parent
+                or plan.route_id!=previous.route_id
+                or plan.revision!=previous.revision+1
+                or plan.reason!="NATIVE_GRID_REFRESH_AFTER_SETTLED_WAYPOINT"
+                or plan.source_voxel_seq<=previous.source_voxel_seq
+                or plan.source_s16_seq<=previous.source_voxel_seq
+                or plan.source_action_id!=last_closed_action_id
+                or latest_native_seq<=plan.source_voxel_seq
+                or prior.state is not ActionState.OUTCOME
+                or self._goal_id is None
+                or last_closed_action_id
+                   !=f"goal-{self._goal_id}-step-{self._count}"
+            ):
+                raise NormalActionRejected("unsettled/stale/foreign native route revision")
+        elif (
+            prior.state is not ActionState.OUTCOME
+            or self._route_plan!=plan
+            or self._route_stage!=stage_index-1
         ):
             raise NormalActionRejected("replan cannot reissue unresolved native motor")
         self._route_plan=plan
