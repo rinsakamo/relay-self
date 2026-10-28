@@ -27,3 +27,29 @@ This experiment probes **between Actions**, not asynchronous interruption of an 
 Files: `adapters/mineflayer/s49_goal_loop_real_dev.py` (opt-in real DEV World stimulus and verified handoff), `adapters/mineflayer/s49_goal_real_threat_review_dev.py` (two-World evidence reviewer), `tests/test_s49_goal_real_threat_dev.py`, `.github/workflows/self-goal-threat-interrupt-dev.yml`.
 
 No modifications to main, PR #545/#634, S18 historical blob, real QUAL/SCIENCE, or product default path.
+
+## Native Minecraft DEV result — 2026-10-28 verified
+
+[Actions #40667336592](https://github.com/rinsakamo/relay-self/actions/runs/40667336592) **completed/SUCCESS** at source HEAD `db919b5c398b255adba10ca346b95d043fad3b45`. Python3.12 focused **20 PASS**, Ruff PASS, Node22 bridge syntax PASS; both independently started official Mojang 1.21.8 Java21 Minecraft servers / Mineflayer sessions; original Node and server exits 0. Real original S49 same inherited ActionSupervisor, typed S15/S16 outcome, no additional issuer/packet reader/model calls.
+
+| Native evidence | BASELINE World | INTERRUPT World |
+|---|---|---|
+| Session ID | `82af385c-2c74-4f8c-8fd7-56e10b91595e` | `2ab6408d-113a-476c-ab5c-3a73010adb9a` |
+| Original target offset | 2.6m +Z | 2.6m +Z |
+| Physical original S16 Actions | 3 | **1** |
+| Last L0 result | `REACHED` | **`INTERRUPT`** |
+| Remaining real World XZ goal error | **0.01467334511079521m** | **1.2496299175366696m** |
+| Extra Action after interruption | n/a | **0** |
+| Observed zombie source | none | Mineflayer correlated native probe seq **24**, zombie entity ID **2**, distance **0.6964529460785192m** |
+
+Original first S16 closed: Action ID `goal-approach-demo-step-1`, `s16_status=executed`, terminal `outcome`. Only then did the DEV World operator request `summon minecraft:zombie`; this **console command did not count as observation**. A later actual Mineflayer native probe with session ID, request ID, real coordinates and non-truncated entity registry supplied the observed threat that triggered L0. The goal still had 1.24963m remaining, so the interrupt was **not** a disguised arrival.
+
+Verified original L0 handoff retained original `goal_id=approach-demo`, `intent_id=goal-navigate`, session, original target XZ (1.5,0.10000000000000009), L1-style tolerance 0.364m, current position (1.5,-1.1496299175366695), probe seq24/request ID/provenance, threat ID2/distance0.69645m, and no open Action. The old L0 controller closed this goal-following episode and issued no second MOVE. `upper_layer_replan_executed=false`: only an upper-level handoff, **no actual L1/L2 replan nor escape**.
+
+Auditor verdict: `S49_GOAL_REAL_THREAT_INTERRUPT_DEV_PASS`, with `S49_GOAL_REAL_WORLD_S16_THREAT_HANDOFF_TWO_WORLDS_DEV` result. No Node/Paper tick lockstep, no world-fixed instant responses, no synthetic threat reader. Raw artifact `s49-goal-native-threat-two-worlds-40667336592-1`, artifact ID **12806033893**, ZIP SHA256 **67d529e1789c1b5dd452aa53dd9a5aa8f586b9c78649c3b2b107a1826327a2a2**.
+
+**Constraints:** Interruption was measured **between** original Action completions, not while a motor command was physically running. The static zombie was DEV-injected, not a naturally attacking or moving enemy; no claim of dodge, interrupt latency, general hazard competence, or further plan formation. This is isolated engineering evidence, not qualification/science or trained L1.
+
+**Next engineering step:** connect actual in-flight S49 L0 preemption (existing clear-controls authority) to a goal loop under moving hazard stimuli, then evaluate turn steering and obstruction with fixed target and the same true native XZ/error criteria. An actual learned L1 tolerance requires separate memory/experience integration and should not be claimed from deterministic source code.
+
+main and Draft PR #545/#634 untouched. **DEV_WORLD_OBSERVED / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**.
