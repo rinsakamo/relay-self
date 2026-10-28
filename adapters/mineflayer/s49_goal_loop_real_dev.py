@@ -20,6 +20,7 @@ from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalA
 from adapters.mineflayer.python_protocol import (
     MineflayerObservation,
     MineflayerRouteBlocksDev,
+    MineflayerLocalVoxelsDev,
 )
 from adapters.mineflayer.s31a_real_server_ci import (
     _command,
@@ -41,6 +42,11 @@ from relay_self.action import ActionState
 from relay_self.goal_detour_dev import explicit_l1_detour_dev
 from relay_self.goal_experience_dev import select_route_from_episode_dev
 from relay_self.goal_memory_choice_dev import L1RecallStatusDev
+from relay_self.goal_local_voxel_dev import (
+    NativeVoxelPresentDev,
+    VoxelColumnDev,
+    choose_voxel_waypoint_dev,
+)
 from relay_self.goal_navigation import (
     GoalDecisionKind,
     GoalPurpose,
@@ -51,6 +57,32 @@ from relay_self.goal_navigation import (
 )
 from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
+
+
+async def _correlated_native_voxels_dev(
+    session, request_id:str, *, origin_x:float, origin_z:float,
+) -> MineflayerLocalVoxelsDev:
+    """Same original process reader: source-linked 42-column cache packet."""
+    await session.send_local_voxels_dev(
+        request_id,origin_x=origin_x,origin_z=origin_z,
+    )
+    for _ in range(48):
+        message=await asyncio.wait_for(session.receive(),timeout=6.0)
+        if isinstance(message,MineflayerLocalVoxelsDev):
+            if (
+                message.request_id!=request_id
+                or message.session_id!=session.started.session_id
+                or not math.isclose(message.origin_x,origin_x,abs_tol=1e-8)
+                or not math.isclose(message.origin_z,origin_z,abs_tol=1e-8)
+            ):
+                raise RuntimeError("foreign/stale correlated native voxels")
+            return message
+        if type(message).__name__ in (
+            "MineflayerCommandError","MineflayerConnectionEnd",
+            "MineflayerAdapterErrorMessage",
+        ):
+            raise RuntimeError("native voxel command error/connection lost")
+    raise RuntimeError("no bounded correlated native voxel packet")
 
 
 async def _correlated_native_route_blocks_dev(
@@ -97,6 +129,8 @@ async def qualify(
     detour_left_dev:bool=False,
     left_lane_block_dev:bool=False,
     native_route_present_dev:bool=False,
+    native_voxel_map_dev:bool=False,
+    right_lane_block_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -120,6 +154,10 @@ async def qualify(
         "detour_left_dev":detour_left_dev,
         "left_lane_block_dev":left_lane_block_dev,
         "native_route_present_dev":native_route_present_dev,
+        "native_voxel_map_dev":native_voxel_map_dev,
+        "right_lane_block_dev":right_lane_block_dev,
+        "native_local_voxel_observation_dev":None,
+        "native_local_voxel_choice_dev":None,
         "native_route_blocks_observation_dev":None,
         "detour_after_wall_dev":detour_after_wall_dev,
         "experience_requested_dev":experience_memory_dev is not None,
@@ -172,6 +210,18 @@ async def qualify(
                 not detour_after_wall_dev
                 or selfworld_memory_snapshot_dev is None
                 or os.environ.get("S49_L1_NATIVE_BLOCKS_DEV_ONLY")!="1"
+            ))
+            or type(native_voxel_map_dev) is not bool
+            or type(right_lane_block_dev) is not bool
+            or (left_lane_block_dev and right_lane_block_dev)
+            or (right_lane_block_dev and not native_voxel_map_dev)
+            or (native_voxel_map_dev and (
+                not detour_after_wall_dev or not obstacle_wall_dev
+                or selfworld_memory_snapshot_dev is not None
+                or experience_memory_dev is not None
+                or native_route_present_dev
+                or detour_left_dev
+                or os.environ.get("S49_L1_VOXEL_DEV_ONLY")!="1"
             ))
             or type(detour_left_dev) is not bool
             or (detour_left_dev and (
@@ -263,6 +313,15 @@ async def qualify(
                 await server.stdin.drain()
                 await asyncio.sleep(0.35)
                 report["left_lane_block_world_stimulus_requested"]=True
+            if right_lane_block_dev:
+                _command(
+                    server,
+                    "execute at RelaySelf run fill "
+                    "~2 ~ ~1 ~3 ~2 ~4 minecraft:stone",
+                )
+                await server.stdin.drain()
+                await asyncio.sleep(0.35)
+                report["right_lane_block_world_stimulus_requested"]=True
         report["goal_unit_forward"]={
             "x":forward_x,"z":forward_z,
             "requested_yaw_rad":yaw,
@@ -637,6 +696,72 @@ async def qualify(
                         if choice.status is not L1RecallStatusDev.SELECTED:
                             raise RuntimeError("memory choice has unsupported status")
                         plan=choice.plan
+                    elif native_voxel_map_dev:
+                        voxel_source=await _correlated_native_voxels_dev(
+                            session,
+                            f"goal-{sid}-native-voxels-after-{receipt.consequence.after_observation.seq}",
+                            origin_x=float(start.x),origin_z=float(start.z),
+                        )
+                        if voxel_source.seq<=receipt.consequence.after_observation.seq:
+                            raise RuntimeError("stale native voxel map")
+                        voxel_present=NativeVoxelPresentDev(
+                            session_id=voxel_source.session_id,
+                            native_seq=voxel_source.seq,
+                            request_id=voxel_source.request_id,
+                            origin_x=float(voxel_source.origin_x),
+                            origin_z=float(voxel_source.origin_z),
+                            player_y=float(voxel_source.player_y),
+                            coverage=voxel_source.coverage,
+                            cells=tuple(VoxelColumnDev(
+                                dx=cell.dx,dz=cell.dz,
+                                feet=cell.feet,head=cell.head,floor=cell.floor,
+                            ) for cell in voxel_source.cells),
+                            provenance=voxel_source.provenance,
+                        )
+                        report["native_local_voxel_observation_dev"]={
+                            "session_id":voxel_source.session_id,
+                            "seq":voxel_source.seq,
+                            "request_id":voxel_source.request_id,
+                            "origin_x":voxel_source.origin_x,
+                            "origin_z":voxel_source.origin_z,
+                            "player_y":voxel_source.player_y,
+                            "coverage":voxel_source.coverage,
+                            "x_min":voxel_source.x_min,
+                            "x_max":voxel_source.x_max,
+                            "z_min":voxel_source.z_min,
+                            "z_max":voxel_source.z_max,
+                            "unknown_is_not_clear":voxel_source.unknown_is_not_clear,
+                            "cells":[asdict(cell) for cell in voxel_source.cells],
+                            "source":"mineflayer",
+                        }
+                        voxel_choice=choose_voxel_waypoint_dev(
+                            voxel_present,proposal,
+                            blocked_after_seq=receipt.consequence.after_observation.seq,
+                            blocked_action_id=receipt.terminal.action_id,
+                            provenance=source("l1-observed-local-voxel-waypoints"),
+                        )
+                        report["native_local_voxel_choice_dev"]={
+                            "status":voxel_choice.status,
+                            "reason":voxel_choice.reason,
+                            "left_state":voxel_choice.left_state,
+                            "right_state":voxel_choice.right_state,
+                            "selected_side":voxel_choice.selected_side,
+                            "source_seq":voxel_choice.source_seq,
+                            "sampled_voxel_columns":voxel_choice.sampled_voxel_columns,
+                            "plan_from_current_observation":True,
+                            "learned_l1":False,
+                            "action_authorized_by_map":False,
+                        }
+                        if voxel_choice.status=="DEFER":
+                            report["classification"]="DEV_ONLY_S49_L1_VOXEL_DEFER"
+                            report["stage"]="L1_VOXEL_DEFER"
+                            report["status"]="PASS"
+                            report["real_world"]=True
+                            rc=0
+                            break
+                        if voxel_choice.status!="SELECTED" or voxel_choice.plan is None:
+                            raise RuntimeError("no typed voxel goal route")
+                        plan=voxel_choice.plan
                     elif experience_memory_dev is None:
                         plan=explicit_l1_detour_dev(
                             proposal,start_x=float(start.x),start_z=float(start.z),
@@ -697,7 +822,9 @@ async def qualify(
                     ):
                         raise RuntimeError("native L1 route failed parent L2 goal")
                     report["classification"]=(
-                        "DEV_ONLY_S49_L1_SELFWORLD_MEMORY_GOAL_REACHED"
+                        "DEV_ONLY_S49_L1_VOXEL_GOAL_REACHED"
+                        if native_voxel_map_dev
+                        else "DEV_ONLY_S49_L1_SELFWORLD_MEMORY_GOAL_REACHED"
                         if selfworld_memory_snapshot_dev is not None
                         else "DEV_ONLY_S49_L1_EPISODE_REUSED_PARENT_GOAL_REACHED"
                         if experience_memory_dev is not None
@@ -807,6 +934,8 @@ def main()->int:
     p.add_argument("--detour-left-dev",action="store_true")
     p.add_argument("--left-lane-block-dev",action="store_true")
     p.add_argument("--native-route-present-dev",action="store_true")
+    p.add_argument("--native-voxel-map-dev",action="store_true")
+    p.add_argument("--right-lane-block-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -829,6 +958,8 @@ def main()->int:
         detour_left_dev=args.detour_left_dev,
         left_lane_block_dev=args.left_lane_block_dev,
         native_route_present_dev=args.native_route_present_dev,
+        native_voxel_map_dev=args.native_voxel_map_dev,
+        right_lane_block_dev=args.right_lane_block_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
