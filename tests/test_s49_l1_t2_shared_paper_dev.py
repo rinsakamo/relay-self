@@ -66,6 +66,7 @@ def owner_fixture(session_id="native-session"):
 
 
 def test_only_explicit_single_live_same_session_t2_owner(monkeypatch):
+    monkeypatch.delenv("S49_L1_T2_CHANNEL_DEV_ONLY", raising=False)
     session = session_fixture()
     owner, _ = owner_fixture()
     with pytest.raises(MineflayerProcessIOError):
