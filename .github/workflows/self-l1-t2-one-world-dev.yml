@@ -187,7 +187,10 @@ jobs:
               assert all(x["p1_transition_posted"] is False for x in grows)
               assert all(x["m0_extra_charge_posted"] is False for x in grows)
               assert any(x["kind"]=="STABLE_PHYSICAL_IDLE_CANDIDATE" for x in grows)
-              assert any(x["kind"]=="STABLE_ORDINARY_FORWARD_CANDIDATE" for x in grows)
+              if name != "WORLD5":
+                  assert any(x["kind"]=="STABLE_ORDINARY_FORWARD_CANDIDATE" for x in grows)
+              else:
+                  assert any(x["kind"]=="STABLE_SPRINT_FORWARD_CANDIDATE" for x in grows)
               print("S49_G1_SAME_WORLD_OBSERVATION_DEV",name,g["kinds"])
               return r
           verify_derived("WORLD1")
