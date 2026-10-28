@@ -52,6 +52,9 @@ class FatigueProfile:
     move_per_block: Rate = Rate(0.04)
     fight_per_event: Rate = Rate(0.20)
     wait_recovery_per_world_tick: Rate = Rate(0.10)
+    # Opt-in bounded DEV recovery kinetics. None preserves legacy physics and
+    # historical profile digest exactly; calibrated sessions use ~40s tau.
+    recovery_time_constant_world_seconds: float | None = None
     impairment_per_fraction: Rate = Rate(0.70)
     minimum_efficiency: float = 0.20
     nominal_move_limit_blocks: float = 1.0
@@ -78,10 +81,21 @@ class FatigueProfile:
             raise FatigueRejected("invalid capability limits")
         if not self.enabled and self.initial != 0:
             raise FatigueRejected("OFF profile must start at zero fatigue")
+        tau = self.recovery_time_constant_world_seconds
+        if tau is not None and (
+            type(tau) not in (int, float) or not math.isfinite(tau)
+            or not 1 <= tau <= 3600
+        ):
+            raise FatigueRejected("recovery time constant must be 1-3600 World seconds")
 
     @property
     def sha256(self) -> str:
-        data = json.dumps(asdict(self), sort_keys=True, separators=(",", ":"),
+        values = asdict(self)
+        if values["recovery_time_constant_world_seconds"] is None:
+            # Keep original SHA256 receipts byte-identical for unmodified
+            # legacy profiles in #626/T1r history.
+            values.pop("recovery_time_constant_world_seconds")
+        data = json.dumps(values, sort_keys=True, separators=(",", ":"),
                           allow_nan=False)
         return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
@@ -193,7 +207,18 @@ def advance(profile: FatigueProfile, state: FatigueState, frame: FatigueFrame) -
         elif frame.activity == "FIGHT":
             gain = frame.observed_fight_events * profile.fight_per_event.value
         elif frame.activity == "WAIT":
-            recovery = min(state.fatigue, profile.wait_recovery_per_world_tick.value)
+            tau = profile.recovery_time_constant_world_seconds
+            if tau is None:
+                recovery = min(state.fatigue, profile.wait_recovery_per_world_tick.value)
+            else:
+                # One World tick = 1/20 reference second independent of TPS.
+                # First-order recovery: F_next = F * exp(-dt / tau).
+                # Existing Rate continues to cap the maximum per-tick change.
+                # This is a tunable DEV approximation, not human PCr itself.
+                fraction = -math.expm1(-1.0 / (20.0 * tau))
+                recovery = min(
+                    state.fatigue * fraction, profile.wait_recovery_per_world_tick.value
+                )
     if not math.isfinite(gain):
         raise FatigueRejected("nonfinite fatigue debit")
     gained = min(profile.capacity - state.fatigue, gain)
