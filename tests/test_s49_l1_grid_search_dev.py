@@ -148,6 +148,6 @@ def test_original_owner_and_waypoint_runner_share_one_source():
     assert "self.supervisor.open_actions" in owner
     assert "ActionState.UNKNOWN" in owner
     assert "L1GridRoutePlanDev" in runner
-    assert "range(len(plan.stages))" in runner
+    assert "while index<len(plan.stages)" in runner
     assert "choose_grid_route_dev(" in loop
     assert "follow_l1_detour_dev(" in loop

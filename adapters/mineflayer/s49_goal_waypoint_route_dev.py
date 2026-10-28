@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import math
+import os
 from dataclasses import asdict
 
 from adapters.mineflayer.normal_action import (
@@ -19,6 +20,7 @@ from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
 from relay_self.action import ActionState
 from relay_self.goal_detour_dev import L1DetourPlanDev
 from relay_self.goal_grid_search_dev import L1GridRoutePlanDev
+from relay_self.goal_grid_refresh_dev import refresh_grid_route_dev
 from relay_self.goal_navigation import (
     GoalDecisionKind,
     ObservedGoalL0,
@@ -36,6 +38,7 @@ async def follow_l1_detour_dev(
     session, executor:S49GoalExecutorDev,
     plan:L1DetourPlanDev|L1GridRoutePlanDev,
     *, first_blocked_action_id:str, blocked_after_seq:int,
+    on_grid_refresh_dev=None,
 )->dict:
     if (
         not isinstance(executor,S49GoalExecutorDev)
@@ -46,6 +49,11 @@ async def follow_l1_detour_dev(
         or executor.supervisor.open_actions
         or executor.supervisor.get(first_blocked_action_id).state
            is not ActionState.UNKNOWN
+        or (on_grid_refresh_dev is not None and (
+            not isinstance(plan,L1GridRoutePlanDev)
+            or not callable(on_grid_refresh_dev)
+            or os.environ.get("S49_L1_GRID_REFRESH_DEV_ONLY")!="1"
+        ))
     ):
         raise DetourRunRejected("source-bound native blocked S16 required")
     result={
@@ -55,7 +63,8 @@ async def follow_l1_detour_dev(
         "original_wall_action_id":first_blocked_action_id,
         "original_wall_S16_after_seq":blocked_after_seq,
         "l1_detour_plan":asdict(plan),
-        "stages":[],"reached_final_goal":False,
+        "stages":[],"replan_events":[],
+        "route_status":"IN_PROGRESS","reached_final_goal":False,
         "learned_l1_attested":False,
         "real_l2_replan_attested":False,
         "obstacle_block_perception_attested":False,
@@ -66,7 +75,8 @@ async def follow_l1_detour_dev(
         result["obstacle_block_perception_attested"]=True
     closed_id=first_blocked_action_id
     native_seq=blocked_after_seq
-    for index in range(len(plan.stages)):
+    index=0
+    while index<len(plan.stages):
         # Drain input-off world displacement before choosing the next route
         # axis. Never infer the exact latency from the previous S16 scalar.
         await asyncio.sleep(0.22)
@@ -215,6 +225,46 @@ async def follow_l1_detour_dev(
             )
         if stage["result"]!="REACHED":
             raise DetourRunRejected("no stable native waypoint arrival")
+        if on_grid_refresh_dev is not None and index<len(plan.stages)-1:
+            if not stage["actions"] or executor.supervisor.open_actions:
+                raise DetourRunRejected("grid refresh without settled closed Action")
+            last_s16=stage["actions"][-1]["after_seq"]
+            fresh=await on_grid_refresh_dev(plan,stage,closed_id)
+            decision=refresh_grid_route_dev(
+                fresh,plan,last_s16_after_seq=last_s16,
+                last_closed_action_id=closed_id,
+                provenance=Provenance(
+                    "s49-goal-dev-operator",f"grid-refresh-{plan.revision+1}",
+                ),
+            )
+            event={
+                "previous_revision":plan.revision,
+                "last_closed_action_id":closed_id,
+                "last_s16_after_seq":last_s16,
+                "fresh_voxel_seq":fresh.native_seq,
+                "fresh_voxel_request_id":fresh.request_id,
+                "status":decision.status,"reason":decision.reason,
+                "chosen_cell_path":[list(cell) for cell in decision.chosen_cell_path],
+                "new_revision":(
+                    decision.plan.revision if decision.plan is not None else None
+                ),
+                "no_extra_action_issuer":True,
+            }
+            result["replan_events"].append(event)
+            if decision.status=="DEFER":
+                result["route_status"]="DEFER"
+                result["defer_reason"]=decision.reason
+                result["last_s16_action_id"]=closed_id
+                result["total_route_native_actions"]=sum(
+                    len(s["actions"]) for s in result["stages"]
+                )
+                return result
+            if decision.status!="SELECTED" or decision.plan is None:
+                raise DetourRunRejected("invalid native grid refresh")
+            plan=decision.plan
+            index=0
+        else:
+            index+=1
     last=result["stages"][-1]
     if (
         not math.isclose(last["target_x"],plan.parent.target_x,abs_tol=1e-9)
@@ -223,6 +273,7 @@ async def follow_l1_detour_dev(
     ):
         raise DetourRunRejected("final native position not parent Goal")
     result["reached_final_goal"]=True
+    result["route_status"]="REACHED"
     result["total_route_native_actions"]=sum(
         len(s["actions"]) for s in result["stages"]
     )
