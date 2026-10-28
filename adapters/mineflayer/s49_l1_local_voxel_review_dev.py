@@ -83,7 +83,9 @@ def _decision_from_raw(report:dict):
         session_id=raw["session_id"],seq=raw["seq"],
         request_id=raw["request_id"],
         origin_x=raw["origin_x"],origin_z=raw["origin_z"],
-        player_y=raw["player_y"],coverage=raw["coverage"],
+        player_y=raw["player_y"],
+        player_x=raw["player_x"],player_z=raw["player_z"],
+        coverage=raw["coverage"],
         x_min=raw["x_min"],x_max=raw["x_max"],
         z_min=raw["z_min"],z_max=raw["z_max"],
         cells=tuple(
@@ -97,7 +99,9 @@ def _decision_from_raw(report:dict):
         session_id=packet.session_id,native_seq=packet.seq,
         request_id=packet.request_id,
         origin_x=float(packet.origin_x),origin_z=float(packet.origin_z),
-        player_y=float(packet.player_y),coverage=packet.coverage,
+        player_y=float(packet.player_y),
+        player_x=float(packet.player_x),player_z=float(packet.player_z),
+        coverage=packet.coverage,
         cells=tuple(VoxelColumnDev(
             c.dx,c.dz,c.feet,c.head,c.floor,
         ) for c in packet.cells),
