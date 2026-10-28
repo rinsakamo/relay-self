@@ -23,6 +23,11 @@ from adapters.mineflayer.present_projection import project_mineflayer_present
 from adapters.mineflayer.process_session import MineflayerProcessSession
 from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
+from adapters.mineflayer.s49_l0_xz_goal_dev import (
+    S49LockedXZGoal,
+    S49XZGoalRejected,
+    read_xz_goal,
+)
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_feedback import LearningFeedbackInterpretation
 from relay_self.action_outcome import (
@@ -106,6 +111,7 @@ class NormalWorldL0(ReactiveL0):
         )
         # DEV only, bound by the SAME original L0 after its second closed S16.
         self._s16_stop_source: tuple[str, float] | None = None
+        self._xz_goal_stop: tuple[S49LockedXZGoal, str] | None = None
         self._stage_r_dev_token: object | None = None
         self._stage_r_dev_commit: LearningCommitResult | None = None
         # Stage T is explicit synthetic OFFLINE rehearsal, NOT S49 live path.
@@ -223,6 +229,23 @@ class NormalWorldL0(ReactiveL0):
             raise NormalActionRejected("WAIT needs closed second S16 and bounded residual")
         self._s16_stop_source = (second_action_id, residual_m)
 
+    def bind_xz_stop_dev(
+        self, *, goal: S49LockedXZGoal, second_action_id: str,
+    ) -> None:
+        if (
+            os.environ.get("S49_L0_XZ_GOAL_DEV_ONLY") != "1"
+            or os.environ.get("S49_L0_GOAL_WAIT_DEV_ONLY") != "1"
+            or not isinstance(goal, S49LockedXZGoal)
+            or goal.session_id != self.session_id
+            or not second_action_id or second_action_id not in self._used_action_ids
+            or len(self._used_action_ids) != 2
+            or self.events != 3 or self.action_requests != 2
+            or self._xz_goal_stop is not None
+            or self._s16_stop_source is not None
+        ):
+            raise NormalActionRejected("native XZ WAIT requires original closed second S16")
+        self._xz_goal_stop = (goal, second_action_id)
+
     def _check(self, event, probe):
         if (
             not isinstance(event, MineflayerObservation)
@@ -276,6 +299,28 @@ class NormalWorldL0(ReactiveL0):
             native, self.retained,
             expected_session_id=self.session_id, expected_entity_id=native.entity_id,
         )
+        if self._xz_goal_stop is not None and self.events == 3:
+            goal, second_id = self._xz_goal_stop
+            try:
+                reading = read_xz_goal(
+                    goal, probe.snapshot.position, session_id=probe.session_id,
+                    source_kind="fourth_native_probe", source_seq=probe.seq,
+                )
+            except S49XZGoalRejected as error:
+                raise NormalActionRejected("XZ WAIT requires fresh native location") from error
+            if reading.stop_reason is None:
+                raise NormalActionRejected("XZ WAIT denied: still forward of target")
+            if native.distance_m >= 1.5:
+                return replace(
+                    choice, selection=WorldChoiceKind.WAIT,
+                    action_authorized=False,
+                    criterion_id="s49-locked-native-xz-stop-dev",
+                    wait_score=0, move_score=7,
+                    provenance=Provenance(
+                        "s49-l0-locked-xz-stop-dev",
+                        f"{self.session_id}:{second_id}:{probe.seq}",
+                    ),
+                )
         if self._s16_stop_source is not None and self.events == 3:
             # Fresh real zombie is still assessed. Immediate danger overrides
             # the relative-step deadband; no "safe world" inference.
