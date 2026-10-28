@@ -61,6 +61,8 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
             Callable[[str,MineflayerEffectResult],Awaitable[None]]|None
         )=None,
         on_live_probe_dev:Callable[[MineflayerObservation],bool]|None=None,
+        look_yaw_dev:float|None=None,
+        on_look_ack_dev:Callable[[MineflayerEffectResult],None]|None=None,
     )->NormalActionReceipt:
         goal=directive.proposal if isinstance(directive,L1GoalDirective) else None
         if (
@@ -72,6 +74,16 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
             )
         ):
             raise NormalActionRejected("in-flight DEV callbacks need both explicit owners")
+        if (
+            (look_yaw_dev is not None or on_look_ack_dev is not None)
+            and (
+                os.environ.get("S49_L0_TURN_DEV_ONLY")!="1"
+                or type(look_yaw_dev) is not float
+                or not math.isfinite(look_yaw_dev)
+                or not callable(on_look_ack_dev)
+            )
+        ):
+            raise NormalActionRejected("unbound original S49 goal LOOK DEV")
         if (
             os.environ.get("S49_L0_GOAL_LOOP_DEV_ONLY")!="1"
             or not isinstance(session,MineflayerProcessSession)
@@ -163,6 +175,8 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
                 session,command,timeout_s=9,provenance=origin,
                 on_effect_ack_dev=on_effect_ack_dev,
                 on_live_probe_dev=on_live_probe_dev,
+                look_yaw_dev=look_yaw_dev,
+                on_look_ack_dev=on_look_ack_dev,
             )
             interpretation=interpret_world_consequence(
                 issued,result,consequence,provenance=origin,
