@@ -1,6 +1,7 @@
 """S15 in-flight original-reader boundary and fail-closed physical semantics."""
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -27,34 +28,32 @@ def command():
     )
 
 
-@pytest.mark.asyncio
-async def test_inflight_callback_rejected_without_separate_dev_gate(monkeypatch):
+def test_inflight_callback_rejected_without_separate_dev_gate(monkeypatch):
     monkeypatch.delenv("S49_L0_INFLIGHT_PREEMPT_DEV_ONLY",raising=False)
     monkeypatch.setenv("S49_L0_GOAL_LOOP_DEV_ONLY","1")
     with pytest.raises(InvalidMineflayerExecutionData):
-        await execute_mineflayer_command(
+        asyncio.run(execute_mineflayer_command(
             object(),command(),provenance=Provenance("test","negative-gate"),
             on_live_probe_dev=lambda probe:True,
-        )
+        ))
 
 
-@pytest.mark.asyncio
-async def test_inflight_callback_rejects_wrong_action_or_missing_callable(monkeypatch):
+def test_inflight_callback_rejects_wrong_action_or_missing_callable(monkeypatch):
     monkeypatch.setenv("S49_L0_INFLIGHT_PREEMPT_DEV_ONLY","1")
     monkeypatch.setenv("S49_L0_GOAL_LOOP_DEV_ONLY","1")
     c=command()
     with pytest.raises(InvalidMineflayerExecutionData):
-        await execute_mineflayer_command(
+        asyncio.run(execute_mineflayer_command(
             object(),c,provenance=Provenance("test","bad-callback"),
             on_live_probe_dev=True,
-        )
+        ))
     from dataclasses import replace
     with pytest.raises(InvalidMineflayerExecutionData):
-        await execute_mineflayer_command(
+        asyncio.run(execute_mineflayer_command(
             object(),replace(c,action_ref="MOVE_BACKWARD",control="back"),
             provenance=Provenance("test","bad-action"),
             on_live_probe_dev=lambda probe:True,
-        )
+        ))
 
 
 def test_missing_two_world_evidence_fails_closed(tmp_path):
