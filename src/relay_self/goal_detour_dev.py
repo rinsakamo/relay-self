@@ -9,7 +9,9 @@ import math
 from dataclasses import dataclass
 
 from relay_self.goal_navigation import (
-    GoalControlRejected, GoalPurpose, L2GoalProposal,
+    GoalControlRejected,
+    GoalPurpose,
+    L2GoalProposal,
 )
 from relay_self.provenance import Provenance
 
