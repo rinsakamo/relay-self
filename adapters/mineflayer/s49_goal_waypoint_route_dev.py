@@ -81,7 +81,7 @@ async def follow_l1_detour_dev(
         # axis. Never infer the exact latency from the previous S16 scalar.
         await asyncio.sleep(0.22)
         first=await _correlated_observe(
-            session,f"{plan.route_id}-stage-{index}-first",
+            session,f"{plan.route_id}-r{plan.revision}-stage-{index}-first",
         )
         if first.session_id!=plan.parent.session_id or first.seq<=native_seq:
             raise DetourRunRejected("stale/foreign native waypoint entry")
@@ -122,7 +122,7 @@ async def follow_l1_detour_dev(
             probe=(
                 first if attempt==0
                 else await _correlated_observe(
-                    session,f"{plan.route_id}-stage-{index}-probe-{attempt}",
+                    session,f"{plan.route_id}-r{plan.revision}-stage-{index}-probe-{attempt}",
                 )
             )
             choice=l0.decide(probe)
