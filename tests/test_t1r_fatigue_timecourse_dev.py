@@ -202,3 +202,22 @@ def test_t1r_no_more_synchronous_trace_or_independent_paper_receiver():
     from adapters.mineflayer.t1e_native_dev import TICK_CASES, run_case
     assert "t1r_body_recovery" in TICK_CASES
     assert "rows" not in run_case.__code__.co_varnames
+
+
+def test_initial_anchor_is_not_a_passive_accounted_sample():
+    owner = TickAccounting("test-session")
+    anchor = frame(1)
+    owner.observe(anchor)
+    with pytest.raises(T1rRejected):
+        capture_passive_tick(anchor, owner, [])
+    from adapters.mineflayer.t1q_interoception_dev import T1qRejected
+    with pytest.raises(T1qRejected):
+        project_t1q_selfbody(anchor, owner, epoch_id="anchor", passive_during_action=True)
+
+
+def test_audit_reports_first_recovered_ready_tick():
+    owner, entries = _physical_timeline()
+    later = frame(5, x=.8, seq=50)
+    owner.observe(later)
+    capture_passive_tick(later, owner, entries)
+    assert audit_t1r_trace(entries, owner, completed_moves=2)["recovered_ready_tick"] == 204

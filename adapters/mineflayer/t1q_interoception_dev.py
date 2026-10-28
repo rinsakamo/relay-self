@@ -56,6 +56,7 @@ def project_t1q_selfbody(
             or frame.data["status"] != "ADMITTED"
             or (owner.active_action is not None and not passive_during_action)
             or owner.pending_meal is not None
+            or (passive_during_action and not owner.rows)
             or owner.fatigue is None or not owner.rows and owner.energy.body.tick != 0):
         raise T1qRejected("no same-owner admitted native + live body boundary")
     source = frame.data["snapshot"]

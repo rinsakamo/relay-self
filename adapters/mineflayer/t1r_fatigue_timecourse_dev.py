@@ -7,13 +7,17 @@ from __future__ import annotations
 
 from math import isfinite
 
+from adapters.mineflayer.python_protocol import MineflayerPaperSnapshot
 from adapters.mineflayer.t1q_interoception_dev import (
-    M0_SENSOR, P1_SENSOR, cognition_summary, project_t1q_selfbody,
+    M0_SENSOR,
+    P1_SENSOR,
+    cognition_summary,
+    project_t1q_selfbody,
     run_t1q_body_loop_dev,
 )
 from adapters.mineflayer.t2_tick_accounting import TickAccounting
-from adapters.mineflayer.python_protocol import MineflayerPaperSnapshot
-from experiments.fatigue_p1 import FatigueState, observe as observe_p1
+from experiments.fatigue_p1 import FatigueState
+from experiments.fatigue_p1 import observe as observe_p1
 from experiments.metabolism_viability import BodyState, observe_energy
 from relay_self.self_body import BodyOrigin
 
@@ -132,7 +136,8 @@ def audit_t1r_trace(readings, owner, *, completed_moves):
             raise T1rRejected("reported perceptual choice contradicts sensed inputs")
         if row["p1"]["accumulated"] > 0:
             observed_fatigue += 1
-        if row["activity"] == "WAIT_DEV" and row["p1"]["recovered"] > 0:
+        if (first_fatigue_rest_tick is not None
+                and row["activity"] == "WAIT_DEV" and row["p1"]["recovered"] > 0):
             saw_wait_recovery = True
         if rec.get("sensed_rest_preference") == "REST_PREFERRED":
             rest += 1
@@ -141,7 +146,8 @@ def audit_t1r_trace(readings, owner, *, completed_moves):
                     first_fatigue_rest_tick = rec["world_tick"]
         elif rec.get("sensed_rest_preference") == "READY_FEELING":
             ready += 1
-            if (first_fatigue_rest_tick is not None and saw_wait_recovery
+            if (recovered_ready_tick is None
+                    and first_fatigue_rest_tick is not None and saw_wait_recovery
                     and rec["world_tick"] > first_fatigue_rest_tick):
                 recovered_ready_tick = rec["world_tick"]
         else:
