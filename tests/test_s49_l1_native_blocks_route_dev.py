@@ -23,7 +23,7 @@ from relay_self.goal_native_blocks_dev import (
 from relay_self.goal_navigation import GoalControlRejected
 from relay_self.provenance import Provenance
 from relay_self.self_world import WorldOrigin
-from tests.test_s49_l1_selfworld_memory_choice_dev import (
+from test_s49_l1_selfworld_memory_choice_dev import (
     _context,
     _episode,
     _memory,
@@ -99,8 +99,8 @@ def test_reverse_observed_clear_lane_selects_left_route():
     {"origin_z":11.2},
 ])
 def test_foreign_stale_or_unrelated_present_rejected(fault):
-    evidence=replace(_present(),**fault)
     with pytest.raises(GoalControlRejected):
+        evidence=replace(_present(),**fault)
         _decide(evidence)
 
 
