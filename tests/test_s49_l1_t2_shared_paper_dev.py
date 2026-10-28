@@ -5,14 +5,14 @@ from types import SimpleNamespace as NS
 
 import pytest
 
+from adapters.mineflayer.process_session import (
+    MineflayerProcessIOError,
+    MineflayerProcessSession,
+)
 from adapters.mineflayer.python_protocol import (
     MineflayerAdapterProtocolError,
     MineflayerPaperSnapshot,
     parse_mineflayer_line,
-)
-from adapters.mineflayer.process_session import (
-    MineflayerProcessIOError,
-    MineflayerProcessSession,
 )
 
 
