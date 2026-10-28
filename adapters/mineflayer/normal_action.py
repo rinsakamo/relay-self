@@ -8,7 +8,9 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+import math
+import os
 from enum import Enum
 
 from adapters.mineflayer.action_outcome import interpret_world_consequence
@@ -424,6 +426,7 @@ class NormalSessionActionExecutor:
         bound: BoundExecutionCandidate, probe: MineflayerObservation,
         propose: NormalActionAuthorization, issue: NormalActionAuthorization,
         *, timeout_s: float = 9,
+        dev_next_duration_s: float | None = None,
     ) -> NormalActionReceipt:
         if (
             not isinstance(session, MineflayerProcessSession)
@@ -432,6 +435,18 @@ class NormalSessionActionExecutor:
         ):
             raise NormalActionRejected("live Mineflayer session mismatch")
         self.require_authorizations(step, bound, probe, propose, issue)
+        if dev_next_duration_s is not None and (
+            type(dev_next_duration_s) is not float
+            or not math.isfinite(dev_next_duration_s)
+            or not 0.10 <= dev_next_duration_s <= 0.60
+            or self._count != 1
+            or not self._dev_forward_motor
+            or not self._dev_sprint_motor
+            or os.environ.get("S49_L0_OBSERVED_FEEDBACK_DEV_ONLY") != "1"
+        ):
+            raise NormalActionRejected(
+                "next original S49 movement duration needs real S16 DEV feedback"
+            )
         # A monotonically increasing owner-local ordering index, not wall time.
         t = 100 + 10 * self._count
         origin = Provenance("normal-action-runtime", f"{self.session_id}:{t}")
@@ -449,6 +464,11 @@ class NormalSessionActionExecutor:
             provenance=issue.provenance,
         )
         command = build_mineflayer_command(issued, result)
+        if dev_next_duration_s is not None:
+            # Same issued S14 binding and S15 controller, no extra issuer or
+            # receive loop. Only the duration of the second physical input
+            # is adapted from the previous closed original S16 outcome.
+            command = replace(command, duration_s=dev_next_duration_s)
         # Consumed BEFORE any external IO. Incomplete physical work is UNKNOWN.
         self._dispatched.add(command.action_id)
         self._count += 1
