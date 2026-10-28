@@ -1,0 +1,299 @@
+{
+  "classification": [
+    "DEV_ONLY",
+    "DEV_WORLD_OBSERVED",
+    "QUALIFICATION_NO_GO",
+    "SCIENCE_NOT_RUN"
+  ],
+  "branch": "self/dev-t1q-body-interoception-20261028",
+  "execution_head": "cb2ae34360a08db7e602117b0bbc11f091780901",
+  "baseline_head": "68ae74f3c639fd83c40bc887b8d4ce4b88fde6dc",
+  "t1p_base": "56dd88698dbff7f1ed3a40c8c33aaa12c8067d0b",
+  "selfbody_blob": "36cd5ab76b1e1f427741b6dc128407b790784e6f",
+  "tests": {
+    "python": "3.12.3",
+    "focused_pass": 104,
+    "fast_pass": 717,
+    "fast_files": 44,
+    "syntax_python_files": 484,
+    "ruff": "PASS",
+    "contracts": "PASS",
+    "full": "NOT_RUN",
+    "existing_test_self_body_py": "ABSENT; existing T1q tests plus immutable/source mismatch controls used"
+  },
+  "worlds": {
+    "PASS": [
+      "T1Q-001"
+    ],
+    "FAIL": []
+  },
+  "evidence_root": "/home/rinsa/work/t1q-evidence-20261028",
+  "originals_manifest": {
+    "verified_files": 204,
+    "all_match": true,
+    "manifest_sha256": "a7cdba55290ec64005e0b35f648862f73cc7caf95c343ce29faea1b23d2a9e75"
+  },
+  "audit": {
+    "run_id": "T1Q-001",
+    "status": "PASS",
+    "session": "b2266cd7-db7f-4666-b408-bd73813d2ddb",
+    "checks": {
+      "report_pass": true,
+      "all_source_admitted": true,
+      "source_continuous": true,
+      "age_budget": true,
+      "consecutive_accounting": true,
+      "admitted_rows": true,
+      "cost_equations": true,
+      "energy_conserved": true,
+      "p1_conserved": true,
+      "wait_causal": true,
+      "no_unqualified_recovery": true,
+      "original_effects": true,
+      "trace_off": true,
+      "no_food_llm_tps": true,
+      "cleanup": true,
+      "independent_port_rebind": true,
+      "terminal_transport": true,
+      "world_saved": true,
+      "runner_hash_readback": true,
+      "epoch_0": true,
+      "epoch_1": true,
+      "next_epoch_after_wait": true,
+      "sensor_epoch_t1q-epoch-0": true,
+      "sensor_epoch_t1q-epoch-1": true
+    },
+    "epochs": [
+      {
+        "epoch": 0,
+        "source_seq": 27,
+        "source_tick": 1034,
+        "action_id": "t1p-epoch-0",
+        "action_status": "executed",
+        "terminal": "outcome",
+        "outcome_distance": 0.6269065734210613,
+        "paper_settled_displacement": 0.8571697198364467,
+        "paper_motion_blocks": 0.8249361767371388,
+        "dispatch_seq": 29,
+        "clear_ack_seq": 38,
+        "settled_seq": 60,
+        "settled_tick": 1052,
+        "post_wait_tick": 1064,
+        "wait_dev_ticks": 20,
+        "p1_accumulated": 0.032997447069485555,
+        "p1_recovered": 0.032997447069485555,
+        "p1_peak": 0.032997447069485555,
+        "p1_final": 0.0
+      },
+      {
+        "epoch": 1,
+        "source_seq": 73,
+        "source_tick": 1064,
+        "action_id": "t1p-epoch-1",
+        "action_status": "executed",
+        "terminal": "outcome",
+        "outcome_distance": 0.6269065734210615,
+        "paper_settled_displacement": 0.857169719836447,
+        "paper_motion_blocks": 0.857169719836447,
+        "dispatch_seq": 75,
+        "clear_ack_seq": 84,
+        "settled_seq": 106,
+        "settled_tick": 1082,
+        "post_wait_tick": 1094,
+        "wait_dev_ticks": 20,
+        "p1_accumulated": 0.03428678879345788,
+        "p1_recovered": 0.03428678879345788,
+        "p1_peak": 0.03428678879345788,
+        "p1_final": 0.0
+      }
+    ],
+    "source": {
+      "paper_frames": 80,
+      "statuses": {
+        "ADMITTED": 80
+      },
+      "violations": [],
+      "distributions_ms": {
+        "causal_upper_ms": {
+          "n": 80,
+          "min": 4.96239,
+          "median": 49.903683,
+          "p95": 53.502718,
+          "p99": 89.357275,
+          "max": 89.357275
+        },
+        "challenge_to_receive_ms": {
+          "n": 80,
+          "min": 4.89501,
+          "median": 49.850676,
+          "p95": 53.432175,
+          "p99": 89.249153,
+          "max": 89.249153
+        },
+        "receive_to_complete_ms": {
+          "n": 80,
+          "min": 0.039677,
+          "median": 0.0571045,
+          "p95": 0.102031,
+          "p99": 0.698507,
+          "max": 0.698507
+        },
+        "node_queue_ms": {
+          "n": 80,
+          "min": 0.028346,
+          "median": 0.041225,
+          "p95": 0.075647,
+          "p99": 0.431095,
+          "max": 0.431095
+        },
+        "node_evaluation_ms": {
+          "n": 80,
+          "min": 0.010504,
+          "median": 0.015415000000000002,
+          "p95": 0.037223,
+          "p99": 0.267412,
+          "max": 0.267412
+        }
+      },
+      "world": "bc4cb05c-df68-45b4-acb9-c18915932348",
+      "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "boot": "fff3a08e-395c-407c-87f5-f54b17363c3b",
+      "accounted_ticks": 61,
+      "first_accounted_tick": 1034,
+      "last_accounted_tick": 1094,
+      "effective_tps": 20.01847338854151
+    },
+    "m0": {
+      "initial": 12,
+      "basal": 0.061,
+      "cognition": 0.0061,
+      "movement": 0.003364211793147172,
+      "total_cost": 0.07046421179314717,
+      "final": 11.929535788206891,
+      "food_credit": 0,
+      "wait_basal": 0.04,
+      "paper_basal_exhaustion_delta": 0.06100000000000005,
+      "paper_motion_exhaustion_delta": 0.016821058965735856
+    },
+    "p1": {
+      "initial": 0,
+      "accumulated": 0.06728423586294344,
+      "recovered": 0.06728423586294344,
+      "final": 0.0,
+      "wait_dev_ticks": 40,
+      "qualified_wait": false
+    },
+    "distances": {
+      "outcome_sum": 1.2538131468421227,
+      "paper_settled_sum": 1.7143394396728937,
+      "native_motion_blocks_sum": 1.6821058965735858
+    },
+    "trace_audit": {
+      "mode": "OFF",
+      "source_native_paper_count": 80,
+      "trace_count": 0,
+      "valid": true,
+      "timing_metrics_available": false
+    },
+    "cleanup": {
+      "java_pid": 826391,
+      "node_pid": 826508,
+      "java_exit": 0,
+      "node_exit": 0,
+      "java_pid_absent": true,
+      "node_pid_absent": true,
+      "port_rebind": true,
+      "cleanup_complete": true,
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "b2266cd7-db7f-4666-b408-bd73813d2ddb"
+      }
+    },
+    "source_hashes": {
+      "commands.jsonl": "23e9ecd0714a9176cab62a0101887fdc897574f897b54ff95c20949dd1b6fe4d",
+      "native.jsonl": "8a16a5528e746816435dc3cab4d9b5c4daabda1fee7973c5a874b13fbab1b0db",
+      "paper.log": "acacaf90ed501d29f88e5c35ef832df074b69d4bbc95dd986529068b43c5de5a",
+      "python_timing.jsonl": "19a7508f9f3cd58e9d9cc11aa2c1e96bf297ed0c322bf4cc5caf4046c85845f0",
+      "report.json": "43b39721d2da9da5bf8f32e1d60c98a7a5432992f9ef56d9be0c6a31add0fecf",
+      "t2_ticks.json": "e999f18754358dd8779c3b553cb18c2dc97958e977fbbc128c979b6f381aa82d"
+    },
+    "sensors_with_separate_host_audit": [
+      {
+        "body_session_id": "b2266cd7-db7f-4666-b408-bd73813d2ddb",
+        "energy_origin": "interoception",
+        "energy_sensed": 12.0,
+        "energy_source_refs": [
+          "native-probe:b2266cd7-db7f-4666-b408-bd73813d2ddb:27:paper-index-20",
+          "body-sensor:b2266cd7-db7f-4666-b408-bd73813d2ddb:27:1:paper-index-20"
+        ],
+        "epoch_id": "t1q-epoch-0",
+        "fatigue_origin": "interoception",
+        "fatigue_sensed": 0.0,
+        "fatigue_source_refs": [
+          "native-probe:b2266cd7-db7f-4666-b408-bd73813d2ddb:27:paper-index-20",
+          "body-sensor:b2266cd7-db7f-4666-b408-bd73813d2ddb:27:1034:paper-index-20"
+        ],
+        "food_observed": 20,
+        "food_origin": "observation",
+        "health_observed": 20,
+        "health_origin": "observation",
+        "host_decision": "MOVE",
+        "m0_clock_kind": "B0_LEDGER_TICKS",
+        "native_seq": 27,
+        "p1_qualified_wait": false,
+        "paper_clock_kind": "WORLD_FULL_TIME",
+        "physical_permission_from_view": false,
+        "sensed_decision": "MOVE",
+        "world_tick": 1034,
+        "host_audit_true_energy": 11.9989,
+        "host_audit_true_fatigue": 0.0,
+        "m0_tick": 1
+      },
+      {
+        "body_session_id": "b2266cd7-db7f-4666-b408-bd73813d2ddb",
+        "energy_origin": "interoception",
+        "energy_sensed": 12.0,
+        "energy_source_refs": [
+          "native-probe:b2266cd7-db7f-4666-b408-bd73813d2ddb:73:paper-index-50",
+          "body-sensor:b2266cd7-db7f-4666-b408-bd73813d2ddb:73:31:paper-index-50"
+        ],
+        "epoch_id": "t1q-epoch-1",
+        "fatigue_origin": "interoception",
+        "fatigue_sensed": 0.0,
+        "fatigue_source_refs": [
+          "native-probe:b2266cd7-db7f-4666-b408-bd73813d2ddb:73:paper-index-50",
+          "body-sensor:b2266cd7-db7f-4666-b408-bd73813d2ddb:73:1064:paper-index-50"
+        ],
+        "food_observed": 20,
+        "food_origin": "observation",
+        "health_observed": 20,
+        "health_origin": "observation",
+        "host_decision": "MOVE",
+        "m0_clock_kind": "B0_LEDGER_TICKS",
+        "native_seq": 73,
+        "p1_qualified_wait": false,
+        "paper_clock_kind": "WORLD_FULL_TIME",
+        "physical_permission_from_view": false,
+        "sensed_decision": "MOVE",
+        "world_tick": 1064,
+        "host_audit_true_energy": 11.964250127646546,
+        "host_audit_true_fatigue": 0.0,
+        "m0_tick": 31
+      }
+    ]
+  },
+  "limitations": [
+    "R-qualified WAIT not established",
+    "High-level STOP ACK not established",
+    "Independent source authentication not established",
+    "Scientific autonomous body recognition not established",
+    "Causal fatigue benefit not tested",
+    "Long-term survival and autonomous learning not tested"
+  ]
+}
