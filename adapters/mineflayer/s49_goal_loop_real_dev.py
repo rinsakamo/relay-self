@@ -760,7 +760,16 @@ async def qualify(
                     window=await _await_dash_dev_line(
                         server_log,offset,marker="COMPLETE",action_id=action_id,
                     )
+                    paper_rows=server_log.read_text(encoding="utf-8").splitlines()
+                    observed_positive=sum(
+                        "S49_DASH_DEV_TICK " in line
+                        and "action_id="+action_id+" " in line
+                        and "session_id="+sid+" " in line
+                        and "modifier_applied=true " in line
+                        for line in paper_rows
+                    )
                     report["g2_dash_modifier_dev"]={
+                        "paper_positive_modifier_callbacks":observed_positive,
                         "action_id":action_id,
                         "released":True,
                         "paper_complete_source_observed":True,
