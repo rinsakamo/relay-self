@@ -122,6 +122,14 @@ def audit_t1r_trace(readings, owner, *, completed_moves):
                 or observe_p1(owner.profile, p1, P1_SENSOR).reading
                 != rec["fatigue_sensed"]):
             raise T1rRejected("SelfBody sensor differs from original ledger")
+        expected_preference = (
+            "REST_PREFERRED"
+            if rec["energy_sensed"] <= 3.0
+            or rec["fatigue_sensed"] >= REST_SENSE_THRESHOLD
+            else "READY_FEELING"
+        )
+        if rec.get("sensed_rest_preference") != expected_preference:
+            raise T1rRejected("reported perceptual choice contradicts sensed inputs")
         if row["p1"]["accumulated"] > 0:
             observed_fatigue += 1
         if row["activity"] == "WAIT_DEV" and row["p1"]["recovered"] > 0:
