@@ -55,7 +55,8 @@ TICK_CASES = ("t1f_observe", "t1f_loop", "t2_loop", "t2_disconnect_move",
               "t1h_disconnect_after_idle", "t1i_stop_loop", "t1i_stop_eat",
               "t1j_resume_move", "t1k_stop_resume_twice",
               "t1k_fault_before_send", "t1k_fault_set_ack", "t1k_fault_clear_ack",
-              "t1l_source_soak", "t1m_source_soak", "t1n_source_soak")
+              "t1l_source_soak", "t1m_source_soak", "t1n_source_soak",
+              "t1p_body_loop")
 
 
 def write(path, value):
@@ -161,7 +162,7 @@ def measure(root, report):
 
 
 async def run_case(args, case):
-    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_", "t1l_", "t1m_", "t1n_"))
+    t1f = case.startswith(("t1f_", "t2_", "t1h_", "t1i_", "t1j_", "t1k_", "t1l_", "t1m_", "t1n_", "t1p_"))
     root = args.output / case
     root.mkdir()
     world = root / "server"
@@ -416,7 +417,7 @@ async def run_case(args, case):
                             expected_clear_action_id=self.t1h_active_action_id + "-clear",
                         )
                     fixture = asyncio.create_task(request_owner_stop())
-                elif not case.startswith(("t1i_", "t1j_", "t1k_")) and case != "normal":
+                elif not case.startswith(("t1i_", "t1j_", "t1k_", "t1p_")) and case != "normal":
                     fixture = asyncio.create_task(stage())
 
             async def send_equip_item(self, *a, **kw):
@@ -504,6 +505,10 @@ async def run_case(args, case):
         if case.startswith("t1h_"):
             from adapters.mineflayer.t1h_native_stop_dev import run_stop_move_dev
             await run_stop_move_dev(session, server, report, root)
+            return report
+        if case == "t1p_body_loop":
+            from adapters.mineflayer.t1p_body_runtime_dev import run_body_loop_dev
+            await run_body_loop_dev(session, report, move_limit=args.loop_moves)
             return report
         if t1f:
             from adapters.mineflayer.t1f_continuation_dev import run_continuation
