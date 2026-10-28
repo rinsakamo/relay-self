@@ -27,6 +27,7 @@ from adapters.mineflayer.s31a_real_server_ci import (
 )
 from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
 from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
+from adapters.mineflayer.s49_l1_experience_export_dev import load_episode_dev
 from adapters.mineflayer.s49_goal_waypoint_route_dev import follow_l1_detour_dev
 from adapters.mineflayer.s49_normal_session_real_ci import (
     _cleanup_session,
@@ -34,6 +35,7 @@ from adapters.mineflayer.s49_normal_session_real_ci import (
 )
 from relay_self.action import ActionState
 from relay_self.goal_detour_dev import explicit_l1_detour_dev
+from relay_self.goal_experience_dev import select_route_from_episode_dev
 from relay_self.goal_navigation import (
     GoalDecisionKind,
     GoalPurpose,
@@ -57,6 +59,8 @@ async def qualify(
     goal_turn_dx_dev:float=0.0,
     obstacle_wall_dev:bool=False,
     detour_after_wall_dev:bool=False,
+    experience_memory_dev:Path|None=None,
+    experience_source_report_dev:Path|None=None,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -78,6 +82,8 @@ async def qualify(
         "goal_turn_dx_dev":goal_turn_dx_dev,
         "obstacle_wall_dev":obstacle_wall_dev,
         "detour_after_wall_dev":detour_after_wall_dev,
+        "experience_requested_dev":experience_memory_dev is not None,
+        "experience_selection_dev":None,
         "native_goal_looks":[],
     }
     server=collector=session=temp=None
@@ -98,6 +104,14 @@ async def qualify(
             or type(goal_turn_dx_dev) is not float
             or not math.isfinite(goal_turn_dx_dev)
             or goal_turn_dx_dev not in (0.0, 1.4)
+            or ((experience_memory_dev is None)
+                !=(experience_source_report_dev is None))
+            or (experience_memory_dev is not None and (
+                not isinstance(experience_memory_dev,Path)
+                or not isinstance(experience_source_report_dev,Path)
+                or not detour_after_wall_dev
+                or os.environ.get("S49_L1_EPISODIC_REUSE_DEV_ONLY")!="1"
+            ))
             or type(detour_after_wall_dev) is not bool
             or (detour_after_wall_dev and (
                 not obstacle_wall_dev or goal_turn_dx_dev!=0.0
@@ -476,12 +490,51 @@ async def qualify(
                     # This is an explicit L1-style OPERATOR-supplied plan,
                     # NOT a native claim that Self perceived a stone block.
                     # A closed original UNKNOWN is never silently retried.
-                    plan=explicit_l1_detour_dev(
-                        proposal,start_x=float(start.x),start_z=float(start.z),
-                        blocked_action_id=receipt.terminal.action_id,
-                        blocked_s16_seq=receipt.consequence.after_observation.seq,
-                        provenance=source("l1-explicit-detour-after-unknown"),
-                    )
+                    if experience_memory_dev is None:
+                        plan=explicit_l1_detour_dev(
+                            proposal,start_x=float(start.x),start_z=float(start.z),
+                            blocked_action_id=receipt.terminal.action_id,
+                            blocked_s16_seq=receipt.consequence.after_observation.seq,
+                            provenance=source("l1-explicit-detour-after-unknown"),
+                        )
+                    else:
+                        # RECALL only after a NEW genuine blocked physical S16.
+                        # The prior world's actual raw source is digest-bound.
+                        assert experience_source_report_dev is not None
+                        episode,envelope=load_episode_dev(
+                            experience_memory_dev,experience_source_report_dev,
+                        )
+                        plan=select_route_from_episode_dev(
+                            episode,proposal,
+                            start_x=float(start.x),start_z=float(start.z),
+                            blocked_action_id=receipt.terminal.action_id,
+                            blocked_s16_seq=receipt.consequence.after_observation.seq,
+                            blocked_reason=report["wall_handoff"]["reason"],
+                            blocked_terminal=receipt.terminal.state.value,
+                            blocked_consequence=receipt.consequence.status.value,
+                            provenance=source("l1-recalled-episode-after-unknown"),
+                        )
+                        report["experience_selection_dev"]={
+                            "source_session_id":episode.source_session_id,
+                            "new_session_id":sid,
+                            "source_goal_id":episode.source_goal_id,
+                            "source_report_sha256":envelope["source_report_sha256"],
+                            "source_native_actions":episode.source_native_actions,
+                            "selected_route_offsets":[
+                                list(row) for row in episode.stages
+                            ],
+                            "original_blocked_action_id":receipt.terminal.action_id,
+                            "original_blocked_s16_seq":
+                                receipt.consequence.after_observation.seq,
+                            "new_world_goal_x":proposal.target_x,
+                            "new_world_goal_z":proposal.target_z,
+                            "recalled_plan_stages":[
+                                asdict(stage) for stage in plan.stages
+                            ],
+                            "only_real_prior_episode":True,
+                            "learned_general_policy":False,
+                            "wall_block_sensed":False,
+                        }
                     report["stage"]="FOLLOW_L1_WAYPOINTS"
                     report["detour"]=await follow_l1_detour_dev(
                         session,executor,plan,
@@ -495,7 +548,11 @@ async def qualify(
                            > report["detour"]["stages"][-1]["tolerance_m"]
                     ):
                         raise RuntimeError("native L1 route failed parent L2 goal")
-                    report["classification"]="DEV_ONLY_S49_L1_DETOUR_PARENT_GOAL_REACHED"
+                    report["classification"]=(
+                        "DEV_ONLY_S49_L1_EPISODE_REUSED_PARENT_GOAL_REACHED"
+                        if experience_memory_dev is not None
+                        else "DEV_ONLY_S49_L1_DETOUR_PARENT_GOAL_REACHED"
+                    )
                     report["stage"]="L1_DETOUR_ORIGINAL_GOAL_REACHED"
                     report["status"]="PASS"
                     report["real_world"]=True
@@ -597,6 +654,8 @@ def main()->int:
     p.add_argument("--goal-turn-dx-dev",type=float,default=0.0)
     p.add_argument("--obstacle-wall-dev",action="store_true")
     p.add_argument("--detour-after-wall-dev",action="store_true")
+    p.add_argument("--experience-memory-dev",type=Path)
+    p.add_argument("--experience-source-report-dev",type=Path)
     args=p.parse_args()
     if (
         args.confirm!="S49-GOAL-L0-DEV-DISPOSABLE-WORLD"
@@ -612,6 +671,8 @@ def main()->int:
         goal_turn_dx_dev=args.goal_turn_dx_dev,
         obstacle_wall_dev=args.obstacle_wall_dev,
         detour_after_wall_dev=args.detour_after_wall_dev,
+        experience_memory_dev=args.experience_memory_dev,
+        experience_source_report_dev=args.experience_source_report_dev,
     ))
 
 
