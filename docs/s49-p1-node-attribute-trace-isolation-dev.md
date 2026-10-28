@@ -46,3 +46,31 @@ CARRY: MEM−OFF +0.195188608865153m; FILE−MEM −0.195188608865156m; FILE−O
 A legacy `p1_trace_ab_dev.native_trace_write_during_first_action=false` field appears in the pilot's all six reports even for FILE. **This field is not reliable for CLEAR-time I/O**; the source `bridge.mjs` unambiguously writes synchronously in FILE on CLEAR and returns before persistence in MEM. Trust mode-specific actual FILE presence and the Node source, not that legacy field. The corrected reviewer explicitly examines source-typed mode and actual files.
 
 Reviewer error correction: `fa17075816bb49988d75ba0582c63489f749bd0d`; new six-World run [#40619793744](https://github.com/rinsakamo/relay-self/actions/runs/40619793744) is independent and must earn PASS on its own. No main/PR merge; QUAL/SCIENCE not run.
+
+## Source-reviewed independent six-World rerun — PASS
+
+[Actions #40619793744](https://github.com/rinsakamo/relay-self/actions/runs/40619793744), exact tested HEAD `fa17075816bb49988d75ba0582c63489f749bd0d`, **completed/SUCCESS**. The source reviewer `P1_NODE_TRACE_SIX_WORLD_REVIEW_PASS` and all six native World runs succeeded, with distinct session and World UUIDs, typed S15/S16 original Action receipts, Paper first Action seven-positive-tick/13-gait-tick series, FILE-only Node source and both OFF/MEM files absent. This does not promote QUAL/SCIENCE.
+
+| Mode | CARRY first S16 (m) | WAIT_ASSUMED first S16 (m) | CARRY Paper mean positive speed (m/s) | WAIT Paper mean positive speed (m/s) |
+|---|---:|---:|---:|---:|
+| OFF | 3.647398720447 | 3.845269279104 | 6.267369234999 | 6.639164841390 |
+| MEM | 3.656538103083 | 3.845269279104 | 5.835939618133 | 6.639164841390 |
+| FILE | 4.140090360652 | 4.102717566258 | 6.567469500404 | 7.029424911612 |
+
+From the exact reviewer `per_model_differences`:
+- CARRY: MEM−OFF **+0.009139382637m**, FILE−MEM **+0.483552257569m**, FILE−OFF **+0.492691640206m**; speed MEM−OFF −0.431429616866m/s, FILE−MEM +0.731529882271m/s.
+- WAIT_ASSUMED: MEM−OFF effectively 0m, FILE−MEM **+0.257448287153m**, FILE−OFF **+0.257448287153m**; speed FILE−MEM +0.390260070222m/s.
+
+FILE source Node physical callback counts: CARRY **13**, positive attribute visible **8**; WAIT_ASSUMED **12**, positive attribute visible **8**. OFF/MEM counts are **UNKNOWN**, not zero. All six Paper source positive boosts = **7** and Paper total gait callbacks = **13**.
+
+This run's FILE condition is **longer** than MEM for both P1 model assumptions. Earlier pilot's FILE condition was **shorter** than MEM for CARRY and effectively equal for WAIT_ASSUMED. Hence a consistent positive or negative movement effect for synchronous CLEAR-write is **not demonstrated**. The previous four-World OFF advantage also fails as a repeatable direction in these datasets. Different independent Worlds, unmeasured relative Node/Paper physics phase and varying original first SET→CLEAR callback counts remain major confounds.
+
+Artifact `p1-attr-isolation-six-worlds-40619793744-1`, ID **12786594585**, ZIP SHA256 **d4b4b731cd55b56bc92edc267a443d4d61d323f12bbb60a3ad803b1df851a82e**. Pre-World Python 3.12 focused tests all PASS, Ruff PASS, Node22 three tests PASS, Java21 Paper plugin build and pinned Paper SHA PASS; complete SUCCESS step and source artifacts verified from Actions API.
+
+### Interpretation and next step
+
+The active `S49_SPEED_ATTR_SYNC_DEV_ONLY=1` is client attribute projection, not the source of T1n `node_timing.jsonl` `writeSync()`. The targeted synchronous FILE write occurs at original S49 CLEAR. The state of evidence after **12 new real Worlds** (6 pilot World outputs but reviewer FAIL; 6 full source-reviewed PASS) is that *probe effect is possible but not isolated*, and Paper/Node phase and original Action duration remain unresolved. There is no source-bound measured number for MEM/OFF Node physicsTicks, by design.
+
+The minimally informative next DEV step is therefore **Node producer-physicsTick-controlled first original S15 hold** with bounded timeout, original single reader/issuer and Paper source still independently audited. Repeating more unconstrained wall-clock 0.60s trials alone would not remove the primary phase confound. No production authority, QUAL grant or SCIENCE eligibility is implied.
+
+**Final:** `DEV_WORLD_OBSERVED / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`. Main and Draft #545/#634 unchanged. Evidence report appended on this isolated DEV branch only.
