@@ -12,6 +12,7 @@ from dataclasses import asdict, replace
 
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.python_protocol import MineflayerPaperSnapshot
+from adapters.mineflayer.t1v_physical_idle_dev import physical_idle_witness_dev
 from experiments.fatigue_p1 import FatigueFrame, FatigueProfile, advance, initial_state
 from experiments.metabolism_viability import MetabolismConfig
 from experiments.p1_gait_dev import GaitTickDev, advance_gait_dev
@@ -176,7 +177,6 @@ class TickAccounting:
                     if isinstance(gait_tick, GaitTickDev) and gait_tick.gait == "WAIT" and not wait:
                         # Rest of the *body* before an Action/clear is not a
                         # causally closed S49 WAIT. Do not mint WAIT_DEV credit.
-                        from adapters.mineflayer.t1v_physical_idle_dev import physical_idle_witness_dev
                         physical_idle = physical_idle_witness_dev(frame, self.previous)
                     if (not isinstance(gait_tick, GaitTickDev)
                             or gait_tick.session_id != self.session_id
