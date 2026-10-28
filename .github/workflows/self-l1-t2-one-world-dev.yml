@@ -1,4 +1,4 @@
-name: S49 G2 Sneak Normal Sprint Same Paper DEV
+name: S49 G2 Sustained Sprint Same Paper DEV
 on:
   push:
     branches:
@@ -11,7 +11,7 @@ permissions:
 jobs:
   actual-l1-t2-world:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 55
     env:
       PYTHONPATH: 'src:tests:.'
       PYTHONDONTWRITEBYTECODE: '1'
@@ -133,6 +133,17 @@ jobs:
               cat "$DEV_OUTPUT/producer-world4.stdout"; exit 1;
             }
           cat "$DEV_OUTPUT/producer-world4.stdout"
+          S49_GOAL_G2_SPRINT_PREFIX_DEV_ONLY=1 S49_SPRINT_MOTOR_DEV_ONLY=1 \
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/WORLD5" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
+            --paper-plugin-dev "$PLUGIN" --paper-gait-observation-dev \
+            --offset-m 4.0 --g2-sprint-prefix-dev \
+            > "$DEV_OUTPUT/producer-world5.stdout" 2>&1 || {
+              cat "$DEV_OUTPUT/producer-world5.stdout"; exit 1;
+            }
+          cat "$DEV_OUTPUT/producer-world5.stdout"
           python - <<'PY'
           import json,os,pathlib
           report=json.loads((pathlib.Path(os.environ["DEV_OUTPUT"])/"WORLD1/goal_report.json").read_text())
@@ -221,6 +232,19 @@ jobs:
           assert slow["l1_t2_ledger_dev"]["original_action_boundary_receipts"]>=4
           print("S49_G2_SNEAK_THEN_NORMAL_ORIGINAL_S49_T1U_PAPER_DEV_PASS",
                 len(sneaks),slow_g["kinds"])
+          sustained=verify_derived("WORLD5")
+          assert sustained["status"]=="PASS"
+          assert sustained["stage"]=="GOAL_REACHED"
+          assert sustained["g2_sprint_prefix_dev"] is True
+          actions=sustained["g2_sprint_actions_dev"]
+          assert len(actions)==3
+          assert all(a["dispatch_effect"]=="set_forward_sprint_dev" and a["dispatch_applied"] for a in actions)
+          assert all(a["terminal_state"]=="outcome" for a in actions)
+          assert sustained["l1_t2_ledger_dev"]["owner_failed"] is False
+          candidates=sustained["g1_applied_gait_observation_dev"]["kinds"]
+          assert candidates.get("STABLE_SPRINT_FORWARD_CANDIDATE",0)>=3
+          assert candidates.get("STABLE_ORDINARY_FORWARD_CANDIDATE",0)>=1
+          print("S49_G2_THREE_SPRINT_ORIGINAL_S49_T1U_PAPER_DEV_PASS",len(actions),candidates)
           PY
       - name: Preserve all attempts and original DEV World
         if: always()
