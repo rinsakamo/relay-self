@@ -381,7 +381,13 @@ async def execute_mineflayer_command(
                 )
                 await adapter.send_observe(request_id)
                 live_probe = await _receive_until(
-                    adapter, timeout_s=timeout_s,
+                    adapter,
+                    # A stalled native response must not extend a held
+                    # movement input by the full S15 ACK timeout.
+                    timeout_s=min(
+                        timeout_s,
+                        max(0.01, deadline - loop.time()),
+                    ),
                     predicate=lambda message: (
                         isinstance(message, MineflayerObservation)
                         and message.kind == "probe"
