@@ -15,6 +15,7 @@ from adapters.mineflayer.python_protocol import (
     encode_equip_item,
     encode_forward_sprint_dev,
     encode_look,
+    encode_local_voxels_dev,
     encode_observe,
     encode_route_blocks_dev,
     encode_set_control,
@@ -276,6 +277,16 @@ class MineflayerProcessSession:
     async def send_observe(self, request_id: str | None = None) -> None:
         """Legacy probe when absent; correlated observe on explicit request ID."""
         await self._send(encode_observe(request_id))
+
+    async def send_local_voxels_dev(
+        self, request_id: str, *, origin_x: float, origin_z: float,
+    ) -> None:
+        """Read-only native voxel query through original sole Node writer."""
+        if os.environ.get("S49_L1_VOXEL_DEV_ONLY") != "1":
+            raise MineflayerProcessIOError("native voxel observation requires DEV gate")
+        await self._send(encode_local_voxels_dev(
+            request_id, origin_x=origin_x, origin_z=origin_z,
+        ))
 
     async def send_route_blocks_dev(
         self, request_id: str, *, origin_x: float, origin_z: float,
