@@ -74,5 +74,10 @@ def test_no_physical_evidence_cannot_pass_conflict_audit(tmp_path):
         ConflictingRealRoutesRejected,
         audit_conflicting_real_routes_dev,
     )
-    with pytest.raises((ConflictingRealRoutesRejected,FileNotFoundError)):
+    from adapters.mineflayer.s49_goal_l1_detour_review_dev import (
+        DetourEvidenceRejected,
+    )
+    with pytest.raises((
+        ConflictingRealRoutesRejected, DetourEvidenceRejected, FileNotFoundError,
+    )):
         audit_conflicting_real_routes_dev(tmp_path)
