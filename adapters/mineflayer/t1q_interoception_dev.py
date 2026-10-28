@@ -36,20 +36,26 @@ class T1qRejected(ValueError):
 
 def project_t1q_selfbody(
     frame: MineflayerPaperSnapshot, owner: TickAccounting, *, epoch_id: str,
+    passive_during_action: bool = False,
 ) -> SelfBodyView:
     """Join one already admitted Paper frame to same-tick owner sensor readouts.
 
     Paper tick and B0 metabolism tick are distinct and remain separately
     addressable. No extra native receive is issued; this is producer-local DEV,
     not independently R-authenticated source or a qualified P1 WAIT witness.
+    Passive during-action mode is **sensor readout only**: an active Action
+    cannot be closed, authorized, or classified as WAIT by this projection.
     """
+    if type(passive_during_action) is not bool:
+        raise T1qRejected("passive read-only flag must be boolean")
     if (not isinstance(frame, MineflayerPaperSnapshot)
             or not isinstance(owner, TickAccounting)
             or owner.failed or owner.previous is not frame
             or owner.session_id != frame.session_id
             or owner.energy.session_id != frame.session_id
             or frame.data["status"] != "ADMITTED"
-            or owner.active_action is not None or owner.pending_meal is not None
+            or (owner.active_action is not None and not passive_during_action)
+            or owner.pending_meal is not None
             or owner.fatigue is None or not owner.rows and owner.energy.body.tick != 0):
         raise T1qRejected("no same-owner admitted native + live body boundary")
     source = frame.data["snapshot"]
