@@ -1155,7 +1155,24 @@ async def qualify(
         report["exception"]=f"{type(exc).__name__}: {exc}"
     finally:
         if t2_owner is not None:
+            # Derived review material only, written after Actions have ceased.
+            # No extra native receive/writer or per-tick sync trace is added.
+            ledger_path=report_path.parent/"l1_t2_ledger_dev.json"
+            with ledger_path.open("x",encoding="utf-8") as ledger_file:
+                json.dump({
+                    "source_scope":"SINGLE_ORIGINAL_SESSION_T1F_PAPER_T2_DERIVED_DEV",
+                    "independent_native_source_authenticated":False,
+                    "exact_gait_attested":False,
+                    "rows":t2_owner.rows,
+                },ledger_file,sort_keys=True)
+                ledger_file.write("\n")
             report["l1_t2_ledger_dev"]={
+                "derived_file":ledger_path.name,
+                "derived_file_sha256":hashlib.sha256(ledger_path.read_bytes()).hexdigest(),
+                "wait_dev_rows":sum(x["activity"]=="WAIT_DEV" for x in t2_owner.rows),
+                "move_or_unknown_rows":sum(
+                    x["activity"]=="MOVE_OR_UNDETERMINED" for x in t2_owner.rows
+                ),
                 "session_id":t2_owner.session_id,
                 "source_admitted":t2_owner.previous is not None,
                 "owner_failed":t2_owner.failed,
