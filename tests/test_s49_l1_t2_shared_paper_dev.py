@@ -172,6 +172,7 @@ def test_admitted_t2_source_is_still_observed_by_same_g1(monkeypatch):
     owner,calls=owner_fixture()
     observed=[]
     session._l1_t2_owner_dev=owner
+    owner.rows=[]
     session._l1_t2_gait_observer_dev=NS(
         observe=lambda frame,**kw:observed.append((frame,kw["t2_activity"])))
     class Stream:
