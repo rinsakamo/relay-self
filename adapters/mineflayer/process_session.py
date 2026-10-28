@@ -8,6 +8,7 @@ from adapters.mineflayer.python_protocol import (
     MineflayerAdapterStarted,
     MineflayerDecodedMessage,
     MineflayerLaunchConfig,
+    MineflayerPaperSnapshot,
     MineflayerStreamDecoder,
     encode_attack_entity,
     encode_clear_controls,
@@ -63,6 +64,21 @@ class MineflayerProcessSession:
             if raw_capture_root is not None else None
         )
         self._raw_receipt: dict[str, object] | None = None
+        self._l1_t2_owner_dev = None
+
+    def bind_l1_t2_owner_dev(self, owner) -> None:
+        """Bind ONE existing T2 owner to the sole original receive() path."""
+        if (
+            os.environ.get("S49_L1_T2_CHANNEL_DEV_ONLY") != "1"
+            or self._started is None or self._l1_t2_owner_dev is not None
+            or owner is None or getattr(owner, "session_id", None) != self.started.session_id
+            or not callable(getattr(owner, "observe", None))
+            or getattr(owner, "previous", object()) is not None
+            or getattr(owner, "fatigue", object()) is not None
+            or getattr(owner, "failed", True)
+        ):
+            raise MineflayerProcessIOError("invalid opt-in original T2 tick owner")
+        self._l1_t2_owner_dev = owner
 
     @classmethod
     async def launch(
@@ -207,6 +223,12 @@ class MineflayerProcessSession:
                     else type(message).__name__
                 ),
             )
+        if self._l1_t2_owner_dev is not None and isinstance(message, MineflayerPaperSnapshot):
+            try:
+                self._l1_t2_owner_dev.observe(message)
+            except Exception:
+                self._l1_t2_owner_dev.failed = True
+                raise
         return message
 
     async def send_set_control(
