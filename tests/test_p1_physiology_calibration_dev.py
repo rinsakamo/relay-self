@@ -38,6 +38,15 @@ def test_historical_default_profile_hash_exactly_preserved():
     assert result.after.fatigue == pytest.approx(.25)
 
 
+def test_calibrated_native_case_is_opt_in_only():
+    from adapters.mineflayer.t1e_native_dev import TICK_CASES
+    from adapters.mineflayer.t1o_trace_policy_dev import trace_enabled
+
+    assert "t1s_calibrated_body_loop" in TICK_CASES
+    assert trace_enabled("t1s_calibrated_body_loop", "off") is False
+    assert trace_enabled("t1r_body_recovery", "off") is False
+
+
 def test_new_profile_is_opt_in_distinct_source_hash():
     candidate = calibrated_walk_profile_dev()
     old = FatigueProfile(enabled=True)
