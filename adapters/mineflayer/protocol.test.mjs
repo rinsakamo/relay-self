@@ -663,10 +663,10 @@ test('G2 crouch+forward DEV requires strict opt-in and exact two-control shape',
       () => parseCommand({ ...valid, sneak: false }), /requires forward=true/
     )
     assert.throws(
-      () => parseCommand({ ...valid, extra: true }), /keys/
+      () => parseCommand({ ...valid, extra: true }), /fields are invalid/
     )
     assert.throws(
-      () => parseCommand({ ...valid, sprint: true }), /keys/
+      () => parseCommand({ ...valid, sprint: true }), /fields are invalid/
     )
   } finally {
     if (prior === undefined) {
