@@ -12,17 +12,29 @@ from dataclasses import asdict, replace
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.python_protocol import MineflayerPaperSnapshot
 from experiments.fatigue_p1 import FatigueFrame, FatigueProfile, advance, initial_state
+from experiments.p1_gait_dev import GaitTickDev, advance_gait_dev
 from experiments.metabolism_viability import MetabolismConfig
 
 
 class TickAccounting:
-    def __init__(self, session_id, *, fatigue_profile: FatigueProfile | None = None):
+    def __init__(self, session_id, *, fatigue_profile: FatigueProfile | None = None,
+                 gait_source=None):
         self.session_id = session_id
         self.energy = B0EnergyLedger(session_id, config=MetabolismConfig(
             basal_cost=.001, move_cost=.002, fight_cost=.01))
         if fatigue_profile is not None and not isinstance(fatigue_profile, FatigueProfile):
             raise TypeError("fatigue_profile must be an existing P1 profile")
         self.profile = fatigue_profile if fatigue_profile is not None else FatigueProfile(enabled=True)
+        if gait_source is not None and not callable(gait_source):
+            raise TypeError("gait_source must be a World-owner applied-gait callback")
+        if gait_source is not None and (
+            not self.profile.enabled
+            or self.profile.recovery_time_constant_world_seconds is not None
+        ):
+            # Gait transition already contains its own mode-specific recovery.
+            # Never mix the T1s 40s WAIT transition into this state.
+            raise ValueError("single gait P1 requires enabled non-tau profile")
+        self.gait_source = gait_source
         self.fatigue = None
         self.previous = None
         self.active_action = None
@@ -99,9 +111,32 @@ class TickAccounting:
         # measured displacement to preserve P1's consecutive clock, retaining
         # UNDETERMINED in the source ledger instead of calling it WAIT.
         activity = "WAIT" if wait else "MOVE"
-        fatigue_step = advance(self.profile, self.fatigue, FatigueFrame(
-            self.session_id, s["world_tick"], activity, observed_blocks=0 if wait else blocks,
-            blocked=not wait and blocks < 1e-9))
+        gait_tick = None
+        if self.gait_source is None:
+            fatigue_step = advance(self.profile, self.fatigue, FatigueFrame(
+                self.session_id, s["world_tick"], activity,
+                observed_blocks=0 if wait else blocks,
+                blocked=not wait and blocks < 1e-9))
+        else:
+            # T2 has already established the single admitted consecutive source.
+            # Gait evidence is owned outside this ledger (S49/World); T2 does
+            # not guess WALK, DASH, or recovery from a motor request alone.
+            try:
+                gait_tick = self.gait_source(frame, self.previous, wait)
+                if (not isinstance(gait_tick, GaitTickDev)
+                        or gait_tick.session_id != self.session_id
+                        or gait_tick.world_tick != s["world_tick"]
+                        or (gait_tick.gait == "WAIT") != wait):
+                    raise ValueError("applied gait missing, foreign or disagrees with WAIT_DEV")
+                fatigue_step = advance_gait_dev(
+                    self.profile, self.fatigue, gait_tick)
+                if fatigue_step.added_m0_charge != 0:
+                    # The existing M0 owner has no atomic DASH charge posting
+                    # here. Do not adopt a charge proposal as paid energy.
+                    raise ValueError("DASH extra M0 must be posted by existing owner")
+            except Exception:
+                self.failed = True
+                raise
         cognition = .0001  # one bounded L0 evaluation, symbolic bridge, not joules
         self.energy.config = replace(self.energy.config, basal_cost=.001 + cognition,
                                      move_cost=blocks * .002)
@@ -114,7 +149,7 @@ class TickAccounting:
         if meal is not None:
             self.pending_meal = None
         self.fatigue = fatigue_step.after
-        self.rows.append({"session_id": self.session_id, "world": s["world"],
+        row = {"session_id": self.session_id, "world": s["world"],
             "world_tick": s["world_tick"], "server_tick": s["tick"], "source_seq": frame.seq,
             "sim_seconds": 1 / 20, "activity": "WAIT_DEV" if wait else "MOVE_OR_UNDETERMINED",
             "motor_mode": "WALK" if phase["phase"] == "MOVING" else "UNDETERMINED",
@@ -128,5 +163,14 @@ class TickAccounting:
             "paper_basal_ticks": s["basal_ticks"],
             "paper_basal_exhaustion": s["basal_exhaustion"],
             "paper_motion_exhaustion": s["motion_exhaustion"],
-            "full_tick_R_attested": False, "qualification": False})
+            "full_tick_R_attested": False, "qualification": False}
+        if gait_tick is not None:
+            row.update(
+                p1_transition="SINGLE_P1_APPLIED_GAIT_DEV",
+                applied_gait=gait_tick.gait, applied_direction=gait_tick.direction,
+                applied_dash_power=gait_tick.applied_dash_power,
+                p1_gait_extra_m0_posted=False,
+                gait_source_authenticated_R=False,
+            )
+        self.rows.append(row)
         self.previous = frame
