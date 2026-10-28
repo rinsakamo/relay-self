@@ -8,9 +8,11 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import math
 import os
+import shutil
 import tempfile
 from dataclasses import asdict
 from pathlib import Path
@@ -137,6 +139,8 @@ async def qualify(
     local_grid_search_dev:bool=False,
     grid_refresh_dev:bool=False,
     grid_midroute_obstacle_dev:bool=False,
+    paper_jar_dev:Path|None=None,
+    paper_plugin_dev:Path|None=None,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -166,6 +170,7 @@ async def qualify(
         "grid_refresh_dev":grid_refresh_dev,
         "grid_midroute_obstacle_dev":grid_midroute_obstacle_dev,
         "l1_t2_shared_channel_dev":os.environ.get("S49_L1_T2_CHANNEL_DEV_ONLY")=="1",
+        "paper_server_dev":paper_jar_dev is not None,
         "native_grid_refresh_observations_dev":[],
         "native_grid_search_choice_dev":None,
         "native_local_voxel_observation_dev":None,
@@ -188,6 +193,19 @@ async def qualify(
             or os.environ.get("S49_FORWARD_MOTOR_DEV_ONLY")!="1"
             or os.environ.get("NODE_OPTIONS")
             or type(offset_m) is not float or not 1.8<=offset_m<=4.0
+            or (paper_jar_dev is None) != (paper_plugin_dev is None)
+            or (paper_jar_dev is not None and (
+                os.environ.get("S49_L1_T2_CHANNEL_DEV_ONLY")!="1"
+                or os.environ.get("S49_L1_T2_BOUNDARY_DEV_ONLY")!="1"
+                or not isinstance(paper_jar_dev,Path)
+                or not isinstance(paper_plugin_dev,Path)
+                or not paper_jar_dev.is_file()
+                or not paper_plugin_dev.is_file()
+                or paper_jar_dev.is_symlink()
+                or paper_plugin_dev.is_symlink()
+            ))
+            or (os.environ.get("S49_L1_T2_CHANNEL_DEV_ONLY")=="1"
+                and paper_jar_dev is None)
             or type(inject_threat_during_first_dev) is not bool
             or (inject_threat_during_first_dev and (
                 inject_threat_after_first_dev
@@ -282,10 +300,38 @@ async def qualify(
             raise RuntimeError("original S49 goal DEV gates missing")
         temp=tempfile.TemporaryDirectory(prefix="s49-l0-goal-world-")
         root=Path(temp.name)
-        report.update(await asyncio.to_thread(_fetch_official_server,root/"minecraft.jar"))
-        _write_config(root)
+        if paper_jar_dev is None:
+            report.update(await asyncio.to_thread(_fetch_official_server,root/"minecraft.jar"))
+            _write_config(root)
+            server_jar=root/"minecraft.jar"
+        else:
+            _write_config(root)
+            # Reuse T1w Paper plugin exact-source build in isolated disposable
+            # World. Do NOT modify original L1 plugin or Paper source.
+            server_jar=root/"paper.jar"
+            shutil.copy2(paper_jar_dev,server_jar)
+            plugin_dir=root/"plugins/RelayMetabolismDev"
+            plugin_dir.mkdir(parents=True)
+            shutil.copy2(paper_plugin_dev,root/"plugins/relay-metabolism-dev.jar")
+            config=(Path(__file__).parent/
+                    "m02_paper_dev/src/main/resources/config.yml").read_text()
+            config=config.replace("dev-enabled: false","dev-enabled: true")
+            config += ("\nadaptive-tick-observer-dev: true\n"
+                       "t1f-snapshot-dev: true\n"
+                       "t1u-gait-dev: false\n")
+            (plugin_dir/"config.yml").write_text(config)
+            original=(root/"server.properties").read_text()
+            (root/"server.properties").write_text(
+                original.replace("gamemode=creative","gamemode=survival")
+                +"generate-structures=false\n"
+            )
+            report["server_source"]="PINNED_DEV_PAPER_NOT_OFFICIAL_VANILLA"
+            report["paper_jar_sha256"]=hashlib.sha256(server_jar.read_bytes()).hexdigest()
+            report["paper_plugin_sha256"]=hashlib.sha256(
+                (root/"plugins/relay-metabolism-dev.jar").read_bytes()
+            ).hexdigest()
         report["stage"]="SERVER_START"
-        server,collector,_=await _ready_server(root,root/"minecraft.jar",server_log)
+        server,collector,_=await _ready_server(root,server_jar,server_log)
         assert server.stdin is not None
         _command(server,"gamerule doMobSpawning false")
         _command(server,"kill @e[type=minecraft:zombie]")
@@ -1156,6 +1202,8 @@ def main()->int:
     p.add_argument("--grid-refresh-dev",action="store_true")
     p.add_argument("--grid-midroute-obstacle-dev",action="store_true")
     p.add_argument("--right-lane-block-dev",action="store_true")
+    p.add_argument("--paper-jar-dev",type=Path)
+    p.add_argument("--paper-plugin-dev",type=Path)
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -1183,6 +1231,8 @@ def main()->int:
         grid_refresh_dev=args.grid_refresh_dev,
         grid_midroute_obstacle_dev=args.grid_midroute_obstacle_dev,
         right_lane_block_dev=args.right_lane_block_dev,
+        paper_jar_dev=args.paper_jar_dev,
+        paper_plugin_dev=args.paper_plugin_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
