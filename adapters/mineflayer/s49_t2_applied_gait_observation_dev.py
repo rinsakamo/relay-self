@@ -116,7 +116,15 @@ class G1AppliedGaitObserverDev:
                 elif back and ordinary:
                     kind = "STABLE_ORDINARY_BACK_CANDIDATE"
                 elif (forward and controls["sprint"] and not controls["sneak"]
-                        and gait["sprinting"] and gait["speed_value"] > gait["speed_base"]):
+                        and gait["sprinting"] and gait["speed_modifiers"] == 2
+                        and gait["speed_value"] > gait["speed_base"] * 1.6):
+                    # The two server modifiers + sprint are a bounded Paper
+                    # effective-speed candidate, NOT a verified DASH motor
+                    # rate or an authorized M0/P1 gait transition.
+                    kind = "STABLE_DASH_MODIFIER_FORWARD_CANDIDATE"
+                elif (forward and controls["sprint"] and not controls["sneak"]
+                        and gait["sprinting"] and gait["speed_modifiers"] == 1
+                        and gait["speed_value"] > gait["speed_base"]):
                     kind = "STABLE_SPRINT_FORWARD_CANDIDATE"
                 elif (forward and controls["sneak"] and not controls["sprint"]
                         and gait["sneaking"]):
