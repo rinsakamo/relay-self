@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 import os
+from collections.abc import Awaitable, Callable
 from dataclasses import replace
 
 from adapters.mineflayer.action_outcome import interpret_world_consequence
@@ -20,7 +21,10 @@ from adapters.mineflayer.normal_action import (
     NormalSessionActionExecutor,
 )
 from adapters.mineflayer.process_session import MineflayerProcessSession
-from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.python_protocol import (
+    MineflayerEffectResult,
+    MineflayerObservation,
+)
 from relay_self.action import ActionState
 from relay_self.action_outcome import (
     ActionOutcomeDisposition,
@@ -53,8 +57,21 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         self,session:MineflayerProcessSession,*,directive:L1GoalDirective,
         decision:L0GoalDecision,probe:MineflayerObservation,
         propose:NormalActionAuthorization,issue:NormalActionAuthorization,
+        on_effect_ack_dev: (
+            Callable[[str,MineflayerEffectResult],Awaitable[None]]|None
+        )=None,
+        on_live_probe_dev:Callable[[MineflayerObservation],bool]|None=None,
     )->NormalActionReceipt:
         goal=directive.proposal if isinstance(directive,L1GoalDirective) else None
+        if (
+            (on_live_probe_dev is not None or on_effect_ack_dev is not None)
+            and (
+                os.environ.get("S49_L0_INFLIGHT_PREEMPT_DEV_ONLY")!="1"
+                or not callable(on_live_probe_dev)
+                or not callable(on_effect_ack_dev)
+            )
+        ):
+            raise NormalActionRejected("in-flight DEV callbacks need both explicit owners")
         if (
             os.environ.get("S49_L0_GOAL_LOOP_DEV_ONLY")!="1"
             or not isinstance(session,MineflayerProcessSession)
@@ -144,11 +161,13 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         try:
             consequence=await execute_mineflayer_command(
                 session,command,timeout_s=9,provenance=origin,
+                on_effect_ack_dev=on_effect_ack_dev,
+                on_live_probe_dev=on_live_probe_dev,
             )
             interpretation=interpret_world_consequence(
                 issued,result,consequence,provenance=origin,
             )
-            if interpretation.disposition is ActionOutcomeDisposition.UNAVAILABLE:
+            if interpretation.disposition is not ActionOutcomeDisposition.OUTCOME:
                 terminal=self.supervisor.mark_unknown(
                     issued.action_id,at_ns=t+3,provenance=origin,
                 )
