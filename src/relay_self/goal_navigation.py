@@ -130,6 +130,30 @@ class L0GoalDecision:
     reason: str
 
 
+def compute_goal_bearing_dev(
+    directive: L1GoalDirective, *, current_x: float, current_z: float,
+) -> tuple[float, float, float]:
+    """Unit heading and Minecraft yaw to L1-directed immutable XZ target.
+
+    This is a pure desired orientation, NOT proof the body turned.
+    The actual physical bearing must be checked from a later native S16.
+    """
+    if (
+        not isinstance(directive, L1GoalDirective)
+        or type(current_x) not in (float, int)
+        or type(current_z) not in (float, int)
+        or not math.isfinite(current_x)
+        or not math.isfinite(current_z)
+    ):
+        raise GoalControlRejected("goal bearing needs finite current World XZ")
+    dx = directive.proposal.target_x - current_x
+    dz = directive.proposal.target_z - current_z
+    distance = math.hypot(dx, dz)
+    if not 0.3 <= distance <= 7.0:
+        raise GoalControlRejected("goal bearing needs bounded nonzero distance")
+    return dx / distance, dz / distance, math.atan2(-dx, -dz)
+
+
 class ObservedGoalL0:
     """Single goal owner; fresh probes alone advance the motor loop.
 
