@@ -107,7 +107,7 @@ jobs:
           g3=report["g3_single_t2_p1_m0_owner_dev"]
           assert g3["original_p1_owner"] and g3["original_m0_owner"]
           assert not g3["gait_R_attested"] and not g3["owner_failed"]
-          assert g3["dash_extra_energy_paid"] > 0
+          assert g3["dash_extra_energy_paid"] >= 0
           assert g3["stable_gait_ticks"] >= 1
           assert g3["single_p1_updates"] == report["l1_t2_ledger_dev"]["rows"]
           assert g3["stable_gait_ticks"]+g3["undetermined_fallback_ticks"]==g3["single_p1_updates"]
@@ -126,7 +126,11 @@ jobs:
           t2_rows=json.loads((folder/t2["derived_file"]).read_text())["rows"]
           assert len(t2_rows)==t2["rows"]
           assert abs(sum(x["g3_extra_m0_paid_dev"] for x in t2_rows)-g3["dash_extra_energy_paid"])<1e-8
-          assert sum(x.get("p1_gait_extra_m0_posted",False) for x in t2_rows)>=1
+          # Only source-stable DASH candidates may pay. No candidate means
+          # zero charge rather than an invented physical duration.
+          dash_candidate_count=sum(x["kind"]=="STABLE_DASH_MODIFIER_FORWARD_CANDIDATE" for x in rows)
+          assert abs(g3["dash_extra_energy_paid"]-0.01*dash_candidate_count)<1e-8
+          assert sum(x.get("p1_gait_extra_m0_posted",False) for x in t2_rows)==dash_candidate_count
           assert all(x["g3_single_p1_owner_dev"] for x in t2_rows)
           assert all(not x["full_tick_R_attested"] for x in t2_rows)
           assert all(x["m0"]["after"]["tick"]==i+1 for i,x in enumerate(t2_rows))
