@@ -25,7 +25,6 @@ from adapters.mineflayer.b0_energy_bridge import (
     DashM0InvoiceDev,
 )
 from adapters.mineflayer.execution import WorldConsequenceStatus
-from adapters.mineflayer.s49_l0_observed_step_dev import plan_next_l0_step_dev
 from adapters.mineflayer.normal_action import (
     NormalActionAuthorization,
     NormalActionReceipt,
@@ -54,6 +53,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     _native_threat,
     _new_session,
 )
+from adapters.mineflayer.s49_l0_observed_step_dev import plan_next_l0_step_dev
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
