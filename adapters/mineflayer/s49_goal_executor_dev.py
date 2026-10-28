@@ -36,6 +36,7 @@ from relay_self.execution_binding import (
     start_and_propose_bound_execution,
 )
 from relay_self.goal_detour_dev import L1DetourPlanDev
+from relay_self.goal_grid_search_dev import L1GridRoutePlanDev
 from relay_self.goal_navigation import (
     GoalDecisionKind,
     L0GoalDecision,
@@ -54,11 +55,11 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         self._goal_id: str|None=None
         self._previous_probe_seq=-1
         self._phase_action_count=0
-        self._route_plan: L1DetourPlanDev | None=None
+        self._route_plan: L1DetourPlanDev | L1GridRoutePlanDev | None=None
         self._route_stage=-1
 
     def adopt_waypoint_dev(
-        self, plan:L1DetourPlanDev, stage_index:int, *,
+        self, plan:L1DetourPlanDev|L1GridRoutePlanDev, stage_index:int, *,
         last_closed_action_id:str, latest_native_seq:int,
     )->None:
         """Rebind SAME original Action owner only after a closed previous stage.
@@ -69,14 +70,16 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         """
         if (
             os.environ.get("S49_L1_WAYPOINT_DEV_ONLY")!="1"
-            or not isinstance(plan,L1DetourPlanDev)
+            or not isinstance(plan,(L1DetourPlanDev,L1GridRoutePlanDev))
+            or (isinstance(plan,L1GridRoutePlanDev) and
+                os.environ.get("S49_L1_GRID_SEARCH_DEV_ONLY")!="1")
             or plan.parent.session_id!=self.session_id
             or plan.parent.intent_id!=(
                 self.intent.current_intent.intent_id
                 if self.intent.current_intent else None
             )
             or type(stage_index) is not int
-            or not 0<=stage_index<3
+            or not 0<=stage_index<len(plan.stages)
             or not isinstance(last_closed_action_id,str)
             or not last_closed_action_id
             or type(latest_native_seq) is not int
