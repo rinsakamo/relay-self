@@ -11,6 +11,7 @@ import shutil
 from dataclasses import asdict
 from pathlib import Path
 
+from adapters.mineflayer.python_protocol import MineflayerRouteBlocksDev
 from adapters.mineflayer.s49_goal_l1_detour_review_dev import review
 from adapters.mineflayer.s49_l1_experience_export_dev import (
     export_episode_dev,
@@ -19,6 +20,10 @@ from adapters.mineflayer.s49_l1_experience_export_dev import (
 from relay_self.goal_memory_choice_dev import (
     make_route_memory_dev,
     select_selfworld_route_dev,
+)
+from relay_self.goal_native_blocks_dev import (
+    NativeLanePresentDev,
+    NativeRouteBlockPresentDev,
 )
 from relay_self.goal_navigation import GoalControlRejected, L2GoalProposal
 from relay_self.persistent_cognition import (
@@ -177,6 +182,7 @@ def recall_from_selfworld_dev(
     blocked_action_id:str,blocked_s16_seq:int,
     blocked_reason:str,blocked_terminal:str,
     blocked_consequence:str,
+    native_route_blocks_dev:MineflayerRouteBlocksDev|None=None,
 ):
     if (
         not isinstance(snapshot_path,Path) or not isinstance(catalog_path,Path)
@@ -250,12 +256,30 @@ def recall_from_selfworld_dev(
         observation=None,memories=owner.memories,beliefs=(),
         scenarios=(),forecasts=(),self_body=None,
     )
+    native_present=None
+    if native_route_blocks_dev is not None:
+        if not isinstance(native_route_blocks_dev,MineflayerRouteBlocksDev):
+            raise GoalControlRejected("typed original Mineflayer route source required")
+        native_present=NativeRouteBlockPresentDev(
+            session_id=native_route_blocks_dev.session_id,
+            native_seq=native_route_blocks_dev.seq,
+            request_id=native_route_blocks_dev.request_id,
+            origin_x=native_route_blocks_dev.origin_x,
+            origin_z=native_route_blocks_dev.origin_z,
+            player_y=native_route_blocks_dev.player_y,
+            coverage=native_route_blocks_dev.coverage,
+            lanes=tuple(NativeLanePresentDev(
+                side=lane.side,states=lane.states,
+            ) for lane in native_route_blocks_dev.lanes),
+            provenance=native_route_blocks_dev.provenance,
+        )
     selection=select_selfworld_route_dev(
         view,owner,goal,start_x=start_x,start_z=start_z,
         fixture_scope=SCOPE,blocked_action_id=blocked_action_id,
         blocked_s16_seq=blocked_s16_seq,blocked_reason=blocked_reason,
         blocked_terminal=blocked_terminal,
         blocked_consequence=blocked_consequence,
+        route_present_dev=native_present,
         provenance=Provenance(
             "s49-dev-l1-memory-choice",f"session:{goal.session_id}:seq:{blocked_s16_seq}",
         ),
