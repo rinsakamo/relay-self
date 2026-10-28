@@ -37,6 +37,10 @@ from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
 from adapters.mineflayer.s49_goal_waypoint_route_dev import follow_l1_detour_dev
 from adapters.mineflayer.s49_l1_experience_export_dev import load_episode_dev
 from adapters.mineflayer.s49_l1_selfworld_memory_dev import recall_from_selfworld_dev
+from adapters.mineflayer.s49_paper_world_first_dev import (
+    _await_dash_dev_line,
+    offline_uuid,
+)
 from adapters.mineflayer.s49_normal_session_real_ci import (
     _cleanup_session,
     _write_final_report,
@@ -142,6 +146,8 @@ async def qualify(
     grid_midroute_obstacle_dev:bool=False,
     paper_jar_dev:Path|None=None,
     paper_plugin_dev:Path|None=None,
+    paper_dash_plugin_dev:Path|None=None,
+    g2_dash_first_dev:bool=False,
     paper_gait_observation_dev:bool=False,
     g2_sprint_first_dev:bool=False,
     g2_sprint_prefix_dev:bool=False,
@@ -180,6 +186,8 @@ async def qualify(
         "g2_sprint_first_dev":g2_sprint_first_dev,
         "g2_sprint_prefix_dev":g2_sprint_prefix_dev,
         "g2_sprint_actions_dev":[],
+        "g2_dash_first_dev":g2_dash_first_dev,
+        "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
         "native_grid_refresh_observations_dev":[],
@@ -213,6 +221,19 @@ async def qualify(
                 or goal_turn_dx_dev!=0.0
                 or os.environ.get("S49_GOAL_G2_SNEAK_DEV_ONLY")!="1"
             ))
+            or type(g2_dash_first_dev) is not bool
+            or (g2_dash_first_dev and (
+                not g2_sprint_prefix_dev
+                or not paper_gait_observation_dev
+                or paper_dash_plugin_dev is None
+                or not isinstance(paper_dash_plugin_dev,Path)
+                or not paper_dash_plugin_dev.is_file()
+                or paper_dash_plugin_dev.is_symlink()
+                or os.environ.get("S49_GOAL_G2_DASH_FIRST_DEV_ONLY")!="1"
+                or os.environ.get("S49_SPEED_ATTR_SYNC_DEV_ONLY")!="1"
+                or obstacle_wall_dev or detour_after_wall_dev
+            ))
+            or (paper_dash_plugin_dev is not None and not g2_dash_first_dev)
             or type(g2_sprint_prefix_dev) is not bool
             or (g2_sprint_prefix_dev and (
                 not paper_gait_observation_dev
@@ -356,6 +377,19 @@ async def qualify(
             plugin_dir=root/"plugins/RelayMetabolismDev"
             plugin_dir.mkdir(parents=True)
             shutil.copy2(paper_plugin_dev,root/"plugins/relay-metabolism-dev.jar")
+            if g2_dash_first_dev:
+                dash_dir=root/"plugins/RelayS49DashDev"
+                dash_dir.mkdir()
+                shutil.copy2(
+                    paper_dash_plugin_dev,root/"plugins/s49-dash-dev.jar",
+                )
+                (dash_dir/"config.yml").write_text(
+                    "enabled: true\nexpected-player-name: RelaySelf\n",
+                    encoding="utf-8",
+                )
+                report["g2_dash_plugin_sha256"]=hashlib.sha256(
+                    (root/"plugins/s49-dash-dev.jar").read_bytes(),
+                ).hexdigest()
             config=(Path(__file__).parent/
                     "m02_paper_dev/src/main/resources/config.yml").read_text()
             config=config.replace("dev-enabled: false","dev-enabled: true")
@@ -682,8 +716,23 @@ async def qualify(
                     "signed_yaw_not_measured":True,
                 })
             l0.admitted(choice)
-            receipt=await executor.execute_goal_step(
-                session,directive=directive,decision=choice,probe=probe,
+            g2_dash_armed=False
+            if g2_dash_first_dev and i==1:
+                # Paper modifier ONLY: the next physical Action still comes
+                # from the original S49 owner. No second packet writer.
+                offset=server_log.stat().st_size if server_log.exists() else 0
+                _command(
+                    server,"relays49dasharm "+action_id+" "+sid+" "
+                    +offline_uuid("RelaySelf")+" 1.0",
+                )
+                await server.stdin.drain()
+                await _await_dash_dev_line(
+                    server_log,offset,marker="ARM",action_id=action_id,
+                )
+                g2_dash_armed=True
+            try:
+                receipt=await executor.execute_goal_step(
+                    session,directive=directive,decision=choice,probe=probe,
                 propose=grant(NormalActionStage.PROPOSE),
                 issue=grant(NormalActionStage.ISSUE),
                 g2_sprint_first_dev=g2_sprint_first_dev and executor._count==0,
@@ -693,11 +742,33 @@ async def qualify(
                     "on_effect_ack_dev":ack_dev,
                     "on_live_probe_dev":observe_during_action,
                 } if inject_threat_during_first_dev and i==1 else {}),
-                **({
-                    "look_yaw_dev":float(yaw),
-                    "on_look_ack_dev":on_turn_ack,
-                } if goal_turn_dx_dev!=0.0 or obstacle_wall_dev else {}),
-            )
+                    **({
+                        "look_yaw_dev":float(yaw),
+                        "on_look_ack_dev":on_turn_ack,
+                    } if goal_turn_dx_dev!=0.0 or obstacle_wall_dev else {}),
+                )
+            finally:
+                if g2_dash_armed:
+                    # Even UNKNOWN/FAILED native Action must release the
+                    # physical Paper bonus. No P1/M0 receipt is minted.
+                    offset=server_log.stat().st_size if server_log.exists() else 0
+                    _command(
+                        server,"relays49dashoff "+action_id+" "+sid+" "
+                        +offline_uuid("RelaySelf"),
+                    )
+                    await server.stdin.drain()
+                    window=await _await_dash_dev_line(
+                        server_log,offset,marker="COMPLETE",action_id=action_id,
+                    )
+                    report["g2_dash_modifier_dev"]={
+                        "action_id":action_id,
+                        "released":True,
+                        "paper_complete_source_observed":True,
+                        "one_shot":True,
+                        "m0_extra_posted":False,
+                        "p1_gait_posted":False,
+                        "native_packet_to_world_tick_attested":False,
+                    }
             if g2_sneak_prefix_dev and executor._count<=3:
                 dispatch=receipt.consequence.dispatch_receipt
                 report["g2_sneak_actions_dev"].append({
@@ -1355,6 +1426,8 @@ def main()->int:
     p.add_argument("--right-lane-block-dev",action="store_true")
     p.add_argument("--paper-jar-dev",type=Path)
     p.add_argument("--paper-plugin-dev",type=Path)
+    p.add_argument("--paper-dash-plugin-dev",type=Path)
+    p.add_argument("--g2-dash-first-dev",action="store_true")
     p.add_argument("--paper-gait-observation-dev",action="store_true")
     p.add_argument("--g2-sprint-first-dev",action="store_true")
     p.add_argument("--g2-sprint-prefix-dev",action="store_true")
@@ -1388,6 +1461,8 @@ def main()->int:
         right_lane_block_dev=args.right_lane_block_dev,
         paper_jar_dev=args.paper_jar_dev,
         paper_plugin_dev=args.paper_plugin_dev,
+        paper_dash_plugin_dev=args.paper_dash_plugin_dev,
+        g2_dash_first_dev=args.g2_dash_first_dev,
         paper_gait_observation_dev=args.paper_gait_observation_dev,
         g2_sprint_first_dev=args.g2_sprint_first_dev,
         g2_sprint_prefix_dev=args.g2_sprint_prefix_dev,
