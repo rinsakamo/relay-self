@@ -1,0 +1,103 @@
+name: S49 L1 SelfWorld Multi-Episode Memory DEV
+on:
+  push:
+    branches:
+      - self/dev-l1-selfworld-memory-choice-20261028
+    paths:
+      - .github/workflows/self-l1-selfworld-memory-dev.yml
+      - src/relay_self/goal_memory_choice_dev.py
+      - adapters/mineflayer/s49_l1_selfworld_memory_dev.py
+      - adapters/mineflayer/s49_l1_selfworld_memory_review_dev.py
+      - adapters/mineflayer/s49_goal_loop_real_dev.py
+      - tests/test_s49_l1_selfworld_memory_choice_dev.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s49-l1-selfworld-memory-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  multiepisode-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 29
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      S49_REAL_SERVER_CI: '1'
+      S49_FORWARD_MOTOR_DEV_ONLY: '1'
+      S49_L0_GOAL_LOOP_DEV_ONLY: '1'
+      S49_L0_TURN_DEV_ONLY: '1'
+      S49_L0_WALL_DEV_ONLY: '1'
+      S49_L1_WAYPOINT_DEV_ONLY: '1'
+      S49_L1_SELFWORLD_MEMORY_DEV_ONLY: '1'
+      DEV_OUTPUT: '/tmp/s49-l1-selfworld-${{ github.run_id }}-${{ github.run_attempt }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Focused Python 3.12, Ruff and Node 22 first
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          python -m compileall -q src/relay_self/goal_memory_choice_dev.py adapters/mineflayer/s49_l1_selfworld_memory_dev.py adapters/mineflayer/s49_l1_selfworld_memory_review_dev.py adapters/mineflayer/s49_goal_loop_real_dev.py tests/test_s49_l1_selfworld_memory_choice_dev.py
+          ruff check src/relay_self/goal_memory_choice_dev.py adapters/mineflayer/s49_l1_selfworld_memory_dev.py adapters/mineflayer/s49_l1_selfworld_memory_review_dev.py adapters/mineflayer/s49_goal_loop_real_dev.py tests/test_s49_l1_selfworld_memory_choice_dev.py
+          python -m pytest -q tests/test_s49_l1_selfworld_memory_choice_dev.py tests/test_s49_l1_episodic_reuse_dev.py tests/test_s49_goal_l1_detour_dev.py
+          node --check adapters/mineflayer/bridge.mjs
+      - name: Original Mineflayer install
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: Four original Minecraft 1.21.8 Worlds two sources, one failure, one recall
+        run: |
+          set -euo pipefail
+          mkdir -m 700 "$DEV_OUTPUT"
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/WALL_STOP" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --offset-m 4.0 --obstacle-wall-dev
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/DETOUR" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --offset-m 4.0 --obstacle-wall-dev --detour-after-wall-dev
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/DETOUR_B" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --offset-m 4.0 --obstacle-wall-dev --detour-after-wall-dev
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from adapters.mineflayer.s49_l1_selfworld_memory_dev import build_selfworld_memory_dev
+          root=Path(os.environ["DEV_OUTPUT"])
+          print("S49_L1_MEMORY_BUILT",build_selfworld_memory_dev(root))
+          PY
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/TRANSFER" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --offset-m 4.0 --obstacle-wall-dev --detour-after-wall-dev \
+            --selfworld-memory-snapshot-dev "$DEV_OUTPUT/persistent_self_memory_dev.json" \
+            --selfworld-memory-catalog-dev "$DEV_OUTPUT/selfworld_route_catalog_dev.json"
+          python -m adapters.mineflayer.s49_l1_selfworld_memory_review_dev \
+            --root "$DEV_OUTPUT"
+      - name: Preserve original World sources and existing Memory snapshot
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-selfworld-multi-episode-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEV_OUTPUT }}
+          retention-days: 7
+      - name: DEV not QUAL or SCIENCE
+        if: always()
+        run: echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
