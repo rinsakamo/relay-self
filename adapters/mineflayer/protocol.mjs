@@ -239,6 +239,20 @@ export function parseCommand (raw) {
     })
   }
 
+  if (value.type === 'observe_local_voxels_dev') {
+    if (process.env.S49_L1_VOXEL_DEV_ONLY !== '1') {
+      throw new Error('local voxel observation requires DEV gate')
+    }
+    requireExactKeys('local voxel probe DEV', value,
+      ['type', 'request_id', 'origin_x', 'origin_z'])
+    return Object.freeze({
+      type: 'observe_local_voxels_dev',
+      request_id: requireProbeRequestId(value.request_id),
+      origin_x: requireFiniteNumber('origin_x', value.origin_x),
+      origin_z: requireFiniteNumber('origin_z', value.origin_z)
+    })
+  }
+
   if (value.type === 'shutdown') {
     requireExactKeys('shutdown command', value, ['type'])
     return Object.freeze({ type: 'shutdown' })
