@@ -5,6 +5,7 @@ import { isAbsolute, join } from 'node:path'
 import readline from 'node:readline'
 import { monitorEventLoopDelay } from 'node:perf_hooks'
 import { emitWithT1nTiming, openT1nSidecar } from './t1n_emit_timing_dev.mjs'
+import { attachT1wMotionWitness, openT1wSidecar } from './t1w_motion_witness_dev.mjs'
 
 import {
   attachHealthSynchronizedSpawnListeners,
@@ -183,9 +184,21 @@ const t1mDiagnostic = t1mTraceFd === null ? null : event => {
   }) + '\n')
   if (event.kind === 'snapshot_callback') t1mEventLoopDelay.reset()
 }
+// Dedicated T1w trace, no synchronous per-physics-step writes. A partial or
+// backpressured sidecar is rejected by the independent reviewer, never
+// promoted to native source truth.
+const t1wPath = process.env.RELAYSELF_T1W_MOTION_TRACE_DEV
+if (t1wPath && (t1fOptIn !== '1' || paperTickOptIn !== '1' ||
+    config.version !== '1.21.8' || !isAbsolute(t1wPath))) {
+  throw Error('T1w needs original T1f/Paper and fresh absolute DEV sidecar')
+}
+const t1wSidecar = t1wPath ? openT1wSidecar(t1wPath) : null
 let t1fAdmission = null
 let t1fControl = { phase: "INITIAL", since_ns: "0", generation: 0 }
 const bot = mineflayer.createBot(options)
+if (t1wSidecar) {
+  attachT1wMotionWitness(bot, row => t1wSidecar.write(row))
+}
 if (process.env.RELAYSELF_T1F_DEV === '1' && paperTickOptIn === '1') {
   t1fAdmission = attachPaperSnapshotChannel(bot, emit, emitAdapterError, () => process.hrtime.bigint(), () => ({ ...t1fControl }), t1mDiagnostic)
 } else if (paperTickOptIn === '1') {
@@ -286,6 +299,7 @@ bot.on('error', (error) => {
 })
 
 bot.on('end', (reason) => {
+  t1wSidecar?.close()
   spawned = false
   emit('connection_end', { reason: String(reason || 'connection ended') })
   if (inputReader !== null) inputReader.close()
