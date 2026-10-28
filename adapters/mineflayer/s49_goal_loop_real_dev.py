@@ -17,6 +17,7 @@ from pathlib import Path
 
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
+from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s31a_real_server_ci import (
     _command,
     _correlated_observe,
@@ -49,6 +50,7 @@ def source(tag:str)->Provenance:
 async def qualify(
     report_path:Path, server_log:Path, *, offset_m:float=2.6,
     inject_threat_after_first_dev:bool=False,
+    inject_threat_during_first_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -63,6 +65,8 @@ async def qualify(
         "goal_S14_dev_admission":True,
         "qualification_go":False,"science_go":False,
         "threat_injection_dev":inject_threat_after_first_dev,
+        "threat_inflight_dev":inject_threat_during_first_dev,
+        "inflight_l0":None,
         "goal_handoff":None,
         "upper_layer_replan_executed":False,
     }
@@ -76,6 +80,11 @@ async def qualify(
             or os.environ.get("S49_FORWARD_MOTOR_DEV_ONLY")!="1"
             or os.environ.get("NODE_OPTIONS")
             or type(offset_m) is not float or not 1.8<=offset_m<=4.0
+            or type(inject_threat_during_first_dev) is not bool
+            or (inject_threat_during_first_dev and (
+                inject_threat_after_first_dev
+                or os.environ.get("S49_L0_INFLIGHT_PREEMPT_DEV_ONLY")!="1"
+            ))
             or type(inject_threat_after_first_dev) is not bool
             or (inject_threat_after_first_dev and
                 os.environ.get("S49_L0_REAL_THREAT_DEV_ONLY")!="1")
@@ -210,14 +219,131 @@ async def qualify(
                     entity_id=0,granted=True,
                     provenance=source(f"distinct-{stage.value.lower()}-{i}"),
                 )
-            # A single original L0 owner decides, then grants are checked
-            # independently by the existing ActionSupervisor's GOAL DEV seam.
+            # Same original L0 issued Action: only the existing S15 receiver
+            # consumes in-flight native probes. The DEV World stimulus is not
+            # a sensor or a new Action authority.
+            inflight={"native_poll_count":0,"native_threat":None,
+                      "applied_ack":None,"clear_ack":None,
+                      "injected_after_applied":False}
+            async def ack_dev(stage,effect):
+                if stage=="APPLIED":
+                    inflight["applied_ack"]={
+                        "action_id":effect.action_id,"seq":effect.seq,
+                        "effect":effect.effect,"result":effect.result,
+                    }
+                    if effect.action_id!=action_id or effect.result!="applied":
+                        raise RuntimeError("cannot inject before actual S15 APPLIED")
+                    _command(
+                        server,
+                        "execute at RelaySelf run summon minecraft:zombie "
+                        "~0.65 ~ ~ "
+                        "{NoAI:1b,Silent:1b,PersistenceRequired:1b,Invulnerable:1b}",
+                    )
+                    await server.stdin.drain()
+                    inflight["injected_after_applied"]=True
+                elif stage=="CLEARED":
+                    inflight["clear_ack"]={
+                        "action_id":effect.action_id,"seq":effect.seq,
+                        "effect":effect.effect,"result":effect.result,
+                    }
+            def observe_during_action(live):
+                inflight["native_poll_count"]+=1
+                # Independent native packet source, no forged threat values.
+                threats=[
+                    e for e in live.snapshot.nearby_entities
+                    if e.name=="zombie"
+                    and 0<e.distance<proposal.danger_interrupt_m
+                ]
+                if not threats:
+                    return False
+                if len(threats)!=1:
+                    raise RuntimeError("ambiguous native in-flight hazard")
+                interrupted=l0.decide(live)
+                if interrupted.kind is not GoalDecisionKind.INTERRUPT:
+                    raise RuntimeError("L0 did not preempt own active Action")
+                report["l0_decisions"].append(asdict(interrupted))
+                inflight["native_threat"]={
+                    "probe_seq":live.seq,
+                    "probe_request_id":live.request_id,
+                    "probe_provenance_source":live.provenance.source,
+                    "entity_id":threats[0].entity_id,
+                    "distance_m":threats[0].distance,
+                    "goal_remaining_m":interrupted.goal_error_m,
+                    "current_x":interrupted.x,"current_z":interrupted.z,
+                    "kind":interrupted.kind.value,
+                }
+                return True
             l0.admitted(choice)
             receipt=await executor.execute_goal_step(
                 session,directive=directive,decision=choice,probe=probe,
                 propose=grant(NormalActionStage.PROPOSE),
                 issue=grant(NormalActionStage.ISSUE),
+                **({
+                    "on_effect_ack_dev":ack_dev,
+                    "on_live_probe_dev":observe_during_action,
+                } if inject_threat_during_first_dev and i==1 else {}),
             )
+            if inject_threat_during_first_dev:
+                consequence=receipt.consequence
+                ended=consequence.after_observation
+                interrupt=inflight["native_threat"]
+                if (
+                    i!=1
+                    or not inflight["injected_after_applied"]
+                    or inflight["native_poll_count"]<1
+                    or interrupt is None
+                    or not isinstance(ended,MineflayerObservation)
+                    or ended.session_id!=sid
+                    or consequence.status is not WorldConsequenceStatus.FAILED
+                    or consequence.error!="DEV_L0_INFLIGHT_NATIVE_THREAT_PREEMPTED"
+                    or receipt.terminal.state is not ActionState.UNKNOWN
+                    or consequence.cleanup_receipt is None
+                    or consequence.cleanup_receipt.result!="applied"
+                    or inflight["clear_ack"] is None
+                    or inflight["clear_ack"]["seq"]<=interrupt["probe_seq"]
+                    or executor._count!=1
+                    or executor.supervisor.open_actions
+                    or l0.closed is not True
+                    or len(report["l0_decisions"])!=2
+                    or report["l0_decisions"][-1]["kind"]!="INTERRUPT"
+                ):
+                    raise RuntimeError("in-flight original S49 L0 stop not attested")
+                after=ended.snapshot.position
+                report["inflight_l0"]={
+                    **inflight,
+                    "source_first_action_id":action_id,
+                    "original_action_terminal":receipt.terminal.state.value,
+                    "S16_consequence_status":consequence.status.value,
+                    "S16_error":consequence.error,
+                    "S16_after_seq":ended.seq,
+                    "S16_after_x":after.x,
+                    "S16_after_z":after.z,
+                    "S16_observed_displacement_m":consequence.movement_distance,
+                    "native_clear_receipt_applied":True,
+                    "second_action_issued":False,
+                    "goal_id":proposal.goal_id,
+                    "intent_id":proposal.intent_id,
+                    "target_x":proposal.target_x,
+                    "target_z":proposal.target_z,
+                    "L1_tolerance_m":directive.tolerance_m,
+                    "upper_layer_replan_executed":False,
+                    "mid_action_preempted_not_execution_success":True,
+                }
+                report["native_actions"].append({
+                    "action_id":action_id,
+                    "S15_dispatch_applied":True,
+                    "S15_clear_applied":True,
+                    "S16_status":consequence.status.value,
+                    "terminal":receipt.terminal.state.value,
+                    "physical_distance_m":consequence.movement_distance,
+                    "terminal_not_outcome":True,
+                })
+                report["stage"]="INFLIGHT_L0_INTERRUPT"
+                report["classification"]="DEV_ONLY_S49_L0_INFLIGHT_NATIVE_PREEMPTED"
+                report["status"]="PASS"
+                report["real_world"]=True
+                rc=0
+                break
             if (
                 receipt.terminal.state is not ActionState.OUTCOME
                 or receipt.consequence.status is not WorldConsequenceStatus.EXECUTED
@@ -289,6 +415,7 @@ def main()->int:
     p.add_argument("--confirm",required=True)
     p.add_argument("--offset-m",type=float,default=2.6)
     p.add_argument("--threat-after-first-dev",action="store_true")
+    p.add_argument("--threat-during-first-dev",action="store_true")
     args=p.parse_args()
     if (
         args.confirm!="S49-GOAL-L0-DEV-DISPOSABLE-WORLD"
@@ -300,6 +427,7 @@ def main()->int:
         args.output_dir/"goal_report.json",
         args.output_dir/"minecraft_server.log",offset_m=args.offset_m,
         inject_threat_after_first_dev=args.threat_after_first_dev,
+        inject_threat_during_first_dev=args.threat_during_first_dev,
     ))
 
 
