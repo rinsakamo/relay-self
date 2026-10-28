@@ -57,3 +57,24 @@ Raw artifact ID **12808076696**, name `s49-goal-inflight-two-worlds-40669760200-
 **Important:** This initial run establishes one genuine in-flight interrupt, *not a guaranteed millisecond latency bound* or safety proof for arbitrary fast threats. Further testing and a physical native clock latency study are required. A subsequent source hardening commit bounds stalled in-flight native probe waits by the remaining input duration; its own rerun is distinct from initial run.
 
 No changes to main, Draft PR #545/#634, qualification or science evidence.
+
+## Final hardened native run — 2026-10-28 / PASS
+
+[Actions #40669983044](https://github.com/rinsakamo/relay-self/actions/runs/40669983044) at tested code HEAD `6e33871732c79a1011187e22760680412fef741a`, **completed/SUCCESS**. Unlike the initial run above, this exact SHA includes the in-flight native-probe wait upper bounded to the remaining original motor command duration and the focused regression. Python3.12 focused **24 PASS**, Ruff, Node22, vanilla Java21 Minecraft 1.21.8 and two isolated original Minecraft sessions all PASS. No extra owner/packet consumer, original S15/S16 and Node/server exit0 retained.
+
+| Physical evidence | BASELINE | INFLIGHT |
+|---|---|---|
+| Session | `c84fb2f0-ec1e-4879-bffd-2936d9139e60` | `d58af0ca-c2cd-49fa-930d-1184ed060409` |
+| Original native Action count | 3 | **1 interrupted** |
+| Baseline final XZ goal error | 0.09847180263249866m | not attained |
+| APPLIED ACK / hazard probe / CLEAR ACK / S16 after seq | — | **4 → 9 → 10 → 11** |
+| Real zombie ID / distance | — | **2 / 0.6632809655603318m** |
+| Real movement before CLEAR/after evidence | — | **0.18910279853258238m** |
+| Physical S16 status / original Action state | EXECUTED / OUTCOME | **FAILED (explicit PREEMPTED) / UNKNOWN** |
+| Extra Action after interrupt | — | **0** |
+
+The fact that 0.189m of movement occurred in the preempting World does not change the terminal: the input was interrupted before its original planned completion. The callback and actual native probe derive from the exact first issued Action, same session and in-flight sole S15 reader. Its original Goal ID and upper-level XZ/tolerance were retained. **No actual higher-layer replan was executed**; single DEV moving-control preemption does not prove arbitrary projectile or adversarial world reaction latency.
+
+Source ZIP artifact `s49-goal-inflight-two-worlds-40669983044-1`, ID **12807269006**, SHA256 **9185a6eed8eb3323dcb99c78eabeabc226aa0dab3cb0bb8e28e86dcd832229a2**.
+
+Final assessment: `S49_GOAL_REAL_INFLIGHT_L0_CLEAR_DEV`, **DEV_WORLD_OBSERVED / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**. The qualified scope is **one original already-issued bounded MOVE_FORWARD DEV action interrupted during execution** by a true client-observed static zombie after the APPLIED acknowledgement, with original CLEAR acknowledgement and correct Action UNKNOWN closure. L2/L1 are still DEV inputs/policies, not model or trained learning, and broad locomotion is not proven.
