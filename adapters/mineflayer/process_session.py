@@ -65,6 +65,7 @@ class MineflayerProcessSession:
         )
         self._raw_receipt: dict[str, object] | None = None
         self._l1_t2_owner_dev = None
+        self._l1_t2_gait_observer_dev = None
 
     def bind_l1_t2_owner_dev(self, owner) -> None:
         """Bind ONE existing T2 owner to the sole original receive() path."""
@@ -79,6 +80,21 @@ class MineflayerProcessSession:
         ):
             raise MineflayerProcessIOError("invalid opt-in original T2 tick owner")
         self._l1_t2_owner_dev = owner
+
+    def bind_l1_t2_gait_observer_dev(self, observer) -> None:
+        """G1 post-T2 passive audit; no native reader or fatigue update."""
+        if (
+            os.environ.get("S49_L1_G1_OBSERVATION_DEV_ONLY") != "1"
+            or self._l1_t2_owner_dev is None
+            or self._l1_t2_gait_observer_dev is not None
+            or observer is None
+            or getattr(observer, "session_id", None) != self.started.session_id
+            or not callable(getattr(observer, "observe", None))
+            or getattr(observer, "previous", object()) is not None
+            or getattr(observer, "failed", True)
+        ):
+            raise MineflayerProcessIOError("invalid single-source G1 observer binding")
+        self._l1_t2_gait_observer_dev = observer
 
     @classmethod
     async def launch(
@@ -226,6 +242,18 @@ class MineflayerProcessSession:
         if self._l1_t2_owner_dev is not None and isinstance(message, MineflayerPaperSnapshot):
             try:
                 self._l1_t2_owner_dev.observe(message)
+                if self._l1_t2_gait_observer_dev is not None:
+                    # Existing T2 has processed this exact frame. This
+                    # observer only records candidate physical facts and
+                    # never advances P1/M0 a second time.
+                    last = self._l1_t2_owner_dev.rows
+                    activity = (
+                        last[-1]["activity"]
+                        if last and last[-1]["source_seq"] == message.seq else None
+                    )
+                    self._l1_t2_gait_observer_dev.observe(
+                        message, t2_activity=activity,
+                    )
             except Exception:
                 self._l1_t2_owner_dev.failed = True
                 raise
