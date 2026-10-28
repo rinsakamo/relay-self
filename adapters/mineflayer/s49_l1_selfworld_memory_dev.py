@@ -30,7 +30,6 @@ from relay_self.persistent_cognition import (
 from relay_self.provenance import Provenance
 from relay_self.self_world import SelfWorldView
 
-
 SCOPE="DEV_STONE_WALL_3WIDE_AT_PLUS_2Z_OPERATOR_CONTEXT"
 SELF_ID="s49-dev-episodic-self"
 
