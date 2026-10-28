@@ -1,4 +1,4 @@
-name: S49 L1 T2 Same Paper World DEV
+name: S49 L1 T2 Paired Paper Worlds DEV
 on:
   push:
     branches:
