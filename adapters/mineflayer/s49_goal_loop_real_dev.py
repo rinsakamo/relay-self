@@ -144,6 +144,7 @@ async def qualify(
     paper_plugin_dev:Path|None=None,
     paper_gait_observation_dev:bool=False,
     g2_sprint_first_dev:bool=False,
+    g2_sneak_prefix_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -176,6 +177,8 @@ async def qualify(
         "paper_server_dev":paper_jar_dev is not None,
         "g1_applied_gait_observation_dev":paper_gait_observation_dev,
         "g2_sprint_first_dev":g2_sprint_first_dev,
+        "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
+        "g2_sneak_actions_dev":[],
         "native_grid_refresh_observations_dev":[],
         "native_grid_search_choice_dev":None,
         "native_local_voxel_observation_dev":None,
@@ -199,6 +202,14 @@ async def qualify(
             or os.environ.get("S49_FORWARD_MOTOR_DEV_ONLY")!="1"
             or os.environ.get("NODE_OPTIONS")
             or type(offset_m) is not float or not 1.8<=offset_m<=4.0
+            or type(g2_sneak_prefix_dev) is not bool
+            or (g2_sneak_prefix_dev and (
+                not paper_gait_observation_dev
+                or g2_sprint_first_dev
+                or obstacle_wall_dev or detour_after_wall_dev
+                or goal_turn_dx_dev!=0.0
+                or os.environ.get("S49_GOAL_G2_SNEAK_DEV_ONLY")!="1"
+            ))
             or type(g2_sprint_first_dev) is not bool
             or (g2_sprint_first_dev and (
                 not paper_gait_observation_dev
@@ -664,6 +675,7 @@ async def qualify(
                 propose=grant(NormalActionStage.PROPOSE),
                 issue=grant(NormalActionStage.ISSUE),
                 g2_sprint_first_dev=g2_sprint_first_dev and executor._count==0,
+                g2_sneak_prefix_dev=g2_sneak_prefix_dev and executor._count<3,
                 **({
                     "on_effect_ack_dev":ack_dev,
                     "on_live_probe_dev":observe_during_action,
@@ -673,6 +685,15 @@ async def qualify(
                     "on_look_ack_dev":on_turn_ack,
                 } if goal_turn_dx_dev!=0.0 or obstacle_wall_dev else {}),
             )
+            if g2_sneak_prefix_dev and executor._count<=3:
+                dispatch=receipt.consequence.dispatch_receipt
+                report["g2_sneak_actions_dev"].append({
+                    "action_id":receipt.terminal.action_id,
+                    "dispatch_effect":getattr(dispatch,"effect",None),
+                    "dispatch_applied":getattr(dispatch,"result",None)=="applied",
+                    "terminal_state":receipt.terminal.state.value,
+                    "requested_mode_not_physical_proof":True,
+                })
             if g2_sprint_first_dev and executor._count==1:
                 dispatch=receipt.consequence.dispatch_receipt
                 report["g2_first_original_motor_dev"]={
@@ -1314,6 +1335,7 @@ def main()->int:
     p.add_argument("--paper-plugin-dev",type=Path)
     p.add_argument("--paper-gait-observation-dev",action="store_true")
     p.add_argument("--g2-sprint-first-dev",action="store_true")
+    p.add_argument("--g2-sneak-prefix-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -1345,6 +1367,7 @@ def main()->int:
         paper_plugin_dev=args.paper_plugin_dev,
         paper_gait_observation_dev=args.paper_gait_observation_dev,
         g2_sprint_first_dev=args.g2_sprint_first_dev,
+        g2_sneak_prefix_dev=args.g2_sneak_prefix_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
