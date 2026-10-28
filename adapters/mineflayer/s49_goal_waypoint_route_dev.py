@@ -19,8 +19,8 @@ from adapters.mineflayer.s31a_real_server_ci import _correlated_observe
 from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
 from relay_self.action import ActionState
 from relay_self.goal_detour_dev import L1DetourPlanDev
-from relay_self.goal_grid_search_dev import L1GridRoutePlanDev
 from relay_self.goal_grid_refresh_dev import refresh_grid_route_dev
+from relay_self.goal_grid_search_dev import L1GridRoutePlanDev
 from relay_self.goal_navigation import (
     GoalDecisionKind,
     ObservedGoalL0,
