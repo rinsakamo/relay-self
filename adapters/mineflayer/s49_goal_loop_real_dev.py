@@ -29,6 +29,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
 from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
 from adapters.mineflayer.s49_goal_waypoint_route_dev import follow_l1_detour_dev
 from adapters.mineflayer.s49_l1_experience_export_dev import load_episode_dev
+from adapters.mineflayer.s49_l1_selfworld_memory_dev import recall_from_selfworld_dev
 from adapters.mineflayer.s49_normal_session_real_ci import (
     _cleanup_session,
     _write_final_report,
@@ -36,6 +37,7 @@ from adapters.mineflayer.s49_normal_session_real_ci import (
 from relay_self.action import ActionState
 from relay_self.goal_detour_dev import explicit_l1_detour_dev
 from relay_self.goal_experience_dev import select_route_from_episode_dev
+from relay_self.goal_memory_choice_dev import L1RecallStatusDev
 from relay_self.goal_navigation import (
     GoalDecisionKind,
     GoalPurpose,
@@ -61,6 +63,8 @@ async def qualify(
     detour_after_wall_dev:bool=False,
     experience_memory_dev:Path|None=None,
     experience_source_report_dev:Path|None=None,
+    selfworld_memory_snapshot_dev:Path|None=None,
+    selfworld_memory_catalog_dev:Path|None=None,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -84,6 +88,7 @@ async def qualify(
         "detour_after_wall_dev":detour_after_wall_dev,
         "experience_requested_dev":experience_memory_dev is not None,
         "experience_selection_dev":None,
+        "selfworld_memory_selection_dev":None,
         "native_goal_looks":[],
     }
     server=collector=session=temp=None
@@ -111,6 +116,15 @@ async def qualify(
                 or not isinstance(experience_source_report_dev,Path)
                 or not detour_after_wall_dev
                 or os.environ.get("S49_L1_EPISODIC_REUSE_DEV_ONLY")!="1"
+            ))
+            or (selfworld_memory_snapshot_dev is None)
+               !=(selfworld_memory_catalog_dev is None)
+            or (selfworld_memory_snapshot_dev is not None and (
+                not isinstance(selfworld_memory_snapshot_dev,Path)
+                or not isinstance(selfworld_memory_catalog_dev,Path)
+                or not detour_after_wall_dev
+                or experience_memory_dev is not None
+                or os.environ.get("S49_L1_SELFWORLD_MEMORY_DEV_ONLY")!="1"
             ))
             or type(detour_after_wall_dev) is not bool
             or (detour_after_wall_dev and (
@@ -490,7 +504,46 @@ async def qualify(
                     # This is an explicit L1-style OPERATOR-supplied plan,
                     # NOT a native claim that Self perceived a stone block.
                     # A closed original UNKNOWN is never silently retried.
-                    if experience_memory_dev is None:
+                    if selfworld_memory_snapshot_dev is not None:
+                        assert selfworld_memory_catalog_dev is not None
+                        choice=recall_from_selfworld_dev(
+                            selfworld_memory_snapshot_dev,
+                            selfworld_memory_catalog_dev,
+                            proposal,start_x=float(start.x),
+                            start_z=float(start.z),
+                            blocked_action_id=receipt.terminal.action_id,
+                            blocked_s16_seq=receipt.consequence.after_observation.seq,
+                            blocked_reason=report["wall_handoff"]["reason"],
+                            blocked_terminal=receipt.terminal.state.value,
+                            blocked_consequence=receipt.consequence.status.value,
+                        )
+                        report["selfworld_memory_selection_dev"]={
+                            "status":choice.status.value,
+                            "reason":choice.reason,
+                            "matching_successes":choice.matching_successes,
+                            "matching_failures":choice.matching_failures,
+                            "selected_memory_id":choice.selected_memory_id,
+                            "source_ids":list(choice.source_ids),
+                            "selfworld_origin":"REMEMBERED",
+                            "persistent_owner":"PersistentCognition",
+                            "current_world_source_event":
+                                receipt.consequence.after_observation.seq,
+                            "native_block_geometry_observed":False,
+                            "physical_action_authorized_by_memory":False,
+                        }
+                        if choice.status is L1RecallStatusDev.DEFER:
+                            report["classification"]=(
+                                "DEV_ONLY_S49_L1_SELFWORLD_MEMORY_DEFER"
+                            )
+                            report["stage"]="L1_MEMORY_DEFER"
+                            report["status"]="PASS"
+                            report["real_world"]=True
+                            rc=0
+                            break
+                        if choice.status is not L1RecallStatusDev.SELECTED:
+                            raise RuntimeError("memory choice has unsupported status")
+                        plan=choice.plan
+                    elif experience_memory_dev is None:
                         plan=explicit_l1_detour_dev(
                             proposal,start_x=float(start.x),start_z=float(start.z),
                             blocked_action_id=receipt.terminal.action_id,
@@ -549,7 +602,9 @@ async def qualify(
                     ):
                         raise RuntimeError("native L1 route failed parent L2 goal")
                     report["classification"]=(
-                        "DEV_ONLY_S49_L1_EPISODE_REUSED_PARENT_GOAL_REACHED"
+                        "DEV_ONLY_S49_L1_SELFWORLD_MEMORY_GOAL_REACHED"
+                        if selfworld_memory_snapshot_dev is not None
+                        else "DEV_ONLY_S49_L1_EPISODE_REUSED_PARENT_GOAL_REACHED"
                         if experience_memory_dev is not None
                         else "DEV_ONLY_S49_L1_DETOUR_PARENT_GOAL_REACHED"
                     )
@@ -656,6 +711,8 @@ def main()->int:
     p.add_argument("--detour-after-wall-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
+    p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
+    p.add_argument("--selfworld-memory-catalog-dev",type=Path)
     args=p.parse_args()
     if (
         args.confirm!="S49-GOAL-L0-DEV-DISPOSABLE-WORLD"
@@ -673,6 +730,8 @@ def main()->int:
         detour_after_wall_dev=args.detour_after_wall_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
+        selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
+        selfworld_memory_catalog_dev=args.selfworld_memory_catalog_dev,
     ))
 
 
