@@ -1,0 +1,81 @@
+name: S49 L0 Observed Micro WALK and True WAIT Two Worlds DEV
+on:
+  push:
+    branches:
+      - self/dev-l0-walk-stop-feedback-20261028
+    paths:
+      - .github/workflows/self-l0-walk-wait-two-worlds-dev.yml
+      - adapters/mineflayer/s49_normal_session_real_ci.py
+      - adapters/mineflayer/normal_action.py
+      - adapters/mineflayer/s49_l0_observed_step_dev.py
+      - adapters/mineflayer/s49_l0_walk_wait_two_real_dev.py
+      - tests/test_s49_l0_walk_wait_dev.py
+      - tests/test_s49_l0_residual_third_dev.py tests/test_s49_l0_walk_wait_dev.py
+      - tests/test_s49_l0_observed_step_dev.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: s49-l0-walk-wait-two-worlds-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  native-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      S49_REAL_SERVER_CI: '1'
+      S49_FORWARD_MOTOR_DEV_ONLY: '1'
+      S49_SPRINT_MOTOR_DEV_ONLY: '1'
+      S49_NEXT_EPOCH_DEV_ONLY: '1'
+      S49_L0_OBSERVED_FEEDBACK_DEV_ONLY: '1'
+      S49_L0_RESIDUAL_THIRD_DEV_ONLY: '1'
+      S49_L0_WALK_THIRD_DEV_ONLY: '1'
+      S49_L0_GOAL_WAIT_DEV_ONLY: '1'
+      DEV_OUTPUT: '/tmp/s49-l0-walk-wait-${{ github.run_id }}-${{ github.run_attempt }}'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Static and focused Python12, Node before any World
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          python -m compileall -q adapters/mineflayer/s49_l0_observed_step_dev.py adapters/mineflayer/s49_l0_walk_wait_two_real_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/normal_action.py tests/test_s49_l0_residual_third_dev.py tests/test_s49_l0_walk_wait_dev.py
+          ruff check adapters/mineflayer/s49_l0_observed_step_dev.py adapters/mineflayer/s49_l0_walk_wait_two_real_dev.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/normal_action.py tests/test_s49_l0_residual_third_dev.py tests/test_s49_l0_walk_wait_dev.py
+          python -m pytest -q tests/test_s49_l0_residual_third_dev.py tests/test_s49_l0_walk_wait_dev.py tests/test_s49_l0_observed_step_dev.py tests/test_s49_paper_forward_dash_dev.py
+          node --check adapters/mineflayer/bridge.mjs
+      - name: Install original Mineflayer unchanged
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: Two disposable Mojang 1.21.8 Worlds original L0 micro WALK and WAIT
+        run: |
+          set -euo pipefail
+          python -m adapters.mineflayer.s49_l0_walk_wait_two_real_dev --root "$DEV_OUTPUT" --confirm S49-L0-WALK-AND-WAIT-TWO-WORLDS-DEV
+      - name: Preserve source artifacts even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-l0-walk-wait-two-worlds-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEV_OUTPUT }}
+          retention-days: 7
+      - name: No qualification, no SCIENCE
+        if: always()
+        run: |
+          echo 'DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+          echo 'Original sole S49 L0 and S15 receiver only; no new issuers, no exact tick requirement.'
