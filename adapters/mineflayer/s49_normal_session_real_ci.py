@@ -53,7 +53,10 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     _native_threat,
     _new_session,
 )
-from adapters.mineflayer.s49_l0_observed_step_dev import plan_next_l0_step_dev
+from adapters.mineflayer.s49_l0_observed_step_dev import (
+    plan_next_l0_step_dev,
+    plan_residual_after_second_s16_dev,
+)
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
 from relay_self.action import ActionState
 from relay_self.action_supervision import ActionSupervisor
@@ -285,6 +288,7 @@ async def qualify(
     dev_m0_dash_invoice: Callable[[NormalActionReceipt], DashM0InvoiceDev | None] | None = None,
     dev_m0_action_move_step: bool = False,
     dev_l0_next_step_m: float | None = None,
+    dev_l0_residual_third_dev: bool = False,
     dev_inter_action_owner_gap: bool = False,
     dev_inter_action_owner_paper_fence: (
         Callable[[str, str, str], Awaitable[None]] | None
@@ -301,6 +305,7 @@ async def qualify(
         "dev_m0_dash_owner": dev_m0_dash_invoice is not None,
         "dev_m0_action_move_step": dev_m0_action_move_step,
         "dev_l0_observed_next_step_m": dev_l0_next_step_m,
+        "dev_l0_residual_third_dev": dev_l0_residual_third_dev,
         "dev_inter_action_owner_gap": dev_inter_action_owner_gap,
         "decisions": [],
         "real_model_calls": 0,
@@ -345,11 +350,21 @@ async def qualify(
             or os.environ.get("S49_M0_DASH_DEBIT_DEV_ONLY") != "1"
         ):
             raise S31ABlocked("M0 extra debit requires exact original S49 sprint DEV gate")
+        if dev_l0_residual_third_dev and (
+            type(dev_l0_residual_third_dev) is not bool
+            or dev_l0_next_step_m is None
+            or dev_next_epoch != "MOVE_AWAY"
+            or dev_m0_dash_invoice is not None
+            or dev_m0_action_move_step
+            or os.environ.get("S49_L0_RESIDUAL_THIRD_DEV_ONLY") != "1"
+        ):
+            raise S31ABlocked("third original Action needs isolated feedback owner gate")
         if dev_l0_next_step_m is not None and (
             type(dev_l0_next_step_m) not in (int, float)
             or not 0.30 <= dev_l0_next_step_m <= 2.50
             or not dev_sprint_motor or not dev_forward_motor
-            or stage_r_dev or dev_next_epoch is not None
+            or stage_r_dev
+            or (dev_next_epoch is not None and not dev_l0_residual_third_dev)
             or dev_fifth_epoch is not None or dev_sixth_epoch is not None
             or os.environ.get("S49_L0_OBSERVED_FEEDBACK_DEV_ONLY") != "1"
         ):
@@ -364,7 +379,8 @@ async def qualify(
         if type(dev_forward_motor) is not bool or (
             dev_forward_motor and (
                 os.environ.get("S49_FORWARD_MOTOR_DEV_ONLY") != "1"
-                or stage_r_dev or dev_next_epoch is not None
+                or stage_r_dev
+                or (dev_next_epoch is not None and not dev_l0_residual_third_dev)
                 or dev_fifth_epoch is not None or dev_sixth_epoch is not None
             )
         ):
@@ -452,6 +468,7 @@ async def qualify(
         # and its original NormalSessionActionExecutor before/after issue.
         owner_gap_end_first: dict[str, Any] | None = None
         first_feedback_receipt: NormalActionReceipt | None = None
+        second_feedback_receipt: NormalActionReceipt | None = None
 
         async def reprobe(frame):
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
@@ -504,7 +521,7 @@ async def qualify(
             )
 
         async def on_action(step):
-            nonlocal owner_gap_end_first, first_feedback_receipt
+            nonlocal owner_gap_end_first, first_feedback_receipt, second_feedback_receipt
             if dev_inter_action_owner_gap and owner_gap_end_first is not None:
                 if len(report["actual_native_actions"]) != 1:
                     raise S49PhysicalFailure("original owner gap ambiguous Action count")
@@ -595,25 +612,59 @@ async def qualify(
             )
             feedback_duration: float | None = None
             if dev_l0_next_step_m is not None and first_feedback_receipt is not None:
-                plan = plan_next_l0_step_dev(
-                    first_feedback_receipt.consequence,
-                    next_step_m=dev_l0_next_step_m,
-                    current_threat_distance_m=native.distance_m,
-                )
-                if (
-                    len(report["actual_native_actions"]) != 1
-                    or plan.session_id != sid
-                    or plan.first_action_id != first_feedback_receipt.terminal.action_id
-                    or executor._count != 1
-                    or executor.supervisor.open_actions
-                ):
-                    raise S49PhysicalFailure("stale or duplicate S16 feedback source")
-                feedback_duration = plan.requested_duration_s
-                report["dev_l0_observed_feedback"] = {
-                    **asdict(plan), "second_action_id": step.action_request_id,
-                    "same_original_S49_issuer": True,
-                    "new_native_reader": False,
-                }
+                if second_feedback_receipt is None:
+                    plan = plan_next_l0_step_dev(
+                        first_feedback_receipt.consequence,
+                        next_step_m=dev_l0_next_step_m,
+                        current_threat_distance_m=native.distance_m,
+                    )
+                    if (
+                        len(report["actual_native_actions"]) != 1
+                        or plan.session_id != sid
+                        or plan.first_action_id != first_feedback_receipt.terminal.action_id
+                        or executor._count != 1
+                        or executor.supervisor.open_actions
+                    ):
+                        raise S49PhysicalFailure("stale or duplicate S16 feedback source")
+                    feedback_duration = plan.requested_duration_s
+                    report["dev_l0_observed_feedback"] = {
+                        **asdict(plan), "second_action_id": step.action_request_id,
+                        "same_original_S49_issuer": True,
+                        "new_native_reader": False,
+                    }
+                elif dev_l0_residual_third_dev:
+                    second = report.get("dev_l0_observed_feedback")
+                    if (
+                        not isinstance(second, dict)
+                        or second.get("second_action_id")
+                           != second_feedback_receipt.terminal.action_id
+                        or second.get("second_actual_outcome") != "outcome"
+                        or executor._count != 2
+                        or len(report["actual_native_actions"]) != 2
+                        or executor.supervisor.open_actions
+                    ):
+                        raise S49PhysicalFailure("third original feedback authority stale")
+                    third_plan = plan_residual_after_second_s16_dev(
+                        second_feedback_receipt.consequence,
+                        second_input_s=second["second_input_duration_s"],
+                        total_target_m=dev_l0_next_step_m,
+                        current_threat_distance_m=native.distance_m,
+                    )
+                    # An independent L0 Action request already exists:
+                    # STOP must NOT be silently converted into a new issue.
+                    if third_plan.proposed_duration_s is None:
+                        raise S49PhysicalFailure(
+                            "third L0 requested action despite STOP/danger feedback"
+                        )
+                    feedback_duration = third_plan.proposed_duration_s
+                    report["dev_l0_residual_third"] = {
+                        **asdict(third_plan),
+                        "third_action_id": step.action_request_id,
+                        "original_sole_action_issuer": True,
+                        "new_packet_reader": False,
+                    }
+                else:
+                    raise S49PhysicalFailure("unexpected third original feedback request")
             if stage_r is None:
                 receipt = await executor.execute(
                     session, step, bound, probe,
@@ -648,7 +699,7 @@ async def qualify(
                     if report["actual_native_actions"] or executor._count != 1:
                         raise S49PhysicalFailure("feedback first original outcome ambiguous")
                     first_feedback_receipt = receipt
-                else:
+                elif second_feedback_receipt is None:
                     if (
                         executor._count != 2
                         or not isinstance(report.get("dev_l0_observed_feedback"), dict)
@@ -656,6 +707,7 @@ async def qualify(
                            != report["dev_l0_observed_feedback"]["second_action_id"]
                     ):
                         raise S49PhysicalFailure("feedback second original S16 not observed")
+                    second_feedback_receipt = receipt
                     report["dev_l0_observed_feedback"].update({
                         "second_actual_s16_m": receipt.consequence.movement_distance,
                         "absolute_second_step_error_m": abs(
@@ -667,6 +719,28 @@ async def qualify(
                         ),
                         "goal_reached_attested": False,
                         "world_tick_phase_matched": False,
+                    })
+                elif dev_l0_residual_third_dev:
+                    third = report.get("dev_l0_residual_third")
+                    if (
+                        executor._count != 3
+                        or not isinstance(third, dict)
+                        or third.get("third_action_id") != receipt.terminal.action_id
+                    ):
+                        raise S49PhysicalFailure("third original S16 owner mismatch")
+                    actual = (second_feedback_receipt.consequence.movement_distance
+                              + receipt.consequence.movement_distance)
+                    report["dev_l0_residual_third"].update({
+                        "third_actual_s16_m": receipt.consequence.movement_distance,
+                        "second_plus_third_s16_m": actual,
+                        "second_plus_third_error_m": abs(actual-dev_l0_next_step_m),
+                        "original_second_only_error_m": abs(
+                            second_feedback_receipt.consequence.movement_distance
+                            - dev_l0_next_step_m
+                        ),
+                        "third_terminal_state": receipt.terminal.state.value,
+                        "same_original_S49_executor": True,
+                        "cross_world_goal_reached_attested": False,
                     })
             if stage_r is not None:
                 stage_r.seal_original_action(step, receipt)
@@ -932,6 +1006,8 @@ async def qualify(
             report["learning_in_world"] = True  # HOLD revision, NOT gain
         report["status"] = "PASS"
         report["classification"] = (
+            "DEV_ONLY_S49_S16_RESIDUAL_THIRD_ORIGINAL_OWNER"
+            if dev_l0_residual_third_dev else
             "DEV_ONLY_S49_FORWARD_SPRINT_MOTOR_UNCALIBRATED"
             if dev_sprint_motor else
             "DEV_ONLY_S49_FORWARD_MOTOR_NOT_DIRECTIONALLY_QUALIFIED"
@@ -1046,6 +1122,7 @@ async def qualify(
             "DEV_ONLY_S49_SIXTH_MOTOR_DEV_AFTER_FIFTH_WAIT",
             "DEV_ONLY_S49_FORWARD_MOTOR_NOT_DIRECTIONALLY_QUALIFIED",
             "DEV_ONLY_S49_FORWARD_SPRINT_MOTOR_UNCALIBRATED",
+            "DEV_ONLY_S49_S16_RESIDUAL_THIRD_ORIGINAL_OWNER",
         ):
             # No pre-existing FAILURE/BLOCKED is allowed to retain the
             # provisional qualified label, nor be upgraded to PASS.
