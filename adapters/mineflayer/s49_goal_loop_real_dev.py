@@ -17,7 +17,10 @@ from pathlib import Path
 
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
-from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.python_protocol import (
+    MineflayerObservation,
+    MineflayerRouteBlocksDev,
+)
 from adapters.mineflayer.s31a_real_server_ci import (
     _command,
     _correlated_observe,
@@ -50,6 +53,32 @@ from relay_self.intent import IntentCommitment
 from relay_self.provenance import Provenance
 
 
+async def _correlated_native_route_blocks_dev(
+    session, request_id:str, *, origin_x:float, origin_z:float,
+) -> MineflayerRouteBlocksDev:
+    """Sole original session receive owner reads one bounded live block packet."""
+    await session.send_route_blocks_dev(
+        request_id,origin_x=origin_x,origin_z=origin_z,
+    )
+    for _ in range(36):
+        message=await asyncio.wait_for(session.receive(),timeout=6.0)
+        if isinstance(message,MineflayerRouteBlocksDev):
+            if (
+                message.request_id!=request_id
+                or message.session_id!=session.started.session_id
+                or not math.isclose(message.origin_x,origin_x,abs_tol=1e-8)
+                or not math.isclose(message.origin_z,origin_z,abs_tol=1e-8)
+            ):
+                raise RuntimeError("foreign/stale correlated native block present")
+            return message
+        if type(message).__name__ in (
+            "MineflayerCommandError","MineflayerConnectionEnd",
+            "MineflayerAdapterErrorMessage",
+        ):
+            raise RuntimeError("native route block observation failed closed")
+    raise RuntimeError("no bounded correlated native route block Present")
+
+
 def source(tag:str)->Provenance:
     return Provenance("s49-goal-dev-operator",tag)
 
@@ -66,6 +95,8 @@ async def qualify(
     selfworld_memory_snapshot_dev:Path|None=None,
     selfworld_memory_catalog_dev:Path|None=None,
     detour_left_dev:bool=False,
+    left_lane_block_dev:bool=False,
+    native_route_present_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -87,6 +118,9 @@ async def qualify(
         "goal_turn_dx_dev":goal_turn_dx_dev,
         "obstacle_wall_dev":obstacle_wall_dev,
         "detour_left_dev":detour_left_dev,
+        "left_lane_block_dev":left_lane_block_dev,
+        "native_route_present_dev":native_route_present_dev,
+        "native_route_blocks_observation_dev":None,
         "detour_after_wall_dev":detour_after_wall_dev,
         "experience_requested_dev":experience_memory_dev is not None,
         "experience_selection_dev":None,
@@ -127,6 +161,17 @@ async def qualify(
                 or not detour_after_wall_dev
                 or experience_memory_dev is not None
                 or os.environ.get("S49_L1_SELFWORLD_MEMORY_DEV_ONLY")!="1"
+            ))
+            or type(left_lane_block_dev) is not bool
+            or type(native_route_present_dev) is not bool
+            or (left_lane_block_dev and (
+                not native_route_present_dev
+                or os.environ.get("S49_L1_NATIVE_BLOCKS_DEV_ONLY")!="1"
+            ))
+            or (native_route_present_dev and (
+                not detour_after_wall_dev
+                or selfworld_memory_snapshot_dev is None
+                or os.environ.get("S49_L1_NATIVE_BLOCKS_DEV_ONLY")!="1"
             ))
             or type(detour_left_dev) is not bool
             or (detour_left_dev and (
@@ -207,6 +252,17 @@ async def qualify(
             await server.stdin.drain()
             await asyncio.sleep(0.25)
             report["wall_world_stimulus_requested"]=True
+            if left_lane_block_dev:
+                # World operator creates asymmetry; only the client-cache
+                # read below may establish which corridor was observed.
+                _command(
+                    server,
+                    "execute at RelaySelf run fill "
+                    "~-3 ~ ~1 ~-2 ~2 ~4 minecraft:stone",
+                )
+                await server.stdin.drain()
+                await asyncio.sleep(0.35)
+                report["left_lane_block_world_stimulus_requested"]=True
         report["goal_unit_forward"]={
             "x":forward_x,"z":forward_z,
             "requested_yaw_rad":yaw,
@@ -515,6 +571,28 @@ async def qualify(
                     # A closed original UNKNOWN is never silently retried.
                     if selfworld_memory_snapshot_dev is not None:
                         assert selfworld_memory_catalog_dev is not None
+                        present=None
+                        if native_route_present_dev:
+                            present=await _correlated_native_route_blocks_dev(
+                                session,
+                                f"goal-{sid}-native-route-after-{receipt.consequence.after_observation.seq}",
+                                origin_x=float(start.x),origin_z=float(start.z),
+                            )
+                            if present.seq<=receipt.consequence.after_observation.seq:
+                                raise RuntimeError("native route Present must follow blocked S16")
+                            report["native_route_blocks_observation_dev"]={
+                                "session_id":present.session_id,
+                                "seq":present.seq,
+                                "request_id":present.request_id,
+                                "origin_x":present.origin_x,
+                                "origin_z":present.origin_z,
+                                "player_y":present.player_y,
+                                "coverage":present.coverage,
+                                "samples_per_lane":present.samples_per_lane,
+                                "unknown_is_not_clear":present.unknown_is_not_clear,
+                                "lanes":[asdict(lane) for lane in present.lanes],
+                                "source":"mineflayer",
+                            }
                         choice=recall_from_selfworld_dev(
                             selfworld_memory_snapshot_dev,
                             selfworld_memory_catalog_dev,
@@ -525,6 +603,7 @@ async def qualify(
                             blocked_reason=report["wall_handoff"]["reason"],
                             blocked_terminal=receipt.terminal.state.value,
                             blocked_consequence=receipt.consequence.status.value,
+                            native_route_blocks_dev=present,
                         )
                         report["selfworld_memory_selection_dev"]={
                             "status":choice.status.value,
@@ -537,7 +616,13 @@ async def qualify(
                             "persistent_owner":"PersistentCognition",
                             "current_world_source_event":
                                 receipt.consequence.after_observation.seq,
-                            "native_block_geometry_observed":False,
+                            "native_block_geometry_observed":present is not None,
+                            "native_block_coverage_attested":(
+                                present.coverage if present is not None else None
+                            ),
+                            "native_block_present_seq":(
+                                present.seq if present is not None else None
+                            ),
                             "physical_action_authorized_by_memory":False,
                         }
                         if choice.status is L1RecallStatusDev.DEFER:
@@ -720,6 +805,8 @@ def main()->int:
     p.add_argument("--obstacle-wall-dev",action="store_true")
     p.add_argument("--detour-after-wall-dev",action="store_true")
     p.add_argument("--detour-left-dev",action="store_true")
+    p.add_argument("--left-lane-block-dev",action="store_true")
+    p.add_argument("--native-route-present-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -740,6 +827,8 @@ def main()->int:
         obstacle_wall_dev=args.obstacle_wall_dev,
         detour_after_wall_dev=args.detour_after_wall_dev,
         detour_left_dev=args.detour_left_dev,
+        left_lane_block_dev=args.left_lane_block_dev,
+        native_route_present_dev=args.native_route_present_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
