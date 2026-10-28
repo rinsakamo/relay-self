@@ -243,7 +243,8 @@ class MineflayerProcessSession:
         if self._l1_t2_owner_dev is not None and isinstance(message, MineflayerPaperSnapshot):
             try:
                 self._l1_t2_owner_dev.observe(message)
-                if getattr(self, "_l1_t2_gait_observer_dev", None) is not None:
+                if (getattr(self, "_l1_t2_gait_observer_dev", None) is not None
+                        and message.data["status"] == "ADMITTED"):
                     # Existing T2 has processed this exact frame. This
                     # observer only records candidate physical facts and
                     # never advances P1/M0 a second time.
