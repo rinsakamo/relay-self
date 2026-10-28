@@ -360,6 +360,54 @@ class MineflayerObservation(MineflayerMessage):
 
 
 @dataclass(frozen=True, slots=True)
+class MineflayerRouteLaneDev:
+    side: str
+    states: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        if (
+            self.side not in ("LEFT", "RIGHT")
+            or not isinstance(self.states, tuple)
+            or len(self.states) != 3
+            or any(x not in ("CLEAR", "BLOCKED", "UNKNOWN") for x in self.states)
+        ):
+            raise MineflayerAdapterProtocolError("invalid bounded route lane cells")
+
+
+@dataclass(frozen=True, slots=True)
+class MineflayerRouteBlocksDev(MineflayerMessage):
+    """Present from the actual original Mineflayer client's loaded cache.
+
+    UNLOADED is UNKNOWN; no negative block evidence outside these 12 cells.
+    """
+
+    request_id: str
+    origin_x: float
+    origin_z: float
+    player_y: float
+    coverage: str
+    samples_per_lane: int
+    unknown_is_not_clear: bool
+    lanes: tuple[MineflayerRouteLaneDev, ...]
+
+    def __post_init__(self) -> None:
+        MineflayerMessage.__post_init__(self)
+        _require_probe_request_id(self.request_id)
+        for name in ("origin_x", "origin_z", "player_y"):
+            _require_number(name, getattr(self, name))
+        if (
+            self.coverage != "loaded_client_cache_only"
+            or type(self.samples_per_lane) is not int
+            or self.samples_per_lane != 3
+            or self.unknown_is_not_clear is not True
+            or not isinstance(self.lanes, tuple)
+            or len(self.lanes) != 2
+            or tuple(l.side for l in self.lanes) != ("LEFT", "RIGHT")
+        ):
+            raise MineflayerAdapterProtocolError("route block coverage/provenance not bounded")
+
+
+@dataclass(frozen=True, slots=True)
 class MineflayerNativeClockPacket(MineflayerMessage):
     """Original-shaped clientbound time sample, not command-effect authority."""
 
@@ -476,6 +524,7 @@ class MineflayerShutdownAck(MineflayerMessage):
 MineflayerDecodedMessage = Union[
     MineflayerAdapterStarted,
     MineflayerObservation,
+    MineflayerRouteBlocksDev,
     MineflayerNativeClockPacket,
     MineflayerEntityHurt,
     MineflayerEffectResult,
@@ -582,6 +631,44 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
             kind=_decoded_text("observation kind", payload["kind"]),
             snapshot=_decode_snapshot(payload["snapshot"]),
             request_id=payload.get("request_id"),
+        )
+
+    if message_type == "route_blocks_dev":
+        _require_exact_keys(
+            "route_blocks_dev", payload,
+            {
+                "type", "session_id", "seq", "request_id", "origin_x",
+                "origin_z", "player_y", "coverage", "samples_per_lane",
+                "unknown_is_not_clear", "lanes",
+            },
+        )
+        raw_lanes = _require_list("route lanes", payload["lanes"])
+        if len(raw_lanes) != 2:
+            raise MineflayerAdapterProtocolError("two source lanes required")
+        lanes = []
+        for raw_lane in raw_lanes:
+            lane = _require_mapping("native route lane", raw_lane)
+            _require_exact_keys(
+                "native route lane", lane, {"side", "states"},
+            )
+            states = _require_list("route lane cells", lane["states"])
+            lanes.append(MineflayerRouteLaneDev(
+                side=_decoded_text("route lane side", lane["side"]),
+                states=tuple(
+                    _decoded_text("route cell state", state)
+                    for state in states
+                ),
+            ))
+        return MineflayerRouteBlocksDev(
+            session_id=session_id, seq=seq,
+            request_id=payload["request_id"],
+            origin_x=_decoded_number("origin_x", payload["origin_x"]),
+            origin_z=_decoded_number("origin_z", payload["origin_z"]),
+            player_y=_decoded_number("player_y", payload["player_y"]),
+            coverage=_decoded_text("coverage", payload["coverage"]),
+            samples_per_lane=payload["samples_per_lane"],
+            unknown_is_not_clear=payload["unknown_is_not_clear"],
+            lanes=tuple(lanes),
         )
 
     if message_type == "native_clock_packet":
@@ -821,6 +908,19 @@ def encode_observe(request_id: str | None = None) -> str:
         return _encode_command({"type": "observe"})
     _require_probe_request_id(request_id)
     return _encode_command({"type": "observe", "request_id": request_id})
+
+
+def encode_route_blocks_dev(
+    request_id: str, *, origin_x: float, origin_z: float,
+) -> str:
+    _require_probe_request_id(request_id)
+    _require_number("origin_x", origin_x)
+    _require_number("origin_z", origin_z)
+    return _encode_command({
+        "type": "observe_route_blocks_dev",
+        "request_id": request_id,
+        "origin_x": origin_x, "origin_z": origin_z,
+    })
 
 
 def encode_shutdown() -> str:
