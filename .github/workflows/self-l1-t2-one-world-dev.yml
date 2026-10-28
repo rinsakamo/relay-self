@@ -1,0 +1,121 @@
+name: S49 L1 T2 Same Paper World DEV
+on:
+  push:
+    branches:
+      - self/dev-l1-t2-action-boundary-20261028
+    paths:
+      - .github/workflows/self-l1-t2-one-world-dev.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  actual-l1-t2-world:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DEV_OUTPUT: '/tmp/s49-l1-t2-one-world-${{ github.run_id }}-${{ github.run_attempt }}'
+      S49_REAL_SERVER_CI: '1'
+      S49_FORWARD_MOTOR_DEV_ONLY: '1'
+      S49_L0_GOAL_LOOP_DEV_ONLY: '1'
+      S49_L0_TURN_DEV_ONLY: '1'
+      S49_L0_WALL_DEV_ONLY: '1'
+      S49_L1_WAYPOINT_DEV_ONLY: '1'
+      S49_L1_VOXEL_DEV_ONLY: '1'
+      S49_L1_GRID_SEARCH_DEV_ONLY: '1'
+      S49_L1_T2_CHANNEL_DEV_ONLY: '1'
+      S49_L1_T2_BOUNDARY_DEV_ONLY: '1'
+      RELAYSELF_T1F_DEV: '1'
+      RELAYSELF_PAPER_TICK_DEV: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 2672d0a1fe15584d16c2426540c528410bbb8c27
+          path: t1w-pinned-source
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Local focused validation and separate pinned T1w plugin build
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C t1w-pinned-source rev-parse HEAD)" = 2672d0a1fe15584d16c2426540c528410bbb8c27
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          python -m pytest -q tests/test_s49_l1_t2_shared_paper_dev.py tests/test_s49_goal_t2_boundary_dev.py tests/test_s49_l1_grid_search_dev.py
+          python -m compileall -q adapters/mineflayer/s49_goal_loop_real_dev.py
+          node --check adapters/mineflayer/bridge.mjs
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          mvn -B -ntp -f t1w-pinned-source/adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+      - name: Fetch SHA256-pinned Paper 1.21.8 DEV server
+        run: |
+          set -euo pipefail
+          mkdir -p "$DEV_OUTPUT"
+          python - <<'PY'
+          import hashlib,os,pathlib,urllib.request
+          root=pathlib.Path(os.environ["DEV_OUTPUT"])
+          url="https://fill-data.papermc.io/v1/objects/8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e/paper-1.21.8-60.jar"
+          req=urllib.request.Request(url,headers={"User-Agent":"RelaySelf-L1T2-DEV"})
+          with urllib.request.urlopen(req,timeout=120) as src:
+              data=src.read(53_000_000)
+          assert len(data)==52811717
+          assert hashlib.sha256(data).hexdigest()=="8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          (root/"paper.jar").write_bytes(data)
+          PY
+      - name: One genuinely disposable L1 path and T2 Paper World
+        run: |
+          set -euo pipefail
+          PLUGIN="$PWD/t1w-pinned-source/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar"
+          test -s "$PLUGIN"
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/WORLD1" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
+            --paper-plugin-dev "$PLUGIN" \
+            --offset-m 4.0 --obstacle-wall-dev --detour-after-wall-dev \
+            --native-voxel-map-dev --local-grid-search-dev --left-lane-block-dev \
+            > "$DEV_OUTPUT/producer.stdout" 2>&1 || {
+              cat "$DEV_OUTPUT/producer.stdout"; exit 1;
+            }
+          cat "$DEV_OUTPUT/producer.stdout"
+          python - <<'PY'
+          import json,os,pathlib
+          report=json.loads((pathlib.Path(os.environ["DEV_OUTPUT"])/"WORLD1/goal_report.json").read_text())
+          assert report["status"]=="PASS"
+          assert report["real_world"] is True
+          anchor=report["l1_t2_anchor_dev"]
+          ledger=report["l1_t2_ledger_dev"]
+          assert anchor["status"]=="ADMITTED"
+          assert ledger["owner_failed"] is False
+          assert ledger["rows"]>=1
+          assert ledger["original_action_boundary_receipts"]>=2
+          assert report["stage"]=="L1_DETOUR_ORIGINAL_GOAL_REACHED"
+          assert ledger["continuous_gait_attested"] is False
+          print("S49_L1_T2_SAME_PAPER_WORLD_DEV_PASS",anchor,ledger)
+          PY
+      - name: Preserve all attempts and original DEV World
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-l1-t2-paper-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.DEV_OUTPUT }}/
+            !${{ env.DEV_OUTPUT }}/paper.jar
+            !${{ env.DEV_OUTPUT }}/WORLD1/**/paper.jar
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Classification
+        if: always()
+        run: echo 'DEV_ONLY / R_QUALIFICATION_NO_GO / SCIENCE_NOT_RUN / EXACT_GAIT_UNKNOWN'
