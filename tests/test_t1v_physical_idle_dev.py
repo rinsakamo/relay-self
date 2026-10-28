@@ -2,8 +2,6 @@
 from __future__ import annotations
 
 import copy
-from dataclasses import replace
-
 import pytest
 
 from adapters.mineflayer.python_protocol import MineflayerPaperSnapshot
