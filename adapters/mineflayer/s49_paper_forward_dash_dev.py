@@ -607,6 +607,17 @@ async def run(
         or type(speed_attr_boundary_dev) is not bool
         or type(p1_matched_boost_dev) is not bool
         or os.environ.get("S49_P1_TRACE_AB_OFF_DEV_ONLY") not in (None, "1")
+        or os.environ.get("S49_P1_TRACE_ISOLATE_DEV_ONLY") not in (
+            None, "OFF", "MEM", "FILE"
+        )
+        or (os.environ.get("S49_P1_TRACE_ISOLATE_DEV_ONLY") is not None
+            and os.environ.get("S49_P1_TRACE_AB_OFF_DEV_ONLY") == "1")
+        or (os.environ.get("S49_P1_TRACE_ISOLATE_DEV_ONLY") is not None and (
+            not p1_matched_boost_dev or not speed_attr_boundary_dev
+            or not p1_live_dev or not m0_move_dev or not native_edges_dev
+            or p1_model_pair_case_dev not in PAIR_FATIGUE
+            or os.environ.get("S49_SPEED_ATTR_SYNC_DEV_ONLY") != "1"
+        ))
         or (os.environ.get("S49_P1_TRACE_AB_OFF_DEV_ONLY") == "1" and (
             not p1_matched_boost_dev or not speed_attr_boundary_dev
             or not p1_live_dev or not m0_move_dev or not native_edges_dev
@@ -697,7 +708,12 @@ async def run(
     attr_boundary_path = output_dir.resolve() / "node_speed_attr_boundary_dev.json"
     if speed_attr_boundary_dev and attr_boundary_path.exists():
         raise ForwardDashDevRejected("stale DEV attribute boundary source")
-    trace_ab_off = os.environ.get("S49_P1_TRACE_AB_OFF_DEV_ONLY") == "1"
+    isolate_mode = os.environ.get("S49_P1_TRACE_ISOLATE_DEV_ONLY")
+    trace_ab_off = (
+        os.environ.get("S49_P1_TRACE_AB_OFF_DEV_ONLY") == "1"
+        or isolate_mode == "OFF"
+    )
+    trace_memory_only = isolate_mode == "MEM"
     if inter_action_stillness_dev and inter_action_path.exists():
         raise ForwardDashDevRejected("Node original inter-Action file already exists")
     if node_physics_dev and node_physics_path.exists():
@@ -944,6 +960,9 @@ async def run(
             }) if node_physics_dev else nullcontext()),
             (patch.dict(os.environ, {
                 'S49_SPEED_ATTR_BOUNDARY_DEV_ONLY': '0' if trace_ab_off else '1',
+                'S49_SPEED_ATTR_BOUNDARY_MEMORY_DEV_ONLY': (
+                    '1' if trace_memory_only else '0'
+                ),
                 'S49_SPEED_ATTR_BOUNDARY_DEV_PATH': str(attr_boundary_path),
             }) if speed_attr_boundary_dev else nullcontext()),
         ):
@@ -975,9 +994,9 @@ async def run(
                 or len(original_bytes["actual_native_actions"]) != 2):
             raise ForwardDashDevRejected("original S49 cleanup/outcome mismatch")
         actions = original_bytes["actual_native_actions"]
-        if trace_ab_off and attr_boundary_path.exists():
+        if (trace_ab_off or trace_memory_only) and attr_boundary_path.exists():
             raise ForwardDashDevRejected(
-                "OFF arm unexpectedly wrote native attribute observer trace"
+                "OFF/MEM arm unexpectedly wrote native attribute observer trace"
             )
         if p1_matched_boost_dev:
             report["p1_trace_ab_dev"] = {
@@ -987,13 +1006,16 @@ async def run(
                 "node_attribute_observer_enabled": (
                     speed_attr_boundary_dev and not trace_ab_off
                 ),
+                "node_attribute_observer_mode": (
+                    isolate_mode or ("OFF" if trace_ab_off else "FILE")
+                ),
                 "node_attribute_trace_file_exists": attr_boundary_path.is_file(),
                 "native_trace_write_during_first_action": False,
                 "sole_original_s49_action_owner_unchanged": True,
                 "qualification_go": False,
                 "science_go": False,
             }
-        if speed_attr_boundary_dev and not trace_ab_off:
+        if speed_attr_boundary_dev and not trace_ab_off and not trace_memory_only:
             report["node_speed_attribute_boundary_dev"] = (
                 review_speed_attr_boundary_dev(
                     attr_boundary_path, session_id=subject["session"],
