@@ -11,6 +11,7 @@ import math
 import os
 from dataclasses import asdict
 
+from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.normal_action import (
     NormalActionAuthorization,
     NormalActionStage,
@@ -39,6 +40,7 @@ async def follow_l1_detour_dev(
     plan:L1DetourPlanDev|L1GridRoutePlanDev,
     *, first_blocked_action_id:str, blocked_after_seq:int,
     on_grid_refresh_dev=None,
+    on_inflight_hazard_dev=None,
 )->dict:
     if (
         not isinstance(executor,S49GoalExecutorDev)
@@ -49,6 +51,11 @@ async def follow_l1_detour_dev(
         or executor.supervisor.open_actions
         or executor.supervisor.get(first_blocked_action_id).state
            is not ActionState.UNKNOWN
+        or (on_inflight_hazard_dev is not None and (
+            on_grid_refresh_dev is None
+            or not callable(on_inflight_hazard_dev)
+            or os.environ.get("S49_L0_INFLIGHT_PREEMPT_DEV_ONLY")!="1"
+        ))
         or (on_grid_refresh_dev is not None and (
             not isinstance(plan,L1GridRoutePlanDev)
             or not callable(on_grid_refresh_dev)
@@ -65,6 +72,7 @@ async def follow_l1_detour_dev(
         "l1_detour_plan":asdict(plan),
         "stages":[],"replan_events":[],
         "route_status":"IN_PROGRESS","reached_final_goal":False,
+        "l0_inflight_interrupt":None,
         "learned_l1_attested":False,
         "real_l2_replan_attested":False,
         "obstacle_block_perception_attested":False,
@@ -176,13 +184,124 @@ async def follow_l1_detour_dev(
                     "action_id":ack.action_id,"seq":ack.seq,
                     "result":ack.result,"effect":ack.effect,
                 })
+            # L0 native in-flight risk check shares the original S49
+            # execution callback/packet reader. Only a DEV operator changes
+            # physical World state after the actual MOVE APPLIED receipt.
+            arm_hazard=(
+                on_inflight_hazard_dev is not None and plan.revision>=2
+            )
+            inflight={
+                "applied_ack":None,"clear_ack":None,"native_threat":None,
+                "live_probe_count":0,"world_injection_requested":False,
+            }
+            async def on_effect_ack(phase,effect):
+                if phase=="APPLIED":
+                    if (
+                        effect.action_id!=action_id
+                        or effect.result!="applied"
+                    ):
+                        raise DetourRunRejected("in-flight hazard before real APPLIED")
+                    inflight["applied_ack"]={
+                        "action_id":effect.action_id,"seq":effect.seq,
+                        "result":effect.result,"effect":effect.effect,
+                    }
+                    await on_inflight_hazard_dev(action_id)
+                    inflight["world_injection_requested"]=True
+                elif phase=="CLEARED":
+                    inflight["clear_ack"]={
+                        "action_id":effect.action_id,"seq":effect.seq,
+                        "result":effect.result,"effect":effect.effect,
+                    }
+            def observe_live_hazard(live):
+                inflight["live_probe_count"]+=1
+                threats=[
+                    e for e in live.snapshot.nearby_entities
+                    if e.name=="zombie"
+                    and 0<e.distance<goal.danger_interrupt_m
+                ]
+                if not threats:
+                    return False
+                if len(threats)!=1:
+                    raise DetourRunRejected("ambiguous native in-flight route hazard")
+                interrupt=l0.decide(live)
+                stage["decisions"].append(asdict(interrupt))
+                if interrupt.kind is not GoalDecisionKind.INTERRUPT:
+                    raise DetourRunRejected("native L0 failed to interrupt active route")
+                inflight["native_threat"]={
+                    "probe_seq":live.seq,
+                    "request_id":live.request_id,
+                    "provenance_source":live.provenance.source,
+                    "entity_id":threats[0].entity_id,
+                    "distance_m":threats[0].distance,
+                    "kind":interrupt.kind.value,
+                    "reason":interrupt.reason,
+                    "current_x":interrupt.x,"current_z":interrupt.z,
+                }
+                return True
             l0.admitted(choice)
             receipt=await executor.execute_goal_step(
                 session,directive=directive,decision=choice,probe=probe,
                 propose=grant(NormalActionStage.PROPOSE),
                 issue=grant(NormalActionStage.ISSUE),
                 look_yaw_dev=float(yaw),on_look_ack_dev=look_ack,
+                **({
+                    "on_effect_ack_dev":on_effect_ack,
+                    "on_live_probe_dev":observe_live_hazard,
+                } if arm_hazard else {}),
             )
+            if arm_hazard:
+                ended=receipt.consequence.after_observation
+                threat=inflight["native_threat"]
+                cleared=inflight["clear_ack"]
+                if (
+                    not inflight["world_injection_requested"]
+                    or inflight["applied_ack"] is None
+                    or inflight["live_probe_count"]<1
+                    or threat is None
+                    or cleared is None
+                    or cleared["action_id"]!=action_id
+                    or cleared["result"]!="applied"
+                    or cleared["seq"]<=threat["probe_seq"]
+                    or receipt.terminal.state is not ActionState.UNKNOWN
+                    or receipt.consequence.status is not WorldConsequenceStatus.FAILED
+                    or receipt.consequence.error
+                       !="DEV_L0_INFLIGHT_NATIVE_THREAT_PREEMPTED"
+                    or receipt.consequence.cleanup_receipt is None
+                    or receipt.consequence.cleanup_receipt.result!="applied"
+                    or ended is None
+                    or ended.session_id!=goal.session_id
+                    or executor.supervisor.open_actions
+                    or not l0.closed
+                ):
+                    raise DetourRunRejected(
+                        "in-flight L0 hazard missing real native CLEAR + UNKNOWN"
+                    )
+                stage["result"]="INTERRUPT"
+                stage["inflight_action_id"]=action_id
+                stage["inflight_terminal"]=receipt.terminal.state.value
+                stage["inflight_S16_status"]=receipt.consequence.status.value
+                stage["inflight_error"]=receipt.consequence.error
+                stage["inflight_S16_after_seq"]=ended.seq
+                result["l0_inflight_interrupt"]={
+                    **inflight,"action_id":action_id,
+                    "goal_id":goal.goal_id,
+                    "original_parent_goal_id":plan.parent.goal_id,
+                    "original_parent_target_x":plan.parent.target_x,
+                    "original_parent_target_z":plan.parent.target_z,
+                    "route_revision":plan.revision,
+                    "after_s16_seq":ended.seq,
+                    "terminal":receipt.terminal.state.value,
+                    "S16_status":receipt.consequence.status.value,
+                    "S16_error":receipt.consequence.error,
+                    "next_action_issued":False,
+                    "original_action_owner":True,
+                }
+                result["route_status"]="INTERRUPT"
+                result["last_s16_action_id"]=action_id
+                result["total_route_native_actions"]=1+sum(
+                    len(st["actions"]) for st in result["stages"]
+                )
+                return result
             if (
                 receipt.terminal.state is not ActionState.OUTCOME
                 or receipt.consequence.status.value!="executed"
