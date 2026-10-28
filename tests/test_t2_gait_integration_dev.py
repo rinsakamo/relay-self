@@ -138,10 +138,25 @@ def test_unposted_dash_energy_must_not_create_a_free_motor_budget():
     owner.begin("a")
     before_energy = owner.energy.body
     with pytest.raises(ValueError, match="extra M0"):
-        owner.observe(frame(2, control="MOVING", bits=2, x=.5))
+        owner.observe(frame(2, control="MOVING", bits=1, x=.5))
     assert owner.failed
     assert owner.energy.body == before_energy
     assert not owner.rows
+
+
+def test_paper_direction_contradiction_latches_before_action():
+    owner = TickAccounting("test-session", gait_source=lambda f, p, w:
+                           GaitTickDev(
+                               f.session_id, f.data["snapshot"]["world_tick"],
+                               "DASH", direction="forward",
+                               applied_dash_power=1.0,
+                               available_extra_m0_energy=1.0))
+    owner.observe(frame(1))
+    owner.begin("a")
+    with pytest.raises(ValueError, match="contradicts Paper input"):
+        owner.observe(frame(2, control="MOVING", bits=2, x=.5))
+    assert owner.failed
+    assert owner.energy.body.tick == 0
 
 
 def test_no_double_recovery_legacy_tau_and_gait_prohibited():
