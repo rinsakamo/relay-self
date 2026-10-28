@@ -34,7 +34,6 @@ from adapters.mineflayer.s31a_real_server_ci import (
 )
 from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
 from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
-from adapters.mineflayer.s49_t2_applied_gait_observation_dev import G1AppliedGaitObserverDev
 from adapters.mineflayer.s49_goal_waypoint_route_dev import follow_l1_detour_dev
 from adapters.mineflayer.s49_l1_experience_export_dev import load_episode_dev
 from adapters.mineflayer.s49_l1_selfworld_memory_dev import recall_from_selfworld_dev
@@ -42,6 +41,7 @@ from adapters.mineflayer.s49_normal_session_real_ci import (
     _cleanup_session,
     _write_final_report,
 )
+from adapters.mineflayer.s49_t2_applied_gait_observation_dev import G1AppliedGaitObserverDev
 from adapters.mineflayer.t2_tick_accounting import TickAccounting
 from relay_self.action import ActionState
 from relay_self.goal_detour_dev import explicit_l1_detour_dev
