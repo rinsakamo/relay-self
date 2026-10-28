@@ -1,0 +1,255 @@
+{
+  "classification": "DEV_ONLY / DEV_WORLD_OBSERVED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN",
+  "acceptance": "PASS",
+  "branch": "self/dev-p1-physiology-calibration-20261028",
+  "baseline_head": "426f494f77b9bcfb0b4fc8ef3b5862a40f283655",
+  "execution_source": "baseline + T1S-001-launch.json diff; executable hashes read back before and after audit",
+  "validation": {
+    "python": "3.12.3",
+    "focused_passed": 140,
+    "focused_initial_failed": 1,
+    "fast_passed": 756,
+    "fast_files": 46,
+    "ruff": "PASS after import-order fixes; initial failure retained",
+    "syntax_python_files": 488,
+    "repository_contracts": "PASS",
+    "full_regression": "NOT_RUN",
+    "node_java_rebuild": "NOT_RUN"
+  },
+  "world_runs": {
+    "total": 1,
+    "pass": 1,
+    "fail": 0
+  },
+  "originals": {
+    "root": "/home/rinsa/evidence/t1s-20261028/T1S-001/t1s_calibrated_body_loop",
+    "manifest": "/home/rinsa/evidence/t1s-20261028/originals-manifest.json",
+    "verified_files": 205,
+    "all_match": true,
+    "manifest_sha256": "4fa490f2963d1bfa018c4bb07d71f680873a8b89c7fc3dc715e88ff8c9997613"
+  },
+  "legacy_profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+  "audit": {
+    "run_id": "T1S-001",
+    "status": "PASS",
+    "session": "38e5978f-60e1-447f-b028-e3f188eb7e67",
+    "checks": {
+      "report_pass": true,
+      "all_source_admitted": true,
+      "source_continuous": true,
+      "age_budget": true,
+      "consecutive_accounting": true,
+      "admitted_rows": true,
+      "cost_equations": true,
+      "energy_conserved": true,
+      "p1_conserved": true,
+      "wait_causal": true,
+      "no_unqualified_recovery": true,
+      "original_effects": true,
+      "trace_off": true,
+      "no_food_llm_tps": true,
+      "cleanup": true,
+      "independent_port_rebind": true,
+      "terminal_transport": true,
+      "world_saved": true,
+      "runner_hash_readback": true,
+      "epoch_0": true,
+      "epoch_1": true,
+      "next_epoch_after_wait": true,
+      "profile_binding": true,
+      "first_admitted_uncharged": true,
+      "independent_paper_p1_m0_replay": true,
+      "slow_nonzero_wait_recovery": true,
+      "final_ledger_matches": true,
+      "world_new": true,
+      "execution_source_readback": true,
+      "historical_originals_unchanged": true
+    },
+    "epochs": [
+      {
+        "epoch": 0,
+        "source_seq": 27,
+        "source_tick": 1033,
+        "action_id": "t1p-epoch-0",
+        "action_status": "executed",
+        "terminal": "outcome",
+        "outcome_distance": 0.6269065734210613,
+        "paper_settled_displacement": 0.8571697198364467,
+        "paper_motion_blocks": 0.8249361767371388,
+        "dispatch_seq": 29,
+        "clear_ack_seq": 38,
+        "settled_seq": 60,
+        "settled_tick": 1051,
+        "post_wait_tick": 1063,
+        "wait_dev_ticks": 20,
+        "p1_accumulated": 8.249361767371388e-05,
+        "p1_recovered": 2.0367746774650872e-06,
+        "p1_peak": 8.249361767371389e-05,
+        "p1_final": 8.045684299624882e-05
+      },
+      {
+        "epoch": 1,
+        "source_seq": 73,
+        "source_tick": 1063,
+        "action_id": "t1p-epoch-1",
+        "action_status": "executed",
+        "terminal": "outcome",
+        "outcome_distance": 0.6269065734210615,
+        "paper_settled_displacement": 0.857169719836447,
+        "paper_motion_blocks": 0.857169719836447,
+        "dispatch_seq": 75,
+        "clear_ack_seq": 84,
+        "settled_seq": 107,
+        "settled_tick": 1082,
+        "post_wait_tick": 1094,
+        "wait_dev_ticks": 20,
+        "p1_accumulated": 8.57169719836447e-05,
+        "p1_recovered": 4.102846110441141e-06,
+        "p1_peak": 0.0001661738149798935,
+        "p1_final": 0.00016207096886945236
+      }
+    ],
+    "source": {
+      "paper_frames": 81,
+      "statuses": {
+        "ADMITTED": 81
+      },
+      "violations": [],
+      "distributions_ms": {
+        "causal_upper_ms": {
+          "n": 81,
+          "min": 6.197033,
+          "median": 49.892843,
+          "p95": 54.118152,
+          "p99": 92.925939,
+          "max": 92.925939
+        },
+        "challenge_to_receive_ms": {
+          "n": 81,
+          "min": 6.103372,
+          "median": 49.834417,
+          "p95": 54.034393,
+          "p99": 92.762306,
+          "max": 92.762306
+        },
+        "receive_to_complete_ms": {
+          "n": 81,
+          "min": 0.038475,
+          "median": 0.058958,
+          "p95": 0.118632,
+          "p99": 0.726706,
+          "max": 0.726706
+        },
+        "node_queue_ms": {
+          "n": 81,
+          "min": 0.027205,
+          "median": 0.04237,
+          "p95": 0.0867,
+          "p99": 0.444026,
+          "max": 0.444026
+        },
+        "node_evaluation_ms": {
+          "n": 81,
+          "min": 0.010212,
+          "median": 0.015367,
+          "p95": 0.042169,
+          "p99": 0.28268,
+          "max": 0.28268
+        }
+      },
+      "world": "228231b2-0ddc-475b-b4ae-1ba988a67424",
+      "player": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "boot": "9f74ff91-910c-46a9-9360-2dfb69ac0540",
+      "accounted_ticks": 61,
+      "first_accounted_tick": 1034,
+      "last_accounted_tick": 1094,
+      "effective_tps": 20.00094386749301
+    },
+    "m0": {
+      "initial": 12,
+      "basal": 0.061,
+      "cognition": 0.0061,
+      "movement": 0.003364211793147172,
+      "total_cost": 0.07046421179314717,
+      "final": 11.929535788206891,
+      "food_credit": 0,
+      "wait_basal": 0.04,
+      "paper_basal_exhaustion_delta": 0.06100000000000005,
+      "paper_motion_exhaustion_delta": 0.016821058965735856
+    },
+    "p1": {
+      "initial": 0,
+      "accumulated": 0.00016821058965735858,
+      "recovered": 6.1396207879062284e-06,
+      "final": 0.00016207096886945236,
+      "wait_dev_ticks": 40,
+      "qualified_wait": false,
+      "profile_sha256": "cd71b4180b6439e8fd0f1365505150c81ae6ad37f9e0153ea85698f33a263f40",
+      "recovery_tau_world_seconds": 40,
+      "walk_fatigue_per_block": 0.0001,
+      "one_wait_tick_remaining_fraction": 0.9987507809245809
+    },
+    "distances": {
+      "outcome_sum": 1.2538131468421227,
+      "paper_settled_sum": 1.7143394396728937,
+      "native_motion_blocks_sum": 1.6821058965735858
+    },
+    "trace_audit": {
+      "mode": "OFF",
+      "source_native_paper_count": 81,
+      "trace_count": 0,
+      "valid": true,
+      "timing_metrics_available": false
+    },
+    "cleanup": {
+      "java_pid": 842135,
+      "node_pid": 842233,
+      "java_exit": 0,
+      "node_exit": 0,
+      "java_pid_absent": true,
+      "node_pid_absent": true,
+      "port_rebind": true,
+      "cleanup_complete": true,
+      "terminal_transport": {
+        "bridge_shutdown_ack_seen": true,
+        "bridge_transport_closed": true,
+        "classification": "BRIDGE_SHUTDOWN_ACK_AND_CONNECTION_END_DEV",
+        "connection_end_seen": true,
+        "high_level_stop_ack_attested": false,
+        "native_source_authenticated": false,
+        "paper_world_stopped_attested": false,
+        "session_id": "38e5978f-60e1-447f-b028-e3f188eb7e67"
+      }
+    },
+    "source_hashes": {
+      "commands.jsonl": "23e9ecd0714a9176cab62a0101887fdc897574f897b54ff95c20949dd1b6fe4d",
+      "native.jsonl": "6d9b05ce01fa113f410dc3d7851bba7bff547327ad52099fe61497b6fbb7ae8b",
+      "paper.log": "635c19c457e4838b8e10a50381924a0d31a044a188ea658a1eeec3b02801eae4",
+      "python_timing.jsonl": "2d12ffb043bb69c7b970bd8b3505a215dab06ed8f8ed9fbaf44be8066c8a5fd2",
+      "report.json": "401b4d46ea1a5b8305436b70c238770e2416d585b4ed4362526c91357886de2b",
+      "t2_ticks.json": "fc26e86c2bc018a87041d22ad240e2d4e24c5b029eaa0b7ed8ffc3115fe64d7e"
+    },
+    "post_exercise_comparison": [
+      {
+        "profile": "old",
+        "measured_blocks": 1.6821058965735858,
+        "peak_if_same_movement_before_wait": 0.06728423586294344,
+        "after_40s_wait": 0
+      },
+      {
+        "profile": "new",
+        "measured_blocks": 1.6821058965735858,
+        "peak_if_same_movement_before_wait": 0.00016821058965735858,
+        "after_40s_wait": 6.188121772226787e-05
+      }
+    ]
+  },
+  "physical_judgment": "Engineering candidate improves short WALK and recovery timescales; human physiology unvalidated. No moving recovery: 10min WALK=.24, continued WALK saturates after 2500 World seconds; long-duration steady locomotion and intensity-specific JOG/RUN/DASH require calibration.",
+  "limitations": [
+    "WAIT_DEV is not independently R-qualified WAIT.",
+    "Producer-local native source; independent read-only saved-original audit is not independent source authentication.",
+    "T1s uses original T1p body loop; it does not add T1q/T1r sensor or feedback integration. Quantization and old T1r behavior are regression-tested only.",
+    "New World tests short WALK and 40 observed WAIT_DEV ticks; minute-scale continuous WALK and long recovery curves are offline comparisons only.",
+    "No human physiological validity, learning effect, RUN/JOG/DASH calibration, production adoption, main merge, qualification or science."
+  ]
+}

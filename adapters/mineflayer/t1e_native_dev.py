@@ -519,8 +519,8 @@ async def run_case(args, case):
             await run_stop_move_dev(session, server, report, root)
             return report
         if case == "t1s_calibrated_body_loop":
-            from experiments.p1_physiology_profile_dev import calibrated_walk_profile_dev
             from adapters.mineflayer.t1p_body_runtime_dev import run_body_loop_dev
+            from experiments.p1_physiology_profile_dev import calibrated_walk_profile_dev
             calibrated = calibrated_walk_profile_dev()
             report["t1s_p1_calibration"] = {
                 "classification": "CALIBRATED_WALK_PROFILE_DEV_CANDIDATE",

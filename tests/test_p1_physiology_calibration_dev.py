@@ -10,11 +10,18 @@ import pytest
 
 from adapters.mineflayer.t2_tick_accounting import TickAccounting
 from experiments.fatigue_p1 import (
-    FatigueFrame, FatigueProfile, FatigueRejected, FatigueSensor,
-    Rate, advance, initial_state, observe,
+    FatigueFrame,
+    FatigueProfile,
+    FatigueRejected,
+    FatigueSensor,
+    Rate,
+    advance,
+    initial_state,
+    observe,
 )
 from experiments.p1_physiology_profile_dev import (
-    P1_RECOVERY_TAU_WORLD_SECONDS, P1_WALK_FATIGUE_PER_BLOCK,
+    P1_RECOVERY_TAU_WORLD_SECONDS,
+    P1_WALK_FATIGUE_PER_BLOCK,
     calibrated_walk_profile_dev,
 )
 from test_t1f_t2_dev import frame, release

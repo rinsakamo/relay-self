@@ -1,7 +1,11 @@
 # P1 fatigue calibration DEV candidate — low-intensity movement and recovery (2026-10-28)
 
-**DEV_ONLY / OFFLINE_IMPL_ADDED / PHYSIOLOGY_NOT_YET_QUALIFIED /
-NEW_WORLD_NOT_RUN / SCIENCE_NOT_RUN.**
+**DEV_ONLY / DEV_WORLD_OBSERVED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN.**
+
+Local Python 3.12 and new disposable Minecraft DEV verification completed:
+[T1s results](t1s-native-dev-results-20261028.md),
+[matched old/new comparison](p1-physiology-comparison-dev-20261028.md).
+Engineering PASS does not qualify human physiological validity.
 
 Starting point: T1r successful original Minecraft DEV HEAD
 `61990393d29b4bdb18ec1361096ddf30f3efbd22`.

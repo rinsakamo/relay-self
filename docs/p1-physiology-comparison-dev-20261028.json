@@ -1,0 +1,150 @@
+{
+  "kind": "OFFLINE_IDENTICAL_INPUT_COMPARISON_NOT_WORLD_EVIDENCE",
+  "old_profile_sha256": "d23f1f595095adb1da0b3ce74a72803b85b68359dc94d2ee8b03fcd2078f68b0",
+  "new_profile_sha256": "cd71b4180b6439e8fd0f1365505150c81ae6ad37f9e0153ea85698f33a263f40",
+  "legacy_original_module_sha_compatible": true,
+  "walk": [
+    {
+      "world_seconds": 60,
+      "ticks": 1200,
+      "observed_input_blocks": 240,
+      "old": {
+        "fatigue": 1.0,
+        "first_capacity_tick": 125
+      },
+      "new": {
+        "fatigue": 0.02399999999999936,
+        "first_capacity_tick": null
+      }
+    },
+    {
+      "world_seconds": 300,
+      "ticks": 6000,
+      "observed_input_blocks": 1200,
+      "old": {
+        "fatigue": 1.0,
+        "first_capacity_tick": 125
+      },
+      "new": {
+        "fatigue": 0.1200000000000154,
+        "first_capacity_tick": null
+      }
+    },
+    {
+      "world_seconds": 600,
+      "ticks": 12000,
+      "observed_input_blocks": 2400,
+      "old": {
+        "fatigue": 1.0,
+        "first_capacity_tick": 125
+      },
+      "new": {
+        "fatigue": 0.23999999999997235,
+        "first_capacity_tick": null
+      }
+    }
+  ],
+  "short_move": {
+    "old": {
+      "fatigue": 0.032,
+      "first_capacity_tick": null
+    },
+    "new": {
+      "fatigue": 8e-05,
+      "first_capacity_tick": null
+    }
+  },
+  "wait": [
+    {
+      "initial": 0.2,
+      "ticks": 1,
+      "old": 0.1,
+      "new": 0.19975015618491618
+    },
+    {
+      "initial": 0.2,
+      "ticks": 20,
+      "old": 0.0,
+      "new": 0.1950619824056665
+    },
+    {
+      "initial": 0.2,
+      "ticks": 200,
+      "old": 0.0,
+      "new": 0.15576015661428097
+    },
+    {
+      "initial": 0.2,
+      "ticks": 800,
+      "old": 0.0,
+      "new": 0.07357588823428844
+    },
+    {
+      "initial": 0.2,
+      "ticks": 1600,
+      "old": 0.0,
+      "new": 0.027067056647322525
+    },
+    {
+      "initial": 0.5,
+      "ticks": 1,
+      "old": 0.4,
+      "new": 0.49937539046229046
+    },
+    {
+      "initial": 0.5,
+      "ticks": 20,
+      "old": 0.0,
+      "new": 0.4876549560141664
+    },
+    {
+      "initial": 0.5,
+      "ticks": 200,
+      "old": 0.0,
+      "new": 0.38940039153570244
+    },
+    {
+      "initial": 0.5,
+      "ticks": 800,
+      "old": 0.0,
+      "new": 0.183939720585721
+    },
+    {
+      "initial": 0.5,
+      "ticks": 1600,
+      "old": 0.0,
+      "new": 0.06766764161830643
+    },
+    {
+      "initial": 1.0,
+      "ticks": 1,
+      "old": 0.9,
+      "new": 0.9987507809245809
+    },
+    {
+      "initial": 1.0,
+      "ticks": 20,
+      "old": 0.0,
+      "new": 0.9753099120283328
+    },
+    {
+      "initial": 1.0,
+      "ticks": 200,
+      "old": 0.0,
+      "new": 0.7788007830714049
+    },
+    {
+      "initial": 1.0,
+      "ticks": 800,
+      "old": 0.0,
+      "new": 0.367879441171442
+    },
+    {
+      "initial": 1.0,
+      "ticks": 1600,
+      "old": 0.0,
+      "new": 0.13533528323661287
+    }
+  ],
+  "physical_judgment": "Engineering candidate improves short WALK and recovery timescales; human physiology unvalidated. No moving recovery: 10min WALK=.24, continued WALK saturates after 2500 World seconds; long-duration steady locomotion and intensity-specific JOG/RUN/DASH require calibration."
+}
