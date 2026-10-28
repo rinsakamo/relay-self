@@ -26,3 +26,32 @@ At **first original S16 close**, the first real before→after XZ vector is norm
 Metrics: target X/Z, first-native XZ bearing, second after XZ, fresh fourth native probe XZ, third before/after XZ, signed forward residual, lateral deviation and Euclidean error. Explicit negative tests reject reversed-direction, lateral, stale foreign source and false scalar goal success. No automatic direction reversal, heading controller, actual destination qualification or L2 authority.
 
 All experimental Worlds are disposable official Minecraft 1.21.8 Mojang servers; owner single S49; Python 3.12 focused/Ruff/Node22 before run; always preserve exact raw reports. main/#545/#634 untouched.
+
+## Verified real Minecraft DEV result (2026-10-28)
+
+[Actions #40659516287](https://github.com/rinsakamo/relay-self/actions/runs/40659516287) **completed/SUCCESS**, exact tested code HEAD `ce524ccaf41fc70120568e6d1e69d33a5f3f0c48`. Original Mojang 1.21.8 two independent disposable Worlds, Python3.12 focused **94 PASS**, Ruff PASS, Node22 syntax PASS, original Node/Server terminal source. Original S49 Action owner, real first-second S16 records, original fourth L0, typed native XZ source readback verified. No forced tick synchronization, extra issuer/reader or real model call.
+
+### WALK World — fixed 2.0m WORLD-XZ relative goal
+
+session `fbae271d-92e8-4143-95c7-841d0a65c61c`.
+- First S16 after: (5.5, **−1.4698428355056374**) in (X,Z); locked goal (5.5, **+0.5301571644943626**) **before second S15**.
+- Second S16 after: (5.5, **−0.32249783665424975**); true XZ goal error **0.8526550011486123m**, forward remaining +0.852655m.
+- Fourth genuine fresh native probe: (5.5, **−0.019457114592288494**). Note another 0.303040722062m input-off displacement. Up-to-date forward remaining **+0.5496142790866511m**, cross-track zero, real native threat distance 2m.
+- Original third S14 authorized `MOVE_FORWARD` WALK, hold **0.13353586597164563s**; true third S16 displacement **0.43023153716250867m**.
+- Third S16 after: (5.5, **+0.4107744225702202**); **actual WORLD XZ target error 0.11938274192414239m**, improvement 0.7332722592244699m from second S16 after.
+- **Scalar second+third movement sum=1.2452100826098884m**. Old scalar-vs-1.0m error 0.2452100826098884m would suggest worsening from old second-only 0.18502145m, but that comparator is **not the 2.0m fixed WORLD goal** and excludes inter-Action drift. Real XZ error improved as above. No absolute navigation objective inferred.
+
+### WAIT World — fixed 1.0m WORLD-XZ relative goal
+
+session `84aa792e-5da3-4de8-b21e-5ef17176be9b`.
+- First S16 after: (−4.5, **+13.53015716449436**); fixed goal (−4.5, **+14.53015716449436**), before second S15.
+- Second S16 after: (−4.5, **+14.677502163345748**); **0.14734499885138774m PAST the fixed target** (signed forward remaining negative).
+- Original L0 re-evaluated its fourth native event seq **84**, chose `WAIT` with criterion `s49-locked-native-xz-stop-dev` after same-session fresh XZ probe. Actual physical Action count **2**, third Action **not issued**. No retroactive cancellation or synthetic WAIT. Note this is a DEV relative-distance STOP despite a zombie near 2m, not a general proof of safe combat behavior.
+
+### Evidence and limits
+
+Raw source artifact `s49-l0-native-xz-two-worlds-40659516287-1`, ID **12803047830**, ZIP SHA256 **e78be6f87d8e8135a6321c0d5e78432cecb411522d9f19e9398fb27dc64de6e5**. Both worlds source-consistent and distinct; `S49_L0_NATIVE_XZ_TWO_REAL_WORLDS_DEV_PASS`; no new packet readers/issuers, no force, no P1 recovery evidence, no standalone destination or arbitrary turn/obstacle generalization. In this experiment, X remains constant and WORLD's target-aligned forward is Z; negative controls cover reversed, lateral, stale, unbound and untrusted observations, but physical rotated-heading and obstacle tests have NOT been run.
+
+Crucial result: input-off motion is real World behavior, not a reason to force Node/Paper tick synchronization. The feedback loop must compare actual location relative to a precommitted target using a fresh observation before a new Action.
+
+**DEV_WORLD_OBSERVED / DEV_ONLY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**. No change to main, #545/#634, production S49 default or paper certifications.
