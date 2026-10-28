@@ -154,3 +154,25 @@ def test_sneak_mode_transition_not_a_stable_tick(monkeypatch):
     observer.observe(_frame(monkeypatch,2,controls=_controls("forward","sneak"),
                             x=0.03,blocks=0.03,sneak=True),t2_activity=None)
     assert observer.rows[-1].kind=="TRANSITION_OR_UNDETERMINED"
+
+
+def test_paper_two_modifiers_is_dash_candidate_never_a_p1_charge(monkeypatch):
+    observer=G1AppliedGaitObserverDev(SID)
+    for t,x in [(1,0.0),(2,0.17),(3,0.36)]:
+        observer.observe(_frame(monkeypatch,t,controls=_controls("forward","sprint"),
+                                x=x,blocks=x,sprint=True,mods=2,value=0.195),
+                         t2_activity="MOVE_OR_UNDETERMINED")
+    assert observer.rows[-1].kind=="STABLE_DASH_MODIFIER_FORWARD_CANDIDATE"
+    assert observer.rows[-1].full_tick_gait_attested is False
+    assert observer.rows[-1].m0_extra_charge_posted is False
+    assert observer.rows[-1].p1_transition_posted is False
+
+
+def test_different_paper_modifier_eras_are_not_stable_dash_ticks(monkeypatch):
+    observer=G1AppliedGaitObserverDev(SID)
+    observer.observe(_frame(monkeypatch,1,controls=_controls("forward","sprint"),
+                            sprint=True,mods=1,value=0.13),t2_activity=None)
+    observer.observe(_frame(monkeypatch,2,controls=_controls("forward","sprint"),
+                            x=.15,blocks=.15,sprint=True,mods=2,value=.195),
+                     t2_activity=None)
+    assert observer.rows[-1].kind=="TRANSITION_OR_UNDETERMINED"
