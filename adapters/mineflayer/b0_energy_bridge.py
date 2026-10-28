@@ -128,10 +128,50 @@ class B0EnergyLedger:
         self._dev_dash_last_world_tick: int | None = None
         self._last_eat_seq = -1
         self._last_decision_seq = -1
+        self._g3_last_dash_world_tick_dev: int | None = None
 
     @property
     def credit_count(self) -> int:
         return len(self._credits)
+
+    def post_g3_observed_dash_tick_dev(
+        self, *, world_tick: int, extra: float,
+    ) -> EnergyTransition:
+        """One atomic M0 MOVE + source-derived DASH extra on this existing ledger.
+
+        Called only by the one G3 T2 WorldTick owner after consecutive original
+        Paper source and one P1 transition are accepted. DEV, not R qualified.
+        No separate post_dash_extra_dev or additional metabolism tick.
+        """
+        if (
+            type(world_tick) is not int or world_tick < 0
+            or type(extra) not in (int, float)
+            or not math.isfinite(extra)
+            or not 0 < extra <= 0.20 * 0.05 + 1e-10
+            or (self._g3_last_dash_world_tick_dev is not None
+                and world_tick <= self._g3_last_dash_world_tick_dev)
+            or self.body.terminal
+        ):
+            raise B0EnergyRejected("G3 observed DASH source or replay refused")
+        transition = metabolism_step(
+            self.body, action="MOVE", consumed_food_units=0,
+            config=self.config,
+        )
+        if (
+            transition.terminal_now or transition.intake != 0
+            or transition.after.energy <= extra
+        ):
+            raise B0EnergyRejected("G3 DASH extra exceeds living M0 budget")
+        charged = replace(
+            transition.after, energy=transition.after.energy-extra,
+        )
+        # Exactly one state mutation (one WorldTick, one basal/MOVE, extra).
+        self.body = charged
+        self._g3_last_dash_world_tick_dev = world_tick
+        return replace(
+            transition, after=charged,
+            expenditure=transition.expenditure+extra,
+        )
 
     def post_dash_extra_dev(
         self, receipt: NormalActionReceipt, invoice: DashM0InvoiceDev,
