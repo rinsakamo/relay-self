@@ -72,6 +72,10 @@ def test_inconsistent_native_terminal_latches_owner(bad_state, bad_status):
     with pytest.raises(GoalT2BoundaryRejected):
         boundary.after_terminal(outcome(state=bad_state, status=bad_status))
     assert owner.failed and boundary.latched
+    assert boundary.refusal["reason"] == "NATIVE_TERMINAL_NOT_SAFE_FOR_T2"
+    assert boundary.refusal["consequence_status"] == bad_status
+    assert boundary.refusal["p1_credit_awarded"] is False
+    assert boundary.refusal["additional_action_issued"] is False
 
 
 def test_wall_unknown_clear_allows_l1_replan_only_after_new_paper_source():
