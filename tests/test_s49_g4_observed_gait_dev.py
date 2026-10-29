@@ -77,7 +77,7 @@ def test_g4_single_p1_m0_limits_override_coarse_speed(fatigue,energy,mode):
 
 
 def test_g4_no_motion_from_goal_tolerance(monkeypatch):
-    with pytest.raises(ValueError,match="inside L1 tolerance"):
+    with pytest.raises(ValueError,match="G4 requires fresh positive forward"):
         policy(.35)
     with pytest.raises(ValueError,match="positive forward"):
         policy(4.,threats=True)
