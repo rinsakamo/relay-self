@@ -19,7 +19,6 @@ from relay_self.goal_navigation import (
 )
 from relay_self.provenance import Provenance
 
-
 SID = "g4-dev-session"
 
 
