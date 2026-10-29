@@ -1,6 +1,9 @@
 package io.github.rinsakamo.relaymetabolism;
 
 import java.nio.charset.StandardCharsets;
+import com.google.gson.Gson;
+import java.util.LinkedHashMap;
+import java.util.UUID;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -80,6 +83,101 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     // Separate prospective S50 fixed-pose DEV: World-tick position billing.
     // False on all historical Paper profiles and non-controlled World runs.
     private boolean s50TickMeterCandidate = false;
+    // #150 T1: observer only. Does not attest L0, action ownership or session.
+    // False unless explicitly opted into a disposable M0.2 DEV World.
+    private boolean adaptiveTickObserverDev = false;
+    private int adaptiveTickRows = 0;
+    // nanoTime has an arbitrary origin and may be negative; log a monotonic
+    // *relative* duration from this instance instead of its absolute value.
+    private final long adaptiveTickClockOriginNanos = System.nanoTime();
+    private static final int ADAPTIVE_TICK_ROWS_MAX = 256;
+    private static final String ADAPTIVE_TICK_CHANNEL = "relayself:world_tick_dev";
+    private boolean t1fDev = false;
+    private boolean t1uGaitDev = false;
+    private boolean t1uModifierIdentityDev = false;
+    private String t1fChallenge = null;
+    // T1m: opt-in JVM-only passive timing. Never written to the T1f wire schema.
+    private boolean t1mTimingDev = false;
+    private long t1mChallengeReceiveNanos = -1L;
+    private final String t1fBoot = UUID.randomUUID().toString();
+
+    // One existing plugin channel, snapshot challenge only; never motor input.
+    private String t1fSnapshot(Player p) {
+        Location pos = p.getLocation();
+        org.bukkit.Input input = p.getCurrentInput();
+        int bits = (input.isForward() ? 1 : 0) | (input.isBackward() ? 2 : 0)
+            | (input.isLeft() ? 4 : 0) | (input.isRight() ? 8 : 0)
+            | (input.isJump() ? 16 : 0) | (input.isSneak() ? 32 : 0)
+            | (input.isSprint() ? 64 : 0);
+        List<Map<String, Object>> threats = new ArrayList<>();
+        List<Entity> nearby = p.getNearbyEntities(4, 4, 4);
+        boolean complete = nearby.size() <= 128;
+        if (complete) {
+            for (Entity e : nearby) {
+                if (!(e instanceof org.bukkit.entity.Monster)
+                        && !(e instanceof org.bukkit.entity.Slime)
+                        && !(e instanceof org.bukkit.entity.Phantom)) continue;
+                Location ep = e.getLocation();
+                double distance = ep.distance(pos);
+                if (distance > 4) continue;
+                threats.add(Map.of("id", e.getUniqueId().toString(),
+                    "kind", e.getType().name(), "x", ep.getX(), "y", ep.getY(),
+                    "z", ep.getZ(), "distance", distance));
+            }
+        }
+        Map<String, Object> row = new LinkedHashMap<>();
+        row.put("version", 1);
+        row.put("boot", t1fBoot);
+        row.put("index", adaptiveTickRows);
+        row.put("tick", Bukkit.getCurrentTick());
+        row.put("world_tick", p.getWorld().getFullTime());
+        row.put("paper_ns", System.nanoTime() - adaptiveTickClockOriginNanos);
+        row.put("world", p.getWorld().getUID().toString());
+        row.put("player", p.getUniqueId().toString());
+        row.put("challenge", t1fChallenge == null ? "NONE" : t1fChallenge);
+        // Reuse latest challenge across catch-up ticks: each later snapshot
+        // is still causally AFTER its receipt; Node retains a bounded history.
+        row.put("x", pos.getX()); row.put("y", pos.getY()); row.put("z", pos.getZ());
+        row.put("health", p.getHealth()); row.put("food", p.getFoodLevel());
+        row.put("input", bits); row.put("threats_complete", complete);
+        row.put("threats", threats);
+        row.put("basal_ticks", appliedTicks);
+        row.put("basal_exhaustion", requestedBasalExhaustion);
+        row.put("motion_blocks", observedMotionBlocks);
+        row.put("motion_exhaustion", chargedMotionExhaustion);
+        if (t1uGaitDev) {
+            // Passive facts on the SAME callback/channel, never a motor request.
+            org.bukkit.attribute.AttributeInstance speed = p.getAttribute(
+                org.bukkit.attribute.Attribute.MOVEMENT_SPEED);
+            if (speed == null) throw new IllegalStateException("missing movement speed");
+            Map<String, Object> gait = new LinkedHashMap<>();
+            gait.put("sneaking", p.isSneaking());
+            gait.put("sprinting", p.isSprinting());
+            gait.put("speed_base", speed.getBaseValue());
+            gait.put("speed_value", speed.getValue());
+            gait.put("speed_modifiers", speed.getModifiers().size());
+            if (t1uModifierIdentityDev) {
+                // Authoritative *same Paper callback* modifiers, not a second
+                // packet reader or an inferred UUID from the total speed.
+                List<Map<String, Object>> details = new ArrayList<>();
+                if (speed.getModifiers().size() > 4) {
+                    throw new IllegalStateException("G3 modifier source unbounded");
+                }
+                for (org.bukkit.attribute.AttributeModifier mod : speed.getModifiers()) {
+                    details.add(Map.of(
+                        "key", mod.getKey().toString(),
+                        "operation", mod.getOperation().name(),
+                        "amount", mod.getAmount()));
+                }
+                details.sort((a, b) ->
+                    ((String) a.get("key")).compareTo((String) b.get("key")));
+                gait.put("speed_modifier_details", details);
+            }
+            row.put("gait_dev", gait);
+        }
+        return new Gson().toJson(row);
+    }
+
     private boolean s50TickMeterArmed = false;
     private Location s50TickMeterLast;
     private long s50TickMeterRows = 0;
@@ -210,6 +308,51 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 throw new IllegalStateException("invalid S50 tick meter DEV flag");
             }
             s50TickMeterCandidate = getConfig().getBoolean("s50-tick-meter-dev", false);
+            if (getConfig().contains("adaptive-tick-observer-dev")
+                    && !getConfig().isBoolean("adaptive-tick-observer-dev")) {
+                throw new IllegalStateException("invalid passive WorldTick observer flag");
+            }
+            adaptiveTickObserverDev = getConfig().getBoolean(
+                "adaptive-tick-observer-dev", false);
+            t1fDev = getConfig().getBoolean("t1f-snapshot-dev", false);
+            t1uGaitDev = getConfig().getBoolean("t1u-gait-dev", false);
+            t1uModifierIdentityDev = getConfig().getBoolean(
+                "t1u-modifier-identity-dev", false);
+            if (t1uModifierIdentityDev && !t1uGaitDev) {
+                throw new IllegalStateException("G3 modifier identity requires T1u");
+            }
+            if (t1uGaitDev && !t1fDev) {
+                throw new IllegalStateException("T1u requires original T1f snapshot owner");
+            }
+            t1mTimingDev = getConfig().getBoolean("t1m-timing-dev", false);
+            if (t1mTimingDev && (!t1fDev || !adaptiveTickObserverDev)) {
+                throw new IllegalStateException("T1m passive timing requires existing T1f DEV");
+            }
+            if (t1fDev && !adaptiveTickObserverDev) {
+                throw new IllegalStateException("T1f needs existing tick channel opt-in");
+            }
+            if (t1fDev) {
+                getServer().getMessenger().registerIncomingPluginChannel(
+                    this, ADAPTIVE_TICK_CHANNEL, (channel, player, bytes) -> {
+                        if (!player.getName().equals("RelaySelf") || bytes.length > 80) return;
+                        String value = new String(bytes, StandardCharsets.US_ASCII);
+                        if (value.matches("[0-9a-f]{32}:[1-9][0-9]{0,3}")) {
+                            t1fChallenge = value;
+                            if (t1mTimingDev) {
+                                t1mChallengeReceiveNanos = System.nanoTime();
+                                getLogger().info("T1M_DEV_JVM_CHALLENGE_RX challenge=" + value
+                                    + " jvm_rel_ns=" + (t1mChallengeReceiveNanos
+                                        - adaptiveTickClockOriginNanos));
+                            }
+                        }
+                    });
+            }
+            if (adaptiveTickObserverDev) {
+                // Client receives on its existing Mineflayer transport.
+                // Server receives NO tick input commands or Action effects.
+                getServer().getMessenger().registerOutgoingPluginChannel(
+                    this, ADAPTIVE_TICK_CHANNEL);
+            }
             target = getConfig().getString("target-player", "");
             if (!target.equals("RelaySelf")) {
                 throw new IllegalStateException("only the owned RelaySelf dev bot is supported");
@@ -246,9 +389,67 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             Bukkit.getPluginManager().registerEvents(this, this);
             devActive = true;
             Bukkit.getScheduler().runTaskTimer(this, () -> {
+                long t1mCallbackStart = t1mTimingDev ? System.nanoTime() : 0L;
                 Player p = Bukkit.getPlayerExact(target);
                 if (p == null || !p.isOnline() || p.isDead()) {
                     return;
+                }
+                // Passive Paper callback sample only. A real Self-side L0
+                // decision was NOT executed or confirmed in this callback.
+                // Never infer S49 Action ID/session or use as a motor writer.
+                if (adaptiveTickObserverDev && adaptiveTickRows < (t1fDev ? 2400 : ADAPTIVE_TICK_ROWS_MAX)
+                        && p.getListeningPluginChannels().contains(ADAPTIVE_TICK_CHANNEL)) {
+                    adaptiveTickRows++;
+                    String tickWire = "index=" + adaptiveTickRows
+                        + " server_tick=" + Bukkit.getCurrentTick()
+                        + " world_full_time=" + p.getWorld().getFullTime()
+                        + " wall_nanos=" + (System.nanoTime() - adaptiveTickClockOriginNanos)
+                        + " world=" + p.getWorld().getUID()
+                        + " player=" + p.getUniqueId()
+                        + " source=PAPER_SCHEDULER_CALLBACK_ONLY"
+                        + " l0_checked=false action_bound=false";
+                    getLogger().info("PAPER_DEV_TIME_SAMPLE " + tickWire);
+                    // Bounded, passive server pose/input witness on the same
+                    // callback. This is not a client clear ACK or motor writer.
+                    Location pose = p.getLocation();
+                    org.bukkit.Input input = p.getCurrentInput();
+                    getLogger().info("PAPER_DEV_MOTOR_SAMPLE index=" + adaptiveTickRows
+                        + " server_tick=" + Bukkit.getCurrentTick()
+                        + " world=" + p.getWorld().getUID()
+                        + " player=" + p.getUniqueId()
+                        + " x=" + pose.getX() + " y=" + pose.getY() + " z=" + pose.getZ()
+                        + " forward=" + input.isForward() + " backward=" + input.isBackward()
+                        + " left=" + input.isLeft() + " right=" + input.isRight()
+                        + " jump=" + input.isJump() + " sneak=" + input.isSneak()
+                        + " sprint=" + input.isSprint());
+                    // No client subscription means no wire receipt. A logged
+                    // Paper callback must never be mistaken for an L0 check.
+                    if (p.getListeningPluginChannels().contains(ADAPTIVE_TICK_CHANNEL)) {
+                        // Same-JVM durations only. Do not subtract these values
+                        // from Node process.hrtime() or assert wire send/receive.
+                        String t1mSampleChallenge = t1fChallenge;
+                        long t1mReceived = t1mChallengeReceiveNanos;
+                        String payload = t1fDev ? t1fSnapshot(p) : tickWire;
+                        p.sendPluginMessage(this, ADAPTIVE_TICK_CHANNEL,
+                            payload.getBytes(StandardCharsets.US_ASCII));
+                        if (t1mTimingDev) {
+                            long afterSend = System.nanoTime();
+                            long rxToCallback = t1mReceived < 0L ? -1L
+                                : t1mCallbackStart - t1mReceived;
+                            getLogger().info("T1M_DEV_JVM_CALLBACK index=" + adaptiveTickRows
+                                + " challenge=" + (t1mSampleChallenge == null
+                                    ? "NONE" : t1mSampleChallenge)
+                                + " world_tick=" + p.getWorld().getFullTime()
+                                + " server_tick=" + Bukkit.getCurrentTick()
+                                + " boot=" + t1fBoot
+                                + " world=" + p.getWorld().getUID()
+                                + " player=" + p.getUniqueId()
+                                + " rx_to_callback_ns=" + rxToCallback
+                                + " callback_to_send_return_ns=" + (afterSend - t1mCallbackStart)
+                                + " jvm_rel_ns=" + (afterSend - adaptiveTickClockOriginNanos)
+                                + " qualification=false");
+                        }
+                    }
                 }
                 if (s50TickMeterArmed) {
                     meterS50Tick(p);
@@ -458,6 +659,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             if (p == null || !p.isOnline() || p.isDead()) return false;
             Location loc = p.getLocation();
             getLogger().info("S_V8_DEV_SNAPSHOT marker_id=" + args[0]
+                + " server_tick=" + Bukkit.getCurrentTick()
                 + " world=" + p.getWorld().getUID() + " seed=" + p.getWorld().getSeed()
                 + " full_time=" + p.getWorld().getFullTime()
                 + " player_tick=" + appliedTicks
