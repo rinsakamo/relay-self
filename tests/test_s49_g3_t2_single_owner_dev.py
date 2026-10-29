@@ -245,3 +245,52 @@ def test_g3_strict_identity_absent_fails_closed_while_legacy_remains_dev(monkeyp
     assert owner.g3_dash_energy_total_dev==0
     assert owner.rows[-1]["g3_unknown_fallback_dev"]
     assert owner.energy.body.tick==1
+
+
+def test_g3_exact_identity_rejects_wrong_vanilla_sprint_amount(monkeypatch):
+    from functools import partial
+
+    monkeypatch.setenv("S49_L1_G3_T2_DEV_ONLY","1")
+    owner=TickAccounting(SID,gait_source=partial(
+        applied_gait_from_original_t1u_dev,strict_modifier_identity_dev=True),
+        g3_partial_dev=True)
+    first=_set_paper_modifier_identity(native_frame(monkeypatch,1,x=0.))
+    second=_set_paper_modifier_identity(native_frame(monkeypatch,2,x=.20))
+    for frame in (first,second):
+        details=frame.data["snapshot"]["gait_dev"]["speed_modifier_details"]
+        assert details[0]["key"]=="minecraft:sprinting"
+        details[0]["amount"]=.29
+    owner.observe(first)
+    owner.permit_g3_dash_action_dev("original-paper-arm")
+    owner.begin("original-paper-arm")
+    owner.observe(second)
+    assert owner.failed is False and owner.energy.body.tick==1
+    assert owner.fatigue.world_tick==2
+    assert owner.rows[-1]["g3_unknown_fallback_dev"]
+    assert owner.rows[-1]["g3_extra_m0_paid_dev"]==0
+    assert owner.g3_dash_energy_total_dev==0
+
+
+def test_g3_exact_identity_requires_same_modifier_on_adjacent_paper_ticks(
+    monkeypatch,
+):
+    from functools import partial
+
+    monkeypatch.setenv("S49_L1_G3_T2_DEV_ONLY","1")
+    owner=TickAccounting(SID,gait_source=partial(
+        applied_gait_from_original_t1u_dev,strict_modifier_identity_dev=True),
+        g3_partial_dev=True)
+    first=_set_paper_modifier_identity(native_frame(monkeypatch,1,x=0.))
+    second=_set_paper_modifier_identity(native_frame(monkeypatch,2,x=.21))
+    # Both Paper frames have the same effective 0.195 speed, but the
+    # first has a different modifier. Never mistake a transition for
+    # a stable and payable observed DASH WorldTick.
+    first.data["snapshot"]["gait_dev"]["speed_modifier_details"][1]["amount"]=.4
+    owner.observe(first)
+    owner.permit_g3_dash_action_dev("original-paper-arm")
+    owner.begin("original-paper-arm")
+    owner.observe(second)
+    assert owner.failed is False and owner.energy.body.tick==1
+    assert owner.rows[-1]["g3_unknown_fallback_dev"] is True
+    assert owner.rows[-1]["g3_extra_m0_paid_dev"]==0
+    assert owner.g3_dash_energy_total_dev==0
