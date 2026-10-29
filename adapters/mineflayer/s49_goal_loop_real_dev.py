@@ -40,6 +40,9 @@ from adapters.mineflayer.g45_paper_gait_join_dev import (
 from adapters.mineflayer.g46_paper_control_generation_dev import (
     join_g46_control_generation_dev,
 )
+from adapters.mineflayer.g47_original_t2_gait_join_dev import (
+    join_g47_original_t2_worldticks_dev,
+)
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -185,6 +188,7 @@ async def qualify(
     g45_paper_gait_join_dev:bool=False,
     g45_hazard_during_gait_dev:bool=False,
     g46_paper_generation_dev:bool=False,
+    g47_original_t2_gait_join_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -241,6 +245,8 @@ async def qualify(
         "g46_paper_generation_dev":g46_paper_generation_dev,
         "g46_native_paper_generations_dev":[],
         "g46_original_run_applied_acks_dev":[],
+        "g47_original_t2_gait_join_dev":g47_original_t2_gait_join_dev,
+        "g47_worldtick_gait_audit_dev":None,
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -275,6 +281,11 @@ async def qualify(
             or type(g45_paper_gait_join_dev) is not bool
             or type(g45_hazard_during_gait_dev) is not bool
             or type(g46_paper_generation_dev) is not bool
+            or type(g47_original_t2_gait_join_dev) is not bool
+            or (g47_original_t2_gait_join_dev and (
+                not g46_paper_generation_dev
+                or os.environ.get("S49_G47_ORIGINAL_T2_GAIT_JOIN_DEV_ONLY")!="1"
+            ))
             or (g46_paper_generation_dev and (
                 not g45_paper_gait_join_dev
                 or os.environ.get("S49_G46_PAPER_GENERATION_DEV_ONLY")!="1"
@@ -2012,6 +2023,55 @@ async def qualify(
                 report["g46_generation_refusal_dev"]=f"{type(exc).__name__}: {exc}"
                 report["status"]="FAIL"
                 rc=2
+        if g47_original_t2_gait_join_dev and gait_observer is not None and t2_owner is not None:
+            try:
+                g47_rows=[
+                    asdict(row) for row in join_g47_original_t2_worldticks_dev(
+                        session_id=sid,
+                        original_run_acks=report["g46_original_run_applied_acks_dev"],
+                        transition_acks=report["g44_native_transition_acks_dev"],
+                        original_clear_acks=report["g45_action_clear_acks_dev"],
+                        paper_rows=[asdict(row) for row in gait_observer.rows],
+                        t2_rows=t2_owner.rows,
+                    )
+                ]
+                g47_path=report_path.parent/"g47_original_t2_worldtick_gait_audit_dev.json"
+                with g47_path.open("x",encoding="utf-8") as sink:
+                    json.dump({
+                        "source":"SINGLE_ORIGINAL_S49_G46_G1_PAPER_T2_DEV",
+                        "original_t2_ledger_sha256":report["l1_t2_ledger_dev"]["derived_file_sha256"],
+                        "original_g1_observation_sha256":report["g1_applied_gait_observation_dev"]["derived_file_sha256"],
+                        "p1_or_m0_reposted":False,
+                        "additional_t2_readers_or_owners":0,
+                        "full_tick_R_attested":False,
+                        "rows":g47_rows,
+                    },sink,sort_keys=True)
+                    sink.write("\n")
+                statuses={}
+                for item in g47_rows:
+                    status=item["status"]
+                    statuses[status]=statuses.get(status,0)+1
+                report["g47_worldtick_gait_audit_dev"]={
+                    "source":"SINGLE_ORIGINAL_S49_G46_G1_PAPER_T2_DEV",
+                    "derived_file":g47_path.name,
+                    "derived_file_sha256":hashlib.sha256(g47_path.read_bytes()).hexdigest(),
+                    "original_t2_worldtick_rows":len(g47_rows),
+                    "original_t2_ledger_sha256":report["l1_t2_ledger_dev"]["derived_file_sha256"],
+                    "source_bound_stable_gait_candidates":statuses.get(
+                        "SOURCE_BOUND_STABLE_GAIT_CANDIDATE_DEV",0,
+                    ),
+                    "unknown_worldticks":len(g47_rows)-statuses.get(
+                        "SOURCE_BOUND_STABLE_GAIT_CANDIDATE_DEV",0,
+                    ),
+                    "status_counts":statuses,
+                    "p1_or_m0_reposted":False,
+                    "additional_t2_readers_or_owners":0,
+                    "full_tick_R_attested":False,
+                }
+            except (ValueError, KeyError, TypeError) as exc:
+                report["g47_t2_join_refusal_dev"]=f"{type(exc).__name__}: {exc}"
+                report["status"]="FAIL"
+                rc=2
         report["pre_cleanup_status"]=report["status"]
         await _cleanup_session(
             report,server,collector,session,None,temp,None,None,cleanup_cancel,
@@ -2065,6 +2125,7 @@ def main()->int:
     p.add_argument("--g45-paper-gait-join-dev",action="store_true")
     p.add_argument("--g45-hazard-during-gait-dev",action="store_true")
     p.add_argument("--g46-paper-generation-dev",action="store_true")
+    p.add_argument("--g47-original-t2-gait-join-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -2110,6 +2171,7 @@ def main()->int:
         g45_paper_gait_join_dev=args.g45_paper_gait_join_dev,
         g45_hazard_during_gait_dev=args.g45_hazard_during_gait_dev,
         g46_paper_generation_dev=args.g46_paper_generation_dev,
+        g47_original_t2_gait_join_dev=args.g47_original_t2_gait_join_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
