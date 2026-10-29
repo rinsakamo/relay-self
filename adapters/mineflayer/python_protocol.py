@@ -984,9 +984,9 @@ def encode_g44_gait_transition_dev(
     if (
         not parent_action_id.startswith("goal-")
         or type(transition_index) is not int
-        or not ((transition_index,from_mode,to_mode) in (
+        or (transition_index,from_mode,to_mode) not in (
             (1,"RUN","JOG"),(2,"JOG","WALK"),
-        ))
+        )
     ):
         raise MineflayerAdapterProtocolError(
             "G4.4 forbids foreign or misordered native gait transition"

@@ -3,7 +3,9 @@ import pytest
 
 from adapters.mineflayer.g44_intra_action_gait_dev import decide_g44_intra_action_gait_dev
 from relay_self.goal_navigation import (
-    GoalPurpose, L2GoalProposal, compile_l1_goal_dev,
+    GoalPurpose,
+    L2GoalProposal,
+    compile_l1_goal_dev,
 )
 from relay_self.provenance import Provenance
 

@@ -4,7 +4,8 @@ import json
 import pytest
 
 from adapters.mineflayer.python_protocol import (
-    MineflayerAdapterProtocolError, encode_g44_gait_transition_dev,
+    MineflayerAdapterProtocolError,
+    encode_g44_gait_transition_dev,
 )
 
 
