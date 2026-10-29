@@ -14,6 +14,7 @@ import math
 import os
 import shutil
 import tempfile
+from functools import partial
 from dataclasses import asdict
 from pathlib import Path
 
@@ -150,6 +151,7 @@ async def qualify(
     paper_dash_plugin_dev:Path|None=None,
     g2_dash_first_dev:bool=False,
     g3_single_owner_dev:bool=False,
+    g3_modifier_identity_dev:bool=False,
     paper_gait_observation_dev:bool=False,
     g2_sprint_first_dev:bool=False,
     g2_sprint_prefix_dev:bool=False,
@@ -190,6 +192,7 @@ async def qualify(
         "g2_sprint_actions_dev":[],
         "g2_dash_first_dev":g2_dash_first_dev,
         "g3_single_owner_dev":g3_single_owner_dev,
+        "g3_modifier_identity_dev":g3_modifier_identity_dev,
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -223,6 +226,12 @@ async def qualify(
                 or obstacle_wall_dev or detour_after_wall_dev
                 or goal_turn_dx_dev!=0.0
                 or os.environ.get("S49_GOAL_G2_SNEAK_DEV_ONLY")!="1"
+            ))
+            or type(g3_modifier_identity_dev) is not bool
+            or (g3_modifier_identity_dev and (
+                not g3_single_owner_dev
+                or not paper_gait_observation_dev
+                or os.environ.get("S49_G3_MODIFIER_IDENTITY_DEV_ONLY")!="1"
             ))
             or type(g3_single_owner_dev) is not bool
             or (g3_single_owner_dev and (
@@ -406,6 +415,9 @@ async def qualify(
                        "t1f-snapshot-dev: true\n"
                        "t1u-gait-dev: "
                        +("true" if paper_gait_observation_dev else "false")
+                       +"\n"
+                       +"t1u-modifier-identity-dev: "
+                       +("true" if g3_modifier_identity_dev else "false")
                        +"\n")
             (plugin_dir/"config.yml").write_text(config)
             original=(root/"server.properties").read_text()
@@ -443,7 +455,12 @@ async def qualify(
             t2_owner=TickAccounting(
                 sid,
                 **({
-                    "gait_source":applied_gait_from_original_t1u_dev,
+                    "gait_source":(
+                        partial(applied_gait_from_original_t1u_dev,
+                                strict_modifier_identity_dev=True)
+                        if g3_modifier_identity_dev
+                        else applied_gait_from_original_t1u_dev
+                    ),
                     "g3_partial_dev":True,
                 } if g3_single_owner_dev else {}),
             )
@@ -1338,6 +1355,7 @@ async def qualify(
                 "original_p1_owner":True,
                 "original_m0_owner":True,
                 "gait_source":"ORIGINAL_T1U_NODE_PAPER_STABLE_DEV",
+                "exact_paper_modifier_identity_required_dev":g3_modifier_identity_dev,
                 "single_p1_updates":len(t2_owner.rows),
                 "stable_gait_ticks":t2_owner.g3_applied_gait_ticks_dev,
                 "undetermined_fallback_ticks":t2_owner.g3_unknown_fallback_ticks_dev,
@@ -1478,6 +1496,7 @@ def main()->int:
     p.add_argument("--paper-dash-plugin-dev",type=Path)
     p.add_argument("--g2-dash-first-dev",action="store_true")
     p.add_argument("--g3-single-owner-dev",action="store_true")
+    p.add_argument("--g3-modifier-identity-dev",action="store_true")
     p.add_argument("--paper-gait-observation-dev",action="store_true")
     p.add_argument("--g2-sprint-first-dev",action="store_true")
     p.add_argument("--g2-sprint-prefix-dev",action="store_true")
@@ -1514,6 +1533,7 @@ def main()->int:
         paper_dash_plugin_dev=args.paper_dash_plugin_dev,
         g2_dash_first_dev=args.g2_dash_first_dev,
         g3_single_owner_dev=args.g3_single_owner_dev,
+        g3_modifier_identity_dev=args.g3_modifier_identity_dev,
         paper_gait_observation_dev=args.paper_gait_observation_dev,
         g2_sprint_first_dev=args.g2_sprint_first_dev,
         g2_sprint_prefix_dev=args.g2_sprint_prefix_dev,
