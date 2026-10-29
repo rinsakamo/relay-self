@@ -6,6 +6,9 @@ import pytest
 from adapters.mineflayer.g47_original_t2_gait_join_dev import (
     join_g47_original_t2_worldticks_dev,
 )
+from adapters.mineflayer.g48_ordinary_action_gait_join_dev import (
+    join_g48_ordinary_action_gait_dev,
+)
 
 
 def _paper(seq, tick, *, mode, kind, effect, generation, after):
@@ -188,3 +191,133 @@ def test_g47_strict_accounting_provenance(change):
         a["t2_rows"][2]["p1"] = None
     with pytest.raises(ValueError, match="G4.[567]"):
         join_g47_original_t2_worldticks_dev(**a)
+
+
+def _g48_ordinary_fixture():
+    a = _args()
+    # Extends the complete original G4.7 staged-Action evidence with two
+    # other real-like already-issued S49 Actions. No fake second T2 owner.
+    a["original_clear_acks"].extend([
+        {"action_id": "goal-g47-step-3", "clear_seq": 29,
+         "s16_seq": 30, "s16_terminal": "outcome"},
+        {"action_id": "goal-g47-step-4", "clear_seq": 36,
+         "s16_seq": 37, "s16_terminal": "outcome"},
+    ])
+    a["original_ordinary_acks"] = [
+        {"action_id": "goal-g47-step-3", "effect_id": "goal-g47-step-3",
+         "ack_seq": 25, "effect": "set_control", "requested_mode": "JOG",
+         "requested_not_paper_gait": True,
+         "source": "ORIGINAL_S49_NATIVE_APPLIED"},
+        {"action_id": "goal-g47-step-4", "effect_id": "goal-g47-step-4",
+         "ack_seq": 31, "effect": "set_forward_sneak_dev",
+         "requested_mode": "WALK", "requested_not_paper_gait": True,
+         "source": "ORIGINAL_S49_NATIVE_APPLIED"},
+    ]
+    for seq, tick, mode, action, after, kind, applied in [
+        (26, 205, "JOG", "goal-g47-step-3", False,
+         "TRANSITION_OR_UNDETERMINED", None),
+        (28, 206, "JOG", "goal-g47-step-3", True,
+         "STABLE_ORDINARY_FORWARD_CANDIDATE", "JOG"),
+        (32, 207, "WALK", "goal-g47-step-4", False,
+         "TRANSITION_OR_UNDETERMINED", None),
+        (34, 208, "WALK", "goal-g47-step-4", True,
+         "STABLE_SNEAK_FORWARD_CANDIDATE", "WALK"),
+    ]:
+        frame = deepcopy(a["paper_rows"][2])
+        frame.update({
+            "source_seq": seq, "world_tick": tick, "kind": kind,
+            "g46_challenge_after_control_dev": after,
+        })
+        frame["g46_motor_boundary_dev"].update({
+            "action_id": action, "effect_id": action,
+            "requested_mode": mode + "_ACTION",
+            "transition_index": 0, "control_generation": (
+                6 if mode == "JOG" else 8
+            ),
+        })
+        frame["applied_controls"].update({
+            "sprint": False, "sneak": mode == "WALK",
+        })
+        frame["paper_gait"].update({
+            "sprinting": False, "sneaking": mode == "WALK",
+            "speed_base": 0.1, "speed_value": 0.1, "speed_modifiers": 0,
+        })
+        a["paper_rows"].append(frame)
+        row = deepcopy(a["t2_rows"][-1])
+        row.update({
+            "source_seq": seq, "world_tick": tick,
+            "active_action": action,
+            "motor_mode": applied if applied else "UNDETERMINED",
+            "applied_gait": applied,
+            "g3_unknown_fallback_dev": applied is None,
+        })
+        a["t2_rows"].append(row)
+    return a
+
+
+def test_g48_ordinary_jog_walk_readonly_overlay_preserves_original_g47():
+    a = _g48_ordinary_fixture()
+    before = deepcopy(a)
+    old = join_g47_original_t2_worldticks_dev(**{
+        key: val for key, val in a.items() if key != "original_ordinary_acks"
+    })
+    new = join_g48_ordinary_action_gait_dev(**a)
+    assert a == before
+    assert [x.status for x in new[:5]] == [x.status for x in old[:5]]
+    assert [x.status for x in new[5:]] == [
+        "UNKNOWN_PRECHANGE_CHALLENGE",
+        "SOURCE_BOUND_STABLE_GAIT_CANDIDATE_DEV",
+        "UNKNOWN_PRECHANGE_CHALLENGE",
+        "SOURCE_BOUND_STABLE_GAIT_CANDIDATE_DEV",
+    ]
+    assert sum(x.status == "SOURCE_BOUND_STABLE_GAIT_CANDIDATE_DEV"
+               for x in old) == 3
+    assert sum(x.status == "SOURCE_BOUND_STABLE_GAIT_CANDIDATE_DEV"
+               for x in new) == 5
+    assert [x.node_control_generation for x in new[-4:]] == [6, 6, 8, 8]
+    assert [x.original_t2_row_sha256 for x in new] == [
+        x.original_t2_row_sha256 for x in old
+    ]
+    assert all(x.original_p1 == y.original_p1
+               and x.original_m0 == y.original_m0
+               for x, y in zip(new, old))
+    assert all(not x.new_p1_or_m0_posting
+               and not x.packet_to_physics_tick_attested for x in new)
+
+
+@pytest.mark.parametrize("which", [
+    "foreign_action", "effect_mismatch", "duplicate_action",
+    "wrong_effect", "unknown_source", "foreign_generation",
+    "paper_unstable", "t2_mismatch",
+])
+def test_g48_reject_or_preserve_unknown_for_missing_ordinary_provenance(which):
+    a = _g48_ordinary_fixture()
+    if which == "foreign_action":
+        a["original_ordinary_acks"][0]["action_id"] = "goal-foreign"
+    elif which == "effect_mismatch":
+        a["original_ordinary_acks"][0]["effect_id"] = "goal-wrong"
+    elif which == "duplicate_action":
+        a["original_ordinary_acks"].append(
+            a["original_ordinary_acks"][0].copy()
+        )
+    elif which == "wrong_effect":
+        a["original_ordinary_acks"][0]["effect"] = "set_forward_sneak_dev"
+    elif which == "unknown_source":
+        a["original_ordinary_acks"][0]["source"] = "synthetic"
+    elif which == "foreign_generation":
+        a["paper_rows"][6]["g46_motor_boundary_dev"][
+            "action_id"
+        ] = "goal-foreign"
+    elif which == "paper_unstable":
+        a["paper_rows"][6]["kind"] = "TRANSITION_OR_UNDETERMINED"
+    else:
+        a["t2_rows"][6]["applied_gait"] = "WALK"
+    if which in (
+        "foreign_generation", "paper_unstable", "t2_mismatch",
+    ):
+        joined = join_g48_ordinary_action_gait_dev(**a)
+        assert joined[6].status.startswith("UNKNOWN_")
+        assert not joined[6].new_p1_or_m0_posting
+    else:
+        with pytest.raises(ValueError, match="G4.8"):
+            join_g48_ordinary_action_gait_dev(**a)
