@@ -173,6 +173,53 @@ jobs:
               assert hashlib.sha256(f.read_bytes()).hexdigest()==item["derived_file_sha256"]
           print("G3_EXACT_PAPER_MODIFIER_IDENTITY_AND_S49_M0_P1_DEV_PASS",dash,g["kinds"],t2["rows"])
           PY
+      - name: Two more independent disposable Paper modifier identity Worlds
+        run: |
+          set -euo pipefail
+          PLUGIN="$PWD/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar"
+          DASH="$PWD/adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-dash-dev-0.1.0-dev.jar"
+          for i in 2 3; do
+            python -m adapters.mineflayer.s49_goal_loop_real_dev \
+              --output-dir "$DEV_OUTPUT/WORLD-DASH-$i" \
+              --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+              --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
+              --paper-plugin-dev "$PLUGIN" --paper-gait-observation-dev \
+              --paper-dash-plugin-dev "$DASH" --g2-dash-first-dev \
+              --offset-m 4.0 --g2-sprint-prefix-dev --g3-single-owner-dev \
+              --g3-modifier-identity-dev > "$DEV_OUTPUT/producer-dash-$i.stdout" 2>&1 || {
+                cat "$DEV_OUTPUT/producer-dash-$i.stdout"; exit 1;
+              }
+            cat "$DEV_OUTPUT/producer-dash-$i.stdout"
+          done
+          python - <<'PY'
+          import json,os,pathlib
+          root=pathlib.Path(os.environ["DEV_OUTPUT"])
+          totals=[]
+          for name in ("WORLD-DASH","WORLD-DASH-2","WORLD-DASH-3"):
+              folder=root/name
+              report=json.loads((folder/"goal_report.json").read_text())
+              g3=report["g3_single_t2_p1_m0_owner_dev"]
+              g=report["g1_applied_gait_observation_dev"]
+              t2=report["l1_t2_ledger_dev"]
+              rows=json.loads((folder/t2["derived_file"]).read_text())["rows"]
+              source=json.loads((folder/g["derived_file"]).read_text())["rows"]
+              assert report["status"]=="PASS" and report["stage"]=="GOAL_REACHED"
+              assert not g3["owner_failed"] and g3["exact_paper_modifier_identity_required_dev"]
+              assert t2["original_action_boundary_receipts"]==report["action_count"]
+              observed=sum(x["kind"]=="STABLE_DASH_MODIFIER_FORWARD_CANDIDATE" for x in source)
+              paid=[x for x in rows if x["g3_extra_m0_paid_dev"]>0]
+              assert len(paid)<=observed
+              assert all(x["g3_dash_source_action_scope_dev"]==g3["paper_armed_original_dash_action_id"]
+                         and x["active_action"]==g3["paper_armed_original_dash_action_id"]
+                         for x in paid)
+              assert abs(sum(x["g3_extra_m0_paid_dev"] for x in paid)-g3["dash_extra_energy_paid"])<1e-9
+              assert all(len(x["paper_gait"]["speed_modifier_details"])==
+                         x["paper_gait"]["speed_modifiers"] for x in source)
+              totals.append({"name":name,"paper_positive":report["g2_dash_modifier_dev"]["paper_positive_modifier_callbacks"],
+                             "stable":observed,"paid":len(paid),
+                             "energy":g3["dash_extra_energy_paid"]})
+          print("G3_EXACT_MODIFIER_THREE_REAL_WORLD_DEV_PASS",totals)
+          PY
       - name: Preserve real World and refusal evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
