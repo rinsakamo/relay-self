@@ -104,8 +104,13 @@ def validate_result(d):
         if (
             "applied_controls_dev" not in d
             or type(b) is not dict
-            or set(b)!={"action_id","effect_id","requested_mode",
-                         "transition_index","control_generation","control_phase"}
+            or set(b) not in (
+                {"action_id","effect_id","requested_mode",
+                 "transition_index","control_generation","control_phase"},
+                {"action_id","effect_id","requested_mode",
+                 "transition_index","control_generation","control_phase",
+                 "g48_ordinary_action_dev"},
+            )
             or not natural(b["control_generation"])
             or b["control_generation"]!=c["generation"]
             or b["control_phase"]!=c["phase"]
@@ -117,25 +122,39 @@ def validate_result(d):
         mode=b["requested_mode"]
         action=b["action_id"]
         effect=b["effect_id"]
+        ordinary=b.get("g48_ordinary_action_dev",False)
+        if "g48_ordinary_action_dev" in b and ordinary is not True:
+            raise ValueError("invalid G4.8 ordinary epoch opt-in")
         if mode=="UNBOUND":
-            if action is not None or effect is not None or b["transition_index"]!=0:
+            if (action is not None or effect is not None
+                    or b["transition_index"]!=0 or ordinary):
                 raise ValueError("invalid G4.6 unbound Node control")
-        elif (type(action) is not str or not action.startswith("goal-")
-              or type(effect) is not str or len(action)>128 or len(effect)>180
-              or (mode in {"SPRINT_INPUT","JOG","WALK"} and c["phase"]!="MOVING")
-              or (mode=="CLEARED" and c["phase"]!="CLEARED")
-              or (mode=="SPRINT_INPUT" and (
-                  b["transition_index"]!=0 or effect!=action))
-              or (mode=="JOG" and (
-                  b["transition_index"]!=1
-                  or effect!=f"{action}-g44-1-jog"))
-              or (mode=="WALK" and (
-                  b["transition_index"]!=2
-                  or effect!=f"{action}-g44-2-walk"))
-              or (mode=="CLEARED" and (
-                  b["transition_index"]!=0
-                  or effect!=f"{action}-s15-clear"))):
+        elif ordinary and not (
+            mode in {"JOG","WALK"} and b["transition_index"]==0
+            and effect==action and c["phase"]=="MOVING"
+            and type(action) is str and action.startswith("goal-")
+            and len(action)<=128
+        ):
+            raise ValueError("invalid G4.8 ordinary S49 Action binding")
+        elif not ordinary and (
+            type(action) is not str or not action.startswith("goal-")
+            or type(effect) is not str or len(action)>128 or len(effect)>180
+            or (mode in {"SPRINT_INPUT","JOG","WALK"} and c["phase"]!="MOVING")
+            or (mode=="CLEARED" and c["phase"]!="CLEARED")
+            or (mode=="SPRINT_INPUT" and (
+                b["transition_index"]!=0 or effect!=action))
+            or (mode=="JOG" and (
+                b["transition_index"]!=1
+                or effect!=f"{action}-g44-1-jog"))
+            or (mode=="WALK" and (
+                b["transition_index"]!=2
+                or effect!=f"{action}-g44-2-walk"))
+            or (mode=="CLEARED" and (
+                b["transition_index"]!=0
+                or effect!=f"{action}-s15-clear"))
+        ):
             raise ValueError("invalid G4.6 original S49 sub-effect binding")
+
     if d["status"] == "ADMITTED":
         sent = d["challenge_sent_ns"]
         if (type(sent) is not str or re.fullmatch(r"0|[1-9][0-9]{0,19}", sent) is None
