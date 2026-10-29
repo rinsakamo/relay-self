@@ -19,8 +19,16 @@ _KIND_TO_GAIT = {
 }
 
 
-def applied_gait_from_original_t1u_dev(frame, previous, wait):
-    """Return a candidate frame or None; original T2 alone advances state."""
+def applied_gait_from_original_t1u_dev(
+    frame, previous, wait, *, strict_modifier_identity_dev: bool = False,
+):
+    """Return a candidate frame or None; original T2 alone advances state.
+
+    G3.2 strict opt-in requires both Paper snapshots' server modifier
+    identities and effective +50% boost, never a heuristic 2-modifier total.
+    """
+    if type(strict_modifier_identity_dev) is not bool:
+        raise ValueError("G3_IDENTITY_GATE_INVALID")
     if type(wait) is not bool or frame.session_id != previous.session_id:
         raise ValueError("G3_FOREIGN_OR_NONBOOLEAN_SOURCE")
     if frame.data["status"] != previous.data["status"] or frame.data["status"] != "ADMITTED":
@@ -45,6 +53,27 @@ def applied_gait_from_original_t1u_dev(frame, previous, wait):
                 or not math.isclose(physical["speed_base"],0.1,abs_tol=1e-6)
                 or not math.isclose(physical["speed_value"],0.195,abs_tol=1e-5)):
             return None
+        if strict_modifier_identity_dev:
+            mods = physical.get("speed_modifier_details")
+            previous_mods = previous.data["snapshot"]["gait_dev"].get(
+                "speed_modifier_details")
+            if mods != previous_mods or type(mods) is not list or len(mods) != 2:
+                return None
+            by_key = {mod["key"]: mod for mod in mods}
+            if set(by_key) != {
+                "minecraft:sprinting",
+                "relays49dashdev:forward_dash_only",
+            }:
+                return None
+            if (by_key["minecraft:sprinting"]["operation"] != "MULTIPLY_SCALAR_1"
+                    or by_key["relays49dashdev:forward_dash_only"]["operation"]
+                    != "MULTIPLY_SCALAR_1"
+                    or not math.isclose(
+                        by_key["minecraft:sprinting"]["amount"], 0.3, abs_tol=1e-6)
+                    or not math.isclose(
+                        by_key["relays49dashdev:forward_dash_only"]["amount"],
+                        0.5, abs_tol=1e-6)):
+                return None
         # Only original G2 one-shot full-power DASH plugin is permitted;
         # actual output is still a source-bound DEV candidate, NOT R proof.
         return GaitTickDev(frame.session_id,world_tick,"DASH",
