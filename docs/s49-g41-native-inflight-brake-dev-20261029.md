@@ -10,7 +10,8 @@ This branch is isolated from `main`, Draft #545 and Draft #634.
 - The original S15 reader polls live native positions within its own
   0.10–0.35s already-issued motor Action. Session, sequence, request prefix,
   source and non-truncated threat coverage must be valid.
-- DASH/RUN may clear early for a new slower G4 Action; JOG may hand off to
+- DASH/RUN may clear early for a new slower G4 Action, using an
+  observed RUN clearance threshold of 1.95m; JOG may hand off to
   WALK after observed movement >=0.08m. WALK uses a fixed bounded pulse,
   then relies on S16 and the original L0 settle verification.
 - The initial G4.1 real World at `4362b76cc36c3b3868858d1b883877e31e4b833f`
@@ -34,3 +35,16 @@ Sampling is opportunistic (~60ms), not hard real-time or per-WorldTick.
 
 G4.2 may explore within-Action gait changes only with explicit native
 effect ACK, original S49 identity and single-owner T2 posting contracts.
+
+## Matched-start correction from first DEV A/B
+
+The Paper server may spawn independent disposable Worlds at distinct absolute
+XZ. The G4/G4.1 comparison now matches **relative** 4.0m +Z initial
+Goal distance, L1 tolerance and Paper configuration, and records the distinct
+absolute native spawn positions instead of pretending they are identical.
+The original `40828663409` World pair both reached Goal; the wrapper failed
+because it asserted identical absolute spawn XZ and no early brake sample
+was observed. This new revision makes a RUN near-goal brake reachable
+at 1.95m clearance. The next World run must still demonstrate the source
+probe, original CLEAR ACK, S16 OUTCOME, and single T2 owner; no automatic
+promotion from static policy tests.
