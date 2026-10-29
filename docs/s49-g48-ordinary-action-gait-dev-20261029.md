@@ -1,0 +1,9 @@
+# G4.8 DEV — ordinary JOG/WALK original S49 Action control epochs
+
+Parent G4.7 verified DEV HEAD `0ea2abc8c7b0e03b7c1b576ff18471e3a881d7fd`. Isolated branch `self/dev-g48-ordinary-action-gait-20261029`, main and protected Drafts unaffected.
+
+Explicit opt-in `S49_G48_ORDINARY_ACTION_GAIT_DEV_ONLY=1` and `--g48-ordinary-action-gait-dev`, requires G47/G46/G45/G44. Original Node control metadata on same Paper/T1u callback is extended with `JOG_ACTION` for original S49 `set_control(forward,true)` and `WALK_ACTION` for `set_forward_sneak_dev`, bounded to original S49 action/effect ID, generation, phase and transition index 0. T1f strict schema validation; original S15 records exact native applied ACK before original CLEAR. Zero changes to actual motor controls or duration, no second reader or P1/M0 owner.
+
+Pure read-only post-run overlay on immutable G4.7 T2 WorldTick rows: original per-Action applied ACK→CLEAR source window, exact original T2 active Action, matching control generation/effect, after-control challenge, independently server-sourced original G1 Paper two-sample gait candidate and already-posted original T2 applied gait are required for evidence-backed classification. Others remain explicitly UNKNOWN. Never overwrite previously qualified G4.7 staged RUN/JOG/WALK source candidates. G4.8 sidecar includes G4.7 original SHA, original G1/T2 SHA, 1:1 original T2 WorldTick receipt SHA with nested original P1/M0, and within-the-same-World UNKNOWN reduction counts; no extra accounting.
+
+DEV CI: Python3.12/Ruff focused, Node22/Java21 unchanged pinned Paper1.21.8, three disposable Worlds including original JOG-stage zombie danger and expected original T2 fail-closed refusal. No QUAL or SCIENCE, no sync trace, no second owner. Even stable source-bound Paper gait is not exact per-physics-tick input acceptance proof.
