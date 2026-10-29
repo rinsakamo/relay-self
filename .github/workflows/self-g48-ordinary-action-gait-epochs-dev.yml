@@ -333,7 +333,7 @@ jobs:
           a48=controlled["g48_worldtick_epoch_audit_dev"]
           assert a48 and a48["original_t2_worldtick_rows"]==len(original)
           assert a48["original_g47_audit_sha256"]==audit["derived_file_sha256"]
-          assert a48["original_t2_ledger_sha256"]==t2["derived_file_sha256"]
+          assert a48["original_t2_ledger_sha256"]==controlled["l1_t2_ledger_dev"]["derived_file_sha256"]
           assert a48["g47_source_bound_candidates"]==audit["source_bound_stable_gait_candidates"]
           assert a48["total_source_bound_candidates"]==(
               audit["source_bound_stable_gait_candidates"]+
