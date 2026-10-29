@@ -376,7 +376,8 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
                 session,command,timeout_s=9,provenance=origin,
                 on_effect_ack_dev=on_effect_ack_dev,
                 on_live_probe_dev=on_live_probe_dev,
-                on_g41_brake_probe_dev=on_g41_brake_probe_dev,
+                **({"on_g41_brake_probe_dev":on_g41_brake_probe_dev}
+                   if on_g41_brake_probe_dev is not None else {}),
                 look_yaw_dev=look_yaw_dev,
                 on_look_ack_dev=on_look_ack_dev,
             )
