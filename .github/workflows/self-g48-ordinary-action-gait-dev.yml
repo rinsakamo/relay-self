@@ -523,6 +523,7 @@ jobs:
           file48=folder/ext["derived_file"]
           assert hashlib.sha256(file48.read_bytes()).hexdigest()==ext["derived_file_sha256"]
           extended=json.loads(file48.read_text())["rows"]
+          original=json.loads((folder/j["l1_t2_ledger_dev"]["derived_file"]).read_text())["rows"]
           assert len(extended)==len(original)
           for source,copy in zip(original,extended):
               assert copy["original_t2_row_sha256"]==hashlib.sha256(
