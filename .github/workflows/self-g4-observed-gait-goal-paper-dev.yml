@@ -119,6 +119,19 @@ jobs:
           assert all(c["source_seq"]>0 for c in choices)
           assert len(set(c["source_seq"] for c in choices))==len(choices)
           assert any(c["mode"] in ("WALK","JOG","RUN") for c in choices[1:])
+          # Bind every requested G4 mode to the actual original S49 S15
+          # dispatch ACK; don't mistake a policy mode for physical World gait.
+          actions=report["native_actions"]
+          assert len(actions)==len(choices)
+          effect={"DASH":"set_forward_sprint_dev",
+                  "RUN":"set_forward_sprint_dev",
+                  "JOG":"set_control","WALK":"set_forward_sneak_dev"}
+          for c,a in zip(choices,actions):
+              assert a["g4_requested_mode_dev"]==c["mode"]
+              assert a["g4_native_dispatch_effect_dev"]==effect[c["mode"]]
+              assert a["g4_native_dispatch_applied_dev"] is True
+              assert a["g4_requested_not_actual_world_gait"] is True
+              assert a["duration_s"]==c["duration_s"]
           g3=report["g3_single_t2_p1_m0_owner_dev"]
           t2=report["l1_t2_ledger_dev"]
           assert not g3["owner_failed"]
