@@ -56,4 +56,4 @@ def test_g44_stage_progression_and_never_attest_world_gait():
 ])
 def test_g44_rejects_foreign_or_unsafe(change):
     with pytest.raises(ValueError,match="G4.4"):
-        eval_("RUN",2.0,**change)
+        eval_(change.pop("mode", "RUN"),2.0,**change)
