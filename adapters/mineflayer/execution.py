@@ -447,6 +447,13 @@ async def execute_mineflayer_command(
                 await asyncio.sleep(min(0.06, max(0.0, deadline - loop.time())))
                 if loop.time() >= deadline:
                     break
+                # Do not launch an in-flight G4.1 packet probe with too
+                # little time left to receive it while the input is held.
+                # Short WALK/JOG pulses simply finish under the old S15
+                # CLEAR + fresh S16 path.
+                if (on_g41_brake_probe_dev is not None
+                        and deadline - loop.time() < 0.10):
+                    break
                 request_id = (
                     f"{command.action_id}-inflight-{last_live_probe_seq+2}"
                 )
