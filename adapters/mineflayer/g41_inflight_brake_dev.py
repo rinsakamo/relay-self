@@ -63,7 +63,7 @@ def decide_g41_inflight_brake_dev(
         brake,reason=False,"WAIT_FOR_MEASURED_MOTOR_PROGRESS"
     elif clearance <= 0:
         brake,reason=True,"OBSERVED_TOLERANCE_BRAKE_FOR_SETTLE"
-    elif mode in ("DASH", "RUN") and clearance <= 1.05:
+    elif mode in ("DASH", "RUN") and clearance <= 1.95:
         brake,reason=True,"FAST_GAIT_BRAKE_FOR_NEXT_G4_CHOICE"
     elif mode=="JOG" and clearance <= 0.60:
         brake,reason=True,"JOG_BRAKE_FOR_WALK"
