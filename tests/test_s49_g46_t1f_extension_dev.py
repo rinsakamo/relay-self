@@ -62,3 +62,23 @@ def test_g46_original_schema_still_passes_without_optional_boundary():
     sample=_base()
     del sample["g46_motor_boundary_dev"]
     validate_result(sample)
+
+@pytest.mark.parametrize("mode",["JOG_ACTION","WALK_ACTION"])
+def test_g48_real_original_ordinary_s49_action_schema(mode):
+    x=_base()
+    x["g46_motor_boundary_dev"]["requested_mode"]=mode
+    x["g46_motor_boundary_dev"]["transition_index"]=0
+    x["g46_motor_boundary_dev"]["effect_id"]=x["g46_motor_boundary_dev"]["action_id"]
+    validate_result(x)
+
+
+@pytest.mark.parametrize("field,value",[
+    ("transition_index",1),("effect_id","foreign"),
+    ("control_generation",7),("control_phase","CLEARED"),
+])
+def test_g48_foreign_ordinary_action_metadata_refused(field,value):
+    x=_base()
+    x["g46_motor_boundary_dev"]["requested_mode"]="JOG_ACTION"
+    x["g46_motor_boundary_dev"][field]=value
+    with pytest.raises(ValueError,match="G4.6"):
+        validate_result(x)
