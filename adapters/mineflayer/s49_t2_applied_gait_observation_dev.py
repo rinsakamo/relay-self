@@ -88,6 +88,7 @@ class G1AppliedGaitObserverDev:
                 and gait["sneaking"] == old_gait["sneaking"]
                 and gait["sprinting"] == old_gait["sprinting"]
                 and gait["speed_modifiers"] == old_gait["speed_modifiers"]
+                and gait.get("speed_modifier_details") == old_gait.get("speed_modifier_details")
                 and math.isclose(gait["speed_value"], old_gait["speed_value"], rel_tol=1e-6)
                 and phase["phase"] == old_phase["phase"]
                 and phase["generation"] == old_phase["generation"]
