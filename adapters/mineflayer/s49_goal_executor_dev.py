@@ -165,8 +165,30 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         g2_sprint_first_dev:bool=False,
         g2_sprint_prefix_dev:bool=False,
         g2_sneak_prefix_dev:bool=False,
+        g4_mode_dev:str|None=None,
     )->NormalActionReceipt:
         goal=directive.proposal if isinstance(directive,L1GoalDirective) else None
+        if g4_mode_dev is not None and (
+            type(g4_mode_dev) is not str
+            or g4_mode_dev not in ("WALK", "JOG", "RUN", "DASH")
+            or os.environ.get("S49_G4_OBSERVED_GAIT_DEV_ONLY")!="1"
+            or os.environ.get("S49_L1_G1_OBSERVATION_DEV_ONLY")!="1"
+            or (g4_mode_dev in ("RUN","DASH")
+                and os.environ.get("S49_SPRINT_MOTOR_DEV_ONLY")!="1")
+            or self._t2_boundary_dev is None
+            or self._t2_boundary_dev.latched
+            or (g4_mode_dev=="DASH" and (
+                self._count!=0
+                or not self._t2_boundary_dev.owner.g3_partial_dev
+                or self._t2_boundary_dev.owner.g3_dash_approved_action_dev is None
+            ))
+            or any((g2_sprint_first_dev,g2_sprint_prefix_dev,
+                    g2_sneak_prefix_dev))
+            or look_yaw_dev is not None or on_live_probe_dev is not None
+        ):
+            raise NormalActionRejected(
+                "G4 mode requires single original T2 owner and explicit gait admission"
+            )
         if type(g2_sneak_prefix_dev) is not bool or (
             g2_sneak_prefix_dev and (
                 g2_sprint_first_dev
@@ -250,6 +272,10 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         ):
             raise NormalActionRejected("goal Action lacks original live L0 admission")
         action_id=f"goal-{goal.goal_id}-step-{self._count+1}"
+        if g4_mode_dev=="DASH" and (
+            self._t2_boundary_dev.owner.g3_dash_approved_action_dev != action_id
+        ):
+            raise NormalActionRejected("G4 DASH cannot spend another Paper-armed Action")
         for g in (propose,issue):
             if (
                 not isinstance(g,NormalActionAuthorization)
@@ -274,8 +300,11 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         t=100+10*self._count
         origin=Provenance("normal-action-runtime",f"{self.session_id}:goal:{t}")
         gait_requested_action_ref=(
-            MOVE_FORWARD_SNEAK_DEV_REF if g2_sneak_prefix_dev else
-            MOVE_FORWARD_SPRINT_DEV_REF if g2_sprint_first_dev or g2_sprint_prefix_dev else "MOVE_FORWARD"
+            MOVE_FORWARD_SNEAK_DEV_REF
+            if g2_sneak_prefix_dev or g4_mode_dev=="WALK" else
+            MOVE_FORWARD_SPRINT_DEV_REF
+            if (g2_sprint_first_dev or g2_sprint_prefix_dev
+                or g4_mode_dev in ("RUN","DASH")) else "MOVE_FORWARD"
         )
         binding=ExecutionBinding(
             binding_id=f"goal-binding-{self._count+1}",
@@ -283,8 +312,10 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
             required_intent_id=goal.intent_id,
             skill_execution_id=f"goal-skill-{self._count+1}",
             skill_ref=(
-                "goal-forward-sneak-dev" if g2_sneak_prefix_dev
-                else "goal-forward-sprint-dev" if g2_sprint_first_dev or g2_sprint_prefix_dev
+                "goal-forward-sneak-dev" if g2_sneak_prefix_dev or g4_mode_dev=="WALK"
+                else "goal-forward-sprint-dev"
+                if g2_sprint_first_dev or g2_sprint_prefix_dev
+                   or g4_mode_dev in ("RUN","DASH")
                 else "goal-forward-walk"
             ),action_id=action_id,
             action_ref=gait_requested_action_ref,
