@@ -50,3 +50,13 @@ The first three-World experiment's completed source changed neither Paper/DASH p
 Even exact modifier key + power inside one Paper tick is **not** authenticated client physics-step → movement packet → Paper accepted player movement for all of that tick. The two-snapshot gait condition is intentionally conservative; it can **undercount physical DASH-positive moments** and should not be extrapolated as a fully paid duration. Paper modifier callback and Node applied controls need not occur at precisely the same client tick. The +0.5 speed attribute does not prove 50% actual displacement at matched speed or fatigue; the 20-second full DASH model, speed controller and L0 policy are not calibrated by these short runs. No R qualification or V science requested, no FULL, main or Draft PR #545/#634 touched.
 
 **Engineering next**: use exact-ID observations to calibrate repeated matched gait trajectories, then add bounded L0 gait choice governed by Goal-distance tolerance and current single P1/M0 available budget. Keep narrow DEV opt-ins and preserve the existing Action and World owners.
+
+
+## Post-run focused negative-control audit
+
+After the three physical-World success (no change to the physical runtime code), two additional same-source focused cases were committed at `fcfaf486585a32e27d2b913e8a9665d42bcd22b6`:
+
+- Both observed snapshots claim effective speed 0.195 and have the expected DASH key/power, **but the vanilla `minecraft:sprinting` modifier is +0.29 rather than +0.30**. The strict G3 candidate returns unknown, leaves original T2 ticking, and posts **zero** DASH extra.
+- First snapshot carries DASH modifier +0.40 while second has +0.50, both still report 0.195 effective speed. The G1 consecutive modifier-identity stability gate rejects this transition; no DASH extra P1/M0 posting and no invented WAIT.
+
+[Focused CI #40810483095 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/40810483095): **88 Python 3.12 focused tests**, **28 Node** strict source/protocol tests, Ruff/Python syntax PASS. These are **offline negative controls**, not physically injected foreign modifier trials. The physical three-World source HEAD remains `c8aed7ceb063c8b1fc573a345c091c332cc3b328` and its archived SHA256s are unchanged.
