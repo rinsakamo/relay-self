@@ -10,7 +10,6 @@ import hashlib
 import json
 from dataclasses import dataclass
 
-
 _EXPECTED_EFFECT = {
     "DASH": "set_forward_sprint_dev",
     "RUN": "set_forward_sprint_dev",
