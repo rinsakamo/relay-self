@@ -330,7 +330,7 @@ jobs:
           assert extra["original_ordinary_action_acks"]==len(ordinary)
           assert extra["original_t2_worldtick_rows"]==audit["original_t2_worldtick_rows"]
           assert extra["g47_original_audit_sha256"]==audit["derived_file_sha256"]
-          assert extra["original_t2_ledger_sha256"]==t2["derived_file_sha256"]
+          assert extra["original_t2_ledger_sha256"]==controlled["l1_t2_ledger_dev"]["derived_file_sha256"]
           assert extra["source_bound_stable_gait_candidates"]>=audit["source_bound_stable_gait_candidates"]
           assert extra["new_source_bound_candidates"]==(
               extra["source_bound_stable_gait_candidates"]-audit["source_bound_stable_gait_candidates"])
