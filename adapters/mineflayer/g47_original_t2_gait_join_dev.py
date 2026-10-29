@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from copy import deepcopy
 from dataclasses import dataclass
 
 from adapters.mineflayer.g46_paper_control_generation_dev import (
@@ -152,7 +153,7 @@ def join_g47_original_t2_worldticks_dev(
             original_t2_activity=original["activity"],
             original_g3_unknown_fallback=original["g3_unknown_fallback_dev"],
             original_g3_extra_m0_paid=original["g3_extra_m0_paid_dev"],
-            original_p1=original["p1"].copy(), original_m0=original["m0"].copy(),
+            original_p1=deepcopy(original["p1"]), original_m0=deepcopy(original["m0"]),
             original_g1_kind=g1["kind"], native_effect_id=effect,
             node_control_generation=generation,
             requested_input_mode=mode,

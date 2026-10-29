@@ -130,6 +130,9 @@ def test_g47_exact_worldtick_join_and_immutability():
                and not x.new_p1_or_m0_posting for x in joined)
     assert joined[2].original_p1 == a["t2_rows"][2]["p1"]
     assert joined[2].original_m0 == a["t2_rows"][2]["m0"]
+    # Read-only review may not expose nested mutable original T2 state.
+    joined[2].original_p1["after"]["fatigue"] = -1
+    assert a == original
 
 
 def test_g47_original_gait_fallback_remains_unknown():

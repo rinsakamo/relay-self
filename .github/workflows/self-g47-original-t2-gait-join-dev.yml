@@ -471,6 +471,17 @@ jobs:
           assert ga and not ga["p1_or_m0_reposted"]
           assert ga["additional_t2_readers_or_owners"]==0
           assert ga["original_t2_worldtick_rows"]==j["l1_t2_ledger_dev"]["rows"]
+          audit_file=folder/ga["derived_file"]
+          assert hashlib.sha256(audit_file.read_bytes()).hexdigest()==ga["derived_file_sha256"]
+          joined=json.loads(audit_file.read_text())
+          original=json.loads((folder/j["l1_t2_ledger_dev"]["derived_file"]).read_text())["rows"]
+          assert len(original)==len(joined["rows"])==ga["original_t2_worldtick_rows"]
+          for tick,proof in zip(original,joined["rows"]):
+              digest=hashlib.sha256(json.dumps(tick,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+              assert proof["original_t2_row_sha256"]==digest
+              assert proof["original_p1"]==tick["p1"]
+              assert proof["original_m0"]==tick["m0"]
+              assert not proof["new_p1_or_m0_posting"]
           assert all(not r["exact_physics_tick_to_effect_attested"]
                      for r in j["g46_native_paper_generations_dev"])
           assert all(not w["full_tick_gait_attested"]
