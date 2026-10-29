@@ -59,7 +59,7 @@ jobs:
           python -m compileall -q adapters/mineflayer/s49_goal_loop_real_dev.py adapters/mineflayer/s49_t2_applied_gait_observation_dev.py
           env -u S49_L1_T2_CHANNEL_DEV_ONLY -u S49_L1_T2_BOUNDARY_DEV_ONLY -u RELAYSELF_T1F_DEV -u RELAYSELF_PAPER_TICK_DEV -u S49_L1_G1_OBSERVATION_DEV_ONLY python -m pytest -q tests/test_s49_g3_t2_single_owner_dev.py tests/test_s49_t2_applied_gait_observation_dev.py tests/test_s49_g2_sprint_first_dev.py
           node --check adapters/mineflayer/bridge.mjs
-          node --test adapters/mineflayer/protocol.test.mjs
+          node --test adapters/mineflayer/protocol.test.mjs adapters/mineflayer/paper_snapshot_modifier_identity_dev.test.mjs
           npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
           # T1w frozen source is adopted into this isolated DEV branch, plus
           # the source-only, opt-in G3.2 Paper modifier identity extension.
