@@ -209,6 +209,7 @@ def _g48_ordinary_args(mode="JOG"):
             seq, tick, mode=mode, kind=kind, effect=action,
             generation=7, after=after,
         )
+        paper["g46_motor_boundary_dev"]["action_id"] = action
         paper["g46_motor_boundary_dev"]["transition_index"] = 0
         paper["g46_motor_boundary_dev"]["g48_ordinary_action_dev"] = True
         base["paper_rows"].append(paper)
