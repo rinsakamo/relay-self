@@ -4,6 +4,7 @@ on:
     branches:
       - self/dev-g42-native-clear-latency-drift-20261029
     paths:
+      - .github/workflows/self-g42-native-brake-timing-dev.yml
       - .github/workflows/self-g4-observed-gait-goal-paper-dev.yml
       - adapters/mineflayer/g4_observed_gait_choice_dev.py
       - adapters/mineflayer/g41_inflight_brake_dev.py
