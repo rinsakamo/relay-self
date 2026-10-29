@@ -47,6 +47,8 @@ class TickAccounting:
         self.g3_dash_energy_total_dev = 0.0
         self.g3_unknown_fallback_ticks_dev = 0
         self.g3_applied_gait_ticks_dev = 0
+        self.g3_dash_approved_action_dev: str | None = None
+        self.g3_dash_scoped_fallback_ticks_dev = 0
         self.fatigue = None
         self.previous = None
         self.active_action = None
@@ -56,6 +58,22 @@ class TickAccounting:
         self.rows = []
         self.failed = False
         self.gait_refusal = None
+
+    def permit_g3_dash_action_dev(self, action_id: str) -> None:
+        """Bind DASH *accounting only* to the first original S49 issued Action.
+
+        This is not an Action authorization, Paper modifier command, or new
+        sensor. It can be called once after the separate real Paper DASH arm
+        receipt, before the existing S49 owner invokes begin(action_id).
+        """
+        if (not self.g3_partial_dev
+                or type(action_id) is not str or not action_id
+                or self.g3_dash_approved_action_dev is not None
+                or self.active_action is not None or self.failed
+                or self.previous is None or self.fatigue is None
+                or self.pending_meal is not None):
+            raise ValueError("G3_DASH_ACTION_SCOPE_REFUSED")
+        self.g3_dash_approved_action_dev = action_id
 
     def begin(self, action_id):
         if self.active_action is not None or self.failed:
@@ -147,6 +165,15 @@ class TickAccounting:
             # not guess WALK, DASH, or recovery from a motor request alone.
             try:
                 gait_tick = self.gait_source(frame, self.previous, wait)
+                if (self.g3_partial_dev and isinstance(gait_tick, GaitTickDev)
+                        and gait_tick.gait == "DASH"
+                        and self.active_action != self.g3_dash_approved_action_dev):
+                    # Two speed modifiers are not enough to authorize a debit.
+                    # The original S49 Action must still be open and be the
+                    # specifically Paper-armed action; otherwise conservative
+                    # MOVE fallback with no extra P1/M0 gait transition.
+                    gait_tick = None
+                    self.g3_dash_scoped_fallback_ticks_dev += 1
                 if gait_tick is None and self.g3_partial_dev:
                     # Source is continuous but the physical mode is not:
                     # one conservative legacy MOVE/WAIT advance, zero
@@ -242,6 +269,9 @@ class TickAccounting:
             "m0_move": 0 if wait or meal else blocks * .002,
             "g3_extra_m0_paid_dev": dash_extra,
             "g3_unknown_fallback_dev": g3_unknown_fallback,
+            "g3_dash_source_action_scope_dev": (
+                self.g3_dash_approved_action_dev if dash_extra else None
+            ),
             "g3_single_p1_owner_dev": self.g3_partial_dev,
             "m0": asdict(energy_step), "p1": asdict(fatigue_step),
             "paper_basal_ticks": s["basal_ticks"],
