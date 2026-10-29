@@ -179,6 +179,7 @@ async def qualify(
     g43_passive_tail_control_dev:bool=False,
     g44_intra_action_gait_dev:bool=False,
     g45_paper_gait_join_dev:bool=False,
+    g45_hazard_during_gait_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -230,6 +231,8 @@ async def qualify(
         "g45_paper_gait_join_dev":g45_paper_gait_join_dev,
         "g45_action_clear_acks_dev":[],
         "g45_paper_transition_windows_dev":[],
+        "g45_hazard_during_gait_dev":g45_hazard_during_gait_dev,
+        "g45_native_hazard_preempt_dev":None,
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -262,6 +265,11 @@ async def qualify(
             or type(g43_passive_tail_control_dev) is not bool
             or type(g44_intra_action_gait_dev) is not bool
             or type(g45_paper_gait_join_dev) is not bool
+            or type(g45_hazard_during_gait_dev) is not bool
+            or (g45_hazard_during_gait_dev and (
+                not g45_paper_gait_join_dev
+                or os.environ.get("S49_G45_HAZARD_DURING_GAIT_DEV_ONLY")!="1"
+            ))
             or (g45_paper_gait_join_dev and (
                 not g44_intra_action_gait_dev
                 or os.environ.get("S49_G45_PAPER_GAIT_JOIN_DEV_ONLY")!="1"
@@ -887,9 +895,41 @@ async def qualify(
                 return decision_g41.brake_requested
             g44_last_seq=probe.seq
             g44_pending={}
+            g45_threat=None
+            g45_injection_done=False
             def g44_transition_probe(live,mode):
-                nonlocal g44_last_seq
+                nonlocal g44_last_seq,g45_threat
                 pos=live.snapshot.position
+                if g45_hazard_during_gait_dev and g45_injection_done:
+                    if (
+                        live.session_id!=sid
+                        or live.provenance.source!="mineflayer"
+                        or not live.request_id.startswith(action_id+"-inflight-")
+                        or live.seq<=g44_last_seq
+                        or live.snapshot.nearby_entities_coverage.truncated
+                    ):
+                        raise RuntimeError("G4.5 foreign hazard native probe")
+                    threats=[
+                        e for e in live.snapshot.nearby_entities
+                        if e.name=="zombie"
+                        and 0<e.distance<proposal.danger_interrupt_m
+                    ]
+                    if threats:
+                        interrupt=l0.decide(live)
+                        if len(threats)!=1 or interrupt.kind is not GoalDecisionKind.INTERRUPT:
+                            raise RuntimeError("G4.5 native hazard did not cause L0 interrupt")
+                        g44_last_seq=live.seq
+                        g45_threat={
+                            "action_id":action_id,"native_seq":live.seq,
+                            "request_id":live.request_id,
+                            "native_provenance":live.provenance.source,
+                            "entity_id":threats[0].entity_id,
+                            "distance_m":threats[0].distance,
+                            "gait_phase":mode,
+                            "decision":interrupt.kind.value,
+                        }
+                        report["l0_decisions"].append(asdict(interrupt))
+                        return "INTERRUPT"
                 decision44=decide_g44_intra_action_gait_dev(
                     directive,action_id=action_id,mode=mode,
                     session_id=live.session_id,source_seq=live.seq,
@@ -913,7 +953,8 @@ async def qualify(
                 ):
                     g44_pending[decision44.target_mode]=live.seq
                 return decision44.target_mode
-            def g44_transition_ack(live,mode,effect):
+            async def g44_transition_ack(live,mode,effect):
+                nonlocal g45_injection_done
                 if (
                     effect.session_id!=sid
                     or effect.action_id!=(
@@ -937,6 +978,20 @@ async def qualify(
                     "applied":True,
                     "world_tick_gait_attested":False,
                 })
+                if (
+                    g45_hazard_during_gait_dev and mode=="JOG"
+                    and i==2 and not g45_injection_done
+                ):
+                    # Physical disposable World stimulus, not forged sensor.
+                    # It follows the source-confirmed original RUN->JOG ACK.
+                    _command(
+                        server,
+                        "execute at RelaySelf run summon minecraft:zombie "
+                        "~0.65 ~ ~ "
+                        "{NoAI:1b,Silent:1b,PersistenceRequired:1b,Invulnerable:1b}",
+                    )
+                    await server.stdin.drain()
+                    g45_injection_done=True
             g4_choice=None
             if g4_auto_gait_dev:
                 if t2_owner is None or t2_owner.failed or t2_owner.fatigue is None:
@@ -1002,6 +1057,9 @@ async def qualify(
                     g44_transition_ack if (
                         g44_intra_action_gait_dev and g4_choice.mode=="RUN"
                     ) else None
+                ),
+                g45_hazard_preempt_dev=(
+                    g45_hazard_during_gait_dev and i==2
                 ),
                 **({
                     "on_effect_ack_dev":ack_dev,
@@ -1081,6 +1139,53 @@ async def qualify(
                 ):
                     raise RuntimeError("missing S15 native yaw setup ACK")
                 report["native_goal_looks"].append(turn_ack)
+            if g45_hazard_during_gait_dev and i==2:
+                consequence45=receipt.consequence
+                after45=consequence45.after_observation
+                clear45=consequence45.cleanup_receipt
+                if (
+                    not g45_injection_done or g45_threat is None
+                    or not report["g44_native_transition_acks_dev"]
+                    or report["g44_native_transition_acks_dev"][-1]["action_id"]!=action_id
+                    or report["g44_native_transition_acks_dev"][-1]["mode_to"]!="JOG"
+                    or after45 is None or after45.session_id!=sid
+                    or clear45 is None or clear45.result!="applied"
+                    or clear45.effect!="clear_controls"
+                    or clear45.seq<=g45_threat["native_seq"]
+                    or receipt.terminal.state is not ActionState.UNKNOWN
+                    or consequence45.status is not WorldConsequenceStatus.FAILED
+                    or consequence45.error!="DEV_L0_INFLIGHT_NATIVE_THREAT_PREEMPTED"
+                    or executor._count!=2
+                    or executor.supervisor.open_actions
+                    or l0.closed is not True
+                ):
+                    raise RuntimeError("G4.5 original in-stage gait hazard stop not proven")
+                report["g45_action_clear_acks_dev"].append({
+                    "action_id":action_id,"clear_seq":clear45.seq,
+                    "s16_seq":after45.seq,"s16_terminal":"unknown",
+                })
+                report["g45_native_hazard_preempt_dev"]={
+                    **g45_threat,
+                    "transition_ack_seq":report["g44_native_transition_acks_dev"][-1]["ack_seq"],
+                    "applied_clear_seq":clear45.seq,
+                    "s16_after_seq":after45.seq,
+                    "s16_status":consequence45.status.value,
+                    "terminal":receipt.terminal.state.value,
+                    "new_s49_actions_after_hazard":0,
+                    "qualified_paper_gait":False,
+                }
+                report["native_actions"].append({
+                    "action_id":action_id,"s16_terminal":"unknown",
+                    "s16_status":consequence45.status.value,
+                    "after_seq":after45.seq,
+                    "g44_same_issued_action_transitions_dev":["JOG"],
+                })
+                report["stage"]="G45_NATIVE_GAIT_HAZARD_INTERRUPTED"
+                report["classification"]="DEV_ONLY_G45_NATIVE_HAZARD_CLEARED_S49_UNKNOWN"
+                report["status"]="PASS"
+                report["real_world"]=True
+                rc=0
+                break
             if inject_threat_during_first_dev:
                 consequence=receipt.consequence
                 ended=consequence.after_observation
@@ -1846,6 +1951,7 @@ def main()->int:
     p.add_argument("--g43-passive-tail-control-dev",action="store_true")
     p.add_argument("--g44-intra-action-gait-dev",action="store_true")
     p.add_argument("--g45-paper-gait-join-dev",action="store_true")
+    p.add_argument("--g45-hazard-during-gait-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -1889,6 +1995,7 @@ def main()->int:
         g43_passive_tail_control_dev=args.g43_passive_tail_control_dev,
         g44_intra_action_gait_dev=args.g44_intra_action_gait_dev,
         g45_paper_gait_join_dev=args.g45_paper_gait_join_dev,
+        g45_hazard_during_gait_dev=args.g45_hazard_during_gait_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,

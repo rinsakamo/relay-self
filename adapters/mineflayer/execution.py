@@ -307,7 +307,8 @@ async def execute_mineflayer_command(
     on_live_probe_dev: Callable[[MineflayerObservation], bool] | None = None,
     on_g41_brake_probe_dev: Callable[[MineflayerObservation], bool] | None = None,
     on_g44_transition_probe_dev: Callable[[MineflayerObservation, str], str | None] | None = None,
-    on_g44_transition_ack_dev: Callable[[MineflayerObservation, str, MineflayerEffectResult], None] | None = None,
+    on_g44_transition_ack_dev: Callable[[MineflayerObservation, str, MineflayerEffectResult], Awaitable[None]] | None = None,
+    g45_hazard_preempt_dev: bool = False,
     look_yaw_dev: float | None = None,
     on_look_ack_dev: (
         Callable[[MineflayerEffectResult], None] | None
@@ -370,6 +371,12 @@ async def execute_mineflayer_command(
     if (on_g44_transition_probe_dev is None
             and on_g44_transition_ack_dev is not None):
         raise InvalidMineflayerExecutionData("G4.4 unbound transition ACK")
+    if g45_hazard_preempt_dev and (
+        type(g45_hazard_preempt_dev) is not bool
+        or os.environ.get("S49_G45_HAZARD_DURING_GAIT_DEV_ONLY")!="1"
+        or on_g44_transition_probe_dev is None
+    ):
+        raise InvalidMineflayerExecutionData("G4.5 danger interrupt needs original S15 gated gait")
     if look_yaw_dev is not None and (
         type(look_yaw_dev) is not float
         or not math.isfinite(look_yaw_dev)
@@ -518,6 +525,11 @@ async def execute_mineflayer_command(
                     requested = on_g44_transition_probe_dev(
                         live_probe, g44_mode
                     )
+                    if requested == "INTERRUPT":
+                        if not g45_hazard_preempt_dev:
+                            raise MineflayerExecutionError("G4.5 unbound native danger")
+                        preempted_dev = True
+                        break
                     if requested == "CLEAR":
                         # Original S15 CLEAR + new native S16, no L0 REACHED.
                         break
@@ -563,7 +575,7 @@ async def execute_mineflayer_command(
                         g44_transition_count=index
                         g44_mode=requested
                         assert on_g44_transition_ack_dev is not None
-                        on_g44_transition_ack_dev(
+                        await on_g44_transition_ack_dev(
                             live_probe,requested,transition_ack,
                         )
                 if on_g41_brake_probe_dev is not None:

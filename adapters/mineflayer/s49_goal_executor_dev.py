@@ -168,7 +168,8 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         g4_mode_dev:str|None=None,
         on_g41_brake_probe_dev:Callable[[MineflayerObservation],bool]|None=None,
         on_g44_transition_probe_dev:Callable[[MineflayerObservation,str],str|None]|None=None,
-        on_g44_transition_ack_dev:Callable[[MineflayerObservation,str,MineflayerEffectResult],None]|None=None,
+        on_g44_transition_ack_dev:Callable[[MineflayerObservation,str,MineflayerEffectResult],Awaitable[None]]|None=None,
+        g45_hazard_preempt_dev:bool=False,
     )->NormalActionReceipt:
         goal=directive.proposal if isinstance(directive,L1GoalDirective) else None
         if g4_mode_dev is not None and (
@@ -198,6 +199,12 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
             raise NormalActionRejected(
                 "G4 mode requires single original T2 owner and explicit gait admission"
             )
+        if g45_hazard_preempt_dev and (
+            type(g45_hazard_preempt_dev) is not bool
+            or os.environ.get("S49_G45_HAZARD_DURING_GAIT_DEV_ONLY")!="1"
+            or on_g44_transition_probe_dev is None
+        ):
+            raise NormalActionRejected("G4.5 in-flight danger needs issued RUN")
         if on_g44_transition_probe_dev is not None and (
             g4_mode_dev!="RUN"
             or on_g41_brake_probe_dev is not None
@@ -405,6 +412,7 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
                     "on_g44_transition_probe_dev":on_g44_transition_probe_dev,
                     "on_g44_transition_ack_dev":on_g44_transition_ack_dev,
                 } if on_g44_transition_probe_dev is not None else {}),
+                **({"g45_hazard_preempt_dev":True} if g45_hazard_preempt_dev else {}),
                 look_yaw_dev=look_yaw_dev,
                 on_look_ack_dev=on_look_ack_dev,
             )

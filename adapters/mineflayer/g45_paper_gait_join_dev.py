@@ -57,7 +57,7 @@ def join_g45_native_ack_paper_gait_dev(
             or type(a.get("clear_seq")) is not int
             or type(a.get("s16_seq")) is not int
             or not 0<a["clear_seq"]<a["s16_seq"]
-            or a.get("s16_terminal")!="outcome"
+            or a.get("s16_terminal") not in ("outcome","unknown")
         ):
             raise ValueError("G4.5 invalid original CLEAR or S16 provenance")
         clears[a["action_id"]]=a["clear_seq"]
