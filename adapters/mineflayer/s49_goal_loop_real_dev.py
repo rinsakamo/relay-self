@@ -2128,6 +2128,18 @@ async def qualify(
                     },output,sort_keys=True)
                     output.write("\n")
                 extra=sum(x.newly_bound_ordinary_candidate for x in derived)
+                ordinary_new_by_mode={
+                    mode:sum(
+                        x.newly_bound_ordinary_candidate
+                        and x.ordinary_requested_mode==mode for x in derived
+                    ) for mode in ("JOG","WALK")
+                }
+                ordinary_epochs_by_mode={
+                    mode:sum(
+                        x.ordinary_epoch_sampled
+                        and x.ordinary_requested_mode==mode for x in derived
+                    ) for mode in ("JOG","WALK")
+                }
                 baseline=report["g47_worldtick_gait_audit_dev"]
                 report["g48_ordinary_worldtick_audit_dev"]={
                     "source":"ORIGINAL_S49_ORDINARY_JOG_WALK_G46_G1_T2_DEV",
@@ -2144,6 +2156,8 @@ async def qualify(
                     "g47_unknown_worldticks":baseline["unknown_worldticks"],
                     "g48_unknown_worldticks":baseline["unknown_worldticks"]-extra,
                     "ordinary_ack_count":len(report["g48_ordinary_applied_acks_dev"]),
+                    "ordinary_new_candidates_by_mode":ordinary_new_by_mode,
+                    "ordinary_node_epoch_frames_by_mode":ordinary_epochs_by_mode,
                     "ordinary_node_epoch_frames":sum(
                         x.ordinary_epoch_sampled for x in derived
                     ),
