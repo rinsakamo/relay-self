@@ -167,7 +167,8 @@ class TickAccounting:
                 gait_tick = self.gait_source(frame, self.previous, wait)
                 if (self.g3_partial_dev and isinstance(gait_tick, GaitTickDev)
                         and gait_tick.gait == "DASH"
-                        and self.active_action != self.g3_dash_approved_action_dev):
+                        and (self.active_action is None
+                             or self.active_action != self.g3_dash_approved_action_dev)):
                     # Two speed modifiers are not enough to authorize a debit.
                     # The original S49 Action must still be open and be the
                     # specifically Paper-armed action; otherwise conservative
