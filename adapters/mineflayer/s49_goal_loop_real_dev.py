@@ -43,6 +43,9 @@ from adapters.mineflayer.g46_paper_control_generation_dev import (
 from adapters.mineflayer.g47_original_t2_gait_join_dev import (
     join_g47_original_t2_worldticks_dev,
 )
+from adapters.mineflayer.g48_ordinary_action_gait_join_dev import (
+    join_g48_ordinary_action_gait_dev,
+)
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -2102,6 +2105,74 @@ async def qualify(
                 report["g47_t2_join_refusal_dev"]=f"{type(exc).__name__}: {exc}"
                 report["status"]="FAIL"
                 rc=2
+        if g48_ordinary_action_gait_dev and gait_observer is not None and t2_owner is not None:
+            try:
+                g48_rows=[
+                    asdict(row) for row in join_g48_ordinary_action_gait_dev(
+                        session_id=sid,
+                        original_run_acks=report["g46_original_run_applied_acks_dev"],
+                        original_ordinary_acks=report["g48_ordinary_applied_acks_dev"],
+                        transition_acks=report["g44_native_transition_acks_dev"],
+                        original_clear_acks=report["g45_action_clear_acks_dev"],
+                        paper_rows=[asdict(row) for row in gait_observer.rows],
+                        t2_rows=t2_owner.rows,
+                    )
+                ]
+                old_path=report_path.parent/"g47_original_t2_worldtick_gait_audit_dev.json"
+                old=json.loads(old_path.read_text())
+                old_rows=old["rows"]
+                if len(g48_rows)!=len(old_rows):
+                    raise ValueError("G4.8 original T2 and G4.7 row cardinality differs")
+                improved=0
+                for before,after in zip(old_rows,g48_rows):
+                    if (
+                        before["source_seq"]!=after["source_seq"]
+                        or before["world_tick"]!=after["world_tick"]
+                        or before["original_t2_row_sha256"]!=after["original_t2_row_sha256"]
+                        or before["original_p1"]!=after["original_p1"]
+                        or before["original_m0"]!=after["original_m0"]
+                    ):
+                        raise ValueError("G4.8 original T2 P1/M0 changed during join")
+                    if before["status"]=="SOURCE_BOUND_STABLE_GAIT_CANDIDATE_DEV":
+                        if after["status"]!=before["status"]:
+                            raise ValueError("G4.8 lost original G4.7 stable gait")
+                    elif after["status"]=="SOURCE_BOUND_STABLE_GAIT_CANDIDATE_DEV":
+                        improved+=1
+                path48=report_path.parent/"g48_original_ordinary_gait_audit_dev.json"
+                with path48.open("x",encoding="utf-8") as sink:
+                    json.dump({
+                        "source":"ORIGINAL_S49_G48_ORDINARY_CONTROL_G47_T2_DEV",
+                        "g47_original_audit_sha256":report["g47_worldtick_gait_audit_dev"]["derived_file_sha256"],
+                        "original_t2_ledger_sha256":report["l1_t2_ledger_dev"]["derived_file_sha256"],
+                        "original_g1_observation_sha256":report["g1_applied_gait_observation_dev"]["derived_file_sha256"],
+                        "p1_or_m0_reposted":False,
+                        "additional_t2_readers_or_owners":0,
+                        "full_tick_R_attested":False,
+                        "rows":g48_rows,
+                    },sink,sort_keys=True)
+                    sink.write("\n")
+                stable=sum(x["status"]=="SOURCE_BOUND_STABLE_GAIT_CANDIDATE_DEV"
+                           for x in g48_rows)
+                report["g48_worldtick_gait_audit_dev"]={
+                    "source":"ORIGINAL_S49_G48_ORDINARY_CONTROL_G47_T2_DEV",
+                    "derived_file":path48.name,
+                    "derived_file_sha256":hashlib.sha256(path48.read_bytes()).hexdigest(),
+                    "original_t2_worldtick_rows":len(g48_rows),
+                    "g47_original_audit_sha256":report["g47_worldtick_gait_audit_dev"]["derived_file_sha256"],
+                    "original_t2_ledger_sha256":report["l1_t2_ledger_dev"]["derived_file_sha256"],
+                    "original_ordinary_action_acks":len(report["g48_ordinary_applied_acks_dev"]),
+                    "g47_stable_candidates":report["g47_worldtick_gait_audit_dev"]["source_bound_stable_gait_candidates"],
+                    "source_bound_stable_gait_candidates":stable,
+                    "new_source_bound_candidates":improved,
+                    "unknown_worldticks":len(g48_rows)-stable,
+                    "p1_or_m0_reposted":False,
+                    "additional_t2_readers_or_owners":0,
+                    "full_tick_R_attested":False,
+                }
+            except (ValueError,KeyError,TypeError) as exc:
+                report["g48_ordinary_join_refusal_dev"]=f"{type(exc).__name__}: {exc}"
+                report["status"]="FAIL"
+                rc=2
         report["pre_cleanup_status"]=report["status"]
         await _cleanup_session(
             report,server,collector,session,None,temp,None,None,cleanup_cancel,
@@ -2156,6 +2227,7 @@ def main()->int:
     p.add_argument("--g45-hazard-during-gait-dev",action="store_true")
     p.add_argument("--g46-paper-generation-dev",action="store_true")
     p.add_argument("--g47-original-t2-gait-join-dev",action="store_true")
+    p.add_argument("--g48-ordinary-action-gait-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -2202,6 +2274,7 @@ def main()->int:
         g45_hazard_during_gait_dev=args.g45_hazard_during_gait_dev,
         g46_paper_generation_dev=args.g46_paper_generation_dev,
         g47_original_t2_gait_join_dev=args.g47_original_t2_gait_join_dev,
+        g48_ordinary_action_gait_dev=args.g48_ordinary_action_gait_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
