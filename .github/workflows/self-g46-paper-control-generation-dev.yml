@@ -273,6 +273,15 @@ jobs:
                      ) for x in g46)
           assert [x["requested_input_mode"] for x in g46 if x["requested_input_mode"]!="SPRINT_INPUT"]==[
               t["mode_to"] for t in controlled["g44_native_transition_acks_dev"]]
+          assert sum(x["matched_callback_frames"] for x in g46)>0
+          assert sum(x["post_change_challenge_frames"] for x in g46)>0
+          assert sum(x["paper_mode_concordant_frames"] for x in g46)>0, (
+              "G4.6 must show post-command-challenge original Paper gait concordance"
+          )
+          assert any(x["requested_input_mode"]=="JOG" and
+                     x["two_frame_stable_candidate_frames"]>0 for x in g46), (
+              "G4.6 physically sourced original JOG stable candidate required"
+          )
           transitions=controlled["g44_native_transition_acks_dev"]
           assert len(transitions)>=1, "G4.4 needs a real native gait ACK"
           assert all(t["applied"] and not t["world_tick_gait_attested"] and
