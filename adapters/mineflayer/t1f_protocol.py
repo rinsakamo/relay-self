@@ -141,6 +141,15 @@ def validate_result(d):
                   b["transition_index"]!=0
                   or effect!=f"{action}-s15-clear"))):
             raise ValueError("invalid G4.6 original S49 sub-effect binding")
+        # G4.8 direct JOG/WALK must also agree with the *same* sampled Node
+        # controls. This prevents re-labeling RUN as WALK merely by changing
+        # mode + opt-in; the original G4.6 G44 sub-effect remains unchanged.
+        if (os.environ.get("S49_G48_DIRECT_ACTION_GENERATION_DEV_ONLY")=="1"
+                and mode in {"JOG","WALK"} and b["transition_index"]==0
+                and (d["applied_controls_dev"]["forward"] is not True
+                     or d["applied_controls_dev"]["sprint"] is not False
+                     or d["applied_controls_dev"]["sneak"] is not (mode=="WALK"))):
+            raise ValueError("invalid G4.8 direct Action sampled controls")
     if d["status"] == "ADMITTED":
         sent = d["challenge_sent_ns"]
         if (type(sent) is not str or re.fullmatch(r"0|[1-9][0-9]{0,19}", sent) is None

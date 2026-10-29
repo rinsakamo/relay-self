@@ -41,6 +41,7 @@ def _joined():
             row = _paper(seq, tick, mode=mode, kind=kind, effect=action,
                          generation=6 + action_idx, after=i > 0)
             row["g46_motor_boundary_dev"]["transition_index"] = 0
+            row["g46_motor_boundary_dev"]["action_id"] = action
             a["paper_rows"].append(row)
             a["t2_rows"].append({
                 **deepcopy(old),
