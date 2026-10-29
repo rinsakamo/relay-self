@@ -34,6 +34,9 @@ from adapters.mineflayer.g43_passive_native_tail_dev import (
 from adapters.mineflayer.g44_intra_action_gait_dev import (
     decide_g44_intra_action_gait_dev,
 )
+from adapters.mineflayer.g45_paper_gait_join_dev import (
+    join_g45_native_ack_paper_gait_dev,
+)
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -175,6 +178,7 @@ async def qualify(
     g42_brake_timing_dev:bool=False,
     g43_passive_tail_control_dev:bool=False,
     g44_intra_action_gait_dev:bool=False,
+    g45_paper_gait_join_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -223,6 +227,9 @@ async def qualify(
         "g44_intra_action_gait_dev":g44_intra_action_gait_dev,
         "g44_native_transition_probes_dev":[],
         "g44_native_transition_acks_dev":[],
+        "g45_paper_gait_join_dev":g45_paper_gait_join_dev,
+        "g45_action_clear_acks_dev":[],
+        "g45_paper_transition_windows_dev":[],
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -254,6 +261,11 @@ async def qualify(
             or type(g42_brake_timing_dev) is not bool
             or type(g43_passive_tail_control_dev) is not bool
             or type(g44_intra_action_gait_dev) is not bool
+            or type(g45_paper_gait_join_dev) is not bool
+            or (g45_paper_gait_join_dev and (
+                not g44_intra_action_gait_dev
+                or os.environ.get("S49_G45_PAPER_GAIT_JOIN_DEV_ONLY")!="1"
+            ))
             or (g44_intra_action_gait_dev and (
                 not g43_passive_tail_control_dev
                 or os.environ.get("S49_G44_INTRA_ACTION_GAIT_DEV_ONLY")!="1"
@@ -1542,6 +1554,20 @@ async def qualify(
                     "after_x":end.x,"after_z":end.z,
                     "after_host_ns":g42_s16_host_ns,
                 }
+            if g45_paper_gait_join_dev:
+                clear45=receipt.consequence.cleanup_receipt
+                if (
+                    clear45 is None or clear45.result!="applied"
+                    or clear45.effect!="clear_controls"
+                    or clear45.session_id!=sid
+                    or clear45.action_id!=f"{action_id}-s15-clear"
+                ):
+                    raise RuntimeError("G4.5 needs original applied CLEAR source")
+                report["g45_action_clear_acks_dev"].append({
+                    "action_id":action_id,"clear_seq":clear45.seq,
+                    "s16_seq":receipt.consequence.after_observation.seq,
+                    "s16_terminal":receipt.terminal.state.value,
+                })
             report["native_actions"].append({
                 "action_id":receipt.terminal.action_id,
                 "s16_status":receipt.consequence.status.value,
@@ -1756,6 +1782,19 @@ async def qualify(
                     and executor._t2_boundary_dev is not None else None
                 ),
             }
+        if g45_paper_gait_join_dev and gait_observer is not None and t2_owner is not None:
+            # REVIEW ONLY: the exact original T2/G1 receive stream and original
+            # native sub-effect ACKs are source-ordered without a second
+            # Paper consumer or any additional P1/M0 cost.
+            report["g45_paper_transition_windows_dev"]=[
+                asdict(row) for row in join_g45_native_ack_paper_gait_dev(
+                    session_id=sid,
+                    transition_acks=report["g44_native_transition_acks_dev"],
+                    original_clear_acks=report["g45_action_clear_acks_dev"],
+                    paper_rows=[asdict(row) for row in gait_observer.rows],
+                    t2_rows=t2_owner.rows,
+                )
+            ]
         report["pre_cleanup_status"]=report["status"]
         await _cleanup_session(
             report,server,collector,session,None,temp,None,None,cleanup_cancel,
@@ -1806,6 +1845,7 @@ def main()->int:
     p.add_argument("--g42-brake-timing-dev",action="store_true")
     p.add_argument("--g43-passive-tail-control-dev",action="store_true")
     p.add_argument("--g44-intra-action-gait-dev",action="store_true")
+    p.add_argument("--g45-paper-gait-join-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -1848,6 +1888,7 @@ def main()->int:
         g42_brake_timing_dev=args.g42_brake_timing_dev,
         g43_passive_tail_control_dev=args.g43_passive_tail_control_dev,
         g44_intra_action_gait_dev=args.g44_intra_action_gait_dev,
+        g45_paper_gait_join_dev=args.g45_paper_gait_join_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
