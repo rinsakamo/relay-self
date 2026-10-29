@@ -129,8 +129,23 @@ jobs:
           # Only source-stable DASH candidates may pay. No candidate means
           # zero charge rather than an invented physical duration.
           dash_candidate_count=sum(x["kind"]=="STABLE_DASH_MODIFIER_FORWARD_CANDIDATE" for x in rows)
-          assert abs(g3["dash_extra_energy_paid"]-0.01*dash_candidate_count)<1e-8
-          assert sum(x.get("p1_gait_extra_m0_posted",False) for x in t2_rows)==dash_candidate_count
+          # Stable gait alone is not Action identity. The T2 payable subset
+          # must be joined to the original S49 Action actually Paper-armed.
+          armed=dash["action_id"]
+          assert g3["paper_armed_original_dash_action_id"]==armed
+          assert g3["dash_candidates_suppressed_without_active_s49_scope"]>=0
+          payable=[
+              x for x in t2_rows
+              if x.get("applied_gait")=="DASH"
+              and x["active_action"]==armed
+              and x["g3_dash_source_action_scope_dev"]==armed
+          ]
+          paid=[x for x in t2_rows if x["g3_extra_m0_paid_dev"]>0]
+          assert len(paid)==len(payable)
+          assert len(paid)<=dash_candidate_count
+          assert all(x["active_action"]==armed for x in paid)
+          assert abs(g3["dash_extra_energy_paid"]-0.01*len(payable))<1e-8
+          assert sum(x.get("p1_gait_extra_m0_posted",False) for x in t2_rows)==len(payable)
           assert all(x["g3_single_p1_owner_dev"] for x in t2_rows)
           assert all(not x["full_tick_R_attested"] for x in t2_rows)
           assert all(x["m0"]["after"]["tick"]==i+1 for i,x in enumerate(t2_rows))
