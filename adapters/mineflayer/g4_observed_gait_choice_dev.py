@@ -12,7 +12,9 @@ from dataclasses import dataclass
 from experiments.fatigue_p1 import FatigueProfile, FatigueState
 from experiments.p1_gait_dev import p1_motor_power_limit_dev
 from relay_self.goal_navigation import (
-    GoalDecisionKind, L0GoalDecision, L1GoalDirective,
+    GoalDecisionKind,
+    L0GoalDecision,
+    L1GoalDirective,
 )
 
 
