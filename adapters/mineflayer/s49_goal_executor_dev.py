@@ -175,6 +175,8 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
             or os.environ.get("S49_L1_G1_OBSERVATION_DEV_ONLY")!="1"
             or (g4_mode_dev in ("RUN","DASH")
                 and os.environ.get("S49_SPRINT_MOTOR_DEV_ONLY")!="1")
+            or (g4_mode_dev=="WALK"
+                and os.environ.get("S49_GOAL_G2_SNEAK_DEV_ONLY")!="1")
             or self._t2_boundary_dev is None
             or self._t2_boundary_dev.latched
             or (g4_mode_dev=="DASH" and (
