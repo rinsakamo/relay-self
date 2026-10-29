@@ -24,10 +24,29 @@ export function decodeSnapshot (bytes) {
   }
   if (Object.hasOwn(s, 'gait_dev')) {
     const g = s.gait_dev
-    if (!g || Object.keys(g).sort().join() !== 'sneaking,speed_base,speed_modifiers,speed_value,sprinting' ||
+    const keys = Object.keys(g || {}).sort().join()
+    if (!g || ![
+      'sneaking,speed_base,speed_modifiers,speed_value,sprinting',
+      'sneaking,speed_base,speed_modifier_details,speed_modifiers,speed_value,sprinting'
+    ].includes(keys) ||
         typeof g.sneaking !== 'boolean' || typeof g.sprinting !== 'boolean' ||
         ![g.speed_base, g.speed_value].every(v => Number.isFinite(v) && v > 0) ||
         !nat(g.speed_modifiers)) throw Error('invalid T1u passive gait facts')
+    if (Object.hasOwn(g, 'speed_modifier_details')) {
+      const mods = g.speed_modifier_details
+      if (!Array.isArray(mods) || mods.length > 4 ||
+          mods.length !== g.speed_modifiers ||
+          mods.some(m => !m || Array.isArray(m) ||
+            Object.keys(m).sort().join() !== 'amount,key,operation' ||
+            typeof m.key !== 'string' ||
+            !/^[a-z0-9_.-]+:[a-z0-9_./-]+$/.test(m.key) ||
+            !['ADD_NUMBER', 'ADD_SCALAR', 'MULTIPLY_SCALAR_1'].includes(m.operation) ||
+            typeof m.amount !== 'number' || !Number.isFinite(m.amount) ||
+            m.amount < -2 || m.amount > 2) ||
+          mods.some((m, i) => i && m.key <= mods[i - 1].key)) {
+        throw Error('invalid G3 Paper modifier identity')
+      }
+    }
   }
   for (const t of s.threats) {
     if (!t || Object.keys(t).sort().join() !== 'distance,id,kind,x,y,z' ||
