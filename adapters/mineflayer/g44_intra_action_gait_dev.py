@@ -50,9 +50,9 @@ def decide_g44_intra_action_gait_dev(
     clearance=math.hypot(x-goal.target_x,z-goal.target_z)-directive.tolerance_m
     if clearance<=0:
         target,reason="CLEAR","OBSERVED_TOLERANCE_RELEASE"
-    elif mode=="RUN" and clearance<=1.95:
+    elif mode=="RUN" and clearance<=2.50:
         target,reason="JOG","OBSERVED_RUN_TO_JOG"
-    elif mode=="JOG" and clearance<=1.55:
+    elif mode=="JOG" and clearance<=2.15:
         target,reason="WALK","OBSERVED_JOG_TO_WALK"
     else:
         target,reason=None,"CONTINUE_BOUNDED_S49_ACTION"

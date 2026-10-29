@@ -39,9 +39,9 @@ def eval_(mode,z,**changes):
 
 
 def test_g44_stage_progression_and_never_attest_world_gait():
-    assert eval_("RUN",1.0).target_mode is None
+    assert eval_("RUN",0.8).target_mode is None
     assert eval_("RUN",2.0).target_mode=="JOG"
-    assert eval_("JOG",1.5).target_mode is None
+    assert eval_("JOG",1.0).target_mode is None
     assert eval_("JOG",2.1).target_mode=="WALK"
     assert eval_("WALK",3.6).target_mode=="CLEAR"
     assert not eval_("RUN",2.0).applied_attested
