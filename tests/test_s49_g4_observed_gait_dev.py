@@ -104,3 +104,16 @@ def test_g4_unknown_motor_mode_refused_before_io(monkeypatch):
             None,directive=None,decision=None,probe=None,
             propose=None,issue=None,g4_mode_dev="TELEPORT",
         ))
+
+
+def test_g4_walk_node_gate_refused_before_original_s49_issue(monkeypatch):
+    """Do not issue an Action that Node's existing motor would reject."""
+    monkeypatch.setenv("S49_G4_OBSERVED_GAIT_DEV_ONLY","1")
+    monkeypatch.setenv("S49_L1_G1_OBSERVATION_DEV_ONLY","1")
+    monkeypatch.delenv("S49_GOAL_G2_SNEAK_DEV_ONLY",raising=False)
+    executor=object.__new__(S49GoalExecutorDev)
+    with pytest.raises(NormalActionRejected,match="G4 mode requires"):
+        asyncio.run(executor.execute_goal_step(
+            None,directive=None,decision=None,probe=None,
+            propose=None,issue=None,g4_mode_dev="WALK",
+        ))
