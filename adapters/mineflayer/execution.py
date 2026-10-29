@@ -300,6 +300,7 @@ async def execute_mineflayer_command(
         Callable[[str, MineflayerEffectResult], Awaitable[None]] | None
     ) = None,
     on_live_probe_dev: Callable[[MineflayerObservation], bool] | None = None,
+    on_g41_brake_probe_dev: Callable[[MineflayerObservation], bool] | None = None,
     look_yaw_dev: float | None = None,
     on_look_ack_dev: (
         Callable[[MineflayerEffectResult], None] | None
@@ -329,6 +330,21 @@ async def execute_mineflayer_command(
     ):
         raise InvalidMineflayerExecutionData(
             "DEV in-flight probe requires bounded original forward Action"
+        )
+    if on_g41_brake_probe_dev is not None and (
+        not callable(on_g41_brake_probe_dev)
+        or on_live_probe_dev is not None
+        or os.environ.get("S49_L0_GOAL_LOOP_DEV_ONLY") != "1"
+        or os.environ.get("S49_G41_INFLIGHT_BRAKE_DEV_ONLY") != "1"
+        or command.action_ref not in (
+            MOVE_FORWARD_ACTION_REF,
+            MOVE_FORWARD_SPRINT_DEV_REF,
+            MOVE_FORWARD_SNEAK_DEV_REF,
+        )
+        or not 0.10 <= command.duration_s <= 0.35
+    ):
+        raise InvalidMineflayerExecutionData(
+            "G4.1 brake requires the original bounded S15 reader"
         )
     if look_yaw_dev is not None and (
         type(look_yaw_dev) is not float
@@ -420,7 +436,7 @@ async def execute_mineflayer_command(
             # not prove the client's effect happened in that Paper tick.
             await on_effect_ack_dev("APPLIED", dispatch)
 
-        if on_live_probe_dev is None:
+        if on_live_probe_dev is None and on_g41_brake_probe_dev is None:
             await asyncio.sleep(command.duration_s)
         else:
             # Same S15 reader. No concurrent session.receive() task, no
@@ -460,9 +476,19 @@ async def execute_mineflayer_command(
                         "stale or incomplete DEV in-flight native observation"
                     )
                 last_live_probe_seq = live_probe.seq
-                if on_live_probe_dev(live_probe) is True:
+                if on_live_probe_dev is not None and on_live_probe_dev(live_probe) is True:
                     preempted_dev = True
                     break
+                if on_g41_brake_probe_dev is not None:
+                    brake = on_g41_brake_probe_dev(live_probe)
+                    if type(brake) is not bool:
+                        raise MineflayerExecutionError(
+                            "G4.1 brake callback must return bool"
+                        )
+                    if brake:
+                        # Same original S15 Action. Early release only;
+                        # REACHED requires the independent L0 settle loop.
+                        break
 
         cleanup_attempted = True
         await adapter.send_clear_controls(command.cleanup_action_id)
@@ -492,6 +518,14 @@ async def execute_mineflayer_command(
                 and message.kind == "probe"
             ),
         )
+        if on_g41_brake_probe_dev is not None and (
+            after.session_id != session_id
+            or after.provenance.source != "mineflayer"
+            or (last_live_probe_seq >= 0 and after.seq <= last_live_probe_seq)
+        ):
+            raise MineflayerExecutionError(
+                "G4.1 requires fresh native S16 XZ after CLEAR"
+            )
         movement_distance = _horizontal_distance(
             before.snapshot.position.x,
             before.snapshot.position.z,

@@ -166,6 +166,7 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         g2_sprint_prefix_dev:bool=False,
         g2_sneak_prefix_dev:bool=False,
         g4_mode_dev:str|None=None,
+        on_g41_brake_probe_dev:Callable[[MineflayerObservation],bool]|None=None,
     )->NormalActionReceipt:
         goal=directive.proposal if isinstance(directive,L1GoalDirective) else None
         if g4_mode_dev is not None and (
@@ -187,10 +188,16 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
             or any((g2_sprint_first_dev,g2_sprint_prefix_dev,
                     g2_sneak_prefix_dev))
             or look_yaw_dev is not None or on_live_probe_dev is not None
+            or (on_g41_brake_probe_dev is not None and (
+                not callable(on_g41_brake_probe_dev)
+                or os.environ.get("S49_G41_INFLIGHT_BRAKE_DEV_ONLY")!="1"
+            ))
         ):
             raise NormalActionRejected(
                 "G4 mode requires single original T2 owner and explicit gait admission"
             )
+        if on_g41_brake_probe_dev is not None and g4_mode_dev is None:
+            raise NormalActionRejected("G4.1 brake requires original G4 Action")
         if type(g2_sneak_prefix_dev) is not bool or (
             g2_sneak_prefix_dev and (
                 g2_sprint_first_dev
@@ -369,6 +376,7 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
                 session,command,timeout_s=9,provenance=origin,
                 on_effect_ack_dev=on_effect_ack_dev,
                 on_live_probe_dev=on_live_probe_dev,
+                on_g41_brake_probe_dev=on_g41_brake_probe_dev,
                 look_yaw_dev=look_yaw_dev,
                 on_look_ack_dev=on_look_ack_dev,
             )
