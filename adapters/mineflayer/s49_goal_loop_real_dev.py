@@ -14,12 +14,13 @@ import math
 import os
 import shutil
 import tempfile
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from functools import partial
 from pathlib import Path
 
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.g3_applied_gait_source_dev import applied_gait_from_original_t1u_dev
+from adapters.mineflayer.g4_observed_gait_choice_dev import choose_g4_observed_gait_dev
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -156,6 +157,7 @@ async def qualify(
     g2_sprint_first_dev:bool=False,
     g2_sprint_prefix_dev:bool=False,
     g2_sneak_prefix_dev:bool=False,
+    g4_auto_gait_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -193,6 +195,8 @@ async def qualify(
         "g2_dash_first_dev":g2_dash_first_dev,
         "g3_single_owner_dev":g3_single_owner_dev,
         "g3_modifier_identity_dev":g3_modifier_identity_dev,
+        "g4_auto_gait_dev":g4_auto_gait_dev,
+        "g4_observed_choices_dev":[],
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -219,6 +223,18 @@ async def qualify(
             or os.environ.get("S49_FORWARD_MOTOR_DEV_ONLY")!="1"
             or os.environ.get("NODE_OPTIONS")
             or type(offset_m) is not float or not 1.8<=offset_m<=4.0
+            or type(g4_auto_gait_dev) is not bool
+            or (g4_auto_gait_dev and (
+                os.environ.get("S49_G4_OBSERVED_GAIT_DEV_ONLY")!="1"
+                or not g3_modifier_identity_dev or not g3_single_owner_dev
+                or not g2_dash_first_dev or not paper_gait_observation_dev
+                or any((g2_sprint_first_dev,g2_sprint_prefix_dev,
+                        g2_sneak_prefix_dev))
+                or obstacle_wall_dev or detour_after_wall_dev
+                or inject_threat_after_first_dev or inject_threat_during_first_dev
+                or goal_turn_dx_dev!=0.0
+                or os.environ.get("S49_SPRINT_MOTOR_DEV_ONLY")!="1"
+            ))
             or type(g2_sneak_prefix_dev) is not bool
             or (g2_sneak_prefix_dev and (
                 not paper_gait_observation_dev
@@ -241,7 +257,7 @@ async def qualify(
             ))
             or type(g2_dash_first_dev) is not bool
             or (g2_dash_first_dev and (
-                not g2_sprint_prefix_dev
+                not (g2_sprint_prefix_dev or g4_auto_gait_dev)
                 or not paper_gait_observation_dev
                 or paper_dash_plugin_dev is None
                 or not isinstance(paper_dash_plugin_dev,Path)
@@ -747,9 +763,23 @@ async def qualify(
                     "requested_yaw_rad":yaw,
                     "signed_yaw_not_measured":True,
                 })
+            g4_choice=None
+            if g4_auto_gait_dev:
+                if t2_owner is None or t2_owner.failed or t2_owner.fatigue is None:
+                    raise RuntimeError("G4 missing continuous single T2 P1/M0 owner")
+                g4_choice=choose_g4_observed_gait_dev(
+                    choice,directive,action_index=i,
+                    p1_profile=t2_owner.profile,p1_state=t2_owner.fatigue,
+                    m0_energy=t2_owner.energy.body.energy,
+                    threats_present=bool(probe.snapshot.nearby_entities),
+                )
+                report["g4_observed_choices_dev"].append(asdict(g4_choice))
+                choice=replace(choice,input_duration_s=g4_choice.duration_s)
             l0.admitted(choice)
             g2_dash_armed=False
-            if g2_dash_first_dev and i==1:
+            if g2_dash_first_dev and i==1 and (
+                not g4_auto_gait_dev or g4_choice.mode=="DASH"
+            ):
                 # Paper modifier ONLY: the next physical Action still comes
                 # from the original S49 owner. No second packet writer.
                 offset=server_log.stat().st_size if server_log.exists() else 0
@@ -774,6 +804,7 @@ async def qualify(
                 g2_sprint_first_dev=g2_sprint_first_dev and executor._count==0,
                 g2_sprint_prefix_dev=g2_sprint_prefix_dev and executor._count<3,
                 g2_sneak_prefix_dev=g2_sneak_prefix_dev and executor._count<3,
+                g4_mode_dev=g4_choice.mode if g4_choice is not None else None,
                 **({
                     "on_effect_ack_dev":ack_dev,
                     "on_live_probe_dev":observe_during_action,
@@ -1501,6 +1532,7 @@ def main()->int:
     p.add_argument("--g2-sprint-first-dev",action="store_true")
     p.add_argument("--g2-sprint-prefix-dev",action="store_true")
     p.add_argument("--g2-sneak-prefix-dev",action="store_true")
+    p.add_argument("--g4-auto-gait-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -1538,6 +1570,7 @@ def main()->int:
         g2_sprint_first_dev=args.g2_sprint_first_dev,
         g2_sprint_prefix_dev=args.g2_sprint_prefix_dev,
         g2_sneak_prefix_dev=args.g2_sneak_prefix_dev,
+        g4_auto_gait_dev=args.g4_auto_gait_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
