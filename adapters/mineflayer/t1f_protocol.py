@@ -44,12 +44,33 @@ def validate_result(d):
         raise ValueError("invalid T1f Paper body")
     if "gait_dev" in s:
         g = s["gait_dev"]
-        if (type(g) is not dict or set(g) != {
-                "sneaking", "sprinting", "speed_base", "speed_value", "speed_modifiers"}
+        gait_base = {"sneaking", "sprinting", "speed_base", "speed_value",
+                     "speed_modifiers"}
+        if (type(g) is not dict
+                or set(g) not in (gait_base, gait_base | {"speed_modifier_details"})
                 or any(type(g[k]) is not bool for k in ("sneaking", "sprinting"))
                 or not all(finite(g[k]) and g[k] > 0 for k in ("speed_base", "speed_value"))
                 or not natural(g["speed_modifiers"])):
             raise ValueError("invalid T1u passive gait facts")
+        if "speed_modifier_details" in g:
+            mods = g["speed_modifier_details"]
+            if (type(mods) is not list or len(mods) > 4
+                    or len(mods) != g["speed_modifiers"]):
+                raise ValueError("invalid G3 Paper modifier count")
+            names = []
+            for mod in mods:
+                if (type(mod) is not dict or set(mod) != {"key", "operation", "amount"}
+                        or type(mod["key"]) is not str
+                        or re.fullmatch(r"[a-z0-9_.-]+:[a-z0-9_./-]+", mod["key"]) is None
+                        or type(mod["operation"]) is not str
+                        or mod["operation"] not in {
+                            "ADD_NUMBER", "ADD_SCALAR", "MULTIPLY_SCALAR_1"}
+                        or not finite(mod["amount"])
+                        or not -2 <= mod["amount"] <= 2):
+                    raise ValueError("invalid G3 Paper modifier identity")
+                names.append(mod["key"])
+            if names != sorted(set(names)):
+                raise ValueError("duplicate or unordered G3 Paper modifiers")
     for t in s["threats"]:
         if (type(t) is not dict or set(t) != {"id", "kind", "x", "y", "z", "distance"}
                 or not isinstance(t["id"], str) or UUID.fullmatch(t["id"]) is None
