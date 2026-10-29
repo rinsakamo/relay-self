@@ -1,0 +1,11 @@
+# RelaySelf G4.8 DEV — existing Node control generation for ordinary original JOG/WALK Actions
+
+Parent G4.7 DEV HEAD `0ea2abc8c7b0e03b7c1b576ff18471e3a881d7fd`.
+
+**Objective:** fill the G4.7 observability gap for ordinary original JOG (`set_control`) and WALK (`set_forward_sneak_dev`) Actions, not only the original RUN→JOG→WALK mid-Action sub-effects. No adjustment to goal, motor period, concurrent readers, S49 Action grants, or P1/M0 accounting.
+
+**Implementation:** Explicit DEV-only `S49_G48_DIRECT_ACTION_GENERATION_DEV_ONLY=1` and `--g48-direct-action-generation-dev` require G4.7/G4.6. In the **existing original** Mineflayer effect handlers, after successful physical native input set, sample direct ordinary Action ID/effect ID, typed gait and existing T1f control generation into the pre-existing G4.6 metadata field. No extra Node callback or control setter. Extend only gated original T1f schema for direct JOG/WALK with transition index 0 and exact effect=original Action ID; legacy G4.6 RUN/G44 transitions retain their existing schema and negative controls.
+
+The original S49 on-effect-ACK callback records exact direct JOG/WALK applied effect seq, identical original Action/effect ID, mode and source. The G4.8 post-run overlay joins each G4.7 SHA-bound original T2 WorldTick row to G1 Paper and the direct Action ACK/CLEAR bracket with a **strict after-control-issued Paper challenge**, stable two-interval Paper gait kind, matching direct Node generation, matching **already-applied original T2 gait** and no G3 fallback. Every original T2 row remains accounted exactly once. Source failure and intervals outside direct gait windows are reported as UNKNOWN; per-physics-tick causality and qualification remain unclaimed.
+
+Three disposable real Java21/Paper 1.21.8 Worlds, focused Python3.12/Node22 tests, negative source tests and SHA audits. Preserve raw original G4 baseline / controlled G4.8 / zombie interrupted G44 sources, and distinguish normal vs hazard. Do not require a new gait candidate in every run because short real Action pulses and Paper challenges may not align, but quantify all source-matched candidates and unknowns. G4.7 original sidecar is kept unchanged for exact incremental comparison. No QUAL or SCIENCE run.
