@@ -371,7 +371,7 @@ jobs:
           folder=pathlib.Path(os.environ["DEV_OUTPUT"])/"WORLD-G45-HAZARD"
           j=json.loads((folder/"goal_report.json").read_text())
           assert j["status"]=="PASS" and j["real_world"]
-          assert j["stage"]=="G45_NATIVE_GAIT_HAZARD_INTERRUPTED"
+          assert j["stage"]=="G45_NATIVE_GAIT_HAZARD_T2_REFUSED"
           hz=j["g45_native_hazard_preempt_dev"]
           assert hz["action_id"]=="goal-approach-demo-step-2"
           assert hz["gait_phase"]=="JOG" and hz["decision"]=="INTERRUPT"
@@ -381,12 +381,17 @@ jobs:
           assert hz["s16_after_seq"]>hz["applied_clear_seq"]
           assert hz["terminal"]=="unknown" and hz["s16_status"]=="failed"
           assert hz["new_s49_actions_after_hazard"]==0
+          assert hz["t2_expected_refusal"] and not hz["p1_credit_awarded"]
           assert len(j["native_actions"])==2
           assert j["native_actions"][-1]["s16_terminal"]=="unknown"
           assert j["g45_paper_transition_windows_dev"]
           assert all(not w["full_tick_gait_attested"]
                      for w in j["g45_paper_transition_windows_dev"])
-          assert not j["g3_single_t2_p1_m0_owner_dev"]["owner_failed"]
+          assert j["g3_single_t2_p1_m0_owner_dev"]["owner_failed"]
+          refusal=j["l1_t2_ledger_dev"]["s16_refusal_diagnostic_dev"]
+          assert refusal["reason"]=="NATIVE_TERMINAL_NOT_SAFE_FOR_T2"
+          assert refusal["p1_credit_awarded"] is False
+          assert refusal["additional_action_issued"] is False
           for key in ("l1_t2_ledger_dev","g1_applied_gait_observation_dev"):
               meta=j[key]
               file=folder/meta["derived_file"]

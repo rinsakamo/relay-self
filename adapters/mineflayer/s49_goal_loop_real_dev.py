@@ -53,6 +53,7 @@ from adapters.mineflayer.s31a_real_server_ci import (
 )
 from adapters.mineflayer.s34_native_world_cognition_ci import _new_session
 from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
+from adapters.mineflayer.s49_goal_t2_boundary_dev import GoalT2BoundaryRejected
 from adapters.mineflayer.s49_goal_waypoint_route_dev import follow_l1_detour_dev
 from adapters.mineflayer.s49_l1_experience_export_dev import load_episode_dev
 from adapters.mineflayer.s49_l1_selfworld_memory_dev import recall_from_selfworld_dev
@@ -1073,6 +1074,76 @@ async def qualify(
                     } if goal_turn_dx_dev!=0.0 or obstacle_wall_dev else {}),
                 )
                 g42_s16_host_ns=time.perf_counter_ns() if g42_brake_timing_dev else None
+            except GoalT2BoundaryRejected:
+                # A physically interrupted native S16 has status FAILED,
+                # not an OUTCOME or harmless UNKNOWN. Original T2 refuses
+                # the handoff and latches; this is the DESIRED safe halt.
+                # Verify original refusal provenance rather than minting P1
+                # credit or issuing another S49 motor.
+                if not (g45_hazard_during_gait_dev and i==2):
+                    raise
+                boundary45=executor._t2_boundary_dev
+                refusal45=boundary45.refusal if boundary45 is not None else None
+                if (
+                    not g45_injection_done or g45_threat is None
+                    or not isinstance(refusal45,dict)
+                    or refusal45.get("reason")!="NATIVE_TERMINAL_NOT_SAFE_FOR_T2"
+                    or refusal45.get("s49_active_action_id")!=action_id
+                    or refusal45.get("terminal_state")!="unknown"
+                    or refusal45.get("consequence_status")!="failed"
+                    or refusal45.get("clear_ack_effect")!="clear_controls"
+                    or refusal45.get("clear_ack_result")!="applied"
+                    or refusal45.get("clear_ack_session_matches") is not True
+                    or refusal45.get("after_session_matches") is not True
+                    or refusal45.get("t2_active_matches") is not True
+                    or refusal45.get("p1_credit_awarded") is not False
+                    or refusal45.get("additional_action_issued") is not False
+                    or type(refusal45.get("clear_ack_seq")) is not int
+                    or type(refusal45.get("after_seq")) is not int
+                    or not (
+                        g45_threat["native_seq"]
+                        < refusal45["clear_ack_seq"]
+                        < refusal45["after_seq"]
+                    )
+                    or g42_trace["clear_seq"]!=refusal45["clear_ack_seq"]
+                    or not report["g44_native_transition_acks_dev"]
+                    or report["g44_native_transition_acks_dev"][-1]["action_id"]!=action_id
+                    or report["g44_native_transition_acks_dev"][-1]["mode_to"]!="JOG"
+                    or executor._count!=2
+                    or executor.supervisor.open_actions
+                    or not l0.closed or not t2_owner.failed
+                ):
+                    raise RuntimeError("G4.5 native threat lacks original fail-closed T2 refusal")
+                report["g45_action_clear_acks_dev"].append({
+                    "action_id":action_id,
+                    "clear_seq":refusal45["clear_ack_seq"],
+                    "s16_seq":refusal45["after_seq"],
+                    "s16_terminal":"unknown",
+                })
+                report["g45_native_hazard_preempt_dev"]={
+                    **g45_threat,
+                    "transition_ack_seq":report["g44_native_transition_acks_dev"][-1]["ack_seq"],
+                    "applied_clear_seq":refusal45["clear_ack_seq"],
+                    "s16_after_seq":refusal45["after_seq"],
+                    "s16_status":"failed",
+                    "terminal":"unknown",
+                    "t2_expected_refusal":True,
+                    "p1_credit_awarded":False,
+                    "new_s49_actions_after_hazard":0,
+                    "qualified_paper_gait":False,
+                }
+                report["native_actions"].append({
+                    "action_id":action_id,"s16_terminal":"unknown",
+                    "s16_status":"failed",
+                    "after_seq":refusal45["after_seq"],
+                    "g44_same_issued_action_transitions_dev":["JOG"],
+                })
+                report["stage"]="G45_NATIVE_GAIT_HAZARD_T2_REFUSED"
+                report["classification"]="DEV_ONLY_G45_HAZARD_ORIGINAL_S49_T2_FAIL_CLOSED"
+                report["status"]="PASS"
+                report["real_world"]=True
+                rc=0
+                break
             finally:
                 if g2_dash_armed:
                     # Even UNKNOWN/FAILED native Action must release the
