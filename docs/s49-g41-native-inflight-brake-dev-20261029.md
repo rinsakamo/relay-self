@@ -11,8 +11,12 @@ This branch is isolated from `main`, Draft #545 and Draft #634.
   0.10–0.35s already-issued motor Action. Session, sequence, request prefix,
   source and non-truncated threat coverage must be valid.
 - DASH/RUN may clear early for a new slower G4 Action; JOG may hand off to
-  WALK. Every mode stops input inside L1 tolerance for the original L0
-  settle verification, which alone may decide REACHED.
+  WALK after observed movement >=0.08m. WALK uses a fixed bounded pulse,
+  then relies on S16 and the original L0 settle verification.
+- The initial G4.1 real World at `4362b76cc36c3b3868858d1b883877e31e4b833f`
+  reached four original S16 OUTCOMEs but the fifth short WALK ended UNKNOWN.
+  Its evidence remains retained; this revision extends near JOG/WALK windows
+  to 0.24s/0.20s respectively while keeping the existing <=0.35s gate.
 - No second Action issuer, no mid-Action gait mutation, no second P1/M0
   owner, no new packet consumer and no claimed full-tick physical gait.
 - A requested early CLEAR still requires physical displacement and the

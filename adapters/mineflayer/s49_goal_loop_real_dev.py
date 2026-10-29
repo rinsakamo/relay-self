@@ -21,7 +21,10 @@ from pathlib import Path
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.g3_applied_gait_source_dev import applied_gait_from_original_t1u_dev
 from adapters.mineflayer.g4_observed_gait_choice_dev import choose_g4_observed_gait_dev
-from adapters.mineflayer.g41_inflight_brake_dev import decide_g41_inflight_brake_dev
+from adapters.mineflayer.g41_inflight_brake_dev import (
+    decide_g41_inflight_brake_dev,
+    g41_feedback_window_duration_dev,
+)
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -782,6 +785,7 @@ async def qualify(
                     session_id=live.session_id,source_seq=live.seq,
                     request_id=live.request_id,source=live.provenance.source,
                     x=pos.x,z=pos.z,previous_seq=g41_last_seq,
+                    action_start_error_m=choice.goal_error_m,
                     truncated=live.snapshot.nearby_entities_coverage.truncated,
                     danger_present=any(
                         e.name=="zombie"
@@ -802,6 +806,13 @@ async def qualify(
                     m0_energy=t2_owner.energy.body.energy,
                     threats_present=bool(probe.snapshot.nearby_entities),
                 )
+                if g41_inflight_brake_dev:
+                    g4_choice=replace(
+                        g4_choice,duration_s=g41_feedback_window_duration_dev(
+                            g4_choice.mode,g4_choice.remaining_clearance_m,
+                            g4_choice.duration_s,
+                        ),
+                    )
                 report["g4_observed_choices_dev"].append(asdict(g4_choice))
                 choice=replace(choice,input_duration_s=g4_choice.duration_s)
             l0.admitted(choice)
@@ -835,7 +846,9 @@ async def qualify(
                 g2_sneak_prefix_dev=g2_sneak_prefix_dev and executor._count<3,
                 g4_mode_dev=g4_choice.mode if g4_choice is not None else None,
                 on_g41_brake_probe_dev=(
-                    g41_inflight_brake if g41_inflight_brake_dev else None
+                    g41_inflight_brake if (
+                        g41_inflight_brake_dev and g4_choice.mode!="WALK"
+                    ) else None
                 ),
                 **({
                     "on_effect_ack_dev":ack_dev,
