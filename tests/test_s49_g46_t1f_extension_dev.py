@@ -62,3 +62,33 @@ def test_g46_original_schema_still_passes_without_optional_boundary():
     sample=_base()
     del sample["g46_motor_boundary_dev"]
     validate_result(sample)
+
+@pytest.mark.parametrize("mode", ["JOG", "WALK"])
+def test_g48_original_ordinary_t1u_schema_requires_scoped_marker(mode):
+    sample=_base()
+    sample["g46_motor_boundary_dev"].update({
+        "requested_mode":mode,"transition_index":0,
+        "g48_ordinary_action_dev":True,
+    })
+    validate_result(sample)
+    sample["g46_motor_boundary_dev"].pop("g48_ordinary_action_dev")
+    with pytest.raises(ValueError, match="G4.6"):
+        validate_result(sample)
+
+
+@pytest.mark.parametrize("bad", [
+    {"g48_ordinary_action_dev": False},
+    {"effect_id":"goal-fake"},
+    {"transition_index":1},
+    {"requested_mode":"SPRINT_INPUT"},
+    {"control_phase":"CLEARED"},
+])
+def test_g48_schema_rejects_wrong_original_ordinary_epoch(bad):
+    sample=_base()
+    sample["g46_motor_boundary_dev"].update({
+        "requested_mode":"JOG","transition_index":0,
+        "g48_ordinary_action_dev":True,
+    })
+    sample["g46_motor_boundary_dev"].update(bad)
+    with pytest.raises(ValueError, match="G4.[68]"):
+        validate_result(sample)

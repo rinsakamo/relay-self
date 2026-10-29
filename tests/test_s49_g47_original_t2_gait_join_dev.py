@@ -188,3 +188,111 @@ def test_g47_strict_accounting_provenance(change):
         a["t2_rows"][2]["p1"] = None
     with pytest.raises(ValueError, match="G4.[567]"):
         join_g47_original_t2_worldticks_dev(**a)
+
+def _g48_ordinary_args(mode="JOG"):
+    from adapters.mineflayer.g48_ordinary_action_t2_join_dev import (
+        join_g48_ordinary_action_t2_worldticks_dev,
+    )
+    base = _args()
+    action = "goal-g47-step-3"
+    assert mode in ("JOG", "WALK")
+    for seq, tick, kind, applied, after in [
+        (28, 205, "TRANSITION_OR_UNDETERMINED", None, False),
+        (30, 206, (
+            "STABLE_ORDINARY_FORWARD_CANDIDATE" if mode == "JOG"
+            else "STABLE_SNEAK_FORWARD_CANDIDATE"), mode, True),
+        (33, 207, (
+            "STABLE_ORDINARY_FORWARD_CANDIDATE" if mode == "JOG"
+            else "STABLE_SNEAK_FORWARD_CANDIDATE"), mode, True),
+    ]:
+        paper = _paper(
+            seq, tick, mode=mode, kind=kind, effect=action,
+            generation=7, after=after,
+        )
+        paper["g46_motor_boundary_dev"]["transition_index"] = 0
+        paper["g46_motor_boundary_dev"]["g48_ordinary_action_dev"] = True
+        base["paper_rows"].append(paper)
+        ledger = deepcopy(base["t2_rows"][-1])
+        ledger.update(
+            source_seq=seq, world_tick=tick,
+            active_action=action, applied_gait=applied,
+            motor_mode=applied if applied else "UNDETERMINED",
+            g3_unknown_fallback_dev=applied is None,
+        )
+        base["t2_rows"].append(ledger)
+    base["original_clear_acks"].append({
+        "action_id": action, "clear_seq": 38,
+        "s16_seq": 40, "s16_terminal": "outcome",
+    })
+    base["original_ordinary_acks"] = [{
+        "action_id": action, "effect_id": action,
+        "ack_seq": 26, "mode": mode,
+        "effect": ("set_control" if mode == "JOG"
+                   else "set_forward_sneak_dev"),
+        "source": "ORIGINAL_S49_NATIVE_APPLIED",
+    }]
+    return base, join_g48_ordinary_action_t2_worldticks_dev
+
+
+@pytest.mark.parametrize("mode", ["JOG", "WALK"])
+def test_g48_original_ordinary_gait_reduces_unknown_without_reposting(mode):
+    args, join = _g48_ordinary_args(mode)
+    before = deepcopy(args)
+    old = join_g47_original_t2_worldticks_dev(**{
+        k: v for k, v in args.items() if k != "original_ordinary_acks"
+    })
+    new = join(**args)
+    assert args == before
+    assert len(old) == len(new) == 8
+    assert [x.final_status for x in new[-3:]] == [
+        "UNKNOWN_ORDINARY_PRECHANGE_CHALLENGE",
+        "SOURCE_BOUND_ORDINARY_GAIT_CANDIDATE_DEV",
+        "SOURCE_BOUND_ORDINARY_GAIT_CANDIDATE_DEV",
+    ]
+    assert all(x.status == "UNKNOWN_NO_ORIGINAL_G46_EFFECT_WINDOW"
+               for x in old[-3:])
+    assert sum(x.final_status.startswith("SOURCE_BOUND_") for x in new) == 5
+    assert all(x.original_t2_row_sha256 == b.original_t2_row_sha256
+               for x, b in zip(new, old))
+    assert all(not x.qualified and not x.second_t2_owner_created
+               and not x.new_p1_or_m0_posting
+               and not x.exact_packet_to_physics_tick_attested for x in new)
+
+
+@pytest.mark.parametrize("corruption", [
+    "missing_ack", "wrong_original_motor", "duplicated_ordinary",
+    "run_owner_collision", "bad_clear", "wrong_generation",
+    "wrong_mode", "not_postchange", "t2_fallback",
+])
+def test_g48_refuses_forged_source_and_preserves_unknown(corruption):
+    args, join = _g48_ordinary_args()
+    if corruption == "missing_ack":
+        args["original_ordinary_acks"].clear()
+    elif corruption == "wrong_original_motor":
+        args["original_ordinary_acks"][0]["effect"] = "set_forward_sneak_dev"
+    elif corruption == "duplicated_ordinary":
+        args["original_ordinary_acks"].append(
+            deepcopy(args["original_ordinary_acks"][0])
+        )
+    elif corruption == "run_owner_collision":
+        args["original_ordinary_acks"][0]["action_id"] = "goal-g47-step-2"
+    elif corruption == "bad_clear":
+        args["original_clear_acks"][1]["clear_seq"] = 25
+    elif corruption == "wrong_generation":
+        args["paper_rows"][-1]["g46_motor_boundary_dev"]["control_generation"] = 0
+    elif corruption == "wrong_mode":
+        args["paper_rows"][-1]["g46_motor_boundary_dev"]["requested_mode"] = "WALK"
+    elif corruption == "not_postchange":
+        args["paper_rows"][-1]["g46_challenge_after_control_dev"] = False
+    else:
+        args["t2_rows"][-1]["g3_unknown_fallback_dev"] = True
+        args["t2_rows"][-1]["applied_gait"] = None
+    if corruption in {
+        "wrong_original_motor", "duplicated_ordinary",
+        "run_owner_collision", "bad_clear",
+    }:
+        with pytest.raises(ValueError, match="G4.8"):
+            join(**args)
+    else:
+        joined = join(**args)
+        assert joined[-1].final_status != "SOURCE_BOUND_ORDINARY_GAIT_CANDIDATE_DEV"
