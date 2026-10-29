@@ -233,15 +233,25 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
             )
         ):
             raise NormalActionRejected("G2 sprint requires first original S49 Action, gated and non-rotating")
+        g42_ack_only_dev=(
+            on_effect_ack_dev is not None
+            and on_live_probe_dev is None
+            and g4_mode_dev is not None
+            and os.environ.get("S49_G42_BRAKE_TIMING_DEV_ONLY")=="1"
+            and callable(on_effect_ack_dev)
+        )
         if (
             (on_live_probe_dev is not None or on_effect_ack_dev is not None)
+            and not g42_ack_only_dev
             and (
                 os.environ.get("S49_L0_INFLIGHT_PREEMPT_DEV_ONLY")!="1"
                 or not callable(on_live_probe_dev)
                 or not callable(on_effect_ack_dev)
             )
         ):
-            raise NormalActionRejected("in-flight DEV callbacks need both explicit owners")
+            raise NormalActionRejected(
+                "in-flight DEV callbacks require independent gated owners"
+            )
         if (
             (look_yaw_dev is not None or on_look_ack_dev is not None)
             and (

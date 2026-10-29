@@ -14,6 +14,7 @@ import math
 import os
 import shutil
 import tempfile
+import time
 from dataclasses import asdict, replace
 from functools import partial
 from pathlib import Path
@@ -25,6 +26,7 @@ from adapters.mineflayer.g41_inflight_brake_dev import (
     decide_g41_inflight_brake_dev,
     g41_feedback_window_duration_dev,
 )
+from adapters.mineflayer.g42_native_brake_timing_dev import qualify_g42_native_window_dev
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -163,6 +165,7 @@ async def qualify(
     g2_sneak_prefix_dev:bool=False,
     g4_auto_gait_dev:bool=False,
     g41_inflight_brake_dev:bool=False,
+    g42_brake_timing_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -204,6 +207,8 @@ async def qualify(
         "g4_observed_choices_dev":[],
         "g41_inflight_brake_dev":g41_inflight_brake_dev,
         "g41_inflight_samples_dev":[],
+        "g42_brake_timing_dev":g42_brake_timing_dev,
+        "g42_native_windows_dev":[],
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -232,6 +237,11 @@ async def qualify(
             or type(offset_m) is not float or not 1.8<=offset_m<=4.0
             or type(g4_auto_gait_dev) is not bool
             or type(g41_inflight_brake_dev) is not bool
+            or type(g42_brake_timing_dev) is not bool
+            or (g42_brake_timing_dev and (
+                not g41_inflight_brake_dev
+                or os.environ.get("S49_G42_BRAKE_TIMING_DEV_ONLY")!="1"
+            ))
             or (g41_inflight_brake_dev and (
                 not g4_auto_gait_dev
                 or os.environ.get("S49_G41_INFLIGHT_BRAKE_DEV_ONLY")!="1"
@@ -596,6 +606,7 @@ async def qualify(
         report["goal_l1"]=asdict(directive)
         report["initial_native_xz"]={"x":start.x,"z":start.z,"seq":initial.seq}
         report["stage"]="UNATTENDED_L0_GOAL_OBSERVE_ACT"
+        g42_pending=None
         for iteration in range(directive.max_observations):
             # Probe, not a new zombie event or fixed tick equivalence, controls
             # each new L0 choice. The single original native reader is reused.
@@ -603,6 +614,23 @@ async def qualify(
                 initial if iteration==0
                 else await _correlated_observe(session,f"goal-{sid}-probe-{iteration}")
             )
+            if g42_brake_timing_dev and g42_pending is not None:
+                # The next original Goal probe is after the prior S16/CLEAR,
+                # and before any newly issued motor. This is a drift
+                # candidate, not proof of inertia or speed per WorldTick.
+                if (
+                    probe.session_id!=sid or probe.provenance.source!="mineflayer"
+                    or probe.snapshot.nearby_entities_coverage.truncated
+                ):
+                    raise RuntimeError("G4.2 refuses foreign next native position")
+                pos42=probe.snapshot.position
+                window42=qualify_g42_native_window_dev(
+                    **g42_pending,
+                    next_seq=probe.seq,next_x=pos42.x,next_z=pos42.z,
+                    next_host_ns=time.perf_counter_ns(),
+                )
+                report["g42_native_windows_dev"].append(asdict(window42))
+                g42_pending=None
             choice=l0.decide(probe)
             report["l0_decisions"].append(asdict(choice))
             if choice.kind is GoalDecisionKind.REACHED:
@@ -775,6 +803,26 @@ async def qualify(
                     "requested_yaw_rad":yaw,
                     "signed_yaw_not_measured":True,
                 })
+            g42_trace={
+                "brake_seq":None,"brake_host_ns":None,
+                "clear_seq":None,"clear_host_ns":None,
+            }
+            async def g42_ack_dev(stage,effect):
+                expected=(
+                    action_id if stage=="APPLIED"
+                    else f"{action_id}-s15-clear" if stage=="CLEARED"
+                    else None
+                )
+                if (
+                    expected is None or effect.action_id!=expected
+                    or effect.session_id!=sid or effect.result!="applied"
+                    or (stage=="CLEARED" and effect.effect!="clear_controls")
+                    or (stage=="APPLIED" and g42_trace["clear_seq"] is not None)
+                ):
+                    raise RuntimeError("G4.2 refuses foreign or invalid original ACK")
+                if stage=="CLEARED":
+                    g42_trace["clear_seq"]=effect.seq
+                    g42_trace["clear_host_ns"]=time.perf_counter_ns()
             g41_last_seq=probe.seq
             def g41_inflight_brake(live):
                 nonlocal g41_last_seq
@@ -795,6 +843,11 @@ async def qualify(
                 )
                 g41_last_seq=live.seq
                 report["g41_inflight_samples_dev"].append(asdict(decision_g41))
+                if g42_brake_timing_dev and decision_g41.brake_requested:
+                    if g42_trace["brake_seq"] is not None:
+                        raise RuntimeError("duplicate G4.2 brake within original Action")
+                    g42_trace["brake_seq"]=live.seq
+                    g42_trace["brake_host_ns"]=time.perf_counter_ns()
                 return decision_g41.brake_requested
             g4_choice=None
             if g4_auto_gait_dev:
@@ -853,12 +906,15 @@ async def qualify(
                 **({
                     "on_effect_ack_dev":ack_dev,
                     "on_live_probe_dev":observe_during_action,
-                } if inject_threat_during_first_dev and i==1 else {}),
+                } if inject_threat_during_first_dev and i==1 else {
+                    "on_effect_ack_dev":g42_ack_dev,
+                } if g42_brake_timing_dev else {}),
                     **({
                         "look_yaw_dev":float(yaw),
                         "on_look_ack_dev":on_turn_ack,
                     } if goal_turn_dx_dev!=0.0 or obstacle_wall_dev else {}),
                 )
+                g42_s16_host_ns=time.perf_counter_ns() if g42_brake_timing_dev else None
             finally:
                 if g2_dash_armed:
                     # Even UNKNOWN/FAILED native Action must release the
@@ -1377,6 +1433,27 @@ async def qualify(
                 (travel_x*forward_x+travel_z*forward_z)/travel_norm
                 if travel_norm>0.01 else None
             )
+            if g42_brake_timing_dev:
+                clear42=receipt.consequence.cleanup_receipt
+                after42=receipt.consequence.after_observation
+                if (
+                    clear42 is None or clear42.result!="applied"
+                    or clear42.seq!=g42_trace["clear_seq"]
+                    or g42_trace["clear_host_ns"] is None
+                    or g42_s16_host_ns is None
+                    or after42 is None or after42.session_id!=sid
+                ):
+                    raise RuntimeError("G4.2 original CLEAR and S16 telemetry mismatch")
+                g42_pending={
+                    "action_id":action_id,"session_id":sid,
+                    "brake_seq":g42_trace["brake_seq"],
+                    "brake_host_ns":g42_trace["brake_host_ns"],
+                    "clear_seq":clear42.seq,
+                    "clear_host_ns":g42_trace["clear_host_ns"],
+                    "after_seq":after42.seq,
+                    "after_x":end.x,"after_z":end.z,
+                    "after_host_ns":g42_s16_host_ns,
+                }
             report["native_actions"].append({
                 "action_id":receipt.terminal.action_id,
                 "s16_status":receipt.consequence.status.value,
@@ -1591,6 +1668,7 @@ def main()->int:
     p.add_argument("--g2-sneak-prefix-dev",action="store_true")
     p.add_argument("--g4-auto-gait-dev",action="store_true")
     p.add_argument("--g41-inflight-brake-dev",action="store_true")
+    p.add_argument("--g42-brake-timing-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -1630,6 +1708,7 @@ def main()->int:
         g2_sneak_prefix_dev=args.g2_sneak_prefix_dev,
         g4_auto_gait_dev=args.g4_auto_gait_dev,
         g41_inflight_brake_dev=args.g41_inflight_brake_dev,
+        g42_brake_timing_dev=args.g42_brake_timing_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
