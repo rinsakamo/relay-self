@@ -46,6 +46,9 @@ from adapters.mineflayer.g47_original_t2_gait_join_dev import (
 from adapters.mineflayer.g48_direct_action_generation_dev import (
     join_g48_direct_action_worldticks_dev,
 )
+from adapters.mineflayer.g49_original_action_gap_census_dev import (
+    join_g49_original_action_gap_census_dev,
+)
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -193,6 +196,7 @@ async def qualify(
     g46_paper_generation_dev:bool=False,
     g47_original_t2_gait_join_dev:bool=False,
     g48_direct_action_generation_dev:bool=False,
+    g49_original_action_gap_census_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -254,6 +258,9 @@ async def qualify(
         "g48_direct_action_generation_dev":g48_direct_action_generation_dev,
         "g48_original_direct_action_acks_dev":[],
         "g48_direct_worldtick_audit_dev":None,
+        "g49_original_action_gap_census_dev":g49_original_action_gap_census_dev,
+        "g49_original_action_applied_acks_dev":[],
+        "g49_original_action_gap_audit_dev":None,
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -290,6 +297,11 @@ async def qualify(
             or type(g46_paper_generation_dev) is not bool
             or type(g47_original_t2_gait_join_dev) is not bool
             or type(g48_direct_action_generation_dev) is not bool
+            or type(g49_original_action_gap_census_dev) is not bool
+            or (g49_original_action_gap_census_dev and (
+                not g48_direct_action_generation_dev
+                or os.environ.get("S49_G49_ORIGINAL_ACTION_GAP_DEV_ONLY")!="1"
+            ))
             or (g48_direct_action_generation_dev and (
                 not g47_original_t2_gait_join_dev
                 or os.environ.get("S49_G48_DIRECT_ACTION_GENERATION_DEV_ONLY")!="1"
@@ -900,6 +912,17 @@ async def qualify(
                     or (stage=="APPLIED" and g42_trace["clear_seq"] is not None)
                 ):
                     raise RuntimeError("G4.2 refuses foreign or invalid original ACK")
+                if (
+                    stage=="APPLIED" and g49_original_action_gap_census_dev
+                    and g4_choice is not None
+                ):
+                    report["g49_original_action_applied_acks_dev"].append({
+                        "action_id":action_id,"effect_id":effect.action_id,
+                        "effect":effect.effect,"ack_seq":effect.seq,
+                        "requested_mode":g4_choice.mode,
+                        "source":"ORIGINAL_S49_NATIVE_APPLIED",
+                        "requested_not_paper_gait":True,
+                    })
                 if (
                     stage=="APPLIED" and g46_paper_generation_dev
                     and g4_choice is not None and g4_choice.mode=="RUN"
@@ -2096,6 +2119,7 @@ async def qualify(
                 report["g47_t2_join_refusal_dev"]=f"{type(exc).__name__}: {exc}"
                 report["status"]="FAIL"
                 rc=2
+        g48_rows=None
         if g48_direct_action_generation_dev and g47_rows is not None:
             try:
                 g48_rows=[
@@ -2145,6 +2169,54 @@ async def qualify(
                 }
             except (ValueError, KeyError, TypeError) as exc:
                 report["g48_direct_join_refusal_dev"]=f"{type(exc).__name__}: {exc}"
+                report["status"]="FAIL"
+                rc=2
+        if g49_original_action_gap_census_dev and g48_rows is not None:
+            try:
+                g49_rows=[
+                    asdict(row) for row in join_g49_original_action_gap_census_dev(
+                        session_id=sid,
+                        original_action_acks=report["g49_original_action_applied_acks_dev"],
+                        original_clear_acks=report["g45_action_clear_acks_dev"],
+                        paper_rows=[asdict(row) for row in gait_observer.rows],
+                        t2_rows=t2_owner.rows,g48_rows=g48_rows,
+                    )
+                ]
+                g49_path=report_path.parent/"g49_original_action_gap_census_dev.json"
+                with g49_path.open("x",encoding="utf-8") as sink:
+                    json.dump({
+                        "source":"ORIGINAL_S49_EFFECT_CLEAR_G1_PAPER_T2_G48_DEV",
+                        "original_g48_sha256":report["g48_direct_worldtick_audit_dev"]["derived_file_sha256"],
+                        "original_t2_sha256":report["l1_t2_ledger_dev"]["derived_file_sha256"],
+                        "new_p1_or_m0_posting":False,
+                        "additional_readers_or_t2_owners":0,
+                        "physical_tick_motor_qualified":False,
+                        "rows":g49_rows,
+                    },sink,sort_keys=True)
+                    sink.write("\n")
+                counts={}
+                for row in g49_rows:
+                    gap=row["source_gap_class"]
+                    counts[gap]=counts.get(gap,0)+1
+                unknown=sum(row["still_unknown"] for row in g49_rows)
+                if unknown!=report["g48_direct_worldtick_audit_dev"]["combined_unknown_worldticks"]:
+                    raise ValueError("G4.9 unknown count must match exact original G4.8")
+                report["g49_original_action_gap_audit_dev"]={
+                    "source":"ORIGINAL_S49_EFFECT_CLEAR_G1_PAPER_T2_G48_DEV",
+                    "derived_file":g49_path.name,
+                    "derived_file_sha256":hashlib.sha256(g49_path.read_bytes()).hexdigest(),
+                    "original_g48_sha256":report["g48_direct_worldtick_audit_dev"]["derived_file_sha256"],
+                    "original_t2_sha256":report["l1_t2_ledger_dev"]["derived_file_sha256"],
+                    "original_t2_worldtick_rows":len(g49_rows),
+                    "preserved_g48_stable_candidates":len(g49_rows)-unknown,
+                    "still_unknown_worldticks":unknown,
+                    "source_gap_classes":counts,
+                    "new_p1_or_m0_posting":False,
+                    "additional_readers_or_t2_owners":0,
+                    "physical_tick_motor_qualified":False,
+                }
+            except (ValueError, KeyError, TypeError) as exc:
+                report["g49_gap_census_refusal_dev"]=f"{type(exc).__name__}: {exc}"
                 report["status"]="FAIL"
                 rc=2
         report["pre_cleanup_status"]=report["status"]
@@ -2202,6 +2274,7 @@ def main()->int:
     p.add_argument("--g46-paper-generation-dev",action="store_true")
     p.add_argument("--g47-original-t2-gait-join-dev",action="store_true")
     p.add_argument("--g48-direct-action-generation-dev",action="store_true")
+    p.add_argument("--g49-original-action-gap-census-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -2249,6 +2322,7 @@ def main()->int:
         g46_paper_generation_dev=args.g46_paper_generation_dev,
         g47_original_t2_gait_join_dev=args.g47_original_t2_gait_join_dev,
         g48_direct_action_generation_dev=args.g48_direct_action_generation_dev,
+        g49_original_action_gap_census_dev=args.g49_original_action_gap_census_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
