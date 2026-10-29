@@ -182,6 +182,8 @@ jobs:
           assert controlled["g41_inflight_brake_dev"] is True
           assert baseline["g41_inflight_brake_dev"] is False
           assert baseline["g41_inflight_samples_dev"]==[]
+          assert baseline["initial_native_xz"]["x"]==controlled["initial_native_xz"]["x"]
+          assert baseline["initial_native_xz"]["z"]==controlled["initial_native_xz"]["z"]
           samples=controlled["g41_inflight_samples_dev"]
           assert len(samples)>0, "G4.1 had no in-flight native samples"
           assert all(s["source_seq"]>0 and not s["reached_attested"]
@@ -213,6 +215,8 @@ jobs:
               "g41_final_error_m":controlled["final_native_xz"]["euclidean_error_m"],
               "baseline_actions":baseline["action_count"],
               "g41_actions":controlled["action_count"],
+              "baseline_original_m0_ticks":baseline["g3_single_t2_p1_m0_owner_dev"]["m0_tick"],
+              "g41_original_m0_ticks":controlled["g3_single_t2_p1_m0_owner_dev"]["m0_tick"],
               "g41_inflight_native_samples":len(samples),
               "g41_brake_requests":sum(s["brake_requested"] for s in samples),
               "g41_second_issuer":False,
