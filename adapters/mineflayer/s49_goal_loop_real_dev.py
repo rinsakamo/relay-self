@@ -14,8 +14,8 @@ import math
 import os
 import shutil
 import tempfile
-from functools import partial
 from dataclasses import asdict
+from functools import partial
 from pathlib import Path
 
 from adapters.mineflayer.execution import WorldConsequenceStatus
