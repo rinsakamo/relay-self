@@ -11,7 +11,10 @@ from adapters.mineflayer.normal_action import NormalActionRejected
 from adapters.mineflayer.s49_goal_executor_dev import S49GoalExecutorDev
 from experiments.fatigue_p1 import FatigueProfile, initial_state
 from relay_self.goal_navigation import (
-    GoalDecisionKind, GoalPurpose, L0GoalDecision, L1GoalDirective,
+    GoalDecisionKind,
+    GoalPurpose,
+    L0GoalDecision,
+    L1GoalDirective,
     L2GoalProposal,
 )
 from relay_self.provenance import Provenance
