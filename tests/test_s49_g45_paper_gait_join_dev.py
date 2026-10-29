@@ -49,6 +49,22 @@ def test_g45_source_order_join_without_false_per_tick_claim():
                and not v.second_t2_owner_created for v in rows)
 
 
+def test_g45_single_original_paper_anchor_is_not_a_second_t2_debit():
+    rows=join(paper_rows=[
+        {"session_id":"sess","source_seq":9,"world_tick":99,
+         "kind":"INITIAL_NO_INTERVAL"},
+        *[{"session_id":"sess","source_seq":seq,"world_tick":tick,"kind":kind}
+          for seq,tick,kind in (
+              (11,100,"TRANSITION_OR_UNDETERMINED"),
+              (12,101,"STABLE_ORDINARY_FORWARD_CANDIDATE"),
+              (15,102,"TRANSITION_OR_UNDETERMINED"),
+              (19,103,"STABLE_SNEAK_FORWARD_CANDIDATE"),
+          )],
+    ])
+    assert len(rows)==2
+    assert rows[0].stable_matching_source_seqs==(12,)
+
+
 def test_g45_missing_stable_frame_is_explicitly_undetermined():
     bad=[{"session_id":"sess","source_seq":11,"world_tick":100,
           "kind":"TRANSITION_OR_UNDETERMINED"}]

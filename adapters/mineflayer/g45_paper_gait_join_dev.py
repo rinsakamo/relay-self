@@ -71,6 +71,8 @@ def join_g45_native_ack_paper_gait_dev(
             raise ValueError("G4.5 invalid unique original T2 tick source")
         t2_by_seq[row["source_seq"]]=row
     paper_by_seq={}
+    initial_anchor_count=0
+    first_t2_seq=min(t2_by_seq) if t2_by_seq else None
     for row in paper_rows:
         if (
             not isinstance(row,dict)
@@ -78,10 +80,23 @@ def join_g45_native_ack_paper_gait_dev(
             or type(row.get("source_seq")) is not int
             or type(row.get("world_tick")) is not int
             or row["source_seq"] in paper_by_seq
-            or row["source_seq"] not in t2_by_seq
-            or t2_by_seq[row["source_seq"]]["world_tick"]!=row["world_tick"]
         ):
+            raise ValueError("G4.5 malformed original Paper/G1 row")
+        if row["source_seq"] not in t2_by_seq:
+            # G1 includes the one initial Paper anchor; the original T2
+            # owner begins debiting at the first *subsequent* interval.
+            # Never invent a T2 debit or silently skip a later frame.
+            if (
+                row.get("kind")=="INITIAL_NO_INTERVAL"
+                and first_t2_seq is not None
+                and row["source_seq"]<first_t2_seq
+                and initial_anchor_count==0
+            ):
+                initial_anchor_count+=1
+                continue
             raise ValueError("G4.5 Paper interval lacks same original T2 owner")
+        if t2_by_seq[row["source_seq"]]["world_tick"]!=row["world_tick"]:
+            raise ValueError("G4.5 Paper WorldTick and T2 owner disagree")
         paper_by_seq[row["source_seq"]]=row
     grouped={}
     for ack in transition_acks:

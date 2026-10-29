@@ -1888,18 +1888,22 @@ async def qualify(
                 ),
             }
         if g45_paper_gait_join_dev and gait_observer is not None and t2_owner is not None:
-            # REVIEW ONLY: the exact original T2/G1 receive stream and original
-            # native sub-effect ACKs are source-ordered without a second
-            # Paper consumer or any additional P1/M0 cost.
-            report["g45_paper_transition_windows_dev"]=[
-                asdict(row) for row in join_g45_native_ack_paper_gait_dev(
-                    session_id=sid,
-                    transition_acks=report["g44_native_transition_acks_dev"],
-                    original_clear_acks=report["g45_action_clear_acks_dev"],
-                    paper_rows=[asdict(row) for row in gait_observer.rows],
-                    t2_rows=t2_owner.rows,
-                )
-            ]
+            # REVIEW ONLY: derive after the original G1/T2 capture. A join
+            # refusal remains FAIL but must not skip session/process cleanup.
+            try:
+                report["g45_paper_transition_windows_dev"]=[
+                    asdict(row) for row in join_g45_native_ack_paper_gait_dev(
+                        session_id=sid,
+                        transition_acks=report["g44_native_transition_acks_dev"],
+                        original_clear_acks=report["g45_action_clear_acks_dev"],
+                        paper_rows=[asdict(row) for row in gait_observer.rows],
+                        t2_rows=t2_owner.rows,
+                    )
+                ]
+            except ValueError as exc:
+                report["g45_join_refusal_dev"]=f"{type(exc).__name__}: {exc}"
+                report["status"]="FAIL"
+                rc=2
         report["pre_cleanup_status"]=report["status"]
         await _cleanup_session(
             report,server,collector,session,None,temp,None,None,cleanup_cancel,
