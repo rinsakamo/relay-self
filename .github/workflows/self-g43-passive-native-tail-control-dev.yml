@@ -255,6 +255,7 @@ jobs:
               assert all(x["source_seq"]<y["source_seq"] and
                          x["host_ns"]<y["host_ns"] for x,y in zip(
                              tail["samples"],tail["samples"][1:]))
+              assert tail["source"]=="S49_SINGLE_NATIVE_READER_CLEAR_POST_S16_NO_NEW_MOTOR_DEV"
               assert tail["no_new_s49_motor_during_samples"]
               assert not tail["independently_randomized_control"]
               assert not tail["physical_input_off_per_tick_attested"]
