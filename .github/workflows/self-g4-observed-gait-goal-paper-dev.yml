@@ -5,6 +5,10 @@ on:
       - self/dev-l1-t2-action-boundary-20261028
     paths:
       - .github/workflows/self-g4-observed-gait-goal-paper-dev.yml
+      - adapters/mineflayer/g4_observed_gait_choice_dev.py
+      - adapters/mineflayer/s49_goal_loop_real_dev.py
+      - adapters/mineflayer/s49_goal_executor_dev.py
+      - tests/test_s49_g4_observed_gait_dev.py
   workflow_dispatch:
 permissions:
   contents: read
