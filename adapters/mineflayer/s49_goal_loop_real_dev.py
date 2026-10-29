@@ -240,6 +240,7 @@ async def qualify(
         "g45_native_hazard_preempt_dev":None,
         "g46_paper_generation_dev":g46_paper_generation_dev,
         "g46_native_paper_generations_dev":[],
+        "g46_original_run_applied_acks_dev":[],
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -876,6 +877,15 @@ async def qualify(
                     or (stage=="APPLIED" and g42_trace["clear_seq"] is not None)
                 ):
                     raise RuntimeError("G4.2 refuses foreign or invalid original ACK")
+                if (
+                    stage=="APPLIED" and g46_paper_generation_dev
+                    and g4_choice is not None and g4_choice.mode=="RUN"
+                ):
+                    report["g46_original_run_applied_acks_dev"].append({
+                        "action_id":action_id,"effect_id":effect.action_id,
+                        "ack_seq":effect.seq,"source":"ORIGINAL_S49_NATIVE_APPLIED",
+                        "requested_not_paper_gait":True,
+                    })
                 if stage=="CLEARED":
                     g42_trace["clear_seq"]=effect.seq
                     g42_trace["clear_host_ns"]=time.perf_counter_ns()
@@ -1991,6 +2001,7 @@ async def qualify(
                 report["g46_native_paper_generations_dev"]=[
                     asdict(row) for row in join_g46_control_generation_dev(
                         session_id=sid,
+                        original_run_acks=report["g46_original_run_applied_acks_dev"],
                         transition_acks=report["g44_native_transition_acks_dev"],
                         original_clear_acks=report["g45_action_clear_acks_dev"],
                         paper_rows=[asdict(row) for row in gait_observer.rows],
