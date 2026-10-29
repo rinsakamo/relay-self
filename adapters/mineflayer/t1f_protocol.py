@@ -149,7 +149,7 @@ def validate_result(d):
                 and (d["applied_controls_dev"]["forward"] is not True
                      or d["applied_controls_dev"]["sprint"] is not False
                      or d["applied_controls_dev"]["sneak"] is not (mode=="WALK"))):
-            raise ValueError("invalid G4.8 direct Action sampled controls")
+            raise ValueError("invalid G4.6/G4.8 direct Action sampled controls")
     if d["status"] == "ADMITTED":
         sent = d["challenge_sent_ns"]
         if (type(sent) is not str or re.fullmatch(r"0|[1-9][0-9]{0,19}", sent) is None
