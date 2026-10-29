@@ -162,3 +162,86 @@ def test_g3_scope_cannot_be_enabled_in_default_t2(monkeypatch):
     owner=TickAccounting(SID)
     with pytest.raises(ValueError,match="G3_DASH_ACTION_SCOPE_REFUSED"):
         owner.permit_g3_dash_action_dev("some-action")
+
+
+def _set_paper_modifier_identity(frame, *, dash_key="relays49dashdev:forward_dash_only",
+                                 dash_amount=.5, operation="MULTIPLY_SCALAR_1"):
+    gait=frame.data["snapshot"]["gait_dev"]
+    modifiers=[{
+        "key":"minecraft:sprinting","operation":"MULTIPLY_SCALAR_1",
+        "amount":.3,
+    }, {
+        "key":dash_key,"operation":operation,"amount":dash_amount,
+    }]
+    gait["speed_modifier_details"]=sorted(modifiers,key=lambda m:m["key"])
+    return frame
+
+
+def test_g3_strict_identity_charges_only_exact_paper_key_and_power(monkeypatch):
+    from functools import partial
+
+    monkeypatch.setenv("S49_L1_G3_T2_DEV_ONLY","1")
+    owner=TickAccounting(
+        SID,gait_source=partial(applied_gait_from_original_t1u_dev,
+                                strict_modifier_identity_dev=True),
+        g3_partial_dev=True,
+    )
+    first=_set_paper_modifier_identity(native_frame(monkeypatch,1,x=0.))
+    second=_set_paper_modifier_identity(native_frame(monkeypatch,2,x=.21))
+    owner.observe(first)
+    owner.permit_g3_dash_action_dev("source-paper-arm")
+    owner.begin("source-paper-arm")
+    owner.observe(second)
+    assert owner.rows[-1]["motor_mode"]=="DASH"
+    assert owner.rows[-1]["g3_dash_source_action_scope_dev"]=="source-paper-arm"
+    assert owner.rows[-1]["g3_extra_m0_paid_dev"]==pytest.approx(.01)
+    assert owner.g3_dash_energy_total_dev==pytest.approx(.01)
+
+
+@pytest.mark.parametrize("bad_key,bad_amount,bad_op", [
+    ("foreign:fake_dash", .5, "MULTIPLY_SCALAR_1"),
+    ("relays49dashdev:forward_dash_only", .4, "MULTIPLY_SCALAR_1"),
+    ("relays49dashdev:forward_dash_only", .5, "ADD_SCALAR"),
+])
+def test_g3_strict_identity_rejects_same_speed_lookalike_without_debit(
+    monkeypatch,bad_key,bad_amount,bad_op,
+):
+    from functools import partial
+
+    monkeypatch.setenv("S49_L1_G3_T2_DEV_ONLY","1")
+    owner=TickAccounting(
+        SID,gait_source=partial(applied_gait_from_original_t1u_dev,
+                                strict_modifier_identity_dev=True),
+        g3_partial_dev=True,
+    )
+    first=_set_paper_modifier_identity(
+        native_frame(monkeypatch,1,x=0.),dash_key=bad_key,
+        dash_amount=bad_amount,operation=bad_op)
+    second=_set_paper_modifier_identity(
+        native_frame(monkeypatch,2,x=.22),dash_key=bad_key,
+        dash_amount=bad_amount,operation=bad_op)
+    owner.observe(first)
+    owner.permit_g3_dash_action_dev("paper-arm")
+    owner.begin("paper-arm")
+    owner.observe(second)
+    assert owner.rows[-1]["g3_unknown_fallback_dev"] is True
+    assert owner.rows[-1]["g3_extra_m0_paid_dev"]==0
+    assert owner.energy.body.tick==1
+    assert owner.failed is False
+
+
+def test_g3_strict_identity_absent_fails_closed_while_legacy_remains_dev(monkeypatch):
+    from functools import partial
+
+    monkeypatch.setenv("S49_L1_G3_T2_DEV_ONLY","1")
+    owner=TickAccounting(
+        SID,gait_source=partial(applied_gait_from_original_t1u_dev,
+                                strict_modifier_identity_dev=True),
+        g3_partial_dev=True)
+    owner.observe(native_frame(monkeypatch,1,x=0.))
+    owner.permit_g3_dash_action_dev("paper-arm")
+    owner.begin("paper-arm")
+    owner.observe(native_frame(monkeypatch,2,x=.25))
+    assert owner.g3_dash_energy_total_dev==0
+    assert owner.rows[-1]["g3_unknown_fallback_dev"]
+    assert owner.energy.body.tick==1
