@@ -1347,6 +1347,14 @@ async def qualify(
                 "goal_error_at_S16_end_m":math.hypot(
                     end.x-proposal.target_x,end.z-proposal.target_z,
                 ),
+                **({
+                    "g4_requested_mode_dev":g4_choice.mode,
+                    "g4_native_dispatch_effect_dev":getattr(
+                        receipt.consequence.dispatch_receipt,"effect",None),
+                    "g4_native_dispatch_applied_dev":getattr(
+                        receipt.consequence.dispatch_receipt,"result",None)=="applied",
+                    "g4_requested_not_actual_world_gait":True,
+                } if g4_choice is not None else {}),
             })
             if goal_turn_dx_dev!=0.0 and executor._count==1 and (
                 alignment is None or alignment<0.72 or abs(travel_x)<0.15
