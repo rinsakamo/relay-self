@@ -20,7 +20,9 @@ def finite(v):
 
 
 def validate_result(d):
-    if type(d) is not dict or set(d) not in (RESULT_KEYS, RESULT_KEYS | {"applied_controls_dev"}):
+    extensions={"applied_controls_dev","g46_motor_boundary_dev"}
+    if (type(d) is not dict or not RESULT_KEYS.issubset(d)
+            or not set(d).issubset(RESULT_KEYS|extensions)):
         raise ValueError("invalid T1f result fields")
     if "applied_controls_dev" in d:
         controls = d["applied_controls_dev"]
@@ -97,6 +99,43 @@ def validate_result(d):
             or not natural(c["generation"]) or not isinstance(c["since_ns"], str)
             or re.fullmatch(r"0|[1-9][0-9]{0,19}", c["since_ns"]) is None):
         raise ValueError("invalid control phase")
+    if "g46_motor_boundary_dev" in d:
+        b=d["g46_motor_boundary_dev"]
+        if (
+            "applied_controls_dev" not in d
+            or type(b) is not dict
+            or set(b)!={"action_id","effect_id","requested_mode",
+                         "transition_index","control_generation","control_phase"}
+            or not natural(b["control_generation"])
+            or b["control_generation"]!=c["generation"]
+            or b["control_phase"]!=c["phase"]
+            or not natural(b["transition_index"])
+            or b["requested_mode"] not in {
+                "UNBOUND","SPRINT_INPUT","JOG","WALK","CLEARED"}
+        ):
+            raise ValueError("invalid G4.6 Node control generation")
+        mode=b["requested_mode"]
+        action=b["action_id"]
+        effect=b["effect_id"]
+        if mode=="UNBOUND":
+            if action is not None or effect is not None or b["transition_index"]!=0:
+                raise ValueError("invalid G4.6 unbound Node control")
+        elif (type(action) is not str or not action.startswith("goal-")
+              or type(effect) is not str or len(action)>128 or len(effect)>180
+              or (mode in {"SPRINT_INPUT","JOG","WALK"} and c["phase"]!="MOVING")
+              or (mode=="CLEARED" and c["phase"]!="CLEARED")
+              or (mode=="SPRINT_INPUT" and (
+                  b["transition_index"]!=0 or effect!=action))
+              or (mode=="JOG" and (
+                  b["transition_index"]!=1
+                  or effect!=f"{action}-g44-1-jog"))
+              or (mode=="WALK" and (
+                  b["transition_index"]!=2
+                  or effect!=f"{action}-g44-2-walk"))
+              or (mode=="CLEARED" and (
+                  b["transition_index"]!=0
+                  or effect!=f"{action}-s15-clear"))):
+            raise ValueError("invalid G4.6 original S49 sub-effect binding")
     if d["status"] == "ADMITTED":
         sent = d["challenge_sent_ns"]
         if (type(sent) is not str or re.fullmatch(r"0|[1-9][0-9]{0,19}", sent) is None

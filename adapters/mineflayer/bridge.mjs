@@ -219,10 +219,26 @@ emit('adapter_started', {
 const bot = mineflayer.createBot(options)
 let t1fAdmission = null
 let t1fControl = { phase: 'INITIAL', since_ns: '0', generation: 0 }
+// Passive metadata on the SAME existing Paper/T1u callback. This is the
+// original Node control effect and generation, never a Paper-accepted motor.
+const g46BoundaryEnabled = process.env.S49_G46_PAPER_GENERATION_DEV_ONLY === '1' &&
+  process.env.S49_G44_INTRA_ACTION_GAIT_DEV_ONLY === '1' &&
+  l1T2ChannelDev === '1'
+let g46MotorBoundaryDev = {
+  action_id: null, effect_id: null, requested_mode: 'UNBOUND', transition_index: 0
+}
+function g46BoundaryState () {
+  return {
+    ...g46MotorBoundaryDev,
+    control_generation: t1fControl.generation,
+    control_phase: t1fControl.phase
+  }
+}
 if (l1T2ChannelDev === '1') {
   t1fAdmission = attachPaperSnapshotChannel(
     bot, emit, emitAdapterError, () => process.hrtime.bigint(),
-    () => ({ ...t1fControl })
+    () => ({ ...t1fControl }), null,
+    g46BoundaryEnabled ? g46BoundaryState : null
   )
 }
 const attrSyncDev = process.env.S49_SPEED_ATTR_SYNC_DEV_ONLY === '1' &&
@@ -604,6 +620,9 @@ async function handleEffect (command) {
   try {
     if (command.effect === 'set_control') {
       g44ActiveAction = null
+      if (g46BoundaryEnabled) g46MotorBoundaryDev = {
+        action_id: null, effect_id: null, requested_mode: 'UNBOUND', transition_index: 0
+      }
       if (t1fAdmission && !t1fAdmission.canDispatch()) {
         emitEffectResult(command, 'rejected', 't1f_fresh_benign_source_required')
         return
@@ -619,6 +638,9 @@ async function handleEffect (command) {
 
     if (command.effect === 'set_forward_sneak_dev') {
       g44ActiveAction = null
+      if (g46BoundaryEnabled) g46MotorBoundaryDev = {
+        action_id: null, effect_id: null, requested_mode: 'UNBOUND', transition_index: 0
+      }
       if (t1fAdmission && !t1fAdmission.canDispatch()) {
         emitEffectResult(command, 'rejected', 't1f_fresh_benign_source_required')
         return
@@ -691,6 +713,12 @@ async function handleEffect (command) {
         generation: t1fControl.generation + 1
       }
       traceDevAttr('SPRINT_DISPATCH_APPLIED')
+      if (g46BoundaryEnabled) g46MotorBoundaryDev = {
+        action_id: command.action_id,
+        effect_id: command.action_id,
+        requested_mode: 'SPRINT_INPUT',
+        transition_index: 0
+      }
       if (process.env.S49_G44_INTRA_ACTION_GAIT_DEV_ONLY === '1' &&
           command.action_id.startsWith('goal-')) {
         g44ActiveAction = {
@@ -726,6 +754,12 @@ async function handleEffect (command) {
       }
       g44ActiveAction.mode = command.to_mode
       g44ActiveAction.nextIndex += 1
+      if (g46BoundaryEnabled) g46MotorBoundaryDev = {
+        action_id: command.parent_action_id,
+        effect_id: command.action_id,
+        requested_mode: command.to_mode,
+        transition_index: command.transition_index
+      }
       if (t1fAdmission) t1fControl = {
         phase: 'MOVING', since_ns: process.hrtime.bigint().toString(),
         generation: t1fControl.generation + 1
@@ -737,6 +771,15 @@ async function handleEffect (command) {
     if (command.effect === 'clear_controls') {
       bot.clearControlStates()
       g44ActiveAction = null
+      if (g46BoundaryEnabled) {
+        const parent = g46MotorBoundaryDev.action_id
+        g46MotorBoundaryDev = {
+          action_id: parent && command.action_id === parent + '-s15-clear' ? parent : null,
+          effect_id: parent && command.action_id === parent + '-s15-clear' ? command.action_id : null,
+          requested_mode: parent && command.action_id === parent + '-s15-clear' ? 'CLEARED' : 'UNBOUND',
+          transition_index: 0
+        }
+      }
       if (t1fAdmission) t1fControl = {
         phase: 'CLEARED', since_ns: process.hrtime.bigint().toString(),
         generation: t1fControl.generation + 1

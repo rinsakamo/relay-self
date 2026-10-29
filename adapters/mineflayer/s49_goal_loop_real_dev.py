@@ -37,6 +37,9 @@ from adapters.mineflayer.g44_intra_action_gait_dev import (
 from adapters.mineflayer.g45_paper_gait_join_dev import (
     join_g45_native_ack_paper_gait_dev,
 )
+from adapters.mineflayer.g46_paper_control_generation_dev import (
+    join_g46_control_generation_dev,
+)
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -181,6 +184,7 @@ async def qualify(
     g44_intra_action_gait_dev:bool=False,
     g45_paper_gait_join_dev:bool=False,
     g45_hazard_during_gait_dev:bool=False,
+    g46_paper_generation_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -234,6 +238,8 @@ async def qualify(
         "g45_paper_transition_windows_dev":[],
         "g45_hazard_during_gait_dev":g45_hazard_during_gait_dev,
         "g45_native_hazard_preempt_dev":None,
+        "g46_paper_generation_dev":g46_paper_generation_dev,
+        "g46_native_paper_generations_dev":[],
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -267,6 +273,11 @@ async def qualify(
             or type(g44_intra_action_gait_dev) is not bool
             or type(g45_paper_gait_join_dev) is not bool
             or type(g45_hazard_during_gait_dev) is not bool
+            or type(g46_paper_generation_dev) is not bool
+            or (g46_paper_generation_dev and (
+                not g45_paper_gait_join_dev
+                or os.environ.get("S49_G46_PAPER_GENERATION_DEV_ONLY")!="1"
+            ))
             or (g45_hazard_during_gait_dev and (
                 not g45_paper_gait_join_dev
                 or os.environ.get("S49_G45_HAZARD_DURING_GAIT_DEV_ONLY")!="1"
@@ -1975,6 +1986,21 @@ async def qualify(
                 report["g45_join_refusal_dev"]=f"{type(exc).__name__}: {exc}"
                 report["status"]="FAIL"
                 rc=2
+        if g46_paper_generation_dev and gait_observer is not None and t2_owner is not None:
+            try:
+                report["g46_native_paper_generations_dev"]=[
+                    asdict(row) for row in join_g46_control_generation_dev(
+                        session_id=sid,
+                        transition_acks=report["g44_native_transition_acks_dev"],
+                        original_clear_acks=report["g45_action_clear_acks_dev"],
+                        paper_rows=[asdict(row) for row in gait_observer.rows],
+                        t2_rows=t2_owner.rows,
+                    )
+                ]
+            except ValueError as exc:
+                report["g46_generation_refusal_dev"]=f"{type(exc).__name__}: {exc}"
+                report["status"]="FAIL"
+                rc=2
         report["pre_cleanup_status"]=report["status"]
         await _cleanup_session(
             report,server,collector,session,None,temp,None,None,cleanup_cancel,
@@ -2027,6 +2053,7 @@ def main()->int:
     p.add_argument("--g44-intra-action-gait-dev",action="store_true")
     p.add_argument("--g45-paper-gait-join-dev",action="store_true")
     p.add_argument("--g45-hazard-during-gait-dev",action="store_true")
+    p.add_argument("--g46-paper-generation-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -2071,6 +2098,7 @@ def main()->int:
         g44_intra_action_gait_dev=args.g44_intra_action_gait_dev,
         g45_paper_gait_join_dev=args.g45_paper_gait_join_dev,
         g45_hazard_during_gait_dev=args.g45_hazard_during_gait_dev,
+        g46_paper_generation_dev=args.g46_paper_generation_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,

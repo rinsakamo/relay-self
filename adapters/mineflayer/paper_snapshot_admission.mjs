@@ -115,7 +115,7 @@ export class SnapshotAdmission {
       qualification: false, tps_admission_granted: false }
   }
 }
-export function attachPaperSnapshotChannel (bot, emit, onInvalid, clock = () => process.hrtime.bigint(), controlState = () => ({ phase: "INITIAL", since_ns: "0", generation: 0 }), onDiagnostic = null) {
+export function attachPaperSnapshotChannel (bot, emit, onInvalid, clock = () => process.hrtime.bigint(), controlState = () => ({ phase: "INITIAL", since_ns: "0", generation: 0 }), onDiagnostic = null, g46BoundaryState = null) {
   const guard = new SnapshotAdmission()
   let lastResult = null
   // Diagnostic I/O is never a source admission or transport failure.
@@ -169,6 +169,11 @@ export function attachPaperSnapshotChannel (bot, emit, onInvalid, clock = () => 
       }
       result.age_lower_ns = (end - received).toString()
       result.control = controlState()
+      if (g46BoundaryState && Object.hasOwn(s, 'gait_dev')) {
+        // Same already admitted packet handler; no additional native reader,
+        // synchronous trace writer or source tick. Node-local phase only.
+        result.g46_motor_boundary_dev = g46BoundaryState()
+      }
       lastResult = result
       emit('paper_snapshot', { data: result })
       const emitted = onDiagnostic ? clock() : end

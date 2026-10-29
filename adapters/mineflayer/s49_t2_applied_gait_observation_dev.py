@@ -31,6 +31,8 @@ class AppliedGaitObservationDev:
     full_tick_gait_attested: bool = False
     p1_transition_posted: bool = False
     m0_extra_charge_posted: bool = False
+    g46_motor_boundary_dev: dict | None = None
+    g46_challenge_after_control_dev: bool = False
 
 
 class G1AppliedGaitObserverDev:
@@ -136,11 +138,26 @@ class G1AppliedGaitObserverDev:
                 kind = "BLOCKED_OR_STALLED_CONTROL_UNDETERMINED"
             else:
                 kind = "TRANSITION_OR_UNDETERMINED"
+        g46=frame.data.get("g46_motor_boundary_dev")
+        g46_after=False
+        if g46 is not None:
+            if (
+                type(g46) is not dict
+                or g46["control_generation"]!=frame.data["control"]["generation"]
+                or g46["control_phase"]!=frame.data["control"]["phase"]
+            ):
+                raise ValueError("G4.6 original Node generation invalid")
+            g46_after=(
+                int(frame.data["challenge_sent_ns"]) >
+                int(frame.data["control"]["since_ns"])
+            )
         self.rows.append(AppliedGaitObservationDev(
             session_id=self.session_id, source_seq=frame.seq,
             world_tick=s["world_tick"], kind=kind, dxz_m=dxz,
             paper_motion_blocks_delta=delta, paper_input_bits=s["input"],
             applied_controls=dict(controls), paper_gait=dict(gait),
             t2_activity=t2_activity,
+            g46_motor_boundary_dev=dict(g46) if g46 is not None else None,
+            g46_challenge_after_control_dev=g46_after,
         ))
         self.previous = frame
