@@ -331,6 +331,9 @@ jobs:
           assert not a48["exact_physics_tick_motor_attested"]
           assert a48["ordinary_ack_count"]>0, "G4.8 needs real applied ordinary S49 actions"
           assert a48["ordinary_node_epoch_frames"]>0, "G4.8 needs original Node epochs sampled by Paper"
+          assert set(a48["ordinary_new_candidates_by_mode"])=={"JOG","WALK"}
+          assert sum(a48["ordinary_new_candidates_by_mode"].values())==a48["added_ordinary_candidates"]
+          assert sum(a48["ordinary_node_epoch_frames_by_mode"].values())==a48["ordinary_node_epoch_frames"]
           assert a48["g48_total_source_bound_candidates"]==(
               a48["g47_source_bound_candidates"]+a48["added_ordinary_candidates"])
           assert a48["g48_unknown_worldticks"]==(
@@ -451,6 +454,8 @@ jobs:
               "g48_ordinary_afterchange_frames":a48["ordinary_afterchange_challenge_frames"],
               "g48_new_ordinary_gait_candidates":a48["added_ordinary_candidates"],
               "g48_remaining_unknown_worldticks":a48["g48_unknown_worldticks"],
+              "g48_newly_bound_by_mode":a48["ordinary_new_candidates_by_mode"],
+              "g48_sampled_ordinary_control_epochs_by_mode":a48["ordinary_node_epoch_frames_by_mode"],
               "g45_stable_candidate_windows":sum(w["paper_stable_candidate_seen"] for w in joined),
               "g44_intra_action_modes":[t["mode_to"] for t in transitions],
               "g44_world_tick_gait_attested":False,
@@ -517,6 +522,7 @@ jobs:
           assert ga48["original_t2_worldticks"]==ga["original_t2_worldtick_rows"]
           assert ga48["ordinary_ack_count"]==0
           assert ga48["added_ordinary_candidates"]==0
+          assert ga48["ordinary_new_candidates_by_mode"]=={"JOG":0,"WALK":0}
           audit_file=folder/ga["derived_file"]
           assert hashlib.sha256(audit_file.read_bytes()).hexdigest()==ga["derived_file_sha256"]
           joined=json.loads(audit_file.read_text())
