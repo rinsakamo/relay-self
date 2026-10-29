@@ -27,6 +27,10 @@ from adapters.mineflayer.g41_inflight_brake_dev import (
     g41_feedback_window_duration_dev,
 )
 from adapters.mineflayer.g42_native_brake_timing_dev import qualify_g42_native_window_dev
+from adapters.mineflayer.g43_passive_native_tail_dev import (
+    G43PassiveNativeSampleDev,
+    qualify_g43_passive_native_tail_dev,
+)
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -166,6 +170,7 @@ async def qualify(
     g4_auto_gait_dev:bool=False,
     g41_inflight_brake_dev:bool=False,
     g42_brake_timing_dev:bool=False,
+    g43_passive_tail_control_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -209,6 +214,8 @@ async def qualify(
         "g41_inflight_samples_dev":[],
         "g42_brake_timing_dev":g42_brake_timing_dev,
         "g42_native_windows_dev":[],
+        "g43_passive_tail_control_dev":g43_passive_tail_control_dev,
+        "g43_passive_native_tails_dev":[],
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -238,6 +245,11 @@ async def qualify(
             or type(g4_auto_gait_dev) is not bool
             or type(g41_inflight_brake_dev) is not bool
             or type(g42_brake_timing_dev) is not bool
+            or type(g43_passive_tail_control_dev) is not bool
+            or (g43_passive_tail_control_dev and (
+                not g42_brake_timing_dev
+                or os.environ.get("S49_G43_PASSIVE_TAIL_DEV_ONLY")!="1"
+            ))
             or (g42_brake_timing_dev and (
                 not g41_inflight_brake_dev
                 or os.environ.get("S49_G42_BRAKE_TIMING_DEV_ONLY")!="1"
@@ -1505,8 +1517,50 @@ async def qualify(
                     "native_confirmed":False,
                 }
                 await asyncio.sleep(0.50)
+            elif g43_passive_tail_control_dev:
+                # No motor command may be issued until this sampling block
+                # ends. Independent source reads are serialized through the
+                # original session. The late period is a *within-action*
+                # quiet reference, not a randomized independent control.
+                if (
+                    executor.supervisor.open_actions
+                    or g42_s16_host_ns is None or g42_pending is None
+                    or g42_pending["action_id"]!=action_id
+                ):
+                    raise RuntimeError("G4.3 passive samples need closed original S49")
+                quiet=[]
+                for sample_i,delay_s in enumerate((0.04,0.08,0.18,0.25,0.25)):
+                    await asyncio.sleep(delay_s)
+                    expected_request=f"{action_id}-g43-off-{sample_i}"
+                    passive=await _correlated_observe(session,expected_request)
+                    p=passive.snapshot.position
+                    quiet.append(G43PassiveNativeSampleDev(
+                        label=("EARLY_40","EARLY_120","MID_300",
+                               "QUIET_550","QUIET_800")[sample_i],
+                        session_id=passive.session_id,
+                        source_seq=passive.seq,
+                        request_id=passive.request_id,
+                        source=passive.provenance.source,
+                        x=p.x,z=p.z,
+                        host_ns=time.perf_counter_ns(),
+                        entities_truncated=(
+                            passive.snapshot.nearby_entities_coverage.truncated
+                        ),
+                    ))
+                passive_tail=qualify_g43_passive_native_tail_dev(
+                    action_id=action_id,session_id=sid,
+                    clear_seq=g42_pending["clear_seq"],
+                    s16_seq=receipt.consequence.after_observation.seq,
+                    s16_x=end.x,s16_z=end.z,
+                    s16_host_ns=g42_s16_host_ns,
+                    samples=tuple(quiet),
+                    original_action_closed=(not executor.supervisor.open_actions),
+                )
+                report["g43_passive_native_tails_dev"].append(
+                    asdict(passive_tail)
+                )
             else:
-                # World can keep moving after S16/CLEAR. Sample again.
+                # Existing G4/G4.1/G4.2 path: World may continue after CLEAR.
                 await asyncio.sleep(0.20)
         else:
             report["stage"]="OBSERVATION_BUDGET_EXHAUSTED"
@@ -1669,6 +1723,7 @@ def main()->int:
     p.add_argument("--g4-auto-gait-dev",action="store_true")
     p.add_argument("--g41-inflight-brake-dev",action="store_true")
     p.add_argument("--g42-brake-timing-dev",action="store_true")
+    p.add_argument("--g43-passive-tail-control-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -1709,6 +1764,7 @@ def main()->int:
         g4_auto_gait_dev=args.g4_auto_gait_dev,
         g41_inflight_brake_dev=args.g41_inflight_brake_dev,
         g42_brake_timing_dev=args.g42_brake_timing_dev,
+        g43_passive_tail_control_dev=args.g43_passive_tail_control_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
