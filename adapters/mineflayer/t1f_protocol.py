@@ -111,7 +111,8 @@ def validate_result(d):
             or b["control_phase"]!=c["phase"]
             or not natural(b["transition_index"])
             or b["requested_mode"] not in {
-                "UNBOUND","SPRINT_INPUT","JOG","WALK","CLEARED"}
+                "UNBOUND","SPRINT_INPUT","JOG","WALK",
+                "JOG_ACTION","WALK_ACTION","CLEARED"}
         ):
             raise ValueError("invalid G4.6 Node control generation")
         mode=b["requested_mode"]
@@ -122,9 +123,10 @@ def validate_result(d):
                 raise ValueError("invalid G4.6 unbound Node control")
         elif (type(action) is not str or not action.startswith("goal-")
               or type(effect) is not str or len(action)>128 or len(effect)>180
-              or (mode in {"SPRINT_INPUT","JOG","WALK"} and c["phase"]!="MOVING")
+              or (mode in {"SPRINT_INPUT","JOG","WALK","JOG_ACTION","WALK_ACTION"}
+                  and c["phase"]!="MOVING")
               or (mode=="CLEARED" and c["phase"]!="CLEARED")
-              or (mode=="SPRINT_INPUT" and (
+              or (mode in {"SPRINT_INPUT","JOG_ACTION","WALK_ACTION"} and (
                   b["transition_index"]!=0 or effect!=action))
               or (mode=="JOG" and (
                   b["transition_index"]!=1

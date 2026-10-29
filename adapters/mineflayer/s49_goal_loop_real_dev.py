@@ -189,6 +189,7 @@ async def qualify(
     g45_hazard_during_gait_dev:bool=False,
     g46_paper_generation_dev:bool=False,
     g47_original_t2_gait_join_dev:bool=False,
+    g48_ordinary_action_gait_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -247,6 +248,9 @@ async def qualify(
         "g46_original_run_applied_acks_dev":[],
         "g47_original_t2_gait_join_dev":g47_original_t2_gait_join_dev,
         "g47_worldtick_gait_audit_dev":None,
+        "g48_ordinary_action_gait_dev":g48_ordinary_action_gait_dev,
+        "g48_ordinary_applied_acks_dev":[],
+        "g48_worldtick_gait_audit_dev":None,
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -282,6 +286,11 @@ async def qualify(
             or type(g45_hazard_during_gait_dev) is not bool
             or type(g46_paper_generation_dev) is not bool
             or type(g47_original_t2_gait_join_dev) is not bool
+            or type(g48_ordinary_action_gait_dev) is not bool
+            or (g48_ordinary_action_gait_dev and (
+                not g47_original_t2_gait_join_dev
+                or os.environ.get("S49_G48_ORDINARY_ACTION_GAIT_DEV_ONLY")!="1"
+            ))
             or (g47_original_t2_gait_join_dev and (
                 not g46_paper_generation_dev
                 or os.environ.get("S49_G47_ORIGINAL_T2_GAIT_JOIN_DEV_ONLY")!="1"
@@ -896,6 +905,27 @@ async def qualify(
                         "action_id":action_id,"effect_id":effect.action_id,
                         "ack_seq":effect.seq,"source":"ORIGINAL_S49_NATIVE_APPLIED",
                         "requested_not_paper_gait":True,
+                    })
+                if (
+                    stage=="APPLIED" and g48_ordinary_action_gait_dev
+                    and g4_choice is not None
+                    and g4_choice.mode in ("JOG","WALK")
+                ):
+                    expected_effect=("set_control" if g4_choice.mode=="JOG"
+                                     else "set_forward_sneak_dev")
+                    if (
+                        effect.effect!=expected_effect or
+                        effect.action_id!=action_id
+                    ):
+                        raise RuntimeError("G4.8 wrong original ordinary Action effect")
+                    report["g48_ordinary_applied_acks_dev"].append({
+                        "action_id":action_id,
+                        "effect_id":effect.action_id,
+                        "ack_seq":effect.seq,
+                        "effect":effect.effect,
+                        "requested_mode":g4_choice.mode,
+                        "requested_not_paper_gait":True,
+                        "source":"ORIGINAL_S49_NATIVE_APPLIED",
                     })
                 if stage=="CLEARED":
                     g42_trace["clear_seq"]=effect.seq
