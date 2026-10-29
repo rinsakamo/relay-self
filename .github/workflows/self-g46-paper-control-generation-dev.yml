@@ -139,7 +139,7 @@ jobs:
             --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
             --paper-plugin-dev "$PLUGIN" --paper-gait-observation-dev \
             --paper-dash-plugin-dev "$DASH" --g2-dash-first-dev \
-            --offset-m 4.0 --g3-single-owner-dev --g3-modifier-identity-dev \
+            --offset-m 3.5 --g3-single-owner-dev --g3-modifier-identity-dev \
             --g4-auto-gait-dev \
             > "$DEV_OUTPUT/producer-g4.stdout" 2>&1 || {
               cat "$DEV_OUTPUT/producer-g4.stdout"; exit 1;
@@ -201,7 +201,7 @@ jobs:
             --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
             --paper-plugin-dev "$PLUGIN" --paper-gait-observation-dev \
             --paper-dash-plugin-dev "$DASH" --g2-dash-first-dev \
-            --offset-m 4.0 --g3-single-owner-dev --g3-modifier-identity-dev \
+            --offset-m 3.5 --g3-single-owner-dev --g3-modifier-identity-dev \
             --g4-auto-gait-dev --g41-inflight-brake-dev --g42-brake-timing-dev --g43-passive-tail-control-dev --g44-intra-action-gait-dev --g45-paper-gait-join-dev --g46-paper-generation-dev \
             > "$DEV_OUTPUT/producer-g46.stdout" 2>&1 || {
               cat "$DEV_OUTPUT/producer-g46.stdout"; exit 1;
@@ -236,7 +236,7 @@ jobs:
               start=report["initial_native_xz"]
               goal=report["goal_l2"]
               assert goal["target_x"]==start["x"]
-              assert goal["target_z"]-start["z"]==4.0
+              assert goal["target_z"]-start["z"]==3.5
           samples=controlled["g41_inflight_samples_dev"]
           assert len(samples)>0, "G4.1 had no in-flight native samples"
           assert all(s["source_seq"]>0 and not s["reached_attested"]
@@ -392,7 +392,7 @@ jobs:
             --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
             --paper-plugin-dev "$PLUGIN" --paper-gait-observation-dev \
             --paper-dash-plugin-dev "$DASH" --g2-dash-first-dev \
-            --offset-m 4.0 --g3-single-owner-dev --g3-modifier-identity-dev \
+            --offset-m 3.5 --g3-single-owner-dev --g3-modifier-identity-dev \
             --g4-auto-gait-dev --g41-inflight-brake-dev --g42-brake-timing-dev \
             --g43-passive-tail-control-dev --g44-intra-action-gait-dev \
             --g45-paper-gait-join-dev --g45-hazard-during-gait-dev --g46-paper-generation-dev \
