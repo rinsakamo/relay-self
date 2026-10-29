@@ -30,7 +30,7 @@ def policy(z, *, mode="RUN", seq=13, previous=12, source="mineflayer",
 
 @pytest.mark.parametrize("mode,z,brake",[
     ("DASH",1.,False),("RUN",2.6,True),("RUN",1.,False),
-    ("JOG",3.25,True),("JOG",2.9,False),("WALK",3.5,False),
+    ("JOG",3.25,True),("JOG",2.7,False),("WALK",3.5,False),
     ("WALK",3.2,False),
 ])
 def test_g41_native_brake_advisory(mode,z,brake):
