@@ -21,6 +21,7 @@ from pathlib import Path
 from adapters.mineflayer.execution import WorldConsequenceStatus
 from adapters.mineflayer.g3_applied_gait_source_dev import applied_gait_from_original_t1u_dev
 from adapters.mineflayer.g4_observed_gait_choice_dev import choose_g4_observed_gait_dev
+from adapters.mineflayer.g41_inflight_brake_dev import decide_g41_inflight_brake_dev
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -158,6 +159,7 @@ async def qualify(
     g2_sprint_prefix_dev:bool=False,
     g2_sneak_prefix_dev:bool=False,
     g4_auto_gait_dev:bool=False,
+    g41_inflight_brake_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -197,6 +199,8 @@ async def qualify(
         "g3_modifier_identity_dev":g3_modifier_identity_dev,
         "g4_auto_gait_dev":g4_auto_gait_dev,
         "g4_observed_choices_dev":[],
+        "g41_inflight_brake_dev":g41_inflight_brake_dev,
+        "g41_inflight_samples_dev":[],
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -224,6 +228,11 @@ async def qualify(
             or os.environ.get("NODE_OPTIONS")
             or type(offset_m) is not float or not 1.8<=offset_m<=4.0
             or type(g4_auto_gait_dev) is not bool
+            or type(g41_inflight_brake_dev) is not bool
+            or (g41_inflight_brake_dev and (
+                not g4_auto_gait_dev
+                or os.environ.get("S49_G41_INFLIGHT_BRAKE_DEV_ONLY")!="1"
+            ))
             or (g4_auto_gait_dev and (
                 os.environ.get("S49_G4_OBSERVED_GAIT_DEV_ONLY")!="1"
                 or not g3_modifier_identity_dev or not g3_single_owner_dev
@@ -763,6 +772,26 @@ async def qualify(
                     "requested_yaw_rad":yaw,
                     "signed_yaw_not_measured":True,
                 })
+            g41_last_seq=probe.seq
+            def g41_inflight_brake(live):
+                nonlocal g41_last_seq
+                assert g4_choice is not None
+                pos=live.snapshot.position
+                decision_g41=decide_g41_inflight_brake_dev(
+                    directive,action_id=action_id,mode=g4_choice.mode,
+                    session_id=live.session_id,source_seq=live.seq,
+                    request_id=live.request_id,source=live.provenance.source,
+                    x=pos.x,z=pos.z,previous_seq=g41_last_seq,
+                    truncated=live.snapshot.nearby_entities_coverage.truncated,
+                    danger_present=any(
+                        e.name=="zombie"
+                        and e.distance<proposal.danger_interrupt_m
+                        for e in live.snapshot.nearby_entities
+                    ),
+                )
+                g41_last_seq=live.seq
+                report["g41_inflight_samples_dev"].append(asdict(decision_g41))
+                return decision_g41.brake_requested
             g4_choice=None
             if g4_auto_gait_dev:
                 if t2_owner is None or t2_owner.failed or t2_owner.fatigue is None:
@@ -805,6 +834,9 @@ async def qualify(
                 g2_sprint_prefix_dev=g2_sprint_prefix_dev and executor._count<3,
                 g2_sneak_prefix_dev=g2_sneak_prefix_dev and executor._count<3,
                 g4_mode_dev=g4_choice.mode if g4_choice is not None else None,
+                on_g41_brake_probe_dev=(
+                    g41_inflight_brake if g41_inflight_brake_dev else None
+                ),
                 **({
                     "on_effect_ack_dev":ack_dev,
                     "on_live_probe_dev":observe_during_action,
@@ -1354,6 +1386,10 @@ async def qualify(
                     "g4_native_dispatch_applied_dev":getattr(
                         receipt.consequence.dispatch_receipt,"result",None)=="applied",
                     "g4_requested_not_actual_world_gait":True,
+                    "g41_brake_observed_dev":any(
+                        s["action_id"]==action_id and s["brake_requested"]
+                        for s in report["g41_inflight_samples_dev"]
+                    ) if g41_inflight_brake_dev else False,
                 } if g4_choice is not None else {}),
             })
             if goal_turn_dx_dev!=0.0 and executor._count==1 and (
@@ -1541,6 +1577,7 @@ def main()->int:
     p.add_argument("--g2-sprint-prefix-dev",action="store_true")
     p.add_argument("--g2-sneak-prefix-dev",action="store_true")
     p.add_argument("--g4-auto-gait-dev",action="store_true")
+    p.add_argument("--g41-inflight-brake-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -1579,6 +1616,7 @@ def main()->int:
         g2_sprint_prefix_dev=args.g2_sprint_prefix_dev,
         g2_sneak_prefix_dev=args.g2_sneak_prefix_dev,
         g4_auto_gait_dev=args.g4_auto_gait_dev,
+        g41_inflight_brake_dev=args.g41_inflight_brake_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
