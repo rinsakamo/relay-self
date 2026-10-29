@@ -126,12 +126,16 @@ def validate_result(d):
               or (mode=="CLEARED" and c["phase"]!="CLEARED")
               or (mode=="SPRINT_INPUT" and (
                   b["transition_index"]!=0 or effect!=action))
-              or (mode=="JOG" and (
-                  b["transition_index"]!=1
-                  or effect!=f"{action}-g44-1-jog"))
-              or (mode=="WALK" and (
-                  b["transition_index"]!=2
-                  or effect!=f"{action}-g44-2-walk"))
+              or (mode=="JOG" and not (
+                  b["transition_index"]==1
+                  and effect==f"{action}-g44-1-jog"
+                  or (os.environ.get("S49_G48_DIRECT_ACTION_GENERATION_DEV_ONLY")=="1"
+                      and b["transition_index"]==0 and effect==action)))
+              or (mode=="WALK" and not (
+                  b["transition_index"]==2
+                  and effect==f"{action}-g44-2-walk"
+                  or (os.environ.get("S49_G48_DIRECT_ACTION_GENERATION_DEV_ONLY")=="1"
+                      and b["transition_index"]==0 and effect==action)))
               or (mode=="CLEARED" and (
                   b["transition_index"]!=0
                   or effect!=f"{action}-s15-clear"))):
