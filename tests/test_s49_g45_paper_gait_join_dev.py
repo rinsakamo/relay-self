@@ -50,7 +50,6 @@ def test_g45_source_order_join_without_false_per_tick_claim():
 
 
 def test_g45_missing_stable_frame_is_explicitly_undetermined():
-    base=join()
     bad=[{"session_id":"sess","source_seq":11,"world_tick":100,
           "kind":"TRANSITION_OR_UNDETERMINED"}]
     out=join(paper_rows=bad)

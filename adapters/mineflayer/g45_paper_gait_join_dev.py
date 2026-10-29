@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-
 _EXPECTED = {
     "JOG": "STABLE_ORDINARY_FORWARD_CANDIDATE",
     "WALK": "STABLE_SNEAK_FORWARD_CANDIDATE",
@@ -111,7 +110,8 @@ def join_g45_native_ack_paper_gait_dev(
                       else clears[action])
             if next_seq<=ack["ack_seq"]:
                 raise ValueError("G4.5 native sub-effects out of order")
-            matched=[];unknown=other=frames=0
+            matched=[]
+            unknown=other=frames=0
             for seq,row in paper_by_seq.items():
                 if ack["ack_seq"]<seq<next_seq:
                     frames+=1
