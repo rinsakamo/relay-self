@@ -1,6 +1,4 @@
 """G4.4 strict in-flight staged observed gait policy."""
-from dataclasses import replace
-
 import pytest
 
 from adapters.mineflayer.g44_intra_action_gait_dev import decide_g44_intra_action_gait_dev
@@ -15,9 +13,14 @@ def directive():
     proposal=L2GoalProposal(
         goal_id="approach-demo",intent_id="approach-demo",
         session_id="session-g44",target_x=0.0,target_z=4.0,
-        purpose=GoalPurpose.APPROACH,provenance=p,
+        purpose=GoalPurpose.APPROACH,minimum_tolerance_m=0.55,
+        maximum_tolerance_m=0.55,danger_interrupt_m=2.0,
+        provenance=p,
     )
-    return compile_l1_goal_dev(proposal, tolerance_m=0.55, provenance=p)
+    return compile_l1_goal_dev(
+        proposal,current_x=0.0,current_z=0.0,
+        provenance=Provenance("dev-l1","g44"),
+    )
 
 
 def eval_(mode,z,**changes):
