@@ -1,0 +1,618 @@
+name: S49 G4.9 Original S49 ACK CLEAR WorldTick Source Gap Census DEV
+on:
+  push:
+    branches:
+      - self/dev-g49-original-action-gap-census-20261029
+    paths:
+      - .github/workflows/self-g49-original-action-gap-census-dev.yml
+      - .github/workflows/self-g4-observed-gait-goal-paper-dev.yml
+      - adapters/mineflayer/g4_observed_gait_choice_dev.py
+      - adapters/mineflayer/g41_inflight_brake_dev.py
+      - adapters/mineflayer/g42_native_brake_timing_dev.py
+      - adapters/mineflayer/g43_passive_native_tail_dev.py
+      - adapters/mineflayer/g44_intra_action_gait_dev.py
+      - adapters/mineflayer/g45_paper_gait_join_dev.py
+      - adapters/mineflayer/g46_paper_control_generation_dev.py
+      - adapters/mineflayer/g47_original_t2_gait_join_dev.py
+      - adapters/mineflayer/g48_direct_action_generation_dev.py
+      - adapters/mineflayer/g49_original_action_gap_census_dev.py
+      - adapters/mineflayer/t1f_protocol.py
+      - adapters/mineflayer/paper_snapshot_admission.mjs
+      - adapters/mineflayer/s49_t2_applied_gait_observation_dev.py
+      - adapters/mineflayer/bridge.mjs
+      - adapters/mineflayer/protocol.mjs
+      - adapters/mineflayer/python_protocol.py
+      - adapters/mineflayer/process_session.py
+      - adapters/mineflayer/g44_gait_protocol_dev.test.mjs
+      - adapters/mineflayer/execution.py
+      - adapters/mineflayer/s49_goal_loop_real_dev.py
+      - adapters/mineflayer/s49_goal_executor_dev.py
+      - tests/test_s49_g4_observed_gait_dev.py
+      - tests/test_s49_g41_inflight_brake_dev.py
+      - tests/test_s49_g42_native_brake_timing_dev.py
+      - tests/test_s49_g43_passive_native_tail_dev.py
+      - tests/test_s49_g44_intra_action_gait_dev.py
+      - tests/test_s49_g44_protocol_dev.py
+      - tests/test_s49_g45_paper_gait_join_dev.py
+      - tests/test_s49_g46_paper_control_generation_dev.py
+      - tests/test_s49_g46_t1f_extension_dev.py
+      - tests/test_s49_g47_original_t2_gait_join_dev.py
+      - tests/test_s49_g48_direct_action_generation_dev.py
+      - tests/test_s49_g48_t1f_extension_dev.py
+      - tests/test_s49_g49_original_action_gap_census_dev.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  g2-paper-dash-world:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+      DEV_OUTPUT: '/tmp/s49-g2-dash-${{ github.run_id }}-${{ github.run_attempt }}'
+      S49_REAL_SERVER_CI: '1'
+      S49_FORWARD_MOTOR_DEV_ONLY: '1'
+      S49_L0_GOAL_LOOP_DEV_ONLY: '1'
+      S49_L1_T2_CHANNEL_DEV_ONLY: '1'
+      S49_L1_T2_BOUNDARY_DEV_ONLY: '1'
+      S49_L1_G1_OBSERVATION_DEV_ONLY: '1'
+      S49_GOAL_G2_SPRINT_PREFIX_DEV_ONLY: '1'
+      S49_GOAL_G2_DASH_FIRST_DEV_ONLY: '1'
+      S49_SPRINT_MOTOR_DEV_ONLY: '1'
+      S49_SPEED_ATTR_SYNC_DEV_ONLY: '1'
+      S49_L1_G3_T2_DEV_ONLY: '1'
+      S49_G3_MODIFIER_IDENTITY_DEV_ONLY: '1'
+      S49_G4_OBSERVED_GAIT_DEV_ONLY: '1'
+      S49_G41_INFLIGHT_BRAKE_DEV_ONLY: '1'
+      S49_G42_BRAKE_TIMING_DEV_ONLY: '1'
+      S49_G43_PASSIVE_TAIL_DEV_ONLY: '1'
+      S49_G44_INTRA_ACTION_GAIT_DEV_ONLY: '1'
+      S49_G45_PAPER_GAIT_JOIN_DEV_ONLY: '1'
+      S49_G45_HAZARD_DURING_GAIT_DEV_ONLY: '1'
+      S49_G46_PAPER_GENERATION_DEV_ONLY: '1'
+      S49_G47_ORIGINAL_T2_GAIT_JOIN_DEV_ONLY: '1'
+      S49_G48_DIRECT_ACTION_GENERATION_DEV_ONLY: '1'
+      S49_G49_ORIGINAL_ACTION_GAP_DEV_ONLY: '1'
+      S49_GOAL_G2_SNEAK_DEV_ONLY: '1'
+      RELAYSELF_T1F_DEV: '1'
+      RELAYSELF_PAPER_TICK_DEV: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 2672d0a1fe15584d16c2426540c528410bbb8c27
+          path: t1w-pinned-source
+          persist-credentials: false
+      - uses: actions/setup-java@dded0888837ed1f317902acf8a20df0ad188d165
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Strict scoped checks and original existing Paper plugins
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/g4_observed_gait_choice_dev.py tests/test_s49_g4_observed_gait_dev.py
+          ruff check adapters/mineflayer/g41_inflight_brake_dev.py adapters/mineflayer/execution.py tests/test_s49_g41_inflight_brake_dev.py
+          ruff check adapters/mineflayer/g42_native_brake_timing_dev.py tests/test_s49_g42_native_brake_timing_dev.py
+          ruff check adapters/mineflayer/g43_passive_native_tail_dev.py tests/test_s49_g43_passive_native_tail_dev.py
+          ruff check adapters/mineflayer/g44_intra_action_gait_dev.py tests/test_s49_g44_intra_action_gait_dev.py tests/test_s49_g44_protocol_dev.py adapters/mineflayer/python_protocol.py adapters/mineflayer/process_session.py
+          ruff check adapters/mineflayer/g45_paper_gait_join_dev.py tests/test_s49_g45_paper_gait_join_dev.py
+          ruff check adapters/mineflayer/g46_paper_control_generation_dev.py tests/test_s49_g46_paper_control_generation_dev.py tests/test_s49_g46_t1f_extension_dev.py adapters/mineflayer/t1f_protocol.py
+          ruff check adapters/mineflayer/g47_original_t2_gait_join_dev.py tests/test_s49_g47_original_t2_gait_join_dev.py
+          ruff check adapters/mineflayer/g48_direct_action_generation_dev.py tests/test_s49_g48_direct_action_generation_dev.py
+          ruff check tests/test_s49_g48_t1f_extension_dev.py
+          ruff check adapters/mineflayer/g49_original_action_gap_census_dev.py tests/test_s49_g49_original_action_gap_census_dev.py
+          ruff check adapters/mineflayer/s49_goal_loop_real_dev.py adapters/mineflayer/s49_t2_applied_gait_observation_dev.py adapters/mineflayer/s49_goal_executor_dev.py adapters/mineflayer/t2_tick_accounting.py adapters/mineflayer/g3_applied_gait_source_dev.py adapters/mineflayer/b0_energy_bridge.py tests/test_s49_g3_t2_single_owner_dev.py
+          python -m compileall -q adapters/mineflayer/s49_goal_loop_real_dev.py adapters/mineflayer/s49_t2_applied_gait_observation_dev.py adapters/mineflayer/g4_observed_gait_choice_dev.py adapters/mineflayer/g41_inflight_brake_dev.py adapters/mineflayer/g42_native_brake_timing_dev.py adapters/mineflayer/g43_passive_native_tail_dev.py adapters/mineflayer/g44_intra_action_gait_dev.py adapters/mineflayer/g45_paper_gait_join_dev.py adapters/mineflayer/g46_paper_control_generation_dev.py adapters/mineflayer/g47_original_t2_gait_join_dev.py adapters/mineflayer/g48_direct_action_generation_dev.py adapters/mineflayer/g49_original_action_gap_census_dev.py adapters/mineflayer/t1f_protocol.py adapters/mineflayer/python_protocol.py adapters/mineflayer/process_session.py adapters/mineflayer/s49_goal_executor_dev.py adapters/mineflayer/execution.py tests/test_s49_g4_observed_gait_dev.py tests/test_s49_g41_inflight_brake_dev.py tests/test_s49_g42_native_brake_timing_dev.py tests/test_s49_g43_passive_native_tail_dev.py tests/test_s49_g44_intra_action_gait_dev.py tests/test_s49_g44_protocol_dev.py tests/test_s49_g45_paper_gait_join_dev.py tests/test_s49_g46_paper_control_generation_dev.py tests/test_s49_g46_t1f_extension_dev.py tests/test_s49_g47_original_t2_gait_join_dev.py tests/test_s49_g48_direct_action_generation_dev.py tests/test_s49_g48_t1f_extension_dev.py tests/test_s49_g49_original_action_gap_census_dev.py
+          env -u S49_L1_T2_CHANNEL_DEV_ONLY -u S49_L1_T2_BOUNDARY_DEV_ONLY -u RELAYSELF_T1F_DEV -u RELAYSELF_PAPER_TICK_DEV -u S49_L1_G1_OBSERVATION_DEV_ONLY python -m pytest -q tests/test_s49_g3_t2_single_owner_dev.py tests/test_s49_t2_applied_gait_observation_dev.py tests/test_s49_g2_sprint_first_dev.py
+          env -u S49_G4_OBSERVED_GAIT_DEV_ONLY -u S49_L1_G3_T2_DEV_ONLY python -m pytest -q tests/test_s49_g4_observed_gait_dev.py tests/test_s49_g41_inflight_brake_dev.py tests/test_s49_g42_native_brake_timing_dev.py tests/test_s49_g43_passive_native_tail_dev.py tests/test_s49_g44_intra_action_gait_dev.py tests/test_s49_g44_protocol_dev.py tests/test_s49_g45_paper_gait_join_dev.py tests/test_s49_g46_paper_control_generation_dev.py tests/test_s49_g46_t1f_extension_dev.py tests/test_s49_g47_original_t2_gait_join_dev.py tests/test_s49_g48_direct_action_generation_dev.py tests/test_s49_g48_t1f_extension_dev.py tests/test_s49_g49_original_action_gap_census_dev.py
+          node --check adapters/mineflayer/bridge.mjs
+          node --check adapters/mineflayer/paper_snapshot_admission.mjs
+          node --check adapters/mineflayer/protocol.mjs
+          node --test adapters/mineflayer/protocol.test.mjs adapters/mineflayer/paper_snapshot_modifier_identity_dev.test.mjs adapters/mineflayer/g44_gait_protocol_dev.test.mjs
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          # T1w frozen source is adopted into this isolated DEV branch, plus
+          # the source-only, opt-in G3.2 Paper modifier identity extension.
+          mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+          mvn -B -ntp -f adapters/mineflayer/s49_paper_dash_dev/pom.xml -DskipTests package
+      - name: Fetch pinned Paper 1.21.8
+        run: |
+          set -euo pipefail
+          mkdir -p "$DEV_OUTPUT"
+          python - <<'PY'
+          import hashlib,os,pathlib,urllib.request
+          root=pathlib.Path(os.environ["DEV_OUTPUT"])
+          digest="8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          url=f"https://fill-data.papermc.io/v1/objects/{digest}/paper-1.21.8-60.jar"
+          req=urllib.request.Request(url,headers={"User-Agent":"RelaySelf-G2-DASH-DEV"})
+          with urllib.request.urlopen(req,timeout=120) as response:
+              data=response.read(53_000_000)
+          assert len(data)==52811717 and hashlib.sha256(data).hexdigest()==digest
+          (root/"paper.jar").write_bytes(data)
+          PY
+      - name: One disposable G4 observed-distance Paper World
+        run: |
+          set -euo pipefail
+          PLUGIN="$PWD/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar"
+          DASH="$PWD/adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-dash-dev-0.1.0-dev.jar"
+          test -s "$PLUGIN" && test -s "$DASH"
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/WORLD-G4" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
+            --paper-plugin-dev "$PLUGIN" --paper-gait-observation-dev \
+            --paper-dash-plugin-dev "$DASH" --g2-dash-first-dev \
+            --offset-m 3.5 --g3-single-owner-dev --g3-modifier-identity-dev \
+            --g4-auto-gait-dev \
+            > "$DEV_OUTPUT/producer-g4.stdout" 2>&1 || {
+              cat "$DEV_OUTPUT/producer-g4.stdout"; exit 1;
+            }
+          cat "$DEV_OUTPUT/producer-g4.stdout"
+          python - <<'PY'
+          import hashlib,json,os,pathlib
+          folder=pathlib.Path(os.environ["DEV_OUTPUT"])/"WORLD-G4"
+          report=json.loads((folder/"goal_report.json").read_text())
+          assert report["status"]=="PASS" and report["stage"]=="GOAL_REACHED"
+          assert report["g4_auto_gait_dev"] is True
+          choices=report["g4_observed_choices_dev"]
+          assert len(choices)==report["action_count"]>=2
+          assert choices[0]["mode"]=="DASH"
+          assert all(c["claimed_applied_gait"] is False and c["qualified"] is False for c in choices)
+          assert all(.10<=c["duration_s"]<=.35 for c in choices)
+          assert all(c["source_seq"]>0 for c in choices)
+          assert len(set(c["source_seq"] for c in choices))==len(choices)
+          assert any(c["mode"] in ("WALK","JOG","RUN") for c in choices[1:])
+          # Bind every requested G4 mode to the actual original S49 S15
+          # dispatch ACK; don't mistake a policy mode for physical World gait.
+          actions=report["native_actions"]
+          assert len(actions)==len(choices)
+          effect={"DASH":"set_forward_sprint_dev",
+                  "RUN":"set_forward_sprint_dev",
+                  "JOG":"set_control","WALK":"set_forward_sneak_dev"}
+          for c,a in zip(choices,actions):
+              assert a["g4_requested_mode_dev"]==c["mode"]
+              assert a["g4_native_dispatch_effect_dev"]==effect[c["mode"]]
+              assert a["g4_native_dispatch_applied_dev"] is True
+              assert a["g4_requested_not_actual_world_gait"] is True
+              assert a["duration_s"]==c["duration_s"]
+          g3=report["g3_single_t2_p1_m0_owner_dev"]
+          t2=report["l1_t2_ledger_dev"]
+          assert not g3["owner_failed"]
+          assert g3["exact_paper_modifier_identity_required_dev"]
+          assert t2["original_action_boundary_receipts"]==report["action_count"]
+          assert t2["rows"]==g3["single_p1_updates"]==g3["m0_tick"]
+          assert not t2["owner_failed"] and not t2["continuous_gait_attested"]
+          source=json.loads((folder/t2["derived_file"]).read_text())["rows"]
+          assert len(source)==t2["rows"]
+          assert sum(x["g3_extra_m0_paid_dev"] for x in source)==g3["dash_extra_energy_paid"]
+          assert all(not x["full_tick_R_attested"] for x in source)
+          for receipt in (t2,report["g1_applied_gait_observation_dev"]):
+              file=folder/receipt["derived_file"]
+              assert hashlib.sha256(file.read_bytes()).hexdigest()==receipt["derived_file_sha256"]
+          print("G4_OBSERVED_GAIT_GOAL_SINGLE_S49_T2_DEV_PASS",
+                report["action_count"],[c["mode"] for c in choices],
+                report["final_native_xz"],t2["rows"],g3["dash_extra_energy_paid"])
+          PY
+      - name: Second relative-start disposable G4.9 S49 Action Source Gap Paper World
+        run: |
+          set -euo pipefail
+          PLUGIN="$PWD/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar"
+          DASH="$PWD/adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-dash-dev-0.1.0-dev.jar"
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/WORLD-G49" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
+            --paper-plugin-dev "$PLUGIN" --paper-gait-observation-dev \
+            --paper-dash-plugin-dev "$DASH" --g2-dash-first-dev \
+            --offset-m 3.5 --g3-single-owner-dev --g3-modifier-identity-dev \
+            --g4-auto-gait-dev --g41-inflight-brake-dev --g42-brake-timing-dev --g43-passive-tail-control-dev --g44-intra-action-gait-dev --g45-paper-gait-join-dev --g46-paper-generation-dev --g47-original-t2-gait-join-dev --g48-direct-action-generation-dev --g49-original-action-gap-census-dev \
+            > "$DEV_OUTPUT/producer-g49.stdout" 2>&1 || {
+              cat "$DEV_OUTPUT/producer-g49.stdout"; exit 1;
+            }
+          cat "$DEV_OUTPUT/producer-g49.stdout"
+          python - <<'PY'
+          import hashlib,json,os,pathlib
+          folder=pathlib.Path(os.environ["DEV_OUTPUT"])
+          baseline=json.loads((folder/"WORLD-G4"/"goal_report.json").read_text())
+          controlled=json.loads((folder/"WORLD-G49"/"goal_report.json").read_text())
+          assert controlled["status"]=="PASS" and controlled["stage"]=="GOAL_REACHED"
+          assert controlled["g41_inflight_brake_dev"] is True
+          assert controlled["g42_brake_timing_dev"] is True
+          assert controlled["g43_passive_tail_control_dev"] is True
+          assert controlled["g44_intra_action_gait_dev"] is True
+          assert controlled["g45_paper_gait_join_dev"] is True
+          assert controlled["g46_paper_generation_dev"] is True
+          assert controlled["g47_original_t2_gait_join_dev"] is True
+          assert controlled["g48_direct_action_generation_dev"] is True
+          assert controlled["g49_original_action_gap_census_dev"] is True
+          assert baseline["g49_original_action_gap_census_dev"] is False
+          assert baseline["g48_direct_action_generation_dev"] is False
+          assert baseline["g47_original_t2_gait_join_dev"] is False
+          assert baseline["g46_paper_generation_dev"] is False
+          assert baseline["g45_paper_gait_join_dev"] is False
+          assert baseline["g44_intra_action_gait_dev"] is False
+          assert baseline["g43_passive_tail_control_dev"] is False
+          assert baseline["g42_brake_timing_dev"] is False
+          assert baseline["g41_inflight_brake_dev"] is False
+          assert baseline["g41_inflight_samples_dev"]==[]
+          # Disposable Paper Worlds use independent random absolute spawn XZ.
+          # Match physical *relative* distance, direction, L1 tolerance
+          # and deterministic World configuration, not spawn coordinates.
+          assert baseline["goal_l1"]["tolerance_m"]==controlled["goal_l1"]["tolerance_m"]
+          assert baseline["goal_unit_forward"]["x"]==controlled["goal_unit_forward"]["x"]
+          assert baseline["goal_unit_forward"]["z"]==controlled["goal_unit_forward"]["z"]
+          for report in (baseline,controlled):
+              start=report["initial_native_xz"]
+              goal=report["goal_l2"]
+              assert goal["target_x"]==start["x"]
+              assert goal["target_z"]-start["z"]==3.5
+          samples=controlled["g41_inflight_samples_dev"]
+          assert len(samples)>0, "G4.1 had no in-flight native samples"
+          assert all(s["source_seq"]>0 and not s["reached_attested"]
+                     and not s["actual_gait_attested"] for s in samples)
+          assert len({s["source_seq"] for s in samples})==len(samples)
+          assert all(s["action_id"].startswith("goal-") for s in samples)
+          actions=controlled["native_actions"]
+          assert len(actions)==controlled["action_count"]
+          joined=controlled["g45_paper_transition_windows_dev"]
+          assert joined
+          assert len(joined)==len(controlled["g44_native_transition_acks_dev"])
+          assert all(w["source"]=="ORIGINAL_NATIVE_S15_ACK_AND_ORIGINAL_T1U_G1_T2_DEV"
+                     and w["applied_node_control_attested"]
+                     and not w["packet_to_paper_tick_causality_attested"]
+                     and not w["full_tick_gait_attested"]
+                     and not w["second_t2_owner_created"]
+                     and w["status"] in ("NO_STABLE_FRAME",
+                                       "PAPER_STABLE_CANDIDATE_OBSERVED")
+                     for w in joined)
+          g46=controlled["g46_native_paper_generations_dev"]
+          runs=controlled["g46_original_run_applied_acks_dev"]
+          assert runs and len(g46)>=len(joined)
+          assert all(x["source"]=="ORIGINAL_T1F_PAPER_CALLBACK_NODE_GENERATION_AND_G1_T2_DEV"
+                     and x["node_applied_ack_seen"]
+                     and x["paper_stable_candidate_not_r_qualified"]
+                     and not x["exact_physics_tick_to_effect_attested"]
+                     and not x["second_t2_owner_created"]
+                     and x["status"] in (
+                         "PAPER_STABLE_CANDIDATE_NOT_R_QUALIFIED",
+                         "POST_EFFECT_CHALLENGE_MODE_CONCORDANT",
+                         "POST_EFFECT_CHALLENGE_MODE_UNKNOWN",
+                         "NODE_GENERATION_SAMPLED_WITHOUT_POST_EFFECT_CHALLENGE",
+                         "NO_GENERATION_FRAME",
+                     ) for x in g46)
+          assert [x["requested_input_mode"] for x in g46 if x["requested_input_mode"]!="SPRINT_INPUT"]==[
+              t["mode_to"] for t in controlled["g44_native_transition_acks_dev"]]
+          assert sum(x["matched_callback_frames"] for x in g46)>0
+          assert sum(x["post_change_challenge_frames"] for x in g46)>0
+          assert sum(x["paper_mode_concordant_frames"] for x in g46)>0, (
+              "G4.6 must show post-command-challenge original Paper gait concordance"
+          )
+          # The original 0.35s pulse can produce JOG or WALK two-frame
+          # candidates depending on real World/challenge timing. Do not
+          # misclassify a different observed gait as a failed source join.
+          assert all(x["two_frame_stable_candidate_frames"] <=
+                     x["paper_mode_concordant_frames"] for x in g46)
+          audit=controlled["g47_worldtick_gait_audit_dev"]
+          assert audit and not audit["p1_or_m0_reposted"]
+          assert audit["additional_t2_readers_or_owners"]==0
+          assert not audit["full_tick_R_attested"]
+          assert audit["original_t2_worldtick_rows"]==controlled["l1_t2_ledger_dev"]["rows"]
+          assert audit["source_bound_stable_gait_candidates"]>0
+          assert audit["unknown_worldticks"]>0
+          import json as _json
+          root=folder/"WORLD-G49"
+          gp=root/audit["derived_file"]
+          assert hashlib.sha256(gp.read_bytes()).hexdigest()==audit["derived_file_sha256"]
+          payload=_json.loads(gp.read_text())
+          assert payload["original_t2_ledger_sha256"]==controlled["l1_t2_ledger_dev"]["derived_file_sha256"]
+          assert payload["original_g1_observation_sha256"]==controlled["g1_applied_gait_observation_dev"]["derived_file_sha256"]
+          original=_json.loads((root/controlled["l1_t2_ledger_dev"]["derived_file"]).read_text())["rows"]
+          assert len(original)==len(payload["rows"])==audit["original_t2_worldtick_rows"]
+          assert [x["source_seq"] for x in original]==[x["source_seq"] for x in payload["rows"]]
+          assert [x["world_tick"] for x in original]==[x["world_tick"] for x in payload["rows"]]
+          for row,linked in zip(original,payload["rows"]):
+              digest=hashlib.sha256(_json.dumps(row,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+              assert linked["original_t2_row_sha256"]==digest
+              assert linked["original_p1"]==row["p1"] and linked["original_m0"]==row["m0"]
+              assert linked["original_g3_extra_m0_paid"]==row["g3_extra_m0_paid_dev"]
+              assert not linked["qualified"] and not linked["new_p1_or_m0_posting"]
+              assert not linked["second_t2_owner_created"]
+              assert not linked["packet_to_physics_tick_attested"]
+          assert sum(r["status"]=="SOURCE_BOUND_STABLE_GAIT_CANDIDATE_DEV"
+                     for r in payload["rows"])==audit["source_bound_stable_gait_candidates"]
+          direct=controlled["g48_original_direct_action_acks_dev"]
+          assert direct, "requires original ordinary JOG/WALK Action ACK"
+          assert all(x["effect_id"]==x["action_id"] and
+                     x["requested_input_mode"] in ("JOG","WALK") and
+                     x["effect"]==("set_control" if x["requested_input_mode"]=="JOG"
+                                  else "set_forward_sneak_dev") and
+                     x["source"]=="ORIGINAL_S49_NATIVE_APPLIED" for x in direct)
+          g48=controlled["g48_direct_worldtick_audit_dev"]
+          assert g48 and not g48["p1_or_m0_reposted"]
+          assert g48["additional_native_readers_or_t2_owners"]==0
+          assert not g48["exact_physics_gait_attested"]
+          assert g48["original_t2_worldtick_rows"]==audit["original_t2_worldtick_rows"]
+          assert g48["original_t2_sha256"]==audit["original_t2_ledger_sha256"]
+          assert g48["original_g47_sha256"]==audit["derived_file_sha256"]
+          assert g48["combined_stable_candidates"]==(audit["source_bound_stable_gait_candidates"]+
+                    g48["new_direct_action_stable_candidates"])
+          assert g48["combined_unknown_worldticks"]==audit["unknown_worldticks"]-g48["new_direct_action_stable_candidates"]
+          assert g48["combined_unknown_worldticks"]>=0
+          g48_file=root/g48["derived_file"]
+          assert hashlib.sha256(g48_file.read_bytes()).hexdigest()==g48["derived_file_sha256"]
+          g48_original=_json.loads(g48_file.read_text())
+          assert len(g48_original["rows"])==len(original)
+          for row,proof,prev in zip(original,g48_original["rows"],payload["rows"]):
+              assert row["source_seq"]==proof["source_seq"]==prev["source_seq"]
+              assert row["world_tick"]==proof["world_tick"]==prev["world_tick"]
+              assert proof["original_t2_row_sha256"]==prev["original_t2_row_sha256"]
+              assert proof["original_g47_row_sha256"]==hashlib.sha256(
+                  _json.dumps(prev,sort_keys=True,separators=(",",":")).encode()
+              ).hexdigest()
+              assert not proof["p1_or_m0_posted"]
+              assert not proof["additional_reader_or_t2_owner"]
+              assert not proof["complete_tick_motor_acceptance_attested"]
+          assert g48["status_counts"].get("DIRECT_SOURCE_BOUND_STABLE_GAIT_CANDIDATE_DEV",0)==g48["new_direct_action_stable_candidates"]
+          all_acks=controlled["g49_original_action_applied_acks_dev"]
+          assert len(all_acks)==len(actions)==controlled["action_count"]
+          assert [x["action_id"] for x in all_acks]==[x["action_id"] for x in actions]
+          assert all(x["source"]=="ORIGINAL_S49_NATIVE_APPLIED"
+                     and x["effect_id"]==x["action_id"]
+                     and x["requested_mode"] in ("DASH","RUN","JOG","WALK")
+                     and x["requested_not_paper_gait"] for x in all_acks)
+          g49=controlled["g49_original_action_gap_audit_dev"]
+          assert g49 and not g49["new_p1_or_m0_posting"]
+          assert g49["additional_readers_or_t2_owners"]==0
+          assert not g49["physical_tick_motor_qualified"]
+          assert g49["original_t2_worldtick_rows"]==g48["original_t2_worldtick_rows"]
+          assert g49["original_t2_sha256"]==g48["original_t2_sha256"]
+          assert g49["original_g48_sha256"]==g48["derived_file_sha256"]
+          assert g49["still_unknown_worldticks"]==g48["combined_unknown_worldticks"]
+          assert g49["preserved_g48_stable_candidates"]==g48["combined_stable_candidates"]
+          assert sum(g49["source_gap_classes"].values())==g49["original_t2_worldtick_rows"]
+          g49_file=root/g49["derived_file"]
+          assert hashlib.sha256(g49_file.read_bytes()).hexdigest()==g49["derived_file_sha256"]
+          detail=_json.loads(g49_file.read_text())
+          assert detail["original_g48_sha256"]==g48["derived_file_sha256"]
+          assert len(detail["rows"])==len(original)==len(g48_original["rows"])
+          for source,rec,prior in zip(original,detail["rows"],g48_original["rows"]):
+              assert rec["source_seq"]==source["source_seq"]==prior["source_seq"]
+              assert rec["world_tick"]==source["world_tick"]==prior["world_tick"]
+              assert rec["original_t2_row_sha256"]==prior["original_t2_row_sha256"]
+              assert rec["original_g48_row_sha256"]==hashlib.sha256(
+                  _json.dumps(prior,sort_keys=True,separators=(",",":")).encode()
+              ).hexdigest()
+              assert not rec["original_t2_p1_m0_reposted"]
+              assert not rec["physics_tick_motor_attested"]
+              assert rec["additional_readers_or_t2_owners"]==0
+          assert sum(x["still_unknown"] for x in detail["rows"])==g49["still_unknown_worldticks"]
+          transitions=controlled["g44_native_transition_acks_dev"]
+          assert len(transitions)>=1, "G4.4 needs a real native gait ACK"
+          assert all(t["applied"] and not t["world_tick_gait_attested"] and
+                     t["parent_s49_issued_action_id"]==t["action_id"]
+                     and t["ack_seq"]>t["native_probe_seq"] for t in transitions)
+          assert any(a["g44_same_issued_action_transitions_dev"]==["JOG","WALK"]
+                     for a in actions), (
+              "must observe native RUN to JOG and JOG to WALK applied ACKs within SAME issued S49 Action"
+          )
+          assert sum(len(a["g44_same_issued_action_transitions_dev"])
+                     for a in actions)==len(transitions)
+          assert all(a["s16_terminal"]=="outcome" for a in actions)
+          assert all(a.get("g41_brake_observed_dev") ==
+                     any(s["action_id"]==a["action_id"] and s["brake_requested"]
+                         for s in samples) for a in actions)
+          windows=controlled["g42_native_windows_dev"]
+          assert len(windows)==len(actions), (
+              "every S49 Action needs its following native observation"
+          )
+          assert len({w["action_id"] for w in windows})==len(windows)
+          assert all(w["clear_seq"]<w["after_seq"]<w["next_seq"] for w in windows)
+          assert all(w["source"]=="ORIGINAL_NATIVE_S49_AFTER_CLEAR_TO_NEXT_PROBE_DEV"
+                     and not w["inertia_causality_attested"]
+                     and not w["paper_tick_latency_attested"]
+                     and not w["motor_speed_change_attested"] for w in windows)
+          requested={s["action_id"] for s in samples if s["brake_requested"]}
+          measured={w["action_id"] for w in windows
+                    if w["brake_to_clear_ack_host_ms"] is not None}
+          assert requested==measured, (
+              "early brake must join same original Action CLEAR ACK"
+          )
+          assert all(w["postclear_drift_candidate_m"]>=0 and
+                     w["after_s16_to_next_probe_host_ms"]>0 for w in windows)
+          tails=controlled["g43_passive_native_tails_dev"]
+          assert len(tails)==len(actions)==len(windows)
+          for tail,action,win in zip(tails,actions,windows):
+              assert tail["action_id"]==action["action_id"]==win["action_id"]
+              assert tail["clear_seq"]==win["clear_seq"]
+              assert tail["s16_seq"]==win["after_seq"]
+              assert len(tail["samples"])==5
+              assert tail["samples"][-1]["source_seq"]<win["next_seq"]
+              assert [x["label"] for x in tail["samples"]]==[
+                  "EARLY_40","EARLY_120","MID_300","QUIET_550","QUIET_800"
+              ]
+              assert all(x["source"]=="mineflayer" and
+                         not x["entities_truncated"] for x in tail["samples"])
+              assert all(x["source_seq"]<y["source_seq"] and
+                         x["host_ns"]<y["host_ns"] for x,y in zip(
+                             tail["samples"],tail["samples"][1:]))
+              assert tail["source"]=="S49_SINGLE_NATIVE_READER_CLEAR_POST_S16_NO_NEW_MOTOR_DEV"
+              assert tail["no_new_s49_motor_during_samples"]
+              assert not tail["independently_randomized_control"]
+              assert not tail["physical_input_off_per_tick_attested"]
+              assert not tail["inertia_causality_attested"]
+              assert not tail["world_tick_speed_attested"]
+              assert tail["early_s16_to_120_m"]>=0
+              assert tail["quiet_550_to_800_m"]>=0
+              assert tail["early_window_host_ms"]>0
+              assert tail["quiet_window_host_ms"]>0
+          t2=controlled["l1_t2_ledger_dev"]
+          assert t2["original_action_boundary_receipts"]==len(actions)
+          assert not t2["owner_failed"]
+          assert t2["rows"]==controlled["g3_single_t2_p1_m0_owner_dev"]["m0_tick"]
+          for key in ("l1_t2_ledger_dev","g1_applied_gait_observation_dev"):
+              receipt=controlled[key]
+              p=folder/"WORLD-G49"/receipt["derived_file"]
+              assert hashlib.sha256(p.read_bytes()).hexdigest()==receipt["derived_file_sha256"]
+          summary={
+              "classification":"DEV_ONLY_G44_ORIGINAL_S49_NATIVE_GAIT_TRANSITION_ACK",
+              "baseline_world_status":baseline["stage"],
+              "g41_world_status":controlled["stage"],
+              "relative_start_matched":True,
+              "absolute_spawn_xz_intentionally_not_matched":True,
+              "baseline_final_error_m":baseline["final_native_xz"]["euclidean_error_m"],
+              "g41_final_error_m":controlled["final_native_xz"]["euclidean_error_m"],
+              "baseline_actions":baseline["action_count"],
+              "g41_actions":controlled["action_count"],
+              "baseline_original_m0_ticks":baseline["g3_single_t2_p1_m0_owner_dev"]["m0_tick"],
+              "g41_original_m0_ticks":controlled["g3_single_t2_p1_m0_owner_dev"]["m0_tick"],
+              "g41_inflight_native_samples":len(samples),
+              "g42_native_windows":len(windows),
+              "g43_native_tails":len(tails),
+              "g44_original_action_transition_acks":len(transitions),
+              "g45_join_windows":len(joined),
+              "g46_original_run_effects":len(runs),
+              "g46_effect_generation_windows":len(g46),
+              "g46_matching_node_paper_frames":sum(x["matched_callback_frames"] for x in g46),
+              "g46_postchange_paper_frames":sum(x["post_change_challenge_frames"] for x in g46),
+              "g46_server_gait_concordant_frames":sum(x["paper_mode_concordant_frames"] for x in g46),
+              "g46_stable_candidates":sum(x["two_frame_stable_candidate_frames"] for x in g46),
+              "g47_original_t2_worldticks":audit["original_t2_worldtick_rows"],
+              "g47_source_bound_t2_gait_candidates":audit["source_bound_stable_gait_candidates"],
+              "g47_undetermined_t2_worldticks":audit["unknown_worldticks"],
+              "g48_direct_applied_actions":len(direct),
+              "g48_direct_stable_candidate_ticks":g48["new_direct_action_stable_candidates"],
+              "g48_combined_unknown_ticks":g48["combined_unknown_worldticks"],
+              "g48_direct_status_counts":g48["status_counts"],
+              "g49_original_applied_action_acks":len(all_acks),
+              "g49_stable_candidates_preserved":g49["preserved_g48_stable_candidates"],
+              "g49_unknown_worldticks":g49["still_unknown_worldticks"],
+              "g49_gap_classification":g49["source_gap_classes"],
+              "g45_stable_candidate_windows":sum(w["paper_stable_candidate_seen"] for w in joined),
+              "g44_intra_action_modes":[t["mode_to"] for t in transitions],
+              "g44_world_tick_gait_attested":False,
+              "g43_early_s16_to_120_m":[t["early_s16_to_120_m"] for t in tails],
+              "g43_quiet_550_to_800_m":[t["quiet_550_to_800_m"] for t in tails],
+              "g43_full_s16_to_800_m":[t["full_s16_to_800_m"] for t in tails],
+              "g43_quiet_reference_is_independent":False,
+              "g42_brake_to_clear_host_ms":[w["brake_to_clear_ack_host_ms"] for w in windows if w["brake_to_clear_ack_host_ms"] is not None],
+              "g42_postclear_drift_candidate_m":[w["postclear_drift_candidate_m"] for w in windows],
+              "g42_inertia_proven":False,"g42_paper_tick_latency_proven":False,
+              "g41_brake_requests":sum(s["brake_requested"] for s in samples),
+              "g41_second_issuer":False,
+              "qualification_go":False,"science_go":False,
+          }
+          (folder/"g42_native_brake_timing_summary_dev.json").write_text(
+              json.dumps(summary,sort_keys=True,indent=2)+"\n")
+          print("G49_ORIGINAL_S49_ACTION_GAP_T2_P1_M0_CENSUS_DEV",json.dumps(summary,sort_keys=True))
+          PY
+      - name: Third disposable World - real native threat after JOG ACK
+        run: |
+          set -euo pipefail
+          PLUGIN="$PWD/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar"
+          DASH="$PWD/adapters/mineflayer/s49_paper_dash_dev/target/relay-s49-dash-dev-0.1.0-dev.jar"
+          python -m adapters.mineflayer.s49_goal_loop_real_dev \
+            --output-dir "$DEV_OUTPUT/WORLD-G49-HAZARD" \
+            --confirm S49-GOAL-L0-DEV-DISPOSABLE-WORLD \
+            --paper-jar-dev "$DEV_OUTPUT/paper.jar" \
+            --paper-plugin-dev "$PLUGIN" --paper-gait-observation-dev \
+            --paper-dash-plugin-dev "$DASH" --g2-dash-first-dev \
+            --offset-m 3.5 --g3-single-owner-dev --g3-modifier-identity-dev \
+            --g4-auto-gait-dev --g41-inflight-brake-dev --g42-brake-timing-dev \
+            --g43-passive-tail-control-dev --g44-intra-action-gait-dev \
+            --g45-paper-gait-join-dev --g45-hazard-during-gait-dev --g46-paper-generation-dev --g47-original-t2-gait-join-dev --g48-direct-action-generation-dev --g49-original-action-gap-census-dev \
+            > "$DEV_OUTPUT/producer-g45-hazard.stdout" 2>&1 || {
+              cat "$DEV_OUTPUT/producer-g45-hazard.stdout"; exit 1;
+            }
+          cat "$DEV_OUTPUT/producer-g45-hazard.stdout"
+          python - <<'PY'
+          import hashlib,json,os,pathlib
+          folder=pathlib.Path(os.environ["DEV_OUTPUT"])/"WORLD-G49-HAZARD"
+          j=json.loads((folder/"goal_report.json").read_text())
+          assert j["status"]=="PASS" and j["real_world"]
+          assert j["stage"]=="G45_NATIVE_GAIT_HAZARD_T2_REFUSED"
+          hz=j["g45_native_hazard_preempt_dev"]
+          assert hz["action_id"]=="goal-approach-demo-step-2"
+          assert hz["gait_phase"]=="JOG" and hz["decision"]=="INTERRUPT"
+          assert hz["native_provenance"]=="mineflayer"
+          assert hz["native_seq"]>hz["transition_ack_seq"]
+          assert hz["applied_clear_seq"]>hz["native_seq"]
+          assert hz["s16_after_seq"]>hz["applied_clear_seq"]
+          assert hz["terminal"]=="unknown" and hz["s16_status"]=="failed"
+          assert hz["new_s49_actions_after_hazard"]==0
+          assert hz["t2_expected_refusal"] and not hz["p1_credit_awarded"]
+          assert len(j["native_actions"])==2
+          assert j["native_actions"][-1]["s16_terminal"]=="unknown"
+          assert j["g45_paper_transition_windows_dev"]
+          assert j["g46_native_paper_generations_dev"]
+          ga=j["g47_worldtick_gait_audit_dev"]
+          assert ga and not ga["p1_or_m0_reposted"]
+          assert ga["additional_t2_readers_or_owners"]==0
+          assert ga["original_t2_worldtick_rows"]==j["l1_t2_ledger_dev"]["rows"]
+          g48h=j["g48_direct_worldtick_audit_dev"]
+          assert g48h and g48h["original_t2_worldtick_rows"]==ga["original_t2_worldtick_rows"]
+          assert g48h["new_direct_action_stable_candidates"]==0, (
+              "Hazard is inside original RUN->JOG sub-effect, not a new ordinary JOG Action"
+          )
+          assert g48h["combined_unknown_worldticks"]==ga["unknown_worldticks"]
+          assert not g48h["p1_or_m0_reposted"]
+          g49h=j["g49_original_action_gap_audit_dev"]
+          assert g49h and g49h["original_t2_worldtick_rows"]==ga["original_t2_worldtick_rows"]
+          assert g49h["original_g48_sha256"]==g48h["derived_file_sha256"]
+          assert g49h["still_unknown_worldticks"]==g48h["combined_unknown_worldticks"]
+          assert not g49h["new_p1_or_m0_posting"]
+          assert g49h["additional_readers_or_t2_owners"]==0
+          assert not g49h["physical_tick_motor_qualified"]
+          assert j["g49_original_action_applied_acks_dev"]
+          assert g48h["additional_native_readers_or_t2_owners"]==0
+          audit_file=folder/ga["derived_file"]
+          assert hashlib.sha256(audit_file.read_bytes()).hexdigest()==ga["derived_file_sha256"]
+          joined=json.loads(audit_file.read_text())
+          original=json.loads((folder/j["l1_t2_ledger_dev"]["derived_file"]).read_text())["rows"]
+          assert len(original)==len(joined["rows"])==ga["original_t2_worldtick_rows"]
+          for tick,proof in zip(original,joined["rows"]):
+              digest=hashlib.sha256(json.dumps(tick,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+              assert proof["original_t2_row_sha256"]==digest
+              assert proof["original_p1"]==tick["p1"]
+              assert proof["original_m0"]==tick["m0"]
+              assert not proof["new_p1_or_m0_posting"]
+          assert all(not r["exact_physics_tick_to_effect_attested"]
+                     for r in j["g46_native_paper_generations_dev"])
+          assert all(not w["full_tick_gait_attested"]
+                     for w in j["g45_paper_transition_windows_dev"])
+          assert j["g3_single_t2_p1_m0_owner_dev"]["owner_failed"]
+          refusal=j["l1_t2_ledger_dev"]["s16_refusal_diagnostic_dev"]
+          assert refusal["reason"]=="NATIVE_TERMINAL_NOT_SAFE_FOR_T2"
+          assert refusal["p1_credit_awarded"] is False
+          assert refusal["additional_action_issued"] is False
+          for key in ("l1_t2_ledger_dev","g1_applied_gait_observation_dev"):
+              meta=j[key]
+              file=folder/meta["derived_file"]
+              assert hashlib.sha256(file.read_bytes()).hexdigest()==meta["derived_file_sha256"]
+          print("G49_HAZARD_P1_M0_SOURCE_GAP_CENSUS_NO_SECOND_OWNER_PASS",
+                json.dumps(hz,sort_keys=True))
+          PY
+      - name: Preserve original Paper and refusal evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: s49-g49-source-gap-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ env.DEV_OUTPUT }}/
+            !${{ env.DEV_OUTPUT }}/paper.jar
+            !${{ env.DEV_OUTPUT }}/WORLD-G4/**/paper.jar
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Classification
+        if: always()
+        run: echo 'DEV_ONLY / G49_ORIGINAL_ACTION_APPLIED_CLEAR_SOURCE_GAP_CENSUS_HAZARD / FULL_TICK_GAIT_NOT_R_QUALIFIED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
