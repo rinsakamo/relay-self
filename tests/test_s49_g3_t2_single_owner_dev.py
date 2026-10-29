@@ -49,6 +49,8 @@ def test_g3_one_world_tick_one_p1_one_atomic_m0_dash(monkeypatch):
     second=native_frame(monkeypatch, 2, x=.20)
     third=native_frame(monkeypatch, 3, x=.43)
     assert owner.observe(first) is None
+    owner.permit_g3_dash_action_dev("g3-original-s49-action")
+    owner.begin("g3-original-s49-action")
     initial=owner.energy.body.energy
     owner.observe(second)
     assert len(owner.rows)==1 and owner.rows[-1]["motor_mode"]=="DASH"
@@ -107,3 +109,56 @@ def test_m0_g3_replay_denied_with_original_balance_unchanged():
     with pytest.raises(B0EnergyRejected,match="replay refused"):
         ledger.post_g3_observed_dash_tick_dev(world_tick=5,extra=.01)
     assert ledger.body==before
+
+
+def test_g3_unscoped_doublespeed_stays_unbilled_while_t2_advances(monkeypatch):
+    monkeypatch.setenv("S49_L1_G3_T2_DEV_ONLY","1")
+    owner=TickAccounting(
+        SID,gait_source=applied_gait_from_original_t1u_dev,g3_partial_dev=True,
+    )
+    first=native_frame(monkeypatch,1,x=0.)
+    second=native_frame(monkeypatch,2,x=.20)
+    owner.observe(first)
+    owner.observe(second)
+    assert len(owner.rows)==1
+    assert owner.rows[-1]["g3_unknown_fallback_dev"] is True
+    assert owner.rows[-1]["g3_extra_m0_paid_dev"]==0
+    assert owner.rows[-1]["g3_dash_source_action_scope_dev"] is None
+    assert owner.g3_dash_scoped_fallback_ticks_dev==1
+    assert owner.energy.body.tick==1 and owner.fatigue.world_tick==2
+    assert owner.failed is False
+
+
+def test_g3_foreign_and_closed_s49_does_not_bill_dash(monkeypatch):
+    monkeypatch.setenv("S49_L1_G3_T2_DEV_ONLY","1")
+    owner=TickAccounting(
+        SID,gait_source=applied_gait_from_original_t1u_dev,g3_partial_dev=True,
+    )
+    owner.observe(native_frame(monkeypatch,1,x=0.))
+    owner.permit_g3_dash_action_dev("paper-armed-A")
+    with pytest.raises(ValueError,match="G3_DASH_ACTION_SCOPE_REFUSED"):
+        owner.permit_g3_dash_action_dev("paper-armed-B")
+    owner.begin("unrelated-B")
+    owner.observe(native_frame(monkeypatch,2,x=.20))
+    assert owner.rows[-1]["g3_extra_m0_paid_dev"]==0
+    owner.active_action=None  # simulate closed S49 without issuing a new motor
+    owner.observe(native_frame(monkeypatch,3,x=.43))
+    assert owner.rows[-1]["g3_extra_m0_paid_dev"]==0
+    assert owner.g3_dash_scoped_fallback_ticks_dev==2
+    assert owner.g3_dash_energy_total_dev==0
+
+
+def test_g3_paper_dash_accounting_scope_requires_initialized_t2(monkeypatch):
+    monkeypatch.setenv("S49_L1_G3_T2_DEV_ONLY","1")
+    owner=TickAccounting(
+        SID,gait_source=applied_gait_from_original_t1u_dev,g3_partial_dev=True,
+    )
+    with pytest.raises(ValueError,match="G3_DASH_ACTION_SCOPE_REFUSED"):
+        owner.permit_g3_dash_action_dev("paper-armed-A")
+    assert owner.g3_dash_approved_action_dev is None
+
+
+def test_g3_scope_cannot_be_enabled_in_default_t2(monkeypatch):
+    owner=TickAccounting(SID)
+    with pytest.raises(ValueError,match="G3_DASH_ACTION_SCOPE_REFUSED"):
+        owner.permit_g3_dash_action_dev("some-action")
