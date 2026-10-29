@@ -153,7 +153,7 @@ jobs:
             }
           cat "$DEV_OUTPUT/producer-g4.stdout"
           python - <<'PY'
-          import hashlib,json,os,pathlib
+          import hashlib,json,math,os,pathlib
           folder=pathlib.Path(os.environ["DEV_OUTPUT"])/"WORLD-G4"
           report=json.loads((folder/"goal_report.json").read_text())
           assert report["status"]=="PASS" and report["stage"]=="GOAL_REACHED"
@@ -215,7 +215,7 @@ jobs:
             }
           cat "$DEV_OUTPUT/producer-g48.stdout"
           python - <<'PY'
-          import hashlib,json,os,pathlib
+          import hashlib,json,math,os,pathlib
           folder=pathlib.Path(os.environ["DEV_OUTPUT"])
           baseline=json.loads((folder/"WORLD-G4"/"goal_report.json").read_text())
           controlled=json.loads((folder/"WORLD-G48"/"goal_report.json").read_text())
@@ -240,14 +240,14 @@ jobs:
           # Disposable Paper Worlds use independent random absolute spawn XZ.
           # Match physical *relative* distance, direction, L1 tolerance
           # and deterministic World configuration, not spawn coordinates.
-          assert baseline["goal_l1"]["tolerance_m"]==controlled["goal_l1"]["tolerance_m"]
+          assert math.isclose(baseline["goal_l1"]["tolerance_m"],controlled["goal_l1"]["tolerance_m"],abs_tol=1e-9)
           assert baseline["goal_unit_forward"]["x"]==controlled["goal_unit_forward"]["x"]
           assert baseline["goal_unit_forward"]["z"]==controlled["goal_unit_forward"]["z"]
           for report in (baseline,controlled):
               start=report["initial_native_xz"]
               goal=report["goal_l2"]
               assert goal["target_x"]==start["x"]
-              assert goal["target_z"]-start["z"]==3.4
+              assert math.isclose(goal["target_z"]-start["z"],3.4,abs_tol=1e-9)
           samples=controlled["g41_inflight_samples_dev"]
           assert len(samples)>0, "G4.1 had no in-flight native samples"
           assert all(s["source_seq"]>0 and not s["reached_attested"]
@@ -492,7 +492,7 @@ jobs:
             }
           cat "$DEV_OUTPUT/producer-g45-hazard.stdout"
           python - <<'PY'
-          import hashlib,json,os,pathlib
+          import hashlib,json,math,os,pathlib
           folder=pathlib.Path(os.environ["DEV_OUTPUT"])/"WORLD-G48-HAZARD"
           j=json.loads((folder/"goal_report.json").read_text())
           assert j["status"]=="PASS" and j["real_world"]
