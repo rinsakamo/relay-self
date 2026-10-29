@@ -745,6 +745,10 @@ async def qualify(
                     server_log,offset,marker="ARM",action_id=action_id,
                 )
                 g2_dash_armed=True
+                if g3_single_owner_dev:
+                    # This merely bounds *T2 accounting* to the Paper-armed
+                    # original S49 Action. It cannot issue or authorize motor.
+                    t2_owner.permit_g3_dash_action_dev(action_id)
             try:
                 receipt=await executor.execute_goal_step(
                     session,directive=directive,decision=choice,probe=probe,
