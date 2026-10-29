@@ -43,6 +43,9 @@ from adapters.mineflayer.g46_paper_control_generation_dev import (
 from adapters.mineflayer.g47_original_t2_gait_join_dev import (
     join_g47_original_t2_worldticks_dev,
 )
+from adapters.mineflayer.g48_ordinary_gait_audit_dev import (
+    join_g48_ordinary_original_t2_dev,
+)
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -189,6 +192,7 @@ async def qualify(
     g45_hazard_during_gait_dev:bool=False,
     g46_paper_generation_dev:bool=False,
     g47_original_t2_gait_join_dev:bool=False,
+    g48_ordinary_gait_generation_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -247,6 +251,9 @@ async def qualify(
         "g46_original_run_applied_acks_dev":[],
         "g47_original_t2_gait_join_dev":g47_original_t2_gait_join_dev,
         "g47_worldtick_gait_audit_dev":None,
+        "g48_ordinary_gait_generation_dev":g48_ordinary_gait_generation_dev,
+        "g48_ordinary_applied_acks_dev":[],
+        "g48_ordinary_worldtick_audit_dev":None,
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -282,6 +289,11 @@ async def qualify(
             or type(g45_hazard_during_gait_dev) is not bool
             or type(g46_paper_generation_dev) is not bool
             or type(g47_original_t2_gait_join_dev) is not bool
+            or type(g48_ordinary_gait_generation_dev) is not bool
+            or (g48_ordinary_gait_generation_dev and (
+                not g47_original_t2_gait_join_dev
+                or os.environ.get("S49_G48_ORDINARY_GAIT_GENERATION_DEV_ONLY")!="1"
+            ))
             or (g47_original_t2_gait_join_dev and (
                 not g46_paper_generation_dev
                 or os.environ.get("S49_G47_ORIGINAL_T2_GAIT_JOIN_DEV_ONLY")!="1"
@@ -896,6 +908,25 @@ async def qualify(
                         "action_id":action_id,"effect_id":effect.action_id,
                         "ack_seq":effect.seq,"source":"ORIGINAL_S49_NATIVE_APPLIED",
                         "requested_not_paper_gait":True,
+                    })
+                if (
+                    stage=="APPLIED" and g48_ordinary_gait_generation_dev
+                    and g4_choice is not None
+                    and g4_choice.mode in ("JOG","WALK")
+                ):
+                    expected_effect=(
+                        "set_control" if g4_choice.mode=="JOG"
+                        else "set_forward_sneak_dev"
+                    )
+                    if effect.effect!=expected_effect:
+                        raise RuntimeError("G4.8 unexpected original ordinary Action effect")
+                    report["g48_ordinary_applied_acks_dev"].append({
+                        "action_id":action_id,
+                        "effect_id":effect.action_id,
+                        "ack_seq":effect.seq,
+                        "requested_mode":g4_choice.mode,
+                        "effect":effect.effect,
+                        "source":"ORIGINAL_S49_NATIVE_APPLIED",
                     })
                 if stage=="CLEARED":
                     g42_trace["clear_seq"]=effect.seq
@@ -2072,6 +2103,61 @@ async def qualify(
                 report["g47_t2_join_refusal_dev"]=f"{type(exc).__name__}: {exc}"
                 report["status"]="FAIL"
                 rc=2
+        if (g48_ordinary_gait_generation_dev and gait_observer is not None
+                and t2_owner is not None
+                and report["g47_worldtick_gait_audit_dev"] is not None):
+            try:
+                derived=join_g48_ordinary_original_t2_dev(
+                    session_id=sid,
+                    original_g47_rows=g47_rows,
+                    ordinary_acks=report["g48_ordinary_applied_acks_dev"],
+                    original_clear_acks=report["g45_action_clear_acks_dev"],
+                    paper_rows=[asdict(row) for row in gait_observer.rows],
+                    t2_rows=t2_owner.rows,
+                )
+                g48_rows=[asdict(x) for x in derived]
+                g48_file=report_path.parent/"g48_ordinary_t2_worldtick_audit_dev.json"
+                with g48_file.open("x",encoding="utf-8") as output:
+                    json.dump({
+                        "source":"ORIGINAL_S49_ORDINARY_JOG_WALK_G46_G1_T2_DEV",
+                        "original_g47_sha256":report["g47_worldtick_gait_audit_dev"]["derived_file_sha256"],
+                        "original_t2_sha256":report["l1_t2_ledger_dev"]["derived_file_sha256"],
+                        "original_g1_sha256":report["g1_applied_gait_observation_dev"]["derived_file_sha256"],
+                        "p1_m0_reposted":False,"new_t2_owner":False,
+                        "rows":g48_rows,
+                    },output,sort_keys=True)
+                    output.write("\n")
+                extra=sum(x.newly_bound_ordinary_candidate for x in derived)
+                baseline=report["g47_worldtick_gait_audit_dev"]
+                report["g48_ordinary_worldtick_audit_dev"]={
+                    "source":"ORIGINAL_S49_ORDINARY_JOG_WALK_G46_G1_T2_DEV",
+                    "derived_file":g48_file.name,
+                    "derived_file_sha256":hashlib.sha256(g48_file.read_bytes()).hexdigest(),
+                    "original_g47_sha256":baseline["derived_file_sha256"],
+                    "original_t2_sha256":report["l1_t2_ledger_dev"]["derived_file_sha256"],
+                    "original_t2_worldticks":len(derived),
+                    "g47_source_bound_candidates":baseline["source_bound_stable_gait_candidates"],
+                    "added_ordinary_candidates":extra,
+                    "g48_total_source_bound_candidates":(
+                        baseline["source_bound_stable_gait_candidates"]+extra
+                    ),
+                    "g47_unknown_worldticks":baseline["unknown_worldticks"],
+                    "g48_unknown_worldticks":baseline["unknown_worldticks"]-extra,
+                    "ordinary_ack_count":len(report["g48_ordinary_applied_acks_dev"]),
+                    "ordinary_node_epoch_frames":sum(
+                        x.ordinary_epoch_sampled for x in derived
+                    ),
+                    "ordinary_afterchange_challenge_frames":sum(
+                        x.ordinary_postchange_challenge for x in derived
+                    ),
+                    "p1_m0_reposted":False,
+                    "new_t2_owner":False,
+                    "exact_physics_tick_motor_attested":False,
+                }
+            except (ValueError,KeyError,TypeError) as exc:
+                report["g48_ordinary_join_refusal_dev"]=f"{type(exc).__name__}: {exc}"
+                report["status"]="FAIL"
+                rc=2
         report["pre_cleanup_status"]=report["status"]
         await _cleanup_session(
             report,server,collector,session,None,temp,None,None,cleanup_cancel,
@@ -2126,6 +2212,7 @@ def main()->int:
     p.add_argument("--g45-hazard-during-gait-dev",action="store_true")
     p.add_argument("--g46-paper-generation-dev",action="store_true")
     p.add_argument("--g47-original-t2-gait-join-dev",action="store_true")
+    p.add_argument("--g48-ordinary-gait-generation-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -2172,6 +2259,7 @@ def main()->int:
         g45_hazard_during_gait_dev=args.g45_hazard_during_gait_dev,
         g46_paper_generation_dev=args.g46_paper_generation_dev,
         g47_original_t2_gait_join_dev=args.g47_original_t2_gait_join_dev,
+        g48_ordinary_gait_generation_dev=args.g48_ordinary_gait_generation_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,

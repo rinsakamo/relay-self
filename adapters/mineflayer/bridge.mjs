@@ -224,6 +224,8 @@ let t1fControl = { phase: 'INITIAL', since_ns: '0', generation: 0 }
 const g46BoundaryEnabled = process.env.S49_G46_PAPER_GENERATION_DEV_ONLY === '1' &&
   process.env.S49_G44_INTRA_ACTION_GAIT_DEV_ONLY === '1' &&
   l1T2ChannelDev === '1'
+const g48OrdinaryEnabled = g46BoundaryEnabled &&
+  process.env.S49_G48_ORDINARY_GAIT_GENERATION_DEV_ONLY === '1'
 let g46MotorBoundaryDev = {
   action_id: null, effect_id: null, requested_mode: 'UNBOUND', transition_index: 0
 }
@@ -632,6 +634,13 @@ async function handleEffect (command) {
         phase: 'MOVING', since_ns: process.hrtime.bigint().toString(),
         generation: t1fControl.generation + 1
       }
+      if (g48OrdinaryEnabled && command.action_id.startsWith('goal-') &&
+          command.control === 'forward' && command.state === true) {
+        g46MotorBoundaryDev = {
+          action_id: command.action_id, effect_id: command.action_id,
+          requested_mode: 'JOG_ACTION', transition_index: 0
+        }
+      }
       emitEffectResult(command, 'applied')
       return
     }
@@ -660,6 +669,12 @@ async function handleEffect (command) {
       if (t1fAdmission) t1fControl = {
         phase: 'MOVING', since_ns: process.hrtime.bigint().toString(),
         generation: t1fControl.generation + 1
+      }
+      if (g48OrdinaryEnabled && command.action_id.startsWith('goal-')) {
+        g46MotorBoundaryDev = {
+          action_id: command.action_id, effect_id: command.action_id,
+          requested_mode: 'WALK_ACTION', transition_index: 0
+        }
       }
       emitEffectResult(command, 'applied')
       return
