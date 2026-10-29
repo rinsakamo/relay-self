@@ -1342,6 +1342,10 @@ async def qualify(
                 "stable_gait_ticks":t2_owner.g3_applied_gait_ticks_dev,
                 "undetermined_fallback_ticks":t2_owner.g3_unknown_fallback_ticks_dev,
                 "dash_extra_energy_paid":t2_owner.g3_dash_energy_total_dev,
+                "paper_armed_original_dash_action_id":t2_owner.g3_dash_approved_action_dev,
+                "dash_candidates_suppressed_without_active_s49_scope":(
+                    t2_owner.g3_dash_scoped_fallback_ticks_dev
+                ),
                 "m0_energy_remaining":t2_owner.energy.body.energy,
                 "m0_tick":t2_owner.energy.body.tick,
                 "gait_R_attested":False,
