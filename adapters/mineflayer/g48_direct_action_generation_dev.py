@@ -10,7 +10,6 @@ import hashlib
 import json
 from dataclasses import dataclass
 
-
 _MODES = {
     "JOG": ("set_control", "STABLE_ORDINARY_FORWARD_CANDIDATE", "JOG"),
     "WALK": ("set_forward_sneak_dev", "STABLE_SNEAK_FORWARD_CANDIDATE", "WALK"),
