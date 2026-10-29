@@ -96,6 +96,7 @@ let lastObservedDay = null
 let lastObservedIsDay = null
 const seenActionIds = new Set()
 const seenProbeRequestIds = new Set()
+let g44ActiveAction = null
 
 // Original bot is the sole native packet consumer; blockAt only inspects its
 // already loaded client chunk cache. Null does NOT assert free space.
@@ -602,6 +603,7 @@ async function handleEffect (command) {
 
   try {
     if (command.effect === 'set_control') {
+      g44ActiveAction = null
       if (t1fAdmission && !t1fAdmission.canDispatch()) {
         emitEffectResult(command, 'rejected', 't1f_fresh_benign_source_required')
         return
@@ -616,6 +618,7 @@ async function handleEffect (command) {
     }
 
     if (command.effect === 'set_forward_sneak_dev') {
+      g44ActiveAction = null
       if (t1fAdmission && !t1fAdmission.canDispatch()) {
         emitEffectResult(command, 'rejected', 't1f_fresh_benign_source_required')
         return
@@ -688,12 +691,52 @@ async function handleEffect (command) {
         generation: t1fControl.generation + 1
       }
       traceDevAttr('SPRINT_DISPATCH_APPLIED')
+      if (process.env.S49_G44_INTRA_ACTION_GAIT_DEV_ONLY === '1' &&
+          command.action_id.startsWith('goal-')) {
+        g44ActiveAction = {
+          parent: command.action_id, mode: 'RUN', nextIndex: 1
+        }
+      }
+      emitEffectResult(command, 'applied')
+      return
+    }
+
+    if (command.effect === 'g44_gait_transition_dev') {
+      if (process.env.S49_G44_INTRA_ACTION_GAIT_DEV_ONLY !== '1' ||
+          !g44ActiveAction ||
+          command.parent_action_id !== g44ActiveAction.parent ||
+          command.transition_index !== g44ActiveAction.nextIndex ||
+          command.from_mode !== g44ActiveAction.mode ||
+          !bot.getControlState('forward') ||
+          (command.from_mode === 'RUN' && !bot.getControlState('sprint')) ||
+          (command.from_mode === 'JOG' && (bot.getControlState('sprint') ||
+                                         bot.getControlState('sneak')))) {
+        emitEffectResult(command, 'rejected', 'g44_unbound_or_wrong_phase')
+        return
+      }
+      // This is a sub-effect inside the one already-issued S49 Action.
+      // No new Action issuer / S49 terminal / T2 debit. Same native motor.
+      try {
+        bot.setControlState('sprint', false)
+        bot.setControlState('sneak', command.to_mode === 'WALK')
+      } catch (error) {
+        bot.clearControlStates()
+        g44ActiveAction = null
+        throw error
+      }
+      g44ActiveAction.mode = command.to_mode
+      g44ActiveAction.nextIndex += 1
+      if (t1fAdmission) t1fControl = {
+        phase: 'MOVING', since_ns: process.hrtime.bigint().toString(),
+        generation: t1fControl.generation + 1
+      }
       emitEffectResult(command, 'applied')
       return
     }
 
     if (command.effect === 'clear_controls') {
       bot.clearControlStates()
+      g44ActiveAction = null
       if (t1fAdmission) t1fControl = {
         phase: 'CLEARED', since_ns: process.hrtime.bigint().toString(),
         generation: t1fControl.generation + 1

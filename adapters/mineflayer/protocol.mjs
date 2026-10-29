@@ -12,6 +12,7 @@ const EFFECTS = new Set([
   'set_control',
   'set_forward_sprint_dev',
   'set_forward_sneak_dev',
+  'g44_gait_transition_dev',
   'clear_controls',
   'equip_item',
   'consume_held',
@@ -170,6 +171,30 @@ export function parseCommand (raw) {
       return Object.freeze({
         type: 'effect', action_id: value.action_id, effect: value.effect,
         forward: true, sneak: true
+      })
+    }
+
+    if (value.effect === 'g44_gait_transition_dev') {
+      if (process.env.S49_G44_INTRA_ACTION_GAIT_DEV_ONLY !== '1') {
+        throw new Error('G4.4 transition requires DEV gate')
+      }
+      requireExactKeys('g44_gait_transition_dev command', value,
+        ['type', 'action_id', 'effect', 'parent_action_id',
+          'transition_index', 'from_mode', 'to_mode'])
+      const parent = requireText('parent_action_id', value.parent_action_id)
+      if (!parent.startsWith('goal-') ||
+          value.transition_index !== (value.to_mode === 'JOG' ? 1 : 2) ||
+          !((value.from_mode === 'RUN' && value.to_mode === 'JOG') ||
+            (value.from_mode === 'JOG' && value.to_mode === 'WALK')) ||
+          value.action_id !== parent + '-g44-' + value.transition_index +
+            '-' + value.to_mode.toLowerCase()) {
+        throw new Error('G4.4 foreign/misordered gait transition')
+      }
+      return Object.freeze({
+        type: 'effect', action_id: value.action_id, effect: value.effect,
+        parent_action_id: parent,
+        transition_index: value.transition_index,
+        from_mode: value.from_mode, to_mode: value.to_mode
       })
     }
 

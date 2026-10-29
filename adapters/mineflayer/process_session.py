@@ -16,6 +16,7 @@ from adapters.mineflayer.python_protocol import (
     encode_equip_item,
     encode_forward_sneak_dev,
     encode_forward_sprint_dev,
+    encode_g44_gait_transition_dev,
     encode_local_voxels_dev,
     encode_look,
     encode_observe,
@@ -281,6 +282,15 @@ class MineflayerProcessSession:
 
     async def send_forward_sneak_dev(self, action_id: str) -> None:
         await self._send(encode_forward_sneak_dev(action_id))
+
+    async def send_g44_gait_transition_dev(
+        self, parent_action_id: str, *, transition_index: int,
+        from_mode: str, to_mode: str,
+    ) -> None:
+        await self._send(encode_g44_gait_transition_dev(
+            parent_action_id,transition_index=transition_index,
+            from_mode=from_mode,to_mode=to_mode,
+        ))
 
     async def send_clear_controls(self, action_id: str) -> None:
         await self._send(encode_clear_controls(action_id))

@@ -31,6 +31,9 @@ from adapters.mineflayer.g43_passive_native_tail_dev import (
     G43PassiveNativeSampleDev,
     qualify_g43_passive_native_tail_dev,
 )
+from adapters.mineflayer.g44_intra_action_gait_dev import (
+    decide_g44_intra_action_gait_dev,
+)
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -171,6 +174,7 @@ async def qualify(
     g41_inflight_brake_dev:bool=False,
     g42_brake_timing_dev:bool=False,
     g43_passive_tail_control_dev:bool=False,
+    g44_intra_action_gait_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -216,6 +220,9 @@ async def qualify(
         "g42_native_windows_dev":[],
         "g43_passive_tail_control_dev":g43_passive_tail_control_dev,
         "g43_passive_native_tails_dev":[],
+        "g44_intra_action_gait_dev":g44_intra_action_gait_dev,
+        "g44_native_transition_probes_dev":[],
+        "g44_native_transition_acks_dev":[],
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -246,6 +253,11 @@ async def qualify(
             or type(g41_inflight_brake_dev) is not bool
             or type(g42_brake_timing_dev) is not bool
             or type(g43_passive_tail_control_dev) is not bool
+            or type(g44_intra_action_gait_dev) is not bool
+            or (g44_intra_action_gait_dev and (
+                not g43_passive_tail_control_dev
+                or os.environ.get("S49_G44_INTRA_ACTION_GAIT_DEV_ONLY")!="1"
+            ))
             or (g43_passive_tail_control_dev and (
                 not g42_brake_timing_dev
                 or os.environ.get("S49_G43_PASSIVE_TAIL_DEV_ONLY")!="1"
@@ -861,6 +873,58 @@ async def qualify(
                     g42_trace["brake_seq"]=live.seq
                     g42_trace["brake_host_ns"]=time.perf_counter_ns()
                 return decision_g41.brake_requested
+            g44_last_seq=probe.seq
+            g44_pending={}
+            def g44_transition_probe(live,mode):
+                nonlocal g44_last_seq
+                pos=live.snapshot.position
+                decision44=decide_g44_intra_action_gait_dev(
+                    directive,action_id=action_id,mode=mode,
+                    session_id=live.session_id,source_seq=live.seq,
+                    request_id=live.request_id,
+                    source=live.provenance.source,
+                    previous_seq=g44_last_seq,
+                    x=pos.x,z=pos.z,
+                    truncated=live.snapshot.nearby_entities_coverage.truncated,
+                    danger_present=any(
+                        e.name=="zombie"
+                        and e.distance<proposal.danger_interrupt_m
+                        for e in live.snapshot.nearby_entities
+                    ),
+                )
+                g44_last_seq=live.seq
+                report["g44_native_transition_probes_dev"].append(
+                    asdict(decision44)
+                )
+                if decision44.target_mode is not None and (
+                    decision44.target_mode!="CLEAR"
+                ):
+                    g44_pending[decision44.target_mode]=live.seq
+                return decision44.target_mode
+            def g44_transition_ack(live,mode,effect):
+                if (
+                    effect.session_id!=sid
+                    or effect.action_id!=(
+                        f"{action_id}-g44-{1 if mode=='JOG' else 2}-"
+                        f"{mode.lower()}"
+                    )
+                    or effect.effect!="g44_gait_transition_dev"
+                    or effect.result!="applied"
+                    or effect.seq<=g44_pending.get(mode,live.seq)
+                    or g44_pending.get(mode)!=live.seq
+                ):
+                    raise RuntimeError("G4.4 ACK has no original native probe")
+                report["g44_native_transition_acks_dev"].append({
+                    "action_id":action_id,
+                    "parent_s49_issued_action_id":action_id,
+                    "native_probe_seq":live.seq,
+                    "transition_effect_id":effect.action_id,
+                    "ack_seq":effect.seq,
+                    "mode_to":mode,
+                    "effect":effect.effect,
+                    "applied":True,
+                    "world_tick_gait_attested":False,
+                })
             g4_choice=None
             if g4_auto_gait_dev:
                 if t2_owner is None or t2_owner.failed or t2_owner.fatigue is None:
@@ -913,6 +977,18 @@ async def qualify(
                 on_g41_brake_probe_dev=(
                     g41_inflight_brake if (
                         g41_inflight_brake_dev and g4_choice.mode!="WALK"
+                        and not (g44_intra_action_gait_dev
+                                 and g4_choice.mode=="RUN")
+                    ) else None
+                ),
+                on_g44_transition_probe_dev=(
+                    g44_transition_probe if (
+                        g44_intra_action_gait_dev and g4_choice.mode=="RUN"
+                    ) else None
+                ),
+                on_g44_transition_ack_dev=(
+                    g44_transition_ack if (
+                        g44_intra_action_gait_dev and g4_choice.mode=="RUN"
                     ) else None
                 ),
                 **({
@@ -1488,6 +1564,11 @@ async def qualify(
                     "g4_native_dispatch_applied_dev":getattr(
                         receipt.consequence.dispatch_receipt,"result",None)=="applied",
                     "g4_requested_not_actual_world_gait":True,
+                    "g44_same_issued_action_transitions_dev":[
+                        a["mode_to"]
+                        for a in report["g44_native_transition_acks_dev"]
+                        if a["action_id"]==action_id
+                    ] if g44_intra_action_gait_dev else [],
                     "g41_brake_observed_dev":any(
                         s["action_id"]==action_id and s["brake_requested"]
                         for s in report["g41_inflight_samples_dev"]
@@ -1724,6 +1805,7 @@ def main()->int:
     p.add_argument("--g41-inflight-brake-dev",action="store_true")
     p.add_argument("--g42-brake-timing-dev",action="store_true")
     p.add_argument("--g43-passive-tail-control-dev",action="store_true")
+    p.add_argument("--g44-intra-action-gait-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -1765,6 +1847,7 @@ def main()->int:
         g41_inflight_brake_dev=args.g41_inflight_brake_dev,
         g42_brake_timing_dev=args.g42_brake_timing_dev,
         g43_passive_tail_control_dev=args.g43_passive_tail_control_dev,
+        g44_intra_action_gait_dev=args.g44_intra_action_gait_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,

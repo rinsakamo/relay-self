@@ -167,6 +167,8 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
         g2_sneak_prefix_dev:bool=False,
         g4_mode_dev:str|None=None,
         on_g41_brake_probe_dev:Callable[[MineflayerObservation],bool]|None=None,
+        on_g44_transition_probe_dev:Callable[[MineflayerObservation,str],str|None]|None=None,
+        on_g44_transition_ack_dev:Callable[[MineflayerObservation,str,MineflayerEffectResult],None]|None=None,
     )->NormalActionReceipt:
         goal=directive.proposal if isinstance(directive,L1GoalDirective) else None
         if g4_mode_dev is not None and (
@@ -196,6 +198,17 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
             raise NormalActionRejected(
                 "G4 mode requires single original T2 owner and explicit gait admission"
             )
+        if on_g44_transition_probe_dev is not None and (
+            g4_mode_dev!="RUN"
+            or on_g41_brake_probe_dev is not None
+            or os.environ.get("S49_G44_INTRA_ACTION_GAIT_DEV_ONLY")!="1"
+            or not callable(on_g44_transition_probe_dev)
+            or not callable(on_g44_transition_ack_dev)
+        ):
+            raise NormalActionRejected("G4.4 requires original RUN and typed ACK")
+        if (on_g44_transition_probe_dev is None
+                and on_g44_transition_ack_dev is not None):
+            raise NormalActionRejected("G4.4 ACK observer must be bound")
         if on_g41_brake_probe_dev is not None and g4_mode_dev is None:
             raise NormalActionRejected("G4.1 brake requires original G4 Action")
         if type(g2_sneak_prefix_dev) is not bool or (
@@ -388,6 +401,10 @@ class S49GoalExecutorDev(NormalSessionActionExecutor):
                 on_live_probe_dev=on_live_probe_dev,
                 **({"on_g41_brake_probe_dev":on_g41_brake_probe_dev}
                    if on_g41_brake_probe_dev is not None else {}),
+                **({
+                    "on_g44_transition_probe_dev":on_g44_transition_probe_dev,
+                    "on_g44_transition_ack_dev":on_g44_transition_ack_dev,
+                } if on_g44_transition_probe_dev is not None else {}),
                 look_yaw_dev=look_yaw_dev,
                 on_look_ack_dev=on_look_ack_dev,
             )

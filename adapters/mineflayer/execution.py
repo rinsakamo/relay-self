@@ -68,6 +68,11 @@ class MineflayerExecutionSession(Protocol):
 
     async def send_forward_sneak_dev(self, action_id: str) -> None: ...
 
+    async def send_g44_gait_transition_dev(
+        self, parent_action_id: str, *, transition_index: int,
+        from_mode: str, to_mode: str,
+    ) -> None: ...
+
     async def send_clear_controls(self, action_id: str) -> None: ...
 
 
@@ -301,6 +306,8 @@ async def execute_mineflayer_command(
     ) = None,
     on_live_probe_dev: Callable[[MineflayerObservation], bool] | None = None,
     on_g41_brake_probe_dev: Callable[[MineflayerObservation], bool] | None = None,
+    on_g44_transition_probe_dev: Callable[[MineflayerObservation, str], str | None] | None = None,
+    on_g44_transition_ack_dev: Callable[[MineflayerObservation, str, MineflayerEffectResult], None] | None = None,
     look_yaw_dev: float | None = None,
     on_look_ack_dev: (
         Callable[[MineflayerEffectResult], None] | None
@@ -346,6 +353,23 @@ async def execute_mineflayer_command(
         raise InvalidMineflayerExecutionData(
             "G4.1 brake requires the original bounded S15 reader"
         )
+    if on_g44_transition_probe_dev is not None and (
+        os.environ.get("S49_G44_INTRA_ACTION_GAIT_DEV_ONLY") != "1"
+        or os.environ.get("S49_G4_OBSERVED_GAIT_DEV_ONLY") != "1"
+        or not callable(on_g44_transition_probe_dev)
+        or not callable(on_g44_transition_ack_dev)
+        or on_g41_brake_probe_dev is not None
+        or on_live_probe_dev is not None
+        or command.action_ref != MOVE_FORWARD_SPRINT_DEV_REF
+        or not 0.10 <= command.duration_s <= 0.35
+        or not callable(getattr(adapter,"send_g44_gait_transition_dev",None))
+    ):
+        raise InvalidMineflayerExecutionData(
+            "G4.4 gait transitions require sole S15 sprint Action and ACK"
+        )
+    if (on_g44_transition_probe_dev is None
+            and on_g44_transition_ack_dev is not None):
+        raise InvalidMineflayerExecutionData("G4.4 unbound transition ACK")
     if look_yaw_dev is not None and (
         type(look_yaw_dev) is not float
         or not math.isfinite(look_yaw_dev)
@@ -436,13 +460,16 @@ async def execute_mineflayer_command(
             # not prove the client's effect happened in that Paper tick.
             await on_effect_ack_dev("APPLIED", dispatch)
 
-        if on_live_probe_dev is None and on_g41_brake_probe_dev is None:
+        if (on_live_probe_dev is None and on_g41_brake_probe_dev is None
+                and on_g44_transition_probe_dev is None):
             await asyncio.sleep(command.duration_s)
         else:
             # Same S15 reader. No concurrent session.receive() task, no
             # second packet consumer, no synthetic sensor assertion.
             loop = asyncio.get_running_loop()
             deadline = loop.time() + command.duration_s
+            g44_mode = "RUN"
+            g44_transition_count = 0
             while loop.time() < deadline:
                 await asyncio.sleep(min(0.06, max(0.0, deadline - loop.time())))
                 if loop.time() >= deadline:
@@ -451,7 +478,8 @@ async def execute_mineflayer_command(
                 # little time left to receive it while the input is held.
                 # Short WALK/JOG pulses simply finish under the old S15
                 # CLEAR + fresh S16 path.
-                if (on_g41_brake_probe_dev is not None
+                if ((on_g41_brake_probe_dev is not None
+                     or on_g44_transition_probe_dev is not None)
                         and deadline - loop.time() < 0.10):
                     break
                 request_id = (
@@ -486,6 +514,58 @@ async def execute_mineflayer_command(
                 if on_live_probe_dev is not None and on_live_probe_dev(live_probe) is True:
                     preempted_dev = True
                     break
+                if on_g44_transition_probe_dev is not None:
+                    requested = on_g44_transition_probe_dev(
+                        live_probe, g44_mode
+                    )
+                    if requested == "CLEAR":
+                        # Original S15 CLEAR + new native S16, no L0 REACHED.
+                        break
+                    if requested is not None:
+                        expected = ("JOG" if g44_mode=="RUN"
+                                    else "WALK" if g44_mode=="JOG"
+                                    else None)
+                        if (
+                            requested!=expected
+                            or g44_transition_count>=2
+                        ):
+                            raise MineflayerExecutionError(
+                                "G4.4 native gait transition violates phase"
+                            )
+                        index=g44_transition_count+1
+                        transition_id=(
+                            f"{command.action_id}-g44-{index}-"
+                            f"{requested.lower()}"
+                        )
+                        await adapter.send_g44_gait_transition_dev(
+                            command.action_id,transition_index=index,
+                            from_mode=g44_mode,to_mode=requested,
+                        )
+                        transition_ack=await _receive_until(
+                            adapter,
+                            timeout_s=min(timeout_s,max(
+                                0.01,deadline-loop.time(),
+                            )),
+                            predicate=lambda msg: (
+                                isinstance(msg,MineflayerEffectResult)
+                                and msg.action_id==transition_id
+                                and msg.effect=="g44_gait_transition_dev"
+                            ),
+                        )
+                        if (
+                            transition_ack.result!="applied"
+                            or transition_ack.session_id!=session_id
+                            or transition_ack.seq<=live_probe.seq
+                        ):
+                            raise MineflayerExecutionError(
+                                "G4.4 native transition ACK rejected/stale"
+                            )
+                        g44_transition_count=index
+                        g44_mode=requested
+                        assert on_g44_transition_ack_dev is not None
+                        on_g44_transition_ack_dev(
+                            live_probe,requested,transition_ack,
+                        )
                 if on_g41_brake_probe_dev is not None:
                     brake = on_g41_brake_probe_dev(live_probe)
                     if type(brake) is not bool:
@@ -525,7 +605,8 @@ async def execute_mineflayer_command(
                 and message.kind == "probe"
             ),
         )
-        if on_g41_brake_probe_dev is not None and (
+        if (on_g41_brake_probe_dev is not None
+                or on_g44_transition_probe_dev is not None) and (
             after.session_id != session_id
             or after.provenance.source != "mineflayer"
             or (last_live_probe_seq >= 0 and after.seq <= last_live_probe_seq)

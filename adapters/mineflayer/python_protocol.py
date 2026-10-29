@@ -34,6 +34,7 @@ _EFFECTS = frozenset(
         "set_control",
         "set_forward_sprint_dev",
         "set_forward_sneak_dev",
+        "g44_gait_transition_dev",
         "clear_controls",
         "equip_item",
         "consume_held",
@@ -971,6 +972,36 @@ def encode_forward_sneak_dev(action_id: str) -> str:
     return _encode_command({
         "type": "effect", "action_id": action_id,
         "effect": "set_forward_sneak_dev", "forward": True, "sneak": True,
+    })
+
+
+def encode_g44_gait_transition_dev(
+    parent_action_id: str, *, transition_index: int,
+    from_mode: str, to_mode: str,
+) -> str:
+    """Bounded original S49 sub-effect, not a new Action authorization."""
+    _require_text("parent_action_id", parent_action_id)
+    if (
+        not parent_action_id.startswith("goal-")
+        or type(transition_index) is not int
+        or not ((transition_index,from_mode,to_mode) in (
+            (1,"RUN","JOG"),(2,"JOG","WALK"),
+        ))
+    ):
+        raise MineflayerAdapterProtocolError(
+            "G4.4 forbids foreign or misordered native gait transition"
+        )
+    return _encode_command({
+        "type":"effect",
+        "action_id":(
+            f"{parent_action_id}-g44-{transition_index}-"
+            f"{to_mode.lower()}"
+        ),
+        "effect":"g44_gait_transition_dev",
+        "parent_action_id":parent_action_id,
+        "transition_index":transition_index,
+        "from_mode":from_mode,
+        "to_mode":to_mode,
     })
 
 
