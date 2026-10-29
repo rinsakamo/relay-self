@@ -48,3 +48,43 @@ was observed. This new revision makes a RUN near-goal brake reachable
 at 1.95m clearance. The next World run must still demonstrate the source
 probe, original CLEAR ACK, S16 OUTCOME, and single T2 owner; no automatic
 promotion from static policy tests.
+
+## Real Paper 1.21.8 DEV evidence — G4/G4.1 relative-start A/B
+
+- Exact code HEAD: `e18da460288c84e2e5b3dece9fbe923dbfadc466`
+- Workflow: [#40829178000 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/40829178000)
+- Retained original both-World artifact: [#12877728634](https://github.com/rinsakamo/relay-self/actions/runs/40829178000/artifacts/12877728634)
+- Same relative initial +Z **4.0m Goal**, L1 tolerance **0.55m**, pinned
+  Paper 1.21.8, single T2 owner; separate disposable absolute spawn XZ,
+  **not a strictly synchronized WorldTick/physical matched trial**.
+- Baseline G4: **REACHED**, final error **0.46010890265517546m**,
+  six original S49 OUTCOME Actions, 58 T2/M0 source WorldTicks.
+- G4.1: **REACHED**, final error **0.4952685547763238m**,
+  six original S49 OUTCOME Actions, 58 T2/M0 source WorldTicks.
+  The L0 native in-flight reader delivered **9 source-bound observations**.
+  Observed early brake requests occurred **twice**, both in original
+  RUN S49 Actions: original step 2 native probe seq 52 at clearance
+  1.9027191740130902m; original step 3 native probe seq 69 at
+  clearance 1.4821552397130577m. These Actions' native S16 terminals
+  were OUTCOME; no independent second issuer. All six original T2
+  receipts closed; T2 `owner_failed=false`; M0 tick 58 matches T2 rows.
+  The native Action receipt enforces original applied CLEAR ACK;
+  source-position brake requests alone do not prove physical full-tick gait.
+- No measured accuracy or WorldTick benefit: baseline final error was
+  **~0.03516m smaller**, and Action/T2 tick totals were equal.
+  Do not claim G4.1 performance superiority or exact physical time
+  matching from this single DEV A/B.
+- Ruff, compileall, Python focused suites and Node focused checks PASSED
+  in this exact-code workflow. The 2 original Real Worlds and derived
+  source files were retained as artifact evidence; failure histories
+  [#40828220675](https://github.com/rinsakamo/relay-self/actions/runs/40828220675)
+  (fifth short WALK UNKNOWN), [#40828577634](https://github.com/rinsakamo/relay-self/actions/runs/40828577634)
+  (test threshold assertion), [#40828663409](https://github.com/rinsakamo/relay-self/actions/runs/40828663409)
+  (both Goal reached but initial absolute spawn equality and zero brake
+  assertions failed) were not rewritten.
+- No native guaranteed per-WorldTick motor governor, within-Action speed
+  switching, qualified packet-to-Paper gait, QUALIFICATION or SCIENCE run.
+  Next: first measure native probe→CLEAR latency and post-clear inertia,
+  then design a single-issued-Action speed-set protocol with explicit
+  applied ACKs and a single source-bound P1/M0 ledger. Do not treat
+  early CLEAR as a full continuous gait-controller claim.
