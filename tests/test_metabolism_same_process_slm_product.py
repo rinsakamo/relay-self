@@ -19,6 +19,10 @@ from relay_self.l1_s_choice_shadow import SChoiceContrastStatus
 from experiments.metabolism_b0_cognition import read_b0_resource_context
 from experiments.metabolism_l8_resource_shadow import contrast_l8_with_m_resource
 from experiments.metabolism_s_epoch_resource import observe_completed_s_resource_epoch
+from experiments.metabolism_s_l_m_post_epoch import (
+    SLMPostEpochRejected,
+    read_s_l_m_after_owner_epoch,
+)
 from experiments.metabolism_viability import Interoception
 
 
@@ -174,3 +178,86 @@ def test_original_owner_and_l8_admission_fail_closed(attack):
             l8_obs, m_obs, native=native, retained=retained,
             learning=learning, retention_enabled=True,
         )
+
+
+def passive_tap(data, *, b0_decision=None, probe=None, native=None,
+                learning=None, retention_enabled=True, noise_bound=0):
+    (joined, owner, original, original_probe, s_epoch, _supervisor,
+     _views, _resource, retained_learning, original_native,
+     retained, *_rest) = data
+    return read_s_l_m_after_owner_epoch(
+        probe=original_probe if probe is None else probe,
+        native=original_native if native is None else native,
+        ledger=owner,
+        original_b0_decision=original if b0_decision is None else b0_decision,
+        original_s_epoch=s_epoch,
+        retained=retained,
+        self_id=retained_learning.cognition.identity.self_id,
+        epoch_id=f"same-s-epoch-{original_probe.seq}",
+        learning=retained_learning if learning is None else learning,
+        retention_enabled=retention_enabled,
+        noise_bound=noise_bound,
+    )
+
+
+def test_one_call_read_only_s_l_m_owner_post_epoch_tap_matches_manual_join():
+    data = common_epoch(energy=0.6)
+    owner, supervisor = data[1], data[5]
+    before = (owner.body, owner.credit_count, owner._last_decision_seq,
+              owner._last_eat_seq, supervisor.open_actions)
+    readout = passive_tap(data)
+    assert readout.m == data[12]
+    assert readout.l8_m == data[0]
+    assert readout.l8_m.s_epoch is data[4]
+    assert readout.session_id == data[3].session_id
+    assert readout.probe_seq == data[3].seq
+    assert readout.b0_original_l0_kind == data[2].kind
+    assert not readout.action_authority
+    assert (
+        readout.action_issues, readout.new_native_reads,
+        readout.new_cognition_calls, readout.learning_updates,
+        readout.habit_grants, readout.food_credits,
+    ) == (0, 0, 0, 0, 0, 0)
+    assert before == (owner.body, owner.credit_count, owner._last_decision_seq,
+                      owner._last_eat_seq, supervisor.open_actions)
+    assert not hasattr(readout, "authorize") and not hasattr(readout, "issue")
+
+
+def test_no_learning_snapshot_is_an_explicit_m_only_passive_mode():
+    data = common_epoch(energy=0.6)
+    _, owner, original, probe, s_epoch, _, _, _, _learned, native, retained, *_ = data
+    result = read_s_l_m_after_owner_epoch(
+        probe=probe, native=native, ledger=owner,
+        original_b0_decision=original,
+        original_s_epoch=s_epoch, retained=retained,
+        self_id="post-only", epoch_id="one", noise_bound=0,
+    )
+    assert result.m.choice.value == "MOVE_AWAY"
+    assert result.l8_m is None
+    assert result.new_cognition_calls == result.action_issues == 0
+
+
+def test_no_sensor_noise_calibration_gives_unknown_not_false_safety():
+    data = common_epoch(energy=0.6)
+    result = passive_tap(data, noise_bound=None)
+    assert result.m.modeled_tension == "MOVE_MODEL_UNKNOWN"
+    assert result.l8_m.l1_candidate_model_status == "UNKNOWN"
+
+
+@pytest.mark.parametrize("attack", (
+    "copied_probe", "stale_decision", "advance_ledger", "wrong_l8_flag",
+))
+def test_passive_tap_rejects_stale_or_foreign_original_owner_source(attack):
+    data = common_epoch()
+    owner, original, probe, native = data[1], data[2], data[3], data[9]
+    kw = {}
+    if attack == "copied_probe":
+        kw["probe"] = replace(probe)
+    elif attack == "stale_decision":
+        kw["b0_decision"] = replace(original, body_tick=original.body_tick + 1)
+    elif attack == "advance_ledger":
+        owner.step("WAIT")
+    else:
+        kw["retention_enabled"] = None
+    with pytest.raises(SLMPostEpochRejected):
+        passive_tap(data, **kw)
