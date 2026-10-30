@@ -147,7 +147,7 @@ def _world(name: str, report: dict, t2: dict) -> L11SavedWorld:
         ax, az, ae = a.get("end_x"), a.get("end_z"), a.get("goal_error_at_S16_end_m")
         if (not isinstance(aid, str) or not aid or aid in ids
                 or type(before) is not int or type(after) is not int
-                or not (0 <= last_seq < before < after)
+                or not (0 <= before < after and last_seq < before)
                 or a.get("s16_status") != "executed"
                 or a.get("s16_terminal") != "outcome"
                 or not all(map(_finite, (ax, az, ae)))
