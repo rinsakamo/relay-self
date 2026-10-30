@@ -26,8 +26,8 @@ from relay_self.self_world import (
     InvalidSelfWorldData,
     WorldForecast,
     WorldOrigin,
-    WorldScenario,
     WorldPredictionReviewStatus,
+    WorldScenario,
     compose_self_world_view,
     review_self_world_prediction,
 )
