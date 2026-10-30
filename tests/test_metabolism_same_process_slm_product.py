@@ -249,7 +249,7 @@ def test_no_sensor_noise_calibration_gives_unknown_not_false_safety():
 ))
 def test_passive_tap_rejects_stale_or_foreign_original_owner_source(attack):
     data = common_epoch()
-    owner, original, probe, native = data[1], data[2], data[3], data[9]
+    owner, original, probe = data[1], data[2], data[3]
     kw = {}
     if attack == "copied_probe":
         kw["probe"] = replace(probe)
