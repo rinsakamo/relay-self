@@ -8,4 +8,39 @@ Original G48/G49 UNKNOWN statuses, unchanged original G47 stable candidates and 
 
 Scope: no motor command, longer input pulse, Paper callback, native reader, synchronous trace, T2 tick source, P1/M0 posting, WAIT recovery, R qualification or V science. Initial check is a small **Python 3.12 offline focused** workflow, not a new physical Minecraft run. Unsafe/mixed/altered source is rejected, not reclassified. A G1 stable kind is recorded as a source observation, **not an independent per-physics-tick acceptance proof**. The evidence-quality matrix is descriptive, not a new decision policy.
 
-Classification before fresh workflow evidence: **DEV_ONLY / G410_IMPLEMENTED_TEST_PENDING / PHYSICAL_WORLD_NOT_RUN / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN**. Main and Draft #545/#634 remain untouched. The next stage should assess what among these 14 source deficits can be resolved passively; do not optimize against 105 non-Action rows, infer WAIT, or change Action authority for coverage.
+## Completed DEV implementation and physical evidence (2026-10-30 JST)
+
+**Final result:** `DEV_ONLY / G410_REAL_PAPER_THREE_WORLDS_PASS / ORIGINAL_G49_UNKNOWN_PRESERVED / IN_ACTION_EVIDENCE_QUALITY_SHA_BOUND / HAZARD_T2_FAIL_CLOSED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+
+- Isolated branch `self/dev-g410-in-action-evidence-quality-20261030`.
+- **Exactly physically tested implementation/workflow SHA:** `f5365383976b91e755e84152be92035f6d0a0a56`.
+- [GitHub Actions run #40983814098, attempt **2**, SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/40983814098/attempts/2); [original Paper/Node/T2/artifact #12946780109](https://github.com/rinsakamo/relay-self/actions/runs/40983814098/artifacts/12946780109).
+- Python3.12 focused including G4.10 tests, Ruff and compileall, original Node22 tests, Java21/Paper1.21.8 plugins and **three disposable real Worlds** all pass. Separate [G4.10 lightweight CI #40983625109 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/40983625109), 24 Python focused tests.
+- **Prior attempt 1 FAILED and retained:** [#40983814098 attempt 1](https://github.com/rinsakamo/relay-self/actions/runs/40983814098/attempts/1), artifact #12946376088. Controlled World stopped at first DASH Action because **no original S16 terminal** was observed, before G4.10 postrun diagnostic. G49 consequently refused absent CLEAR/terminal. Not reclassified as physical PASS; attempt 2 was a fresh disposable World at exactly the same SHA.
+
+### Three-World source report
+
+| Independent disposable World | Physical outcome | Original S49 / original T2 rows | Original G49 and G410 results |
+|---|---|---|---|
+| Non-opt-in G4 baseline | Goal reached, final error **0.402777597m** | 5 Actions / 51 T2 | G410 OFF |
+| G410 controlled | Goal reached, final error **0.319681351m** | 6 Actions / **136 T2** SHA bound | Existing G47/G48 **10** bounded candidate / **126 UNKNOWN**; G410 diagnoses **15** in-Action UNKNOWN without changing 126 |
+| Genuine zombie hazard | Original L0 INTERRUPT → S15 CLEAR → S16 UNKNOWN/FAILED; no following S49 Action | **33/33 pre-refusal original T2** SHA bound, T2 owner_failed=true | G410 diagnoses **5** in-Action UNKNOWN; original T2 refuses unsafe S16; P1 credit 0 |
+
+Original controlled G49 gap census: **108** no T2-active Action, **3** before original applied ACK, **15** inside applied original Action (DASH **4**, RUN **3**, JOG **1**, WALK **7**), plus **10** existing stable candidates. The counts total exactly **136** original rows. The original **126 UNKNOWN remain UNKNOWN**. G410 in-Action diagnostics for this World report missing evidence axes:
+
+| Missing axis over selected 15 original in-Action UNKNOWN ticks | Count |
+|---|---:|
+| Original G1 stable two-sample kind unavailable | **15** |
+| Original T2 applied gait unavailable | **15** |
+| Post-control challenge not observed | **8** |
+| Exact DASH Paper modifier identity unavailable | **4** |
+| Original G3 DASH debit proof unavailable | **4** |
+
+These axes overlap; they are **not** additional WorldTicks or separate P1/M0 debits. A failed or missing modifier proof does not mean a physically failed DASH. The 108 non-Action T2 WorldTicks are neither counted as Action evidence nor declared physically WAIT/idle. Independent baseline vs controlled goal errors are not a causal performance comparison.
+
+Original hazard: the genuine zombie was observed by the native reader at **seq68**, distance **0.681723m**, following RUN→JOG ACK **seq64**. Original CLEAR ACK **seq69**, S16 **seq70** terminal UNKNOWN/FAILED. No next Action, no P1 award, no second T2 owner. G410 keeps all original **33** T2 source rows and audits its five in-Action UNKNOWN rows read-only.
+
+Workflow checks exact original G49 whole-file SHA, original G48 whole-file SHA, original T2 ledger SHA, original G49 per-row SHA and T2 per-row SHA for every G410 diagnostic, plus each produced sidecar's SHA. No independent packet-level causal input acceptance, calibrated motor speed/energy, complete per-tick gait or original G3 DASH debit is newly qualified. Unchanged G4.9 failure records and qualified source boundaries are retained.
+
+No main, protected Draft #545/#634 merge, FULL, R QUAL or V SCIENCE run. This is a **DEV observability improvement**, not an upgrade to motor policy or accounting. Next G4.11 if useful: discriminate the 15 missing-G1 pairs between transition, stalled/blocked control and observation cadence using already captured Paper interval facts, without increasing physical motor holds or creating extra readers.
+
