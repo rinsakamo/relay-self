@@ -14,7 +14,12 @@ from relay_self.action_outcome import (
     ActionOutcomeInterpretation,
 )
 from relay_self.belief import BeliefAssessment
-from relay_self.prediction import PredictionResult, PredictionState, PredictionStatus
+from relay_self.prediction import (
+    PredictionResult,
+    PredictionState,
+    PredictionStatus,
+    predict_transition,
+)
 from relay_self.provenance import Provenance
 
 
@@ -316,6 +321,157 @@ def compose_self_body_view(
     return SelfBodyView(
         session_id, epoch_id, observation, beliefs, hypotheses, predictions,
         outcome, self_id, interoceptions,
+    )
+
+
+class BodyPredictionReviewStatus(str, Enum):
+    MATCH = "match"
+    MISMATCH = "mismatch"
+    UNDETERMINED = "undetermined"
+
+
+@dataclass(frozen=True, slots=True)
+class BodyPredictionReview:
+    """Epistemic comparison only, never an Action outcome or resource update."""
+
+    self_id: str
+    session_id: str
+    prior_epoch_id: str
+    later_epoch_id: str
+    hypothesis_id: str
+    field_key: str
+    status: BodyPredictionReviewStatus
+    reason_code: str
+    predicted_value: BodyValue | None
+    observed_value: BodyValue | None
+    prior_observation_ref: str
+    later_observation_ref: str
+    prediction_provenance: tuple[Provenance, ...]
+    observation_provenance: Provenance
+
+
+# Only fields that the current native Present adapter actually exports.
+# In particular: P1 fatigue/M0 energy/can_fly are NOT native body readings.
+_NATIVE_BODY_REVIEW_FIELDS = frozenset({
+    "position_x", "position_y", "position_z", "health", "food",
+    "food_saturation",
+})
+
+
+def review_self_body_prediction(
+    before: SelfBodyView,
+    after: SelfBodyView,
+    *,
+    hypothesis_id: str,
+    field_key: str,
+    max_native_seq_gap: int,
+    absolute_tolerance: float = 0.0,
+) -> BodyPredictionReview:
+    """Compare existing PRD conditional value with a later *observed* body field.
+
+    This proves only an observational match/mismatch in the supplied source
+    stream; not an Action effect, validated physical law, energy credit,
+    learning signal, or authenticated hardware clock. Only native Present
+    scalars are comparable: unverified M0/P1 sensors remain separate.
+    """
+    if not isinstance(before, SelfBodyView) or not isinstance(after, SelfBodyView):
+        raise InvalidSelfBodyData("requires two typed SelfBody views")
+    _token("hypothesis_id", hypothesis_id)
+    _token("field_key", field_key)
+    if field_key not in _NATIVE_BODY_REVIEW_FIELDS:
+        raise InvalidSelfBodyData("field is not an admitted native body observable")
+    if type(max_native_seq_gap) is not int or max_native_seq_gap <= 0:
+        raise InvalidSelfBodyData("max_native_seq_gap must be positive int")
+    if (type(absolute_tolerance) not in (int, float)
+            or not math.isfinite(absolute_tolerance)
+            or absolute_tolerance < 0):
+        raise InvalidSelfBodyData("absolute_tolerance must be finite and nonnegative")
+    if (before.self_id is None or before.self_id != after.self_id
+            or before.session_id != after.session_id):
+        raise InvalidSelfBodyData("foreign or unscoped Self/session")
+    if before.epoch_id == after.epoch_id:
+        raise InvalidSelfBodyData("distinct decision epochs required")
+    prior, later = before.observation, after.observation
+    if not isinstance(prior, BodyObservation) or not isinstance(later, BodyObservation):
+        raise InvalidSelfBodyData("both epochs require original native body Present")
+    for obs in (prior, later):
+        if (obs.session_id != before.session_id
+                or obs.source_provenance.source != "mineflayer"
+                or obs.source_provenance.reference
+                != f"{obs.session_id}:{obs.native_seq}"):
+            raise InvalidSelfBodyData("foreign or counterfeit native body source")
+    if (later.native_seq <= prior.native_seq
+            or later.source_ref == prior.source_ref):
+        raise InvalidSelfBodyData("replayed or nonmonotonic successor body Present")
+    # An Action readback must have its already qualified S16 lineage; ACK and
+    # UNKNOWN do not qualify as an Action's physical body consequence.
+    for view in (before, after):
+        obs = view.observation
+        if obs.action_id is not None and (
+            view.outcome is None
+            or view.outcome.disposition is not ActionOutcomeDisposition.OUTCOME
+            or view.outcome.reason_code != "observed_execution"
+            or view.outcome.action_id != obs.action_id
+            or view.outcome.session_id != view.session_id
+            or view.outcome.world_provenance != obs.consequence_provenance
+        ):
+            raise InvalidSelfBodyData("unqualified S16 Action readback")
+
+    hypotheses = tuple(
+        item for item in before.hypotheses if item.hypothesis_id == hypothesis_id
+    )
+    predictions = tuple(
+        item for item in before.predictions if item.hypothesis_id == hypothesis_id
+    )
+    if len(hypotheses) != 1 or len(predictions) != 1:
+        raise InvalidSelfBodyData("one exact prior hypothesis/PRD forecast required")
+    hypothesis, prediction = hypotheses[0], predictions[0].result
+    if (prediction.source_state != hypothesis.state
+            or prediction != predict_transition(hypothesis.state, prediction.rule)
+            or prior.source_ref not in hypothesis.state.source_refs
+            or f"body-field:{field_key}" not in hypothesis.state.source_refs):
+        raise InvalidSelfBodyData("unbound or counterfeit body prediction")
+
+    predicted = None
+    if prediction.status is PredictionStatus.PREDICTED:
+        assert prediction.predicted_state is not None
+        variable = prediction.predicted_state.variable(field_key)
+        if variable is not None:
+            predicted = variable.value
+    reading = after.observed(field_key)
+    observed = reading.value if reading.origin is BodyOrigin.OBSERVATION else None
+    if later.native_seq - prior.native_seq > max_native_seq_gap:
+        status = BodyPredictionReviewStatus.UNDETERMINED
+        reason = "source_gap_beyond_explicit_bound"
+    elif predicted is None:
+        status = BodyPredictionReviewStatus.UNDETERMINED
+        reason = "prediction_unavailable_or_key_missing"
+    elif observed is None:
+        status = BodyPredictionReviewStatus.UNDETERMINED
+        reason = "body_field_unobserved"
+    elif type(predicted) in (int, float) and type(observed) in (int, float):
+        status = (
+            BodyPredictionReviewStatus.MATCH
+            if abs(predicted - observed) <= absolute_tolerance
+            else BodyPredictionReviewStatus.MISMATCH
+        )
+        reason = "numeric_body_prediction_comparison"
+    elif type(predicted) is not type(observed):
+        status = BodyPredictionReviewStatus.UNDETERMINED
+        reason = "incommensurate_body_values"
+    else:
+        status = (
+            BodyPredictionReviewStatus.MATCH
+            if predicted == observed else BodyPredictionReviewStatus.MISMATCH
+        )
+        reason = "typed_body_prediction_comparison"
+    return BodyPredictionReview(
+        before.self_id, before.session_id, before.epoch_id, after.epoch_id,
+        hypothesis_id, field_key, status, reason, predicted, observed,
+        prior.source_ref, later.source_ref,
+        (hypothesis.state.provenance, prediction.rule.provenance,
+         *hypothesis.state.source_provenance),
+        later.source_provenance,
     )
 
 
