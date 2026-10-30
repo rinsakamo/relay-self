@@ -6,6 +6,12 @@ There is no product code modification or claim of native source attestation.
 from dataclasses import replace
 
 import pytest
+from relay_self.self_body import (
+    BodyField,
+    BodyInteroception,
+    BodyObservation,
+    compose_self_body_view,
+)
 
 from experiments.fatigue_p1 import FatigueProfile
 from experiments.fatigue_p1 import initial_state as begin_fatigue
@@ -24,12 +30,6 @@ from experiments.metabolism_selfbody_cognition import (
 )
 from experiments.metabolism_viability import Interoception
 from relay_self.provenance import Provenance
-from relay_self.self_body import (
-    BodyField,
-    BodyInteroception,
-    BodyObservation,
-    compose_self_body_view,
-)
 
 
 def setup_scenario(*, energy=8, sid="session-m", tick=100):
