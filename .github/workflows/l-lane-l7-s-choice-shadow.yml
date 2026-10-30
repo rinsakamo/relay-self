@@ -1,0 +1,37 @@
+name: L7 S42 L1 shadow contrast (offline FAST)
+
+on:
+  push:
+    branches:
+      - 'learning/l7-s-choice-shadow-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Verify exact L6 ancestry and current HEAD
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor 83fd338b1ed82d5b8bda809413021f8d608768e9 HEAD
+          python tools/check_repository.py
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install focused test/lint
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+      - name: S42/L1/L7 shadow contrast focused Python tests
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: python -m pytest -q tests/test_l1_s_choice_shadow.py tests/test_learning_epoch.py tests/test_contextual_shadow.py tests/test_experience_bridge.py tests/test_habit_shadow.py tests/test_postmain_s42_world_contrast.py
+      - name: Ruff scoped new and changed files
+        run: ruff check src/relay_self/learning_epoch.py src/relay_self/l1_s_choice_shadow.py tests/test_learning_epoch.py tests/test_l1_s_choice_shadow.py
