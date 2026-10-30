@@ -17,13 +17,13 @@ from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
 from relay_self.contextual_shadow import ContextualStatus
 from relay_self.experience_bridge import qualify_episode
 from relay_self.habit_shadow import ExternalGoalLabel, GoalSourceAdmission
+from relay_self.l1_s_choice_shadow import SChoiceContrastStatus
 from relay_self.l10_world_body_cue_learning import (
     PriorWorldBodyEpisode,
     WorldBodyCueRejected,
     evaluate_l10_next_epoch_shadow,
     project_admitted_world_body_cues,
 )
-from relay_self.l1_s_choice_shadow import SChoiceContrastStatus
 from relay_self.provenance import Provenance
 from relay_self.self_body import BodyField, BodyObservation, compose_self_body_view
 from relay_self.self_world import (
