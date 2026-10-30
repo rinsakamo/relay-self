@@ -30,7 +30,7 @@ def make_views(energy=12.0, *, sid="b0-cognition", sensor=None, config=None):
 def test_product_b0_real_owner_wait_move_costs_are_model_specific():
     views, ledger, decision = make_views()
     result = read_b0_resource_context(
-        views, config=ledger.config, sensor=ledger.sensor, noise_bound=0,
+        views, owner_decision=decision, config=ledger.config, sensor=ledger.sensor, noise_bound=0,
     )
     assert result.session_id == ledger.session_id
     assert result.self_id == "B0-self"
@@ -59,11 +59,11 @@ def test_low_b0_sensed_energy_separates_wait_move_without_changing_l0():
     high, high_ledger, high_decision = make_views(12.0)
     low, low_ledger, low_decision = make_views(0.6)
     high_r = read_b0_resource_context(
-        high, config=high_ledger.config, sensor=high_ledger.sensor,
+        high, owner_decision=high_decision, config=high_ledger.config, sensor=high_ledger.sensor,
         noise_bound=0,
     )
     low_r = read_b0_resource_context(
-        low, config=low_ledger.config, sensor=low_ledger.sensor,
+        low, owner_decision=low_decision, config=low_ledger.config, sensor=low_ledger.sensor,
         noise_bound=0,
     )
     assert [f.affordability for f in low_r.facts] == [
@@ -79,15 +79,15 @@ def test_low_b0_sensed_energy_separates_wait_move_without_changing_l0():
 
 def test_blind_b0_sensor_cheap_null_does_not_mint_resource_confidence():
     blind = Interoception(gain=0, bias=3.0)
-    low, low_ledger, _ = make_views(0.6, sensor=blind)
-    high, high_ledger, _ = make_views(12.0, sensor=blind)
+    low, low_ledger, low_decision = make_views(0.6, sensor=blind)
+    high, high_ledger, high_decision = make_views(12.0, sensor=blind)
     assert low.body.sensed("m0_energy_sensor").value == 3
     assert high.body.sensed("m0_energy_sensor").value == 3
     low_r = read_b0_resource_context(
-        low, config=low_ledger.config, sensor=blind, noise_bound=0,
+        low, owner_decision=low_decision, config=low_ledger.config, sensor=blind, noise_bound=0,
     )
     high_r = read_b0_resource_context(
-        high, config=high_ledger.config, sensor=blind, noise_bound=0,
+        high, owner_decision=high_decision, config=high_ledger.config, sensor=blind, noise_bound=0,
     )
     assert low_r == high_r
     assert [f.affordability for f in low_r.facts] == ["UNKNOWN", "UNKNOWN"]
@@ -95,28 +95,28 @@ def test_blind_b0_sensor_cheap_null_does_not_mint_resource_confidence():
 
 
 def test_no_noise_bound_and_coarse_quantization_fail_to_confidently_choose():
-    views, ledger, _ = make_views(0.6)
+    views, ledger, decision = make_views(0.6)
     unknown = read_b0_resource_context(
-        views, config=ledger.config, sensor=ledger.sensor,
+        views, owner_decision=decision, config=ledger.config, sensor=ledger.sensor,
     )
     assert [f.affordability for f in unknown.facts] == ["UNKNOWN", "UNKNOWN"]
     coarse = Interoception(quantum=1.0)
-    new_views, new_ledger, _ = make_views(0.6, sensor=coarse)
+    new_views, new_ledger, new_decision = make_views(0.6, sensor=coarse)
     coarse_r = read_b0_resource_context(
-        new_views, config=new_ledger.config, sensor=coarse, noise_bound=0,
+        new_views, owner_decision=new_decision, config=new_ledger.config, sensor=coarse, noise_bound=0,
     )
     assert coarse_r.facts[1].affordability == "MODEL_AMBIGUOUS"
 
 
 def test_original_native_food_and_s51_eat_are_not_minted_by_b0_hint():
-    views, ledger, _ = make_views()
+    views, ledger, decision = make_views()
     before = ledger.body
     before_credit = ledger.credit_count
     first = read_b0_resource_context(
-        views, config=ledger.config, sensor=ledger.sensor, noise_bound=0,
+        views, owner_decision=decision, config=ledger.config, sensor=ledger.sensor, noise_bound=0,
     )
     second = read_b0_resource_context(
-        views, config=ledger.config, sensor=ledger.sensor, noise_bound=0,
+        views, owner_decision=decision, config=ledger.config, sensor=ledger.sensor, noise_bound=0,
     )
     assert first == second
     assert ledger.body == before
@@ -128,10 +128,10 @@ def test_original_native_food_and_s51_eat_are_not_minted_by_b0_hint():
 
 @pytest.mark.parametrize("attack", [
     "scope", "tick", "native", "selfbody", "owner_source", "owner_reference",
-    "reading", "native_provenance", "session",
+    "reading", "native_provenance", "session", "decision_reading",
 ])
 def test_owner_origin_and_epoch_tampering_rejected(attack):
-    views, ledger, _ = make_views()
+    views, ledger, decision = make_views()
     item = views.body.interoceptions[0]
     if attack == "scope":
         views = replace(views, source_scope="NATIVE_ATTESTED")
@@ -161,6 +161,8 @@ def test_owner_origin_and_epoch_tampering_rejected(attack):
         ))
     elif attack == "session":
         views = replace(views, body=replace(views.body, session_id="foreign"))
+    elif attack == "decision_reading":
+        decision = replace(decision, sensor_reading=decision.sensor_reading + 1)
     if attack in (
         "owner_source", "owner_reference", "reading", "native_provenance",
     ):
@@ -168,18 +170,18 @@ def test_owner_origin_and_epoch_tampering_rejected(attack):
         views = replace(views, body=body, world=replace(views.world, self_body=body))
     with pytest.raises((ValueError, AttributeError)):
         read_b0_resource_context(
-            views, config=ledger.config, sensor=ledger.sensor, noise_bound=0,
+            views, owner_decision=decision, config=ledger.config, sensor=ledger.sensor, noise_bound=0,
         )
 
 
 def test_b0_profile_assumption_remains_conditional_not_native_attestation():
-    views, ledger, _ = make_views(0.6)
+    views, ledger, decision = make_views(0.6)
     correct = read_b0_resource_context(
-        views, config=ledger.config, sensor=ledger.sensor, noise_bound=0,
+        views, owner_decision=decision, config=ledger.config, sensor=ledger.sensor, noise_bound=0,
     )
     wrong_cost = replace(ledger.config, move_cost=0.01)
     hypothetical = read_b0_resource_context(
-        views, config=wrong_cost, sensor=ledger.sensor, noise_bound=0,
+        views, owner_decision=decision, config=wrong_cost, sensor=ledger.sensor, noise_bound=0,
     )
     assert correct.facts[1].affordability == "MODEL_INSUFFICIENT"
     assert hypothetical.facts[1].affordability == "MODEL_AFFORDABLE"
@@ -189,9 +191,9 @@ def test_b0_profile_assumption_remains_conditional_not_native_attestation():
 
 @pytest.mark.parametrize("invalid", [-1, True, float("nan"), float("inf")])
 def test_invalid_noise_rejected(invalid):
-    views, ledger, _ = make_views()
+    views, ledger, decision = make_views()
     with pytest.raises(ValueError):
         read_b0_resource_context(
-            views, config=ledger.config, sensor=ledger.sensor,
+            views, owner_decision=decision, config=ledger.config, sensor=ledger.sensor,
             noise_bound=invalid,
         )
