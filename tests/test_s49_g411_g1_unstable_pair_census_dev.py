@@ -64,7 +64,7 @@ def test_g411_readonly_adjacency_and_original_evidence_sha():
      "ADJACENT_PAPER_GAIT_FACTS_DIFFER"),
     ("TRANSITION_OR_UNDETERMINED", True, True, True, True,
      "ADJACENT_PAIR_PRESENT_CAUSE_UNDETERMINED"),
-]):
+])
 def test_g411_observational_reason_categories(
     kind, same_gen, same_phase, same_controls, same_gait, reason,
 ):
