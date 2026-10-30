@@ -88,7 +88,10 @@ jobs:
           data = json.load(open("/tmp/l12-action-progress.json"))
           assert data["classification"] == "L12_REAL_S49_ENDPOINT_PROGRESS_ONLY_NO_PER_ACTION_GOAL_TRAINING"
           assert data["original_s49_action_rows"] == 11
-          assert data["original_t2_world_ticks"] == 182\n          assert data["action_end_inside_tolerance"] == 1\n          assert data["action_end_outside_tolerance"] == 10\n          assert data["endpoint_step_exceeds_action_displacement"] == 9
+          assert data["original_t2_world_ticks"] == 182
+          assert data["action_end_inside_tolerance"] == 1
+          assert data["action_end_outside_tolerance"] == 10
+          assert data["endpoint_step_exceeds_action_displacement"] == 9
           assert data["independent_per_action_goal_receipts"] == 0
           assert data["qualified_l10_training_pairs"] == 0
           assert data["original_native_pre_action_world_body_receipts"] == 0
