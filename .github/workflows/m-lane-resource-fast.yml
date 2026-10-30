@@ -26,5 +26,16 @@ jobs:
           python -m pytest -q tests/test_metabolism_viability_experiment.py tests/test_metabolism_m01_minecraft.py tests/test_metabolism_m02_exhaustion.py tests/test_fatigue_p1.py tests/test_metabolism_resource_projection.py tests/test_metabolism_sensed_viability.py tests/test_metabolism_route_bounds.py
       - name: Ruff and repository contracts
         run: |
-          ruff check experiments/metabolism_route_bounds.py experiments/metabolism_resource_projection.py experiments/metabolism_sensed_viability.py tests/test_metabolism_resource_projection.py tests/test_metabolism_sensed_viability.py
+          ruff check experiments/metabolism_route_bounds.py experiments/metabolism_resource_projection.py experiments/metabolism_sensed_viability.py experiments/metabolism_selfbody_cognition.py tests/test_metabolism_resource_projection.py tests/test_metabolism_sensed_viability.py tests/test_metabolism_route_bounds.py tests/test_metabolism_selfbody_product_contract.py
           python tools/check_repository.py
+      - name: Checkout exact original SelfBody product in separate read-only directory
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 087fe095a87594505392262da1d341cf0c65b2b2
+          path: product_selfbody_contract
+          persist-credentials: false
+      - name: Check actual S product SelfBody read-only contract
+        env:
+          PYTHONPATH: product_selfbody_contract/src:product_selfbody_contract:src:.
+        run: |
+          python -m pytest -q tests/test_metabolism_selfbody_product_contract.py
