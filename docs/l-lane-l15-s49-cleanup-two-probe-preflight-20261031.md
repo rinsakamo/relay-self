@@ -24,3 +24,11 @@ This branch **does not implement a physical S49 opt-in recorder or run a new Min
 - GitHub DEV workflow: `.github/workflows/l15-s49-original-goal-preflight-focused-dev.yml`; Python 3.12 pytest (L15/L14/L13/L12/L11/L10/L9), Ruff/compileall/contracts, and existing saved G4.13 producer/artifact SHA audit.
 - The archived G4.13 11 physically executed S16 Actions / 182 Paper ticks still have **0** L14 Goal source windows, **0** independently admitted per-Action Goal labels and **0** qualified real L10 training pairs.
 - Classification: `DEV_ONLY / L15_S49_CLEANUP_AND_PROBE_SOURCE_PREFLIGHT / NEW_WORLD_0 / QUALIFIED_REAL_GOAL_0 / L10_ADOPTIONS_0 / S10_S11_UPDATES_0 / ACTION_AUTHORITY_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+
+
+## Exact-head successful focused GitHub DEV
+
+- **Exact successful source/test/workflow HEAD:** `ebf316054928e9db5f45d236c7c4a896544e35c1`.
+- **[GitHub Actions #41144568698 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/41144568698)**: Python 3.12 **176 focused tests PASS** (72 + 72 + 32 dots, 100%); Ruff, compileall and repository contracts PASS. Existing original G4.13 producer run SHA and artifact #12952335343 readback PASS; archived 11 Action endpoints / 182 Paper ticks remain 0 independent Goal training pairs. **No new World started**.
+- Historical preliminary [#41144485969 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/41144485969) predated the final sent-observe request-ID guard. [#41144555923 FAILED](https://github.com/rinsakamo/relay-self/actions/runs/41144555923) because the L15 synthetic positive fixture still used old probe request IDs after the guard was added. The fixture was corrected in the successful source HEAD above; the stricter validator was not relaxed. Both historical runs remain visible.
+- The documentation-only commit following the source HEAD is not substituted for an exact-HEAD code test.
