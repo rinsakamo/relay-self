@@ -1,0 +1,40 @@
+name: L10 WorldBody Source-Bound Cue Learning Focused DEV
+on:
+  push:
+    branches:
+      - integration/l10-sourcebound-worldbody-cue-learning-20261030
+    paths:
+      - .github/workflows/l10-worldbody-cue-learning-focused-dev.yml
+      - src/relay_self/l9_world_body_epoch_shadow.py
+      - src/relay_self/l10_world_body_cue_learning.py
+      - tests/test_l10_world_body_cue_learning.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  l10-contextual-worldbody-cues:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Strict original source and contextual learning focused tests
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check src/relay_self/l9_world_body_epoch_shadow.py src/relay_self/l10_world_body_cue_learning.py tests/test_l9_world_body_epoch_shadow.py tests/test_l10_world_body_cue_learning.py
+          python -m compileall -q src/relay_self/l9_world_body_epoch_shadow.py src/relay_self/l10_world_body_cue_learning.py tests/test_l10_world_body_cue_learning.py
+          python -m pytest -q tests/test_l10_world_body_cue_learning.py tests/test_l9_world_body_epoch_shadow.py tests/test_l1_epoch_observer.py tests/test_l1_s_choice_shadow.py tests/test_learning_epoch.py tests/test_contextual_shadow.py tests/test_experience_bridge.py tests/test_habit_shadow.py tests/test_postmain_s42_world_contrast.py tests/test_epoch_plan.py tests/test_runtime_coordination.py
+          python tools/check_repository.py
+      - name: Classification
+        if: always()
+        run: echo 'DEV_ONLY / L10_CONTEXTUAL_SOURCEBOUND_CUES_OFFLINE / L1_CHEAP_COMPARISON / ACTION_ISSUE_0 / REAL_WORLD_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
