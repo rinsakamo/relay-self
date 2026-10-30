@@ -191,3 +191,62 @@ adoption is an **S/L-owned integration**. Until the original
 M0.1 owner and independent S source admission are live,
 this is a passing **offline, source-shaped contract**, not a
 physical Body/Cognition activation or survival change.
+
+## B0 actual owner → existing SelfBody / cognition bridge (2026-10-30)
+
+The M-owned `experiments/metabolism_b0_cognition.py` is a separate,
+read-only *one-owner-tick* interpretation of the **existing S #634 B0**
+`B0EnergyLedger` / `B0Decision` / `compose_b0_cognition_views` seam.
+This **does not** apply M0.1 distance pricing to B0. The B0 M0
+`MetabolismConfig` units are per tick: WAIT costs `basal_cost` and
+MOVE costs `basal_cost + move_cost`. Neither is Minecraft hunger,
+M0.2 native exhaustion, joules, route distance, S49 action
+authorization or a future food credit. EAT is not forecast; an
+original S51 owner-confirmed consumption receipt remains necessary.
+
+`read_b0_resource_context(views, owner_decision, config, sensor,
+noise_bound=...)` requires the pre-existing joined SelfWorld/SelfBody
+view and **the separate original B0Decision sensor reading**.
+The sensor must be an interoception named `m0_energy_sensor`, bound
+to exactly the same native probe/session/request/owner tick and owner
+source `b0-m0-owner-local-sensor`; decision source seq, tick, kind
+and reading are checked independently of the SelfBody field. A
+sensor-only mutation with otherwise valid-looking references now
+fails rather than being treated as a real changed bodily state.
+
+Under an *explicit assumed* deterministic B0 gain/bias/quantization
+and bounded noise, the module calculates an outward-rounded sensor
+interval and emits `MODEL_AFFORDABLE`, `MODEL_INSUFFICIENT`,
+`MODEL_AMBIGUOUS` or `UNKNOWN` per WAIT/MOVE proposal. No
+noise bound, zero-gain sensor or impossible sensor reading => UNKNOWN.
+No preference/Action/habit/reward/true Energy is produced.
+
+The actual product test imports S #634 exact immutable HEAD
+`087fe095a87594505392262da1d341cf0c65b2b2` into a **separate
+read-only checkout** in M branch CI. Because the M branch base has
+older adapter modules and the product branch lacks M0.1 modules,
+the CI explicitly loads S's `python_protocol` and
+`relay_self.self_body` from the product checkout and extends
+the experiment package path *only* for M additions. This is
+test-time isolation, not a source modification or partial merge.
+
+**Focused offline contrast** using actual product B0
+`B0EnergyLedger.decide` and `compose_b0_cognition_views` with
+synthetic Mineflayer probes: B0 basal 0.5 and move extra 0.25;
+sensed E=12 => both WAIT/MOVE model-affordable; E=0.6 =>
+WAIT model-affordable, MOVE model-insufficient. Blind zero-gain
+sensing gives the same observed reading and UNKNOWN for both,
+demonstrating that true host Energy is not secretly consulted.
+Re-reading makes no ledger/food/Action changes. Negative tests
+reject altered decision reading, sensor-only alteration, owner
+tick, native/owner provenance, identity, and source scope.
+
+**Qualification and model limits:** the calibration and
+`MetabolismConfig` are still caller-supplied; this bridge cannot
+authenticate their identity or a genuine original World sample.
+The contract test explicitly shows that passing a wrong movement
+cost changes a *model-only* result, and does not hide that limitation.
+B0's existing L0 choice is retained; no S49 action, M0.1 owner
+activation, L8 decision modification or physical World experiment
+is claimed. A cheap B0 exact one-tick cost rule is already sufficient
+for this output: no unique cognition/learning advantage is claimed.
