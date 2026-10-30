@@ -7,6 +7,7 @@ The B0 one-tick MOVE estimate is not an S49 trajectory or gait guarantee.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Literal
 
@@ -28,6 +29,9 @@ Tension = Literal[
     "MOVE_MODEL_INSUFFICIENT",
     "MOVE_MODEL_AMBIGUOUS",
     "MOVE_MODEL_UNKNOWN",
+    "WAIT_MODEL_INSUFFICIENT",
+    "WAIT_MODEL_AMBIGUOUS",
+    "WAIT_MODEL_UNKNOWN",
     "NO_MODEL_TENSION",
 ]
 
@@ -104,6 +108,17 @@ def observe_completed_s_resource_epoch(
         or len(body.facts) != 2
         or tuple(x.activity for x in body.facts) != ("WAIT", "MOVE")
         or any(not isinstance(x, B0TickResourceFact) for x in body.facts)
+        or any(
+            x.affordability not in (
+                "MODEL_AFFORDABLE", "MODEL_INSUFFICIENT",
+                "MODEL_AMBIGUOUS", "UNKNOWN",
+            )
+            or type(x.modeled_energy_cost) not in (int, float)
+            or not math.isfinite(x.modeled_energy_cost)
+            or x.modeled_energy_cost < 0
+            for x in body.facts
+        )
+        or body.facts[1].modeled_energy_cost < body.facts[0].modeled_energy_cost
     ):
         raise ValueError("foreign, stale or action-bearing B0 SelfBody resource epoch")
     # NativeThreat is intentionally validated by S42, not reconstructed by M.
@@ -136,7 +151,13 @@ def observe_completed_s_resource_epoch(
             "MODEL_AFFORDABLE": "NO_MODEL_TENSION",
         }[status]
     else:
-        tension = "NO_MODEL_TENSION"
+        status = body.facts[0].affordability
+        tension = {
+            "MODEL_INSUFFICIENT": "WAIT_MODEL_INSUFFICIENT",
+            "MODEL_AMBIGUOUS": "WAIT_MODEL_AMBIGUOUS",
+            "UNKNOWN": "WAIT_MODEL_UNKNOWN",
+            "MODEL_AFFORDABLE": "NO_MODEL_TENSION",
+        }[status]
     return PostSEpochResourceObservation(
         decision, body, choice.selection, tension, ids,
     )
