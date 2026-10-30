@@ -354,3 +354,29 @@ def test_body_review_cannot_score_imagined_capability_or_unattested_p1():
                 field_key="position_x", max_native_seq_gap=2,
                 absolute_tolerance=tolerance,
             )
+
+
+def test_body_review_does_not_launder_imaginary_initial_state():
+    before, after = _body_review_pair()
+    prior = before.observation
+    # These pointers look correct, but the asserted initial x=999 was
+    # never present in native observation (x=2). Fail before scoring.
+    imagined = PredictionState(
+        "wrong-initial", (StateVariable("position_x", 999),),
+        prov("hypothesis-phantom"),
+        source_refs=(prior.source_ref, "body-field:position_x"),
+        source_provenance=(prior.source_provenance,),
+    )
+    hypothesis = BodyHypothesis("move-estimate", imagined)
+    forecast = BodyPrediction("move-estimate", predict_transition(
+        imagined, TransitionRule(
+            "phantom", (StateVariable("position_x", 999),),
+            (StateVariable("position_x", 3),), prov("fake-physics"),
+        ),
+    ))
+    forged = replace(before, hypotheses=(hypothesis,), predictions=(forecast,))
+    with pytest.raises(InvalidSelfBodyData, match="differs from Present"):
+        review_self_body_prediction(
+            forged, after, hypothesis_id="move-estimate",
+            field_key="position_x", max_native_seq_gap=2,
+        )
