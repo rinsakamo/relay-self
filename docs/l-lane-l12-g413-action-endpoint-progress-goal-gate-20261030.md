@@ -30,7 +30,7 @@ Therefore the only evidence-respecting Goal label for each Action is **UNKNOWN /
 
 ### CI provenance
 
-Source+workflow SHA: `4c8d50b2fe5251c5f6395af2536bcab727901a38`, [L12 focused real-artifact run #41054611579](https://github.com/rinsakamo/relay-self/actions/runs/41054611579). Prior [#41054423445](https://github.com/rinsakamo/relay-self/actions/runs/41054423445) and [#41054515698](https://github.com/rinsakamo/relay-self/actions/runs/41054515698) failed due to **workflow-only embedded Python assertions containing escaped newlines**, not a permission to relabel data. They remain visible. Original source/auditor never relaxed.
+Source+workflow SHA: `4c8d50b2fe5251c5f6395af2536bcab727901a38`, [L12 focused real-artifact run #41054611579](https://github.com/rinsakamo/relay-self/actions/runs/41054611579). **SUCCESS** at exact code+workflow SHA: Python 3.12, **88 focused pytest PASS**, Ruff PASS, Python compileall PASS, repository contracts PASS, original archived producer SHA/readback PASS. Explicitly no new Minecraft World, Action, Java/Node, GPU or model execution. Prior [#41054423445](https://github.com/rinsakamo/relay-self/actions/runs/41054423445) and [#41054515698](https://github.com/rinsakamo/relay-self/actions/runs/41054515698) failed due to **workflow-only embedded Python assertions containing escaped newlines**, not a permission to relabel data. They remain visible. Original source/auditor never relaxed.
 
 ## Distinct missing evidence for L13
 
