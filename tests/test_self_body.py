@@ -32,8 +32,10 @@ from relay_self.self_body import (
     BodyObservation,
     BodyOrigin,
     BodyPrediction,
+    BodyPredictionReviewStatus,
     InvalidSelfBodyData,
     compose_self_body_view,
+    review_self_body_prediction,
 )
 
 
@@ -204,3 +206,151 @@ def test_no_invalid_numeric_or_mutable_body_observations():
         BodyObservation("S", 1, "probe", (BodyField("x", 1), BodyField("x", 2)), prov("S:1"))
     with pytest.raises(InvalidSelfBodyData, match="consequence"):
         BodyObservation("S", 1, "probe", (BodyField("x", 1),), prov("S:1"), action_id="action")
+
+
+def _body_review_pair(*, predicted_x=3, observed_x=3.0, gap=1):
+    """Two separately sourced native Presents and a prior-only PRD model."""
+    prior = observation(seq=8)
+    state = PredictionState(
+        "x-forecast", (StateVariable("position_x", 2),),
+        prov("body-model"), source_refs=(
+            prior.source_ref, "body-field:position_x",
+        ), source_provenance=(prior.source_provenance,),
+    )
+    hyp = BodyHypothesis("move-estimate", state)
+    forecast = BodyPrediction("move-estimate", predict_transition(
+        state, TransitionRule(
+            "step-x", (StateVariable("position_x", 2),),
+            (StateVariable("position_x", predicted_x),), prov("PRD-rule"),
+        ),
+    ))
+    before = compose_self_body_view(
+        self_id="A", session_id="S", epoch_id="e1", observation=prior,
+        hypotheses=(hyp,), predictions=(forecast,),
+    )
+    subsequent = observation(seq=8 + gap)
+    subsequent = replace(
+        subsequent,
+        fields=tuple(
+            BodyField(field.key, observed_x) if field.key == "position_x"
+            else field for field in subsequent.fields
+        ),
+    )
+    after = compose_self_body_view(
+        self_id="A", session_id="S", epoch_id="e2",
+        observation=subsequent,
+    )
+    return before, after
+
+
+def test_body_forecast_success_and_failure_preserved_as_read_only_reviews():
+    before, matched = _body_review_pair()
+    review = review_self_body_prediction(
+        before, matched, hypothesis_id="move-estimate",
+        field_key="position_x", max_native_seq_gap=2,
+    )
+    assert review.status is BodyPredictionReviewStatus.MATCH
+    assert review.predicted_value == 3 and review.observed_value == 3.0
+    assert review.prior_observation_ref == "native-probe:S:8:probe-8"
+    assert review.later_observation_ref == "native-probe:S:9:probe-9"
+    assert not hasattr(review, "authorize_action")
+    assert not hasattr(review, "energy_credit")
+    before, failed = _body_review_pair(observed_x=1.0)
+    mismatch = review_self_body_prediction(
+        before, failed, hypothesis_id="move-estimate",
+        field_key="position_x", max_native_seq_gap=2,
+    )
+    assert mismatch.status is BodyPredictionReviewStatus.MISMATCH
+    assert mismatch.observed_value == 1.0
+    assert failed.observed("position_x").value == 1.0
+    assert before.predicted("move-estimate", "position_x").value == 3
+
+
+def test_body_review_numeric_tolerance_and_unknown_result_do_not_mint_outcome():
+    before, after = _body_review_pair(observed_x=3.08)
+    args = dict(
+        hypothesis_id="move-estimate", field_key="position_x",
+        max_native_seq_gap=2,
+    )
+    assert review_self_body_prediction(
+        before, after, **args,
+    ).status is BodyPredictionReviewStatus.MISMATCH
+    assert review_self_body_prediction(
+        before, after, absolute_tolerance=0.1, **args,
+    ).status is BodyPredictionReviewStatus.MATCH
+    before, gap = _body_review_pair(gap=4)
+    result = review_self_body_prediction(before, gap, **args)
+    assert result.status is BodyPredictionReviewStatus.UNDETERMINED
+    assert result.reason_code == "source_gap_beyond_explicit_bound"
+    assert result.observed_value == 3.0  # not a verified immediate successor
+    before, after = _body_review_pair()
+    missing_field = replace(after, observation=replace(
+        after.observation,
+        fields=(BodyField("health", 18.0),),
+    ))
+    unknown = review_self_body_prediction(before, missing_field, **args)
+    assert unknown.status is BodyPredictionReviewStatus.UNDETERMINED
+    assert unknown.reason_code == "body_field_unobserved"
+    assert unknown.observed_value is None
+    assert missing_field.observed("position_x").origin is BodyOrigin.UNKNOWN
+    assert not hasattr(unknown, "learning_feedback")
+
+
+def test_body_review_rejects_cross_self_replay_forged_prediction_and_fake_s16():
+    before, after = _body_review_pair()
+    options = dict(
+        hypothesis_id="move-estimate", field_key="position_x",
+        max_native_seq_gap=2,
+    )
+    for invalid in (
+        replace(after, self_id="B"),
+        replace(after, session_id="foreign"),
+        replace(after, epoch_id=before.epoch_id),
+        replace(after, observation=replace(
+            after.observation, native_seq=8,
+            source_provenance=prov("S:8", "mineflayer"),
+        )),
+        replace(after, observation=replace(
+            after.observation, source_provenance=prov("spoof", "mineflayer"),
+        )),
+        replace(after, observation=replace(
+            after.observation, action_id="pretend-action",
+            consequence_provenance=prov("fake-outcome"),
+        )),
+    ):
+        with pytest.raises(InvalidSelfBodyData):
+            review_self_body_prediction(before, invalid, **options)
+    unbound = replace(before.hypotheses[0].state, source_refs=())
+    bad_hyp = BodyHypothesis("move-estimate", unbound)
+    bad_before = replace(before, hypotheses=(bad_hyp,))
+    with pytest.raises(InvalidSelfBodyData, match="unbound"):
+        review_self_body_prediction(bad_before, after, **options)
+    bad_rule = replace(
+        before.predictions[0].result,
+        rule=TransitionRule(
+            "other", (StateVariable("position_x", 2),),
+            (StateVariable("position_x", 99),), prov("forged-rule"),
+        ),
+    )
+    forged = replace(
+        before, predictions=(BodyPrediction("move-estimate", bad_rule),),
+    )
+    with pytest.raises(InvalidSelfBodyData, match="counterfeit"):
+        review_self_body_prediction(forged, after, **options)
+
+
+def test_body_review_cannot_score_imagined_capability_or_unattested_p1():
+    before, after = _body_review_pair()
+    for key in ("can_fly", "energy", "physical_fatigue"):
+        with pytest.raises(InvalidSelfBodyData, match="native body observable"):
+            review_self_body_prediction(
+                before, after, hypothesis_id="move-estimate",
+                field_key=key, max_native_seq_gap=2,
+            )
+    for tolerance in (float("nan"), -1.0, True):
+        with pytest.raises(InvalidSelfBodyData, match="absolute_tolerance"):
+            review_self_body_prediction(
+                before, after, hypothesis_id="move-estimate",
+                field_key="position_x", max_native_seq_gap=2,
+                absolute_tolerance=tolerance,
+            )
