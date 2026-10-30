@@ -243,8 +243,8 @@ def test_fail_closed_on_source_criterion_and_outbound_controls(fault):
         elif fault == "probe_missing_pre":
             received = b"".join([lines[0], *lines[2:]])
         elif fault == "native_duplicate_key":
-            d = lines[3].replace(b'"type":"observation",',
-                b'"type":"observation","type":"observation",')
+            d = lines[3].replace(b'"kind":"probe",',
+                b'"kind":"probe","kind":"probe",')
             assert d != lines[3]
             received = b"".join(lines[:3]) + d + lines[4]
         elif fault == "outbound_second_action":
