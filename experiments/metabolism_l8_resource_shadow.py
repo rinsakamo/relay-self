@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from experiments.metabolism_s_epoch_resource import PostSEpochResourceObservation
+from experiments.metabolism_s_epoch_resource import (\n    PostSEpochResourceObservation,\n    observe_completed_s_resource_epoch,\n)
 
 CandidateStatus = Literal[
     "MODEL_AFFORDABLE", "MODEL_INSUFFICIENT",
@@ -59,7 +59,7 @@ def contrast_l8_with_m_resource(
     """
     # L8 is an independent owner branch: import its typed read-only API only
     # inside this optional experimental seam, never in M standalone imports.
-    from relay_self.l1_epoch_observer import (
+    from relay_self.epoch_plan import PlannedDecisionEpochResult\n    from relay_self.l1_epoch_observer import (
         SEpochL1Observation,
         SEpochObservationRejected,
         observe_s_epoch_l1,
@@ -101,8 +101,31 @@ def contrast_l8_with_m_resource(
     if rechecked != l8_observation:
         raise ValueError("counterfeit or unadmitted L8 shadow observation")
 
-    comparison = l8_observation.comparison
     choice = l8_observation.s_epoch.cognition_result
+    b0 = m_observation.body
+    if (
+        not isinstance(b0.owner_tick, int)
+        or isinstance(b0.owner_tick, bool)
+        or b0.owner_tick < 0
+        or b0.owner_sensor_ref != (
+            f"{choice.session_id}:{b0.owner_tick}:{choice.probe_seq}:"
+            f"{choice.request_id}"
+        )
+    ):
+        raise ValueError("M B0 owner source/tick link malformed")
+    # Re-evaluate the *pure* M post-S source/choice verification.
+    # In planned mode the original L8/M executed IDs must already agree.
+    m_source = m_observation.s_epoch
+    if m_observation.executed_work_ids:
+        m_source = PlannedDecisionEpochResult(
+            m_observation.s_epoch, m_observation.executed_work_ids, ()
+        )
+    reread_m = observe_completed_s_resource_epoch(
+        m_source, native=native, retained=retained, body=b0,
+    )
+    if reread_m != m_observation:
+        raise ValueError("counterfeit M resource tension, S choice or owner source")
+    comparison = l8_observation.comparison
     if (
         comparison.s_choice.value != m_observation.choice.value
         or choice.selection.value != comparison.s_choice.value
