@@ -9,9 +9,10 @@ import pytest
 
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.self_body_m0_projection import compose_b0_cognition_views
+from test_self_live_think import native_probe
+
 from experiments.metabolism_b0_cognition import read_b0_resource_context
 from experiments.metabolism_viability import Interoception, MetabolismConfig
-from test_self_live_think import native_probe
 
 
 def make_views(energy=12.0, *, sid="b0-cognition", sensor=None, config=None):
