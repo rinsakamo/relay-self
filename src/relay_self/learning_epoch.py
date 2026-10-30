@@ -17,7 +17,7 @@ from relay_self.contextual_shadow import (
     review_contextual_shadow,
 )
 from relay_self.experience_bridge import QualifiedEpisode, retain_observation
-from relay_self.habit_shadow import ExternalGoalLabel, GoalSourceAdmission, MAX_SAMPLES
+from relay_self.habit_shadow import MAX_SAMPLES, ExternalGoalLabel, GoalSourceAdmission
 from relay_self.persistent_cognition import PersistentCognition
 from relay_self.provenance import Provenance
 
