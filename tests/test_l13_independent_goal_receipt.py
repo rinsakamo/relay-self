@@ -14,7 +14,10 @@ import test_l10_world_body_cue_learning as l10
 from adapters.mineflayer.l12_archived_action_progress_no_reward_dev import (
     audit_l12_real_action_goal_gate,
 )
+from relay_self.contextual_shadow import ContextualStatus
+from relay_self.habit_shadow import GoalSourceAdmission
 from relay_self.l10_world_body_cue_learning import (
+    evaluate_l10_next_epoch_shadow,
     project_admitted_world_body_cues,
 )
 from relay_self.l13_independent_goal_receipt import (
@@ -319,3 +322,66 @@ def test_archived_real_g413_remains_zero_goal_labels():
         review_l12_g413_archive_no_per_action_goal(replace(
             historical, qualified_l10_training_pairs=11,
         ))
+
+
+
+def test_16_source_shaped_triplets_feed_existing_l10_only_with_cheap_null():
+    """Real existing L6/L8 classes, but every receipt is synthetically authored."""
+    args, s_epoch, supervisor = l10.fixture()
+    before_clock = supervisor.last_at_ns
+    reviewed = []
+    present = []
+    actions = []
+    goals = []
+    for sample in args["training"]:
+        ep = sample.outcome.episode
+        n = sample.native
+        s = n.observation.snapshot
+        status = "REACHED" if sample.goal.goal_reached else "NOT_REACHED"
+        item, admission, current = fixture(
+            result=status, session=ep.session_id,
+            seq=n.observation.seq,
+            distance=n.distance_m,
+            food=s.food, action_ref=ep.action_ref,
+            action_id=ep.action_id,
+        )
+        result = join_independent_action_goal_source(
+            item, admission, current=current,
+        )
+        assert result.goal_label.goal_reached == sample.goal.goal_reached
+        assert result.prior_l10.witness.cue_tags == sample.witness.cue_tags
+        reviewed.append(result.prior_l10)
+        present.append(result.source_present_sha256)
+        actions.append(result.source_action_sha256)
+        goals.append(result.source_goal_sha256)
+    with_memory = evaluate_l10_next_epoch_shadow(
+        s_epoch, **{
+            **args, "training": tuple(reviewed),
+            "admitted_prior_probe_sha256": frozenset(present),
+            "source_admission": GoalSourceAdmission(
+                frozenset(actions), frozenset(goals),
+            ),
+        }
+    )
+    without = evaluate_l10_next_epoch_shadow(
+        s_epoch, **{
+            **args, "training": tuple(reviewed),
+            "admitted_prior_probe_sha256": frozenset(present),
+            "source_admission": GoalSourceAdmission(
+                frozenset(actions), frozenset(goals),
+            ),
+            "retention_enabled": False,
+        }
+    )
+    assert with_memory.source_bounded_training == 16
+    assert len(with_memory.learning.cognition.memories) == 16
+    assert with_memory.learning.advice.status is ContextualStatus.CHEAP_EQUIVALENT
+    assert with_memory.learning.candidate_action_ref == "WAIT"
+    assert with_memory.cheap_exact_ref == "WAIT"
+    assert without.learning.candidate_action_ref == "MOVE_AWAY"
+    assert without.learning.advice.status is ContextualStatus.NO_GOAL_DATA
+    assert supervisor.last_at_ns == before_clock
+    assert supervisor.open_actions == ()
+    assert not with_memory.action_authority
+    assert not with_memory.physical_learning_attested
+    assert with_memory.action_issues == with_memory.native_reads == 0
