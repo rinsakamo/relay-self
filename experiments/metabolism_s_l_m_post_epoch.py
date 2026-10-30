@@ -75,9 +75,10 @@ def read_s_l_m_after_owner_epoch(
     # Import product adapters lazily: independent M branch intentionally does
     # not own or copy source files from the S #634 product branch.
     from adapters.mineflayer.b0_energy_bridge import B0Decision, B0EnergyLedger
-    from adapters.mineflayer.python_protocol import MineflayerObservation
     from adapters.mineflayer.s34_native_world_cognition_ci import NativeThreat
     from adapters.mineflayer.self_body_m0_projection import compose_b0_cognition_views
+
+    from adapters.mineflayer.python_protocol import MineflayerObservation
 
     if (
         not isinstance(probe, MineflayerObservation)
