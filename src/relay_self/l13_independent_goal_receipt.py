@@ -136,6 +136,15 @@ class L13ReadOnlyReview:
     new_actions: int = 0
 
 
+def _no_duplicate_json_keys(items: list[tuple[str, object]]) -> dict:
+    result: dict = {}
+    for name, value in items:
+        if name in result:
+            raise L13ReceiptRejected("duplicate original JSON field")
+        result[name] = value
+    return result
+
+
 def _raw(raw: bytes, label: str) -> tuple[dict, str]:
     if (
         not isinstance(raw, bytes) or not 0 < len(raw) <= _MAX
@@ -143,7 +152,7 @@ def _raw(raw: bytes, label: str) -> tuple[dict, str]:
     ):
         raise L13ReceiptRejected(f"{label}: one bounded original JSONL line required")
     try:
-        data = json.loads(raw.decode("utf-8"))
+        data = json.loads(raw.decode("utf-8"), object_pairs_hook=_no_duplicate_json_keys)
     except (UnicodeError, ValueError) as exc:
         raise L13ReceiptRejected(f"{label}: bad JSON/UTF-8 original") from exc
     if not isinstance(data, dict):
