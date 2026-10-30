@@ -146,7 +146,7 @@ def test_reread_does_not_change_source_memory_or_s_owner():
     "lost_admission", "action_authority_l8", "action_authority_m",
     "bad_l8_work_ids", "bad_l8_digest", "retention_mismatch",
     "foreign_native", "fake_l1_candidate", "bad_m_scope",
-    "fake_source_owner_tick",
+    "fake_source_owner_tick", "fake_m_tension",
 ))
 def test_forged_cross_lane_context_or_proposal_rejected(attack):
     data = scenario()
@@ -194,6 +194,8 @@ def test_forged_cross_lane_context_or_proposal_rejected(attack):
         ))
     elif attack == "bad_m_scope":
         m = replace(m, source_scope="PHYSICAL_ATTESTED")
+    elif attack == "fake_m_tension":
+        m = replace(m, modeled_tension="NO_MODEL_TENSION")
     else:
         m = replace(m, body=replace(m.body, owner_tick=99999))
     with pytest.raises(ValueError):
