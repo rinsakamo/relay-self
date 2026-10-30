@@ -1,0 +1,30 @@
+name: M Lane resource projection FAST
+on:
+  push:
+    branches:
+      - research/m616-m1-resource-cost-projection-20261030
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  m-resource-fast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Python 3.12
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install focused test tools
+        run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Module and adjacent ownership tests
+        run: |
+          python -m pytest -q tests/test_metabolism_viability_experiment.py tests/test_metabolism_m01_minecraft.py tests/test_metabolism_m02_exhaustion.py tests/test_fatigue_p1.py tests/test_metabolism_resource_projection.py
+      - name: Ruff and repository contracts
+        run: |
+          ruff check experiments/metabolism_resource_projection.py tests/test_metabolism_resource_projection.py
+          python tools/check_repository.py
