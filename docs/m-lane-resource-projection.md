@@ -363,3 +363,61 @@ is **not** M0.1 virtual Energy nor Minecraft native M0.2 exhaustion.
 No physical World, EAT-credit, output utility, L8/Body/product
 branch mutation, model/GPU execution, actual L1 behavior change,
 QUALIFICATION or SCIENCE has been performed.
+
+## Same-process S #634 B0 producer + L8 observer + M adapter (2026-10-30)
+
+We now test the three components in **one Python 3.12 interpreter**
+against the **same single original-shaped `MineflayerObservation`**
+from L8's retained learning fixture, not three separately constructed
+source pointers.
+
+`tests/test_metabolism_same_process_slm_product.py` and the appended
+M-only CI job load the **exact pinned original S #634** checkout
+`087fe095a87594505392262da1d341cf0c65b2b2`
+and **exact pinned original L8** checkout
+`4defb6e8b78f2e050921b521eb2253a14bc260c4`
+side by side, with S's physical-layer models and Python protocol,
+and L8's missing learning modules. They assert source module provenance
+during import rather than silently swapping a different implementation.
+
+For each synthetic native probe, the actual S producer
+`B0EnergyLedger.decide(probe)` computes its M0 interoception;
+`compose_b0_cognition_views(probe, ledger, decision)` maps that
+**actual original owner sensor** into joined SelfBody/SelfWorld; the
+M `read_b0_resource_context` matches this owner decision and
+the exact same native seq/request/provenance. The actual original S
+`coordinate_decision_epoch` returns its unchanged S42
+`WorldConditionedChoice`; L8's actual `observe_s_epoch_l1`
+accepts a previously prepared L6 training/context snapshot; M's
+`observe_completed_s_resource_epoch` and
+`contrast_l8_with_m_resource` join both results **without
+rerunning the S coordinator** or writing to the owner.
+
+**New distinction from previous test:** L8's B0 resource hint in
+this one-process job is *not manually fabricated*; it is produced
+by the **real pinned S B0 owner and SelfBody product code** and
+read from the original decision's sensor. The input probe and
+prior L6 experience are still synthetic fixtures and the two
+original product branches are layered in the CI interpreter:
+this is an **experimental composition**, not a deployed product
+or original Minecraft native-byte attestation.
+
+Tests cover low/high B0 modeled energy (S=MOVE_AWAY,
+L8=WAIT regardless of M), distant S=WAIT with L8=MOVE_AWAY
+model-insufficient, retention-OFF/no candidate, cheap-memory-rule
+counterexample, blind zero-gain sensor with UNKNOWN, no mutation
+of B0 owner or S Action supervisor, and negative controls for
+altered B0 original decision, wrong session/epoch, counterfeit
+owner source or L8 proposal. No new physical Action, independent
+model call, P1/gait receipt, food credit, new learning update,
+Habit promotion or real World survival evidence is asserted.
+
+**No new runtime admission:** S owner source is **synthetic**
+despite the original production Python API. B0 M0 1-tick
+costs are not physical S49 MOVE_BACKWARD or G4 gait
+costs and cannot be substituted for M0.1 modeled distance
+Energy or native Minecraft exhaustion. Actual one-command
+S/L/M runtime opt-in and real Minecraft DEV still require a
+separate owner-controlled integration step; do not merge the
+independently owned product branches simply because the
+experimental interpreter can import them.
