@@ -16,8 +16,8 @@ from adapters.mineflayer.self_world_observation_only_epoch_replay import (
     W4OfflineEpochReplay,
 )
 from relay_self.cognition_view import (
-    CognitiveView,
     CognitionTier,
+    CognitiveView,
     bind_cognitive_view_to_request,
     project_cognitive_view,
 )
