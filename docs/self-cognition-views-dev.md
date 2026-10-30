@@ -133,3 +133,10 @@ improvement, generalization, learned habit or better viability.
 At this stage there is still no authoritative World revision in Present,
 independent sensor/custody proof, or qualified physical body prediction
 score. S-owned DEV World and V scientific comparison remain separate gates.
+
+
+Verification contract for this candidate: Python 3.12 focused
+`tests/test_self_body.py` and `tests/test_cognition_view.py`,
+Ruff, repository contracts, and the existing S/W4 FAST workflow.
+Historical W4 model A/B evidence and protected provenance records are not
+rewritten. FULL/main and real Minecraft run remain outside this DEV phase.
