@@ -191,6 +191,7 @@ def audit_l14_native_goal_window(
     decoder = MineflayerStreamDecoder()
     msgs = []
     for raw in rlines:
+        _json(raw)  # Reject duplicate keys before adapter JSON decode.
         try:
             msg = decoder.decode(raw.decode("utf-8"))
         except (ValueError, UnicodeError) as exc:
