@@ -54,7 +54,7 @@ def project(physical, option):
 
 def sensed(physical, true_energy, sensor=None, noise_bound=0):
     profile, _, _, _ = physical
-    sensor = sensor or Interoception(quantum=1.0)
+    sensor = sensor or Interoception(quantum=0.1)
     observed = observe_energy(BodyState(true_energy, tick=100), sensor)
     public = SelfBodyResourceCosts("r", observed.tick, observed.reading, ())
     return assess_sensed_costs(profile, public, sensor, noise_bound=noise_bound)
