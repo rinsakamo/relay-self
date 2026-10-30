@@ -135,3 +135,59 @@ Only offline engineering characterization has been done.
 The route model is not integrated into the S49 issuer or live SelfBody,
 and is not a replacement for Minecraft M0.2 exhaustion or verified
 World outcomes.
+
+## Actual SelfBody type compatibility and L1/L2 read-only handoff
+
+M's new `experiments/metabolism_selfbody_cognition.py` is a
+*separate, opt-in contract*, not a mutation of the product SelfBody.
+Its only output, `CognitiveResourceContext`, contains original
+session/self/epoch/native-seq lineage, optional owner WorldTick,
+per-external-candidate **model** affordability labels, and
+`action_authority=False`, `learning_updates=0`,
+`habit_grants=0`. It never selects a candidate and does not
+modify S49, S42, L1 retention, M0.1 or P1 states.
+
+**Critical model mismatch:** existing product #634 has
+`body.sensed("m0_energy_sensor")`, an owner-local
+**B0 `metabolism_viability`** reading. That is not a
+calibrated M0.1 `M01Profile` Energy observation. Therefore,
+existing B0 views return `UNBOUND / UNKNOWN` for every M0.1
+route (even when the B0 reading is high), not conditional
+`MODEL_AFFORDABLE`. Native `food`/HP and B0 sensor are
+never converted to virtual M0.1 Energy.
+
+The future M0.1 owner may read its existing `M01State` and export
+`M01OwnerSensorHandoff` **without true Energy** via
+`export_m01_owner_sensor`. This local source includes a full-profile
+SHA256, quantized reading, owner tick, native seq/request and two
+structurally bound source references. The SelfBody owner must *separately*
+authorize the actual World source and place a `BodyInteroception`
+with **distinct new key `m01_energy_sensor`**,
+`owner_provenance.source="m01-owner-local-sensor"` and the
+matching M0.1 local reference. M's `from_selfbody_to_cognition`
+then verifies the full source/session/epoch/owner tick,
+profile hash, field origin, reading and native/owner provenance
+before applying the existing sensor/route comparisons. Structural
+matching cannot independently attest source authenticity.
+
+**CI product-compatibility test:** M's own GitHub Action checks
+out product SelfBody #634's exact
+`087fe095a87594505392262da1d341cf0c65b2b2` in a **separate
+read-only directory**, runs the *actual* product
+`BodyObservation`, `BodyInteroception` and
+`compose_self_body_view` types against the new M adapter,
+and exercises both positive matching M0.1 (hypothetical producer)
+and refusal of current B0-only product views. This requires
+`python -m pytest -q -o pythonpath=product_selfbody_contract/src
+tests/test_metabolism_selfbody_product_contract.py` with
+`PYTHONPATH=product_selfbody_contract/src:product_selfbody_contract:src:.`
+because this branch's ordinary pytest settings prioritize its own
+`src` package. The original product source is unchanged.
+
+The latest L8 lane only reads the already-returned S42 choice
+after S epoch completion and keeps the S choice authoritative.
+L8 does *not* consume M resource labels today. Future L1/L2
+adoption is an **S/L-owned integration**. Until the original
+M0.1 owner and independent S source admission are live,
+this is a passing **offline, source-shaped contract**, not a
+physical Body/Cognition activation or survival change.
