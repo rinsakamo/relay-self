@@ -136,6 +136,8 @@ def quote_route_range(
     Bounds are conditional on monotone, unobstructed locomotion and the
     caller's exhaustive scenario intervals. Never silently add future food.
     Missing hazard/delay bounds -> UNKNOWN, not an optimistic zero.
+    Extra WAIT ticks are assumed AFTER the MOVE, not interspersed with motion.
+    Interleaved P1 recovery or uncertain interruption timing is out of model.
     """
     if not isinstance(route, RouteBounds):
         raise ValueError("typed route assumptions required")
