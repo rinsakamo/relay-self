@@ -431,6 +431,23 @@ def review_self_body_prediction(
             or prior.source_ref not in hypothesis.state.source_refs
             or f"body-field:{field_key}" not in hypothesis.state.source_refs):
         raise InvalidSelfBodyData("unbound or counterfeit body prediction")
+    # A source-ref token cannot, by itself, launder an invented initial
+    # physical state into evidence. The PRD starting value for this field
+    # must agree with the native Present that supposedly grounded it.
+    initial = hypothesis.state.variable(field_key)
+    actual = before.observed(field_key)
+    if initial is None or actual.origin is not BodyOrigin.OBSERVATION:
+        raise InvalidSelfBodyData("PRD initial body state not observed")
+    if (type(initial.value) in (int, float)
+            and type(actual.value) in (int, float)):
+        grounded = initial.value == actual.value
+    else:
+        grounded = (
+            type(initial.value) is type(actual.value)
+            and initial.value == actual.value
+        )
+    if not grounded:
+        raise InvalidSelfBodyData("PRD initial body state differs from Present")
 
     predicted = None
     if prediction.status is PredictionStatus.PREDICTED:
