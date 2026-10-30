@@ -78,3 +78,16 @@ these optional views are UNKNOWN/STALE.
 
 Classification: **DEV_ONLY / OFFLINE_ONLY / QUALIFICATION_NO_GO /
 SCIENCE_NOT_RUN**.
+
+## Existing RelayEngine connection (offline only)
+
+`bind_cognitive_view_to_request` recomputes the frame directly from the
+owner-local SelfWorld view and appends three reserved, typed
+`CognitionDatum` keys (`self_cognitive_source`,
+`self_cognitive_world`, `self_cognitive_body`) to an existing
+`BoundedChoiceRequest` or `OpenCognitionRequest`. It rejects duplicate or
+injected reserved keys. The content retains the per-fact epistemic origin,
+source references and original provenance, plus explicit omission/freshness
+metadata. This does not change request choices or model selection and does
+not execute a model, choose an Action or authorize motor control. Existing
+`bind_self_world_to_cognition_request` remains available and unchanged.
