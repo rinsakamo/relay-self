@@ -6,8 +6,8 @@ from dataclasses import replace
 
 import pytest
 
-import test_experience_bridge as l1
 import test_contextual_shadow as l5
+import test_experience_bridge as l1
 from relay_self.action_outcome import ActionOutcomeDisposition
 from relay_self.contextual_shadow import ContextualStatus, ShadowSpecification
 from relay_self.experience_bridge import qualify_episode
