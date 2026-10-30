@@ -6,11 +6,12 @@ single decision epoch. Missing and unqualified information remains UNKNOWN.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 from relay_self.prediction import PredictionStatus
 from relay_self.provenance import Provenance
+from relay_self.relay_engine import BoundedChoiceRequest, CognitionDatum, OpenCognitionRequest
 from relay_self.self_body import BodyOrigin, SelfBodyView
 from relay_self.self_world import SelfWorldView, WorldOrigin
 
@@ -306,3 +307,91 @@ def project_cognitive_view(
         len(body_facts) - len(selected_body),
         tuple(options), len(selected_world) + len(selected_body),
     )
+
+
+_COGNITION_CONTEXT_KEYS = frozenset({
+    "self_cognitive_source", "self_cognitive_world", "self_cognitive_body",
+})
+
+
+def bind_cognitive_view_to_request(
+    world: SelfWorldView,
+    request: BoundedChoiceRequest | OpenCognitionRequest,
+    *,
+    tier: CognitionTier,
+    max_world_facts: int = 8,
+    max_body_facts: int = 8,
+    expected_epoch_id: str | None = None,
+    minimum_native_seq: int = 0,
+    inspected_at_ns: int | None = None,
+    max_age_ns: int | None = None,
+) -> BoundedChoiceRequest | OpenCognitionRequest:
+    """Read-only bridge into the existing L1/L2 RelayEngine request.
+
+    Recomputes from qualified view instead of accepting untrusted prebuilt
+    CognitiveView objects. Neither chooses a physical action nor runs a model.
+    """
+    if not isinstance(request, (BoundedChoiceRequest, OpenCognitionRequest)):
+        raise InvalidCognitiveView("existing typed cognition request required")
+    if len({item.key for item in request.context}) != len(request.context):
+        raise InvalidCognitiveView("duplicate cognition context key")
+    if any(item.key in _COGNITION_CONTEXT_KEYS for item in request.context):
+        raise InvalidCognitiveView("reserved cognition view context collision")
+    frame = project_cognitive_view(
+        world, tier=tier, max_world_facts=max_world_facts,
+        max_body_facts=max_body_facts, expected_epoch_id=expected_epoch_id,
+        minimum_native_seq=minimum_native_seq,
+        inspected_at_ns=inspected_at_ns, max_age_ns=max_age_ns,
+    )
+    projection_origin = Provenance(
+        "relay_self.cognition_view",
+        f"{frame.self_id}:{frame.session_id}:{frame.epoch_id}:{frame.tier.value}",
+    )
+
+    def encode(fact: CognitiveFact) -> dict:
+        return {
+            "key": fact.key,
+            "origin": fact.origin.value,
+            "value": fact.value,
+            "source_refs": fact.source_refs,
+            "source_provenance": [
+                {"source": prov.source, "reference": prov.reference}
+                for prov in fact.provenances
+            ],
+        }
+
+    world_source = world.observation
+    body_source = world.self_body.observation if world.self_body is not None else None
+    valid = {"UNVERIFIED_FRESHNESS", "OBSERVED_WITHIN_BOUND"}
+    items = (
+        CognitionDatum.from_value("self_cognitive_source", {
+            "self_id": frame.self_id,
+            "session_id": frame.session_id,
+            "epoch_id": frame.epoch_id,
+            "tier": frame.tier.value,
+            "world_status": frame.world_status,
+            "body_status": frame.body_status,
+            "world_source_ref": frame.world_source_ref,
+            "body_source_ref": frame.body_source_ref,
+            "coverage_truncated": frame.coverage_truncated,
+            "world_revision": None,
+            "world_omitted": frame.world_omitted,
+            "body_omitted": frame.body_omitted,
+            "information_options_not_actions": frame.information_options,
+        }, projection_origin),
+        CognitionDatum.from_value(
+            "self_cognitive_world",
+            [encode(fact) for fact in frame.world_facts],
+            world_source.provenance
+            if world_source is not None and frame.world_status in valid
+            else projection_origin,
+        ),
+        CognitionDatum.from_value(
+            "self_cognitive_body",
+            [encode(fact) for fact in frame.body_facts],
+            body_source.source_provenance
+            if body_source is not None and frame.body_status in valid
+            else projection_origin,
+        ),
+    )
+    return replace(request, context=(*request.context, *items))
