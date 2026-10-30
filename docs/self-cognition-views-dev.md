@@ -100,7 +100,9 @@ PRD `PredictionState`, `TransitionRule`, and `predict_transition`.
 It requires the same scoped Self/session, two distinct decision epochs, two
 ordered native Mineflayer source references, an explicit maximum native
 sequence gap, and a prior hypothesis with exact `native-probe:` and
-`body-field:<key>` source binding. It independently replays the PRD rule
+`body-field:<key>` source binding. The corresponding PRD initial field must
+also equal the native initial observation: a forged source-reference string
+cannot validate an imagined starting body state. It independently replays the PRD rule
 and checks Action-correlated observations against S16 OUTCOME lineage.
 
 The result is an immutable `BodyPredictionReview`:
