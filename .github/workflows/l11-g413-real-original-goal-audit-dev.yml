@@ -54,7 +54,21 @@ jobs:
           assert artifact["id"] == 12952335343 and not artifact["expired"]
           assert artifact["workflow_run"]["id"] == 40997098497
           assert artifact["workflow_run"]["head_sha"] == run["head_sha"]
-          raw = get("/actions/artifacts/12952335343/zip")
+          # GitHub redirects ZIP downloads to signed blob storage. Keep
+          # the repo token only on api.github.com, never on the blob host.
+          class StripAuthOnRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  new_req = super().redirect_request(
+                      req, fp, code, msg, headers, newurl
+                  )
+                  if new_req is not None:
+                      new_req.remove_header("Authorization")
+                  return new_req
+          opener = urllib.request.build_opener(StripAuthOnRedirect())
+          with opener.open(urllib.request.Request(
+              root + "/actions/artifacts/12952335343/zip", headers=headers
+          ), timeout=45) as stream:
+              raw = stream.read(2_000_001)
           assert raw[:2] == b"PK" and 0 < len(raw) < 2_000_000
           pathlib.Path(os.environ["L11_REAL_ORIGINAL_ZIP"]).write_bytes(raw)
           print("EXISTING_G413_SAVED_ARTIFACT_FETCHED_WITH_PRODUCER_SHA",
