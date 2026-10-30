@@ -19,9 +19,9 @@ from relay_self.self_body import (
     compose_self_body_view,
 )
 from relay_self.self_world import (
+    InvalidSelfWorldData,
     WorldEntityObservation,
     WorldObservation,
-    InvalidSelfWorldData,
     compose_self_world_view,
 )
 
