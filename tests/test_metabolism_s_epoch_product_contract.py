@@ -119,6 +119,22 @@ def test_far_s_wait_is_not_relabelled_as_move_or_food_choice():
     assert not hasattr(result, "forage_priority")
 
 
+def test_s_wait_tension_when_basal_energy_insufficient():
+    data = prepared(energy=0.4, distance=10.0)
+    result = join(data)
+    assert result.choice is WorldChoiceKind.WAIT
+    assert result.body.facts[0].affordability == "MODEL_INSUFFICIENT"
+    assert result.modeled_tension == "WAIT_MODEL_INSUFFICIENT"
+    assert result.s_choice_kept is True
+
+
+def test_s_wait_with_blind_sensor_stays_unknown():
+    data = prepared(energy=0.4, distance=10.0, gain=0)
+    result = join(data)
+    assert result.choice is WorldChoiceKind.WAIT
+    assert result.modeled_tension == "WAIT_MODEL_UNKNOWN"
+
+
 def test_blind_sensor_remains_unknown_and_s_source_is_kept():
     data = prepared(energy=0.6, gain=0)
     result = join(data)
@@ -166,6 +182,7 @@ def test_planned_epoch_requires_real_work_ids_and_never_changes_choice():
     "foreign_request", "altered_choice", "retained_revision",
     "foreign_native_provenance", "body_authority", "body_cost_source",
     "body_count", "body_label", "body_resource_action",
+    "bad_status", "negative_cost", "inverted_cost",
 ])
 def test_dangerous_cross_epoch_or_foreign_model_rejected(change):
     data = prepared(energy=0.6)
@@ -205,8 +222,20 @@ def test_dangerous_cross_epoch_or_foreign_model_rejected(change):
         body = replace(body, facts=(
             replace(body.facts[0], activity="MOVE"), body.facts[1],
         ))
-    else:
+    elif change == "body_resource_action":
         body = replace(body, action_issues=1)
+    elif change == "bad_status":
+        body = replace(body, facts=(
+            body.facts[0], replace(body.facts[1], affordability="REAL_SAFE")
+        ))
+    elif change == "negative_cost":
+        body = replace(body, facts=(
+            body.facts[0], replace(body.facts[1], modeled_energy_cost=-1)
+        ))
+    else:
+        body = replace(body, facts=(
+            body.facts[0], replace(body.facts[1], modeled_energy_cost=0)
+        ))
     with pytest.raises(ValueError):
         join(data, s_epoch=s, native=native, retained=retained, body=body)
 
