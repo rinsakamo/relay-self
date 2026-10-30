@@ -6,7 +6,6 @@ These are synthetic native probes; NOT original certified Minecraft Worlds.
 from dataclasses import replace
 
 import pytest
-
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.self_body_m0_projection import compose_b0_cognition_views
 from test_self_live_think import native_probe
