@@ -106,3 +106,32 @@ high/low Energy, blind sensor null, coarse quantization, unknown and
 bounded noise, inconsistent reading, unknown route, WAIT basal and
 foreign producer inputs. Only these OFFLINE representations are in
 scope. SelfBody #632/#634, L, G, S and R remain independent owners.
+
+## M1 route envelope extension (2026-10-30)
+
+The new `experiments/metabolism_route_bounds.py` calculates a read-only
+interval for travel to a GOAL or FOOD_OPPORTUNITY, using the existing M0.1
+Energy and P1 candidate projection. The caller supplies low/high path
+distance, speed, extra WAIT time, and additional assumed Energy expense.
+Missing bounds return UNKNOWN, never zero. G4 speed above the M0.1 source
+cap is also UNKNOWN.
+
+This is arrival-only arithmetic: seeing or reaching food does NOT
+create EAT or Energy credit. Low/high scenarios assume complete input
+bounds and a monotone unobstructed route. Nothing here reads World,
+changes ledger, decides an action, or proves future success.
+
+Comparison receives the existing sensor-derived Energy range, never
+the true M0.1 host Energy, and returns only conditional affordability.
+At 0.5 block/tick, 5-block travel costs 2.5 M0.1 units including
+basal, compared with 1.5 for a movement-only cheap baseline.
+10-block travel costs 5.0; low sensed Energy can separate which
+candidate journeys are affordable, without choosing one.
+A 4-6 block uncertain route, 0.4-0.8 block/tick, 0-3 extra WAIT
+ticks and 0-0.5 extra assumed Energy produces an estimated 1.7-4.1
+range. Sensor noise and unbounded hazards remain ambiguous or UNKNOWN.
+
+Only offline engineering characterization has been done.
+The route model is not integrated into the S49 issuer or live SelfBody,
+and is not a replacement for Minecraft M0.2 exhaustion or verified
+World outcomes.
