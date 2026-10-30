@@ -1,0 +1,37 @@
+name: L8 Existing S epoch result L1 observer (offline FAST)
+
+on:
+  push:
+    branches:
+      - 'learning/l8-epoch-result-observer-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Verify exact L7 ancestor and current HEAD
+        env:
+          EXPECTED_HEAD: ${{ github.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD"
+          git merge-base --is-ancestor a56547076624921f05743e16e6e3aacb11cc964c HEAD
+          python tools/check_repository.py
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Install scoped test/lint dependencies
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.16.7'
+      - name: S coordination and L8/L7/L6 focused offline
+        env:
+          PYTHONPATH: 'src:tests:.'
+        run: python -m pytest -q tests/test_l1_epoch_observer.py tests/test_l1_s_choice_shadow.py tests/test_learning_epoch.py tests/test_contextual_shadow.py tests/test_experience_bridge.py tests/test_habit_shadow.py tests/test_postmain_s42_world_contrast.py tests/test_epoch_plan.py tests/test_runtime_coordination.py
+      - name: Ruff scoped L8
+        run: ruff check src/relay_self/l1_epoch_observer.py tests/test_l1_epoch_observer.py
