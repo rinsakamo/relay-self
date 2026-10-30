@@ -218,6 +218,15 @@ def project_cognitive_view(
                             (obs.provenance, scenario.state.provenance,
                              result.rule.provenance),
                         ))
+    # Own retained evidence can still be described as REMEMBERED when no
+    # native World Present exists; never rewrite it as current observation.
+    if obs is None and tier is not CognitionTier.L0:
+        for memory in world.memories:
+            world_facts.append(CognitiveFact(
+                "world.memory_id", WorldOrigin.REMEMBERED, memory.memory_id,
+                (f"memory:{memory.memory_id}",),
+                (memory.source_provenance, memory.integration_provenance),
+            ))
     if body_obs is not None and body_status in valid:
         keys = {"position_x", "position_y", "position_z", "health"}
         for field in body_obs.fields:
@@ -277,6 +286,9 @@ def project_cognitive_view(
             fact.origin is WorldOrigin.PREDICTED for fact in selected_world
         ):
             options.append("COMPARE_CONDITIONAL_WORLD_PREDICTION")
+    if (world_status == "UNKNOWN" and tier is not CognitionTier.L0
+            and any(f.origin is WorldOrigin.REMEMBERED for f in selected_world)):
+        options.append("REVIEW_OWN_RETAINED_MEMORY")
     if body_status not in valid:
         options.append("BODY_STATE_UNKNOWN")
     elif selected_body and tier is not CognitionTier.L0:
