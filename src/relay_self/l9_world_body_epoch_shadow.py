@@ -46,44 +46,34 @@ class WorldBodyEpochShadow:
     physical_learning_attested: bool = False
 
 
-def observe_s_world_body_epoch_l1(
-    s_epoch: object,
-    *,
-    native: NativeThreat,
-    world: SelfWorldView,
-    body: SelfBodyView,
-    retained: LearningPreferenceState,
-    learning: LearningEpochResult,
-    retention_enabled: bool,
-) -> WorldBodyEpochShadow:
-    """Check original positive Present facts before invoking L8 read-only compare.
+def verify_original_world_body_present(
+    *, native: NativeThreat, world: SelfWorldView,
+    body: SelfBodyView, owner_self_id: str,
+) -> None:
+    """Verify an existing matched Present; no S epoch, source read or authority.
 
-    Source SHA and current revision must already be S/R/V admitted. The
-    SelfWorld/SelfBody views are fallible projections, not independent
-    authentication. A missing target is UNKNOWN, never absence/safety.
+    Caller still supplies independently qualified physical source and SHA.
+    This shared L9 gate allows L10 to form a cue BEFORE L6 reviews it.
     """
     if (
         not isinstance(native, NativeThreat)
         or not isinstance(world, SelfWorldView)
         or not isinstance(body, SelfBodyView)
-        or not isinstance(learning, LearningEpochResult)
-        or not isinstance(retained, LearningPreferenceState)
-        or type(retention_enabled) is not bool
+        or not isinstance(owner_self_id, str)
+        or not owner_self_id
     ):
-        raise WorldBodyEpochRejected("existing typed native/world/body/S/L owners required")
+        raise WorldBodyEpochRejected("typed original World/Body owners required")
     source = native.observation
     exterior = world.observation
     internal = body.observation
     if (
         exterior is None or internal is None
         or world.self_body is not body
-        or world.self_id != learning.cognition.identity.self_id
+        or world.self_id != owner_self_id
         or body.self_id != world.self_id
         or world.session_id != body.session_id
         or world.session_id != source.session_id
         or world.epoch_id != body.epoch_id
-        or learning.current.session_id != source.session_id
-        or learning.current.source_provenance != source.provenance
         or source.kind != "probe"
         or native.request_id != source.request_id
         or not source.request_id
@@ -100,15 +90,8 @@ def observe_s_world_body_epoch_l1(
         or internal.action_id is not None
         or internal.consequence_provenance is not None
         or body.outcome is not None
-        or learning.current.original_probe_sha256
-        not in learning.admitted_current_probe_sha256
     ):
         raise WorldBodyEpochRejected("foreign, unadmitted, future-outcome or mixed current Present")
-    if any(
-        next((m for m in learning.cognition.memories if m.memory_id == memory.memory_id), None)
-        != memory for memory in world.memories
-    ):
-        raise WorldBodyEpochRejected("foreign SelfWorld remembered source")
 
     snapshot = source.snapshot
     coverage = snapshot.nearby_entities_coverage
@@ -172,6 +155,54 @@ def observe_s_world_body_epoch_l1(
         or health.value != snapshot.health
     ):
         raise WorldBodyEpochRejected("SelfBody hypothesis/belief cannot become observed food or health")
+
+
+def observe_s_world_body_epoch_l1(
+    s_epoch: object,
+    *,
+    native: NativeThreat,
+    world: SelfWorldView,
+    body: SelfBodyView,
+    retained: LearningPreferenceState,
+    learning: LearningEpochResult,
+    retention_enabled: bool,
+) -> WorldBodyEpochShadow:
+    """Check original positive Present facts before invoking L8 read-only compare.
+
+    Source SHA and current revision must already be S/R/V admitted. The
+    SelfWorld/SelfBody views are fallible projections, not independent
+    authentication. A missing target is UNKNOWN, never absence/safety.
+    """
+    if (
+        not isinstance(native, NativeThreat)
+        or not isinstance(world, SelfWorldView)
+        or not isinstance(body, SelfBodyView)
+        or not isinstance(learning, LearningEpochResult)
+        or not isinstance(retained, LearningPreferenceState)
+        or type(retention_enabled) is not bool
+    ):
+        raise WorldBodyEpochRejected("existing typed native/world/body/S/L owners required")
+    verify_original_world_body_present(
+        native=native, world=world, body=body,
+        owner_self_id=learning.cognition.identity.self_id,
+    )
+    source = native.observation
+    exterior = world.observation
+    internal = body.observation
+    if (
+        learning.current.session_id != source.session_id
+        or learning.current.source_provenance != source.provenance
+        or learning.current.original_probe_sha256
+        not in learning.admitted_current_probe_sha256
+    ):
+        raise WorldBodyEpochRejected("current L6 source or SHA not admitted")
+    if any(
+        next((m for m in learning.cognition.memories if m.memory_id == memory.memory_id), None)
+        != memory for memory in world.memories
+    ):
+        raise WorldBodyEpochRejected("foreign SelfWorld remembered source")
+    food = body.observed("food")
+    health = body.observed("health")
     try:
         contrasted = observe_s_epoch_l1(
             s_epoch, native=native, retained=retained,
