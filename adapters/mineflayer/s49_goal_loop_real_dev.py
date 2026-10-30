@@ -58,6 +58,9 @@ from adapters.mineflayer.g411_g1_unstable_pair_census_dev import (
 from adapters.mineflayer.g412_original_control_boundary_dwell_dev import (
     join_g412_original_control_boundary_dwell_dev,
 )
+from adapters.mineflayer.g413_original_g1_generation_witness_dev import (
+    join_g413_original_g1_generation_witness_dev,
+)
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -209,6 +212,7 @@ async def qualify(
     g410_in_action_evidence_quality_dev:bool=False,
     g411_g1_unstable_pair_census_dev:bool=False,
     g412_original_control_boundary_dwell_dev:bool=False,
+    g413_original_g1_generation_witness_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -279,6 +283,8 @@ async def qualify(
         "g411_g1_pair_audit_dev":None,
         "g412_original_control_boundary_dwell_dev":g412_original_control_boundary_dwell_dev,
         "g412_boundary_dwell_audit_dev":None,
+        "g413_original_g1_generation_witness_dev":g413_original_g1_generation_witness_dev,
+        "g413_original_g1_witness_audit_dev":None,
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -319,6 +325,11 @@ async def qualify(
             or type(g410_in_action_evidence_quality_dev) is not bool
             or type(g411_g1_unstable_pair_census_dev) is not bool
             or type(g412_original_control_boundary_dwell_dev) is not bool
+            or type(g413_original_g1_generation_witness_dev) is not bool
+            or (g413_original_g1_generation_witness_dev and (
+                not g412_original_control_boundary_dwell_dev
+                or os.environ.get("S49_G413_G1_GENERATION_WITNESS_DEV_ONLY")!="1"
+            ))
             or (g412_original_control_boundary_dwell_dev and (
                 not g411_g1_unstable_pair_census_dev
                 or os.environ.get("S49_G412_BOUNDARY_DWELL_DEV_ONLY")!="1"
@@ -2367,6 +2378,7 @@ async def qualify(
                 report["g411_pair_refusal_dev"]=f"{type(exc).__name__}: {exc}"
                 report["status"]="FAIL"
                 rc=2
+        original_boundaries=None
         if (g412_original_control_boundary_dwell_dev and classified is not None
                 and report["g411_g1_pair_audit_dev"] is not None):
             try:
@@ -2425,6 +2437,69 @@ async def qualify(
                 }
             except (ValueError, KeyError, TypeError) as exc:
                 report["g412_boundary_refusal_dev"]=f"{type(exc).__name__}: {exc}"
+                report["status"]="FAIL"
+                rc=2
+        if (g413_original_g1_generation_witness_dev and original_boundaries is not None
+                and report["g412_boundary_dwell_audit_dev"] is not None):
+            try:
+                witnesses=[
+                    asdict(row) for row in join_g413_original_g1_generation_witness_dev(
+                        session_id=sid, g412_rows=original_boundaries,
+                        g411_rows=classified, g410_rows=quality,
+                        g49_rows=g49_rows, g48_rows=g48_rows,
+                        paper_rows=[asdict(row) for row in gait_observer.rows],
+                        t2_rows=t2_owner.rows,
+                        original_action_acks=report["g49_original_action_applied_acks_dev"],
+                        original_clear_acks=report["g45_action_clear_acks_dev"],
+                        original_transition_acks=report["g44_native_transition_acks_dev"],
+                    )
+                ]
+                if len(witnesses)!=len(original_boundaries):
+                    raise ValueError("G4.13 selected original generation changed")
+                categories={}
+                for row in witnesses:
+                    key=row["evidence_class"]
+                    categories[key]=categories.get(key,0)+1
+                g413_path=report_path.parent/"g413_original_g1_generation_witness_dev.json"
+                with g413_path.open("x",encoding="utf-8") as sink:
+                    json.dump({
+                        "source":"ORIGINAL_G412_G1_STABLE_KIND_AND_POST_CONTROL_WITNESS_DEV",
+                        "original_g412_sha256":report["g412_boundary_dwell_audit_dev"]["derived_file_sha256"],
+                        "original_g411_sha256":report["g411_g1_pair_audit_dev"]["derived_file_sha256"],
+                        "original_g49_sha256":report["g49_original_action_gap_audit_dev"]["derived_file_sha256"],
+                        "original_t2_sha256":report["l1_t2_ledger_dev"]["derived_file_sha256"],
+                        "g49_unknown_preserved":True,
+                        "p1_m0_unchanged":True,
+                        "physics_tick_gait_attested":False,
+                        "rows":witnesses,
+                    },sink,sort_keys=True)
+                    sink.write("\n")
+                report["g413_original_g1_witness_audit_dev"]={
+                    "source":"ORIGINAL_G412_G1_STABLE_KIND_AND_POST_CONTROL_WITNESS_DEV",
+                    "derived_file":g413_path.name,
+                    "derived_file_sha256":hashlib.sha256(g413_path.read_bytes()).hexdigest(),
+                    "original_g412_sha256":report["g412_boundary_dwell_audit_dev"]["derived_file_sha256"],
+                    "original_g411_sha256":report["g411_g1_pair_audit_dev"]["derived_file_sha256"],
+                    "original_g49_sha256":report["g49_original_action_gap_audit_dev"]["derived_file_sha256"],
+                    "original_t2_sha256":report["l1_t2_ledger_dev"]["derived_file_sha256"],
+                    "source_generations":len(witnesses),
+                    "witness_categories":categories,
+                    "recorded_stable_g1_kind_frames":sum(
+                        row["stable_candidate_worldticks"] for row in witnesses
+                    ),
+                    "recorded_post_control_frames":sum(
+                        row["post_control_challenge_worldticks"] for row in witnesses
+                    ),
+                    "recorded_stable_and_post_control_frames":sum(
+                        row["stable_with_post_control_challenge_worldticks"] for row in witnesses
+                    ),
+                    "original_g49_unknown_unchanged":report["g49_original_action_gap_audit_dev"]["still_unknown_worldticks"],
+                    "physics_tick_gait_attested":False,
+                    "new_p1_or_m0_posting":False,
+                    "additional_motor_or_reader":0,
+                }
+            except (ValueError, KeyError, TypeError) as exc:
+                report["g413_witness_refusal_dev"]=f"{type(exc).__name__}: {exc}"
                 report["status"]="FAIL"
                 rc=2
         report["pre_cleanup_status"]=report["status"]
@@ -2486,6 +2561,7 @@ def main()->int:
     p.add_argument("--g410-in-action-evidence-quality-dev",action="store_true")
     p.add_argument("--g411-g1-unstable-pair-census-dev",action="store_true")
     p.add_argument("--g412-original-control-boundary-dwell-dev",action="store_true")
+    p.add_argument("--g413-original-g1-generation-witness-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -2537,6 +2613,7 @@ def main()->int:
         g410_in_action_evidence_quality_dev=args.g410_in_action_evidence_quality_dev,
         g411_g1_unstable_pair_census_dev=args.g411_g1_unstable_pair_census_dev,
         g412_original_control_boundary_dwell_dev=args.g412_original_control_boundary_dwell_dev,
+        g413_original_g1_generation_witness_dev=args.g413_original_g1_generation_witness_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
