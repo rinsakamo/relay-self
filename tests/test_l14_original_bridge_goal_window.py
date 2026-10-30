@@ -17,11 +17,11 @@ from adapters.mineflayer.python_protocol import (
     encode_clear_controls,
     encode_observe,
 )
+from relay_self.l13_independent_goal_receipt import L13ReceiptStatus
 from relay_self.l14_original_bridge_goal_window import (
     L14SourceRejected,
     audit_l14_native_goal_window,
 )
-from relay_self.l13_independent_goal_receipt import L13ReceiptStatus
 
 
 def _index(received: bytes, sent: bytes):
