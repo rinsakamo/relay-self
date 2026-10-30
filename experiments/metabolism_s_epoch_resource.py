@@ -10,18 +10,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from experiments.metabolism_b0_cognition import (
-    B0CognitiveResourceView,
-    B0TickResourceFact,
-)
 from relay_self.epoch_plan import PlannedDecisionEpochResult
 from relay_self.learning import LearningPreferenceState
-from relay_self.runtime_coordination import DecisionEpochResult
 from relay_self.world_conditioned_choice import (
     WorldChoiceKind,
     WorldConditionedChoice,
     select_world_conditioned_choice,
 )
+
+from experiments.metabolism_b0_cognition import (
+    B0CognitiveResourceView,
+    B0TickResourceFact,
+)
+from relay_self.runtime_coordination import DecisionEpochResult
 
 Tension = Literal[
     "MOVE_MODEL_INSUFFICIENT",
