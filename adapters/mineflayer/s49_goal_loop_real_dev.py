@@ -49,6 +49,9 @@ from adapters.mineflayer.g48_direct_action_generation_dev import (
 from adapters.mineflayer.g49_original_action_gap_census_dev import (
     join_g49_original_action_gap_census_dev,
 )
+from adapters.mineflayer.g410_in_action_evidence_quality_dev import (
+    join_g410_in_action_evidence_dev,
+)
 from adapters.mineflayer.normal_action import NormalActionAuthorization, NormalActionStage
 from adapters.mineflayer.python_protocol import (
     MineflayerLocalVoxelsDev,
@@ -197,6 +200,7 @@ async def qualify(
     g47_original_t2_gait_join_dev:bool=False,
     g48_direct_action_generation_dev:bool=False,
     g49_original_action_gap_census_dev:bool=False,
+    g410_in_action_evidence_quality_dev:bool=False,
 )->int:
     report={
         "classification":"DEV_ONLY_S49_L2_L1_GOAL_AUTONOMOUS_L0",
@@ -261,6 +265,8 @@ async def qualify(
         "g49_original_action_gap_census_dev":g49_original_action_gap_census_dev,
         "g49_original_action_applied_acks_dev":[],
         "g49_original_action_gap_audit_dev":None,
+        "g410_in_action_evidence_quality_dev":g410_in_action_evidence_quality_dev,
+        "g410_in_action_evidence_audit_dev":None,
         "g2_dash_modifier_dev":None,
         "g2_sneak_prefix_dev":g2_sneak_prefix_dev,
         "g2_sneak_actions_dev":[],
@@ -298,6 +304,11 @@ async def qualify(
             or type(g47_original_t2_gait_join_dev) is not bool
             or type(g48_direct_action_generation_dev) is not bool
             or type(g49_original_action_gap_census_dev) is not bool
+            or type(g410_in_action_evidence_quality_dev) is not bool
+            or (g410_in_action_evidence_quality_dev and (
+                not g49_original_action_gap_census_dev
+                or os.environ.get("S49_G410_IN_ACTION_EVIDENCE_DEV_ONLY")!="1"
+            ))
             or (g49_original_action_gap_census_dev and (
                 not g48_direct_action_generation_dev
                 or os.environ.get("S49_G49_ORIGINAL_ACTION_GAP_DEV_ONLY")!="1"
@@ -2171,6 +2182,7 @@ async def qualify(
                 report["g48_direct_join_refusal_dev"]=f"{type(exc).__name__}: {exc}"
                 report["status"]="FAIL"
                 rc=2
+        g49_rows=None
         if g49_original_action_gap_census_dev and g48_rows is not None:
             try:
                 g49_rows=[
@@ -2217,6 +2229,61 @@ async def qualify(
                 }
             except (ValueError, KeyError, TypeError) as exc:
                 report["g49_gap_census_refusal_dev"]=f"{type(exc).__name__}: {exc}"
+                report["status"]="FAIL"
+                rc=2
+        if g410_in_action_evidence_quality_dev and g49_rows is not None:
+            try:
+                quality=[
+                    asdict(row) for row in join_g410_in_action_evidence_dev(
+                        session_id=sid,
+                        g49_rows=g49_rows, g48_rows=g48_rows,
+                        paper_rows=[asdict(row) for row in gait_observer.rows],
+                        t2_rows=t2_owner.rows,
+                    )
+                ]
+                g410_path=report_path.parent/"g410_in_action_evidence_quality_dev.json"
+                with g410_path.open("x",encoding="utf-8") as sink:
+                    json.dump({
+                        "source":"G49_ORIGINAL_IN_ACTION_UNKNOWN_G48_G1_T2_READ_ONLY",
+                        "original_g49_sha256":report["g49_original_action_gap_audit_dev"]["derived_file_sha256"],
+                        "original_g48_sha256":report["g48_direct_worldtick_audit_dev"]["derived_file_sha256"],
+                        "original_t2_sha256":report["l1_t2_ledger_dev"]["derived_file_sha256"],
+                        "original_t2_reposted":False,
+                        "full_physics_tick_attested":False,
+                        "rows":quality,
+                    },sink,sort_keys=True)
+                    sink.write("\n")
+                per_mode={}
+                axes={}
+                for item in quality:
+                    mode=item["original_s49_mode"]
+                    per_mode[mode]=per_mode.get(mode,0)+1
+                    for axis in item["missing_evidence_axes"]:
+                        axes[axis]=axes.get(axis,0)+1
+                expected=sum(
+                    item["source_gap_class"].startswith("UNKNOWN_INSIDE_APPLIED_")
+                    for item in g49_rows
+                )
+                if len(quality)!=expected:
+                    raise ValueError("G4.10 lost original in-Action UNKNOWN")
+                report["g410_in_action_evidence_audit_dev"]={
+                    "source":"G49_ORIGINAL_IN_ACTION_UNKNOWN_G48_G1_T2_READ_ONLY",
+                    "derived_file":g410_path.name,
+                    "derived_file_sha256":hashlib.sha256(g410_path.read_bytes()).hexdigest(),
+                    "original_g49_sha256":report["g49_original_action_gap_audit_dev"]["derived_file_sha256"],
+                    "original_g48_sha256":report["g48_direct_worldtick_audit_dev"]["derived_file_sha256"],
+                    "original_t2_sha256":report["l1_t2_ledger_dev"]["derived_file_sha256"],
+                    "original_t2_worldtick_rows":len(g49_rows),
+                    "original_in_action_unknown":len(quality),
+                    "mode_counts":per_mode,
+                    "missing_axis_counts":axes,
+                    "original_g49_unknown_unchanged":report["g49_original_action_gap_audit_dev"]["still_unknown_worldticks"],
+                    "new_p1_or_m0_posting":False,
+                    "additional_native_readers_or_t2_owners":0,
+                    "full_physics_tick_attested":False,
+                }
+            except (ValueError, KeyError, TypeError) as exc:
+                report["g410_evidence_refusal_dev"]=f"{type(exc).__name__}: {exc}"
                 report["status"]="FAIL"
                 rc=2
         report["pre_cleanup_status"]=report["status"]
@@ -2275,6 +2342,7 @@ def main()->int:
     p.add_argument("--g47-original-t2-gait-join-dev",action="store_true")
     p.add_argument("--g48-direct-action-generation-dev",action="store_true")
     p.add_argument("--g49-original-action-gap-census-dev",action="store_true")
+    p.add_argument("--g410-in-action-evidence-quality-dev",action="store_true")
     p.add_argument("--experience-memory-dev",type=Path)
     p.add_argument("--experience-source-report-dev",type=Path)
     p.add_argument("--selfworld-memory-snapshot-dev",type=Path)
@@ -2323,6 +2391,7 @@ def main()->int:
         g47_original_t2_gait_join_dev=args.g47_original_t2_gait_join_dev,
         g48_direct_action_generation_dev=args.g48_direct_action_generation_dev,
         g49_original_action_gap_census_dev=args.g49_original_action_gap_census_dev,
+        g410_in_action_evidence_quality_dev=args.g410_in_action_evidence_quality_dev,
         experience_memory_dev=args.experience_memory_dev,
         experience_source_report_dev=args.experience_source_report_dev,
         selfworld_memory_snapshot_dev=args.selfworld_memory_snapshot_dev,
