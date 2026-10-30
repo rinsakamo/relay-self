@@ -11,12 +11,13 @@ import pytest
 import test_l1_epoch_observer as l8
 import test_l1_s_choice_shadow as l7
 
-from experiments.metabolism_b0_cognition import B0CognitiveResourceView, B0TickResourceFact
-from experiments.metabolism_l8_resource_shadow import contrast_l8_with_m_resource
-from experiments.metabolism_s_epoch_resource import observe_completed_s_resource_epoch
 from relay_self.l1_epoch_observer import observe_s_epoch_l1
 from relay_self.l1_s_choice_shadow import SChoiceContrastStatus
 from relay_self.world_conditioned_choice import WorldChoiceKind
+
+from experiments.metabolism_b0_cognition import B0CognitiveResourceView, B0TickResourceFact
+from experiments.metabolism_l8_resource_shadow import contrast_l8_with_m_resource
+from experiments.metabolism_s_epoch_resource import observe_completed_s_resource_epoch
 
 
 def scenario(*, energy=0.6, near=True, enabled=True, tags=None, cheap=False):
@@ -56,18 +57,18 @@ def scenario(*, energy=0.6, near=True, enabled=True, tags=None, cheap=False):
     m = observe_completed_s_resource_epoch(
         original_s, native=native, retained=retained, body=body,
     )
-    l = observe_s_epoch_l1(
+    l8_readout = observe_s_epoch_l1(
         original_s, native=native, retained=retained,
         learning=learned, retention_enabled=enabled,
     )
-    return original_s, native, retained, learned, m, l, enabled
+    return original_s, native, retained, learned, m, l8_readout, enabled
 
 
-def join(data, *, m=None, l=None, native=None, retained=None, learning=None,
+def join(data, *, m=None, l8_readout=None, native=None, retained=None, learning=None,
          enabled=None):
     _, n, r, lr, mr, lo, flag = data
     return contrast_l8_with_m_resource(
-        lo if l is None else l,
+        lo if l8_readout is None else l8_readout,
         mr if m is None else m,
         native=n if native is None else native,
         retained=r if retained is None else retained,
@@ -150,10 +151,10 @@ def test_reread_does_not_change_source_memory_or_s_owner():
 ))
 def test_forged_cross_lane_context_or_proposal_rejected(attack):
     data = scenario()
-    s, native, retained, learning, m, l, enabled = data
+    s, native, retained, learning, m, l8_readout, enabled = data
     if attack == "other_epoch":
         other = scenario()
-        l = replace(l, s_epoch=replace(other[0]))
+        l8_readout = replace(l8_readout, s_epoch=replace(other[0]))
     elif attack == "foreign_session":
         m = replace(m, body=replace(m.body, session_id="foreign"))
     elif attack == "foreign_probe":
@@ -161,36 +162,36 @@ def test_forged_cross_lane_context_or_proposal_rejected(attack):
     elif attack == "altered_s_choice":
         m = replace(m, choice=WorldChoiceKind.WAIT)
     elif attack == "altered_l8_choice":
-        l = replace(l, comparison=replace(
-            l.comparison, s_choice=WorldChoiceKind.WAIT,
+        l8_readout = replace(l8_readout, comparison=replace(
+            l8_readout.comparison, s_choice=WorldChoiceKind.WAIT,
         ))
     elif attack == "altered_l8_status":
-        l = replace(l, comparison=replace(
-            l.comparison, status=SChoiceContrastStatus.AGREES,
+        l8_readout = replace(l8_readout, comparison=replace(
+            l8_readout.comparison, status=SChoiceContrastStatus.AGREES,
         ))
     elif attack == "altered_l8_probe_sha":
-        l = replace(l, comparison=replace(
-            l.comparison, original_probe_sha256="0" * 64,
+        l8_readout = replace(l8_readout, comparison=replace(
+            l8_readout.comparison, original_probe_sha256="0" * 64,
         ))
     elif attack == "lost_admission":
         learning = replace(learning, admitted_current_probe_sha256=frozenset())
     elif attack == "action_authority_l8":
-        l = replace(l, action_authority=True)
+        l8_readout = replace(l8_readout, action_authority=True)
     elif attack == "action_authority_m":
         m = replace(m, action_authority=True)
     elif attack == "bad_l8_work_ids":
-        l = replace(l, planned_work_ids=("foreign-work",))
+        l8_readout = replace(l8_readout, planned_work_ids=("foreign-work",))
     elif attack == "bad_l8_digest":
-        l = replace(l, comparison=replace(
-            l.comparison, candidate_differs=False,
+        l8_readout = replace(l8_readout, comparison=replace(
+            l8_readout.comparison, candidate_differs=False,
         ))
     elif attack == "retention_mismatch":
         enabled = False
     elif attack == "foreign_native":
         native = replace(native, request_id="wrong-request")
     elif attack == "fake_l1_candidate":
-        l = replace(l, comparison=replace(
-            l.comparison, l1_shadow_ref="SOME_OTHER_ACTION",
+        l8_readout = replace(l8_readout, comparison=replace(
+            l8_readout.comparison, l1_shadow_ref="SOME_OTHER_ACTION",
         ))
     elif attack == "bad_m_scope":
         m = replace(m, source_scope="PHYSICAL_ATTESTED")
@@ -199,5 +200,5 @@ def test_forged_cross_lane_context_or_proposal_rejected(attack):
     else:
         m = replace(m, body=replace(m.body, owner_tick=99999))
     with pytest.raises(ValueError):
-        join(data, m=m, l=l, native=native, retained=retained,
+        join(data, m=m, l8_readout=l8_readout, native=native, retained=retained,
              learning=learning, enabled=enabled)
