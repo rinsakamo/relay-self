@@ -12,13 +12,20 @@ from adapters.mineflayer.self_world_projection import project_self_world_present
 from relay_self.cognition_view import (
     CognitionTier,
     InvalidCognitiveView,
+    bind_body_prediction_review_to_request,
     bind_cognitive_view_to_request,
     project_cognitive_view,
 )
 from relay_self.persistent_cognition import IdentitySpecification, Memory, PersistentCognition
 from relay_self.prediction import PredictionState, StateVariable, TransitionRule, predict_transition
 from relay_self.provenance import Provenance
-from relay_self.relay_engine import BoundedChoice, BoundedChoiceRequest, CognitionDatum
+from relay_self.relay_engine import (
+    BoundedChoice,
+    BoundedChoiceRequest,
+    CognitionDatum,
+    ProviderDecision,
+    RelayEngine,
+)
 from relay_self.self_body import (
     BodyHypothesis,
     BodyOrigin,
@@ -51,6 +58,7 @@ def fixture(
     with_world_forecast: bool = False,
     with_body_forecast: bool = False,
     native_time: int | None = 100,
+    body_x: float = 1.0,
 ):
     entities = (
         (MinecraftEntityPresent(42, "zombie", 3.0, (4.0, 64.0, 2.0)),)
@@ -58,7 +66,7 @@ def fixture(
     )
     present = MinecraftPresent(
         session_id=session, seq=seq, request_id=f"probe-{seq}",
-        body_position=(1.0, 64.0, 2.0), health=10.0, food=6.0,
+        body_position=(body_x, 64.0, 2.0), health=10.0, food=6.0,
         food_saturation=3.0, inventory=(), observed_entities=entities,
         coverage_scope="bounded-nearby", coverage_radius_m=16.0, coverage_cap=16,
         coverage_candidates=len(entities), coverage_truncated=False,
@@ -373,3 +381,145 @@ def test_relay_engine_bridge_rejects_context_spoof_and_stale_epoch():
         bind_cognitive_view_to_request(
             view, base, tier=CognitionTier.L1, expected_epoch_id="epoch-9",
         )
+
+
+def _paired_body_world_prediction(*, predicted_x: int, seq_gap: int = 1):
+    """One fixed pair of World observations, alter *only* Self's PRD belief."""
+    prior = fixture(seq=8, body_x=1.0)
+    later = fixture(seq=8 + seq_gap, body_x=3.0)
+    source = prior.self_body.observation
+    state = PredictionState(
+        "body-step", (StateVariable("position_x", 1),),
+        provenance("hypothesis"),
+        source_refs=(source.source_ref, "body-field:position_x"),
+        source_provenance=(source.source_provenance,),
+    )
+    hypothesis = BodyHypothesis("step", state)
+    prediction = BodyPrediction("step", predict_transition(
+        state, TransitionRule(
+            "step-rule", (StateVariable("position_x", 1),),
+            (StateVariable("position_x", predicted_x),),
+            provenance("conditional-rule"),
+        ),
+    ))
+    body = compose_self_body_view(
+        self_id="A", session_id="session-A", epoch_id="epoch-8",
+        observation=source,
+        hypotheses=(hypothesis,), predictions=(prediction,),
+    )
+    return replace(prior, self_body=body), later
+
+
+def test_body_review_reaches_l1_l2_and_changes_stub_decision_not_actions():
+    """Same real observation, different fallible PRD -> different choices."""
+    request = BoundedChoiceRequest(
+        request_id="r", instruction="choose epistemic follow-up",
+        intent_id=None, focus=None,
+        choices=(BoundedChoice("COMPARE", "compare body evidence"),
+                 BoundedChoice("REASSESS", "reassess body model")),
+        context=(), think_allowed=False,
+    )
+    before_match, now_match = _paired_body_world_prediction(predicted_x=3)
+    before_bad, now_bad = _paired_body_world_prediction(predicted_x=2)
+    assert now_match == now_bad
+    match = bind_body_prediction_review_to_request(
+        before_match, now_match, request, tier=CognitionTier.L1,
+        hypothesis_id="step", field_key="position_x", max_native_seq_gap=2,
+    )
+    mismatch = bind_body_prediction_review_to_request(
+        before_bad, now_bad, request, tier=CognitionTier.L2,
+        hypothesis_id="step", field_key="position_x", max_native_seq_gap=2,
+    )
+    assert match.choices == mismatch.choices == request.choices
+    assert match.instruction == mismatch.instruction == request.instruction
+    assert request.context == ()
+    a = json.loads(match.context[-1].value_json)
+    b = json.loads(mismatch.context[-1].value_json)
+    assert a["status"] == "match"
+    assert b["status"] == "mismatch"
+    assert b["epistemic_candidate_not_action"] == "REASSESS_BODY_MODEL"
+    assert a["epistemic_candidate_not_action"] == "COMPARE_MODEL_WITH_OBSERVATION"
+    assert a["action_success"] is b["action_success"] is None
+    assert not a["learning_committed"] and not b["resource_credited"]
+    assert a["later_source_ref"] == b["later_source_ref"]
+    assert a["observation_source_provenance"] == b["observation_source_provenance"]
+
+    def offline_fixture_provider(request, *, mode):
+        context = {d.key: json.loads(d.value_json) for d in request.context}
+        # Deliberately simple deterministic comparator, NOT an online L1 learner.
+        review = context["self_cognitive_body_review"]
+        choice = "REASSESS" if review["status"] == "mismatch" else "COMPARE"
+        return ProviderDecision.resolved(choice, reason="offline fixture only")
+
+    engine = RelayEngine(offline_fixture_provider)
+    first, second = engine(match), engine(mismatch)
+    assert first.choice_id == "COMPARE" and second.choice_id == "REASSESS"
+    assert first.provider_call_count == second.provider_call_count == 1
+    assert not hasattr(engine, "issue_action")
+
+
+def test_body_review_request_refuses_foreign_stale_or_spoofed_context():
+    before, after = _paired_body_world_prediction(predicted_x=3)
+    req = BoundedChoiceRequest(
+        request_id="r", instruction="epistemic compare",
+        intent_id=None, focus=None,
+        choices=(BoundedChoice("COMPARE", "compare"),
+                 BoundedChoice("REASSESS", "reassess")), context=(),
+    )
+    kwargs = dict(
+        tier=CognitionTier.L1, hypothesis_id="step",
+        field_key="position_x", max_native_seq_gap=2,
+    )
+    forged = replace(req, context=(CognitionDatum.from_value(
+        "self_cognitive_body_review", {"status": "match"},
+        provenance("forged"),
+    ),))
+    with pytest.raises(InvalidCognitiveView, match="reserved"):
+        bind_body_prediction_review_to_request(before, after, forged, **kwargs)
+    for invalid in (
+        replace(after, self_id="B"),
+        replace(after, session_id="other"),
+        replace(after, epoch_id=before.epoch_id),
+        replace(after, self_body=replace(after.self_body, epoch_id="old")),
+        replace(after, observation=replace(after.observation, native_seq=8)),
+    ):
+        with pytest.raises(InvalidCognitiveView):
+            bind_body_prediction_review_to_request(before, invalid, req, **kwargs)
+    with pytest.raises(InvalidCognitiveView, match="L1/L2"):
+        bind_body_prediction_review_to_request(
+            before, after, req, **(kwargs | {"tier": CognitionTier.L0}),
+        )
+    with pytest.raises(InvalidCognitiveView, match="stale or undated"):
+        bind_body_prediction_review_to_request(
+            before, after, req,
+            **(kwargs | {"inspected_at_ns": 400, "max_age_ns": 10}),
+        )
+
+
+def test_body_review_missing_world_or_excess_gap_produces_no_fake_success():
+    before, after = _paired_body_world_prediction(predicted_x=3, seq_gap=5)
+    req = BoundedChoiceRequest(
+        request_id="r", instruction="compare body state",
+        intent_id=None, focus=None,
+        choices=(BoundedChoice("COMPARE", "compare"),
+                 BoundedChoice("REASSESS", "reassess")), context=(),
+    )
+    kwargs = dict(
+        tier=CognitionTier.L1, hypothesis_id="step",
+        field_key="position_x", max_native_seq_gap=2,
+    )
+    projected = bind_body_prediction_review_to_request(
+        before, after, req, **kwargs,
+    )
+    review = json.loads(projected.context[-1].value_json)
+    assert review["status"] == "undetermined"
+    assert review["epistemic_candidate_not_action"] == (
+        "REQUEST_ADDITIONAL_BODY_EVIDENCE"
+    )
+    assert review["action_success"] is None
+    for view in (
+        replace(before, observation=None),
+        replace(before, self_body=None),
+    ):
+        with pytest.raises(InvalidCognitiveView, match="matching Present"):
+            bind_body_prediction_review_to_request(view, after, req, **kwargs)
