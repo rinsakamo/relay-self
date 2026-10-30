@@ -288,3 +288,23 @@ def test_existing_owner_composer_still_rejects_cross_session():
             self_id="B", session_id="session-B", epoch_id="epoch-8",
             observation=a.observation,
         )
+
+
+def test_retained_memory_without_current_present_stays_remembered():
+    retained = PersistentCognition(
+        IdentitySpecification("A", ("private",), provenance("identity")),
+        (Memory("older", "historical path", provenance("past"),
+                provenance("retained")),),
+    )
+    world = compose_self_world_view(
+        self_id="A", session_id="S", epoch_id="now",
+        retained=retained, memory_ids=("older",),
+    )
+    l0 = project_cognitive_view(world, tier=CognitionTier.L0)
+    l1 = project_cognitive_view(world, tier=CognitionTier.L1)
+    assert l0.world_facts == ()
+    assert l1.world_status == "UNKNOWN" and l1.world_source_ref is None
+    assert len(l1.world_facts) == 1
+    assert l1.world_facts[0].origin is WorldOrigin.REMEMBERED
+    assert "REVIEW_OWN_RETAINED_MEMORY" in l1.information_options
+    assert "REQUEST_FRESH_WORLD_OBSERVATION" in l1.information_options
