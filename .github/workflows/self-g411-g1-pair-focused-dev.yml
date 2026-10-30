@@ -1,0 +1,39 @@
+name: S49 G4.11 Original G1 Pair Evidence LIGHT DEV
+on:
+  push:
+    branches:
+      - self/dev-g411-g1-unstable-pair-census-20261030
+    paths:
+      - .github/workflows/self-g411-g1-pair-focused-dev.yml
+      - adapters/mineflayer/g411_g1_unstable_pair_census_dev.py
+      - adapters/mineflayer/s49_goal_loop_real_dev.py
+      - tests/test_s49_g411_g1_unstable_pair_census_dev.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  g411-original-g1-pair-focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: G4.11 original G1 pair focused tests
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/g411_g1_unstable_pair_census_dev.py tests/test_s49_g411_g1_unstable_pair_census_dev.py adapters/mineflayer/s49_goal_loop_real_dev.py
+          python -m compileall -q adapters/mineflayer/g411_g1_unstable_pair_census_dev.py adapters/mineflayer/s49_goal_loop_real_dev.py tests/test_s49_g411_g1_unstable_pair_census_dev.py
+          python -m pytest -q tests/test_s49_g411_g1_unstable_pair_census_dev.py tests/test_s49_g410_in_action_evidence_quality_dev.py tests/test_s49_g49_original_action_gap_census_dev.py
+      - name: Classification
+        if: always()
+        run: echo 'DEV_ONLY / G411_OFFLINE_G1_PAIR_SOURCE_DIAGNOSTIC / PHYSICAL_WORLD_NOT_RUN / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
