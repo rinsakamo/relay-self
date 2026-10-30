@@ -6,7 +6,6 @@ import pytest
 from experiments.metabolism_m01_minecraft import M01Profile, WorldTickSample, begin
 from experiments.metabolism_resource_projection import (
     Candidate,
-    SelfBodyResourceCosts,
     VisibleResourceQuote,
     quote_candidate,
     visible_costs,
