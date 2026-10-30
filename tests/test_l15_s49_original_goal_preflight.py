@@ -47,8 +47,12 @@ def s49_original_source() -> dict:
     # S49's existing executor takes its own after-observation once clear is ACKed.
     # Two *additional* terminal probes are required for a Goal window.
     after = _replace_seq(first, 4)
-    first_goal = _replace_seq(first, 5)
-    second_goal = _replace_seq(second, 6)
+    goal_one = json.loads(first)
+    goal_one.update({"seq": 5, "request_id": "goal-probe-5"})
+    first_goal = l13.raw(goal_one)
+    goal_two = json.loads(second)
+    goal_two.update({"seq": 6, "request_id": "goal-probe-6"})
+    second_goal = l13.raw(goal_two)
     received = started + pre + dispatch + cleanup + after + first_goal + second_goal
     sent = (
         encode_observe().encode()
@@ -106,7 +110,7 @@ def test_s49_single_motor_and_separate_s15_clear_is_one_goal_window():
     "cleanup_duplicate", "cleanup_before_dispatch", "no_cleanup_ack",
     "dispatch_rejected", "post_action_wrong_kind", "second_outbound_motor",
     "outbound_cleanup_wrong_id", "outbound_cleanup_missing",
-    "sent_cleanup_before_motor",
+    "sent_cleanup_before_motor", "wrong_goal_request",
 ])
 def test_s49_cleanup_and_two_goal_probes_fail_closed(fault):
     args = s49_original_source()
@@ -115,10 +119,12 @@ def test_s49_cleanup_and_two_goal_probes_fail_closed(fault):
     if fault in {
         "other_cleanup_id", "cleanup_effect_wrong", "cleanup_rejected",
         "cleanup_before_dispatch", "dispatch_rejected",
-        "post_action_wrong_kind",
+        "post_action_wrong_kind", "wrong_goal_request",
     }:
         index = 2 if fault == "dispatch_rejected" else (
-            4 if fault == "post_action_wrong_kind" else 3
+            5 if fault == "wrong_goal_request" else (
+                4 if fault == "post_action_wrong_kind" else 3
+            )
         )
         data = json.loads(lines[index])
         if fault == "other_cleanup_id":
@@ -130,6 +136,8 @@ def test_s49_cleanup_and_two_goal_probes_fail_closed(fault):
             data["error"] = "not-applied"
         elif fault == "cleanup_before_dispatch":
             data["seq"] = 2
+        elif fault == "wrong_goal_request":
+            data["request_id"] = "replaced-probe-5"
         else:
             data["kind"] = "entities"
         lines[index] = l13.raw(data)
