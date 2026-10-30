@@ -95,7 +95,8 @@ jobs:
           assert data["independent_per_action_goal_receipts"] == 0
           assert data["qualified_l10_training_pairs"] == 0
           assert data["original_native_pre_action_world_body_receipts"] == 0
-          assert not data["physical_learning_attested"]\n          assert data["new_worlds_started"] == 0
+          assert not data["physical_learning_attested"]
+          assert data["new_worlds_started"] == 0
           print("L12_REAL_G413_ACTION_PROGRESS_GOAL_REWARD_BLOCKED_PASS")
           PY
           python -m pytest -q tests/test_l12_archived_action_progress_no_reward_dev.py tests/test_l11_saved_real_goal_originals_dev.py tests/test_l10_world_body_cue_learning.py tests/test_l9_world_body_epoch_shadow.py
