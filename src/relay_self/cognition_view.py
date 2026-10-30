@@ -12,7 +12,12 @@ from enum import Enum
 from relay_self.prediction import PredictionStatus
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import BoundedChoiceRequest, CognitionDatum, OpenCognitionRequest
-from relay_self.self_body import BodyOrigin, SelfBodyView
+from relay_self.self_body import (
+    BodyOrigin,
+    BodyPredictionReviewStatus,
+    SelfBodyView,
+    review_self_body_prediction,
+)
 from relay_self.self_world import SelfWorldView, WorldOrigin
 
 
@@ -311,6 +316,7 @@ def project_cognitive_view(
 
 _COGNITION_CONTEXT_KEYS = frozenset({
     "self_cognitive_source", "self_cognitive_world", "self_cognitive_body",
+    "self_cognitive_body_review",
 })
 
 
@@ -395,3 +401,94 @@ def bind_cognitive_view_to_request(
         ),
     )
     return replace(request, context=(*request.context, *items))
+
+
+def bind_body_prediction_review_to_request(
+    prior: SelfWorldView,
+    current: SelfWorldView,
+    request: BoundedChoiceRequest | OpenCognitionRequest,
+    *,
+    tier: CognitionTier,
+    hypothesis_id: str,
+    field_key: str,
+    max_native_seq_gap: int,
+    absolute_tolerance: float = 0.0,
+    inspected_at_ns: int | None = None,
+    max_age_ns: int | None = None,
+) -> BoundedChoiceRequest | OpenCognitionRequest:
+    """Read-only L1/L2 comparison of an earlier Body PRD and later Present.
+
+    No inference about an Action's causal effect, physical viability or reward.
+    A fake caller-created Review cannot be supplied: this bridge recomputes it.
+    """
+    if tier not in (CognitionTier.L1, CognitionTier.L2):
+        raise InvalidCognitiveView("Body prediction review is L1/L2 only")
+    if not isinstance(prior, SelfWorldView) or not isinstance(
+        current, SelfWorldView
+    ):
+        raise InvalidCognitiveView("requires typed prior/current SelfWorld views")
+    if (prior.self_id != current.self_id
+            or prior.session_id != current.session_id
+            or prior.epoch_id == current.epoch_id):
+        raise InvalidCognitiveView("foreign or replayed SelfWorld decision epoch")
+    # Require each Body to be bound to the same original native Present
+    # as its World view. Recheck both rather than trusting a passed Review.
+    for view in (prior, current):
+        if (view.observation is None or view.self_body is None
+                or view.self_body.observation is None):
+            raise InvalidCognitiveView("World and Body require matching Present")
+        project_cognitive_view(view, tier=CognitionTier.L0)
+    projected = bind_cognitive_view_to_request(
+        current, request, tier=tier, expected_epoch_id=current.epoch_id,
+        minimum_native_seq=prior.observation.native_seq + 1,
+        inspected_at_ns=inspected_at_ns, max_age_ns=max_age_ns,
+    )
+    metadata = project_cognitive_view(
+        current, tier=CognitionTier.L0,
+        minimum_native_seq=prior.observation.native_seq + 1,
+        inspected_at_ns=inspected_at_ns, max_age_ns=max_age_ns,
+    )
+    if metadata.body_status not in {
+        "UNVERIFIED_FRESHNESS", "OBSERVED_WITHIN_BOUND",
+    }:
+        raise InvalidCognitiveView("future body Present is stale or undated")
+    review = review_self_body_prediction(
+        prior.self_body, current.self_body,
+        hypothesis_id=hypothesis_id, field_key=field_key,
+        max_native_seq_gap=max_native_seq_gap,
+        absolute_tolerance=absolute_tolerance,
+    )
+    options = {
+        BodyPredictionReviewStatus.MATCH: "COMPARE_MODEL_WITH_OBSERVATION",
+        BodyPredictionReviewStatus.MISMATCH: "REASSESS_BODY_MODEL",
+        BodyPredictionReviewStatus.UNDETERMINED: "REQUEST_ADDITIONAL_BODY_EVIDENCE",
+    }
+    body_origin = current.self_body.observation.source_provenance
+    datum = CognitionDatum.from_value(
+        "self_cognitive_body_review",
+        {
+            "origin": "prediction_vs_observation_review",
+            "status": review.status.value,
+            "reason": review.reason_code,
+            "field_key": review.field_key,
+            "hypothesis_id": review.hypothesis_id,
+            "predicted_value": review.predicted_value,
+            "observed_value": review.observed_value,
+            "prior_source_ref": review.prior_observation_ref,
+            "later_source_ref": review.later_observation_ref,
+            "prediction_source_provenance": [
+                {"source": p.source, "reference": p.reference}
+                for p in review.prediction_provenance
+            ],
+            "observation_source_provenance": {
+                "source": review.observation_provenance.source,
+                "reference": review.observation_provenance.reference,
+            },
+            "epistemic_candidate_not_action": options[review.status],
+            "action_success": None,
+            "learning_committed": False,
+            "resource_credited": False,
+        },
+        body_origin,
+    )
+    return replace(projected, context=(*projected.context, datum))
