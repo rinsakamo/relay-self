@@ -15,7 +15,6 @@ from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.self_body_m0_projection import compose_b0_cognition_views
 from relay_self.l1_epoch_observer import observe_s_epoch_l1
 from relay_self.l1_s_choice_shadow import SChoiceContrastStatus
-from relay_self.world_conditioned_choice import WorldChoiceKind
 
 from experiments.metabolism_b0_cognition import read_b0_resource_context
 from experiments.metabolism_l8_resource_shadow import contrast_l8_with_m_resource
