@@ -9,20 +9,20 @@ import pytest
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
 from adapters.mineflayer.self_body_m0_projection import compose_b0_cognition_views
+from relay_self.epoch_plan import PlannedDecisionEpochResult
+from relay_self.learning import LearningPreferenceState
+from relay_self.world_conditioned_choice import (
+    WorldChoiceKind,
+    select_world_conditioned_choice,
+)
 from test_self_live_think import native_probe
 
 from experiments.metabolism_b0_cognition import read_b0_resource_context
 from experiments.metabolism_s_epoch_resource import observe_completed_s_resource_epoch
 from experiments.metabolism_viability import Interoception
 from relay_self.action_supervision import ActionSupervisor
-from relay_self.epoch_plan import PlannedDecisionEpochResult
-from relay_self.learning import LearningPreferenceState
 from relay_self.provenance import Provenance
 from relay_self.runtime_coordination import coordinate_decision_epoch
-from relay_self.world_conditioned_choice import (
-    WorldChoiceKind,
-    select_world_conditioned_choice,
-)
 
 
 def prepared(*, energy=12.0, distance=3.0, quantum=0.1, gain=1.0):
