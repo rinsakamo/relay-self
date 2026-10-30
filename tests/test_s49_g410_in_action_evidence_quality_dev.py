@@ -119,7 +119,10 @@ def test_g410_no_active_action_is_not_a_wait_or_gait_qualification():
     a = _source()
     # The original census may be dominated by non-Action passive/tail ticks.
     # They are checked but never turned into G4.10 physical evidence rows.
-    assert not any(
-        r.source_gap_class == "UNKNOWN_NO_T2_ACTIVE_ACTION"
-        for r in join_g410_in_action_evidence_dev(**a)
+    all_g49 = a["g49_rows"]
+    rows = join_g410_in_action_evidence_dev(**a)
+    assert len(rows) == sum(
+        row["source_gap_class"].startswith("UNKNOWN_INSIDE_APPLIED_")
+        for row in all_g49
     )
+    assert all(row.remains_unknown for row in rows)
