@@ -10,7 +10,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from experiments.metabolism_s_epoch_resource import (\n    PostSEpochResourceObservation,\n    observe_completed_s_resource_epoch,\n)
+from experiments.metabolism_s_epoch_resource import (
+    PostSEpochResourceObservation,
+    observe_completed_s_resource_epoch,
+)
 
 CandidateStatus = Literal[
     "MODEL_AFFORDABLE", "MODEL_INSUFFICIENT",
@@ -59,7 +62,8 @@ def contrast_l8_with_m_resource(
     """
     # L8 is an independent owner branch: import its typed read-only API only
     # inside this optional experimental seam, never in M standalone imports.
-    from relay_self.epoch_plan import PlannedDecisionEpochResult\n    from relay_self.l1_epoch_observer import (
+    from relay_self.epoch_plan import PlannedDecisionEpochResult
+    from relay_self.l1_epoch_observer import (
         SEpochL1Observation,
         SEpochObservationRejected,
         observe_s_epoch_l1,
