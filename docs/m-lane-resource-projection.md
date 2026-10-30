@@ -300,3 +300,66 @@ L8, S49, #545 or main; no fresh World, GPU, FULL,
 qualification or SCIENCE is run. S/L owners can opt in only
 after independently validating the original native source and
 coherent B0 model profile.
+
+## M × L8: independent same-S-epoch learning/resource shadow (2026-10-30)
+
+The M-owned optional `experiments/metabolism_l8_resource_shadow.py`
+joins **already returned, same-object** `DecisionEpochResult` instances
+from the **actual L8 `observe_s_epoch_l1`** and the existing M
+`observe_completed_s_resource_epoch`. The original L8 pure
+`observe_s_epoch_l1` verification is rerun against the supplied
+`NativeThreat`, frozen S10 preference, L1 `LearningEpochResult`
+and explicit retention flag. The existing M *pure* S42/source/model
+post-epoch verification is likewise rerun. Neither S coordinator,
+model call, Memory owner, ledger nor Action issuer is rerun by the
+joint bridge. The S choice remains unchanged.
+
+The handoff exposes the three **distinct** pieces of information:
+(1) original S42 WAIT/MOVE_AWAY, (2) the L8-admitted
+experience/cheap-rule shadow candidate, or no admissible candidate,
+and (3) the *generic B0 one-tick* modeled affordability of that
+candidate alongside any S-side model tension. It does **not**
+select a winner, rank a combined utility, award new reward, perform
+an L1 update, grant an S11 habit, or generate an Action. L8's
+`CHEAP_DIFFERS` must remain labeled as a cheap-rule comparator,
+**not** an experience learning success. The synthetic model output
+does not establish why an organism prefers either option.
+
+**Source clock distinction:** L8's `ShadowContext.source_revision`
+is a caller-assigned observation revision, while B0
+`B0CognitiveResourceView.owner_tick` is the simulated metabolism
+owner clock. These values must **not** be made equal. The join
+instead requires the **exact same original S epoch object**, matching
+native probe/session/request, L8 evidence SHA membership, same
+S42 choice, source scope, immutable planned work IDs, and the B0
+owner tick's own **owner-specific** source reference. It rejects
+forged or future/in-flight S Action, altered S choice, unadmitted
+L1 candidate, changed L8 digest, changed retained preference,
+mismatched S/L8/M epoch or altered M modeled tension.
+
+**Pinned offline tests, deliberately separated by owner:**
+- Original S #634 `087fe095a87594505392262da1d341cf0c65b2b2`
+  is independently checked out read-only and tested with its actual
+  B0 owner/Body and S42 coordinator. This original producer suite
+  does **not** run real L8.
+- Original L8 `4defb6e8b78f2e050921b521eb2253a14bc260c4`
+  is independently checked out read-only and tested with its actual
+  L6/L7/L8 original fixture, S coordinator and L8 observer; in
+  these combined cross-branch cases the B0-cost readout is **synthetic
+  and source-shaped**, not a genuine B0 owner handoff. This checks
+  the immutable join semantics, not a simultaneous S+L+M product
+  activation.
+- Case examples: near threat S=MOVE_AWAY, L8=WAIT; low modeled
+  B0 Energy makes S's generic MOVE cost insufficient but L8's
+  WAIT model-affordable; high Energy changes only M. Far threat
+  S=WAIT, L8=MOVE_AWAY with low Energy: L8 candidate generic MOVE
+  model-insufficient; S remains WAIT. L8 retention-OFF has no L1
+  proposal, even when M labels a cost. Cheap equivalent remains
+  `CHEAP_DIFFERS`. Corrupt lineage/digest/deadlines/model refs fail.
+
+The B0 MOVE estimate is **not** a cost attestation for physical
+S49 MOVE_BACKWARD or the G4 planned gait, and B0 Energy
+is **not** M0.1 virtual Energy nor Minecraft native M0.2 exhaustion.
+No physical World, EAT-credit, output utility, L8/Body/product
+branch mutation, model/GPU execution, actual L1 behavior change,
+QUALIFICATION or SCIENCE has been performed.
