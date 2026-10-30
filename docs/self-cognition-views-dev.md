@@ -91,3 +91,45 @@ source references and original provenance, plus explicit omission/freshness
 metadata. This does not change request choices or model selection and does
 not execute a model, choose an Action or authorize motor control. Existing
 `bind_self_world_to_cognition_request` remains available and unchanged.
+
+
+## Stage 2: observational SelfBody forward prediction review (DEV)
+
+`review_self_body_prediction(prior_body, later_body, ...)` reuses existing
+PRD `PredictionState`, `TransitionRule`, and `predict_transition`.
+It requires the same scoped Self/session, two distinct decision epochs, two
+ordered native Mineflayer source references, an explicit maximum native
+sequence gap, and a prior hypothesis with exact `native-probe:` and
+`body-field:<key>` source binding. It independently replays the PRD rule
+and checks Action-correlated observations against S16 OUTCOME lineage.
+
+The result is an immutable `BodyPredictionReview`:
+`MATCH / MISMATCH / UNDETERMINED` plus source refs, predicted/observed
+values, reason, and original prediction/native provenances. Position, health,
+food and saturation are comparable *only when genuinely exposed by the
+current native Present adapter*. Existing PRD values are integers/strings/
+booleans; numeric comparison with native float values requires an explicit
+finite absolute tolerance (default 0). A missing value, excessive native
+sequence gap, non-comparable type or unavailable PRD value remains
+`UNDETERMINED`. Missing source binding, foreign Self/session, replay,
+counterfeit rule, or false S16 success are rejected. The result never
+credits M0 energy, P1 recovery, Action success, learning or a verified
+world-physics law.
+
+`bind_body_prediction_review_to_request(prior_world, current_world, ...)`
+rechecks both World/Body Present source joins, recomputes the Body review,
+and attaches `self_cognitive_body_review` to an existing L1 or L2
+`BoundedChoiceRequest` / `OpenCognitionRequest`. This slot is reserved
+against input spoofing. A typed, **non-executable** information candidate
+is attached: `COMPARE_MODEL_WITH_OBSERVATION` (match),
+`REASSESS_BODY_MODEL` (mismatch), or
+`REQUEST_ADDITIONAL_BODY_EVIDENCE` (undetermined). The review is never
+routed to motor authority by the view. With a fixed observation and
+two different prior model predictions, an offline deterministic
+RelayEngine test can choose different existing cognitive choices;
+this is input sensitivity, not demonstrated real-world decision
+improvement, generalization, learned habit or better viability.
+
+At this stage there is still no authoritative World revision in Present,
+independent sensor/custody proof, or qualified physical body prediction
+score. S-owned DEV World and V scientific comparison remain separate gates.
