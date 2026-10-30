@@ -30,15 +30,18 @@ def _identity(frame: dict) -> tuple | None:
         return None
     keys = ("action_id", "effect_id", "requested_mode",
             "control_generation", "control_phase")
-    if (any(key not in boundary for key in keys)
-            or type(boundary["action_id"]) is not str
-            or type(boundary["effect_id"]) is not str
-            or boundary["requested_mode"] not in {"SPRINT_INPUT", "JOG", "WALK"}
-            or type(boundary["control_generation"]) is not int
+    # In INITIAL/CLEARED Paper rows, action/effect/mode may be absent or
+    # nullable. Do not demand a MOVING identity from an off-control frame.
+    # Such a frame is useful only to describe a boundary, never to prove
+    # original S49/G44 motor acceptance.
+    if (type(boundary.get("control_generation")) is not int
             or boundary["control_generation"] < 0
-            or boundary["control_phase"] not in {"MOVING", "CLEARED", "INITIAL"}):
+            or boundary.get("control_phase") not in {"MOVING", "CLEARED", "INITIAL"}
+            or any(boundary.get(key) is not None
+                   and type(boundary[key]) is not str
+                   for key in ("action_id", "effect_id", "requested_mode"))):
         raise ValueError("G4.12 malformed original Node boundary identity")
-    return tuple(boundary[key] for key in keys)
+    return tuple(boundary.get(key) for key in keys)
 
 
 @dataclass(frozen=True, slots=True)
