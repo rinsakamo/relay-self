@@ -14,6 +14,7 @@ from adapters.mineflayer.g411_g1_unstable_pair_census_dev import (
     join_g411_g1_unstable_pair_census_dev,
 )
 from adapters.mineflayer.g412_original_control_boundary_dwell_dev import (
+    _identity,
     join_g412_original_control_boundary_dwell_dev,
 )
 from test_s49_g49_original_action_gap_census_dev import _args as g49_args
@@ -142,3 +143,22 @@ def test_g412_remains_unknown_if_no_matching_effect_even_when_node_changed():
     rows = join_g412_original_control_boundary_dwell_dev(**a)
     assert all(r.original_unknown_preserved for r in rows)
     assert all(r.observed_generation_worldtick_count >= 1 for r in rows)
+
+
+@pytest.mark.parametrize(("phase", "generation"), [
+    ("INITIAL", 0), ("CLEARED", 5),
+])
+def test_g412_nonmoving_original_paper_metadata_nullable(phase, generation):
+    frame = {"g46_motor_boundary_dev": {
+        "control_phase": phase,
+        "control_generation": generation,
+        "requested_mode": None,
+        "action_id": None,
+        "effect_id": None,
+    }}
+    assert _identity(frame) == (None, None, None, generation, phase)
+    del frame["g46_motor_boundary_dev"]["action_id"]
+    assert _identity(frame) == (None, None, None, generation, phase)
+    frame["g46_motor_boundary_dev"]["control_generation"] = "forged"
+    with pytest.raises(ValueError, match="G4.12"):
+        _identity(frame)
