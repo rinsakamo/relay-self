@@ -15,11 +15,13 @@ from relay_self.l9_world_body_epoch_shadow import (
 from relay_self.self_body import (
     BodyField,
     BodyObservation,
+    InvalidSelfBodyData,
     compose_self_body_view,
 )
 from relay_self.self_world import (
     WorldEntityObservation,
     WorldObservation,
+    InvalidSelfWorldData,
     compose_self_world_view,
 )
 
@@ -133,111 +135,111 @@ def test_l9_retention_off_and_far_world_still_use_original_s_choice():
 ])
 def test_l9_strict_original_self_world_body_binding(fault):
     a, _ = _source()
-    body = a["body"]
-    world = a["world"]
-    observation = world.observation
-    source_body = body.observation
-    if fault == "body_missing":
-        a["body"] = replace(body, observation=None)
-    elif fault == "world_missing":
-        a["world"] = replace(world, observation=None)
-    elif fault == "foreign_body":
-        a["body"] = replace(body, session_id="foreign")
-    elif fault == "foreign_world_self":
-        a["world"] = replace(world, self_id="foreign")
-    elif fault == "body_wrong_epoch":
-        a["body"] = replace(body, epoch_id="old")
-    elif fault == "body_wrong_seq":
-        a["body"] = replace(body, observation=replace(
-            source_body, native_seq=source_body.native_seq - 1,
-        ))
-    elif fault == "body_wrong_request":
-        a["body"] = replace(body, observation=replace(
-            source_body, request_id="other",
-        ))
-    elif fault in ("body_wrong_food", "body_wrong_health",
-                   "body_wrong_saturation", "body_wrong_position"):
-        key = {
-            "body_wrong_food": "food",
-            "body_wrong_health": "health",
-            "body_wrong_saturation": "food_saturation",
-            "body_wrong_position": "position_x",
-        }[fault]
-        fields = tuple(
-            replace(field, value=field.value + 1) if field.key == key else field
-            for field in source_body.fields
-        )
-        new_body = replace(body, observation=replace(source_body, fields=fields))
-        a["body"] = new_body
-        a["world"] = replace(world, self_body=new_body)
-    elif fault == "body_hypothesis_instead_observation":
-        new_body = replace(body, observation=None)
-        a["body"] = new_body
-        a["world"] = replace(world, self_body=new_body)
-    elif fault == "body_action_readback_without_original":
-        new_body = replace(body, observation=replace(
-            source_body, action_id="goal-forged",
-        ))
-        a["body"] = new_body
-        a["world"] = replace(world, self_body=new_body)
-    elif fault.startswith("world_entity_"):
-        target = observation.entities[0]
-        if fault == "world_entity_missing":
-            entities = ()
-        elif fault == "world_entity_distance":
-            entities = (replace(target, distance_m=target.distance_m + 1),)
-        elif fault == "world_entity_position":
-            entities = (replace(target, position=(1.0, 1.0, 1.0)),)
-        elif fault == "world_entity_name":
-            entities = (replace(target, label="skeleton"),)
-        elif fault == "world_entity_extra":
-            entities = (target, replace(target, entity_ref="entity-999"))
+    with pytest.raises((WorldBodyEpochRejected, InvalidSelfBodyData, InvalidSelfWorldData)):
+        body = a["body"]
+        world = a["world"]
+        observation = world.observation
+        source_body = body.observation
+        if fault == "body_missing":
+            a["body"] = replace(body, observation=None)
+        elif fault == "world_missing":
+            a["world"] = replace(world, observation=None)
+        elif fault == "foreign_body":
+            a["body"] = replace(body, session_id="foreign")
+        elif fault == "foreign_world_self":
+            a["world"] = replace(world, self_id="foreign")
+        elif fault == "body_wrong_epoch":
+            a["body"] = replace(body, epoch_id="old")
+        elif fault == "body_wrong_seq":
+            a["body"] = replace(body, observation=replace(
+                source_body, native_seq=source_body.native_seq - 1,
+            ))
+        elif fault == "body_wrong_request":
+            a["body"] = replace(body, observation=replace(
+                source_body, request_id="other",
+            ))
+        elif fault in ("body_wrong_food", "body_wrong_health",
+                       "body_wrong_saturation", "body_wrong_position"):
+            key = {
+                "body_wrong_food": "food",
+                "body_wrong_health": "health",
+                "body_wrong_saturation": "food_saturation",
+                "body_wrong_position": "position_x",
+            }[fault]
+            fields = tuple(
+                replace(field, value=field.value + 1) if field.key == key else field
+                for field in source_body.fields
+            )
+            new_body = replace(body, observation=replace(source_body, fields=fields))
+            a["body"] = new_body
+            a["world"] = replace(world, self_body=new_body)
+        elif fault == "body_hypothesis_instead_observation":
+            new_body = replace(body, observation=None)
+            a["body"] = new_body
+            a["world"] = replace(world, self_body=new_body)
+        elif fault == "body_action_readback_without_original":
+            new_body = replace(body, observation=replace(
+                source_body, action_id="goal-forged",
+            ))
+            a["body"] = new_body
+            a["world"] = replace(world, self_body=new_body)
+        elif fault.startswith("world_entity_"):
+            target = observation.entities[0]
+            if fault == "world_entity_missing":
+                entities = ()
+            elif fault == "world_entity_distance":
+                entities = (replace(target, distance_m=target.distance_m + 1),)
+            elif fault == "world_entity_position":
+                entities = (replace(target, position=(1.0, 1.0, 1.0)),)
+            elif fault == "world_entity_name":
+                entities = (replace(target, label="skeleton"),)
+            elif fault == "world_entity_extra":
+                entities = (target, replace(target, entity_ref="entity-999"))
+            else:
+                entities = (replace(target, visible_action="attack"),)
+            a["world"] = replace(
+                world, observation=replace(observation, entities=entities),
+            )
+        elif fault == "world_registry_truncated":
+            a["world"] = replace(world, observation=replace(
+                observation, coverage_truncated=True,
+            ))
+        elif fault == "world_coverage_forged":
+            a["world"] = replace(world, observation=replace(
+                observation, coverage_cap=observation.coverage_cap + 1,
+            ))
+        elif fault == "world_wrong_seq":
+            a["world"] = replace(world, observation=replace(
+                observation, native_seq=observation.native_seq - 1,
+            ))
+        elif fault == "world_wrong_request":
+            a["world"] = replace(world, observation=replace(
+                observation, request_id="other",
+            ))
+        elif fault == "world_wrong_provenance":
+            from relay_self.provenance import Provenance
+            a["world"] = replace(world, observation=replace(
+                observation, provenance=Provenance("synthetic", "forged"),
+            ))
+        elif fault == "foreign_memory":
+            from relay_self.persistent_cognition import Memory
+            from relay_self.provenance import Provenance
+            a["world"] = replace(world, memories=(
+                Memory("foreign", "fake", Provenance("test", "one"),
+                       Provenance("test", "two")),
+            ))
+        elif fault == "foreign_learning_self":
+            a["world"] = replace(world, self_id="foreign")
+        elif fault == "unadmitted_current":
+            a["learning"] = replace(
+                a["learning"], admitted_current_probe_sha256=frozenset(),
+            )
+        elif fault == "s_epoch_not_completed":
+            a["s_epoch"] = replace(a["s_epoch"], cognition_result=None)
+        elif fault == "retention_mismatch":
+            a["retention_enabled"] = False
         else:
-            entities = (replace(target, visible_action="attack"),)
-        a["world"] = replace(
-            world, observation=replace(observation, entities=entities),
-        )
-    elif fault == "world_registry_truncated":
-        a["world"] = replace(world, observation=replace(
-            observation, coverage_truncated=True,
-        ))
-    elif fault == "world_coverage_forged":
-        a["world"] = replace(world, observation=replace(
-            observation, coverage_cap=observation.coverage_cap + 1,
-        ))
-    elif fault == "world_wrong_seq":
-        a["world"] = replace(world, observation=replace(
-            observation, native_seq=observation.native_seq - 1,
-        ))
-    elif fault == "world_wrong_request":
-        a["world"] = replace(world, observation=replace(
-            observation, request_id="other",
-        ))
-    elif fault == "world_wrong_provenance":
-        from relay_self.provenance import Provenance
-        a["world"] = replace(world, observation=replace(
-            observation, provenance=Provenance("synthetic", "forged"),
-        ))
-    elif fault == "foreign_memory":
-        from relay_self.persistent_cognition import Memory
-        from relay_self.provenance import Provenance
-        a["world"] = replace(world, memories=(
-            Memory("foreign", "fake", Provenance("test", "one"),
-                   Provenance("test", "two")),
-        ))
-    elif fault == "foreign_learning_self":
-        a["world"] = replace(world, self_id="foreign")
-    elif fault == "unadmitted_current":
-        a["learning"] = replace(
-            a["learning"], admitted_current_probe_sha256=frozenset(),
-        )
-    elif fault == "s_epoch_not_completed":
-        a["s_epoch"] = replace(a["s_epoch"], cognition_result=None)
-    elif fault == "retention_mismatch":
-        a["retention_enabled"] = False
-    else:
-        a["world"] = replace(world, session_id="foreign")
-    with pytest.raises(WorldBodyEpochRejected):
+            a["world"] = replace(world, session_id="foreign")
         observe_s_world_body_epoch_l1(**a)
 
 
