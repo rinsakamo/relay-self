@@ -4,6 +4,9 @@ from dataclasses import asdict
 
 import pytest
 
+from adapters.mineflayer.g49_original_action_gap_census_dev import (
+    join_g49_original_action_gap_census_dev,
+)
 from adapters.mineflayer.g410_in_action_evidence_quality_dev import (
     join_g410_in_action_evidence_dev,
 )
@@ -19,10 +22,7 @@ from test_s49_g49_original_action_gap_census_dev import _args as g49_args
 def _args():
     raw = g49_args()
     g49_rows = [asdict(row) for row in
-                __import__(
-                    "adapters.mineflayer.g49_original_action_gap_census_dev",
-                    fromlist=["join_g49_original_action_gap_census_dev"],
-                ).join_g49_original_action_gap_census_dev(**raw)]
+                join_g49_original_action_gap_census_dev(**raw)]
     base = {
         "session_id": raw["session_id"],
         "g49_rows": g49_rows,
