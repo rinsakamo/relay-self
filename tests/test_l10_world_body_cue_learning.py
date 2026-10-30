@@ -38,7 +38,6 @@ def source(*, distance_m: float, food: float, session: str, seq: int):
     _, frame = s35._source(distance_m=distance_m)
     observed = replace(
         frame, session_id=session, seq=seq, request_id=f"l10-probe-{seq}",
-        provenance=Provenance("mineflayer", f"{session}:{seq}"),
         snapshot=replace(frame.snapshot, food=food),
     )
     selected = observed.snapshot.nearby_entities[0]
