@@ -7,11 +7,11 @@ import pytest
 
 import test_l1_epoch_observer as l8
 import test_l1_s_choice_shadow as l7
+from relay_self.l1_s_choice_shadow import SChoiceContrastStatus
 from relay_self.l9_world_body_epoch_shadow import (
     WorldBodyEpochRejected,
     observe_s_world_body_epoch_l1,
 )
-from relay_self.l1_s_choice_shadow import SChoiceContrastStatus
 from relay_self.self_body import (
     BodyField,
     BodyObservation,
