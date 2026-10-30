@@ -32,6 +32,9 @@ class LearningEpochResult:
 
     cognition: PersistentCognition
     advice: ShadowAdvice
+    current: ShadowContext
+    no_memory_action_ref: str | None
+    admitted_current_probe_sha256: frozenset[str]
     candidate_action_ref: str | None
     candidate_origin: str
     retained_memory_ids: tuple[str, ...] = ()
@@ -138,4 +141,13 @@ def advance_learning_epoch(
     elif advice.status is ContextualStatus.CHEAP_EQUIVALENT:
         candidate = advice.proposed_action_ref
         origin = "cheap_memory_rule"
-    return LearningEpochResult(snapshot, advice, candidate, origin, retained_ids)
+    return LearningEpochResult(
+        cognition=snapshot,
+        advice=advice,
+        current=current,
+        no_memory_action_ref=no_memory_action_ref,
+        admitted_current_probe_sha256=admitted_current_probe_sha256,
+        candidate_action_ref=candidate,
+        candidate_origin=origin,
+        retained_memory_ids=retained_ids,
+    )
