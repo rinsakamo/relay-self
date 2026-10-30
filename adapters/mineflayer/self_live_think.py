@@ -14,8 +14,8 @@ from dataclasses import replace
 from typing import Any
 
 from adapters.mineflayer.present_projection import project_mineflayer_present
-from adapters.mineflayer.self_body_projection import project_body_present
 from adapters.mineflayer.python_protocol import MineflayerObservation
+from adapters.mineflayer.self_body_projection import project_body_present
 from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackDisplacementAdapter,
     LoopbackTransportConfig,
