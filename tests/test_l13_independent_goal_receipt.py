@@ -202,6 +202,7 @@ def test_undetermined_goal_does_not_become_false_label():
     "goal_owner", "goal_no_intervening", "goal_status_fake", "goal_criterion",
     "goal_unknown_key", "goal_nonbool_intervening", "invalid_raw_newline",
     "unknown_s16", "wrong_action_state", "same_source_bytes",
+    "duplicate_source_json_key",
 ])
 def test_negative_separate_sources_and_no_hindsight_action_goal(fault):
     item, adm, current = fixture()
@@ -238,6 +239,14 @@ def test_negative_separate_sources_and_no_hindsight_action_goal(fault):
         item = replace(item, raw_external_goal=item.raw_s16_action)
     elif fault == "invalid_raw_newline":
         item = replace(item, raw_native_probe=item.raw_native_probe.rstrip(b"\n"))
+    elif fault == "duplicate_source_json_key":
+        bad_goal = item.raw_external_goal.replace(
+            b'"goal_status":"REACHED",',
+            b'"goal_status":"REACHED","goal_status":"REACHED",',
+        )
+        assert bad_goal != item.raw_external_goal
+        item = replace(item, raw_external_goal=bad_goal)
+        adm = replace(adm, admitted_goal_sha256=frozenset({sha(bad_goal)}))
     else:
         if fault.startswith("changed_native"):
             data = json.loads(item.raw_native_probe)
