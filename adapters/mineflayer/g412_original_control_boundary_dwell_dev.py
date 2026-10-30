@@ -10,11 +10,11 @@ import hashlib
 import json
 from dataclasses import asdict, dataclass
 
-from adapters.mineflayer.g411_g1_unstable_pair_census_dev import (
-    join_g411_g1_unstable_pair_census_dev,
-)
 from adapters.mineflayer.g49_original_action_gap_census_dev import (
     join_g49_original_action_gap_census_dev,
+)
+from adapters.mineflayer.g411_g1_unstable_pair_census_dev import (
+    join_g411_g1_unstable_pair_census_dev,
 )
 
 
