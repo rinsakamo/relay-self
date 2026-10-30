@@ -239,13 +239,16 @@ def audit_l14_native_goal_window(
     # Every outbound effect in *the entire bounded original stream* must be
     # for this Action. Sent stream lacks time/seq, so no causality claim.
     outbound_effects: list[tuple[object, object]] = []
+    outbound_observe_ids: list[object] = []
     for raw in slines:
         command = _json(raw)
         if command.get("type") == "effect":
             outbound_effects.append((
                 command.get("effect"), command.get("action_id"),
             ))
-        elif command.get("type") != "observe":
+        elif command.get("type") == "observe":
+            outbound_observe_ids.append(command.get("request_id"))
+        else:
             raise L14SourceRejected("original outbound stream has unknown request")
     if native_cleanup:
         if outbound_effects != [
@@ -269,6 +272,17 @@ def audit_l14_native_goal_window(
                for m in msgs[after+1:])
     ):
         raise L14SourceRejected("two original terminal probes not after S16 closure")
+    # The last two outgoing observe requests must identify the same original
+    # terminal probes. The sent stream has no timestamp and does not prove
+    # exact ordering at the server; this is only a correlation check.
+    if (
+        not first.request_id or not second.request_id
+        or outbound_observe_ids[-2:] != [
+            first.request_id, second.request_id,
+        ]
+        or first.request_id == second.request_id
+    ):
+        raise L14SourceRejected("post-Action original probes lack sent request correlation")
     a = first.snapshot.position
     b = second.snapshot.position
     error1 = math.hypot(a.x-tx, a.z-tz)
