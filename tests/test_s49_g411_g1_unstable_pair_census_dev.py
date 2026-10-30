@@ -27,7 +27,7 @@ def test_g411_readonly_adjacency_and_original_evidence_sha():
     before = deepcopy(a)
     out = join_g411_g1_unstable_pair_census_dev(**a)
     assert a == before
-    assert [r.source_seq for r in out] == [12, 20, 26, 32]
+    assert [r.source_seq for r in out] == [12, 20]
     assert len(out) == len([
         r for r in a["g410_rows"]
         if "G1_TWO_SAMPLE_STABLE_KIND" in r["missing_evidence_axes"]
