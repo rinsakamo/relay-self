@@ -7,7 +7,7 @@ No additional source read, true-E access, policy, motor, food credit or owner.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, is_dataclass
 from typing import Literal
 
 from experiments.metabolism_viability import Interoception, MetabolismConfig
@@ -93,11 +93,16 @@ def _fact(
 def read_b0_resource_context(
     views: object,
     *,
+    owner_decision: object,
     config: MetabolismConfig,
     sensor: Interoception,
     noise_bound: float | None = None,
 ) -> B0CognitiveResourceView:
     """Read existing B0 decision's one source-bound SelfBody/World pair.
+
+    The original S B0 owner decision is required as an independent local
+    sensor reading witness. This prevents changing only the projected
+    SelfBody sensor while retaining the original decision record.
 
     The S owner supplies the actual B0 model profile and sensor calibration;
     this module cannot independently authenticate the calibration or native
@@ -107,6 +112,8 @@ def read_b0_resource_context(
     """
     if not isinstance(config, MetabolismConfig) or not isinstance(sensor, Interoception):
         raise ValueError("typed existing B0 energy model and sensor required")
+    if not is_dataclass(owner_decision) or type(owner_decision).__name__ != "B0Decision":
+        raise ValueError("original B0 owner decision snapshot required")
     if noise_bound is not None and (
         type(noise_bound) not in (float, int)
         or not math.isfinite(noise_bound)
@@ -163,6 +170,15 @@ def read_b0_resource_context(
     owner_ref = (
         f"{body.session_id}:{views.sensor_tick}:{obs.native_seq}:{obs.request_id}"
     )
+    if (
+        owner_decision.probe_seq != obs.native_seq
+        or owner_decision.body_tick != views.sensor_tick
+        or owner_decision.kind != views.l0_kind
+        or type(owner_decision.sensor_reading) not in (float, int)
+        or not math.isfinite(owner_decision.sensor_reading)
+        or owner_decision.sensor_reading != reading.value
+    ):
+        raise ValueError("B0 original decision/sensor reading mismatch")
     if (
         getattr(getattr(reading, "origin", None), "value", None) != "interoception"
         or reading.key != "m0_energy_sensor"
