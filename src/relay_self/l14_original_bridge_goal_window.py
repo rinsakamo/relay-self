@@ -205,11 +205,30 @@ def audit_l14_native_goal_window(
         raise L14SourceRejected("Action/Goal readback outside continuous original stream")
     if rlines[before] != item.raw_native_probe or msgs[before] != item.native.observation:
         raise L14SourceRejected("L13 pre-Action original missing or changed in stream")
-    if any(
-        isinstance(m, MineflayerEffectResult) and m.action_id != aid
-        for m in msgs
-    ):
+    # S49/S15 uses a separate action_id for the *cleanup command*, not
+    # a second issued motor Action. Accept only its exact bounded suffix,
+    # applied clear_controls receipt and strict dispatch -> clear -> after
+    # observation ordering. An arbitrary other effect remains forbidden.
+    cleanup_id = f"{aid}-s15-clear"
+    all_effects = [m for m in msgs if isinstance(m, MineflayerEffectResult)]
+    if any(m.action_id not in (aid, cleanup_id) for m in all_effects):
         raise L14SourceRejected("other Action has native received effect during window")
+    native_cleanup = [m for m in all_effects if m.action_id == cleanup_id]
+    if native_cleanup:
+        native_dispatch = [m for m in all_effects if m.action_id == aid]
+        if (
+            len(native_cleanup) != 1 or len(native_dispatch) != 1
+            or native_dispatch[0].effect != "set_control"
+            or native_dispatch[0].result != "applied"
+            or native_dispatch[0].error is not None
+            or native_cleanup[0].effect != "clear_controls"
+            or native_cleanup[0].result != "applied"
+            or native_cleanup[0].error is not None
+            or not before < native_dispatch[0].seq < native_cleanup[0].seq < after
+            or not isinstance(msgs[after], MineflayerObservation)
+            or msgs[after].kind != "probe"
+        ):
+            raise L14SourceRejected("S49 dispatch/clear/terminal original sequence invalid")
     effects = [
         m for m in msgs
         if isinstance(m, MineflayerEffectResult)
@@ -219,20 +238,25 @@ def audit_l14_native_goal_window(
         raise L14SourceRejected("original S16 action interval lacks native effect ACK")
     # Every outbound effect in *the entire bounded original stream* must be
     # for this Action. Sent stream lacks time/seq, so no causality claim.
-    outbound_effect_count = 0
+    outbound_effects: list[tuple[object, object]] = []
     for raw in slines:
         command = _json(raw)
         if command.get("type") == "effect":
-            if (
-                command.get("action_id") != aid
-                or not isinstance(command.get("effect"), str)
-            ):
-                raise L14SourceRejected("another/unidentified outbound Action")
-            outbound_effect_count += 1
+            outbound_effects.append((
+                command.get("effect"), command.get("action_id"),
+            ))
         elif command.get("type") != "observe":
             raise L14SourceRejected("original outbound stream has unknown request")
-    if outbound_effect_count == 0:
-        raise L14SourceRejected("no original outbound S49 Action intent in sent stream")
+    if native_cleanup:
+        if outbound_effects != [
+            ("set_control", aid), ("clear_controls", cleanup_id),
+        ]:
+            raise L14SourceRejected("S49 original sent dispatch/cleanup differs")
+    elif not outbound_effects or any(
+        action != aid or not isinstance(effect, str)
+        for effect, action in outbound_effects
+    ):
+        raise L14SourceRejected("another/unidentified outbound Action")
     first, second = msgs[goal_seq], msgs[goal_seq+1]
     if (
         not isinstance(first, MineflayerObservation)
