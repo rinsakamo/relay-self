@@ -224,3 +224,34 @@ def test_no_true_energy_in_route_comparison_data(physical):
     assert not hasattr(first, "physical_energy")
     assert not hasattr(first.results[0], "true_energy")
     assert not hasattr(first.results[0], "model_energy_after")
+
+
+def test_existing_p1_fatigue_restricts_travel_speed_without_extra_m_bill(physical):
+    profile, state, _, _ = physical
+    p1_profile = FatigueProfile(enabled=True)
+    rested = fatigue_begin(p1_profile, "r", world_tick=100)
+    tired = replace(rested, fatigue=0.8)
+    proposed = route(min_blocks_per_tick=0.8, max_blocks_per_tick=0.8)
+    fresh = quote_route_range(
+        profile, state, proposed,
+        fatigue_profile=p1_profile, fatigue_state=rested,
+    )
+    depleted = quote_route_range(
+        profile, state, proposed,
+        fatigue_profile=p1_profile, fatigue_state=tired,
+    )
+    assert fresh.status == depleted.status == "BOUNDED_MODEL"
+    assert depleted.max_world_ticks > fresh.max_world_ticks
+    assert depleted.max_energy_cost > fresh.max_energy_cost
+    assert state.energy == 8.0 and rested.fatigue == 0 and tired.fatigue == 0.8
+    # M owns no fatigue equation or separate extra charge; all differences
+    # here arise from the original P1 motion capacity and extra basal ticks.
+
+
+def test_foreign_p1_tick_rejected_without_guessing_timing(physical):
+    profile, state, p1, p1_state = physical
+    with pytest.raises(ValueError):
+        quote_route_range(
+            profile, state, route(), fatigue_profile=p1,
+            fatigue_state=replace(p1_state, world_tick=99),
+        )
