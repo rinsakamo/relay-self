@@ -4,7 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from experiments.fatigue_p1 import FatigueProfile, Rate, initial_state as initial_fatigue
+from experiments.fatigue_p1 import FatigueProfile, Rate
+from experiments.fatigue_p1 import initial_state as initial_fatigue
 from experiments.metabolism_m01_minecraft import M01Profile, WorldTickSample, begin
 from experiments.metabolism_m02_exhaustion import load_profile
 from experiments.metabolism_resource_projection import (
