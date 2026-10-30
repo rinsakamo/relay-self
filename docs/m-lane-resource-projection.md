@@ -250,3 +250,53 @@ B0's existing L0 choice is retained; no S49 action, M0.1 owner
 activation, L8 decision modification or physical World experiment
 is claimed. A cheap B0 exact one-tick cost rule is already sufficient
 for this output: no unique cognition/learning advantage is claimed.
+
+## Original S42 epoch result ↔ B0 resource readout (2026-10-30)
+
+M's `experiments/metabolism_s_epoch_resource.py` is a **post-decision**
+observer. The S owner must already have run the original
+`coordinate_decision_epoch` (or `coordinate_planned_epoch` with
+real nonempty executed work IDs). A typed returned
+`WorldConditionedChoice` is accepted **only if cognition completed,
+no Action timeout was emitted and no Action deadline remains open**.
+It is checked against the independently supplied original
+`NativeThreat` and `LearningPreferenceState` by replaying the
+**existing pure S42 `select_world_conditioned_choice`**. No S runtime
+coordinator, model, supervisor, native sensor or Action is invoked by
+the M post-epoch observer itself.
+
+The original S choice's session/native seq/request/provenance must
+match the previous B0 owner/Body/World resource context's same probe.
+The original S choice **always wins**, even if the B0 toy model
+labels a single WAIT or MOVE tick energy-insufficient.
+The result merely records `MODELED_TENSION`, including unknown/
+ambiguous cases. No agent goal, new reward, hardcoded hunger
+preference, L0 rule, L1 habit or Action authorization is minted.
+
+The latest pinned product S #634 original API test executes all of
+`B0EnergyLedger.decide`, `compose_b0_cognition_views`,
+`coordinate_decision_epoch`, and S42's original
+`select_world_conditioned_choice` on the **same synthetic native
+probe** before calling the M adapter. In the close-zombie condition
+S42 picks `MOVE_AWAY` at both B0 sensed E=12 and E=0.6,
+while B0's hypothetical one-tick MOVE costs 0.75 and is
+model-insufficient at E=0.6. Far-zombie S42 picks WAIT;
+at E=0.4 even WAIT may be model-insufficient due to basal 0.5.
+Blind/noisy sensor yields UNKNOWN/ambiguous, never forced Action.
+
+**Critical units warning:** S42's `MOVE_AWAY` is a World-conditioned
+choice, not itself an executed full S49 backward locomotion receipt.
+B0's **per-simulated-step generic MOVE** is only an indicative
+counterfactual, NOT a certified cost of an S49 MOVE_BACKWARD
+trajectory or actual survival. The M0.1 distance/P1 route model
+remains separate, and the real G4.13 physical gait receipt
+UNKNOWN scope is not widened. The B0 owner profile/calibration
+is still caller-supplied; no independent original native admission
+or owner identity proof arises from typed dataclasses.
+
+All integration remains M-owned experimental code on the isolated
+M branch. No adoption of the hook into product S #634,
+L8, S49, #545 or main; no fresh World, GPU, FULL,
+qualification or SCIENCE is run. S/L owners can opt in only
+after independently validating the original native source and
+coherent B0 model profile.
