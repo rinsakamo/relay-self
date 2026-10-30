@@ -38,4 +38,4 @@ jobs:
         env:
           PYTHONPATH: product_selfbody_contract/src:product_selfbody_contract:src:.
         run: |
-          python -m pytest -q tests/test_metabolism_selfbody_product_contract.py
+          python -m pytest -q -o pythonpath=product_selfbody_contract/src tests/test_metabolism_selfbody_product_contract.py
