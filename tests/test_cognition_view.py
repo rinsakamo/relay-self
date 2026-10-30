@@ -1,6 +1,7 @@
 """Offline #632/#633 cognitive-resolution tests; no World/LLM/Action execution."""
 from __future__ import annotations
 
+import json
 from dataclasses import FrozenInstanceError, replace
 
 import pytest
@@ -11,11 +12,13 @@ from adapters.mineflayer.self_world_projection import project_self_world_present
 from relay_self.cognition_view import (
     CognitionTier,
     InvalidCognitiveView,
+    bind_cognitive_view_to_request,
     project_cognitive_view,
 )
 from relay_self.persistent_cognition import IdentitySpecification, Memory, PersistentCognition
 from relay_self.prediction import PredictionState, StateVariable, TransitionRule, predict_transition
 from relay_self.provenance import Provenance
+from relay_self.relay_engine import BoundedChoice, BoundedChoiceRequest, CognitionDatum
 from relay_self.self_body import (
     BodyHypothesis,
     BodyOrigin,
@@ -308,3 +311,65 @@ def test_retained_memory_without_current_present_stays_remembered():
     assert l1.world_facts[0].origin is WorldOrigin.REMEMBERED
     assert "REVIEW_OWN_RETAINED_MEMORY" in l1.information_options
     assert "REQUEST_FRESH_WORLD_OBSERVATION" in l1.information_options
+
+
+def test_l1_l2_bridge_to_existing_relay_engine_changes_context_not_actions():
+    request = BoundedChoiceRequest(
+        request_id="r1", instruction="compare available information",
+        intent_id=None, focus=None,
+        choices=(BoundedChoice("INSPECT", "observe source"),
+                 BoundedChoice("DEFER", "recheck later")), context=(),
+    )
+    with_memory = fixture(
+        with_memory=True, with_world_forecast=True, with_body_forecast=True,
+    )
+    cheap = bind_cognitive_view_to_request(
+        with_memory, request, tier=CognitionTier.L0, expected_epoch_id="epoch-8",
+    )
+    learned = bind_cognitive_view_to_request(
+        with_memory, request, tier=CognitionTier.L1,
+    )
+    deliberative = bind_cognitive_view_to_request(
+        with_memory, request, tier=CognitionTier.L2,
+        max_world_facts=32, max_body_facts=32,
+    )
+    assert cheap.choices == learned.choices == deliberative.choices == request.choices
+    assert cheap.instruction == learned.instruction == deliberative.instruction
+    assert request.context == ()
+    assert [item.key for item in learned.context] == [
+        "self_cognitive_source", "self_cognitive_world", "self_cognitive_body",
+    ]
+    cheap_world = json.loads(cheap.context[1].value_json)
+    learned_world = json.loads(learned.context[1].value_json)
+    deep_world = json.loads(deliberative.context[1].value_json)
+    assert not any(f["origin"] == "remembered" for f in cheap_world)
+    assert any(f["origin"] == "remembered" for f in learned_world)
+    assert any(f["origin"] == "predicted" for f in deep_world)
+    assert any(f["source_provenance"] for f in deep_world)
+    deep_body = json.loads(deliberative.context[2].value_json)
+    assert any(f["origin"] == "hypothesis" for f in deep_body)
+    meta = json.loads(deliberative.context[0].value_json)
+    assert meta["world_revision"] is None
+    assert "information_options_not_actions" in meta
+    assert not hasattr(deliberative, "issue_action")
+
+
+def test_relay_engine_bridge_rejects_context_spoof_and_stale_epoch():
+    view = fixture()
+    base = BoundedChoiceRequest(
+        request_id="r", instruction="source view", intent_id=None, focus=None,
+        choices=(BoundedChoice("A", "option A"),
+                 BoundedChoice("B", "option B")), context=(),
+    )
+    fake = replace(base, context=(
+        CognitionDatum.from_value(
+            "self_cognitive_world", [{"origin": "observed", "value": "safe"}],
+            provenance("forged"),
+        ),
+    ))
+    with pytest.raises(InvalidCognitiveView, match="reserved"):
+        bind_cognitive_view_to_request(view, fake, tier=CognitionTier.L1)
+    with pytest.raises(InvalidCognitiveView, match="epoch"):
+        bind_cognitive_view_to_request(
+            view, base, tier=CognitionTier.L1, expected_epoch_id="epoch-9",
+        )
