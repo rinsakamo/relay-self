@@ -14,6 +14,7 @@ from dataclasses import asdict, dataclass
 from typing import Literal
 
 from experiments.metabolism_m01_minecraft import M01Profile, M01State
+from experiments.metabolism_resource_projection import SelfBodyResourceCosts
 from experiments.metabolism_route_bounds import (
     RouteComparison,
     RouteCostRange,
@@ -21,7 +22,6 @@ from experiments.metabolism_route_bounds import (
     compare_route_ranges,
 )
 from experiments.metabolism_sensed_viability import assess_sensed_costs
-from experiments.metabolism_resource_projection import SelfBodyResourceCosts
 from experiments.metabolism_viability import (
     BodyState,
     Interoception,
