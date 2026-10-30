@@ -142,3 +142,42 @@ Verification contract for this candidate: Python 3.12 focused
 Ruff, repository contracts, and the existing S/W4 FAST workflow.
 Historical W4 model A/B evidence and protected provenance records are not
 rewritten. FULL/main and real Minecraft run remain outside this DEV phase.
+
+
+## Stage 3: W4 saved-source context comparison (DEV)
+
+`prepare_w4_cognitive_context_comparison` is an **optional**, nonexecuting
+adapter in `adapters/mineflayer/self_world_cognitive_w4_compare.py`.
+It accepts the existing `W4OfflineEpochReplay` generated from
+operator-pinned W3 Node stdout / Java collector / report bytes, runs the
+**unchanged** `prepare_w4_offline_cognition_inputs` source, ATT and
+conditional PRD review gates, and keeps the original bounded/open
+`BoundedChoiceRequest` and `OpenCognitionRequest` as the fixed baseline.
+
+The new arm adds exactly three reserved, explicitly source-typed
+`self_cognitive_*` context items to each existing request; original
+context entries, allowed choices, instruction, THINK admission and request
+identity remain byte-for-byte unchanged. Both modes consume exactly one
+corresponding view per epoch. All L0/L1/L2 projections retain
+`UNVERIFIED_FRESHNESS` for unclocked saved native Present, `UNKNOWN`
+SelfBody (older W4 source has none), and `world_revision=None`. They do
+not claim that an omitted entity is absent, safe, or physically impossible.
+
+The comparison records context JSON UTF-8 payload bytes and emitted facts
+as **cost proxies**, not measured model tokens, runtime latency or physical
+M0/P1 energy. The deterministic offline stub test demonstrates only that
+a source-sensitive consumer can choose a different allowed *cognition*
+option with the additional frame; it does not show that the rich frame
+performs better than the old source-provenanced W4 context. Historical
+W4 A/B negative findings remain negative and untouched.
+
+Focused tests use synthetic W3/W4-shaped locally sealed records (including
+positive-match, positive-mismatch and unobserved / undetermined cases),
+validate preserved source hashes, and reject forged authority, source
+mixing, counterfeit reviews and changed report pins. **The CI does not
+contain or re-run the operator's real saved W4 raw bytes.** A subsequent
+operator-pinned read-only replay of those actual files, then a matched
+real-model comparison, is required before any real-evidence or effect claim.
+
+No new World/Java/Node launch, provider call, actual Action, S16/S17 outcome,
+S10 learning, Memory write, R qualification or V science is made here.
