@@ -10,7 +10,6 @@ from dataclasses import replace
 import pytest
 import test_l1_epoch_observer as l8
 import test_l1_s_choice_shadow as l7
-
 from relay_self.l1_epoch_observer import observe_s_epoch_l1
 from relay_self.l1_s_choice_shadow import SChoiceContrastStatus
 from relay_self.world_conditioned_choice import WorldChoiceKind
