@@ -14,13 +14,19 @@ from experiments.fatigue_p1 import (
     FatigueFrame,
     FatigueProfile,
     FatigueState,
-    advance as advance_fatigue,
     capability,
+)
+from experiments.fatigue_p1 import (
+    advance as advance_fatigue,
 )
 from experiments.metabolism_m01_minecraft import M01Profile, M01State
 from experiments.metabolism_m02_exhaustion import (
     Profile as M02Profile,
+)
+from experiments.metabolism_m02_exhaustion import (
     cost as exhaustion_cost,
+)
+from experiments.metabolism_m02_exhaustion import (
     observed_land_motion_cost,
 )
 from experiments.metabolism_viability import EnergyObservation
