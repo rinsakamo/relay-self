@@ -421,3 +421,87 @@ S/L/M runtime opt-in and real Minecraft DEV still require a
 separate owner-controlled integration step; do not merge the
 independently owned product branches simply because the
 experimental interpreter can import them.
+
+## One-call post-S-epoch opt-in seam (2026-10-31)
+
+`experiments/metabolism_s_l_m_post_epoch.py` provides
+`read_s_l_m_after_owner_epoch(...)`, a **M-owned library function**
+for an *original S owner* to invoke **after its existing B0 L0 decision
+and S42 decision-epoch coordinator have returned**. It does not
+install itself in S's real Minecraft host loop and does not run
+the original S coordinator or L0 again. It is an adoption seam,
+not a deployed S49 product integration.
+
+An owner already holding these **original live objects** may supply:
+
+- `probe`: the already read `MineflayerObservation`;
+  `native`: the already derived `NativeThreat` whose
+  `native.observation is probe` (identity, not a new decoding);
+- `ledger`: original `B0EnergyLedger` from that session;
+  `original_b0_decision`: its already returned `B0Decision`;
+- `original_s_epoch`: returned original S
+  `DecisionEpochResult` or finished `PlannedDecisionEpochResult`,
+  with source/retained S42 check and no timeout/open Action deadline;
+  and `retained`: exactly the S10 snapshot used for that choice;
+- `self_id`, `epoch_id`: source-owner caller identity;
+  `learning` and explicit `retention_enabled` together
+  (opt-in only), if an **already computed, properly admitted L8
+  `LearningEpochResult`** is available.
+
+The adapter composes existing S product SelfBody/World with **the
+original B0 sensor**; reads one-tick model cost from that same
+ledger's **original config/sensor**; validates the original B0
+decision/reading/probe/tick, then computes the existing S/M
+post-epoch contrast. Only if L8 inputs are explicitly present does
+it run the original **pure L8 observer** and immutable M/L8
+comparison. Without L8 inputs, it returns an M-only readout,
+never a synthetic no-memory recommendation.
+
+**Fail-closed:** copied but equal probe with a different object,
+stale owner decision, ledger advanced between decision and
+passive read, foreign session/probe/retained S10, missing L8
+admission, S Action timeout/in-flight, and counterfeit B0 source
+are rejected. Default `noise_bound=None` gives an UNKNOWN
+energy interval: the owner must explicitly supply a real bound
+before claiming model affordability; `noise_bound=0` is only
+appropriate for a controlled deterministic model fixture.
+`source_attested=False` is fixed. Readout explicitly reports
+zero new native reads, cognition calls, action issues, M food
+credits, learning updates and habit grants.
+
+**Owner call placement in a future DEV host:**
+
+```python
+# Original S driver (not inserted by M code):
+# probe = <the one already obtained native probe>
+# decision = existing_b0_owner.decide(probe)
+# s_epoch = existing_s_owner.coordinate_existing_epoch(...)
+# retained, native, l8_snapshot are original owner-approved inputs.
+from experiments.metabolism_s_l_m_post_epoch import read_s_l_m_after_owner_epoch
+
+shadow = read_s_l_m_after_owner_epoch(
+    probe=probe, native=native, ledger=existing_b0_owner,
+    original_b0_decision=decision, original_s_epoch=s_epoch,
+    retained=retained, self_id=self_id, epoch_id=epoch_id,
+    learning=l8_snapshot, retention_enabled=True,
+    noise_bound=None,  # remain UNKNOWN absent explicit calibration
+)
+# shadow is observational; never pass it to S49 as authorization.
+```
+
+This illustrative call is *not* a claim that any existing product
+host already has all those inputs or runs L8. The function requires
+a source-qualified S42 zombie threat and finished S decision;
+other World observations must be skipped, not coerced.
+The qualified L8 experience source / Goal labels and physical
+S49 action receipts must still be obtained independently by
+the responsible owners. None are manufactured by M.
+
+**Physical DEV remaining:** Install an explicit opt-in passive
+hook in an S owner-controlled host without changing the existing
+S49 issuer, use the original live Mineflayer probe and genuine
+owner-owned L8 snapshot, run in a disposable Minecraft DEV World,
+and record the unchanged Action issuer plus downstream outcome
+with native source correlation. No host modification, World run,
+physical Action, L1 policy change or scientific survival benefit
+is evidenced by this library-only milestone.
