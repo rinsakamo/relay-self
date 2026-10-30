@@ -34,8 +34,31 @@ jobs:
           ref: 087fe095a87594505392262da1d341cf0c65b2b2
           path: product_selfbody_contract
           persist-credentials: false
-      - name: Check actual S product SelfBody read-only contract
-        env:
-          PYTHONPATH: product_selfbody_contract/src:product_selfbody_contract:src:.
+      - name: Check actual S product SelfBody and B0 owner read-only contract
         run: |
-          python -m pytest -q -o 'pythonpath=product_selfbody_contract/src product_selfbody_contract/tests' tests/test_metabolism_selfbody_product_contract.py tests/test_metabolism_b0_product_contract.py
+          python - <<'PY'
+          import sys
+          from pathlib import Path
+
+          root = Path.cwd()
+          product = root / "product_selfbody_contract"
+          for path in (product, product / "src", product / "tests"):
+              sys.path.insert(0, str(path))
+          # Load original S product adapters and SelfBody, and permit only
+          # M-owned experiment extensions absent from that product checkout.
+          import experiments
+
+          experiments.__path__.append(str(root / "experiments"))
+          from adapters.mineflayer import python_protocol
+          from relay_self import self_body
+
+          assert Path(python_protocol.__file__).resolve().is_relative_to(product)
+          assert Path(self_body.__file__).resolve().is_relative_to(product)
+          import pytest
+
+          raise SystemExit(pytest.main([
+              "-q",
+              "tests/test_metabolism_selfbody_product_contract.py",
+              "tests/test_metabolism_b0_product_contract.py",
+          ]))
+          PY
