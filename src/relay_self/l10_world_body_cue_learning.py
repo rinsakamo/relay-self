@@ -10,11 +10,11 @@ from dataclasses import dataclass
 
 from adapters.mineflayer.s34_native_world_cognition_ci import NativeThreat, _native_threat
 from relay_self.contextual_shadow import ShadowContext, ShadowSpecification
+from relay_self.epoch_plan import PlannedDecisionEpochResult
 from relay_self.experience_bridge import QualifiedEpisode
-from relay_self.habit_shadow import ExternalGoalLabel, GoalSourceAdmission, MAX_SAMPLES
+from relay_self.habit_shadow import MAX_SAMPLES, ExternalGoalLabel, GoalSourceAdmission
 from relay_self.l9_world_body_epoch_shadow import (
     WorldBodyEpochShadow,
-    WorldBodyEpochRejected,
     observe_s_world_body_epoch_l1,
     verify_original_world_body_present,
 )
@@ -23,7 +23,6 @@ from relay_self.learning_epoch import LearningEpochResult, advance_learning_epoc
 from relay_self.persistent_cognition import PersistentCognition
 from relay_self.provenance import Provenance
 from relay_self.runtime_coordination import DecisionEpochResult
-from relay_self.epoch_plan import PlannedDecisionEpochResult
 from relay_self.self_body import SelfBodyView
 from relay_self.self_world import SelfWorldView
 from relay_self.world_conditioned_choice import WorldConditionedChoice
@@ -120,7 +119,7 @@ def project_admitted_world_body_cues(
         checked = _native_threat(
             native.observation, native.request_id, expected_entity_id=native.entity_id,
         )
-    except ValueError as exc:
+    except (ValueError, RuntimeError) as exc:
         raise WorldBodyCueRejected("source-native World/Body Present refused") from exc
     if checked != native:
         raise WorldBodyCueRejected("reported NativeThreat differs from original geometry")
