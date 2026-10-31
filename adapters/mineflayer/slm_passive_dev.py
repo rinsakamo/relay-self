@@ -24,8 +24,14 @@ from relay_self.runtime_coordination import coordinate_decision_epoch
 class S49SLMDevOwner:
     """Bound once by S49 to its real host and existing Executor supervisor."""
 
-    def __init__(self, *, self_id: str = "s49-slm-dev"):
+    def __init__(
+        self, *, self_id: str = "s49-slm-dev",
+        retention_enabled: bool = False,
+    ):
+        if type(retention_enabled) is not bool:
+            raise ValueError("L8 shadow retention flag must be explicit bool")
         self.self_id = self_id
+        self.retention_enabled = retention_enabled
         self.host = self.supervisor = self.ledger = None
         self.pending = []
         self.current = None
@@ -97,13 +103,13 @@ class S49SLMDevOwner:
                     previous_goal_labels=(), new_episodes=(), new_goal_labels=(),
                     source_admission=GoalSourceAdmission(frozenset(), frozenset()),
                     integration_provenance=Provenance("slm-dev", "no-goal-training"),
-                    retention_enabled=False,
+                    retention_enabled=self.retention_enabled,
                 )
                 result = lease.observe_after_original_s_epoch(
                     original_s_epoch=epoch, native=native, ledger=self.ledger,
                     original_b0_decision=decision, retained=retained,
                     self_id=self.self_id, epoch_id=f"s49-probe-{probe.seq}",
-                    learning=learning, retention_enabled=False,
+                    learning=learning, retention_enabled=self.retention_enabled,
                 )
                 row = bounded_s_l_m_audit_row(result)
                 row["self_id"] = self.self_id
@@ -121,5 +127,5 @@ class S49SLMDevOwner:
                 self.errors += 1
                 rows.append({"status": "OBSERVER_ERROR", "probe_seq": probe.seq})
         return {"classification": "DEV_ONLY", "rows": rows, "observer_errors": self.errors,
-                "l8_retention_enabled": False, "model_calls": 0,
+                "l8_retention_enabled": self.retention_enabled, "model_calls": 0,
                 "b0_scope": "MODEL_ONLY_NOT_MINECRAFT_BODY_ACCOUNTING"}
