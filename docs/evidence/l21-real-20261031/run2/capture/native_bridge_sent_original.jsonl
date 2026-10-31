@@ -1,0 +1,8 @@
+{"request_id":"s49-actual:bd9117de-85e5-4d76-afd8-c1da26ff34c2:event-9","type":"observe"}
+{"request_id":"s49-actual:bd9117de-85e5-4d76-afd8-c1da26ff34c2:event-21","type":"observe"}
+{"type":"observe"}
+{"action_id":"s49-native-move-21","control":"back","effect":"set_control","state":true,"type":"effect"}
+{"action_id":"s49-native-move-21-s15-clear","effect":"clear_controls","type":"effect"}
+{"type":"observe"}
+{"request_id":"l16:bd9117de-85e5-4d76-afd8-c1da26ff34c2:s49-native-move-21:goal-1","type":"observe"}
+{"request_id":"l16:bd9117de-85e5-4d76-afd8-c1da26ff34c2:s49-native-move-21:goal-2","type":"observe"}

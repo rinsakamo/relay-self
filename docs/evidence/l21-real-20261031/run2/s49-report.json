@@ -1,0 +1,121 @@
+{
+  "actual_native_actions": [],
+  "auto_crash_recovery": false,
+  "automatic_goal_selection": false,
+  "classification": "PENDING_REAL_NATIVE_EVIDENCE",
+  "decisions": [],
+  "download_host": "piston-data.mojang.com",
+  "error": "L16SourceRejected: unsafe or foreign event inside post-S16 Goal capture window",
+  "java_major_version": 21,
+  "l16_capture": {
+    "goal_owner_independent": false,
+    "real_l10_pairs": 0,
+    "root": "/home/rinsa/evidence/l21-real-20261031/run2/capture",
+    "status": "STARTED_PRE_WORLD"
+  },
+  "l20_external_goal_preflight": {
+    "authenticated_external_owner": false,
+    "candidate_first_action_only": true,
+    "criterion_id": "l21-dev-fixed-goal-20261031",
+    "experiment_ref": "l21-real-dev-20261031",
+    "external_goal_owner_ref": "same-operator-dev-unattested",
+    "externally_attested_before_world": false,
+    "independent_goal_observed": false,
+    "learning_authority": false,
+    "matched_operator_plan": true,
+    "original_sha256": "e22f417216d4c4042a0a129334d218b1ab35caf0f0676230ae405e2196bb062a",
+    "qualified_real_l10_pairs": 0,
+    "schema": "L20_EXTERNAL_GOAL_PREWORLD_PREFLIGHT_V1"
+  },
+  "l20_external_goal_preflight_status": "SOURCE_MATCH_BEFORE_WORLD_UNQUALIFIED",
+  "l21_observer": {
+    "qualified_real_learning_pairs": 0,
+    "root": "/home/rinsa/evidence/l21-real-20261031/run2/observer",
+    "status": "SEPARATE_TCP_CLIENT_READY_NOT_PHYSICALLY_AUTHENTICATED"
+  },
+  "l21_observer_status": "INCOMPLETE_SEPARATE_CLIENT_SOURCE",
+  "learning_in_world": false,
+  "manifest_version_url_host": "piston-meta.mojang.com",
+  "milestone": "S49",
+  "minecraft_version": "1.21.8",
+  "mineflayer_version": "4.39.0",
+  "node_exit": 0,
+  "real_model_calls": 0,
+  "retained_origin": "S19_FROZEN_SYNTHETIC_GOVERNED_REV1",
+  "server_exit": 0,
+  "server_sha1": "6bce4ef400e4efaa63a13d5e6f6b500be969ef81",
+  "server_size_bytes": 57555044,
+  "session_id": "bd9117de-85e5-4d76-afd8-c1da26ff34c2",
+  "source_pair_trace": [
+    {
+      "event_entities": [
+        {
+          "d": 10.0,
+          "id": 5,
+          "name": "zombie"
+        },
+        {
+          "d": 10.770329614269007,
+          "id": 1,
+          "name": "player"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 9,
+      "probe_entities": [
+        {
+          "d": 10.0,
+          "id": 5,
+          "name": "zombie"
+        },
+        {
+          "d": 10.770329614269007,
+          "id": 1,
+          "name": "player"
+        }
+      ],
+      "probe_seq": 10
+    },
+    {
+      "event_entities": [
+        {
+          "d": 2.0,
+          "id": 7,
+          "name": "zombie"
+        },
+        {
+          "d": 9.911909523648173,
+          "id": 6,
+          "name": "item"
+        },
+        {
+          "d": 10.770329614269007,
+          "id": 1,
+          "name": "player"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 21,
+      "probe_entities": [
+        {
+          "d": 2.0,
+          "id": 7,
+          "name": "zombie"
+        },
+        {
+          "d": 9.911909523648173,
+          "id": 6,
+          "name": "item"
+        },
+        {
+          "d": 10.770329614269007,
+          "id": 1,
+          "name": "player"
+        }
+      ],
+      "probe_seq": 22
+    }
+  ],
+  "stage": "UNATTENDED_NATIVE_EVENT_LOOP",
+  "status": "FAIL"
+}

@@ -1,0 +1,112 @@
+{
+  "action_id": "s49-native-move-21",
+  "classification": "DEV_PARTIAL_PHYSICAL_ORIGINALS_FORMAL_ADMISSION_FAILED",
+  "diagnostic_native_goal": "NOT_REACHED",
+  "diagnostic_observer_goal": "NOT_REACHED",
+  "formal_l16": {
+    "rejected": "unsafe or foreign event inside post-S16 Goal capture window"
+  },
+  "formal_l21": {
+    "rejected": "external criterion/observer original rejected"
+  },
+  "independent_owner_authenticated": false,
+  "new_actions": 0,
+  "new_worlds": 0,
+  "nonintervention_proven": false,
+  "observer_closed": false,
+  "observer_sha256": "38c378dc41066e519b33c37d48edfe359b0a2bd282da988b73cbaa539c241559",
+  "paired_positions": [
+    {
+      "horizontal_delta_m": 0.0585481183274858,
+      "observer": {
+        "index": 2,
+        "kind": "sample",
+        "observer_session": "17f0dd2c-49bc-4b99-8b71-68dff91c5af6",
+        "position": {
+          "entity_id": 2,
+          "x": 1.5,
+          "y": -60,
+          "z": -0.234375
+        },
+        "request_id": "l16:bd9117de-85e5-4d76-afd8-c1da26ff34c2:s49-native-move-21:goal-1",
+        "schema": "L21_SEPARATE_CLIENT_GOAL_OBSERVER_V1"
+      },
+      "s7_position": {
+        "x": 1.5,
+        "y": -60,
+        "z": -0.2929231183274858
+      },
+      "s7_seq": 33,
+      "s7_time": {
+        "day": 0,
+        "is_day": true,
+        "time_of_day": 239
+      }
+    },
+    {
+      "horizontal_delta_m": 0.09056117673713887,
+      "observer": {
+        "index": 3,
+        "kind": "sample",
+        "observer_session": "17f0dd2c-49bc-4b99-8b71-68dff91c5af6",
+        "position": {
+          "entity_id": 2,
+          "x": 1.5,
+          "y": -60,
+          "z": -0.234375
+        },
+        "request_id": "l16:bd9117de-85e5-4d76-afd8-c1da26ff34c2:s49-native-move-21:goal-2",
+        "schema": "L21_SEPARATE_CLIENT_GOAL_OBSERVER_V1"
+      },
+      "s7_position": {
+        "x": 1.5,
+        "y": -60,
+        "z": -0.32493617673713887
+      },
+      "s7_seq": 35,
+      "s7_time": {
+        "day": 0,
+        "is_day": true,
+        "time_of_day": 259
+      }
+    }
+  ],
+  "preflight": {
+    "authenticated_external_owner": false,
+    "candidate_first_action_only": true,
+    "criterion_id": "l21-dev-fixed-goal-20261031",
+    "experiment_ref": "l21-real-dev-20261031",
+    "external_goal_owner_ref": "same-operator-dev-unattested",
+    "externally_attested_before_world": false,
+    "independent_goal_observed": false,
+    "learning_authority": false,
+    "matched_operator_plan": true,
+    "original_sha256": "e22f417216d4c4042a0a129334d218b1ab35caf0f0676230ae405e2196bb062a",
+    "qualified_real_l10_pairs": 0,
+    "schema": "L20_EXTERNAL_GOAL_PREWORLD_PREFLIGHT_V1"
+  },
+  "qualified_l10_pairs": 0,
+  "received_sha256": "77a12b805d577482423d622392d7b0e5fe1aab0cd1f203d6a7085b580532c5e2",
+  "s10_updates": 0,
+  "s11_grants": 0,
+  "s16_index_reconstructed": false,
+  "s16_original": {
+    "action_id": "s49-native-move-21",
+    "action_ref": "MOVE_BACKWARD",
+    "after_seq": 31,
+    "before_seq": 23,
+    "binding_id": "s49-binding-21",
+    "disposition": "outcome",
+    "pre_probe_sha256": "445662096c4fd4e2ca58dbc425b1fd3ea2107b0184a1ab30129153254b12ba17",
+    "reason_code": "observed_execution",
+    "schema": "L13_S16_TERMINAL_SOURCE_V1",
+    "session_id": "bd9117de-85e5-4d76-afd8-c1da26ff34c2",
+    "source_revision": 0,
+    "source_status": "executed",
+    "world_reference": "bd9117de-85e5-4d76-afd8-c1da26ff34c2:100",
+    "world_source": "normal-action-runtime"
+  },
+  "s16_original_sha256": "9ca9b36599f1365e08b1f2c15137b8ce8c9dd2da6a5ac3e1282d7b48af2004f0",
+  "sent_sha256": "2795bd405f7479cd33669d41cb09d59158998e998058f9b63090843b0124b671",
+  "session_id": "bd9117de-85e5-4d76-afd8-c1da26ff34c2"
+}

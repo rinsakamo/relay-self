@@ -1,0 +1,2 @@
+{"schema":"L21_SEPARATE_CLIENT_GOAL_OBSERVER_V1","observer_session":"37d66114-1cd1-4159-93ed-c8db2f4d2c67","index":0,"kind":"start","criterion_sha256":"e22f417216d4c4042a0a129334d218b1ab35caf0f0676230ae405e2196bb062a","observer_username":"RelayGoalObserver","target_username":"RelaySelf","observer_capabilities":"READ_ONLY_MINEFLAYER_SECOND_TCP_CLIENT","goal_observation_authority":false}
+{"schema":"L21_SEPARATE_CLIENT_GOAL_OBSERVER_V1","observer_session":"37d66114-1cd1-4159-93ed-c8db2f4d2c67","index":1,"kind":"fault","reason":"observer connection ended: socketClosed"}

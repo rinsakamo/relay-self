@@ -1,0 +1,5 @@
+{"observer_session":"17f0dd2c-49bc-4b99-8b71-68dff91c5af6","index":0,"kind":"start","wall_time_ms":1793422171662,"monotonic_ns":"1448256035486478"}
+{"observer_session":"17f0dd2c-49bc-4b99-8b71-68dff91c5af6","index":1,"kind":"ready","wall_time_ms":1793422172142,"monotonic_ns":"1448256515194812"}
+{"observer_session":"17f0dd2c-49bc-4b99-8b71-68dff91c5af6","index":2,"kind":"sample","wall_time_ms":1793422184356,"monotonic_ns":"1448268728830994"}
+{"observer_session":"17f0dd2c-49bc-4b99-8b71-68dff91c5af6","index":3,"kind":"sample","wall_time_ms":1793422184399,"monotonic_ns":"1448268772122797"}
+{"observer_session":"17f0dd2c-49bc-4b99-8b71-68dff91c5af6","index":4,"kind":"goal_result","wall_time_ms":1793422184416,"monotonic_ns":"1448268789257922"}

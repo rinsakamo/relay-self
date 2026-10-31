@@ -1,0 +1,10 @@
+{
+  "utc": "2026-10-31T04:52:48.735486+00:00",
+  "port_25565_listener_lines": [],
+  "remaining_minecraft_or_observer_processes": [],
+  "run1_java_exit": 0,
+  "run2_java_exit": 0,
+  "run2_self_node_exit": 0,
+  "run2_observer_killed_by_existing_failure_cleanup": true,
+  "independent_stop_attestation": false
+}
