@@ -84,6 +84,7 @@ from adapters.mineflayer.self_body_s50_original_closure import (
     SelfBodyS50ClosedOwnerLease,
     observe_original_s49_selfbody_closure,
 )
+from adapters.mineflayer.self_body_s50_postworld_epoch import PostWorldInternalEpochLease
 from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 from experiments.standard_env.world_binding import (
     WorldBinding,
@@ -181,6 +182,7 @@ async def qualify(
     l21_observer_root: Path | None = None,
     l22_settling_probes: int | None = None,
     l23_paper_assets: L23PaperAssets | None = None,
+    postworld_internal_epoch_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -208,6 +210,8 @@ async def qualify(
     original_body = None
     rc = 2
     try:
+        if type(postworld_internal_epoch_dev) is not bool:
+            raise S31ABlocked("post-world cognitive opt-in must be boolean")
         if (l23_paper_assets is None or l22_settling_probes is None
                 or l21_observer_root is not None
                 or not os.environ.get("RELAYSELF_S50_PACKET_WITNESS_DEV")):
@@ -905,6 +909,32 @@ async def qualify(
                 (report_path.parent / "selfbody-s50-producer.json").write_text(
                     json.dumps(s50_source, indent=2) + "\n",
                 )
+                if postworld_internal_epoch_dev:
+                    # An explicitly new INTERNAL cognition epoch, only after
+                    # original Node/Java exit. No fresh native Present or L0.
+                    epoch = PostWorldInternalEpochLease(joined)
+                    try:
+                        internal = epoch.enter_after_owner_shutdown(
+                            node_exit=report["node_exit"],
+                            java_exit=report["server_exit"],
+                            cleanup_errors=bool(
+                                report.get("node_cleanup_error")
+                                or report.get("server_cleanup_error")
+                            ),
+                        )
+                        report["selfbody_postworld_internal_epoch"] = {
+                            "classification": "DEV_POSTWORLD_INTERNAL_EPOCH_PRIOR_EXPERIENCE_READ_PASS",
+                            "readback": internal,
+                            "source_lease": epoch.status(),
+                            "actual_new_native_present": False,
+                            "actual_new_l0_decision": False,
+                        }
+                        report["selfbody_s50_join"]["next_cognitive_epoch_referenced"] = True
+                        report["selfbody_s50_join"]["next_epoch_handoff"] = (
+                            "POST_SHUTDOWN_INTERNAL_EPOCH_PRIOR_EXPERIENCE_ONLY"
+                        )
+                    finally:
+                        epoch.close()
         except Exception as exc:
             report["selfbody_join_error"] = f"{type(exc).__name__}: {exc}"
             report["status"] = "FAIL"
@@ -949,6 +979,7 @@ def main() -> int:
     parser.add_argument("--l23-paper-plugin-sha256")
     parser.add_argument("--l23-paper-config", type=Path)
     parser.add_argument("--l23-paper-config-sha256")
+    parser.add_argument("--selfbody-postworld-internal-epoch-dev", action="store_true")
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -993,6 +1024,7 @@ def main() -> int:
         l21_observer_root=args.l21_observer_root,
         l22_settling_probes=args.l22_settling_probes,
         l23_paper_assets=paper_assets,
+        postworld_internal_epoch_dev=args.selfbody_postworld_internal_epoch_dev,
     ))
 
 
