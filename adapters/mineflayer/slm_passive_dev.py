@@ -11,6 +11,7 @@ import json
 from dataclasses import asdict
 
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+from adapters.mineflayer.slm_external_goal_candidate_dev import PreviousExternalGoalDiagnostic
 from adapters.mineflayer.slm_prior_world_dev import PriorWorldReadback
 from experiments.metabolism_s49_live_probe_bridge import S49PassiveSourceLease
 from experiments.metabolism_slm_dev_host_tap import bounded_s_l_m_audit_row
@@ -29,14 +30,20 @@ class S49SLMDevOwner:
         self, *, self_id: str = "s49-slm-dev",
         retention_enabled: bool = False,
         prior_world: PriorWorldReadback | None = None,
+        previous_external_goal: PreviousExternalGoalDiagnostic | None = None,
     ):
         if type(retention_enabled) is not bool:
             raise ValueError("L8 shadow retention flag must be explicit bool")
         if prior_world is not None and not isinstance(prior_world, PriorWorldReadback):
             raise ValueError("only validated prior real S49 readback may enter DEV")
+        if previous_external_goal is not None and not isinstance(
+            previous_external_goal, PreviousExternalGoalDiagnostic,
+        ):
+            raise ValueError("only bounded L22 DEV diagnostic is accepted")
         self.self_id = self_id
         self.retention_enabled = retention_enabled
         self.prior_world = prior_world
+        self.previous_external_goal = previous_external_goal
         self.cognition = None
         self.host = self.supervisor = self.ledger = None
         self.pending = []
@@ -49,6 +56,11 @@ class S49SLMDevOwner:
             raise ValueError("fresh sole S49 owner required")
         if self.prior_world is not None and self.prior_world.session_id == host.session_id:
             raise ValueError("current World cannot be its own prior experience")
+        if (
+            self.previous_external_goal is not None
+            and self.previous_external_goal.source_session_id == host.session_id
+        ):
+            raise ValueError("future/current World cannot provide previous external Goal")
         # One L8 Memory owner for this entire original session: no per-probe
         # reconstruction, no external Goal admissions and no S10 commit.
         cognition = PersistentCognition(IdentitySpecification(
@@ -151,6 +163,10 @@ class S49SLMDevOwner:
                 "l8_retention_enabled": self.retention_enabled, "model_calls": 0,
                 "one_l8_memory_owner": self.cognition is not None,
                 "l8_training_admissions": 0,
+                "previous_external_goal": (
+                    None if self.previous_external_goal is None
+                    else self.previous_external_goal.audit_row()
+                ),
                 "previous_world": None if prior is None else {
                     "status": prior.reason,
                     "session_id": prior.session_id,
