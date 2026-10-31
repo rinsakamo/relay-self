@@ -53,3 +53,11 @@ Stop conditions: missing existing Java/Node/Python deps, missing explicit real W
 `tests/test_l19_native_goal_interleaving.py` checks 1/2/8/15 pre-first + one between probes, crossed L16→L14→L17 source-shaped reach, strict rejection of unsafe events, excessive interleaving and broken native seq, and missing external Goal (0 learning). CI uses exact code/test HEAD with Python 3.12, Ruff, compileall and repo contracts.
 
 Next: explicitly permitted physical S49 first-Action source (S7 + L18 + two Goal probes), then **separate independent pre-Action external Goal** original/source-owner admission and new distinct SelfWorld/SelfBody current epoch, followed by L10 shadow memory ON/OFF + cheap exact/singleton/global comparison. A source-shaped DEV result is never a causal demonstration or automatic S10/S11 Memory update.
+
+## Exact-head DEV verification
+
+**Successful code/test/workflow HEAD:** `96cdf645a475168c64a1aa626d5467f47cfd6d8a`; [GitHub Actions #41155368038 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/41155368038). Python 3.12 focused **79 PASS / 0 FAIL / 0 SKIP**, Ruff PASS, compileall PASS, repository contracts PASS. The workflow exercises the new L19 read-only original interleaving tests plus L16, L17, and L18 original source suites, including rejection of effect/hurt/disconnect/extra-probe/missing seq, and the no-external-Goal learning boundary.
+
+Initial source revision [#41155335952 FAIL](https://github.com/rinsakamo/relay-self/actions/runs/41155335952) stopped at a test import-order Ruff error and did not reach pytest; fixed before the successful exact code/test HEAD above. This note is documentation only, so its later HEAD is **not** asserted as a newly tested code revision.
+
+**Limit:** synthetic source-shaped native messages only; this pass does not verify that Minecraft emitted these frames in an actual S49 World. No real S7/L18 original was collected on the user's physical WSL2 host by this session, no independent physical Goal owner, no qualified real L10 pair, and no S10/S11 writes.
