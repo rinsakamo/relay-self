@@ -1,0 +1,31 @@
+{
+  "schema": "L23_PAPER_S7_SAMPLED_SETTLING_READBACK_V1",
+  "session_id": "28241aa9-194e-4d9a-b384-a40e06f4a208",
+  "action_id": "s49-native-move-20",
+  "paper_world": "5a2a4aca-1fff-47e7-bbcf-9e16ebd04adc",
+  "marker_id": "s49-native-move-20-28241aa9-194e-4d9a-b384-a40e06f4a208",
+  "paper_original_sha256": "7bc19f00d7d95c50048a7e0220a8549986b84d717673da03e1b09e6207c9fe35",
+  "s7_received_sha256": "c2d0220b68d3ea7acaffed353b88212253e57d99f131d795f8b0fffd0aa87f7b",
+  "s16_original_sha256": "0abed468aa99f7927433e3717a80067a969e2bf7ed733326776f712af5133eaa",
+  "paper_first_tick": 249,
+  "paper_last_tick": 256,
+  "paper_sample_count": 8,
+  "paper_activity_ticks": [
+    249,
+    250,
+    251
+  ],
+  "paper_last_to_s7_goal_distance_m": 0.0,
+  "paper_s7_geometry_compatible": true,
+  "paper_sample_state": "PAPER_SAMPLED_ACTIVITY",
+  "clock_alignment": "NOT_ATTESTED",
+  "paper_effective_input_clear_tick": "NOT_ATTESTED",
+  "paper_full_tick_input_idle": false,
+  "world_session_independently_bound": false,
+  "physical_stability_verified": false,
+  "accepted_goal_status": "UNDETERMINED",
+  "qualified_real_learning_pairs": 0,
+  "s10_updates": 0,
+  "s11_grants": 0,
+  "p1_wait_ticks_admitted": 0
+}

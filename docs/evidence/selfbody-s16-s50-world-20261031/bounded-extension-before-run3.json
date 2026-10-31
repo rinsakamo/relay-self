@@ -1,0 +1,8 @@
+{
+  "previous_new_worlds": 2,
+  "additional_new_worlds_cap": 1,
+  "total_new_world_cap": 3,
+  "reason": "specific S50 tuple/list transport mismatch; no source or qualification relaxation",
+  "preserve_original_preregistration": true,
+  "no_consumed_lease_reuse": true
+}

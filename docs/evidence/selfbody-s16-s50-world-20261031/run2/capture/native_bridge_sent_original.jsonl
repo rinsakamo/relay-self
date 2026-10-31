@@ -1,0 +1,12 @@
+{"request_id":"s49-actual:fce2c18c-adc1-4e56-b2bb-58f451e1dba3:event-8","type":"observe"}
+{"request_id":"s49-actual:fce2c18c-adc1-4e56-b2bb-58f451e1dba3:event-19","type":"observe"}
+{"request_id":"s15:fce2c18c-adc1-4e56-b2bb-58f451e1dba3:s49-native-move-19:before","type":"observe"}
+{"action_id":"s49-native-move-19","control":"back","effect":"set_control","state":true,"type":"effect"}
+{"action_id":"s49-native-move-19-s15-clear","effect":"clear_controls","type":"effect"}
+{"request_id":"s15:fce2c18c-adc1-4e56-b2bb-58f451e1dba3:s49-native-move-19:after","type":"observe"}
+{"request_id":"l22:fce2c18c-adc1-4e56-b2bb-58f451e1dba3:s49-native-move-19:settle-1","type":"observe"}
+{"request_id":"l22:fce2c18c-adc1-4e56-b2bb-58f451e1dba3:s49-native-move-19:settle-2","type":"observe"}
+{"request_id":"l22:fce2c18c-adc1-4e56-b2bb-58f451e1dba3:s49-native-move-19:settle-3","type":"observe"}
+{"request_id":"l22:fce2c18c-adc1-4e56-b2bb-58f451e1dba3:s49-native-move-19:settle-4","type":"observe"}
+{"request_id":"l16:fce2c18c-adc1-4e56-b2bb-58f451e1dba3:s49-native-move-19:goal-1","type":"observe"}
+{"request_id":"l16:fce2c18c-adc1-4e56-b2bb-58f451e1dba3:s49-native-move-19:goal-2","type":"observe"}

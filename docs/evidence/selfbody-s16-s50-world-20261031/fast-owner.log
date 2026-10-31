@@ -1,0 +1,501 @@
+............................................F........................... [ 56%]
+...........................F.....F.FFFFFFFFFF..........                  [100%]
+=================================== FAILURES ===================================
+________ test_java_source_is_gated_observation_not_alternative_actuator ________
+
+    def test_java_source_is_gated_observation_not_alternative_actuator():
+>       source = (Path(__file__).parents[1] / "docs/evidence/selfbody-world-assets/RelayMetabolismDev.java").read_text()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_s50_input_witness_source.py:126: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/pathlib.py:1029: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/selfbody-world-assets/RelayMetabolismDev.java')
+mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/selfbody-world-assets/RelayMetabolismDev.java'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+__________ test_s7_sole_original_accepts_only_bounded_settling_prefix __________
+
+    def test_s7_sole_original_accepts_only_bounded_settling_prefix():
+>       args = archived_run2()
+               ^^^^^^^^^^^^^^^
+
+tests/test_l22_runtime_settling.py:116: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_l22_post_s16_settling.py:24: in archived_run2
+    received = (ROOT / "native_bridge_received_original.jsonl").read_bytes()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+____________ test_archived_real_run2_residual_move_is_not_stability ____________
+
+    def test_archived_real_run2_residual_move_is_not_stability():
+>       review = inspect_l22_settling(**archived_run2())
+                                        ^^^^^^^^^^^^^^^
+
+tests/test_l22_post_s16_settling.py:79: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_l22_post_s16_settling.py:24: in archived_run2
+    received = (ROOT / "native_bridge_received_original.jsonl").read_bytes()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+_____________ test_corrupt_or_foreign_source_fails_closed[action] ______________
+
+fault = 'action'
+
+    @pytest.mark.parametrize("fault", [
+        "action", "session", "not_outcome", "before", "source_sha",
+        "missing_second_probe", "extra_after", "missing_clear",
+        "duplicate_request", "s16_missing_newline",
+    ])
+    def test_corrupt_or_foreign_source_fails_closed(fault):
+>       args = archived_run2()
+               ^^^^^^^^^^^^^^^
+
+tests/test_l22_post_s16_settling.py:111: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_l22_post_s16_settling.py:24: in archived_run2
+    received = (ROOT / "native_bridge_received_original.jsonl").read_bytes()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+_____________ test_corrupt_or_foreign_source_fails_closed[session] _____________
+
+fault = 'session'
+
+    @pytest.mark.parametrize("fault", [
+        "action", "session", "not_outcome", "before", "source_sha",
+        "missing_second_probe", "extra_after", "missing_clear",
+        "duplicate_request", "s16_missing_newline",
+    ])
+    def test_corrupt_or_foreign_source_fails_closed(fault):
+>       args = archived_run2()
+               ^^^^^^^^^^^^^^^
+
+tests/test_l22_post_s16_settling.py:111: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_l22_post_s16_settling.py:24: in archived_run2
+    received = (ROOT / "native_bridge_received_original.jsonl").read_bytes()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+___________ test_corrupt_or_foreign_source_fails_closed[not_outcome] ___________
+
+fault = 'not_outcome'
+
+    @pytest.mark.parametrize("fault", [
+        "action", "session", "not_outcome", "before", "source_sha",
+        "missing_second_probe", "extra_after", "missing_clear",
+        "duplicate_request", "s16_missing_newline",
+    ])
+    def test_corrupt_or_foreign_source_fails_closed(fault):
+>       args = archived_run2()
+               ^^^^^^^^^^^^^^^
+
+tests/test_l22_post_s16_settling.py:111: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_l22_post_s16_settling.py:24: in archived_run2
+    received = (ROOT / "native_bridge_received_original.jsonl").read_bytes()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+_____________ test_corrupt_or_foreign_source_fails_closed[before] ______________
+
+fault = 'before'
+
+    @pytest.mark.parametrize("fault", [
+        "action", "session", "not_outcome", "before", "source_sha",
+        "missing_second_probe", "extra_after", "missing_clear",
+        "duplicate_request", "s16_missing_newline",
+    ])
+    def test_corrupt_or_foreign_source_fails_closed(fault):
+>       args = archived_run2()
+               ^^^^^^^^^^^^^^^
+
+tests/test_l22_post_s16_settling.py:111: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_l22_post_s16_settling.py:24: in archived_run2
+    received = (ROOT / "native_bridge_received_original.jsonl").read_bytes()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+___________ test_corrupt_or_foreign_source_fails_closed[source_sha] ____________
+
+fault = 'source_sha'
+
+    @pytest.mark.parametrize("fault", [
+        "action", "session", "not_outcome", "before", "source_sha",
+        "missing_second_probe", "extra_after", "missing_clear",
+        "duplicate_request", "s16_missing_newline",
+    ])
+    def test_corrupt_or_foreign_source_fails_closed(fault):
+>       args = archived_run2()
+               ^^^^^^^^^^^^^^^
+
+tests/test_l22_post_s16_settling.py:111: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_l22_post_s16_settling.py:24: in archived_run2
+    received = (ROOT / "native_bridge_received_original.jsonl").read_bytes()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+______ test_corrupt_or_foreign_source_fails_closed[missing_second_probe] _______
+
+fault = 'missing_second_probe'
+
+    @pytest.mark.parametrize("fault", [
+        "action", "session", "not_outcome", "before", "source_sha",
+        "missing_second_probe", "extra_after", "missing_clear",
+        "duplicate_request", "s16_missing_newline",
+    ])
+    def test_corrupt_or_foreign_source_fails_closed(fault):
+>       args = archived_run2()
+               ^^^^^^^^^^^^^^^
+
+tests/test_l22_post_s16_settling.py:111: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_l22_post_s16_settling.py:24: in archived_run2
+    received = (ROOT / "native_bridge_received_original.jsonl").read_bytes()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+___________ test_corrupt_or_foreign_source_fails_closed[extra_after] ___________
+
+fault = 'extra_after'
+
+    @pytest.mark.parametrize("fault", [
+        "action", "session", "not_outcome", "before", "source_sha",
+        "missing_second_probe", "extra_after", "missing_clear",
+        "duplicate_request", "s16_missing_newline",
+    ])
+    def test_corrupt_or_foreign_source_fails_closed(fault):
+>       args = archived_run2()
+               ^^^^^^^^^^^^^^^
+
+tests/test_l22_post_s16_settling.py:111: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_l22_post_s16_settling.py:24: in archived_run2
+    received = (ROOT / "native_bridge_received_original.jsonl").read_bytes()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+__________ test_corrupt_or_foreign_source_fails_closed[missing_clear] __________
+
+fault = 'missing_clear'
+
+    @pytest.mark.parametrize("fault", [
+        "action", "session", "not_outcome", "before", "source_sha",
+        "missing_second_probe", "extra_after", "missing_clear",
+        "duplicate_request", "s16_missing_newline",
+    ])
+    def test_corrupt_or_foreign_source_fails_closed(fault):
+>       args = archived_run2()
+               ^^^^^^^^^^^^^^^
+
+tests/test_l22_post_s16_settling.py:111: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_l22_post_s16_settling.py:24: in archived_run2
+    received = (ROOT / "native_bridge_received_original.jsonl").read_bytes()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+________ test_corrupt_or_foreign_source_fails_closed[duplicate_request] ________
+
+fault = 'duplicate_request'
+
+    @pytest.mark.parametrize("fault", [
+        "action", "session", "not_outcome", "before", "source_sha",
+        "missing_second_probe", "extra_after", "missing_clear",
+        "duplicate_request", "s16_missing_newline",
+    ])
+    def test_corrupt_or_foreign_source_fails_closed(fault):
+>       args = archived_run2()
+               ^^^^^^^^^^^^^^^
+
+tests/test_l22_post_s16_settling.py:111: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_l22_post_s16_settling.py:24: in archived_run2
+    received = (ROOT / "native_bridge_received_original.jsonl").read_bytes()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+_______ test_corrupt_or_foreign_source_fails_closed[s16_missing_newline] _______
+
+fault = 's16_missing_newline'
+
+    @pytest.mark.parametrize("fault", [
+        "action", "session", "not_outcome", "before", "source_sha",
+        "missing_second_probe", "extra_after", "missing_clear",
+        "duplicate_request", "s16_missing_newline",
+    ])
+    def test_corrupt_or_foreign_source_fails_closed(fault):
+>       args = archived_run2()
+               ^^^^^^^^^^^^^^^
+
+tests/test_l22_post_s16_settling.py:111: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_l22_post_s16_settling.py:24: in archived_run2
+    received = (ROOT / "native_bridge_received_original.jsonl").read_bytes()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/pathlib.py:1021: in read_bytes
+    with self.open(mode='rb') as f:
+         ^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PosixPath('/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl')
+mode = 'rb', buffering = -1, encoding = None, errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/home/rinsa/work/relay-self-selfbody-world-join-20261031/docs/evidence/l21-real-20261031/run2/capture/native_bridge_received_original.jsonl'
+
+/usr/lib/python3.12/pathlib.py:1015: FileNotFoundError
+=========================== short test summary info ============================
+FAILED tests/test_s50_input_witness_source.py::test_java_source_is_gated_observation_not_alternative_actuator
+FAILED tests/test_l22_runtime_settling.py::test_s7_sole_original_accepts_only_bounded_settling_prefix
+FAILED tests/test_l22_post_s16_settling.py::test_archived_real_run2_residual_move_is_not_stability
+FAILED tests/test_l22_post_s16_settling.py::test_corrupt_or_foreign_source_fails_closed[action]
+FAILED tests/test_l22_post_s16_settling.py::test_corrupt_or_foreign_source_fails_closed[session]
+FAILED tests/test_l22_post_s16_settling.py::test_corrupt_or_foreign_source_fails_closed[not_outcome]
+FAILED tests/test_l22_post_s16_settling.py::test_corrupt_or_foreign_source_fails_closed[before]
+FAILED tests/test_l22_post_s16_settling.py::test_corrupt_or_foreign_source_fails_closed[source_sha]
+FAILED tests/test_l22_post_s16_settling.py::test_corrupt_or_foreign_source_fails_closed[missing_second_probe]
+FAILED tests/test_l22_post_s16_settling.py::test_corrupt_or_foreign_source_fails_closed[extra_after]
+FAILED tests/test_l22_post_s16_settling.py::test_corrupt_or_foreign_source_fails_closed[missing_clear]
+FAILED tests/test_l22_post_s16_settling.py::test_corrupt_or_foreign_source_fails_closed[duplicate_request]
+FAILED tests/test_l22_post_s16_settling.py::test_corrupt_or_foreign_source_fails_closed[s16_missing_newline]
+13 failed, 114 passed in 2.66s

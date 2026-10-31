@@ -1,0 +1,16 @@
+{
+  "server": {
+    "path": "/home/rinsa/work/v8-five-world-20261017/assets/paper-1.21.8.jar",
+    "sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+  },
+  "plugin": {
+    "path": "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/assets/relay-metabolism-paper-dev.jar",
+    "sha256": "405657013fa315d76aab3730c6324b3583f9b30facf9233ef0b88fda9026585a"
+  },
+  "config": {
+    "path": "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/assets/config.yml",
+    "sha256": "2fd8f5bac2fea7fe857b1e7712a6979a2b76b78f626c374af7fbc7fee44e72d0"
+  },
+  "intervention": "ACTIVE_METABOLISM_NOT_PASSIVE",
+  "plugin_source_head": "e6d901d7dc3effb5c7516350233383fbb982bbb1"
+}

@@ -1,0 +1,6 @@
+{"request_id":"s49-actual:599de868-f1ef-49e4-aed2-6846b26d40e9:event-10","type":"observe"}
+{"request_id":"s49-actual:599de868-f1ef-49e4-aed2-6846b26d40e9:event-20","type":"observe"}
+{"type":"observe"}
+{"action_id":"s49-native-move-20","control":"back","effect":"set_control","state":true,"type":"effect"}
+{"action_id":"s49-native-move-20-s15-clear","effect":"clear_controls","type":"effect"}
+{"type":"observe"}

@@ -1,0 +1,236 @@
+
+> @relayself/mineflayer-adapter@0.0.0-mvp test
+> node --test protocol.test.mjs bridge_hooks.test.mjs v6_native_clock.test.mjs
+
+TAP version 13
+# Subtest: inventory listener waits for Mineflayer plugin injection
+ok 1 - inventory listener waits for Mineflayer plugin injection
+  ---
+  duration_ms: 0.804685
+  type: 'test'
+  ...
+# Subtest: missing inventory after injection fails explicitly
+ok 2 - missing inventory after injection fails explicitly
+  ---
+  duration_ms: 1.014144
+  type: 'test'
+  ...
+# Subtest: inventory hook validates its narrow bridge inputs
+ok 3 - inventory hook validates its narrow bridge inputs
+  ---
+  duration_ms: 0.154941
+  type: 'test'
+  ...
+# Subtest: spawn observation waits for Mineflayer health initialization only
+ok 4 - spawn observation waits for Mineflayer health initialization only
+  ---
+  duration_ms: 0.85221
+  type: 'test'
+  ...
+# Subtest: health before spawn remains an ordinary health event
+ok 5 - health before spawn remains an ordinary health event
+  ---
+  duration_ms: 0.166621
+  type: 'test'
+  ...
+# Subtest: health-synchronized spawn hook validates listeners
+ok 6 - health-synchronized spawn hook validates listeners
+  ---
+  duration_ms: 0.128975
+  type: 'test'
+  ...
+# Subtest: attack target resolver returns only the exact current entity id
+ok 7 - attack target resolver returns only the exact current entity id
+  ---
+  duration_ms: 0.176657
+  type: 'test'
+  ...
+# Subtest: attack target resolver fails closed on missing, self, or invalid ids
+ok 8 - attack target resolver fails closed on missing, self, or invalid ids
+  ---
+  duration_ms: 0.136521
+  type: 'test'
+  ...
+# Subtest: entityHurt payload preserves target and source identity
+ok 9 - entityHurt payload preserves target and source identity
+  ---
+  duration_ms: 0.269974
+  type: 'test'
+  ...
+# Subtest: entityHurt payload preserves missing source without inventing one
+ok 10 - entityHurt payload preserves missing source without inventing one
+  ---
+  duration_ms: 0.379843
+  type: 'test'
+  ...
+# Subtest: entityHurt payload rejects an invalid controlled actor id
+ok 11 - entityHurt payload rejects an invalid controlled actor id
+  ---
+  duration_ms: 0.17753
+  type: 'test'
+  ...
+# Subtest: package pins the qualified Mineflayer major surface and Node floor
+ok 12 - package pins the qualified Mineflayer major surface and Node floor
+  ---
+  duration_ms: 1.015902
+  type: 'test'
+  ...
+# Subtest: adapter arguments default to local offline MVP connection values
+ok 13 - adapter arguments default to local offline MVP connection values
+  ---
+  duration_ms: 0.614712
+  type: 'test'
+  ...
+# Subtest: adapter arguments accept explicit local server coordinates
+ok 14 - adapter arguments accept explicit local server coordinates
+  ---
+  duration_ms: 0.158069
+  type: 'test'
+  ...
+# Subtest: adapter arguments reject unknown or malformed values
+ok 15 - adapter arguments reject unknown or malformed values
+  ---
+  duration_ms: 0.369789
+  type: 'test'
+  ...
+# Subtest: set_control accepts only exact bounded control commands
+ok 16 - set_control accepts only exact bounded control commands
+  ---
+  duration_ms: 0.414378
+  type: 'test'
+  ...
+# Subtest: observe is a target-local snapshot probe, not an effect
+ok 17 - observe is a target-local snapshot probe, not an effect
+  ---
+  duration_ms: 0.144831
+  type: 'test'
+  ...
+# Subtest: clear_controls remains a primitive effect without hidden duration
+ok 18 - clear_controls remains a primitive effect without hidden duration
+  ---
+  duration_ms: 0.180485
+  type: 'test'
+  ...
+# Subtest: look accepts only explicit finite yaw and pitch
+ok 19 - look accepts only explicit finite yaw and pitch
+  ---
+  duration_ms: 0.183775
+  type: 'test'
+  ...
+# Subtest: equip_item and consume_held remain separate primitive effects
+ok 20 - equip_item and consume_held remain separate primitive effects
+  ---
+  duration_ms: 0.294407
+  type: 'test'
+  ...
+# Subtest: attack_entity requires one explicit non-negative entity id
+ok 21 - attack_entity requires one explicit non-negative entity id
+  ---
+  duration_ms: 0.426997
+  type: 'test'
+  ...
+# Subtest: snapshot exposes survival facts without appraisal labels
+ok 22 - snapshot exposes survival facts without appraisal labels
+  ---
+  duration_ms: 0.515344
+  type: 'test'
+  ...
+# Subtest: bounded entity snapshot declares truncation coverage
+ok 23 - bounded entity snapshot declares truncation coverage
+  ---
+  duration_ms: 1.058786
+  type: 'test'
+  ...
+# Subtest: bounded entity snapshot marks in-radius candidates truncated at cap
+ok 24 - bounded entity snapshot marks in-radius candidates truncated at cap
+  ---
+  duration_ms: 0.343623
+  type: 'test'
+  ...
+# Subtest: snapshot still fails closed when health is not initialized
+ok 25 - snapshot still fails closed when health is not initialized
+  ---
+  duration_ms: 0.202605
+  type: 'test'
+  ...
+# Subtest: snapshot represents unobserved oxygen as null
+ok 26 - snapshot represents unobserved oxygen as null
+  ---
+  duration_ms: 0.301601
+  type: 'test'
+  ...
+# Subtest: snapshot still fails closed for malformed observed oxygen
+ok 27 - snapshot still fails closed for malformed observed oxygen
+  ---
+  duration_ms: 0.199903
+  type: 'test'
+  ...
+# Subtest: snapshot allows time to remain null before first time update
+ok 28 - snapshot allows time to remain null before first time update
+  ---
+  duration_ms: 0.12157
+  type: 'test'
+  ...
+# Subtest: time admission ignores ordinary clock progression within one phase
+ok 29 - time admission ignores ordinary clock progression within one phase
+  ---
+  duration_ms: 0.084418
+  type: 'test'
+  ...
+# Subtest: envelope preserves target-local session and monotonic sequence fields
+ok 30 - envelope preserves target-local session and monotonic sequence fields
+  ---
+  duration_ms: 0.076056
+  type: 'test'
+  ...
+# Subtest: S29 correlated observe preserves legacy while rejecting malformed request identifiers
+ok 31 - S29 correlated observe preserves legacy while rejecting malformed request identifiers
+  ---
+  duration_ms: 0.273546
+  type: 'test'
+  ...
+# Subtest: S29 correlated probe response preserves exact request ID only for probes
+ok 32 - S29 correlated probe response preserves exact request ID only for probes
+  ---
+  duration_ms: 0.10801
+  type: 'test'
+  ...
+# Subtest: S29 duplicate correlated probe ID is rejected per Node bridge session
+ok 33 - S29 duplicate correlated probe ID is rejected per Node bridge session
+  ---
+  duration_ms: 0.159994
+  type: 'test'
+  ...
+# Subtest: W4 orientation is opt-in read-only and never alters default snapshot
+ok 34 - W4 orientation is opt-in read-only and never alters default snapshot
+  ---
+  duration_ms: 0.395168
+  type: 'test'
+  ...
+# Subtest: server packet age, raw display time and host time are independent
+ok 35 - server packet age, raw display time and host time are independent
+  ---
+  duration_ms: 1.068368
+  type: 'test'
+  ...
+# Subtest: fake values, negatives, float and missing genuine fields reject
+ok 36 - fake values, negatives, float and missing genuine fields reject
+  ---
+  duration_ms: 0.256576
+  type: 'test'
+  ...
+# Subtest: only real update_time callbacks emit; day reset does not reset age
+ok 37 - only real update_time callbacks emit; day reset does not reset age
+  ---
+  duration_ms: 0.41731
+  type: 'test'
+  ...
+1..37
+# tests 37
+# suites 0
+# pass 37
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 69.285045

@@ -1,0 +1,93 @@
+{
+  "classification": "DEV_WORLD_SELFBODY_NATIVE_PRESENT_REJECTED",
+  "original_actions": 1,
+  "s16": {
+    "action_id": "s49-native-move-20",
+    "action_ref": "MOVE_BACKWARD",
+    "after_seq": 30,
+    "before_seq": 23,
+    "binding_id": "s49-binding-20",
+    "disposition": "outcome",
+    "pre_probe_sha256": "1f89d9f6d0779e3e61fa8c03de0b640b234529753c2fe7e3ebe782101be7643e",
+    "reason_code": "observed_execution",
+    "schema": "L13_S16_TERMINAL_SOURCE_V1",
+    "session_id": "599de868-f1ef-49e4-aed2-6846b26d40e9",
+    "source_revision": 0,
+    "source_status": "executed",
+    "world_reference": "599de868-f1ef-49e4-aed2-6846b26d40e9:100",
+    "world_source": "normal-action-runtime"
+  },
+  "lease": {
+    "errors": [
+      "InvalidMineflayerPresent"
+    ],
+    "l10_pairs_admitted": 0,
+    "memory_writes": 0,
+    "model_calls": 0,
+    "new_action_issuers": 0,
+    "new_native_probes": 0,
+    "new_packet_writes": 0,
+    "new_s16_outcome_owners": 0,
+    "original_closures_seen": 1,
+    "p1_wait_admitted": 0,
+    "status": "REVOKED_ON_BAD_OR_MULTIPLE_ORIGINAL_CLOSURE",
+    "typed_original_ready": false,
+    "world_tick_alignment": "NOT_ATTESTED"
+  },
+  "node_exit": 0,
+  "server_exit": 0,
+  "cleanup": {
+    "runner_exit": 1,
+    "owned_processes": [
+      {
+        "pid": 19498,
+        "ppid": 19497,
+        "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-ngjf7ref/minecraft.jar nogui ",
+        "cwd": "/tmp/relay-self-s49-ngjf7ref",
+        "first_seen_utc": "2026-10-31T10:38:37.556425+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 19558,
+        "ppid": 19498,
+        "argv": "lshw -class processor ",
+        "cwd": "/tmp/relay-self-s49-ngjf7ref",
+        "first_seen_utc": "2026-10-31T10:38:44.243604+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 19562,
+        "ppid": 19498,
+        "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+        "cwd": "/tmp/relay-self-s49-ngjf7ref",
+        "first_seen_utc": "2026-10-31T10:38:44.345068+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 19565,
+        "ppid": 19498,
+        "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+        "cwd": "/tmp/relay-self-s49-ngjf7ref",
+        "first_seen_utc": "2026-10-31T10:38:44.446748+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 19618,
+        "ppid": 19497,
+        "argv": "node /home/rinsa/work/relay-self-selfbody-world-join-20261031/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+        "cwd": "/home/rinsa/work/relay-self-selfbody-world-join-20261031",
+        "first_seen_utc": "2026-10-31T10:38:57.940208+00:00",
+        "pid_gone": true
+      }
+    ],
+    "world_roots": [
+      {
+        "path": "/tmp/relay-self-s49-ngjf7ref",
+        "removed": true
+      }
+    ],
+    "port_rebind": true
+  },
+  "native_probes_uncorrelated": true,
+  "original_report_action_list_is_empty_due_to_supplement_failure_before_append": true
+}

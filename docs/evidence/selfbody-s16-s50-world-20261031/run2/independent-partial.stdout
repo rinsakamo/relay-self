@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/run2/independent_partial_review.py", line 15, in <module>
+    source=asdict(project_s50_body_motion_source(paper_original=paper,client_original=client,l23_source_readback=l23,session_id=terminal['session_id'],action_id=terminal['action_id'],world=l23['paper_world'],subject_uuid=inputs[0]['subject_uuid'],first_tick=l23['paper_first_tick']))
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rinsa/work/relay-self-selfbody-world-join-20261031/adapters/mineflayer/m02_paper_dev/s50_selfbody_motion_source.py", line 237, in project_s50_body_motion_source
+    raise S50BodyMotionSourceRejected("Paper motion contradicts L23 readback")
+adapters.mineflayer.m02_paper_dev.s50_selfbody_motion_source.S50BodyMotionSourceRejected: Paper motion contradicts L23 readback

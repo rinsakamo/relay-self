@@ -1,0 +1,53 @@
+{
+  "action_count": 1,
+  "classification": "DEV_PACKET_SOURCE_ONLY_NO_CLOCK_OR_WIRE_ACCEPTANCE_ATTESTATION",
+  "effective_client_clear_tick": "NOT_ATTESTED",
+  "full_tick_input_coverage": false,
+  "goal_accepted": false,
+  "l10_pairs_admitted": 0,
+  "l23_paper_activity_ticks": [
+    249,
+    250,
+    251
+  ],
+  "original_sha256": {
+    "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/run3/capture/l16_pre_world_goal_plan.json": "d1d73386f8b85197a24b00c346c03bf7325eac24e8d2217cc66a8aae3559bd69",
+    "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/run3/capture/l18_s16_terminal_original.jsonl": "0abed468aa99f7927433e3717a80067a969e2bf7ed733326776f712af5133eaa",
+    "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/run3/capture/native_bridge_received_original.jsonl": "c2d0220b68d3ea7acaffed353b88212253e57d99f131d795f8b0fffd0aa87f7b",
+    "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/run3/capture/native_bridge_sent_original.jsonl": "ddbd36a6c55d879d4c117a2a7fa6356493f9080f5e460209a1f282135ae3f4ec",
+    "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/run3/capture/native_bridge_source_receipt.json": "88a562a35b8803c733f2ee1b65181d279973345ec9419a2b5a758d0afb68fbc5",
+    "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/run3/client-packet-original.jsonl": "adf264f5fa1a3c4f91149eeef5de5be722ad9105d4bc0e2eb991e9bac9ae5ad3",
+    "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/run3/s49-report.json": "5dcb9ddd1c02d371a839462519e08162643f73a3c6ac2550e10a67cf8830cc93",
+    "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/run3/server.log": "7bc19f00d7d95c50048a7e0220a8549986b84d717673da03e1b09e6207c9fe35"
+  },
+  "p1_wait_ticks_admitted": 0,
+  "packet_diagnostic": {
+    "client_original_sha256": "adf264f5fa1a3c4f91149eeef5de5be722ad9105d4bc0e2eb991e9bac9ae5ad3",
+    "paper_original_sha256": "7bc19f00d7d95c50048a7e0220a8549986b84d717673da03e1b09e6207c9fe35",
+    "qualification": "DEV_ONLY",
+    "readback": {
+      "client_motion_write_returns": 23,
+      "client_packet_write_returns": 23,
+      "client_player_input_write_returns": 0,
+      "client_trace_complete": true,
+      "diagnostic": "NO_PLAYER_INPUT_WRITE_ON_OBSERVED_CLIENT_PATH",
+      "effective_s15_clear_tick": "NOT_ATTESTED",
+      "full_tick_input_coverage": false,
+      "l10_pairs_admitted": 0,
+      "marker_id": "s49-native-move-20-28241aa9-194e-4d9a-b384-a40e06f4a208",
+      "native_control_effect_samples": 3,
+      "native_session_id": "28241aa9-194e-4d9a-b384-a40e06f4a208",
+      "native_write_is_network_delivery": false,
+      "p1_wait_ticks_admitted": 0,
+      "paper_packet_identity_proven": false,
+      "paper_player_input_callbacks": 0,
+      "paper_world_uuid": "5a2a4aca-1fff-47e7-bbcf-9e16ebd04adc"
+    },
+    "science": "NOT_RUN",
+    "source_ceiling": "WRITE_RETURNED_NOT_WIRE_OR_ACCEPTANCE"
+  },
+  "paper_world": "5a2a4aca-1fff-47e7-bbcf-9e16ebd04adc",
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "world_session_id": "28241aa9-194e-4d9a-b384-a40e06f4a208"
+}

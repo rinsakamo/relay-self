@@ -1,0 +1,60 @@
+{
+  "classification": "DEV_WORLD_SELFBODY_S16_S50_JOIN_PASS",
+  "preworld_blocked": 1,
+  "new_worlds": 3,
+  "world_results": [
+    "FAIL_NATIVE_PRESENT_UNCORRELATED",
+    "FAIL_S50_TUPLE_LIST_SEAM",
+    "PASS"
+  ],
+  "s49_actions_total": 3,
+  "successful_world_actions": 1,
+  "fast_python": {
+    "focused_final": 238,
+    "session_cleanup_regression": 91,
+    "normal_callback_regression": 35,
+    "total_distinct": 364
+  },
+  "fast_node": {
+    "packet_observer": 6,
+    "bridge_protocol_regression": 37,
+    "total": 43
+  },
+  "execution_head": "002117f6a8534b18a025a21d8da0f158c734593e",
+  "session_id": "28241aa9-194e-4d9a-b384-a40e06f4a208",
+  "paper_world": "5a2a4aca-1fff-47e7-bbcf-9e16ebd04adc",
+  "typed_identity_checked_in_live_host": true,
+  "next_epoch_referenced": false,
+  "next_epoch_state": "READ_ONLY_COMPANION_AVAILABLE_NO_EPOCH_EXECUTED",
+  "independent_audit_pass": true,
+  "negative_real_source_copies_rejected": 5,
+  "cleanup_pass": true,
+  "assets": {
+    "server": {
+      "path": "/home/rinsa/work/v8-five-world-20261017/assets/paper-1.21.8.jar",
+      "sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+    },
+    "plugin": {
+      "path": "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/assets/relay-metabolism-paper-dev.jar",
+      "sha256": "405657013fa315d76aab3730c6324b3583f9b30facf9233ef0b88fda9026585a"
+    },
+    "config": {
+      "path": "/home/rinsa/work/selfbody-s16-s50-evidence-20261031/assets/config.yml",
+      "sha256": "2fd8f5bac2fea7fe857b1e7712a6979a2b76b78f626c374af7fbc7fee44e72d0"
+    },
+    "intervention": "ACTIVE_METABOLISM_NOT_PASSIVE",
+    "plugin_source_head": "e6d901d7dc3effb5c7516350233383fbb982bbb1"
+  },
+  "ceilings": [
+    "EFFECTIVE_CLIENT_CLEAR_TICK=NOT_ATTESTED",
+    "FULL_TICK_INPUT_COVERAGE_NOT_ATTESTED",
+    "PHYSICAL_STABILITY_UNPROVEN",
+    "GOAL_UNDETERMINED",
+    "P1_WAIT_0",
+    "L10_PAIRS_0",
+    "S10_UPDATES_0",
+    "S11_GRANTS_0",
+    "QUALIFICATION_NO_GO",
+    "SCIENCE_NOT_RUN"
+  ]
+}

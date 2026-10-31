@@ -1,0 +1,968 @@
+{
+  "/tmp/relay-self-s49-v38fxzpp/minecraft.jar": {
+    "signature": [
+      52811717,
+      1793443337902402341
+    ],
+    "sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/server.properties": {
+    "signature": [
+      1448,
+      1793443353226933170
+    ],
+    "sha256": "57bf60f55aeb38fb94b9bb399e64561c34c6af8ce11b567478d4e44d2ae53aef"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/plugins/relay-metabolism-paper-dev.jar": {
+    "signature": [
+      21955,
+      1793443337908090237
+    ],
+    "sha256": "405657013fa315d76aab3730c6324b3583f9b30facf9233ef0b88fda9026585a"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/cache/mojang_1.21.8.jar": {
+    "signature": [
+      57555044,
+      1793443341598531692
+    ],
+    "sha256": "2349d9a8f0d4be2c40e7692890ef46a4b07015e7955b075460d02793be7fbbe7"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/plugins/RelayMetabolismDev/config.yml": {
+    "signature": [
+      2164,
+      1793443337908229501
+    ],
+    "sha256": "2fd8f5bac2fea7fe857b1e7712a6979a2b76b78f626c374af7fbc7fee44e72d0"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/versions/1.21.8/paper-1.21.8.jar": {
+    "signature": [
+      28338816,
+      1793443344118625089
+    ],
+    "sha256": "c64fb7dbc95cd15aa0b7460a5b1e117eef5ee91c4e6fa7a8f1fe6487b6c31507"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/jline/jline-terminal-ffm/3.27.1/jline-terminal-ffm-3.27.1.jar": {
+    "signature": [
+      64438,
+      1793443342258556160
+    ],
+    "sha256": "61b88b9d2ba22175ae5a69801da4d126eb0bdb4bb81538efa3d107c242c956f4"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/jline/jline-native/3.27.1/jline-native-3.27.1.jar": {
+    "signature": [
+      190113,
+      1793443342254556011
+    ],
+    "sha256": "636646da40413e74963b3f4b40c9c5dcfb42f3d0ecf1b93d6ddf5c895effe422"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/jline/jline-terminal-jni/3.27.1/jline-terminal-jni-3.27.1.jar": {
+    "signature": [
+      49034,
+      1793443342258556160
+    ],
+    "sha256": "e4bc64f1e68e9fb25d80517338e76abca1e0145b82e389b5c2b2c7d71d150f82"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/jline/jline-reader/3.20.0/jline-reader-3.20.0.jar": {
+    "signature": [
+      171052,
+      1793443342254556011
+    ],
+    "sha256": "acd1c94d1e228aa7b7962f69b21ed3a9fd828eb3a63e4baf9086954e626af1f0"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/jline/jline-terminal/3.27.1/jline-terminal-3.27.1.jar": {
+    "signature": [
+      264434,
+      1793443342258556160
+    ],
+    "sha256": "42b7b756506bca98b505938426a35c99082f7819c333ed25bd4114bfb0e3b5f2"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/slf4j/slf4j-api/2.0.16/slf4j-api-2.0.16.jar": {
+    "signature": [
+      69435,
+      1793443342274556753
+    ],
+    "sha256": "a12578dde1ba00bd9b816d388a0b879928d00bab3c83c240f7013bf4196c579a"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/slf4j/jcl-over-slf4j/1.7.36/jcl-over-slf4j-1.7.36.jar": {
+    "signature": [
+      16555,
+      1793443342274556753
+    ],
+    "sha256": "ab57ca8fd223772c17365d121f59e94ecbf0ae59d08c03a3cb5b81071c019195"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/jspecify/jspecify/1.0.0/jspecify-1.0.0.jar": {
+    "signature": [
+      3819,
+      1793443342266556456
+    ],
+    "sha256": "1fad6e6be7557781e4d33729d49ae1cdc8fdda6fe477bb0cc68ce351eafdfbab"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/eclipse/sisu/org.eclipse.sisu.inject/0.9.0.M2/org.eclipse.sisu.inject-0.9.0.M2.jar": {
+    "signature": [
+      424617,
+      1793443342254556011
+    ],
+    "sha256": "9b62bcfc352a2ec87da8b01e37c952a54d358bbb1af3f212648aeafe7ab2dbb5"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/checkerframework/checker-qual/3.43.0/checker-qual-3.43.0.jar": {
+    "signature": [
+      231525,
+      1793443342246555715
+    ],
+    "sha256": "3fbc2e98f05854c3df16df9abaa955b91b15b3ecac33623208ed6424640ef0f6"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/xerial/sqlite-jdbc/3.49.1.0/sqlite-jdbc-3.49.1.0.jar": {
+    "signature": [
+      14317659,
+      1793443342302557791
+    ],
+    "sha256": "5c8609d2ca341deb8c6f71778974b5ba4995c7d32d7c7c89d9392a3e72c39291"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/spongepowered/configurate-core/4.2.0/configurate-core-4.2.0.jar": {
+    "signature": [
+      364528,
+      1793443342274556753
+    ],
+    "sha256": "06c1e9f7789a189af0c0156ebe9f469da7cc674233f43e8133c83131edd9f7e0"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/spongepowered/configurate-yaml/4.2.0/configurate-yaml-4.2.0.jar": {
+    "signature": [
+      379214,
+      1793443342278556901
+    ],
+    "sha256": "6294f085316188bffb71bb05ef36bf8755a288ed925c791952e1e8d7bfc8ba4c"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/codehaus/plexus/plexus-interpolation/1.26/plexus-interpolation-1.26.jar": {
+    "signature": [
+      85348,
+      1793443342250555863
+    ],
+    "sha256": "b3b5412ce17889103ea564bcdfcf9fb3dfa540344ffeac6b538a73c9d7182662"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/codehaus/plexus/plexus-utils/3.5.1/plexus-utils-3.5.1.jar": {
+    "signature": [
+      269335,
+      1793443342250555863
+    ],
+    "sha256": "86e0255d4c879c61b4833ed7f13124e8bb679df47debb127326e7db7dd49a07b"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/joml/joml/1.10.8/joml-1.10.8.jar": {
+    "signature": [
+      778846,
+      1793443342262556308
+    ],
+    "sha256": "bf19510145178df82cd3bd37edd514c13f411531ec5545299fd3abcbc98fe7c2"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/yaml/snakeyaml/2.2/snakeyaml-2.2.jar": {
+    "signature": [
+      334352,
+      1793443342322558532
+    ],
+    "sha256": "1467931448a0817696ae2805b7b8b20bfb082652bf9c4efaed528930dc49389b"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/lz4/lz4-java/1.8.0/lz4-java-1.8.0.jar": {
+    "signature": [
+      682804,
+      1793443342270556605
+    ],
+    "sha256": "d74a3334fb35195009b338a951f918203d6bbca3d1d359033dc33edd1cadc9ef"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/ow2/asm/asm-commons/9.8/asm-commons-9.8.jar": {
+    "signature": [
+      73498,
+      1793443342270556605
+    ],
+    "sha256": "3301a1c1cb4c59fcc5292648dac1d7c5aed4c0f067dfbe88873b8cdfe77404f4"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/ow2/asm/asm-tree/9.8/asm-tree-9.8.jar": {
+    "signature": [
+      51934,
+      1793443342270556605
+    ],
+    "sha256": "14b7880cb7c85eed101e2710432fc3ffb83275532a6a894dc4c4095d49ad59f1"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/httpcomponents/httpcore/4.4.16/httpcore-4.4.16.jar": {
+    "signature": [
+      327891,
+      1793443342206554232
+    ],
+    "sha256": "6c9b3dd142a09dc468e23ad39aad6f75a0f2b85125104469f026e52a474e464f"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/httpcomponents/httpclient/4.5.14/httpclient-4.5.14.jar": {
+    "signature": [
+      785639,
+      1793443342198553936
+    ],
+    "sha256": "c8bc7e1c51a6d4ce72f40d2ebbabf1c4b68bfe76e732104b04381b493478e9d6"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/maven/resolver/maven-resolver-named-locks/1.9.18/maven-resolver-named-locks-1.9.18.jar": {
+    "signature": [
+      37917,
+      1793443342242555567
+    ],
+    "sha256": "098de7bbc5b0b26c3eff74ac30ffba6680fdab9bf4aebab95c3f5e2fe9eaeea8"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/maven/resolver/maven-resolver-impl/1.9.18/maven-resolver-impl-1.9.18.jar": {
+    "signature": [
+      317884,
+      1793443342242555567
+    ],
+    "sha256": "6bb9c90d007098004749c867da2eaf5785fc1139907718749c1097bdb2929bf8"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/maven/resolver/maven-resolver-util/1.9.18/maven-resolver-util-1.9.18.jar": {
+    "signature": [
+      196023,
+      1793443342246555715
+    ],
+    "sha256": "2eb0ea667bc489384478231dda7516407d4b5b22a138077229871de9362a7ae2"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/maven/resolver/maven-resolver-api/1.9.18/maven-resolver-api-1.9.18.jar": {
+    "signature": [
+      157111,
+      1793443342238555418
+    ],
+    "sha256": "ebfb9e1dfeea3c2017905184581e007874b4eaac9d28bfffcfe5133d70ac6339"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/maven/resolver/maven-resolver-transport-http/1.9.18/maven-resolver-transport-http-1.9.18.jar": {
+    "signature": [
+      55883,
+      1793443342242555567
+    ],
+    "sha256": "1fa02272da7a604718f22e2bc9775f14350487548ffc30a2ffaae1c2d1d1a58a"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/maven/resolver/maven-resolver-connector-basic/1.9.18/maven-resolver-connector-basic-1.9.18.jar": {
+    "signature": [
+      40439,
+      1793443342238555418
+    ],
+    "sha256": "f88d97d0f18571a675e73b45d6a9384b00322c9fae514ad6761d65b729a4e82a"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/maven/resolver/maven-resolver-spi/1.9.18/maven-resolver-spi-1.9.18.jar": {
+    "signature": [
+      51715,
+      1793443342242555567
+    ],
+    "sha256": "d364fce9a17b0e0b073c26efa92af95b29c00c42943dced4a1168a7923fd3fe1"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/maven/maven-repository-metadata/3.9.6/maven-repository-metadata-3.9.6.jar": {
+    "signature": [
+      28440,
+      1793443342234555270
+    ],
+    "sha256": "e047a67b204c434994253e2ab5bdff5fe8cb7ada9316ac3e754c39f900ea847b"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/maven/maven-model-builder/3.9.6/maven-model-builder-3.9.6.jar": {
+    "signature": [
+      198399,
+      1793443342234555270
+    ],
+    "sha256": "5f96dafbc411ee4b1e8426368d0d31d05ab5a4dace69808143142a0017598721"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/maven/maven-builder-support/3.9.6/maven-builder-support-3.9.6.jar": {
+    "signature": [
+      14347,
+      1793443342230555122
+    ],
+    "sha256": "e1f4d2784459ce8a34b9dae1829a1999b569e483e21ee9faa7368691e729296e"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/maven/maven-resolver-provider/3.9.6/maven-resolver-provider-3.9.6.jar": {
+    "signature": [
+      74416,
+      1793443342234555270
+    ],
+    "sha256": "73b00b244b7b9e285654a45e765892bf5d369da77d42b5b4b5429122ed198a33"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/maven/maven-model/3.9.6/maven-model-3.9.6.jar": {
+    "signature": [
+      217563,
+      1793443342230555122
+    ],
+    "sha256": "4f8f07fdb6b8701fa89a23a2edf830808fd65892d90cce40c0e6df7c8f2fcb62"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/maven/maven-artifact/3.9.6/maven-artifact-3.9.6.jar": {
+    "signature": [
+      58708,
+      1793443342230555122
+    ],
+    "sha256": "ad7a0fb408f8e47585ccc0d0011e0b501d93bfc9888d369bbd4a043d19475073"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/commons/commons-lang3/3.17.0/commons-lang3-3.17.0.jar": {
+    "signature": [
+      673587,
+      1793443342194553787
+    ],
+    "sha256": "6ee731df5c8e5a2976a1ca023b6bb320ea8d3539fbe64c8a1d5cb765127c33b4"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/logging/log4j/log4j-iostreams/2.24.1/log4j-iostreams-2.24.1.jar": {
+    "signature": [
+      49665,
+      1793443342226554973
+    ],
+    "sha256": "a0f5efdb33166aaaef12cd54f9b5ca940d7fa17575d770550f828f32702ef87e"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/logging/log4j/log4j-core/2.24.1/log4j-core-2.24.1.jar": {
+    "signature": [
+      1910958,
+      1793443342218554677
+    ],
+    "sha256": "00bcf388472ca80a687014181763b66d777177f22cbbf179fd60e1b1ac9bc9b0"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/logging/log4j/log4j-slf4j2-impl/2.24.1/log4j-slf4j2-impl-2.24.1.jar": {
+    "signature": [
+      30133,
+      1793443342226554973
+    ],
+    "sha256": "644b6e3f0c40e5699ea0ca013844b138af440561d27226672e80b7aa1fdfc156"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/apache/logging/log4j/log4j-api/2.24.1/log4j-api-2.24.1.jar": {
+    "signature": [
+      348428,
+      1793443342210554381
+    ],
+    "sha256": "6e77bb229fc8dcaf09038beeb5e9030b22e9e01b51b458b0183ce669ebcc92ef"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/minecrell/terminalconsoleappender/1.3.0/terminalconsoleappender-1.3.0.jar": {
+    "signature": [
+      16949,
+      1793443342182553343
+    ],
+    "sha256": "1afea1bca095068f7f4483f061feed94753be34233ddb0df9ec380fc14d5a985"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/neoforged/javadoctor/spec/2.0.17/spec-2.0.17.jar": {
+    "signature": [
+      6266,
+      1793443342190553639
+    ],
+    "sha256": "67d6fdde98770e91e82303fde1ce5560f12081b733da07bfa7bac71968a93dff"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/neoforged/javadoctor/gson-io/2.0.17/gson-io-2.0.17.jar": {
+    "signature": [
+      5747,
+      1793443342190553639
+    ],
+    "sha256": "de40a10adb58105e84864dff41e3ef490d87411afa390d86a940c74a6bf69821"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/neoforged/installertools/cli-utils/2.1.4/cli-utils-2.1.4.jar": {
+    "signature": [
+      9379,
+      1793443342186553491
+    ],
+    "sha256": "4b488975fd59a833b0239c2adf8996ab8f77e8d76a2e6ae9919692df3125dd37"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/neoforged/srgutils/1.0.9/srgutils-1.0.9.jar": {
+    "signature": [
+      71913,
+      1793443342186553491
+    ],
+    "sha256": "d46c7bf9939b47d13a9b34e236869898cd27eefb7dab7bb830787b32793e8575"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/neoforged/AutoRenamingTool/2.0.3/AutoRenamingTool-2.0.3.jar": {
+    "signature": [
+      103355,
+      1793443342186553491
+    ],
+    "sha256": "d27484a148dc5ab6fcd4d2f9465d4ce68f7459c724df570ddc45e760cdcb788e"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/java/dev/jna/jna-platform/5.15.0/jna-platform-5.15.0.jar": {
+    "signature": [
+      1376668,
+      1793443342162552601
+    ],
+    "sha256": "18b7f6e7d34ce89309a6d9052ae1a987e8e64057e2f683e01e50f2f2b59cd153"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/java/dev/jna/jna/5.15.0/jna-5.15.0.jar": {
+    "signature": [
+      2001532,
+      1793443342154552305
+    ],
+    "sha256": "a564158d28ab5127fc6a958028ed54279fe0999662c46425b6a3b09a2a52094d"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/md-5/bungeecord-chat/1.21-R0.2-deprecated+build.21/bungeecord-chat-1.21-R0.2-deprecated+build.21.jar": {
+    "signature": [
+      168064,
+      1793443342182553343
+    ],
+    "sha256": "ce930b3ee048520a0ab538eb8d1627b301367fc1b300837235387aded6d89ba1"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/minidev/json-smart/2.5.1/json-smart-2.5.1.jar": {
+    "signature": [
+      122291,
+      1793443342186553491
+    ],
+    "sha256": "86c0c189581b79b57b0719f443a724e9f628ffbb9eef645cf79194f5973a1001"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/minidev/accessors-smart/2.5.1/accessors-smart-2.5.1.jar": {
+    "signature": [
+      30305,
+      1793443342182553343
+    ],
+    "sha256": "2796ae857d0c7be4bc3580daa4d3828d555212355f4c83d38dd0af0742b3c812"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/examination-string/1.3.0/examination-string-1.3.0.jar": {
+    "signature": [
+      13135,
+      1793443342178553195
+    ],
+    "sha256": "7d01fc25a4bb3af0e1662685455f4541fbf4626216ea5846e455c1491e156b8c"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/adventure-text-minimessage/4.24.0/adventure-text-minimessage-4.24.0.jar": {
+    "signature": [
+      186671,
+      1793443342170552898
+    ],
+    "sha256": "7a7f44dc3b78379b918f91dce38bff26a0963bfe303a3fe16c91d30a5c5e23e5"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/adventure-text-serializer-json/4.24.0/adventure-text-serializer-json-4.24.0.jar": {
+    "signature": [
+      16980,
+      1793443342174553046
+    ],
+    "sha256": "ff6a80344cbf14d6a751947caf9db9669dd0740aeac8cc555c9b8648ff5771b2"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/adventure-text-serializer-legacy/4.24.0/adventure-text-serializer-legacy-4.24.0.jar": {
+    "signature": [
+      29764,
+      1793443342174553046
+    ],
+    "sha256": "40ed53afe2a7d668b814add69de15acf4bda8e9f951c4e5d4e224d777054685e"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/adventure-text-serializer-commons/4.24.0/adventure-text-serializer-commons-4.24.0.jar": {
+    "signature": [
+      2594,
+      1793443342174553046
+    ],
+    "sha256": "1010202c73124d3e0789dfdabb2778a5fb8cfad8726d70af9beb5c5759d4ccfd"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/adventure-api/4.24.0/adventure-api-4.24.0.jar": {
+    "signature": [
+      436164,
+      1793443342166552749
+    ],
+    "sha256": "d8c1d66db0fbaf084e8179b3f2541d9ff64402a7881070a71e8b3c26c26d384e"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/adventure-text-serializer-ansi/4.24.0/adventure-text-serializer-ansi-4.24.0.jar": {
+    "signature": [
+      11157,
+      1793443342170552898
+    ],
+    "sha256": "51505cf113d977444d78f34a0b7167c1c6cc9760354f06d08b45bf7af76bec1e"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/adventure-text-logger-slf4j/4.24.0/adventure-text-logger-slf4j-4.24.0.jar": {
+    "signature": [
+      19942,
+      1793443342170552898
+    ],
+    "sha256": "22e30a6e92a70e0a442eb64c906524a776f3c303e285e183cf2b7c435f90a81c"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/adventure-text-serializer-plain/4.24.0/adventure-text-serializer-plain-4.24.0.jar": {
+    "signature": [
+      13034,
+      1793443342174553046
+    ],
+    "sha256": "7e52a98e590d088ff07be1f8b0e759864717466fd35db1862fbb6ebb41b245db"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/examination-api/1.3.0/examination-api-1.3.0.jar": {
+    "signature": [
+      23446,
+      1793443342178553195
+    ],
+    "sha256": "c9237ffecb05428f6eff86216246ac70ce0b47b04c08ea7ca35020fde57f8492"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/adventure-text-serializer-gson/4.24.0/adventure-text-serializer-gson-4.24.0.jar": {
+    "signature": [
+      62103,
+      1793443342174553046
+    ],
+    "sha256": "2414c3ce5ffe1b7e31de86968ebd3e9f2a50e354939b276588ed2cd64c431821"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/ansi/1.1.1/ansi-1.1.1.jar": {
+    "signature": [
+      25154,
+      1793443342178553195
+    ],
+    "sha256": "b6c569e1a0925b9eeb349e12db35e2237556107e3336657e0b2ebde261d8afd7"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/option/1.1.0/option-1.1.0.jar": {
+    "signature": [
+      32200,
+      1793443342178553195
+    ],
+    "sha256": "97b69b4b17dfe02217c9131ad342564cbc9aebd04c75eb689639b5f78fd4b11c"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/kyori/adventure-key/4.24.0/adventure-key-4.24.0.jar": {
+    "signature": [
+      11369,
+      1793443342170552898
+    ],
+    "sha256": "d4f21f4281e89dab345a9004567668794819f9cc483eaff8bfd64c57494a9150"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/it/unimi/dsi/fastutil/8.5.15/fastutil-8.5.15.jar": {
+    "signature": [
+      23730770,
+      1793443342094550081
+    ],
+    "sha256": "cffeb6673bdf1e6e4377d684df2f55ac359cf5cf6df613e05e62deeea500936a"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/me/lucko/spark-api/0.1-20240720.200737-2/spark-api-0.1-20240720.200737-2.jar": {
+    "signature": [
+      9520,
+      1793443342126551267
+    ],
+    "sha256": "f99a3ba0cd3df1aee7b8f285fe7967a28d9c0cea37fa6621b643da919dcfb819"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/me/lucko/spark-paper/1.10.133-20250413.112336-1/spark-paper-1.10.133-20250413.112336-1.jar": {
+    "signature": [
+      2949453,
+      1793443342138551712
+    ],
+    "sha256": "85921e76d17ee6888fda55fd9b22fa00359123b98dc1873915e9627b5afb812a"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/commons-lang/commons-lang/2.6/commons-lang-2.6.jar": {
+    "signature": [
+      284220,
+      1793443341934544150
+    ],
+    "sha256": "50f11b09f877c294d56f24463f47d28f929cf5044f648661c0f0cfbae9a2f49c"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/javax/inject/javax.inject/1/javax.inject-1.jar": {
+    "signature": [
+      2497,
+      1793443342126551267
+    ],
+    "sha256": "91c77044a50c481636c32d916fd89c9118a72195390452c81065080f957de7ff"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/commons-codec/commons-codec/1.16.0/commons-codec-1.16.0.jar": {
+    "signature": [
+      360738,
+      1793443341926543853
+    ],
+    "sha256": "56595fb20b0b85bc91d0d503dad50bb7f1b9afc0eed5dffa6cbb25929000484d"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/microsoft/azure/msal4j/1.17.2/msal4j-1.17.2.jar": {
+    "signature": [
+      366717,
+      1793443341886542369
+    ],
+    "sha256": "797530d79d750700da2ecb70a27718d747e59c44ed3829a6d18f06c915721e1b"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/lmax/disruptor/3.4.4/disruptor-3.4.4.jar": {
+    "signature": [
+      84626,
+      1793443341886542369
+    ],
+    "sha256": "1524ed31f13bcabee1b6146e67be30c6317cb94fcd0c7c2f7c7a1f3e82087c51"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/velocitypowered/velocity-native/3.4.0-SNAPSHOT/velocity-native-3.4.0-SNAPSHOT.jar": {
+    "signature": [
+      237118,
+      1793443341926543853
+    ],
+    "sha256": "6086ff4d9003ad8b491dcdedf40938714b89d792b00537d8aacc4cc9c1f82804"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/mysql/mysql-connector-j/9.2.0/mysql-connector-j-9.2.0.jar": {
+    "signature": [
+      2609756,
+      1793443341906543111
+    ],
+    "sha256": "7e9941bbdcca244d878ea95bfff788fd9ba6a65af757f24be6c632930d61c7ed"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/google/errorprone/error_prone_annotations/2.28.0/error_prone_annotations-2.28.0.jar": {
+    "signature": [
+      19370,
+      1793443341850541035
+    ],
+    "sha256": "f3fc8a3a0a4020706a373b00e7f57c2512dd26d1f83d28c7d38768f8682b231e"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/google/guava/guava/33.3.1-jre/guava-33.3.1-jre.jar": {
+    "signature": [
+      3079289,
+      1793443341866541628
+    ],
+    "sha256": "4bf0e2c5af8e4525c96e8fde17a4f7307f97f8478f11c4c8e35a0e3298ae4e90"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/google/guava/listenablefuture/9999.0-empty-to-avoid-conflict-with-guava/listenablefuture-9999.0-empty-to-avoid-conflict-with-guava.jar": {
+    "signature": [
+      2199,
+      1793443341870541777
+    ],
+    "sha256": "b372a037d4230aa57fbeffdef30fd6123f9c0c2db85d0aced00c91b974f33f99"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/google/guava/failureaccess/1.0.2/failureaccess-1.0.2.jar": {
+    "signature": [
+      4740,
+      1793443341850541035
+    ],
+    "sha256": "8a8f81cf9b359e3f6dfa691a1e776985c061ef2f223c9b2c80753e1b458e8064"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/google/j2objc/j2objc-annotations/3.0.0/j2objc-annotations-3.0.0.jar": {
+    "signature": [
+      12467,
+      1793443341870541777
+    ],
+    "sha256": "88241573467ddca44ffd4d74aa04c2bbfd11bf7c17e0c342c94c9de7a70a7c64"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/google/code/gson/gson/2.11.0/gson-2.11.0.jar": {
+    "signature": [
+      298435,
+      1793443341850541035
+    ],
+    "sha256": "57928d6e5a6edeb2abd3770a8f95ba44dce45f3b23b7a9dc2b309c581552a78b"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.jar": {
+    "signature": [
+      19936,
+      1793443341850541035
+    ],
+    "sha256": "766ad2a0783f2687962c8ad74ceecc38a28b9f72a2d085ee438b7813e928d0c7"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/google/protobuf/protobuf-java/4.29.0/protobuf-java-4.29.0.jar": {
+    "signature": [
+      1870544,
+      1793443341882542222
+    ],
+    "sha256": "16901851ebe5e89fe88aaad3c26866373695bc2e30627bb8932847e2f5fc2e76"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/github/stephenc/jcip/jcip-annotations/1.0-1/jcip-annotations-1.0-1.jar": {
+    "signature": [
+      4722,
+      1793443341846540887
+    ],
+    "sha256": "4fccff8382aafc589962c4edb262f6aa595e34f1e11e61057d1c6a96e8fc7323"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/github/oshi/oshi-core/6.6.5/oshi-core-6.6.5.jar": {
+    "signature": [
+      991378,
+      1793443341846540887
+    ],
+    "sha256": "ec2afad57aca1d362c3b313c258aa9f66b517a28c60162a70d5fab3ae1659288"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/nimbusds/nimbus-jose-jwt/9.40/nimbus-jose-jwt-9.40.jar": {
+    "signature": [
+      810931,
+      1793443341918543556
+    ],
+    "sha256": "77128ed53756421bf59d2fc7f31554da29ea81cad8a5345977275adb7c5254c8"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/nimbusds/content-type/2.3/content-type-2.3.jar": {
+    "signature": [
+      8877,
+      1793443341910543260
+    ],
+    "sha256": "60349793e006fba96b532cb0c21e10e969fe0db8d87f91c3b9eaf82ba2998895"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/nimbusds/oauth2-oidc-sdk/11.18/oauth2-oidc-sdk-11.18.jar": {
+    "signature": [
+      896918,
+      1793443341922543705
+    ],
+    "sha256": "e510e8c61c603584b7a541988bb7b2e3321c2d392e4943f5e77e396d994182bc"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/nimbusds/lang-tag/1.7/lang-tag-1.7.jar": {
+    "signature": [
+      11170,
+      1793443341914543408
+    ],
+    "sha256": "e8c1c594e2425bdbea2d860de55c69b69fc5d59454452449a0f0913c2a5b8a31"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/googlecode/json-simple/json-simple/1.1.1/json-simple-1.1.1.jar": {
+    "signature": [
+      23931,
+      1793443341882542222
+    ],
+    "sha256": "4e69696892b88b41c55d49ab2fdcc21eead92bf54acc588c0050596c3b75199c"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/fasterxml/jackson/core/jackson-databind/2.13.4.2/jackson-databind-2.13.4.2.jar": {
+    "signature": [
+      1531681,
+      1793443341838540590
+    ],
+    "sha256": "ba1a368137f9b92f48dd07f299ff7a782a69487b853ef5578215426fcde8f08b"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/fasterxml/jackson/core/jackson-core/2.13.4/jackson-core-2.13.4.jar": {
+    "signature": [
+      374895,
+      1793443341818539848
+    ],
+    "sha256": "4c2e043200edd9ee7ba6fc378bd5c17784a5bf2388e152d208068b51fd0839cf"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/fasterxml/jackson/core/jackson-annotations/2.13.4/jackson-annotations-2.13.4.jar": {
+    "signature": [
+      75717,
+      1793443341814539701
+    ],
+    "sha256": "ac5b27a634942391ca113850ee7db01df1499a240174021263501c05fc653b44"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/mojang/authlib/6.0.58/authlib-6.0.58.jar": {
+    "signature": [
+      115810,
+      1793443341890542518
+    ],
+    "sha256": "7bea5444e83c8d343e11fb9e45939721f0db4321c5056ac846072e4a0bbe1321"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/mojang/logging/1.5.10/logging-1.5.10.jar": {
+    "signature": [
+      19800,
+      1793443341894542666
+    ],
+    "sha256": "de3031f2420d649b9a4152e4e160d50b87ce6e7b4d68163caf2b5ebbaf391f7e"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/mojang/brigadier/1.3.10/brigadier-1.3.10.jar": {
+    "signature": [
+      80082,
+      1793443341890542518
+    ],
+    "sha256": "c8ee4136e474ac7723ca2b432ec8d1a2bc88ef7d1ec57c314ba9e33cdc83dd75"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/mojang/datafixerupper/8.0.16/datafixerupper-8.0.16.jar": {
+    "signature": [
+      724313,
+      1793443341894542666
+    ],
+    "sha256": "ffc138bc2596c291781b0d5e211ccac51f0f2345f27fc2742f335cedf7e2870d"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/com/mojang/jtracy/1.0.29/jtracy-1.0.29.jar": {
+    "signature": [
+      10382,
+      1793443341894542666
+    ],
+    "sha256": "017dfd1aa6f536cfcb8f643830f6f9f17028e8277417a4741a92c46e47424dda"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/commons-io/commons-io/2.17.0/commons-io-2.17.0.jar": {
+    "signature": [
+      515978,
+      1793443341930544001
+    ],
+    "sha256": "4aa4ca48f3dfd30b78220b7881d8cb93eac4093ec94361b6befa9487998a550b"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/papermc/reflection-rewriter-proxy-generator/0.0.3/reflection-rewriter-proxy-generator-0.0.3.jar": {
+    "signature": [
+      7847,
+      1793443341962545187
+    ],
+    "sha256": "c972ba1ae0669702b5795fb4bc79ac8741702b315c1c200ab546e470973a9690"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/papermc/reflection-rewriter-runtime/0.0.3/reflection-rewriter-runtime-0.0.3.jar": {
+    "signature": [
+      13379,
+      1793443341966545336
+    ],
+    "sha256": "61e066c3eb6f164ef65a73af4dcd95d3a0caeefea261606be6f9034a715ee8e5"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/papermc/paper/paper-api/1.21.8-R0.1-SNAPSHOT/paper-api-1.21.8-R0.1-SNAPSHOT.jar": {
+    "signature": [
+      2723374,
+      1793443341978545781
+    ],
+    "sha256": "aab18363ca5a1aaadd4e2716ee0de50bc26f352901af962177d86484baff7478"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/papermc/reflection-rewriter/0.0.3/reflection-rewriter-0.0.3.jar": {
+    "signature": [
+      10743,
+      1793443341962545187
+    ],
+    "sha256": "dc7dca499eb485d47abe179176d63efc7121d7249d3d9625f8bd2e7a1642a4d9"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/papermc/asm-utils/0.0.3/asm-utils-0.0.3.jar": {
+    "signature": [
+      112231,
+      1793443341962545187
+    ],
+    "sha256": "0e0b9b519ef36f86b44067ea1ed559751b18bb7b5ee8844bc243375961728f11"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/netty/netty-transport-native-epoll/4.1.118.Final/netty-transport-native-epoll-4.1.118.Final-linux-aarch_64.jar": {
+    "signature": [
+      42321,
+      1793443341958545039
+    ],
+    "sha256": "53b3bec1d019bd3db6eeed30c6a770b49052ddd8fa1566796ae759e62b572425"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/netty/netty-transport-native-epoll/4.1.118.Final/netty-transport-native-epoll-4.1.118.Final-linux-x86_64.jar": {
+    "signature": [
+      40644,
+      1793443341962421888
+    ],
+    "sha256": "c95f66b9ab3f7fb6e666a81a5d0120e0c6acddf8fdf440e2ba212bfaf76a7c73"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/netty/netty-common/4.1.118.Final/netty-common-4.1.118.Final.jar": {
+    "signature": [
+      719225,
+      1793443341946544595
+    ],
+    "sha256": "65cce901ecf0f9d6591cc7750772614ab401a84415dc9aec9da4d046f0f9a77c"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/netty/netty-transport/4.1.118.Final/netty-transport-4.1.118.Final.jar": {
+    "signature": [
+      521428,
+      1793443341954544891
+    ],
+    "sha256": "ab3751e717daef9c8d91e4d74728a48730bd8530b72e2466b222b2ea3fb07db9"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/netty/netty-buffer/4.1.118.Final/netty-buffer-4.1.118.Final.jar": {
+    "signature": [
+      339045,
+      1793443341938544298
+    ],
+    "sha256": "0eea4e8666a9636a28722661d8ba5fa8564477e75fec6dd2ff3e324e361f8b3c"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/netty/netty-handler/4.1.118.Final/netty-handler-4.1.118.Final.jar": {
+    "signature": [
+      580162,
+      1793443341950544743
+    ],
+    "sha256": "26e3f8a5e859fd62cf3c13dc6d75e4e18879f000a5d0ad7f58f8679675d23dae"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/netty/netty-transport-classes-epoll/4.1.118.Final/netty-transport-classes-epoll-4.1.118.Final.jar": {
+    "signature": [
+      147621,
+      1793443341958545039
+    ],
+    "sha256": "bd86e6d41e1f6053f9577931655236259778ab045646e1e6ab04150f070864f3"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/netty/netty-transport-native-unix-common/4.1.118.Final/netty-transport-native-unix-common-4.1.118.Final.jar": {
+    "signature": [
+      44157,
+      1793443341962421888
+    ],
+    "sha256": "69b16793d7b41ea76a762bd2bd144fc4f7c39c156a7a59ebf69baeb560fb10b7"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/netty/netty-codec-haproxy/4.1.118.Final/netty-codec-haproxy-4.1.118.Final.jar": {
+    "signature": [
+      37789,
+      1793443341942544446
+    ],
+    "sha256": "442adc9857f129389cb7fc43c8d602dfb60305c75f14338d60e9f24646b307fe"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/netty/netty-codec/4.1.118.Final/netty-codec-4.1.118.Final.jar": {
+    "signature": [
+      355199,
+      1793443341942544446
+    ],
+    "sha256": "4abd215fd1ed7ce86509d169cc9cbede5042176c265a79b3b70602b017226c3f"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/netty/netty-resolver/4.1.118.Final/netty-resolver-4.1.118.Final.jar": {
+    "signature": [
+      37842,
+      1793443341954544891
+    ],
+    "sha256": "3170c225972c18b6850d28add60db15bb28d83c4e3d5b686ca220e0bd7273c8a"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/io/leangen/geantyref/geantyref/1.3.16/geantyref-1.3.16.jar": {
+    "signature": [
+      71272,
+      1793443341934544150
+    ],
+    "sha256": "7f1d591092d5142b6aaa7cf59f94c4c74d57dbeef03b2f8262949f8f36bac6e3"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/ca/spottedleaf/concurrentutil/0.0.3/concurrentutil-0.0.3.jar": {
+    "signature": [
+      159974,
+      1793443341806539404
+    ],
+    "sha256": "0a9c3ac9f7296d13adc394b04e079712f07b485ab93e6b946c4f904e6bea6d4a"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/org/ow2/asm/asm/9.8/asm-9.8.jar": {
+    "signature": [
+      126113,
+      1793443344178627311
+    ],
+    "sha256": "876eab6a83daecad5ca67eb9fcabb063c97b5aeb8cf1fca7a989ecde17522051"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/libraries/net/sf/jopt-simple/jopt-simple/6.0-alpha-3/jopt-simple-6.0-alpha-3.jar": {
+    "signature": [
+      79368,
+      1793443344186627608
+    ],
+    "sha256": "d440ceb839d6adb5cfa81aa321813d60255e68a3e9ca564c91126599310abde5"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/plugins/.paper-remapped/relay-metabolism-paper-dev.jar": {
+    "signature": [
+      22285,
+      1793443349746816871
+    ],
+    "sha256": "97ad6449e50d7d9de9dd8e8019c81b34ba5e2df7e2ceb6710423e0114d9b83b6"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/plugins/.paper-remapped/remap-classpath/1C1C48C2F6E8E7AB9B8CA0BC4E4644A76A1FE48EC57629E2BBD57F8EB38760F1.jar": {
+    "signature": [
+      26931219,
+      1793443349662814061
+    ],
+    "sha256": "9063c3fd1b182341675f2f663b073bb0d1efabd6118c6c92ba53829cd72d9b51"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/bukkit.yml": {
+    "signature": [
+      1148,
+      1793443354715815080
+    ],
+    "sha256": "a72396bbd1b69636b63f990995ed1ce31df7183af275868b4d638071fd4c866a"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/help.yml": {
+    "signature": [
+      2868,
+      1793443355741451710
+    ],
+    "sha256": "8a2ea7057ed40d0c6fb42c62c1d0bfdaa28fc07abb22be70e25f146f72ed2f55"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/commands.yml": {
+    "signature": [
+      491,
+      1793443354720971403
+    ],
+    "sha256": "44afdf9b41eea9f2d8b9ae41d3c07443ec78a4962c6b7ae33fb3097d6c94e3b9"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/spigot.yml": {
+    "signature": [
+      4901,
+      1793443356824528173
+    ],
+    "sha256": "961014cd4775b89623c058562de53c040b86bb19f18138e529abbdc81dcd5058"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/permissions.yml": {
+    "signature": [
+      0,
+      1793443355741451710
+    ],
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/s31a-ephemeral/paper-world.yml": {
+    "signature": [
+      337,
+      1793443355795018901
+    ],
+    "sha256": "14456a45b5fdc17a11d7e3b431362c5698342f3cc420c7b187eb8690177f0134"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/config/paper-global.yml": {
+    "signature": [
+      4369,
+      1793443355399005686
+    ],
+    "sha256": "e76452efa2e5c920f6640ec2a7636104694b2c22e0149ba419c99c8134f0d6a6"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/config/paper-world-defaults.yml": {
+    "signature": [
+      8534,
+      1793443355503009156
+    ],
+    "sha256": "a1a4326ea57c4f1f4fd4b5ce3022116d7325146112a821419f42148c2f1b7623"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/plugins/bStats/config.yml": {
+    "signature": [
+      337,
+      1793443355525498198
+    ],
+    "sha256": "00ec60222a617c13ca1fbceba1c7cf84e72f76c4033b4443cba937affb960247"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/s31a-ephemeral_nether/paper-world.yml": {
+    "signature": [
+      345,
+      1793443356303036541
+    ],
+    "sha256": "0e2cc0bf852e928f4fcbea66a06d2256b27398a59bb792873f8b052f44c9e735"
+  },
+  "/tmp/relay-self-s49-v38fxzpp/s31a-ephemeral_the_end/paper-world.yml": {
+    "signature": [
+      343,
+      1793443356827055073
+    ],
+    "sha256": "ce09728a273c4545e013568f5d0e6d475649c2180a45c89917f0545c908670ed"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "classification": "PREWORLD_BLOCKED",
+  "new_worlds": 0,
+  "java_started": false,
+  "node_started": false,
+  "reason": "launcher metadata referenced relocated node_modules"
+}
