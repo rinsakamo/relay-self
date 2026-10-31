@@ -21,7 +21,7 @@ from adapters.mineflayer.self_body_s50_original_closure import (
     SelfBodyS50ClosedOwnerRejected,
     observe_original_s49_selfbody_closure,
 )
-from relay_self.action import ActionEvent, ActionLifecycle, ActionState
+from relay_self.action import ActionEvent, ActionLifecycle, ActionState, _ActionLineage
 from relay_self.action_outcome import ActionOutcomeDisposition
 from relay_self.self_body import BodyOrigin
 from test_self_body import outcome, prov
@@ -42,7 +42,8 @@ def synthetic_original_closed(
     )
     terminal = ActionLifecycle(
         action_id=action, skill_execution_id="skill1",
-        intent_id="intent1", _events=states,
+        intent_id="intent1", _events=states, _revision=3,
+        _lineage=_ActionLineage(current_revision=3),
     )
     before = native_probe(before_seq, 2.0, sid=session)
     after = native_probe(after_seq, 2.0, sid=session)
