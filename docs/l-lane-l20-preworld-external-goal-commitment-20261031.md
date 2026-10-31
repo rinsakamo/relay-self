@@ -71,3 +71,17 @@ The CLI never writes any file or starts a World. If a real S49 run is authorized
 3. Admit real prior positive World/Body source plus new distinct current epoch under the existing L10 admission gates. Compare memory retention ON vs OFF, original S choice and next-epoch cheap advice. No automatic L0 promotion.
 
 **Evidence ceiling:** `DEV_ONLY / L20_PREWORLD_EXTERNAL_GOAL_COMMITMENT_SOURCE_ONLY / EXTERNAL_OWNER_AUTHENTICATED_FALSE / TRUE_PREWORLD_CHRONOLOGY_UNPROVEN / NEW_WORLD_0 / REAL_PER_ACTION_GOAL_0 / QUALIFIED_L10_0 / S10_S11_WRITES_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+
+
+## L20 opt-in now enforced at actual S49 pre-World entry
+
+L20 preflight is also wired into the **original** `adapters.mineflayer.s49_normal_session_real_ci.qualify` as two optional paired arguments. If both are given, S49 validates external criterion bytes, external provided SHA, identity and exact L16 preselected Goal **before creating its S7 recorder or provisioning Java/Node**. Invalid or unpaired source yields `BLOCKED` without a Minecraft server. A passing preflight is included in the report as `l20_external_goal_preflight` with honest `authenticated_external_owner=false` and `externally_attested_before_world=false`. Default S49 without those arguments is unchanged.
+
+When the experimenter separately grants a new disposable World, append the following two arguments to the existing L19 S49 run command (both must be supplied; L16 original capture must also be enabled):
+
+```bash
+  --l20-external-goal-original "$EXTERNAL_GOAL_ORIGINAL" \
+  --l20-admitted-sha256 "$EXTERNAL_GOAL_SHA256"
+```
+
+This does **not** establish that the SHA was externally published before World; it only prevents accidental/posthoc goal geometry changes in the exact S49 process. Independently preserved reviewer original, anchored prior publication and subsequent genuinely independent Goal observation remain separate responsibilities. A S49 Python-preflight matching a SHA from its own command line cannot bootstrap independent physical Goal authenticity.
