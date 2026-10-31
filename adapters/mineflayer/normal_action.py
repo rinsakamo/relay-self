@@ -5,6 +5,7 @@ from planning. Uses frozen S14/S15/S16 owners, never replays uncertain effects.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
 
@@ -21,6 +22,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
 from relay_self.action import ActionLifecycle, ActionState
 from relay_self.action_outcome import (
     ActionOutcomeDisposition,
+    ActionOutcomeInterpretation,
     record_interpreted_action_outcome,
 )
 from relay_self.action_supervision import ActionSupervisor
@@ -218,6 +220,10 @@ class NormalSessionActionExecutor:
         bound: BoundExecutionCandidate, probe: MineflayerObservation,
         propose: NormalActionAuthorization, issue: NormalActionAuthorization,
         *, timeout_s: float = 9,
+        on_terminal: Callable[
+            [ActionLifecycle, ActionOutcomeInterpretation, WorldConsequence],
+            None,
+        ] | None = None,
     ) -> NormalActionReceipt:
         if (
             not isinstance(session, MineflayerProcessSession)
@@ -261,6 +267,10 @@ class NormalSessionActionExecutor:
                 terminal = record_interpreted_action_outcome(
                     self.supervisor, interpretation, at_ns=t + 3,
                 )
+            # DEV opt-in owner observer: after existing S16 terminal closure,
+            # before the next S49 Action, no extra Action or outcome owner.
+            if on_terminal is not None:
+                on_terminal(terminal, interpretation, consequence)
             return NormalActionReceipt(terminal, consequence, probe.provenance)
         except BaseException:
             if self.supervisor.get(issued.action_id).state is ActionState.ISSUED:
