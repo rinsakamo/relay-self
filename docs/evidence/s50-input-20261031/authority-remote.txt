@@ -1,0 +1,3 @@
+d51b34b859cb18c4965681422163f9a1cfad3a8d	refs/heads/dev/l23-paper-settling-boundary-20261031
+7adaa25750026c5b26849bb763365f6331df123c	refs/heads/dev/s50-paper-input-witness-20261031
+3240691a29e1f02bcb89cc20cf650ac9a0e83662	refs/heads/self/product-self-one-command-20261010

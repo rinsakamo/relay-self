@@ -1,0 +1,36 @@
+{
+  "classification": "DEV_WORLD_OBSERVED_INPUT_LAST_REPORTED_ONLY_EFFECTIVE_CLEAR_NOT_ATTESTED_GOAL_UNDETERMINED",
+  "input_witness": {
+    "coverage": "LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY",
+    "effective_client_clear_tick": "NOT_ATTESTED",
+    "entire_tick_input_idle": false,
+    "first_tick": 252,
+    "goal_admitted": false,
+    "input_event_count_final": 0,
+    "input_event_observed": false,
+    "l10_episodes_admitted": 0,
+    "last_tick": 259,
+    "marker_id": "s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+    "p1_wait_ticks_admitted": 0,
+    "physical_stability_verified": false,
+    "sampled_input_active_ticks": [],
+    "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+    "world": "6993349a-b2c3-433f-b2c8-7f32b5fe64c8"
+  },
+  "original_sha256": {
+    "/home/rinsa/work/s50-input-evidence-20261031/run2/capture/l16_pre_world_goal_plan.json": "d1d73386f8b85197a24b00c346c03bf7325eac24e8d2217cc66a8aae3559bd69",
+    "/home/rinsa/work/s50-input-evidence-20261031/run2/capture/l18_s16_terminal_original.jsonl": "c125232ec9e78e4d1e569f836b0c3360d5039e7357922d60728c3526dd5d4b3e",
+    "/home/rinsa/work/s50-input-evidence-20261031/run2/capture/native_bridge_received_original.jsonl": "47989d674fb0eee0e31972e78960f002ef2b1e91bf70ef493d120567d4f9ef7c",
+    "/home/rinsa/work/s50-input-evidence-20261031/run2/capture/native_bridge_sent_original.jsonl": "f39647dc369006fe799761d17da1c6e785c0c3d6617d54a5cf8009b55f221213",
+    "/home/rinsa/work/s50-input-evidence-20261031/run2/capture/native_bridge_source_receipt.json": "933254300d3f2d6d4fffd61520400a8b9f1d2bc51744cbf86bfe18357ca910df",
+    "/home/rinsa/work/s50-input-evidence-20261031/run2/s49-report.json": "02096ce5a2656b3c5958e6825c9e77d4a3777271a4b8605f0a5df2b104647c42",
+    "/home/rinsa/work/s50-input-evidence-20261031/run2/server.log": "0e1fc41d0c64ed871506e59252556f01320f3ac53e1b4d9239312a26dd3f1f05"
+  },
+  "r_qualification": "NO_GO",
+  "s49_original_run": {
+    "l23_paper_sample_state": "PAPER_SAMPLED_ACTIVITY",
+    "real_action_count": 1,
+    "session_id": "3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf"
+  },
+  "science": "NOT_RUN"
+}

@@ -1,0 +1,477 @@
+{
+  "l22": {
+    "schema": "L22_POST_S16_SETTLING_DIAGNOSTIC_V1",
+    "session_id": "3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+    "action_id": "s49-native-move-19",
+    "s16_original_sha256": "c125232ec9e78e4d1e569f836b0c3360d5039e7357922d60728c3526dd5d4b3e",
+    "received_sha256": "47989d674fb0eee0e31972e78960f002ef2b1e91bf70ef493d120567d4f9ef7c",
+    "sent_sha256": "f39647dc369006fe799761d17da1c6e785c0c3d6617d54a5cf8009b55f221213",
+    "after_seq": 29,
+    "first_probe_seq": 41,
+    "second_probe_seq": 42,
+    "move_event_seqs": [
+      30,
+      31,
+      32,
+      33,
+      34,
+      36
+    ],
+    "settling_probe_seqs": [
+      35,
+      37,
+      38,
+      39,
+      40
+    ],
+    "settling_sample_drift_max_m": 0.23501857276626303,
+    "post_s16_displacement_m": 0.2404601368784256,
+    "two_probe_displacement_m": 0.0,
+    "geometric_goal_candidate": "NOT_REACHED",
+    "settling_state": "SETTLING_OBSERVED",
+    "reason": "POST_S16_MOVE_EVENT",
+    "accepted_goal_status": "UNDETERMINED",
+    "stable_world_ticks_attested": false,
+    "physically_stopped_proven": false,
+    "independent_goal_owner_authenticated": false,
+    "qualified_real_learning_pairs": 0,
+    "s10_updates": 0,
+    "s11_grants": 0
+  },
+  "l23": {
+    "schema": "L23_PAPER_S7_SAMPLED_SETTLING_READBACK_V1",
+    "session_id": "3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+    "action_id": "s49-native-move-19",
+    "paper_world": "6993349a-b2c3-433f-b2c8-7f32b5fe64c8",
+    "marker_id": "s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+    "paper_original_sha256": "0e1fc41d0c64ed871506e59252556f01320f3ac53e1b4d9239312a26dd3f1f05",
+    "s7_received_sha256": "47989d674fb0eee0e31972e78960f002ef2b1e91bf70ef493d120567d4f9ef7c",
+    "s16_original_sha256": "c125232ec9e78e4d1e569f836b0c3360d5039e7357922d60728c3526dd5d4b3e",
+    "paper_first_tick": 252,
+    "paper_last_tick": 259,
+    "paper_sample_count": 8,
+    "paper_activity_ticks": [
+      252,
+      253,
+      254
+    ],
+    "paper_last_to_s7_goal_distance_m": 0.0,
+    "paper_s7_geometry_compatible": true,
+    "paper_sample_state": "PAPER_SAMPLED_ACTIVITY",
+    "clock_alignment": "NOT_ATTESTED",
+    "paper_effective_input_clear_tick": "NOT_ATTESTED",
+    "paper_full_tick_input_idle": false,
+    "world_session_independently_bound": false,
+    "physical_stability_verified": false,
+    "accepted_goal_status": "UNDETERMINED",
+    "qualified_real_learning_pairs": 0,
+    "s10_updates": 0,
+    "s11_grants": 0,
+    "p1_wait_ticks_admitted": 0
+  },
+  "raw_effects": [
+    {
+      "type": "effect_result",
+      "session_id": "3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+      "seq": 22,
+      "action_id": "s49-native-move-19",
+      "effect": "set_control",
+      "result": "applied",
+      "error": null
+    },
+    {
+      "type": "effect_result",
+      "session_id": "3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+      "seq": 28,
+      "action_id": "s49-native-move-19-s15-clear",
+      "effect": "clear_controls",
+      "result": "applied",
+      "error": null
+    }
+  ],
+  "raw_commands": [
+    {
+      "request_id": "s49-actual:3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf:event-7",
+      "type": "observe"
+    },
+    {
+      "request_id": "s49-actual:3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf:event-19",
+      "type": "observe"
+    },
+    {
+      "type": "observe"
+    },
+    {
+      "action_id": "s49-native-move-19",
+      "control": "back",
+      "effect": "set_control",
+      "state": true,
+      "type": "effect"
+    },
+    {
+      "action_id": "s49-native-move-19-s15-clear",
+      "effect": "clear_controls",
+      "type": "effect"
+    },
+    {
+      "type": "observe"
+    },
+    {
+      "request_id": "l22:3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf:s49-native-move-19:settle-1",
+      "type": "observe"
+    },
+    {
+      "request_id": "l22:3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf:s49-native-move-19:settle-2",
+      "type": "observe"
+    },
+    {
+      "request_id": "l22:3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf:s49-native-move-19:settle-3",
+      "type": "observe"
+    },
+    {
+      "request_id": "l22:3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf:s49-native-move-19:settle-4",
+      "type": "observe"
+    },
+    {
+      "request_id": "l22:3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf:s49-native-move-19:settle-5",
+      "type": "observe"
+    },
+    {
+      "request_id": "l16:3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf:s49-native-move-19:goal-1",
+      "type": "observe"
+    },
+    {
+      "request_id": "l16:3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf:s49-native-move-19:goal-2",
+      "type": "observe"
+    }
+  ],
+  "s16_original": {
+    "action_id": "s49-native-move-19",
+    "action_ref": "MOVE_BACKWARD",
+    "after_seq": 29,
+    "before_seq": 21,
+    "binding_id": "s49-binding-19",
+    "disposition": "outcome",
+    "pre_probe_sha256": "6f480e6bce34dd25cb428e8608846ef16cd8e099f326e6d89088aa47471ca72b",
+    "reason_code": "observed_execution",
+    "schema": "L13_S16_TERMINAL_SOURCE_V1",
+    "session_id": "3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+    "source_revision": 0,
+    "source_status": "executed",
+    "world_reference": "3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf:100",
+    "world_source": "normal-action-runtime"
+  },
+  "paper_phases": [
+    {
+      "marker_id": "s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+      "phase": "PRE_FORWARD",
+      "world_full_time": "244",
+      "player_tick": "230",
+      "world": "6993349a-b2c3-433f-b2c8-7f32b5fe64c8",
+      "packets": "0",
+      "blocks": "0.0",
+      "billed": "0.0",
+      "x": "-9.5",
+      "y": "-60.0",
+      "z": "-9.5"
+    },
+    {
+      "marker_id": "s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+      "phase": "POST_CLEAR",
+      "world_full_time": "250",
+      "player_tick": "236",
+      "world": "6993349a-b2c3-433f-b2c8-7f32b5fe64c8",
+      "packets": "0",
+      "blocks": "0.0",
+      "billed": "0.0",
+      "x": "-9.5",
+      "y": "-60.0",
+      "z": "-10.44443117789886"
+    }
+  ],
+  "paper_begin": [
+    {
+      "marker_id": "s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+      "world": "6993349a-b2c3-433f-b2c8-7f32b5fe64c8",
+      "tick": "251",
+      "packets": "0",
+      "blocks": "0.0",
+      "tick_meter_blocks": "1.0056596157956932",
+      "combat_events": "0",
+      "swing_events": "0",
+      "basal_ticks": "237",
+      "x": "-9.5",
+      "y": "-60.0",
+      "z": "-10.505659615795693"
+    }
+  ],
+  "paper_samples": [
+    {
+      "marker_id": "s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+      "world": "6993349a-b2c3-433f-b2c8-7f32b5fe64c8",
+      "tick": "252",
+      "index": "1",
+      "from_x": "-9.5",
+      "from_y": "-60.0",
+      "from_z": "-10.505659615795693",
+      "x": "-9.5",
+      "y": "-60.0",
+      "z": "-10.557343519879417",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "1.0573435198794172",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "238"
+    },
+    {
+      "marker_id": "s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+      "world": "6993349a-b2c3-433f-b2c8-7f32b5fe64c8",
+      "tick": "253",
+      "index": "2",
+      "from_x": "-9.5",
+      "from_y": "-60.0",
+      "from_z": "-10.557343519879417",
+      "x": "-9.5",
+      "y": "-60.0",
+      "z": "-10.567309754517078",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "1.067309754517078",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "239"
+    },
+    {
+      "marker_id": "s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+      "world": "6993349a-b2c3-433f-b2c8-7f32b5fe64c8",
+      "tick": "254",
+      "index": "3",
+      "from_x": "-9.5",
+      "from_y": "-60.0",
+      "from_z": "-10.567309754517078",
+      "x": "-9.5",
+      "y": "-60.0",
+      "z": "-10.57275131862924",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "1.0727513186292406",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "240"
+    },
+    {
+      "marker_id": "s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+      "world": "6993349a-b2c3-433f-b2c8-7f32b5fe64c8",
+      "tick": "255",
+      "index": "4",
+      "from_x": "-9.5",
+      "from_y": "-60.0",
+      "from_z": "-10.57275131862924",
+      "x": "-9.5",
+      "y": "-60.0",
+      "z": "-10.57275131862924",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "1.0727513186292406",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "241"
+    },
+    {
+      "marker_id": "s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+      "world": "6993349a-b2c3-433f-b2c8-7f32b5fe64c8",
+      "tick": "256",
+      "index": "5",
+      "from_x": "-9.5",
+      "from_y": "-60.0",
+      "from_z": "-10.57275131862924",
+      "x": "-9.5",
+      "y": "-60.0",
+      "z": "-10.57275131862924",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "1.0727513186292406",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "242"
+    },
+    {
+      "marker_id": "s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+      "world": "6993349a-b2c3-433f-b2c8-7f32b5fe64c8",
+      "tick": "257",
+      "index": "6",
+      "from_x": "-9.5",
+      "from_y": "-60.0",
+      "from_z": "-10.57275131862924",
+      "x": "-9.5",
+      "y": "-60.0",
+      "z": "-10.57275131862924",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "1.0727513186292406",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "243"
+    },
+    {
+      "marker_id": "s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+      "world": "6993349a-b2c3-433f-b2c8-7f32b5fe64c8",
+      "tick": "258",
+      "index": "7",
+      "from_x": "-9.5",
+      "from_y": "-60.0",
+      "from_z": "-10.57275131862924",
+      "x": "-9.5",
+      "y": "-60.0",
+      "z": "-10.57275131862924",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "1.0727513186292406",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "244"
+    },
+    {
+      "marker_id": "s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf",
+      "world": "6993349a-b2c3-433f-b2c8-7f32b5fe64c8",
+      "tick": "259",
+      "index": "8",
+      "from_x": "-9.5",
+      "from_y": "-60.0",
+      "from_z": "-10.57275131862924",
+      "x": "-9.5",
+      "y": "-60.0",
+      "z": "-10.57275131862924",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "1.0727513186292406",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "245"
+    }
+  ],
+  "paper_log_line_numbers": [
+    {
+      "line": 314,
+      "text": "[17:23:22 INFO]: [RelayMetabolismDev] M02_DEV_S50_PHASE marker_id=s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf phase=PRE_FORWARD world_full_time=244 player_tick=230 world=6993349a-b2c3-433f-b2c8-7f32b5fe64c8 packets=0 blocks=0.0 billed=0.0 x=-9.5 y=-60.0 z=-9.5"
+    },
+    {
+      "line": 333,
+      "text": "[17:23:22 INFO]: [RelayMetabolismDev] M02_DEV_S50_PHASE marker_id=s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf phase=POST_CLEAR world_full_time=250 player_tick=236 world=6993349a-b2c3-433f-b2c8-7f32b5fe64c8 packets=0 blocks=0.0 billed=0.0 x=-9.5 y=-60.0 z=-10.44443117789886"
+    },
+    {
+      "line": 338,
+      "text": "[17:23:22 INFO]: [RelayMetabolismDev] S50_DEV_WAIT_BEGIN marker_id=s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf world=6993349a-b2c3-433f-b2c8-7f32b5fe64c8 tick=251 packets=0 blocks=0.0 tick_meter_blocks=1.0056596157956932 combat_events=0 swing_events=0 basal_ticks=237 x=-9.5 y=-60.0 z=-10.505659615795693"
+    },
+    {
+      "line": 343,
+      "text": "[17:23:22 INFO]: [RelayMetabolismDev] S50_DEV_WAIT_TICK marker_id=s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf world=6993349a-b2c3-433f-b2c8-7f32b5fe64c8 tick=252 index=1 from_x=-9.5 from_y=-60.0 from_z=-10.505659615795693 x=-9.5 y=-60.0 z=-10.557343519879417 motion_packets=0 motion_blocks=0.0 tick_meter_blocks=1.0573435198794172 combat_events=0 swing_events=0 sprint=false sneak=false swimming=false basal_ticks=238"
+    },
+    {
+      "line": 367,
+      "text": "[17:23:22 INFO]: [RelayMetabolismDev] S50_DEV_WAIT_TICK marker_id=s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf world=6993349a-b2c3-433f-b2c8-7f32b5fe64c8 tick=253 index=2 from_x=-9.5 from_y=-60.0 from_z=-10.557343519879417 x=-9.5 y=-60.0 z=-10.567309754517078 motion_packets=0 motion_blocks=0.0 tick_meter_blocks=1.067309754517078 combat_events=0 swing_events=0 sprint=false sneak=false swimming=false basal_ticks=239"
+    },
+    {
+      "line": 391,
+      "text": "[17:23:22 INFO]: [RelayMetabolismDev] S50_DEV_WAIT_TICK marker_id=s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf world=6993349a-b2c3-433f-b2c8-7f32b5fe64c8 tick=254 index=3 from_x=-9.5 from_y=-60.0 from_z=-10.567309754517078 x=-9.5 y=-60.0 z=-10.57275131862924 motion_packets=0 motion_blocks=0.0 tick_meter_blocks=1.0727513186292406 combat_events=0 swing_events=0 sprint=false sneak=false swimming=false basal_ticks=240"
+    },
+    {
+      "line": 415,
+      "text": "[17:23:22 INFO]: [RelayMetabolismDev] S50_DEV_WAIT_TICK marker_id=s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf world=6993349a-b2c3-433f-b2c8-7f32b5fe64c8 tick=255 index=4 from_x=-9.5 from_y=-60.0 from_z=-10.57275131862924 x=-9.5 y=-60.0 z=-10.57275131862924 motion_packets=0 motion_blocks=0.0 tick_meter_blocks=1.0727513186292406 combat_events=0 swing_events=0 sprint=false sneak=false swimming=false basal_ticks=241"
+    },
+    {
+      "line": 439,
+      "text": "[17:23:22 INFO]: [RelayMetabolismDev] S50_DEV_WAIT_TICK marker_id=s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf world=6993349a-b2c3-433f-b2c8-7f32b5fe64c8 tick=256 index=5 from_x=-9.5 from_y=-60.0 from_z=-10.57275131862924 x=-9.5 y=-60.0 z=-10.57275131862924 motion_packets=0 motion_blocks=0.0 tick_meter_blocks=1.0727513186292406 combat_events=0 swing_events=0 sprint=false sneak=false swimming=false basal_ticks=242"
+    },
+    {
+      "line": 463,
+      "text": "[17:23:22 INFO]: [RelayMetabolismDev] S50_DEV_WAIT_TICK marker_id=s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf world=6993349a-b2c3-433f-b2c8-7f32b5fe64c8 tick=257 index=6 from_x=-9.5 from_y=-60.0 from_z=-10.57275131862924 x=-9.5 y=-60.0 z=-10.57275131862924 motion_packets=0 motion_blocks=0.0 tick_meter_blocks=1.0727513186292406 combat_events=0 swing_events=0 sprint=false sneak=false swimming=false basal_ticks=243"
+    },
+    {
+      "line": 487,
+      "text": "[17:23:22 INFO]: [RelayMetabolismDev] S50_DEV_WAIT_TICK marker_id=s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf world=6993349a-b2c3-433f-b2c8-7f32b5fe64c8 tick=258 index=7 from_x=-9.5 from_y=-60.0 from_z=-10.57275131862924 x=-9.5 y=-60.0 z=-10.57275131862924 motion_packets=0 motion_blocks=0.0 tick_meter_blocks=1.0727513186292406 combat_events=0 swing_events=0 sprint=false sneak=false swimming=false basal_ticks=244"
+    },
+    {
+      "line": 511,
+      "text": "[17:23:22 INFO]: [RelayMetabolismDev] S50_DEV_WAIT_TICK marker_id=s49-native-move-19-3e63cfbc-1011-4dd1-b1ca-f3a6f596f5bf world=6993349a-b2c3-433f-b2c8-7f32b5fe64c8 tick=259 index=8 from_x=-9.5 from_y=-60.0 from_z=-10.57275131862924 x=-9.5 y=-60.0 z=-10.57275131862924 motion_packets=0 motion_blocks=0.0 tick_meter_blocks=1.0727513186292406 combat_events=0 swing_events=0 sprint=false sneak=false swimming=false basal_ticks=245"
+    }
+  ],
+  "cleanup": {
+    "runner_exit": 0,
+    "owned_processes": [
+      {
+        "pid": 12398,
+        "ppid": 12397,
+        "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-qse390ki/minecraft.jar nogui ",
+        "cwd": "/tmp/relay-self-s49-qse390ki",
+        "first_seen_utc": "2026-10-31T08:22:49.188776+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 12462,
+        "ppid": 12398,
+        "argv": "lshw -class processor ",
+        "cwd": "/tmp/relay-self-s49-qse390ki",
+        "first_seen_utc": "2026-10-31T08:22:56.278677+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 12466,
+        "ppid": 12398,
+        "argv": "lshw -C display ",
+        "cwd": "/tmp/relay-self-s49-qse390ki",
+        "first_seen_utc": "2026-10-31T08:22:56.380327+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 12467,
+        "ppid": 12398,
+        "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+        "cwd": "/tmp/relay-self-s49-qse390ki",
+        "first_seen_utc": "2026-10-31T08:22:56.481784+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 12519,
+        "ppid": 12397,
+        "argv": "node /home/rinsa/work/relay-self-l23-real-20261031/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+        "cwd": "/home/rinsa/work/relay-self-l23-real-20261031",
+        "first_seen_utc": "2026-10-31T08:23:09.874803+00:00",
+        "pid_gone": true
+      }
+    ],
+    "world_roots": [
+      {
+        "path": "/tmp/relay-self-s49-qse390ki",
+        "removed": true
+      }
+    ],
+    "port_rebind": true
+  },
+  "classification": "DEV_ONLY / CLOCK_ALIGNMENT_NOT_ATTESTED / STABILITY_UNPROVEN / GOAL_UNDETERMINED / L10_PAIRS_0 / P1_WAIT_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN"
+}
