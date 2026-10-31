@@ -29,7 +29,6 @@ from adapters.mineflayer.execution import (
     execute_mineflayer_command,
 )
 from adapters.mineflayer.process_session import MineflayerProcessSession
-from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig, MineflayerObservation
 from adapters.mineflayer.s31a_real_server_ci import (
     BOT_USERNAME,
@@ -47,6 +46,7 @@ from adapters.mineflayer.s31a_real_server_ci import (
     _verified_target,
     _write_config,
 )
+from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 from relay_self.action import ActionState
 from relay_self.action_outcome import record_interpreted_action_outcome
 from relay_self.action_supervision import ActionSupervisor
