@@ -1,0 +1,145 @@
+name: S49 SLM L22 external Goal original audit FAST
+
+on:
+  push:
+    branches:
+      - integration/s49-slm-passive-dev-20261031
+    paths:
+      - adapters/mineflayer/slm_external_goal_candidate_dev.py
+      - adapters/mineflayer/slm_passive_dev.py
+      - adapters/mineflayer/slm_passive_dev_run.py
+      - tests/test_s49_slm_external_goal_dev.py
+      - .github/workflows/s49-slm-external-goal-audit-fast.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive-goal-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src:${{ github.workspace }}/tests
+    steps:
+      - name: Current isolated S49 integration
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Pinned original L22 source and actual 2026-10-31 World archive
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 451270faa1281889494f933a5eda33a71e88834f
+          path: pinned_l22_original
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Verify S49/L8/M no-authority contracts
+        run: |
+          python -m pytest -q tests/test_s49_slm_external_goal_dev.py tests/test_s49_slm_prior_world_dev.py tests/test_s49_slm_passive_dev.py tests/test_s49_slm_empty_memory_shadow.py
+          ruff check adapters/mineflayer/slm_external_goal_candidate_dev.py adapters/mineflayer/slm_passive_dev.py adapters/mineflayer/slm_passive_dev_run.py tests/test_s49_slm_external_goal_dev.py
+          python tools/check_repository.py
+      - name: Recompute original L22 S7/S16 and separate-client L21 audits
+        run: |
+          mkdir -p dev-evidence/previous-l22-review
+          python - <<'PY'
+          import hashlib
+          import json
+          import sys
+          from dataclasses import asdict
+          from pathlib import Path
+
+          project = Path.cwd()
+          root = project / "pinned_l22_original"
+          sys.path.insert(0, str(root))
+          sys.path.insert(0, str(root / "src"))
+          from adapters.mineflayer.l16_first_action_goal_originals import L16GoalPlan
+          from adapters.mineflayer.l21_goal_observer_source import review_l21_observer_original
+          from adapters.mineflayer.l22_post_s16_settling import inspect_l22_settling
+
+          source = root / "docs/evidence/l22-real-20261031/run1"
+          plan_data = json.loads((source / "capture/l16_pre_world_goal_plan.json").read_bytes())
+          plan = L16GoalPlan(
+              plan_data["target_x"], plan_data["target_z"],
+              plan_data["tolerance_m"], plan_data["stable_probe_delta_max_m"],
+          )
+          plan_original = plan.original_bytes()
+          assert (source / "capture/l16_pre_world_goal_plan.json").read_bytes() == plan_original
+          session = "0b7d893c-9985-4e0e-a9a1-b99c107b7367"
+          action = "s49-native-move-24"
+          cap = source / "capture"
+          received = (cap / "native_bridge_received_original.jsonl").read_bytes()
+          sent = (cap / "native_bridge_sent_original.jsonl").read_bytes()
+          s16 = (cap / "l18_s16_terminal_original.jsonl").read_bytes()
+          observer = (source / "observer/l21_separate_client_goal_original.jsonl").read_bytes()
+          criterion = (source / "preregistration/goal.jsonl").read_bytes()
+          receipt = json.loads((cap / "native_bridge_source_receipt.json").read_bytes())
+          settling = inspect_l22_settling(
+              received_original=received, sent_original=sent, s7_receipt=receipt,
+              s16_original=s16, plan=plan, session_id=session, action_id=action,
+          )
+          assert asdict(settling) == json.loads(
+              (source / "l22-source-audit.json").read_bytes()
+          )
+          external = review_l21_observer_original(
+              raw=observer, criterion_original=criterion,
+              criterion_sha256=hashlib.sha256(criterion).hexdigest(),
+              plan=plan, session_id=session, action_id=action,
+              native_goal_status=settling.accepted_goal_status,
+          )
+          assert asdict(external) == json.loads(
+              (source / "read-only-diagnostic.json").read_bytes()
+          )["l21_review"]
+          assert settling.accepted_goal_status == "UNDETERMINED"
+          assert settling.settling_state == "SETTLING_OBSERVED"
+          assert len(settling.move_event_seqs) == 6
+          assert external.goal_status == "NOT_REACHED"
+          assert external.separate_external_goal_owner_authenticated is False
+          assert external.qualified_real_learning_pairs == 0
+          summary = {
+              "schema": "S49_L22_PREVIOUS_EXTERNAL_GOAL_DEV_V1",
+              "source_session_id": session,
+              "original_action_id": action,
+              "source_l22_ref": "451270faa1281889494f933a5eda33a71e88834f:run1",
+              "native_received_sha256": hashlib.sha256(received).hexdigest(),
+              "native_sent_sha256": hashlib.sha256(sent).hexdigest(),
+              "original_s16_sha256": hashlib.sha256(s16).hexdigest(),
+              "separate_client_original_sha256": external.original_sha256,
+              "separate_client_observation": external.goal_status,
+              "native_goal_status": settling.accepted_goal_status,
+              "geometric_goal_candidate": settling.geometric_goal_candidate,
+              "settling_state": settling.settling_state,
+              "move_events_after_s16": len(settling.move_event_seqs),
+              "accepted_goal_status": "UNDETERMINED",
+              "external_owner_authenticated": False,
+              "physical_stability_attested": False,
+              "independently_attested_nonintervention": False,
+              "action_authority": False,
+              "learning_authority": False,
+              "qualified_l8_training_pairs": 0,
+              "reason": "WITHHELD_EXTERNAL_GOAL_OWNER_AND_STABILITY_UNVERIFIED",
+          }
+          dest = project / "dev-evidence/previous-l22-review/external-goal-dev-review.json"
+          dest.write_text(json.dumps(summary, indent=2, sort_keys=True)+"\n")
+          print("L22_REAL_SEPARATE_CLIENT_ORIGINAL_READBACK_PASS_WITHHELD")
+          PY
+      - name: Check current S49 diagnostic reader against pinned actual L22 originals
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from adapters.mineflayer.slm_external_goal_candidate_dev import read_external_goal_diagnostic
+          root = Path.cwd() / "dev-evidence/previous-l22-review"
+          result = read_external_goal_diagnostic(root)
+          assert result.qualified_l8_training_pairs == 0
+          assert result.accepted_goal_status == "UNDETERMINED"
+          assert result.separate_client_observation == "NOT_REACHED"
+          print("SLM_L8_REAL_EXTERNAL_GOAL_SOURCE_WITHHELD_PASS")
+          PY
+      - name: Always preserve dev source review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s49-slm-l22-pinned-separate-client-review
+          path: dev-evidence/
+          if-no-files-found: warn
+          retention-days: 30
