@@ -1,0 +1,44 @@
+name: L17 L16-to-L14 Independent Goal Readonly Handoff DEV
+on:
+  push:
+    branches:
+      - integration/l17-l16-l14-independent-goal-handoff-20261031
+    paths:
+      - .github/workflows/l17-first-action-independent-goal-handoff-dev.yml
+      - src/relay_self/l17_first_action_goal_handoff.py
+      - tests/test_l17_first_action_goal_handoff.py
+      - src/relay_self/l14_original_bridge_goal_window.py
+      - src/relay_self/l13_independent_goal_receipt.py
+      - adapters/mineflayer/l16_first_action_goal_originals.py
+      - tests/test_l16_s49_first_action_original_capture.py
+      - tests/test_l15_s49_original_goal_preflight.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  l17-source-readonly-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Validate L17 independent-source boundary and archived no reward
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check src/relay_self/l17_first_action_goal_handoff.py tests/test_l17_first_action_goal_handoff.py src/relay_self/l14_original_bridge_goal_window.py adapters/mineflayer/l16_first_action_goal_originals.py
+          python -m compileall -q src/relay_self/l17_first_action_goal_handoff.py tests/test_l17_first_action_goal_handoff.py
+          python -m pytest -q tests/test_l17_first_action_goal_handoff.py tests/test_l16_s49_first_action_original_capture.py tests/test_l15_s49_original_goal_preflight.py tests/test_l14_original_bridge_goal_window.py tests/test_l13_independent_goal_receipt.py
+          python tools/check_repository.py
+      - name: Classification
+        if: always()
+        run: echo 'DEV_ONLY / L17_L16_L14_SOURCE_HANDOFF_OFFLINE / REAL_L10_PAIRS_0 / ACTION_ISSUE_0 / S10_S11_WRITES_0 / NEW_WORLD_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
