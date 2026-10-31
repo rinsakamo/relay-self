@@ -49,3 +49,11 @@ PYTHONPATH=src:tests:. python -m adapters.mineflayer.l17_saved_original_goal_rea
 ```
 
 This CLI returns `waiting_for_independent_s16_goal_originals` even if the operator-local original Goal diagnostic says `REACHED`, because it **does not create or ingest an independent Goal owner's original**. A success means only raw/source-level consistency, not physical original authentication, real learning, or lack of unobserved interventions. The saved source and report are never modified. Its negative tests include content, hash, missing files, symlink roots, foreign session/Action, forged report statuses and altered plan.
+
+## Exact-head GitHub DEV verification
+
+**Exact successful code/test/workflow SHA `6c315647962dcc2a6e6ba4daa45793baee00e308`**, [GitHub Actions #41151568508 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/41151568508), Python 3.12 **146 focused PASS / 2 SKIP**, Ruff PASS, compileall PASS, repository contract PASS. Two SKIPs are historical/optional real archive cases unavailable in this isolated workflow; **no new Minecraft World**. Existing independent saved G4.13 archive negative audit was run in L15 [#41144568698 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/41144568698) and is not a per-Action Goal qualification.
+
+The previous successful code-only increment [#41151360787 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/41151360787) verified **129 PASS / 2 SKIP** before the saved-file readback CLI was added. Earlier failed source revisions [#41151322463](https://github.com/rinsakamo/relay-self/actions/runs/41151322463) (unused test import) and [#41151514936](https://github.com/rinsakamo/relay-self/actions/runs/41151514936) (Ruff import ordering in the new CLI/tests) are retained. The stricter source/Goal checks were not relaxed; the final source-head CI includes both new suites.
+
+A documentation-only HEAD after the exact tested code SHA has no new code changes and is not claimed as a separately tested source. No future automatic checks or physical trial has been scheduled.
