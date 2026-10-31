@@ -15,7 +15,7 @@ from adapters.mineflayer.m02_paper_dev.s50_live_paper_window import (
     S50LivePaperWindow,
 )
 
-_SHA = re.compile(r"[0-9a-f]{64}\\Z")
+_SHA = re.compile(r"[0-9a-f]{64}\Z")
 _ALLOWED_AUDITS = frozenset({
     "DEV_LIVE_NEXT_L0_NATIVE_EPOCH_REFERENCED_PASS",
     "DEV_LIVE_L1_MOTION_SHADOW_ORIGINAL_AUDIT_PASS",
