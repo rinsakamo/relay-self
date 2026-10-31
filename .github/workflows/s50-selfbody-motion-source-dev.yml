@@ -1,0 +1,46 @@
+name: S50 physical observation to SelfBody DEV candidate
+on:
+  push:
+    branches:
+      - dev/s50-selfbody-physical-observation-20261031
+    paths:
+      - 'adapters/mineflayer/m02_paper_dev/s50_selfbody_motion_source.py'
+      - 'tools/s50_selfbody_motion_readback.py'
+      - 'tests/test_s50_selfbody_motion_source.py'
+      - 'tests/test_s50_selfbody_motion_readback.py'
+      - '.github/workflows/s50-selfbody-motion-source-dev.yml'
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/m02_paper_dev/s50_selfbody_motion_source.py'
+      - 'tools/s50_selfbody_motion_readback.py'
+      - 'tests/test_s50_selfbody_motion_source.py'
+      - 'tests/test_s50_selfbody_motion_readback.py'
+      - '.github/workflows/s50-selfbody-motion-source-dev.yml'
+permissions:
+  contents: read
+jobs:
+  s50-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Lint, source contracts and focused tests (no World)
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/m02_paper_dev/s50_selfbody_motion_source.py tools/s50_selfbody_motion_readback.py tests/test_s50_selfbody_motion_source.py tests/test_s50_selfbody_motion_readback.py
+          python -m compileall -q adapters/mineflayer/m02_paper_dev/s50_selfbody_motion_source.py tools/s50_selfbody_motion_readback.py tests/test_s50_selfbody_motion_source.py tests/test_s50_selfbody_motion_readback.py
+          python -m pytest -o addopts='' -q tests/test_s50_selfbody_motion_source.py tests/test_s50_selfbody_motion_readback.py tests/test_s50_input_witness_source.py tests/test_s50_client_packet_source.py
+          python tools/check_repository.py
+      - name: Explicit source ceiling
+        if: always()
+        run: echo 'S50_DEV_ONLY / SELFBODY_SOURCE_CANDIDATE_ONLY / NO_NATIVE_PRESENT / NO_P1_WAIT / NO_REAL_WORLD_IN_THIS_JOB / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
