@@ -1,0 +1,85 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S22",
+  "base_head": "04816df243e53af0349b14e478bf96d5ff52277a",
+  "classification": "EXPLICIT_SKILL_EXIT_LOCAL_RECOVERY_OR_RECONSIDERATION_QUALIFIED",
+  "qualification_gate": "REQUIRES_EXACT_FINAL_HEAD_CI_SUCCESS",
+  "evidence_class": "DETERMINISTIC_TEST_APPARATUS_ONLY",
+  "preserved": {
+    "S18": "b5eb5d3416a9c303b855250adea4323e7611f350",
+    "S19": "8ea0365f48b5e58bdbca503a120ea8bf5818e2ec",
+    "S20": "b8d663527d58124fba6b2d00064750dfe30a8c88",
+    "S21": "04816df243e53af0349b14e478bf96d5ff52277a"
+  },
+  "frozen_inputs": {
+    "intent_id": "escape-threat",
+    "skill_execution_id": "skill-exec-escape-2",
+    "action_id": "action-move-backward-2",
+    "skill_exit": "FAILED (explicit S21 failure closure)",
+    "retained_risk_weight": {
+      "value": 4,
+      "revision": 1
+    }
+  },
+  "positive_cases": [
+    {
+      "terminal": "FAILED",
+      "local_path": "AVAILABLE",
+      "intent_impact": "NOT_CHALLENGED",
+      "route": "LOCAL_RECOVERY_CANDIDATE",
+      "explicit_handoff": "existing SkillExecution.start with distinct execution/skill identity",
+      "intent": "unchanged"
+    },
+    {
+      "terminal": "FAILED",
+      "local_path": "EXHAUSTED",
+      "intent_impact": "MATERIALLY_CHALLENGED",
+      "route": "RECONSIDERATION_CANDIDATE",
+      "explicit_handoff": "existing IntentCommitment.request_reconsideration pending",
+      "intent": "still current until separate CONTINUE or RELEASE decision"
+    }
+  ],
+  "bounded_other_routes": [
+    {
+      "terminal": "SUCCEEDED",
+      "route": "CONTINUE_INTENT_ONLY",
+      "effect": "no automatic Intent completion"
+    },
+    {
+      "terminal": "CANCELLED",
+      "route": "HOLD_FOR_EVIDENCE",
+      "effect": "no automatic failure or Intent replacement"
+    },
+    {
+      "terminal": "FAILED",
+      "incomplete_or_conflicting_context": true,
+      "route": "HOLD_FOR_EVIDENCE",
+      "effect": "no automatic request"
+    }
+  ],
+  "fail_closed": [
+    "missing denied or mis-scoped explicit route authority",
+    "stale Intent event-history checkpoint",
+    "stale/non-terminal Skill snapshot",
+    "invalid Skill/Intent/terminal event provenance or timestamp",
+    "forged assessment route",
+    "replayed reconsideration request",
+    "early handoff time",
+    "unsupported path feasibility evidence"
+  ],
+  "automatic_reentry": false,
+  "intent_replacement_automatic": false,
+  "world_feedback_learning_automatic": false,
+  "local_recovery_action_automatic": false,
+  "model_calls": 0,
+  "field_minecraft": "NOT_RUN",
+  "limitations": [
+    "Feasibility and material Intent challenge labels are trusted caller inputs, not independent World measurements",
+    "Scoped handoff authority is caller-granted, not cryptographically authenticated",
+    "Local recovery starts one new Skill but never automatically proposes/authorizes/issues Action",
+    "No cross-session Skill execution identifier uniqueness or global replay suppression for repeated local starts; existing SkillExecution.start owns only per-root lineage",
+    "Intent reconsideration is only REQUESTED; a separate caller must later decide CONTINUE or RELEASE",
+    "One explicit bounded Skill exit and handoff; no continuous autonomous loop or automatic next cognitive epoch",
+    "Frozen S18-S21 and RelayTheory R6 and Paper2 MAIN40 remain unchanged"
+  ]
+}

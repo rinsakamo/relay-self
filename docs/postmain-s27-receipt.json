@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S27",
+  "base_head": "33690ff475f4a040bd5b0d4821e3f0175d823bda",
+  "classification": "SOURCE_NATIVE_BOUNDED_MINEFLAYER_WORLD_EVIDENCE_PROJECTION_QUALIFIED",
+  "qualification_gate": "REQUIRES_EXACT_FINAL_HEAD_CI_SUCCESS",
+  "evidence_class": "PROTOCOL_TYPED_DETERMINISTIC_MINEFLAYER_FIXTURE_ONLY",
+  "already_available": {
+    "adapter_version": "mineflayer 4.39.0",
+    "observation_kind": "probe",
+    "snapshot_source": "bot.entities registry",
+    "nearby_entities_coverage": {
+      "scope": "mineflayer_entity_registry",
+      "max_distance_m": 16,
+      "max_entities": 16
+    },
+    "existing_decoder": "MineflayerStreamDecoder strict session/seq"
+  },
+  "subject": {
+    "prior_action": "action-recovery-backward-3",
+    "terminal": "OUTCOME",
+    "world_session": "s23-recovery-session-3",
+    "parent_after_observation_seq": 4,
+    "new_native_observation_seq": 5,
+    "target_entity_id": 42,
+    "required_target_name": "zombie"
+  },
+  "projection": {
+    "exact_target_id": true,
+    "name_validation": true,
+    "non_truncated_coverage": true,
+    "euclidean_position_distance_cross_check": true,
+    "max_observation_age_ns": 5,
+    "requires_observation_after_outcome": true,
+    "requires_inspection_within_age": true,
+    "provenance": "mineflayer:{session_id}:{seq}",
+    "target_absence": "REJECT, not safe",
+    "distance_cm": "floor(distance_m*100+0.5)"
+  },
+  "control": {
+    "near": {
+      "distance_m": 0.2,
+      "distance_cm": 20,
+      "s24_candidate": "MOVE_AWAY"
+    },
+    "far": {
+      "distance_m": 1.8,
+      "distance_cm": 180,
+      "s24_candidate": "WAIT"
+    },
+    "retained_revision": 1,
+    "retained_value": 4,
+    "s24_admission_required": true
+  },
+  "negative_cases": [
+    "old/duplicate observation sequence, wrong session, non-probe kind",
+    "mismatched Action identity, WorldConsequence state or terminal ancestry",
+    "target id absent, duplicate entity id, changed target name, unknown target name",
+    "bounded entity coverage truncated, incorrect counts or out-of-range entity",
+    "distance field inconsistent with exact snapshot positions",
+    "observation clock before terminal Action, future observation, expired caller freshness bound",
+    "strict MineflayerStreamDecoder rejects replayed wire sequence"
+  ],
+  "live_minecraft": "NOT_RUN",
+  "cryptographic_source_authentication": false,
+  "absent_target_means_safe": false,
+  "automatic_epoch_reentry": false,
+  "autonomous_sensor_listener": false,
+  "model_calls": 0,
+  "limitations": [
+    "Typed or decoded bridge messages can be simulated; no trusted physical Mineflayer server or bridge process attestation",
+    "Mineflayer entity registry can be incomplete outside 16m/16 entries and never proves World-wide threat absence",
+    "A missing target or truncated coverage cannot yield a long/safe threat distance in this bounded projector",
+    "Caller supplies wall-independent monotonic nanosecond timestamps and target entity identity; adapter stream has sequence number but no authenticated timestamp",
+    "Sequence monotonicity and typed provenance are structural checks, not cryptographic authentication or packet-stream origin proof",
+    "Fixed zombie name matching is not a general threat classifier",
+    "No new World actuator, Action issuance, scheduler, global replay ledger, learning or change to frozen S18-S26/RelayTheory R6"
+  ]
+}

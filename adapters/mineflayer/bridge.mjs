@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { createRequire } from 'node:module'
+import { lstatSync } from 'node:fs'
+import { isAbsolute, join } from 'node:path'
 import readline from 'node:readline'
 
 import {
@@ -8,8 +10,11 @@ import {
   entityHurtPayload,
   resolveAttackEntity
 } from './bridge_hooks.mjs'
+import { attachV6NativeClockPackets } from './v6_native_clock.mjs'
 import {
+  admitProbeRequestId,
   makeEnvelope,
+  makeProbePayload,
   parseArgs,
   parseCommand,
   shouldEmitTimeObservation,
@@ -17,7 +22,17 @@ import {
 } from './protocol.mjs'
 
 const EXPECTED_MINEFLAYER_VERSION = '4.39.0'
-const require = createRequire(import.meta.url)
+// Same physical external dependency-root contract as frozen RSEE #588.
+const nodeRuntimeRoot = process.env.RELAYSELF_RSEE_NODE_RUNTIME_ROOT
+if (nodeRuntimeRoot &&
+    (!isAbsolute(nodeRuntimeRoot) || lstatSync(nodeRuntimeRoot).isSymbolicLink() ||
+     lstatSync(join(nodeRuntimeRoot, 'node_modules')).isSymbolicLink())) {
+  process.stderr.write('RSEE Node runtime must be an absolute physical directory\n')
+  process.exit(2)
+}
+const require = createRequire(nodeRuntimeRoot
+  ? join(nodeRuntimeRoot, 'package.json')
+  : import.meta.url)
 const mineflayer = require('mineflayer')
 const mineflayerPackage = require('mineflayer/package.json')
 
@@ -37,6 +52,26 @@ try {
   process.exit(2)
 }
 
+// Explicit candidate only: never part of frozen S51 RSEE admission.
+const clockOptIn = process.env.RELAYSELF_V6_NATIVE_CLOCK_V1
+if (clockOptIn !== undefined && !['0', '1'].includes(clockOptIn)) {
+  process.stderr.write('invalid V6 clock opt-in\n')
+  process.exit(2)
+}
+if (clockOptIn === '1' && config.version !== '1.21.8') {
+  process.stderr.write('V6 raw source requires explicit Minecraft 1.21.8\n')
+  process.exit(2)
+}
+// DEV-only read-side schema opt-in. Never an Action command or signer.
+const w4OrientationOptIn = process.env.RELAYSELF_W4_NH1_ORIENTATION_V0
+if (w4OrientationOptIn !== undefined && !['0', '1'].includes(w4OrientationOptIn)) {
+  process.stderr.write('invalid W4 orientation opt-in\n')
+  process.exit(2)
+}
+if (w4OrientationOptIn === '1' && config.version !== '1.21.8') {
+  process.stderr.write('W4 native orientation requires explicit Minecraft 1.21.8\n')
+  process.exit(2)
+}
 const sessionId = randomUUID()
 let seq = 0
 let spawned = false
@@ -45,6 +80,7 @@ let inputReader = null
 let lastObservedDay = null
 let lastObservedIsDay = null
 const seenActionIds = new Set()
+const seenProbeRequestIds = new Set()
 
 function emit (type, payload = {}) {
   const message = makeEnvelope(sessionId, seq, type, payload)
@@ -58,12 +94,16 @@ function emitAdapterError (error) {
   emit('adapter_error', { message })
 }
 
-function emitObservation (kind) {
+function emitObservation (kind, requestId = undefined) {
   try {
-    emit('observation', {
-      kind,
-      snapshot: snapshotFromBot(bot)
+    const snapshot = snapshotFromBot(bot, {
+      includeNativeOrientation: w4OrientationOptIn === '1'
     })
+    if (kind === 'probe') {
+      emit('observation', makeProbePayload(snapshot, requestId))
+    } else {
+      emit('observation', { kind, snapshot })
+    }
   } catch (error) {
     emitAdapterError(error)
   }
@@ -87,6 +127,13 @@ emit('adapter_started', {
 })
 
 const bot = mineflayer.createBot(options)
+if (clockOptIn === '1') {
+  attachV6NativeClockPackets(
+    bot,
+    (sample) => emit('native_clock_packet', sample),
+    (error) => emitAdapterError(error)
+  )
+}
 
 attachHealthSynchronizedSpawnListeners(
   bot,
@@ -229,7 +276,13 @@ async function handleEffect (command) {
     }
 
     if (command.effect === 'look') {
-      await bot.look(command.yaw, command.pitch)
+      // S-owned disposable FLAT P1 launch can request immediate server
+      // yaw synchronization without adding fields to the frozen protocol.
+      // All historical/default LOOK effects retain the prior behavior.
+      await bot.look(
+        command.yaw, command.pitch,
+        process.env.RELAY_S50_P1_FLAT_FORCE_SERVER_LOOK_DEV === '1'
+      )
       emitEffectResult(command, 'applied')
       return
     }
@@ -290,7 +343,13 @@ async function handleLine (line) {
       emit('command_error', { message: 'observe_before_spawn' })
       return
     }
-    emitObservation('probe')
+    if (command.request_id !== undefined) {
+      if (!admitProbeRequestId(seenProbeRequestIds, command.request_id)) {
+        emit('command_error', { message: 'duplicate_probe_request_id' })
+        return
+      }
+    }
+    emitObservation('probe', command.request_id)
     return
   }
 

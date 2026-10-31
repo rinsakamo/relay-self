@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S23",
+  "evidence_class": "DETERMINISTIC_TEST_APPARATUS_CROSS_SKILL_ACTION",
+  "base_head": "7b815217db5be4402a88090d04a22e61f5ea05c7",
+  "first": {
+    "action_id": "action-move-backward-1",
+    "session_id": "s18-session",
+    "outcome": "OUTCOME"
+  },
+  "learning": {
+    "target_id": "risk_weight",
+    "revision": 1,
+    "value": 4
+  },
+  "second": {
+    "action_id": "action-move-backward-2",
+    "binding_id": "binding-move-away-2",
+    "session_id": "s20-session-2",
+    "action_state": "OUTCOME",
+    "skill_execution_id": "skill-exec-escape-2",
+    "skill_state": "FAILED",
+    "skill_terminal_source": "S21 separate negative goal evidence"
+  },
+  "handoff": {
+    "S22_route": "LOCAL_RECOVERY_CANDIDATE",
+    "local_path": "AVAILABLE",
+    "intent_impact": "NOT_CHALLENGED",
+    "caller_handoff": "explicit authority and SkillExecution.start",
+    "new_skill_execution_id": "skill-exec-escape-recovery-3",
+    "new_skill_id": "alternate-escape-path",
+    "intent_id": "escape-threat"
+  },
+  "third": {
+    "candidate_ref": "MOVE_AWAY",
+    "new_route_criterion": "s23-explicit-recovery-route",
+    "new_admission_criterion": "s23-recovery-admission",
+    "new_admission": "ADMITTED",
+    "action_id": "action-recovery-backward-3",
+    "binding_id": "binding-recovery-move-away-3",
+    "skill_execution_id": "skill-exec-escape-recovery-3",
+    "skill_state": "STARTED",
+    "action_ref": "MOVE_BACKWARD",
+    "explicit_authority_id": "s23-distinct-Action3-authority",
+    "issued_at_ns": 49,
+    "deadline_ns": 140,
+    "outcome_at_ns": 60,
+    "world_session": "s23-recovery-session-3",
+    "world_status": "EXECUTED",
+    "outcome": "OUTCOME"
+  },
+  "nonclaims": [
+    "no different physical primitive",
+    "no new cognitive epoch",
+    "no autonomous reentry",
+    "no automatic new learning",
+    "no global replay protection"
+  ]
+}

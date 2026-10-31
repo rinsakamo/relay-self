@@ -1,0 +1,99 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S20",
+  "base_head": "8ea0365f48b5e58bdbca503a120ea8bf5818e2ec",
+  "classification": "EXPLICIT_TWO_EPOCH_SECOND_ACTION_OUTCOME_CLOSURE_QUALIFIED",
+  "evidence_class": "DETERMINISTIC_TEST_APPARATUS_ONLY",
+  "qualification_gate": "REQUIRES_EXACT_FINAL_HEAD_CI_SUCCESS",
+  "epoch_count": 2,
+  "epoch_one": [
+    "ATT",
+    "BLF",
+    "CNC",
+    "PRD",
+    "PLAN",
+    "HABIT",
+    "ROUTE",
+    "ADMISSION",
+    "EXEC_BIND",
+    "ACTION_1_ISSUED",
+    "WORLD_CONSEQUENCE_1",
+    "ACTION_1_OUTCOME",
+    "FEEDBACK",
+    "LRN_GOVERNED_COMMIT",
+    "STOP"
+  ],
+  "epoch_two": [
+    "EXPLICIT_CALLER_INVOCATION",
+    "RETAINED_REV1_READ",
+    "ATT",
+    "BLF",
+    "CNC",
+    "PRD_WAIT_MOVE_AWAY",
+    "PLAN_MOVE_AWAY",
+    "ROUTE",
+    "FRESH_ADMISSION",
+    "EXEC_BIND",
+    "SKILL_2_STARTED",
+    "ACTION_2_PROPOSED",
+    "EXPLICIT_AUTHORIZATION_2",
+    "ACTION_2_ISSUED",
+    "WORLD_CONSEQUENCE_2",
+    "ACTION_2_TERMINAL_OUTCOME",
+    "STOP"
+  ],
+  "action_ids": [
+    "action-move-backward-1",
+    "action-move-backward-2"
+  ],
+  "separate_binding_ids": [
+    "binding-move-away-1",
+    "binding-move-away-2"
+  ],
+  "separate_skill_execution_ids": [
+    "skill-exec-escape-1",
+    "skill-exec-escape-2"
+  ],
+  "separate_world_session_ids": [
+    "s18-session",
+    "s20-session-2"
+  ],
+  "action_outcomes": [
+    "OUTCOME",
+    "OUTCOME"
+  ],
+  "second_action_candidate": "MOVE_AWAY",
+  "second_admission": "ADMITTED",
+  "second_action_authority": "s20-explicit-Action2-authority",
+  "retained_state": {
+    "target_id": "risk_weight",
+    "before": {
+      "revision": 0,
+      "value": 3
+    },
+    "after": {
+      "revision": 1,
+      "value": 4
+    },
+    "after_second_action": {
+      "revision": 1,
+      "value": 4
+    }
+  },
+  "no_second_learning_commit": true,
+  "provider_model_calls": 0,
+  "autonomous_reentry": false,
+  "live_minecraft": "NOT_RUN",
+  "continuous_multi_epoch": "NOT_QUALIFIED",
+  "provenance_record": "docs/postmain-s20-cross-epoch.json",
+  "limitations": [
+    "Only deterministic bounded second action; no actual Minecraft endpoint",
+    "Epoch 2 cognition and fresh admission use S19 helper followed by explicit caller-owned S14-S16 continuation without another cognitive epoch",
+    "Action 2 does not receive implicit learning authority",
+    "Action outcomes are known terminal observations, not generic success semantics",
+    "Skill2 remains STARTED; automatic Skill closure is not qualified",
+    "Second-session identity and late-consequence guard rely on explicit trusted caller timing/session, not independent physical clock proof",
+    "No continuous looping, automatic Epoch 3 or autonomous policy",
+    "No new cognitive owner and no Paper2 MAIN empirical changes"
+  ]
+}

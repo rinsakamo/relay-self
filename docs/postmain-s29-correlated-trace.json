@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "session": "s23-recovery-session-3",
+  "parent_action": "action-recovery-backward-3",
+  "parent_world_after_seq": 4,
+  "legacy": {
+    "observe_command": {
+      "type": "observe"
+    },
+    "probe_response_has_request_id": false,
+    "still_accepted_by_legacy_decoder": true,
+    "not_accepted_by_s29": true
+  },
+  "near": {
+    "request_id": "s29-probe:one.1",
+    "observe_command": {
+      "type": "observe",
+      "request_id": "s29-probe:one.1"
+    },
+    "probe_seq": 5,
+    "response_echo": "s29-probe:one.1",
+    "distance_cm": 20,
+    "selected": "MOVE_AWAY"
+  },
+  "far": {
+    "request_id": "s29-probe:two.2",
+    "observe_command": {
+      "type": "observe",
+      "request_id": "s29-probe:two.2"
+    },
+    "probe_seq": 6,
+    "response_echo": "s29-probe:two.2",
+    "distance_cm": 180,
+    "selected": "WAIT"
+  },
+  "connection": "existing Node bridge protocol and Python MineflayerProcessSession",
+  "transport_is_deterministic_test_double": true,
+  "protocol_echo_attribution_qualified": true,
+  "physical_causality_qualified": false,
+  "live_minecraft": "NOT_RUN",
+  "no_new_action": true
+}

@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "base_head": "e519af52d2b7aa8a910f096df04d0a4802ccc823",
+  "subject": {
+    "action3": "action-recovery-backward-3",
+    "session3": "s23-recovery-session-3",
+    "outcome3": "OUTCOME",
+    "recovery_skill3": "skill-exec-escape-recovery-3",
+    "recovery_skill_state": "STARTED",
+    "current_intent": "escape-threat",
+    "retained_revision": 1,
+    "retained_risk_weight": 4
+  },
+  "controlled": {
+    "prior_action3_terminal": true,
+    "same_recovery_skill_state": true,
+    "same_current_intent": true,
+    "retained_value": 4,
+    "retained_revision": 1,
+    "fixed_policy": "clearance_cm <= 100: wait=2*risk; clearance_cm > 100: wait=risk; move=7",
+    "candidate_ids": [
+      "WAIT",
+      "MOVE_AWAY"
+    ],
+    "same_operators": [
+      "ATT",
+      "BLF",
+      "CNC",
+      "PRD",
+      "PLAN",
+      "ROUTE",
+      "ADMISSION"
+    ],
+    "same_admission_criterion": true
+  },
+  "A": {
+    "kind": "isolated_counterfactual",
+    "clearance_cm": 20,
+    "wait_cost": 8,
+    "move_cost": 7,
+    "selection": "MOVE_AWAY",
+    "admission": "ADMITTED"
+  },
+  "B": {
+    "kind": "actual_explicit_invocation",
+    "clearance_cm": 180,
+    "wait_cost": 4,
+    "move_cost": 7,
+    "selection": "WAIT",
+    "admission": "ADMITTED"
+  },
+  "difference_explanation": "Only changed caller World observation of threat clearance and its evidence lineage changes fixed prediction scores; retained learning and policy are held constant.",
+  "conclusion": "World input can change a newly recomputed third-epoch cognition result under a fixed deterministic comparator; no autonomous reentry or physical WAIT issuance."
+}

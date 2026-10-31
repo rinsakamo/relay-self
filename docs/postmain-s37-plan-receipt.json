@@ -1,0 +1,50 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S37",
+  "base_head": "670c2ee3c473cd2eb3f971bc2040356dc5060e06",
+  "status": "PENDING_CI",
+  "qualification_requires": "S37_REPORT.status == PASS",
+  "classification_if_pass": "THREE_REAL_NATIVE_EVENTS_TWO_SESSIONS_BOUNDED_COGNITION_NO_ACTION_QUALIFIED",
+  "server": "one continuously running, genuine Mojang Java Edition 1.21.8 disposable localhost test World",
+  "package": "unmodified Mineflayer 4.39.0 and unchanged production bridge.mjs",
+  "real_world_incident_target": 3,
+  "real_mineflayer_session_target": 2,
+  "session_distribution": "first real Mineflayer process: 2 separately summoned distinct zombie entities; controlled shutdown; second process reconnect: 1 new zombie",
+  "natural_world_event_source": "genuine unsolicited entitySpawn -> native kind entities source, separate correlated source probe, independent preconfigured EventCognitionTriggerGrant and frozen S36/S34 cognition",
+  "zombie_policy": "only server-console-summoned controlled NoAI zombies, explicitly cleared between events; new entity id required each time",
+  "host_budget": {
+    "max_sessions": 2,
+    "max_epochs_per_session": 2,
+    "max_total_epochs": 3,
+    "max_frames_per_event": 100,
+    "receive_timeout_s": 30
+  },
+  "source_boundary": "exact node session UUID and increasing source seq within session; never compare seq across reconnect",
+  "reconnect_boundary": "controlled supervised clean Node shutdown; new genuine Node session; old event ticket invalid; S36 per-session scheduler and ledger reset, pending queue discarded",
+  "action_authority": "NONE",
+  "action_proposal": false,
+  "action_authorization": false,
+  "action_issue": false,
+  "real_physical_actions": 0,
+  "new_learning_update": false,
+  "retained_ancestor": "frozen S19 valid governed synthetic FakeSession rev1; no real learning in S37",
+  "intent_and_grant": "preconfigured explicit current intent and external grant callback, no autonomy/goal synthesis",
+  "invalid_on_disconnect": "unexpected MineflayerConnectionEnd, session identity mismatch, bad entity geometry or uncorrelated source are FAIL not automatic reconnect",
+  "no_daemon_or_crash_resume": true,
+  "offline_only": [
+    "pending queue discarded on reconnect",
+    "stale old source ticket rejection",
+    "same-entity event duplicate suppression",
+    "max session/epoch/frame budget",
+    "missing/foreign source stream and timeout rejection"
+  ],
+  "nonclaims": [
+    "controlled game server and privileged zombies are not naturally discovered hazards",
+    "two clean process generations is NOT crash-resume, transient TCP failure handling or unattended daemon uptime",
+    "no World-clock attestation, persistent global ledger or cross-process exactly-once guarantees",
+    "individual synchronous cognitive callback CPU time is not preemptively bounded",
+    "fairness and queue coalescing inherited from S36 deterministic tests not newly demonstrated under live flood",
+    "Action authority still separate; no Action issue, no LLM, no local S31B replication",
+    "RelayTheory R6 and Paper2 MAIN40 unchanged"
+  ]
+}

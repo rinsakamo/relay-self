@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S36",
+  "base_head": "37965b61932930039360f09d5991c552c4229dfd",
+  "status": "PENDING_CI",
+  "qualification_requires": "S36_REPORT.status == PASS",
+  "classification_if_pass": "REAL_EVENT_AUTO_BOUNDED_COGNITION_WITHOUT_ACTION_QUALIFIED",
+  "real_server": "Mojang-verified Vanilla Minecraft Java 1.21.8 loopback",
+  "real_mineflayer": "unchanged bridge.mjs and genuine Mineflayer 4.39.0",
+  "event_source": "unsolicited native entitySpawn observation kind=entities, not explicit probe",
+  "scheduler_trigger": "on_native_event(event) auto-runs ready cognition from event callback, no explicit cognition invocation at callsite",
+  "candidate_source": "exact S35 NativeEventCognitionCandidate from native session/entity/seq/distance and complete registry",
+  "grant_source": "independent preconfigured caller-owned event-bound EventCognitionTriggerGrant, NOT issued by event or scheduler",
+  "probe_source": "scheduler requests a separate native observe request with unique request ID and strict exact session+seq/target before cognition",
+  "scheduler_resource_limits": {
+    "max_pending": 4,
+    "max_epochs_per_batch": 2,
+    "max_total_cognition": 2,
+    "max_event_age_seq": 16,
+    "max_urgent_burst": 2,
+    "per_probe_timeout_s": 10
+  },
+  "queue_policy": "coalesce newer same-session+same-entity; disappear/in-range-loss invalidates; old native sequence rejected; hard capacity reject; priority <=2.5m vs normal; FIFO and max two urgent dispatches before normal",
+  "live_queue_scope": "actual real world one event -> one auto cognition; queue fairness/coalescing/age/saturation proven using deterministic negative-control tests only",
+  "sensor_scope": "one privileged server-console-summoned native zombie within 4m, complete entity registry",
+  "retained_ancestry": "frozen S19 synthetic FakeSession valid governed 3/rev0→4/rev1; not real S36 learning",
+  "cognition_scope": "real-native event/probe fed to unchanged S34 ATT/BLF/CNC/PRD/PLAN/ROUTE/ADMISSION deterministic cognition, selected MOVE_AWAY",
+  "action_issued_by_scheduler": false,
+  "action_proposed_by_scheduler": false,
+  "action_authorized_by_scheduler": false,
+  "actual_action_dispatched": false,
+  "autonomous_daemon": false,
+  "independent_llm_inference": false,
+  "no_learning_commit_in_s36": true,
+  "scheduling_limits": [
+    "resource cap bounds probe wait and count, not CPU runtime of arbitrary injected cognition callback",
+    "single-process in-memory serial queue only, no global durable replay",
+    "fairness is conditional on repeated drain invocation, not an external real-time guarantee"
+  ],
+  "nonclaims": [
+    "World source is privileged controlled Minecraft sandbox, not independent physics/cryptographic evidence",
+    "entity stimulus manually configured before event; cognition grant preconfigured by experimenter",
+    "existing current intent and retained preference are caller-controlled, not autonomously invented",
+    "no Action proposal/authorization/issue/physical control by S36",
+    "no persistent autonomous daemon or continuous agent across restart",
+    "no LocalCodex S31B reproduction; frozen S18-S35 and Paper2 MAIN40 unchanged"
+  ]
+}

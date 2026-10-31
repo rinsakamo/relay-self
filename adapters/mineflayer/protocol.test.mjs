@@ -3,7 +3,9 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 import {
+  admitProbeRequestId,
   makeEnvelope,
+  makeProbePayload,
   parseArgs,
   parseCommand,
   shouldEmitTimeObservation,
@@ -560,5 +562,88 @@ test('envelope preserves target-local session and monotonic sequence fields', ()
       seq: 3,
       kind: 'health'
     }
+  )
+})
+
+test('S29 correlated observe preserves legacy while rejecting malformed request identifiers', () => {
+  assert.deepEqual(parseCommand({ type: 'observe' }), { type: 'observe' })
+  assert.deepEqual(
+    parseCommand({ type: 'observe', request_id: 'req-S29:one.1' }),
+    { type: 'observe', request_id: 'req-S29:one.1' }
+  )
+  for (const invalid of ['', 'space id', '日本語', '../illegal?', null, 9, 'a'.repeat(129)]) {
+    assert.throws(
+      () => parseCommand({ type: 'observe', request_id: invalid }),
+      /request_id/
+    )
+  }
+  assert.throws(
+    () => parseCommand({
+      type: 'observe', request_id: 'req-S29', action_id: 'unexpected'
+    }),
+    /fields are invalid/
+  )
+})
+
+test('S29 correlated probe response preserves exact request ID only for probes', () => {
+  const snapshot = { nearby_entities: [], nearby_entities_coverage: {} }
+  assert.deepEqual(makeProbePayload(snapshot), { kind: 'probe', snapshot })
+  assert.deepEqual(
+    makeProbePayload(snapshot, 'req-S29:one.1'),
+    { kind: 'probe', snapshot, request_id: 'req-S29:one.1' }
+  )
+  assert.deepEqual(makeEnvelope('session-1', 5, 'observation',
+    makeProbePayload(snapshot, 'req-S29:one.1')), {
+    type: 'observation', session_id: 'session-1', seq: 5,
+    kind: 'probe', snapshot, request_id: 'req-S29:one.1'
+  })
+})
+
+test('S29 duplicate correlated probe ID is rejected per Node bridge session', () => {
+  const seen = new Set()
+  assert.equal(admitProbeRequestId(seen, 'req-S29:one.1'), true)
+  assert.equal(admitProbeRequestId(seen, 'req-S29:one.1'), false)
+  assert.equal(admitProbeRequestId(seen, 'req-S29:two.2'), true)
+  assert.deepEqual([...seen], ['req-S29:one.1', 'req-S29:two.2'])
+  assert.throws(() => admitProbeRequestId(seen, ' space'), /request_id/)
+})
+
+test('W4 orientation is opt-in read-only and never alters default snapshot', () => {
+  const bot = {
+    health: 20, food: 20, foodSaturation: 5, oxygenLevel: 20,
+    time: null, inventory: { items: () => [] },
+    entity: {
+      id: 1, position: { x: 0, y: 64, z: 0 },
+      yaw: Math.PI / 2, pitch: 0.2
+    },
+    entities: {}
+  }
+  const ordinary = snapshotFromBot(bot)
+  assert.equal(Object.hasOwn(ordinary, 'native_orientation'), false)
+  const optIn = snapshotFromBot(bot, { includeNativeOrientation: true })
+  assert.deepEqual(optIn.native_orientation, {
+    source: 'mineflayer_bot_entity',
+    yaw_rad: Math.PI / 2,
+    pitch_rad: 0.2
+  })
+  const { native_orientation: ignored, ...withoutOrientation } = optIn
+  assert.deepEqual(withoutOrientation, ordinary)
+  assert.throws(
+    () => snapshotFromBot({
+      ...bot,
+      entity: { ...bot.entity, yaw: undefined }
+    }, { includeNativeOrientation: true }),
+    /finite number/
+  )
+  assert.throws(
+    () => snapshotFromBot({
+      ...bot,
+      entity: { ...bot.entity, pitch: Math.PI }
+    }, { includeNativeOrientation: true }),
+    /pitch outside bound/
+  )
+  assert.throws(
+    () => snapshotFromBot(bot, { includeNativeOrientation: '1' }),
+    /must be boolean/
   )
 })

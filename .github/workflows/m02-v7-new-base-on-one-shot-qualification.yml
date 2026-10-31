@@ -1,0 +1,239 @@
+name: S/R M0.2 V7 NEW tick-chord BASE_ON one-shot engineering qualification
+
+on:
+  push:
+    branches:
+      - self/product-self-one-command-20261010
+    paths:
+      - '.github/workflows/m02-v7-new-base-on-one-shot-qualification.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: m02-v7-new-tick-chord-base-on-grant-20261016-once
+  cancel-in-progress: false
+
+jobs:
+  first-and-only-physical-qualification:
+    # FROZEN after first physical Java start #38907469772: grant consumed.
+    # No new push/run may start another QUAL World; retain this file as audit.
+    if: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    env:
+      GH_REPO: rinsakamo/relay-self
+      GH_TOKEN: ${{ github.token }}
+      S_PIN: 'd34c1cc613920a2485a581c25a8010f2a47e1bd6'
+      R_PIN: '53193a5da376e2832555231df4ada15f063f3b67'
+      S_CI_RUN: '38907041416'
+      R_CI_RUN: '38906596693'
+      PAPER_SOURCE_RUN: '38702561454'
+      PAPER_SOURCE_NAME: 'rsee-m02-paper-four-pinned-assets-38702561454-1'
+      EXPECTED_PLUGIN_SHA256: 'a43afa4d0a1fdaf01c633efd2543ed24b6b53b12ee38ed62a33594057e701e8f'
+      EXPECTED_CONFIG_SHA256: '939c2da60ed4ce2f5afb5609c1f784886e3b021104c28a83658c17b744159b16'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Require exact S and R original source CI before first Java
+        run: |
+          python - <<'PY'
+          import json,os,subprocess,time
+          repo=os.environ["GH_REPO"]
+          requirements=(
+            (int(os.environ["S_CI_RUN"]),os.environ["S_PIN"],
+             {"lint","pytest","mineflayer-adapter","repository-contracts"}),
+            (int(os.environ["R_CI_RUN"]),os.environ["R_PIN"],
+             {"focused","full-regression","mineflayer-adapter","sibling-readonly"}),
+          )
+          for run_id,head,expected in requirements:
+              for _ in range(55):
+                  run=json.loads(subprocess.check_output(
+                      ["gh","api",f"repos/{repo}/actions/runs/{run_id}"]))
+                  assert run["head_sha"]==head and run["run_attempt"]==1
+                  jobs=json.loads(subprocess.check_output(
+                      ["gh","api",f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100"]))["jobs"]
+                  statuses={j["name"]:j["conclusion"] for j in jobs
+                            if j["name"] in expected}
+                  if set(statuses)==expected and all(x=="success" for x in statuses.values()):
+                      print(f"PREWORLD_REQUIRED_EXACT_SOURCE_CI_PASS {run_id} {head}")
+                      break
+                  if any(x in ("failure","cancelled","timed_out","skipped")
+                         for x in statuses.values()):
+                      raise SystemExit(f"NO_START: failed exact-head CI {run_id}: {statuses}")
+                  time.sleep(8)
+              else:
+                  raise SystemExit(f"NO_START: required exact-head CI incomplete {run_id}")
+          PY
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: ${{ env.S_PIN }}
+          path: s
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: rinsakamo/relay-self
+          ref: ${{ env.R_PIN }}
+          path: r
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: s/adapters/mineflayer/package-lock.json
+      - name: Bind source SHA, audit modules, one shot semantics and dependencies
+        run: |
+          test "$(git -C s rev-parse HEAD)" = "$S_PIN"
+          test "$(git -C r rev-parse HEAD)" = "$R_PIN"
+          test "$GITHUB_RUN_ATTEMPT" = "1"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+          PYTHONPATH="s/src:s/tests:s" python -m pytest -q s/tests/test_m02_v7_new_qualification.py
+          PYTHONPATH="r/src:r/tests:r" python -m pytest -q r/tests/test_rsee_m02_v7_tick_qualification_audit.py
+          PYTHONPATH="s/src:s/tests:s" python - <<'PY'
+          import json
+          from pathlib import Path
+          p=json.loads(Path("s/adapters/mineflayer/package.json").read_text())
+          assert p["dependencies"]["mineflayer"]=="4.39.0"
+          from adapters.mineflayer.m02_paper_dev import s51_paper_v7_new_qualification as q
+          from adapters.mineflayer.m02_paper_dev import s51_paper_qualification as spent
+          assert q.GRANT=="USER_M02_V7_TICK_CHORD_BASE_ON_20261016_ONCE"
+          assert q.GRANT != spent.GRANT
+          assert q.CONFIRM=="M02-V7-TICK-CHORD-BASE-ON-ONE-SHOT"
+          assert q.SEED=="61021"
+          assert q._java21_runtime()["java_major"]=="21"
+          print("S_NEW_V7_BASE_ON_QUAL_UNSPENT_DISTINCT_SOURCE")
+          PY
+      - name: Re-stage pinned Paper binary, separate current S JAR and exact new profile
+        run: |
+          mkdir -p "$RUNNER_TEMP/m02-v7-qual/archived" "$RUNNER_TEMP/m02-v7-qual/assets"
+          gh run download "$PAPER_SOURCE_RUN" -R "$GH_REPO" -n "$PAPER_SOURCE_NAME" \
+            -D "$RUNNER_TEMP/m02-v7-qual/archived"
+          mvn -B -ntp -f s/adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+          PYTHONPATH="s/src:s/tests:s" python - <<'PY'
+          import hashlib,os,pathlib,shutil
+          from adapters.mineflayer.m02_paper_dev import v7_paired_config as v7
+          from adapters.mineflayer.m02_paper_dev import s51_paper_v7_new_qualification as q
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"m02-v7-qual"
+          dest=root/"assets"
+          archive=root/"archived"
+          for name in ("paper-1.21.8.jar","server.properties"):
+              matches=[x for x in archive.rglob(name) if x.is_file() and not x.is_symlink()]
+              assert len(matches)==1,name
+              shutil.copyfile(matches[0],dest/name)
+          jar=pathlib.Path("s/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar")
+          assert jar.is_file() and not jar.is_symlink()
+          shutil.copyfile(jar,dest/"relay-metabolism-paper-dev.jar")
+          source=v7.TEMPLATE.read_bytes()
+          on=v7.render_arm(source,"BASE_ON")
+          assert on.count(b"dev-enabled: true")==1
+          enabled=on.replace(b"dev-enabled: true",
+                             b"dev-enabled: true\ns50-tick-meter-dev: true",1)
+          (dest/"config.yml").write_bytes(enabled)
+          assert hashlib.sha256(enabled).hexdigest()==os.environ["EXPECTED_CONFIG_SHA256"]
+          assert hashlib.sha256(jar.read_bytes()).hexdigest()==os.environ["EXPECTED_PLUGIN_SHA256"]
+          assert q.check_assets(dest)==q.ASSET_PINS
+          print("R_S_NEW_JAR_AND_TICK_PROFILE_INDEPENDENT_BYTES_PINNED",q.ASSET_PINS)
+          PY
+      - name: Native dependencies, no Node overrides and unoccupied Minecraft port
+        run: |
+          npm ci --omit=dev --ignore-scripts --no-audit --no-fund --prefix s/adapters/mineflayer
+          python - <<'PY'
+          import os,socket
+          assert not os.environ.get("NODE_OPTIONS")
+          with socket.socket() as sock:
+              assert sock.connect_ex(("127.0.0.1",25565)) != 0
+          print("PREWORLD_ONE_SHOT_NATIVE_PORT_AND_NODE_DEPENDENCIES_ADMITTED")
+          PY
+      - name: Start one truly new isolated QUAL World once, consume this new grant
+        id: physical
+        continue-on-error: true
+        run: |
+          set +e
+          PYTHONPATH="s/src:s/tests:s" python -m adapters.mineflayer.m02_paper_dev.s51_paper_v7_new_qualification \
+            --asset-root "$RUNNER_TEMP/m02-v7-qual/assets" \
+            --output-root "$RUNNER_TEMP/m02-v7-qual/originals" \
+            --confirm M02-V7-TICK-CHORD-BASE-ON-ONE-SHOT \
+            > "$RUNNER_TEMP/m02-v7-qual/s-producer-stdout.jsonl" 2>&1
+          code=$?
+          set -e
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          cat "$RUNNER_TEMP/m02-v7-qual/s-producer-stdout.jsonl"
+          echo "S_NEW_JAR_BASE_ON_QUAL_PHYSICAL_ONCE_EXIT=$code"
+          # Do not ever retry this grant after a Java launch.
+      - name: Independently witness Java and Node PID exit and loopback port
+        if: always()
+        run: |
+          python - <<'PY'
+          import json,os,pathlib,socket
+          root=pathlib.Path(os.environ["RUNNER_TEMP"])/"m02-v7-qual"
+          source=root/"originals/qualification_producer.json"
+          if not source.is_file():
+              print("R_NEW_BASE_ON_NO_PRODUCER_SOURCE_BEFORE_WORLD_OR_FAILED")
+              raise SystemExit(0)
+          q=json.loads(source.read_text())
+          def dead(pid):
+              if type(pid) is not int or pid<=0:
+                  return False
+              try: os.kill(pid,0)
+              except ProcessLookupError: return True
+              except PermissionError: return False
+              return False
+          with socket.socket() as sock:
+              free=sock.connect_ex(("127.0.0.1",25565))!=0
+          w={
+              "github_run_id":os.environ["GITHUB_RUN_ID"],
+              "github_run_attempt":int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "java_pid":q.get("java_pid"),"node_pid":q.get("node_pid"),
+              "java_absent":dead(q.get("java_pid")),
+              "node_absent":dead(q.get("node_pid")),
+              "loopback_port_released":free,
+          }
+          (root/"independent-host-witness.json").write_text(
+              json.dumps(w,sort_keys=True,indent=2)+"\n")
+          print("R_NEW_M02_ONE_SHOT_HOST_WITNESS="+json.dumps(w,sort_keys=True))
+          PY
+      - name: R independent immutable-original readback and qualification verdict
+        if: steps.physical.outputs.code == '0'
+        env:
+          PYTHONPATH: 'r/src:r/tests:r'
+        run: |
+          set -o pipefail
+          python -m experiments.standard_env.m02_v7_tick_qualification_audit \
+            --original-root "$RUNNER_TEMP/m02-v7-qual/originals" \
+            --asset-root "$RUNNER_TEMP/m02-v7-qual/assets" \
+            --witness "$RUNNER_TEMP/m02-v7-qual/independent-host-witness.json" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            | tee "$RUNNER_TEMP/m02-v7-qual/r-independent-qualification.json"
+      - name: Preserve original run bytes, S stdout, R witness and verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsee-m02-new-tick-base-on-qualification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/m02-v7-qual/
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Fail preflight or consumed failed physical execution, no repeated launch
+        if: always()
+        env:
+          PHYSICAL_EXIT: ${{ steps.physical.outputs.code }}
+        run: |
+          if [ "$PHYSICAL_EXIT" != "0" ]; then
+            echo "::error::New V7 qualification not admitted; check original retained evidence. If Java started, the one-shot grant is consumed; do not rerun."
+            exit 1
+          fi
+          test -s "$RUNNER_TEMP/m02-v7-qual/r-independent-qualification.json"
+          PYTHONPATH="r/src:r/tests:r" python - <<'PY'
+          import json,os,pathlib
+          p=pathlib.Path(os.environ["RUNNER_TEMP"])/"m02-v7-qual/r-independent-qualification.json"
+          v=json.loads(p.read_text())
+          assert v["classification"]=="R_M02_V7_NEW_BASE_ON_TICK_CHORD_ENGINEERING_QUALIFIED_ONLY"
+          assert v["grant_consumed"] and v["candidate_engineering_qualified"]
+          assert not v["science_go"] and not v["production_go"]
+          print("R_M02_NEW_TICK_BASE_ON_ENGINEERING_QUALIFIED_NOT_SCIENCE")
+          PY

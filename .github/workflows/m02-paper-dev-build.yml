@@ -1,0 +1,238 @@
+name: M0.2 Paper DEV plugin compile
+on:
+  push:
+    branches:
+      - self/product-self-one-command-20261010
+    paths:
+      - 'adapters/mineflayer/m02_paper_dev/**'
+      - '.github/workflows/m02-paper-dev-build.yml'
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/m02_paper_dev/**'
+      - '.github/workflows/m02-paper-dev-build.yml'
+permissions:
+  contents: read
+jobs:
+  paper-api-compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+          cache-dependency-path: adapters/mineflayer/m02_paper_dev/pom.xml
+      - name: Compile offline Paper API target
+        run: mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+      - name: Verify enabled by default false and no server is started
+        run: |
+          grep -q '^dev-enabled: false' adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml
+          test -f adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
+  paper-world-dev:
+    # Historical DEV sources remain readable; V8 owns explicit sequential execution.
+    if: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONPATH: "src:tests:."
+      DEV_EVIDENCE: "/tmp/m02-paper-${{ github.run_id }}-${{ github.run_attempt }}"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: adapters/mineflayer/m02_paper_dev/pom.xml
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: adapters/mineflayer/package-lock.json
+      - name: Confirm loopback Minecraft port is free (never kill external processes)
+        run: |
+          python - <<'PY'
+          import socket
+          with socket.socket() as sock:
+              assert sock.connect_ex(("127.0.0.1", 25565)) != 0, "port occupied"
+          PY
+      - name: Compile DEV-only Paper plugin
+        run: |
+          mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+          test -f adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
+      - name: Install original Mineflayer bridge dependencies
+        run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - name: Fetch official Paper 1.21.8 STABLE build via current v3 API and verify published SHA256
+        id: paper
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, re, urllib.parse, urllib.request
+          VERSION = "1.21.8"
+          API = f"https://fill.papermc.io/v3/projects/paper/versions/{VERSION}/builds"
+          UA = "RelaySelf-M02-DEV/0.2 (https://github.com/rinsakamo/relay-self)"
+          req = urllib.request.Request(API, headers={"User-Agent": UA})
+          with urllib.request.urlopen(req, timeout=50) as rsp:
+              body = rsp.read(3_000_000)
+              if len(body) == 3_000_000: raise ValueError("unbounded Paper builds metadata")
+              builds = json.loads(body)
+          if not isinstance(builds, list): raise ValueError("Paper v3 returns no build list")
+          stable = [b for b in builds if b.get("channel") == "STABLE"
+                    and type(b.get("id")) is int
+                    and isinstance(b.get("downloads"), dict)]
+          if not stable: raise ValueError("no official STABLE 1.21.8 Paper build")
+          # Stable id and bytes are pinned to the independent R M0.2 profile;
+          # never silently replace a candidate with a later Paper build.
+          selected = next((b for b in stable if b["id"] == 60), None)
+          if selected is None: raise ValueError("pinned Paper build 60 unavailable")
+          build = selected["id"]
+          artifact = selected["downloads"]["server:default"]
+          name = artifact["name"]
+          url = artifact["url"]
+          digest = artifact["checksums"]["sha256"]
+          size = artifact["size"]
+          assert name == f"paper-{VERSION}-{build}.jar"
+          assert digest == "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          assert size == 52_811_717
+          parsed = urllib.parse.urlparse(url)
+          assert parsed.scheme == "https" and parsed.hostname == "fill-data.papermc.io"
+          assert parsed.path.startswith("/v1/objects/")
+          assert parsed.username is None and parsed.password is None
+          target = pathlib.Path(os.environ["RUNNER_TEMP"]) / "m02-official-paper-1.21.8.jar"
+          download = urllib.request.Request(url, headers={"User-Agent": UA})
+          h = hashlib.sha256()
+          count = 0
+          with urllib.request.urlopen(download, timeout=120) as inp, target.open("xb") as out:
+              while chunk := inp.read(1024 * 1024):
+                  count += len(chunk)
+                  if count > size: raise ValueError("server jar exceeds official size")
+                  out.write(chunk)
+                  h.update(chunk)
+          assert count == size and h.hexdigest() == digest, "official Paper SHA/size mismatch"
+          print(f"M02_DEV_PAPER version={VERSION} build={build} bytes={count} sha256={digest}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+              stream.write(f"jar={target}\nsha256={digest}\nbuild={build}\n")
+          PY
+      - name: Install existing S31A/S51 helper test dependency
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: M0.2 Paper real DEV — one governed S50 MOVE and S51 cooked_beef EAT
+        run: |
+          PLUGIN=adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
+          PLUGIN_SHA="$(sha256sum "$PLUGIN" | awk '{print $1}')"
+          python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev \
+            --output-dir "$DEV_EVIDENCE" \
+            --paper-jar "${{ steps.paper.outputs.jar }}" \
+            --paper-sha256 "${{ steps.paper.outputs.sha256 }}" \
+            --plugin-jar "$PWD/$PLUGIN" \
+            --plugin-sha256 "$PLUGIN_SHA" \
+            --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD
+      - name: M0.2 Paper native L0 SEEK to MOVE to pickup to EAT — separate DEV World
+        env:
+          DEV_FORAGE_EVIDENCE: "/tmp/m02-paper-forage-${{ github.run_id }}-${{ github.run_attempt }}"
+        run: |
+          PLUGIN=adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
+          PLUGIN_SHA="$(sha256sum "$PLUGIN" | awk '{print $1}')"
+          python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev \
+            --forage-dev \
+            --output-dir "$DEV_FORAGE_EVIDENCE" \
+            --paper-jar "${{ steps.paper.outputs.jar }}" \
+            --paper-sha256 "${{ steps.paper.outputs.sha256 }}" \
+            --plugin-jar "$PWD/$PLUGIN" \
+            --plugin-sha256 "$PLUGIN_SHA" \
+            --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD
+      - name: Paper B1 memory ON — new isolated DEV World
+        id: paper_b1_on
+        continue-on-error: true
+        env:
+          DEV_B1_EVIDENCE: "/tmp/m02-paper-b1-on-${{ github.run_id }}-${{ github.run_attempt }}"
+        run: |
+          PLUGIN=adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
+          PLUGIN_SHA="$(sha256sum "$PLUGIN" | awk '{print $1}')"
+          python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev \
+            --forage-dev --paper-b1 on \
+            --output-dir "$DEV_B1_EVIDENCE" \
+            --paper-jar "${{ steps.paper.outputs.jar }}" \
+            --paper-sha256 "${{ steps.paper.outputs.sha256 }}" \
+            --plugin-jar "$PWD/$PLUGIN" \
+            --plugin-sha256 "$PLUGIN_SHA" \
+            --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD
+      - name: Paper B1 memory OFF — new isolated DEV World
+        id: paper_b1_off
+        continue-on-error: true
+        env:
+          DEV_B1_EVIDENCE: "/tmp/m02-paper-b1-off-${{ github.run_id }}-${{ github.run_attempt }}"
+        run: |
+          PLUGIN=adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
+          PLUGIN_SHA="$(sha256sum "$PLUGIN" | awk '{print $1}')"
+          python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev \
+            --forage-dev --paper-b1 off \
+            --output-dir "$DEV_B1_EVIDENCE" \
+            --paper-jar "${{ steps.paper.outputs.jar }}" \
+            --paper-sha256 "${{ steps.paper.outputs.sha256 }}" \
+            --plugin-jar "$PWD/$PLUGIN" \
+            --plugin-sha256 "$PLUGIN_SHA" \
+            --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD
+      - name: Preserve Paper B1 ON/OFF original DEV evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m02-paper-b1-onoff-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            /tmp/m02-paper-b1-on-${{ github.run_id }}-${{ github.run_attempt }}/
+            /tmp/m02-paper-b1-off-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Enforce physical ON and OFF DEV status separately
+        if: always()
+        run: |
+          test "${{ steps.paper_b1_on.outcome }}" = "success"
+          test "${{ steps.paper_b1_off.outcome }}" = "success"
+      - name: Preserve forage DEV evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m02-paper-forage-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/m02-paper-forage-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: V7 BASE_ON actual plugin source BASAL writes — separate disposable DEV World
+        id: v7_basal_source
+        continue-on-error: true
+        env:
+          DEV_V7_EVIDENCE: "/tmp/m02-paper-v7-basal-source-${{ github.run_id }}-${{ github.run_attempt }}"
+        run: |
+          PLUGIN=adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
+          PLUGIN_SHA="$(sha256sum "$PLUGIN" | awk '{print $1}')"
+          python -m adapters.mineflayer.m02_paper_dev.s51_paper_physics_dev \
+            --v7-arm BASE_ON --v7-seed 61021 \
+            --output-dir "$DEV_V7_EVIDENCE" \
+            --paper-jar "${{ steps.paper.outputs.jar }}" \
+            --paper-sha256 "${{ steps.paper.outputs.sha256 }}" \
+            --plugin-jar "$PWD/$PLUGIN" \
+            --plugin-sha256 "$PLUGIN_SHA" \
+            --confirm M02-DEV-I-OWN-DISPOSABLE-PAPER-WORLD
+      - name: Preserve V7 BASAL source DEV original even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m02-v7-basal-write-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: /tmp/m02-paper-v7-basal-source-${{ github.run_id }}-${{ github.run_attempt }}/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Enforce independent V7 source meter DEV outcome (NOT R/V admission)
+        if: always()
+        run: test "${{ steps.v7_basal_source.outcome }}" = "success"
+      - name: Preserve original DEV evidence even if real World failed
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m02-paper-original-dev-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.DEV_EVIDENCE }}/
+          if-no-files-found: warn
+          retention-days: 7

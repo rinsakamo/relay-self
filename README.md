@@ -32,6 +32,10 @@ RelaySelf may maintain a self-model, working self, capability model, body/resour
 - [`docs/ontology.md`](docs/ontology.md) — canonical general vocabulary.
 - [`docs/architecture.md`](docs/architecture.md) — architectural boundaries and state flow.
 - [`docs/runtime-principles.md`](docs/runtime-principles.md) — normative runtime and agency principles.
+- [`docs/capability-composition.md`](docs/capability-composition.md) — declarative capability ON/OFF composition without introducing a new cognitive state owner.
+- [`docs/execution-descriptors.md`](docs/execution-descriptors.md) — non-executing S2 mapping from declared capabilities to existing runtime seams and contract guards.
+- [`docs/epoch-plans.md`](docs/epoch-plans.md) — S3 stateless compilation of enabled due capability work into immutable decision-epoch plans.
+- [`docs/capability-profile-qualification.md`](docs/capability-profile-qualification.md) — S4 qualification of bounded MEM / CTL / SKL / TALK profiles and toggle isolation.
 - [`docs/development-principles.md`](docs/development-principles.md) — change, authority, review, and convergence discipline.
 - [`docs/evaluation.md`](docs/evaluation.md) — deterministic, simulation, model-quality, and qualification evidence discipline.
 - [`docs/ci.md`](docs/ci.md) — meaning and scope of continuous-integration guarantees.

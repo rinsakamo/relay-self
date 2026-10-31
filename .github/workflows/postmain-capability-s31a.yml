@@ -1,0 +1,100 @@
+name: Post-MAIN S31-A real local Minecraft server and genuine Mineflayer
+
+on:
+  push:
+    branches:
+      - self/postmain-s31a-ci-real-minecraft-20261009
+  pull_request:
+    branches:
+      - self/postmain-s30-node-bridge-process-20261009
+
+permissions:
+  contents: read
+
+jobs:
+  repository-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python tools/check_repository.py
+
+  pytest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - run: python -m pip install --disable-pip-version-check "pytest==9.1.1"
+      - run: python -m pytest
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --disable-pip-version-check "ruff==0.16.7"
+      - run: ruff check src tests experiments adapters observability
+
+  mineflayer-adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - run: npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+      - run: npm run check --prefix adapters/mineflayer
+
+  real-minecraft-server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      S31A_REAL_SERVER_CI: "1"
+      PYTHONPATH: ${{ github.workspace }}/src
+      NODE_OPTIONS: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Confirm runtimes and pinned installed dependency
+        run: |
+          java -version
+          node --version
+          python --version
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "const m = require('./adapters/mineflayer/node_modules/mineflayer/package.json'); if (m.version !== '4.39.0') process.exit(2); console.log('S31A_REAL_MINEFLAYER_VERSION='+m.version)"
+      - name: Qualify real local Minecraft server observation
+        run: |
+          mkdir -p s31a-artifacts
+          python -B -m adapters.mineflayer.s31a_real_server_ci \
+            --report s31a-artifacts/s31a-report.json \
+            --server-log s31a-artifacts/minecraft-server.log
+      - name: Publish dynamic actual-world result even for BLOCKED/FAIL
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s31a-real-server-receipts
+          path: s31a-artifacts/
+          if-no-files-found: error
+          retention-days: 30

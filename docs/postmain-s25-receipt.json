@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S25",
+  "base_head": "103dcaf887c59784baaaee761e5f4086d48e8212",
+  "classification": "EXPLICIT_WAIT_NONACTION_FRESH_EVIDENCE_RECHECK_QUALIFIED",
+  "qualification_gate": "REQUIRES_EXACT_FINAL_HEAD_CI_SUCCESS",
+  "evidence_class": "DETERMINISTIC_TEST_APPARATUS_ONLY",
+  "subject": {
+    "S24": "explicit third cognition epoch, World-observed clearance 180cm; WAIT=4 MOVE_AWAY=7, WAIT admitted",
+    "S23": "Action3 OUTCOME, Skill3 remains STARTED",
+    "intent": "escape-threat",
+    "retained": "risk_weight=4/rev1"
+  },
+  "wait_acknowledgement": {
+    "time_ns": 71,
+    "expiry_time_ns": 110,
+    "non_action": true,
+    "authorization": "explicit caller WaitAuthorityScope.ACKNOWLEDGE scoped to original S24 evidence",
+    "state_owner": "none (immutable caller receipt only)",
+    "changes_action_supervisor": false,
+    "new_action_proposal": false,
+    "new_action_issued": false
+  },
+  "explicit_recheck": {
+    "at_ns": 90,
+    "new_observation_time_ns": 80,
+    "new_clearance_cm": 20,
+    "authority": "separate explicit caller WaitAuthorityScope.REEVALUATE scoped to new evidence",
+    "comparison_rule": "WAIT=2*risk when clearance<=100cm else risk; MOVE_AWAY=7",
+    "scores": {
+      "WAIT": 8,
+      "MOVE_AWAY": 7
+    },
+    "selected": "MOVE_AWAY",
+    "processing": "reinvoke existing S24 EpochPlan ATT/BLF/CNC/PRD/PLAN/ROUTE/ADMISSION",
+    "admission": "ADMITTED",
+    "action_proposal": false,
+    "action_issue": false
+  },
+  "unchanged_during_wait": {
+    "closed_action_ids": [
+      "action-move-backward-1",
+      "action-move-backward-2",
+      "action-recovery-backward-3"
+    ],
+    "skill2": "FAILED",
+    "skill3": "STARTED",
+    "intent": "escape-threat",
+    "retained_revision": 1,
+    "retained_value": 4
+  },
+  "negative_controls": [
+    "non-WAIT cognitive trace cannot create WAIT gate",
+    "wrong/missing/denied/mis-scoped WAIT acknowledge authority",
+    "non-ADMITTED S24 decision, inconsistent score, wrong stages/retained revision",
+    "recheck with same evidence/provenance or wrong World Action/binding/session/consequence source",
+    "observation before acknowledgement, after gate expiry, or after recheck time",
+    "expired WAIT receipt does not itself trigger recheck",
+    "missing/denied/wrong-scope recheck authority or acknowledgement authority reuse",
+    "changed Intent event history, missing Current Intent, terminal/stale recovery Skill",
+    "unexpected new open Action prevents recheck"
+  ],
+  "automatic_epoch_reentry": false,
+  "wait_action_issued": false,
+  "global_wait_replay_protection": false,
+  "autonomous_timer": false,
+  "autonomous_world_listener": false,
+  "external_model_calls": 0,
+  "real_minecraft": "NOT_RUN",
+  "limitations": [
+    "Wait gate is a caller-held immutable receipt, not durable owner registry; repeated separate caller calls can replay the same gate/evidence unless caller enforces uniqueness",
+    "Deadline is a validation bound only; no timer or event scheduling occurs",
+    "Evidence and time are caller-supplied; no verified source-native Minecraft World sensor or cryptographic authority",
+    "Decision WAIT is an explicit non-Action disposition, not guaranteed safe waiting in World",
+    "Separate recheck may select MOVE_AWAY but that selection itself cannot propose, authorize or issue Action",
+    "WAIT reevaluation uses S24 fixed comparison criterion and frozen rev1/4, not learnt policy or continuous autonomous agent",
+    "Frozen S18-S24, RelayTheory R6 and Paper2 MAIN40 untouched"
+  ]
+}

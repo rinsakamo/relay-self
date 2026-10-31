@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "process": "real node subprocess with test-only mock Mineflayer createBot()",
+  "bootstrap": [
+    {
+      "seq": 0,
+      "type": "adapter_started"
+    },
+    {
+      "seq": 1,
+      "type": "observation",
+      "kind": "spawn"
+    }
+  ],
+  "request1": {
+    "seq": 2,
+    "request_id": "s30-probe:one.1",
+    "kind": "probe",
+    "target_id": 42,
+    "distance_m": 0.2
+  },
+  "request2": {
+    "seq": 3,
+    "request_id": "s30-probe:two.2",
+    "kind": "probe",
+    "target_id": 42,
+    "distance_m": 0.2
+  },
+  "legacy": {
+    "seq": 4,
+    "request_id": null,
+    "kind": "probe"
+  },
+  "duplicate": {
+    "after_first_seq": 2,
+    "replay_id": "s30-probe:one.1",
+    "response_type": "command_error",
+    "message": "duplicate_probe_request_id"
+  },
+  "alternate_fixture": {
+    "distance_m": 1.8,
+    "target_id": 42,
+    "probe_seq": 2
+  },
+  "shutdown": {
+    "ack_and_connection_end": true,
+    "exit_code": 0
+  },
+  "forced_end": {
+    "no_relaunch": true,
+    "subsequent_send_rejected": true
+  },
+  "network_not_used": true,
+  "live_minecraft": "NOT_RUN"
+}

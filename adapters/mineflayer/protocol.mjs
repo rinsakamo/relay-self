@@ -46,6 +46,13 @@ function requireText (name, value) {
   return value
 }
 
+export function requireProbeRequestId (value) {
+  if (typeof value !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/.test(value)) {
+    throw new Error('probe request_id must be 1..128 ASCII identifier characters')
+  }
+  return value
+}
+
 function requireFiniteNumber (name, value) {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     throw new Error(name + ' must be a finite number')
@@ -193,6 +200,13 @@ export function parseCommand (raw) {
   }
 
   if (value.type === 'observe') {
+    if (Object.hasOwn(value, 'request_id')) {
+      requireExactKeys('correlated observe command', value, ['type', 'request_id'])
+      return Object.freeze({
+        type: 'observe',
+        request_id: requireProbeRequestId(value.request_id)
+      })
+    }
     requireExactKeys('observe command', value, ['type'])
     return Object.freeze({ type: 'observe' })
   }
@@ -300,12 +314,25 @@ function nearbyEntityObservation (bot) {
   }
 }
 
-export function snapshotFromBot (bot) {
+export function snapshotFromBot (bot, { includeNativeOrientation = false } = {}) {
   if (!bot || !bot.entity || !bot.entity.position) {
     throw new Error('bot position is unavailable before spawn')
   }
 
+  if (typeof includeNativeOrientation !== 'boolean') {
+    throw new Error('native orientation opt-in must be boolean')
+  }
   const nearby = nearbyEntityObservation(bot)
+  const orientation = includeNativeOrientation
+    ? {
+        source: 'mineflayer_bot_entity',
+        yaw_rad: requireFiniteNumber('bot.entity.yaw', bot.entity.yaw),
+        pitch_rad: requireFiniteNumber('bot.entity.pitch', bot.entity.pitch)
+      }
+    : null
+  if (orientation && Math.abs(orientation.pitch_rad) > Math.PI / 2) {
+    throw new Error('native orientation pitch outside bound')
+  }
   return {
     health: requireFiniteNumber('bot.health', bot.health),
     food: requireFiniteNumber('bot.food', bot.food),
@@ -322,7 +349,32 @@ export function snapshotFromBot (bot) {
     time: timeSnapshot(bot),
     inventory: inventorySnapshot(bot),
     nearby_entities: nearby.entities,
-    nearby_entities_coverage: nearby.coverage
+    nearby_entities_coverage: nearby.coverage,
+    ...(orientation ? { native_orientation: orientation } : {})
+  }
+}
+
+export function admitProbeRequestId (seen, requestId) {
+  if (!(seen instanceof Set)) {
+    throw new Error('probe request ledger must be a Set')
+  }
+  requireProbeRequestId(requestId)
+  if (seen.has(requestId)) {
+    return false
+  }
+  seen.add(requestId)
+  return true
+}
+
+export function makeProbePayload (snapshot, requestId = undefined) {
+  requireObject('probe snapshot', snapshot)
+  if (requestId === undefined) {
+    return { kind: 'probe', snapshot }
+  }
+  return {
+    kind: 'probe',
+    snapshot,
+    request_id: requireProbeRequestId(requestId)
   }
 }
 

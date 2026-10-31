@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "source": "existing Mineflayer send_observe/receive typed adapter session",
+  "session_id": "s23-recovery-session-3",
+  "parent_action": "action-recovery-backward-3",
+  "parent_after_seq": 4,
+  "request_cursor_seq": 5,
+  "authority": "s28-caller-probe-once",
+  "near": {
+    "probe_seq": 5,
+    "distance_m": 0.2,
+    "distance_cm": 20,
+    "selection": "MOVE_AWAY",
+    "s24_admission": "ADMITTED"
+  },
+  "far": {
+    "probe_seq": 5,
+    "distance_m": 1.8,
+    "distance_cm": 180,
+    "selection": "WAIT",
+    "s24_admission": "ADMITTED"
+  },
+  "nonprobe_interleaving": {
+    "seq5_kind": "entities",
+    "seq6_kind": "probe",
+    "accepted_with_contiguous_seq": true
+  },
+  "replay_rejected": true,
+  "timeout_consumes_cursor": true,
+  "no_request_id_on_wire": true,
+  "physical_origin_not_qualified": true,
+  "new_action_issued": false
+}

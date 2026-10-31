@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S26",
+  "base_head": "dce5fe3bf33ed2fd450ab5e4ccea076e628ad938",
+  "classification": "EXPLICIT_WAIT_RELEASE_FOURTH_ACTION_OUTCOME_CLOSURE_QUALIFIED",
+  "qualification_gate": "REQUIRES_EXACT_FINAL_HEAD_CI_SUCCESS",
+  "evidence_class": "DETERMINISTIC_MINEFLAYER_TEST_APPARATUS_ONLY",
+  "frozen_authority": {
+    "S24": "103dcaf887c59784baaaee761e5f4086d48e8212",
+    "S25": "dce5fe3bf33ed2fd450ab5e4ccea076e628ad938"
+  },
+  "trace": [
+    "S24 caller-initiated third cognition returns WAIT/ADMITTED for trusted 180cm World evidence",
+    "S25 explicit ACKNOWLEDGE WAIT at 71ns, with expiry 110ns; no Action",
+    "S25 separate fresh 20cm observation at 80ns and distinct REEVALUATE authority at 90ns",
+    "S25 fresh ATT/BLF/CNC/PRD/PLAN/ROUTE/S13 returns MOVE_AWAY/ADMITTED (WAIT8/MOVE7)",
+    "S26 explicit release proposal authority scoped to new observation and Action4",
+    "S26 recomputes fixed scorer and S12 route, performs fresh independent S13 admission and existing S14 binding validation",
+    "S26 ActionLifecycle.propose produces Action4 PROPOSED under same STARTED Skill3",
+    "Distinct explicit Action4 authorization, ActionSupervisor ISSUE at 97ns with deadline 180ns",
+    "S15 deterministic MOVE_BACKWARD command on separate World session4",
+    "S16 WorldConsequence4 and exact Action4 OUTCOME at 105ns",
+    "STOP"
+  ],
+  "fourth_action": {
+    "action_id": "action-wait-release-backward-4",
+    "binding_id": "binding-wait-release-4",
+    "skill_execution_id": "skill-exec-escape-recovery-3",
+    "world_session": "s26-wait-release-session-4",
+    "candidate": "MOVE_AWAY",
+    "primitive": "MOVE_BACKWARD",
+    "terminal": "OUTCOME"
+  },
+  "frozen_prior_actions": [
+    "action-move-backward-1",
+    "action-move-backward-2",
+    "action-recovery-backward-3"
+  ],
+  "owner_state": {
+    "skill2": "FAILED",
+    "skill3": "STARTED",
+    "intent": "escape-threat",
+    "retained_risk_weight": 4,
+    "retained_revision": 1
+  },
+  "authority_boundaries": {
+    "wait_acknowledgement": "S25 ACKNOWLEDGE authority",
+    "fresh_reevaluation": "S25 REEVALUATE authority distinct from acknowledgement",
+    "release_proposal": "S26 caller permission to propose only, distinct from earlier two",
+    "action_authorization": "Existing ActionLifecycle.authorize independent Action4 authority",
+    "physical_issue": "Existing ActionSupervisor.issue",
+    "world_outcome": "S15/S16 existing interpretation and outcome owner"
+  },
+  "negative_gates": [
+    "WAIT recheck remains WAIT -> no Action proposal",
+    "missing, denied, wrong-scope reevaluation or separate proposal release authority",
+    "forged recheck choice, comparison score, stage IDs, source provenance or World parent",
+    "wrong Action/Skill/Intent/binding IDs, stale owner snapshots",
+    "prior Action3 ID replay and Action4 reissue rejected by supervisor",
+    "expired WAIT release or earlier-than-recheck time",
+    "unauthorized Action ISSUE rejected",
+    "wrong World session consequence and terminal outcome replay rejected"
+  ],
+  "automatic_wait_release": false,
+  "automatic_action_authorization": false,
+  "automatic_epoch_reentry": false,
+  "global_replay_protection": false,
+  "new_skill_root": false,
+  "new_physical_primitive": false,
+  "autonomous_scheduler": false,
+  "new_learning_commit": false,
+  "model_calls": 0,
+  "live_minecraft": "NOT_RUN",
+  "limitations": [
+    "Only the existing S15 MOVE_BACKWARD primitive is executed in a deterministic adapter double",
+    "The trusted caller supplies threat distance, clock, and grant objects without independent physical or cryptographic verification",
+    "S26 recomputes a new S12/S13 route from the frozen S24 comparator and S25 typed trace; it does not recover an original PLAN object from S24",
+    "Action4 is another physical command under the same Skill3, which remains STARTED; Action OUTCOME is not Skill SUCCEEDED",
+    "Proposed-only Action roots are not persistently registered; globally exactly-once proposal/authorization across disconnected callers is not qualified",
+    "S25 immutable WAIT gate has no timer or globally replay-safe durable owner",
+    "No automatic fifth cognition epoch, general learned policy, live Minecraft, or Paper2 MAIN40 reinterpretation",
+    "Frozen S18-S25 and RelayTheory R6 remain unchanged"
+  ]
+}

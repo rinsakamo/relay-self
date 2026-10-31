@@ -1,0 +1,3 @@
+# S53 host-local L0/L2 concurrency
+
+The synchronous existing RelayEngine provider can be executed in an asynchronous thread while the host continues to dispatch urgent L0 callbacks. Exact World session/sequence/intent/retained revision is bound to transient L2 generation; after urgent World revision, late result is discarded, no Action/retained state mutation. It deliberately **does not** call task.cancel to claim real GPU preemption. Backend STOP ACK and resource release remain separate external evidence. Deterministic test uses a blocked worker thread, not measured local LLM/GPU and not real concurrent Minecraft physics. Refs #396.

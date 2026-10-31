@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Union
@@ -198,6 +199,23 @@ class MineflayerNearbyEntitiesCoverage:
 
 
 @dataclass(frozen=True, slots=True)
+class MineflayerNativeOrientation:
+    """Optional opt-in read-only bot.entity sample; not issuer/World attestation."""
+
+    source: str
+    yaw_rad: float
+    pitch_rad: float
+
+    def __post_init__(self) -> None:
+        if self.source != "mineflayer_bot_entity":
+            raise MineflayerAdapterProtocolError("unrecognized orientation source")
+        _require_number("orientation.yaw_rad", self.yaw_rad)
+        _require_number("orientation.pitch_rad", self.pitch_rad)
+        if abs(self.pitch_rad) > math.pi / 2:
+            raise MineflayerAdapterProtocolError("orientation pitch outside native bound")
+
+
+@dataclass(frozen=True, slots=True)
 class MineflayerSnapshot:
     health: float
     food: float
@@ -269,6 +287,18 @@ class MineflayerSnapshot:
 
 
 @dataclass(frozen=True, slots=True)
+class MineflayerOrientedSnapshot(MineflayerSnapshot):
+    """DEV-only opt-in schema. Legacy MineflayerSnapshot/asdict is unchanged."""
+
+    native_orientation: MineflayerNativeOrientation
+
+    def __post_init__(self) -> None:
+        MineflayerSnapshot.__post_init__(self)
+        if not isinstance(self.native_orientation, MineflayerNativeOrientation):
+            raise MineflayerAdapterProtocolError("W4 native orientation type required")
+
+
+@dataclass(frozen=True, slots=True)
 class MineflayerMessage:
     session_id: str
     seq: int
@@ -308,6 +338,7 @@ class MineflayerAdapterStarted(MineflayerMessage):
 class MineflayerObservation(MineflayerMessage):
     kind: str
     snapshot: MineflayerSnapshot
+    request_id: str | None = None
 
     def __post_init__(self) -> None:
         MineflayerMessage.__post_init__(self)
@@ -319,6 +350,44 @@ class MineflayerObservation(MineflayerMessage):
             raise MineflayerAdapterProtocolError(
                 "observation snapshot must be MineflayerSnapshot"
             )
+        if self.request_id is not None:
+            _require_probe_request_id(self.request_id)
+            if self.kind != "probe":
+                raise MineflayerAdapterProtocolError(
+                    "request_id is only supported on probe observations"
+                )
+
+
+@dataclass(frozen=True, slots=True)
+class MineflayerNativeClockPacket(MineflayerMessage):
+    """Original-shaped clientbound time sample, not command-effect authority."""
+
+    source: str
+    observation_precision: str
+    world_age_ticks: str
+    world_day_time_raw_ticks: str
+    tick_day_time: bool
+    host_monotonic_ns: str
+    command_effect_tick_attested: bool
+
+    def __post_init__(self) -> None:
+        MineflayerMessage.__post_init__(self)
+        if (
+            self.source != "minecraft_1_21_8_clientbound_update_time"
+            or self.observation_precision != "SERVER_UPDATE_TIME_PACKET_SAMPLE_ONLY"
+            or type(self.world_age_ticks) is not str
+            or re.fullmatch(r"(0|[1-9][0-9]*)", self.world_age_ticks) is None
+            or int(self.world_age_ticks) >= 2**63
+            or type(self.world_day_time_raw_ticks) is not str
+            or re.fullmatch(r"(0|-?[1-9][0-9]*)", self.world_day_time_raw_ticks) is None
+            or abs(int(self.world_day_time_raw_ticks)) >= 2**63
+            or type(self.tick_day_time) is not bool
+            or type(self.host_monotonic_ns) is not str
+            or re.fullmatch(r"[1-9][0-9]*", self.host_monotonic_ns) is None
+            or type(self.command_effect_tick_attested) is not bool
+            or self.command_effect_tick_attested
+        ):
+            raise MineflayerAdapterProtocolError("unqualified native V6 clock packet")
 
 
 @dataclass(frozen=True, slots=True)
@@ -406,6 +475,7 @@ class MineflayerShutdownAck(MineflayerMessage):
 MineflayerDecodedMessage = Union[
     MineflayerAdapterStarted,
     MineflayerObservation,
+    MineflayerNativeClockPacket,
     MineflayerEntityHurt,
     MineflayerEffectResult,
     MineflayerConnectionEnd,
@@ -500,16 +570,38 @@ def parse_mineflayer_line(line: str) -> MineflayerDecodedMessage:
         )
 
     if message_type == "observation":
-        _require_exact_keys(
-            "observation",
-            payload,
-            {"type", "session_id", "seq", "kind", "snapshot"},
-        )
+        keys = {"type", "session_id", "seq", "kind", "snapshot"}
+        if "request_id" in payload:
+            keys.add("request_id")
+            _require_probe_request_id(payload["request_id"])
+        _require_exact_keys("observation", payload, keys)
         return MineflayerObservation(
             session_id=session_id,
             seq=seq,
             kind=_decoded_text("observation kind", payload["kind"]),
             snapshot=_decode_snapshot(payload["snapshot"]),
+            request_id=payload.get("request_id"),
+        )
+
+    if message_type == "native_clock_packet":
+        _require_exact_keys(
+            "native_clock_packet", payload,
+            {
+                "type", "session_id", "seq", "source",
+                "observation_precision", "world_age_ticks",
+                "world_day_time_raw_ticks", "tick_day_time",
+                "host_monotonic_ns", "command_effect_tick_attested",
+            },
+        )
+        return MineflayerNativeClockPacket(
+            session_id=session_id, seq=seq,
+            source=payload["source"],
+            observation_precision=payload["observation_precision"],
+            world_age_ticks=payload["world_age_ticks"],
+            world_day_time_raw_ticks=payload["world_day_time_raw_ticks"],
+            tick_day_time=payload["tick_day_time"],
+            host_monotonic_ns=payload["host_monotonic_ns"],
+            command_effect_tick_attested=payload["command_effect_tick_attested"],
         )
 
     if message_type == "entity_hurt":
@@ -714,8 +806,11 @@ def encode_attack_entity(action_id: str, *, entity_id: int) -> str:
     )
 
 
-def encode_observe() -> str:
-    return _encode_command({"type": "observe"})
+def encode_observe(request_id: str | None = None) -> str:
+    if request_id is None:
+        return _encode_command({"type": "observe"})
+    _require_probe_request_id(request_id)
+    return _encode_command({"type": "observe", "request_id": request_id})
 
 
 def encode_shutdown() -> str:
@@ -751,21 +846,20 @@ def _decode_launch_config(value: object) -> MineflayerLaunchConfig:
 
 def _decode_snapshot(value: object) -> MineflayerSnapshot:
     payload = _require_mapping("snapshot", value)
-    _require_exact_keys(
-        "snapshot",
-        payload,
-        {
-            "health",
-            "food",
-            "food_saturation",
-            "oxygen_level",
-            "position",
-            "time",
-            "inventory",
-            "nearby_entities",
-            "nearby_entities_coverage",
-        },
-    )
+    keys = {
+        "health",
+        "food",
+        "food_saturation",
+        "oxygen_level",
+        "position",
+        "time",
+        "inventory",
+        "nearby_entities",
+        "nearby_entities_coverage",
+    }
+    if "native_orientation" in payload:
+        keys.add("native_orientation")
+    _require_exact_keys("snapshot", payload, keys)
     position = _decode_position("position", payload["position"])
     time_value = payload["time"]
     time = None if time_value is None else _decode_time(time_value)
@@ -783,7 +877,7 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
     nearby_entities_coverage = _decode_nearby_entities_coverage(
         payload["nearby_entities_coverage"]
     )
-    return MineflayerSnapshot(
+    fields = dict(
         health=_decoded_non_negative_number("health", payload["health"]),
         food=_decoded_non_negative_number("food", payload["food"]),
         food_saturation=_decoded_non_negative_number(
@@ -803,6 +897,21 @@ def _decode_snapshot(value: object) -> MineflayerSnapshot:
         inventory=inventory,
         nearby_entities=nearby_entities,
         nearby_entities_coverage=nearby_entities_coverage,
+    )
+    if "native_orientation" in payload:
+        return MineflayerOrientedSnapshot(
+            **fields, native_orientation=_decode_native_orientation(payload["native_orientation"]),
+        )
+    return MineflayerSnapshot(**fields)
+
+
+def _decode_native_orientation(value: object) -> MineflayerNativeOrientation:
+    payload = _require_mapping("native orientation", value)
+    _require_exact_keys("native orientation", payload, {"source", "yaw_rad", "pitch_rad"})
+    return MineflayerNativeOrientation(
+        source=_decoded_text("native orientation source", payload["source"]),
+        yaw_rad=_decoded_number("orientation.yaw_rad", payload["yaw_rad"]),
+        pitch_rad=_decoded_number("orientation.pitch_rad", payload["pitch_rad"]),
     )
 
 
@@ -937,6 +1046,24 @@ def _require_exact_keys(
             f"{name} fields are invalid; "
             f"missing={sorted(expected - actual)}, "
             f"unexpected={sorted(actual - expected)}"
+        )
+
+
+def _require_probe_request_id(value: object) -> None:
+    if (
+        not isinstance(value, str)
+        or not 1 <= len(value) <= 128
+        or not value[0].isascii()
+        or not value[0].isalnum()
+        or any(
+            not char.isascii() or (
+                not char.isalnum() and char not in "._:-"
+            )
+            for char in value
+        )
+    ):
+        raise MineflayerAdapterProtocolError(
+            "probe request_id must be 1..128 ASCII identifier characters"
         )
 
 

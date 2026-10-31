@@ -1,0 +1,48 @@
+name: Post-MAIN S49 genuine one-session reactive L0
+on:
+  push:
+    branches:
+      - self/postmain-feature-s49-normal-runtime-20261009
+  pull_request:
+    branches:
+      - self/postmain-feature-s48-interruption-fence-20261009
+permissions:
+  contents: read
+jobs:
+  s49-real-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      S49_REAL_SERVER_CI: '1'
+      NODE_OPTIONS: ''
+      PYTHONPATH: ${{ github.workspace }}/src:${{ github.workspace }}/tests
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+      - name: Unmodified Mineflayer version preflight
+        run: |
+          java -version
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -e "if(require('./adapters/mineflayer/node_modules/mineflayer/package.json').version !== '4.39.0') process.exit(2)"
+      - name: Real Minecraft automatic WAIT and two native MOVE Action outcomes
+        run: |
+          mkdir -p s49-artifacts
+          python -B -m adapters.mineflayer.s49_normal_session_real_ci --report s49-artifacts/report.json --server-log s49-artifacts/minecraft.log
+      - name: Always preserve physical terminal evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s49-real-l0-native-evidence
+          path: s49-artifacts/
+          if-no-files-found: warn
+          retention-days: 30

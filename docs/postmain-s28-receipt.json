@@ -1,0 +1,86 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S28",
+  "base_head": "f40c690cf7df005be4a69fe1cd57bb0d29c1070a",
+  "classification": "SERIALIZED_EXPLICIT_MINEFLAYER_PROBE_ROUNDTRIP_QUALIFIED",
+  "qualification_gate": "REQUIRES_EXACT_FINAL_HEAD_CI_SUCCESS",
+  "evidence_class": "DETERMINISTIC_ADAPTER_SEND_RECEIVE_TEST_ONLY",
+  "mission": "caller issues exactly one observe request and reads bounded typed frames, then qualifies S27 source-native projection",
+  "parent": {
+    "action": "action-recovery-backward-3",
+    "world_session": "s23-recovery-session-3",
+    "parent_after_observation_seq": 4,
+    "action_status": "OUTCOME",
+    "consequence_status": "EXECUTED"
+  },
+  "authority": {
+    "type": "ExplicitProbeAuthority",
+    "scope": "one caller-controlled serialized post-Action probe",
+    "granted": true,
+    "session_matches_parent": true,
+    "target_id": 42,
+    "target_name": "zombie"
+  },
+  "cursor": {
+    "owner_scope": "one caller-held mutable one-shot cursor",
+    "initial_next_seq": 5,
+    "consumed_before_send": true,
+    "local_replay_protection": true,
+    "global_replay_protection": false,
+    "persisted_cursor": false
+  },
+  "transport": {
+    "adapter_method_send": "send_observe",
+    "adapter_method_receive": "receive",
+    "default_timeout_seconds": 0.25,
+    "max_frames": 4,
+    "allowed_max_frames": 16,
+    "typed_messages": true,
+    "exact_session_and_contiguous_seq": true,
+    "nonprobe_frames": "contiguous MineflayerObservation allowed until bounded explicit probe",
+    "connection_events": "fail closed",
+    "wire_request_id_available": false,
+    "causal_request_response_proven": false
+  },
+  "controlled_result": {
+    "near": {
+      "probe_seq": 5,
+      "observed_distance_m": 0.2,
+      "projected_cm": 20,
+      "s24_choice": "MOVE_AWAY"
+    },
+    "far": {
+      "probe_seq": 5,
+      "observed_distance_m": 1.8,
+      "projected_cm": 180,
+      "s24_choice": "WAIT"
+    },
+    "retained_risk_weight": 4,
+    "retained_revision": 1,
+    "action_issued": false
+  },
+  "negative_gates": [
+    "missing/mismatched/denied caller authority",
+    "wrong Action, WorldConsequence, adapter_started session, or parent sequence",
+    "invalid time bounds, timeout/max_frames",
+    "cursor reuse, stale/future cursor",
+    "wrong-session, replayed/gapped/untyped frame",
+    "absent target, no probe, too many interleaved nonprobe frames",
+    "send error or timeout consume one-shot cursor without retry or proposal"
+  ],
+  "live_minecraft": "NOT_RUN",
+  "automatic_epoch_reentry": false,
+  "new_action_issued": false,
+  "cryptographic_bridge_attestation": false,
+  "limitations": [
+    "Existing bridge observe command and observation response have no request_id; serialized caller lease and message ordering cannot cryptographically or causally distinguish an unsolicited queued probe",
+    "Source is typed deterministic adapter double, not a running Mineflayer process or live Minecraft endpoint",
+    "Exclusive access is a caller-side assumption; no global interprocess transport lock or exactly-once guarantee",
+    "Sequence cursor is a caller-owned in-memory token; no persistence, restart proof or global replay ledger",
+    "Caller supplies observed_at_ns and inspected_at_ns; adapter frames themselves have no authenticated wall-clock timestamps",
+    "S27 coverage and target identity limits remain: target missing never implies safety",
+    "No new Action/Skill owner, sensor listener, scheduler, automatic epoch, World actuation, learning or Paper2 MAIN40 reinterpretation"
+  ],
+  "wire_request_id_available": false,
+  "causal_request_response_proven": false
+}

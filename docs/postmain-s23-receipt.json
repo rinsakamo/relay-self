@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S23",
+  "base_head": "7b815217db5be4402a88090d04a22e61f5ea05c7",
+  "classification": "EXPLICIT_LOCAL_RECOVERY_ACTION_OUTCOME_CLOSURE_QUALIFIED",
+  "qualification_gate": "REQUIRES_EXACT_FINAL_HEAD_CI_SUCCESS",
+  "evidence_class": "DETERMINISTIC_TEST_APPARATUS_ONLY",
+  "cause_chain": [
+    "S20 second Action2 OUTCOME under Current Intent escape-threat",
+    "S21 separate goal evidence -> Skill2 FAILED",
+    "S22 caller evidence: alternative Skill available, Intent not challenged",
+    "S22 explicit caller authority -> alternative Skill STARTED with fresh execution ID",
+    "S23 explicit S12 reroute of prior S19 plan (no new cognition)",
+    "S23 new S13 admission policy and decision",
+    "S14 resolve_execution_binding with fresh candidate/Intent proof",
+    "S23 exact guard -> existing ActionLifecycle.propose under same started recovery Skill",
+    "distinct explicit Action3 authorization and supervised ISSUE",
+    "S15 deterministic Mineflayer MOVE_BACKWARD command in third session",
+    "S16 existing Action outcome interpretation -> supervised OUTCOME",
+    "STOP"
+  ],
+  "previous_failed_skill": {
+    "execution_id": "skill-exec-escape-2",
+    "terminal": "FAILED"
+  },
+  "recovered_skill": {
+    "execution_id": "skill-exec-escape-recovery-3",
+    "skill_id": "alternate-escape-path",
+    "state_after_Action3": "STARTED"
+  },
+  "third": {
+    "action_id": "action-recovery-backward-3",
+    "binding_id": "binding-recovery-move-away-3",
+    "session_id": "s23-recovery-session-3",
+    "candidate_ref": "MOVE_AWAY",
+    "action_ref": "MOVE_BACKWARD",
+    "action_outcome": "OUTCOME"
+  },
+  "retained_state": {
+    "target_id": "risk_weight",
+    "value": 4,
+    "revision": 1
+  },
+  "current_intent": "escape-threat",
+  "frozen_prior_actions": [
+    "action-move-backward-1",
+    "action-move-backward-2"
+  ],
+  "negative_guards": [
+    "wrong S22 authority scope and forged candidate",
+    "stale recovery Skill snapshot",
+    "reused and mismatched Action/Skill/Intent identity",
+    "unchanged previous S13 admission",
+    "wrong plan-admission candidate mapping",
+    "pending/released Intent",
+    "duplicate issue or replay outcome",
+    "World evidence session mismatch",
+    "no implicit authorization or issue"
+  ],
+  "fresh_cognition_for_recovery": false,
+  "distinct_primitive_action_kind": false,
+  "autonomous_epoch_reentry": false,
+  "global_skill_replay_protection": false,
+  "automatic_learning_after_action3": false,
+  "model_calls": 0,
+  "live_minecraft": "NOT_RUN",
+  "limitations": [
+    "Only previously qualified S15 MOVE_BACKWARD primitive is executable; the alternate Skill name does not prove a different physical strategy",
+    "S23 does not re-run ATT/BLF/CNC/PRD/PLAN and does not prove new post-failure cognitive selection",
+    "Existing S19 PLAN is re-adjudicated by a new S12 route; the S13 decision and S14 binding are separately evaluated by caller",
+    "Trusted caller provides S22 evidence, authority, clock, and physical session; source provenance is not cryptographic",
+    "Existing S22 SkillExecution.start roots have no globally linearizable or restart-persistent exactly-once admission",
+    "Skill3 remains STARTED after Action3 OUTCOME; no implicit Skill, Intent or LRN terminal",
+    "Three Actions were closed across bounded explicit calls, not 3 autonomously coordinated epochs",
+    "Frozen S18-S22, RelayTheory R6, Paper2 MAIN40 unaffected"
+  ]
+}

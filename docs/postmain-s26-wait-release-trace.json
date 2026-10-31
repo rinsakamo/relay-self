@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S26",
+  "evidence_class": "DETERMINISTIC_TEST",
+  "before": {
+    "prior_action_terminals": [
+      "action-move-backward-1",
+      "action-move-backward-2",
+      "action-recovery-backward-3"
+    ],
+    "world_session3": "s23-recovery-session-3",
+    "skill2": "FAILED",
+    "skill3": "STARTED",
+    "intent": "escape-threat",
+    "risk_weight": {
+      "value": 4,
+      "revision": 1
+    }
+  },
+  "wait": {
+    "source_clearance_cm": 180,
+    "wait_cost": 4,
+    "move_cost": 7,
+    "selection": "WAIT",
+    "admission": "ADMITTED",
+    "acknowledged_at_ns": 71,
+    "deadline_ns": 110,
+    "action_created": false
+  },
+  "recheck": {
+    "clearance_cm": 20,
+    "observed_at_ns": 80,
+    "invoked_at_ns": 90,
+    "wait_cost": 8,
+    "move_cost": 7,
+    "selection": "MOVE_AWAY",
+    "admission": "ADMITTED",
+    "distinct_reevaluation_authority": true,
+    "action_created": false
+  },
+  "action4": {
+    "action_id": "action-wait-release-backward-4",
+    "binding_id": "binding-wait-release-4",
+    "skill_execution_id": "skill-exec-escape-recovery-3",
+    "intent_id": "escape-threat",
+    "selected_candidate": "MOVE_AWAY",
+    "primitive": "MOVE_BACKWARD",
+    "proposal_at_ns": 95,
+    "authorization_at_ns": 96,
+    "issue_at_ns": 97,
+    "issue_deadline_ns": 180,
+    "world_session": "s26-wait-release-session-4",
+    "world_status": "EXECUTED",
+    "outcome_at_ns": 105,
+    "outcome": "OUTCOME"
+  },
+  "after": {
+    "prior_actions_terminal": true,
+    "action4_terminal": true,
+    "skill2": "FAILED",
+    "skill3": "STARTED",
+    "intent": "escape-threat",
+    "retained": {
+      "value": 4,
+      "revision": 1
+    },
+    "next_epoch": "NOT_INVOKED"
+  },
+  "interpretation": "A caller may explicitly turn a new S25 MOVE_AWAY decision into a separately scoped S26 Action under existing S13-S16 owners; WAIT itself remains non-Action."
+}

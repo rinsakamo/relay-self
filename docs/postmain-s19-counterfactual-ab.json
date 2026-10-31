@@ -1,0 +1,113 @@
+{
+  "schema_version": "1.0",
+  "milestone": "S19",
+  "base_head": "b5eb5d3416a9c303b855250adea4323e7611f350",
+  "evidence_class": "DETERMINISTIC_COUNTERFACTUAL_TEST_APPARATUS",
+  "classification": "EXPLICIT_TWO_EPOCH_RETAINED_STATE_REUSE_QUALIFIED",
+  "epoch_one": {
+    "trace": "ATT -> BLF -> CNC -> PRD/PLAN/HABIT -> ROUTE -> ADMISSION -> EXEC_BIND -> Action PROPOSED/AUTHORIZED/ISSUED -> WorldConsequence.EXECUTED -> Action OUTCOME -> explicit FEEDBACK -> S10 proposal -> LearningUpdateAuthority -> commit -> STOP",
+    "action_id": "action-move-backward-1",
+    "binding_id": "binding-move-away-1",
+    "outcome_reason": "observed_execution",
+    "world_session_id": "s18-session",
+    "feedback_id": "feedback:risk-from-observed-move:risk_weight:action-move-backward-1:binding-move-away-1:s18-session:observed_execution",
+    "feedback_direction": "increase",
+    "target_id": "risk_weight",
+    "rule_id": "bounded-risk-step",
+    "rule_version": 1,
+    "authority_id": "s18-learning-authority",
+    "previous_revision": 0,
+    "committed_revision": 1,
+    "previous_value": 3,
+    "committed_value": 4,
+    "update_provenance": {
+      "source": "s18-architecture-freeze",
+      "reference": "learning-commit"
+    }
+  },
+  "epoch_two": {
+    "trigger": "explicit_caller_due_items_and_bindings",
+    "automatic_reentry": false,
+    "work_ids": [
+      "s19-att",
+      "s19-blf",
+      "s19-cnc",
+      "s19-prd-wait",
+      "s19-prd-move",
+      "s19-plan",
+      "s19-route",
+      "s19-admit"
+    ],
+    "source_kind": "existing_prediction_state_from_concept_with_caller_explicated_retained_projection",
+    "updated_source_refs": [
+      "learning-target:risk_weight",
+      "learning-revision:1",
+      "learning-feedback:feedback:risk-from-observed-move:risk_weight:action-move-backward-1:binding-move-away-1:s18-session:observed_execution",
+      "learning-rule:bounded-risk-step:v1",
+      "learning-authority:s18-learning-authority",
+      "learning-commit-revision:1"
+    ],
+    "termination": "STOP_AFTER_FRESH_ADMISSION_WITHOUT_ACTION_ISSUE"
+  },
+  "comparison": {
+    "controlled_external_inputs": true,
+    "identical_policies": true,
+    "exact_comparator": "One Epoch 1; same IntentCommitment, same structured nearby-zombie evidence and criteria, identical WAIT and MOVE_AWAY transition rules, PLAN minimize criterion, route and admission guards",
+    "policy": "minimize_comparison_score",
+    "fixed_projection": "WAIT comparison_score=2*risk_weight; MOVE_AWAY=7",
+    "branch_A_scope": "isolated_counterfactual_pre_commit_owner_snapshot_not_a_stale_live_read",
+    "branch_B_scope": "actual_post_commit_owner_snapshot",
+    "only_variable": "retained LearningPreferenceState value/revision and derived read provenance"
+  },
+  "branches": {
+    "A": {
+      "target_id": "risk_weight",
+      "revision": 0,
+      "value": 3,
+      "scores": [
+        6,
+        7
+      ],
+      "candidate_order": [
+        "WAIT",
+        "MOVE_AWAY"
+      ],
+      "selected": "WAIT",
+      "route": "SELECTED",
+      "admission": "ADMITTED"
+    },
+    "B": {
+      "target_id": "risk_weight",
+      "revision": 1,
+      "value": 4,
+      "scores": [
+        8,
+        7
+      ],
+      "candidate_order": [
+        "WAIT",
+        "MOVE_AWAY"
+      ],
+      "selected": "MOVE_AWAY",
+      "route": "SELECTED",
+      "admission": "ADMITTED"
+    }
+  },
+  "provider_model_calls": 0,
+  "physical_minecraft_calls": 0,
+  "limitations": [
+    "S10 bounded integer risk_weight only",
+    "Caller-defined fixed score projection is not learned",
+    "Current owner snapshot authenticity is supplied by trusted caller, not cryptographically verified",
+    "No second Action is authorized or issued",
+    "Two individually explicit epochs only; no continuous or autonomous operation",
+    "Paper2 MAIN empirical results unchanged"
+  ],
+  "qualified_evidence": {
+    "source": "tests/test_postmain_two_epoch_continuation.py::test_paired_counterfactual_ab_exact_external_controls_and_provenance",
+    "verified_ci_run": 37745257384,
+    "verified_ci_test_count": 1141,
+    "scope": "deterministic synthetic A/B only",
+    "final_exact_head_ci": "see PR checks"
+  }
+}

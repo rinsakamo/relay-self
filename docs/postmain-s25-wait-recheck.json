@@ -1,0 +1,47 @@
+{
+  "schema_version": "1.0",
+  "evidence_class": "BOUNDED_DETERMINISTIC_TEST",
+  "subject": {
+    "last_action": "action-recovery-backward-3",
+    "last_world_session": "s23-recovery-session-3",
+    "last_action_state": "OUTCOME",
+    "recovery_skill_id": "skill-exec-escape-recovery-3",
+    "recovery_skill_state": "STARTED",
+    "intent_id": "escape-threat",
+    "retained": {
+      "risk_weight": 4,
+      "revision": 1
+    }
+  },
+  "initial": {
+    "evidence_id": "s24-threat-distance-180",
+    "threat_clearance_cm": 180,
+    "wait_score": 4,
+    "move_score": 7,
+    "candidate": "WAIT",
+    "admission": "ADMITTED",
+    "acknowledged_at_ns": 71,
+    "valid_until_ns": 110,
+    "action_created": false
+  },
+  "recheck": {
+    "evidence_id": "s25-fresh-clearance-20-80",
+    "threat_clearance_cm": 20,
+    "observed_at_ns": 80,
+    "rechecked_at_ns": 90,
+    "wait_score": 8,
+    "move_score": 7,
+    "candidate": "MOVE_AWAY",
+    "admission": "ADMITTED",
+    "action_created": false
+  },
+  "gates": [
+    "ACKNOWLEDGE with original evidence-scoped authority",
+    "new observation strictly later than wait acknowledgement",
+    "REEVALUATE with separate new-evidence scoped authority",
+    "require same Action3 / WorldConsequence3 lineage",
+    "require stable current Intent, Skill3, retained owner",
+    "check caller time within expiry before running cognition"
+  ],
+  "interpretation": "new explicit observation may change plan without implicit Action or epoch; no autonomous timer or World listener"
+}

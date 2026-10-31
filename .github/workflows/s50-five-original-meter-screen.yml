@@ -1,0 +1,74 @@
+# This is a one-time read-only screen of immutable 2026-10-16 DEV originals.
+# No Java/Node/World/qualification grant and no scientific status update.
+# After the original 30-day archives expire, do not silently substitute runs.
+name: S50 five original tick-meter source screen (offline DEV)
+on:
+  push:
+    branches: [self/product-self-one-command-20261010]
+    paths:
+      - '.github/workflows/s50-five-original-meter-screen.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  original-only-screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: rinsakamo/relay-self
+      PYTHONPATH: 'src:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Download all five frozen S originals, never select matching arms
+        run: |
+          set -euo pipefail
+          for arm in BASE_ON SHAM_ON BASAL_ZERO WALK_ZERO BOTH_ZERO; do
+            out="$RUNNER_TEMP/s50-originals/$arm"
+            mkdir -p "$out"
+            gh run download 38899196206 -R "$GH_REPO" \
+              -n "s-v7-fixedpose-dev-61021-${arm}-38899196206" \
+              -D "$out"
+          done
+      - name: Independent S read-only SOURCE screen, not R qualification
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from adapters.mineflayer.m02_paper_dev.s50_boundary import (
+              compare_prospective_tick_bundles,
+          )
+          root=Path(os.environ["RUNNER_TEMP"])/"s50-originals"
+          paths=[]
+          for arm in ("BASE_ON","SHAM_ON","BASAL_ZERO","WALK_ZERO","BOTH_ZERO"):
+              original=list((root/arm).rglob("m02_report.json"))
+              assert len(original)==1, "missing/duplicated frozen original: "+arm
+              paths.append(original[0].parent)
+          verdict=compare_prospective_tick_bundles(paths)
+          assert set(verdict["arm_receipts"]) == {
+              "BASE_ON","SHAM_ON","BASAL_ZERO","WALK_ZERO","BOTH_ZERO"}
+          assert verdict["observed_chord_comparable"] is False
+          assert abs(verdict["observed_tick_chord_spread_blocks"] -
+                     0.2158456492743665) < 1e-8
+          assert verdict["scientific_matched_continuous_path"] == "NOT_ATTESTED"
+          assert verdict["science_go"] is False
+          out=Path(os.environ["RUNNER_TEMP"])/"s50-source-only-verdict.json"
+          out.write_text(json.dumps(verdict, sort_keys=True, indent=2)+"\n")
+          print("S50_FIVE_ORIGINALS_LOWER_BOUND_REVIEW_ONLY; no R/Sci promotion")
+          PY
+      - name: Preserve bounded source-screen verdict, not an original replacement
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s50-readonly-five-original-meter-screen-${{ github.run_id }}
+          path: ${{ runner.temp }}/s50-source-only-verdict.json
+          retention-days: 30

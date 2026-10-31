@@ -1,0 +1,16 @@
+{
+  "milestone": "S42",
+  "status": "PENDING_CI",
+  "classification": "NOT_QUALIFIED",
+  "base_pr": 378,
+  "base_head": "d44a411829bcb03ed2d3307350b757186a7b6834",
+  "qualification_requires": "S42_REPORT.status == PASS",
+  "minimum_exact_head_ci_runs": 2,
+  "physical_world": "MOJANG_JAVA_1.21.8_UNMODIFIED_MINEFLAYER_4.39.0",
+  "experiment": "S41 real two SIGKILL and UNKNOWN preservation, third real source near native event/probe MOVE_AWAY movement, then same-session far native entity frame plus distinct correlated probe WAIT without Action",
+  "fixed": "S19 retained risk_weight 4 rev1, intent escape-threat, candidate IDs WAIT MOVE_AWAY, score policy close wait=8 far wait=0 move=7, distance boundary 4m",
+  "required": "actual same-session near and far distinct zombie IDs and request IDs, near S15 movement S16 OUTCOME, far no S35 automatic trigger and zero new issue, old S40 UNKNOWN unchanged",
+  "nonclaims": "NO_AUTONOMOUS_ADAPTATION_OR_LEARNED_POLICY_NO_FAR_NATIVE_S35_TRIGGER_NO_SECOND_REAL_PHYSICAL_ACTION_NO_CONFIRMED_MOTION_OF_HISTORICAL_UNKNOWN",
+  "frozen": "S18_TO_S41_THEORY_R6_PAPER2_MAIN40_UNMODIFIED",
+  "s31b_wsl2_reproduction": "SKIPPED"
+}
