@@ -7,8 +7,8 @@ import os
 from pathlib import Path
 
 from adapters.mineflayer.s49_normal_session_real_ci import qualify
-from adapters.mineflayer.slm_prior_world_dev import read_previous_s49_world
 from adapters.mineflayer.slm_passive_dev import S49SLMDevOwner
+from adapters.mineflayer.slm_prior_world_dev import read_previous_s49_world
 
 
 def main():
