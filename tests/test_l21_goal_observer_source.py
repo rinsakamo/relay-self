@@ -217,3 +217,59 @@ def test_s49_l21_preflight_blocks_without_java_or_mineflayer(tmp_path, monkeypat
     assert rc == 2
     assert json.loads(report.read_bytes())["status"] == "BLOCKED"
     assert not (tmp_path / "java.log").exists()
+
+
+def test_synthetic_node_lifecycle_closes_input_and_seals_original(tmp_path, monkeypatch):
+    """Actual Node pipe lifecycle with a fake bot; no TCP/physical claim."""
+    import shutil
+
+    from adapters.mineflayer.l21_goal_observer_source import L21ObserverSession
+
+    if shutil.which("node") is None:
+        pytest.skip("Node needed for synthetic pipe lifecycle")
+    runtime = tmp_path / "runtime"
+    package = runtime / "node_modules" / "mineflayer"
+    package.mkdir(parents=True)
+    (runtime / "package.json").write_text('{"private":true}\n')
+    (package / "package.json").write_text(
+        '{"version":"4.39.0","main":"index.cjs"}\n')
+    (package / "index.cjs").write_text("""
+const { EventEmitter } = require('node:events')
+exports.createBot = options => {
+  const bot = new EventEmitter()
+  bot.username = options.username
+  bot.entity = { id: 99 }
+  bot.players = { RelaySelf: { entity: {
+    id: 44, position: { x: 10, y: 64, z: -4 }
+  } } }
+  bot.quit = () => setImmediate(() => bot.emit('end', 'synthetic quit'))
+  setImmediate(() => bot.emit('spawn'))
+  return bot
+}
+""")
+    monkeypatch.setenv("RELAYSELF_RSEE_NODE_RUNTIME_ROOT", str(runtime))
+    _, raw, sha = l20.src()
+    criterion = tmp_path / "criterion.jsonl"
+    criterion.write_bytes(raw)
+    output = tmp_path / "observer.jsonl"
+
+    async def exercise():
+        session = await L21ObserverSession.launch(
+            source_path=output, criterion_path=criterion, criterion_sha256=sha)
+        try:
+            await session.sample("l16:synthetic:action:goal-1")
+            await session.sample("l16:synthetic:action:goal-2")
+            return await session.close()
+        finally:
+            await session.terminate()
+
+    result = asyncio.run(exercise())
+    rows = [json.loads(line) for line in result.splitlines()]
+    assert [r["kind"] for r in rows] == [
+        "start", "ready", "sample", "sample", "goal_result", "closed"]
+    assert rows[-1]["samples"] == 2
+    timings = [json.loads(line) for line in
+               output.with_name(output.name + ".timing.jsonl").read_text().splitlines()]
+    assert [r["index"] for r in timings] == list(range(6))
+    assert all(int(a["monotonic_ns"]) <= int(b["monotonic_ns"])
+               for a, b in zip(timings, timings[1:]))

@@ -386,6 +386,7 @@ async def qualify(
                         # must independently match it before any L10 join.
                         source_revision=0,
                     ))
+                    report["l18_first_terminal_source"] = dict(first_terminal_source)
 
             receipt = await executor.execute(
                 session, step, bound, probe,
@@ -400,6 +401,20 @@ async def qualify(
                 or receipt.consequence.movement_distance < 0.05
             ):
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
+            report["actual_native_actions"].append({
+                "action": receipt.terminal.action_id,
+                "terminal": receipt.terminal.state.value,
+                "source": receipt.consequence.session_id,
+                "movement_m": receipt.consequence.movement_distance,
+                "event_seq": step.event_seq,
+                "probe_seq": step.choice.probe_seq,
+                # Decoded original before/after observations and exact effect
+                # receipts, captured BEFORE the immutable consequence is lost.
+                # Legacy reports have no such field and remain EVIDENCE_PARTIAL.
+                "execution_evidence": capture_native_action_evidence(
+                    receipt.consequence
+                ),
+            })
             nonlocal capture_sealed, l21_closed
             if recorder is not None and not capture_sealed:
                 assert l16_goal_plan is not None and l16_capture_root is not None
@@ -417,6 +432,13 @@ async def qualify(
                 if l21_observer is not None:
                     await l21_observer.sample(second_id)
                 second = await _correlated_observe(session, second_id)
+                # Seal the independent source before the stricter L16 audit.
+                # Its failure must not destroy already observed positions.
+                observer_original = None
+                if l21_observer is not None:
+                    observer_original = await l21_observer.close()
+                    l21_closed = True
+                    report["l21_observer"]["status"] = "SEALED_PENDING_L16_REVIEW"
                 index = session.finish_native_receipt()
                 capture_sealed = True
                 index_file = l16_capture_root / "native_bridge_source_receipt.json"
@@ -440,8 +462,7 @@ async def qualify(
                     second_probe_request_id=second_id,
                 )
                 if l21_observer is not None:
-                    observer_original = await l21_observer.close()
-                    l21_closed = True
+                    assert observer_original is not None
                     assert l20_external_goal_original is not None
                     assert l20_admitted_sha256 is not None
                     review = review_l21_observer_original(
@@ -471,20 +492,6 @@ async def qualify(
                     "real_l10_pairs": 0,
                     "external_goal_owner_independent": False,
                 }
-            report["actual_native_actions"].append({
-                "action": receipt.terminal.action_id,
-                "terminal": receipt.terminal.state.value,
-                "source": receipt.consequence.session_id,
-                "movement_m": receipt.consequence.movement_distance,
-                "event_seq": step.event_seq,
-                "probe_seq": step.choice.probe_seq,
-                # Decoded original before/after observations and exact effect
-                # receipts, captured BEFORE the immutable consequence is lost.
-                # Legacy reports have no such field and remain EVIDENCE_PARTIAL.
-                "execution_evidence": capture_native_action_evidence(
-                    receipt.consequence
-                ),
-            })
 
         async def stage_world():
             assert server is not None and server.stdin is not None
