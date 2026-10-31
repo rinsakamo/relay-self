@@ -35,3 +35,17 @@ L16's S49 bridge captures S7 native raw bytes + original terminal probes in an e
 If independent originals become available and pass source-level checks, L10 next-epoch **comparative** evaluation (memory OFF/ON and cheap exact-cue/singleton/global controls) is a separate task. Source-shaped comparison never by itself grants S10/S11 or L0 promotion.
 
 Classification: `DEV_ONLY / L17_L16_L14_READONLY_HANDOFF / PHYSICAL_NEW_WORLD_0 / L10_REAL_PAIRS_0 / S10_S11_UPDATES_0 / NO_ACTION_AUTHORITY / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+
+## Local read-only S49/S7 capture re-audit (new L17 CLI)
+
+The additional `adapters.mineflayer.l17_saved_original_goal_readback` consumes **an existing** L16 physical capture root with the four original S7/L16 files and an independently specified S49 report path. It makes **no new World calls or Action/Memory writes**. It reconstructs the operator Goal plan from its exact original bytes, recomputes the L16 window against both raw bridge streams and their S7 hash/index, and compares the entire reconstructed dataclass to the existing S49 `l16_capture.window` report. A stale/modified/missing original, foreign Action/session or report contradiction fails closed.
+
+No flags → `L17_DRY_RUN_NO_HOST_READ`; supplying exactly one path → argument error. For a separately obtained prospective physical capture:
+
+```bash
+PYTHONPATH=src:tests:. python -m adapters.mineflayer.l17_saved_original_goal_readback \
+  --root /absolute/new/l16-physical-root \
+  --s49-report /absolute/existing/s49-report.json
+```
+
+This CLI returns `waiting_for_independent_s16_goal_originals` even if the operator-local original Goal diagnostic says `REACHED`, because it **does not create or ingest an independent Goal owner's original**. A success means only raw/source-level consistency, not physical original authentication, real learning, or lack of unobserved interventions. The saved source and report are never modified. Its negative tests include content, hash, missing files, symlink roots, foreign session/Action, forged report statuses and altered plan.
