@@ -16,6 +16,7 @@ from adapters.mineflayer.l16_first_action_goal_originals import (
     L16GoalPlan,
     load_original_prefix,
 )
+from adapters.mineflayer.l18_s16_terminal_original import review_saved_s16_owner_original
 from relay_self.l14_original_bridge_goal_window import _json
 from relay_self.l17_first_action_goal_handoff import (
     L17HandoffRejected,
@@ -106,7 +107,22 @@ def audit_saved_l16_capture(
     result = review_l17_first_action_goal(**args)
     if asdict(result.l16_first_action) != window:
         raise L17HandoffRejected("physical report and re-audited original disagree")
+    s16 = capture.get("l18_s16_owner_source")
+    if s16 is not None:
+        s16_review = review_saved_s16_owner_original(
+            root=root, s16_index=s16, received_original=received,
+            action_id=result.l16_first_action.action_id,
+            session_id=result.l16_first_action.session_id,
+            before_seq=result.l16_first_action.before_seq,
+            after_seq=result.l16_first_action.after_seq,
+        )
+    else:
+        # Legacy L16 capture has no physical S16 original; cannot be inferred
+        # from a report or the original native effect receipts.
+        s16_review = None
     return {
+        "s16_owner_original_present": s16_review is not None,
+        "s16_owner_original_review": s16_review,
         "schema": result.schema,
         "classification": result.status.value,
         "l16_diagnostic_goal_status": result.l16_first_action.observed_goal_status,
