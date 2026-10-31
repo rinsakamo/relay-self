@@ -23,8 +23,8 @@ from relay_self.l14_original_bridge_goal_window import (
     audit_l14_native_goal_window,
 )
 from relay_self.l17_first_action_goal_handoff import (
-    L17IndependentInputs,
     L17HandoffStatus,
+    L17IndependentInputs,
     review_l17_first_action_goal,
 )
 
