@@ -71,6 +71,7 @@ class SelfBodyS50ClosedOwnerLease:
             )
             if (
                 terminal.state is not ActionState.OUTCOME
+                or not terminal.is_current_snapshot
                 or o.disposition is not ActionOutcomeDisposition.OUTCOME
                 or o.reason_code != "observed_execution"
                 or o.source_status != "executed"
