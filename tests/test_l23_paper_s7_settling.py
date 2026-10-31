@@ -179,3 +179,26 @@ def test_paper_tick_zero_is_not_s16_server_tick():
     assert result.paper_first_tick == 301
     assert result.clock_alignment == "NOT_ATTESTED"
     assert not result.world_session_independently_bound
+
+
+@pytest.mark.parametrize(("before", "after"), [(1, 2), (2, 3)])
+def test_paper_console_log_order_is_required_even_when_ticks_look_valid(
+    before, after,
+):
+    """Source timestamps and row-local counters cannot repair reversed logs."""
+    args = original_args()
+    rows = paper_fixture(args).splitlines(keepends=True)
+    rows[before], rows[after] = rows[after], rows[before]
+    with pytest.raises(L23SourceRejected, match="original log order invalid"):
+        inspect_l23_paper_s7(**args, paper_original=b"".join(rows))
+
+
+def test_paper_log_line_cannot_mix_two_source_event_kinds():
+    args = original_args()
+    original = paper_fixture(args).replace(
+        b"S50_DEV_WAIT_BEGIN ",
+        b"S50_DEV_WAIT_BEGIN S50_DEV_WAIT_TICK ",
+        1,
+    )
+    with pytest.raises(L23SourceRejected, match="mixed Paper event labels"):
+        inspect_l23_paper_s7(**args, paper_original=original)
