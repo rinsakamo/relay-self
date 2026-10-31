@@ -52,6 +52,9 @@ from adapters.mineflayer.l23_paper_s7_settling import (
     _paper_rows,
     inspect_l23_paper_s7,
 )
+from adapters.mineflayer.m02_paper_dev.s50_live_paper_window import (
+    capture_s50_live_paper_window,
+)
 from adapters.mineflayer.normal_action import (
     NormalActionAuthorization,
     NormalActionStage,
@@ -80,6 +83,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     _new_session,
 )
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
+from adapters.mineflayer.self_body_s50_live_next_epoch import LiveNextEpochLease
 from adapters.mineflayer.self_body_s50_motion_companion import SelfBodyS50MotionCompanion
 from adapters.mineflayer.self_body_s50_original_closure import (
     SelfBodyS50ClosedOwnerLease,
@@ -143,6 +147,23 @@ def review_postworld_internal_epoch(
 
 class S49PhysicalFailure(RuntimeError):
     """The real native World did not support the claimed autonomous behavior."""
+
+
+async def wait_live_paper_window(path: Path, *, marker: str, timeout_s: float = 5) -> None:
+    """Wait for both actual eight-row sources; validation remains with S50."""
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout_s
+    while loop.time() < deadline:
+        raw = path.read_bytes() if path.is_file() else b""
+        prefix = raw[:raw.rfind(b"\n") + 1]
+        if all(
+            len([r for r in _paper_rows(prefix, kind + " ")
+                 if r.get("marker_id") == marker]) >= 8
+            for kind in ("S50_DEV_WAIT_TICK", "S50_DEV_INPUT_TICK")
+        ):
+            return
+        await asyncio.sleep(0.05)
+    raise S49PhysicalFailure("missing complete live Paper WAIT/INPUT 8x2 window")
 
 
 class NativeObservationOnly:
@@ -211,6 +232,7 @@ async def qualify(
     l22_settling_probes: int | None = None,
     l23_paper_assets: L23PaperAssets | None = None,
     postworld_internal_epoch_dev: bool = False,
+    live_next_epoch_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -236,8 +258,15 @@ async def qualify(
     lease = None
     original_closure = None
     original_body = None
+    next_epoch_lease = next_epoch_readout = None
+    l23_source_root = l16_capture_root
+    window_ready = asyncio.Event()
     rc = 2
     try:
+        if type(live_next_epoch_dev) is not bool or (
+            live_next_epoch_dev and postworld_internal_epoch_dev
+        ):
+            raise S31ABlocked("route B requires boolean exclusive opt-in")
         if type(postworld_internal_epoch_dev) is not bool:
             raise S31ABlocked("post-world cognitive opt-in must be boolean")
         if (l23_paper_assets is None or l22_settling_probes is None
@@ -393,21 +422,35 @@ async def qualify(
         )
         host = NormalWorldL0(
             sid, "escape-threat", retained,
-            max_events=2 if l22_settling_probes is not None else 3,
+            max_events=3 if live_next_epoch_dev else (
+                2 if l22_settling_probes is not None else 3
+            ),
             max_action_requests=1 if l22_settling_probes is not None else 2,
         )
         executor = NormalSessionActionExecutor(sid, intent)
         probes = {}
 
+        async def observe_live_probe(reading):
+            nonlocal next_epoch_readout
+            if live_probe is not None:
+                await live_probe(reading)
+            if next_epoch_lease is not None:
+                if server.returncode is not None or session.process_returncode is not None:
+                    raise S49PhysicalFailure("route B requires live Java and Node")
+                await next_epoch_lease.observe_original_l0_probe(reading)
+                next_epoch_readout = next_epoch_lease.take_once()
+                report["live_next_epoch"]["readback"] = next_epoch_lease.decision_readback()
+                report["live_next_epoch"]["current_body"] = asdict(next_epoch_readout.current_body)
+                report["live_next_epoch"]["current_world"] = asdict(next_epoch_readout.current_world)
+                report["live_next_epoch"]["lease"] = next_epoch_lease.status()
+
         async def reprobe(frame):
             request_id = f"s49-actual:{sid}:event-{frame.seq}"
             reading = await _correlated_observe(session, request_id)
             probes[reading.seq] = reading
-            if live_probe is not None:
-                # Product-only observer sees an already received native probe.
-                # Original S49 L0 selection, Action ownership and receipt
-                # collection run exactly as before and never await L2 inference.
-                await live_probe(reading)
+            if live_next_epoch_dev and host.events >= 2 and not window_ready.is_set():
+                raise S49PhysicalFailure("third native event arrived before Paper window")
+            await observe_live_probe(reading)
             report.setdefault("source_pair_trace", []).append({
                 "event_seq": frame.seq,
                 "event_kind": frame.kind,
@@ -424,6 +467,8 @@ async def qualify(
             return reading
 
         def decide_grant(choice, event_seq):
+            if live_next_epoch_dev and host.action_requests >= 1:
+                raise S49PhysicalFailure("third L0 event requested forbidden additional MOVE")
             if choice.selection is not WorldChoiceKind.MOVE_AWAY:
                 raise S49PhysicalFailure("WAIT attempted to request Action")
             return L0ActionGrant(
@@ -570,7 +615,8 @@ async def qualify(
             })
             if not lease.status()["typed_original_ready"]:
                 raise S49PhysicalFailure("original typed SelfBody closure rejected")
-            nonlocal capture_sealed, l21_closed
+            nonlocal capture_sealed, l21_closed, l23_source_root
+            nonlocal next_epoch_lease
             if recorder is not None and not capture_sealed:
                 assert l16_goal_plan is not None and l16_capture_root is not None
                 action_id = receipt.terminal.action_id
@@ -610,99 +656,137 @@ async def qualify(
                     observer_original = await l21_observer.close()
                     l21_closed = True
                     report["l21_observer"]["status"] = "SEALED_PENDING_L16_REVIEW"
-                index = session.finish_native_receipt()
-                capture_sealed = True
-                index_file = l16_capture_root / "native_bridge_source_receipt.json"
-                with index_file.open("xb") as out:
-                    out.write((json.dumps(index, sort_keys=True) + "\n").encode())
-                    out.flush()
-                    os.fsync(out.fileno())
-                window = None
-                if l22_settling_probes is not None:
-                    assert l22_runtime is not None
-                    l22_review = inspect_l22_settling(
-                        received_original=recorder.received.read_bytes(),
-                        sent_original=recorder.sent.read_bytes(),
-                        s7_receipt=index,
-                        s16_original=(
-                            l16_capture_root / S16_FILE
-                        ).read_bytes(),
-                        plan=l16_goal_plan, action_id=action_id, session_id=sid,
-                    )
-                    if (
-                        l22_review.settling_probe_seqs
-                        != l22_runtime.observed_probe_seqs
-                        or not set(l22_runtime.observed_move_seqs).issubset(
-                            l22_review.move_event_seqs
+
+                def seal_and_review_capture():
+                    nonlocal capture_sealed
+                    nonlocal l23_source_root
+                    if live_next_epoch_dev:
+                        l23_source_root = l16_capture_root / "pre-next-l0-prefix"
+                        l23_source_root.mkdir()
+                        index = recorder.snapshot_prefix(l23_source_root)
+                        for name in (S16_FILE, "l16_pre_world_goal_plan.json"):
+                            with (l23_source_root / name).open("xb") as out:
+                                out.write((l16_capture_root / name).read_bytes())
+                    else:
+                        index = session.finish_native_receipt()
+                        capture_sealed = True
+                    index_file = l23_source_root / "native_bridge_source_receipt.json"
+                    with index_file.open("xb") as out:
+                        out.write((json.dumps(index, sort_keys=True) + "\n").encode())
+                        out.flush()
+                        os.fsync(out.fileno())
+                    window = None
+                    if l22_settling_probes is not None:
+                        assert l22_runtime is not None
+                        l22_review = inspect_l22_settling(
+                            received_original=(l23_source_root / recorder.received.name).read_bytes(),
+                            sent_original=(l23_source_root / recorder.sent.name).read_bytes(),
+                            s7_receipt=index,
+                            s16_original=(
+                                l16_capture_root / S16_FILE
+                            ).read_bytes(),
+                            plan=l16_goal_plan, action_id=action_id, session_id=sid,
                         )
-                    ):
-                        raise S49PhysicalFailure(
-                            "L22 runtime and source original settling disagree"
+                        if (
+                            l22_review.settling_probe_seqs
+                            != l22_runtime.observed_probe_seqs
+                            or not set(l22_runtime.observed_move_seqs).issubset(
+                                l22_review.move_event_seqs
+                            )
+                        ):
+                            raise S49PhysicalFailure(
+                                "L22 runtime and source original settling disagree"
+                            )
+                        report["l22_settling"] = {
+                            "status": "S7_SOURCE_REVIEWED_GOAL_UNDETERMINED",
+                            "runtime": asdict(l22_runtime),
+                            "audit": asdict(l22_review),
+                            "qualified_real_learning_pairs": 0,
+                            "s10_updates": 0,
+                            "s11_grants": 0,
+                        }
+                    else:
+                        window = inspect_l16_first_action_prefix(
+                            received_original=(l23_source_root / recorder.received.name).read_bytes(),
+                            sent_original=(l23_source_root / recorder.sent.name).read_bytes(),
+                            s7_receipt=index,
+                            plan=l16_goal_plan,
+                            plan_original=(
+                                l16_capture_root / "l16_pre_world_goal_plan.json"
+                            ).read_bytes(),
+                            action_id=action_id, session_id=sid,
+                            before_seq=receipt.consequence.before_observation.seq,
+                            dispatch_seq=receipt.consequence.dispatch_receipt.seq,
+                            cleanup_seq=receipt.consequence.cleanup_receipt.seq,
+                            after_seq=receipt.consequence.after_observation.seq,
+                            first_probe_seq=first.seq, second_probe_seq=second.seq,
+                            first_probe_request_id=first_id,
+                            second_probe_request_id=second_id,
                         )
-                    report["l22_settling"] = {
-                        "status": "S7_SOURCE_REVIEWED_GOAL_UNDETERMINED",
-                        "runtime": asdict(l22_runtime),
-                        "audit": asdict(l22_review),
-                        "qualified_real_learning_pairs": 0,
-                        "s10_updates": 0,
-                        "s11_grants": 0,
-                    }
-                else:
-                    window = inspect_l16_first_action_prefix(
-                        received_original=recorder.received.read_bytes(),
-                        sent_original=recorder.sent.read_bytes(),
-                        s7_receipt=index,
-                        plan=l16_goal_plan,
-                        plan_original=(
-                            l16_capture_root / "l16_pre_world_goal_plan.json"
-                        ).read_bytes(),
-                        action_id=action_id, session_id=sid,
-                        before_seq=receipt.consequence.before_observation.seq,
-                        dispatch_seq=receipt.consequence.dispatch_receipt.seq,
-                        cleanup_seq=receipt.consequence.cleanup_receipt.seq,
-                        after_seq=receipt.consequence.after_observation.seq,
-                        first_probe_seq=first.seq, second_probe_seq=second.seq,
-                        first_probe_request_id=first_id,
-                        second_probe_request_id=second_id,
-                    )
-                if l21_observer is not None:
-                    assert observer_original is not None
-                    assert l20_external_goal_original is not None
-                    assert l20_admitted_sha256 is not None
-                    review = review_l21_observer_original(
-                        raw=observer_original,
-                        criterion_original=l20_external_goal_original.read_bytes(),
-                        criterion_sha256=l20_admitted_sha256,
-                        plan=l16_goal_plan,
-                        session_id=sid, action_id=action_id,
-                        native_goal_status=(
-                            window.observed_goal_status
-                            if window is not None else "UNDETERMINED"
+                    if l21_observer is not None:
+                        assert observer_original is not None
+                        assert l20_external_goal_original is not None
+                        assert l20_admitted_sha256 is not None
+                        review = review_l21_observer_original(
+                            raw=observer_original,
+                            criterion_original=l20_external_goal_original.read_bytes(),
+                            criterion_sha256=l20_admitted_sha256,
+                            plan=l16_goal_plan,
+                            session_id=sid, action_id=action_id,
+                            native_goal_status=(
+                                window.observed_goal_status
+                                if window is not None else "UNDETERMINED"
+                            ),
+                        )
+                        report["l21_observer"] = {
+                            "status": "SECOND_CLIENT_SOURCE_ONLY_UNQUALIFIED",
+                            "root": str(l21_observer_root),
+                            "source_file": str(l21_observer.source_path),
+                            "review": asdict(review),
+                            "qualified_real_learning_pairs": 0,
+                            "observer_presence_is_world_intervention": True,
+                        }
+                    report["l16_capture"] = {
+                        "status": (
+                            "SOURCE_PREFIX_CAPTURED_UNQUALIFIED"
+                            if window is not None
+                            else "L16_NOT_RUN_L22_EXTRA_PROBES"
                         ),
-                    )
-                    report["l21_observer"] = {
-                        "status": "SECOND_CLIENT_SOURCE_ONLY_UNQUALIFIED",
-                        "root": str(l21_observer_root),
-                        "source_file": str(l21_observer.source_path),
-                        "review": asdict(review),
-                        "qualified_real_learning_pairs": 0,
-                        "observer_presence_is_world_intervention": True,
+                        "root": str(l16_capture_root),
+                        "s7_index": index,
+                        "window": asdict(window) if window is not None else None,
+                        "l18_s16_owner_source": first_terminal_source,
+                        "first_action_only": True,
+                        "later_session_actions_not_in_recorded_prefix": True,
+                        "real_l10_pairs": 0,
+                        "external_goal_owner_independent": False,
                     }
-                report["l16_capture"] = {
-                    "status": (
-                        "SOURCE_PREFIX_CAPTURED_UNQUALIFIED"
-                        if window is not None
-                        else "L16_NOT_RUN_L22_EXTRA_PROBES"
-                    ),
-                    "root": str(l16_capture_root),
-                    "s7_index": index,
-                    "window": asdict(window) if window is not None else None,
-                    "l18_s16_owner_source": first_terminal_source,
-                    "first_action_only": True,
-                    "later_session_actions_not_in_recorded_prefix": True,
-                    "real_l10_pairs": 0,
-                    "external_goal_owner_independent": False,
+
+                seal_and_review_capture()
+            if live_next_epoch_dev:
+                assert original_body is not None and l23_marker_id is not None
+                await wait_live_paper_window(server_log, marker=l23_marker_id)
+                if server.returncode is not None or session.process_returncode is not None:
+                    raise S49PhysicalFailure("Paper window captured after process exit")
+                raw = server_log.read_bytes()
+                prefix = raw[:raw.rfind(b"\n") + 1]
+                inputs = _paper_rows(prefix, "S50_DEV_INPUT_TICK ")
+                starts = _paper_rows(prefix, "S50_DEV_WAIT_BEGIN ")
+                window = capture_s50_live_paper_window(
+                    prefix, session_id=sid, action_id=step.action_request_id,
+                    world=starts[0]["world"], subject_uuid=inputs[0]["subject_uuid"],
+                )
+                with (report_path.parent / "live-paper-prefix.log").open("xb") as out:
+                    out.write(prefix)
+                next_epoch_lease = LiveNextEpochLease(original_body, window)
+                report["live_next_epoch"] = {
+                    "classification": "PROVISIONAL_PAPER_ONLY",
+                    "window": asdict(window),
+                    "prior_typed_identity": original_body is lease._body,
+                    "java_alive_at_capture": True, "node_alive_at_capture": True,
+                    "last_prior_probe_seq": second.seq,
                 }
+                window_ready.set()
 
         async def stage_world():
             assert server is not None and server.stdin is not None
@@ -723,6 +807,19 @@ async def qualify(
                 )
                 await server.stdin.drain()
                 await asyncio.sleep(hold)
+
+            if live_next_epoch_dev:
+                await asyncio.wait_for(window_ready.wait(), timeout=20)
+                _command(server, "kill @e[type=minecraft:zombie]")
+                await server.stdin.drain()
+                await asyncio.sleep(2)
+                _command(
+                    server,
+                    "execute at RelaySelf run summon minecraft:zombie ~10 ~ ~ "
+                    "{NoAI:1b,Silent:1b,PersistenceRequired:1b,Invulnerable:1b}",
+                )
+                await server.stdin.drain()
+                report["live_next_epoch"]["post_window_world_stimulus_sent"] = True
 
         report["stage"] = "UNATTENDED_NATIVE_EVENT_LOOP"
         staging = asyncio.create_task(stage_world())
@@ -747,19 +844,21 @@ async def qualify(
         } for s in trace]
         expected_moves = 1 if l22_settling_probes is not None else 2
         if (
-            len(trace) != expected_moves + 1
+            len(trace) != expected_moves + 1 + int(live_next_epoch_dev)
             or [s.choice.selection.value for s in trace]
-            != ["WAIT"] + ["MOVE_AWAY"] * expected_moves
-            or len({s.choice.entity_id for s in trace}) != expected_moves + 1
+            != ["WAIT"] + ["MOVE_AWAY"] * expected_moves + (["WAIT"] if live_next_epoch_dev else [])
+            or len({s.choice.entity_id for s in trace}) != expected_moves + 1 + int(live_next_epoch_dev)
             or len(report["actual_native_actions"]) != expected_moves
             or executor.supervisor.open_actions
             or any(executor.supervisor.get(s.action_request_id).state
-                   is not ActionState.OUTCOME for s in trace[1:])
+                   is not ActionState.OUTCOME for s in trace if s.asks_for_action)
             or trace[0].asks_for_action
             or host.action_requests != expected_moves
-            or host.events != expected_moves + 1
+            or host.events != expected_moves + 1 + int(live_next_epoch_dev)
         ):
             raise S49PhysicalFailure("bounded native decisions/Action closures disagree")
+        if live_next_epoch_dev and next_epoch_readout is None:
+            raise S49PhysicalFailure("missing real third L0 native epoch")
         if l23_paper_assets is not None:
             assert l23_marker_id is not None
             # L22 may finish after only three quiet probes. Keep the existing
@@ -820,11 +919,18 @@ async def qualify(
                     out.write((json.dumps(index, sort_keys=True) + "\n").encode())
                     out.flush()
                     os.fsync(out.fileno())
-                report["l16_capture"] = {
-                    "status": "INCOMPLETE_NO_GOAL_LABEL",
-                    "s7_index": index,
-                    "real_l10_pairs": 0,
-                }
+                report["full_session_s7"] = index
+                if live_next_epoch_dev:
+                    for name in ("native_bridge_received_original.jsonl",
+                                 "native_bridge_sent_original.jsonl"):
+                        prefix_raw = (l23_source_root / name).read_bytes()
+                        if not (l16_capture_root / name).read_bytes().startswith(prefix_raw):
+                            raise S49PhysicalFailure("S7 final source changed sealed prefix")
+                else:
+                    report["l16_capture"] = {
+                        "status": "INCOMPLETE_NO_GOAL_LABEL",
+                        "s7_index": index, "real_l10_pairs": 0,
+                    }
             except Exception as exc:
                 report["l16_capture_error"] = f"{type(exc).__name__}: {exc}"
                 report["status"] = "FAIL"
@@ -861,14 +967,14 @@ async def qualify(
                 ):
                     raise S49PhysicalFailure("L23 source has no bound Paper World")
                 index = json.loads((
-                    l16_capture_root / "native_bridge_source_receipt.json"
+                    l23_source_root / "native_bridge_source_receipt.json"
                 ).read_bytes())
                 audit = inspect_l23_paper_s7(
                     received_original=(
-                        l16_capture_root / "native_bridge_received_original.jsonl"
+                        l23_source_root / "native_bridge_received_original.jsonl"
                     ).read_bytes(),
                     sent_original=(
-                        l16_capture_root / "native_bridge_sent_original.jsonl"
+                        l23_source_root / "native_bridge_sent_original.jsonl"
                     ).read_bytes(),
                     s7_receipt=index,
                     s16_original=(l16_capture_root / S16_FILE).read_bytes(),
@@ -879,6 +985,7 @@ async def qualify(
                 report["l23_paper"]["status"] = "PAPER_SOURCE_SHAPE_REVIEWED_ONLY"
                 report["l23_paper"]["readback"] = asdict(audit)
                 report["l23_paper"]["server_console_source"] = str(server_log)
+                report["l23_paper"]["s7_source_root"] = str(l23_source_root)
             except Exception as exc:
                 report["l23_paper"]["status"] = "PAPER_SOURCE_REJECTED"
                 report["l23_paper"]["readback_error"] = (
@@ -906,6 +1013,16 @@ async def qualify(
                     json.dumps(s50_source, indent=2) + "\n",
                 )
                 joined = lease.consume_s50_once(s50_source["physical_body_diagnostic"])
+                if live_next_epoch_dev:
+                    assert next_epoch_lease is not None and next_epoch_readout is not None
+                    report["live_next_epoch"]["final_paper_audit"] = (
+                        next_epoch_lease.postworld_audit(next_epoch_readout, paper)
+                    )
+                    report["live_next_epoch"]["full_node_s50_owner_pass"] = True
+                    report["live_next_epoch"]["classification"] = (
+                        "DEV_LIVE_NEXT_L0_NATIVE_EPOCH_REFERENCED_PASS"
+                    )
+                    report["classification"] = "DEV_LIVE_NEXT_L0_NATIVE_EPOCH_REFERENCED_PASS"
                 c, o = original_closure.consequence, original_closure.interpretation
                 obs = joined.self_body.observation
                 assert joined.self_body is original_body
@@ -931,8 +1048,11 @@ async def qualify(
                     "source": s50_source,
                     "companion": asdict(joined),
                     "cognitive_summary": joined.cognitive_summary(),
-                    "next_cognitive_epoch_referenced": False,
-                    "next_epoch_handoff": "READ_ONLY_COMPANION_AVAILABLE_NO_EPOCH_EXECUTED",
+                    "next_cognitive_epoch_referenced": live_next_epoch_dev,
+                    "next_epoch_handoff": (
+                        "LIVE_NEXT_NATIVE_L0_PROVISIONAL_PAPER_READ" if live_next_epoch_dev
+                        else "READ_ONLY_COMPANION_AVAILABLE_NO_EPOCH_EXECUTED"
+                    ),
                 }
                 (report_path.parent / "selfbody-s50-producer.json").write_text(
                     json.dumps(s50_source, indent=2) + "\n",
@@ -962,6 +1082,9 @@ async def qualify(
             if lease is not None:
                 lease.close()
                 report["selfbody_lease_final"] = lease.status()
+            if next_epoch_lease is not None:
+                next_epoch_lease.close()
+                report["live_next_epoch"]["final_lease"] = next_epoch_lease.status()
             original_closure = original_body = None
         if temp is not None:
             temp.cleanup()
@@ -999,6 +1122,7 @@ def main() -> int:
     parser.add_argument("--l23-paper-config", type=Path)
     parser.add_argument("--l23-paper-config-sha256")
     parser.add_argument("--selfbody-postworld-internal-epoch-dev", action="store_true")
+    parser.add_argument("--selfbody-live-next-epoch-dev", action="store_true")
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -1044,6 +1168,7 @@ def main() -> int:
         l22_settling_probes=args.l22_settling_probes,
         l23_paper_assets=paper_assets,
         postworld_internal_epoch_dev=args.selfbody_postworld_internal_epoch_dev,
+        live_next_epoch_dev=args.selfbody_live_next_epoch_dev,
     ))
 
 

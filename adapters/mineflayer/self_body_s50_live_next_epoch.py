@@ -115,6 +115,7 @@ class LiveNextEpochLease:
         self._used = False
         self._closed = False
         self._read_count = 0
+        self._decision_readback: dict[str, object] | None = None
         self._errors: tuple[str, ...] = ()
 
     async def observe_original_l0_probe(self, reading: MineflayerObservation) -> None:
@@ -170,13 +171,19 @@ class LiveNextEpochLease:
                 prior_native_ref=self._old_native_ref, prior_window=window,
             )
             # Real read at the native decision-boundary observer, not after close.
-            self._readout.read_previous_motion()
+            self._decision_readback = self._readout.read_previous_motion()
             self._read_count = 1
             self._status = "NEXT_L0_NATIVE_EPOCH_PAPER_PROVISIONAL_READ"
         except Exception as exc:
             self._revoke(type(exc).__name__)
         finally:
             self._window = None
+
+    def decision_readback(self) -> dict[str, object]:
+        """Copy the diagnostic recorded at the single decision-time read."""
+        if self._decision_readback is None or self._errors:
+            raise LiveNextEpochRejected("no original decision-time read")
+        return dict(self._decision_readback)
 
     def take_once(self) -> LiveNextEpochReadout:
         if (

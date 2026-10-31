@@ -1,0 +1,25 @@
+{
+  "classification": "DEV_LIVE_NEXT_L0_NATIVE_EPOCH_REFERENCED_PASS",
+  "execution_head": "65246cd5e4cbc0905e736663120ca2b2be48951d",
+  "worlds": 1,
+  "world_failures": 0,
+  "preworld_blocked": 0,
+  "retries": 0,
+  "python_initial": {
+    "pass": 211,
+    "skip": 1
+  },
+  "python_skipped_node_path_followup": {
+    "pass": 1
+  },
+  "node_tests": 6,
+  "negative_original_audits": 14,
+  "independent_original_audit": "PASS",
+  "goal": "UNDETERMINED",
+  "p1_wait": 0,
+  "l10": 0,
+  "s10": 0,
+  "s11": 0,
+  "qualification": "NO_GO",
+  "science": "NOT_RUN"
+}

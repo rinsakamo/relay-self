@@ -3,12 +3,17 @@ on:
   push:
     branches:
       - dev/selfbody-s50-live-paper-window-20261031
+      - dev/issue651-route-b-20261031
     paths:
       - 'adapters/mineflayer/m02_paper_dev/s50_live_paper_window.py'
       - 'adapters/mineflayer/self_body_s50_live_next_epoch.py'
       - 'tests/test_s50_live_paper_window.py'
       - 'tests/test_s50_live_paper_original_replay.py'
       - 'tests/test_self_body_s50_live_next_epoch.py'
+      - 'tests/test_self_body_s50_route_b_dev.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'adapters/mineflayer/self_s7_native_receipt.py'
+      - 'tools/selfbody_route_b_readback.py'
       - 'docs/selfbody-s50-live-next-epoch-dev-20261031.md'
       - '.github/workflows/selfbody-s50-live-paper-window-dev.yml'
   pull_request:
@@ -18,6 +23,10 @@ on:
       - 'tests/test_s50_live_paper_window.py'
       - 'tests/test_s50_live_paper_original_replay.py'
       - 'tests/test_self_body_s50_live_next_epoch.py'
+      - 'tests/test_self_body_s50_route_b_dev.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'adapters/mineflayer/self_s7_native_receipt.py'
+      - 'tools/selfbody_route_b_readback.py'
       - 'docs/selfbody-s50-live-next-epoch-dev-20261031.md'
       - '.github/workflows/selfbody-s50-live-paper-window-dev.yml'
 permissions:
@@ -47,6 +56,7 @@ jobs:
             tests/test_s50_live_paper_window.py \
             tests/test_s50_live_paper_original_replay.py \
             tests/test_self_body_s50_live_next_epoch.py \
+            tests/test_self_body_s50_route_b_dev.py \
             tests/test_self_body_s50_postworld_epoch.py \
             tests/test_self_body_s50_world_dev.py \
             tests/test_self_body_s50_original_closure.py \
