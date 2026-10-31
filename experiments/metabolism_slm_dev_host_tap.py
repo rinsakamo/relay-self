@@ -110,7 +110,7 @@ def observe_optional_s_l_m_dev(
             or observed.source_attested
         ):
             raise SLMPostEpochRejected("side-tap readout unexpectedly holds authority")
-        return SLMDevTapResult(
+        admitted_row = SLMDevTapResult(
             original_s_epoch,
             "RECORDED",
             "complete",
@@ -130,6 +130,10 @@ def observe_optional_s_l_m_dev(
                 if observed.l8_m is not None else None
             ),
         )
+        # A DEV host must not be able to receive RECORDED with an audit
+        # payload that later throws during allowlisted serialization.
+        bounded_s_l_m_audit_row(admitted_row)
+        return admitted_row
     except SLMPostEpochRejected:
         return SLMDevTapResult(
             original_s_epoch, "DEFERRED", "owner_source_or_scope_rejected",
