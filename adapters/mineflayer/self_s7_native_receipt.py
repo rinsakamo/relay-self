@@ -99,6 +99,30 @@ class NativeStreamReceipt:
     def record_sent(self, raw: bytes) -> None:
         self._append(raw, incoming=False)
 
+    def snapshot_prefix(self, root: Path) -> dict[str, object]:
+        """Seal copies of the measured current prefix without closing the stream.
+
+        No new native reader or synthetic frame. Final close still measures the
+        entire original stream; callers must verify prefix identity afterwards.
+        """
+        if self._closed:
+            raise NativeStreamReceiptRejected("closed original source recorder")
+        received, sent = root / self.received.name, root / self.sent.name
+        _physical_new_path(received)
+        _physical_new_path(sent)
+        for original, copy, size, digest in (
+            (self.received, received, self.received_bytes, self._received_hash.hexdigest()),
+            (self.sent, sent, self.sent_bytes, self._sent_hash.hexdigest()),
+        ):
+            raw = original.read_bytes()
+            if len(raw) != size or hashlib.sha256(raw).hexdigest() != digest:
+                raise NativeStreamReceiptRejected("prefix original changed")
+            with copy.open("xb") as out:
+                out.write(raw)
+                out.flush()
+                os.fsync(out.fileno())
+        return self._receipt(received, sent)
+
     def close(self) -> dict[str, object]:
         if self._closed:
             raise NativeStreamReceiptRejected("receipt already closed")
@@ -114,10 +138,13 @@ class NativeStreamReceipt:
         for path in (self.received, self.sent):
             if path.is_symlink() or not stat.S_ISREG(path.lstat().st_mode):
                 raise NativeStreamReceiptRejected("original source replaced")
+        return self._receipt(self.received, self.sent)
+
+    def _receipt(self, received: Path, sent: Path) -> dict[str, object]:
         return {
             "schema": "SELF_S7_RAW_MINEFLAYER_JSONL_RECEIPT_V1",
-            "received_path": str(self.received),
-            "sent_path": str(self.sent),
+            "received_path": str(received),
+            "sent_path": str(sent),
             "received_lines": self.received_lines,
             "sent_lines": self.sent_lines,
             "received_bytes": self.received_bytes,
