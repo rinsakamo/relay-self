@@ -160,3 +160,75 @@ def write_s16_owner_original(
         "original_physical_source_authenticated": False,
         "qualified_real_l10_pairs": 0,
     }
+
+
+def review_saved_s16_owner_original(
+    *, root: Path, s16_index: dict[str, object],
+    received_original: bytes, action_id: str, session_id: str,
+    before_seq: int, after_seq: int,
+) -> dict[str, object]:
+    """Re-read the owner-created original; cannot prove owner identity alone."""
+    from relay_self.l14_original_bridge_goal_window import _json
+
+    if (
+        not isinstance(root, Path) or not root.is_absolute()
+        or root.is_symlink() or root.resolve(strict=True) != root
+        or not isinstance(s16_index, dict)
+        or s16_index.get("schema") != "L18_S49_S16_OWNER_ORIGINAL_INDEX_V1"
+        or s16_index.get("path") != str(root / S16_FILE)
+        or s16_index.get("session_id") != session_id
+        or s16_index.get("action_id") != action_id
+        or s16_index.get("independent_external_goal_original") is not False
+        or s16_index.get("original_physical_source_authenticated") is not False
+        or s16_index.get("qualified_real_l10_pairs") != 0
+        or s16_index.get("s16_owner_snapshot_from_existing_executor") is not True
+    ):
+        raise L18TerminalOriginalRejected("S16 index does not identify owner source")
+    path = root / S16_FILE
+    if path.is_symlink() or not path.is_file():
+        raise L18TerminalOriginalRejected("S16 owner original missing or symlinked")
+    raw = path.read_bytes()
+    if (
+        not 0 < len(raw) <= 65536 or not raw.endswith(b"\n")
+        or raw.count(b"\n") != 1
+        or hashlib.sha256(raw).hexdigest() != s16_index.get("sha256")
+        or len(raw) != s16_index.get("bytes")
+    ):
+        raise L18TerminalOriginalRejected("S16 original bytes do not match index")
+    data = _json(raw)
+    if (
+        set(data) != _ACTION_KEYS or data.get("schema") != _PRE_SCHEMA
+        or data.get("session_id") != session_id
+        or data.get("action_id") != action_id
+        or data.get("before_seq") != before_seq
+        or data.get("after_seq") != after_seq
+        or type(data.get("source_revision")) is not int
+        or data["source_revision"] < 0
+        or data["source_revision"]
+        != s16_index.get("source_revision_operator_declared")
+        or data.get("source_status") != "executed"
+        or data.get("disposition") != "outcome"
+        or data.get("action_ref") != "MOVE_BACKWARD"
+        or type(before_seq) is not int or type(after_seq) is not int
+        or not 0 < before_seq < after_seq
+    ):
+        raise L18TerminalOriginalRejected("S16 original content is not same Action")
+    lines = received_original.splitlines(keepends=True)
+    if (
+        before_seq >= len(lines)
+        or hashlib.sha256(lines[before_seq]).hexdigest()
+        != data.get("pre_probe_sha256")
+        or data["pre_probe_sha256"] != s16_index.get("pre_probe_sha256")
+    ):
+        raise L18TerminalOriginalRejected("S16 original not tied to exact native Present")
+    return {
+        "schema": "L18_S49_S16_OWNER_SOURCE_READBACK_V1",
+        "s16_original_sha256": s16_index["sha256"],
+        "s16_original_matches_original_pre_probe": True,
+        "producer_original_claim_only": True,
+        "independent_goal_original_present": False,
+        "independent_physical_authentication": False,
+        "qualified_real_l10_pairs": 0,
+        "s10_updates": 0,
+        "s11_habit_grants": 0,
+    }
