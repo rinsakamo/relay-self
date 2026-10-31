@@ -21,7 +21,6 @@ from relay_self.l20_external_goal_commitment import (
     ACTION_SCOPE,
     COMMITMENT_SCHEMA,
     SESSION_SCOPE,
-    L20ExternalPreflight,
     L20GoalCommitmentRejected,
     review_external_pre_world_criterion,
     review_l20_post_s49_source,
