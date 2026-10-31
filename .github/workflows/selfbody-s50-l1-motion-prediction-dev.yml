@@ -1,0 +1,53 @@
+name: SelfBody L1 self-supervised motion heldout DEV
+on:
+  push:
+    branches:
+      - dev/selfbody-l1-motion-prediction-20261101
+    paths:
+      - 'adapters/mineflayer/self_body_s50_l1_motion_prediction.py'
+      - 'tests/test_self_body_s50_l1_motion_prediction.py'
+      - 'tools/selfbody_l1_motion_prediction_replay.py'
+      - 'docs/selfbody-l1-motion-prediction-dev-20261101.md'
+      - '.github/workflows/selfbody-s50-l1-motion-prediction-dev.yml'
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/self_body_s50_l1_motion_prediction.py'
+      - 'tests/test_self_body_s50_l1_motion_prediction.py'
+      - 'tools/selfbody_l1_motion_prediction_replay.py'
+      - 'docs/selfbody-l1-motion-prediction-dev-20261101.md'
+      - '.github/workflows/selfbody-s50-l1-motion-prediction-dev.yml'
+permissions:
+  contents: read
+jobs:
+  archived-world-heldout-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python3.12 focused FAST and owner regression
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/self_body_s50_l1_motion_prediction.py tests/test_self_body_s50_l1_motion_prediction.py tools/selfbody_l1_motion_prediction_replay.py
+          python -m compileall -q adapters/mineflayer/self_body_s50_l1_motion_prediction.py tests/test_self_body_s50_l1_motion_prediction.py tools/selfbody_l1_motion_prediction_replay.py
+          python -m pytest -o addopts='' -q \
+            tests/test_self_body_s50_l1_motion_prediction.py \
+            tests/test_self_body_s50_l1_motion_shadow.py \
+            tests/test_self_body_s50_route_b_dev.py \
+            tests/test_self_body_s50_live_next_epoch.py \
+            tests/test_s50_live_paper_window.py
+          python tools/selfbody_l1_motion_prediction_replay.py
+          python tools/check_repository.py
+      - name: Strict non-learning DEV status
+        if: always()
+        run: echo 'OFFLINE_ARCHIVAL_REPLAY_ONLY / CHEAP_LINEAR_EQUIVALENT / NEW_WORLD_NOT_RUN / GOAL_UNDETERMINED / L10_S10_S11_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
