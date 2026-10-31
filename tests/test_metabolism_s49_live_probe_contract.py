@@ -12,14 +12,14 @@ from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
-import test_metabolism_same_process_slm_product as slm
 import test_postmain_s42_world_contrast as s42
 from adapters.mineflayer.normal_action import NormalWorldL0
-from relay_self.provenance import Provenance
 from relay_self.reactive_l0 import L0ActionGrant
 
+import test_metabolism_same_process_slm_product as slm
 from experiments.metabolism_s49_live_probe_bridge import S49PassiveSourceLease
 from experiments.metabolism_slm_dev_host_tap import bounded_s_l_m_audit_row
+from relay_self.provenance import Provenance
 
 
 def owner_handoff(data, lease, **kwargs):
