@@ -89,6 +89,29 @@ def _paper_rows(raw: bytes, label: str) -> list[dict[str, str]]:
     return found
 
 
+
+def _verify_paper_event_order(raw: bytes) -> None:
+    """Require the observed *log order*, not just plausible tick numbers.
+
+    Source chronology is weaker than server-effective S15/input causality,
+    but an out-of-order Paper console record must never look admissible.
+    """
+    labels = (
+        b"M02_DEV_S50_PHASE ",
+        b"S50_DEV_WAIT_BEGIN ",
+        b"S50_DEV_WAIT_TICK ",
+    )
+    kinds: list[int] = []
+    for line in raw.splitlines():
+        matches = [i for i, label in enumerate(labels) if label in line]
+        if len(matches) > 1:
+            raise L23SourceRejected("mixed Paper event labels in one log line")
+        if matches:
+            kinds.append(matches[0])
+    if kinds != [0, 0, 1, *([2] * 8)]:
+        raise L23SourceRejected("Paper phase/begin/tick original log order invalid")
+
+
 def _num(row: dict, key: str, *, integer: bool = False) -> float | int:
     try:
         val = float(row[key])
@@ -137,6 +160,7 @@ def inspect_l23_paper_s7(
         s7_receipt=s7_receipt, s16_original=s16_original, plan=plan,
         session_id=session_id, action_id=action_id,
     )
+    _verify_paper_event_order(paper_original)
     phase_rows = _paper_rows(paper_original, "M02_DEV_S50_PHASE ")
     if (
         len(phase_rows) != 2
