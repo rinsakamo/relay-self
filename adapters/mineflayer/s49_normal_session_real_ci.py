@@ -689,6 +689,15 @@ async def qualify(
             or host.events != expected_moves + 1
         ):
             raise S49PhysicalFailure("bounded native decisions/Action closures disagree")
+        if l23_paper_assets is not None:
+            assert l23_marker_id is not None
+            # L22 may finish after only three quiet probes. Keep the existing
+            # session alive until Paper emits its eighth callback; otherwise
+            # disconnect can truncate the source. Final audit still validates
+            # all eight rows, their order and consecutive World ticks.
+            await wait_paper_line(
+                server_log, marker=l23_marker_id, kind="S50_DEV_WAIT_TICK",
+            )
         report["status"] = "PASS"
         report["classification"] = (
             "DEV_ONLY_REAL_WORLD_L22_SOURCE_REVIEWED_GOAL_UNDETERMINED"

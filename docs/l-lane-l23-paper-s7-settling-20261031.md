@@ -194,3 +194,23 @@ access those local assets. Retain raw S7/S16/Paper logs and failures,
 check normal PID/port/World cleanup, and return `GOAL_UNDETERMINED`
 unless independent Goal owner and effective World-tick evidence actually
 exist. This revision adds no new physical run or qualification claim.
+
+## Local WSL integration repair (2026-10-31)
+
+First fresh Paper run at `c845f9fc6390dfdcc32f4acb10fd94db00b4bbac`
+issued one S49 MOVE and closed S15/S16, but its original contains only
+seven WAIT callbacks: L22's three quiet probes ended before callback eight,
+and session shutdown removed the target player. L23 correctly rejected the
+partial source. Preserve that FAIL; do not complete its log retrospectively.
+
+The opt-in runner now waits up to five host seconds for the original
+marker-bound `S50_DEV_WAIT_TICK index=8` before normal session shutdown.
+This is source completion scheduling, not an independent physical clock,
+Action, STOP owner, or idle attestation. The final original-byte reviewer
+still requires all eight ordered consecutive World callbacks. Missing row
+eight times out and fails; seven quiet rows cannot pass. Regression tests
+cover the truncated source timeout and delayed eighth callback.
+
+An authorized second fresh World uses the same pinned server/plugin/config
+and Goal plan after FAST validation. Full results and original source
+index are recorded in `docs/l23-paper-real-results-20261031.md`.

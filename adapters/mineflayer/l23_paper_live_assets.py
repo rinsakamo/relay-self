@@ -144,7 +144,9 @@ async def wait_paper_line(
     timeout_s: float = 5.0,
 ) -> None:
     """Read only fresh plugin-emitted console lines, not an operator echo."""
-    if kind not in ("M02_DEV_S50_PHASE", "S50_DEV_WAIT_BEGIN"):
+    if kind not in (
+        "M02_DEV_S50_PHASE", "S50_DEV_WAIT_BEGIN", "S50_DEV_WAIT_TICK",
+    ):
         raise L23PaperBlocked("unapproved Paper observation marker")
     if kind == "M02_DEV_S50_PHASE" and phase not in (
         "PRE_FORWARD", "POST_CLEAR",
@@ -167,6 +169,8 @@ async def wait_paper_line(
                 if (not after or after[0] != " " or
                     (phase is not None and
                      f"phase={phase}" not in after.split(" world_full_time=", 1)[0])):
+                    continue
+                if kind == "S50_DEV_WAIT_TICK" and "index=8" not in after.split():
                     continue
                 return
         await asyncio.sleep(0.05)

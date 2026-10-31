@@ -160,3 +160,28 @@ def test_s49_preflight_rejects_l23_without_l22_before_java(tmp_path, monkeypatch
     assert status == 2
     assert report["status"] == "BLOCKED"
     assert not (tmp_path / "server.log").exists()
+
+
+def test_paper_eighth_callback_required_before_session_shutdown(tmp_path):
+    log = tmp_path / "server.log"
+    marker = "s49-native-move-24-session"
+    prefix = f"[INFO] S50_DEV_WAIT_TICK marker_id={marker} "
+    log.write_text("".join(
+        f"{prefix}tick={300 + i} index={i}\n" for i in range(1, 8)
+    ))
+    with pytest.raises(L23PaperBlocked):
+        asyncio.run(wait_paper_line(
+            log, marker=marker, kind="S50_DEV_WAIT_TICK", timeout_s=0.01,
+        ))
+
+    async def delayed_eighth():
+        waiter = asyncio.create_task(wait_paper_line(
+            log, marker=marker, kind="S50_DEV_WAIT_TICK", timeout_s=1,
+        ))
+        await asyncio.sleep(0.02)
+        assert not waiter.done()
+        with log.open("a") as out:
+            out.write(f"{prefix}tick=308 index=8\n")
+        await waiter
+
+    asyncio.run(delayed_eighth())
