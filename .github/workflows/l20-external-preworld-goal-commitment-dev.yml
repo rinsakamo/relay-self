@@ -1,0 +1,40 @@
+name: L20 External PreWorld Goal Commitment DEV
+on:
+  push:
+    branches:
+      - integration/l20-preworld-external-goal-commitment-20261031
+    paths:
+      - .github/workflows/l20-external-preworld-goal-commitment-dev.yml
+      - src/relay_self/l20_external_goal_commitment.py
+      - adapters/mineflayer/l20_external_goal_commitment_readback.py
+      - tests/test_l20_external_goal_commitment.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  original-independent-goal-commitment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Verify Goal pre-World original, S49 bindings, and no reward claims
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check src/relay_self/l20_external_goal_commitment.py adapters/mineflayer/l20_external_goal_commitment_readback.py tests/test_l20_external_goal_commitment.py
+          python -m compileall -q src/relay_self/l20_external_goal_commitment.py adapters/mineflayer/l20_external_goal_commitment_readback.py tests/test_l20_external_goal_commitment.py
+          python -m pytest -q tests/test_l20_external_goal_commitment.py tests/test_l17_saved_original_goal_readback.py
+          python tools/check_repository.py
+      - name: Honest evidence classification
+        if: always()
+        run: echo 'DEV_ONLY / L20_SESSION_AGNOSTIC_PREWORLD_GOAL / EXTERNAL_GOAL_RESULT_0 / NEW_WORLD_0 / REAL_L10_0 / S10_S11_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
