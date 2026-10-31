@@ -16,3 +16,7 @@ SCIENCE_NOT_RUN`.
 
 No auto-retry. Review the new run's exact HEAD, raw artifact, action receipts,
 S42 SelfBody/L8/M diagnostics, original cleanup and any failure honestly.
+
+Trigger revision: prior invalid GitHub workflow YAML (unquoted colon in
+job guard) produced **zero jobs** and did not start Java/Node/World. The
+corrected workflow is now triggered once by this marker revision.
