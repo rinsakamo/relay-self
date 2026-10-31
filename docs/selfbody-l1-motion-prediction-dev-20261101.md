@@ -51,3 +51,30 @@ python tools/check_repository.py
 #537の既存launcher/grantが新規試験まで含むことを**実行前に確認**する。新しい使い捨てWorldで、過去Worldで凍結した `MotionForecast` を元の受信済みnative/S50位置観測**より先に**read-only生成してdigestを保存し、その後の実際に到着したsampled WorldTickで誤差を採点。必要ならoff／cheap／linearを同じWorld観測上でpairedに比較。追加probe・Action issuer・L0 policy変更・S10更新禁止。元Java/Node/Paper original、clean shutdown・source監査、実行HEAD/grant、失敗原本を保存。
 
 **完了分類の上限:** `DEV_OFFLINE_ARCHIVAL_TWO_WORLD_HELDOUT_REPLAY_ONLY / CHEAP_LINEAR_EQUIVALENT / GOAL_UNDETERMINED / NO_L10 / NO_S10_S11 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`。未確認の次Worldの実測を捏造しない。
+
+
+---
+
+## L1-MP2 / freeze → score → refit（2026-11-01、#653追補）
+
+PR #655の既存L1-MP1に、**原本を新たに読み取らない純粋な一方向状態遷移**を追加した。S50 runtime host / original S49 / S16 / L0 / SelfBody / S10 ownerは触らない。
+
+1. **freeze_for_target(training, target):** 訓練Worldの8 sampled displacementと、これから観測する対象session/World/Action/subjectの識別子で一係数forecastを固定し、モデルと対象を持つimmutable ticket SHA256を生成。digestは誤接続検出用であって真正性署名ではない。
+2. **score_frozen(ticket, training, heldout):** 保持された訓練のみで係数を再計算・同一性確認。heldoutは別World/session/source digestであり、同一subjectとPaper入力フラグ条件を要求。凍結したmodel、zero/last/mean/SAME linear cheapを7個の次tickペアで採点。予測誤差を見て過去の係数を書き換えない。
+3. **update_after_score(..., scored):** 完成済み・元ticketと厳密に結合された採点結果のみを受け、2 World（14個の隣接対）から**次の第3 Worldで試す係数候補**を再fit。cheap pooled one-parameter ruleと一致することを要求。これは実験ローカルの `NextWorldRefit` 値であり、`PersistentCognition`/PRD/L10/S10/S11更新ではない。
+
+### 評価・偽装防止
+
+同一session/World、target違い、frozen ticket改竄、事後訓練差替、将来Worldの混入、対象のAction/subject違い、tick不連続、入力状態変化、欠測・偽Goal/P1・S10/S11、偽採点・前向き/原本認証フラグの捏造を拒否する。
+
+`tools/selfbody_l1_motion_prediction_replay.py` は従来の二World旧監査JSONから `mp2_frozen_ticket` / `mp2_scored` / `mp2_next_world_untested` を出力する。**同じ古いデータを読み込んでfreeze APIをscore APIより先に呼ぶテストであり、実際のWorld開始より先に物理予測が凍結されたことを示すものではない**。将来の実Worldでは所有S側から到着したtyped S50入力/検証終了のタイムラインで、この因果順序を独立に証明する必要がある。
+
+### 別レーンとの役割分担
+
+#537のS49 × SelfBody × L8 × M は既に **Action単位の運動変位** の前World→新World予測を実Minecraftで観測している。ただし平均モデルと安価な直近値が物理的には同点。L1-MP2はその実装を複製せず、S50 **8 callback内の時間変位（次tick）** だけを扱う。正式Goal外の数値自己教師ありに限定。
+
+### 次に求める実World試験
+
+#537の既存S49単一Action runnerで、**別用途grantの流用をせず今回のS50 forecast DEV試験の権限を確認してから**、新Worldのsession/World/Action UUIDを既存S50 marker前にbindし、前Worldでfreezeした係数を保持。元Paper/Nodeのphysical callbackが得られてから `score_frozen` 相当を行い、S50 ownerの原本終了監査・cleanup・数値/cheap比較を保存する。今の`evaluate_heldout`はarchive/live型の混入を拒否するため、実host接続には元S50 source ownerによるsource ceilingの取扱いを別途実装/監査する。今回のoffline PASSを実World PASSへ格上げしない。
+
+分類: `OFFLINE_ARCHIVAL_FREEZE_SCORE_REFIT_REPLAY_ONLY / CHEAP_POOLED_REFIT_EQUIVALENT / NEXT_WORLD_UNTESTED / NO_L0_POLICY_CHANGE / GOAL_UNDETERMINED / L10_S10_S11_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`。
