@@ -30,7 +30,7 @@ def fixture():
     terminal = item.action
     outcome = replace(
         item.outcome, action_ref="MOVE_BACKWARD",
-        world_provenance=terminal.provenance,
+        world_provenance=terminal.events[-1].provenance,
     )
     a, b, c, d = frames[1], frames[2], frames[3], frames[4]
     movement = ((a.snapshot.position.x-d.snapshot.position.x)**2
@@ -48,7 +48,7 @@ def fixture():
         movement_distance=movement,
         cleanup_attempted=True,
         error=None,
-        provenance=terminal.provenance,
+        provenance=terminal.events[-1].provenance,
     )
     return terminal, outcome, consequence, data["received_original"].splitlines(
         keepends=True,
