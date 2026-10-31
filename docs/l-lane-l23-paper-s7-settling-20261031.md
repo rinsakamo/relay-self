@@ -85,3 +85,81 @@ Classification: `DEV_ONLY / L23_OFFLINE_SOURCE_SHAPE /
 REAL_PAPER_ORIGINAL_NEW_0 / STABILITY_UNPROVEN /
 CLOCK_ALIGNMENT_NOT_ATTESTED / GOAL_UNDETERMINED /
 L10_S10_S11_P1_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+
+## Prospective real Paper gate implemented in L23 DEV (not physically executed)
+
+S49 now accepts **all six** pinned operator-provided Paper asset flags
+(`--l23-paper-server-jar`, `--l23-paper-server-sha256`,
+`--l23-paper-plugin-jar`, `--l23-paper-plugin-sha256`,
+`--l23-paper-config`, `--l23-paper-config-sha256`).
+All 6 or none; preflight must have `--l22-settling-probes 6`, the
+existing L16 fixed Goal and fresh absolute capture root. Original non-opt-in
+Mojang S49 execution is unchanged. No model and no additional motor issuer.
+
+This **borrows** the S-owned unmodified Paper 1.21.8 plugin JAR from the
+reviewed S branch. Unlike a passive independent observer, enabling it
+changes real hunger/exhaustion (**physical intervention**). Required
+operator-owned config has `dev-enabled: true`,
+`s50-tick-meter-dev: true`, `target-player: RelaySelf`,
+`minecraft-version: 1.21.8`. The L lane does not modify the S owner's
+plugin Java code or substitute another R-approved version. Exact active
+config / plugin / server SHA256s must be recorded. A local operator must
+inspect this metabolic intervention before running a new DEV World.
+
+`stage_paper_assets` copies the SHA-matched Paper server JAR, plugin JAR
+and active plugin config into a **fresh temporary World only**. S49's owned
+loopback server starts with the existing minimal config. Before S49's
+existing Action executor is called, it submits
+`relaydevphase <action-id>-<session-id> PRE_FORWARD` to Paper's **console**
+and requires its original server-side `M02_DEV_S50_PHASE` line. After the
+genuine S15 clear/S16 OUTCOME it requires Paper's
+`POST_CLEAR` line, then requests `relaydevwait` and requires
+`S50_DEV_WAIT_BEGIN`. The S49 Action and two L22/L16 source probes
+remain on the same original S7 reader and preserve raw receipts. Paper
+collects eight consecutive World-tick callbacks. This is a
+**recorded console bracket, not the server-effective held-input
+clear World tick**. Paper cannot read Mineflayer's native
+`getControlState()` for the complete server tick.
+
+The original Java stdout log is audited **after owned server shutdown**.
+The L23 readback now requires both PRE_FORWARD and POST_CLEAR, same Paper
+World, ordered `world_full_time`, then WAIT_BEGIN and eight callbacks.
+The native source is checked against the original S7/S16 receipt and Paper
+end geometry is compared only as a candidate. The final report includes
+`l23_paper.readback` or `PAPER_SOURCE_REJECTED`. On rejection the run is
+FAIL, with available originals kept. No successful offline tests or future
+DEV use promote `physical_stability_verified`, R qualification, Goal,
+L10 learning, S10/S11, or P1 WAIT recovery.
+
+### LocalCodex operator command (real World only on the user's WSL host)
+
+The existing real L22 command supplies `--l16-capture-root` and fixed
+L20 Goal source; **use new unique roots and new Goal preregistration**.
+Append to that command:
+
+```bash
+--l22-settling-probes 6 \
+--l23-paper-server-jar /ABS/PAPER-1.21.8.jar \
+--l23-paper-server-sha256 <sha256-of-that-file> \
+--l23-paper-plugin-jar /ABS/relay-metabolism-paper-dev.jar \
+--l23-paper-plugin-sha256 <sha256-of-that-file> \
+--l23-paper-config /ABS/l23-only-active-config.yml \
+--l23-paper-config-sha256 <sha256-of-that-file>
+```
+
+`<sha256...>` placeholders here are not literal accepted values. Exact
+file hashes must be calculated from real pre-existing/build-generated
+assets; never borrow old hashes or synthesize a Paper jar. Maven compiler
+and a Paper 1.21.8 server are not available to this GitHub-only ChatGPT
+execution environment. Do not claim a real World ran here.
+
+The Paper plugin's `relaydevphase` requirements are an additional
+prerequisite; **without** target player, dev enabled + tick meter enabled,
+or a logged PRE_FORWARD, the run must terminate before issuing motor.
+If PRE_FORWARD succeeds but S15/S16 fails, preserve a partial source and
+do not issue a POST_CLEAR or WAIT claim.
+
+Suggested result:
+`DEV_ONLY / PAPER_NATIVE_8_CALLBACKS_CANDIDATE /
+PAPER_ACTIVE_METABOLISM_INTERVENTION / CLOCK_ALIGNMENT_NOT_ATTESTED /
+STABILITY_UNPROVEN / GOAL_UNDETERMINED / L10_S10_S11_P1_0`.
