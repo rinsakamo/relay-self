@@ -84,10 +84,10 @@ def verify_paper_assets(assets: L23PaperAssets) -> dict[str, str]:
         ("calibration-status", "candidate_uncalibrated"),
         ("standard-food", "cooked_beef"),
     ):
-        matches = re.findall(rf"^{re.escape(key)}:\\s*(\\S+)\\s*$", text, re.M)
+        matches = re.findall(rf"^{re.escape(key)}:\s*(\S+)\s*$", text, re.M)
         if matches != [required]:
             raise L23PaperBlocked(f"invalid Paper profile {key}")
-    if len(re.findall(r"^actions:\\s*$", text, re.M)) != 1:
+    if len(re.findall(r"^actions:\s*$", text, re.M)) != 1:
         raise L23PaperBlocked("missing/duplicate Paper actions section")
     expected_actions = {
         "BASAL", "WALK", "CROUCH", "SPRINT", "SWIM",
@@ -95,7 +95,7 @@ def verify_paper_assets(assets: L23PaperAssets) -> dict[str, str]:
         "ATTACK", "DAMAGED", "BLOCK_MINED", "REGEN", "HUNGER_EFFECT",
         "UNKNOWN", "COGNITION",
     }
-    action_names = re.findall(r"^  ([A-Z_]+):\\s*\\{", text, re.M)
+    action_names = re.findall(r"^  ([A-Z_]+):\s*\{", text, re.M)
     if len(action_names) != len(expected_actions) or set(action_names) != expected_actions:
         raise L23PaperBlocked("incomplete/duplicate Paper M0.2 action roster")
     return {
