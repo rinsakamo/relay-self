@@ -10,6 +10,13 @@ from adapters.mineflayer.self_body_s50_l1_motion_prediction import (
     from_archival_readback,
 )
 
+from adapters.mineflayer.self_body_s50_l1_motion_prequential import (
+    TargetWorldIdentity,
+    freeze_for_target,
+    score_frozen,
+    update_after_score,
+)
+
 ROOT = Path(__file__).resolve().parents[1]
 A = ROOT / "docs/evidence/issue651-route-b-20261031/run1/independent-original-readback.json"
 B = ROOT / (
@@ -23,8 +30,16 @@ def main() -> None:
     # authenticate Java/Node original bytes or claim a new World execution.
     a = from_archival_readback(json.loads(A.read_text(encoding="utf-8")))
     b = from_archival_readback(json.loads(B.read_text(encoding="utf-8")))
+    ticket = freeze_for_target(a, TargetWorldIdentity(
+        b.session_id, b.paper_world_uuid, b.action_id, b.subject_uuid,
+    ))
+    scored = score_frozen(ticket, a, b)
+    next_world = update_after_score(ticket, a, b, scored)
     print(json.dumps({
-        "classification": "DEV_OFFLINE_ARCHIVAL_TWO_WORLD_HELDOUT_REPLAY_ONLY",
+        "classification": "DEV_OFFLINE_ARCHIVAL_FREEZE_SCORE_REFIT_REPLAY_ONLY",
+        "mp2_frozen_ticket": asdict(ticket),
+        "mp2_scored": asdict(scored),
+        "mp2_next_world_untested": asdict(next_world),
         "primary_652_train_654_heldout": asdict(evaluate_heldout(a, b)),
         "secondary_654_train_652_heldout": asdict(evaluate_heldout(b, a)),
         "training_l10": 0,
