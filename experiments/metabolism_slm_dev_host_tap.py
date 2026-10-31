@@ -160,6 +160,14 @@ def bounded_s_l_m_audit_row(result: SLMDevTapResult) -> dict[str, object]:
         ))
     ):
         raise ValueError("forged authority-bearing DEV tap result")
+    valid_reasons = {
+        "DISABLED": ("not_enabled", "invalid_flag"),
+        "RECORDED": ("complete",),
+        "DEFERRED": ("owner_source_or_scope_rejected",),
+        "OBSERVER_ERROR": ("observer_internal_error",),
+    }
+    if result.reason not in valid_reasons.get(result.status, ()):
+        raise ValueError("inconsistent DEV tap status or reason")
     if result.status != "RECORDED":
         if any(getattr(result, k) is not None for k in (
             "session_id", "probe_seq", "request_id", "s_choice",
@@ -181,6 +189,40 @@ def bounded_s_l_m_audit_row(result: SLMDevTapResult) -> dict[str, object]:
             )
         ):
             raise ValueError("malformed recorded audit source/choice")
+        model_statuses = (
+            "MODEL_AFFORDABLE", "MODEL_INSUFFICIENT",
+            "MODEL_AMBIGUOUS", "UNKNOWN",
+        )
+        if result.l1_status is None:
+            if result.l1_candidate is not None or result.l1_model_status is not None:
+                raise ValueError("M-only readout must not claim an L8 candidate")
+        elif result.l1_status in ("retention_off", "no_admissible_l1_proposal"):
+            if (
+                result.l1_candidate is not None
+                or result.l1_model_status != "NO_ADMISSIBLE_L1_CANDIDATE"
+            ):
+                raise ValueError("withheld L8 must not have a candidate")
+        elif result.l1_status in (
+            "l1_agrees_with_s", "l1_shadow_differs_from_s",
+            "cheap_memory_rule_differs_from_s",
+        ):
+            if (
+                result.l1_candidate not in ("WAIT", "MOVE_AWAY")
+                or result.l1_model_status not in model_statuses
+                or (result.l1_candidate == result.s_choice)
+                != (result.l1_status == "l1_agrees_with_s")
+            ):
+                raise ValueError("inadmissible L8 candidate or model claim")
+        else:
+            raise ValueError("unknown L8 comparison status")
+        if (
+            result.s_choice == "WAIT"
+            and result.m_model_tension.startswith("MOVE_")
+        ) or (
+            result.s_choice == "MOVE_AWAY"
+            and result.m_model_tension.startswith("WAIT_")
+        ):
+            raise ValueError("modeled tension does not match original S choice")
     # This object is intentionally small, never more than bounded IDs.
     def short(value: str | None) -> str | None:
         if value is None:
