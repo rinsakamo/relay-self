@@ -7,8 +7,8 @@ A later, independently reviewed S50 motion diagnostic can be attached once.
 """
 from __future__ import annotations
 
-from contextlib import contextmanager
 from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Mapping
 
 from adapters.mineflayer.normal_action import (
