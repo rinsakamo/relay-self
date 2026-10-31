@@ -26,7 +26,7 @@ jobs:
           python -m pytest -q tests/test_metabolism_viability_experiment.py tests/test_metabolism_m01_minecraft.py tests/test_metabolism_m02_exhaustion.py tests/test_fatigue_p1.py tests/test_metabolism_resource_projection.py tests/test_metabolism_sensed_viability.py tests/test_metabolism_route_bounds.py
       - name: Ruff and repository contracts
         run: |
-          ruff check experiments/metabolism_slm_dev_host_tap.py experiments/metabolism_s_l_m_post_epoch.py tests/test_metabolism_same_process_slm_product.py experiments/metabolism_l8_resource_shadow.py tests/test_metabolism_l8_product_contract.py experiments/metabolism_s_epoch_resource.py tests/test_metabolism_s_epoch_product_contract.py experiments/metabolism_b0_cognition.py tests/test_metabolism_b0_product_contract.py experiments/metabolism_route_bounds.py experiments/metabolism_resource_projection.py experiments/metabolism_sensed_viability.py experiments/metabolism_selfbody_cognition.py tests/test_metabolism_resource_projection.py tests/test_metabolism_sensed_viability.py tests/test_metabolism_route_bounds.py tests/test_metabolism_selfbody_product_contract.py
+          ruff check experiments/metabolism_s49_live_probe_bridge.py tests/test_metabolism_s49_live_probe_contract.py experiments/metabolism_slm_dev_host_tap.py experiments/metabolism_s_l_m_post_epoch.py tests/test_metabolism_same_process_slm_product.py experiments/metabolism_l8_resource_shadow.py tests/test_metabolism_l8_product_contract.py experiments/metabolism_s_epoch_resource.py tests/test_metabolism_s_epoch_product_contract.py experiments/metabolism_b0_cognition.py tests/test_metabolism_b0_product_contract.py experiments/metabolism_route_bounds.py experiments/metabolism_resource_projection.py experiments/metabolism_sensed_viability.py experiments/metabolism_selfbody_cognition.py tests/test_metabolism_resource_projection.py tests/test_metabolism_sensed_viability.py tests/test_metabolism_route_bounds.py tests/test_metabolism_selfbody_product_contract.py
           python tools/check_repository.py
       - name: Checkout exact original SelfBody product in separate read-only directory
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -122,5 +122,6 @@ jobs:
           import pytest
           raise SystemExit(pytest.main([
               "-q", "tests/test_metabolism_same_process_slm_product.py",
+              "tests/test_metabolism_s49_live_probe_contract.py",
           ]))
           PY
