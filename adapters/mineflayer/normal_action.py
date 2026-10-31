@@ -199,6 +199,15 @@ class NormalWorldL0(ReactiveL0):
         self._stage_t_dev_commit = commit
         self._stage_t_dev_s17 = typed_s17
 
+    def decide(self, event, probe, *, grant=None):
+        # Explicit DEV owner: coordinate only the original decisive _check,
+        # never the preliminary grant check in ReactiveL0.run_session.
+        self._slm_deciding = True
+        try:
+            return super().decide(event, probe, grant=grant)
+        finally:
+            self._slm_deciding = False
+
     def _check(self, event, probe):
         if (
             not isinstance(event, MineflayerObservation)
@@ -248,10 +257,16 @@ class NormalWorldL0(ReactiveL0):
                 expected_session_id=self.session_id,
                 expected_entity_id=native.entity_id,
             )
-        return select_world_conditioned_choice(
-            native, self.retained,
-            expected_session_id=self.session_id, expected_entity_id=native.entity_id,
-        )
+        def original_choice(observation):
+            return select_world_conditioned_choice(
+                observation, self.retained,
+                expected_session_id=self.session_id, expected_entity_id=observation.entity_id,
+            )
+
+        owner = getattr(self, "slm_dev_owner", None)
+        if owner is not None and getattr(self, "_slm_deciding", False):
+            return owner.coordinate_original_choice(native, self.retained, original_choice)
+        return original_choice(native)
 
 
 class NormalActionStage(str, Enum):

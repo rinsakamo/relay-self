@@ -269,6 +269,7 @@ async def qualify(
     live_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
     stage_r_dev: bool = False,
     raw_capture_root: Path | None = None,
+    slm_dev_owner: object | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -320,6 +321,11 @@ async def qualify(
             sid, "escape-threat", retained, max_events=3, max_action_requests=2,
         )
         executor = NormalSessionActionExecutor(sid, intent)
+        if slm_dev_owner is not None:
+            if stage_r_dev or live_probe is not None:
+                raise S31ABlocked("SLM DEV requires exclusive original observer and no Stage R")
+            slm_dev_owner.bind(host, executor.supervisor)
+            live_probe = slm_dev_owner.observe
         if stage_r_dev:
             # Explicit S49-owned extension; never install a read-only
             # observer as a new Action issuer or as an S10 authority.
@@ -585,6 +591,12 @@ async def qualify(
             report["cleanup_supervisor_error"] = f"{type(exc).__name__}: {exc}"
             if isinstance(exc, asyncio.CancelledError):
                 cancellations.append(exc)
+        if slm_dev_owner is not None:
+            # Cleanup has completed before optional diagnostics, including FAIL.
+            try:
+                report["slm_dev"] = slm_dev_owner.finish(report["actual_native_actions"])
+            except Exception:
+                report["slm_dev"] = {"status": "OBSERVER_ERROR"}
         if cancellations:
             report["cancellation_count"] = len(cancellations)
             report["first_cancellation"] = str(cancellations[0])
