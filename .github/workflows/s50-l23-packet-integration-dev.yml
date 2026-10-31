@@ -1,0 +1,59 @@
+name: S50 x L23 client packet DEV integration
+on:
+  push:
+    branches:
+      - dev/s50-l23-client-packet-integrated-20261031
+    paths:
+      - 'adapters/mineflayer/bridge.mjs'
+      - 'adapters/mineflayer/s50_client_packet_witness_dev.mjs'
+      - 'adapters/mineflayer/s50_client_packet_witness_dev.test.mjs'
+      - 'adapters/mineflayer/m02_paper_dev/s50_client_packet_source.py'
+      - 'tests/test_s50_client_packet_source.py'
+      - 'tests/test_s50_l23_packet_integration.py'
+      - '.github/workflows/s50-l23-packet-integration-dev.yml'
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/bridge.mjs'
+      - 'adapters/mineflayer/s50_client_packet_witness_dev.mjs'
+      - 'adapters/mineflayer/s50_client_packet_witness_dev.test.mjs'
+      - 'adapters/mineflayer/m02_paper_dev/s50_client_packet_source.py'
+      - 'tests/test_s50_client_packet_source.py'
+      - 'tests/test_s50_l23_packet_integration.py'
+      - '.github/workflows/s50-l23-packet-integration-dev.yml'
+permissions:
+  contents: read
+jobs:
+  offline-existing-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Native bridge and packet witness must preserve old writer
+        run: |
+          set -euo pipefail
+          node --check adapters/mineflayer/bridge.mjs
+          node --check adapters/mineflayer/s50_client_packet_witness_dev.mjs
+          node --test adapters/mineflayer/s50_client_packet_witness_dev.test.mjs
+      - name: Offline input source and L23 original readback regression
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/m02_paper_dev/s50_client_packet_source.py tests/test_s50_client_packet_source.py tests/test_s50_l23_packet_integration.py
+          python -m compileall -q adapters/mineflayer/m02_paper_dev/s50_client_packet_source.py tests/test_s50_client_packet_source.py tests/test_s50_l23_packet_integration.py
+          python -m pytest -o addopts='' -q tests/test_s50_client_packet_source.py tests/test_s50_l23_packet_integration.py tests/test_l23_paper_s7_settling.py tests/test_l23_paper_live_assets.py tests/test_l22_runtime_settling.py
+          python tools/check_repository.py
+      - name: Ceiling
+        if: always()
+        run: echo 'OFFLINE_ONLY / SOURCE_READBACK_ONLY / NO_REAL_WORLD / EFFECTIVE_CLEAR_NOT_ATTESTED / NO_GOAL_OR_WAIT_ADMISSION'
