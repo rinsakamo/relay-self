@@ -1,0 +1,9 @@
+{
+  "java_pid_gone": true,
+  "runner_pid_gone": true,
+  "world_removed": true,
+  "server_exit": 0,
+  "node_exit": 0,
+  "observer_closed": true,
+  "observer_disconnected_in_server_log": true
+}

@@ -1,0 +1,196 @@
+{
+  "kind": "POST_RUN_READ_ONLY_DIAGNOSTIC_NOT_ORIGINAL",
+  "s16_readback": {
+    "schema": "L18_S49_S16_OWNER_SOURCE_READBACK_V1",
+    "s16_original_sha256": "4f2d0a8f3c78d1046e094ee282fe477cad9395f034a42dcf63fbba4b66018f7b",
+    "s16_original_matches_original_pre_probe": true,
+    "producer_original_claim_only": true,
+    "independent_goal_original_present": false,
+    "independent_physical_authentication": false,
+    "qualified_real_l10_pairs": 0,
+    "s10_updates": 0,
+    "s11_habit_grants": 0
+  },
+  "l22_audit": {
+    "schema": "L22_POST_S16_SETTLING_DIAGNOSTIC_V1",
+    "session_id": "0b7d893c-9985-4e0e-a9a1-b99c107b7367",
+    "action_id": "s49-native-move-24",
+    "s16_original_sha256": "4f2d0a8f3c78d1046e094ee282fe477cad9395f034a42dcf63fbba4b66018f7b",
+    "received_sha256": "22c8100795e7e37acd91dea50a4db4943a4b448431d8b2b994d4d7aac72c6ea7",
+    "sent_sha256": "97a7d70ac524f563e2e48de7a1921429b0d91fae1417bd34f8ee90968130e06f",
+    "after_seq": 35,
+    "first_probe_seq": 48,
+    "second_probe_seq": 49,
+    "move_event_seqs": [
+      36,
+      37,
+      38,
+      40,
+      41,
+      43
+    ],
+    "settling_probe_seqs": [
+      39,
+      42,
+      44,
+      45,
+      46,
+      47
+    ],
+    "settling_sample_drift_max_m": 0.20679916113654961,
+    "post_s16_displacement_m": 0.2404601368784256,
+    "two_probe_displacement_m": 0.0,
+    "geometric_goal_candidate": "NOT_REACHED",
+    "settling_state": "SETTLING_OBSERVED",
+    "reason": "POST_S16_MOVE_EVENT",
+    "accepted_goal_status": "UNDETERMINED",
+    "stable_world_ticks_attested": false,
+    "physically_stopped_proven": false,
+    "independent_goal_owner_authenticated": false,
+    "qualified_real_learning_pairs": 0,
+    "s10_updates": 0,
+    "s11_grants": 0
+  },
+  "l21_review": {
+    "schema": "L21_SEPARATE_CLIENT_FIRST_ACTION_GOAL_SOURCE_REVIEW_V1",
+    "observer_session": "c7f5ba6f-3f5b-4603-82b1-c4242f24f451",
+    "original_sha256": "51f3280d19224ef26709cba8554101d551d0b1a2e7deee4d2a196cf3af00445a",
+    "source_bytes": 1592,
+    "first_request_id": "l16:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:goal-1",
+    "second_request_id": "l16:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:goal-2",
+    "goal_status": "NOT_REACHED",
+    "native_goal_status": "UNDETERMINED",
+    "diagnostic_agreement": null,
+    "physical_second_tcp_client_source_claim": true,
+    "tcp_authenticated_independently": false,
+    "separate_external_goal_owner_authenticated": false,
+    "independently_attested_nonintervention": false,
+    "qualified_real_learning_pairs": 0,
+    "s10_updates": 0,
+    "s11_grants": 0
+  },
+  "quiet_intervals": [
+    {
+      "seq": 39,
+      "position": {
+        "x": 10.5,
+        "y": -60,
+        "z": -8.539090342887365
+      },
+      "move_seqs": [
+        36,
+        37,
+        38
+      ],
+      "displacement_m": 0.20679916113654961,
+      "quiet": 0
+    },
+    {
+      "seq": 42,
+      "position": {
+        "x": 10.5,
+        "y": -60,
+        "z": -8.567309754517078
+      },
+      "move_seqs": [
+        40,
+        41
+      ],
+      "displacement_m": 0.02821941162971342,
+      "quiet": 0
+    },
+    {
+      "seq": 44,
+      "position": {
+        "x": 10.5,
+        "y": -60,
+        "z": -8.57275131862924
+      },
+      "move_seqs": [
+        43
+      ],
+      "displacement_m": 0.005441564112162567,
+      "quiet": 0
+    },
+    {
+      "seq": 45,
+      "position": {
+        "x": 10.5,
+        "y": -60,
+        "z": -8.57275131862924
+      },
+      "move_seqs": [],
+      "displacement_m": 0.0,
+      "quiet": 1
+    },
+    {
+      "seq": 46,
+      "position": {
+        "x": 10.5,
+        "y": -60,
+        "z": -8.57275131862924
+      },
+      "move_seqs": [],
+      "displacement_m": 0.0,
+      "quiet": 2
+    },
+    {
+      "seq": 47,
+      "position": {
+        "x": 10.5,
+        "y": -60,
+        "z": -8.57275131862924
+      },
+      "move_seqs": [],
+      "displacement_m": 0.0,
+      "quiet": 3
+    }
+  ],
+  "goal_comparison": [
+    {
+      "native_seq": 48,
+      "native_position": {
+        "x": 10.5,
+        "y": -60,
+        "z": -8.57275131862924
+      },
+      "observer_position": {
+        "entity_id": 6,
+        "x": 10.5,
+        "y": -60,
+        "z": -8.57275390625
+      },
+      "position_difference_m": 2.5876207594421885e-06,
+      "simultaneous_sampling_proven": false
+    },
+    {
+      "native_seq": 49,
+      "native_position": {
+        "x": 10.5,
+        "y": -60,
+        "z": -8.57275131862924
+      },
+      "observer_position": {
+        "entity_id": 6,
+        "x": 10.5,
+        "y": -60,
+        "z": -8.57275390625
+      },
+      "position_difference_m": 2.5876207594421885e-06,
+      "simultaneous_sampling_proven": false
+    }
+  ],
+  "negative_controls": [
+    "received_original:REJECTED",
+    "s16_original:REJECTED"
+  ],
+  "cleanup": {
+    "java_pid_gone": true,
+    "runner_pid_gone": true,
+    "world_removed": true,
+    "server_exit": 0,
+    "node_exit": 0,
+    "observer_closed": true,
+    "observer_disconnected_in_server_log": true
+  }
+}

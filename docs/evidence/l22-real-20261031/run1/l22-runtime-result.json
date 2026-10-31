@@ -1,0 +1,55 @@
+{
+  "accepted_goal_status": "UNDETERMINED",
+  "action_id": "s49-native-move-24",
+  "max_probes_reached": true,
+  "observed_move_seqs": [
+    36,
+    37,
+    38,
+    40,
+    41,
+    43
+  ],
+  "observed_probe_seqs": [
+    39,
+    42,
+    44,
+    45,
+    46,
+    47
+  ],
+  "physically_stopped_proven": false,
+  "qualified_real_learning_pairs": 0,
+  "quiet_streak": 3,
+  "quiet_streak_history": [
+    0,
+    0,
+    0,
+    1,
+    2,
+    3
+  ],
+  "reason": "NO_ATTESTED_WORLD_TICK_IDLE",
+  "request_ids": [
+    "l22:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:settle-1",
+    "l22:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:settle-2",
+    "l22:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:settle-3",
+    "l22:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:settle-4",
+    "l22:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:settle-5",
+    "l22:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:settle-6"
+  ],
+  "s10_updates": 0,
+  "s11_grants": 0,
+  "sample_displacements_m": [
+    0.20679916113654961,
+    0.02821941162971342,
+    0.005441564112162567,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "schema": "L22_RUNTIME_SETTLING_SAMPLES_V1",
+  "session_id": "0b7d893c-9985-4e0e-a9a1-b99c107b7367",
+  "stable_world_ticks_attested": false,
+  "window_status": "QUIET_SAMPLES_ONLY"
+}

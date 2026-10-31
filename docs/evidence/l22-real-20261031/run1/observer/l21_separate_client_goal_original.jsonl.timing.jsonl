@@ -1,0 +1,6 @@
+{"observer_session":"c7f5ba6f-3f5b-4603-82b1-c4242f24f451","index":0,"kind":"start","wall_time_ms":1793424927759,"monotonic_ns":"1984095107801"}
+{"observer_session":"c7f5ba6f-3f5b-4603-82b1-c4242f24f451","index":1,"kind":"ready","wall_time_ms":1793424928300,"monotonic_ns":"1984636076074"}
+{"observer_session":"c7f5ba6f-3f5b-4603-82b1-c4242f24f451","index":2,"kind":"sample","wall_time_ms":1793424941168,"monotonic_ns":"1997504782167"}
+{"observer_session":"c7f5ba6f-3f5b-4603-82b1-c4242f24f451","index":3,"kind":"sample","wall_time_ms":1793424941183,"monotonic_ns":"1997519475588"}
+{"observer_session":"c7f5ba6f-3f5b-4603-82b1-c4242f24f451","index":4,"kind":"goal_result","wall_time_ms":1793424941191,"monotonic_ns":"1997527471199"}
+{"observer_session":"c7f5ba6f-3f5b-4603-82b1-c4242f24f451","index":5,"kind":"closed","wall_time_ms":1793424941207,"monotonic_ns":"1997543130435"}

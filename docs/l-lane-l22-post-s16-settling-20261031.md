@@ -137,3 +137,50 @@ MOVE. The non-opt-in S49 two-MOVE contract stays unchanged.
 The L20 geometry is operator-authored and precommitted before the World; it
 is not an authenticated independent Goal owner. Continuous physical idle,
 Goal admission, L10, S10 and S11 remain outside these diagnostic samples.
+
+## 実World Run1 (2026-10-31)
+
+実行コードHEAD: `3dfd741fabf0f6b0b5f99ce1be5281f4bc3d74c4`。
+新規使い捨てMojang vanilla 1.21.8、Java 21.0.12.1、Node 22.22.2、
+Mineflayer 4.39.0、Python 3.12.3。実Worldは **1回 / DEV PASS**、
+L0 WAIT 1件、MOVE 1件。新規LLM呼出しは0。再試験は不要だった。
+
+- session: `0b7d893c-9985-4e0e-a9a1-b99c107b7367`
+- Action: `s49-native-move-24`、S15 clear ACK seq34、
+  S16 ownerのafter観測seq35（terminal自体はS16 owner別原本）。
+- Action中移動0.832291181750815m、S16後の追加移動
+  **0.2404601368784256m**。native moveは6件、
+  seq36/37/38/40/41/43。`SETTLING_OBSERVED`。
+- settling probes seq39/42/44/45/46/47、quiet履歴 **0,0,0,1,2,3**。
+  各probe間変位m: 0.2067991611, 0.0282194116, 0.0054415641, 0, 0, 0。
+  6/6予算を使用し、最終probeでquiet 3に到達。timeoutなし。
+  `QUIET_SAMPLES_ONLY` / `STABILITY_UNPROVEN`。
+- Goal probes seq48/49はいずれも `(10.5,-60,-8.57275131862924)`。
+  Observerは2件とも `(10.5,-60,-8.57275390625)`。
+  差は各0.0000025876207594421885m。ただし同時刻採取の証明なし。
+- native/Observerの幾何候補はともにNOT_REACHED、
+  正式Goalは **UNDETERMINED**。固定Goal `(0,0)`、許容0.49m、
+  drift閾値0.05mはWorld開始前にoperatorが固定。独立owner認証なし。
+- Observerは6行のclosed付き原本を正常seal。サーバログにも切断を記録。
+  S7ハッシュ/seq/request ID、S16 owner SHA/事前probe hash、L21原本の
+  readback PASS。runtime quiet履歴もS7から独立再計算して一致。
+  原本コピー破損のnegative 2件を拒否。L21 Run2保護原本は変更なし。
+- Node/Java exit 0、所有PID消滅、使い捨てWorld削除を確認。
+- L10経験ペア0、S10更新0、S11 grant 0。LEARNING_NOT_ADMITTED。
+
+原本: `/home/rinsa/evidence/l22-real-20261031/run1/`。
+可搬コピー: [証拠ディレクトリ](evidence/l22-real-20261031/run1)、
+[SHA256SUMS](evidence/l22-real-20261031/SHA256SUMS)。
+S7/S16/Observerが原本。`read-only-diagnostic.json`、
+`l22-runtime-result.json`、`l22-source-audit.json`は保存済report/原本からの
+事後抽出・診断であり、新しいnative原本ではない。
+
+次段階は既存Issue #639の継続項目として、独立Paper側の連続tick /
+input-idleとS7の対応を小さく設計・検証する。今回quiet 3は6回目に初めて
+成立した。1回のWorldだけでprobe数や閾値は調整しない。L21との時点対応も
+改善対象だが、まず観測終了と物理静止の証拠を区別する。L10受理境界が
+成立するまで経験ペア・次epoch学習変化を確定させない。
+
+`DEV_ONLY / REAL_WORLD_OBSERVED / L22_SETTLING_OBSERVED /
+QUIET_SAMPLES_ONLY / STABILITY_UNPROVEN / GOAL_UNDETERMINED /
+LEARNING_NOT_ADMITTED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`

@@ -1,0 +1,15 @@
+[
+  {
+    "pid": 4564,
+    "ppid": 4561,
+    "cwd": "/tmp/relay-self-s49-4g455d69",
+    "cmd": [
+      "java",
+      "-Xms512M",
+      "-Xmx1536M",
+      "-jar",
+      "/tmp/relay-self-s49-4g455d69/minecraft.jar",
+      "nogui"
+    ]
+  }
+]
