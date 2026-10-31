@@ -53,9 +53,20 @@ def paper_fixture(args, *, motion_tick=0):
         tick_meter_blocks=1.0, combat_events=0, swing_events=0,
         basal_ticks=0,
     )
-    rows = ["[INFO] S50_DEV_WAIT_BEGIN " + " ".join(
+    rows = [
+        "[INFO] M02_DEV_S50_PHASE " + " ".join(
+            f"{k}={v}" for k, v in dict(
+                marker_id=marker, phase=phase, world_full_time=tick,
+                world=WORLD, player_tick=tick,
+                packets=4, blocks=1.0, billed=0.0,
+                x=x, y=y, z=z,
+            ).items()
+        )
+        for phase, tick in (("PRE_FORWARD", 290), ("POST_CLEAR", 300))
+    ]
+    rows.append("[INFO] S50_DEV_WAIT_BEGIN " + " ".join(
         f"{k}={v}" for k, v in fields.items()
-    )]
+    ))
     for i in range(1, 9):
         start = (x, y, z)
         if i == motion_tick:
@@ -111,6 +122,7 @@ def test_motion_with_valid_paper_counter_is_activity_not_idle():
     "lost_tick", "duplicate_tick", "gapped_tick", "foreign_world",
     "foreign_marker", "negative_counter", "broken_from_pose", "nonfinite",
     "duplicate_field", "truncated_original", "s7_sha",
+    "missing_phase", "wrong_phase", "post_clear_after_wait",
 ])
 def test_corrupted_or_foreign_originals_fail_closed(fault):
     args = original_args()
@@ -140,6 +152,15 @@ def test_corrupted_or_foreign_originals_fail_closed(fault):
     elif fault == "duplicate_field":
         original = original.replace(
             b"index=1 ", b"index=1 index=1 ", 1,
+        )
+    elif fault == "missing_phase":
+        original = b"".join(original.splitlines(keepends=True)[1:])
+    elif fault == "wrong_phase":
+        original = original.replace(b"phase=PRE_FORWARD", b"phase=POST_CLEAR", 1)
+    elif fault == "post_clear_after_wait":
+        original = original.replace(
+            b"phase=POST_CLEAR world_full_time=300",
+            b"phase=POST_CLEAR world_full_time=320", 1,
         )
     elif fault == "truncated_original":
         original = b""
