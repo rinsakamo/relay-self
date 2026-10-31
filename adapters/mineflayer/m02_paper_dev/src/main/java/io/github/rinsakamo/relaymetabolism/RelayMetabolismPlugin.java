@@ -17,6 +17,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Input;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
@@ -33,6 +34,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerInputEvent;
 import org.bukkit.event.player.PlayerVelocityEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
@@ -80,6 +82,13 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     // Separate prospective S50 fixed-pose DEV: World-tick position billing.
     // False on all historical Paper profiles and non-controlled World runs.
     private boolean s50TickMeterCandidate = false;
+    // Opt-in S owner observation of the *last reported* client input only.
+    // Neither this source nor an all-false snapshot proves S15 effective clear.
+    private boolean s50InputWitnessCandidate = false;
+    private static final long S50_INPUT_EVENT_LOG_LIMIT = 256;
+    private long s50InputEvents = 0;
+    private long s50InputLastUpdateTick = -1;
+    private volatile boolean s50InputCoverageOverflow = false;
     private boolean s50TickMeterArmed = false;
     private Location s50TickMeterLast;
     private long s50TickMeterRows = 0;
@@ -210,6 +219,16 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 throw new IllegalStateException("invalid S50 tick meter DEV flag");
             }
             s50TickMeterCandidate = getConfig().getBoolean("s50-tick-meter-dev", false);
+            if (getConfig().contains("s50-input-witness-dev")
+                    && !getConfig().isBoolean("s50-input-witness-dev")) {
+                throw new IllegalStateException("invalid S50 input witness DEV flag");
+            }
+            s50InputWitnessCandidate = getConfig().getBoolean(
+                "s50-input-witness-dev", false);
+            if (s50InputWitnessCandidate && !s50TickMeterCandidate) {
+                throw new IllegalStateException(
+                    "S50 input witness requires S50 tick meter DEV");
+            }
             target = getConfig().getString("target-player", "");
             if (!target.equals("RelaySelf")) {
                 throw new IllegalStateException("only the owned RelaySelf dev bot is supported");
@@ -278,6 +297,20 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                             + " sprint=" + p.isSprinting() + " sneak=" + p.isSneaking()
                             + " swimming=" + p.isSwimming()
                             + " basal_ticks=" + appliedTicks);
+                        if (s50InputWitnessCandidate) {
+                            // A sampled server state, not a full-tick input census.
+                            Input input = p.getCurrentInput();
+                            getLogger().info("S50_DEV_INPUT_TICK marker_id=" + s50Marker
+                                + " world=" + p.getWorld().getUID()
+                                + " subject_uuid=" + p.getUniqueId()
+                                + " tick=" + tick + " index=" + (s50WaitSourceRows + 1)
+                                + " input_events=" + s50InputEvents
+                                + " last_input_event_tick=" + s50InputLastUpdateTick
+                                + " event_overflow=" + s50InputCoverageOverflow
+                                + inputFlags(input)
+                                + " coverage=LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY"
+                                + " effective_s15_clear_tick=NOT_ATTESTED");
+                        }
                         try {
                             logS50WaitScope(p, tick, s50WaitSourceRows + 1);
                             getLogger().info("S50_DEV_WAIT_LIFECYCLE_SAMPLE marker_id="
@@ -441,6 +474,54 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     }
 
 
+    /** Encode exactly the seven Paper 1.21.8 input bits, not held Node controls. */
+    private static String inputFlags(Input input) {
+        return " forward=" + input.isForward()
+            + " backward=" + input.isBackward()
+            + " left=" + input.isLeft()
+            + " right=" + input.isRight()
+            + " jump=" + input.isJump()
+            + " sneak=" + input.isSneak()
+            + " sprint=" + input.isSprint();
+    }
+
+    /**
+     * PlayerInputEvent is an input-update callback, not proof of every packet,
+     * nor proof of a whole World tick free of held input.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onS50InputUpdate(PlayerInputEvent event) {
+        if (!devActive || !s50InputWitnessCandidate
+                || s50Marker.equals("NONE")
+                || !event.getPlayer().getName().equals(target)) {
+            return;
+        }
+        if (!Bukkit.isPrimaryThread()) {
+            s50InputCoverageOverflow = true;
+            return;
+        }
+        Player subject = event.getPlayer();
+        s50InputEvents++;
+        s50InputLastUpdateTick = subject.getWorld().getFullTime();
+        if (s50InputEvents > S50_INPUT_EVENT_LOG_LIMIT) {
+            if (s50InputEvents == S50_INPUT_EVENT_LOG_LIMIT + 1) {
+                s50InputCoverageOverflow = true;
+                getLogger().warning("S50_DEV_INPUT_OVERFLOW marker_id=" + s50Marker
+                    + " world=" + subject.getWorld().getUID()
+                    + " subject_uuid=" + subject.getUniqueId()
+                    + " tick=" + s50InputLastUpdateTick
+                    + " limit=" + S50_INPUT_EVENT_LOG_LIMIT);
+            }
+            return;
+        }
+        getLogger().info("S50_DEV_INPUT_EVENT marker_id=" + s50Marker
+            + " world=" + subject.getWorld().getUID()
+            + " subject_uuid=" + subject.getUniqueId()
+            + " tick=" + s50InputLastUpdateTick
+            + " index=" + s50InputEvents + inputFlags(event.getInput())
+            + " coverage=PAPER_INPUT_UPDATE_CALLBACK_ONLY");
+    }
+
     /** Server-side timestamp for DEV S50 control-command boundaries only.
      *  No player, R grant, Action authorization or physiology mutation.
      *  Console-only command: the marker cannot assert when server inputs
@@ -524,6 +605,9 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 return false;
             }
             s50Marker = args[0];
+            s50InputEvents = 0;
+            s50InputLastUpdateTick = -1;
+            s50InputCoverageOverflow = false;
             s50ObserveUntil = p.getWorld().getFullTime() + 100;
             if (s50TickMeterCandidate) {
                 // PRE_FORWARD is a source observation BEFORE the existing
