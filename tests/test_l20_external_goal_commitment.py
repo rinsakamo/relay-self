@@ -1,6 +1,7 @@
 """L20 external Goal original prospective commitment: synthetic DEV only."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 from dataclasses import replace
@@ -276,3 +277,104 @@ def test_cli_malformed_goal_is_no_go_not_false_label(tmp_path, capsys):
     ])
     assert rc == 2
     assert "L20 rejected:" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("fault", [
+    "wrong_sha", "wrong_goal", "file_missing", "symlinked", "not_external",
+    "missing_l20_pair", "missing_l16_pair",
+])
+def test_s49_explicit_l20_gate_refuses_before_java_and_action(
+    tmp_path, monkeypatch, fault,
+):
+    from adapters.mineflayer import s49_normal_session_real_ci as s49
+
+    _args, raw, sha = src()
+    plan = _args["plan"]
+    ext = tmp_path / "reviewer-owned.jsonl"
+    ext.write_bytes(raw)
+    capture_root = tmp_path / "l16-capture"
+    capture_root.mkdir()
+    report = tmp_path / "s49-report.json"
+    log = tmp_path / "server.log"
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+
+    def no_java(*_args, **_kwargs):
+        pytest.fail("invalid external Goal source must reject BEFORE Java")
+
+    monkeypatch.setattr(s49, "_fetch_official_server", no_java)
+    criterion_file = ext
+    criterion_sha = sha
+    goal = plan
+    capture = capture_root
+    if fault == "wrong_sha":
+        criterion_sha = "f" * 64
+    elif fault == "wrong_goal":
+        goal = replace(plan, target_z=plan.target_z + 0.2)
+    elif fault == "file_missing":
+        criterion_file = tmp_path / "nonexistent.jsonl"
+    elif fault == "symlinked":
+        link = tmp_path / "reviewer-symlink.jsonl"
+        link.symlink_to(ext)
+        criterion_file = link
+    elif fault == "not_external":
+        criterion_file = capture_root / "copied-reviewer.jsonl"
+        criterion_file.write_bytes(raw)
+    elif fault == "missing_l20_pair":
+        criterion_sha = None
+    elif fault == "missing_l16_pair":
+        capture = None
+
+    rc = asyncio.run(s49.qualify(
+        report, log, l16_capture_root=capture, l16_goal_plan=goal,
+        l20_external_goal_original=criterion_file,
+        l20_admitted_sha256=criterion_sha,
+    ))
+    assert rc == 2
+    assert json.loads(report.read_bytes())["status"] == "BLOCKED"
+    assert list(capture_root.iterdir()) == []
+    assert not log.exists()
+
+
+def test_s49_matching_external_goal_preflight_happens_before_world(
+    tmp_path, monkeypatch,
+):
+    from adapters.mineflayer import s49_normal_session_real_ci as s49
+
+    args, raw, sha = src()
+    ext = tmp_path / "separate-reviewer.jsonl"
+    ext.write_bytes(raw)
+    capture_root = tmp_path / "new-l16-root"
+    capture_root.mkdir()
+    report_path = tmp_path / "report.json"
+    calls = []
+
+    def stop_before_java(*_args, **_kwargs):
+        calls.append("before-java")
+        raise s49.S31ABlocked("test deliberately stops before physical World")
+
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    monkeypatch.setattr(s49, "_fetch_official_server", stop_before_java)
+    rc = asyncio.run(s49.qualify(
+        report_path, tmp_path / "server.log",
+        l16_capture_root=capture_root, l16_goal_plan=args["plan"],
+        l20_external_goal_original=ext, l20_admitted_sha256=sha,
+    ))
+    assert rc == 2 and calls == ["before-java"]
+    report = json.loads(report_path.read_bytes())
+    pre = report["l20_external_goal_preflight"]
+    assert report["l20_external_goal_preflight_status"] == (
+        "SOURCE_MATCH_BEFORE_WORLD_UNQUALIFIED"
+    )
+    assert pre["original_sha256"] == sha
+    assert pre["matched_operator_plan"]
+    assert not pre["authenticated_external_owner"]
+    assert not pre["externally_attested_before_world"]
+    assert not pre["learning_authority"]
+    assert report["status"] == "BLOCKED"
+    assert report["l16_capture"]["status"] == "INCOMPLETE_NO_GOAL_LABEL"
+    assert (capture_root / "l16_pre_world_goal_plan.json").read_bytes() == (
+        args["plan"].original_bytes()
+    )
+    assert ext.read_bytes() == raw
