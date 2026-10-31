@@ -591,3 +591,86 @@ by the S owner. In CI, original fixed S #634 and L8 are loaded
 read-only in one interpreter with synthetic source-shaped probes.
 No new provider, Java, Node, GPU, World, physical Action or
 QUALIFICATION/SCIENCE execution.
+
+## S49 original live_probe source callback → M/L8 post-epoch lease (2026-10-31)
+
+**Exact actual S49 insertion location found:** pinned original
+`adapters/mineflayer/s49_normal_session_real_ci.py` exposes
+`qualify(..., live_probe: async Callable | None = None)`. Its
+`reprobe(frame)` obtains the **original** `_correlated_observe`
+typed native probe, then `await live_probe(reading)`, then passes
+that same probe object back to `NormalWorldL0.run_session`.
+This is **before S49 L0 selection/Action issuance**; it is NOT an
+already completed S42 `DecisionEpochResult`. S49 remains the
+one actual Action authority. The ordinary S49 runtime does not
+currently own a complete B0/M + L8 + S42 same-epoch bundle
+or install this M post-S observer.
+
+The new M-only `experiments/metabolism_s49_live_probe_bridge.py`
+provides `S49PassiveSourceLease(enabled=False, max_probes=4)`.
+`lease.observe` is an async method with **no await inside**,
+compatible with the original S49 `live_probe` callback. No
+additional native read, model, B0`decide`, Action, I/O,
+filesystem, task or scheduling is triggered by this callback.
+It stores *at most one already received original typed native
+probe object*, by identity (memory-only, no persistence).
+The bounded `S49PassiveSourceSummary` reports no authority,
+physical source attestation, learning write, energy credit
+or Action issuance.
+
+An S owner MAY optionally call
+`lease.observe_after_original_s_epoch(...)` **only after** it
+separately has the original source-qualified, finished S42
+decision, original B0 owner decision and ledger, and
+source-admitted L8 snapshot. The lease checks that the
+`NativeThreat.observation` **is that exact captured probe**
+and immediately consumes the one-slot source pointer, before
+calling the already-tested, disabled-by-default M passive
+diagnostic function. Reusing the same lease without a new
+probe fails closed; a later native probe invalidates the older
+one. Incorrect native provenance, source replay, foreign
+session, wrong phase or capacity overrun clear the lease
+without interrupting S49.
+
+**Original S49 integration-site contract, not installed product code:**
+
+```python
+from experiments.metabolism_s49_live_probe_bridge import S49PassiveSourceLease
+lease = S49PassiveSourceLease(enabled=True, max_probes=3)
+# Existing S49 operator would pass:
+# await s49.qualify(report_path, server_log, live_probe=lease.observe)
+# ... that original callback runs strictly *before* S49's L0 choice.
+# Once a future S owner independently supplies a finished S42 result,
+# a B0 owner decision/ledger and an admitted L8 snapshot:
+audit = lease.observe_after_original_s_epoch(
+    original_s_epoch=s_epoch, native=native, retained=retained,
+    ledger=original_b0_ledger,
+    original_b0_decision=original_b0_decision,
+    self_id=self_id, epoch_id=epoch_id,
+    learning=l8_snapshot, retention_enabled=True,
+    noise_bound=None,
+)
+# audit is not a S49 Action or an S10/Habit commit authorization.
+```
+
+**Offline proof scope:** CI combines the exact pinned original
+S #634 `NormalWorldL0.run_session` (not a copied simulator)
+and `S49PassiveSourceLease.observe` on a single synthetic
+correlated event/probe. It verifies the original S49 choice and
+Action **request** remain independent of the passive source
+pointer, then joins the already-created original S42/B0/L8
+readouts on that exact same object. This does **not** call
+S49's physical `NormalSessionActionExecutor.execute` nor
+`s49.qualify` with Java/Node; it cannot be used as a claim
+that real World data, an S49 Action OUTCOME, a persistent L8
+learning update, an original live B0 owner, or a real runnable
+S/L/M post-decision hook are already in the S49 host.
+
+**Next required actual physical integration:** S owner must
+opt in at its own original host boundary and provide an
+actual S42/B0/L8 completed-epoch snapshot without creating
+a second Action/World owner. The missing exact owner
+handoff cannot be filled by synthesizing a second B0 ledger
+or rerunning S42 during the callback. The S49 original
+Action path, W4 protected originals, S #634, L8 and P1
+remain untouched; new M code is only on isolated DEV branch.
