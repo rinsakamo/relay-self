@@ -142,15 +142,20 @@ class S49PassiveSourceLease:
             return SLMDevTapResult(
                 original_s_epoch, "DEFERRED", "owner_source_or_scope_rejected",
             )
-        return observe_optional_s_l_m_dev(
-            enabled=True,
-            original_s_epoch=original_s_epoch,
-            probe=probe, native=native,
-            ledger=ledger, original_b0_decision=original_b0_decision,
-            retained=retained, self_id=self_id, epoch_id=epoch_id,
-            learning=learning, retention_enabled=retention_enabled,
-            noise_bound=noise_bound,
-        )
+        try:
+            return observe_optional_s_l_m_dev(
+                enabled=True,
+                original_s_epoch=original_s_epoch,
+                probe=probe, native=native,
+                ledger=ledger, original_b0_decision=original_b0_decision,
+                retained=retained, self_id=self_id, epoch_id=epoch_id,
+                learning=learning, retention_enabled=retention_enabled,
+                noise_bound=noise_bound,
+            )
+        except Exception:
+            return SLMDevTapResult(
+                original_s_epoch, "OBSERVER_ERROR", "observer_internal_error",
+            )
 
     def summary(self) -> S49PassiveSourceSummary:
         return S49PassiveSourceSummary(
