@@ -1,0 +1,11 @@
+{"request_id":"s49-actual:ec250451-8313-48bd-9c95-a098ce1a2962:event-10","type":"observe"}
+{"request_id":"s49-actual:ec250451-8313-48bd-9c95-a098ce1a2962:event-21","type":"observe"}
+{"type":"observe"}
+{"action_id":"s49-native-move-21","control":"back","effect":"set_control","state":true,"type":"effect"}
+{"action_id":"s49-native-move-21-s15-clear","effect":"clear_controls","type":"effect"}
+{"type":"observe"}
+{"request_id":"l22:ec250451-8313-48bd-9c95-a098ce1a2962:s49-native-move-21:settle-1","type":"observe"}
+{"request_id":"l22:ec250451-8313-48bd-9c95-a098ce1a2962:s49-native-move-21:settle-2","type":"observe"}
+{"request_id":"l22:ec250451-8313-48bd-9c95-a098ce1a2962:s49-native-move-21:settle-3","type":"observe"}
+{"request_id":"l16:ec250451-8313-48bd-9c95-a098ce1a2962:s49-native-move-21:goal-1","type":"observe"}
+{"request_id":"l16:ec250451-8313-48bd-9c95-a098ce1a2962:s49-native-move-21:goal-2","type":"observe"}
