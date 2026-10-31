@@ -87,7 +87,7 @@ def test_original_selfbody_view_preserved_and_sampled_motion_available():
     assert companion.self_body is owner
     assert owner.observed("position_x") == before
     assert owner.observed("position_x").origin is BodyOrigin.OBSERVATION
-    assert owner.observed("paper_motion") .origin is BodyOrigin.UNKNOWN
+    assert owner.observed("paper_motion").origin is BodyOrigin.UNKNOWN
     assert companion.action_id == "move1"
     assert companion.sampled_at(251).sampled_motion is SampledBodyMotion.SAMPLED_POSITION_CHANGED
     assert companion.sampled_at(252).sampled_motion is SampledBodyMotion.SAMPLED_POSITION_CHANGED
@@ -114,11 +114,11 @@ def test_original_selfbody_view_preserved_and_sampled_motion_available():
         companion.physically_stopped_attested = True
 
 
-def test_l0_s16_observation_is_not_automatically_joined_without_action_source():
+def test_l0_s16_observation_without_matching_action_lineage_fails_closed():
     owner = existing_body(action_source=False)
-    companion = compose_self_body_s50_motion_companion(owner, s50())
-    assert companion.self_body is owner
-    assert companion.self_body.observed("paper_motion").origin is BodyOrigin.UNKNOWN
+    with pytest.raises(SelfBodyS50MotionRejected, match="native Present"):
+        compose_self_body_s50_motion_companion(owner, s50())
+    assert owner.observed("paper_motion").origin is BodyOrigin.UNKNOWN
 
 
 @pytest.mark.parametrize("bad", [
