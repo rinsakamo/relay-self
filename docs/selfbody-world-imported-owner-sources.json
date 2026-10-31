@@ -1,0 +1,147 @@
+{
+  "adapters/mineflayer/l16_first_action_goal_originals.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "8cc47c1f2625c4521b628cd85f8f83b6e257f8dfd5519aaac9bf76095545f1f9",
+    "unchanged": true
+  },
+  "src/relay_self/l14_original_bridge_goal_window.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "05bcebfa739c5092d7801e36b049ff3c42faafb90b9b7b41ef4c304db3d7e6f6",
+    "unchanged": true
+  },
+  "src/relay_self/l10_world_body_cue_learning.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "33db0658cbaeca713769e52db2415a5be3abe5eb503870df9fdbe84722825d95",
+    "unchanged": true
+  },
+  "src/relay_self/contextual_shadow.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "fe7a1844f8468d4d77fc481e47ec26b5da4a8c5be252aea0f03a03f0efc19391",
+    "unchanged": true
+  },
+  "src/relay_self/habit_shadow.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "a5c5d8b9706f42a662a4967e709f90ad31d55e2952b04421ce3fd36b3a38ad3e",
+    "unchanged": true
+  },
+  "src/relay_self/experience_bridge.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "eed44a0fe5ca97de1a732c086038804eb0638817c87473d20b2e8797841defe8",
+    "unchanged": true
+  },
+  "src/relay_self/l9_world_body_epoch_shadow.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "924e307d5651e6ee5fff5574ee8057905adac55b4822bf36fe7f61fca1f8d11e",
+    "unchanged": true
+  },
+  "src/relay_self/l1_epoch_observer.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "ff941e35e178b009a67b484d21c8fff4a63d7afc49ba0405bcadcb924fcd73f1",
+    "unchanged": true
+  },
+  "src/relay_self/l1_s_choice_shadow.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "fed209e27dfddb6acb8506cdba0268f9353d5a86ca115546f43b1faea4d03297",
+    "unchanged": true
+  },
+  "src/relay_self/learning_epoch.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "0e543eb179229d802277168667959cf23b41eca9acb6a363dd3620347ff46cec",
+    "unchanged": true
+  },
+  "src/relay_self/l13_independent_goal_receipt.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "eb3bf918a2990e4b9e12bc323169761b56f042c38087452a3e71a3329f560210",
+    "unchanged": true
+  },
+  "adapters/mineflayer/l12_archived_action_progress_no_reward_dev.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "73c9e88e2c2477ae5923d72ef1a5187c5a0b854f62f264afe133cd836a647eda",
+    "unchanged": true
+  },
+  "adapters/mineflayer/l11_saved_real_goal_originals_dev.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "3d905edbc4926658e40692886efa04080700fb5e44d29ce5d83e8bd5b78ac4ff",
+    "unchanged": true
+  },
+  "adapters/mineflayer/l18_s16_terminal_original.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "76ee134da717a8d8b71bc5fc8c904989332d2e2bf7551e04e1ae9becd1e2ec19",
+    "unchanged": true
+  },
+  "adapters/mineflayer/l21_goal_observer_source.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "f31b3bb61cb710a860a5dadf11a1c1992769d62024a3c3b4fa4ef4cd926d8407",
+    "unchanged": true
+  },
+  "src/relay_self/l20_external_goal_commitment.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "0fee8d0a07dba904a24a5a2cec68fd66ec07fb9ab1f6042d049cf5e6c12b8faa",
+    "unchanged": true
+  },
+  "adapters/mineflayer/l22_post_s16_settling.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "e2e5051a0ee7a96ae50685b5e9e149b3f4a6a5addce73c17f004c5af572a0708",
+    "unchanged": true
+  },
+  "adapters/mineflayer/l22_runtime_settling.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "1a7bc5bbd7ac70c1b9b6f1e3399638ec53c8ae37007bf224c885d0b65cb9851b",
+    "unchanged": true
+  },
+  "adapters/mineflayer/l23_paper_live_assets.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "f48b435207668409c292defb21ad2fd669b26a2d841ce5fec01bc8b74880ec5c",
+    "unchanged": true
+  },
+  "adapters/mineflayer/l23_paper_s7_settling.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "163ca6d590204b6d5fce8256ce6029ebe7a7c3a7f5bf82bc91edb8005aef9d10",
+    "unchanged": true
+  },
+  "adapters/mineflayer/self_s7_native_receipt.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "d4deea49eb729b4990938416d33ab96406d0745ac1bd401a099be7b01d4e4f16",
+    "unchanged": true
+  },
+  "tools/s50_l23_packet_world_readback.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "a1c2cce5d5d51b2541d61f612436c915f2986720fb0e7ba74e156ecdb1e6e2fb",
+    "unchanged": true
+  },
+  "adapters/mineflayer/m02_paper_dev/s50_client_packet_source.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "ed7a7e155309a5bc41c2de631a82ce38f0e1359ff01391fbeceed5f960e503c0",
+    "unchanged": true
+  },
+  "adapters/mineflayer/s50_client_packet_witness_dev.mjs": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "8779bec29142b861f41cd40efd954a0bfc897263f8dc084660fe21c8efce9255",
+    "unchanged": true
+  },
+  "adapters/mineflayer/s50_client_packet_witness_dev.test.mjs": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "918d7045d376c03faf29a67a9e6bde3d1adec44b7aaf71f3ef10d8b3079f55b3",
+    "unchanged": true
+  },
+  "tools/s50_selfbody_motion_readback.py": {
+    "owner_head": "e6d901d7dc3effb5c7516350233383fbb982bbb1",
+    "sha256": "bf015d355f75027529d6083c388eaef7ba8235cd13ed0ba2700b66eb5e915fcf",
+    "unchanged": true
+  },
+  "adapters/mineflayer/m02_paper_dev/s50_selfbody_motion_source.py": {
+    "owner_head": "e6d901d7dc3effb5c7516350233383fbb982bbb1",
+    "sha256": "d1af7d3845e0bfb8da96de5b6084f6b1df1da5e9f4e35e4c1d6df1d68afd1367",
+    "unchanged": true
+  },
+  "adapters/mineflayer/m02_paper_dev/s50_input_witness_source.py": {
+    "owner_head": "e6d901d7dc3effb5c7516350233383fbb982bbb1",
+    "sha256": "0121501ddbe9afbf7f6d90ac56cac67269310075c535896e33c51e1b1f5bbcb7",
+    "unchanged": true
+  },
+  "experiments/standard_env/world_binding.py": {
+    "owner_head": "2afb7250952ae490bcddc8244c19264ff1f73bf5",
+    "sha256": "1e1e46417c0d6eceb774e68d41970c9cc0178139275898aa0ae1d002af777534",
+    "unchanged": true
+  }
+}

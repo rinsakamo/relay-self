@@ -846,7 +846,7 @@ async def _observe_native_threat(
 
 
 async def _new_session(
-    *, raw_capture_root: Path | None = None,
+    *, raw_capture_root: Path | None = None, native_receipt=None,
 ) -> MineflayerProcessSession:
     session = await MineflayerProcessSession.launch(
         MineflayerLaunchConfig(
@@ -854,6 +854,7 @@ async def _new_session(
             username=BOT_USERNAME, version=MINECRAFT_VERSION,
         ),
         startup_timeout_s=12,
+        **({"native_receipt": native_receipt} if native_receipt is not None else {}),
         **({"raw_capture_root": raw_capture_root} if raw_capture_root is not None else {}),
     )
     try:

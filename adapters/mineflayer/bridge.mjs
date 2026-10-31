@@ -3,6 +3,7 @@ import { createRequire } from 'node:module'
 import { lstatSync } from 'node:fs'
 import { isAbsolute, join } from 'node:path'
 import readline from 'node:readline'
+import { attachS50ClientPacketWitness, openS50PacketSidecar } from './s50_client_packet_witness_dev.mjs'
 
 import {
   attachHealthSynchronizedSpawnListeners,
@@ -72,6 +73,11 @@ if (w4OrientationOptIn === '1' && config.version !== '1.21.8') {
   process.stderr.write('W4 native orientation requires explicit Minecraft 1.21.8\n')
   process.exit(2)
 }
+const s50PacketTracePath = process.env.RELAYSELF_S50_PACKET_WITNESS_DEV
+if (s50PacketTracePath !== undefined &&
+    (!isAbsolute(s50PacketTracePath) || config.version !== '1.21.8')) {
+  throw new Error('invalid S50 packet witness path/version')
+}
 const sessionId = randomUUID()
 let seq = 0
 let spawned = false
@@ -127,6 +133,10 @@ emit('adapter_started', {
 })
 
 const bot = mineflayer.createBot(options)
+const s50PacketSidecar = s50PacketTracePath ? openS50PacketSidecar(s50PacketTracePath) : null
+const s50PacketWitness = s50PacketSidecar
+  ? attachS50ClientPacketWitness(bot, row => s50PacketSidecar.write({ session_id: sessionId, ...row }))
+  : null
 if (clockOptIn === '1') {
   attachV6NativeClockPackets(
     bot,
@@ -214,6 +224,7 @@ bot.on('error', (error) => {
 bot.on('end', (reason) => {
   spawned = false
   emit('connection_end', { reason: String(reason || 'connection ended') })
+  s50PacketSidecar?.close()
   if (inputReader !== null) inputReader.close()
   process.exitCode = closing ? 0 : 3
 })
@@ -242,12 +253,14 @@ async function handleEffect (command) {
   try {
     if (command.effect === 'set_control') {
       bot.setControlState(command.control, command.state)
+      s50PacketWitness?.effect('set_control', command.state)
       emitEffectResult(command, 'applied')
       return
     }
 
     if (command.effect === 'clear_controls') {
       bot.clearControlStates()
+      s50PacketWitness?.effect('clear_controls')
       emitEffectResult(command, 'applied')
       return
     }
@@ -308,8 +321,10 @@ function handleShutdown () {
   closing = true
   if (spawned) {
     bot.clearControlStates()
+    s50PacketWitness?.effect('shutdown_clear_controls')
   }
   emit('shutdown_ack')
+  s50PacketSidecar?.close()
   if (inputReader !== null) inputReader.close()
   bot.quit('RelaySelf adapter shutdown')
 }

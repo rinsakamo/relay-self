@@ -18,6 +18,7 @@ from adapters.mineflayer.python_protocol import (
     encode_set_control,
     encode_shutdown,
 )
+from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 from adapters.mineflayer.self_world_stage_w3_capture import W3RawNodeStdoutCapture
 from adapters.mineflayer.startup_process_ownership import (
     spawn_with_custody,
@@ -47,11 +48,13 @@ class MineflayerProcessSession:
     def __init__(
         self, process: asyncio.subprocess.Process, *,
         raw_capture_root: Path | None = None,
+        native_receipt: NativeStreamReceipt | None = None,
     ) -> None:
         if process.stdin is None or process.stdout is None:
             raise MineflayerProcessStartError(
                 "Mineflayer child process requires stdin and stdout pipes"
             )
+        self._native_receipt = native_receipt
         self._process = process
         self._decoder = MineflayerStreamDecoder()
         self._started: MineflayerAdapterStarted | None = None
@@ -70,6 +73,7 @@ class MineflayerProcessSession:
         node_executable: str = "node",
         startup_timeout_s: float = 10.0,
         raw_capture_root: Path | None = None,
+        native_receipt: NativeStreamReceipt | None = None,
         w4_native_orientation_dev: bool = False,
     ) -> "MineflayerProcessSession":
         """Launch exactly one bridge process and consume its startup attestation."""
@@ -113,7 +117,7 @@ class MineflayerProcessSession:
 
         session: MineflayerProcessSession | None = None
         try:
-            session = cls(process, raw_capture_root=raw_capture_root)
+            session = cls(process, raw_capture_root=raw_capture_root, native_receipt=native_receipt)
             started = await asyncio.wait_for(
                 session.receive(),
                 timeout=startup_timeout_s,
@@ -163,6 +167,13 @@ class MineflayerProcessSession:
     def process_returncode(self) -> int | None:
         return self._process.returncode
 
+    def finish_native_receipt(self) -> dict[str, object]:
+        if self._native_receipt is None:
+            raise MineflayerProcessIOError("no open S7 receipt")
+        receipt = self._native_receipt
+        self._native_receipt = None
+        return receipt.close()
+
     @property
     def raw_capture_receipt(self) -> dict[str, object] | None:
         return self._raw_receipt
@@ -179,6 +190,8 @@ class MineflayerProcessSession:
                 "Mineflayer bridge stdout ended; "
                 f"returncode={self._process.returncode}"
             )
+        if self._native_receipt is not None:
+            self._native_receipt.record_received(line)
         if self._raw_capture is not None:
             self._raw_capture.append_before_decode(line)
         try:
@@ -360,6 +373,8 @@ class MineflayerProcessSession:
 
         assert self._process.stdin is not None
         try:
+            if self._native_receipt is not None:
+                self._native_receipt.record_sent(line.encode("utf-8"))
             self._process.stdin.write(line.encode("utf-8"))
             await self._process.stdin.drain()
         except (BrokenPipeError, ConnectionResetError) as exc:

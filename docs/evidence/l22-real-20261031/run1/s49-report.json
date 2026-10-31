@@ -1,0 +1,460 @@
+{
+  "actual_native_actions": [
+    {
+      "action": "s49-native-move-24",
+      "event_seq": 24,
+      "execution_evidence": {
+        "action_id": "s49-native-move-24",
+        "action_ref": "MOVE_BACKWARD",
+        "after_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "0b7d893c-9985-4e0e-a9a1-b99c107b7367:35",
+            "source": "mineflayer"
+          },
+          "request_id": null,
+          "seq": 35,
+          "session_id": "0b7d893c-9985-4e0e-a9a1-b99c107b7367",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.1662660527322513,
+                "entity_id": 8,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 12.5,
+                  "y": -60.0,
+                  "z": -7.5
+                }
+              },
+              {
+                "distance": 12.014617682857274,
+                "entity_id": 1,
+                "entity_type": "player",
+                "name": "player",
+                "position": {
+                  "x": -0.5,
+                  "y": -60.0,
+                  "z": -3.5
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 2,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 10.5,
+              "y": -60.0,
+              "z": -8.332291181750815
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 259
+            }
+          }
+        },
+        "before_observation": {
+          "kind": "probe",
+          "provenance": {
+            "reference": "0b7d893c-9985-4e0e-a9a1-b99c107b7367:26",
+            "source": "mineflayer"
+          },
+          "request_id": null,
+          "seq": 26,
+          "session_id": "0b7d893c-9985-4e0e-a9a1-b99c107b7367",
+          "snapshot": {
+            "food": 20.0,
+            "food_saturation": 5.0,
+            "health": 20.0,
+            "inventory": [],
+            "nearby_entities": [
+              {
+                "distance": 2.0,
+                "entity_id": 8,
+                "entity_type": "hostile",
+                "name": "zombie",
+                "position": {
+                  "x": 12.5,
+                  "y": -60.0,
+                  "z": -7.5
+                }
+              },
+              {
+                "distance": 11.704699910719626,
+                "entity_id": 1,
+                "entity_type": "player",
+                "name": "player",
+                "position": {
+                  "x": -0.5,
+                  "y": -60.0,
+                  "z": -3.5
+                }
+              }
+            ],
+            "nearby_entities_coverage": {
+              "candidate_count": 2,
+              "max_distance": 16.0,
+              "max_entities": 16,
+              "source_scope": "mineflayer_entity_registry",
+              "truncated": false
+            },
+            "oxygen_level": null,
+            "position": {
+              "x": 10.5,
+              "y": -60.0,
+              "z": -7.5
+            },
+            "time": {
+              "day": 0,
+              "is_day": true,
+              "time_of_day": 259
+            }
+          }
+        },
+        "binding_id": "s49-binding-24",
+        "cleanup_attempted": true,
+        "cleanup_receipt": {
+          "action_id": "s49-native-move-24-s15-clear",
+          "effect": "clear_controls",
+          "error": null,
+          "provenance": {
+            "reference": "0b7d893c-9985-4e0e-a9a1-b99c107b7367:34",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 34,
+          "session_id": "0b7d893c-9985-4e0e-a9a1-b99c107b7367"
+        },
+        "dispatch_receipt": {
+          "action_id": "s49-native-move-24",
+          "effect": "set_control",
+          "error": null,
+          "provenance": {
+            "reference": "0b7d893c-9985-4e0e-a9a1-b99c107b7367:27",
+            "source": "mineflayer"
+          },
+          "result": "applied",
+          "seq": 27,
+          "session_id": "0b7d893c-9985-4e0e-a9a1-b99c107b7367"
+        },
+        "goal_success_attested": false,
+        "learning_feedback_qualified": false,
+        "movement_m": 0.832291181750815,
+        "schema": "SELF_NATIVE_ACTION_DECODED_FRAMES_V1",
+        "session_id": "0b7d893c-9985-4e0e-a9a1-b99c107b7367",
+        "status": "executed"
+      },
+      "movement_m": 0.832291181750815,
+      "probe_seq": 25,
+      "source": "0b7d893c-9985-4e0e-a9a1-b99c107b7367",
+      "terminal": "outcome"
+    }
+  ],
+  "auto_crash_recovery": false,
+  "automatic_goal_selection": false,
+  "classification": "DEV_ONLY_REAL_WORLD_L22_SOURCE_REVIEWED_GOAL_UNDETERMINED",
+  "decisions": [
+    {
+      "distance_m": 10.0,
+      "entity_id": 7,
+      "event_seq": 12,
+      "issued": false,
+      "probe_seq": 13,
+      "selected": "WAIT"
+    },
+    {
+      "distance_m": 2.0,
+      "entity_id": 8,
+      "event_seq": 24,
+      "issued": true,
+      "probe_seq": 25,
+      "selected": "MOVE_AWAY"
+    }
+  ],
+  "download_host": "piston-data.mojang.com",
+  "ignored_duplicate_target_updates": 2,
+  "ignored_hurt_frames": 1,
+  "ignored_non_target_entities": 5,
+  "java_major_version": 21,
+  "l16_capture": {
+    "external_goal_owner_independent": false,
+    "first_action_only": true,
+    "l18_s16_owner_source": {
+      "action_id": "s49-native-move-24",
+      "bytes": 507,
+      "independent_external_goal_original": false,
+      "minecraft_tcp_packet_original": false,
+      "original_physical_source_authenticated": false,
+      "path": "/home/rinsa/evidence/l22-real-20261031/run1/capture/l18_s16_terminal_original.jsonl",
+      "pre_probe_sha256": "b0885cb39c03cdaf0cec1354c0d8f46b6242138628a3b1655cfa19a58fc2798c",
+      "qualified_real_l10_pairs": 0,
+      "s16_owner_snapshot_from_existing_executor": true,
+      "schema": "L18_S49_S16_OWNER_ORIGINAL_INDEX_V1",
+      "session_id": "0b7d893c-9985-4e0e-a9a1-b99c107b7367",
+      "sha256": "4f2d0a8f3c78d1046e094ee282fe477cad9395f034a42dcf63fbba4b66018f7b",
+      "source_revision_operator_declared": 0
+    },
+    "later_session_actions_not_in_recorded_prefix": true,
+    "real_l10_pairs": 0,
+    "root": "/home/rinsa/evidence/l22-real-20261031/run1/capture",
+    "s7_index": {
+      "minecraft_tcp_packet_bytes": false,
+      "native_execution_ack_attested": false,
+      "received_bytes": 30616,
+      "received_lines": 50,
+      "received_measured_before_decode": true,
+      "received_path": "/home/rinsa/evidence/l22-real-20261031/run1/capture/native_bridge_received_original.jsonl",
+      "received_sha256": "22c8100795e7e37acd91dea50a4db4943a4b448431d8b2b994d4d7aac72c6ea7",
+      "schema": "SELF_S7_RAW_MINEFLAYER_JSONL_RECEIPT_V1",
+      "sent_bytes": 1231,
+      "sent_lines": 14,
+      "sent_measured_before_write": true,
+      "sent_path": "/home/rinsa/evidence/l22-real-20261031/run1/capture/native_bridge_sent_original.jsonl",
+      "sent_sha256": "97a7d70ac524f563e2e48de7a1921429b0d91fae1417bd34f8ee90968130e06f",
+      "v_science_qualified": false
+    },
+    "status": "L16_NOT_RUN_L22_EXTRA_PROBES",
+    "window": null
+  },
+  "l18_first_terminal_source": {
+    "action_id": "s49-native-move-24",
+    "bytes": 507,
+    "independent_external_goal_original": false,
+    "minecraft_tcp_packet_original": false,
+    "original_physical_source_authenticated": false,
+    "path": "/home/rinsa/evidence/l22-real-20261031/run1/capture/l18_s16_terminal_original.jsonl",
+    "pre_probe_sha256": "b0885cb39c03cdaf0cec1354c0d8f46b6242138628a3b1655cfa19a58fc2798c",
+    "qualified_real_l10_pairs": 0,
+    "s16_owner_snapshot_from_existing_executor": true,
+    "schema": "L18_S49_S16_OWNER_ORIGINAL_INDEX_V1",
+    "session_id": "0b7d893c-9985-4e0e-a9a1-b99c107b7367",
+    "sha256": "4f2d0a8f3c78d1046e094ee282fe477cad9395f034a42dcf63fbba4b66018f7b",
+    "source_revision_operator_declared": 0
+  },
+  "l20_external_goal_preflight": {
+    "authenticated_external_owner": false,
+    "candidate_first_action_only": true,
+    "criterion_id": "l22-dev-fixed-goal-20261031",
+    "experiment_ref": "l22-real-dev-20261031-run1",
+    "external_goal_owner_ref": "same-operator-dev-unattested",
+    "externally_attested_before_world": false,
+    "independent_goal_observed": false,
+    "learning_authority": false,
+    "matched_operator_plan": true,
+    "original_sha256": "6032ff1101864c52d5ebf74253d458fc2a0b37712a730b0b5e8f411222c7dfd4",
+    "qualified_real_l10_pairs": 0,
+    "schema": "L20_EXTERNAL_GOAL_PREWORLD_PREFLIGHT_V1"
+  },
+  "l20_external_goal_preflight_status": "SOURCE_MATCH_BEFORE_WORLD_UNQUALIFIED",
+  "l21_observer": {
+    "observer_presence_is_world_intervention": true,
+    "qualified_real_learning_pairs": 0,
+    "review": {
+      "diagnostic_agreement": null,
+      "first_request_id": "l16:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:goal-1",
+      "goal_status": "NOT_REACHED",
+      "independently_attested_nonintervention": false,
+      "native_goal_status": "UNDETERMINED",
+      "observer_session": "c7f5ba6f-3f5b-4603-82b1-c4242f24f451",
+      "original_sha256": "51f3280d19224ef26709cba8554101d551d0b1a2e7deee4d2a196cf3af00445a",
+      "physical_second_tcp_client_source_claim": true,
+      "qualified_real_learning_pairs": 0,
+      "s10_updates": 0,
+      "s11_grants": 0,
+      "schema": "L21_SEPARATE_CLIENT_FIRST_ACTION_GOAL_SOURCE_REVIEW_V1",
+      "second_request_id": "l16:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:goal-2",
+      "separate_external_goal_owner_authenticated": false,
+      "source_bytes": 1592,
+      "tcp_authenticated_independently": false
+    },
+    "root": "/home/rinsa/evidence/l22-real-20261031/run1/observer",
+    "source_file": "/home/rinsa/evidence/l22-real-20261031/run1/observer/l21_separate_client_goal_original.jsonl",
+    "status": "SECOND_CLIENT_SOURCE_ONLY_UNQUALIFIED"
+  },
+  "l22_settling": {
+    "audit": {
+      "accepted_goal_status": "UNDETERMINED",
+      "action_id": "s49-native-move-24",
+      "after_seq": 35,
+      "first_probe_seq": 48,
+      "geometric_goal_candidate": "NOT_REACHED",
+      "independent_goal_owner_authenticated": false,
+      "move_event_seqs": [
+        36,
+        37,
+        38,
+        40,
+        41,
+        43
+      ],
+      "physically_stopped_proven": false,
+      "post_s16_displacement_m": 0.2404601368784256,
+      "qualified_real_learning_pairs": 0,
+      "reason": "POST_S16_MOVE_EVENT",
+      "received_sha256": "22c8100795e7e37acd91dea50a4db4943a4b448431d8b2b994d4d7aac72c6ea7",
+      "s10_updates": 0,
+      "s11_grants": 0,
+      "s16_original_sha256": "4f2d0a8f3c78d1046e094ee282fe477cad9395f034a42dcf63fbba4b66018f7b",
+      "schema": "L22_POST_S16_SETTLING_DIAGNOSTIC_V1",
+      "second_probe_seq": 49,
+      "sent_sha256": "97a7d70ac524f563e2e48de7a1921429b0d91fae1417bd34f8ee90968130e06f",
+      "session_id": "0b7d893c-9985-4e0e-a9a1-b99c107b7367",
+      "settling_probe_seqs": [
+        39,
+        42,
+        44,
+        45,
+        46,
+        47
+      ],
+      "settling_sample_drift_max_m": 0.20679916113654961,
+      "settling_state": "SETTLING_OBSERVED",
+      "stable_world_ticks_attested": false,
+      "two_probe_displacement_m": 0.0
+    },
+    "qualified_real_learning_pairs": 0,
+    "runtime": {
+      "accepted_goal_status": "UNDETERMINED",
+      "action_id": "s49-native-move-24",
+      "max_probes_reached": true,
+      "observed_move_seqs": [
+        36,
+        37,
+        38,
+        40,
+        41,
+        43
+      ],
+      "observed_probe_seqs": [
+        39,
+        42,
+        44,
+        45,
+        46,
+        47
+      ],
+      "physically_stopped_proven": false,
+      "qualified_real_learning_pairs": 0,
+      "quiet_streak": 3,
+      "quiet_streak_history": [
+        0,
+        0,
+        0,
+        1,
+        2,
+        3
+      ],
+      "reason": "NO_ATTESTED_WORLD_TICK_IDLE",
+      "request_ids": [
+        "l22:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:settle-1",
+        "l22:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:settle-2",
+        "l22:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:settle-3",
+        "l22:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:settle-4",
+        "l22:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:settle-5",
+        "l22:0b7d893c-9985-4e0e-a9a1-b99c107b7367:s49-native-move-24:settle-6"
+      ],
+      "s10_updates": 0,
+      "s11_grants": 0,
+      "sample_displacements_m": [
+        0.20679916113654961,
+        0.02821941162971342,
+        0.005441564112162567,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "schema": "L22_RUNTIME_SETTLING_SAMPLES_V1",
+      "session_id": "0b7d893c-9985-4e0e-a9a1-b99c107b7367",
+      "stable_world_ticks_attested": false,
+      "window_status": "QUIET_SAMPLES_ONLY"
+    },
+    "s10_updates": 0,
+    "s11_grants": 0,
+    "status": "S7_SOURCE_REVIEWED_GOAL_UNDETERMINED"
+  },
+  "learning_in_world": false,
+  "manifest_version_url_host": "piston-meta.mojang.com",
+  "milestone": "S49",
+  "minecraft_version": "1.21.8",
+  "mineflayer_version": "4.39.0",
+  "node_exit": 0,
+  "real_model_calls": 0,
+  "retained_origin": "S19_FROZEN_SYNTHETIC_GOVERNED_REV1",
+  "server_exit": 0,
+  "server_sha1": "6bce4ef400e4efaa63a13d5e6f6b500be969ef81",
+  "server_size_bytes": 57555044,
+  "session_id": "0b7d893c-9985-4e0e-a9a1-b99c107b7367",
+  "source_pair_trace": [
+    {
+      "event_entities": [
+        {
+          "d": 10.0,
+          "id": 7,
+          "name": "zombie"
+        },
+        {
+          "d": 11.704699910719626,
+          "id": 1,
+          "name": "player"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 12,
+      "probe_entities": [
+        {
+          "d": 10.0,
+          "id": 7,
+          "name": "zombie"
+        },
+        {
+          "d": 11.704699910719626,
+          "id": 1,
+          "name": "player"
+        }
+      ],
+      "probe_seq": 13
+    },
+    {
+      "event_entities": [
+        {
+          "d": 2.0,
+          "id": 8,
+          "name": "zombie"
+        },
+        {
+          "d": 11.704699910719626,
+          "id": 1,
+          "name": "player"
+        }
+      ],
+      "event_kind": "entities",
+      "event_seq": 24,
+      "probe_entities": [
+        {
+          "d": 2.0,
+          "id": 8,
+          "name": "zombie"
+        },
+        {
+          "d": 11.704699910719626,
+          "id": 1,
+          "name": "player"
+        }
+      ],
+      "probe_seq": 25
+    }
+  ],
+  "stage": "CLOSED",
+  "status": "PASS"
+}
