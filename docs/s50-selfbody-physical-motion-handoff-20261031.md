@@ -103,8 +103,19 @@ Replace path placeholders only after confirming exact filenames in the
 saved original artifact. The output belongs in a **new** review
 directory, not the protected originals. If source files are unavailable
 or missing, fail closed and do not manufacture a real-World PASS.
-One known 2026-10-31 DEV report is the source of the example values;
-the synthetic negative tests do not substitute for that replay.
+**2026-10-31 replay confirmed:** [GitHub Actions #41188835064](https://github.com/rinsakamo/relay-self/actions/runs/41188835064)
+checked out the exact original evidence HEAD `2afb7250952ae490bcddc8244c19264ff1f73bf5`
+into a separate read-only tree, then successfully read its actual S49
+report, original Paper console and Node sidecar. The S50 diagnostic
+reported World motion with server-last-reported all-OFF at tick
+**251 and 252**, the native Node effect progression
+`set_control` → `clear_controls` → `shutdown_clear_controls`,
+23 position-type and zero `player_input` returned writes, eight Paper
+input snapshots and zero `PlayerInputEvent`. Source SHA and L23
+readback agreement checked. **This is source replay, not a new World,
+server receipt attestation, L23 owner promotion, or SelfBody host adoption.**
+Focused Python3.12 tests **56 PASS**; Ruff, syntax and repository
+contracts PASS; no Goal/P1/L10 gain.
 
 ## Acceptance and next boundary
 
@@ -121,7 +132,7 @@ ownership, Goal and L8 learning gates, preserved S7/S16/Paper originals,
 and no main merge.
 
 `DEV_ONLY / READ_ONLY_SOURCE_CANDIDATE /
-REAL_WORLD_REPLAY_NOT_CLAIMED /
+PREVIOUS_REAL_WORLD_ORIGINAL_REPLAY_PASS / NEW_WORLD_0 /
 EFFECTIVE_CLEAR_NOT_ATTESTED / STABILITY_UNPROVEN /
 GOAL_UNDETERMINED / P1_WAIT_0 / L10_0 /
 QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
