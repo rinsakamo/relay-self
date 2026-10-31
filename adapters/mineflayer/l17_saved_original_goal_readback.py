@@ -12,8 +12,8 @@ from dataclasses import asdict
 from pathlib import Path
 
 from adapters.mineflayer.l16_first_action_goal_originals import (
-    L16GoalPlan,
     PLAN_SCHEMA,
+    L16GoalPlan,
     load_original_prefix,
 )
 from relay_self.l14_original_bridge_goal_window import _json
