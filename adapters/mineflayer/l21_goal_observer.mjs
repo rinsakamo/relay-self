@@ -56,6 +56,8 @@ const criterion = readCommitment(
 )
 const observerSession = randomUUID()
 const fd = openSync(args['--output'], 'wx', 0o600)
+// Diagnostic clock only; never interpreted as a Minecraft tick or attestation.
+const timingFd = openSync(args['--output'] + '.timing.jsonl', 'wx', 0o600)
 let index = 0
 let started = false
 let closed = false
@@ -73,6 +75,11 @@ function original (kind, fields = {}) {
   if (bytes.length > 8192) throw new Error('oversized L21 source row')
   writeSync(fd, bytes)
   fsyncSync(fd)
+  writeSync(timingFd, JSON.stringify({
+    observer_session: observerSession, index: value.index, kind,
+    wall_time_ms: Date.now(), monotonic_ns: process.hrtime.bigint().toString()
+  }) + '\n')
+  fsyncSync(timingFd)
 }
 function ack (kind, fields = {}) {
   process.stdout.write(JSON.stringify({ type: kind, ...fields }) + '\n')
@@ -82,6 +89,8 @@ function stop () {
   closed = true
   original('closed', { samples: sampleCount })
   closeSync(fd)
+  closeSync(timingFd)
+  input.close()
   if (bot) bot.quit('L21 read-only observer shutdown')
   ack('closed', { samples: sampleCount })
 }
@@ -92,6 +101,7 @@ function fail (error) {
   try {
     original('fault', { reason: String(error?.message || error).slice(0,200) })
     closeSync(fd)
+    closeSync(timingFd)
   } catch {
     // No reconstructed claim after source IO failure.
   }
