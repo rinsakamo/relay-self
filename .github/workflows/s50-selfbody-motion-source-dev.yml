@@ -41,6 +41,51 @@ jobs:
           python -m compileall -q adapters/mineflayer/m02_paper_dev/s50_selfbody_motion_source.py tools/s50_selfbody_motion_readback.py tests/test_s50_selfbody_motion_source.py tests/test_s50_selfbody_motion_readback.py
           python -m pytest -o addopts='' -q tests/test_s50_selfbody_motion_source.py tests/test_s50_selfbody_motion_readback.py tests/test_s50_input_witness_source.py tests/test_s50_client_packet_source.py
           python tools/check_repository.py
+      - name: Checkout preserved real-World DEV originals (read-only)
+        uses: actions/checkout@v4
+        with:
+          ref: 2afb7250952ae490bcddc8244c19264ff1f73bf5
+          path: evidence-owner
+          persist-credentials: false
+      - name: S50 read-only replay of actual Paper/Node original (no World)
+        run: |
+          set -euo pipefail
+          git -C evidence-owner rev-parse HEAD | grep -qx 2afb7250952ae490bcddc8244c19264ff1f73bf5
+          ROOT="evidence-owner/docs/evidence/s50-client-packet-20261031/run2"
+          python tools/s50_selfbody_motion_readback.py \
+            --s49-report "$ROOT/s49-report.json" \
+            --paper-original "$ROOT/server.log" \
+            --client-original "$ROOT/client-packet-original.jsonl" \
+            --subject-uuid dcae346d-e66f-331a-b459-a5a5370e9738 \
+            --output "$RUNNER_TEMP/s50-selfbody-real-source.json"
+          python - <<'PY'
+          import json, os, pathlib, math
+          p = pathlib.Path(os.environ["RUNNER_TEMP"]) / "s50-selfbody-real-source.json"
+          d = json.loads(p.read_text())
+          m = d["physical_body_diagnostic"]
+          assert m["paper_world_uuid"] == "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62"
+          assert m["observed_motion_while_reported_input_off_ticks"] == [251,252]
+          assert [x["effect"] for x in m["client_effects"]] == [
+              "set_control", "clear_controls", "shutdown_clear_controls"]
+          assert [x["local_controls_active"] for x in m["client_effects"]] == [
+              True, False, False]
+          assert m["client_player_input_write_returns"] == 0
+          assert m["client_position_write_returns"] == 23
+          assert m["paper_player_input_callbacks"] == 0
+          assert len(m["paper_samples"]) == 8
+          assert math.isclose(m["paper_samples"][0]["displacement_m"], 0.05903579322217567, abs_tol=1e-9)
+          assert math.isclose(m["paper_samples"][1]["displacement_m"], 0.005210808286785218, abs_tol=1e-9)
+          assert all(x["displacement_m"] == 0 for x in m["paper_samples"][2:])
+          assert all(not x["last_reported_input_active"] for x in m["paper_samples"])
+          assert m["effective_s15_clear_world_tick"] == "NOT_ATTESTED"
+          assert m["cross_clock_alignment"] == "NOT_ATTESTED"
+          assert m["physically_stopped_attested"] is False
+          assert m["goal_admitted"] is False
+          assert d["selfbody_native_present_admitted"] is False
+          assert d["physical_wait_admitted"] is False
+          assert d["learning_updates"] == 0
+          print("S50_REAL_ORIGINAL_READBACK_PASS / SRC_DIAGNOSTIC_ONLY / NO_WORLD")
+          PY
       - name: Explicit source ceiling
         if: always()
         run: echo 'S50_DEV_ONLY / SELFBODY_SOURCE_CANDIDATE_ONLY / NO_NATIVE_PRESENT / NO_P1_WAIT / NO_REAL_WORLD_IN_THIS_JOB / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
