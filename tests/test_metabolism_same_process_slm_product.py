@@ -14,6 +14,7 @@ import test_l1_epoch_observer as l8
 import test_l1_s_choice_shadow as l7
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.self_body_m0_projection import compose_b0_cognition_views
+from relay_self.epoch_plan import PlannedDecisionEpochResult
 from relay_self.l1_epoch_observer import observe_s_epoch_l1
 from relay_self.l1_s_choice_shadow import SChoiceContrastStatus
 
@@ -425,3 +426,28 @@ def test_audit_row_rejects_forged_authority_or_unadmitted_source():
                           "owner_source_or_scope_rejected", s_choice="WAIT")
     with pytest.raises(ValueError):
         bounded_s_l_m_audit_row(bad)
+
+
+def test_original_planned_s_epoch_wrapper_is_retained_without_second_coordinator():
+    data = common_epoch(energy=0.6)
+    original_s = data[4]
+    # Typed planned envelope only: nonempty execution ID, no Action work.
+    # Not a new S owner invocation or a separate physical plan execution.
+    planned = PlannedDecisionEpochResult(original_s, ("bounded-1",), ())
+    owner = data[1]
+    before = (owner.body, owner.credit_count, data[5].last_at_ns)
+    tap = host_tap(data, original_s_epoch=planned)
+    assert tap.status == "RECORDED"
+    assert tap.original_s_epoch is planned
+    assert tap.s_choice == "MOVE_AWAY"
+    assert tap.l1_candidate == "WAIT"
+    assert before == (owner.body, owner.credit_count, data[5].last_at_ns)
+
+
+def test_planned_epoch_without_executed_work_is_deferred_without_action():
+    data = common_epoch()
+    unexecuted = PlannedDecisionEpochResult(data[4], (), ())
+    tap = host_tap(data, original_s_epoch=unexecuted)
+    assert tap.original_s_epoch is unexecuted
+    assert tap.status == "DEFERRED"
+    assert tap.action_issues == tap.learning_updates == 0
