@@ -332,7 +332,11 @@ def test_s49_explicit_l20_gate_refuses_before_java_and_action(
     ))
     assert rc == 2
     assert json.loads(report.read_bytes())["status"] == "BLOCKED"
-    assert list(capture_root.iterdir()) == []
+    # The not_external fault intentionally seeds one foreign file inside the
+    # capture root. S49 itself must never write a Goal plan or S7 source.
+    assert not (capture_root / "l16_pre_world_goal_plan.json").exists()
+    assert not (capture_root / "native_bridge_received_original.jsonl").exists()
+    assert not (capture_root / "native_bridge_sent_original.jsonl").exists()
     assert not log.exists()
 
 
