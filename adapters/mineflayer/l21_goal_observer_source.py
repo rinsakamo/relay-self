@@ -13,11 +13,11 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
+from adapters.mineflayer.l16_first_action_goal_originals import L16GoalPlan
 from relay_self.l14_original_bridge_goal_window import _json
 from relay_self.l20_external_goal_commitment import (
     review_external_pre_world_criterion,
 )
-from adapters.mineflayer.l16_first_action_goal_originals import L16GoalPlan
 
 SCHEMA = "L21_SEPARATE_CLIENT_GOAL_OBSERVER_V1"
 ORIGINAL_NAME = "l21_separate_client_goal_original.jsonl"
