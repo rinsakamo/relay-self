@@ -12,7 +12,6 @@ import test_l15_s49_original_goal_preflight as l15
 import test_l16_s49_first_action_original_capture as l16
 from relay_self.l13_independent_goal_receipt import L13ReceiptStatus
 from relay_self.l17_first_action_goal_handoff import (
-    L17HandoffRejected,
     L17HandoffStatus,
     L17IndependentInputs,
     review_l17_first_action_goal,
