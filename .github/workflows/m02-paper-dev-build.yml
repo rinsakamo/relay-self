@@ -34,6 +34,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: S50 existing-bridge packet-write passive diagnostic
+        run: |
+          node --check adapters/mineflayer/bridge.mjs
+          node --test adapters/mineflayer/s50_client_packet_witness_dev.test.mjs
       - name: S50 input witness source-shape and negative gates
         env:
           PYTHONPATH: 'src:tests:.'
