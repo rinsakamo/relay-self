@@ -1,0 +1,101 @@
+F
+=================================== FAILURES ===================================
+______________ test_inherited_startup_wait_for_and_original_spawn ______________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x76c25ca40aa0>
+
+    def test_inherited_startup_wait_for_and_original_spawn(monkeypatch):
+        async def run():
+            s, _, p, _ = await launch(monkeypatch)
+            reads = [a for a in s.audit if a.event == "READ"]
+            assert (reads[0].issuer != reads[0].reader) == (sys.version_info < (3, 12))
+            assert (reads[1].issuer != reads[1].reader) == (sys.version_info < (3, 12))
+            assert len(p.stdout.reads) == 2
+            assert [a.seq for a in s.audit if a.event == "DELIVER"] == [0, 1]
+>       asyncio.run(run())
+
+tests/test_self_world_stage_w4_lease.py:113: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/asyncio/runners.py:194: in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/asyncio/runners.py:118: in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/lib/python3.12/asyncio/base_events.py:687: in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+tests/test_self_world_stage_w4_lease.py:107: in run
+    s, _, p, _ = await launch(monkeypatch)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_self_world_stage_w4_lease.py:67: in launch
+    session = await W4DevLeasedSession.launch(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+cls = <class 'adapters.mineflayer.self_world_stage_w4_lease.W4DevLeasedSession'>
+config = MineflayerLaunchConfig(host='127.0.0.1', port=25565, username='RelaySelf', version='1.21.8')
+bridge_path = None, node_executable = 'node', startup_timeout_s = 10.0
+raw_capture_root = None, native_receipt = None, w4_native_orientation_dev = True
+
+    @classmethod
+    async def launch(
+        cls,
+        config: MineflayerLaunchConfig,
+        *,
+        bridge_path: str | Path | None = None,
+        node_executable: str = "node",
+        startup_timeout_s: float = 10.0,
+        raw_capture_root: Path | None = None,
+        native_receipt: NativeStreamReceipt | None = None,
+        w4_native_orientation_dev: bool = False,
+    ) -> "MineflayerProcessSession":
+        """Launch exactly one bridge process and consume its startup attestation."""
+    
+        _require_positive_timeout("startup_timeout_s", startup_timeout_s)
+        bridge = (
+            Path(__file__).with_name("bridge.mjs")
+            if bridge_path is None
+            else Path(bridge_path)
+        )
+        if not bridge.is_file():
+            raise MineflayerProcessStartError(
+                f"Mineflayer bridge does not exist: {bridge}"
+            )
+    
+        if type(w4_native_orientation_dev) is not bool:
+            raise MineflayerProcessStartError("W4 orientation requires explicit boolean opt-in")
+        # Suppress inherited environment opt-in in every default S49/R/V launch.
+        child_env = os.environ.copy()
+        child_env.pop("RELAYSELF_W4_NH1_ORIENTATION_V0", None)
+        if w4_native_orientation_dev:
+            if config.version != "1.21.8":
+                raise MineflayerProcessStartError("W4 orientation requires pinned Minecraft 1.21.8")
+            child_env["RELAYSELF_W4_NH1_ORIENTATION_V0"] = "1"
+    
+        # Custody remains with the spawn task across cancellation before
+        # create_subprocess_exec() exposes its Process handle. Once returned,
+        # this helper owns the child through startup or confirmed reap.
+        try:
+            process = await spawn_with_custody(
+                *config.argv(bridge, node_executable=node_executable),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=None,
+                env=child_env,
+            )
+        except OSError as exc:
+            raise MineflayerProcessStartError(
+                f"could not launch Mineflayer bridge: {exc}"
+            ) from exc
+    
+        session: MineflayerProcessSession | None = None
+        try:
+>           session = cls(process, raw_capture_root=raw_capture_root, native_receipt=native_receipt)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E           TypeError: W4DevLeasedSession.__init__() got an unexpected keyword argument 'native_receipt'
+
+adapters/mineflayer/process_session.py:120: TypeError
+=========================== short test summary info ============================
+FAILED tests/test_self_world_stage_w4_lease.py::test_inherited_startup_wait_for_and_original_spawn
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 1.91s

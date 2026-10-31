@@ -1,0 +1,16 @@
+{
+  "issue": 653,
+  "authorization": "Current user instruction and Issue653 fresh bounded World after exact-head CI PASS",
+  "worlds": 1,
+  "actions": 1,
+  "route": "B",
+  "shadow": true,
+  "decisions": [
+    "WAIT",
+    "MOVE_AWAY",
+    "WAIT"
+  ],
+  "learning": 0,
+  "goal": "UNDETERMINED",
+  "retry": 0
+}

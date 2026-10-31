@@ -1,0 +1,91 @@
+[
+  {
+    "shard": 0,
+    "exit": 0,
+    "files": [
+      "tests/test_b0_energy_bridge.py",
+      "tests/test_b1_local_adaptation.py",
+      "tests/test_self_product_passive_views.py",
+      "tests/test_s50_physical_boundary.py",
+      "tests/test_s50_p1_scope.py",
+      "tests/test_self_world_prospective.py",
+      "tests/test_self_world_epoch_handoff.py",
+      "tests/test_self_world_stage_t_policy.py",
+      "tests/test_self_world_stage_w_gate.py",
+      "tests/test_self_world_stage_w4_window.py",
+      "tests/test_self_world_stage_w4_preprobe.py",
+      "tests/test_self_world_observation_only_close.py",
+      "tests/test_self_world_observation_only_native_boundary.py",
+      "tests/test_self_world_observation_only_cognition.py",
+      "tests/test_s49_cleanup.py",
+      "tests/test_w4_pr634_retained_owner_gate.py",
+      "tests/test_self_world.py"
+    ]
+  },
+  {
+    "shard": 1,
+    "exit": 0,
+    "files": [
+      "tests/test_b0_ground_foraging.py",
+      "tests/test_b1_dev.py",
+      "tests/test_m02_paper_dev.py",
+      "tests/test_s50_control_loop_order.py",
+      "tests/test_self_demo.py",
+      "tests/test_self_world_learning_gate.py",
+      "tests/test_self_world_epoch_control.py",
+      "tests/test_self_world_stage_u_gate.py",
+      "tests/test_self_world_stage_w2_local.py",
+      "tests/test_self_world_stage_w4_logtap.py",
+      "tests/test_self_world_stage_w4_prehost.py",
+      "tests/test_self_world_observation_only_dev.py",
+      "tests/test_self_world_observation_only_owner_offline.py",
+      "tests/test_self_world_model_ab.py",
+      "tests/test_s49_startup_ownership.py",
+      "tests/test_self_body.py"
+    ]
+  },
+  {
+    "shard": 2,
+    "exit": 0,
+    "files": [
+      "tests/test_b0_two_epoch.py",
+      "tests/test_feature_s51_eat_execution.py",
+      "tests/test_m02_v7_new_qualification.py",
+      "tests/test_s50_packet_trace.py",
+      "tests/test_self_live_think.py",
+      "tests/test_self_world_native_feedback.py",
+      "tests/test_self_world_stage_r_owner.py",
+      "tests/test_self_world_stage_v_attestation.py",
+      "tests/test_self_world_stage_w3_capture.py",
+      "tests/test_self_world_stage_w4_handoff.py",
+      "tests/test_self_world_stage_w4_lease.py",
+      "tests/test_self_world_observation_only_entry.py",
+      "tests/test_self_world_observation_only_real_dev.py",
+      "tests/test_mineflayer_process_session.py",
+      "tests/test_w4_protected_recovery_audit.py",
+      "tests/test_self_body_m0_projection.py"
+    ]
+  },
+  {
+    "shard": 3,
+    "exit": 0,
+    "files": [
+      "tests/test_b0_rsee.py",
+      "tests/test_self_dev.py",
+      "tests/test_m02_v7_four_arm_qualification.py",
+      "tests/test_s50_p1_wait.py",
+      "tests/test_self_action_evidence.py",
+      "tests/test_self_world_owner_handoff.py",
+      "tests/test_self_world_stage_s_feedback.py",
+      "tests/test_self_world_stage_v_wait_safety.py",
+      "tests/test_self_world_stage_w4.py",
+      "tests/test_self_world_stage_w4_owner_contract.py",
+      "tests/test_self_world_stage_w4_optin_offline.py",
+      "tests/test_self_world_observation_only_lifetime.py",
+      "tests/test_self_world_observation_only_epoch_replay.py",
+      "tests/test_feature_s49_normal_runtime.py",
+      "tests/test_w4_pr634_startup_ownership.py",
+      "tests/test_self_body_timing_dev.py"
+    ]
+  }
+]

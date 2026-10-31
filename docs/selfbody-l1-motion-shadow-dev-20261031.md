@@ -64,3 +64,14 @@ existing L1/L10 regression tests.
 No independent Goal source, L10, S10 or S11 is added. P1 WAIT=0, Goal
 UNDETERMINED, effective clear/full-tick input idle/physical stability
 NOT_ATTESTED, QUALIFICATION_NO_GO, SCIENCE_NOT_RUN.
+
+## Fresh local World verification
+
+The new shadow was executed once at exact code HEAD
+`ba83256a80370878748316e145855bf928f1aaac`, after all three exact-head
+CI workflows and the complete 1,710-test FAST selection passed.
+The original decisions remained WAIT → MOVE_AWAY → WAIT, with one actual
+Action. Shadow ON/OFF attention differs and the one-bit control matches:
+CHEAP_EQUIVALENT. Independent original readback passed and rejected all
+21 mutated-copy controls. See the [Japanese results and remaining limits](
+selfbody-l1-motion-shadow-results-20261031.md).
