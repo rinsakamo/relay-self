@@ -1,0 +1,113 @@
+name: S49 motor heldout real W3 corrected cheap-baseline replay
+
+on:
+  push:
+    branches:
+      - integration/s49-slm-passive-dev-20261031
+    paths:
+      - adapters/mineflayer/slm_motor_expectation_dev.py
+      - tests/test_s49_slm_motor_expectation_dev.py
+      - .github/workflows/s49-slm-motor-holdout-replay-fast.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  offline-real-world-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src:${{ github.workspace }}/tests
+      PRIOR_SHA: 7f5d69f72a2cbfde7751960eaef4a06c9434b2ec94fa57e50b6ce63604bd5e8c
+      HELDOUT_SHA: 39afa08ad7de927a6eec845759d8051441c49b507a9c5d5089294886e475aec1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Corrected numerical comparisons and source tests
+        run: |
+          python -m pytest -q tests/test_s49_slm_motor_expectation_dev.py tests/test_s49_slm_prior_world_dev.py tests/test_s49_slm_passive_dev.py tests/test_s49_slm_empty_memory_shadow.py
+          ruff check adapters/mineflayer/slm_motor_expectation_dev.py tests/test_s49_slm_motor_expectation_dev.py
+          python tools/check_repository.py
+      - name: Download preserved physical World evidence without executing Minecraft
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 41178788300
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: s49-slm-motor-forecast-real-heldout-evidence
+          path: dev-evidence/physical-original
+      - name: Re-decode both prior and heldout physical W3 originals
+        run: |
+          mkdir -p dev-evidence/corrected
+          python - <<'PY'
+          import json
+          import math
+          import os
+          from pathlib import Path
+          from adapters.mineflayer.slm_motor_expectation_dev import (
+              read_previous_motor_history, score_motor_expectation,
+          )
+
+          base = Path.cwd() / "dev-evidence/physical-original"
+          prior = read_previous_motor_history(
+              base / "previous/world-one",
+              expected_stdout_sha256=os.environ["PRIOR_SHA"],
+          )
+          current = read_previous_motor_history(
+              base / "world-one", expected_stdout_sha256=os.environ["HELDOUT_SHA"],
+          )
+          report = json.loads((base / "world-one/report.json").read_bytes())
+          before = json.loads((base / "preworld-model.json").read_bytes())
+          assert prior.source_session_id != current.source_session_id
+          assert prior.source_session_id == before["past_session"]
+          assert report["session_id"] == current.source_session_id
+          assert current.original_action_ids == tuple(
+              a["action"] for a in report["actual_native_actions"]
+          )
+          assert all(math.isclose(a, b, abs_tol=1e-8, rel_tol=0) for a, b in zip(
+              current.displacement_m,
+              (a["movement_m"] for a in report["actual_native_actions"]), strict=True,
+          ))
+          corrected = score_motor_expectation(
+              prior, current_session_id=current.source_session_id,
+              current_actions=report["actual_native_actions"],
+          )
+          assert corrected["status"] == "HELDOUT_SCORED"
+          assert corrected["model_expected_m"] == before["model_expected_m"]
+          assert corrected["cheap_expected_m"] == before["cheap_expected_m"]
+          assert corrected["comparison_status"] == "CHEAP_EQUIVALENT_WITHIN_MARGIN"
+          assert corrected["beats_cheap_control"] is False
+          assert corrected["holdout_observations"] == 2
+          assert corrected["real_goal_training_labels"] == 0
+          assert corrected["policy_changed"] is corrected["action_authority"] is False
+          assert report["slm_dev"]["l8_training_admissions"] == 0
+          assert report["slm_dev"]["l1_motor_expectation"]["beats_cheap_control"] is True
+          # The original physical report is immutable, and its old boolean
+          # was a floating-point tie misclassified as an improvement.
+          verdict = {
+              "schema": "S49_MOTOR_REAL_HOLDOUT_NUMERICAL_REPLAY_V1",
+              "original_physical_run": 41178788300,
+              "old_report_boolean": True,
+              "old_report_correctly_claims_improvement": False,
+              "corrected_comparison": corrected,
+              "physical_actions_replayed": 0,
+              "physical_world_started": False,
+              "l8_goal_learning_admitted": False,
+              "qualification_no_go": True,
+              "science_not_run": True,
+          }
+          (Path("dev-evidence/corrected") / "corrected-comparison.json").write_text(
+              json.dumps(verdict, sort_keys=True, indent=2))
+          print("TWO_REAL_W3_ORIGINALS_CORRECTED_MOTOR_CHEAP_TIE_PASS")
+          PY
+      - name: Preserve corrected verdict alongside unchanged original artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s49-motor-real-w3-corrected-comparison
+          path: dev-evidence/corrected/
+          if-no-files-found: warn
+          retention-days: 30
