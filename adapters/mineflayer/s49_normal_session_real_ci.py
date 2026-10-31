@@ -12,6 +12,7 @@ import asyncio
 import json
 import os
 import sys
+from dataclasses import asdict
 import tempfile
 from collections.abc import Awaitable, Callable
 from pathlib import Path
@@ -19,6 +20,10 @@ from typing import Any
 
 import test_postmain_two_epoch_continuation as s19
 from adapters.mineflayer.execution import WorldConsequenceStatus
+from adapters.mineflayer.l16_first_action_goal_originals import (
+    L16GoalPlan,
+    inspect_l16_first_action_prefix,
+)
 from adapters.mineflayer.normal_action import (
     NormalActionAuthorization,
     NormalActionStage,
@@ -47,6 +52,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     _new_session,
 )
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
+from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 from experiments.standard_env.world_binding import (
     WorldBinding,
     WorldBindingRejected,
@@ -126,6 +132,8 @@ async def qualify(
     live_probe: Callable[[MineflayerObservation], Awaitable[None]] | None = None,
     rsee_world: WorldBinding | None = None,
     rsee_eula_accepted: bool = False,
+    l16_capture_root: Path | None = None,
+    l16_goal_plan: L16GoalPlan | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -141,10 +149,37 @@ async def qualify(
         "auto_crash_recovery": False,
     }
     server = collector = session = staging = temp = None
+    recorder: NativeStreamReceipt | None = None
+    capture_sealed = False
     rc = 2
     try:
         if os.environ.get("S49_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
+        if (l16_capture_root is None) != (l16_goal_plan is None):
+            raise S31ABlocked("L16 capture root and pre-World Goal must be paired")
+        if l16_capture_root is not None:
+            if (not isinstance(l16_goal_plan, L16GoalPlan)
+                    or not isinstance(l16_capture_root, Path)
+                    or not l16_capture_root.is_absolute()):
+                raise S31ABlocked("L16 requires explicit absolute capture root and fixed Goal")
+            # Write the operator's fixed target BEFORE Java/World/session starts.
+            # This is an operator-local claim, not external Goal qualification.
+            plan_file = l16_capture_root / "l16_pre_world_goal_plan.json"
+            original_plan = l16_goal_plan.original_bytes()
+            with plan_file.open("xb") as out:
+                out.write(original_plan)
+                out.flush()
+                os.fsync(out.fileno())
+            recorder = NativeStreamReceipt(
+                l16_capture_root / "native_bridge_received_original.jsonl",
+                l16_capture_root / "native_bridge_sent_original.jsonl",
+            )
+            report["l16_capture"] = {
+                "status": "STARTED_PRE_WORLD",
+                "root": str(l16_capture_root),
+                "goal_owner_independent": False,
+                "real_l10_pairs": 0,
+            }
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
@@ -164,7 +199,7 @@ async def qualify(
             root, root / "minecraft.jar", server_log,
         )
         report["stage"] = "AUTHENTIC_NATIVE_SELF_SESSION"
-        session = await _new_session()
+        session = await _new_session(native_receipt=recorder)
         sid = session.started.session_id
         report["session_id"] = sid
         _, committed, _, _, _, _ = await asyncio.to_thread(s19._epoch_one)
@@ -271,6 +306,48 @@ async def qualify(
                 or receipt.consequence.movement_distance < 0.05
             ):
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
+            nonlocal capture_sealed
+            if recorder is not None and not capture_sealed:
+                assert l16_goal_plan is not None and l16_capture_root is not None
+                action_id = receipt.terminal.action_id
+                first_id = f"l16:{sid}:{action_id}:goal-1"
+                second_id = f"l16:{sid}:{action_id}:goal-2"
+                # Both probes follow existing S16 OUTCOME/control clear. No
+                # alternate native reader or Action issuer is introduced.
+                first = await _correlated_observe(session, first_id)
+                second = await _correlated_observe(session, second_id)
+                index = session.finish_native_receipt()
+                capture_sealed = True
+                index_file = l16_capture_root / "native_bridge_source_receipt.json"
+                with index_file.open("xb") as out:
+                    out.write((json.dumps(index, sort_keys=True) + "\\n").encode())
+                    out.flush()
+                    os.fsync(out.fileno())
+                window = inspect_l16_first_action_prefix(
+                    received_original=recorder.received.read_bytes(),
+                    sent_original=recorder.sent.read_bytes(),
+                    s7_receipt=index,
+                    plan=l16_goal_plan,
+                    plan_original=(l16_capture_root / "l16_pre_world_goal_plan.json").read_bytes(),
+                    action_id=action_id, session_id=sid,
+                    before_seq=receipt.consequence.before_observation.seq,
+                    dispatch_seq=receipt.consequence.dispatch_receipt.seq,
+                    cleanup_seq=receipt.consequence.cleanup_receipt.seq,
+                    after_seq=receipt.consequence.after_observation.seq,
+                    first_probe_seq=first.seq, second_probe_seq=second.seq,
+                    first_probe_request_id=first_id,
+                    second_probe_request_id=second_id,
+                )
+                report["l16_capture"] = {
+                    "status": "SOURCE_PREFIX_CAPTURED_UNQUALIFIED",
+                    "root": str(l16_capture_root),
+                    "s7_index": index,
+                    "window": asdict(window),
+                    "first_action_only": True,
+                    "later_session_actions_not_in_recorded_prefix": True,
+                    "real_l10_pairs": 0,
+                    "external_goal_owner_independent": False,
+                }
             report["actual_native_actions"].append({
                 "action": receipt.terminal.action_id,
                 "terminal": receipt.terminal.state.value,
@@ -359,6 +436,25 @@ async def qualify(
                 await staging
             except asyncio.CancelledError:
                 pass
+        if recorder is not None and not capture_sealed:
+            try:
+                index = (session.finish_native_receipt()
+                         if session is not None else recorder.close())
+                capture_sealed = True
+                assert l16_capture_root is not None
+                with (l16_capture_root / "native_bridge_source_receipt.json").open("xb") as out:
+                    out.write((json.dumps(index, sort_keys=True) + "\\n").encode())
+                    out.flush()
+                    os.fsync(out.fileno())
+                report["l16_capture"] = {
+                    "status": "INCOMPLETE_NO_GOAL_LABEL",
+                    "s7_index": index,
+                    "real_l10_pairs": 0,
+                }
+            except Exception as exc:
+                report["l16_capture_error"] = f"{type(exc).__name__}: {exc}"
+                report["status"] = "FAIL"
+                rc = 1
         if session is not None:
             try:
                 report["node_exit"] = await session.shutdown(timeout_s=10)
@@ -392,8 +488,31 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--server-log", type=Path, required=True)
+    parser.add_argument("--l16-capture-root", type=Path)
+    parser.add_argument("--l16-goal-target-x", type=float)
+    parser.add_argument("--l16-goal-target-z", type=float)
+    parser.add_argument("--l16-goal-tolerance-m", type=float, default=0.49)
+    parser.add_argument("--l16-goal-stability-m", type=float, default=0.05)
+    parser.add_argument("--l16-confirm", default="")
     args = parser.parse_args()
-    return asyncio.run(qualify(args.report, args.server_log))
+    goal = None
+    if (args.l16_capture_root is not None
+            or args.l16_goal_target_x is not None
+            or args.l16_goal_target_z is not None
+            or args.l16_confirm):
+        if (args.l16_confirm != "L16-S49-FIRST-ACTION-ORIGINAL-DEV"
+                or args.l16_capture_root is None
+                or args.l16_goal_target_x is None
+                or args.l16_goal_target_z is None):
+            parser.error("L16 requires explicit fresh root, fixed x/z and confirmation")
+        goal = L16GoalPlan(
+            args.l16_goal_target_x, args.l16_goal_target_z,
+            args.l16_goal_tolerance_m, args.l16_goal_stability_m,
+        )
+    return asyncio.run(qualify(
+        args.report, args.server_log,
+        l16_capture_root=args.l16_capture_root, l16_goal_plan=goal,
+    ))
 
 
 if __name__ == "__main__":
