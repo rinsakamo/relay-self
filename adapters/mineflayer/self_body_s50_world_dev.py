@@ -84,6 +84,7 @@ from adapters.mineflayer.self_body_s50_original_closure import (
     SelfBodyS50ClosedOwnerLease,
     observe_original_s49_selfbody_closure,
 )
+from adapters.mineflayer.self_body_s50_motion_companion import SelfBodyS50MotionCompanion
 from adapters.mineflayer.self_body_s50_postworld_epoch import PostWorldInternalEpochLease
 from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 from experiments.standard_env.world_binding import (
@@ -111,6 +112,33 @@ from tools.s50_selfbody_motion_readback import review_originals
 def normalize_s50_diagnostic(source: dict[str, object]) -> dict[str, object]:
     """Use the existing S50 CLI JSON shape; typed SelfBody never enters here."""
     return json.loads(json.dumps(source, allow_nan=False))
+
+
+def review_postworld_internal_epoch(
+    joined: SelfBodyS50MotionCompanion, *, node_exit: int,
+    server_exit: int, cleanup_errors: bool = False,
+) -> dict[str, object]:
+    """Original host's opt-in post-process boundary; NO new native epoch.
+
+    This function is a pure in-process projection after real shutdown has
+    already been observed by S49. Synthetic owner fixture calls test only the
+    consumer contract, not the original physical World itself.
+    """
+    epoch = PostWorldInternalEpochLease(joined)
+    try:
+        readout = epoch.enter_after_owner_shutdown(
+            node_exit=node_exit, java_exit=server_exit,
+            cleanup_errors=cleanup_errors,
+        )
+        return {
+            "classification": "DEV_POSTWORLD_INTERNAL_EPOCH_PRIOR_EXPERIENCE_READ_PASS",
+            "readback": readout,
+            "source_lease": epoch.status(),
+            "actual_new_native_present": False,
+            "actual_new_l0_decision": False,
+        }
+    finally:
+        epoch.close()
 
 
 class S49PhysicalFailure(RuntimeError):
@@ -912,29 +940,20 @@ async def qualify(
                 if postworld_internal_epoch_dev:
                     # An explicitly new INTERNAL cognition epoch, only after
                     # original Node/Java exit. No fresh native Present or L0.
-                    epoch = PostWorldInternalEpochLease(joined)
-                    try:
-                        internal = epoch.enter_after_owner_shutdown(
-                            node_exit=report["node_exit"],
-                            java_exit=report["server_exit"],
+                    report["selfbody_postworld_internal_epoch"] = (
+                        review_postworld_internal_epoch(
+                            joined, node_exit=report["node_exit"],
+                            server_exit=report["server_exit"],
                             cleanup_errors=bool(
                                 report.get("node_cleanup_error")
                                 or report.get("server_cleanup_error")
                             ),
                         )
-                        report["selfbody_postworld_internal_epoch"] = {
-                            "classification": "DEV_POSTWORLD_INTERNAL_EPOCH_PRIOR_EXPERIENCE_READ_PASS",
-                            "readback": internal,
-                            "source_lease": epoch.status(),
-                            "actual_new_native_present": False,
-                            "actual_new_l0_decision": False,
-                        }
-                        report["selfbody_s50_join"]["next_cognitive_epoch_referenced"] = True
-                        report["selfbody_s50_join"]["next_epoch_handoff"] = (
-                            "POST_SHUTDOWN_INTERNAL_EPOCH_PRIOR_EXPERIENCE_ONLY"
-                        )
-                    finally:
-                        epoch.close()
+                    )
+                    report["selfbody_s50_join"]["next_cognitive_epoch_referenced"] = True
+                    report["selfbody_s50_join"]["next_epoch_handoff"] = (
+                        "POST_SHUTDOWN_INTERNAL_EPOCH_PRIOR_EXPERIENCE_ONLY"
+                    )
         except Exception as exc:
             report["selfbody_join_error"] = f"{type(exc).__name__}: {exc}"
             report["status"] = "FAIL"
