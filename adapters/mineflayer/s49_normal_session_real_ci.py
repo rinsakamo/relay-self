@@ -35,6 +35,8 @@ from adapters.mineflayer.l21_goal_observer_source import (
     L21ObserverSession,
     review_l21_observer_original,
 )
+from adapters.mineflayer.l22_post_s16_settling import inspect_l22_settling
+from adapters.mineflayer.l22_runtime_settling import observe_bounded_settling
 from adapters.mineflayer.normal_action import (
     NormalActionAuthorization,
     NormalActionStage,
@@ -152,6 +154,7 @@ async def qualify(
     l20_external_goal_original: Path | None = None,
     l20_admitted_sha256: str | None = None,
     l21_observer_root: Path | None = None,
+    l22_settling_probes: int | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -179,6 +182,15 @@ async def qualify(
             raise S31ABlocked("L16 capture root and pre-World Goal must be paired")
         if (l20_external_goal_original is None) != (l20_admitted_sha256 is None):
             raise S31ABlocked("L20 external criterion and admitted SHA must be paired")
+        if l22_settling_probes is not None and (
+            type(l22_settling_probes) is not int
+            or not 3 <= l22_settling_probes <= 8
+            or l16_capture_root is None
+            or not isinstance(l16_goal_plan, L16GoalPlan)
+        ):
+            raise S31ABlocked(
+                "L22 opt-in requires bounded 3..8 probes and paired L16 originals"
+            )
         if l21_observer_root is not None:
             if (
                 l20_external_goal_original is None
@@ -421,8 +433,23 @@ async def qualify(
                 action_id = receipt.terminal.action_id
                 first_id = f"l16:{sid}:{action_id}:goal-1"
                 second_id = f"l16:{sid}:{action_id}:goal-2"
-                # Both probes follow existing S16 OUTCOME/control clear. No
-                # alternate native reader or Action issuer is introduced.
+                # Existing S16 OUTCOME/control clear precedes every L22
+                # sample. Its diagnostic observations use the SAME S7 reader.
+                l22_runtime = None
+                if l22_settling_probes is not None:
+                    l22_runtime = await observe_bounded_settling(
+                        session, session_id=sid, action_id=action_id,
+                        max_probes=l22_settling_probes,
+                        drift_limit_m=l16_goal_plan.stable_probe_delta_max_m,
+                    )
+                    report["l22_settling"] = {
+                        "status": "RUNTIME_SAMPLES_UNQUALIFIED",
+                        "runtime": asdict(l22_runtime),
+                        "accepted_goal_status": "UNDETERMINED",
+                        "qualified_real_learning_pairs": 0,
+                    }
+                # Both Goal probes follow the optional bounded settling
+                # window. No alternate native reader or Action issuer.
                 # The optional second TCP client samples the RelaySelf
                 # player separately; S49 does not write observer coordinates
                 # or the Goal status into its original file.
@@ -446,21 +473,54 @@ async def qualify(
                     out.write((json.dumps(index, sort_keys=True) + "\n").encode())
                     out.flush()
                     os.fsync(out.fileno())
-                window = inspect_l16_first_action_prefix(
-                    received_original=recorder.received.read_bytes(),
-                    sent_original=recorder.sent.read_bytes(),
-                    s7_receipt=index,
-                    plan=l16_goal_plan,
-                    plan_original=(l16_capture_root / "l16_pre_world_goal_plan.json").read_bytes(),
-                    action_id=action_id, session_id=sid,
-                    before_seq=receipt.consequence.before_observation.seq,
-                    dispatch_seq=receipt.consequence.dispatch_receipt.seq,
-                    cleanup_seq=receipt.consequence.cleanup_receipt.seq,
-                    after_seq=receipt.consequence.after_observation.seq,
-                    first_probe_seq=first.seq, second_probe_seq=second.seq,
-                    first_probe_request_id=first_id,
-                    second_probe_request_id=second_id,
-                )
+                window = None
+                if l22_settling_probes is not None:
+                    assert l22_runtime is not None
+                    l22_review = inspect_l22_settling(
+                        received_original=recorder.received.read_bytes(),
+                        sent_original=recorder.sent.read_bytes(),
+                        s7_receipt=index,
+                        s16_original=(
+                            l16_capture_root / "l18_s16_terminal_original.jsonl"
+                        ).read_bytes(),
+                        plan=l16_goal_plan, action_id=action_id, session_id=sid,
+                    )
+                    if (
+                        l22_review.settling_probe_seqs
+                        != l22_runtime.observed_probe_seqs
+                        or not set(l22_runtime.observed_move_seqs).issubset(
+                            l22_review.move_event_seqs
+                        )
+                    ):
+                        raise S49PhysicalFailure(
+                            "L22 runtime and source original settling disagree"
+                        )
+                    report["l22_settling"] = {
+                        "status": "S7_SOURCE_REVIEWED_GOAL_UNDETERMINED",
+                        "runtime": asdict(l22_runtime),
+                        "audit": asdict(l22_review),
+                        "qualified_real_learning_pairs": 0,
+                        "s10_updates": 0,
+                        "s11_grants": 0,
+                    }
+                else:
+                    window = inspect_l16_first_action_prefix(
+                        received_original=recorder.received.read_bytes(),
+                        sent_original=recorder.sent.read_bytes(),
+                        s7_receipt=index,
+                        plan=l16_goal_plan,
+                        plan_original=(
+                            l16_capture_root / "l16_pre_world_goal_plan.json"
+                        ).read_bytes(),
+                        action_id=action_id, session_id=sid,
+                        before_seq=receipt.consequence.before_observation.seq,
+                        dispatch_seq=receipt.consequence.dispatch_receipt.seq,
+                        cleanup_seq=receipt.consequence.cleanup_receipt.seq,
+                        after_seq=receipt.consequence.after_observation.seq,
+                        first_probe_seq=first.seq, second_probe_seq=second.seq,
+                        first_probe_request_id=first_id,
+                        second_probe_request_id=second_id,
+                    )
                 if l21_observer is not None:
                     assert observer_original is not None
                     assert l20_external_goal_original is not None
@@ -471,7 +531,10 @@ async def qualify(
                         criterion_sha256=l20_admitted_sha256,
                         plan=l16_goal_plan,
                         session_id=sid, action_id=action_id,
-                        native_goal_status=window.observed_goal_status,
+                        native_goal_status=(
+                            window.observed_goal_status
+                            if window is not None else "UNDETERMINED"
+                        ),
                     )
                     report["l21_observer"] = {
                         "status": "SECOND_CLIENT_SOURCE_ONLY_UNQUALIFIED",
@@ -482,10 +545,14 @@ async def qualify(
                         "observer_presence_is_world_intervention": True,
                     }
                 report["l16_capture"] = {
-                    "status": "SOURCE_PREFIX_CAPTURED_UNQUALIFIED",
+                    "status": (
+                        "SOURCE_PREFIX_CAPTURED_UNQUALIFIED"
+                        if window is not None
+                        else "L16_NOT_RUN_L22_EXTRA_PROBES"
+                    ),
                     "root": str(l16_capture_root),
                     "s7_index": index,
-                    "window": asdict(window),
+                    "window": asdict(window) if window is not None else None,
                     "l18_s16_owner_source": first_terminal_source,
                     "first_action_only": True,
                     "later_session_actions_not_in_recorded_prefix": True,
@@ -638,6 +705,7 @@ def main() -> int:
     parser.add_argument("--l20-external-goal-original", type=Path)
     parser.add_argument("--l20-admitted-sha256")
     parser.add_argument("--l21-observer-root", type=Path)
+    parser.add_argument("--l22-settling-probes", type=int)
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -666,6 +734,7 @@ def main() -> int:
         l20_external_goal_original=args.l20_external_goal_original,
         l20_admitted_sha256=args.l20_admitted_sha256,
         l21_observer_root=args.l21_observer_root,
+        l22_settling_probes=args.l22_settling_probes,
     ))
 
 
