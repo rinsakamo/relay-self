@@ -20,12 +20,12 @@ from typing import Any
 
 import test_postmain_two_epoch_continuation as s19
 from adapters.mineflayer.execution import WorldConsequenceStatus
-from adapters.mineflayer.l18_s16_terminal_original import (
-    write_s16_owner_original,
-)
 from adapters.mineflayer.l16_first_action_goal_originals import (
     L16GoalPlan,
     inspect_l16_first_action_prefix,
+)
+from adapters.mineflayer.l18_s16_terminal_original import (
+    write_s16_owner_original,
 )
 from adapters.mineflayer.normal_action import (
     NormalActionAuthorization,
