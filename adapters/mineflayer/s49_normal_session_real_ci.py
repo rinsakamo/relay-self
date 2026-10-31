@@ -20,6 +20,9 @@ from typing import Any
 
 import test_postmain_two_epoch_continuation as s19
 from adapters.mineflayer.execution import WorldConsequenceStatus
+from adapters.mineflayer.l18_s16_terminal_original import (
+    write_s16_owner_original,
+)
 from adapters.mineflayer.l16_first_action_goal_originals import (
     L16GoalPlan,
     inspect_l16_first_action_prefix,
@@ -294,10 +297,24 @@ async def qualify(
                 intent, values["policies"][-2], binding,
                 provenance=source(f"admitted-{step.event_seq}"),
             )
+            first_terminal_source: dict[str, object] = {}
+
+            def on_first_s16_terminal(terminal, interpretation, consequence):
+                if recorder is not None and not capture_sealed:
+                    assert l16_capture_root is not None
+                    first_terminal_source.update(write_s16_owner_original(
+                        capture_root=l16_capture_root, terminal=terminal,
+                        outcome=interpretation, consequence=consequence,
+                        # Operator-declared revision; later SelfWorld/Body
+                        # must independently match it before any L10 join.
+                        source_revision=0,
+                    ))
+
             receipt = await executor.execute(
                 session, step, bound, probe,
                 authorize(step, NormalActionStage.PROPOSE),
                 authorize(step, NormalActionStage.ISSUE),
+                on_terminal=on_first_s16_terminal if recorder is not None else None,
             )
             if (
                 receipt.terminal.state is not ActionState.OUTCOME
@@ -343,6 +360,7 @@ async def qualify(
                     "root": str(l16_capture_root),
                     "s7_index": index,
                     "window": asdict(window),
+                    "l18_s16_owner_source": first_terminal_source,
                     "first_action_only": True,
                     "later_session_actions_not_in_recorded_prefix": True,
                     "real_l10_pairs": 0,
