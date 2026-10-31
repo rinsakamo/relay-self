@@ -68,6 +68,10 @@ from relay_self.execution_binding import (
     resolve_execution_binding,
 )
 from relay_self.intent import IntentCommitment
+from relay_self.l20_external_goal_commitment import (
+    L20GoalCommitmentRejected,
+    review_external_pre_world_criterion,
+)
 from relay_self.provenance import Provenance
 from relay_self.reactive_l0 import L0ActionGrant
 from relay_self.world_conditioned_choice import WorldChoiceKind
@@ -137,6 +141,8 @@ async def qualify(
     rsee_eula_accepted: bool = False,
     l16_capture_root: Path | None = None,
     l16_goal_plan: L16GoalPlan | None = None,
+    l20_external_goal_original: Path | None = None,
+    l20_admitted_sha256: str | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -160,6 +166,34 @@ async def qualify(
             raise S31ABlocked("explicit S49 real server env and no Node shim required")
         if (l16_capture_root is None) != (l16_goal_plan is None):
             raise S31ABlocked("L16 capture root and pre-World Goal must be paired")
+        if (l20_external_goal_original is None) != (l20_admitted_sha256 is None):
+            raise S31ABlocked("L20 external criterion and admitted SHA must be paired")
+        if l20_external_goal_original is not None:
+            # Fail before Java, Node or a new S7 recorder is launched.
+            if (
+                not isinstance(l16_goal_plan, L16GoalPlan)
+                or not isinstance(l16_capture_root, Path)
+                or not isinstance(l20_external_goal_original, Path)
+                or not l20_external_goal_original.is_absolute()
+                or l20_external_goal_original.is_symlink()
+                or not l20_external_goal_original.is_file()
+                or l20_external_goal_original.resolve(strict=True)
+                != l20_external_goal_original
+                or l20_external_goal_original.is_relative_to(l16_capture_root)
+                or not 0 < l20_external_goal_original.stat().st_size <= 4096
+            ):
+                raise S31ABlocked(
+                    "L20 requires a bounded external reviewer original outside S49"
+                )
+            l20_preflight = review_external_pre_world_criterion(
+                original=l20_external_goal_original.read_bytes(),
+                admitted_sha256=l20_admitted_sha256,
+                operator_plan=l16_goal_plan,
+            )
+            report["l20_external_goal_preflight"] = asdict(l20_preflight)
+            report["l20_external_goal_preflight_status"] = (
+                "SOURCE_MATCH_BEFORE_WORLD_UNQUALIFIED"
+            )
         if l16_capture_root is not None:
             if (not isinstance(l16_goal_plan, L16GoalPlan)
                     or not isinstance(l16_capture_root, Path)
@@ -437,7 +471,9 @@ async def qualify(
         report["classification"] = "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
         report["stage"] = "CLOSED"
         rc = 0
-    except (S31ABlocked, WorldBindingRejected, OSError) as exc:
+    except (
+        S31ABlocked, WorldBindingRejected, L20GoalCommitmentRejected, OSError,
+    ) as exc:
         report["status"] = "BLOCKED"
         report["error"] = f"{type(exc).__name__}: {exc}"
         print("S49 BLOCKED: " + str(exc), file=sys.stderr)
@@ -512,6 +548,8 @@ def main() -> int:
     parser.add_argument("--l16-goal-tolerance-m", type=float, default=0.49)
     parser.add_argument("--l16-goal-stability-m", type=float, default=0.05)
     parser.add_argument("--l16-confirm", default="")
+    parser.add_argument("--l20-external-goal-original", type=Path)
+    parser.add_argument("--l20-admitted-sha256")
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -527,9 +565,18 @@ def main() -> int:
             args.l16_goal_target_x, args.l16_goal_target_z,
             args.l16_goal_tolerance_m, args.l16_goal_stability_m,
         )
+    if (
+        (args.l20_external_goal_original is None)
+        != (args.l20_admitted_sha256 is None)
+    ):
+        parser.error("L20 requires both original external file and SHA")
+    if args.l20_external_goal_original is not None and goal is None:
+        parser.error("L20 requires explicit L16 Goal plan and capture root")
     return asyncio.run(qualify(
         args.report, args.server_log,
         l16_capture_root=args.l16_capture_root, l16_goal_plan=goal,
+        l20_external_goal_original=args.l20_external_goal_original,
+        l20_admitted_sha256=args.l20_admitted_sha256,
     ))
 
 
