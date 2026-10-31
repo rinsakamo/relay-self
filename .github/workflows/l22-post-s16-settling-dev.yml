@@ -1,0 +1,39 @@
+name: L22 Post-S16 Settling DEV
+on:
+  push:
+    branches:
+      - dev/l22-post-s16-settling-20261031
+    paths:
+      - adapters/mineflayer/l22_post_s16_settling.py
+      - tests/test_l22_post_s16_settling.py
+      - .github/workflows/l22-post-s16-settling-dev.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-settling-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Offline L22 source gate
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/l22_post_s16_settling.py tests/test_l22_post_s16_settling.py
+          python -m compileall -q adapters/mineflayer/l22_post_s16_settling.py tests/test_l22_post_s16_settling.py
+          python -m pytest -o addopts='' -q tests/test_l22_post_s16_settling.py tests/test_l16_s49_first_action_original_capture.py
+          python tools/check_repository.py
+      - name: Evidence ceiling
+        if: always()
+        run: echo 'DEV_ONLY / OFFLINE_SETTLING_AUDIT / WORLD_0 / NO_PHYSICAL_IDLE_ATTESTATION / GOAL_UNDETERMINED / L10_S10_S11_0'
