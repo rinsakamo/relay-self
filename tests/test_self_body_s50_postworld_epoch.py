@@ -142,3 +142,39 @@ def test_world_runner_has_explicit_default_off_postworld_flag():
     from adapters.mineflayer import self_body_s50_world_dev as host
     signature = inspect.signature(host.qualify)
     assert signature.parameters["postworld_internal_epoch_dev"].default is False
+
+
+def test_real_host_postworld_callsite_projects_one_prior_experience_with_no_present():
+    from adapters.mineflayer.self_body_s50_world_dev import (
+        review_postworld_internal_epoch,
+    )
+    old = prior()
+    result = review_postworld_internal_epoch(
+        old, node_exit=0, server_exit=0,
+    )
+    assert result["classification"] == (
+        "DEV_POSTWORLD_INTERNAL_EPOCH_PRIOR_EXPERIENCE_READ_PASS"
+    )
+    assert result["source_lease"]["internal_epoch_reads"] == 1
+    assert result["source_lease"]["new_action_issuers"] == 0
+    assert result["readback"]["previous_native_ref"] == (
+        old.self_body.observation.source_ref
+    )
+    assert result["readback"]["previous_input_off_sampled_motion_ticks"] == (251, 252)
+    assert result["readback"]["current_position_x"] is None
+    assert result["actual_new_native_present"] is False
+    assert result["actual_new_l0_decision"] is False
+
+
+def test_real_host_postworld_callsite_rejects_failed_shutdown_without_new_epoch():
+    from adapters.mineflayer.self_body_s50_world_dev import (
+        review_postworld_internal_epoch,
+    )
+    with pytest.raises(PostWorldInternalEpochRejected):
+        review_postworld_internal_epoch(
+            prior(), node_exit=0, server_exit=1,
+        )
+    with pytest.raises(PostWorldInternalEpochRejected):
+        review_postworld_internal_epoch(
+            prior(), node_exit=0, server_exit=0, cleanup_errors=True,
+        )
