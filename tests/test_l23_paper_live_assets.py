@@ -17,11 +17,28 @@ from adapters.mineflayer.l23_paper_live_assets import (
     wait_paper_line,
 )
 
+# Synthetic test config with the exact S-owned 16-key M0.2 action roster.
+# This file does not claim an executable Java plugin or calibrated ecology.
+ACTION_NAMES = (
+    "BASAL", "WALK", "CROUCH", "SPRINT", "SWIM",
+    "WALK_ON_WATER", "WALK_UNDERWATER", "JUMP", "JUMP_SPRINT",
+    "ATTACK", "DAMAGED", "BLOCK_MINED", "REGEN", "HUNGER_EFFECT",
+    "UNKNOWN", "COGNITION",
+)
 CONFIG = (
     "dev-enabled: true\n"
     "s50-tick-meter-dev: true\n"
     "target-player: RelaySelf\n"
     "minecraft-version: 1.21.8\n"
+    "version: M0.2\n"
+    "calibration-status: candidate_uncalibrated\n"
+    "standard-food: cooked_beef\n"
+    "actions:\n"
+    + "".join(
+        f"  {name}: {{unit: event, standard: 0.0, multiplier: 1.0, "
+        "additional: 0.0, enabled: true}\n"
+        for name in ACTION_NAMES
+    )
 )
 
 
@@ -61,6 +78,8 @@ def test_paper_assets_are_pinned_and_staged_only_in_fresh_world(tmp_path):
 @pytest.mark.parametrize("fault", [
     "disabled", "wrong_target", "tick_disabled",
     "duplicate_config", "modified_sha", "relative",
+    "wrong_version", "missing_food", "missing_calibration",
+    "missing_action", "duplicate_action", "missing_actions_section",
 ])
 def test_paper_bad_profile_rejected_before_world(tmp_path, fault):
     overrides = {
@@ -70,6 +89,14 @@ def test_paper_bad_profile_rejected_before_world(tmp_path, fault):
             "s50-tick-meter-dev: true", "s50-tick-meter-dev: false",
         ),
         "duplicate_config": CONFIG + "dev-enabled: true\n",
+        "wrong_version": CONFIG.replace("version: M0.2", "version: bad"),
+        "missing_food": CONFIG.replace("standard-food: cooked_beef\n", ""),
+        "missing_calibration": CONFIG.replace(
+            "calibration-status: candidate_uncalibrated\n", "",
+        ),
+        "missing_action": CONFIG.replace("  BASAL: {", "  OMITTED: {"),
+        "duplicate_action": CONFIG + "  BASAL: {unit: tick}\n",
+        "missing_actions_section": CONFIG.replace("actions:\n", ""),
     }
     assets = make_assets(tmp_path, config=overrides.get(fault, CONFIG))
     if fault == "modified_sha":
