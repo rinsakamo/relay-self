@@ -170,9 +170,14 @@ def compose_self_body_s50_motion_companion(
         or not 0 < len(subject) <= 128
     ):
         raise SelfBodyS50MotionRejected("S50 source foreign session/action/marker/World")
-    if self_body.observation is not None and self_body.observation.action_id is not None:
-        if self_body.observation.action_id != action:
-            raise SelfBodyS50MotionRejected("SelfBody Present does not match S50 Action")
+    if (
+        self_body.observation is None
+        or self_body.observation.action_id != action
+        or self_body.observation.consequence_provenance != outcome.world_provenance
+    ):
+        raise SelfBodyS50MotionRejected(
+            "original action-associated native Present not admitted in SelfBody"
+        )
     paper_sha = _required(source, "paper_original_sha256", str)
     client_sha = _required(source, "client_original_sha256", str)
     if not _SHA.fullmatch(paper_sha) or not _SHA.fullmatch(client_sha):
