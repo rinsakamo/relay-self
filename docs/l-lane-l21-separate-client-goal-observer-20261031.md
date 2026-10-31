@@ -59,3 +59,10 @@ L13/L14 requires additional independent per-Action Goal owner admission, S16 sou
 Tests: Node 22 syntax/pure tests for bounded protocol, no motor, native target selection and stability; Python 3.12 exact original synthetic positive and numerous adversarial controls; S49 opt-in preflight blocks invalid paths before Java/Action. Real Mineflayer Node dependency and actual other-player entity tracking still require **an explicitly authorized physical World trial**.
 
 Classification: `DEV_ONLY / L21_SECOND_CLIENT_SOURCE_CODE_AND_SYNTHETIC_TEST / REAL_WORLD_0 / EXTERNAL_GOAL_INDEPENDENT_AUTHENTICATION_0 / QUALIFIED_L10_PAIRS_0 / S10_S11_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+
+## Exact-head synthetic DEV validation
+
+**Successful code/test/workflow HEAD:** `13faa98ffccfba8d28acc822d7779c793bb6547d`.
+[GitHub Actions #41163510447 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/41163510447): Python 3.12 **99 PASS / FAIL 0 / SKIP 0**, Node 22 **4 PASS / FAIL 0**, Ruff, Python compileall, Node syntax checks, repository contract checker PASS. Exact tests include the prior L19/L20 source + S49 pre-World gates, L21 independent-client source replay/adverse checks and no-Java block tests. Java/Minecraft and actual Mineflayer Node package/server communications were **not** started in CI. A previously failed Ruff revision is preserved in GitHub Actions history; the above exact HEAD is the successful run.
+
+The documentation-only final commit after this successful code HEAD is not asserted as separately tested. Deployment/push and Issue report do not imply World execution.
