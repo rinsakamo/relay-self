@@ -1,0 +1,33 @@
+name: S49 SLM prior-World source-withheld DEV preflight
+
+on:
+  push:
+    branches:
+      - integration/s49-slm-passive-dev-20261031
+    paths:
+      - adapters/mineflayer/slm_prior_world_dev.py
+      - adapters/mineflayer/slm_passive_dev.py
+      - adapters/mineflayer/slm_passive_dev_run.py
+      - tests/test_s49_slm_prior_world_dev.py
+      - .github/workflows/s49-slm-prior-world-preflight-dev.yml
+
+permissions:
+  contents: read
+
+jobs:
+  source-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src:${{ github.workspace }}/tests
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Prior World, S49 owner, L8 abstention and original L0 focused
+        run: |
+          python -m pytest -q tests/test_s49_slm_prior_world_dev.py tests/test_s49_slm_passive_dev.py tests/test_s49_slm_empty_memory_shadow.py tests/test_feature_s49_normal_runtime.py
+          ruff check adapters/mineflayer/slm_prior_world_dev.py adapters/mineflayer/slm_passive_dev.py adapters/mineflayer/slm_passive_dev_run.py tests/test_s49_slm_prior_world_dev.py tests/test_s49_slm_empty_memory_shadow.py
+          python tools/check_repository.py
