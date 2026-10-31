@@ -1,0 +1,105 @@
+................................................F....................... [ 44%]
+...................................................F.................... [ 88%]
+...................                                                      [100%]
+=================================== FAILURES ===================================
+_____ test_v7_offline_5_arm_candidate_configs_preserve_qualified_baseline ______
+
+tmp_path = PosixPath('/tmp/pytest-of-rinsa/pytest-9/test_v7_offline_5_arm_candidat0')
+
+    def test_v7_offline_5_arm_candidate_configs_preserve_qualified_baseline(tmp_path):
+        raw = v7.TEMPLATE.read_bytes()
+>       configs = {arm: v7.render_arm(raw, arm) for arm in v7.ARMS}
+                        ^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_m02_paper_dev.py:518: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+adapters/mineflayer/m02_paper_dev/v7_paired_config.py:56: in render_arm
+    baseline = enabled_source(raw).decode("utf-8")
+               ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+raw = b"# DEV ONLY: install in a fresh, disposable Paper 1.21.8 World.\n# This is a candidate, not an ecologically calibrate...nal: 0.0, enabled: true}\n  COGNITION: {unit: work, standard: 0.0, multiplier: 1.0, additional: 0.0, enabled: false}\n"
+
+    def enabled_source(raw: bytes) -> bytes:
+        try:
+            source = raw.decode("utf-8")
+        except UnicodeError as exc:
+            raise V7ProfileRejected("invalid source config bytes") from exc
+        if source.count("dev-enabled: false") != 1 or len(raw) > 8192:
+            raise V7ProfileRejected("foreign source config or oversize input")
+        enabled = source.replace("dev-enabled: false", "dev-enabled: true", 1)
+        if sha256(enabled.encode("utf-8")) != BASELINE_ENABLED_SHA256:
+>           raise V7ProfileRejected("not the pinned baseline M0.2 Paper settings")
+E           adapters.mineflayer.m02_paper_dev.v7_paired_config.V7ProfileRejected: not the pinned baseline M0.2 Paper settings
+
+adapters/mineflayer/m02_paper_dev/v7_paired_config.py:49: V7ProfileRejected
+________________ test_saved_original_hash_mutation_is_rejected _________________
+
+tmp_path = PosixPath('/tmp/pytest-of-rinsa/pytest-9/test_saved_original_hash_mutat0')
+
+    def test_saved_original_hash_mutation_is_rejected(tmp_path):
+        import hashlib
+        import json
+    
+        from adapters.mineflayer.m02_paper_dev.s50_boundary import diagnose_bundle
+    
+        content, _ = fixture()
+        native, commands, _ = native_fixture()
+        native[0]["request_id"] = "m02-before-walk"
+        native[0]["snapshot"] = dict(position=dict(x=0, y=0, z=0))
+        native[4]["snapshot"] = dict(position=dict(x=1.2, y=0, z=0))
+        events = [dict(state=s) for s in ["proposed", "authorized", "issued"]]
+        journal = [
+            dict(action_id="action", session_id="session", state="issued", events=events),
+            dict(
+                action_id="action",
+                session_id="session",
+                state="unknown",
+                events=events + [dict(state="unknown")],
+            ),
+        ]
+    
+        def jsonl(items):
+            return "".join(json.dumps(r) + "\n" for r in items)
+    
+        sources = {
+            "paper_server.log": content,
+            "s50_action_original.jsonl": jsonl(journal),
+            "original_native.jsonl": jsonl(native),
+            "owner_commands.jsonl": jsonl(commands),
+        }
+        hashes = {}
+        for name, text in sources.items():
+            (tmp_path / name).write_text(text)
+            hashes[name] = hashlib.sha256(text.encode()).hexdigest()
+        from adapters.mineflayer.m02_paper_dev.v7_paired_config import TEMPLATE, render_arm
+    
+>       config_sha = hashlib.sha256(render_arm(TEMPLATE.read_bytes(), "BASE_ON")).hexdigest()
+                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_s50_physical_boundary.py:386: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+adapters/mineflayer/m02_paper_dev/v7_paired_config.py:56: in render_arm
+    baseline = enabled_source(raw).decode("utf-8")
+               ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+raw = b"# DEV ONLY: install in a fresh, disposable Paper 1.21.8 World.\n# This is a candidate, not an ecologically calibrate...nal: 0.0, enabled: true}\n  COGNITION: {unit: work, standard: 0.0, multiplier: 1.0, additional: 0.0, enabled: false}\n"
+
+    def enabled_source(raw: bytes) -> bytes:
+        try:
+            source = raw.decode("utf-8")
+        except UnicodeError as exc:
+            raise V7ProfileRejected("invalid source config bytes") from exc
+        if source.count("dev-enabled: false") != 1 or len(raw) > 8192:
+            raise V7ProfileRejected("foreign source config or oversize input")
+        enabled = source.replace("dev-enabled: false", "dev-enabled: true", 1)
+        if sha256(enabled.encode("utf-8")) != BASELINE_ENABLED_SHA256:
+>           raise V7ProfileRejected("not the pinned baseline M0.2 Paper settings")
+E           adapters.mineflayer.m02_paper_dev.v7_paired_config.V7ProfileRejected: not the pinned baseline M0.2 Paper settings
+
+adapters/mineflayer/m02_paper_dev/v7_paired_config.py:49: V7ProfileRejected
+=========================== short test summary info ============================
+FAILED tests/test_m02_paper_dev.py::test_v7_offline_5_arm_candidate_configs_preserve_qualified_baseline
+FAILED tests/test_s50_physical_boundary.py::test_saved_original_hash_mutation_is_rejected
+2 failed, 161 passed in 15.18s

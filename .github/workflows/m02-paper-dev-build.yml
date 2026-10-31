@@ -29,7 +29,27 @@ jobs:
       - name: Verify enabled by default false and no server is started
         run: |
           grep -q '^dev-enabled: false' adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml
+          grep -q '^s50-input-witness-dev: false' adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml
           test -f adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: S50 existing-bridge packet-write passive diagnostic
+        run: |
+          node --check adapters/mineflayer/bridge.mjs
+          node --test adapters/mineflayer/s50_client_packet_witness_dev.test.mjs
+      - name: S50 input witness source-shape and negative gates
+        env:
+          PYTHONPATH: 'src:tests:.'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/m02_paper_dev/s50_input_witness_source.py tests/test_s50_input_witness_source.py
+          python -m compileall -q adapters/mineflayer/m02_paper_dev/s50_input_witness_source.py tests/test_s50_input_witness_source.py
+          python -m pytest -o addopts='' -q tests/test_s50_input_witness_source.py tests/test_s50_client_packet_source.py
   paper-world-dev:
     # Historical DEV sources remain readable; V8 owns explicit sequential execution.
     if: false

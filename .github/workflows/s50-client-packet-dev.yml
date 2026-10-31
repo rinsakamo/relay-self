@@ -1,0 +1,39 @@
+name: S50 Client Packet Read-Only DEV
+on:
+  push:
+    branches:
+      - dev/s50-paper-input-witness-20261031
+    paths:
+      - adapters/mineflayer/bridge.mjs
+      - adapters/mineflayer/s50_client_packet_witness_dev.mjs
+      - adapters/mineflayer/s50_client_packet_witness_dev.test.mjs
+      - .github/workflows/s50-client-packet-dev.yml
+  pull_request:
+    paths:
+      - adapters/mineflayer/bridge.mjs
+      - adapters/mineflayer/s50_client_packet_witness_dev.mjs
+      - adapters/mineflayer/s50_client_packet_witness_dev.test.mjs
+      - .github/workflows/s50-client-packet-dev.yml
+permissions:
+  contents: read
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Native bridge syntax and passive packet-witness tests
+        run: |
+          set -euo pipefail
+          node --check adapters/mineflayer/bridge.mjs
+          node --check adapters/mineflayer/s50_client_packet_witness_dev.mjs
+          node --test adapters/mineflayer/s50_client_packet_witness_dev.test.mjs
+      - name: Evidence ceiling
+        if: always()
+        run: echo 'S50 OFFLINE_ONLY / NO_ADDITIONAL_WRITES / NO_REAL_WORLD / EFFECTIVE_CLEAR_NOT_ATTESTED / P1_WAIT_0'

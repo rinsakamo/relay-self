@@ -739,3 +739,76 @@ require **new isolated DEV evidence** before any claim about their live
 behavior. Historical report and archive stay immutable. Still
 `wait_ticks_admitted=0`, `p1_fatigue_recovered=0`, production NO_GO.
 
+
+## S50 server-reported input witness — opt-in DEV (2026-10-31)
+
+S owner #627, stacked DEV branch `dev/s50-paper-input-witness-20261031`
+based on Draft #545 HEAD `3240691a29e1f02bcb89cc20cf650ac9a0e83662`.
+It responds to L23's physical World DEV result: S16 OUTCOME preceded
+0.230263146m additional native motion; Paper fullTime 250–257 contained
+movement in 250–252. An Action terminal or console `POST_CLEAR` is not
+physical rest and does not attest the effective client-input-clear tick.
+
+**Off by default:** existing config now includes
+`s50-input-witness-dev: false`. For a new disposable Paper-only DEV
+World, copy the complete original M0.2 config and opt in with
+`dev-enabled: true`, `s50-tick-meter-dev: true`,
+`s50-input-witness-dev: true`. The input witness requires tick meter;
+its flag and type are checked on startup. The existing M0.2 plugin
+actively alters exhaustion when dev-enabled, so the profile is **not
+passive** and the new JAR gets a new SHA. Never reuse prior qualification
+credentials or physical originals.
+
+With original S-owned `relaydevphase PRE_FORWARD` marker and the
+existing `relaydevwait` command, the Paper plugin now emits:
+
+- `S50_DEV_INPUT_EVENT` for up to 256 target
+  `PlayerInputEvent` callbacks after the PRE_FORWARD marker, with
+  Paper World fullTime, player UUID, update count and all seven bits
+  (forward, backward, left, right, jump, sneak, sprint).
+- `S50_DEV_INPUT_TICK` beside each existing `S50_DEV_WAIT_TICK`
+  callback, with target World UUID, player UUID, source sample index
+  and tick, the last `Player.getCurrentInput()` bits, input-update
+  event count/last update tick, explicit overflow and coverage labels.
+- `S50_DEV_INPUT_OVERFLOW` if event callbacks exceed 256. Asynchronous
+  input callbacks also latch incomplete coverage; source readback then
+  fails closed. Old `S50_DEV_WAIT_TICK` schema is unchanged.
+
+The new read-only `s50_input_witness_source.py` requires eight
+consecutive marker-bound tick rows, strict seven-bit values,
+non-regressing event counters, no overflow and the exact original
+source/uncertainty label. It **does not** synthesize an event on a
+tick with no PlayerInputEvent callback.
+
+**Limits:** `PlayerInputEvent` reports input updates, not every packet.
+`Player.getCurrentInput()` is the most recently reported input at a
+callback; all-false values do not prove S15's clear became effective,
+the absence of ongoing packets, or continuous physical idle. Paper
+position, motion event counts, tick-meter, original S7 receipts and client
+control-state samples remain separate sources. Zero `motion_packets`
+is specifically insufficient to infer idle (L23 recorded nonzero
+tick-meter/pose motion with zero count). Even eight all-false samples
+yield only `LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY`,
+`effective_client_clear_tick=NOT_ATTESTED`,
+`entire_tick_input_idle=false`, `physical_stability_verified=false`,
+`goal_admitted=false`, `p1_wait_ticks_admitted=0`,
+`l10_episodes_admitted=0`.
+
+**DEV sequence:** compile Java21/Maven, run focused source
+negative tests, then (on the authorized WSL LocalCodex host) use
+one fresh pinned Paper1.21.8+plugin+full M0.2 config with an explicit
+new run ID, S49 sole issuer and S16 originals; read the S-owned input
+events alongside prior Paper 8 ticks. Save both success/failure originals
+with SHA256, node/java cleanup, World deletion and port release.
+L23 should consume the newly minted source **read-only in a later
+change**, not import any new S-owned control authority. The new flag
+is disabled in historic runs and does not backfill prior evidence.
+
+Status: `DEV_ONLY / SERVER_INPUT_SOURCE_SHAPE /
+NEW_REAL_WORLD_NOT_RUN / EFFECTIVE_CLEAR_NOT_ATTESTED /
+FULL_TICK_INPUT_COVERAGE_NOT_ATTESTED / QUALIFICATION_NO_GO /
+SCIENCE_NOT_RUN`.
+
+V7 offline rendering uses `v7_baseline_config.yml`, the unchanged historical
+16-action template, to retain its pinned config SHA. The current DEV default
+config adds the disabled input witness; new experiments hash their full copy.

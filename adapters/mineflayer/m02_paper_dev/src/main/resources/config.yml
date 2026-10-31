@@ -6,6 +6,9 @@ minecraft-version: 1.21.8
 calibration-status: candidate_uncalibrated
 standard-food: cooked_beef
 target-player: RelaySelf
+# OFF by default. Server's last reported input only; not complete per-tick
+# input coverage and never an S15 effective-clear/physical WAIT assertion.
+s50-input-witness-dev: false
 # Per kind exhaustion = standard * multiplier + additional,
 # scaled by actual action quantity (tick / block / event).
 # Native means the *original event amount*, not a fictitious numeric constant.
