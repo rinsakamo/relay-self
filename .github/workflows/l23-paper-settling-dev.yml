@@ -5,7 +5,10 @@ on:
       - dev/l23-paper-settling-boundary-20261031
     paths:
       - adapters/mineflayer/l23_paper_s7_settling.py
+      - adapters/mineflayer/l23_paper_live_assets.py
+      - adapters/mineflayer/s49_normal_session_real_ci.py
       - tests/test_l23_paper_s7_settling.py
+      - tests/test_l23_paper_live_assets.py
       - .github/workflows/l23-paper-settling-dev.yml
   workflow_dispatch:
 permissions:
@@ -30,10 +33,10 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
-          ruff check adapters/mineflayer/l23_paper_s7_settling.py tests/test_l23_paper_s7_settling.py
-          python -m compileall -q adapters/mineflayer/l23_paper_s7_settling.py tests/test_l23_paper_s7_settling.py
-          python -m pytest -o addopts='' -q tests/test_l23_paper_s7_settling.py tests/test_l22_post_s16_settling.py tests/test_l22_runtime_settling.py
+          ruff check adapters/mineflayer/l23_paper_s7_settling.py adapters/mineflayer/l23_paper_live_assets.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_l23_paper_s7_settling.py tests/test_l23_paper_live_assets.py
+          python -m compileall -q adapters/mineflayer/l23_paper_s7_settling.py adapters/mineflayer/l23_paper_live_assets.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_l23_paper_s7_settling.py tests/test_l23_paper_live_assets.py
+          python -m pytest -o addopts='' -q tests/test_l23_paper_s7_settling.py tests/test_l23_paper_live_assets.py tests/test_l22_post_s16_settling.py tests/test_l22_runtime_settling.py tests/test_l21_goal_observer_source.py
           python tools/check_repository.py
       - name: Evidence ceiling
         if: always()
-        run: echo 'L23 DEV_ONLY / SYNTHETIC_PAPER_TEST_ONLY / PAPER_ORIGINAL_0 / NO_EFFECTIVE_INPUT_CLEAR_TICK / GOAL_UNDETERMINED / L10_S10_S11_P1_0'
+        run: echo 'L23 DEV_ONLY / PINNED_PAPER_LIVE_GATE_OFFLINE_TEST / PAPER_ORIGINAL_0 / NO_EFFECTIVE_INPUT_CLEAR_TICK / GOAL_UNDETERMINED / L10_S10_S11_P1_0'
