@@ -6,6 +6,8 @@ on:
     paths:
       - 'adapters/mineflayer/self_body_s50_l1_motion_prediction.py'
       - 'tests/test_self_body_s50_l1_motion_prediction.py'
+      - 'adapters/mineflayer/self_body_s50_l1_motion_prequential.py'
+      - 'tests/test_self_body_s50_l1_motion_prequential.py'
       - 'tools/selfbody_l1_motion_prediction_replay.py'
       - 'docs/selfbody-l1-motion-prediction-dev-20261101.md'
       - '.github/workflows/selfbody-s50-l1-motion-prediction-dev.yml'
@@ -13,6 +15,8 @@ on:
     paths:
       - 'adapters/mineflayer/self_body_s50_l1_motion_prediction.py'
       - 'tests/test_self_body_s50_l1_motion_prediction.py'
+      - 'adapters/mineflayer/self_body_s50_l1_motion_prequential.py'
+      - 'tests/test_self_body_s50_l1_motion_prequential.py'
       - 'tools/selfbody_l1_motion_prediction_replay.py'
       - 'docs/selfbody-l1-motion-prediction-dev-20261101.md'
       - '.github/workflows/selfbody-s50-l1-motion-prediction-dev.yml'
@@ -38,10 +42,11 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
-          ruff check adapters/mineflayer/self_body_s50_l1_motion_prediction.py tests/test_self_body_s50_l1_motion_prediction.py tools/selfbody_l1_motion_prediction_replay.py
-          python -m compileall -q adapters/mineflayer/self_body_s50_l1_motion_prediction.py tests/test_self_body_s50_l1_motion_prediction.py tools/selfbody_l1_motion_prediction_replay.py
+          ruff check adapters/mineflayer/self_body_s50_l1_motion_prediction.py tests/test_self_body_s50_l1_motion_prediction.py tools/selfbody_l1_motion_prediction_replay.py adapters/mineflayer/self_body_s50_l1_motion_prequential.py tests/test_self_body_s50_l1_motion_prequential.py
+          python -m compileall -q adapters/mineflayer/self_body_s50_l1_motion_prediction.py tests/test_self_body_s50_l1_motion_prediction.py tools/selfbody_l1_motion_prediction_replay.py adapters/mineflayer/self_body_s50_l1_motion_prequential.py tests/test_self_body_s50_l1_motion_prequential.py
           python -m pytest -o addopts='' -q \
             tests/test_self_body_s50_l1_motion_prediction.py \
+            tests/test_self_body_s50_l1_motion_prequential.py \
             tests/test_self_body_s50_l1_motion_shadow.py \
             tests/test_self_body_s50_route_b_dev.py \
             tests/test_self_body_s50_live_next_epoch.py \
@@ -50,4 +55,4 @@ jobs:
           python tools/check_repository.py
       - name: Strict non-learning DEV status
         if: always()
-        run: echo 'OFFLINE_ARCHIVAL_REPLAY_ONLY / CHEAP_LINEAR_EQUIVALENT / NEW_WORLD_NOT_RUN / GOAL_UNDETERMINED / L10_S10_S11_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
+        run: echo 'OFFLINE_ARCHIVAL_FREEZE_SCORE_REFIT_REPLAY_ONLY / CHEAP_LINEAR_EQUIVALENT / NEW_WORLD_NOT_RUN / GOAL_UNDETERMINED / L10_S10_S11_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
