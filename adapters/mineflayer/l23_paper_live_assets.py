@@ -96,7 +96,10 @@ def verify_paper_assets(assets: L23PaperAssets) -> dict[str, str]:
         "UNKNOWN", "COGNITION",
     }
     action_names = re.findall(r"^  ([A-Z_]+):\s*\{", text, re.M)
-    if len(action_names) != len(expected_actions) or set(action_names) != expected_actions:
+    if (
+        len(action_names) != len(expected_actions)
+        or set(action_names) != expected_actions
+    ):
         raise L23PaperBlocked("incomplete/duplicate Paper M0.2 action roster")
     return {
         "paper_server_sha256": assets.server_sha256,
