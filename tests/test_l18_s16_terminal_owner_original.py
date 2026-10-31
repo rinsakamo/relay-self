@@ -214,7 +214,6 @@ def test_s49_optin_on_terminal_passes_existing_owner_not_new_execution():
 
 def test_full_l17_saved_cli_admits_s16_owner_byte_source_but_no_goal(tmp_path):
     import test_l17_saved_original_goal_readback as l17
-
     from adapters.mineflayer.l17_saved_original_goal_readback import (
         audit_saved_l16_capture,
     )
