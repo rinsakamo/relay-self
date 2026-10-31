@@ -5,13 +5,10 @@ learned policy, qualified episode or S49 Action execution test.
 """
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
 from adapters.mineflayer import slm_passive_dev_run
 from adapters.mineflayer.slm_passive_dev import S49SLMDevOwner
-from relay_self.contextual_shadow import ContextualStatus
 
 from test_s49_slm_passive_dev import decide, setup
 
