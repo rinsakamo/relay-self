@@ -8,6 +8,7 @@ on:
       - 'tools/s50_selfbody_motion_readback.py'
       - 'tests/test_s50_selfbody_motion_source.py'
       - 'tests/test_s50_selfbody_motion_readback.py'
+      - 'docs/s50-selfbody-physical-motion-handoff-20261031.md'
       - '.github/workflows/s50-selfbody-motion-source-dev.yml'
   pull_request:
     paths:
@@ -15,6 +16,7 @@ on:
       - 'tools/s50_selfbody_motion_readback.py'
       - 'tests/test_s50_selfbody_motion_source.py'
       - 'tests/test_s50_selfbody_motion_readback.py'
+      - 'docs/s50-selfbody-physical-motion-handoff-20261031.md'
       - '.github/workflows/s50-selfbody-motion-source-dev.yml'
 permissions:
   contents: read
