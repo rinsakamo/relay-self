@@ -451,3 +451,33 @@ def test_planned_epoch_without_executed_work_is_deferred_without_action():
     assert tap.original_s_epoch is unexecuted
     assert tap.status == "DEFERRED"
     assert tap.action_issues == tap.learning_updates == 0
+
+
+def test_bounded_tap_audit_fails_closed_on_forged_status_and_learning_claims():
+    data = common_epoch()
+    original = host_tap(data)
+    assert bounded_s_l_m_audit_row(original)["l1_candidate"] == "WAIT"
+    invalid = (
+        replace(original, status="DISABLED", reason="complete"),
+        replace(original, l1_status="l1_agrees_with_s"),
+        replace(original, l1_status="retention_off"),
+        replace(original, l1_candidate=None),
+        replace(original, l1_model_status="UNKNOWN_FUTURE_TENSE"),
+        replace(original, m_model_tension="WAIT_MODEL_INSUFFICIENT"),
+        replace(original, native_source_attested=True),
+    )
+    for fake in invalid:
+        with pytest.raises(ValueError):
+            bounded_s_l_m_audit_row(fake)
+    assert original.status == "RECORDED"
+
+
+def test_retention_off_optional_host_tap_has_no_admitted_learning_candidate():
+    data = common_epoch(retention=False)
+    result = host_tap(data, retention_enabled=False)
+    assert result.status == "RECORDED"
+    assert result.l1_status == "retention_off"
+    assert result.l1_candidate is None
+    assert bounded_s_l_m_audit_row(result)["l1_model_status"] == (
+        "NO_ADMISSIBLE_L1_CANDIDATE"
+    )
