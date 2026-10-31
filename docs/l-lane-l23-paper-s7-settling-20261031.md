@@ -163,3 +163,34 @@ Suggested result:
 `DEV_ONLY / PAPER_NATIVE_8_CALLBACKS_CANDIDATE /
 PAPER_ACTIVE_METABOLISM_INTERVENTION / CLOCK_ALIGNMENT_NOT_ATTESTED /
 STABILITY_UNPROVEN / GOAL_UNDETERMINED / L10_S10_S11_P1_0`.
+
+## 2026-10-31 — Cross-lane reuse and preflight repair
+
+The original S-owned Java `RelayMetabolismDev` source (Draft #545) also
+requires `version: M0.2`, `calibration-status: candidate_uncalibrated`,
+`standard-food: cooked_beef`, and the complete 16-key exhaustion/actions
+roster (14 native reasons plus BASAL and COGNITION). Earlier L23 preflight
+accepted a four-flag-only synthetic config that **cannot activate the
+actual Paper plugin**. The L23 preflight now rejects missing/duplicate
+required profile keys and incomplete/duplicate rosters **before Java**.
+This is a bounded input-shape check, not a replacement for Paper's own
+runtime YAML/rule validation; SHA pins still bind the actual supplied files.
+S-owned original Java/config remain untouched. Active metabolism still
+changes physical World exhaustion and must never be called passive.
+
+L23 also verifies observed raw Paper line order:
+`PRE_FORWARD → POST_CLEAR → WAIT_BEGIN → 8 × WAIT_TICK`, in addition
+to the original per-line and numeric tick checks. A reordered console
+log must be rejected even when its tick values and geometry appear valid.
+This is **console-source chronology only**, not a cross-clock attestation
+of effective S15 clear at a Paper World tick. G4/P1/L must not each invent
+a separate physical input-idle source: S #627 owns that producer; L23
+reads it. No P1 WAIT recovery, qualified Goal/learning, S10/S11 or V.
+
+The next genuine test is ONE fresh L-lane disposable Paper DEV World using
+preexisting actual SHA-pinned Paper server/plugin/config on the user's
+LocalCodex WSL host. The current GitHub code-only environment does not
+access those local assets. Retain raw S7/S16/Paper logs and failures,
+check normal PID/port/World cleanup, and return `GOAL_UNDETERMINED`
+unless independent Goal owner and effective World-tick evidence actually
+exist. This revision adds no new physical run or qualification claim.
