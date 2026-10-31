@@ -1,0 +1,43 @@
+name: L18 S49 S16 Owner Original Focused DEV
+on:
+  push:
+    branches:
+      - integration/l18-s49-owner-s16-terminal-original-20261031
+    paths:
+      - .github/workflows/l18-s49-s16-owner-original-focused-dev.yml
+      - adapters/mineflayer/l18_s16_terminal_original.py
+      - adapters/mineflayer/normal_action.py
+      - adapters/mineflayer/s49_normal_session_real_ci.py
+      - adapters/mineflayer/l17_saved_original_goal_readback.py
+      - tests/test_l18_s16_terminal_owner_original.py
+      - tests/test_l17_saved_original_goal_readback.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  l18-s16-owner-original:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: L18 original S16 owner writes and L17 saved capture readback
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/l18_s16_terminal_original.py adapters/mineflayer/normal_action.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/l17_saved_original_goal_readback.py tests/test_l18_s16_terminal_owner_original.py
+          python -m compileall -q adapters/mineflayer/l18_s16_terminal_original.py adapters/mineflayer/normal_action.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/l17_saved_original_goal_readback.py tests/test_l18_s16_terminal_owner_original.py
+          python -m pytest -q tests/test_l18_s16_terminal_owner_original.py tests/test_l17_saved_original_goal_readback.py tests/test_l17_first_action_goal_handoff.py tests/test_l16_s49_first_action_original_capture.py tests/test_l15_s49_original_goal_preflight.py tests/test_l14_original_bridge_goal_window.py tests/test_l13_independent_goal_receipt.py tests/test_feature_s49_normal_runtime.py
+          python tools/check_repository.py
+      - name: L18 evidence classification
+        if: always()
+        run: echo 'DEV_ONLY / L18_S16_OWNER_PRODUCER_OFFLINE / NEW_WORLD_0 / NO_EXTERNAL_GOAL / QUALIFIED_L10_0 / NO_S10_S11 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
