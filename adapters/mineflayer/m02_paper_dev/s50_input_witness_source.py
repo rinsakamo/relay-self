@@ -61,7 +61,7 @@ def _fields(line: str) -> dict[str, str]:
 
 def _int(row: dict[str, str], key: str, *, allow_minus_one: bool = False) -> int:
     raw = row[key]
-    if not raw.isascii() or (
+    if len(raw) > 20 or not raw.isascii() or (
         raw.startswith("-") and (not allow_minus_one or raw != "-1")
     ) or not raw.lstrip("-").isdecimal():
         raise S50InputWitnessRejected(f"invalid Paper input {key}")
