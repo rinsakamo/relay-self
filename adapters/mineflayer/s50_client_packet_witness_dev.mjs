@@ -12,6 +12,11 @@ const CONTROLS = ['forward', 'back', 'left', 'right', 'jump', 'sneak', 'sprint']
 const MAX_ROWS = 8192
 
 function controls (bot) {
+  // Mineflayer injects this API asynchronously after createBot returns.
+  // Attach the writer immediately; require controls only when sampling.
+  if (typeof bot.getControlState !== 'function') {
+    throw Error('S50 controls unavailable at native sample')
+  }
   return Object.fromEntries(CONTROLS.map(name => [name, bot.getControlState(name)]))
 }
 
@@ -76,7 +81,6 @@ export function attachS50ClientPacketWitness (
   const client = bot?._client
   if (!client || typeof client.write !== 'function' ||
       typeof bot.on !== 'function' ||
-      typeof bot.getControlState !== 'function' ||
       typeof record !== 'function' || typeof clock !== 'function') {
     throw Error('S50 packet witness needs the existing native client')
   }

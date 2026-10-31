@@ -87,6 +87,22 @@ test('client witness rejects alternate/nonexistent writer', () => {
     /existing native client/)
 })
 
+test('writer attaches before asynchronous physics plugin control injection', () => {
+  const { bot, client, writes } = fake()
+  delete bot.getControlState
+  const rows = []
+  const witness = attachS50ClientPacketWitness(bot, row => rows.push(row))
+  client.write('look', { yaw: 0, pitch: 0 })
+  assert.equal(writes.length, 1)
+  assert.equal(rows[0].packet_name, 'look')
+  bot.getControlState = () => false
+  bot.emit('physicsTick')
+  witness.effect('clear_controls')
+  assert.equal(rows[1].physics_index, 1)
+  assert.equal(rows[2].controls_after_sample.forward, false)
+  assert.equal(writes.length, 1)
+})
+
 test('sidecar enforces new absolute file, footer, backpressure failure', () => {
   const lines = []
   const stream = {
