@@ -1,0 +1,46 @@
+name: L16 S49 First Action S7 Original Capture DEV
+on:
+  push:
+    branches:
+      - integration/l16-s49-native-original-first-action-20261031
+    paths:
+      - .github/workflows/l16-s49-first-action-original-capture-dev.yml
+      - adapters/mineflayer/self_s7_native_receipt.py
+      - adapters/mineflayer/process_session.py
+      - adapters/mineflayer/s34_native_world_cognition_ci.py
+      - adapters/mineflayer/s49_normal_session_real_ci.py
+      - adapters/mineflayer/l16_first_action_goal_originals.py
+      - tests/test_l16_s49_first_action_original_capture.py
+      - src/relay_self/l14_original_bridge_goal_window.py
+      - tests/test_l15_s49_original_goal_preflight.py
+      - tests/test_l14_original_bridge_goal_window.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  l16-first-action-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: L16 source integrity, isolated process integration and safety
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/self_s7_native_receipt.py adapters/mineflayer/process_session.py adapters/mineflayer/s34_native_world_cognition_ci.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/l16_first_action_goal_originals.py tests/test_l16_s49_first_action_original_capture.py
+          python -m compileall -q adapters/mineflayer/self_s7_native_receipt.py adapters/mineflayer/process_session.py adapters/mineflayer/s34_native_world_cognition_ci.py adapters/mineflayer/s49_normal_session_real_ci.py adapters/mineflayer/l16_first_action_goal_originals.py tests/test_l16_s49_first_action_original_capture.py
+          python -m pytest -q tests/test_l16_s49_first_action_original_capture.py tests/test_l15_s49_original_goal_preflight.py tests/test_l14_original_bridge_goal_window.py tests/test_mineflayer_process_session.py tests/test_feature_s49_normal_runtime.py
+          python tools/check_repository.py
+      - name: No physical or learning authorization
+        if: always()
+        run: echo 'DEV_ONLY / L16_S7_REAL_RUN_OPTIN_CODE / SYNTHETIC_TESTS / NEW_WORLD_0 / PHYSICAL_GOAL_0 / L10_REAL_PAIRS_0 / S10_S11_UNCHANGED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
