@@ -115,7 +115,7 @@ def test_runtime_rejects_foreign_or_invalid_optin(monkeypatch, fault):
 def test_s7_sole_original_accepts_only_bounded_settling_prefix():
     args = archived_run2()
     rows = [json.loads(line) for line in args["received_original"].splitlines()]
-    outgoing = [json.loads(l) for l in args["sent_original"].splitlines()]
+    outgoing = [json.loads(line) for line in args["sent_original"].splitlines()]
     settle_ids = [
         f"l22:{args['session_id']}:{args['action_id']}:settle-{i}"
         for i in range(1, 4)
