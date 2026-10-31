@@ -108,10 +108,10 @@ prediction and a real heldout error measurement**, but demonstrates
 
 ## L8/S49/M and cleanup
 
-- Original S49 L0 WAIT(event/probe 8?/actual report), then two original
-  MOVE_AWAY choices. The actual report and W3 native original are
-  authoritative for exact event/probe sequences; no independent
-  chronological tick evidence is asserted.
+- Original S49 L0: WAIT (event 8 / native probe 9),
+  MOVE_AWAY (event 20 / probe 21), MOVE_AWAY (event 48 / probe 49).
+  The original S49 report and W3 native stdout support these references,
+  not an independently authenticated continuous World-tick chronology.
 - Physical real original Action2 / S16 OUTCOME2. S42/SelfBody/L8/M
   source-matched `RECORDED` 3/3, observer_errors 0.
 - `one_l8_memory_owner=true`, L8 Goal retention enabled but qualified
