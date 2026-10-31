@@ -92,7 +92,7 @@ def test_bounded_live_observer_never_admits_goal(monkeypatch, moving, drifting, 
     if moving:
         assert len(window.observed_move_seqs) == 6
     if drifting:
-        assert window.quiet_streak == 1
+        assert window.quiet_streak == 0
 
 
 @pytest.mark.parametrize("fault", ["foreign", "wrong_session", "bad_count"])
