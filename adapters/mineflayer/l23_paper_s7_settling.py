@@ -96,6 +96,8 @@ def _verify_paper_event_order(raw: bytes) -> None:
     Source chronology is weaker than server-effective S15/input causality,
     but an out-of-order Paper console record must never look admissible.
     """
+    if not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_PAPER_BYTES:
+        raise L23SourceRejected("missing or unbounded immutable Paper original")
     labels = (
         b"M02_DEV_S50_PHASE ",
         b"S50_DEV_WAIT_BEGIN ",
