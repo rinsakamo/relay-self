@@ -80,11 +80,11 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     _new_session,
 )
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
+from adapters.mineflayer.self_body_s50_motion_companion import SelfBodyS50MotionCompanion
 from adapters.mineflayer.self_body_s50_original_closure import (
     SelfBodyS50ClosedOwnerLease,
     observe_original_s49_selfbody_closure,
 )
-from adapters.mineflayer.self_body_s50_motion_companion import SelfBodyS50MotionCompanion
 from adapters.mineflayer.self_body_s50_postworld_epoch import PostWorldInternalEpochLease
 from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 from experiments.standard_env.world_binding import (
