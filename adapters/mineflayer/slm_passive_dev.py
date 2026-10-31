@@ -11,6 +11,7 @@ import json
 from dataclasses import asdict
 
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
+from adapters.mineflayer.slm_prior_world_dev import PriorWorldReadback
 from experiments.metabolism_s49_live_probe_bridge import S49PassiveSourceLease
 from experiments.metabolism_slm_dev_host_tap import bounded_s_l_m_audit_row
 from relay_self.contextual_shadow import ShadowContext, ShadowSpecification
@@ -27,11 +28,16 @@ class S49SLMDevOwner:
     def __init__(
         self, *, self_id: str = "s49-slm-dev",
         retention_enabled: bool = False,
+        prior_world: PriorWorldReadback | None = None,
     ):
         if type(retention_enabled) is not bool:
             raise ValueError("L8 shadow retention flag must be explicit bool")
+        if prior_world is not None and not isinstance(prior_world, PriorWorldReadback):
+            raise ValueError("only validated prior real S49 readback may enter DEV")
         self.self_id = self_id
         self.retention_enabled = retention_enabled
+        self.prior_world = prior_world
+        self.cognition = None
         self.host = self.supervisor = self.ledger = None
         self.pending = []
         self.current = None
@@ -41,7 +47,16 @@ class S49SLMDevOwner:
     def bind(self, host, supervisor):
         if self.host is not None or host.events or supervisor.open_actions:
             raise ValueError("fresh sole S49 owner required")
+        if self.prior_world is not None and self.prior_world.session_id == host.session_id:
+            raise ValueError("current World cannot be its own prior experience")
+        # One L8 Memory owner for this entire original session: no per-probe
+        # reconstruction, no external Goal admissions and no S10 commit.
+        cognition = PersistentCognition(IdentitySpecification(
+            self.self_id, ("observe original S49 epochs",),
+            Provenance("slm-dev", "one-owner-no-goal-training"),
+        ))
         self.host, self.supervisor = host, supervisor
+        self.cognition = cognition
         self.ledger = B0EnergyLedger(host.session_id)
         host.slm_dev_owner = self
 
@@ -86,12 +101,10 @@ class S49SLMDevOwner:
                 digest = hashlib.sha256(json.dumps(
                     asdict(probe), sort_keys=True, separators=(",", ":"),
                 ).encode()).hexdigest()
-                cognition = PersistentCognition(IdentitySpecification(
-                    self.self_id, ("observe original S49 epochs",),
-                    Provenance("slm-dev", "empty-memory-no-training"),
-                ))
+                # Reuse the one original-session Memory owner, not a
+                # freshly invented Memory for each saved probe.
                 learning = advance_learning_epoch(
-                    cognition, current_self_id=self.self_id,
+                    self.cognition, current_self_id=self.self_id,
                     current=ShadowContext(
                         probe.session_id, probe.seq, digest, ("native_probe",), probe.provenance,
                     ),
@@ -105,6 +118,13 @@ class S49SLMDevOwner:
                     integration_provenance=Provenance("slm-dev", "no-goal-training"),
                     retention_enabled=self.retention_enabled,
                 )
+                if (
+                    learning.cognition is not self.cognition
+                    or learning.retained_memory_ids
+                    or learning.learning_updates
+                    or learning.habit_grants
+                ):
+                    raise ValueError("unadmitted L8 memory mutation")
                 result = lease.observe_after_original_s_epoch(
                     original_s_epoch=epoch, native=native, ledger=self.ledger,
                     original_b0_decision=decision, retained=retained,
@@ -126,6 +146,21 @@ class S49SLMDevOwner:
             except Exception:
                 self.errors += 1
                 rows.append({"status": "OBSERVER_ERROR", "probe_seq": probe.seq})
+        prior = self.prior_world
         return {"classification": "DEV_ONLY", "rows": rows, "observer_errors": self.errors,
                 "l8_retention_enabled": self.retention_enabled, "model_calls": 0,
+                "one_l8_memory_owner": self.cognition is not None,
+                "l8_training_admissions": 0,
+                "previous_world": None if prior is None else {
+                    "status": prior.reason,
+                    "session_id": prior.session_id,
+                    "stdout_sha256": prior.stdout_sha256,
+                    "original_action_ids": list(prior.original_action_ids),
+                    "original_action_probe_seqs": list(prior.original_action_probe_seqs),
+                    "original_goal_labels": 0,
+                    "l8_admissible_episodes": 0,
+                    "action_authority": False,
+                    "source_attested_independently": False,
+                    "s10_commit_permitted": False,
+                },
                 "b0_scope": "MODEL_ONLY_NOT_MINECRAFT_BODY_ACCOUNTING"}
