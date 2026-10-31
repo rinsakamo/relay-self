@@ -701,7 +701,12 @@ async def qualify(
         S31ABlocked, WorldBindingRejected, L20GoalCommitmentRejected,
         L21ObserverRejected, L23PaperBlocked, OSError,
     ) as exc:
-        report["status"] = "BLOCKED"
+        # Invalid asset preflight is BLOCKED; a missing Paper marker after a
+        # server has launched is a *real run failure*, never a pre-World block.
+        report["status"] = (
+            "FAIL" if isinstance(exc, L23PaperBlocked) and server is not None
+            else "BLOCKED"
+        )
         report["error"] = f"{type(exc).__name__}: {exc}"
         print("S49 BLOCKED: " + str(exc), file=sys.stderr)
         rc = 2
