@@ -7,6 +7,7 @@ from dataclasses import replace
 import pytest
 
 import test_postmain_s42_world_contrast as s42
+from adapters.mineflayer.s34_native_world_cognition_ci import _native_threat
 from adapters.mineflayer.self_body_s50_l1_motion_shadow import (
     L1AttentionCandidate,
     L1MotionContrast,
@@ -26,22 +27,19 @@ def real_type_pair():
     # S42's retained fixture runs its own asynchronous S19 original, so it
     # MUST finish before this route B coroutine starts its event loop.
     retained, _, far_native, _, _ = s42._pair()
-    original_s_choice = select_world_conditioned_choice(
-        far_native, retained,
-        expected_session_id=far_native.observation.session_id,
-        expected_entity_id=far_native.entity_id,
-    )
-
     async def run():
         lease = LiveNextEpochLease(prior_body(), capture())
-        await lease.observe_original_l0_probe(next_source())
+        # Feed the SAME typed probe to the lease and the original selector.
+        # The far snapshot is an offline stimulus, not a patched choice/grant.
+        reading = replace(next_source(), snapshot=far_native.observation.snapshot)
+        await lease.observe_original_l0_probe(reading)
         readout = lease.take_once()
-        native = readout.current_body.observation
-        choice = replace(
-            original_s_choice, session_id=readout.current_body.session_id,
-            probe_seq=native.native_seq, request_id=native.request_id,
-            provenance=native.source_provenance,
-            selection=WorldChoiceKind.WAIT,
+        native = _native_threat(
+            reading, reading.request_id, expected_entity_id=far_native.entity_id,
+        )
+        choice = select_world_conditioned_choice(
+            native, retained, expected_session_id=reading.session_id,
+            expected_entity_id=far_native.entity_id,
         )
         return readout, choice
     return asyncio.run(run())
@@ -169,3 +167,36 @@ def test_host_shadow_opt_in_default_off_and_requires_live_route_b(tmp_path, monk
         out, tmp_path / "server.log", l1_motion_shadow_dev=True,
     )) != 0
     assert "requires existing route B" in out.read_text()
+
+
+def test_prior_ref_uses_original_body_owner_format():
+    readout, choice = real_type_pair()
+    assert readout.prior_native_ref == prior_body().observation.source_ref
+    assert readout.prior_native_ref.startswith("native-probe:")
+    compare_l1_motion_attention_shadow(readout, choice)
+
+
+@pytest.mark.parametrize("prior_ref", [
+    "present:foreign:12:request", "native-probe:foreign:12:request",
+    "native-probe:{sid}:19:request", "native-probe:{sid}:20:request",
+    "native-probe:{sid}:-1:request", "native-probe:{sid}:bad:request",
+    "native-probe:{sid}:12:",
+])
+def test_foreign_stale_or_malformed_prior_owner_ref_rejected(prior_ref):
+    readout, choice = real_type_pair()
+    invalid = replace(readout, prior_native_ref=prior_ref.format(
+        sid=readout.current_body.session_id,
+    ))
+    with pytest.raises(L1MotionShadowRejected):
+        compare_l1_motion_attention_shadow(invalid, choice)
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")])
+def test_nonfinite_sample_rejected(value):
+    readout, choice = real_type_pair()
+    ticks = readout.prior_window.ticks
+    invalid = replace(readout, prior_window=replace(
+        readout.prior_window, ticks=(replace(ticks[0], displacement_m=value), *ticks[1:]),
+    ))
+    with pytest.raises(L1MotionShadowRejected):
+        compare_l1_motion_attention_shadow(invalid, choice)

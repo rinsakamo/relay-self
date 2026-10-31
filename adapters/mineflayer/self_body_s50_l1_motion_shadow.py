@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from math import isfinite
 
 from adapters.mineflayer.self_body_s50_live_next_epoch import LiveNextEpochReadout
 from relay_self.world_conditioned_choice import WorldChoiceKind, WorldConditionedChoice
@@ -79,6 +80,15 @@ def compare_l1_motion_attention_shadow(
     body, world, window = (
         readout.current_body, readout.current_world, readout.prior_window
     )
+    # BodyObservation.source_ref is native-probe:<session>:<seq>:<request>.
+    # Split only the owner prefix: request IDs themselves contain colons.
+    prior_ref = readout.prior_native_ref.split(":", 3)
+    prior_source_valid = (
+        len(prior_ref) == 4 and prior_ref[0] == "native-probe"
+        and prior_ref[1] == body.session_id
+        and prior_ref[2].isascii() and prior_ref[2].isdecimal()
+        and bool(prior_ref[3])
+    )
     present = body.observation
     world_present = world.observation
     if (
@@ -100,7 +110,8 @@ def compare_l1_motion_attention_shadow(
         or window.action_id != readout.prior_action_id
         or window.paper_prefix_sha256 != readout.prior_window.paper_prefix_sha256
         or readout.prior_native_ref == present.source_ref
-        or not readout.prior_native_ref.startswith("present:")
+        or not prior_source_valid
+        or not 0 <= int(prior_ref[2]) < present.native_seq
         or not window.provisional or window.final_source_verified
         or window.node_trace_complete or window.full_tick_input_idle
         or window.physical_stability_attested or window.goal_admitted
@@ -110,6 +121,7 @@ def compare_l1_motion_attention_shadow(
         or any(
             type(t.world_tick) is not int
             or type(t.displacement_m) is not float
+            or not isfinite(t.displacement_m)
             or t.displacement_m < 0
             or type(t.last_reported_input_active) is not bool
             or (i > 0 and t.world_tick != window.ticks[i - 1].world_tick + 1)
