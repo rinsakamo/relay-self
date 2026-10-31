@@ -57,6 +57,7 @@ class PostWorldInternalEpochReadout:
             ],
             "previous_paper_samples": source["ticks_sampled"],
             "previous_effective_clear_tick": "NOT_ATTESTED",
+            "full_tick_input_idle": "NOT_ATTESTED",
             "native_present_acquired_in_this_epoch": False,
             "new_world_or_client_session": False,
             "paper_node_clock_aligned": False,
