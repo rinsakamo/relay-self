@@ -1,0 +1,52 @@
+name: SelfBody S50 post-World INTERNAL epoch DEV
+on:
+  push:
+    branches:
+      - dev/selfbody-s50-postworld-internal-epoch-20261031
+    paths:
+      - 'adapters/mineflayer/self_body_s50_postworld_epoch.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'tests/test_self_body_s50_postworld_epoch.py'
+      - 'docs/selfbody-s50-postworld-internal-epoch-dev-20261031.md'
+      - '.github/workflows/selfbody-s50-postworld-epoch-dev.yml'
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/self_body_s50_postworld_epoch.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'tests/test_self_body_s50_postworld_epoch.py'
+      - 'docs/selfbody-s50-postworld-internal-epoch-dev-20261031.md'
+      - '.github/workflows/selfbody-s50-postworld-epoch-dev.yml'
+permissions:
+  contents: read
+jobs:
+  original-owner-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Post-shutdown internal epoch and original owner regression
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/self_body_s50_postworld_epoch.py adapters/mineflayer/self_body_s50_world_dev.py tests/test_self_body_s50_postworld_epoch.py
+          python -m compileall -q adapters/mineflayer/self_body_s50_postworld_epoch.py adapters/mineflayer/self_body_s50_world_dev.py tests/test_self_body_s50_postworld_epoch.py
+          python -m pytest -o addopts='' -q \
+            tests/test_self_body_s50_postworld_epoch.py \
+            tests/test_self_body_s50_world_dev.py \
+            tests/test_self_body_s50_original_closure.py \
+            tests/test_self_body_s50_motion_companion.py \
+            tests/test_self_body.py \
+            tests/test_self_product_passive_views.py
+          python tools/check_repository.py
+      - name: Qualification ceiling
+        if: always()
+        run: echo 'DEV_OFFLINE_POSTWORLD_EPOCH_SOURCE_TEST_ONLY / LIVE_NEXT_INTERNAL_EPOCH_NOT_YET_TESTED / NO_NEW_WORLD / NO_NATIVE_PRESENT / NO_L0_ACTION / NO_P1_WAIT / SCIENCE_NOT_RUN'
