@@ -12,6 +12,7 @@ on:
       - 'tests/test_s50_l23_packet_integration.py'
       - 'tools/s50_l23_packet_world_readback.py'
       - 'tests/test_s50_l23_packet_world_readback.py'
+      - 'docs/s50-l23-client-packet-world-handoff-20261031.md'
       - '.github/workflows/s50-l23-packet-integration-dev.yml'
   pull_request:
     paths:
@@ -23,6 +24,7 @@ on:
       - 'tests/test_s50_l23_packet_integration.py'
       - 'tools/s50_l23_packet_world_readback.py'
       - 'tests/test_s50_l23_packet_world_readback.py'
+      - 'docs/s50-l23-client-packet-world-handoff-20261031.md'
       - '.github/workflows/s50-l23-packet-integration-dev.yml'
 permissions:
   contents: read
