@@ -6,6 +6,7 @@ on:
     paths:
       - adapters/mineflayer/self_body_s50_original_closure.py
       - tests/test_self_body_s50_original_closure.py
+      - docs/selfbody-s50-original-action-closure-lease-20261031.md
       - adapters/mineflayer/self_body_s50_motion_companion.py
       - tests/test_self_body_s50_motion_companion.py
       - .github/workflows/selfbody-s50-original-closure-dev.yml
@@ -13,6 +14,7 @@ on:
     paths:
       - adapters/mineflayer/self_body_s50_original_closure.py
       - tests/test_self_body_s50_original_closure.py
+      - docs/selfbody-s50-original-action-closure-lease-20261031.md
       - adapters/mineflayer/self_body_s50_motion_companion.py
       - tests/test_self_body_s50_motion_companion.py
       - .github/workflows/selfbody-s50-original-closure-dev.yml
