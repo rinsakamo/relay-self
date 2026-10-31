@@ -29,6 +29,7 @@ from adapters.mineflayer.execution import (
     execute_mineflayer_command,
 )
 from adapters.mineflayer.process_session import MineflayerProcessSession
+from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
 from adapters.mineflayer.python_protocol import MineflayerLaunchConfig, MineflayerObservation
 from adapters.mineflayer.s31a_real_server_ci import (
     BOT_USERNAME,
@@ -845,13 +846,14 @@ async def _observe_native_threat(
     raise S34EvidenceFailure("bounded native zombie observation unavailable")
 
 
-async def _new_session() -> MineflayerProcessSession:
+async def _new_session(*, native_receipt: NativeStreamReceipt | None = None) -> MineflayerProcessSession:
     session = await MineflayerProcessSession.launch(
         MineflayerLaunchConfig(
             host=SERVER_HOST, port=SERVER_PORT,
             username=BOT_USERNAME, version=MINECRAFT_VERSION,
         ),
         startup_timeout_s=12,
+        native_receipt=native_receipt,
     )
     await _await_spawn(session)
     return session
