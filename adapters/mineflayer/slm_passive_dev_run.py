@@ -18,6 +18,7 @@ def main():
     if args.confirm != "S49-SLM-ONE-DISPOSABLE-DEV-WORLD" or not args.output_dir.is_absolute():
         parser.error("fresh absolute output and explicit disposable DEV grant required")
     args.output_dir.mkdir(parents=True, exist_ok=False)
+    (args.output_dir / "native").mkdir()
     os.environ["S49_REAL_SERVER_CI"] = "1"
     return asyncio.run(qualify(
         args.output_dir / "report.json", args.output_dir / "server.log",

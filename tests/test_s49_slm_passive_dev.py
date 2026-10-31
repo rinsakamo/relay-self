@@ -81,3 +81,32 @@ def test_owner_cannot_bind_twice():
     owner, host, supervisor, _, _ = setup()
     with pytest.raises(ValueError):
         owner.bind(host, supervisor)
+
+
+def test_runner_precreates_native_capture_root_without_world(monkeypatch, tmp_path):
+    import sys
+
+    from adapters.mineflayer import slm_passive_dev_run as runner
+    from adapters.mineflayer.self_world_stage_w3_capture import W3RawNodeStdoutCapture
+
+    output = tmp_path / "fresh-run"
+    calls = []
+
+    async def no_world(report, server_log, *, raw_capture_root, slm_dev_owner):
+        assert raw_capture_root.is_dir()
+        # Execute the real failing constructor without starting Java or Node.
+        capture = W3RawNodeStdoutCapture(raw_capture_root)
+        capture._file.close()
+        calls.append((report, server_log))
+        return 7
+
+    monkeypatch.setattr(runner, "qualify", no_world)
+    monkeypatch.setattr(sys, "argv", [
+        "slm-dev", "--output-dir", str(output),
+        "--confirm", "S49-SLM-ONE-DISPOSABLE-DEV-WORLD",
+    ])
+    assert runner.main() == 7
+    assert len(calls) == 1
+    with pytest.raises(FileExistsError):
+        runner.main()
+    assert len(calls) == 1
