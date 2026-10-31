@@ -6,8 +6,6 @@ read back later by a separate exact-source GitHub Actions DEV step.
 from __future__ import annotations
 
 import json
-from dataclasses import replace
-
 import pytest
 
 from adapters.mineflayer import slm_prior_world_dev
@@ -69,10 +67,10 @@ def test_previous_original_action_can_only_be_withheld(tmp_path, monkeypatch):
     )
     assert read.original_goal_labels == read.l8_admissible_episodes == 0
     assert not read.s10_commit_permitted
-    owner, host, supervisor, _, _ = setup()
+    _, host, supervisor, _, _ = setup()
     # Isolated same S49 original host, no new Action issuer or learned candidate.
     inherited = S49SLMDevOwner(retention_enabled=True, prior_world=read)
-    inherited.bind(host := type(host)(
+    inherited.bind(type(host)(
         host.session_id, host.intent_id, host.retained,
     ), supervisor)
     assert inherited.prior_world.session_id != host.session_id
