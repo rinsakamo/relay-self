@@ -1,0 +1,49 @@
+name: L21 Separate-Client Physical Goal Observer DEV
+on:
+  push:
+    branches:
+      - integration/l21-separate-client-physical-goal-observer-20261031
+    paths:
+      - .github/workflows/l21-separate-client-goal-observer-dev.yml
+      - adapters/mineflayer/l21_goal_observer.mjs
+      - adapters/mineflayer/l21_goal_observer_core.mjs
+      - adapters/mineflayer/l21_goal_observer_source.py
+      - adapters/mineflayer/s49_normal_session_real_ci.py
+      - tests/test_l21_goal_observer_core.mjs
+      - tests/test_l21_goal_observer_source.py
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bounded-separate-client-goal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: 'src:tests:.'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Static separate TCP observer and original reviewer DEV
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/l21_goal_observer_source.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_l21_goal_observer_source.py
+          python -m compileall -q adapters/mineflayer/l21_goal_observer_source.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_l21_goal_observer_source.py
+          node --check adapters/mineflayer/l21_goal_observer.mjs
+          node --check adapters/mineflayer/l21_goal_observer_core.mjs
+          node --test tests/test_l21_goal_observer_core.mjs
+          python -m pytest -q tests/test_l21_goal_observer_source.py tests/test_l20_external_goal_commitment.py tests/test_l19_native_goal_interleaving.py
+          python tools/check_repository.py
+      - name: Evidence ceiling
+        if: always()
+        run: echo 'DEV_ONLY / L21_SEPARATE_CLIENT_SOURCE_CI / NEW_MINECRAFT_WORLD_0 / PHYSICAL_CLIENT_0 / INDEPENDENT_AUTHORITY_0 / REAL_L10_PAIRS_0 / S10_S11_0 / SCIENCE_NOT_RUN'
