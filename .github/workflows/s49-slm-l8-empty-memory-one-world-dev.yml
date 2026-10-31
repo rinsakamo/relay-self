@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   one-disposable-world:
-    if: github.event.head_commit.message == 'dev-world: approved S49 L8 empty-memory shadow one-shot'
+    if: "github.event.head_commit.message == 'dev-world: approved S49 L8 empty-memory shadow one-shot'"
     runs-on: ubuntu-latest
     timeout-minutes: 18
     env:
