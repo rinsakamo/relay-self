@@ -9,7 +9,6 @@ from adapters.mineflayer.self_body_s50_l1_motion_prediction import (
     evaluate_heldout,
     from_archival_readback,
 )
-
 from adapters.mineflayer.self_body_s50_l1_motion_prequential import (
     TargetWorldIdentity,
     freeze_for_target,
