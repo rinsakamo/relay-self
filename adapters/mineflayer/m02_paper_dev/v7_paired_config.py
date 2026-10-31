@@ -13,7 +13,8 @@ import re
 from pathlib import Path
 
 PLUGIN_ROOT = Path(__file__).resolve().parent
-TEMPLATE = PLUGIN_ROOT / "src/main/resources/config.yml"
+# Frozen bytes retain the historical V7 config SHA as DEV defaults evolve.
+TEMPLATE = PLUGIN_ROOT / "v7_baseline_config.yml"
 BASELINE_ENABLED_SHA256 = "e9361faa7eac2e3c63bf2f6760765f7f8ae5a4b3631c6819f7ad8ac5c04a540e"
 ARMS = {
     "BASE_ON": (1, 1),

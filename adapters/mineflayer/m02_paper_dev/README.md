@@ -808,3 +808,7 @@ Status: `DEV_ONLY / SERVER_INPUT_SOURCE_SHAPE /
 NEW_REAL_WORLD_NOT_RUN / EFFECTIVE_CLEAR_NOT_ATTESTED /
 FULL_TICK_INPUT_COVERAGE_NOT_ATTESTED / QUALIFICATION_NO_GO /
 SCIENCE_NOT_RUN`.
+
+V7 offline rendering uses `v7_baseline_config.yml`, the unchanged historical
+16-action template, to retain its pinned config SHA. The current DEV default
+config adds the disabled input witness; new experiments hash their full copy.
