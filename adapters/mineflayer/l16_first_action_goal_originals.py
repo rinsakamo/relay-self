@@ -118,8 +118,8 @@ def inspect_l16_first_action_prefix(
             first_probe_seq, second_probe_seq)
     if (any(type(v) is not int for v in seqs)
             or not (0 < before_seq < dispatch_seq < cleanup_seq
-                    < after_seq < first_probe_seq
-                    and second_probe_seq == first_probe_seq + 1)):
+                    < after_seq < first_probe_seq < second_probe_seq
+                    and second_probe_seq - first_probe_seq <= 16)):
         raise L16SourceRejected("S49 terminal sequence invalid")
     try:
         rlines = _lines(
@@ -168,11 +168,21 @@ def inspect_l16_first_action_prefix(
         for frame in frames
     ):
         raise L16SourceRejected("another physical effect in recorded prefix")
-    if any(
-        not isinstance(frame, MineflayerObservation) or frame.kind != "probe"
-        for frame in frames[after_seq + 1:]
-    ):
-        raise L16SourceRejected("only terminal probes allowed after S16 clearance")
+    # The single Mineflayer stream can include unsolicited entity-registry
+    # observations between two explicitly requested terminal Goal probes.
+    # Their presence never proves nonintervention or reward causality.
+    # Refuse ANY additional probe, motor ACK, hurt/death/disconnect/error or
+    # otherwise unsolicited protocol item in the post-S16 Goal window.
+    for frame in frames[after_seq + 1:second_probe_seq + 1]:
+        if frame.seq in (first_probe_seq, second_probe_seq):
+            continue
+        if not (
+            isinstance(frame, MineflayerObservation)
+            and frame.kind == "entities" and frame.request_id is None
+        ):
+            raise L16SourceRejected(
+                "unsafe or foreign event inside post-S16 Goal capture window"
+            )
     sent = [_json(line) for line in slines]
     effects = [item for item in sent if item.get("type") == "effect"]
     observes = [item.get("request_id") for item in sent
