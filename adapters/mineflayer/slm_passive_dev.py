@@ -12,6 +12,10 @@ from dataclasses import asdict
 
 from adapters.mineflayer.b0_energy_bridge import B0EnergyLedger
 from adapters.mineflayer.slm_external_goal_candidate_dev import PreviousExternalGoalDiagnostic
+from adapters.mineflayer.slm_motor_expectation_dev import (
+    MotorHistory,
+    score_motor_expectation,
+)
 from adapters.mineflayer.slm_prior_world_dev import PriorWorldReadback
 from experiments.metabolism_s49_live_probe_bridge import S49PassiveSourceLease
 from experiments.metabolism_slm_dev_host_tap import bounded_s_l_m_audit_row
@@ -31,6 +35,7 @@ class S49SLMDevOwner:
         retention_enabled: bool = False,
         prior_world: PriorWorldReadback | None = None,
         previous_external_goal: PreviousExternalGoalDiagnostic | None = None,
+        motor_history: MotorHistory | None = None,
     ):
         if type(retention_enabled) is not bool:
             raise ValueError("L8 shadow retention flag must be explicit bool")
@@ -40,7 +45,17 @@ class S49SLMDevOwner:
             previous_external_goal, PreviousExternalGoalDiagnostic,
         ):
             raise ValueError("only bounded L22 DEV diagnostic is accepted")
+        if motor_history is not None and not isinstance(motor_history, MotorHistory):
+            raise ValueError("source-checked previous World motor history required")
+        if motor_history is not None and (
+            prior_world is None
+            or motor_history.source_session_id != prior_world.session_id
+            or motor_history.source_stdout_sha256 != prior_world.stdout_sha256
+            or motor_history.original_action_ids != prior_world.original_action_ids
+        ):
+            raise ValueError("motor history must be from same prior S49 original")
         self.self_id = self_id
+        self.motor_history = motor_history
         self.retention_enabled = retention_enabled
         self.prior_world = prior_world
         self.previous_external_goal = previous_external_goal
@@ -56,6 +71,10 @@ class S49SLMDevOwner:
             raise ValueError("fresh sole S49 owner required")
         if self.prior_world is not None and self.prior_world.session_id == host.session_id:
             raise ValueError("current World cannot be its own prior experience")
+        if self.motor_history is not None and (
+            self.motor_history.source_session_id == host.session_id
+        ):
+            raise ValueError("past motor source cannot equal current session")
         if (
             self.previous_external_goal is not None
             and self.previous_external_goal.source_session_id == host.session_id
@@ -159,10 +178,21 @@ class S49SLMDevOwner:
                 self.errors += 1
                 rows.append({"status": "OBSERVER_ERROR", "probe_seq": probe.seq})
         prior = self.prior_world
+        motor = None
+        if self.motor_history is not None:
+            try:
+                motor = score_motor_expectation(
+                    self.motor_history, current_session_id=self.host.session_id,
+                    current_actions=actions,
+                )
+            except Exception:
+                self.errors += 1
+                motor = {"status": "OBSERVER_ERROR", "action_authority": False}
         return {"classification": "DEV_ONLY", "rows": rows, "observer_errors": self.errors,
                 "l8_retention_enabled": self.retention_enabled, "model_calls": 0,
                 "one_l8_memory_owner": self.cognition is not None,
                 "l8_training_admissions": 0,
+                "l1_motor_expectation": motor,
                 "previous_external_goal": (
                     None if self.previous_external_goal is None
                     else self.previous_external_goal.audit_row()
