@@ -152,7 +152,7 @@ def test_new_s49_live_probe_invalidates_older_source_before_m_join():
 
 
 @pytest.mark.parametrize("attack", (
-    "replay", "foreign", "non_probe", "bad_provenance", "over_budget",
+    "replay", "foreign", "non_probe", "missing_request", "over_budget",
 ))
 def test_s49_bad_or_stale_source_never_reuses_last_valid_probe(attack):
     data = slm.common_epoch()
@@ -166,10 +166,8 @@ def test_s49_bad_or_stale_source_never_reuses_last_valid_probe(attack):
             await lease.observe(replace(probe, session_id="other-session"))
         elif attack == "non_probe":
             await lease.observe(replace(probe, kind="entities", request_id=None))
-        elif attack == "bad_provenance":
-            await lease.observe(replace(probe, provenance=Provenance(
-                "synthetic-attacker", "bad",
-            )))
+        elif attack == "missing_request":
+            await lease.observe(replace(probe, request_id=None))
         else:
             await lease.observe(replace(probe, seq=probe.seq + 4))
     asyncio.run(run())
