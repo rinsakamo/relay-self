@@ -6,6 +6,7 @@ read back later by a separate exact-source GitHub Actions DEV step.
 from __future__ import annotations
 
 import json
+
 import pytest
 
 from adapters.mineflayer import slm_prior_world_dev
