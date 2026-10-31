@@ -166,3 +166,40 @@ def test_l22_preflight_rejects_unpaired_or_out_of_range_before_java(
     assert status == 2
     assert json.loads(report.read_text())["status"] == "BLOCKED"
     assert not (tmp_path / "server.log").exists()
+
+
+def test_initial_s16_position_drift_resets_first_quiet_sample(monkeypatch):
+    async def immediate(_secs):
+        return None
+    monkeypatch.setattr(
+        "adapters.mineflayer.l22_runtime_settling.asyncio.sleep", immediate,
+    )
+    session, orig = fake_source()
+    initial = replace(session.base, snapshot=replace(
+        session.base.snapshot, position=replace(
+            session.base.snapshot.position,
+            x=session.base.snapshot.position.x + 0.2,
+        ),
+    ))
+    result = asyncio.run(observe_bounded_settling(
+        session, session_id=orig["session_id"], action_id=orig["action_id"],
+        initial_observation=initial,
+    ))
+    assert result.quiet_streak_history == (0, 1, 2, 3)
+    assert result.sample_displacements_m[0] == pytest.approx(0.2)
+    assert not result.max_probes_reached
+
+
+def test_every_move_resets_history_and_exhausts_budget(monkeypatch):
+    async def immediate(_secs):
+        return None
+    monkeypatch.setattr(
+        "adapters.mineflayer.l22_runtime_settling.asyncio.sleep", immediate,
+    )
+    session, orig = fake_source(moves=(1, 3, 5))
+    result = asyncio.run(observe_bounded_settling(
+        session, session_id=orig["session_id"], action_id=orig["action_id"],
+    ))
+    assert result.quiet_streak_history == (0, 1, 0, 1, 0, 1)
+    assert result.max_probes_reached
+    assert result.window_status == "UNDETERMINED"

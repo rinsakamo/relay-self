@@ -32,6 +32,9 @@ class L22RuntimeWindow:
     observed_probe_seqs: tuple[int, ...]
     observed_move_seqs: tuple[int, ...]
     quiet_streak: int
+    quiet_streak_history: tuple[int, ...]
+    sample_displacements_m: tuple[float, ...]
+    max_probes_reached: bool
     window_status: str
     reason: str
     accepted_goal_status: str = "UNDETERMINED"
@@ -46,6 +49,7 @@ async def observe_bounded_settling(
     session: MineflayerProcessSession, *,
     session_id: str, action_id: str, max_probes: int = 6,
     drift_limit_m: float = 0.05,
+    initial_observation: MineflayerObservation | None = None,
 ) -> L22RuntimeWindow:
     """Sample without Action grants or motor calls; return after <=8 probes.
 
@@ -60,12 +64,19 @@ async def observe_bounded_settling(
         or not isinstance(session_id, str) or not session_id
         or not isinstance(action_id, str) or not action_id
         or session.started.session_id != session_id
+        or (initial_observation is not None and (
+            not isinstance(initial_observation, MineflayerObservation)
+            or initial_observation.session_id != session_id
+            or initial_observation.kind != "probe"
+        ))
     ):
         raise L22RuntimeRejected("invalid bounded settling opt-in or source identity")
     requests: list[str] = []
     probe_seqs: list[int] = []
     moves: list[int] = []
-    prev: MineflayerObservation | None = None
+    prev = initial_observation
+    history: list[int] = []
+    displacements: list[float] = []
     quiet = 0
     for i in range(1, max_probes + 1):
         # A monotonic host delay is *not* evidence of elapsed World ticks.
@@ -105,6 +116,7 @@ async def observe_bounded_settling(
         if probe is None:
             raise L22RuntimeRejected("bounded settling probe not received")
         probe_seqs.append(probe.seq)
+        shift = 0.0
         if prev is not None:
             shift = math.hypot(
                 prev.snapshot.position.x - probe.snapshot.position.x,
@@ -113,6 +125,8 @@ async def observe_bounded_settling(
             if shift > drift_limit_m:
                 moving = True
         quiet = 0 if moving else quiet + 1
+        history.append(quiet)
+        displacements.append(shift)
         prev = probe
         if quiet >= QUIET_PROBES:
             break
@@ -121,6 +135,9 @@ async def observe_bounded_settling(
         schema=SCHEMA, session_id=session_id, action_id=action_id,
         request_ids=tuple(requests), observed_probe_seqs=tuple(probe_seqs),
         observed_move_seqs=tuple(moves), quiet_streak=quiet,
+        quiet_streak_history=tuple(history),
+        sample_displacements_m=tuple(displacements),
+        max_probes_reached=len(requests) == max_probes,
         window_status=(
             "QUIET_SAMPLES_ONLY" if quiet_only else "UNDETERMINED"
         ),

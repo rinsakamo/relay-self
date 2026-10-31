@@ -25,6 +25,7 @@ from adapters.mineflayer.l16_first_action_goal_originals import (
     inspect_l16_first_action_prefix,
 )
 from adapters.mineflayer.l18_s16_terminal_original import (
+    S16_FILE,
     write_s16_owner_original,
 )
 from adapters.mineflayer.l21_goal_observer_source import (
@@ -304,7 +305,9 @@ async def qualify(
             provenance=source("committed-existing-intent"),
         )
         host = NormalWorldL0(
-            sid, "escape-threat", retained, max_events=3, max_action_requests=2,
+            sid, "escape-threat", retained,
+            max_events=2 if l22_settling_probes is not None else 3,
+            max_action_requests=1 if l22_settling_probes is not None else 2,
         )
         executor = NormalSessionActionExecutor(sid, intent)
         probes = {}
@@ -440,6 +443,7 @@ async def qualify(
                     l22_runtime = await observe_bounded_settling(
                         session, session_id=sid, action_id=action_id,
                         max_probes=l22_settling_probes,
+                        initial_observation=receipt.consequence.after_observation,
                         drift_limit_m=l16_goal_plan.stable_probe_delta_max_m,
                     )
                     report["l22_settling"] = {
@@ -481,7 +485,7 @@ async def qualify(
                         sent_original=recorder.sent.read_bytes(),
                         s7_receipt=index,
                         s16_original=(
-                            l16_capture_root / "l18_s16_terminal_original.jsonl"
+                            l16_capture_root / S16_FILE
                         ).read_bytes(),
                         plan=l16_goal_plan, action_id=action_id, session_id=sid,
                     )
@@ -565,7 +569,10 @@ async def qualify(
             _command(server, "gamerule doMobSpawning false")
             await server.stdin.drain()
             await asyncio.sleep(2)
-            for distance_m, hold in ((10, 5), (2, 8), (2, 8)):
+            stages = ((10, 5), (2, 8)) if l22_settling_probes is not None else (
+                (10, 5), (2, 8), (2, 8),
+            )
+            for distance_m, hold in stages:
                 _command(server, "kill @e[type=minecraft:zombie]")
                 await server.stdin.drain()
                 await asyncio.sleep(2)
@@ -598,22 +605,27 @@ async def qualify(
             "selected": s.choice.selection.value,
             "issued": s.asks_for_action,
         } for s in trace]
+        expected_moves = 1 if l22_settling_probes is not None else 2
         if (
-            len(trace) != 3
+            len(trace) != expected_moves + 1
             or [s.choice.selection.value for s in trace]
-            != ["WAIT", "MOVE_AWAY", "MOVE_AWAY"]
-            or len({s.choice.entity_id for s in trace}) != 3
-            or len(report["actual_native_actions"]) != 2
+            != ["WAIT"] + ["MOVE_AWAY"] * expected_moves
+            or len({s.choice.entity_id for s in trace}) != expected_moves + 1
+            or len(report["actual_native_actions"]) != expected_moves
             or executor.supervisor.open_actions
-            or executor.supervisor.get(trace[1].action_request_id).state is not ActionState.OUTCOME
-            or executor.supervisor.get(trace[2].action_request_id).state is not ActionState.OUTCOME
+            or any(executor.supervisor.get(s.action_request_id).state
+                   is not ActionState.OUTCOME for s in trace[1:])
             or trace[0].asks_for_action
-            or host.action_requests != 2
-            or host.events != 3
+            or host.action_requests != expected_moves
+            or host.events != expected_moves + 1
         ):
-            raise S49PhysicalFailure("not three unattended decisions and two real closures")
+            raise S49PhysicalFailure("bounded native decisions/Action closures disagree")
         report["status"] = "PASS"
-        report["classification"] = "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
+        report["classification"] = (
+            "DEV_ONLY_REAL_WORLD_L22_SOURCE_REVIEWED_GOAL_UNDETERMINED"
+            if l22_settling_probes is not None
+            else "REAL_ONE_SESSION_L0_WAIT_TWO_AUTHORIZED_MOVES_QUALIFIED"
+        )
         report["stage"] = "CLOSED"
         rc = 0
     except (

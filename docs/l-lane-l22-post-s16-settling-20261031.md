@@ -59,7 +59,9 @@ settling. These are distinct outcomes, not a bypass.
 3. Only after an offline-owned stability contract is tested, wire an explicit
    DEV Goal readback. The independent learning authority/provenance gates
    of L13/L14/L20 remain separate.
-4. A **new user grant** is required before any real Minecraft trial.
+4. The user supplied `L_LANE_REAL_WORLD_DEV_GRANT=APPROVED_STANDING` on
+   2026-10-31, valid until revoked for disposable L Lane DEV Worlds.
+   Per-World reapproval is not required. Models and other lanes are excluded.
 
 ## Reproduction
 
@@ -105,8 +107,7 @@ fresh complete second-client original, with native comparison status
 `UNDETERMINED` and no reward authority. S49 may independently verify its
 preexisting movement Action sequence; this is not an L22/Goal qualification.
 
-Command extension on the disposable DEV World (only after a **new physical
-World grant**, not to be run under the archived grant):
+Command extension on a disposable L Lane DEV World under the standing grant:
 
 ```text
 # Add to the previously preregistered L21 disposable S49 command:
@@ -121,3 +122,18 @@ checks. Live World tick/Paper-owned input idle is not supplied by this
 Minecraft vanilla S7 extension. **Physical stability/learning qualification
 requires a different, source-owned tick-contiguous boundary** in later work.
 
+
+## Fresh physical integration preparation (2026-10-31)
+
+The S16 writer and auditor share `S16_FILE`; the actual original path is
+`<capture_root>/l18_s16_terminal_original.jsonl`. L22 keeps the legacy L16
+strict branch separate. Observer close precedes source audit; failure enters
+owned-process cleanup and seals the incomplete S7 source in `finally`.
+The runtime now compares the first sample against the actual S16 after-probe,
+records each quiet streak and displacement, and records budget exhaustion.
+The opt-in L22 flow ends after WAIT + one MOVE rather than staging a second
+MOVE. The non-opt-in S49 two-MOVE contract stays unchanged.
+
+The L20 geometry is operator-authored and precommitted before the World; it
+is not an authenticated independent Goal owner. Continuous physical idle,
+Goal admission, L10, S10 and S11 remain outside these diagnostic samples.
