@@ -20,3 +20,8 @@ S42 SelfBody/L8/M diagnostics, original cleanup and any failure honestly.
 Trigger revision: prior invalid GitHub workflow YAML (unquoted colon in
 job guard) produced **zero jobs** and did not start Java/Node/World. The
 corrected workflow is now triggered once by this marker revision.
+
+Preflight correction: preceding Actions run #41172920498 completed focused
+pytest (13 PASS) but Ruff import ordering failed *before* npm/Java/World
+startup. It consumed zero real World trials. New triggered exact HEAD carries
+only that import-format fix; run anew with no reused World or artifacts.
