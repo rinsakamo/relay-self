@@ -12,6 +12,7 @@ from adapters.mineflayer.l22_post_s16_settling import (
     inspect_l22_settling,
 )
 from test_l16_s49_first_action_original_capture import fixture as l16_fixture
+import test_l15_s49_original_goal_preflight as l15
 
 ROOT = (
     Path(__file__).resolve().parents[1]
@@ -40,6 +41,18 @@ def archived_run2():
 
 def synthetic_no_move():
     args = l16_fixture()
+    # L16's older synthetic requests predate the bound L22 ID shape.
+    # Rebind both S7 original streams and derive a fresh synthetic index.
+    for i in (1, 2):
+        old = f"goal-probe-{4 + i}".encode()
+        new = (
+            f"l16:{args['session_id']}:{args['action_id']}:goal-{i}"
+        ).encode()
+        args["received_original"] = args["received_original"].replace(old, new)
+        args["sent_original"] = args["sent_original"].replace(old, new)
+    args["s7_receipt"] = l15.l14._index(
+        args["received_original"], args["sent_original"],
+    )
     return dict(
         received_original=args["received_original"],
         sent_original=args["sent_original"],
