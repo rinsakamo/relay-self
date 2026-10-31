@@ -1,0 +1,4 @@
+d51b34b859cb18c4965681422163f9a1cfad3a8d	refs/heads/dev/l23-paper-settling-boundary-20261031
+b67371e2097c4d5cf2d4b3aec398064cbc6ea183	refs/heads/dev/s50-l23-client-packet-integrated-20261031
+33275fc5221fd18bbdc47b167fc0a83fe7cf8ad4	refs/heads/dev/s50-paper-input-witness-20261031
+4348a614900c1d0828581a8eec2c523ba5ae237f	refs/heads/main

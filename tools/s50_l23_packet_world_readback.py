@@ -29,7 +29,7 @@ def audit(
     saved = json.loads(report.read_bytes())
     l23 = saved.get("l23_paper", {})
     reviewed = l23.get("readback", {})
-    actions = saved.get("action", [])
+    actions = saved.get("actual_native_actions", [])
     if (
         saved.get("status") != "PASS"
         or saved.get("node_exit") != 0

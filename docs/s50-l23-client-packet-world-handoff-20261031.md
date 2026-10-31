@@ -1,5 +1,9 @@
 # S50 × L23 native player_input source — LocalCodex Paper DEV handoff
 
+Latest local execution: [実World結果](s50-l23-client-packet-real-results-20261031.md)
+— two fresh Worlds, initial initialization FAIL then repaired DEV PASS.
+The remaining handoff below records the pre-execution plan.
+
 2026-10-31. S-owned packet witness is implemented and offline tested;
 **new packet-witness real World has not been run in this integration**.
 

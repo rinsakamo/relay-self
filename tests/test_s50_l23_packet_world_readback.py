@@ -52,7 +52,7 @@ def fixtures(root):
     report = root / "report.json"
     report.write_text(json.dumps({
         "status": "PASS", "node_exit": 0, "server_exit": 0,
-        "session_id": SID, "action": [{"terminal": "outcome"}],
+        "session_id": SID, "actual_native_actions": [{"terminal": "outcome"}],
         "l23_paper": {
             "status": "PAPER_SOURCE_SHAPE_REVIEWED_ONLY",
             "marker_id": MARKER,
@@ -92,6 +92,7 @@ def test_pinned_s49_l23_and_client_source_only(tmp_path):
 @pytest.mark.parametrize("fault", [
     "status_fail", "extra_action", "no_node_clean", "false_goal",
     "different_session", "wrong_l23_hash", "sidecar_lost", "no_s16",
+    "wrong_action_field",
 ])
 def test_reject_wrong_cross_source_origin(tmp_path, fault):
     report, paper, sidecar, capture = fixtures(tmp_path)
@@ -108,13 +109,15 @@ def test_reject_wrong_cross_source_origin(tmp_path, fault):
         if fault == "status_fail":
             row["status"] = "FAIL"
         elif fault == "extra_action":
-            row["action"].append({"terminal": "outcome"})
+            row["actual_native_actions"].append({"terminal": "outcome"})
         elif fault == "no_node_clean":
             row["node_exit"] = 1
         elif fault == "false_goal":
             row["l23_paper"]["readback"]["accepted_goal_status"] = "REACHED"
         elif fault == "different_session":
             row["session_id"] = "different"
+        elif fault == "wrong_action_field":
+            row["action"] = row.pop("actual_native_actions")
         report.write_text(json.dumps(row))
     with pytest.raises(ValueError):
         audit(report, paper, sidecar, capture)
