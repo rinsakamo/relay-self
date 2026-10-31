@@ -1,0 +1,13 @@
+{"request_id":"s49-actual:6b29d6fe-ea4d-41cb-8645-dd00f9c8f062:event-7","type":"observe"}
+{"request_id":"s49-actual:6b29d6fe-ea4d-41cb-8645-dd00f9c8f062:event-18","type":"observe"}
+{"type":"observe"}
+{"action_id":"s49-native-move-18","control":"back","effect":"set_control","state":true,"type":"effect"}
+{"action_id":"s49-native-move-18-s15-clear","effect":"clear_controls","type":"effect"}
+{"type":"observe"}
+{"request_id":"l22:6b29d6fe-ea4d-41cb-8645-dd00f9c8f062:s49-native-move-18:settle-1","type":"observe"}
+{"request_id":"l22:6b29d6fe-ea4d-41cb-8645-dd00f9c8f062:s49-native-move-18:settle-2","type":"observe"}
+{"request_id":"l22:6b29d6fe-ea4d-41cb-8645-dd00f9c8f062:s49-native-move-18:settle-3","type":"observe"}
+{"request_id":"l22:6b29d6fe-ea4d-41cb-8645-dd00f9c8f062:s49-native-move-18:settle-4","type":"observe"}
+{"request_id":"l22:6b29d6fe-ea4d-41cb-8645-dd00f9c8f062:s49-native-move-18:settle-5","type":"observe"}
+{"request_id":"l16:6b29d6fe-ea4d-41cb-8645-dd00f9c8f062:s49-native-move-18:goal-1","type":"observe"}
+{"request_id":"l16:6b29d6fe-ea4d-41cb-8645-dd00f9c8f062:s49-native-move-18:goal-2","type":"observe"}

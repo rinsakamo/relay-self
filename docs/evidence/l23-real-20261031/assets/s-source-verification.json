@@ -1,0 +1,22 @@
+[
+  {
+    "path": "adapters/mineflayer/m02_paper_dev/pom.xml",
+    "sha256": "917191bb44fd4012425ec1398809c7a156c59d3a575bda672aefe46d61d89a23",
+    "matches_exact_commit": true
+  },
+  {
+    "path": "adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml",
+    "sha256": "a826fb23a0ef8b96902a1717b040ebabf1bd88e34e4ca19287d8e1c06db8a889",
+    "matches_exact_commit": true
+  },
+  {
+    "path": "adapters/mineflayer/m02_paper_dev/src/main/resources/plugin.yml",
+    "sha256": "5f38380bbf1d3dc5e7072fbdb21da74f991fe34a449db7c23a4876f3eff3b9c7",
+    "matches_exact_commit": true
+  },
+  {
+    "path": "adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/RelayMetabolismPlugin.java",
+    "sha256": "ba347faf59a2ef6d8417d8020fad18430cd7e5b13c2916de653ff93bfa67c845",
+    "matches_exact_commit": true
+  }
+]

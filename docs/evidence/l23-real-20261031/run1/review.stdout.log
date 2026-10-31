@@ -1,0 +1,52 @@
+{
+  "l22": {
+    "schema": "L22_POST_S16_SETTLING_DIAGNOSTIC_V1",
+    "session_id": "ec250451-8313-48bd-9c95-a098ce1a2962",
+    "action_id": "s49-native-move-21",
+    "s16_original_sha256": "84a08c522a49f0f3537ed94711f1fa202ab06f58a9ccc9597127048a1d845408",
+    "received_sha256": "5f865306dd0ed784f6352e2c3e4f7da103c58581cff73e366faab3b1fe20291f",
+    "sent_sha256": "a0dc6abe1672473c43d55753a819d16476c48fa3291def552a1afdd4cd9e11ed",
+    "after_seq": 40,
+    "first_probe_seq": 44,
+    "second_probe_seq": 45,
+    "move_event_seqs": [],
+    "settling_probe_seqs": [
+      41,
+      42,
+      43
+    ],
+    "settling_sample_drift_max_m": 0.0,
+    "post_s16_displacement_m": 0.0,
+    "two_probe_displacement_m": 0.0,
+    "geometric_goal_candidate": "NOT_REACHED",
+    "settling_state": "STABILITY_UNPROVEN",
+    "reason": "NO_ATTESTED_IDLE_TICK_WINDOW",
+    "accepted_goal_status": "UNDETERMINED",
+    "stable_world_ticks_attested": false,
+    "physically_stopped_proven": false,
+    "independent_goal_owner_authenticated": false,
+    "qualified_real_learning_pairs": 0,
+    "s10_updates": 0,
+    "s11_grants": 0
+  },
+  "l23": {
+    "status": "PAPER_SOURCE_REJECTED",
+    "error": "Paper phase/begin/tick original log order invalid"
+  },
+  "s16_original": {
+    "action_id": "s49-native-move-21",
+    "action_ref": "MOVE_BACKWARD",
+    "after_seq": 40,
+    "before_seq": 24,
+    "binding_id": "s49-binding-21",
+    "disposition": "outcome",
+    "pre_probe_sha256": "e1c823a15e9f0427c8a2be083fc4f74f56baf72e1349e34c3db6205a990c4dd6",
+    "reason_code": "observed_execution",
+    "schema": "L13_S16_TERMINAL_SOURCE_V1",
+    "session_id": "ec250451-8313-48bd-9c95-a098ce1a2962",
+    "source_revision": 0,
+    "source_status": "executed",
+    "world_reference": "ec250451-8313-48bd-9c95-a098ce1a2962:100",
+    "world_source": "normal-action-runtime"
+  }
+}
