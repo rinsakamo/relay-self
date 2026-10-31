@@ -42,7 +42,7 @@ for (let i = 0; i < argv.length; i += 2) {
   args[argv[i]] = argv[i + 1]
 }
 if (Object.keys(args).length !== argKeys.size ||
-    args['--observer-username'] !== 'RelayGoalObserver' ||
+    args['--observer-username'] !== 'RelayGoalObservr' ||
     args['--target-username'] !== 'RelaySelf' ||
     !isAbsolute(args['--goal-file']) ||
     !isAbsolute(args['--output']) ||
@@ -118,7 +118,8 @@ original('start', {
 })
 
 bot = mineflayer.createBot({
-  host: '127.0.0.1', port: 25565, username: 'RelayGoalObserver',
+  // RelayGoalObserver is the role; Minecraft login names have a 16-char cap.
+  host: '127.0.0.1', port: 25565, username: 'RelayGoalObservr',
   version: '1.21.8', auth: 'offline', logErrors: false, respawn: true
 })
 bot.once('spawn', () => {

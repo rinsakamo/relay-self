@@ -127,7 +127,7 @@ def review_l21_observer_original(
             "goal_observation_authority",
         }
         or start["criterion_sha256"] != criterion_sha256
-        or start["observer_username"] != "RelayGoalObserver"
+        or start["observer_username"] != "RelayGoalObservr"
         or start["target_username"] != "RelaySelf"
         or start["observer_capabilities"] != "READ_ONLY_MINEFLAYER_SECOND_TCP_CLIENT"
         or start["goal_observation_authority"] is not False
@@ -224,7 +224,7 @@ class L21ObserverSession:
         p = await asyncio.create_subprocess_exec(
             "node", str(bridge), "--goal-file", str(criterion_path),
             "--goal-sha256", criterion_sha256, "--output", str(source_path),
-            "--observer-username", "RelayGoalObserver",
+            "--observer-username", "RelayGoalObservr",
             "--target-username", "RelaySelf",
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
         )

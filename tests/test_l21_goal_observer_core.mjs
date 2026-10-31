@@ -55,11 +55,11 @@ test('read-only command vocabulary rejects any motor-like command', () => {
 test('one separate player entity only; no RelaySelf lookalike or self entity', () => {
   const target = { id: 44, position: { x: 10, y: 64, z: -4 } }
   const bot = {
-    username: 'RelayGoalObserver', entity: { id: 99 },
+    username: 'RelayGoalObservr', entity: { id: 99 },
     players: { RelaySelf: { entity: target } }
   }
   assert.deepEqual(positionOfTarget(bot, 'RelaySelf'), make(10, -4))
-  assert.equal(positionOfTarget(bot, 'RelayGoalObserver'), null)
+  assert.equal(positionOfTarget(bot, 'RelayGoalObservr'), null)
   assert.equal(positionOfTarget(bot, 'OtherPlayer'), null)
   target.id = 99
   assert.equal(positionOfTarget(bot, 'RelaySelf'), null)

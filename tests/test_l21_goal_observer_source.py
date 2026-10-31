@@ -40,7 +40,7 @@ def fixture(*, status="REACHED"):
     raw_rows = [
         {
             "kind": "start", "criterion_sha256": goal_sha,
-            "observer_username": "RelayGoalObserver",
+            "observer_username": "RelayGoalObservr",
             "target_username": "RelaySelf",
             "observer_capabilities": "READ_ONLY_MINEFLAYER_SECOND_TCP_CLIENT",
             "goal_observation_authority": False,
