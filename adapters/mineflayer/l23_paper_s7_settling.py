@@ -137,6 +137,19 @@ def inspect_l23_paper_s7(
         s7_receipt=s7_receipt, s16_original=s16_original, plan=plan,
         session_id=session_id, action_id=action_id,
     )
+    phase_rows = _paper_rows(paper_original, "M02_DEV_S50_PHASE ")
+    if (
+        len(phase_rows) != 2
+        or [r.get("phase") for r in phase_rows]
+        != ["PRE_FORWARD", "POST_CLEAR"]
+        or any(r.get("marker_id") != marker for r in phase_rows)
+        or any(r.get("world") != expected_world for r in phase_rows)
+        or _num(phase_rows[0], "world_full_time", integer=True)
+        > _num(phase_rows[1], "world_full_time", integer=True)
+    ):
+        raise L23SourceRejected(
+            "Paper PRE_FORWARD/POST_CLEAR causal console observation absent"
+        )
     starts = _paper_rows(paper_original, "S50_DEV_WAIT_BEGIN ")
     samples = _paper_rows(paper_original, "S50_DEV_WAIT_TICK ")
     if len(starts) != 1 or len(samples) != 8:
@@ -145,6 +158,8 @@ def inspect_l23_paper_s7(
     if start.get("marker_id") != marker or start.get("world") != expected_world:
         raise L23SourceRejected("unbound Paper marker or World")
     begin = _num(start, "tick", integer=True)
+    if begin < _num(phase_rows[1], "world_full_time", integer=True):
+        raise L23SourceRejected("Paper WAIT started before Paper POST_CLEAR marker")
     previous = _pose(start)
     packet = _num(start, "packets", integer=True)
     blocks = _num(start, "blocks")
