@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 
 from adapters.mineflayer.s49_normal_session_real_ci import qualify
+from adapters.mineflayer.slm_external_goal_candidate_dev import read_external_goal_diagnostic
 from adapters.mineflayer.slm_passive_dev import S49SLMDevOwner
 from adapters.mineflayer.slm_prior_world_dev import read_previous_s49_world
 
@@ -15,6 +16,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--confirm", required=True)
+    parser.add_argument(
+        "--previous-external-goal-root", type=Path, default=None,
+        help="Bounded L22 read-only DEV review, never learning Goal admission",
+    )
     parser.add_argument(
         "--previous-world-root", type=Path, default=None,
         help="Read-only prior S49 report.json and native W3 root; never L8 training",
@@ -37,6 +42,9 @@ def main():
         prior = read_previous_s49_world(
             args.previous_world_root, expected_stdout_sha256=args.previous_w3_sha256,
         )
+    external = None
+    if args.previous_external_goal_root is not None:
+        external = read_external_goal_diagnostic(args.previous_external_goal_root)
     args.output_dir.mkdir(parents=True, exist_ok=False)
     (args.output_dir / "native").mkdir()
     os.environ["S49_REAL_SERVER_CI"] = "1"
@@ -46,6 +54,7 @@ def main():
         slm_dev_owner=S49SLMDevOwner(
             retention_enabled=args.l8_empty_memory_shadow,
             prior_world=prior,
+            previous_external_goal=external,
         ),
     ))
 
