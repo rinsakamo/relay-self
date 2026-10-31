@@ -320,7 +320,7 @@ async def qualify(
                 capture_sealed = True
                 index_file = l16_capture_root / "native_bridge_source_receipt.json"
                 with index_file.open("xb") as out:
-                    out.write((json.dumps(index, sort_keys=True) + "\\n").encode())
+                    out.write((json.dumps(index, sort_keys=True) + "\n").encode())
                     out.flush()
                     os.fsync(out.fileno())
                 window = inspect_l16_first_action_prefix(
@@ -443,7 +443,7 @@ async def qualify(
                 capture_sealed = True
                 assert l16_capture_root is not None
                 with (l16_capture_root / "native_bridge_source_receipt.json").open("xb") as out:
-                    out.write((json.dumps(index, sort_keys=True) + "\\n").encode())
+                    out.write((json.dumps(index, sort_keys=True) + "\n").encode())
                     out.flush()
                     os.fsync(out.fileno())
                 report["l16_capture"] = {
