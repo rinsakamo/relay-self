@@ -1,0 +1,109 @@
+{
+  "source_classification": "S50_TO_SELFBODY_CANDIDATE_READ_ONLY",
+  "physical_body_diagnostic": {
+    "session_id": "15f04c47-1a80-4705-99e1-ebedb963e3a3",
+    "action_id": "s49-native-move-19",
+    "marker_id": "s49-native-move-19-15f04c47-1a80-4705-99e1-ebedb963e3a3",
+    "paper_world_uuid": "21c20dbf-0f44-4207-b557-b4a3e2764979",
+    "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+    "paper_original_sha256": "b921406c43107fee3ebb3f2587c5b439fb0535ed496de6ce890aa563574eecb2",
+    "client_original_sha256": "238b8175218fad0b3e0c91f70840c436b8f5c25f7d452082d19ef8b98c42a25c",
+    "paper_samples": [
+      {
+        "world_tick": 252,
+        "displacement_m": 0.049492188301323736,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY"
+      },
+      {
+        "world_tick": 253,
+        "displacement_m": 0.009543604920851934,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY"
+      },
+      {
+        "world_tick": 254,
+        "displacement_m": 0.005210808286784996,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY"
+      },
+      {
+        "world_tick": 255,
+        "displacement_m": 0.0,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY"
+      },
+      {
+        "world_tick": 256,
+        "displacement_m": 0.0,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY"
+      },
+      {
+        "world_tick": 257,
+        "displacement_m": 0.0,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY"
+      },
+      {
+        "world_tick": 258,
+        "displacement_m": 0.0,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY"
+      },
+      {
+        "world_tick": 259,
+        "displacement_m": 0.0,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY"
+      }
+    ],
+    "client_effects": [
+      {
+        "effect": "set_control",
+        "node_record_index": 237,
+        "local_controls_active": true,
+        "source_scope": "CLIENT_LOCAL_CONTROL_SNAPSHOT_ONLY"
+      },
+      {
+        "effect": "clear_controls",
+        "node_record_index": 246,
+        "local_controls_active": false,
+        "source_scope": "CLIENT_LOCAL_CONTROL_SNAPSHOT_ONLY"
+      },
+      {
+        "effect": "shutdown_clear_controls",
+        "node_record_index": 457,
+        "local_controls_active": false,
+        "source_scope": "CLIENT_LOCAL_CONTROL_SNAPSHOT_ONLY"
+      }
+    ],
+    "observed_motion_while_reported_input_off_ticks": [
+      252,
+      253,
+      254
+    ],
+    "client_player_input_write_returns": 0,
+    "client_position_write_returns": 33,
+    "paper_player_input_callbacks": 0,
+    "client_packet_diagnostic": "NO_PLAYER_INPUT_WRITE_ON_OBSERVED_CLIENT_PATH",
+    "schema": "S50_SELFBODY_MOTION_DIAGNOSTIC_V0",
+    "provenance_ceiling": "DIAGNOSTIC_ONLY_NOT_NATIVE_PRESENT",
+    "cross_clock_alignment": "NOT_ATTESTED",
+    "effective_s15_clear_world_tick": "NOT_ATTESTED",
+    "full_tick_input_coverage": false,
+    "physically_stopped_attested": false,
+    "goal_admitted": false,
+    "p1_wait_ticks_admitted": 0,
+    "l10_pairs_admitted": 0,
+    "s10_updates_admitted": 0,
+    "s11_grants_admitted": 0
+  },
+  "selfbody_native_present_admitted": false,
+  "physical_wait_admitted": false,
+  "world_time_alignment_attested": false,
+  "goal_admitted": false,
+  "learning_updates": 0,
+  "qualification": "DEV_ONLY",
+  "science": "NOT_RUN"
+}

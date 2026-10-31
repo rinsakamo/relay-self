@@ -1,0 +1,15 @@
+{
+  "route": "B_LIVE_NEXT_L0",
+  "max_initial_worlds": 1,
+  "authorization": "Current user instruction + Issue651 fresh first World; old grants not reused",
+  "active_m02": true,
+  "expected_decisions": [
+    "WAIT",
+    "MOVE_AWAY",
+    "WAIT"
+  ],
+  "action_limit": 1,
+  "retry": "No automatic retry; preserve first FAIL and recheck authority",
+  "qualification": "NO_GO",
+  "science": "NOT_RUN"
+}
