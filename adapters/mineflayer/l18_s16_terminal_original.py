@@ -74,7 +74,7 @@ def build_s16_owner_original(
         or before.session_id != outcome.session_id
         or after.session_id != outcome.session_id
         or before.seq >= after.seq
-        or terminal.provenance != outcome.world_provenance
+        or terminal.events[-1].provenance != outcome.world_provenance
         or not isinstance(outcome.world_provenance, Provenance)
         or outcome.action_ref != "MOVE_BACKWARD"
         or consequence.dispatch_receipt.action_id != terminal.action_id
