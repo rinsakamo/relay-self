@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import FrozenInstanceError
-from dataclasses import replace
+from dataclasses import FrozenInstanceError, replace
 
 import pytest
 
