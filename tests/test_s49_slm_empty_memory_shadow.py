@@ -9,7 +9,6 @@ import pytest
 
 from adapters.mineflayer import slm_passive_dev_run
 from adapters.mineflayer.slm_passive_dev import S49SLMDevOwner
-
 from test_s49_slm_passive_dev import decide, setup
 
 
