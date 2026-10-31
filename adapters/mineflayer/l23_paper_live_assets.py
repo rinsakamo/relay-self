@@ -48,7 +48,8 @@ def _verified_file(path: Path, expected: str, label: str) -> bytes:
     with path.open("rb") as source:
         for chunk in iter(lambda: source.read(1024 * 1024), b""):
             size += len(chunk)
-            if size > 80_000_000 if label == "config" else size > 100_000_000:
+            max_bytes = 1_000_000 if label == "config" else 150_000_000
+            if size > max_bytes:
                 raise L23PaperBlocked(f"Paper {label} exceeds bounded bytes")
             sha.update(chunk)
     if size == 0 or sha.hexdigest() != expected:
