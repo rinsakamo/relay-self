@@ -85,3 +85,10 @@ When the experimenter separately grants a new disposable World, append the follo
 ```
 
 This does **not** establish that the SHA was externally published before World; it only prevents accidental/posthoc goal geometry changes in the exact S49 process. Independently preserved reviewer original, anchored prior publication and subsequent genuinely independent Goal observation remain separate responsibilities. A S49 Python-preflight matching a SHA from its own command line cannot bootstrap independent physical Goal authenticity.
+
+## Exact source revision validation (2026-10-31)
+
+- **Successful exact code/test/workflow HEAD:** `a9fe9df42a3b802bd7344bd55784bb12b06e6fa2`.
+- [GitHub Actions #41161798633 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/41161798633): Python 3.12 **68 PASS / 0 FAIL / 0 SKIP**; Ruff, compileall and repository contracts PASS. These include explicit S49 pre-World Goal source injection controls, successful read-only preflight followed by deliberately BLOCKED Java startup, standalone preflight, post-S49 S7/L17 source binding and rejection controls.
+- Preliminary failures are preserved: [#41161378223](https://github.com/rinsakamo/relay-self/actions/runs/41161378223) was an unused test import; [#41161660826](https://github.com/rinsakamo/relay-self/actions/runs/41161660826) was a fixture assertion mistakenly counting a deliberately placed foreign criterion as an S49-created file. The final test asserts the absence of S49-created operator Goal or native S7 files, not the absence of its test's own fixture.
+- The resulting later documentation-only HEAD is not claimed to have a new CI test run. No real Java Minecraft server, physical Node/Mineflayer session, independent World observer, new independent per-Action Goal receipt or learning epoch was executed from this GitHub-only development turn.
