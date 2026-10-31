@@ -1,0 +1,132 @@
+name: SelfBody S50 sampled motion optional companion DEV
+on:
+  push:
+    branches:
+      - dev/selfbody-s50-motion-companion-20261031
+    paths:
+      - 'adapters/mineflayer/self_body_s50_motion_companion.py'
+      - 'tests/test_self_body_s50_motion_companion.py'
+      - '.github/workflows/selfbody-s50-motion-dev.yml'
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/self_body_s50_motion_companion.py'
+      - 'tests/test_self_body_s50_motion_companion.py'
+      - '.github/workflows/selfbody-s50-motion-dev.yml'
+permissions:
+  contents: read
+jobs:
+  offline-selfbody-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check S50 companion is separate and original SelfBody unchanged
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/self_body_s50_motion_companion.py tests/test_self_body_s50_motion_companion.py
+          python -m compileall -q adapters/mineflayer/self_body_s50_motion_companion.py tests/test_self_body_s50_motion_companion.py
+          python -m pytest -o addopts='' -q \
+            tests/test_self_body_s50_motion_companion.py \
+            tests/test_self_body.py \
+            tests/test_self_product_passive_views.py
+          python tools/check_repository.py
+      - name: Checkout pinned S50 source owner without merging
+        uses: actions/checkout@v4
+        with:
+          ref: e6d901d7dc3effb5c7516350233383fbb982bbb1
+          path: s50-producer
+          persist-credentials: false
+      - name: Checkout pinned physical DEV original without modifying it
+        uses: actions/checkout@v4
+        with:
+          ref: 2afb7250952ae490bcddc8244c19264ff1f73bf5
+          path: physical-originals
+          persist-credentials: false
+      - name: Replay real S50 source producer in separate checkout
+        working-directory: s50-producer
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = e6d901d7dc3effb5c7516350233383fbb982bbb1
+          test "$(git -C "$GITHUB_WORKSPACE/physical-originals" rev-parse HEAD)" = 2afb7250952ae490bcddc8244c19264ff1f73bf5
+          ROOT="$GITHUB_WORKSPACE/physical-originals/docs/evidence/s50-client-packet-20261031/run2"
+          PYTHONPATH=src:tests:. python tools/s50_selfbody_motion_readback.py \
+            --s49-report "$ROOT/s49-report.json" \
+            --paper-original "$ROOT/server.log" \
+            --client-original "$ROOT/client-packet-original.jsonl" \
+            --subject-uuid dcae346d-e66f-331a-b459-a5a5370e9738 \
+            --output "$RUNNER_TEMP/s50-real-producer.json"
+      - name: Check actual S50 shape and reject missing original SelfBody Present
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, pathlib
+          from adapters.mineflayer.self_body_s50_motion_companion import (
+              SelfBodyS50MotionRejected, compose_self_body_s50_motion_companion,
+          )
+          from relay_self.action_outcome import (
+              ActionOutcomeDisposition, ActionOutcomeInterpretation,
+          )
+          from relay_self.provenance import Provenance
+          from relay_self.self_body import (
+              BodyField, BodyObservation, compose_self_body_view,
+          )
+          raw = json.loads(
+              (pathlib.Path(os.environ["RUNNER_TEMP"]) / "s50-real-producer.json").read_text()
+          )
+          source = raw["physical_body_diagnostic"]
+          sid, action_id = source["session_id"], source["action_id"]
+          # Real Paper + client source alone is NOT a native SelfBody owner Present.
+          blank = compose_self_body_view(session_id=sid, epoch_id="real-no-native")
+          try:
+              compose_self_body_s50_motion_companion(blank, source)
+          except SelfBodyS50MotionRejected:
+              print("REAL_S50_SOURCE_WITHOUT_NATIVE_PRESENT_REJECTED_PASS")
+          else:
+              raise AssertionError("source-only real World was improperly admitted")
+          # Mechanical cross-owner compatibility only: ALL objects below are
+          # explicit synthetic owner fixtures, NOT a genuine S16/Present from host.
+          prov = Provenance("synthetic-contract", "not-a-native-world-owner")
+          s16 = ActionOutcomeInterpretation(
+              action_id=action_id, binding_id="synthetic-binding",
+              action_ref="MOVE_BACKWARD", skill_execution_id="synthetic-skill",
+              intent_id="synthetic-intent", session_id=sid,
+              source_status="executed",
+              disposition=ActionOutcomeDisposition.OUTCOME,
+              reason_code="observed_execution",
+              world_provenance=prov,
+              provenance=Provenance("synthetic-contract", "not-native-s16"),
+          )
+          native = BodyObservation(
+              session_id=sid, native_seq=1, request_id="synthetic-probe",
+              fields=(BodyField("position_x", 0.0),),
+              source_provenance=Provenance("synthetic-contract", "not-native-present"),
+              action_id=action_id, consequence_provenance=prov,
+          )
+          existing = compose_self_body_view(
+              session_id=sid, epoch_id="synthetic-cross-owner",
+              observation=native, outcome=s16,
+          )
+          joined = compose_self_body_s50_motion_companion(existing, source)
+          assert joined.self_body is existing
+          assert joined.cognitive_summary()["changed_with_last_reported_input_off"] == (251,252)
+          assert joined.client_player_input_write_returns == 0
+          assert joined.client_position_write_returns == 23
+          assert joined.sampled_at(258).physical_stability_attested is False
+          assert not joined.native_present_minted
+          assert joined.cognitive_summary()["goal_admitted"] is False
+          print("S50_REAL_SOURCE_x_SYNTHETIC_SELFBODY_OWNER_SCHEMA_COMPAT_PASS")
+          print("NO_REAL_SELFBODY_HOST_EPOCH_ADMITTED")
+          PY
+      - name: Evidence limit
+        if: always()
+        run: echo 'SELF_BODY_DEV_SOURCE_COMPANION_ONLY / NO_REAL_WORLD / NO_NATIVE_PRESENT_MINTED / NO_ACTION_AUTHORITY / NO_P1_WAIT / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
