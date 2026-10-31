@@ -10,6 +10,7 @@ from dataclasses import replace
 
 import pytest
 
+from adapters.mineflayer import normal_action
 from adapters.mineflayer.execution import WorldConsequence, WorldConsequenceStatus
 from adapters.mineflayer.normal_action import (
     NormalActionClosedReadback,
@@ -193,3 +194,22 @@ def test_original_context_callback_slot_resets_without_installing_issuer():
     assert lease.status()["new_packet_writes"] == 0
     assert lease.status()["new_s16_outcome_owners"] == 0
     lease.close()
+
+def test_existing_owner_callback_context_holds_the_exact_one_slot_source():
+    # The original normal_action module, not a replacement executor, owns this
+    # ContextVar and reads it only after its ActionSupervisor terminal.
+    assert normal_action._READ_ONLY_CLOSURE.get() is None
+    lease = SelfBodyS50ClosedOwnerLease(self_id="self")
+    original = synthetic_original_closed()
+    with observe_original_s49_selfbody_closure(lease):
+        registered = normal_action._READ_ONLY_CLOSURE.get()
+        assert callable(registered)
+        assert registered.__self__ is lease
+        registered(original)
+        assert lease.status()["typed_original_ready"] is True
+    assert normal_action._READ_ONLY_CLOSURE.get() is None
+    result = lease.consume_s50_once(s50())
+    assert result.self_body.outcome is original.interpretation
+    assert not result.native_present_minted
+
+
