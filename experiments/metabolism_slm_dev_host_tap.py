@@ -89,8 +89,17 @@ def observe_optional_s_l_m_dev(
             retention_enabled=retention_enabled,
             noise_bound=noise_bound,
         )
+        # M and L8 keep the original inner S decision on planned epochs.
+        # The outer PlannedDecisionEpochResult remains the caller's return.
+        from relay_self.epoch_plan import PlannedDecisionEpochResult
+
+        expected_s = (
+            original_s_epoch.decision
+            if isinstance(original_s_epoch, PlannedDecisionEpochResult)
+            else original_s_epoch
+        )
         if (
-            observed.m.s_epoch is not original_s_epoch
+            observed.m.s_epoch is not expected_s
             or observed.action_authority
             or observed.action_issues
             or observed.new_native_reads
