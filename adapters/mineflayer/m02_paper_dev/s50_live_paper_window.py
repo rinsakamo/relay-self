@@ -110,11 +110,17 @@ def _extract_window(
         raise S50LivePaperWindowRejected("missing S50 first callback tick") from exc
     if first < 1:
         raise S50LivePaperWindowRejected("invalid S50 callback tick")
+    try:
+        begin_position = tuple(float(begin[0][axis]) for axis in ("x", "y", "z"))
+    except (KeyError, TypeError, ValueError) as exc:
+        raise S50LivePaperWindowRejected("missing initial Paper WAIT position") from exc
+    if not all(math.isfinite(v) for v in begin_position):
+        raise S50LivePaperWindowRejected("nonfinite Paper WAIT start position")
     input_readback = review_s50_input_samples(
         original, marker_id=marker, world=world,
         subject_uuid=subject_uuid, start_tick=first - 1,
     )
-    previous = None
+    previous = begin_position
     samples = []
     for i, row in enumerate(waits):
         try:
