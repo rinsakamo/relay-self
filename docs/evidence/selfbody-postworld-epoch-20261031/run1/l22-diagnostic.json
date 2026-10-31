@@ -1,0 +1,38 @@
+{
+  "schema": "L22_POST_S16_SETTLING_DIAGNOSTIC_V1",
+  "session_id": "fdc7213d-ba3f-4608-9e09-18472d6971b4",
+  "action_id": "s49-native-move-18",
+  "s16_original_sha256": "c4545b90e1e0413e8dd44f914fb4fcb21892bac6c1bd47895e269d4666afb22d",
+  "received_sha256": "9675bda081624c3512eb97477f6051d2377a56e6aca68c7b39415ccd82300c3b",
+  "sent_sha256": "cbfceabdf1ee38baf1f0eecf14ae9c942d61f0fd8e2138db70889b4505fb02d7",
+  "after_seq": 29,
+  "first_probe_seq": 40,
+  "second_probe_seq": 41,
+  "move_event_seqs": [
+    30,
+    31,
+    32,
+    33,
+    35
+  ],
+  "settling_probe_seqs": [
+    34,
+    36,
+    37,
+    38,
+    39
+  ],
+  "settling_sample_drift_max_m": 0.11766776833143044,
+  "post_s16_displacement_m": 0.12287857661821588,
+  "two_probe_displacement_m": 0.0,
+  "geometric_goal_candidate": "NOT_REACHED",
+  "settling_state": "SETTLING_OBSERVED",
+  "reason": "POST_S16_MOVE_EVENT",
+  "accepted_goal_status": "UNDETERMINED",
+  "stable_world_ticks_attested": false,
+  "physically_stopped_proven": false,
+  "independent_goal_owner_authenticated": false,
+  "qualified_real_learning_pairs": 0,
+  "s10_updates": 0,
+  "s11_grants": 0
+}

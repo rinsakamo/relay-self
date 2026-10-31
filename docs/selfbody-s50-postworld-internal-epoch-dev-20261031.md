@@ -100,3 +100,7 @@ offline only**; actual new World host opt-in still needs LocalCodex run.
 NEW_REAL_WORLD_NOT_RUN / FRESH_NATIVE_PRESENT_0 /
 NEW_L0_ACTION_0 / P1_WAIT_0 / L10_PAIRS_0 /
 QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+
+## 実World DEV検証済み
+
+新規World1回で経路A PASS。[実測結果・独立原本監査](selfbody-s50-postworld-internal-epoch-results-20261031.md)参照。上記offline記述は開始時点の履歴であり、旧World3の判定は変更しない。
