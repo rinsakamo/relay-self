@@ -36,3 +36,13 @@ PYTHONPATH=src:tests:. python -m adapters.mineflayer.l17_saved_original_goal_rea
 Focused synthetic tests cover exact L13 contract, source typed equality, one-write-only, wrong Action/session/pre-probe/source owner, `UNKNOWN` and missing clearance, SHA tampering, symlink/foreign source, and end-to-end L17 readback still waiting for independent external Goal. None of these tests performs a new Minecraft Action.
 
 **Status ceiling:** `DEV_ONLY / L18_S16_OWNER_ORIGINAL_PRODUCER / EXTERNAL_GOAL_0 / PHYSICAL_NEW_WORLD_0 / QUALIFIED_L10_0 / S10_S11_WRITES_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+
+## Exact final code-head validation
+
+**Code/test/workflow HEAD:** `509d36a57e0cdbc5e2c6f85fbcce57d8d8132cdc`.
+
+[GitHub Actions #41153958593 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/41153958593): Python 3.12 **65 focused PASS / 0 FAIL / 0 SKIP**, Ruff PASS, compileall PASS, repository contracts PASS. This four-suite test includes L18 S16 source-original producer+tamper, existing L17 saved readback, L16 captured native process, and S49 functional boundary. Previous L17 source-review baseline [#41151568508 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/41151568508), 146 PASS / 2 SKIP, is reused rather than rerunning unrelated earlier L13/L14 suites.
+
+Preserve preliminary failure evidence: [#41153623140 FAILED](https://github.com/rinsakamo/relay-self/actions/runs/41153623140) from Ruff import sorting, and [#41153669478 FAILED](https://github.com/rinsakamo/relay-self/actions/runs/41153669478) using a nonexistent `ActionLifecycle.provenance` attribute in the old synthetic fixture; corrected by referencing the actual immutable terminal `ActionEvent`'s `events[-1].provenance`. The exact successful HEAD above includes those fixes and the source-readback integration.
+
+No physical S49 run, Java server, Node process, new World or actual independent Goal read was performed by CI. The physical permission/owner boundary is unchanged.
