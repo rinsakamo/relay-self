@@ -5,7 +5,10 @@ on:
       - dev/l22-post-s16-settling-20261031
     paths:
       - adapters/mineflayer/l22_post_s16_settling.py
+      - adapters/mineflayer/l22_runtime_settling.py
+      - adapters/mineflayer/s49_normal_session_real_ci.py
       - tests/test_l22_post_s16_settling.py
+      - tests/test_l22_runtime_settling.py
       - .github/workflows/l22-post-s16-settling-dev.yml
   workflow_dispatch:
 permissions:
@@ -30,10 +33,10 @@ jobs:
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
-          ruff check adapters/mineflayer/l22_post_s16_settling.py tests/test_l22_post_s16_settling.py
-          python -m compileall -q adapters/mineflayer/l22_post_s16_settling.py tests/test_l22_post_s16_settling.py
-          python -m pytest -o addopts='' -q tests/test_l22_post_s16_settling.py tests/test_l16_s49_first_action_original_capture.py
+          ruff check adapters/mineflayer/l22_post_s16_settling.py adapters/mineflayer/l22_runtime_settling.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_l22_post_s16_settling.py tests/test_l22_runtime_settling.py
+          python -m compileall -q adapters/mineflayer/l22_post_s16_settling.py adapters/mineflayer/l22_runtime_settling.py adapters/mineflayer/s49_normal_session_real_ci.py tests/test_l22_post_s16_settling.py tests/test_l22_runtime_settling.py
+          python -m pytest -o addopts='' -q tests/test_l22_post_s16_settling.py tests/test_l22_runtime_settling.py tests/test_l16_s49_first_action_original_capture.py tests/test_l21_goal_observer_source.py
           python tools/check_repository.py
       - name: Evidence ceiling
         if: always()
-        run: echo 'DEV_ONLY / OFFLINE_SETTLING_AUDIT / WORLD_0 / NO_PHYSICAL_IDLE_ATTESTATION / GOAL_UNDETERMINED / L10_S10_S11_0'
+        run: echo 'DEV_ONLY / OFFLINE_SETTLING_RUNTIME_AND_AUDIT / WORLD_0 / NO_PHYSICAL_IDLE_ATTESTATION / GOAL_UNDETERMINED / L10_S10_S11_0'
