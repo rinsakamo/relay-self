@@ -9,12 +9,12 @@ import pytest
 
 import test_l13_independent_goal_receipt as l13
 import test_l16_s49_first_action_original_capture as l16
+from adapters.mineflayer.l16_first_action_goal_originals import (
+    inspect_l16_first_action_prefix,
+)
 from adapters.mineflayer.l17_saved_original_goal_readback import (
     audit_saved_l16_capture,
     main,
-)
-from adapters.mineflayer.l16_first_action_goal_originals import (
-    inspect_l16_first_action_prefix,
 )
 
 
