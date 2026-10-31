@@ -6,6 +6,7 @@ Unlike separate lane contracts, the B0 readout here is produced by the
 The original probe and L6 training fixtures are synthetic; this is NOT a
 real physical Minecraft run, an S49 move receipt or SCIENCE qualification.
 """
+import json
 from dataclasses import replace
 
 import pytest
@@ -22,6 +23,11 @@ from experiments.metabolism_s_epoch_resource import observe_completed_s_resource
 from experiments.metabolism_s_l_m_post_epoch import (
     SLMPostEpochRejected,
     read_s_l_m_after_owner_epoch,
+)
+from experiments.metabolism_slm_dev_host_tap import (
+    SLMDevTapResult,
+    bounded_s_l_m_audit_row,
+    observe_optional_s_l_m_dev,
 )
 from experiments.metabolism_viability import Interoception
 
@@ -261,3 +267,161 @@ def test_passive_tap_rejects_stale_or_foreign_original_owner_source(attack):
         kw["retention_enabled"] = None
     with pytest.raises(SLMPostEpochRejected):
         passive_tap(data, **kw)
+
+
+def host_tap(data, *, enabled=True, learning_on=True, **changes):
+    (_, owner, decision, probe, s_epoch, _supervisor,
+     _views, _resource, learned, native, retained, *_rest) = data
+    arguments = dict(
+        enabled=enabled, original_s_epoch=s_epoch,
+        probe=probe, native=native, ledger=owner,
+        original_b0_decision=decision,
+        retained=retained,
+        self_id=learned.cognition.identity.self_id,
+        epoch_id=f"same-s-epoch-{probe.seq}",
+        learning=learned if learning_on else None,
+        retention_enabled=True if learning_on else None,
+        noise_bound=0,
+    )
+    arguments.update(changes)
+    return observe_optional_s_l_m_dev(**arguments)
+
+
+def test_optional_host_tap_disabled_is_truly_inert_with_missing_source():
+    class MustNotRead:
+        def __getattribute__(self, name):
+            raise AssertionError("optional tap must not inspect World when disabled")
+
+    original = object()
+    result = observe_optional_s_l_m_dev(
+        original_s_epoch=original, enabled=False,
+        probe=MustNotRead(), ledger=MustNotRead(), native=MustNotRead(),
+    )
+    assert result.original_s_epoch is original
+    assert result.status == "DISABLED"
+    audit = bounded_s_l_m_audit_row(result)
+    assert audit["status"] == "DISABLED"
+    assert audit["session_id"] is None and audit["m_model_tension"] is None
+    assert "MustNotRead" not in json.dumps(audit)
+    assert "original_s_epoch" not in audit
+
+
+def test_original_s_owner_host_tap_produces_bounded_no_action_audit():
+    data = common_epoch(energy=0.6)
+    owner = data[1]
+    before = (owner.body, owner.credit_count, data[5].last_at_ns)
+    tap = host_tap(data)
+    assert tap.status == "RECORDED", tap.reason
+    assert tap.original_s_epoch is data[4]
+    assert tap.s_choice == "MOVE_AWAY"
+    assert tap.l1_candidate == "WAIT"
+    assert tap.m_model_tension == "MOVE_MODEL_INSUFFICIENT"
+    assert tap.l1_model_status == "MODEL_AFFORDABLE"
+    row = bounded_s_l_m_audit_row(tap)
+    assert row["schema"] == "SLM_PASSIVE_DEV_AUDIT_V1"
+    assert row["request_id"] == data[3].request_id
+    assert not row["native_source_attested"] and not row["action_authority"]
+    assert row["new_cognition_calls"] == row["action_issues"] == 0
+    assert row["learning_updates"] == row["food_credits"] == 0
+    assert "energy" not in json.dumps(row).lower()
+    assert "body" not in json.dumps(row).lower()
+    assert before == (owner.body, owner.credit_count, data[5].last_at_ns)
+    assert data[5].open_actions == ()
+
+
+def test_host_tap_missing_learning_has_no_unearned_candidate():
+    data = common_epoch()
+    tap = host_tap(data, learning_on=False)
+    assert tap.status == "RECORDED"
+    assert tap.s_choice == "MOVE_AWAY"
+    assert tap.l1_candidate is tap.l1_status is tap.l1_model_status is None
+
+
+def test_host_tap_missing_sensor_bound_does_not_infer_true_energy():
+    data = common_epoch(energy=0.6)
+    tap = host_tap(data, noise_bound=None)
+    assert tap.status == "RECORDED"
+    assert tap.m_model_tension == "MOVE_MODEL_UNKNOWN"
+    assert tap.l1_model_status == "UNKNOWN"
+
+
+@pytest.mark.parametrize("attack", (
+    "stale", "copied_probe", "foreign_learning", "no_true_enable",
+))
+def test_failed_observer_cannot_abort_original_s_epoch_or_change_owner(attack):
+    data = common_epoch()
+    original_s, owner, probe, learned = data[4], data[1], data[3], data[8]
+    before = (owner.body, owner.credit_count, owner._last_decision_seq,
+              data[5].last_at_ns, data[5].open_actions, learned.cognition)
+    changed = {}
+    if attack == "stale":
+        changed["original_b0_decision"] = replace(
+            data[2], body_tick=data[2].body_tick + 1,
+        )
+    elif attack == "copied_probe":
+        changed["probe"] = replace(probe)
+    elif attack == "foreign_learning":
+        changed["learning"] = replace(
+            learned, current=replace(learned.current, session_id="foreign"),
+        )
+    else:
+        changed["enabled"] = "yes"
+    result = host_tap(data, **changed)
+    if attack == "no_true_enable":
+        assert result.status == "DISABLED" and result.reason == "invalid_flag"
+    else:
+        assert result.status == "DEFERRED"
+        assert result.reason == "owner_source_or_scope_rejected"
+    assert result.original_s_epoch is original_s
+    row = bounded_s_l_m_audit_row(result)
+    assert row["request_id"] is None and row["l1_candidate"] is None
+    assert row["action_issues"] == row["new_native_reads"] == 0
+    assert before == (owner.body, owner.credit_count, owner._last_decision_seq,
+                      data[5].last_at_ns, data[5].open_actions, learned.cognition)
+
+
+def test_unexpected_optional_observer_exception_is_sanitized_and_nonblocking(monkeypatch):
+    data = common_epoch()
+    from experiments import metabolism_slm_dev_host_tap as tap_module
+
+    def broken(**_kwargs):
+        raise RuntimeError("SENSITIVE_HIDDEN_ENERGY_AND_RAW_BYTES")
+
+    monkeypatch.setattr(tap_module, "read_s_l_m_after_owner_epoch", broken)
+    result = host_tap(data)
+    assert result.status == "OBSERVER_ERROR"
+    assert result.original_s_epoch is data[4]
+    row = bounded_s_l_m_audit_row(result)
+    assert "SENSITIVE" not in json.dumps(row)
+    assert all(v == 0 for k, v in row.items() if k in (
+        "action_issues", "new_cognition_calls", "food_credits",
+    ))
+
+
+def test_interrupt_is_not_swallowed_by_optional_dev_telemetry(monkeypatch):
+    data = common_epoch()
+    from experiments import metabolism_slm_dev_host_tap as tap_module
+
+    def interrupt(**_kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(tap_module, "read_s_l_m_after_owner_epoch", interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        host_tap(data)
+
+
+def test_audit_row_rejects_forged_authority_or_unadmitted_source():
+    data = common_epoch()
+    good = host_tap(data)
+    with pytest.raises(ValueError):
+        bounded_s_l_m_audit_row(replace(good, action_authority=True))
+    with pytest.raises(ValueError):
+        bounded_s_l_m_audit_row(replace(good, food_credits=1))
+    with pytest.raises(ValueError):
+        bounded_s_l_m_audit_row(replace(good, session_id="bad\nraw"))
+    with pytest.raises(ValueError):
+        bounded_s_l_m_audit_row(replace(good, request_id="x" * 300))
+    bad = SLMDevTapResult(data[4], "DEFERRED",
+                          "owner_source_or_scope_rejected", s_choice="WAIT")
+    with pytest.raises(ValueError):
+        bounded_s_l_m_audit_row(bad)
