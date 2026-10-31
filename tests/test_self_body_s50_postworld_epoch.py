@@ -137,7 +137,8 @@ def test_original_owner_core_no_physical_value_from_prior_paper():
 
 
 def test_world_runner_has_explicit_default_off_postworld_flag():
-    from adapters.mineflayer import self_body_s50_world_dev as host
     import inspect
+
+    from adapters.mineflayer import self_body_s50_world_dev as host
     signature = inspect.signature(host.qualify)
     assert signature.parameters["postworld_internal_epoch_dev"].default is False
