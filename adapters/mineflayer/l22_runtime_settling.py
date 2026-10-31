@@ -75,10 +75,15 @@ async def observe_bounded_settling(
         requests.append(rid)
         moving = False
         probe: MineflayerObservation | None = None
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + TIMEOUT_PER_PROBE_SECONDS
         for _ in range(MAX_FRAMES_PER_PROBE):
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                raise L22RuntimeRejected("settling probe deadline expired")
             try:
                 msg = await asyncio.wait_for(
-                    session.receive(), timeout=TIMEOUT_PER_PROBE_SECONDS,
+                    session.receive(), timeout=remaining,
                 )
             except (TimeoutError, EOFError) as exc:
                 raise L22RuntimeRejected("settling observation timed out or ended") from exc
