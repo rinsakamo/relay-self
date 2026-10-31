@@ -27,6 +27,12 @@ from adapters.mineflayer.l16_first_action_goal_originals import (
 from adapters.mineflayer.l18_s16_terminal_original import (
     write_s16_owner_original,
 )
+from adapters.mineflayer.l21_goal_observer_source import (
+    ORIGINAL_NAME as L21_ORIGINAL_NAME,
+    L21ObserverRejected,
+    L21ObserverSession,
+    review_l21_observer_original,
+)
 from adapters.mineflayer.normal_action import (
     NormalActionAuthorization,
     NormalActionStage,
@@ -143,6 +149,7 @@ async def qualify(
     l16_goal_plan: L16GoalPlan | None = None,
     l20_external_goal_original: Path | None = None,
     l20_admitted_sha256: str | None = None,
+    l21_observer_root: Path | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -158,6 +165,8 @@ async def qualify(
         "auto_crash_recovery": False,
     }
     server = collector = session = staging = temp = None
+    l21_observer: L21ObserverSession | None = None
+    l21_closed = False
     recorder: NativeStreamReceipt | None = None
     capture_sealed = False
     rc = 2
@@ -168,6 +177,25 @@ async def qualify(
             raise S31ABlocked("L16 capture root and pre-World Goal must be paired")
         if (l20_external_goal_original is None) != (l20_admitted_sha256 is None):
             raise S31ABlocked("L20 external criterion and admitted SHA must be paired")
+        if l21_observer_root is not None:
+            if (
+                l20_external_goal_original is None
+                or l20_admitted_sha256 is None
+                or not isinstance(l16_goal_plan, L16GoalPlan)
+                or not isinstance(l21_observer_root, Path)
+                or not l21_observer_root.is_absolute()
+                or not l21_observer_root.is_dir()
+                or l21_observer_root.is_symlink()
+                or l21_observer_root.resolve(strict=True) != l21_observer_root
+                or l16_capture_root is None
+                or l21_observer_root == l16_capture_root
+                or l21_observer_root.is_relative_to(l16_capture_root)
+                or l16_capture_root.is_relative_to(l21_observer_root)
+                or (l21_observer_root / L21_ORIGINAL_NAME).exists()
+            ):
+                raise S31ABlocked(
+                    "L21 requires separate fresh observer directory and paired L20 source"
+                )
         if l20_external_goal_original is not None:
             # Fail before Java, Node or a new S7 recorder is launched.
             if (
@@ -236,6 +264,19 @@ async def qualify(
             root, root / "minecraft.jar", server_log,
         )
         report["stage"] = "AUTHENTIC_NATIVE_SELF_SESSION"
+        if l21_observer_root is not None:
+            assert l20_external_goal_original is not None
+            assert l20_admitted_sha256 is not None
+            l21_observer = await L21ObserverSession.launch(
+                source_path=l21_observer_root / L21_ORIGINAL_NAME,
+                criterion_path=l20_external_goal_original,
+                criterion_sha256=l20_admitted_sha256,
+            )
+            report["l21_observer"] = {
+                "status": "SEPARATE_TCP_CLIENT_READY_NOT_PHYSICALLY_AUTHENTICATED",
+                "root": str(l21_observer_root),
+                "qualified_real_learning_pairs": 0,
+            }
         session = await _new_session(native_receipt=recorder)
         sid = session.started.session_id
         report["session_id"] = sid
@@ -365,7 +406,14 @@ async def qualify(
                 second_id = f"l16:{sid}:{action_id}:goal-2"
                 # Both probes follow existing S16 OUTCOME/control clear. No
                 # alternate native reader or Action issuer is introduced.
+                # The optional second TCP client samples the RelaySelf
+                # player separately; S49 does not write observer coordinates
+                # or the Goal status into its original file.
+                if l21_observer is not None:
+                    await l21_observer.sample(first_id)
                 first = await _correlated_observe(session, first_id)
+                if l21_observer is not None:
+                    await l21_observer.sample(second_id)
                 second = await _correlated_observe(session, second_id)
                 index = session.finish_native_receipt()
                 capture_sealed = True
@@ -389,6 +437,27 @@ async def qualify(
                     first_probe_request_id=first_id,
                     second_probe_request_id=second_id,
                 )
+                if l21_observer is not None:
+                    observer_original = await l21_observer.close()
+                    l21_closed = True
+                    assert l20_external_goal_original is not None
+                    assert l20_admitted_sha256 is not None
+                    review = review_l21_observer_original(
+                        raw=observer_original,
+                        criterion_original=l20_external_goal_original.read_bytes(),
+                        criterion_sha256=l20_admitted_sha256,
+                        plan=l16_goal_plan,
+                        session_id=sid, action_id=action_id,
+                        native_goal_status=window.observed_goal_status,
+                    )
+                    report["l21_observer"] = {
+                        "status": "SECOND_CLIENT_SOURCE_ONLY_UNQUALIFIED",
+                        "root": str(l21_observer_root),
+                        "source_file": str(l21_observer.source_path),
+                        "review": asdict(review),
+                        "qualified_real_learning_pairs": 0,
+                        "observer_presence_is_world_intervention": True,
+                    }
                 report["l16_capture"] = {
                     "status": "SOURCE_PREFIX_CAPTURED_UNQUALIFIED",
                     "root": str(l16_capture_root),
@@ -472,7 +541,8 @@ async def qualify(
         report["stage"] = "CLOSED"
         rc = 0
     except (
-        S31ABlocked, WorldBindingRejected, L20GoalCommitmentRejected, OSError,
+        S31ABlocked, WorldBindingRejected, L20GoalCommitmentRejected,
+        L21ObserverRejected, OSError,
     ) as exc:
         report["status"] = "BLOCKED"
         report["error"] = f"{type(exc).__name__}: {exc}"
@@ -484,6 +554,14 @@ async def qualify(
         print("S49 FAIL: " + str(exc), file=sys.stderr)
         rc = 1
     finally:
+        if l21_observer is not None and not l21_closed:
+            try:
+                await l21_observer.terminate()
+            except Exception as exc:
+                report["l21_observer_cleanup_error"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+            report["l21_observer_status"] = "INCOMPLETE_SEPARATE_CLIENT_SOURCE"
         if staging is not None:
             staging.cancel()
             try:
@@ -550,6 +628,7 @@ def main() -> int:
     parser.add_argument("--l16-confirm", default="")
     parser.add_argument("--l20-external-goal-original", type=Path)
     parser.add_argument("--l20-admitted-sha256")
+    parser.add_argument("--l21-observer-root", type=Path)
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -577,6 +656,7 @@ def main() -> int:
         l16_capture_root=args.l16_capture_root, l16_goal_plan=goal,
         l20_external_goal_original=args.l20_external_goal_original,
         l20_admitted_sha256=args.l20_admitted_sha256,
+        l21_observer_root=args.l21_observer_root,
     ))
 
 
