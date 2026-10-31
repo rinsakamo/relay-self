@@ -1,0 +1,86 @@
+name: S49 L1 motor expectation previous real W3 FAST
+
+on:
+  push:
+    branches:
+      - integration/s49-slm-passive-dev-20261031
+    paths:
+      - adapters/mineflayer/slm_motor_expectation_dev.py
+      - adapters/mineflayer/slm_passive_dev.py
+      - adapters/mineflayer/slm_passive_dev_run.py
+      - tests/test_s49_slm_motor_expectation_dev.py
+      - .github/workflows/s49-slm-motor-expectation-source-fast.yml
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  motor-source-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PYTHONPATH: ${{ github.workspace }}/src:${{ github.workspace }}/tests
+      PRIOR_SHA: 7f5d69f72a2cbfde7751960eaef4a06c9434b2ec94fa57e50b6ce63604bd5e8c
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check pytest==9.1.1 ruff==0.16.7
+      - name: Focused S49 prior Action, L8 and motor prediction tests
+        run: |
+          python -m pytest -q tests/test_s49_slm_motor_expectation_dev.py tests/test_s49_slm_prior_world_dev.py tests/test_s49_slm_passive_dev.py tests/test_s49_slm_empty_memory_shadow.py
+          ruff check adapters/mineflayer/slm_motor_expectation_dev.py adapters/mineflayer/slm_prior_world_dev.py adapters/mineflayer/slm_passive_dev.py adapters/mineflayer/slm_passive_dev_run.py tests/test_s49_slm_motor_expectation_dev.py
+          python tools/check_repository.py
+      - name: Download prior exact real S49 World original source
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 41174086368
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: s49-slm-prior-source-withheld-two-world-dev
+          path: dev-evidence/previous
+      - name: Recompute W3 decoded native motor observation and model, no World startup
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from dataclasses import asdict
+          from pathlib import Path
+          from adapters.mineflayer.slm_motor_expectation_dev import (
+              read_previous_motor_history, score_motor_expectation,
+          )
+          root = (Path.cwd() / "dev-evidence/previous/world-one").resolve()
+          hist = read_previous_motor_history(
+              root, expected_stdout_sha256=os.environ["PRIOR_SHA"],
+          )
+          assert hist.source_session_id == "eb66128b-a3d2-4bc2-889f-429f0a7c93de"
+          assert hist.original_action_ids == (
+              "s49-native-move-20", "s49-native-move-49",
+          )
+          assert len(hist.displacement_m) == 2
+          assert abs(hist.displacement_m[0] - 0.8322911817508141) < 1e-8
+          assert abs(hist.displacement_m[1] - 0.6269065734210613) < 1e-8
+          prediction = score_motor_expectation(
+              hist, current_session_id="preflight-future-unknown",
+              current_actions=[],
+          )
+          assert prediction["status"] == "NO_CURRENT_MOTOR_OUTCOME"
+          assert prediction["training_observations"] == 2
+          assert prediction["holdout_observations"] == 0
+          assert prediction["action_authority"] is False
+          assert prediction["real_goal_training_labels"] == 0
+          Path("dev-evidence/previous-motor-history.json").write_text(
+              json.dumps(asdict(hist), indent=2, sort_keys=True))
+          Path("dev-evidence/prediction-before-world.json").write_text(
+              json.dumps(prediction, indent=2, sort_keys=True))
+          print("REAL_PREVIOUS_S49_W3_MOTOR_FORECAST_SOURCE_PASS")
+          PY
+      - name: Archive verified motor source and prediction
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: s49-motor-w3-preflight
+          path: dev-evidence/
+          if-no-files-found: warn
+          retention-days: 30
