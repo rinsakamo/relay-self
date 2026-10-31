@@ -201,7 +201,7 @@ def audit_l14_native_goal_window(
     before = action_data["before_seq"]
     after = action_data["after_seq"]
     goal_seq = goal_data["goal_observed_seq"]
-    if not (0 < before < after < goal_seq and goal_seq+1 < len(msgs)):
+    if not (0 < before < after < goal_seq < len(msgs) - 1):
         raise L14SourceRejected("Action/Goal readback outside continuous original stream")
     if rlines[before] != item.raw_native_probe or msgs[before] != item.native.observation:
         raise L14SourceRejected("L13 pre-Action original missing or changed in stream")
@@ -260,18 +260,30 @@ def audit_l14_native_goal_window(
         for effect, action in outbound_effects
     ):
         raise L14SourceRejected("another/unidentified outbound Action")
-    first, second = msgs[goal_seq], msgs[goal_seq+1]
+    # A bounded S7 prefix ends immediately at the second correlated Goal
+    # probe. Native entity-registry updates are asynchronous and can appear
+    # between requested probes, but cannot be a new Action, a Goal probe or
+    # evidence of physical nonintervention. All other native events fail.
+    first, second = msgs[goal_seq], msgs[-1]
     if (
         not isinstance(first, MineflayerObservation)
         or not isinstance(second, MineflayerObservation)
         or first.kind != "probe" or second.kind != "probe"
-        or first.seq != goal_seq or second.seq != goal_seq+1
-        or any(not isinstance(m, MineflayerObservation)
-               for m in msgs[after+1:goal_seq+2])
-        or any(m.kind in ("death", "respawn", "forcedMove")
-               for m in msgs[after+1:])
+        or first.seq != goal_seq
+        or not goal_seq < second.seq <= goal_seq + 16
+        or any(
+            not (
+                isinstance(msg, MineflayerObservation)
+                and msg.kind == "entities"
+                and msg.request_id is None
+            )
+            for msg in msgs[after + 1:second.seq]
+            if msg.seq != goal_seq
+        )
     ):
-        raise L14SourceRejected("two original terminal probes not after S16 closure")
+        raise L14SourceRejected(
+            "unmatched Goal probe or foreign event in source window"
+        )
     # The last two outgoing observe requests must identify the same original
     # terminal probes. The sent stream has no timestamp and does not prove
     # exact ordering at the server; this is only a correlation check.
@@ -304,7 +316,7 @@ def audit_l14_native_goal_window(
     return L14GoalWindow(
         schema=SCHEMA, source_session_id=first.session_id, action_id=aid,
         before_native_seq=before, action_end_native_seq=after,
-        goal_probe_seq=goal_seq, second_stable_probe_seq=goal_seq+1,
+        goal_probe_seq=goal_seq, second_stable_probe_seq=second.seq,
         original_received_sha256=_sha(received_original),
         original_sent_sha256=_sha(sent_original),
         original_criterion_sha256=criterion_sha,
