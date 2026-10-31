@@ -488,10 +488,10 @@ async def qualify(
                     session, step, bound, probe,
                     authorize(step, NormalActionStage.PROPOSE),
                     authorize(step, NormalActionStage.ISSUE),
+                    correlate_native_probes_dev=True,
                 )
             report["selfbody_original_lease"] = lease.status()
-            if not lease.status()["typed_original_ready"]:
-                raise S49PhysicalFailure("original typed SelfBody closure rejected")
+
             if (
                 receipt.terminal.state is not ActionState.OUTCOME
                 or receipt.consequence.status is not WorldConsequenceStatus.EXECUTED
@@ -531,6 +531,8 @@ async def qualify(
                     receipt.consequence
                 ),
             })
+            if not lease.status()["typed_original_ready"]:
+                raise S49PhysicalFailure("original typed SelfBody closure rejected")
             nonlocal capture_sealed, l21_closed
             if recorder is not None and not capture_sealed:
                 assert l16_goal_plan is not None and l16_capture_root is not None

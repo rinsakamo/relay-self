@@ -51,3 +51,40 @@ def test_host_never_enters_default_two_action_route(tmp_path, monkeypatch):
     report = json.loads(output.read_bytes())
     assert "requires single-Action L23" in report["error"]
     assert not report["actual_native_actions"]
+
+
+@pytest.mark.parametrize("foreign", [None, "before", "after"])
+def test_original_s15_correlates_existing_probes_without_extra_controls(foreign):
+    import test_mineflayer_execution_qualification as s15
+    from adapters.mineflayer.execution import (
+        WorldConsequenceStatus,
+        build_mineflayer_command,
+        execute_mineflayer_command,
+    )
+    *_, binding, _, supervisor, issued = s15.issued_chain()[-4:]
+    command = build_mineflayer_command(issued, binding)
+    fixture = s15.successful_session(command)
+    messages = list(fixture._messages)
+    before_id = f"s15:s15-session:{command.action_id}:before"
+    after_id = f"s15:s15-session:{command.action_id}:after"
+    messages[0] = replace(messages[0], request_id="foreign" if foreign == "before" else before_id)
+    messages[-1] = replace(messages[-1], request_id="foreign" if foreign == "after" else after_id)
+
+    class CorrelatedSession(s15.FakeSession):
+        async def send_observe(self, request_id=None):
+            self.sent.append(("observe", request_id))
+
+    adapter = CorrelatedSession(messages)
+    result = asyncio.run(execute_mineflayer_command(
+        adapter, command, provenance=s15.provenance("correlated-dev"),
+        correlate_native_probes_dev=True,
+    ))
+    if foreign is None:
+        assert result.status is WorldConsequenceStatus.EXECUTED
+        assert result.before_observation.request_id == before_id
+        assert result.after_observation.request_id == after_id
+    else:
+        assert result.status is not WorldConsequenceStatus.EXECUTED
+    assert sum(x[0] == "set_control" for x in adapter.sent) == (0 if foreign == "before" else 1)
+    assert sum(x[0] == "clear_controls" for x in adapter.sent) == (0 if foreign == "before" else 1)
+    assert sum(x[0] == "observe" for x in adapter.sent) == (1 if foreign == "before" else 2)

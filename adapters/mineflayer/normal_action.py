@@ -409,7 +409,7 @@ class NormalSessionActionExecutor:
         self, session: MineflayerProcessSession, step: L0Step,
         bound: BoundExecutionCandidate, probe: MineflayerObservation,
         propose: NormalActionAuthorization, issue: NormalActionAuthorization,
-        *, timeout_s: float = 9,
+        *, timeout_s: float = 9, correlate_native_probes_dev: bool = False,
     ) -> NormalActionReceipt:
         if (
             not isinstance(session, MineflayerProcessSession)
@@ -417,6 +417,8 @@ class NormalSessionActionExecutor:
             or session.process_returncode is not None
         ):
             raise NormalActionRejected("live Mineflayer session mismatch")
+        if type(correlate_native_probes_dev) is not bool:
+            raise NormalActionRejected("probe correlation requires boolean opt-in")
         self.require_authorizations(step, bound, probe, propose, issue)
         # A monotonically increasing owner-local ordering index, not wall time.
         t = 100 + 10 * self._count
@@ -441,6 +443,7 @@ class NormalSessionActionExecutor:
         try:
             consequence = await execute_mineflayer_command(
                 session, command, timeout_s=timeout_s, provenance=origin,
+                **({"correlate_native_probes_dev": True} if correlate_native_probes_dev else {}),
             )
             interpretation = interpret_world_consequence(
                 issued, result, consequence, provenance=origin,

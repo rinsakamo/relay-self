@@ -45,7 +45,7 @@ class MineflayerExecutionSession(Protocol):
 
     async def receive(self): ...
 
-    async def send_observe(self) -> None: ...
+    async def send_observe(self, request_id: str | None = None) -> None: ...
 
     async def send_set_control(
         self,
@@ -256,6 +256,7 @@ async def execute_mineflayer_command(
     *,
     timeout_s: float = 2.0,
     provenance: Provenance,
+    correlate_native_probes_dev: bool = False,
 ) -> WorldConsequence:
     """Execute one bounded MOVE_BACKWARD command with structured observation.
 
@@ -270,9 +271,13 @@ async def execute_mineflayer_command(
         )
     _require_positive_number("timeout_s", timeout_s)
     _require_provenance("execution provenance", provenance)
+    if type(correlate_native_probes_dev) is not bool:
+        raise InvalidMineflayerExecutionData("probe correlation requires boolean opt-in")
     started = _require_adapter(adapter)
     session_id = started.session_id
 
+    before_request = f"s15:{session_id}:{command.action_id}:before"
+    after_request = f"s15:{session_id}:{command.action_id}:after"
     before: MineflayerObservation | None = None
     dispatch: MineflayerEffectResult | None = None
     cleanup: MineflayerEffectResult | None = None
@@ -282,13 +287,17 @@ async def execute_mineflayer_command(
     movement_distance: float | None = None
 
     try:
-        await adapter.send_observe()
+        if correlate_native_probes_dev:
+            await adapter.send_observe(before_request)
+        else:
+            await adapter.send_observe()
         before = await _receive_until(
             adapter,
             timeout_s=timeout_s,
             predicate=lambda message: (
                 isinstance(message, MineflayerObservation)
                 and message.kind == "probe"
+                and (not correlate_native_probes_dev or message.request_id == before_request)
             ),
         )
 
@@ -332,13 +341,17 @@ async def execute_mineflayer_command(
                 f"{cleanup.error}"
             )
 
-        await adapter.send_observe()
+        if correlate_native_probes_dev:
+            await adapter.send_observe(after_request)
+        else:
+            await adapter.send_observe()
         after = await _receive_until(
             adapter,
             timeout_s=timeout_s,
             predicate=lambda message: (
                 isinstance(message, MineflayerObservation)
                 and message.kind == "probe"
+                and (not correlate_native_probes_dev or message.request_id == after_request)
             ),
         )
         movement_distance = _horizontal_distance(
