@@ -23,19 +23,22 @@ from test_self_body_s50_live_next_epoch import next_source, prior_body
 
 
 def real_type_pair():
+    # S42's retained fixture runs its own asynchronous S19 original, so it
+    # MUST finish before this route B coroutine starts its event loop.
+    retained, _, far_native, _, _ = s42._pair()
+    original_s_choice = select_world_conditioned_choice(
+        far_native, retained,
+        expected_session_id=far_native.observation.session_id,
+        expected_entity_id=far_native.entity_id,
+    )
+
     async def run():
         lease = LiveNextEpochLease(prior_body(), capture())
         await lease.observe_original_l0_probe(next_source())
         readout = lease.take_once()
-        retained, _, far_native, _, _ = s42._pair()
-        choice = select_world_conditioned_choice(
-            far_native, retained,
-            expected_session_id=far_native.observation.session_id,
-            expected_entity_id=far_native.entity_id,
-        )
         native = readout.current_body.observation
         choice = replace(
-            choice, session_id=readout.current_body.session_id,
+            original_s_choice, session_id=readout.current_body.session_id,
             probe_seq=native.native_seq, request_id=native.request_id,
             provenance=native.source_provenance,
             selection=WorldChoiceKind.WAIT,
