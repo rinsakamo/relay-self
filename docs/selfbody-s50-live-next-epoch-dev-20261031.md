@@ -99,6 +99,19 @@ live session actually delivered the post-Action L0 probe and the
 original full final S50 source independently passed. A pure
 post-shutdown retrospective (route A) is not route B.
 
+## Archived real-World byte-prefix replay
+
+The offline CI also replays the **actual** successful route A World
+`docs/evidence/selfbody-postworld-epoch-20261031/run1/server.log`
+and its bound `s49-report.json` from the preserved source HEAD.
+It cuts the original byte prefix only after the actual eighth
+`S50_DEV_INPUT_TICK` line. This prefix has Paper tick **253–260**
+and sampled reported-input-OFF movement **253–255**. It validates
+the original marker/session/World/subject and exact final-log
+byte-prefix identity. This is physical **source replay**, not an
+actual live Python `live_probe` at the time and not a real route B
+World trial. Node complete trace authority is unchanged.
+
 ## Current evidence
 
 Focused offline tests use synthetic original typed S16/native
