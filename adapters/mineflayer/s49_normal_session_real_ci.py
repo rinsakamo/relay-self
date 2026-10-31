@@ -29,6 +29,8 @@ from adapters.mineflayer.l18_s16_terminal_original import (
 )
 from adapters.mineflayer.l21_goal_observer_source import (
     ORIGINAL_NAME as L21_ORIGINAL_NAME,
+)
+from adapters.mineflayer.l21_goal_observer_source import (
     L21ObserverRejected,
     L21ObserverSession,
     review_l21_observer_original,
@@ -398,7 +400,7 @@ async def qualify(
                 or receipt.consequence.movement_distance < 0.05
             ):
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
-            nonlocal capture_sealed
+            nonlocal capture_sealed, l21_closed
             if recorder is not None and not capture_sealed:
                 assert l16_goal_plan is not None and l16_capture_root is not None
                 action_id = receipt.terminal.action_id
