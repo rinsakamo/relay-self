@@ -66,7 +66,7 @@ def _int(row: dict[str, str], key: str, *, allow_minus_one: bool = False) -> int
     ) or not raw.lstrip("-").isdecimal():
         raise S50InputWitnessRejected(f"invalid Paper input {key}")
     value = int(raw)
-    if value < -1 if allow_minus_one else value < 0:
+    if value < (-1 if allow_minus_one else 0):
         raise S50InputWitnessRejected(f"negative Paper input {key}")
     return value
 
