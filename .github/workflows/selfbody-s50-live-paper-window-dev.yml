@@ -1,0 +1,55 @@
+name: SelfBody route B - live Paper source window DEV
+on:
+  push:
+    branches:
+      - dev/selfbody-s50-live-paper-window-20261031
+    paths:
+      - 'adapters/mineflayer/m02_paper_dev/s50_live_paper_window.py'
+      - 'adapters/mineflayer/self_body_s50_live_next_epoch.py'
+      - 'tests/test_s50_live_paper_window.py'
+      - 'tests/test_self_body_s50_live_next_epoch.py'
+      - 'docs/selfbody-s50-live-next-epoch-dev-20261031.md'
+      - '.github/workflows/selfbody-s50-live-paper-window-dev.yml'
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/m02_paper_dev/s50_live_paper_window.py'
+      - 'adapters/mineflayer/self_body_s50_live_next_epoch.py'
+      - 'tests/test_s50_live_paper_window.py'
+      - 'tests/test_self_body_s50_live_next_epoch.py'
+      - 'docs/selfbody-s50-live-next-epoch-dev-20261031.md'
+      - '.github/workflows/selfbody-s50-live-paper-window-dev.yml'
+permissions:
+  contents: read
+jobs:
+  bounded-source-and-native-owner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: B Paper prefix and original native epoch read contract
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/m02_paper_dev/s50_live_paper_window.py adapters/mineflayer/self_body_s50_live_next_epoch.py tests/test_s50_live_paper_window.py tests/test_self_body_s50_live_next_epoch.py
+          python -m compileall -q adapters/mineflayer/m02_paper_dev/s50_live_paper_window.py adapters/mineflayer/self_body_s50_live_next_epoch.py tests/test_s50_live_paper_window.py tests/test_self_body_s50_live_next_epoch.py
+          python -m pytest -o addopts='' -q \
+            tests/test_s50_live_paper_window.py \
+            tests/test_self_body_s50_live_next_epoch.py \
+            tests/test_self_body_s50_postworld_epoch.py \
+            tests/test_self_body_s50_world_dev.py \
+            tests/test_self_body_s50_original_closure.py \
+            tests/test_self_body_s50_motion_companion.py \
+            tests/test_self_body.py
+          python tools/check_repository.py
+      - name: Qualification ceiling
+        if: always()
+        run: echo 'B_OFFLINE_PROVISIONAL_PAPER_ONLY / WORLD_LIVE_NOT_RUN / NO_FULL_NODE_TRACE_BEFORE_SHUTDOWN / NO_ACTION_POLICY_CHANGE / NO_P1_WAIT / QUAL_NO_GO / SCIENCE_NOT_RUN'
