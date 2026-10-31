@@ -66,6 +66,7 @@ def test_postworld_internal_epoch_reads_old_experience_and_not_current_world_sta
     {"node_exit": 1, "java_exit": 0},
     {"node_exit": 0, "java_exit": -1},
     {"node_exit": None, "java_exit": 0},
+    {"node_exit": 0, "java_exit": None},
     {"node_exit": False, "java_exit": 0},
     {"node_exit": 0, "java_exit": 0, "cleanup_errors": True},
     {"node_exit": 0, "java_exit": 0, "cleanup_errors": 1},
@@ -178,3 +179,21 @@ def test_real_host_postworld_callsite_rejects_failed_shutdown_without_new_epoch(
         review_postworld_internal_epoch(
             prior(), node_exit=0, server_exit=0, cleanup_errors=True,
         )
+
+
+@pytest.mark.parametrize("field", ["observation", "session_id"])
+def test_missing_native_or_foreign_session_is_rejected(field):
+    old = prior()
+    value = None if field == "observation" else "foreign-session"
+    old = replace(old, self_body=replace(old.self_body, **{field: value}))
+    with pytest.raises(PostWorldInternalEpochRejected):
+        PostWorldInternalEpochLease(old)
+
+
+@pytest.mark.parametrize("new_request", ["new_native_present", "new_action"])
+def test_internal_epoch_has_no_new_native_or_action_request_path(new_request):
+    lease = PostWorldInternalEpochLease(prior())
+    with pytest.raises(TypeError):
+        lease.enter_after_owner_shutdown(node_exit=0, java_exit=0, **{new_request: True})
+    assert lease.status()["internal_epoch_reads"] == 0
+    lease.close()

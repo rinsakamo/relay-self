@@ -45,6 +45,9 @@ class PostWorldInternalEpochReadout:
         return {
             "classification": self.classification,
             "current_epoch_id": self.internal_body.epoch_id,
+            "previous_epoch_id": prior.self_body.epoch_id,
+            "same_previous_companion_identity": True,
+            "current_body_outcome": None,
             "current_world_observation": "UNKNOWN_NO_NEW_NATIVE_PRESENT",
             "current_body_observation": "UNKNOWN_NO_NEW_NATIVE_PRESENT",
             "current_position_x": None,
@@ -97,6 +100,7 @@ class PostWorldInternalEpochLease:
             or outcome.reason_code != "observed_execution"
             or outcome.source_status != "executed"
             or outcome.action_id != previous.action_id
+            or outcome.session_id != body.session_id
             or previous.world_client_clock_alignment != "NOT_ATTESTED"
             or previous.effective_clear_world_tick != "NOT_ATTESTED"
             or previous.native_present_minted
