@@ -45,6 +45,8 @@ class L22SettlingReview:
     first_probe_seq: int
     second_probe_seq: int
     move_event_seqs: tuple[int, ...]
+    settling_probe_seqs: tuple[int, ...]
+    settling_sample_drift_max_m: float
     post_s16_displacement_m: float
     two_probe_displacement_m: float
     geometric_goal_candidate: str
@@ -142,16 +144,24 @@ def inspect_l22_settling(
         f"l16:{session_id}:{action_id}:goal-1",
         f"l16:{session_id}:{action_id}:goal-2",
     )
-    probes = [
+    all_probes = [
         f for f in frames[after_seq + 1:]
         if isinstance(f, MineflayerObservation) and f.kind == "probe"
     ]
+    if not 2 <= len(all_probes) <= 10:
+        raise L22SourceRejected("bounded post-S16 probes required")
+    settling, probes = all_probes[:-2], all_probes[-2:]
+    settling_ids = [
+        f"l22:{session_id}:{action_id}:settle-{i}"
+        for i in range(1, len(settling) + 1)
+    ]
+    expected_ids = settling_ids + list(ids)
     if (
-        len(probes) != 2 or tuple(f.request_id for f in probes) != ids
-        or probes[0].seq >= probes[1].seq
+        [f.request_id for f in all_probes] != expected_ids
         or frames[-1].seq != probes[-1].seq
+        or any(a.seq >= b.seq for a, b in zip(all_probes, all_probes[1:]))
     ):
-        raise L22SourceRejected("two source-correlated post-S16 probes required")
+        raise L22SourceRejected("foreign or reordered post-S16 correlated probes")
     outbound_effects = [x for x in sent if x.get("type") == "effect"]
     outbound_probes = [
         x.get("request_id") for x in sent if x.get("type") == "observe"
@@ -163,14 +173,13 @@ def inspect_l22_settling(
         or outbound_effects[0].get("effect") != "set_control"
         or outbound_effects[1].get("action_id") != f"{action_id}-s15-clear"
         or outbound_effects[1].get("effect") != "clear_controls"
-        or outbound_probes[-2:] != list(ids)
-        or outbound_probes.count(ids[0]) != 1
-        or outbound_probes.count(ids[1]) != 1
+        or outbound_probes[-len(expected_ids):] != expected_ids
+        or any(outbound_probes.count(rid) != 1 for rid in expected_ids)
     ):
         raise L22SourceRejected("foreign or duplicated outbound source commands")
     moving = []
     for f in frames[after_seq + 1:probes[-1].seq + 1]:
-        if f in probes:
+        if f in all_probes:
             continue
         if (
             not isinstance(f, MineflayerObservation)
@@ -180,12 +189,17 @@ def inspect_l22_settling(
             raise L22SourceRejected("unsafe native item inside settling window")
         if f.kind == "move":
             moving.append(f.seq)
+
     def distance(a: MineflayerObservation, b: MineflayerObservation) -> float:
         return math.hypot(
             a.snapshot.position.x - b.snapshot.position.x,
             a.snapshot.position.z - b.snapshot.position.z,
         )
 
+    drift_max = max(
+        (distance(a, b) for a, b in
+         zip([after, *settling], settling)), default=0.0,
+    )
     d_after = distance(after, probes[-1])
     d_probes = distance(probes[0], probes[1])
     d1 = math.hypot(
@@ -205,7 +219,8 @@ def inspect_l22_settling(
         candidate = "REACHED" if d2 <= plan.tolerance_m else "NOT_REACHED"
     if moving:
         state, reason = "SETTLING_OBSERVED", "POST_S16_MOVE_EVENT"
-    elif d_after > plan.stable_probe_delta_max_m:
+    elif (d_after > plan.stable_probe_delta_max_m
+          or drift_max > plan.stable_probe_delta_max_m):
         state, reason = "SETTLING_OBSERVED", "POST_S16_POSITION_DRIFT"
     else:
         state, reason = "STABILITY_UNPROVEN", "NO_ATTESTED_IDLE_TICK_WINDOW"
@@ -216,6 +231,8 @@ def inspect_l22_settling(
         sent_sha256=hashlib.sha256(sent_original).hexdigest(),
         after_seq=after_seq, first_probe_seq=probes[0].seq,
         second_probe_seq=probes[1].seq, move_event_seqs=tuple(moving),
+        settling_probe_seqs=tuple(f.seq for f in settling),
+        settling_sample_drift_max_m=drift_max,
         post_s16_displacement_m=d_after, two_probe_displacement_m=d_probes,
         geometric_goal_candidate=candidate, settling_state=state,
         reason=reason,
