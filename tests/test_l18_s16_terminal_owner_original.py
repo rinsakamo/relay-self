@@ -10,7 +10,6 @@ import pytest
 import test_l15_s49_original_goal_preflight as l15
 from adapters.mineflayer.execution import WorldConsequence, WorldConsequenceStatus
 from adapters.mineflayer.l18_s16_terminal_original import (
-    L18TerminalOriginalRejected,
     S16_FILE,
     build_s16_owner_original,
     review_saved_s16_owner_original,
@@ -125,15 +124,9 @@ def test_incompatible_terminal_cannot_create_l13_source(fault):
     elif fault == "unknown_disposition":
         outcome = replace(outcome, disposition=ActionOutcomeDisposition.UNKNOWN)
     elif fault == "failed_consequence":
-        consequence = replace(consequence, status=WorldConsequenceStatus.FAILED,
-                              error="no execution")
+        consequence = replace(consequence, status=WorldConsequenceStatus.UNDETERMINED)
     elif fault == "wrong_before":
-        consequence = replace(
-            consequence, before_observation=replace(
-                consequence.before_observation,
-                seq=10,
-            ),
-        )
+        pre = pre.replace(b'"request_id":', b'"request_id":"other","source":')
     elif fault == "wrong_cleanup":
         consequence = replace(
             consequence, cleanup_receipt=replace(
