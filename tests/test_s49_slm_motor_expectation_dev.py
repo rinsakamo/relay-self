@@ -47,6 +47,8 @@ def test_forecast_changes_with_past_real_motion_but_not_policy():
     assert out["model_mae_m"] == pytest.approx(0.1)
     assert out["cheap_mae_m"] == pytest.approx(0.0)
     assert out["beats_cheap_control"] is False
+    assert out["comparison_status"] == "CHEAP_LAST_BETTER_THAN_MODEL_MEAN"
+    assert out["comparison_margin_m"] == 0.0001
     assert out["l8_learning_updates"] == out["s10_updates"] == 0
     assert out["action_authority"] is out["policy_changed"] is False
     assert out["real_goal_training_labels"] == 0
@@ -121,3 +123,28 @@ def test_previous_motor_requires_matching_verified_previous_world():
         S49SLMDevOwner(prior_world=prev, motor_history=MotorHistory(
             "different-session", "a" * 64, ("older-a", "older-b"), (0.83, 0.63),
         ))
+
+
+def test_numerical_roundoff_is_not_a_real_forecast_advantage():
+    """Actual real World #41178788300: raw float MAEs differ by ~1e-15m."""
+    past = MotorHistory(
+        "eb66128b-a3d2-4bc2-889f-429f0a7c93de",
+        "7f5d69f72a2cbfde7751960eaef4a06c9434b2ec94fa57e50b6ce63604bd5e8c",
+        ("s49-native-move-20", "s49-native-move-49"),
+        (0.8322911817508141, 0.6269065734210613),
+    )
+    actions = [
+        current_action("41a1637b-7bc6-4332-a4d7-da034374f549",
+                       "s49-native-move-20", 0.7342911432182317),
+        current_action("41a1637b-7bc6-4332-a4d7-da034374f549",
+                       "s49-native-move-48", 0.6269065734210626),
+    ]
+    result = score_motor_expectation(
+        past, current_session_id="41a1637b-7bc6-4332-a4d7-da034374f549",
+        current_actions=actions,
+    )
+    assert result["model_mae_m"] == pytest.approx(0.053692284898584575)
+    assert result["cheap_mae_m"] == pytest.approx(0.05369228489858591)
+    assert result["comparison_status"] == "CHEAP_EQUIVALENT_WITHIN_MARGIN"
+    assert result["beats_cheap_control"] is False
+    assert result["policy_changed"] is result["action_authority"] is False
