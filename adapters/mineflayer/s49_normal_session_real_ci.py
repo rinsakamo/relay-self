@@ -38,6 +38,18 @@ from adapters.mineflayer.l21_goal_observer_source import (
 )
 from adapters.mineflayer.l22_post_s16_settling import inspect_l22_settling
 from adapters.mineflayer.l22_runtime_settling import observe_bounded_settling
+from adapters.mineflayer.l23_paper_live_assets import (
+    L23PaperAssets,
+    L23PaperBlocked,
+    paper_marker,
+    stage_paper_assets,
+    verify_paper_assets,
+    wait_paper_line,
+)
+from adapters.mineflayer.l23_paper_s7_settling import (
+    _paper_rows,
+    inspect_l23_paper_s7,
+)
 from adapters.mineflayer.normal_action import (
     NormalActionAuthorization,
     NormalActionStage,
@@ -156,6 +168,7 @@ async def qualify(
     l20_admitted_sha256: str | None = None,
     l21_observer_root: Path | None = None,
     l22_settling_probes: int | None = None,
+    l23_paper_assets: L23PaperAssets | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -175,6 +188,9 @@ async def qualify(
     l21_closed = False
     recorder: NativeStreamReceipt | None = None
     capture_sealed = False
+    l23_session_id: str | None = None
+    l23_action_id: str | None = None
+    l23_marker_id: str | None = None
     rc = 2
     try:
         if os.environ.get("S49_REAL_SERVER_CI") != "1" or os.environ.get("NODE_OPTIONS"):
@@ -192,6 +208,18 @@ async def qualify(
             raise S31ABlocked(
                 "L22 opt-in requires bounded 3..8 probes and paired L16 originals"
             )
+        if l23_paper_assets is not None:
+            if (l22_settling_probes is None
+                    or l16_goal_plan is None or l16_capture_root is None):
+                raise S31ABlocked(
+                    "L23 Paper requires explicit L22 settling and sealed L16 originals"
+                )
+            report["l23_paper"] = {
+                "status": "PREFLIGHT_ONLY",
+                **verify_paper_assets(l23_paper_assets),
+                "effective_s15_clear_world_tick": "NOT_ATTESTED",
+                "l10_pairs": 0,
+            }
         if l21_observer_root is not None:
             if (
                 l20_external_goal_original is None
@@ -263,7 +291,15 @@ async def qualify(
         report["stage"] = "PROVISION_DISPOSABLE_MOJANG_GAME"
         temp = tempfile.TemporaryDirectory(prefix="relay-self-s49-")
         root = Path(temp.name)
-        if rsee_world is not None:
+        if l23_paper_assets is not None:
+            if rsee_world is not None:
+                raise S31ABlocked("L23 Paper cannot consume shared/stopped RSEE World")
+            report["stage"] = "PROVISION_L23_DISPOSABLE_PAPER"
+            report["l23_paper"]["assets_staged"] = stage_paper_assets(
+                l23_paper_assets, root,
+            )
+            _write_config(root)
+        elif rsee_world is not None:
             report["stage"] = "RSEE_BIND_STOPPED_WORLD_BEFORE_JAVA"
             report["rsee_world_binding"] = await asyncio.to_thread(
                 prepare_stopped_world, root, rsee_world,
@@ -403,6 +439,21 @@ async def qualify(
                     ))
                     report["l18_first_terminal_source"] = dict(first_terminal_source)
 
+            if l23_paper_assets is not None:
+                assert server is not None and server.stdin is not None
+                nonlocal l23_marker_id, l23_session_id, l23_action_id
+                l23_session_id, l23_action_id = sid, step.action_request_id
+                l23_marker_id = paper_marker(l23_action_id, sid)
+                _command(
+                    server, f"relaydevphase {l23_marker_id} PRE_FORWARD",
+                )
+                await server.stdin.drain()
+                await wait_paper_line(
+                    server_log, marker=l23_marker_id,
+                    kind="M02_DEV_S50_PHASE", phase="PRE_FORWARD",
+                )
+                report["l23_paper"]["marker_id"] = l23_marker_id
+                report["l23_paper"]["status"] = "PRE_ACTION_PAPER_MARKER_OBSERVED"
             receipt = await executor.execute(
                 session, step, bound, probe,
                 authorize(step, NormalActionStage.PROPOSE),
@@ -416,6 +467,24 @@ async def qualify(
                 or receipt.consequence.movement_distance < 0.05
             ):
                 raise S49PhysicalFailure("World movement or existing S16 OUTCOME absent")
+            if l23_paper_assets is not None:
+                assert server is not None and server.stdin is not None
+                assert l23_marker_id is not None
+                # Observed after S16 terminal and actual S15 clear ACK,
+                # but command acceptance is NOT effective clear tick.
+                _command(server, f"relaydevphase {l23_marker_id} POST_CLEAR")
+                await server.stdin.drain()
+                await wait_paper_line(
+                    server_log, marker=l23_marker_id,
+                    kind="M02_DEV_S50_PHASE", phase="POST_CLEAR",
+                )
+                _command(server, f"relaydevwait {l23_marker_id}")
+                await server.stdin.drain()
+                await wait_paper_line(
+                    server_log, marker=l23_marker_id,
+                    kind="S50_DEV_WAIT_BEGIN",
+                )
+                report["l23_paper"]["status"] = "PAPER_WAIT_STARTED_SOURCE_ONLY"
             report["actual_native_actions"].append({
                 "action": receipt.terminal.action_id,
                 "terminal": receipt.terminal.state.value,
@@ -630,7 +699,7 @@ async def qualify(
         rc = 0
     except (
         S31ABlocked, WorldBindingRejected, L20GoalCommitmentRejected,
-        L21ObserverRejected, OSError,
+        L21ObserverRejected, L23PaperBlocked, OSError,
     ) as exc:
         report["status"] = "BLOCKED"
         report["error"] = f"{type(exc).__name__}: {exc}"
@@ -689,6 +758,49 @@ async def qualify(
             rc = 1
         if server is not None:
             report["server_exit"] = server.returncode
+        if (
+            l23_paper_assets is not None
+            and l23_session_id is not None
+            and l23_action_id is not None
+            and l23_marker_id is not None
+            and capture_sealed
+            and l16_capture_root is not None
+        ):
+            try:
+                raw = server_log.read_bytes()  # complete stdout after Java exit
+                starts = _paper_rows(raw, "S50_DEV_WAIT_BEGIN ")
+                if (
+                    len(starts) != 1
+                    or starts[0].get("marker_id") != l23_marker_id
+                    or not starts[0].get("world")
+                ):
+                    raise S49PhysicalFailure("L23 source has no bound Paper World")
+                index = json.loads((
+                    l16_capture_root / "native_bridge_source_receipt.json"
+                ).read_bytes())
+                audit = inspect_l23_paper_s7(
+                    received_original=(
+                        l16_capture_root / "native_bridge_received_original.jsonl"
+                    ).read_bytes(),
+                    sent_original=(
+                        l16_capture_root / "native_bridge_sent_original.jsonl"
+                    ).read_bytes(),
+                    s7_receipt=index,
+                    s16_original=(l16_capture_root / S16_FILE).read_bytes(),
+                    plan=l16_goal_plan, action_id=l23_action_id,
+                    session_id=l23_session_id, paper_original=raw,
+                    expected_world=starts[0]["world"],
+                )
+                report["l23_paper"]["status"] = "PAPER_SOURCE_SHAPE_REVIEWED_ONLY"
+                report["l23_paper"]["readback"] = asdict(audit)
+                report["l23_paper"]["server_console_source"] = str(server_log)
+            except Exception as exc:
+                report["l23_paper"]["status"] = "PAPER_SOURCE_REJECTED"
+                report["l23_paper"]["readback_error"] = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+                report["status"] = "FAIL"
+                rc = 1
         if temp is not None:
             temp.cleanup()
         if report["status"] == "PASS" and report.get("server_exit") != 0:
@@ -718,6 +830,12 @@ def main() -> int:
     parser.add_argument("--l20-admitted-sha256")
     parser.add_argument("--l21-observer-root", type=Path)
     parser.add_argument("--l22-settling-probes", type=int)
+    parser.add_argument("--l23-paper-server-jar", type=Path)
+    parser.add_argument("--l23-paper-server-sha256")
+    parser.add_argument("--l23-paper-plugin-jar", type=Path)
+    parser.add_argument("--l23-paper-plugin-sha256")
+    parser.add_argument("--l23-paper-config", type=Path)
+    parser.add_argument("--l23-paper-config-sha256")
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -740,6 +858,20 @@ def main() -> int:
         parser.error("L20 requires both original external file and SHA")
     if args.l20_external_goal_original is not None and goal is None:
         parser.error("L20 requires explicit L16 Goal plan and capture root")
+    l23_fields = (
+        args.l23_paper_server_jar, args.l23_paper_server_sha256,
+        args.l23_paper_plugin_jar, args.l23_paper_plugin_sha256,
+        args.l23_paper_config, args.l23_paper_config_sha256,
+    )
+    if any(x is not None for x in l23_fields) and not all(
+        x is not None for x in l23_fields
+    ):
+        parser.error("L23 Paper requires all six pinned DEV asset arguments")
+    paper_assets = (
+        L23PaperAssets(*l23_fields) if all(
+            x is not None for x in l23_fields
+        ) else None
+    )
     return asyncio.run(qualify(
         args.report, args.server_log,
         l16_capture_root=args.l16_capture_root, l16_goal_plan=goal,
@@ -747,6 +879,7 @@ def main() -> int:
         l20_admitted_sha256=args.l20_admitted_sha256,
         l21_observer_root=args.l21_observer_root,
         l22_settling_probes=args.l22_settling_probes,
+        l23_paper_assets=paper_assets,
     ))
 
 
