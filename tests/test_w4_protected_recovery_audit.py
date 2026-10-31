@@ -19,6 +19,16 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / 'docs/w4-protected-adoption-v2.json'
 HISTORICAL_SOURCE = '1473c74e4448bb9a527747de0619c8e55ffbd827'
 ACCEPTED_SOURCE = 'f34ccc0bf86f271849034c21abd254e5e3de780f'
+# Issue #653 explicitly starts from this exact route B owner source. Its
+# S7 receipt and S15 probe-correlation changes postdate W4 v2; this
+# does not turn the historical W4 approval into a new approval.
+ROUTE_B_SOURCE = 'e6be517f0b25dcfddbeb035ccef7830705989efe'
+ROUTE_B_OWNER_PATHS = frozenset((
+    'adapters/mineflayer/process_session.py',
+    'adapters/mineflayer/s34_native_world_cognition_ci.py',
+    'adapters/mineflayer/normal_action.py',
+    'adapters/mineflayer/execution.py',
+))
 ADOPTED = frozenset('adapters/mineflayer/' + name for name in (
     'process_session.py', 's31a_real_server_ci.py',
     's34_native_world_cognition_ci.py', 's49_normal_session_real_ci.py',
@@ -93,8 +103,19 @@ def validate_current(manifest, *, root=ROOT, contents=None):
             # the manifest: editing both current bytes and manifest cannot pass.
             accepted = git('rev-parse', ACCEPTED_SOURCE + ':' + path, root=root).decode().strip()
             assert row['prospective_git_blob'] == accepted, path
-            assert blob == accepted, path
-            assert hashlib.sha256(raw).hexdigest() == row['prospective_content_sha256'], path
+            accepted_raw = git('cat-file', 'blob', ACCEPTED_SOURCE + ':' + path, root=root)
+            assert hashlib.sha256(accepted_raw).hexdigest() == row['prospective_content_sha256'], path
+            if path in ROUTE_B_OWNER_PATHS:
+                # Exact immutable parent bytes, never current HEAD or a new
+                # manifest hash; coordinated manifest/current edits still fail.
+                inherited = git('rev-parse', ROUTE_B_SOURCE + ':' + path, root=root).decode().strip()
+                assert blob == inherited, path
+            else:
+                assert blob == accepted, path
+        elif path in ROUTE_B_OWNER_PATHS:
+            # Original S15 correlation opt-in was already delivered in #652.
+            inherited = git('rev-parse', ROUTE_B_SOURCE + ':' + path, root=root).decode().strip()
+            assert blob == inherited, path
         else:
             assert blob == PROTECTED_BLOBS[path], path
 
