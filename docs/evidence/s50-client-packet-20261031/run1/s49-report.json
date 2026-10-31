@@ -1,0 +1,54 @@
+{
+  "actual_native_actions": [],
+  "auto_crash_recovery": false,
+  "automatic_goal_selection": false,
+  "classification": "PENDING_REAL_NATIVE_EVIDENCE",
+  "decisions": [],
+  "error": "MineflayerProcessEnded: Mineflayer bridge stdout ended; returncode=1",
+  "l16_capture": {
+    "real_l10_pairs": 0,
+    "s7_index": {
+      "minecraft_tcp_packet_bytes": false,
+      "native_execution_ack_attested": false,
+      "received_bytes": 202,
+      "received_lines": 1,
+      "received_measured_before_decode": true,
+      "received_path": "/home/rinsa/work/s50-client-packet-evidence-20261031/capture/native_bridge_received_original.jsonl",
+      "received_sha256": "0b4f0855e1bd0f36b4d5f00ad1127dec435e22664e67beea9ec4136475e44fd7",
+      "schema": "SELF_S7_RAW_MINEFLAYER_JSONL_RECEIPT_V1",
+      "sent_bytes": 0,
+      "sent_lines": 0,
+      "sent_measured_before_write": true,
+      "sent_path": "/home/rinsa/work/s50-client-packet-evidence-20261031/capture/native_bridge_sent_original.jsonl",
+      "sent_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "v_science_qualified": false
+    },
+    "status": "INCOMPLETE_NO_GOAL_LABEL"
+  },
+  "l23_paper": {
+    "assets_staged": {
+      "paper_config_sha256": "2fd8f5bac2fea7fe857b1e7712a6979a2b76b78f626c374af7fbc7fee44e72d0",
+      "paper_plugin_sha256": "5044295969381d515ed03414d3fe0be7f3e4370a593efb28fffd82380584726f",
+      "paper_profile": "ACTIVE_METABOLISM_INTERVENTION_NOT_PASSIVE",
+      "paper_server_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+      "qualification": "DEV_ONLY"
+    },
+    "effective_s15_clear_world_tick": "NOT_ATTESTED",
+    "l10_pairs": 0,
+    "paper_config_sha256": "2fd8f5bac2fea7fe857b1e7712a6979a2b76b78f626c374af7fbc7fee44e72d0",
+    "paper_plugin_sha256": "5044295969381d515ed03414d3fe0be7f3e4370a593efb28fffd82380584726f",
+    "paper_profile": "ACTIVE_METABOLISM_INTERVENTION_NOT_PASSIVE",
+    "paper_server_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "qualification": "DEV_ONLY",
+    "status": "PREFLIGHT_ONLY"
+  },
+  "learning_in_world": false,
+  "milestone": "S49",
+  "minecraft_version": "1.21.8",
+  "mineflayer_version": "4.39.0",
+  "real_model_calls": 0,
+  "retained_origin": "S19_FROZEN_SYNTHETIC_GOVERNED_REV1",
+  "server_exit": 0,
+  "stage": "AUTHENTIC_NATIVE_SELF_SESSION",
+  "status": "FAIL"
+}

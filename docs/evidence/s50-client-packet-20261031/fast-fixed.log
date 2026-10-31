@@ -1,0 +1,48 @@
+TAP version 13
+# Subtest: single writer wrapper observes input and movement WITHOUT sending packets
+ok 1 - single writer wrapper observes input and movement WITHOUT sending packets
+  ---
+  duration_ms: 1.885421
+  type: 'test'
+  ...
+# Subtest: zero player_input is distinguishable from position writes and no trace
+ok 2 - zero player_input is distinguishable from position writes and no trace
+  ---
+  duration_ms: 1.015226
+  type: 'test'
+  ...
+# Subtest: original writer exceptions and this/arguments preserved unchanged
+ok 3 - original writer exceptions and this/arguments preserved unchanged
+  ---
+  duration_ms: 0.516243
+  type: 'test'
+  ...
+# Subtest: client witness rejects alternate/nonexistent writer
+ok 4 - client witness rejects alternate/nonexistent writer
+  ---
+  duration_ms: 0.142238
+  type: 'test'
+  ...
+# Subtest: writer attaches before asynchronous physics plugin control injection
+ok 5 - writer attaches before asynchronous physics plugin control injection
+  ---
+  duration_ms: 0.308771
+  type: 'test'
+  ...
+# Subtest: sidecar enforces new absolute file, footer, backpressure failure
+ok 6 - sidecar enforces new absolute file, footer, backpressure failure
+  ---
+  duration_ms: 0.418998
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 50.809878
+........................................................................ [100%]
+72 passed in 1.11s

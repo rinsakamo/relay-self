@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/home/rinsa/work/relay-self-s50-packet-real-20261031/tools/s50_l23_packet_world_readback.py", line 118, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/home/rinsa/work/relay-self-s50-packet-real-20261031/tools/s50_l23_packet_world_readback.py", line 106, in main
+    data = audit(
+           ^^^^^^
+  File "/home/rinsa/work/relay-self-s50-packet-real-20261031/tools/s50_l23_packet_world_readback.py", line 46, in audit
+    raise ValueError("not a sealed passing S49/L23 one-Action DEV original")
+ValueError: not a sealed passing S49/L23 one-Action DEV original

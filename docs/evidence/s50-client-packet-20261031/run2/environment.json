@@ -1,0 +1,68 @@
+{
+  "utc": "2026-10-31T09:08:14.239210+00:00",
+  "head": "69cf00a25501b1181e4269e8340436601b7dc33b",
+  "executor_head": "69cf00a25501b1181e4269e8340436601b7dc33b",
+  "branch": "dev/s50-l23-client-packet-integrated-20261031",
+  "argv": [
+    "/home/rinsa/relay-self-s60b1-venv/bin/python",
+    "-m",
+    "adapters.mineflayer.s49_normal_session_real_ci",
+    "--report",
+    "/home/rinsa/work/s50-client-packet-evidence-20261031/run2/s49-report.json",
+    "--server-log",
+    "/home/rinsa/work/s50-client-packet-evidence-20261031/run2/server.log",
+    "--l16-capture-root",
+    "/home/rinsa/work/s50-client-packet-evidence-20261031/run2/capture",
+    "--l16-goal-target-x",
+    "0",
+    "--l16-goal-target-z",
+    "0",
+    "--l16-goal-tolerance-m",
+    "0.49",
+    "--l16-goal-stability-m",
+    "0.05",
+    "--l16-confirm",
+    "L16-S49-FIRST-ACTION-ORIGINAL-DEV",
+    "--l22-settling-probes",
+    "6",
+    "--l23-paper-server-jar",
+    "/home/rinsa/work/v8-five-world-20261017/assets/paper-1.21.8.jar",
+    "--l23-paper-server-sha256",
+    "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "--l23-paper-plugin-jar",
+    "/home/rinsa/work/s50-client-packet-evidence-20261031/assets/relay-metabolism-paper-dev.jar",
+    "--l23-paper-plugin-sha256",
+    "5044295969381d515ed03414d3fe0be7f3e4370a593efb28fffd82380584726f",
+    "--l23-paper-config",
+    "/home/rinsa/work/s50-client-packet-evidence-20261031/assets/config.yml",
+    "--l23-paper-config-sha256",
+    "2fd8f5bac2fea7fe857b1e7712a6979a2b76b78f626c374af7fbc7fee44e72d0"
+  ],
+  "assets": {
+    "server": {
+      "path": "/home/rinsa/work/v8-five-world-20261017/assets/paper-1.21.8.jar",
+      "sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+    },
+    "plugin": {
+      "path": "/home/rinsa/work/s50-client-packet-evidence-20261031/assets/relay-metabolism-paper-dev.jar",
+      "sha256": "5044295969381d515ed03414d3fe0be7f3e4370a593efb28fffd82380584726f"
+    },
+    "config": {
+      "path": "/home/rinsa/work/s50-client-packet-evidence-20261031/assets/config.yml",
+      "sha256": "2fd8f5bac2fea7fe857b1e7712a6979a2b76b78f626c374af7fbc7fee44e72d0"
+    },
+    "intervention": "ACTIVE_METABOLISM_NOT_PASSIVE",
+    "plugin_source_head": "3bb79ed57c4a0940bdc586c72976c7ece079319f"
+  },
+  "python": "Python 3.12.3",
+  "java": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)",
+  "node": "v22.22.2",
+  "mineflayer": "4.39.0",
+  "port_preflight_free": true,
+  "fresh_world": "S49 creates fresh TemporaryDirectory; no existing World",
+  "goal_independent_owner": false,
+  "max_world_runs": 1,
+  "action_owner": "S49 existing sole executor",
+  "qualification": "DEV_ONLY",
+  "learning_pairs": 0
+}

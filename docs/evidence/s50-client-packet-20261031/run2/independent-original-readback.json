@@ -1,0 +1,746 @@
+{
+  "status": "DEV_PASS",
+  "l22": {
+    "schema": "L22_POST_S16_SETTLING_DIAGNOSTIC_V1",
+    "session_id": "3148d4a1-1a2a-4475-9f70-f3363a356be4",
+    "action_id": "s49-native-move-23",
+    "s16_original_sha256": "853f6f52a57505bacc37dbba1cedd514285979619bb68f189099571aa2f28916",
+    "received_sha256": "ad8bfb77fa4a518831bfbe350c8f727750fcb214149f2ed40f959733b5f55b71",
+    "sent_sha256": "ce8bc98a0423ebad539cd2e9ebe6a59c7beaa2fb6625aaa94f9d14631ff23ecd",
+    "after_seq": 34,
+    "first_probe_seq": 44,
+    "second_probe_seq": 45,
+    "move_event_seqs": [
+      35,
+      36,
+      37,
+      38,
+      39
+    ],
+    "settling_probe_seqs": [
+      40,
+      41,
+      42,
+      43
+    ],
+    "settling_sample_drift_max_m": 0.12287857661821566,
+    "post_s16_displacement_m": 0.12287857661821566,
+    "two_probe_displacement_m": 0.0,
+    "geometric_goal_candidate": "NOT_REACHED",
+    "settling_state": "SETTLING_OBSERVED",
+    "reason": "POST_S16_MOVE_EVENT",
+    "accepted_goal_status": "UNDETERMINED",
+    "stable_world_ticks_attested": false,
+    "physically_stopped_proven": false,
+    "independent_goal_owner_authenticated": false,
+    "qualified_real_learning_pairs": 0,
+    "s10_updates": 0,
+    "s11_grants": 0
+  },
+  "l23": {
+    "schema": "L23_PAPER_S7_SAMPLED_SETTLING_READBACK_V1",
+    "session_id": "3148d4a1-1a2a-4475-9f70-f3363a356be4",
+    "action_id": "s49-native-move-23",
+    "paper_world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+    "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+    "paper_original_sha256": "17a17b06d3e8be10a68d77e4b91bb2d36f64bd9995abd3e719643517e8b7391a",
+    "s7_received_sha256": "ad8bfb77fa4a518831bfbe350c8f727750fcb214149f2ed40f959733b5f55b71",
+    "s16_original_sha256": "853f6f52a57505bacc37dbba1cedd514285979619bb68f189099571aa2f28916",
+    "paper_first_tick": 251,
+    "paper_last_tick": 258,
+    "paper_sample_count": 8,
+    "paper_activity_ticks": [
+      251,
+      252
+    ],
+    "paper_last_to_s7_goal_distance_m": 0.0,
+    "paper_s7_geometry_compatible": true,
+    "paper_sample_state": "PAPER_SAMPLED_ACTIVITY",
+    "clock_alignment": "NOT_ATTESTED",
+    "paper_effective_input_clear_tick": "NOT_ATTESTED",
+    "paper_full_tick_input_idle": false,
+    "world_session_independently_bound": false,
+    "physical_stability_verified": false,
+    "accepted_goal_status": "UNDETERMINED",
+    "qualified_real_learning_pairs": 0,
+    "s10_updates": 0,
+    "s11_grants": 0,
+    "p1_wait_ticks_admitted": 0
+  },
+  "packet": {
+    "classification": "DEV_PACKET_SOURCE_ONLY_NO_CLOCK_OR_WIRE_ACCEPTANCE_ATTESTATION",
+    "world_session_id": "3148d4a1-1a2a-4475-9f70-f3363a356be4",
+    "paper_world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+    "action_count": 1,
+    "l23_paper_activity_ticks": [
+      251,
+      252
+    ],
+    "packet_diagnostic": {
+      "readback": {
+        "native_session_id": "3148d4a1-1a2a-4475-9f70-f3363a356be4",
+        "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+        "paper_world_uuid": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+        "client_packet_write_returns": 23,
+        "client_player_input_write_returns": 0,
+        "client_motion_write_returns": 23,
+        "native_control_effect_samples": 3,
+        "paper_player_input_callbacks": 0,
+        "client_trace_complete": true,
+        "diagnostic": "NO_PLAYER_INPUT_WRITE_ON_OBSERVED_CLIENT_PATH",
+        "native_write_is_network_delivery": false,
+        "paper_packet_identity_proven": false,
+        "effective_s15_clear_tick": "NOT_ATTESTED",
+        "full_tick_input_coverage": false,
+        "p1_wait_ticks_admitted": 0,
+        "l10_pairs_admitted": 0
+      },
+      "client_original_sha256": "a0f10d00f604d7ca10c0d1b9521844e4c3d97f0ed7b96a2297bc659b73963d59",
+      "paper_original_sha256": "17a17b06d3e8be10a68d77e4b91bb2d36f64bd9995abd3e719643517e8b7391a",
+      "source_ceiling": "WRITE_RETURNED_NOT_WIRE_OR_ACCEPTANCE",
+      "qualification": "DEV_ONLY",
+      "science": "NOT_RUN"
+    },
+    "original_sha256": {
+      "/home/rinsa/work/s50-client-packet-evidence-20261031/run2/s49-report.json": "ba45cb8c6ef16338c9d561d92499fee8267cf01f671de0d70bd68f75460a2877",
+      "/home/rinsa/work/s50-client-packet-evidence-20261031/run2/server.log": "17a17b06d3e8be10a68d77e4b91bb2d36f64bd9995abd3e719643517e8b7391a",
+      "/home/rinsa/work/s50-client-packet-evidence-20261031/run2/client-packet-original.jsonl": "a0f10d00f604d7ca10c0d1b9521844e4c3d97f0ed7b96a2297bc659b73963d59",
+      "/home/rinsa/work/s50-client-packet-evidence-20261031/run2/capture/native_bridge_received_original.jsonl": "ad8bfb77fa4a518831bfbe350c8f727750fcb214149f2ed40f959733b5f55b71",
+      "/home/rinsa/work/s50-client-packet-evidence-20261031/run2/capture/native_bridge_sent_original.jsonl": "ce8bc98a0423ebad539cd2e9ebe6a59c7beaa2fb6625aaa94f9d14631ff23ecd",
+      "/home/rinsa/work/s50-client-packet-evidence-20261031/run2/capture/native_bridge_source_receipt.json": "3b41c117a4b15087b81feaed098e6c001ba3da641fb94da4728729ec15d676d8",
+      "/home/rinsa/work/s50-client-packet-evidence-20261031/run2/capture/l18_s16_terminal_original.jsonl": "853f6f52a57505bacc37dbba1cedd514285979619bb68f189099571aa2f28916",
+      "/home/rinsa/work/s50-client-packet-evidence-20261031/run2/capture/l16_pre_world_goal_plan.json": "d1d73386f8b85197a24b00c346c03bf7325eac24e8d2217cc66a8aae3559bd69"
+    },
+    "effective_client_clear_tick": "NOT_ATTESTED",
+    "full_tick_input_coverage": false,
+    "goal_accepted": false,
+    "p1_wait_ticks_admitted": 0,
+    "l10_pairs_admitted": 0,
+    "qualification": "NO_GO",
+    "science": "NOT_RUN"
+  },
+  "s16_original": {
+    "action_id": "s49-native-move-23",
+    "action_ref": "MOVE_BACKWARD",
+    "after_seq": 34,
+    "before_seq": 26,
+    "binding_id": "s49-binding-23",
+    "disposition": "outcome",
+    "pre_probe_sha256": "ef15f7b4cf13b75ba00e3a978e7567b8397f216517b33aa09f2c7e8d7d629ff7",
+    "reason_code": "observed_execution",
+    "schema": "L13_S16_TERMINAL_SOURCE_V1",
+    "session_id": "3148d4a1-1a2a-4475-9f70-f3363a356be4",
+    "source_revision": 0,
+    "source_status": "executed",
+    "world_reference": "3148d4a1-1a2a-4475-9f70-f3363a356be4:100",
+    "world_source": "normal-action-runtime"
+  },
+  "raw_effects": [
+    {
+      "type": "effect_result",
+      "session_id": "3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "seq": 27,
+      "action_id": "s49-native-move-23",
+      "effect": "set_control",
+      "result": "applied",
+      "error": null
+    },
+    {
+      "type": "effect_result",
+      "session_id": "3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "seq": 32,
+      "action_id": "s49-native-move-23-s15-clear",
+      "effect": "clear_controls",
+      "result": "applied",
+      "error": null
+    }
+  ],
+  "raw_commands": [
+    {
+      "request_id": "s49-actual:3148d4a1-1a2a-4475-9f70-f3363a356be4:event-11",
+      "type": "observe"
+    },
+    {
+      "request_id": "s49-actual:3148d4a1-1a2a-4475-9f70-f3363a356be4:event-23",
+      "type": "observe"
+    },
+    {
+      "type": "observe"
+    },
+    {
+      "action_id": "s49-native-move-23",
+      "control": "back",
+      "effect": "set_control",
+      "state": true,
+      "type": "effect"
+    },
+    {
+      "action_id": "s49-native-move-23-s15-clear",
+      "effect": "clear_controls",
+      "type": "effect"
+    },
+    {
+      "type": "observe"
+    },
+    {
+      "request_id": "l22:3148d4a1-1a2a-4475-9f70-f3363a356be4:s49-native-move-23:settle-1",
+      "type": "observe"
+    },
+    {
+      "request_id": "l22:3148d4a1-1a2a-4475-9f70-f3363a356be4:s49-native-move-23:settle-2",
+      "type": "observe"
+    },
+    {
+      "request_id": "l22:3148d4a1-1a2a-4475-9f70-f3363a356be4:s49-native-move-23:settle-3",
+      "type": "observe"
+    },
+    {
+      "request_id": "l22:3148d4a1-1a2a-4475-9f70-f3363a356be4:s49-native-move-23:settle-4",
+      "type": "observe"
+    },
+    {
+      "request_id": "l16:3148d4a1-1a2a-4475-9f70-f3363a356be4:s49-native-move-23:goal-1",
+      "type": "observe"
+    },
+    {
+      "request_id": "l16:3148d4a1-1a2a-4475-9f70-f3363a356be4:s49-native-move-23:goal-2",
+      "type": "observe"
+    }
+  ],
+  "packet_counts": {
+    "player_input": 0,
+    "position": 22,
+    "position_look": 1,
+    "flying": 0,
+    "look": 0,
+    "entity_action": 0
+  },
+  "physics_samples": 243,
+  "control_effects": [
+    {
+      "session_id": "3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "revision": 1,
+      "index": 236,
+      "node_ns": "14782426206368",
+      "clock_scope": "NODE_ONLY",
+      "server_world_tick": "NOT_OBSERVED",
+      "source": "CLIENT_WRITE_RETURNED_NOT_NETWORK_DELIVERY",
+      "kind": "NATIVE_CONTROL_EFFECT_RETURNED",
+      "effect": "set_control",
+      "requested_state": true,
+      "controls_after_sample": {
+        "forward": false,
+        "back": true,
+        "left": false,
+        "right": false,
+        "jump": false,
+        "sneak": false,
+        "sprint": false
+      },
+      "last_physics_index": 222
+    },
+    {
+      "session_id": "3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "revision": 1,
+      "index": 245,
+      "node_ns": "14782639537682",
+      "clock_scope": "NODE_ONLY",
+      "server_world_tick": "NOT_OBSERVED",
+      "source": "CLIENT_WRITE_RETURNED_NOT_NETWORK_DELIVERY",
+      "kind": "NATIVE_CONTROL_EFFECT_RETURNED",
+      "effect": "clear_controls",
+      "requested_state": null,
+      "controls_after_sample": {
+        "forward": false,
+        "back": false,
+        "left": false,
+        "right": false,
+        "jump": false,
+        "sneak": false,
+        "sprint": false
+      },
+      "last_physics_index": 226
+    },
+    {
+      "session_id": "3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "revision": 1,
+      "index": 269,
+      "node_ns": "14783494806240",
+      "clock_scope": "NODE_ONLY",
+      "server_world_tick": "NOT_OBSERVED",
+      "source": "CLIENT_WRITE_RETURNED_NOT_NETWORK_DELIVERY",
+      "kind": "NATIVE_CONTROL_EFFECT_RETURNED",
+      "effect": "shutdown_clear_controls",
+      "requested_state": null,
+      "controls_after_sample": {
+        "forward": false,
+        "back": false,
+        "left": false,
+        "right": false,
+        "jump": false,
+        "sneak": false,
+        "sprint": false
+      },
+      "last_physics_index": 243
+    }
+  ],
+  "trace_footer": {
+    "revision": 1,
+    "kind": "TRACE_END",
+    "complete": true,
+    "lost": false,
+    "recorded_rows": 269,
+    "input_write_authority": false,
+    "server_packet_received": false,
+    "effective_s15_clear_tick": "NOT_ATTESTED"
+  },
+  "paper_phases": [
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "phase": "PRE_FORWARD",
+      "world_full_time": "242",
+      "player_tick": "230",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "packets": "0",
+      "blocks": "0.0",
+      "billed": "0.0",
+      "x": "-0.5",
+      "y": "-60.0",
+      "z": "2.5"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "phase": "POST_CLEAR",
+      "world_full_time": "248",
+      "player_tick": "236",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "packets": "0",
+      "blocks": "0.0",
+      "billed": "0.0",
+      "x": "-0.5",
+      "y": "-60.0",
+      "z": "1.7657088567817691"
+    }
+  ],
+  "paper_begin": [
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "tick": "250",
+      "packets": "0",
+      "blocks": "0.0",
+      "tick_meter_blocks": "0.7929231183274856",
+      "combat_events": "0",
+      "swing_events": "0",
+      "basal_ticks": "238",
+      "x": "-0.5",
+      "y": "-60.0",
+      "z": "1.7070768816725144"
+    }
+  ],
+  "paper_wait": [
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "tick": "251",
+      "index": "1",
+      "from_x": "-0.5",
+      "from_y": "-60.0",
+      "from_z": "1.7070768816725144",
+      "x": "-0.5",
+      "y": "-60.0",
+      "z": "1.6480410884503387",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "0.8519589115496613",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "239"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "tick": "252",
+      "index": "2",
+      "from_x": "-0.5",
+      "from_y": "-60.0",
+      "from_z": "1.6480410884503387",
+      "x": "-0.5",
+      "y": "-60.0",
+      "z": "1.6428302801635535",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "0.8571697198364465",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "240"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "tick": "253",
+      "index": "3",
+      "from_x": "-0.5",
+      "from_y": "-60.0",
+      "from_z": "1.6428302801635535",
+      "x": "-0.5",
+      "y": "-60.0",
+      "z": "1.6428302801635535",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "0.8571697198364465",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "241"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "tick": "254",
+      "index": "4",
+      "from_x": "-0.5",
+      "from_y": "-60.0",
+      "from_z": "1.6428302801635535",
+      "x": "-0.5",
+      "y": "-60.0",
+      "z": "1.6428302801635535",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "0.8571697198364465",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "242"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "tick": "255",
+      "index": "5",
+      "from_x": "-0.5",
+      "from_y": "-60.0",
+      "from_z": "1.6428302801635535",
+      "x": "-0.5",
+      "y": "-60.0",
+      "z": "1.6428302801635535",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "0.8571697198364465",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "243"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "tick": "256",
+      "index": "6",
+      "from_x": "-0.5",
+      "from_y": "-60.0",
+      "from_z": "1.6428302801635535",
+      "x": "-0.5",
+      "y": "-60.0",
+      "z": "1.6428302801635535",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "0.8571697198364465",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "244"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "tick": "257",
+      "index": "7",
+      "from_x": "-0.5",
+      "from_y": "-60.0",
+      "from_z": "1.6428302801635535",
+      "x": "-0.5",
+      "y": "-60.0",
+      "z": "1.6428302801635535",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "0.8571697198364465",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "245"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "tick": "258",
+      "index": "8",
+      "from_x": "-0.5",
+      "from_y": "-60.0",
+      "from_z": "1.6428302801635535",
+      "x": "-0.5",
+      "y": "-60.0",
+      "z": "1.6428302801635535",
+      "motion_packets": "0",
+      "motion_blocks": "0.0",
+      "tick_meter_blocks": "0.8571697198364465",
+      "combat_events": "0",
+      "swing_events": "0",
+      "sprint": "false",
+      "sneak": "false",
+      "swimming": "false",
+      "basal_ticks": "246"
+    }
+  ],
+  "paper_input": [
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "tick": "251",
+      "index": "1",
+      "input_events": "0",
+      "last_input_event_tick": "-1",
+      "event_overflow": "false",
+      "forward": "false",
+      "backward": "false",
+      "left": "false",
+      "right": "false",
+      "jump": "false",
+      "sneak": "false",
+      "sprint": "false",
+      "coverage": "LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY",
+      "effective_s15_clear_tick": "NOT_ATTESTED"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "tick": "252",
+      "index": "2",
+      "input_events": "0",
+      "last_input_event_tick": "-1",
+      "event_overflow": "false",
+      "forward": "false",
+      "backward": "false",
+      "left": "false",
+      "right": "false",
+      "jump": "false",
+      "sneak": "false",
+      "sprint": "false",
+      "coverage": "LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY",
+      "effective_s15_clear_tick": "NOT_ATTESTED"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "tick": "253",
+      "index": "3",
+      "input_events": "0",
+      "last_input_event_tick": "-1",
+      "event_overflow": "false",
+      "forward": "false",
+      "backward": "false",
+      "left": "false",
+      "right": "false",
+      "jump": "false",
+      "sneak": "false",
+      "sprint": "false",
+      "coverage": "LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY",
+      "effective_s15_clear_tick": "NOT_ATTESTED"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "tick": "254",
+      "index": "4",
+      "input_events": "0",
+      "last_input_event_tick": "-1",
+      "event_overflow": "false",
+      "forward": "false",
+      "backward": "false",
+      "left": "false",
+      "right": "false",
+      "jump": "false",
+      "sneak": "false",
+      "sprint": "false",
+      "coverage": "LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY",
+      "effective_s15_clear_tick": "NOT_ATTESTED"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "tick": "255",
+      "index": "5",
+      "input_events": "0",
+      "last_input_event_tick": "-1",
+      "event_overflow": "false",
+      "forward": "false",
+      "backward": "false",
+      "left": "false",
+      "right": "false",
+      "jump": "false",
+      "sneak": "false",
+      "sprint": "false",
+      "coverage": "LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY",
+      "effective_s15_clear_tick": "NOT_ATTESTED"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "tick": "256",
+      "index": "6",
+      "input_events": "0",
+      "last_input_event_tick": "-1",
+      "event_overflow": "false",
+      "forward": "false",
+      "backward": "false",
+      "left": "false",
+      "right": "false",
+      "jump": "false",
+      "sneak": "false",
+      "sprint": "false",
+      "coverage": "LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY",
+      "effective_s15_clear_tick": "NOT_ATTESTED"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "tick": "257",
+      "index": "7",
+      "input_events": "0",
+      "last_input_event_tick": "-1",
+      "event_overflow": "false",
+      "forward": "false",
+      "backward": "false",
+      "left": "false",
+      "right": "false",
+      "jump": "false",
+      "sneak": "false",
+      "sprint": "false",
+      "coverage": "LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY",
+      "effective_s15_clear_tick": "NOT_ATTESTED"
+    },
+    {
+      "marker_id": "s49-native-move-23-3148d4a1-1a2a-4475-9f70-f3363a356be4",
+      "world": "6cfb0817-fbe2-49f2-9b5e-bbf59f3a2e62",
+      "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "tick": "258",
+      "index": "8",
+      "input_events": "0",
+      "last_input_event_tick": "-1",
+      "event_overflow": "false",
+      "forward": "false",
+      "backward": "false",
+      "left": "false",
+      "right": "false",
+      "jump": "false",
+      "sneak": "false",
+      "sprint": "false",
+      "coverage": "LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY",
+      "effective_s15_clear_tick": "NOT_ATTESTED"
+    }
+  ],
+  "paper_input_events": [],
+  "paper_tick_displacements_m": [
+    {
+      "tick": 251,
+      "distance_m": 0.05903579322217567
+    },
+    {
+      "tick": 252,
+      "distance_m": 0.005210808286785218
+    },
+    {
+      "tick": 253,
+      "distance_m": 0.0
+    },
+    {
+      "tick": 254,
+      "distance_m": 0.0
+    },
+    {
+      "tick": 255,
+      "distance_m": 0.0
+    },
+    {
+      "tick": 256,
+      "distance_m": 0.0
+    },
+    {
+      "tick": 257,
+      "distance_m": 0.0
+    },
+    {
+      "tick": 258,
+      "distance_m": 0.0
+    }
+  ],
+  "cleanup": {
+    "runner_exit": 0,
+    "owned_processes": [
+      {
+        "pid": 14945,
+        "ppid": 14944,
+        "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-pdyc9xau/minecraft.jar nogui ",
+        "cwd": "/tmp/relay-self-s49-pdyc9xau",
+        "first_seen_utc": "2026-10-31T09:08:14.780550+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 15027,
+        "ppid": 14945,
+        "argv": "lshw -class processor ",
+        "cwd": "/tmp/relay-self-s49-pdyc9xau",
+        "first_seen_utc": "2026-10-31T09:08:20.654094+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 15031,
+        "ppid": 14945,
+        "argv": "lshw -C display ",
+        "cwd": "/sys/bus/memory/devices",
+        "first_seen_utc": "2026-10-31T09:08:20.755558+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 15098,
+        "ppid": 14944,
+        "argv": "node /home/rinsa/work/relay-self-s50-packet-real-20261031/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+        "cwd": "/home/rinsa/work/relay-self-s50-packet-real-20261031",
+        "first_seen_utc": "2026-10-31T09:08:34.030947+00:00",
+        "pid_gone": true
+      }
+    ],
+    "world_roots": [
+      {
+        "path": "/tmp/relay-self-s49-pdyc9xau",
+        "removed": true
+      }
+    ],
+    "port_rebind": true
+  },
+  "write_exception_observation_limit": "Only returned writes are traced. No adapter_error, rejected effect or process failure observed; caught write exceptions elsewhere are not instrumented.",
+  "clock_alignment": "NOT_ATTESTED"
+}

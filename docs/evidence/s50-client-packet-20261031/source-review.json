@@ -1,0 +1,24 @@
+{
+  "start_head": "b67371e2097c4d5cf2d4b3aec398064cbc6ea183",
+  "run2_head": "69cf00a25501b1181e4269e8340436601b7dc33b",
+  "plugin_head": "3bb79ed57c4a0940bdc586c72976c7ece079319f",
+  "plugin_diff_to_latest_owner": "",
+  "dependency_sha256": {
+    "package.json": "0be37d69783b0a29fffd0447b875c75480c167f5a6de1727b81efdad661c3735",
+    "lib/loader.js": "be363697869f414a4956f55ef5027fe639111dc79e6594ab49e5efb35ad58777",
+    "lib/plugin_loader.js": "ce97e454b248320792a21c7a5df4fc3a2c18ba99bdc98c6bd057eb6ae01ed0bc",
+    "lib/plugins/physics.js": "881ed2ccb2b3f188684e9681ef309df6d097060c297e876b95953d61b0d7f425"
+  },
+  "boundaries": {
+    "world": "S49 sole disposable World root; deleted by existing runner",
+    "plugin": "S50 owner source copied using git archive and built outside owner worktree",
+    "config": "operator disposable full 16 Action copy, active metabolic intervention",
+    "sidecar": "sole existing bridge writer, opt-in; outside World root; wx"
+  },
+  "findings": [
+    "Exactly one client.write wrapper; original Reflect.apply once; no new packet writes.",
+    "Mineflayer installs control API on asynchronous inject_allowed; sampling-time validation fixes initial crash.",
+    "S49/L23 issuer, clear, original receipt and 8 tick guard source blobs unchanged.",
+    "Node monotonic clock is separate from Paper world tick."
+  ]
+}
