@@ -1,0 +1,203 @@
+name: S50 input x L23 one-World DEV
+on:
+  push:
+    branches:
+      - dev/s50-paper-input-witness-20261031
+    paths:
+      - .github/workflows/s50-l23-input-physical-dev.yml
+permissions:
+  contents: read
+concurrency:
+  group: s50-l23-input-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  one-new-disposable-paper-world:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      EVIDENCE: ${{ github.workspace }}/evidence
+      S50_OWNER: ${{ github.workspace }}/s-owner
+      L23_OWNER: ${{ github.workspace }}/l23
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout exact S50 owner (single workflow-triggered attempt)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: s-owner
+          persist-credentials: false
+      - name: Checkout immutable already-proven L23 executor
+        uses: actions/checkout@v4
+        with:
+          ref: d51b34b859cb18c4965681422163f9a1cfad3a8d
+          path: l23
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Bind exact owner sources and check loopback port before starting
+        run: |
+          set -euo pipefail
+          test "$(git -C "$S50_OWNER" rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C "$L23_OWNER" rev-parse HEAD)" = d51b34b859cb18c4965681422163f9a1cfad3a8d
+          mkdir -p "$EVIDENCE/assets" "$EVIDENCE/capture"
+          python - <<'PY'
+          import os, socket
+          with socket.socket() as s:
+              if s.connect_ex(("127.0.0.1", 25565)) == 0:
+                  raise SystemExit("port 25565 in use: cannot touch other World")
+          with open(os.environ["EVIDENCE"] + "/source-heads.txt", "w") as fp:
+              fp.write("S50=" + os.environ["GITHUB_SHA"] + "\n")
+              fp.write("L23=d51b34b859cb18c4965681422163f9a1cfad3a8d\n")
+          PY
+      - name: Compile exact S-owned plugin and install existing L23 dependencies
+        run: |
+          set -euo pipefail
+          mvn -B -ntp -f "$S50_OWNER/adapters/mineflayer/m02_paper_dev/pom.xml" -DskipTests package
+          npm ci --omit=dev --no-audit --no-fund --prefix "$L23_OWNER/adapters/mineflayer"
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1'
+          test -f "$S50_OWNER/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar"
+      - name: Fetch pinned official Paper build60 and prepare active full M0.2 profile
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, os, pathlib, urllib.parse, urllib.request
+          root = pathlib.Path(os.environ["EVIDENCE"]) / "assets"
+          owner = pathlib.Path(os.environ["S50_OWNER"])
+          version = "1.21.8"
+          url = f"https://fill.papermc.io/v3/projects/paper/versions/{version}/builds"
+          headers = {"User-Agent": "RelaySelf-S50-L23-DEV/1.0 (https://github.com/rinsakamo/relay-self)"}
+          req = urllib.request.Request(url, headers=headers)
+          with urllib.request.urlopen(req, timeout=50) as r:
+              response = r.read(3_000_000)
+              if len(response) == 3_000_000:
+                  raise ValueError("unbounded official metadata")
+          builds = json.loads(response)
+          stable = next((b for b in builds if b.get("id") == 60
+              and b.get("channel") == "STABLE"), None)
+          if stable is None:
+              raise ValueError("pinned official stable build60 missing")
+          item = stable["downloads"]["server:default"]
+          digest = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
+          size = 52_811_717
+          assert item["checksums"]["sha256"] == digest
+          assert item["size"] == size
+          assert item["name"] == "paper-1.21.8-60.jar"
+          parsed = urllib.parse.urlparse(item["url"])
+          assert parsed.scheme == "https" and parsed.hostname == "fill-data.papermc.io"
+          assert parsed.path.startswith("/v1/objects/") and not parsed.username
+          server = pathlib.Path(os.environ["RUNNER_TEMP"]) / "s50-paper-1.21.8-build60.jar"
+          h = hashlib.sha256()
+          count = 0
+          with urllib.request.urlopen(
+              urllib.request.Request(item["url"], headers=headers), timeout=120
+          ) as inp, server.open("xb") as out:
+              while chunk := inp.read(1048576):
+                  count += len(chunk)
+                  if count > size:
+                      raise ValueError("unbounded Paper jar")
+                  h.update(chunk)
+                  out.write(chunk)
+          assert count == size and h.hexdigest() == digest
+          src = owner / "adapters/mineflayer/m02_paper_dev"
+          plugin = src / "target/relay-metabolism-paper-dev-0.2.0-dev.jar"
+          if not plugin.is_file():
+              raise ValueError("S plugin not built")
+          plugin_dest = root / "relay-metabolism-paper-dev.jar"
+          plugin_dest.write_bytes(plugin.read_bytes())
+          text = (src / "src/main/resources/config.yml").read_text()
+          assert text.count("dev-enabled: false") == 1
+          assert text.count("s50-input-witness-dev: false") == 1
+          assert "s50-tick-meter-dev:" not in text
+          text = text.replace("dev-enabled: false", "dev-enabled: true", 1)
+          text = text.replace("s50-input-witness-dev: false",
+                              "s50-input-witness-dev: true", 1)
+          text += "\ns50-tick-meter-dev: true\n"
+          config = root / "config.yml"
+          config.write_text(text)
+          pins = {
+              "paper_sha256": digest, "paper_bytes": size,
+              "paper_build": 60, "paper_path": str(server),
+              "plugin_sha256": hashlib.sha256(plugin_dest.read_bytes()).hexdigest(),
+              "plugin_path": str(plugin_dest),
+              "config_sha256": hashlib.sha256(config.read_bytes()).hexdigest(),
+              "config_path": str(config),
+              "metabolism_intervention": True,
+              "input_witness_opt_in": True,
+              "qualification": "DEV_ONLY",
+          }
+          (root / "pins.json").write_text(json.dumps(pins, indent=2) + "\n")
+          with open(os.environ["GITHUB_ENV"], "a") as f:
+              for k in ("paper", "plugin", "config"):
+                  f.write(f"S50_{k.upper()}_JAR={pins[k + '_path']}\n" if k != "config"
+                          else f"S50_CONFIG={pins['config_path']}\n")
+                  f.write(f"S50_{k.upper()}_SHA={pins[k + '_sha256']}\n")
+          print(json.dumps({k:v for k,v in pins.items() if k != "paper_path"}, indent=2))
+          PY
+      - name: One new S49 L23 Paper DEV World with S-owned input witness
+        env:
+          S49_REAL_SERVER_CI: '1'
+          PYTHONPATH: 'src:tests:.'
+        working-directory: l23
+        run: |
+          set -euo pipefail
+          python -m adapters.mineflayer.s49_normal_session_real_ci \
+            --report "$EVIDENCE/s49-report.json" \
+            --server-log "$EVIDENCE/server.log" \
+            --l16-capture-root "$EVIDENCE/capture" \
+            --l16-goal-target-x 0 --l16-goal-target-z 0 \
+            --l16-goal-tolerance-m 0.49 --l16-goal-stability-m 0.05 \
+            --l16-confirm L16-S49-FIRST-ACTION-ORIGINAL-DEV \
+            --l22-settling-probes 6 \
+            --l23-paper-server-jar "$S50_PAPER_JAR" \
+            --l23-paper-server-sha256 "$S50_PAPER_SHA" \
+            --l23-paper-plugin-jar "$S50_PLUGIN_JAR" \
+            --l23-paper-plugin-sha256 "$S50_PLUGIN_SHA" \
+            --l23-paper-config "$S50_CONFIG" \
+            --l23-paper-config-sha256 "$S50_CONFIG_SHA" \
+            2>&1 | tee "$EVIDENCE/runner.stdout"
+      - name: Audit native originals and eight S50 input callbacks
+        env:
+          PYTHONPATH: s-owner
+        run: |
+          set -euo pipefail
+          python s-owner/tools/s50_l23_input_real_readback.py \
+            --report "$EVIDENCE/s49-report.json" \
+            --server-log "$EVIDENCE/server.log" \
+            --capture-root "$EVIDENCE/capture" \
+            --output "$EVIDENCE/independent-input-readback.json"
+          python - <<'PY'
+          import socket
+          with socket.socket() as s:
+              s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+              s.bind(("127.0.0.1", 25565))
+          print("OWNED_WORLD_STOPPED_PORT_REBOUND")
+          PY
+      - name: Preserve owner-originals manifest even on failure
+        if: always()
+        run: |
+          python - <<'PY'
+          import hashlib, os, pathlib
+          root = pathlib.Path(os.environ["EVIDENCE"])
+          root.mkdir(exist_ok=True)
+          lines = []
+          for path in sorted(root.rglob("*")):
+              if path.is_file() and path.name != "SHA256SUMS":
+                  lines.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.relative_to(root)}")
+          (root / "SHA256SUMS").write_text("\n".join(lines) + "\n")
+          print(f"preserved {len(lines)} evidence files")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: s50-l23-one-world-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 14
