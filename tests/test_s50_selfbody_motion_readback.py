@@ -39,7 +39,7 @@ def test_one_dev_original_yields_candidate_not_selfbody_world_truth():
     assert record["source_classification"] == "S50_TO_SELFBODY_CANDIDATE_READ_ONLY"
     body = record["physical_body_diagnostic"]
     assert body["paper_world_uuid"] != body["session_id"]
-    assert body["observed_motion_while_reported_input_off_ticks"] == [251, 252]
+    assert body["observed_motion_while_reported_input_off_ticks"] == (251, 252)
     assert body["cross_clock_alignment"] == "NOT_ATTESTED"
     assert body["effective_s15_clear_world_tick"] == "NOT_ATTESTED"
     assert record["selfbody_native_present_admitted"] is False
