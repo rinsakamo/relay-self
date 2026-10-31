@@ -18,7 +18,7 @@ from adapters.mineflayer.m02_paper_dev.s50_client_packet_source import (
     inspect_s50_client_packets,
 )
 from adapters.mineflayer.m02_paper_dev.s50_input_witness_source import (
-    FLAGS, review_s50_input_samples,
+    review_s50_input_samples,
 )
 
 WAIT_PREFIX = "S50_DEV_WAIT_TICK "
