@@ -6,13 +6,13 @@ from pathlib import Path
 
 import pytest
 
+import test_l15_s49_original_goal_preflight as l15
 from adapters.mineflayer.l16_first_action_goal_originals import L16GoalPlan
 from adapters.mineflayer.l22_post_s16_settling import (
     L22SourceRejected,
     inspect_l22_settling,
 )
 from test_l16_s49_first_action_original_capture import fixture as l16_fixture
-import test_l15_s49_original_goal_preflight as l15
 
 ROOT = (
     Path(__file__).resolve().parents[1]
