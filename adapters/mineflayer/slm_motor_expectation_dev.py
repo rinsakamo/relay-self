@@ -116,8 +116,7 @@ def read_previous_motor_history(
         expected_before = before["snapshot"]["position"]
         expected_after = after["snapshot"]["position"]
         if any(
-            getattr(getattr(obs.snapshot.position, coord), "__class__", None) is None
-            or not math.isclose(
+            not math.isclose(
                 getattr(obs.snapshot.position, coord), expected[coord],
                 rel_tol=0, abs_tol=1e-9,
             )
@@ -189,6 +188,18 @@ def score_motor_expectation(
         sum(x["cheap_last_abs_error_m"] for x in outcomes) / len(outcomes)
         if outcomes else None
     )
+    # Minecraft numeric jitter must not become a fake predictive win.
+    # A 0.1 mm MAE margin is predeclared for the *offline* readback here;
+    # it is a DEV comparison tolerance, not a physical qualification.
+    margin_m = 0.0001
+    comparison = "NOT_EVALUATED"
+    if model_mae is not None:
+        if model_mae + margin_m < cheap_mae:
+            comparison = "MODEL_MEAN_BETTER_THAN_CHEAP_LAST"
+        elif cheap_mae + margin_m < model_mae:
+            comparison = "CHEAP_LAST_BETTER_THAN_MODEL_MEAN"
+        else:
+            comparison = "CHEAP_EQUIVALENT_WITHIN_MARGIN"
     return {
         "schema": "S49_L1_MOTOR_EXPECTATION_DEV_V1",
         "status": "HELDOUT_SCORED" if outcomes else "NO_CURRENT_MOTOR_OUTCOME",
@@ -202,8 +213,11 @@ def score_motor_expectation(
         "cheap_expected_m": cheap_last,
         "model_mae_m": model_mae,
         "cheap_mae_m": cheap_mae,
+        "comparison_margin_m": margin_m,
+        "comparison_status": comparison,
         "beats_cheap_control": (
-            model_mae < cheap_mae if model_mae is not None else None
+            comparison == "MODEL_MEAN_BETTER_THAN_CHEAP_LAST"
+            if model_mae is not None else None
         ),
         "holdout": outcomes,
         "source_independently_attested": False,
