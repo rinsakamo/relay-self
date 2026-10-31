@@ -18,11 +18,11 @@ from adapters.mineflayer.python_protocol import (
     MineflayerStreamDecoder,
 )
 from relay_self.l14_original_bridge_goal_window import (
-    L14SourceRejected,
     MAX_RECEIVED,
     MAX_RECEIVED_LINES,
     MAX_SENT,
     MAX_SENT_LINES,
+    L14SourceRejected,
     _json,
     _lines,
     _strict_receipt,
@@ -118,7 +118,8 @@ def inspect_l16_first_action_prefix(
             first_probe_seq, second_probe_seq)
     if (any(type(v) is not int for v in seqs)
             or not (0 < before_seq < dispatch_seq < cleanup_seq
-                    < after_seq < first_probe_seq < second_probe_seq)):
+                    < after_seq < first_probe_seq
+                    and second_probe_seq == first_probe_seq + 1)):
         raise L16SourceRejected("S49 terminal sequence invalid")
     try:
         rlines = _lines(
@@ -168,10 +169,10 @@ def inspect_l16_first_action_prefix(
     ):
         raise L16SourceRejected("another physical effect in recorded prefix")
     if any(
-        not isinstance(frame, MineflayerObservation)
+        not isinstance(frame, MineflayerObservation) or frame.kind != "probe"
         for frame in frames[after_seq + 1:]
     ):
-        raise L16SourceRejected("non-observation after S16 clearance")
+        raise L16SourceRejected("only terminal probes allowed after S16 clearance")
     sent = [_json(line) for line in slines]
     effects = [item for item in sent if item.get("type") == "effect"]
     observes = [item.get("request_id") for item in sent
