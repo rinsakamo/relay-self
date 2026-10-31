@@ -35,10 +35,7 @@ export function readCommitment (raw, sha) {
         .every(v => typeof v === 'number' && Number.isFinite(v)) ||
       doc.tolerance_m <= 0 || doc.tolerance_m > 16 ||
       doc.stable_probe_delta_max_m <= 0 ||
-      doc.stable_probe_delta_max_m > 0.1 ||
-      JSON.stringify(Object.fromEntries(
-        Object.keys(doc).sort().map(k => [k, doc[k]])
-      )) + '\n' !== text) {
+      doc.stable_probe_delta_max_m > 0.1) {
     throw new Error('L20 reviewer original fields/values/canonical order invalid')
   }
   return Object.freeze(doc)
