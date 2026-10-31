@@ -505,3 +505,89 @@ and record the unchanged Action issuer plus downstream outcome
 with native source correlation. No host modification, World run,
 physical Action, L1 policy change or scientific survival benefit
 is evidenced by this library-only milestone.
+
+## Fault-contained opt-in DEV host diagnostics (2026-10-31)
+
+`experiments/metabolism_slm_dev_host_tap.py` provides
+`observe_optional_s_l_m_dev(enabled=False, original_s_epoch=..., **originals)`
+and `bounded_s_l_m_audit_row(result)`.
+
+**Purpose:** before an S owner opts into passive M/L8 telemetry,
+it must be possible to let the exact original S action-control
+path proceed even if the *optional observer itself* rejects a source
+or has a software exception. This is **not installed** into the S
+product host; it is a typed M-owned, off-by-default integration
+component for an S owner to call **after** its already finished S
+decision epoch. No new S49 action issuer is installed.
+
+Behavior, in order:
+
+1. When disabled (default), never import original S/L8 B0 product
+   modules, inspect a native probe, or call any optional observer.
+   Non-boolean `enabled` is treated as invalid/disabled, never
+   a truthy permission.
+2. When explicitly `enabled=True`, consume the caller's *already
+   returned original S epoch object* plus original B0 decision/probe
+   and optional precomputed L8 snapshot. Run the existing source-bound
+   `read_s_l_m_after_owner_epoch` only; do not call S coordination,
+   B0 `decide`, L8 `advance_learning_epoch`, S49 issuer or any
+   World/LLM provider. For a genuinely planned S result, the inner
+   original `decision` object is used for source binding, while
+   the outer original `PlannedDecisionEpochResult` identity is
+   returned unchanged.
+3. Valid admission produces `RECORDED`; original source mismatch
+   or in-flight/unknown S boundary produces `DEFERRED`; an ordinary
+   unexpected observer exception produces `OBSERVER_ERROR` with a
+   **fixed reason code, not leaked exception or native data**.
+   Interruption exceptions (`KeyboardInterrupt`, `SystemExit`)
+   are not masked.
+4. `bounded_s_l_m_audit_row` emits an allowlisted JSON-safe
+   diagnostic record: session/probe/request references, original
+   S choice, L8 candidate/comparison status, M model tension,
+   and L1 generic resource-model status, or the skip/defer code.
+   It excludes the **original object**, raw Minecraft frames,
+   true M0 Energy, health, native inventories, L8 Memory contents,
+   and actual S Action outcomes. It rejects invalid/truncated
+   source reference strings, mismatched audit status/reason,
+   bogus L8 candidate/scope/model tension or injected authority.
+   Fields `source_attested`, `action_authority`,
+   `new_native_reads`, `new_cognition_calls`,
+   `action_issues`, `learning_updates`,
+   `habit_grants`, `food_credits` are all pinned false/zero.
+
+**Owner integration example (illustrative only; no product hook yet):**
+
+```python
+# Original S host owns these existing objects; no re-reading World.
+# s_epoch = <already returned original DecisionEpochResult>
+from experiments.metabolism_slm_dev_host_tap import (
+    observe_optional_s_l_m_dev,
+    bounded_s_l_m_audit_row,
+)
+
+tap = observe_optional_s_l_m_dev(
+    enabled=dev_observer_opt_in,
+    original_s_epoch=s_epoch,
+    probe=existing_probe, native=existing_native,
+    ledger=existing_b0_ledger,
+    original_b0_decision=existing_b0_decision,
+    retained=existing_s10_snapshot,
+    self_id=self_id, epoch_id=epoch_id,
+    learning=previously_admitted_l8_result,
+    retention_enabled=True,
+    noise_bound=None,
+)
+audit = bounded_s_l_m_audit_row(tap)
+assert tap.original_s_epoch is s_epoch
+# S49 uses only S's original admission, not audit.
+```
+
+Do not interpret a `RECORDED` row as authenticated real
+Minecraft origin: native source trust is explicitly *false*.
+Likewise `OBSERVER_ERROR` being contained does **not** prove
+physical runtime delivery or a liveness guarantee: actual S host
+integration and its real World operation remain to be exercised
+by the S owner. In CI, original fixed S #634 and L8 are loaded
+read-only in one interpreter with synthetic source-shaped probes.
+No new provider, Java, Node, GPU, World, physical Action or
+QUALIFICATION/SCIENCE execution.
