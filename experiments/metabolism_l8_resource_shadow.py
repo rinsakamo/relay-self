@@ -92,9 +92,17 @@ def contrast_l8_with_m_resource(
     ):
         raise ValueError("foreign, action-bearing or nonidentical S/L8/M epoch")
 
+    # L8 stores the inner original S decision; planned work IDs are
+    # separately retained. Replay its pure observer with the *same* planned
+    # boundary rather than discarding IDs and falsely rejecting completion.
+    l8_source = l8_observation.s_epoch
+    if l8_observation.planned_work_ids:
+        l8_source = PlannedDecisionEpochResult(
+            l8_source, l8_observation.planned_work_ids, ()
+        )
     try:
         rechecked = observe_s_epoch_l1(
-            l8_observation.s_epoch,
+            l8_source,
             native=native,
             retained=retained,
             learning=learning,
