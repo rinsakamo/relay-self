@@ -46,3 +46,11 @@ The first real DEV capture must subsequently be inspected by separate S/R/V sour
 Historical G4.13: 11 real executed S16 Actions / 182 Paper ticks; **0** independently labeled per-Action Goals and **0** qualified L10 real pairs. No historical raw source is repaired.
 
 **Classification:** `DEV_ONLY / L16_S49_NATIVE_SOURCE_CAPTURE_OPTIN_IMPLEMENTED / SYNTHETIC_PROCESS_TEST / NEW_WORLD_0 / REAL_GOAL_OWNER_0 / L10_REAL_PAIRS_0 / S10_S11_UNCHANGED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+
+
+## Exact-source HEAD CI and prior failure
+
+- **Exact successful code/test/workflow HEAD:** `85f9e69353c56e3c9acbaec17ca6f146846e3ea5`.
+- **[GitHub Actions #41150630907 SUCCESS](https://github.com/rinsakamo/relay-self/actions/runs/41150630907)**: Python 3.12 focused 75 PASS / 1 SKIP (L16, L15, L14, MineflayerProcessSession, S49); Ruff and compileall PASS, repository contracts PASS. The 1 SKIP is the old archived-real-artifact dependent L14 test without `L11_REAL_ORIGINAL_ZIP`, not a new physical trial. The previous L15 CI `#41144568698` already audited the saved real G4.13 producer SHA and 0 independent Goal labels.
+- Historical failed CI [#41150556530](https://github.com/rinsakamo/relay-self/actions/runs/41150556530) was Ruff-only import ordering (3 files) at pre-fix HEAD. Intermediate push snapshots were also incomplete; the exact successful code HEAD above is the auditable result.
+- The docs-only HEAD after this exact source test is not falsely called a new code-tested HEAD. No real World started and no Goal success was obtained.
