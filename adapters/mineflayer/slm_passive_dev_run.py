@@ -8,6 +8,7 @@ from pathlib import Path
 
 from adapters.mineflayer.s49_normal_session_real_ci import qualify
 from adapters.mineflayer.slm_external_goal_candidate_dev import read_external_goal_diagnostic
+from adapters.mineflayer.slm_motor_expectation_dev import read_previous_motor_history
 from adapters.mineflayer.slm_passive_dev import S49SLMDevOwner
 from adapters.mineflayer.slm_prior_world_dev import read_previous_s49_world
 
@@ -16,6 +17,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--confirm", required=True)
+    parser.add_argument(
+        "--l1-motor-expectation-shadow", action="store_true",
+        help="Explicit DEV self-supervised read-only motor prediction; requires W3 past World",
+    )
     parser.add_argument(
         "--previous-external-goal-root", type=Path, default=None,
         help="Bounded L22 read-only DEV review, never learning Goal admission",
@@ -37,6 +42,13 @@ def main():
         parser.error("fresh absolute output and explicit disposable DEV grant required")
     if (args.previous_world_root is None) != (args.previous_w3_sha256 is None):
         parser.error("both previous source root and original W3 SHA are required")
+    if args.l1_motor_expectation_shadow and args.previous_world_root is None:
+        parser.error("motor expectation requires past completed original World and W3 SHA")
+    motor = None
+    if args.l1_motor_expectation_shadow:
+        motor = read_previous_motor_history(
+            args.previous_world_root, expected_stdout_sha256=args.previous_w3_sha256,
+        )
     prior = None
     if args.previous_world_root is not None:
         prior = read_previous_s49_world(
@@ -55,6 +67,7 @@ def main():
             retention_enabled=args.l8_empty_memory_shadow,
             prior_world=prior,
             previous_external_goal=external,
+            motor_history=motor,
         ),
     ))
 
