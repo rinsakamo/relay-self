@@ -78,7 +78,9 @@ jobs:
               received_original=received, sent_original=sent, s7_receipt=receipt,
               s16_original=s16, plan=plan, session_id=session, action_id=action,
           )
-          assert asdict(settling) == json.loads(
+          # JSON archives represent dataclass tuples as arrays; compare
+          # canonical JSON-shaped values, not tuple/list Python equality.
+          assert json.loads(json.dumps(asdict(settling))) == json.loads(
               (source / "l22-source-audit.json").read_bytes()
           )
           external = review_l21_observer_original(
