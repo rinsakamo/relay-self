@@ -1,0 +1,8 @@
+{
+  "max_initial_worlds": 1,
+  "route": "A_POSTWORLD_INTERNAL",
+  "old_evidence_immutable": "/home/rinsa/work/selfbody-s16-s50-evidence-20261031",
+  "active_m02": true,
+  "execution_head": "9e9bcb98",
+  "retry": "Only cause-confirmed minimal fix in separate new World; preserve FAIL"
+}

@@ -1,0 +1,27 @@
+{
+  "missing_paper": {
+    "rejected": true,
+    "error": "S50BodyMotionSourceRejected",
+    "reason": "missing/invalid owner originals"
+  },
+  "missing_client": {
+    "rejected": true,
+    "error": "S50BodyMotionSourceRejected",
+    "reason": "missing/invalid owner originals"
+  },
+  "missing_paper_tick": {
+    "rejected": true,
+    "error": "S50BodyMotionSourceRejected",
+    "reason": "L23 source/claim ceiling does not match"
+  },
+  "incomplete_node": {
+    "rejected": true,
+    "error": "S50PacketSourceRejected",
+    "reason": "incomplete client capture"
+  },
+  "wrong_world": {
+    "rejected": true,
+    "error": "S50BodyMotionSourceRejected",
+    "reason": "L23 source/claim ceiling does not match"
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "goal_admitted": false,
+  "learning_updates": 0,
+  "physical_body_diagnostic": {
+    "action_id": "s49-native-move-18",
+    "client_effects": [
+      {
+        "effect": "set_control",
+        "local_controls_active": true,
+        "node_record_index": 238,
+        "source_scope": "CLIENT_LOCAL_CONTROL_SNAPSHOT_ONLY"
+      },
+      {
+        "effect": "clear_controls",
+        "local_controls_active": false,
+        "node_record_index": 247,
+        "source_scope": "CLIENT_LOCAL_CONTROL_SNAPSHOT_ONLY"
+      },
+      {
+        "effect": "shutdown_clear_controls",
+        "local_controls_active": false,
+        "node_record_index": 269,
+        "source_scope": "CLIENT_LOCAL_CONTROL_SNAPSHOT_ONLY"
+      }
+    ],
+    "client_original_sha256": "a5905cc2356cf685cb731b0fd6c725447a580d8cd0305605e3361174b0a51f72",
+    "client_packet_diagnostic": "NO_PLAYER_INPUT_WRITE_ON_OBSERVED_CLIENT_PATH",
+    "client_player_input_write_returns": 0,
+    "client_position_write_returns": 24,
+    "cross_clock_alignment": "NOT_ATTESTED",
+    "effective_s15_clear_world_tick": "NOT_ATTESTED",
+    "full_tick_input_coverage": false,
+    "goal_admitted": false,
+    "l10_pairs_admitted": 0,
+    "marker_id": "s49-native-move-18-fdc7213d-ba3f-4608-9e09-18472d6971b4",
+    "observed_motion_while_reported_input_off_ticks": [
+      253,
+      254,
+      255
+    ],
+    "p1_wait_ticks_admitted": 0,
+    "paper_original_sha256": "783740601bb231fe4d4569d6f2db442cc7914d6f9248a0797b03ad413a509f58",
+    "paper_player_input_callbacks": 0,
+    "paper_samples": [
+      {
+        "displacement_m": 0.049492188301323736,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY",
+        "world_tick": 253
+      },
+      {
+        "displacement_m": 0.009543604920851934,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY",
+        "world_tick": 254
+      },
+      {
+        "displacement_m": 0.00521080828678544,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY",
+        "world_tick": 255
+      },
+      {
+        "displacement_m": 0.0,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY",
+        "world_tick": 256
+      },
+      {
+        "displacement_m": 0.0,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY",
+        "world_tick": 257
+      },
+      {
+        "displacement_m": 0.0,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY",
+        "world_tick": 258
+      },
+      {
+        "displacement_m": 0.0,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY",
+        "world_tick": 259
+      },
+      {
+        "displacement_m": 0.0,
+        "last_reported_input_active": false,
+        "source_scope": "PAPER_CALLBACK_SAMPLE_ONLY",
+        "world_tick": 260
+      }
+    ],
+    "paper_world_uuid": "120eb29f-9a47-4c45-9f1e-dafa161fdbb7",
+    "physically_stopped_attested": false,
+    "provenance_ceiling": "DIAGNOSTIC_ONLY_NOT_NATIVE_PRESENT",
+    "s10_updates_admitted": 0,
+    "s11_grants_admitted": 0,
+    "schema": "S50_SELFBODY_MOTION_DIAGNOSTIC_V0",
+    "session_id": "fdc7213d-ba3f-4608-9e09-18472d6971b4",
+    "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738"
+  },
+  "physical_wait_admitted": false,
+  "qualification": "DEV_ONLY",
+  "science": "NOT_RUN",
+  "selfbody_native_present_admitted": false,
+  "source_classification": "S50_TO_SELFBODY_CANDIDATE_READ_ONLY",
+  "world_time_alignment_attested": false
+}

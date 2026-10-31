@@ -1,0 +1,53 @@
+{
+  "action_count": 1,
+  "classification": "DEV_PACKET_SOURCE_ONLY_NO_CLOCK_OR_WIRE_ACCEPTANCE_ATTESTATION",
+  "effective_client_clear_tick": "NOT_ATTESTED",
+  "full_tick_input_coverage": false,
+  "goal_accepted": false,
+  "l10_pairs_admitted": 0,
+  "l23_paper_activity_ticks": [
+    253,
+    254,
+    255
+  ],
+  "original_sha256": {
+    "/home/rinsa/work/selfbody-postworld-epoch-evidence-20261031/run1/capture/l16_pre_world_goal_plan.json": "d1d73386f8b85197a24b00c346c03bf7325eac24e8d2217cc66a8aae3559bd69",
+    "/home/rinsa/work/selfbody-postworld-epoch-evidence-20261031/run1/capture/l18_s16_terminal_original.jsonl": "c4545b90e1e0413e8dd44f914fb4fcb21892bac6c1bd47895e269d4666afb22d",
+    "/home/rinsa/work/selfbody-postworld-epoch-evidence-20261031/run1/capture/native_bridge_received_original.jsonl": "9675bda081624c3512eb97477f6051d2377a56e6aca68c7b39415ccd82300c3b",
+    "/home/rinsa/work/selfbody-postworld-epoch-evidence-20261031/run1/capture/native_bridge_sent_original.jsonl": "cbfceabdf1ee38baf1f0eecf14ae9c942d61f0fd8e2138db70889b4505fb02d7",
+    "/home/rinsa/work/selfbody-postworld-epoch-evidence-20261031/run1/capture/native_bridge_source_receipt.json": "d6ed9889fbd3ab2c1cdfca1fa174c2331085301b0bbdadf55963e34fd777ea4e",
+    "/home/rinsa/work/selfbody-postworld-epoch-evidence-20261031/run1/client-packet-original.jsonl": "a5905cc2356cf685cb731b0fd6c725447a580d8cd0305605e3361174b0a51f72",
+    "/home/rinsa/work/selfbody-postworld-epoch-evidence-20261031/run1/s49-report.json": "fe439c67e9d66fb864266f7fc6ed0d10aa89bf844171ea34ba8f8bce181671b8",
+    "/home/rinsa/work/selfbody-postworld-epoch-evidence-20261031/run1/server.log": "783740601bb231fe4d4569d6f2db442cc7914d6f9248a0797b03ad413a509f58"
+  },
+  "p1_wait_ticks_admitted": 0,
+  "packet_diagnostic": {
+    "client_original_sha256": "a5905cc2356cf685cb731b0fd6c725447a580d8cd0305605e3361174b0a51f72",
+    "paper_original_sha256": "783740601bb231fe4d4569d6f2db442cc7914d6f9248a0797b03ad413a509f58",
+    "qualification": "DEV_ONLY",
+    "readback": {
+      "client_motion_write_returns": 24,
+      "client_packet_write_returns": 24,
+      "client_player_input_write_returns": 0,
+      "client_trace_complete": true,
+      "diagnostic": "NO_PLAYER_INPUT_WRITE_ON_OBSERVED_CLIENT_PATH",
+      "effective_s15_clear_tick": "NOT_ATTESTED",
+      "full_tick_input_coverage": false,
+      "l10_pairs_admitted": 0,
+      "marker_id": "s49-native-move-18-fdc7213d-ba3f-4608-9e09-18472d6971b4",
+      "native_control_effect_samples": 3,
+      "native_session_id": "fdc7213d-ba3f-4608-9e09-18472d6971b4",
+      "native_write_is_network_delivery": false,
+      "p1_wait_ticks_admitted": 0,
+      "paper_packet_identity_proven": false,
+      "paper_player_input_callbacks": 0,
+      "paper_world_uuid": "120eb29f-9a47-4c45-9f1e-dafa161fdbb7"
+    },
+    "science": "NOT_RUN",
+    "source_ceiling": "WRITE_RETURNED_NOT_WIRE_OR_ACCEPTANCE"
+  },
+  "paper_world": "120eb29f-9a47-4c45-9f1e-dafa161fdbb7",
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "world_session_id": "fdc7213d-ba3f-4608-9e09-18472d6971b4"
+}

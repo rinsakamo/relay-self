@@ -1,0 +1,52 @@
+{
+  "runner_exit": 0,
+  "owned_processes": [
+    {
+      "pid": 23778,
+      "ppid": 23777,
+      "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-4kcd1h62/minecraft.jar nogui ",
+      "cwd": "/tmp/relay-self-s49-4kcd1h62",
+      "first_seen_utc": "2026-10-31T11:58:34.231600+00:00",
+      "pid_gone": true
+    },
+    {
+      "pid": 23842,
+      "ppid": 23778,
+      "argv": "lshw -class processor ",
+      "cwd": "/tmp/relay-self-s49-4kcd1h62",
+      "first_seen_utc": "2026-10-31T11:58:43.106724+00:00",
+      "pid_gone": true
+    },
+    {
+      "pid": 23845,
+      "ppid": 23778,
+      "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+      "cwd": "/tmp/relay-self-s49-4kcd1h62",
+      "first_seen_utc": "2026-10-31T11:58:43.208299+00:00",
+      "pid_gone": true
+    },
+    {
+      "pid": 23847,
+      "ppid": 23778,
+      "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+      "cwd": "/tmp/relay-self-s49-4kcd1h62",
+      "first_seen_utc": "2026-10-31T11:58:43.317596+00:00",
+      "pid_gone": true
+    },
+    {
+      "pid": 23913,
+      "ppid": 23777,
+      "argv": "node /home/rinsa/work/relay-self-postworld-epoch-20261031/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+      "cwd": "/home/rinsa/work/relay-self-postworld-epoch-20261031",
+      "first_seen_utc": "2026-10-31T11:58:57.153495+00:00",
+      "pid_gone": true
+    }
+  ],
+  "world_roots": [
+    {
+      "path": "/tmp/relay-self-s49-4kcd1h62",
+      "removed": true
+    }
+  ],
+  "port_rebind": true
+}
