@@ -210,3 +210,32 @@ def test_s49_optin_on_terminal_passes_existing_owner_not_new_execution():
 
     assert "on_terminal" in inspect.signature(NormalSessionActionExecutor.execute).parameters
     assert "l16_capture_root" in inspect.signature(qualify).parameters
+
+
+def test_full_l17_saved_cli_admits_s16_owner_byte_source_but_no_goal(tmp_path):
+    import test_l17_saved_original_goal_readback as l17
+
+    from adapters.mineflayer.l17_saved_original_goal_readback import (
+        audit_saved_l16_capture,
+    )
+
+    root, report, _args = l17.saved_fixture(tmp_path)
+    action, outcome, consequence, _pre = fixture()
+    # The L17 fixture has exactly the same synthetic first Action pre/after
+    # source, but its late terminal Goal probe request IDs are rewritten.
+    index = write_s16_owner_original(
+        capture_root=root, terminal=action, outcome=outcome,
+        consequence=consequence, source_revision=0,
+    )
+    data = json.loads(report.read_bytes())
+    data["l16_capture"]["l18_s16_owner_source"] = index
+    report.write_text(json.dumps(data, sort_keys=True) + "\n")
+    read = audit_saved_l16_capture(root, report)
+    assert read["s16_owner_original_present"] is True
+    assert read["s16_owner_original_review"]["s16_original_matches_original_pre_probe"]
+    assert read["classification"] == "waiting_for_independent_s16_goal_originals"
+    assert not read["independent_goal_original_present"]
+    assert read["qualified_real_learning_pairs"] == read["s10_updates"] == 0
+    (root / S16_FILE).write_bytes(b'{"tampered":true}\n')
+    with pytest.raises(ValueError):
+        audit_saved_l16_capture(root, report)
