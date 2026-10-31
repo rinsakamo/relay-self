@@ -123,7 +123,7 @@ jobs:
           assert joined.client_position_write_returns == 23
           assert joined.sampled_at(258).physical_stability_attested is False
           assert not joined.native_present_minted
-          assert not joined.goal_admitted
+          assert joined.cognitive_summary()["goal_admitted"] is False
           print("S50_REAL_SOURCE_x_SYNTHETIC_SELFBODY_OWNER_SCHEMA_COMPAT_PASS")
           print("NO_REAL_SELFBODY_HOST_EPOCH_ADMITTED")
           PY
