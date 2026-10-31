@@ -40,3 +40,12 @@ executed, but its existing S15 probes had request_id=None. The native Present
 owner correctly rejected them. Originals remain under run1; Node/Java exit0,
 PID/World removal and port rebind passed. The bounded repair labels only the
 existing requests; no qualification check is weakened or replaced.
+
+Second World at 7124045c admitted the original typed closure/native Present
+and built SelfBody, but failed on the producer's tuple-valued `asdict` S50
+diagnostic versus consumer JSON-list shape. Its lease is revoked, not replayed.
+The host now normalizes only the S50 diagnostic through the existing CLI's
+JSON representation, with a producer-asdict-to-original-typed-lease regression.
+No S16/native object is serialized or rehydrated for joining. A separately
+recorded bounded extension permits exactly one final fresh World (total cap3);
+the original two-run plan and both failures remain immutable.

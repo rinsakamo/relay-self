@@ -107,6 +107,11 @@ from relay_self.world_conditioned_choice import WorldChoiceKind
 from tools.s50_selfbody_motion_readback import review_originals
 
 
+def normalize_s50_diagnostic(source: dict[str, object]) -> dict[str, object]:
+    """Use the existing S50 CLI JSON shape; typed SelfBody never enters here."""
+    return json.loads(json.dumps(source, allow_nan=False))
+
+
 class S49PhysicalFailure(RuntimeError):
     """The real native World did not support the claimed autonomous behavior."""
 
@@ -862,6 +867,11 @@ async def qualify(
                     client_original=Path(os.environ[
                         "RELAYSELF_S50_PACKET_WITNESS_DEV"
                     ]).read_bytes(), subject_uuid=subject_uuid,
+                )
+                # S50 CLI JSON representation only; never serialize typed S16/Present.
+                s50_source = normalize_s50_diagnostic(s50_source)
+                (report_path.parent / "selfbody-s50-producer.json").write_text(
+                    json.dumps(s50_source, indent=2) + "\n",
                 )
                 joined = lease.consume_s50_once(s50_source["physical_body_diagnostic"])
                 c, o = original_closure.consequence, original_closure.interpretation

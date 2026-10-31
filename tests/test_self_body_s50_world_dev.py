@@ -88,3 +88,27 @@ def test_original_s15_correlates_existing_probes_without_extra_controls(foreign)
     assert sum(x[0] == "set_control" for x in adapter.sent) == (0 if foreign == "before" else 1)
     assert sum(x[0] == "clear_controls" for x in adapter.sent) == (0 if foreign == "before" else 1)
     assert sum(x[0] == "observe" for x in adapter.sent) == (1 if foreign == "before" else 2)
+
+
+def test_actual_producer_asdict_shape_joins_original_typed_lease(monkeypatch):
+    from dataclasses import asdict
+
+    import test_s50_selfbody_motion_source as source_fixture
+    original = synthetic_original_closed()
+    sid, action = original.interpretation.session_id, original.interpretation.action_id
+    monkeypatch.setattr(source_fixture, "SID", sid)
+    monkeypatch.setattr(source_fixture, "ACTION", action)
+    monkeypatch.setattr(source_fixture, "MARKER", f"{action}-{sid}")
+    producer = asdict(source_fixture.project())
+    assert isinstance(producer["paper_samples"], tuple)
+    normalized = host.normalize_s50_diagnostic({"physical_body_diagnostic": producer})
+    assert isinstance(normalized["physical_body_diagnostic"]["paper_samples"], list)
+    assert json.loads(json.dumps(producer)) == normalized["physical_body_diagnostic"]
+    lease = SelfBodyS50ClosedOwnerLease(self_id="self", expected_action_id=action)
+    try:
+        lease.observe_original_closed(original)
+        joined = lease.consume_s50_once(normalized["physical_body_diagnostic"])
+        assert joined.self_body.outcome is original.interpretation
+        assert len(joined.ticks) == 8
+    finally:
+        lease.close()
