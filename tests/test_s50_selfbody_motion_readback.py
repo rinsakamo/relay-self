@@ -5,8 +5,8 @@ import json
 
 import pytest
 
-from tools.s50_selfbody_motion_readback import review_originals
 from test_s50_selfbody_motion_source import ACTION, SID, UUID, client, l23, paper
+from tools.s50_selfbody_motion_readback import review_originals
 
 
 def report_bytes(paper_raw: bytes, *, status: str = "PASS",
