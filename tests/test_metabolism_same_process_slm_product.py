@@ -481,3 +481,21 @@ def test_retention_off_optional_host_tap_has_no_admitted_learning_candidate():
     assert bounded_s_l_m_audit_row(result)["l1_model_status"] == (
         "NO_ADMISSIBLE_L1_CANDIDATE"
     )
+
+
+def test_unserializable_observer_output_is_contained_before_host_audit(monkeypatch):
+    data = common_epoch()
+    source = passive_tap(data)
+    from experiments import metabolism_slm_dev_host_tap as tap_module
+
+    def oversized(**_kwargs):
+        return replace(source, request_id="PRIVATE_RAW_SOURCE" * 32)
+
+    monkeypatch.setattr(tap_module, "read_s_l_m_after_owner_epoch", oversized)
+    result = host_tap(data)
+    assert result.status == "OBSERVER_ERROR"
+    assert result.original_s_epoch is data[4]
+    row = bounded_s_l_m_audit_row(result)
+    assert row["request_id"] is None
+    assert "PRIVATE_RAW_SOURCE" not in json.dumps(row)
+    assert data[5].open_actions == ()
