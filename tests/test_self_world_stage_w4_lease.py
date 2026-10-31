@@ -728,3 +728,17 @@ def test_host_callback_cannot_suppress_cancellation_into_success(monkeypatch):
         with pytest.raises(W4PreworldBlocked):
             s.advance(owner=owner, phase='QUIESCE', binding='reuse')
     asyncio.run(run())
+
+
+def test_existing_native_receipt_is_forwarded_to_original_session(tmp_path):
+    from adapters.mineflayer.self_s7_native_receipt import NativeStreamReceipt
+
+    async def run():
+        process = FakeProcess([])
+        receipt = NativeStreamReceipt(tmp_path / "received.jsonl", tmp_path / "sent.jsonl")
+        session = W4DevLeasedSession(process, native_receipt=receipt)
+        assert session._native_receipt is receipt
+        result = session.finish_native_receipt()
+        assert result["received_lines"] == result["sent_lines"] == 0
+        assert session._native_receipt is None
+    asyncio.run(run())

@@ -71,8 +71,10 @@ class W4DevLeasedSession(MineflayerProcessSession):
         "SHUTDOWN": {"CLOSED"},
     }
 
-    def __init__(self, process, *, raw_capture_root=None):
-        super().__init__(process, raw_capture_root=raw_capture_root)
+    def __init__(self, process, *, raw_capture_root=None, native_receipt=None):
+        super().__init__(
+            process, raw_capture_root=raw_capture_root, native_receipt=native_receipt,
+        )
         self._decoder = _CompleteLineDecoder(self._decoder)
         self._controller = asyncio.current_task()
         if self._controller is None:

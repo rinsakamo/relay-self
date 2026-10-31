@@ -83,6 +83,7 @@ from adapters.mineflayer.s34_native_world_cognition_ci import (
     _new_session,
 )
 from adapters.mineflayer.self_action_evidence import capture_native_action_evidence
+from adapters.mineflayer.self_body_s50_l1_motion_shadow import compare_l1_motion_attention_shadow
 from adapters.mineflayer.self_body_s50_live_next_epoch import LiveNextEpochLease
 from adapters.mineflayer.self_body_s50_motion_companion import SelfBodyS50MotionCompanion
 from adapters.mineflayer.self_body_s50_original_closure import (
@@ -233,6 +234,7 @@ async def qualify(
     l23_paper_assets: L23PaperAssets | None = None,
     postworld_internal_epoch_dev: bool = False,
     live_next_epoch_dev: bool = False,
+    l1_motion_shadow_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -263,6 +265,10 @@ async def qualify(
     window_ready = asyncio.Event()
     rc = 2
     try:
+        if type(l1_motion_shadow_dev) is not bool or (
+            l1_motion_shadow_dev and not live_next_epoch_dev
+        ):
+            raise S31ABlocked("L1 motion shadow DEV requires existing route B")
         if type(live_next_epoch_dev) is not bool or (
             live_next_epoch_dev and postworld_internal_epoch_dev
         ):
@@ -859,6 +865,18 @@ async def qualify(
             raise S49PhysicalFailure("bounded native decisions/Action closures disagree")
         if live_next_epoch_dev and next_epoch_readout is None:
             raise S49PhysicalFailure("missing real third L0 native epoch")
+        if l1_motion_shadow_dev:
+            assert next_epoch_readout is not None
+            # Observe the ACTUAL completed S49 third choice. This review is
+            # AFTER L0, never a new L0 input, Action proposal, S10 or Habit.
+            shadow = compare_l1_motion_attention_shadow(
+                next_epoch_readout, trace[-1].choice,
+            )
+            report["l1_motion_shadow"] = asdict(shadow)
+            report["l1_motion_shadow"]["classification"] = (
+                "DEV_L1_PRIOR_MOTION_ATTENTION_SHADOW_CHEAP_EQUIVALENT"
+            )
+            report["l1_motion_shadow"]["original_l0_decision_modified"] = False
         if l23_paper_assets is not None:
             assert l23_marker_id is not None
             # L22 may finish after only three quiet probes. Keep the existing
@@ -1123,6 +1141,7 @@ def main() -> int:
     parser.add_argument("--l23-paper-config-sha256")
     parser.add_argument("--selfbody-postworld-internal-epoch-dev", action="store_true")
     parser.add_argument("--selfbody-live-next-epoch-dev", action="store_true")
+    parser.add_argument("--selfbody-l1-motion-shadow-dev", action="store_true")
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -1169,6 +1188,7 @@ def main() -> int:
         l23_paper_assets=paper_assets,
         postworld_internal_epoch_dev=args.selfbody_postworld_internal_epoch_dev,
         live_next_epoch_dev=args.selfbody_live_next_epoch_dev,
+        l1_motion_shadow_dev=args.selfbody_l1_motion_shadow_dev,
     ))
 
 

@@ -1,0 +1,333 @@
+{
+  "classification": "DEV_LIVE_L1_MOTION_SHADOW_ORIGINAL_AUDIT_PASS",
+  "route_b": {
+    "classification": "DEV_LIVE_NEXT_L0_NATIVE_EPOCH_REFERENCED_PASS",
+    "l22": {
+      "schema": "L22_POST_S16_SETTLING_DIAGNOSTIC_V1",
+      "session_id": "3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+      "action_id": "s49-native-move-18",
+      "s16_original_sha256": "08a668186eaa5ec335de029f4e48476a37b7429e6ab818e9a52fe58129539843",
+      "received_sha256": "fa1907080f56486c20ed7f5d478c6b80fe000e072306cfca5a8595e005596968",
+      "sent_sha256": "a716af21b1e1892f62f32d69431e8635217e2eebcf13ee3278beecfbf5871c31",
+      "after_seq": 29,
+      "first_probe_seq": 41,
+      "second_probe_seq": 42,
+      "move_event_seqs": [
+        30,
+        31,
+        32,
+        33,
+        34,
+        36
+      ],
+      "settling_probe_seqs": [
+        35,
+        37,
+        38,
+        39,
+        40
+      ],
+      "settling_sample_drift_max_m": 0.23501857276626037,
+      "post_s16_displacement_m": 0.24046013687842294,
+      "two_probe_displacement_m": 0.0,
+      "geometric_goal_candidate": "NOT_REACHED",
+      "settling_state": "SETTLING_OBSERVED",
+      "reason": "POST_S16_MOVE_EVENT",
+      "accepted_goal_status": "UNDETERMINED",
+      "stable_world_ticks_attested": false,
+      "physically_stopped_proven": false,
+      "independent_goal_owner_authenticated": false,
+      "qualified_real_learning_pairs": 0,
+      "s10_updates": 0,
+      "s11_grants": 0
+    },
+    "l23": {
+      "schema": "L23_PAPER_S7_SAMPLED_SETTLING_READBACK_V1",
+      "session_id": "3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+      "action_id": "s49-native-move-18",
+      "paper_world": "0dcf8a5d-b8da-4863-bc0d-641d0abc1260",
+      "marker_id": "s49-native-move-18-3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+      "paper_original_sha256": "cb7d373d7931c713d518518b2f87307f34c57bc562a4cdd1f613d6682e599fb1",
+      "s7_received_sha256": "fa1907080f56486c20ed7f5d478c6b80fe000e072306cfca5a8595e005596968",
+      "s16_original_sha256": "08a668186eaa5ec335de029f4e48476a37b7429e6ab818e9a52fe58129539843",
+      "paper_first_tick": 251,
+      "paper_last_tick": 258,
+      "paper_sample_count": 8,
+      "paper_activity_ticks": [
+        251,
+        252,
+        253
+      ],
+      "paper_last_to_s7_goal_distance_m": 0.0,
+      "paper_s7_geometry_compatible": true,
+      "paper_sample_state": "PAPER_SAMPLED_ACTIVITY",
+      "clock_alignment": "NOT_ATTESTED",
+      "paper_effective_input_clear_tick": "NOT_ATTESTED",
+      "paper_full_tick_input_idle": false,
+      "world_session_independently_bound": false,
+      "physical_stability_verified": false,
+      "accepted_goal_status": "UNDETERMINED",
+      "qualified_real_learning_pairs": 0,
+      "s10_updates": 0,
+      "s11_grants": 0,
+      "p1_wait_ticks_admitted": 0
+    },
+    "packet": {
+      "classification": "DEV_PACKET_SOURCE_ONLY_NO_CLOCK_OR_WIRE_ACCEPTANCE_ATTESTATION",
+      "world_session_id": "3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+      "paper_world": "0dcf8a5d-b8da-4863-bc0d-641d0abc1260",
+      "action_count": 1,
+      "l23_paper_activity_ticks": [
+        251,
+        252,
+        253
+      ],
+      "packet_diagnostic": {
+        "readback": {
+          "native_session_id": "3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+          "marker_id": "s49-native-move-18-3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+          "paper_world_uuid": "0dcf8a5d-b8da-4863-bc0d-641d0abc1260",
+          "client_packet_write_returns": 34,
+          "client_player_input_write_returns": 0,
+          "client_motion_write_returns": 34,
+          "native_control_effect_samples": 3,
+          "paper_player_input_callbacks": 0,
+          "client_trace_complete": true,
+          "diagnostic": "NO_PLAYER_INPUT_WRITE_ON_OBSERVED_CLIENT_PATH",
+          "native_write_is_network_delivery": false,
+          "paper_packet_identity_proven": false,
+          "effective_s15_clear_tick": "NOT_ATTESTED",
+          "full_tick_input_coverage": false,
+          "p1_wait_ticks_admitted": 0,
+          "l10_pairs_admitted": 0
+        },
+        "client_original_sha256": "43d224cfcb619ad9880b60502a757f694fa402e14a2ef622e845f4295d121c41",
+        "paper_original_sha256": "cb7d373d7931c713d518518b2f87307f34c57bc562a4cdd1f613d6682e599fb1",
+        "source_ceiling": "WRITE_RETURNED_NOT_WIRE_OR_ACCEPTANCE",
+        "qualification": "DEV_ONLY",
+        "science": "NOT_RUN"
+      },
+      "original_sha256": {
+        "/home/rinsa/work/issue653-l1-shadow-evidence-20261031/run1/s49-report.json": "21635aecc102f18ab092543a75672e768354bb85c029efc9a112191a32faba98",
+        "/home/rinsa/work/issue653-l1-shadow-evidence-20261031/run1/server.log": "cb7d373d7931c713d518518b2f87307f34c57bc562a4cdd1f613d6682e599fb1",
+        "/home/rinsa/work/issue653-l1-shadow-evidence-20261031/run1/client-packet-original.jsonl": "43d224cfcb619ad9880b60502a757f694fa402e14a2ef622e845f4295d121c41",
+        "/home/rinsa/work/issue653-l1-shadow-evidence-20261031/run1/capture/pre-next-l0-prefix/native_bridge_received_original.jsonl": "fa1907080f56486c20ed7f5d478c6b80fe000e072306cfca5a8595e005596968",
+        "/home/rinsa/work/issue653-l1-shadow-evidence-20261031/run1/capture/pre-next-l0-prefix/native_bridge_sent_original.jsonl": "a716af21b1e1892f62f32d69431e8635217e2eebcf13ee3278beecfbf5871c31",
+        "/home/rinsa/work/issue653-l1-shadow-evidence-20261031/run1/capture/pre-next-l0-prefix/native_bridge_source_receipt.json": "50a357606e7dde341c2ede27037687cfe8d0f29fea4e8749a1f5fdb90bed13eb",
+        "/home/rinsa/work/issue653-l1-shadow-evidence-20261031/run1/capture/pre-next-l0-prefix/l18_s16_terminal_original.jsonl": "08a668186eaa5ec335de029f4e48476a37b7429e6ab818e9a52fe58129539843",
+        "/home/rinsa/work/issue653-l1-shadow-evidence-20261031/run1/capture/pre-next-l0-prefix/l16_pre_world_goal_plan.json": "d1d73386f8b85197a24b00c346c03bf7325eac24e8d2217cc66a8aae3559bd69"
+      },
+      "effective_client_clear_tick": "NOT_ATTESTED",
+      "full_tick_input_coverage": false,
+      "goal_accepted": false,
+      "p1_wait_ticks_admitted": 0,
+      "l10_pairs_admitted": 0,
+      "qualification": "NO_GO",
+      "science": "NOT_RUN"
+    },
+    "native_pairs": [
+      {
+        "event_seq": 7,
+        "probe_seq": 9,
+        "entity_id": 24,
+        "selected": "WAIT"
+      },
+      {
+        "event_seq": 18,
+        "probe_seq": 19,
+        "entity_id": 25,
+        "selected": "MOVE_AWAY"
+      },
+      {
+        "event_seq": 55,
+        "probe_seq": 56,
+        "entity_id": 27,
+        "selected": "WAIT"
+      }
+    ],
+    "full_session_s7": {
+      "minecraft_tcp_packet_bytes": false,
+      "native_execution_ack_attested": false,
+      "received_bytes": 30805,
+      "received_lines": 57,
+      "received_measured_before_decode": true,
+      "received_path": "/home/rinsa/work/issue653-l1-shadow-evidence-20261031/run1/capture/native_bridge_received_original.jsonl",
+      "received_sha256": "92f5516771bb4d327a5aa26c8273dd9ed33de0d503d70c4fd6c42dd24bf59dcd",
+      "schema": "SELF_S7_RAW_MINEFLAYER_JSONL_RECEIPT_V1",
+      "sent_bytes": 1381,
+      "sent_lines": 14,
+      "sent_measured_before_write": true,
+      "sent_path": "/home/rinsa/work/issue653-l1-shadow-evidence-20261031/run1/capture/native_bridge_sent_original.jsonl",
+      "sent_sha256": "f8827f716fbd94d8e77af387c6692ee26a82880ec2dface2a9563d4070856981",
+      "v_science_qualified": false
+    },
+    "live_window": {
+      "session_id": "3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+      "action_id": "s49-native-move-18",
+      "marker_id": "s49-native-move-18-3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+      "paper_world_uuid": "0dcf8a5d-b8da-4863-bc0d-641d0abc1260",
+      "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+      "paper_prefix_sha256": "38f2857d43f9e744edf57c6f1b31903eac17950b6e9fdc93aa3e889bf3a4fc37",
+      "paper_prefix_bytes": 142218,
+      "ticks": [
+        {
+          "world_tick": 251,
+          "displacement_m": 0.0516839040837227,
+          "last_reported_input_active": false
+        },
+        {
+          "world_tick": 252,
+          "displacement_m": 0.009966234637660332,
+          "last_reported_input_active": false
+        },
+        {
+          "world_tick": 253,
+          "displacement_m": 0.005441564112162567,
+          "last_reported_input_active": false
+        },
+        {
+          "world_tick": 254,
+          "displacement_m": 0.0,
+          "last_reported_input_active": false
+        },
+        {
+          "world_tick": 255,
+          "displacement_m": 0.0,
+          "last_reported_input_active": false
+        },
+        {
+          "world_tick": 256,
+          "displacement_m": 0.0,
+          "last_reported_input_active": false
+        },
+        {
+          "world_tick": 257,
+          "displacement_m": 0.0,
+          "last_reported_input_active": false
+        },
+        {
+          "world_tick": 258,
+          "displacement_m": 0.0,
+          "last_reported_input_active": false
+        }
+      ],
+      "input_event_count_at_window_end": 0,
+      "scope": "IN_SESSION_PAPER_CALLBACK_WINDOW_ONLY",
+      "provisional": true,
+      "final_source_verified": false,
+      "node_trace_complete": false,
+      "client_packet_writes_attested": false,
+      "effective_clear_tick": "NOT_ATTESTED",
+      "full_tick_input_idle": false,
+      "physical_stability_attested": false,
+      "goal_admitted": false,
+      "p1_wait_granted": 0,
+      "l10_pairs": 0,
+      "s10_updates": 0,
+      "s11_grants": 0
+    },
+    "trace_footer": {
+      "revision": 1,
+      "kind": "TRACE_END",
+      "complete": true,
+      "lost": false,
+      "recorded_rows": 458,
+      "input_write_authority": false,
+      "server_packet_received": false,
+      "effective_s15_clear_tick": "NOT_ATTESTED"
+    },
+    "cleanup": {
+      "runner_exit": 0,
+      "owned_processes": [
+        {
+          "pid": 33889,
+          "ppid": 33888,
+          "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-qz0l1888/minecraft.jar nogui ",
+          "cwd": "/tmp/relay-self-s49-qz0l1888",
+          "first_seen_utc": "2026-10-31T14:36:30.364624+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 33947,
+          "ppid": 33889,
+          "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+          "cwd": "/tmp/relay-self-s49-qz0l1888",
+          "first_seen_utc": "2026-10-31T14:36:38.140400+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 33950,
+          "ppid": 33889,
+          "argv": "lshw -C display ",
+          "cwd": "/tmp/relay-self-s49-qz0l1888",
+          "first_seen_utc": "2026-10-31T14:36:38.274819+00:00",
+          "pid_gone": true
+        },
+        {
+          "pid": 34013,
+          "ppid": 33888,
+          "argv": "node /home/rinsa/work/relay-self-l1-motion-shadow-20261031/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+          "cwd": "/home/rinsa/work/relay-self-l1-motion-shadow-20261031",
+          "first_seen_utc": "2026-10-31T14:36:52.001099+00:00",
+          "pid_gone": true
+        }
+      ],
+      "world_roots": [
+        {
+          "path": "/tmp/relay-self-s49-qz0l1888",
+          "removed": true
+        }
+      ],
+      "port_rebind": true
+    },
+    "typed_identity_scope": "Live host identity assertions; JSON is not typed authority",
+    "decision_time_source": "PROVISIONAL_PAPER_ONLY",
+    "goal": "UNDETERMINED",
+    "qualification": "NO_GO",
+    "science": "NOT_RUN"
+  },
+  "shadow": {
+    "attention_candidate_differs": true,
+    "cheap_same_information": "RECHECK_SAMPLED_POST_CLEAR_MOTION",
+    "classification": "DEV_L1_PRIOR_MOTION_ATTENTION_SHADOW_CHEAP_EQUIVALENT",
+    "cognitive_priority_committed": false,
+    "contrast": "cheap_one_bit_prior_motion_equivalent",
+    "current_native_present_unchanged": true,
+    "current_native_seq": 56,
+    "current_native_source_ref": "native-probe:3da31d96-95bf-49db-ac5e-5fabe8f35b38:56:s49-actual:3da31d96-95bf-49db-ac5e-5fabe8f35b38:event-55",
+    "current_s_choice": "WAIT",
+    "effective_clear_tick_attested": false,
+    "epoch_id": "s49-live-event-55-native-56",
+    "extra_actions": 0,
+    "goal_admitted": false,
+    "l10_training_episodes": 0,
+    "learned_l1_policy": false,
+    "model_calls": 0,
+    "new_native_probes": 0,
+    "original_l0_decision_modified": false,
+    "original_s_choice_kept": true,
+    "p1_wait_admitted": 0,
+    "paper_input_is_full_tick": false,
+    "previous_motion_ticks": [
+      251,
+      252,
+      253
+    ],
+    "prior_action_id": "s49-native-move-18",
+    "prior_paper_prefix_sha256": "38f2857d43f9e744edf57c6f1b31903eac17950b6e9fdc93aa3e889bf3a4fc37",
+    "s10_updates": 0,
+    "s11_grants": 0,
+    "session_id": "3da31d96-95bf-49db-ac5e-5fabe8f35b38",
+    "with_experience": "RECHECK_SAMPLED_POST_CLEAR_MOTION",
+    "without_experience": "ABSTAIN_NO_PRIOR_MOTION_EVIDENCE"
+  },
+  "independent_rule_motion_ticks": [
+    251,
+    252,
+    253
+  ],
+  "typed_identity_scope": "Original live host only; no JSON typed reauthentication",
+  "goal": "UNDETERMINED",
+  "qualification": "NO_GO",
+  "science": "NOT_RUN"
+}

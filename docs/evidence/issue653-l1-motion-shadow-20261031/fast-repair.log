@@ -1,0 +1,363 @@
+.............................................F.......................... [ 23%]
+........................................................................ [ 47%]
+........................................................................ [ 71%]
+..................FF..........................FFFFFFFFFFFFFF............ [ 95%]
+.............                                                            [100%]
+=================================== FAILURES ===================================
+___________ test_s18_and_original_default_routes_are_blob_identical ____________
+
+    def test_s18_and_original_default_routes_are_blob_identical():
+        from adapters.mineflayer import s34_native_world_cognition_ci as s34
+        from adapters.mineflayer import s49_normal_session_real_ci as s49
+        from test_w4_protected_recovery_audit import validate_adoption
+    
+        root = Path(__file__).resolve().parents[1]
+>       validate_adoption(root=root)
+
+tests/test_self_world_stage_w4_lease.py:590: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_w4_protected_recovery_audit.py:119: in validate_adoption
+    validate_current(manifest, root=root)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+manifest = {'schema': 'W4_PROTECTED_BLOB_ADOPTION_V2', 'version': 'v2', 'historical_source_commit': '1473c74e4448bb9a527747de0619c8e55ffbd827', 'effective_source_head': 'f34ccc0bf86f271849034c21abd254e5e3de780f', ...}
+root = PosixPath('/home/rinsa/work/relay-self-l1-motion-shadow-20261031')
+contents = None
+
+    def validate_current(manifest, *, root=ROOT, contents=None):
+        validate_authority(manifest)
+        for row in manifest['files']:
+            path = row['path']
+            raw = (root / path).read_bytes() if contents is None else contents[path]
+            blob = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+            if path in ADOPTED:
+                # Anchor reviewed bytes to the existing local candidate as well as
+                # the manifest: editing both current bytes and manifest cannot pass.
+                accepted = git('rev-parse', ACCEPTED_SOURCE + ':' + path, root=root).decode().strip()
+                assert row['prospective_git_blob'] == accepted, path
+                accepted_raw = git('cat-file', 'blob', ACCEPTED_SOURCE + ':' + path, root=root)
+                assert hashlib.sha256(accepted_raw).hexdigest() == row['prospective_content_sha256'], path
+                if path in ROUTE_B_RECEIPT_PATHS:
+                    # Exact immutable parent bytes, never current HEAD or a new
+                    # manifest hash; coordinated manifest/current edits still fail.
+                    inherited = git('rev-parse', ROUTE_B_SOURCE + ':' + path, root=root).decode().strip()
+                    assert blob == inherited, path
+                else:
+                    assert blob == accepted, path
+            else:
+>               assert blob == PROTECTED_BLOBS[path], path
+E               AssertionError: adapters/mineflayer/normal_action.py
+E               assert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'
+E                 
+E                 - 0ded8fa296c92076a643de08cd6fc360061e1d08
+E                 + 465b5510876537deccaf0b8acbd116efccf00ccd
+
+tests/test_w4_protected_recovery_audit.py:113: AssertionError
+____________ test_b_unchanged_15_and_c_adopted_four_blob_and_sha256 ____________
+
+    def test_b_unchanged_15_and_c_adopted_four_blob_and_sha256():
+>       validate_current(load_manifest())
+
+tests/test_w4_protected_recovery_audit.py:127: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+manifest = {'schema': 'W4_PROTECTED_BLOB_ADOPTION_V2', 'version': 'v2', 'historical_source_commit': '1473c74e4448bb9a527747de0619c8e55ffbd827', 'effective_source_head': 'f34ccc0bf86f271849034c21abd254e5e3de780f', ...}
+root = PosixPath('/home/rinsa/work/relay-self-l1-motion-shadow-20261031')
+contents = None
+
+    def validate_current(manifest, *, root=ROOT, contents=None):
+        validate_authority(manifest)
+        for row in manifest['files']:
+            path = row['path']
+            raw = (root / path).read_bytes() if contents is None else contents[path]
+            blob = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+            if path in ADOPTED:
+                # Anchor reviewed bytes to the existing local candidate as well as
+                # the manifest: editing both current bytes and manifest cannot pass.
+                accepted = git('rev-parse', ACCEPTED_SOURCE + ':' + path, root=root).decode().strip()
+                assert row['prospective_git_blob'] == accepted, path
+                accepted_raw = git('cat-file', 'blob', ACCEPTED_SOURCE + ':' + path, root=root)
+                assert hashlib.sha256(accepted_raw).hexdigest() == row['prospective_content_sha256'], path
+                if path in ROUTE_B_RECEIPT_PATHS:
+                    # Exact immutable parent bytes, never current HEAD or a new
+                    # manifest hash; coordinated manifest/current edits still fail.
+                    inherited = git('rev-parse', ROUTE_B_SOURCE + ':' + path, root=root).decode().strip()
+                    assert blob == inherited, path
+                else:
+                    assert blob == accepted, path
+            else:
+>               assert blob == PROTECTED_BLOBS[path], path
+E               AssertionError: adapters/mineflayer/normal_action.py
+E               assert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'
+E                 
+E                 - 0ded8fa296c92076a643de08cd6fc360061e1d08
+E                 + 465b5510876537deccaf0b8acbd116efccf00ccd
+
+tests/test_w4_protected_recovery_audit.py:113: AssertionError
+________________ test_d_authority_and_original_owner_identities ________________
+
+    def test_d_authority_and_original_owner_identities():
+        from adapters.mineflayer import s31a_real_server_ci as s31a
+        from adapters.mineflayer import s34_native_world_cognition_ci as s34
+        from adapters.mineflayer import s49_normal_session_real_ci as s49
+        from adapters.mineflayer.process_session import MineflayerProcessSession
+    
+        validate_authority(load_manifest())
+        assert s49._new_session is s34._new_session
+        assert s49._ready_server is s31a._ready_server
+        assert s34.MineflayerProcessSession is MineflayerProcessSession
+        assert MineflayerProcessSession.receive.__module__ == 'adapters.mineflayer.process_session'
+        # Current bytes pin sole collector/reader; remaining 15 pin Action/S10.
+>       validate_current(load_manifest())
+
+tests/test_w4_protected_recovery_audit.py:142: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+manifest = {'schema': 'W4_PROTECTED_BLOB_ADOPTION_V2', 'version': 'v2', 'historical_source_commit': '1473c74e4448bb9a527747de0619c8e55ffbd827', 'effective_source_head': 'f34ccc0bf86f271849034c21abd254e5e3de780f', ...}
+root = PosixPath('/home/rinsa/work/relay-self-l1-motion-shadow-20261031')
+contents = None
+
+    def validate_current(manifest, *, root=ROOT, contents=None):
+        validate_authority(manifest)
+        for row in manifest['files']:
+            path = row['path']
+            raw = (root / path).read_bytes() if contents is None else contents[path]
+            blob = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+            if path in ADOPTED:
+                # Anchor reviewed bytes to the existing local candidate as well as
+                # the manifest: editing both current bytes and manifest cannot pass.
+                accepted = git('rev-parse', ACCEPTED_SOURCE + ':' + path, root=root).decode().strip()
+                assert row['prospective_git_blob'] == accepted, path
+                accepted_raw = git('cat-file', 'blob', ACCEPTED_SOURCE + ':' + path, root=root)
+                assert hashlib.sha256(accepted_raw).hexdigest() == row['prospective_content_sha256'], path
+                if path in ROUTE_B_RECEIPT_PATHS:
+                    # Exact immutable parent bytes, never current HEAD or a new
+                    # manifest hash; coordinated manifest/current edits still fail.
+                    inherited = git('rev-parse', ROUTE_B_SOURCE + ':' + path, root=root).decode().strip()
+                    assert blob == inherited, path
+                else:
+                    assert blob == accepted, path
+            else:
+>               assert blob == PROTECTED_BLOBS[path], path
+E               AssertionError: adapters/mineflayer/normal_action.py
+E               assert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'
+E                 
+E                 - 0ded8fa296c92076a643de08cd6fc360061e1d08
+E                 + 465b5510876537deccaf0b8acbd116efccf00ccd
+
+tests/test_w4_protected_recovery_audit.py:113: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[adapters/mineflayer/execution.py] _
+
+path = 'adapters/mineflayer/execution.py'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'adapters/mineflayer/execution.py'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[adapters/mineflayer/action_outcome.py] _
+
+path = 'adapters/mineflayer/action_outcome.py'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'adapters/mineflayer/action_outcome.py'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/intent.py] _
+
+path = 'src/relay_self/intent.py'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'src/relay_self/intent.py'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/skill.py] _
+
+path = 'src/relay_self/skill.py'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'src/relay_self/skill.py'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action.py] _
+
+path = 'src/relay_self/action.py'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'src/relay_self/action.py'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action_supervision.py] _
+
+path = 'src/relay_self/action_supervision.py'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'src/relay_self/action_supervision.py'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/learning.py] _
+
+path = 'src/relay_self/learning.py'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'src/relay_self/learning.py'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/habit.py] _
+
+path = 'src/relay_self/habit.py'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'src/relay_self/habit.py'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action_feedback.py] _
+
+path = 'src/relay_self/action_feedback.py'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'src/relay_self/action_feedback.py'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action_outcome.py] _
+
+path = 'src/relay_self/action_outcome.py'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'src/relay_self/action_outcome.py'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[docs/postmain-architecture.json] _
+
+path = 'docs/postmain-architecture.json'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'docs/postmain-architecture.json'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[docs/postmain-architecture.md] _
+
+path = 'docs/postmain-architecture.md'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'docs/postmain-architecture.md'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[tests/test_postmain_architecture_freeze.py] _
+
+path = 'tests/test_postmain_architecture_freeze.py'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'tests/test_postmain_architecture_freeze.py'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+_ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/persistent_cognition.py] _
+
+path = 'src/relay_self/persistent_cognition.py'
+
+    @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+    def test_reject_each_current_mutation_including_s18_action_s10(path):
+        contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+        contents[path] += b'\n# unauthorized mutation\n'
+>       with pytest.raises(AssertionError, match=path):
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'src/relay_self/persistent_cognition.py'
+E         Actual message: "adapters/mineflayer/normal_action.py\nassert '465b55108765...116efccf00ccd' == '0ded8fa296c9...fc360061e1d08'\n  \n  - 0ded8fa296c92076a643de08cd6fc360061e1d08\n  + 465b5510876537deccaf0b8acbd116efccf00ccd"
+
+tests/test_w4_protected_recovery_audit.py:168: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_self_world_stage_w4_lease.py::test_s18_and_original_default_routes_are_blob_identical
+FAILED tests/test_w4_protected_recovery_audit.py::test_b_unchanged_15_and_c_adopted_four_blob_and_sha256
+FAILED tests/test_w4_protected_recovery_audit.py::test_d_authority_and_original_owner_identities
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[adapters/mineflayer/execution.py]
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[adapters/mineflayer/action_outcome.py]
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/intent.py]
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/skill.py]
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action.py]
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action_supervision.py]
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/learning.py]
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/habit.py]
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action_feedback.py]
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action_outcome.py]
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[docs/postmain-architecture.json]
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[docs/postmain-architecture.md]
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[tests/test_postmain_architecture_freeze.py]
+FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/persistent_cognition.py]
+17 failed, 284 passed in 25.84s

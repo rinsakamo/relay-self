@@ -1,0 +1,197 @@
+........................................................................ [ 22%]
+........................................................................ [ 45%]
+........................................................................ [ 68%]
+........................................................................ [ 91%]
+...............F.F.F....FF                                               [100%]
+=================================== FAILURES ===================================
+______ test_real_native_spawn_cancel_before_handoff_reaps_exact_pid[java] ______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75ac8490cce0>
+tmp_path = PosixPath('/tmp/pytest-of-rinsa/pytest-37/test_real_native_spawn_cancel_1')
+target = 'java'
+native_evidence = {'cancel': <function native_evidence.<locals>.cancel at 0x75ac84b2cc20>, 'settled': <function native_evidence.<locals>.settled at 0x75ac84b2d120>, 'emit': <function native_evidence.<locals>.emit at 0x75ac84b2c4a0>}
+
+    @pytest.mark.parametrize("target", ["node", "java"])
+    def test_real_native_spawn_cancel_before_handoff_reaps_exact_pid(
+        monkeypatch, tmp_path, target, native_evidence,
+    ):
+        """OS-created child is owned even before create_subprocess_exec hands it off."""
+>       argv = _native_command(tmp_path, target)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_s49_native_os_custody.py:178: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp_path = PosixPath('/tmp/pytest-of-rinsa/pytest-37/test_real_native_spawn_cancel_1')
+target = 'java'
+
+    def _native_command(tmp_path: Path, target: str) -> tuple[str, ...]:
+        if target == "node":
+            node = shutil.which("node")
+            assert node is not None, "Node executable is required, not a SKIP"
+            script = tmp_path / "inert.js"
+            script.write_text("setInterval(() => {}, 1000);\n", encoding="utf-8")
+            return node, str(script)
+        if target == "java":
+            java = shutil.which("java")
+            javac = shutil.which("javac")
+>           assert java is not None and javac is not None, "JDK is required, not a SKIP"
+E           AssertionError: JDK is required, not a SKIP
+E           assert ('/usr/bin/java' is not None and None is not None)
+
+tests/test_s49_native_os_custody.py:152: AssertionError
+_______ test_real_java_original_readiness_cancel_settles_only_collector ________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75ac8490c050>
+tmp_path = PosixPath('/tmp/pytest-of-rinsa/pytest-37/test_real_java_original_readin0')
+native_evidence = {'cancel': <function native_evidence.<locals>.cancel at 0x75ac84b2d9e0>, 'settled': <function native_evidence.<locals>.settled at 0x75ac84b2d940>, 'emit': <function native_evidence.<locals>.emit at 0x75ac84b2d580>}
+
+    def test_real_java_original_readiness_cancel_settles_only_collector(
+        monkeypatch, tmp_path, native_evidence,
+    ):
+        """Exercise original _ready_server() on an inert JVM, no Minecraft JAR."""
+>       java_argv = _native_command(tmp_path, "java")
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_s49_native_os_custody.py:292: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp_path = PosixPath('/tmp/pytest-of-rinsa/pytest-37/test_real_java_original_readin0')
+target = 'java'
+
+    def _native_command(tmp_path: Path, target: str) -> tuple[str, ...]:
+        if target == "node":
+            node = shutil.which("node")
+            assert node is not None, "Node executable is required, not a SKIP"
+            script = tmp_path / "inert.js"
+            script.write_text("setInterval(() => {}, 1000);\n", encoding="utf-8")
+            return node, str(script)
+        if target == "java":
+            java = shutil.which("java")
+            javac = shutil.which("javac")
+>           assert java is not None and javac is not None, "JDK is required, not a SKIP"
+E           AssertionError: JDK is required, not a SKIP
+E           assert ('/usr/bin/java' is not None and None is not None)
+
+tests/test_s49_native_os_custody.py:152: AssertionError
+_____ test_real_java_original_readiness_success_transfers_single_collector _____
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75ac8490d2e0>
+tmp_path = PosixPath('/tmp/pytest-of-rinsa/pytest-37/test_real_java_original_readin1')
+native_evidence = {'cancel': <function native_evidence.<locals>.cancel at 0x75ac84b2dc60>, 'settled': <function native_evidence.<locals>.settled at 0x75ac84b2c680>, 'emit': <function native_evidence.<locals>.emit at 0x75ac84b2d300>}
+
+    def test_real_java_original_readiness_success_transfers_single_collector(
+        monkeypatch, tmp_path, native_evidence,
+    ):
+        """Original _ready_server success hands over one real JVM and one reader.
+    
+        Only an inert Java program imitates the readiness string; this does not
+        establish actual Minecraft readiness or source attestation.
+        """
+>       java_argv = _native_command(tmp_path, "java")
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_s49_native_os_custody.py:461: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp_path = PosixPath('/tmp/pytest-of-rinsa/pytest-37/test_real_java_original_readin1')
+target = 'java'
+
+    def _native_command(tmp_path: Path, target: str) -> tuple[str, ...]:
+        if target == "node":
+            node = shutil.which("node")
+            assert node is not None, "Node executable is required, not a SKIP"
+            script = tmp_path / "inert.js"
+            script.write_text("setInterval(() => {}, 1000);\n", encoding="utf-8")
+            return node, str(script)
+        if target == "java":
+            java = shutil.which("java")
+            javac = shutil.which("javac")
+>           assert java is not None and javac is not None, "JDK is required, not a SKIP"
+E           AssertionError: JDK is required, not a SKIP
+E           assert ('/usr/bin/java' is not None and None is not None)
+
+tests/test_s49_native_os_custody.py:152: AssertionError
+___ test_real_s49_owner_node_fault_reaps_java_and_original_collector[cancel] ___
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75ac84b18b60>
+tmp_path = PosixPath('/tmp/pytest-of-rinsa/pytest-37/test_real_s49_owner_node_fault0')
+native_evidence = {'cancel': <function native_evidence.<locals>.cancel at 0x75ac84b2f100>, 'settled': <function native_evidence.<locals>.settled at 0x75ac84b2f560>, 'emit': <function native_evidence.<locals>.emit at 0x75ac84b2f380>}
+fault = 'cancel'
+
+    @pytest.mark.parametrize('fault', ['cancel', 'secondary_exception'])
+    def test_real_s49_owner_node_fault_reaps_java_and_original_collector(monkeypatch, tmp_path, native_evidence, fault):
+        from adapters.mineflayer import s49_normal_session_real_ci as s49
+        from test_self_world_stage_w4_prehost import _offline_lines
+        _, _, frames = _offline_lines()
+        script = tmp_path / 's49-inert.js'
+        script.write_text('for (const f of '+json.dumps([x.decode() for x in frames[:2]])+') process.stdout.write(f);\nsetInterval(()=>{},1000);\n')
+>       java_argv = _native_command(tmp_path, 'java')
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_s49_native_os_custody.py:640: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp_path = PosixPath('/tmp/pytest-of-rinsa/pytest-37/test_real_s49_owner_node_fault0')
+target = 'java'
+
+    def _native_command(tmp_path: Path, target: str) -> tuple[str, ...]:
+        if target == "node":
+            node = shutil.which("node")
+            assert node is not None, "Node executable is required, not a SKIP"
+            script = tmp_path / "inert.js"
+            script.write_text("setInterval(() => {}, 1000);\n", encoding="utf-8")
+            return node, str(script)
+        if target == "java":
+            java = shutil.which("java")
+            javac = shutil.which("javac")
+>           assert java is not None and javac is not None, "JDK is required, not a SKIP"
+E           AssertionError: JDK is required, not a SKIP
+E           assert ('/usr/bin/java' is not None and None is not None)
+
+tests/test_s49_native_os_custody.py:152: AssertionError
+_ test_real_s49_owner_node_fault_reaps_java_and_original_collector[secondary_exception] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x75ac84b1bdd0>
+tmp_path = PosixPath('/tmp/pytest-of-rinsa/pytest-37/test_real_s49_owner_node_fault1')
+native_evidence = {'cancel': <function native_evidence.<locals>.cancel at 0x75ac84b2e2a0>, 'settled': <function native_evidence.<locals>.settled at 0x75ac84b2f2e0>, 'emit': <function native_evidence.<locals>.emit at 0x75ac84b2e980>}
+fault = 'secondary_exception'
+
+    @pytest.mark.parametrize('fault', ['cancel', 'secondary_exception'])
+    def test_real_s49_owner_node_fault_reaps_java_and_original_collector(monkeypatch, tmp_path, native_evidence, fault):
+        from adapters.mineflayer import s49_normal_session_real_ci as s49
+        from test_self_world_stage_w4_prehost import _offline_lines
+        _, _, frames = _offline_lines()
+        script = tmp_path / 's49-inert.js'
+        script.write_text('for (const f of '+json.dumps([x.decode() for x in frames[:2]])+') process.stdout.write(f);\nsetInterval(()=>{},1000);\n')
+>       java_argv = _native_command(tmp_path, 'java')
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_s49_native_os_custody.py:640: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+tmp_path = PosixPath('/tmp/pytest-of-rinsa/pytest-37/test_real_s49_owner_node_fault1')
+target = 'java'
+
+    def _native_command(tmp_path: Path, target: str) -> tuple[str, ...]:
+        if target == "node":
+            node = shutil.which("node")
+            assert node is not None, "Node executable is required, not a SKIP"
+            script = tmp_path / "inert.js"
+            script.write_text("setInterval(() => {}, 1000);\n", encoding="utf-8")
+            return node, str(script)
+        if target == "java":
+            java = shutil.which("java")
+            javac = shutil.which("javac")
+>           assert java is not None and javac is not None, "JDK is required, not a SKIP"
+E           AssertionError: JDK is required, not a SKIP
+E           assert ('/usr/bin/java' is not None and None is not None)
+
+tests/test_s49_native_os_custody.py:152: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_s49_native_os_custody.py::test_real_native_spawn_cancel_before_handoff_reaps_exact_pid[java]
+FAILED tests/test_s49_native_os_custody.py::test_real_java_original_readiness_cancel_settles_only_collector
+FAILED tests/test_s49_native_os_custody.py::test_real_java_original_readiness_success_transfers_single_collector
+FAILED tests/test_s49_native_os_custody.py::test_real_s49_owner_node_fault_reaps_java_and_original_collector[cancel]
+FAILED tests/test_s49_native_os_custody.py::test_real_s49_owner_node_fault_reaps_java_and_original_collector[secondary_exception]
+5 failed, 309 passed in 26.40s

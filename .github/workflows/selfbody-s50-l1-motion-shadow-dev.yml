@@ -1,0 +1,58 @@
+name: SelfBody L1 sampled motion shadow DEV
+on:
+  push:
+    branches:
+      - dev/selfbody-l1-motion-shadow-20261031
+    paths:
+      - 'adapters/mineflayer/self_body_s50_l1_motion_shadow.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'tests/test_self_body_s50_l1_motion_shadow.py'
+      - 'docs/selfbody-l1-motion-shadow-dev-20261031.md'
+      - '.github/workflows/selfbody-s50-l1-motion-shadow-dev.yml'
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/self_body_s50_l1_motion_shadow.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'tests/test_self_body_s50_l1_motion_shadow.py'
+      - 'docs/selfbody-l1-motion-shadow-dev-20261031.md'
+      - '.github/workflows/selfbody-s50-l1-motion-shadow-dev.yml'
+permissions:
+  contents: read
+jobs:
+  original-l0-l1-source-shadow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Source-qualified L1 attention and original S49 owner regression
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/self_body_s50_l1_motion_shadow.py adapters/mineflayer/self_body_s50_world_dev.py tests/test_self_body_s50_l1_motion_shadow.py
+          python -m compileall -q adapters/mineflayer/self_body_s50_l1_motion_shadow.py adapters/mineflayer/self_body_s50_world_dev.py tests/test_self_body_s50_l1_motion_shadow.py
+          python -m pytest -o addopts='' -q \
+            tests/test_self_body_s50_l1_motion_shadow.py \
+            tests/test_self_body_s50_route_b_dev.py \
+            tests/test_self_body_s50_live_next_epoch.py \
+            tests/test_s50_live_paper_window.py \
+            tests/test_self_body_s50_postworld_epoch.py \
+            tests/test_l1_s_choice_shadow.py \
+            tests/test_l10_world_body_cue_learning.py \
+            tests/test_self_body_s50_world_dev.py \
+            tests/test_self_world_stage_w4_lease.py \
+            tests/test_self_world_stage_w4_optin_offline.py \
+            tests/test_w4_protected_recovery_audit.py
+          python tools/check_repository.py
+      - name: No learning qualification
+        if: always()
+        run: echo 'DEV_OFFLINE_L1_ATTENTION_SHADOW_ONLY / REAL_NEW_WORLD_NOT_RUN / CHEAP_1BIT_EQUIVALENT / NO_GOAL_OR_L10 / NO_L0_POLICY_CHANGE / NO_S10_S11 / QUAL_NO_GO / SCIENCE_NOT_RUN'

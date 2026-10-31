@@ -1,0 +1,48 @@
+{
+  "classification": "DEV_LIVE_L1_MOTION_SHADOW_ORIGINAL_AUDIT_PASS",
+  "execution_head": "ba83256a80370878748316e145855bf928f1aaac",
+  "new_worlds": 1,
+  "world_pass": 1,
+  "world_fail": 0,
+  "retry": 0,
+  "action_count": 1,
+  "l0_decisions": [
+    "WAIT",
+    "MOVE_AWAY",
+    "WAIT"
+  ],
+  "native_pairs": [
+    [
+      7,
+      9
+    ],
+    [
+      18,
+      19
+    ],
+    [
+      55,
+      56
+    ]
+  ],
+  "shadow": "CHEAP_EQUIVALENT",
+  "off_motion_ticks": [
+    251,
+    252,
+    253
+  ],
+  "fast_pass": 1710,
+  "focused_pass": 142,
+  "negative_originals_rejected": 21,
+  "native_os_pass": 12,
+  "node_pass": 6,
+  "prior_original_files_unchanged": 6784,
+  "goal": "UNDETERMINED",
+  "p1_wait": 0,
+  "l10": 0,
+  "s10": 0,
+  "s11": 0,
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "external_original_root": "/home/rinsa/work/issue653-l1-shadow-evidence-20261031"
+}
