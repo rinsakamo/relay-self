@@ -78,6 +78,7 @@ jobs:
               adapters/mineflayer/self_demo.py|\
               adapters/mineflayer/self_product_passive_views.py|\
               adapters/mineflayer/self_live_think.py|\
+              adapters/mineflayer/s60b1_loopback_adapter.py|\
               adapters/mineflayer/self_body_projection.py|\
               adapters/mineflayer/self_body_m0_projection.py|\
               adapters/mineflayer/self_body_p1_projection.py|\
@@ -161,6 +162,7 @@ jobs:
               tests/test_self_dev.py|\
               tests/test_self_product_passive_views.py|\
               tests/test_self_live_think.py|\
+              tests/test_feature_s60b1_adapter.py|\
               tests/test_self_action_evidence.py|\
               tests/test_self_world_prospective.py|\
               tests/test_self_world_learning_gate.py|\
@@ -261,6 +263,7 @@ jobs:
             tests/test_s50_p1_scope.py \
             tests/test_self_demo.py \
             tests/test_self_live_think.py \
+            tests/test_feature_s60b1_adapter.py \
             tests/test_self_action_evidence.py \
             tests/test_self_world_prospective.py \
             tests/test_self_world_learning_gate.py \
