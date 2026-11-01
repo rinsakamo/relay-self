@@ -58,6 +58,13 @@ def bootstrap_original_s49_owner(directory: Path) -> Path:
         sys.path.insert(0, value)
     import adapters.mineflayer.s49_completed_decision_bridge as owner
     import adapters.mineflayer.self_action_evidence as native
+    import experiments
+
+    # M owns only this separate adapter and its resource ledger. Explicit
+    # package path extension, no S product source files copied or rewritten.
+    m_experiments = str(Path(__file__).resolve().parents[1] / "experiments")
+    if m_experiments not in experiments.__path__:
+        experiments.__path__.append(m_experiments)
 
     if (
         not Path(owner.__file__).resolve().is_relative_to(root)
