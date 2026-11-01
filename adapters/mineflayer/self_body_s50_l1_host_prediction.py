@@ -14,6 +14,11 @@ from adapters.mineflayer.self_body_s50_l1_motion_prequential import (
     TargetWorldIdentity,
     freeze_for_target,
 )
+from adapters.mineflayer.self_body_s50_l1_paper_dispatch import (
+    ForecastCommand,
+    ForecastDispatchRejected,
+    PaperForecastDispatch,
+)
 
 
 class _ObservedLogPath(type(Path())):
@@ -61,7 +66,14 @@ class HostPrediction:
         self.ticket = None
         self.last_tick = None
         self.count = 0
+        self.paper_gate_enabled = False
+        self.dispatch: PaperForecastDispatch | None = None
         self.write('TRAINING_FIXED', training=asdict(self.training))
+
+    def enable_paper_gate(self):
+        if self.identity is not None or self.ticket is not None or self.paper_gate_enabled:
+            raise ForecastDispatchRejected('Paper gate must be enabled before native Action')
+        self.paper_gate_enabled = True
 
     def collector_log(self, path):
         observed = _ObservedLogPath(path)
@@ -98,6 +110,13 @@ class HostPrediction:
             ), capture_mode='PROSPECTIVE_LOCAL_ORDER_NOT_EXTERNALLY_ATTESTED')
             self.write('TARGET_FIXED', ticket=asdict(self.ticket), source_line_sha256=digest,
                        subject_status='PLANNED_FROM_TRAINING_VERIFY_WITH_ORIGINAL_INPUT')
+            if self.paper_gate_enabled:
+                self.dispatch = PaperForecastDispatch(
+                    marker=marker, world=fields['world'],
+                    subject_uuid=self.training.subject_uuid,
+                )
+                self.write('PAPER_DISPATCH_ARMED', marker=marker,
+                           world=fields['world'], subject_status='TRAINING_PLANNED_ONLY')
         if 'S50_DEV_WAIT_TICK ' in line:
             if self.ticket is None or fields['world'] != self.ticket.target.paper_world_uuid:
                 raise ValueError('unbound WAIT')
@@ -115,8 +134,21 @@ class HostPrediction:
             self.write('OBSERVED', tick=tick, index=self.count, displacement_m=displacement,
                        source_line_sha256=digest)
             if self.count < 8:
+                prediction = self.ticket.model.slope * displacement
                 self.write('PREDICTION_FIXED', target_tick=tick + 1,
-                           prediction_m=self.ticket.model.slope * displacement,
+                           prediction_m=prediction,
                            last_m=displacement, zero_m=0.0,
                            ticket_sha256=self.ticket.ticket_sha256,
                            ceiling='HOST_BEFORE_NEXT_READ_ONLY_PAPER_TIME_NOT_ATTESTED')
+                if self.paper_gate_enabled:
+                    if self.dispatch is None:
+                        raise ForecastDispatchRejected('missing bound Paper dispatch')
+                    request = ForecastCommand(
+                        marker, fields['world'], self.training.subject_uuid,
+                        tick, tick + 1, float(prediction), self.ticket.ticket_sha256,
+                    )
+                    self.dispatch.offer(request)
+                    self.write('PAPER_COMMAND_QUEUED', prior_tick=tick,
+                               target_tick=tick + 1,
+                               ticket_sha256=request.ticket_sha256,
+                               status='NOT_YET_SENT_OR_PAPER_ACCEPTED')

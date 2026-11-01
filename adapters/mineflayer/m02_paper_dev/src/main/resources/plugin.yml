@@ -14,6 +14,10 @@ commands:
     description: 'Console-only post-S50 World WAIT observation candidate; no P1 recovery'
     usage: '/relaydevwait <marker_id>'
 
+  relaydevforecast:
+    description: 'Console-only opt-in DEV Paper future-tick prediction acceptance; no Action'
+    usage: '/relaydevforecast <marker_id> <prior_tick> <target_tick> <predicted_m> <ticket_sha256>'
+
   relaydevsnapshot:
     description: 'Console-only native V8 DEV body/pose/time observation; no mutations'
     usage: '/relaydevsnapshot <marker_id>'

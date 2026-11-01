@@ -17,6 +17,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Input;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
@@ -33,6 +34,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerAnimationEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerInputEvent;
 import org.bukkit.event.player.PlayerVelocityEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
@@ -80,6 +82,13 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     // Separate prospective S50 fixed-pose DEV: World-tick position billing.
     // False on all historical Paper profiles and non-controlled World runs.
     private boolean s50TickMeterCandidate = false;
+    // Opt-in S owner observation of the *last reported* client input only.
+    // Neither this source nor an all-false snapshot proves S15 effective clear.
+    private boolean s50InputWitnessCandidate = false;
+    private static final long S50_INPUT_EVENT_LOG_LIMIT = 256;
+    private long s50InputEvents = 0;
+    private long s50InputLastUpdateTick = -1;
+    private volatile boolean s50InputCoverageOverflow = false;
     private boolean s50TickMeterArmed = false;
     private Location s50TickMeterLast;
     private long s50TickMeterRows = 0;
@@ -90,6 +99,9 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private int s50WaitSourceRows = 0;
     private long s50WaitStartWorldTick = -1;
     private Location s50WaitLast;
+    // Isolated, default-OFF Paper main-thread future-tick receipt; no S49 authority.
+    private boolean s50ForecastGateDev = false;
+    private final S50ForecastGate s50ForecastGate = new S50ForecastGate();
     private long s50WaitCombatEvents = 0;
     private long s50WaitSwingEvents = 0;
     private long s50WaitAllMovementEvents = 0;
@@ -210,6 +222,24 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 throw new IllegalStateException("invalid S50 tick meter DEV flag");
             }
             s50TickMeterCandidate = getConfig().getBoolean("s50-tick-meter-dev", false);
+            if (getConfig().contains("s50-input-witness-dev")
+                    && !getConfig().isBoolean("s50-input-witness-dev")) {
+                throw new IllegalStateException("invalid S50 input witness DEV flag");
+            }
+            s50InputWitnessCandidate = getConfig().getBoolean(
+                "s50-input-witness-dev", false);
+            if (s50InputWitnessCandidate && !s50TickMeterCandidate) {
+                throw new IllegalStateException(
+                    "S50 input witness requires S50 tick meter DEV");
+            }
+            if (getConfig().contains("s50-forecast-gate-dev")
+                    && !getConfig().isBoolean("s50-forecast-gate-dev")) {
+                throw new IllegalStateException("invalid S50 forecast gate DEV flag");
+            }
+            s50ForecastGateDev = getConfig().getBoolean("s50-forecast-gate-dev", false);
+            if (s50ForecastGateDev && !s50TickMeterCandidate) {
+                throw new IllegalStateException("S50 forecast gate needs existing WAIT tick owner");
+            }
             target = getConfig().getString("target-player", "");
             if (!target.equals("RelaySelf")) {
                 throw new IllegalStateException("only the owned RelaySelf dev bot is supported");
@@ -263,6 +293,26 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     // command acknowledgement. That incomplete tick is not WAIT.
                     if (tick > s50WaitStartWorldTick) {
                         Location from = s50WaitLast;
+                        if (s50ForecastGateDev) {
+                            // Executed on the same Paper main-thread callback as
+                            // the physical sampled WAIT position. No interpolation.
+                            S50ForecastGate.Sample check = s50ForecastGate.sample(tick);
+                            S50ForecastGate.Receipt receipt = check.receipt();
+                            getLogger().info("S50_DEV_FORECAST_TICK marker_id=" + s50Marker
+                                + " world=" + p.getWorld().getUID()
+                                + " subject_uuid=" + p.getUniqueId()
+                                + " tick=" + tick + " status=" + check.status()
+                                + " accepted_tick=" + (receipt == null ? "NONE"
+                                    : receipt.acceptedWorldTick())
+                                + " prior_tick=" + (receipt == null ? "NONE"
+                                    : receipt.priorTick())
+                                + " target_tick=" + (receipt == null ? "NONE"
+                                    : receipt.targetTick())
+                                + " predicted_m=" + (receipt == null ? "NONE"
+                                    : receipt.predictedMeters())
+                                + " ticket_sha256=" + (receipt == null ? "NONE"
+                                    : receipt.modelTicketSha256()));
+                        }
                         getLogger().info("S50_DEV_WAIT_TICK marker_id=" + s50Marker
                             + " world=" + p.getWorld().getUID()
                             + " tick=" + tick + " index=" + (s50WaitSourceRows + 1)
@@ -278,6 +328,20 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                             + " sprint=" + p.isSprinting() + " sneak=" + p.isSneaking()
                             + " swimming=" + p.isSwimming()
                             + " basal_ticks=" + appliedTicks);
+                        if (s50InputWitnessCandidate) {
+                            // A sampled server state, not a full-tick input census.
+                            Input input = p.getCurrentInput();
+                            getLogger().info("S50_DEV_INPUT_TICK marker_id=" + s50Marker
+                                + " world=" + p.getWorld().getUID()
+                                + " subject_uuid=" + p.getUniqueId()
+                                + " tick=" + tick + " index=" + (s50WaitSourceRows + 1)
+                                + " input_events=" + s50InputEvents
+                                + " last_input_event_tick=" + s50InputLastUpdateTick
+                                + " event_overflow=" + s50InputCoverageOverflow
+                                + inputFlags(input)
+                                + " coverage=LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY"
+                                + " effective_s15_clear_tick=NOT_ATTESTED");
+                        }
                         try {
                             logS50WaitScope(p, tick, s50WaitSourceRows + 1);
                             getLogger().info("S50_DEV_WAIT_LIFECYCLE_SAMPLE marker_id="
@@ -441,6 +505,54 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     }
 
 
+    /** Encode exactly the seven Paper 1.21.8 input bits, not held Node controls. */
+    private static String inputFlags(Input input) {
+        return " forward=" + input.isForward()
+            + " backward=" + input.isBackward()
+            + " left=" + input.isLeft()
+            + " right=" + input.isRight()
+            + " jump=" + input.isJump()
+            + " sneak=" + input.isSneak()
+            + " sprint=" + input.isSprint();
+    }
+
+    /**
+     * PlayerInputEvent is an input-update callback, not proof of every packet,
+     * nor proof of a whole World tick free of held input.
+     */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onS50InputUpdate(PlayerInputEvent event) {
+        if (!devActive || !s50InputWitnessCandidate
+                || s50Marker.equals("NONE")
+                || !event.getPlayer().getName().equals(target)) {
+            return;
+        }
+        if (!Bukkit.isPrimaryThread()) {
+            s50InputCoverageOverflow = true;
+            return;
+        }
+        Player subject = event.getPlayer();
+        s50InputEvents++;
+        s50InputLastUpdateTick = subject.getWorld().getFullTime();
+        if (s50InputEvents > S50_INPUT_EVENT_LOG_LIMIT) {
+            if (s50InputEvents == S50_INPUT_EVENT_LOG_LIMIT + 1) {
+                s50InputCoverageOverflow = true;
+                getLogger().warning("S50_DEV_INPUT_OVERFLOW marker_id=" + s50Marker
+                    + " world=" + subject.getWorld().getUID()
+                    + " subject_uuid=" + subject.getUniqueId()
+                    + " tick=" + s50InputLastUpdateTick
+                    + " limit=" + S50_INPUT_EVENT_LOG_LIMIT);
+            }
+            return;
+        }
+        getLogger().info("S50_DEV_INPUT_EVENT marker_id=" + s50Marker
+            + " world=" + subject.getWorld().getUID()
+            + " subject_uuid=" + subject.getUniqueId()
+            + " tick=" + s50InputLastUpdateTick
+            + " index=" + s50InputEvents + inputFlags(event.getInput())
+            + " coverage=PAPER_INPUT_UPDATE_CALLBACK_ONLY");
+    }
+
     /** Server-side timestamp for DEV S50 control-command boundaries only.
      *  No player, R grant, Action authorization or physiology mutation.
      *  Console-only command: the marker cannot assert when server inputs
@@ -470,6 +582,45 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 + " motion_billed=" + chargedMotionExhaustion);
             return true;
         }
+        if (command.getName().equalsIgnoreCase("relaydevforecast")) {
+            if (!devActive || !s50ForecastGateDev || !s50TickMeterCandidate
+                    || !(sender instanceof ConsoleCommandSender)
+                    || args.length != 5 || !args[0].matches("[A-Za-z0-9_-]{1,128}")
+                    || !s50WaitObserveActive || !s50ForecastGate.active()) {
+                return false;
+            }
+            Player p = Bukkit.getPlayerExact(target);
+            if (p == null || !p.isOnline() || p.isDead()) return false;
+            long priorTick;
+            long targetTick;
+            double predicted;
+            try {
+                priorTick = Long.parseLong(args[1]);
+                targetTick = Long.parseLong(args[2]);
+                predicted = Double.parseDouble(args[3]);
+            } catch (NumberFormatException exc) {
+                getLogger().info("S50_DEV_FORECAST_REJECT marker_id=" + args[0]
+                    + " reason=INVALID_NUMERIC_FIELDS");
+                return false;
+            }
+            long now = p.getWorld().getFullTime();
+            S50ForecastGate.Decision decision = s50ForecastGate.offer(
+                args[0], p.getWorld().getUID().toString(),
+                p.getUniqueId().toString(), now, priorTick, targetTick,
+                predicted, args[4]
+            );
+            getLogger().info("S50_DEV_FORECAST_" + (decision.accepted() ? "ACCEPT" : "REJECT")
+                + " marker_id=" + args[0]
+                + " world=" + p.getWorld().getUID()
+                + " subject_uuid=" + p.getUniqueId()
+                + " accepted_world_tick=" + now
+                + " prior_tick=" + priorTick + " target_tick=" + targetTick
+                + " predicted_m=" + predicted
+                + " ticket_sha256=" + (decision.accepted()
+                    ? decision.receipt().modelTicketSha256() : "NONE")
+                + " status=" + decision.reason());
+            return decision.accepted();
+        }
         if (command.getName().equalsIgnoreCase("relaydevwait")) {
             if (!devActive || !s50TickMeterCandidate
                     || !(sender instanceof ConsoleCommandSender)
@@ -485,6 +636,12 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             Location where = waiting.getLocation();
             s50WaitStartWorldTick = waiting.getWorld().getFullTime();
             s50WaitLast = where.clone();
+            if (s50ForecastGateDev) {
+                s50ForecastGate.begin(
+                    s50Marker, waiting.getWorld().getUID().toString(),
+                    waiting.getUniqueId().toString(), s50WaitStartWorldTick
+                );
+            }
             s50WaitObserveActive = true;
             s50WaitLifecycleEvents = 0;
             s50WaitLifecycleOverflow = false;
@@ -524,6 +681,9 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 return false;
             }
             s50Marker = args[0];
+            s50InputEvents = 0;
+            s50InputLastUpdateTick = -1;
+            s50InputCoverageOverflow = false;
             s50ObserveUntil = p.getWorld().getFullTime() + 100;
             if (s50TickMeterCandidate) {
                 // PRE_FORWARD is a source observation BEFORE the existing

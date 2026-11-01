@@ -1,0 +1,83 @@
+name: L1-MP4 Paper future-tick forecast gate DEV
+on:
+  push:
+    branches:
+      - dev/l1-mp4-paper-tick-gate-20261101
+    paths:
+      - 'adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/S50ForecastGate.java'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/RelayMetabolismPlugin.java'
+      - 'adapters/mineflayer/m02_paper_dev/src/test/java/io/github/rinsakamo/relaymetabolism/S50ForecastGateSelfTest.java'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/resources/plugin.yml'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml'
+      - 'tools/l1_mp4_three_world_dev.py'
+      - 'adapters/mineflayer/self_body_s50_l1_paper_dispatch.py'
+      - 'adapters/mineflayer/self_body_s50_l1_host_prediction.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'tests/test_self_body_s50_l1_paper_dispatch.py'
+      - 'docs/selfbody-l1-mp4-paper-tick-gate-20261101.md'
+      - '.github/workflows/l1-mp4-paper-tick-gate-dev.yml'
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/S50ForecastGate.java'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/RelayMetabolismPlugin.java'
+      - 'adapters/mineflayer/m02_paper_dev/src/test/java/io/github/rinsakamo/relaymetabolism/S50ForecastGateSelfTest.java'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/resources/plugin.yml'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml'
+      - 'tools/l1_mp4_three_world_dev.py'
+      - 'adapters/mineflayer/self_body_s50_l1_paper_dispatch.py'
+      - 'adapters/mineflayer/self_body_s50_l1_host_prediction.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'tests/test_self_body_s50_l1_paper_dispatch.py'
+      - 'docs/selfbody-l1-mp4-paper-tick-gate-20261101.md'
+      - '.github/workflows/l1-mp4-paper-tick-gate-dev.yml'
+permissions:
+  contents: read
+jobs:
+  paper-forecast-gate-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Compile and execute pure Paper main-thread timing state machine
+        run: |
+          set -euo pipefail
+          SRC=adapters/mineflayer/m02_paper_dev/src
+          OUT="$(mktemp -d)"
+          javac --release 21 -d "$OUT" \
+            "$SRC/main/java/io/github/rinsakamo/relaymetabolism/S50ForecastGate.java" \
+            "$SRC/test/java/io/github/rinsakamo/relaymetabolism/S50ForecastGateSelfTest.java"
+          java -cp "$OUT" io.github.rinsakamo.relaymetabolism.S50ForecastGateSelfTest
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: MP4 host→Paper contract, previous owner regressions, lint
+        env:
+          PYTHONPATH: src:tests:.
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check tools/l1_mp4_three_world_dev.py adapters/mineflayer/self_body_s50_l1_paper_dispatch.py tests/test_self_body_s50_l1_paper_dispatch.py adapters/mineflayer/self_body_s50_l1_host_prediction.py adapters/mineflayer/self_body_s50_world_dev.py
+          python -m compileall -q tools/l1_mp4_three_world_dev.py adapters/mineflayer/self_body_s50_l1_paper_dispatch.py tests/test_self_body_s50_l1_paper_dispatch.py adapters/mineflayer/self_body_s50_l1_host_prediction.py adapters/mineflayer/self_body_s50_world_dev.py
+          python -m pytest -o addopts='' -q \
+            tests/test_self_body_s50_l1_paper_dispatch.py \
+            tests/test_self_body_s50_l1_host_prediction.py \
+            tests/test_self_body_s50_l1_motion_live_dev.py \
+            tests/test_self_body_s50_l1_motion_prequential.py \
+            tests/test_s50_live_paper_window.py \
+            tests/test_s50_input_witness_source.py
+      - name: Compile actual Paper plugin including opt-in command
+        run: |
+          set -euo pipefail
+          mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+      - name: Non-physical status and original owner protection
+        run: |
+          set -euo pipefail
+          python tools/check_repository.py
+          echo 'MP4_PAPER_TICK_GATE_OFFLINE_ONLY / REAL_WORLD_0 / GRANT_CONSUMED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
