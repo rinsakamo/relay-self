@@ -1,5 +1,6 @@
 name: L1-MP4 remaining two disposable Minecraft Worlds DEV
 # Run1 consumed 1/3 and failed due missing S50 input witness / late forecasts.\n# Only independent Worlds 2 and 3 remain; preserve original run1 bytes and do not retry.
+# MP4 run2+3: source witness restored; explicit separate one-shot authorization.
 on:
   push:
     branches: [dev/l1-mp4-paper-tick-gate-20261101]
