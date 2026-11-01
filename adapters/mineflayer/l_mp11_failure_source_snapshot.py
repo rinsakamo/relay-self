@@ -46,8 +46,7 @@ def summarize_closed_partial(
         "valid_l2_open_count": (
             l2.get("validated_open_calls", 0) if isinstance(l2, dict) else 0
         ),
-        "next_action_issued_on_L2_failure": False
-        if report.get("status") == "FAIL" else None,
+        "post_failure_additional_action_independently_attested": False,
         "original_paper_available": type(paper_original) is bytes,
         "paper_eof_shape_only": None,
         "world_qualified_by_this_report": False,
