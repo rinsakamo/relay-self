@@ -37,9 +37,9 @@ def test_real_h9b_archived_eight_originals_reconstruct_four_sample_patterns():
     x = audit_archived_eight_worlds(ROOT)
     assert x["classification"] == "H10_8_WORLD_ARCHIVED_MOTION_WINDOW_FORENSIC_DEV_ONLY"
     assert x["modal_baseline_worlds"] == 5
-    assert x["modal_baseline_world_ids"] == [
+    assert tuple(x["modal_baseline_world_ids"]) == (
         "B-F1", "B-F2", "A-F2", "A-E1", "A-E2",
-    ]
+    )
     assert x["unique_proxy_patterns"] == 4
     assert x["max_proxy_total_slot"] == "A-F1"
     assert x["min_proxy_total_slot"] == "B-E1"
