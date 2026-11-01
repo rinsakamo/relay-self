@@ -16,8 +16,8 @@ jobs:
     env:
       PYTHONPATH: src:tests:.
       PYTHONDONTWRITEBYTECODE: '1'
-      MP4_PREFLIGHT: ${{ runner.temp }}/mp4-offline-preflight-${{ github.run_id }}
-      MP4_ROOT: ${{ runner.temp }}/mp4-three-worlds-${{ github.run_id }}
+      MP4_PREFLIGHT: /tmp/mp4-offline-preflight-${{ github.run_id }}
+      MP4_ROOT: /tmp/mp4-three-worlds-${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
         with:
