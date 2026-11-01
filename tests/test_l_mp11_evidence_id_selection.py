@@ -163,7 +163,16 @@ def test_id_catalog_cannot_retroactively_qualify_old_model_json():
     req = request_for_live_l2(ledger, evidence_ids=False)
     assert "numeric_evidence_refs" in req.instruction
     assert "evidence_ids (ONE" not in req.instruction
-    normal = BoundedLiveL2(fixture(), require_real_llama=False)
+    model_id_reply = id_reply(request_for_live_l2(ledger, evidence_ids=True))
+    def wrong_mode_provider(req, *, mode):
+        assert mode is CognitionMode.OPEN
+        return ProviderExpression(
+            text=json.dumps(model_id_reply),
+            provenance=Provenance("fixture", "wrong-mode-id-output"),
+        )
+    normal = BoundedLiveL2(
+        RelayEngine(wrong_mode_provider), require_real_llama=False,
+    )
     assert normal.public_report()["evidence_id_mode"] is False
     with pytest.raises(LiveL2Rejected):
         asyncio.run(normal.propose_after(ledger))
