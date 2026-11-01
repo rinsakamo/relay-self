@@ -1,0 +1,43 @@
+name: L1-MP9 material-conditioned shadow offline DEV
+on:
+  push:
+    branches: [dev/l1-mp9-surface-selector-shadow-20261101]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/self_body_s50_l1_mp9_selector.py'
+      - 'adapters/mineflayer/self_body_s50_world_dev.py'
+      - 'adapters/mineflayer/self_body_s50_l1_mp8_physical.py'
+      - 'tools/l1_mp9_two_world_dev.py'
+      - 'tests/test_self_body_s50_l1_mp9_selector.py'
+      - '.github/workflows/l1-mp9-surface-shadow-offline-dev.yml'
+permissions:
+  contents: read
+jobs:
+  no-world-owner-source-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pinned source-only dependencies
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: MP9 exact-source, host, pair auditor, retained MP8 regression
+        run: |
+          set -euo pipefail
+          ruff check adapters/mineflayer/self_body_s50_l1_mp9_selector.py adapters/mineflayer/self_body_s50_l1_mp8_physical.py adapters/mineflayer/self_body_s50_world_dev.py tools/l1_mp9_two_world_dev.py tests/test_self_body_s50_l1_mp9_selector.py
+          python -m compileall -q adapters/mineflayer/self_body_s50_l1_mp9_selector.py adapters/mineflayer/self_body_s50_world_dev.py tools/l1_mp9_two_world_dev.py
+          python -m pytest -o addopts='' -q \
+            tests/test_self_body_s50_l1_mp9_selector.py \
+            tests/test_self_body_s50_l1_mp8_transfer.py \
+            tests/test_self_body_s50_l1_mp8_physical.py \
+            tests/test_self_body_s50_l1_ice_floor.py
+          python tools/check_repository.py
+      - name: Offline never qualifies physical prediction transfer
+        run: echo 'MP9_OFFLINE_ONLY / TARGET_WORLDS_NOT_RUN / CHEAP_EQUIVALENT / R_NO_GO / V_NOT_RUN'
