@@ -609,3 +609,32 @@ def test_wb_cli_requires_existing_selfworld_live_owner(capsys):
         "--live-think", "--self-world-live", "--wb-cognition-slice",
     ]) == 2
     assert json.loads(capsys.readouterr().out)["reason"] == "LIVE_L2_REQUIRES_NATIVE_WORLD"
+
+
+def test_wb_bounded_omission_keeps_prediction_review_for_omitted_target():
+    """A nearest-eight display must preserve review of a farther prior target."""
+    observer = LiveL2Observer(
+        model="test", port=12345, self_world_live=True, wb_cognition_slice=True,
+    )
+    assert observer._live_self_world_prompt(scoped_world_probe(8)) is None
+    current = scoped_world_probe(19, label="skeleton")
+    extras = tuple(
+        replace(current.snapshot.nearby_entities[0],
+                entity_id=100 + i, name="cow", distance=.1 * (i + 1))
+        for i in range(9)
+    )
+    current = replace(current, snapshot=replace(
+        current.snapshot,
+        nearby_entities=current.snapshot.nearby_entities + extras,
+        nearby_entities_coverage=replace(
+            current.snapshot.nearby_entities_coverage, candidate_count=10,
+        ),
+    ))
+    prompt = observer._live_self_world_prompt(current)
+    data = json.loads(prompt.split("truth): ", 1)[1].split(". Identify one uncertainty", 1)[0])
+    assert len(data["observed"]) == 8
+    assert all(cue["label"] == "cow" for cue in data["observed"])
+    assert data["wb_cognition_budget"]["world_omitted"] == 2
+    assert data["wb_cognition_budget"]["detail_available"] is True
+    assert data["prediction_review"]["status"] == "mismatch"
+    assert observer.model_attempts == 0
