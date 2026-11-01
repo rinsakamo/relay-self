@@ -13,7 +13,6 @@ from adapters.mineflayer.l_mp11_live_l2_shadow import (
     parse_live_l2,
     request_for_live_l2,
 )
-from adapters.mineflayer.l_mp11_live_previous_action import LivePriorLedger
 from relay_self.provenance import Provenance
 from relay_self.relay_engine import (
     CognitionMode,
