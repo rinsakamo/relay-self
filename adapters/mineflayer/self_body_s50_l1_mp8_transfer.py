@@ -131,8 +131,8 @@ def train_from_mp7(path: Path = DEFAULT_ARCHIVE) -> IcePrior:
 def freeze_matched_pair(prior: IcePrior, normal: TargetSetup,
                         ice: TargetSetup) -> FrozenPair:
     """Freeze target metadata before Action; digest is a proposal, not Paper proof."""
-    if not isinstance(prior, IcePrior) or prior.source_git_blob_sha != MP7_GIT_BLOB_SHA:
-        raise MP8Rejected("model is not bound to pinned MP7 training source")
+    if not isinstance(prior, IcePrior) or prior != train_from_mp7():
+        raise MP8Rejected("model is not identical to the pinned MP7 training fit")
     if not isinstance(normal, TargetSetup) or not isinstance(ice, TargetSetup):
         raise MP8Rejected("typed target conditions are required")
     if normal.condition != "NORMAL" or ice.condition != "PACKED_ICE":
