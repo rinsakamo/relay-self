@@ -1,0 +1,117 @@
+{
+  "schema": "RELAYSELF_MP9_MATERIAL_SELECTOR_HELDOUT_WORLD_DEV_READBACK_V1",
+  "date": "2026-11-01",
+  "physical_run_id": 41282040300,
+  "executing_head": "0c80064bb23ebab115e888376d662cb28e1f5c62",
+  "artifact_id": 13074061185,
+  "artifact_name": "mp9-two-world-originals-41282040300-1",
+  "artifact_zip_sha256": "e0d62a458ffd7bcfbcdb652a7cea8814463b94f96a0105525ed06e7772637b42",
+  "actual_new_disposable_worlds": 2,
+  "original_s49_native_actions": 2,
+  "within_run_retry_count": 0,
+  "original_source": {
+    "surface_source": "S50_DEV_SURFACE_LOCK original Paper pre-S49 action",
+    "matched_pre_action_sampled_state": true,
+    "sampled_state_mismatches": [],
+    "source_seed": "114230270",
+    "normal_world_full_tick_at_lock": 291,
+    "ice_world_full_tick_at_lock": 289,
+    "timing_identical": false,
+    "common_original_floor": "GRASS_BLOCK 5x5",
+    "actual_ice_floor": "PACKED_ICE 5x5",
+    "pre_action_position_xyz": [
+      0.5,
+      -60,
+      0.5
+    ],
+    "pre_action_velocity_xyz": [
+      0,
+      -0.0784000015258789,
+      0
+    ],
+    "normal": {
+      "world_uuid": "526a082e-8f4e-4a00-b403-8adcfc26e6c9",
+      "original_paper_stdout_sha256": "a3095d0d21c0c9569c695d2f05d021a654bcb7f0ac274ba36f63826214e31a0f",
+      "native_move_m": 0.6269065734210613,
+      "eight_paper_wait_samples": 8,
+      "seven_original_paper_forecast_scores": 7,
+      "original_s49_terminal": "outcome",
+      "node_exit": 0,
+      "java_exit": 0,
+      "preaction_shadow_ticket_sha256": "112f5d7ef226eefef179e41efe11930c2a91e77756920b73003410c231c1617c",
+      "shadow_ticket_in_host_journal_before_first_wait": true
+    },
+    "ice": {
+      "world_uuid": "eeb47564-b20d-4dba-ab1f-f7e327904fd4",
+      "original_paper_stdout_sha256": "b37345550a42a2767eb339508139151c46f89455521b2c8147f7ac7e7d29b3ad",
+      "native_move_m": 0.703745088643206,
+      "eight_paper_wait_samples": 8,
+      "seven_original_paper_forecast_scores": 7,
+      "original_s49_terminal": "outcome",
+      "node_exit": 0,
+      "java_exit": 0,
+      "preaction_shadow_ticket_sha256": "c90feaa1c6e6a8e05d528099c967d95cecb7e7a39552987cde96e4efda5cec2a",
+      "shadow_ticket_in_host_journal_before_first_wait": true
+    }
+  },
+  "frozen_model": {
+    "original_mp8_source_git_blob_sha1": "24d38edd73ab1bebd61c7d9819e53fea7f1863b8",
+    "normal_slope": 0.5701332477105613,
+    "ice_slope": 0.6052193469653747,
+    "pairs_per_training_surface": 7,
+    "both_fits_frozen_before_first_mp9_world": true,
+    "original_worlds_not_reused": true,
+    "selected_model_frozen_after_real_paper_surface_lock_before_original_s49_action": true,
+    "mp9_paper_per_tick_new_model_fixed_events": "NOT_IMPLEMENTED"
+  },
+  "heldout_mae_m": {
+    "normal": {
+      "selected": 0.0031249586235761154,
+      "always_normal": 0.0031249586235761154,
+      "always_ice": 0.0034469818574800943,
+      "zero": 0.0021077733153767675,
+      "last": 0.007070312614474804
+    },
+    "ice": {
+      "selected": 0.01289738952373408,
+      "always_normal": 0.013468034893740951,
+      "always_ice": 0.01289738952373408,
+      "zero": 0.03743120809141193,
+      "last": 0.013777144243263166
+    },
+    "pair_mean": {
+      "selected": 0.008011174073655099,
+      "always_normal": 0.008296496758658534,
+      "always_ice": 0.008172185690607087,
+      "last": 0.010423728428868986
+    },
+    "improvement_vs_best_constant_m": 0.0001610116169519886,
+    "preregistered_surface_and_pair_margin_m": 0.001,
+    "individual_surface_gate_passed": false,
+    "pair_best_constant_gain_gate_passed": false,
+    "same_information_cheap_material_rule": "MATHEMATICALLY_EQUIVALENT",
+    "unique_l1_architecture_advantage": false
+  },
+  "checks": {
+    "python_3_12_focused_pass": 75,
+    "java21_gate_checks_pass": 15,
+    "ruff": "PASS",
+    "repository_contracts": "PASS",
+    "paper_maven": "BUILD_SUCCESS",
+    "official_paper_1_21_8_sha_pinned": true,
+    "java_node_exit_clean": true
+  },
+  "limitations": [
+    "Pre-action state is source-sampled, full physical trajectories and World callback timings are not identical",
+    "Material-conditioned coefficient is frozen in host before native Action; MP9 coefficients were scored after future WAIT samples, not Paper-internal per-tick prequential MP9 forecasts",
+    "Only two DEV Worlds and no independent randomized causal effect size",
+    "On normal surface Zero baseline MAE is smaller than selected model",
+    "Same-information cheap material rule is mathematically identical to selector; no unique L1 advantage",
+    "Prespecified 0.001m surface-specific and best-constant margin gates both failed",
+    "No authoritative SelfBody runtime observation view / memory learning admission"
+  ],
+  "goal": "UNDETERMINED",
+  "qualification": "NO_GO",
+  "science": "NOT_RUN",
+  "classification": "MP9_DEV_TWO_NEW_MATCHED_PREACTION_WORLDS_PASS / SURFACE_ROUTED_SHADOW_EXECUTED / PER_SURFACE_DIRECTIONAL_MAE_GAIN_OBSERVED / PREREGISTERED_SPECIFICITY_GATE_FAIL / CHEAP_EQUIVALENT / LEARNING_ADMISSION_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN"
+}
