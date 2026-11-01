@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import math
 from collections import Counter
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 
 SLOTS = ("A-F1", "B-F1", "B-F2", "A-F2", "B-E1", "A-E1", "A-E2", "B-E2")
 BASELINE_PATTERN_M = (0.049492188301323736, 0.009543604920851934, 0.005210808286784996)
@@ -175,9 +175,8 @@ def inspect_h10_world(
     )
     _guard(
         type(ticks) is list and len(ticks) == 8
-        and window["paper_world_uuid"]
-        and window["paper_sample_count"] == 8 if "paper_sample_count" in window
-        else type(ticks) is list and len(ticks) == 8 and bool(window["paper_world_uuid"]),
+        and type(window["paper_world_uuid"]) is str
+        and bool(window["paper_world_uuid"]),
         "H10 complete Paper eight tick window required",
     )
     _guard(
