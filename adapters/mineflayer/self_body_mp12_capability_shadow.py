@@ -274,6 +274,7 @@ def validate_l2_response(
             or response["experiment_id"] not in EXPERIMENTS
             or type(response["model_family"]) is not str
             or response["model_family"] not in MODEL_FAMILIES
+            or type(response["capability_assessment"]) is not str
             or response["capability_assessment"] not in _ALLOWED_ABILITY):
         raise MP12ShadowRejected("unbounded action or unsupported ability claim")
     for key in ("explanation","falsification_test","ability_boundary_reason"):
