@@ -9,7 +9,10 @@ from pathlib import Path
 import pytest
 
 from relay_self.l_bcg_h10_motion_variability import (
-    H10Rejected, SLOTS, inspect_h10_world, summarize_h10,
+    SLOTS,
+    H10Rejected,
+    inspect_h10_world,
+    summarize_h10,
 )
 from tools.l_bcg_h10_motion_readback import audit_archived_eight_worlds
 
