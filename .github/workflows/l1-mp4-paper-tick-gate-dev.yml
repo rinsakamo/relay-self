@@ -1,0 +1,55 @@
+name: L1-MP4 Paper future-tick forecast gate DEV
+on:
+  push:
+    branches:
+      - dev/l1-mp4-paper-tick-gate-20261101
+    paths:
+      - 'adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/S50ForecastGate.java'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/RelayMetabolismPlugin.java'
+      - 'adapters/mineflayer/m02_paper_dev/src/test/java/io/github/rinsakamo/relaymetabolism/S50ForecastGateSelfTest.java'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/resources/plugin.yml'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml'
+      - 'docs/selfbody-l1-mp4-paper-tick-gate-20261101.md'
+      - '.github/workflows/l1-mp4-paper-tick-gate-dev.yml'
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/S50ForecastGate.java'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/java/io/github/rinsakamo/relaymetabolism/RelayMetabolismPlugin.java'
+      - 'adapters/mineflayer/m02_paper_dev/src/test/java/io/github/rinsakamo/relaymetabolism/S50ForecastGateSelfTest.java'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/resources/plugin.yml'
+      - 'adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml'
+      - 'docs/selfbody-l1-mp4-paper-tick-gate-20261101.md'
+      - '.github/workflows/l1-mp4-paper-tick-gate-dev.yml'
+permissions:
+  contents: read
+jobs:
+  paper-forecast-gate-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Compile and execute pure Paper main-thread timing state machine
+        run: |
+          set -euo pipefail
+          SRC=adapters/mineflayer/m02_paper_dev/src
+          OUT="$(mktemp -d)"
+          javac --release 21 -d "$OUT" \
+            "$SRC/main/java/io/github/rinsakamo/relaymetabolism/S50ForecastGate.java" \
+            "$SRC/test/java/io/github/rinsakamo/relaymetabolism/S50ForecastGateSelfTest.java"
+          java -cp "$OUT" io.github.rinsakamo.relaymetabolism.S50ForecastGateSelfTest
+      - name: Compile actual Paper plugin including opt-in command
+        run: |
+          set -euo pipefail
+          mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+      - name: Non-physical status and original owner protection
+        run: |
+          set -euo pipefail
+          python tools/check_repository.py
+          echo 'MP4_PAPER_TICK_GATE_OFFLINE_ONLY / REAL_WORLD_0 / GRANT_CONSUMED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN'
