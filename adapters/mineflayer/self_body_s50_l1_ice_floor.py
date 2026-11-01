@@ -12,8 +12,8 @@ from pathlib import Path
 from adapters.mineflayer.self_body_s50_l1_paper_dispatch import ForecastDispatchRejected
 from adapters.mineflayer.self_body_s50_l1_paper_local import check_local_paper_config
 
-_TOKEN = re.compile(r"[A-Za-z0-9_-]{1,128}\\Z")
-_SHA = re.compile(r"[0-9a-f]{64}\\Z")
+_TOKEN = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
+_SHA = re.compile(r"[0-9a-f]{64}\Z")
 
 
 def verify_ice_config(path: Path, sha: str) -> None:
@@ -28,7 +28,7 @@ def verify_ice_config(path: Path, sha: str) -> None:
         ("s50-ice-floor-dev", "true"),
         ("s50-changed-body-condition-dev", "false"),
     ):
-        values = re.findall(rf"^{re.escape(key)}:\\s*([^#\\r\\n]+)", text, re.M)
+        values = re.findall(rf"^{re.escape(key)}:\s*([^#\r\n]+)", text, re.M)
         if len(values) != 1 or values[0].strip() != expected:
             raise ForecastDispatchRejected("MP7 exclusive real World surface flag invalid")
 
