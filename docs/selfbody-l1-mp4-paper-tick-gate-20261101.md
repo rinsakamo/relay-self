@@ -54,3 +54,23 @@ Python3.12 synthetic fake console/JDK21 pure tick gate/Maven Paper compile/relat
 重要: 予測のtarget tick=t+1は20TPS前後のMinecraftでは短時間。実際の通信が間に合わなければ安全な**拒否**が正しい結果。成功率を上げるためWorldを停止・巻戻し・tick順序変更しない。受付が0/7でもDEVの遅延特性として報告する。S49元operatorは別grantなしに実Worldで再試行しない。
 
 **状態上限:** `DEV_OFFLINE_HOST_PAPER_CONSOLE_CONTRACT_ONLY / PAPER_PHYSICAL_ACCEPTANCE_NOT_RUN / GRANT_CONSUMED / CHEAP_EQUIVALENT / GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`。
+
+
+---
+
+## 2026-11-01 02:55 UTC / MP4 physical World1 — DEV FAIL preserved, next two not started
+
+- Run: https://github.com/rinsakamo/relay-self/actions/runs/41267002026
+- Executing commit: `12f1d2237ef7327470c3ffe7084e01df2430c1ba`; pinned Paper 1.21.8 SHA and built plugin SHA recorded in run1 preflight/original.
+- Paper callback `S50_DEV_WAIT_TICK` 8件 (tick257–264) / MP3 host prediction `PREDICTION_FIXED`7件 / `PAPER_CONSOLE_WRITE`7件。Paper `ACCEPT`0 / `REJECT`6 / `MATCH`0。拒否内訳：`LATE_TARGET_TICK`2、`NOT_NEXT_OBSERVED_TICK`4。console writeはPaper acceptanceでない。拒否のない残り1件も `ACCEPT` には数えない。
+- FAILの**直接の原因**: 新built Paper pluginに#653既存S50 original `S50_DEV_INPUT_TICK` callbackが欠落。Paper WAIT 8件は存在したがS50入力8件は0。元 `wait_live_paper_window` が `missing complete live Paper WAIT/INPUT 8x2 window` でfail-closed。元S49 S16 OUTCOMEは別途成立、Node/Java exit0、World delete/25565 port rebind PASS。
+- 原因特定の根拠：旧実機で用いた S owner plugin source exact `e6d901d7dc3effb5c7516350233383fbb982bbb1` に `s50-input-witness-dev`、`PlayerInputEvent`、`p.getCurrentInput()` `S50_DEV_INPUT_TICK` があるが、#657基点のmain Paper sourceにはそれらがなかった。見落としをオフラインCIで検出できず失敗として残す。
+- 原本：[GitHub Actions artifact](https://github.com/rinsakamo/relay-self/actions/runs/41267002026) `l1-mp4-three-world-dev-41267002026-1`。元Paper stdout、S7/S16、host journal、Node witness、launcher.log、dev-readback、summary含む。**World2/3は未起動**、前回の失敗は再実行していない。
+
+### 修正境界
+
+過去 `e6d901...` のS50 input witnessのfield/Java sourceを、#657のdefault-OFF Paper pluginへ限定復元。元ownerに合わせ、`s50-input-witness-dev: false` default→実行config TRUE + SHA256前提にする。これは`LAST_REPORTED_INPUT_CALLBACK_SAMPLE_ONLY`の観測でありeffective clear/full-tick idle証明ではない。
+
+残る新規2 Worldは `--first-world-index 2 --worlds 2` の**新しい一回限りのworkflowタグ**で実施可能とし、最初の破損Source/invalid cleanupで残りを停止。**World1の予測0/7受付を後付け成功へ変更しない**。
+
+Goal UNDETERMINED / CHEAP_EQUIVALENT / L10/S10/S11=0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN。
