@@ -25,7 +25,8 @@ def review(
     if (not isinstance(report,dict) or report.get("status") != "PASS"
             or report.get("classification") !=
             "DEV_ONLY_MP11_G3_THREE_S49_S16_PAPER_S50_WINDOWS_SAME_WORLD"
-            or report.get("node_exit") != 0 or report.get("server_exit") != 0):
+            or report.get("node_exit") != 0 or report.get("server_exit") != 0
+            or report.get("real_model_calls") != expected_l2_calls):
         raise MP11PaperRejected("original single-World complete runtime not successful")
     g2=audit_original(
         report, require_completed_cleanup=False,
