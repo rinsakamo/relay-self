@@ -15,7 +15,10 @@ from typing import Protocol
 
 _TOKEN = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
 _SHA = re.compile(r"[0-9a-f]{64}\Z")
-_REQUIRED = ("dev-enabled", "s50-tick-meter-dev", "s50-forecast-gate-dev")
+_REQUIRED = (
+    "dev-enabled", "s50-tick-meter-dev",
+    "s50-forecast-gate-dev", "s50-input-witness-dev",
+)
 
 
 class ForecastDispatchRejected(ValueError):
