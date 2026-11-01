@@ -16,7 +16,6 @@ from experiments.metabolism_relay_engine_usage import (
     OwnerEpochEngineBinding,
 )
 from experiments.metabolism_s_completed_cost_window import (
-    SCompletedCostWindow,
     SCompletedEpochCostSource,
     bounded_completed_s_cost_window_row,
     observe_completed_s_cost_window,
