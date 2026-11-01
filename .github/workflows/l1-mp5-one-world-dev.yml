@@ -1,0 +1,114 @@
+name: L1-MP5 one physically fresh Paper World DEV
+on:
+  push:
+    branches: [dev/l1-mp5-paper-local-forecast-20261101]
+    paths:
+      - '.github/workflows/l1-mp5-one-world-dev.yml'
+permissions:
+  contents: read
+jobs:
+  one-new-disposable-mp5-dev:
+    # Unlike the source-only CI, run this at most once and only with a
+    # dedicated opt-in commit. Any Actions rerun attempt >=2 is disabled.
+    if: github.event_name == 'push' && github.run_attempt == 1 && contains(github.event.head_commit.message, '[mp5-one-world-dev]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+      PREP: /tmp/mp5-one-preflight-${{ github.run_id }}
+      EVIDENCE: /tmp/mp5-one-physical-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source lint, owner regression, pure Java forecast before any World
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check tools/l1_mp5_one_world_dev.py adapters/mineflayer/self_body_s50_l1_paper_local.py adapters/mineflayer/self_body_s50_world_dev.py
+          python -m compileall -q tools/l1_mp5_one_world_dev.py
+          python -m pytest -o addopts='' -q \
+            tests/test_self_body_s50_l1_paper_local.py \
+            tests/test_self_body_s50_l1_host_prediction.py \
+            tests/test_self_body_s50_route_b_dev.py \
+            tests/test_s50_live_paper_window.py \
+            tests/test_s50_input_witness_source.py
+          python tools/check_repository.py
+          SRC=adapters/mineflayer/m02_paper_dev/src
+          OUT="$(mktemp -d)"
+          javac --release 21 -d "$OUT" \
+            "$SRC/main/java/io/github/rinsakamo/relaymetabolism/S50PaperLocalForecast.java" \
+            "$SRC/test/java/io/github/rinsakamo/relaymetabolism/S50PaperLocalForecastSelfTest.java"
+          java -cp "$OUT" io.github.rinsakamo.relaymetabolism.S50PaperLocalForecastSelfTest
+      - name: Build genuine Paper plugin; install pinned native Node dependencies
+        run: |
+          set -euo pipefail
+          mvn -B -ntp -f adapters/mineflayer/m02_paper_dev/pom.xml -DskipTests package
+          npm ci --omit=dev --no-audit --no-fund --prefix adapters/mineflayer
+          node -p "require('./adapters/mineflayer/node_modules/mineflayer/package.json').version" | grep -x '4.39.0'
+      - name: Fetch exact original official Paper 1.21.8 build 60
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib,os,pathlib,urllib.request
+          sha='8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e'
+          url='https://fill-data.papermc.io/v1/objects/'+sha+'/paper-1.21.8-60.jar'
+          request=urllib.request.Request(url,headers={'User-Agent':'RelaySelf-MP5-DEV (https://github.com/rinsakamo/relay-self)'})
+          dst=pathlib.Path(os.environ['RUNNER_TEMP'])/'mp5-paper-pinned.jar'
+          digest=hashlib.sha256();size=0
+          with urllib.request.urlopen(request,timeout=120) as src,dst.open('xb') as sink:
+              while chunk:=src.read(1024*1024):
+                  size+=len(chunk)
+                  if size>52811717:raise ValueError('Paper oversized')
+                  sink.write(chunk);digest.update(chunk)
+          assert size==52811717 and digest.hexdigest()==sha
+          PY
+      - name: Validate MP5 pinned assets and active flags before World
+        run: |
+          set -euo pipefail
+          python tools/l1_mp5_one_world_dev.py \
+            --output "$PREP" \
+            --paper-jar "$RUNNER_TEMP/mp5-paper-pinned.jar" \
+            --plugin-jar "$PWD/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar" \
+            --config-default "$PWD/adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml" \
+            --node-runtime "$PWD/adapters/mineflayer" \
+            --confirm MP5-ONE-FRESH-PAPER-WORLD-DEV-NO-RETRY \
+            --preflight-only
+      - name: Exactly one new native S49 Action World, Paper-local 7 forecasts
+        timeout-minutes: 8
+        run: |
+          set -euo pipefail
+          python tools/l1_mp5_one_world_dev.py \
+            --output "$EVIDENCE" \
+            --paper-jar "$RUNNER_TEMP/mp5-paper-pinned.jar" \
+            --plugin-jar "$PWD/adapters/mineflayer/m02_paper_dev/target/relay-metabolism-paper-dev-0.2.0-dev.jar" \
+            --config-default "$PWD/adapters/mineflayer/m02_paper_dev/src/main/resources/config.yml" \
+            --node-runtime "$PWD/adapters/mineflayer" \
+            --confirm MP5-ONE-FRESH-PAPER-WORLD-DEV-NO-RETRY
+      - name: Always preserve originals including failure; do not retry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mp5-paper-local-one-world-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 90
+          if-no-files-found: warn
+          include-hidden-files: true
+          path: |
+            ${{ env.PREP }}/
+            ${{ env.EVIDENCE }}/
+      - name: Qualification remains excluded
+        if: always()
+        run: |
+          echo 'MP5_DEV_WORLD_MAX1 / QUALIFICATION_NO_GO / CHEAP_EQUIVALENT / L10_S10_S11_0 / SCIENCE_NOT_RUN'
