@@ -38,3 +38,20 @@ Paper WAIT callback tick t+1: previous prediction scored against x[t+1], then ne
 - このプロジェクトの継続grantはDEV対象に限定され、前回3-Worldロットは3/3消費済み。以降は**新しい独立試験としてWorld回数を数える**。再試行0、main / 他レーン / 過去原本保護。
 
 Status ceiling: `MP5_PAPER_LOCAL_OFFLINE_ONLY / PRIOR_MODEL_CHEAP_EQUIVALENT / PAPER_LOCAL_PHYSICAL_PREQUENTIAL_UNTESTED / GOAL_UNDETERMINED / L10_S10_S11_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`。
+
+
+---
+
+## MP5 実World DEV結果（2026-11-01 03:27 UTC）
+
+**実行済み**。新規使い捨てMinecraft World 1回、元S49 native Action 1件、再試行0。[実行workflow #41269170943](https://github.com/rinsakamo/relay-self/actions/runs/41269170943) **SUCCESS**、実行HEAD `ded5076a752751cf38e8e42d94ef4c484919d9fe`。保護される過去MP3/MP4 3 Worldsとmainは未変更。
+
+- JDK21 pure状態機械113チェックPASS、元S50関連Python3.12 regression 69 PASS（実Worldワークフロー事前検証）、Maven実Paper plugin `BUILD SUCCESS`、Pinned Paper 1.21.8 build60 / Mineflayer 4.39.0 / config SHA照合。独立preflight通過後に限りWorld 1回起動。
+- 元Paper stdoutに `S50_DEV_LOCAL_MODEL_ARM` **1件**（World tick244、S49元Action開始前、係数 `0.20331885786720635`、ticket `c72cecfcd80cd8e7a3b69a9d39ca2fa1d60f5f5d7e23ae0486761826ff2d1775`）、`S50_DEV_LOCAL_WAIT_ARMED` **1件**（World tick251）を確認。対象World `8344f804-672f-4115-acf3-202852b5b098`、subject `dcae346d-e66f-331a-b459-a5a5370e9738`。
+- 元 `S50_DEV_WAIT_TICK` と `S50_DEV_INPUT_TICK` **各8件**、tick252–259。各tickで元WAIT観測 `x[t]` → `S50_DEV_LOCAL_FORECAST_FIXED` (次tick対象) と後続callbackで `S50_DEV_LOCAL_FORECAST_SCORE` の照合 **7/7**。原stdoutで `WAIT[t] < FIXED[t→t+1] < WAIT[t+1] < SCORE[t+1]` を独立readback。stdout-original==server.log byte-level SHA256 `efb0c0e42a7db8a42f17117043ad5a64c6dc68101a4477c1ebe4bf79db154966`。
+- 7件の平均絶対誤差 **MAE 0.0006927084716710721m**、RMSE 0.0013140724536525347m。同じx[t]から同じ係数を適用するcheap linearとは数学的に**完全同値**。zero baseline MAE 0.0021077733153767675m、last baseline MAE 0.0070703126144747875m。
+- **重要**：今回の変位の時間系列は既存学習Worldとほぼ同一（`0.0494921883m → 0.0095436049m → 0.0052108083m → 以後ゼロ`）。別Worldであるが、未知条件への汎化・適応やL1固有の学習優越を示さない。**Paper内の次callback前予測固定のみが新たに実証された**。
+- 元S49/S16/S50 owner DEV PASS、Node exit0 / Java exit0、ポート再bind/cleanup PASS。Original Packet/S16/S7/host journal/原Paper stdoutをGitHub artifact `mp5-paper-local-one-world-41269170943-1` に保存。各ファイルのSHAと再解析出力は[独立readback JSON](../evidence/issue653-mp5-paper-local-20261101/run1/independent-mp5-readback.json)。
+- 科学・学習資格：元Goal `UNDETERMINED`、L10/S10/S11/学習更新0。tick内部物理積分順序 / effective clear / full-tick input idle / 異条件の汎化は NOT_ATTESTED。
+
+**判定：`DEV_WORLD_PASS_PAPER_LOCAL_CALLBACK_PREQUENTIAL_7_OF_7 / SAME_INFORMATION_CHEAP_EQUIVALENT / GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`。** 今回のMP5新規Worldは1/1消費済み、再実行していない。
