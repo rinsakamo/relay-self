@@ -240,6 +240,7 @@ async def qualify(
     l1_paper_local_forecast_dev: bool = False,
     l1_paper_body_challenge_dev: bool = False,
     l1_paper_ice_floor_dev: bool = False,
+    l1_mp8_surface_mode: str | None = None,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -272,6 +273,17 @@ async def qualify(
     predictor = None
     paper_forecast_task: asyncio.Task[None] | None = None
     try:
+        if l1_mp8_surface_mode is not None:
+            if (l1_mp8_surface_mode not in ("NORMAL", "ICE")
+                    or not l1_paper_ice_floor_dev
+                    or not l1_paper_local_forecast_dev
+                    or l23_paper_assets is None):
+                raise S31ABlocked("MP8 only permits original Paper paired NORMAL/ICE")
+            report["mp8_matched_surface"] = {
+                "mode": l1_mp8_surface_mode,
+                "preaction_surface_source": "NOT_YET_OBSERVED",
+                "learned_transfer": "NOT_ATTESTED",
+            }
         if type(l1_paper_ice_floor_dev) is not bool:
             raise S31ABlocked("MP7 physical floor opt-in must be bool")
         if l1_paper_ice_floor_dev:
@@ -474,6 +486,9 @@ async def qualify(
                 l23_paper_assets, root,
             )
             _write_config(root)
+            if l1_mp8_surface_mode is not None:
+                from adapters.mineflayer.self_body_s50_l1_mp8_physical import set_fixed_seed
+                report["mp8_matched_surface"]["seed_setup"] = set_fixed_seed(root)
         elif rsee_world is not None:
             report["stage"] = "RSEE_BIND_STOPPED_WORLD_BEFORE_JAVA"
             report["rsee_world_binding"] = await asyncio.to_thread(
@@ -486,6 +501,9 @@ async def qualify(
                 _fetch_official_server, root / "minecraft.jar",
             ))
             _write_config(root)
+            if l1_mp8_surface_mode is not None:
+                from adapters.mineflayer.self_body_s50_l1_mp8_physical import set_fixed_seed
+                report["mp8_matched_surface"]["seed_setup"] = set_fixed_seed(root)
         server, collector, _ = await _ready_server(
             root, root / "minecraft.jar",
             predictor.collector_log(server_log) if predictor is not None else server_log,
@@ -686,21 +704,55 @@ async def qualify(
                             attest_ice_original,
                             ice_command,
                         )
-                        _command(server, ice_command(l23_marker_id, "PACKED_ICE_5X5"))
+                        physical_mode = (
+                            "GRASS_BLOCK_5X5_READONLY"
+                            if l1_mp8_surface_mode == "NORMAL"
+                            else "PACKED_ICE_5X5"
+                        )
+                        if l1_mp8_surface_mode is None:
+                            physical_mode = "PACKED_ICE_5X5"
+                        _command(server, (
+                            f"relaydevicefloor {l23_marker_id} {physical_mode}"
+                            if l1_mp8_surface_mode == "NORMAL"
+                            else ice_command(l23_marker_id, physical_mode)
+                        ))
                         await server.stdin.drain()
-                        await wait_paper_line(
-                            server_log, marker=l23_marker_id,
-                            kind="S50_DEV_ICE_FLOOR_APPLIED",
-                        )
-                        ice_receipt = attest_ice_original(
-                            server_log.read_bytes(), marker=l23_marker_id,
-                            world=ticket.target.paper_world_uuid,
-                            subject_uuid=ticket.target.subject_uuid,
-                        )
-                        report["l1_paper_ice_floor"].update({
-                            "original_paper_floor_changed_before_action": True,
-                            "ice_original_receipt": ice_receipt,
-                        })
+                        if l1_mp8_surface_mode == "NORMAL":
+                            await wait_paper_line(
+                                server_log, marker=l23_marker_id,
+                                kind="S50_DEV_NORMAL_FLOOR_VERIFIED",
+                            )
+                            report["l1_paper_ice_floor"]["mode"] = physical_mode
+                            report["l1_paper_ice_floor"]["not_self_action"] = True
+                        else:
+                            await wait_paper_line(
+                                server_log, marker=l23_marker_id,
+                                kind="S50_DEV_ICE_FLOOR_APPLIED",
+                            )
+                            ice_receipt = attest_ice_original(
+                                server_log.read_bytes(), marker=l23_marker_id,
+                                world=ticket.target.paper_world_uuid,
+                                subject_uuid=ticket.target.subject_uuid,
+                            )
+                            report["l1_paper_ice_floor"].update({
+                                "original_paper_floor_changed_before_action": True,
+                                "ice_original_receipt": ice_receipt,
+                            })
+                        if l1_mp8_surface_mode is not None:
+                            from adapters.mineflayer.self_body_s50_l1_mp8_physical import (
+                                attest_surface_lock,
+                            )
+                            await wait_paper_line(
+                                server_log, marker=l23_marker_id,
+                                kind="S50_DEV_SURFACE_LOCK",
+                            )
+                            lock = attest_surface_lock(
+                                server_log.read_bytes(), marker=l23_marker_id,
+                                world=ticket.target.paper_world_uuid,
+                                subject_uuid=ticket.target.subject_uuid,
+                                mode=l1_mp8_surface_mode,
+                            )
+                            report["mp8_matched_surface"]["preaction_surface_source"] = lock
                     if l1_paper_body_challenge_dev:
                         from adapters.mineflayer.self_body_s50_l1_body_condition import (
                             attest_condition_original,
@@ -981,6 +1033,12 @@ async def qualify(
 
         async def stage_world():
             assert server is not None and server.stdin is not None
+            if l1_mp8_surface_mode is not None:
+                # Experimenter initialization, NOT a Self Action or L0 decision.
+                # Flat grass World: block y=-61, standing feet y=-60.
+                _command(server, "tp RelaySelf 0.5 -60 0.5 0 0")
+                await server.stdin.drain()
+                await asyncio.sleep(2)
             _command(server, "gamerule doMobSpawning false")
             await server.stdin.drain()
             await asyncio.sleep(2)
@@ -1349,6 +1407,7 @@ def main() -> int:
     parser.add_argument("--l1-paper-local-forecast-dev", action="store_true")
     parser.add_argument("--l1-paper-body-challenge-dev", action="store_true")
     parser.add_argument("--l1-paper-ice-floor-dev", action="store_true")
+    parser.add_argument("--l1-mp8-surface-mode", choices=["NORMAL", "ICE"])
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -1401,6 +1460,7 @@ def main() -> int:
         l1_paper_local_forecast_dev=args.l1_paper_local_forecast_dev,
         l1_paper_body_challenge_dev=args.l1_paper_body_challenge_dev,
         l1_paper_ice_floor_dev=args.l1_paper_ice_floor_dev,
+        l1_mp8_surface_mode=args.l1_mp8_surface_mode,
     ))
 
 
