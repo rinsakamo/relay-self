@@ -150,6 +150,13 @@ def admit_original_s49_batch(batch: object) -> S49MAdmission:
 
     if not isinstance(batch, S49OriginalCompletedBatch):
         raise S49MAdmissionRejected("original S49 typed batch required")
+    if any(
+        item.source_scope != "S49_ORIGINAL_L0_STEP_WITH_OPTIONAL_S16_NOT_S42_EPOCH"
+        or item.source_attested is not False
+        or item.action_authority is not False
+        for item in batch.steps
+    ):
+        raise S49MAdmissionRejected("forged S49 step authority or source scope")
     original = tuple(item.step for item in batch.steps)
     probes = {item.probe.seq: item.probe for item in batch.steps}
     receipts = {
@@ -186,8 +193,10 @@ def admit_saved_s49_report(report: object) -> S49MAdmission:
     if not isinstance(report, Mapping) or (
         report.get("status") != "PASS"
         or report.get("original_completion_observer") != "CALLBACK_RETURNED"
-        or report.get("node_exit") != 0
-        or report.get("server_exit") != 0
+        or type(report.get("node_exit")) is not int
+        or report["node_exit"] != 0
+        or type(report.get("server_exit")) is not int
+        or report["server_exit"] != 0
     ):
         raise S49MAdmissionRejected("completed, cleaned-up original S49 report required")
     admission = _row_to_admission(
