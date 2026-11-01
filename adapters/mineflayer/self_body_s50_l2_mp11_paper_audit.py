@@ -10,6 +10,7 @@ import hashlib
 import math
 from dataclasses import dataclass
 
+
 class MP11PaperRejected(ValueError):
     """Original Paper sequence cannot be bound to one World and multiple trials."""
 
