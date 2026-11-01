@@ -99,6 +99,7 @@ def review_bcg_host_report(report: dict[str, object]) -> dict[str, object]:
         or inventory.get("paper_effective_input_clear_attested") is not False
         or inventory.get("post_clear_training_admitted") is not False
         or not isinstance(inventory.get("missing_required"), list)
+        or not all(type(k) is str for k in inventory["missing_required"])
         or frozenset(inventory["missing_required"]) != _REQUIRED
     ):
         raise BCGReportRejected("unjustified L-BCG learning or source promotion")
@@ -139,8 +140,31 @@ def review_bcg_host_report(report: dict[str, object]) -> dict[str, object]:
                 raise BCGReportRejected("World entity distance not observed")
         else:
             raise BCGReportRejected("unrecognized/predicted cue masked as observed")
-    if "s42_threat_distance_m" not in names:
-        raise BCGReportRejected("missing original S42 threat")
+
+    expected_native = {
+        key for key in (
+            "position_x", "position_y", "position_z", "health",
+            "food", "food_saturation"
+        ) if key in native_fields and type(native_fields[key]) in (int, float)
+    }
+    if not expected_native <= names or "s42_threat_distance_m" not in names:
+        raise BCGReportRejected("missing existing original native cues")
+    entities = wo.get("entities")
+    if not isinstance(entities, list) or not all(isinstance(e, dict) for e in entities):
+        raise BCGReportRejected("invalid original World entity coverage")
+    target_id = f"entity-{last.get('entity_id')}"
+    present_target = next((e for e in entities if e.get("entity_ref") == target_id), None)
+    expected_seen = present_target is not None
+    if (
+        inventory.get("coverage_scope") != wo.get("coverage_scope")
+        or inventory.get("coverage_truncated") != wo.get("coverage_truncated")
+        or inventory.get("target_seen_in_limited_coverage") is not expected_seen
+        or (
+            expected_seen and present_target.get("distance_m") is not None
+            and "world_observed_target_distance_m" not in names
+        )
+    ):
+        raise BCGReportRejected("World limited-coverage original mismatch")
     return {
         "classification": "DEV_BCG_HOST_REPORT_SELF_CONSISTENT_ONLY",
         "session_id": session,
