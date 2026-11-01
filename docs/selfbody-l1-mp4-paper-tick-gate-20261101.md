@@ -31,3 +31,26 @@ Paper main threadの受付時 `fulltime<t+1` により、**対象tickの元S50�
 - 原Paper stdout・S50原本・S16・S7・cleanupの厳密readback、追加issuer/probe/Actionなし、同情報cheapベースラインを厳守。
 
 **Classification:** `MP4_PAPER_TICK_GATE_OFFLINE_IMPLEMENTED / PHYSICAL_ACCEPTANCE_NOT_RUN / PREVIOUS_MP3_HOST_READ_ORDER_ONLY / CHEAP_EQUIVALENT / GOAL_UNDETERMINED / L10_S10_S11_0 / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`。
+
+
+---
+
+## MP4b / 既存host→Paper console readonly配線（DEV OFFLINE）
+
+親MP3 `HostPrediction` の元stdout collector hookにオプトイン `enable_paper_gate()` を追加。**既存collectorのソースファイル・読み取り回数・S49 Action issuerは変更しない。**
+
+1. `PRE_FORWARD` originalを見て元の過去World係数・対象session/Action/World・計画subjectをimmutable ticketに固定し、bounded `PaperForecastDispatch` を初期化。
+2. `S50_DEV_WAIT_TICK(t)` を元collectorで観測→MP3の既存 `PREDICTION_FIXED(t+1)` fsync→7件上限の `ForecastCommand` をqueueへ入れる。コンソールを直接触る別readerは追加しない。
+3. S49 hostのopt-in `--l1-paper-forecast-gate-dev` がある場合だけ、**元のPaper Java stdin / `_command`** で `relaydevforecast marker t t+1 prediction ticket_sha256` を一回だけ送信し、`PAPER_CONSOLE_WRITE` をjournalに追記。二度送らない。Queueは7上限、sessionとWorld違い・非finite値・無効digestはreject。送信/OS pipe flushはPaper上の受付ではない。
+4. 元Paper console `S50_DEV_FORECAST_ACCEPT/REJECT` と `S50_DEV_FORECAST_TICK` の元原本だけが受付とsampling順を判断できる。**Python側のQUEUED / CONSOLE_WRITEを物理的なACCEPTへ昇格させない**。遅延は `LATE_TARGET_TICK` / `NO_ACCEPTED_FORECAST`、失敗は欠測保持、retry禁止。
+5. original Node/Java shutdownの前に診断送信タスクをboundedに終了。元S49→S16の成功にPaper受付の捏造をしない。
+
+### preflight と保護
+
+今回の`--l1-paper-forecast-gate-dev` には前提 `--l1-prediction-journal` と元route B、既存S50 Paper asset bundleが必要。**Java起動前**に元SHA256 pin済みconfigが `dev-enabled:true`、`s50-tick-meter-dev:true`、`s50-forecast-gate-dev:true` をそれぞれ一度だけ含むことを拒否可能に照合する。false/defaultなら実行禁止。これは実Worldのgrant取得を意味せず、適用grantは別に必要。
+
+Python3.12 synthetic fake console/JDK21 pure tick gate/Maven Paper compile/related S50 host regressionで検証。既存#655 MP3物理原本への遡及採点・手直し禁止。新World/Node/Java実行 **0**。
+
+重要: 予測のtarget tick=t+1は20TPS前後のMinecraftでは短時間。実際の通信が間に合わなければ安全な**拒否**が正しい結果。成功率を上げるためWorldを停止・巻戻し・tick順序変更しない。受付が0/7でもDEVの遅延特性として報告する。S49元operatorは別grantなしに実Worldで再試行しない。
+
+**状態上限:** `DEV_OFFLINE_HOST_PAPER_CONSOLE_CONTRACT_ONLY / PAPER_PHYSICAL_ACCEPTANCE_NOT_RUN / GRANT_CONSUMED / CHEAP_EQUIVALENT / GOAL_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`。
