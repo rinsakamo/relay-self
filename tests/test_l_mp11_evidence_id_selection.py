@@ -198,3 +198,88 @@ def test_result_is_source_typed_not_model_generated_number():
         "pair_index": 1,
         "value_m": pytest.approx(.0175),
     }
+
+
+def test_independent_original_audit_rebuilds_both_id_proposals(tmp_path):
+    """Model-facing ID mode needs its own source, H1 and H2 hash audit."""
+    from test_l_mp11_live_previous_action import ACTIONS, MARKERS, snapshot
+    from tools.l_mp11_feedback_original_audit import audit_feedback_originals
+
+    def genuine_labeled_fixture(req, *, mode):
+        assert mode is CognitionMode.OPEN
+        return ProviderExpression(
+            text=json.dumps(id_reply(req), separators=(",", ":")),
+            provenance=Provenance("llama.cpp", "synthetic-provider-NOT-weights"),
+        )
+
+    gate = BoundedLiveL2(
+        RelayEngine(genuine_labeled_fixture),
+        require_real_llama=True, evidence_ids=True,
+    )
+    ledger = new_ledger()
+    windows = []
+    for i in (1, 2):
+        receipt = accept(ledger, i)
+        asyncio.run(gate.propose_after(ledger, freeze_root=tmp_path))
+        windows.append({"paper_prefix_length": receipt.paper_prefix_length})
+    report = json.loads(json.dumps({
+        "session_id": ledger.session_id,
+        "mp11_g3": {
+            "paper_world_uuid": ledger.world_uuid,
+            "subject_uuid": ledger.subject_uuid,
+            "paper_markers": MARKERS,
+        },
+        "mp11_g2": {"typed_s16_actions": [
+            {"action_id": action, "native_seq": 25*i}
+            for i, action in enumerate(ACTIONS, 1)
+        ]},
+        "l_mp11_live_prefix": {"observations": windows},
+        "l_mp11_live_l2": gate.public_report(),
+    }))
+    original = snapshot(3)
+    audited = audit_feedback_originals(report, original)
+    assert audited["evidence_ids_resolved_from_original"] is True
+    assert audited["h1_to_feedback_to_h2_sha_verified"] is True
+    assert audited["causal_interpretation_attested"] is False
+    assert gate.proposals[1].selected_evidence_ids == ("T2_H1ERR", "T2_W8")
+
+    report["l_mp11_live_l2"]["proposals"][1][
+        "selected_evidence_ids"
+    ] = ["T2_H1ERR", "T1_W8"]
+    with pytest.raises(ValueError):
+        audit_feedback_originals(report, original)
+
+
+def test_original_source_prefix_change_invalidates_id_request(tmp_path):
+    from test_l_mp11_live_previous_action import ACTIONS, MARKERS, snapshot
+    from tools.l_mp11_feedback_original_audit import audit_feedback_originals
+
+    def provider(req, *, mode):
+        return ProviderExpression(
+            text=json.dumps(id_reply(req)),
+            provenance=Provenance("llama.cpp", "synthetic"),
+        )
+    gate = BoundedLiveL2(
+        RelayEngine(provider), evidence_ids=True,
+    )
+    ledger = new_ledger()
+    windows = []
+    for n in (1, 2):
+        source = accept(ledger, n)
+        asyncio.run(gate.propose_after(ledger, freeze_root=tmp_path))
+        windows.append({"paper_prefix_length": source.paper_prefix_length})
+    report = json.loads(json.dumps({
+        "session_id": ledger.session_id,
+        "mp11_g3": {"paper_world_uuid": ledger.world_uuid,
+                     "subject_uuid": ledger.subject_uuid,
+                     "paper_markers": MARKERS},
+        "mp11_g2": {"typed_s16_actions": [
+            {"action_id": x, "native_seq": i*25}
+            for i, x in enumerate(ACTIONS, 1)
+        ]},
+        "l_mp11_live_prefix": {"observations": windows},
+        "l_mp11_live_l2": gate.public_report(),
+    }))
+    original = snapshot(3).replace(b"tick=100", b"tick=101", 1)
+    with pytest.raises((ValueError, KeyError)):
+        audit_feedback_originals(report, original)
