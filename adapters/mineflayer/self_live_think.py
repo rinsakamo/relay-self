@@ -19,6 +19,7 @@ from adapters.mineflayer.python_protocol import MineflayerObservation
 from adapters.mineflayer.s60b1_loopback_adapter import (
     LoopbackDisplacementAdapter,
     LoopbackTransportConfig,
+    S60_WB_ADVISORY_JSON_FORMAT,
 )
 from adapters.mineflayer.self_body_projection import project_body_present
 from adapters.mineflayer.self_world_projection import project_self_world_present
@@ -64,19 +65,24 @@ class LiveL2Observer:
         self, *, model: str, port: int, timeout_s: float = 12.0,
         self_world_live: bool = False,
         wb_cognition_slice: bool = False,
+        structured_json_off: bool = False,
     ) -> None:
         if type(self_world_live) is not bool:
             raise ValueError("self_world_live must be explicit bool")
         if type(wb_cognition_slice) is not bool or (wb_cognition_slice and not self_world_live):
             raise ValueError("WB cognition slice requires explicit SelfWorld live mode")
+        if type(structured_json_off) is not bool or (structured_json_off and not wb_cognition_slice):
+            raise ValueError("structured L2 requires explicit WB cognition slice")
         self.self_world_live = self_world_live
         self.wb_cognition_slice = wb_cognition_slice
+        self.structured_json_off = structured_json_off
         self._wb_l2_source: str | None = None
         self._wb_world_cues: int = 0
         self._wb_world_omitted: int = 0
         self.config = LoopbackTransportConfig(
             model=model, port=port, slots=1, max_tokens=96,
             connect_s=min(3.0, timeout_s), read_s=timeout_s, whole_s=timeout_s,
+            structured_json_off=structured_json_off,
         )
         self.timeout_s = timeout_s
         self._session_id: str | None = None
@@ -376,6 +382,10 @@ class LiveL2Observer:
         adapter = LoopbackDisplacementAdapter(
             self.config,
             lambda request: {
+                **({
+                    "reasoning_effort": "none",
+                    "response_format": S60_WB_ADVISORY_JSON_FORMAT,
+                } if self.structured_json_off else {}),
                 "model": self.config.model,
                 "messages": [
                     {"role": "system", "content": (
@@ -414,6 +424,20 @@ class LiveL2Observer:
             if result is not None:
                 value = result.value
                 if isinstance(value, str) and value:
+                    if self.structured_json_off:
+                        try:
+                            datum = json.loads(value)
+                            if (not isinstance(datum, dict)
+                                    or set(datum) != {"uncertainty"}
+                                    or not isinstance(datum["uncertainty"], str)
+                                    or not 0 < len(datum["uncertainty"].strip()) <= 300):
+                                raise ValueError("invalid bounded structured L2 advisory")
+                        except (ValueError, TypeError):
+                            # S60 transport success is not semantic L2 acceptance.
+                            self._phase = "STRUCTURED_CONTENT_UNCONFIRMED"
+                            self._ended_at = time.monotonic()
+                            return
+                        value = json.dumps(datum, sort_keys=True, ensure_ascii=True)
                     self._accepted_text = value[:1000]
                     self._accepted_source_seq = result.request.context.world_seq
                     self._phase = "ACCEPTED_READ_ONLY_SAME_PRESENT"
@@ -476,6 +500,7 @@ class LiveL2Observer:
             "native_l0_action_owner": self._world_l0_action_owner,
             "self_world_live": self.self_world_live,
             "wb_cognition_slice": self.wb_cognition_slice,
+            "structured_json_off": self.structured_json_off,
             "wb_l2_source_ref": self._wb_l2_source,
             "wb_world_cues": self._wb_world_cues,
             "wb_world_omitted": self._wb_world_omitted,
