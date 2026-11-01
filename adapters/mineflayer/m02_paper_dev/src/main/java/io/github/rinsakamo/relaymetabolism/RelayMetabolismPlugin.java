@@ -90,6 +90,9 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private int s50WaitSourceRows = 0;
     private long s50WaitStartWorldTick = -1;
     private Location s50WaitLast;
+    // Isolated, default-OFF Paper main-thread future-tick receipt; no S49 authority.
+    private boolean s50ForecastGateDev = false;
+    private final S50ForecastGate s50ForecastGate = new S50ForecastGate();
     private long s50WaitCombatEvents = 0;
     private long s50WaitSwingEvents = 0;
     private long s50WaitAllMovementEvents = 0;
@@ -210,6 +213,14 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 throw new IllegalStateException("invalid S50 tick meter DEV flag");
             }
             s50TickMeterCandidate = getConfig().getBoolean("s50-tick-meter-dev", false);
+            if (getConfig().contains("s50-forecast-gate-dev")
+                    && !getConfig().isBoolean("s50-forecast-gate-dev")) {
+                throw new IllegalStateException("invalid S50 forecast gate DEV flag");
+            }
+            s50ForecastGateDev = getConfig().getBoolean("s50-forecast-gate-dev", false);
+            if (s50ForecastGateDev && !s50TickMeterCandidate) {
+                throw new IllegalStateException("S50 forecast gate needs existing WAIT tick owner");
+            }
             target = getConfig().getString("target-player", "");
             if (!target.equals("RelaySelf")) {
                 throw new IllegalStateException("only the owned RelaySelf dev bot is supported");
@@ -263,6 +274,26 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                     // command acknowledgement. That incomplete tick is not WAIT.
                     if (tick > s50WaitStartWorldTick) {
                         Location from = s50WaitLast;
+                        if (s50ForecastGateDev) {
+                            // Executed on the same Paper main-thread callback as
+                            // the physical sampled WAIT position. No interpolation.
+                            S50ForecastGate.Sample check = s50ForecastGate.sample(tick);
+                            S50ForecastGate.Receipt receipt = check.receipt();
+                            getLogger().info("S50_DEV_FORECAST_TICK marker_id=" + s50Marker
+                                + " world=" + p.getWorld().getUID()
+                                + " subject_uuid=" + p.getUniqueId()
+                                + " tick=" + tick + " status=" + check.status()
+                                + " accepted_tick=" + (receipt == null ? "NONE"
+                                    : receipt.acceptedWorldTick())
+                                + " prior_tick=" + (receipt == null ? "NONE"
+                                    : receipt.priorTick())
+                                + " target_tick=" + (receipt == null ? "NONE"
+                                    : receipt.targetTick())
+                                + " predicted_m=" + (receipt == null ? "NONE"
+                                    : receipt.predictedMeters())
+                                + " ticket_sha256=" + (receipt == null ? "NONE"
+                                    : receipt.modelTicketSha256()));
+                        }
                         getLogger().info("S50_DEV_WAIT_TICK marker_id=" + s50Marker
                             + " world=" + p.getWorld().getUID()
                             + " tick=" + tick + " index=" + (s50WaitSourceRows + 1)
@@ -470,6 +501,45 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 + " motion_billed=" + chargedMotionExhaustion);
             return true;
         }
+        if (command.getName().equalsIgnoreCase("relaydevforecast")) {
+            if (!devActive || !s50ForecastGateDev || !s50TickMeterCandidate
+                    || !(sender instanceof ConsoleCommandSender)
+                    || args.length != 5 || !args[0].matches("[A-Za-z0-9_-]{1,128}")
+                    || !s50WaitObserveActive || !s50ForecastGate.active()) {
+                return false;
+            }
+            Player p = Bukkit.getPlayerExact(target);
+            if (p == null || !p.isOnline() || p.isDead()) return false;
+            long priorTick;
+            long targetTick;
+            double predicted;
+            try {
+                priorTick = Long.parseLong(args[1]);
+                targetTick = Long.parseLong(args[2]);
+                predicted = Double.parseDouble(args[3]);
+            } catch (NumberFormatException exc) {
+                getLogger().info("S50_DEV_FORECAST_REJECT marker_id=" + args[0]
+                    + " reason=INVALID_NUMERIC_FIELDS");
+                return false;
+            }
+            long now = p.getWorld().getFullTime();
+            S50ForecastGate.Decision decision = s50ForecastGate.offer(
+                args[0], p.getWorld().getUID().toString(),
+                p.getUniqueId().toString(), now, priorTick, targetTick,
+                predicted, args[4]
+            );
+            getLogger().info("S50_DEV_FORECAST_" + (decision.accepted() ? "ACCEPT" : "REJECT")
+                + " marker_id=" + args[0]
+                + " world=" + p.getWorld().getUID()
+                + " subject_uuid=" + p.getUniqueId()
+                + " accepted_world_tick=" + now
+                + " prior_tick=" + priorTick + " target_tick=" + targetTick
+                + " predicted_m=" + predicted
+                + " ticket_sha256=" + (decision.accepted()
+                    ? decision.receipt().modelTicketSha256() : "NONE")
+                + " status=" + decision.reason());
+            return decision.accepted();
+        }
         if (command.getName().equalsIgnoreCase("relaydevwait")) {
             if (!devActive || !s50TickMeterCandidate
                     || !(sender instanceof ConsoleCommandSender)
@@ -485,6 +555,12 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
             Location where = waiting.getLocation();
             s50WaitStartWorldTick = waiting.getWorld().getFullTime();
             s50WaitLast = where.clone();
+            if (s50ForecastGateDev) {
+                s50ForecastGate.begin(
+                    s50Marker, waiting.getWorld().getUID().toString(),
+                    waiting.getUniqueId().toString(), s50WaitStartWorldTick
+                );
+            }
             s50WaitObserveActive = true;
             s50WaitLifecycleEvents = 0;
             s50WaitLifecycleOverflow = false;
