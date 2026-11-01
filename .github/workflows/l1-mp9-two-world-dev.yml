@@ -1,6 +1,7 @@
 name: L1-MP9 heldout material-selected original two Paper Worlds DEV
 # Explicit once-only physical owner opt-in commit.
 # MP9 activation: preflight first, normal then ice; abort at first failed World.
+# Fresh exact-head MP9 first physical DEV release after source-only 55 PASS; run_attempt == 1.
 on:
   push:
     branches: [dev/l1-mp9-surface-selector-shadow-20261101]
