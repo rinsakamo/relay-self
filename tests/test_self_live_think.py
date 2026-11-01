@@ -667,3 +667,80 @@ def test_wb_foreign_stale_and_projection_failure_remain_fail_closed(monkeypatch)
         assert report["model_attempts"] == report["authorized_actions"] == 0
         assert report["l0_blocked_on_l2"] is False
     asyncio.run(scenario())
+
+
+def test_wb_s60_host_receipts_separate_pre_advance_from_cleanup():
+    """Read S60/transport events without treating backend completion as Action."""
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            await asyncio.sleep(.12)
+            assert server.requests == 1
+            await observer.observe(scoped_world_probe(47))
+            row = await observer.close()
+            diagnostic = row["wb_s60_diagnostic"]
+            assert diagnostic["classification"] == (
+                "HOST_RECEIPT_ONLY_NOT_PHYSICAL_ATTESTATION"
+            )
+            assert diagnostic["root_cause"] == "UNDETERMINED"
+            assert diagnostic["native_stop_ack"] == "UNATTESTED"
+            assert diagnostic["source_advance_samples"][0]["new_native_seq"] == 47
+            assert diagnostic["http_completion_observed_before_cleanup"] is True
+            assert "HTTP_COMPLETION_OBSERVED" in (
+                diagnostic["transport_events_before_cleanup"]
+            )
+            assert "BACKEND_COMPLETION_OBSERVED" in (
+                diagnostic["source_advance_samples"][0]["owner_receipts_before"]
+            )
+            assert diagnostic["accepted_current_text"] is False
+            assert row["status"] == "EXPIRED_WORLD_ADVANCED"
+            assert row["backend_stop_ack"] is False
+            assert row["authorized_actions"] == 0
+            assert row["learning_updates"] == 0
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_wb_s60_unconfirmed_transport_receipts_do_not_guess_rejection_cause():
+    async def scenario():
+        async with OneShotLocalModel(status=503) as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            await asyncio.sleep(.12)
+            row = await observer.close()
+            diagnostic = row["wb_s60_diagnostic"]
+            assert server.requests == 1
+            assert diagnostic["http_completion_observed_before_cleanup"] is False
+            assert "TRANSPORT_UNCONFIRMED" in diagnostic["transport_events_before_cleanup"]
+            assert "PROVIDER_UNCONFIRMED" in diagnostic["owner_events_before_cleanup"]
+            assert diagnostic["root_cause"] == "UNDETERMINED"
+            assert diagnostic["source_advance_samples"] == []
+            assert diagnostic["native_stop_ack"] == "UNATTESTED"
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+            assert row["text_current"] is False
+    asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+def test_wb_diagnostic_is_default_off():
+    async def scenario():
+        async with OneShotLocalModel() as server:
+            observer = LiveL2Observer(
+                model="self-demo-test-model", port=server.port, timeout_s=2,
+                self_world_live=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            await asyncio.sleep(.12)
+            row = await observer.close()
+            assert "wb_s60_diagnostic" not in row
+            assert row["wb_cognition_slice"] is False
+            assert row["authorized_actions"] == 0
+    asyncio.run(asyncio.wait_for(scenario(), 6))
