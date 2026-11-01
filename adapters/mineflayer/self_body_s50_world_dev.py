@@ -239,6 +239,7 @@ async def qualify(
     l1_paper_forecast_gate_dev: bool = False,
     l1_paper_local_forecast_dev: bool = False,
     l1_paper_body_challenge_dev: bool = False,
+    l1_paper_ice_floor_dev: bool = False,
 ) -> int:
     report: dict[str, Any] = {
         "milestone": "S49", "stage": "START", "status": "BLOCKED",
@@ -271,6 +272,26 @@ async def qualify(
     predictor = None
     paper_forecast_task: asyncio.Task[None] | None = None
     try:
+        if type(l1_paper_ice_floor_dev) is not bool:
+            raise S31ABlocked("MP7 physical floor opt-in must be bool")
+        if l1_paper_ice_floor_dev:
+            if (not l1_paper_local_forecast_dev
+                    or l1_paper_body_challenge_dev
+                    or l1_paper_forecast_gate_dev
+                    or l23_paper_assets is None):
+                raise S31ABlocked("MP7 requires exclusive MP5 and original Paper")
+            from adapters.mineflayer.self_body_s50_l1_ice_floor import verify_ice_config
+            verify_ice_config(
+                l23_paper_assets.plugin_config, l23_paper_assets.config_sha256,
+            )
+            report["l1_paper_ice_floor"] = {
+                "mode": "PACKED_ICE_5X5",
+                "environmenter_real_world_block_intervention": True,
+                "original_paper_floor_changed_before_action": False,
+                "not_self_action": True,
+                "model_updates": 0,
+                "classification": "DEV_EXPERIMENTER_ICE_SURFACE_NOT_PASSIVE",
+            }
         if type(l1_paper_body_challenge_dev) is not bool:
             raise S31ABlocked("MP6 condition opt-in must be boolean")
         if l1_paper_body_challenge_dev:
@@ -660,6 +681,26 @@ async def qualify(
                         "slope": ticket.model.slope,
                         "status": "PAPER_PRE_ACTION_MODEL_ARM_SOURCE_CONFIRMED",
                     })
+                    if l1_paper_ice_floor_dev:
+                        from adapters.mineflayer.self_body_s50_l1_ice_floor import (
+                            attest_ice_original,
+                            ice_command,
+                        )
+                        _command(server, ice_command(l23_marker_id, "PACKED_ICE_5X5"))
+                        await server.stdin.drain()
+                        await wait_paper_line(
+                            server_log, marker=l23_marker_id,
+                            kind="S50_DEV_ICE_FLOOR_APPLIED",
+                        )
+                        ice_receipt = attest_ice_original(
+                            server_log.read_bytes(), marker=l23_marker_id,
+                            world=ticket.target.paper_world_uuid,
+                            subject_uuid=ticket.target.subject_uuid,
+                        )
+                        report["l1_paper_ice_floor"].update({
+                            "original_paper_floor_changed_before_action": True,
+                            "ice_original_receipt": ice_receipt,
+                        })
                     if l1_paper_body_challenge_dev:
                         from adapters.mineflayer.self_body_s50_l1_body_condition import (
                             attest_condition_original,
@@ -1307,6 +1348,7 @@ def main() -> int:
     parser.add_argument("--l1-paper-forecast-gate-dev", action="store_true")
     parser.add_argument("--l1-paper-local-forecast-dev", action="store_true")
     parser.add_argument("--l1-paper-body-challenge-dev", action="store_true")
+    parser.add_argument("--l1-paper-ice-floor-dev", action="store_true")
     args = parser.parse_args()
     goal = None
     if (args.l16_capture_root is not None
@@ -1358,6 +1400,7 @@ def main() -> int:
         l1_paper_forecast_gate_dev=args.l1_paper_forecast_gate_dev,
         l1_paper_local_forecast_dev=args.l1_paper_local_forecast_dev,
         l1_paper_body_challenge_dev=args.l1_paper_body_challenge_dev,
+        l1_paper_ice_floor_dev=args.l1_paper_ice_floor_dev,
     ))
 
 
