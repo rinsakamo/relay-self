@@ -14,14 +14,15 @@ from adapters.mineflayer.self_body_s50_l1_paper_dispatch import ForecastDispatch
 
 SEED = "RelaySelf-MP8-Matched-Surface-20261101"
 MP9_SEED = "RelaySelf-MP9-Heldout-20261101"
+MP10_SEED = "RelaySelf-MP10-Typed-Correction-20261101"
 SHA = re.compile(r"[0-9a-f]{64}\Z")
 TOKEN = re.compile(r"[A-Za-z0-9_-]{1,128}\Z")
 
 
 def set_fixed_seed(root: Path, *, seed: str = SEED) -> dict[str, str]:
     """Pre-server exclusive config modification in a throwaway owned World."""
-    if seed not in (SEED, MP9_SEED):
-        raise ForecastDispatchRejected("unregistered MP8/MP9 seed")
+    if seed not in (SEED, MP9_SEED, MP10_SEED):
+        raise ForecastDispatchRejected("unregistered MP8/MP9/MP10 seed")
     config = root / "server.properties"
     if (not isinstance(root, Path) or not root.is_absolute()
             or root.is_symlink() or not config.is_file() or config.is_symlink()):
