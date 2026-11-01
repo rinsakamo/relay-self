@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/home/rinsa/work/issue653-mp3-host-evidence-20261101/audit_mp3_v2.py", line 54, in <module>
+    result=audit(Path(sys.argv[1]))
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rinsa/work/issue653-mp3-host-evidence-20261101/audit_mp3_v2.py", line 16, in audit
+    assert paper.endswith(b"\n")
+           ^^^^^^^^^^^^^^^^^^^^^
+AssertionError

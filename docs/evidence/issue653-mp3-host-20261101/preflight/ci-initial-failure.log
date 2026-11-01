@@ -1,0 +1,499 @@
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	﻿2026-11-01T00:28:20.8626847Z ##[group]Run set -euo pipefail
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8627974Z [36;1mset -euo pipefail[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8629411Z [36;1mpython -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8632496Z [36;1mruff check adapters/mineflayer/self_body_s50_l1_motion_shadow.py adapters/mineflayer/self_body_s50_world_dev.py tests/test_self_body_s50_l1_motion_shadow.py[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8636282Z [36;1mpython -m compileall -q adapters/mineflayer/self_body_s50_l1_motion_shadow.py adapters/mineflayer/self_body_s50_world_dev.py tests/test_self_body_s50_l1_motion_shadow.py[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8638724Z [36;1mpython -m pytest -o addopts='' -q \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8639942Z [36;1m  tests/test_self_body_s50_l1_motion_shadow.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8641199Z [36;1m  tests/test_self_body_s50_route_b_dev.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8642754Z [36;1m  tests/test_self_body_s50_live_next_epoch.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8643992Z [36;1m  tests/test_s50_live_paper_window.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8645262Z [36;1m  tests/test_self_body_s50_postworld_epoch.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8646471Z [36;1m  tests/test_l1_s_choice_shadow.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8647660Z [36;1m  tests/test_l10_world_body_cue_learning.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8648873Z [36;1m  tests/test_self_body_s50_world_dev.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8650078Z [36;1m  tests/test_self_world_stage_w4_lease.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8651526Z [36;1m  tests/test_self_world_stage_w4_optin_offline.py \[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8652833Z [36;1m  tests/test_w4_protected_recovery_audit.py[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8654007Z [36;1mpython tools/check_repository.py[0m
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8702615Z shell: /usr/bin/bash -e {0}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8703556Z env:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8704345Z   PYTHONPATH: src:tests:.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8705294Z   PYTHONDONTWRITEBYTECODE: 1
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8706431Z   pythonLocation: /opt/hostedtoolcache/Python/3.12.15/x64
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8707908Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib/pkgconfig
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8709394Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8710739Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8713026Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.12.15/x64
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8715358Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.12.15/x64/lib
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:20.8717315Z ##[endgroup]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.5210928Z Collecting pytest==9.1.1
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.5444657Z   Downloading pytest-9.1.1-py3-none-any.whl.metadata (7.6 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.8746047Z Collecting ruff==0.17.0
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.8780057Z   Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (20 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.8903206Z Collecting iniconfig>=1.0.1 (from pytest==9.1.1)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.8933553Z   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.9072700Z Collecting packaging>=22 (from pytest==9.1.1)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.9102122Z   Downloading packaging-26.3-py3-none-any.whl.metadata (3.5 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.9216017Z Collecting pluggy<2,>=1.5 (from pytest==9.1.1)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.9247006Z   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.9415571Z Collecting pygments>=2.7.2 (from pytest==9.1.1)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.9446837Z   Downloading pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.9528427Z Downloading pytest-9.1.1-py3-none-any.whl (386 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:21.9634346Z Downloading ruff-0.17.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (10.4 MB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:22.0038611Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 10.4/10.4 MB 271.3 MB/s  0:00:00
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:22.0073768Z Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:22.0124193Z Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:22.0174727Z Downloading packaging-26.3-py3-none-any.whl (129 kB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:22.0229431Z Downloading pygments-2.21.0-py3-none-any.whl (1.3 MB)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:22.0297174Z    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.3/1.3 MB 219.4 MB/s  0:00:00
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:22.0939329Z Installing collected packages: ruff, pygments, pluggy, packaging, iniconfig, pytest
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:23.2877031Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:23.2890808Z Successfully installed iniconfig-2.3.1 packaging-26.3 pluggy-1.7.0 pygments-2.21.0 pytest-9.1.1 ruff-0.17.0
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:28:23.3499080Z All checks passed!
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:29:08.5975394Z ........................................................................ [ 16%]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:33:55.0339952Z ........................................................................ [ 33%]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:15.5408328Z ...........................................F............................ [ 50%]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:15.6392767Z ........................................................................ [ 67%]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:15.6901822Z ........................................................................ [ 84%]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2204934Z .................FF........................FFFFFFFFFFFFFFFF.........     [100%]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2205727Z =================================== FAILURES ===================================
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2206511Z ___________ test_s18_and_original_default_routes_are_blob_identical ____________
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2207057Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2207373Z     def test_s18_and_original_default_routes_are_blob_identical():
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2208230Z         from adapters.mineflayer import s34_native_world_cognition_ci as s34
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2209086Z         from adapters.mineflayer import s49_normal_session_real_ci as s49
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2209883Z         from test_w4_protected_recovery_audit import validate_adoption
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2210488Z     
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2210867Z         root = Path(__file__).resolve().parents[1]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2211670Z >       validate_adoption(root=root)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2211996Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2212197Z tests/test_self_world_stage_w4_lease.py:590: 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2212782Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2213553Z tests/test_w4_protected_recovery_audit.py:126: in validate_adoption
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2214272Z     validate_current(manifest, root=root)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2214887Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2215356Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2216635Z manifest = {'schema': 'W4_PROTECTED_BLOB_ADOPTION_V2', 'version': 'v2', 'historical_source_commit': '1473c74e4448bb9a527747de0619c8e55ffbd827', 'effective_source_head': 'f34ccc0bf86f271849034c21abd254e5e3de780f', ...}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2218493Z root = PosixPath('/home/runner/work/relay-self/relay-self'), contents = None
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2219097Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2219696Z     def validate_current(manifest, *, root=ROOT, contents=None):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2220479Z         validate_authority(manifest)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2221071Z         for row in manifest['files']:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2222098Z             path = row['path']
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2223020Z             raw = (root / path).read_bytes() if contents is None else contents[path]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2224299Z             blob = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2225241Z             if path in ADOPTED:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2226100Z                 # Anchor reviewed bytes to the existing local candidate as well as
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2227034Z                 # the manifest: editing both current bytes and manifest cannot pass.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2228023Z                 accepted = git('rev-parse', ACCEPTED_SOURCE + ':' + path, root=root).decode().strip()
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2228904Z                 assert row['prospective_git_blob'] == accepted, path
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2229708Z                 accepted_raw = git('cat-file', 'blob', ACCEPTED_SOURCE + ':' + path, root=root)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2230789Z                 assert hashlib.sha256(accepted_raw).hexdigest() == row['prospective_content_sha256'], path
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2232384Z                 if path in ROUTE_B_OWNER_PATHS:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2233064Z                     # Exact immutable parent bytes, never current HEAD or a new
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2233905Z                     # manifest hash; coordinated manifest/current edits still fail.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2235187Z                     inherited = git('rev-parse', ROUTE_B_SOURCE + ':' + path, root=root).decode().strip()
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2236063Z                     assert blob == inherited, path
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2236595Z                 else:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2237029Z >                   assert blob == accepted, path
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2237749Z E                   AssertionError: adapters/mineflayer/s31a_real_server_ci.py
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2238740Z E                   assert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2239476Z E                     
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2239942Z E                     - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2240606Z E                     + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2241029Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2241622Z tests/test_w4_protected_recovery_audit.py:114: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2242450Z ____________ test_b_unchanged_15_and_c_adopted_four_blob_and_sha256 ____________
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2243014Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2243308Z     def test_b_unchanged_15_and_c_adopted_four_blob_and_sha256():
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2243945Z >       validate_current(load_manifest())
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2244283Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2244514Z tests/test_w4_protected_recovery_audit.py:134: 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2245158Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2245600Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2246817Z manifest = {'schema': 'W4_PROTECTED_BLOB_ADOPTION_V2', 'version': 'v2', 'historical_source_commit': '1473c74e4448bb9a527747de0619c8e55ffbd827', 'effective_source_head': 'f34ccc0bf86f271849034c21abd254e5e3de780f', ...}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2248659Z root = PosixPath('/home/runner/work/relay-self/relay-self'), contents = None
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2249235Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2249538Z     def validate_current(manifest, *, root=ROOT, contents=None):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2250176Z         validate_authority(manifest)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2250658Z         for row in manifest['files']:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2251129Z             path = row['path']
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2251986Z             raw = (root / path).read_bytes() if contents is None else contents[path]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2252897Z             blob = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2253662Z             if path in ADOPTED:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2254298Z                 # Anchor reviewed bytes to the existing local candidate as well as
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2255177Z                 # the manifest: editing both current bytes and manifest cannot pass.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2256184Z                 accepted = git('rev-parse', ACCEPTED_SOURCE + ':' + path, root=root).decode().strip()
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2257085Z                 assert row['prospective_git_blob'] == accepted, path
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2257934Z                 accepted_raw = git('cat-file', 'blob', ACCEPTED_SOURCE + ':' + path, root=root)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2259032Z                 assert hashlib.sha256(accepted_raw).hexdigest() == row['prospective_content_sha256'], path
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2259908Z                 if path in ROUTE_B_OWNER_PATHS:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2260600Z                     # Exact immutable parent bytes, never current HEAD or a new
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2261726Z                     # manifest hash; coordinated manifest/current edits still fail.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2262697Z                     inherited = git('rev-parse', ROUTE_B_SOURCE + ':' + path, root=root).decode().strip()
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2263545Z                     assert blob == inherited, path
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2264054Z                 else:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2264736Z >                   assert blob == accepted, path
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2265408Z E                   AssertionError: adapters/mineflayer/s31a_real_server_ci.py
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2266312Z E                   assert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2267117Z E                     
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2267873Z E                     - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2268541Z E                     + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2268945Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2269249Z tests/test_w4_protected_recovery_audit.py:114: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2270085Z ________________ test_d_authority_and_original_owner_identities ________________
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2270635Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2270904Z     def test_d_authority_and_original_owner_identities():
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2271887Z         from adapters.mineflayer import s31a_real_server_ci as s31a
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2272732Z         from adapters.mineflayer import s34_native_world_cognition_ci as s34
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2273620Z         from adapters.mineflayer import s49_normal_session_real_ci as s49
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2274554Z         from adapters.mineflayer.process_session import MineflayerProcessSession
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2275283Z     
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2275637Z         validate_authority(load_manifest())
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2276198Z         assert s49._new_session is s34._new_session
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2276806Z         assert s49._ready_server is s31a._ready_server
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2277527Z         assert s34.MineflayerProcessSession is MineflayerProcessSession
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2278606Z         assert MineflayerProcessSession.receive.__module__ == 'adapters.mineflayer.process_session'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2279720Z         # Current bytes pin sole collector/reader; remaining 15 pin Action/S10.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2280469Z >       validate_current(load_manifest())
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2280830Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2281073Z tests/test_w4_protected_recovery_audit.py:149: 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2282057Z _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2282505Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2283788Z manifest = {'schema': 'W4_PROTECTED_BLOB_ADOPTION_V2', 'version': 'v2', 'historical_source_commit': '1473c74e4448bb9a527747de0619c8e55ffbd827', 'effective_source_head': 'f34ccc0bf86f271849034c21abd254e5e3de780f', ...}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2285663Z root = PosixPath('/home/runner/work/relay-self/relay-self'), contents = None
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2286051Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2286222Z     def validate_current(manifest, *, root=ROOT, contents=None):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2286691Z         validate_authority(manifest)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2287140Z         for row in manifest['files']:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2287623Z             path = row['path']
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2288208Z             raw = (root / path).read_bytes() if contents is None else contents[path]
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2288798Z             blob = hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest()
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2289211Z             if path in ADOPTED:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2289560Z                 # Anchor reviewed bytes to the existing local candidate as well as
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2290033Z                 # the manifest: editing both current bytes and manifest cannot pass.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2290564Z                 accepted = git('rev-parse', ACCEPTED_SOURCE + ':' + path, root=root).decode().strip()
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2291046Z                 assert row['prospective_git_blob'] == accepted, path
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2291785Z                 accepted_raw = git('cat-file', 'blob', ACCEPTED_SOURCE + ':' + path, root=root)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2292380Z                 assert hashlib.sha256(accepted_raw).hexdigest() == row['prospective_content_sha256'], path
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2292860Z                 if path in ROUTE_B_OWNER_PATHS:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2293214Z                     # Exact immutable parent bytes, never current HEAD or a new
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2293851Z                     # manifest hash; coordinated manifest/current edits still fail.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2294368Z                     inherited = git('rev-parse', ROUTE_B_SOURCE + ':' + path, root=root).decode().strip()
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2294815Z                     assert blob == inherited, path
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2295093Z                 else:
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2295522Z >                   assert blob == accepted, path
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2296032Z E                   AssertionError: adapters/mineflayer/s31a_real_server_ci.py
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2296701Z E                   assert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2297088Z E                     
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2297431Z E                     - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2297853Z E                     + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2298076Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2298247Z tests/test_w4_protected_recovery_audit.py:114: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2298792Z _ test_reject_each_current_mutation_including_s18_action_s10[adapters/mineflayer/process_session.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2299180Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2299309Z path = 'adapters/mineflayer/process_session.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2299517Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2299922Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2300730Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2301823Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2302580Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2303219Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2303802Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2304377Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2305064Z E         Expected regex: 'adapters/mineflayer/process_session.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2306301Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2307255Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2307423Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2307962Z _ test_reject_each_current_mutation_including_s18_action_s10[adapters/mineflayer/normal_action.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2308347Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2308472Z path = 'adapters/mineflayer/normal_action.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2308674Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2308837Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2309267Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2309715Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2310106Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2310454Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2310761Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2311065Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2311703Z E         Expected regex: 'adapters/mineflayer/normal_action.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2312702Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2313531Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2313705Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2314222Z _ test_reject_each_current_mutation_including_s18_action_s10[adapters/mineflayer/execution.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2314599Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2314713Z path = 'adapters/mineflayer/execution.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2314912Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2315270Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2315697Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2316146Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2316538Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2317016Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2317328Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2317640Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2317996Z E         Expected regex: 'adapters/mineflayer/execution.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2318953Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2319765Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2319936Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2320471Z _ test_reject_each_current_mutation_including_s18_action_s10[adapters/mineflayer/action_outcome.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2320857Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2320977Z path = 'adapters/mineflayer/action_outcome.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2321340Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2321508Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2321948Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2322397Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2322785Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2323129Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2323439Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2323744Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2324108Z E         Expected regex: 'adapters/mineflayer/action_outcome.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2325079Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2325896Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2326057Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2326540Z _ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/intent.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2326880Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2326989Z path = 'src/relay_self/intent.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2327161Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2327316Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2327737Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2328180Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2328567Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2328914Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2329220Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2329523Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2329846Z E         Expected regex: 'src/relay_self/intent.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2330766Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2331736Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2331898Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2332381Z _ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/skill.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2332718Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2332822Z path = 'src/relay_self/skill.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2332987Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2333276Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2333698Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2334140Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2334522Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2334973Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2335278Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2335586Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2335911Z E         Expected regex: 'src/relay_self/skill.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2336830Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2338498Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2338814Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2339744Z _ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2340413Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2340603Z path = 'src/relay_self/action.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2340929Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2341460Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2342295Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2343131Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2343864Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2344510Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2345097Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2345413Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2345739Z E         Expected regex: 'src/relay_self/action.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2346691Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2347519Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2347685Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2348227Z _ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action_supervision.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2348612Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2348734Z path = 'src/relay_self/action_supervision.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2348944Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2349105Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2349536Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2349981Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2350389Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2350744Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2351052Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2351687Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2352055Z E         Expected regex: 'src/relay_self/action_supervision.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2353029Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2353855Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2354015Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2354513Z _ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/learning.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2354864Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2354973Z path = 'src/relay_self/learning.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2355148Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2355310Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2355921Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2356367Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2356752Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2357096Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2357517Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2357834Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2358213Z E         Expected regex: 'src/relay_self/learning.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2359155Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2359975Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2360133Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2360620Z _ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/habit.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2361019Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2361120Z path = 'src/relay_self/habit.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2361430Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2361590Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2362025Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2362480Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2362864Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2363213Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2363522Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2363826Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2364150Z E         Expected regex: 'src/relay_self/habit.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2365076Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2365893Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2366054Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2366571Z _ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action_feedback.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2366939Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2367055Z path = 'src/relay_self/action_feedback.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2367246Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2367406Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2367831Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2368270Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2368651Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2368998Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2369302Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2369600Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2369951Z E         Expected regex: 'src/relay_self/action_feedback.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2370895Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2371860Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2372017Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2372521Z _ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action_outcome.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2372889Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2373007Z path = 'src/relay_self/action_outcome.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2373194Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2373350Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2373897Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2374334Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2374742Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2375094Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2375510Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2375808Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2376149Z E         Expected regex: 'src/relay_self/action_outcome.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2377085Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2377891Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2378048Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2378560Z _ test_reject_each_current_mutation_including_s18_action_s10[docs/postmain-architecture.json] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2378939Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2379056Z path = 'docs/postmain-architecture.json'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2379251Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2379402Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2379828Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2380264Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2380644Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2380981Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2381441Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2381740Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2382086Z E         Expected regex: 'docs/postmain-architecture.json'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2383039Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2383845Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2384006Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2384506Z _ test_reject_each_current_mutation_including_s18_action_s10[docs/postmain-architecture.md] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2384871Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2384989Z path = 'docs/postmain-architecture.md'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2385183Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2385337Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2385753Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2386186Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2386569Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2386914Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2387216Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2387513Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2387856Z E         Expected regex: 'docs/postmain-architecture.md'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2388790Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2389601Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2389756Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2390303Z _ test_reject_each_current_mutation_including_s18_action_s10[tests/test_postmain_architecture_freeze.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2390715Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2390848Z path = 'tests/test_postmain_architecture_freeze.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2391064Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2391344Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2391902Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2392345Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2392732Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2393075Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2393507Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2393817Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2394277Z E         Expected regex: 'tests/test_postmain_architecture_freeze.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2395847Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2396695Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2396866Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2397415Z _ test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/persistent_cognition.py] _
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2397814Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2397937Z path = 'src/relay_self/persistent_cognition.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2398154Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2398325Z     @pytest.mark.parametrize('path', tuple(PROTECTED_BLOBS))
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2398760Z     def test_reject_each_current_mutation_including_s18_action_s10(path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2399203Z         contents = {p: (ROOT / p).read_bytes() for p in PROTECTED_BLOBS}
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2399592Z         contents[path] += b'\n# unauthorized mutation\n'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2399943Z >       with pytest.raises(AssertionError, match=path):
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2400288Z              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2400595Z E       AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2400966Z E         Expected regex: 'src/relay_self/persistent_cognition.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2402202Z E         Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2403028Z 
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2403194Z tests/test_w4_protected_recovery_audit.py:175: AssertionError
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2403599Z =========================== short test summary info ============================
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2404428Z FAILED tests/test_self_world_stage_w4_lease.py::test_s18_and_original_default_routes_are_blob_identical - AssertionError: adapters/mineflayer/s31a_real_server_ci.py
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2405204Z assert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2405559Z   
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2405770Z   - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2406088Z   + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2406790Z FAILED tests/test_w4_protected_recovery_audit.py::test_b_unchanged_15_and_c_adopted_four_blob_and_sha256 - AssertionError: adapters/mineflayer/s31a_real_server_ci.py
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2407558Z assert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2407906Z   
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2408104Z   - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2408403Z   + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2409059Z FAILED tests/test_w4_protected_recovery_audit.py::test_d_authority_and_original_owner_identities - AssertionError: adapters/mineflayer/s31a_real_server_ci.py
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2409802Z assert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2410140Z   
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2410330Z   - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2410614Z   + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2411583Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[adapters/mineflayer/process_session.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2412619Z   Expected regex: 'adapters/mineflayer/process_session.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2477697Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2479623Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[adapters/mineflayer/normal_action.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2480700Z   Expected regex: 'adapters/mineflayer/normal_action.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2482397Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2484207Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[adapters/mineflayer/execution.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2485258Z   Expected regex: 'adapters/mineflayer/execution.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2486433Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2488209Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[adapters/mineflayer/action_outcome.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2489118Z   Expected regex: 'adapters/mineflayer/action_outcome.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2490053Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2491656Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/intent.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2492427Z   Expected regex: 'src/relay_self/intent.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2493331Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2494668Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/skill.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2495418Z   Expected regex: 'src/relay_self/skill.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2496319Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2497684Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2498471Z   Expected regex: 'src/relay_self/action.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2499386Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2500784Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action_supervision.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2501777Z   Expected regex: 'src/relay_self/action_supervision.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2502881Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2504251Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/learning.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2505131Z   Expected regex: 'src/relay_self/learning.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2506042Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2507390Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/habit.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2508139Z   Expected regex: 'src/relay_self/habit.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2509058Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2510473Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action_feedback.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2511411Z   Expected regex: 'src/relay_self/action_feedback.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2512344Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2513750Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/action_outcome.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2514563Z   Expected regex: 'src/relay_self/action_outcome.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2515491Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2516882Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[docs/postmain-architecture.json] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2517702Z   Expected regex: 'docs/postmain-architecture.json'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2518622Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2520035Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[docs/postmain-architecture.md] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2520843Z   Expected regex: 'docs/postmain-architecture.md'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2521890Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2523313Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[tests/test_postmain_architecture_freeze.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2524182Z   Expected regex: 'tests/test_postmain_architecture_freeze.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2525124Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2526702Z FAILED tests/test_w4_protected_recovery_audit.py::test_reject_each_current_mutation_including_s18_action_s10[src/relay_self/persistent_cognition.py] - AssertionError: Regex pattern did not match.
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2527549Z   Expected regex: 'src/relay_self/persistent_cognition.py'
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2528594Z   Actual message: "adapters/mineflayer/s31a_real_server_ci.py\nassert '5bfecc3a01ac...1058944fd4d33' == '3c7d49051904...d6fe38f6fb644'\n  \n  - 3c7d490519047dc9d6e99a17cdad6fe38f6fb644\n  + 5bfecc3a01acdc60fab9d52b56b1058944fd4d33"
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2529492Z 19 failed, 409 passed in 352.58s (0:05:52)
+original-l0-l1-source-shadow	Source-qualified L1 attention and original S49 owner regression	2026-11-01T00:34:16.2921112Z ##[error]Process completed with exit code 1.

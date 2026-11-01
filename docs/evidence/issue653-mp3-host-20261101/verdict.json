@@ -1,0 +1,28 @@
+{
+  "classification": "DEV_HOST_READ_ORDER_FORECAST_OBSERVED_PARTIAL_PHYSICAL_CHRONOLOGY_UNDETERMINED",
+  "tested_head": "bd9115eeb3aa07a0554058124309c2f6b6cbbc14",
+  "grant": "https://github.com/rinsakamo/relay-self/issues/653#issuecomment-6551090255",
+  "grant_status": "CONSUMED",
+  "worlds": 1,
+  "retry": 0,
+  "host_world_pass": true,
+  "host_read_order_verified": true,
+  "original_s16_outcome_verified": true,
+  "original_paper_node_and_cleanup_verified": true,
+  "paper_physical_prequential_attested": false,
+  "subject_prebound_as_planned_then_verified": true,
+  "negative_rejections": "8/8",
+  "original_audit_first_failures_preserved": [
+    "run1/independent-audit.stdout.log",
+    "run1/independent-audit-v2.stdout.log"
+  ],
+  "ci_first_failure_preserved": "preflight/ci-initial-failure.log",
+  "next_world_update": "WITHHELD_PHYSICAL_CHRONOLOGY_UNDETERMINED",
+  "goal": "UNDETERMINED",
+  "p1_wait": 0,
+  "l10": 0,
+  "s10": 0,
+  "s11": 0,
+  "qualification": "NO_GO",
+  "science": "NOT_RUN"
+}

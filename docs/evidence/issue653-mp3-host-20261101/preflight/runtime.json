@@ -1,0 +1,14 @@
+{
+  "assets": {
+    "paper_server_sha256": "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e",
+    "paper_plugin_sha256": "405657013fa315d76aab3730c6324b3583f9b30facf9233ef0b88fda9026585a",
+    "paper_config_sha256": "2fd8f5bac2fea7fe857b1e7712a6979a2b76b78f626c374af7fbc7fee44e72d0",
+    "paper_profile": "ACTIVE_METABOLISM_INTERVENTION_NOT_PASSIVE",
+    "qualification": "DEV_ONLY"
+  },
+  "port_free": true,
+  "node_options": null,
+  "python": "Python 3.12.3\n",
+  "node": "v22.22.2\n",
+  "java": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-24.04.4-Ubuntu)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-24.04.4-Ubuntu, mixed mode, sharing)\n"
+}

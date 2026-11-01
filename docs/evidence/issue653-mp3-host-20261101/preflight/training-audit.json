@@ -1,0 +1,285 @@
+{
+  "classification": "DEV_LIVE_NEXT_L0_NATIVE_EPOCH_REFERENCED_PASS",
+  "l22": {
+    "schema": "L22_POST_S16_SETTLING_DIAGNOSTIC_V1",
+    "session_id": "15f04c47-1a80-4705-99e1-ebedb963e3a3",
+    "action_id": "s49-native-move-19",
+    "s16_original_sha256": "0c5fd4a858b838690570cfe8d2f08f6d8e346cdcaab5b7949614c185846595fb",
+    "received_sha256": "b27b291bfc857aa9fa79f828fcc727700ad11a533ef2505ec06d55d43a8124b6",
+    "sent_sha256": "f335c9e30283f1a32e7ea3fd85a7cd70dce4098116fd16ae9fb08c335ccdbc74",
+    "after_seq": 30,
+    "first_probe_seq": 41,
+    "second_probe_seq": 42,
+    "move_event_seqs": [
+      31,
+      32,
+      33,
+      34,
+      36
+    ],
+    "settling_probe_seqs": [
+      35,
+      37,
+      38,
+      39,
+      40
+    ],
+    "settling_sample_drift_max_m": 0.11766776833143044,
+    "post_s16_displacement_m": 0.12287857661821544,
+    "two_probe_displacement_m": 0.0,
+    "geometric_goal_candidate": "NOT_REACHED",
+    "settling_state": "SETTLING_OBSERVED",
+    "reason": "POST_S16_MOVE_EVENT",
+    "accepted_goal_status": "UNDETERMINED",
+    "stable_world_ticks_attested": false,
+    "physically_stopped_proven": false,
+    "independent_goal_owner_authenticated": false,
+    "qualified_real_learning_pairs": 0,
+    "s10_updates": 0,
+    "s11_grants": 0
+  },
+  "l23": {
+    "schema": "L23_PAPER_S7_SAMPLED_SETTLING_READBACK_V1",
+    "session_id": "15f04c47-1a80-4705-99e1-ebedb963e3a3",
+    "action_id": "s49-native-move-19",
+    "paper_world": "21c20dbf-0f44-4207-b557-b4a3e2764979",
+    "marker_id": "s49-native-move-19-15f04c47-1a80-4705-99e1-ebedb963e3a3",
+    "paper_original_sha256": "b921406c43107fee3ebb3f2587c5b439fb0535ed496de6ce890aa563574eecb2",
+    "s7_received_sha256": "b27b291bfc857aa9fa79f828fcc727700ad11a533ef2505ec06d55d43a8124b6",
+    "s16_original_sha256": "0c5fd4a858b838690570cfe8d2f08f6d8e346cdcaab5b7949614c185846595fb",
+    "paper_first_tick": 252,
+    "paper_last_tick": 259,
+    "paper_sample_count": 8,
+    "paper_activity_ticks": [
+      252,
+      253,
+      254
+    ],
+    "paper_last_to_s7_goal_distance_m": 0.0,
+    "paper_s7_geometry_compatible": true,
+    "paper_sample_state": "PAPER_SAMPLED_ACTIVITY",
+    "clock_alignment": "NOT_ATTESTED",
+    "paper_effective_input_clear_tick": "NOT_ATTESTED",
+    "paper_full_tick_input_idle": false,
+    "world_session_independently_bound": false,
+    "physical_stability_verified": false,
+    "accepted_goal_status": "UNDETERMINED",
+    "qualified_real_learning_pairs": 0,
+    "s10_updates": 0,
+    "s11_grants": 0,
+    "p1_wait_ticks_admitted": 0
+  },
+  "packet": {
+    "classification": "DEV_PACKET_SOURCE_ONLY_NO_CLOCK_OR_WIRE_ACCEPTANCE_ATTESTATION",
+    "world_session_id": "15f04c47-1a80-4705-99e1-ebedb963e3a3",
+    "paper_world": "21c20dbf-0f44-4207-b557-b4a3e2764979",
+    "action_count": 1,
+    "l23_paper_activity_ticks": [
+      252,
+      253,
+      254
+    ],
+    "packet_diagnostic": {
+      "readback": {
+        "native_session_id": "15f04c47-1a80-4705-99e1-ebedb963e3a3",
+        "marker_id": "s49-native-move-19-15f04c47-1a80-4705-99e1-ebedb963e3a3",
+        "paper_world_uuid": "21c20dbf-0f44-4207-b557-b4a3e2764979",
+        "client_packet_write_returns": 33,
+        "client_player_input_write_returns": 0,
+        "client_motion_write_returns": 33,
+        "native_control_effect_samples": 3,
+        "paper_player_input_callbacks": 0,
+        "client_trace_complete": true,
+        "diagnostic": "NO_PLAYER_INPUT_WRITE_ON_OBSERVED_CLIENT_PATH",
+        "native_write_is_network_delivery": false,
+        "paper_packet_identity_proven": false,
+        "effective_s15_clear_tick": "NOT_ATTESTED",
+        "full_tick_input_coverage": false,
+        "p1_wait_ticks_admitted": 0,
+        "l10_pairs_admitted": 0
+      },
+      "client_original_sha256": "238b8175218fad0b3e0c91f70840c436b8f5c25f7d452082d19ef8b98c42a25c",
+      "paper_original_sha256": "b921406c43107fee3ebb3f2587c5b439fb0535ed496de6ce890aa563574eecb2",
+      "source_ceiling": "WRITE_RETURNED_NOT_WIRE_OR_ACCEPTANCE",
+      "qualification": "DEV_ONLY",
+      "science": "NOT_RUN"
+    },
+    "original_sha256": {
+      "/home/rinsa/work/issue651-route-b-evidence-20261031/run1/s49-report.json": "50ffd852f4894ccef168b632f51533233717ab741415ec44577d68039a33952a",
+      "/home/rinsa/work/issue651-route-b-evidence-20261031/run1/server.log": "b921406c43107fee3ebb3f2587c5b439fb0535ed496de6ce890aa563574eecb2",
+      "/home/rinsa/work/issue651-route-b-evidence-20261031/run1/client-packet-original.jsonl": "238b8175218fad0b3e0c91f70840c436b8f5c25f7d452082d19ef8b98c42a25c",
+      "/home/rinsa/work/issue651-route-b-evidence-20261031/run1/capture/pre-next-l0-prefix/native_bridge_received_original.jsonl": "b27b291bfc857aa9fa79f828fcc727700ad11a533ef2505ec06d55d43a8124b6",
+      "/home/rinsa/work/issue651-route-b-evidence-20261031/run1/capture/pre-next-l0-prefix/native_bridge_sent_original.jsonl": "f335c9e30283f1a32e7ea3fd85a7cd70dce4098116fd16ae9fb08c335ccdbc74",
+      "/home/rinsa/work/issue651-route-b-evidence-20261031/run1/capture/pre-next-l0-prefix/native_bridge_source_receipt.json": "2e927059db8d2db0a757afe9955cfe35c1e2ad7da0737c38c3ecd963afa64c50",
+      "/home/rinsa/work/issue651-route-b-evidence-20261031/run1/capture/pre-next-l0-prefix/l18_s16_terminal_original.jsonl": "0c5fd4a858b838690570cfe8d2f08f6d8e346cdcaab5b7949614c185846595fb",
+      "/home/rinsa/work/issue651-route-b-evidence-20261031/run1/capture/pre-next-l0-prefix/l16_pre_world_goal_plan.json": "d1d73386f8b85197a24b00c346c03bf7325eac24e8d2217cc66a8aae3559bd69"
+    },
+    "effective_client_clear_tick": "NOT_ATTESTED",
+    "full_tick_input_coverage": false,
+    "goal_accepted": false,
+    "p1_wait_ticks_admitted": 0,
+    "l10_pairs_admitted": 0,
+    "qualification": "NO_GO",
+    "science": "NOT_RUN"
+  },
+  "native_pairs": [
+    {
+      "event_seq": 8,
+      "probe_seq": 9,
+      "entity_id": 26,
+      "selected": "WAIT"
+    },
+    {
+      "event_seq": 19,
+      "probe_seq": 21,
+      "entity_id": 28,
+      "selected": "MOVE_AWAY"
+    },
+    {
+      "event_seq": 55,
+      "probe_seq": 56,
+      "entity_id": 30,
+      "selected": "WAIT"
+    }
+  ],
+  "full_session_s7": {
+    "minecraft_tcp_packet_bytes": false,
+    "native_execution_ack_attested": false,
+    "received_bytes": 35585,
+    "received_lines": 57,
+    "received_measured_before_decode": true,
+    "received_path": "/home/rinsa/work/issue651-route-b-evidence-20261031/run1/capture/native_bridge_received_original.jsonl",
+    "received_sha256": "0fca4d9fc42db631afd467db7e67c6b5021400e35296c498135e740b691597c4",
+    "schema": "SELF_S7_RAW_MINEFLAYER_JSONL_RECEIPT_V1",
+    "sent_bytes": 1381,
+    "sent_lines": 14,
+    "sent_measured_before_write": true,
+    "sent_path": "/home/rinsa/work/issue651-route-b-evidence-20261031/run1/capture/native_bridge_sent_original.jsonl",
+    "sent_sha256": "57fa694b160d00951e7ba8ae0e166d62341b4f3255939fd18e88d69ededc47a2",
+    "v_science_qualified": false
+  },
+  "live_window": {
+    "session_id": "15f04c47-1a80-4705-99e1-ebedb963e3a3",
+    "action_id": "s49-native-move-19",
+    "marker_id": "s49-native-move-19-15f04c47-1a80-4705-99e1-ebedb963e3a3",
+    "paper_world_uuid": "21c20dbf-0f44-4207-b557-b4a3e2764979",
+    "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738",
+    "paper_prefix_sha256": "2824928a88b9a354056d41f41f112b8637f9bc850447b3ba2d80f964ad1c3eb1",
+    "paper_prefix_bytes": 146085,
+    "ticks": [
+      {
+        "world_tick": 252,
+        "displacement_m": 0.049492188301323736,
+        "last_reported_input_active": false
+      },
+      {
+        "world_tick": 253,
+        "displacement_m": 0.009543604920851934,
+        "last_reported_input_active": false
+      },
+      {
+        "world_tick": 254,
+        "displacement_m": 0.005210808286784996,
+        "last_reported_input_active": false
+      },
+      {
+        "world_tick": 255,
+        "displacement_m": 0.0,
+        "last_reported_input_active": false
+      },
+      {
+        "world_tick": 256,
+        "displacement_m": 0.0,
+        "last_reported_input_active": false
+      },
+      {
+        "world_tick": 257,
+        "displacement_m": 0.0,
+        "last_reported_input_active": false
+      },
+      {
+        "world_tick": 258,
+        "displacement_m": 0.0,
+        "last_reported_input_active": false
+      },
+      {
+        "world_tick": 259,
+        "displacement_m": 0.0,
+        "last_reported_input_active": false
+      }
+    ],
+    "input_event_count_at_window_end": 0,
+    "scope": "IN_SESSION_PAPER_CALLBACK_WINDOW_ONLY",
+    "provisional": true,
+    "final_source_verified": false,
+    "node_trace_complete": false,
+    "client_packet_writes_attested": false,
+    "effective_clear_tick": "NOT_ATTESTED",
+    "full_tick_input_idle": false,
+    "physical_stability_attested": false,
+    "goal_admitted": false,
+    "p1_wait_granted": 0,
+    "l10_pairs": 0,
+    "s10_updates": 0,
+    "s11_grants": 0
+  },
+  "trace_footer": {
+    "revision": 1,
+    "kind": "TRACE_END",
+    "complete": true,
+    "lost": false,
+    "recorded_rows": 457,
+    "input_write_authority": false,
+    "server_packet_received": false,
+    "effective_s15_clear_tick": "NOT_ATTESTED"
+  },
+  "cleanup": {
+    "runner_exit": 0,
+    "owned_processes": [
+      {
+        "pid": 26663,
+        "ppid": 26662,
+        "argv": "java -Xms512M -Xmx1536M -jar /tmp/relay-self-s49-xzj85vp4/minecraft.jar nogui ",
+        "cwd": "/tmp/relay-self-s49-xzj85vp4",
+        "first_seen_utc": "2026-10-31T12:46:26.039604+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 26717,
+        "ppid": 26663,
+        "argv": "/usr/lib/jvm/java-21-openjdk-amd64/lib/jspawnhelper 21.0.12.1+1-1-24.04.4-Ubuntu 136:137:139 ",
+        "cwd": "/tmp/relay-self-s49-xzj85vp4",
+        "first_seen_utc": "2026-10-31T12:46:33.269017+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 26720,
+        "ppid": 26663,
+        "argv": "lshw -C display ",
+        "cwd": "/tmp/relay-self-s49-xzj85vp4",
+        "first_seen_utc": "2026-10-31T12:46:33.370872+00:00",
+        "pid_gone": true
+      },
+      {
+        "pid": 26790,
+        "ppid": 26662,
+        "argv": "node /home/rinsa/work/relay-self-651-route-b-20261031/adapters/mineflayer/bridge.mjs --host 127.0.0.1 --port 25565 --username RelaySelf --version 1.21.8 ",
+        "cwd": "/home/rinsa/work/relay-self-651-route-b-20261031",
+        "first_seen_utc": "2026-10-31T12:46:47.408866+00:00",
+        "pid_gone": true
+      }
+    ],
+    "world_roots": [
+      {
+        "path": "/tmp/relay-self-s49-xzj85vp4",
+        "removed": true
+      }
+    ],
+    "port_rebind": true
+  },
+  "typed_identity_scope": "Live host identity assertions; JSON is not typed authority",
+  "decision_time_source": "PROVISIONAL_PAPER_ONLY",
+  "goal": "UNDETERMINED",
+  "qualification": "NO_GO",
+  "science": "NOT_RUN"
+}
