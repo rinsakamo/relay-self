@@ -446,6 +446,9 @@ class LiveL2Observer:
             [event.event for event in self._owner.receipts]
             if self.wb_cognition_slice and self._owner is not None else []
         )
+        wb_pre_close_lease_active = (
+            self._owner is not None and self._owner.active is not None
+        ) if self.wb_cognition_slice else False
         if self._adapter is not None:
             await self._adapter.aclose()
         if self._owner is not None and self._accepted_text is not None:
@@ -499,6 +502,23 @@ class LiveL2Observer:
         if self.wb_cognition_slice:
             # Existing owner and adapter events are evidence, not a root-cause
             # verdict. Transport completion can be real yet stale for S60.
+            # These are independent host facts. In particular, a false HTTP
+            # completion flag cannot distinguish unread HTTP from rejected JSON.
+            http_completed = "HTTP_COMPLETION_OBSERVED" in wb_pre_close_transport
+            owner_completed = "BACKEND_COMPLETION_OBSERVED" in wb_pre_close_owner
+            if self._accepted_text is not None:
+                completion_state = (
+                    "ACCEPTED_CURRENT" if result["text_current"]
+                    else "ACCEPTED_THEN_WORLD_ADVANCED"
+                )
+            elif http_completed and "STALE_REJECTED" in wb_pre_close_owner:
+                completion_state = "HTTP_COMPLETED_S60_STALE_REJECTED"
+            elif http_completed:
+                completion_state = "HTTP_COMPLETED_S60_ACCEPTANCE_UNCONFIRMED"
+            elif "PROVIDER_UNCONFIRMED" in wb_pre_close_owner:
+                completion_state = "PROVIDER_FAILED_HTTP_COMPLETION_UNCONFIRMED"
+            else:
+                completion_state = "HTTP_COMPLETION_UNCONFIRMED"
             result["wb_s60_diagnostic"] = {
                 "classification": "HOST_RECEIPT_ONLY_NOT_PHYSICAL_ATTESTATION",
                 "transport_events_before_cleanup": wb_pre_close_transport,
@@ -512,6 +532,15 @@ class LiveL2Observer:
                     "HTTP_COMPLETION_OBSERVED" in wb_pre_close_transport
                 ),
                 "accepted_current_text": result["text_current"],
+                "completion_state": completion_state,
+                "owner_completion_observed_before_cleanup": owner_completed,
+                "accepted_text_ever_observed": self._accepted_text is not None,
+                "source_world_seq": self._initial_seq,
+                "latest_world_seq": self._current_seq,
+                "lease_active_before_cleanup": wb_pre_close_lease_active,
+                "http_status": "UNRECORDED",
+                "http_framing": "UNRECORDED",
+                "completion_envelope": "UNRECORDED",
                 "root_cause": "UNDETERMINED",
                 "native_stop_ack": "UNATTESTED",
             }

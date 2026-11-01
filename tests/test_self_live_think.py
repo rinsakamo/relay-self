@@ -744,3 +744,150 @@ def test_wb_diagnostic_is_default_off():
             assert row["wb_cognition_slice"] is False
             assert row["authorized_actions"] == 0
     asyncio.run(asyncio.wait_for(scenario(), 6))
+
+
+@pytest.mark.parametrize("wb", [False, True])
+@pytest.mark.parametrize("case,accepted", [
+    ("valid_length", True), ("valid_chunked", True), ("503", False),
+    ("malformed", False), ("alias", False), ("empty", False),
+    ("reasoning_only", False), ("over_limit", False), ("unknown_metadata", False),
+])
+def test_wb_s60_synthetic_http_matrix_preserves_owner_contract(wb, case, accepted):
+    from test_feature_s60b1_adapter import FakeHTTP, envelope, response
+
+    async def scenario():
+        value = envelope()
+        value["model"] = "offline-model"
+        value["choices"][0]["finish_reason"] = "length"
+        value["usage"] = dict(prompt_tokens=1153, completion_tokens=96, total_tokens=1249)
+        if case == "alias":
+            value["model"] = "foreign-model"
+        if case in {"empty", "reasoning_only"}:
+            value["choices"][0]["message"]["content"] = ""
+        if case == "reasoning_only":
+            value["choices"][0]["message"]["reasoning_content"] = "synthetic reasoning"
+        if case == "over_limit":
+            value["usage"].update(completion_tokens=97, total_tokens=1250)
+        if case == "unknown_metadata":
+            value["unknown"] = True
+        wire = response(
+            b"{" if case == "malformed" else json.dumps(value).encode(),
+            status=503 if case == "503" else 200, chunked=case == "valid_chunked",
+        )
+        async with FakeHTTP() as server:
+            server.responses = [wire]
+            observer = LiveL2Observer(
+                model="offline-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=wb,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            assert await server.next_post() == 0
+            server.release[0].set()
+            await asyncio.wait_for(observer._poll_task, 2)
+            row = await observer.close()
+            assert len(server.posts) == row["model_attempts"] == 1
+            assert row["text_current"] is accepted
+            assert row["status"] == (
+                "ACCEPTED_READ_ONLY_SAME_PRESENT" if accepted else "UNCONFIRMED"
+            )
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+            assert row["backend_stop_ack"] is row["l0_blocked_on_l2"] is False
+            if wb:
+                diag = row["wb_s60_diagnostic"]
+                assert diag["completion_state"] == (
+                    "ACCEPTED_CURRENT" if accepted
+                    else "PROVIDER_FAILED_HTTP_COMPLETION_UNCONFIRMED"
+                )
+                assert diag["lease_active_before_cleanup"] is not accepted
+                assert diag["owner_completion_observed_before_cleanup"] is accepted
+                assert diag["http_status"] == diag["completion_envelope"] == "UNRECORDED"
+                assert diag["root_cause"] == "UNDETERMINED"
+            else:
+                assert "wb_s60_diagnostic" not in row
+    asyncio.run(asyncio.wait_for(scenario(), 5))
+
+
+@pytest.mark.parametrize("boundary", ["world_before", "world_after", "deadline", "cleanup"])
+def test_wb_s60_completion_boundaries_keep_l0_independent(boundary):
+    from test_feature_s60b1_adapter import FakeHTTP, envelope, response
+
+    async def scenario():
+        value = envelope()
+        async with FakeHTTP() as server:
+            server.responses = [response(json.dumps(value).encode())]
+            observer = LiveL2Observer(
+                model="offline-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            assert await server.next_post() == 0
+            # Real provider task held at a barrier, never an actual model call.
+            ran = []
+            await observer._owner.run_l0(lambda: _record_l0(ran))
+            assert ran == [True]
+            if boundary == "world_after":
+                server.release[0].set()
+                await asyncio.wait_for(observer._poll_task, 2)
+                await observer.observe(scoped_world_probe(47))
+            elif boundary == "world_before":
+                await observer.observe(scoped_world_probe(47))
+                await asyncio.wait_for(observer._poll_task, 2)
+            elif boundary == "deadline":
+                # Advance only S60's injected monotonic clock, no wall-clock sleep.
+                observer._owner._clock = lambda: observer._started_at + 3
+                observer._owner.tick()
+                await asyncio.wait_for(observer._poll_task, 2)
+            row = await observer.close()
+            diag = row["wb_s60_diagnostic"]
+            assert row["text_current"] is False
+            assert len(server.posts) == 1
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+            assert row["backend_stop_ack"] is row["l0_blocked_on_l2"] is False
+            assert diag["accepted_text_ever_observed"] is (boundary == "world_after")
+            if boundary == "world_after":
+                assert diag["completion_state"] == "ACCEPTED_THEN_WORLD_ADVANCED"
+            else:
+                assert diag["http_completion_observed_before_cleanup"] is False
+                assert "CLIENT_CANCEL_UNCONFIRMED" in diag["transport_events_after_cleanup"]
+            if boundary == "cleanup":
+                assert "CLIENT_CANCEL_UNCONFIRMED" not in diag["transport_events_before_cleanup"]
+            if boundary == "world_before":
+                sample = diag["source_advance_samples"][0]
+                assert "HTTP_COMPLETION_OBSERVED" not in sample["provider_receipts_before"]
+    asyncio.run(asyncio.wait_for(scenario(), 5))
+
+
+async def _record_l0(ran):
+    ran.append(True)
+
+
+def test_wb_s60_http_completed_before_owner_poll_can_be_stale_rejected():
+    from test_feature_s60b1_adapter import FakeHTTP, envelope, response
+
+    async def scenario():
+        async with FakeHTTP() as server:
+            server.responses = [response(json.dumps(envelope()).encode())]
+            observer = LiveL2Observer(
+                model="offline-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            await server.next_post()
+            observer._poll_task.cancel()
+            await asyncio.gather(observer._poll_task, return_exceptions=True)
+            server.release[0].set()
+            await asyncio.wait_for(observer._adapter._attempt.task, 2)
+            # HTTP is fully validated, but owner has not polled its Future.
+            await observer.observe(scoped_world_probe(47))
+            assert observer._owner.tick() is None
+            row = await observer.close()
+            diag = row["wb_s60_diagnostic"]
+            assert diag["completion_state"] == "HTTP_COMPLETED_S60_STALE_REJECTED"
+            assert diag["owner_completion_observed_before_cleanup"] is True
+            assert diag["accepted_text_ever_observed"] is False
+            assert row["text_current"] is False
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+    asyncio.run(asyncio.wait_for(scenario(), 5))

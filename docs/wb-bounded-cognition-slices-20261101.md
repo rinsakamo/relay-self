@@ -86,3 +86,51 @@ Offline fake-server tests distinguish validated transport followed by later sour
 A follow-up comparison should separately count L2 prompt payload, completion acceptance, provider timing, source-advance ordering, omitted cues and no-action safety. The prior WB ON +278 tokenizer tokens remains a negative efficiency result; diagnostics alone does not demonstrate a token reduction.
 
 **Current label for this diagnostics change:** `DEV_ONLY / SOURCE_ORDER_DIAGNOSTIC_ONLY / ROOT_CAUSE_UNDETERMINED / QUALIFICATION_NO_GO / SCIENCE_NOT_RUN`.
+
+## 2026-11-02 — S60/Gemma UNCONFIRMED 原本診断
+
+**最終分類: DEV_ONLY / PROVIDER_FAILURE_BEFORE_WORLD_DISPLACEMENT / HTTP_OR_ENVELOPE_CAUSE_UNDETERMINED。** 元WorldをPASSへ変更しない。新規World、実Gemma推論、追加Action、追加native probeは今回すべて0。S60-A/B1、S49、S16/S17、Memory、L、M/P1のowner実装・受理条件は変更しない。
+
+### 原本・source identity
+
+- `/home/rinsa/evidence/wb-669-20261101/SHA256SUMS`: 40件全一致。
+- `/home/rinsa/work/wb-669-world-20261101-01/SHA256SUMS`: 6件全一致。
+- 実行receiptはHEAD `bb4098666877808bf13aa5baa1f42aae584afa94`、`git_dirty=true`。clean checkoutだったとは主張しない。保存済みcleanup auditにある4 runtime blob SHA256はそのHEADのGit blobと一致。後続の`fb52bf67…`は報告時HEADであり実行HEADではない。
+- 現行S60-A/B1の2 sourceファイルは実行HEADのblobとバイト一致。新しい診断は過去World実行時にはなく、当時のtransport receiptsを復元できない。
+- 今回の外部証拠: `/home/rinsa/evidence/wb-669-diagnostic-20261102/`。保存済みcallbackを読み戻すスクリプト・結果、focused/FAST/Ruff/contractsログを保存する。原本は上書きしない。
+
+### 時系列と証拠の限界
+
+別clock間を結合せず、native sequence、owner receipt配列順、backend相対clockを独立して示す。
+
+| 系列 | 保存された順序・値 | 判定できる範囲 |
+| --- | --- | --- |
+| S49 callback | event/probe 9/10 → 20/21 → 50/51 | WAIT → MOVE_AWAY → MOVE_AWAY。L2 source seq=21、最新seq=51 |
+| S60 owner | NEW_REQUEST_STARTED → PROVIDER_UNCONFIRMED → DISPLACED → HOST_CANCEL_REQUESTED → HOST_CANCEL_UNCONFIRMED | provider未確認は後続Worldによるdisplacementより先。後のcancelを最初の失敗原因とはしない |
+| llama.cpp相対clock | 26.955秒 task 0開始 → 30.884秒 timing/slot release → 44.257秒終了cleanup | prompt=1153、generated=96、total=3929.65ms。HTTP受信・S60採用・STOP ACKの証明ではない |
+| 終了 | text=null、text_current=false、UNCONFIRMED | 有効L2採用0。モデル推論1と区別 |
+
+HTTP status、Content-Length/chunked framing、response body、model alias、choices/message.content/finish_reason、transport receipt配列、各callback/受理時刻は原本にない。`TRANSPORT_UNCONFIRMED`は現行B1ではconnect/read/framing/envelope等の例外を共通イベントへ集約する箇所にあるが、元runでの当該イベント自体は未保存。`HTTP_COMPLETION_OBSERVED`/`BACKEND_COMPLETION_OBSERVED`/`STALE_REJECTED`は元owner配列にはなく、前者はそもそもtransport配列未保存。HTTPが届かなかったとも、有効HTTPが届いたとも断定しない。deadline超過を直接証明する時刻もない。ownerの配列と実装からprovider失敗経路まで絞れるが、低層原因の確定には足りない。
+
+S60-B1は完全にframedされたHTTP 200と有効envelopeを検証してから`HTTP_COMPLETION_OBSERVED`、S60-Aは成功Futureをtickで処理して`BACKEND_COMPLETION_OBSERVED`を記録する。後者の名称はこのclient/provider契約内のcompletionでありGPU idleの独立証明ではない。`finish_reason="length"`かつcompletion_tokens=96は要求上限96の範囲で許容される。**96 tokensに達したこと自体は拒否理由ではない。** reasoningのみでcontent空、alias不一致、不正metadata等は候補として再現できるが、実応答が未保存なので元runの原因とは断定できない。
+
+### WB修正とオフライン検証
+
+既存`wb_s60_diagnostic`に独立したhost事実と`completion_state`を追加する。HTTP status/framing/envelope詳細は`UNRECORDED`、root_causeは`UNDETERMINED`のまま保持する。body/headers/例外文やpromptを診断へコピーせず、新しいtransport hook/observer/providerを作らない。
+
+- HTTP完了未確認とprovider失敗を区別して表示。
+- HTTP検証済みでもownerが未処理、またはSTALE_REJECTEDだった場合を別表示。
+- 実際に採用した後のWorld更新は`ACCEPTED_THEN_WORLD_ADVANCED`。HTTP成功だけでは採用済みとしない。
+- cleanup前のlease active、owner completion、過去の採用有無、source/latest seqを既存ownerから読む。cleanup後イベントと混同せず、lease activeをbackend稼働の物理証明に使わない。
+
+追加23件: WB OFF/ON × 9 HTTPケース（200 length上限ちょうど、chunked、503、不正JSON、alias不一致、空content、reasoning-only、上限超過、未知metadata）=18、World前/後・deadline・cleanup境界=4、HTTP完了後owner poll前にWorld更新してSTALE_REJECTED=1。fixture barrierで順序を制御する。すべて合成HTTPであり実モデル呼出しではない。既存S60-A/B1負例も実施。
+
+Focused合計182 PASS。保存済み3 callbackはwire/dataclass名を明示変換し、JSON正規化後の全フィールド一致を検査してから既存decode/projectionを利用。保存済みsource + 合成HTTPの3ケース（current採用、応答前更新、採用後更新）はPASS。元応答・元時刻のreplayではない。S60 ownerの不具合を確定する再現は得られていないため、owner実装の修正案やゲート緩和は採用しない。
+
+### 認知予算・cleanup・残件
+
+元の同一source比較 **WB OFF/ON = 840/1118 user-prompt tokens (+278)、1819/2317 bytes** を維持する。少数entityで情報量削減は未成立。今回はprompt構造を変更しない。今後はsource参照の重複を同一入力内でまとめる案と、大規模観測の有界要約を検討できる。ただし対象・予測誤差・適用条件・UNKNOWN/TRUNCATED・出典を保持し、重要対象がnearest-eightから省略されてもprediction reviewを残す必要がある。token削減や単発CHEAP/L2勝敗を必須ゲートにしない。判断価値・重要対象の省略率は未評価であり、WBは学習や結晶化を所有しない。
+
+元Worldは実Action 2、S16 OUTCOME 2、実Gemma 1、有効L2採用0、再試行0。元cleanup auditではport 25565/16669再bind、World namespace空、model子プロセスexit=0、Node/Java exit=0。これは保存されたhost cleanup証拠であり、STOP ACKは引き続きUNATTESTED、backend_stop_ack=false、gpu_release_verified=false。新しいWorldを起動していないため今回のJava/Node/Gemma子PID・World cleanupは該当なし。
+
+残件は元HTTP/envelope失敗の特定、有効な実Gemma L2採用のDEV観測、将来のowner側content-free stage診断の要否、live L0/L1 consumerおよび判断価値の評価。追加実Worldは未実施。**QUALIFICATION_NO_GO / SCIENCE_NOT_RUN** を維持する。
