@@ -28,8 +28,8 @@ from adapters.mineflayer.l_mp11_typed_feedback import (
     validate_numeric_citations,
 )
 from relay_self.provenance import Provenance
-from relay_self.relay_engine import CognitionDatum
 from relay_self.relay_engine import (
+    CognitionDatum,
     OpenCognitionRequest,
     OpenCognitionResult,
     RelayEngine,
