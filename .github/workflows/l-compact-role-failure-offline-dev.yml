@@ -1,0 +1,55 @@
+name: L compact numeric role table and fail source offline DEV
+on:
+  push:
+    branches: [dev/l-live-compact-role-table-fail-eof-20261102]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/l_mp11_compact_role_table.py'
+      - 'adapters/mineflayer/l_mp11_failure_source_snapshot.py'
+      - 'adapters/mineflayer/l_mp11_live_l2_shadow.py'
+      - 'adapters/mineflayer/s49_normal_session_real_ci.py'
+      - 'tests/test_l_mp11_compact_role_and_failure.py'
+      - '.github/workflows/l-compact-role-failure-offline-dev.yml'
+permissions:
+  contents: read
+jobs:
+  bounded-response-and-failure-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pin tools
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Source/role/owner regression, no World nor Gemma
+        run: |
+          set -euo pipefail
+          ruff check adapters/mineflayer/l_mp11_compact_role_table.py \
+            adapters/mineflayer/l_mp11_failure_source_snapshot.py \
+            adapters/mineflayer/l_mp11_live_l2_shadow.py \
+            adapters/mineflayer/s49_normal_session_real_ci.py \
+            tests/test_l_mp11_compact_role_and_failure.py
+          python -m compileall -q adapters/mineflayer/l_mp11_compact_role_table.py \
+            adapters/mineflayer/l_mp11_failure_source_snapshot.py \
+            adapters/mineflayer/l_mp11_live_l2_shadow.py \
+            adapters/mineflayer/s49_normal_session_real_ci.py
+          python -m pytest -o addopts='' -q \
+            tests/test_l_mp11_compact_role_and_failure.py \
+            tests/test_l_mp11_live_l2_shadow.py \
+            tests/test_l_mp11_eof_and_typed_feedback.py \
+            tests/test_l_mp11_feedback_original_audit.py \
+            tests/test_l_mp11_live_previous_action.py \
+            tests/test_l_mp11_live_paper_postrun_audit.py \
+            tests/test_self_body_s50_l2_mp11_paper_audit.py \
+            tests/test_mp11_g2_s49_original_audit.py \
+            tests/test_feature_s49_normal_runtime.py
+          python tools/check_repository.py
+      - name: Scope
+        run: echo 'COMPACT_ROLE_TABLE_OFFLINE_ONLY / 512TOKEN_FINISH_LENGTH_STILL_REJECTED / FAILED_WORLD_UNQUALIFIED / REAL_NEW_WORLD_0 / GEMMA_0 / SCIENCE_NOT_RUN'
