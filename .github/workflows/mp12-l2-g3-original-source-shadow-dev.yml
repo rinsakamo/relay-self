@@ -1,0 +1,97 @@
+name: MP12 physical-source grounded L2 OPEN read-only replay DEV
+on:
+  push:
+    branches: [dev/mp12-l2-source-grounded-capability-shadow-20261101]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/self_body_mp12_capability_shadow.py'
+      - 'tools/mp12_l2_source_shadow.py'
+      - 'tests/test_mp12_l2_source_shadow.py'
+      - '.github/workflows/mp12-l2-g3-original-source-shadow-dev.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  real-original-paper-no-new-world-no-model:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Source and L2 typed contract tests, before external artifact
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+          ruff check adapters/mineflayer/self_body_mp12_capability_shadow.py \
+            tools/mp12_l2_source_shadow.py tests/test_mp12_l2_source_shadow.py
+          python -m compileall -q adapters/mineflayer/self_body_mp12_capability_shadow.py \
+            tools/mp12_l2_source_shadow.py
+          python -m pytest -o addopts='' -q \
+            tests/test_mp12_l2_source_shadow.py \
+            tests/test_self_body_s50_l2_mp11_experiment.py \
+            tests/test_self_body_s50_l2_mp11_paper_audit.py \
+            tests/test_mp11_g2_s49_original_audit.py
+          python tools/check_repository.py
+      - name: Read G3's ONE original Paper World artifact, no new World
+        uses: actions/download-artifact@v4
+        with:
+          name: mp11-g3-paper-one-world-three-original-windows-41289358266-1
+          run-id: 41289358266
+          github-token: ${{ github.token }}
+          path: mp12-g3-verified-originals
+      - name: Verify actual immutable G3 Paper/W3 originals and L2 causal input prefixes
+        run: |
+          set -euo pipefail
+          mkdir -p mp12-source-readback
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib,json
+          root=Path('mp12-g3-verified-originals')
+          paper=root/'paper-stdout-original.log'
+          sha=hashlib.sha256(paper.read_bytes()).hexdigest()
+          assert sha=='22d867d4efdb17403dd6105bfdd5284d23bf0c65df35f054606af7e1f4516d03'
+          report=json.loads((root/'report.json').read_text())
+          assert report['mp11_g3']['paper_world_uuid']=='93104ce4-97f1-4819-87dc-7044977e816f'
+          PY
+          python tools/mp12_l2_source_shadow.py \
+            --g3-originals mp12-g3-verified-originals \
+            --output "$PWD/mp12-source-readback/after-first-real-original.json" \
+            --rounds 1 --preflight-only
+          python tools/mp12_l2_source_shadow.py \
+            --g3-originals mp12-g3-verified-originals \
+            --output "$PWD/mp12-source-readback/after-all-three-real-originals.json" \
+            --rounds 3 --preflight-only
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          base=Path('mp12-source-readback')
+          a=json.loads((base/'after-first-real-original.json').read_text())
+          b=json.loads((base/'after-all-three-real-originals.json').read_text())
+          assert a['source_count']==1 and b['source_count']==3
+          assert a['source_experiences']==b['source_experiences'][:1]
+          assert a['source_experiences'][0]['paper_wait_ticks']==list(range(299,307))
+          assert b['source_experiences'][1]['paper_wait_ticks']==list(range(499,507))
+          assert b['source_experiences'][2]['paper_wait_ticks']==list(range(699,707))
+          assert a['actual_open_calls_observed_in_this_run']==0
+          assert b['actual_open_calls_observed_in_this_run']==0
+          assert a['future_physical_actions_executed']==0
+          print('MP12_ORIGINAL_PAPER_PREFIX_1_THEN_3_VERIFIED / NO_L2_CALL / NO_WORLD')
+          PY
+      - name: Save independently re-read original prefix summaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mp12-source-only-G3-real-original-prefix-readback-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: warn
+          path: mp12-source-readback/
+      - name: No model weights and no actual L2 run on this hosted runner
+        if: always()
+        run: echo 'GENUINE_G3_ORIGINALS_READ_BACK / L2_RUNTIME_NOT_CONNECTED / NO_L2_MODEL_CALL / NO_NEW_WORLD / L1_ADMISSIONS_0 / QUAL_NO_GO / SCIENCE_NOT_RUN'
