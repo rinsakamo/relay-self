@@ -203,7 +203,7 @@ def test_bounded_window_telemetry_rejects_forged_report(attack):
         bounded_completed_s_cost_window_row(replace(original, **attack))
 
 
-def test_no_hidden_absence_of_meter_in_one_phase():
+def test_reusing_same_original_s_epoch_in_second_native_probe_is_rejected():
     data = slm.common_epoch()
     original = owner_source(data)
     next_epoch = replace(
@@ -216,11 +216,10 @@ def test_no_hidden_absence_of_meter_in_one_phase():
         ),
         phase="SHIFT",
     )
-    # The exact S owner epoch object has not changed; no fake model is
-    # attributed to the later synthetic source, both are UNMEASURED.
+    # Forged followup probe cannot replay the same prior original S epoch.
     result = observe_completed_s_cost_window(
         (original, next_epoch), enabled=True,
     )
-    assert result.status == "RECORDED"
+    assert result.status == "DEFERRED"
     assert result.model_measured_epochs == 0
-    assert result.unknown_cost_epochs == 2
+    assert result.summary is None
