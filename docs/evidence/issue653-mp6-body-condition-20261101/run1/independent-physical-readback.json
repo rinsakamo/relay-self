@@ -1,0 +1,81 @@
+{
+  "schema": "RELAYSELF_MP6_SLOWNESS_II_ONE_WORLD_DEV_ORIGINAL_READBACK_V1",
+  "source": "ACTUAL_GITHUB_ACTIONS_RUN_ORIGINAL_BYTES_AND_REPORT",
+  "run_id": 41273158125,
+  "artifact_id": 13069568791,
+  "artifact_name": "mp6-changed-body-one-world-41273158125-1",
+  "execution_head": "ddaff53a73e4847c3eb652ae9fd55ff437f4d70f",
+  "physical_worlds_started": 1,
+  "native_s49_actions": 1,
+  "retries": 0,
+  "condition": {
+    "mode": "SLOWNESS_II",
+    "paper_effect": "SLOWNESS",
+    "amplifier": 1,
+    "duration_ticks_initial": 400,
+    "original_paper_applied": true,
+    "original_paper_applied_world_tick": 245,
+    "paper_wait_effect_samples_active": 8,
+    "experimenter_physical_intervention": true,
+    "source_condition_applied_before_s49": true,
+    "paper_world_uuid": "526d3bbf-195b-4413-b838-3ef0a6f6fe8a",
+    "subject_uuid": "dcae346d-e66f-331a-b459-a5a5370e9738"
+  },
+  "native_comparison": {
+    "prior_mp5_original_movement_m": 0.6269065734210615,
+    "new_mp6_original_movement_m": 0.6269065734210608,
+    "absolute_delta_m": 6.661338147750939e-16,
+    "predeclared_novel_motion_minimum_delta_m": 0.06,
+    "novel_motion_established": false,
+    "nominal_effect_applied_not_sufficient_to_demonstrate_motion_shift": true
+  },
+  "paper_local": {
+    "original_s50_wait_ticks": 8,
+    "original_s50_input_ticks": 8,
+    "forecast_fixed": 7,
+    "following_callback_scored": 7,
+    "pre_action_heldout_model_armed": true,
+    "host_forecasts": 7,
+    "mae_m": 0.0006927084716711548,
+    "rmse_m": 0.00131407245365265,
+    "zero_baseline_mae_m": 0.0021077733153767675,
+    "last_baseline_mae_m": 0.00707031261447482,
+    "training_mean_mae_m": 0.003011104736252498,
+    "original_paper_wait_displacements_m": [
+      0.049492188301323736,
+      0.009543604920851934,
+      0.00521080828678544,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "same_information_cheap_linear": "MATHEMATICALLY_EQUIVALENT",
+    "new_conditional_generalization_proven": false
+  },
+  "owner": {
+    "s49_s16_s50": "DEV_PASS",
+    "node_exit": 0,
+    "java_exit": 0,
+    "cleanup": "PASS",
+    "port_rebind": true,
+    "original_stdout_identical_to_server_log": true
+  },
+  "sha256": {
+    "paper-stdout-original.bin": "fbc5c4daa91ee3d45ef54b09b5444a39e3db96b754d8e6f7f36799736c3609c6",
+    "server.log": "fbc5c4daa91ee3d45ef54b09b5444a39e3db96b754d8e6f7f36799736c3609c6",
+    "s49-report.json": "bdfbb084a019b7d1fb714698f213576a97a42baeee603ed2816c7d8c8897e06f",
+    "prediction-original.jsonl": "a20da7b73eba87c19f8f9e61c9cabdd70327508dae84aa8092f9ae93d759e732"
+  },
+  "caveats": [
+    "Source shows the potion effect active, but native MOVE and WAIT motion did not change from reference",
+    "Do not label World novel physical motion or new-condition generalization",
+    "Paper effect not evidence that Mineflayer's outgoing movement simulation honors it; mechanism not established",
+    "Small sample, source conditions otherwise similar and deterministic",
+    "Actual Paper callback forecast success does not prove pre-physics integration",
+    "Same-information cheap linear mathematically equivalent",
+    "Goal UNDETERMINED; QUALIFICATION_NO_GO; SCIENCE_NOT_RUN; learning0"
+  ],
+  "classification": "DEV_WORLD_PASS_INTERVENTION_APPLIED_BUT_MOTION_SHIFT_NOT_ESTABLISHED"
+}
