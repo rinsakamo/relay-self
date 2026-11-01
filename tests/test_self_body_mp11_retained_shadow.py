@@ -26,7 +26,7 @@ def fixture_l2(req):
     return OpenCognitionResult(
         request_id=req.request_id,
         text=json.dumps({
-            "experiment_id": next(iter(allowed)),
+            "experiment_id": ("GRASS_SHORT" if "GRASS_SHORT" in allowed else "ICE_SHORT"),
             "model_family": "SINGLE_DECAY",
             "explanation": "A prospective applicability hypothesis is provisional.",
             "falsification_test": "Compare the frozen prediction to a later Paper outcome.",
