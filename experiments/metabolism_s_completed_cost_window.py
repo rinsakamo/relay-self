@@ -87,9 +87,16 @@ def observe_completed_s_cost_window(
 
         samples = []
         measured = 0
+        seen_owner_epochs: set[int] = set()
+        seen_model_results: set[int] = set()
         for item in sources:
             if not isinstance(item, SCompletedEpochCostSource):
                 raise CognitiveLifecycleRejected("typed completed owner source needed")
+            # A new native probe must never replay an old completed S epoch.
+            identity = id(item.original_s_epoch)
+            if identity in seen_owner_epochs:
+                raise CognitiveLifecycleRejected("original S epoch object replayed")
+            seen_owner_epochs.add(identity)
             tap = item.original_slm_tap
             if (
                 not isinstance(tap, SLMDevTapResult)
@@ -108,6 +115,10 @@ def observe_completed_s_cost_window(
             if observed.status not in ("RECORDED", "UNMEASURED"):
                 raise CognitiveLifecycleRejected("engine source admission rejected")
             if observed.status == "RECORDED":
+                model_id = id(item.engine_call.result)
+                if model_id in seen_model_results:
+                    raise CognitiveLifecycleRejected("completed model result replayed")
+                seen_model_results.add(model_id)
                 measured += 1
             samples.append(CognitionCostSample(
                 epoch_id=item.epoch_id,
@@ -128,7 +139,7 @@ def observe_completed_s_cost_window(
             unknown_cost_epochs=len(sources) - measured,
             summary=summary,
         )
-    except (Exception,):
+    except Exception:
         # Optional readout cannot interfere with owner execution; fail
         # the whole batch rather than cherry-pick successful samples.
         return SCompletedCostWindow(
