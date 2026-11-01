@@ -891,3 +891,75 @@ def test_wb_s60_http_completed_before_owner_poll_can_be_stale_rejected():
             assert row["text_current"] is False
             assert row["authorized_actions"] == row["learning_updates"] == 0
     asyncio.run(asyncio.wait_for(scenario(), 5))
+
+
+def test_wb_structured_l2_requires_explicit_opt_in_without_world(capsys):
+    assert self_demo.main(["--wb-structured-l2"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "WB_JSON_L2_REQUIRES_WB_LIVE_L2"
+    assert self_demo.main(["--wb-cognition-slice", "--wb-structured-l2"]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "WB_JSON_L2_REQUIRES_WB_LIVE_L2"
+    assert self_demo.main([
+        "--wb-structured-l2", "--wb-cognition-slice", "--self-world-live",
+        "--live-think",
+    ]) == 2
+    assert json.loads(capsys.readouterr().out)["reason"] == "LIVE_L2_REQUIRES_NATIVE_WORLD"
+    with pytest.raises(ValueError, match="explicit WB"):
+        LiveL2Observer(model="test", port=12345, structured_json_off=True)
+    with pytest.raises(ValueError, match="explicit WB"):
+        LiveL2Observer(
+            model="test", port=12345, self_world_live=True,
+            wb_cognition_slice=True, structured_json_off="yes",
+        )
+
+
+@pytest.mark.parametrize("content,accepted", [
+    ('{"uncertainty":"Which observed path is blocked?"}', True),
+    ('{"uncertainty":""}', False),
+    ('{"unknown":"x"}', False),
+    ('{"uncertainty":"x","command":"MOVE_AWAY"}', False),
+    ('not JSON', False),
+])
+def test_wb_structured_reasoning_off_bounded_json_advisory(content, accepted):
+    from test_feature_s60b1_adapter import FakeHTTP, envelope, response
+
+    async def scenario():
+        wire = envelope()
+        wire["choices"][0]["message"]["content"] = content
+        async with FakeHTTP() as server:
+            server.responses = [response(json.dumps(wire).encode())]
+            observer = LiveL2Observer(
+                model="offline-model", port=server.port, timeout_s=2,
+                self_world_live=True, wb_cognition_slice=True,
+                structured_json_off=True,
+            )
+            await observer.observe(scoped_world_probe(8))
+            await observer.observe(scoped_world_probe(19))
+            assert await server.next_post() == 0
+            sent = server.posts[0][1]
+            assert sent["reasoning_effort"] == "none"
+            assert sent["response_format"]["type"] == "json_schema"
+            assert sent["response_format"]["json_schema"]["strict"] is True
+            assert sent["response_format"]["json_schema"]["schema"][
+                "additionalProperties"
+            ] is False
+            assert sent["max_tokens"] == 96
+            server.release[0].set()
+            await asyncio.wait_for(observer._poll_task, 2)
+            row = await observer.close()
+            assert row["structured_json_off"] is True
+            assert row["text_current"] is accepted
+            assert row["status"] == (
+                "ACCEPTED_READ_ONLY_SAME_PRESENT" if accepted
+                else "STRUCTURED_CONTENT_UNCONFIRMED"
+            )
+            if accepted:
+                assert json.loads(row["text_observation_only"]) == {
+                    "uncertainty": "Which observed path is blocked?",
+                }
+            else:
+                assert row["text_observation_only"] is None
+            assert row["authorized_actions"] == row["learning_updates"] == 0
+            assert row["backend_stop_ack"] is row["gpu_release_verified"] is False
+            assert row["l0_blocked_on_l2"] is False
+            assert row["wb_s60_diagnostic"]["root_cause"] == "UNDETERMINED"
+    asyncio.run(asyncio.wait_for(scenario(), 5))
