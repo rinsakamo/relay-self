@@ -8,9 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from relay_self.self_body import BodyOrigin
-from relay_self.self_world import WorldOrigin, WorldEntityObservation
-
 from adapters.mineflayer.self_body_s50_l1_motion_shadow import (
     compare_l1_motion_attention_shadow,
 )
@@ -24,6 +21,8 @@ from relay_self.l1_bcg_motion_shadow import (
     MotorSourceAdmission,
     compare_conditional_motion_shadow,
 )
+from relay_self.self_body import BodyOrigin
+from relay_self.self_world import WorldEntityObservation, WorldOrigin
 from relay_self.world_conditioned_choice import WorldConditionedChoice
 
 
