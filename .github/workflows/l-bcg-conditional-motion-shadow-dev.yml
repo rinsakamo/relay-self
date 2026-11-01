@@ -5,6 +5,9 @@ on:
       - dev/l-bcg-conditional-motion-shadow-20261101
     paths:
       - 'src/relay_self/l1_bcg_motion_shadow.py'
+      - 'src/relay_self/l_bcg_dev_proxy.py'
+      - 'tests/test_l_bcg_h6_dev_proxy.py'
+      - 'tools/l_bcg_h6_readback.py'
       - 'tests/test_l1_bcg_motion_shadow.py'
       - 'adapters/mineflayer/self_body_s50_l_bcg_handoff.py'
       - 'tests/test_l_bcg_live_handoff.py'
@@ -12,10 +15,14 @@ on:
       - 'tests/test_l_bcg_world_report_preflight.py'
       - 'adapters/mineflayer/self_body_s50_world_dev.py'
       - 'docs/l-bcg-conditional-motion-shadow-20261101.md'
+      - 'docs/l-bcg-h6-dev-proxy-20261101.md'
       - '.github/workflows/l-bcg-conditional-motion-shadow-dev.yml'
   pull_request:
     paths:
       - 'src/relay_self/l1_bcg_motion_shadow.py'
+      - 'src/relay_self/l_bcg_dev_proxy.py'
+      - 'tests/test_l_bcg_h6_dev_proxy.py'
+      - 'tools/l_bcg_h6_readback.py'
       - 'tests/test_l1_bcg_motion_shadow.py'
       - 'adapters/mineflayer/self_body_s50_l_bcg_handoff.py'
       - 'tests/test_l_bcg_live_handoff.py'
@@ -23,6 +30,7 @@ on:
       - 'tests/test_l_bcg_world_report_preflight.py'
       - 'adapters/mineflayer/self_body_s50_world_dev.py'
       - 'docs/l-bcg-conditional-motion-shadow-20261101.md'
+      - 'docs/l-bcg-h6-dev-proxy-20261101.md'
       - '.github/workflows/l-bcg-conditional-motion-shadow-dev.yml'
 permissions:
   contents: read
@@ -45,10 +53,11 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
-          ruff check src/relay_self/l1_bcg_motion_shadow.py tests/test_l1_bcg_motion_shadow.py adapters/mineflayer/self_body_s50_l_bcg_handoff.py tests/test_l_bcg_live_handoff.py tools/l_bcg_world_report_preflight.py tests/test_l_bcg_world_report_preflight.py adapters/mineflayer/self_body_s50_world_dev.py
-          python -m compileall -q src/relay_self/l1_bcg_motion_shadow.py tests/test_l1_bcg_motion_shadow.py adapters/mineflayer/self_body_s50_l_bcg_handoff.py tests/test_l_bcg_live_handoff.py tools/l_bcg_world_report_preflight.py tests/test_l_bcg_world_report_preflight.py adapters/mineflayer/self_body_s50_world_dev.py
+          ruff check src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py src/relay_self/l1_bcg_motion_shadow.py tests/test_l1_bcg_motion_shadow.py adapters/mineflayer/self_body_s50_l_bcg_handoff.py tests/test_l_bcg_live_handoff.py tools/l_bcg_world_report_preflight.py tests/test_l_bcg_world_report_preflight.py adapters/mineflayer/self_body_s50_world_dev.py
+          python -m compileall -q src/relay_self/l_bcg_dev_proxy.py tests/test_l_bcg_h6_dev_proxy.py tools/l_bcg_h6_readback.py src/relay_self/l1_bcg_motion_shadow.py tests/test_l1_bcg_motion_shadow.py adapters/mineflayer/self_body_s50_l_bcg_handoff.py tests/test_l_bcg_live_handoff.py tools/l_bcg_world_report_preflight.py tests/test_l_bcg_world_report_preflight.py adapters/mineflayer/self_body_s50_world_dev.py
           python -m pytest -o addopts='' -q \
             tests/test_l1_bcg_motion_shadow.py \
+            tests/test_l_bcg_h6_dev_proxy.py \
             tests/test_l_bcg_live_handoff.py \
             tests/test_l_bcg_world_report_preflight.py \
             tests/test_experience_bridge.py \
