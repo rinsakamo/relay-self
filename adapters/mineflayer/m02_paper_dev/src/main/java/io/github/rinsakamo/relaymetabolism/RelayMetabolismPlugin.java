@@ -17,6 +17,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Input;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -111,6 +112,8 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
     private boolean s50ChangedBodyConditionDev = false;
     private final S50BodyConditionGate s50BodyConditionGate = new S50BodyConditionGate();
     private boolean s50NativeMoveStarted = false;
+    private boolean s50IceFloorDev = false;
+    private final S50IceFloorGate s50IceFloorGate = new S50IceFloorGate();
     private long s50WaitCombatEvents = 0;
     private long s50WaitSwingEvents = 0;
     private long s50WaitAllMovementEvents = 0;
@@ -268,6 +271,16 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 "s50-changed-body-condition-dev", false);
             if (s50ChangedBodyConditionDev && !s50PaperLocalForecastDev) {
                 throw new IllegalStateException("MP6 requires MP5 Paper-local before Action");
+            }
+            if (getConfig().contains("s50-ice-floor-dev")
+                    && !getConfig().isBoolean("s50-ice-floor-dev")) {
+                throw new IllegalStateException("MP7 ice floor config must be boolean");
+            }
+            s50IceFloorDev = getConfig().getBoolean("s50-ice-floor-dev", false);
+            if (s50IceFloorDev && (!s50PaperLocalForecastDev
+                    || s50ChangedBodyConditionDev || s50ForecastGateDev)) {
+                throw new IllegalStateException(
+                    "MP7 requires MP5 and excludes MP6 potion/MP4 gates");
             }
             target = getConfig().getString("target-player", "");
             if (!target.equals("RelaySelf")) {
@@ -435,6 +448,19 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                                 Bukkit.getPluginManager().disablePlugin(this);
                                 return;
                             }
+                        }
+                        if (s50IceFloorDev) {
+                            Location groundAt = p.getLocation();
+                            Block directlyBelow = p.getWorld().getBlockAt(
+                                groundAt.getBlockX(), groundAt.getBlockY()-1,
+                                groundAt.getBlockZ());
+                            getLogger().info("S50_DEV_ICE_FLOOR_TICK marker_id="
+                                + s50Marker + " world=" + p.getWorld().getUID()
+                                + " subject_uuid=" + p.getUniqueId()
+                                + " tick=" + tick + " index=" + (s50WaitSourceRows+1)
+                                + " floor_material=" + directlyBelow.getType()
+                                + " mode=PACKED_ICE_5X5"
+                                + " status=REAL_PAPER_FLOOR_SAMPLE");
                         }
                         if (s50ChangedBodyConditionDev) {
                             PotionEffect effect = p.getPotionEffect(PotionEffectType.SLOWNESS);
@@ -671,6 +697,86 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
                 + " motion_billed=" + chargedMotionExhaustion);
             return true;
         }
+        if (command.getName().equalsIgnoreCase("relaydevicefloor")) {
+            // Experimenter-authorized World BLOCK intervention; NOT a Self action.
+            if (!devActive || !s50IceFloorDev
+                    || !(sender instanceof ConsoleCommandSender)
+                    || args.length != 2 || !args[0].matches("[A-Za-z0-9_-]{1,128}")
+                    || !args[0].equals(s50Marker)
+                    || !args[1].equals("PACKED_ICE_5X5")
+                    || s50ClearObserved || s50WaitObserveActive) {
+                return false;
+            }
+            Player p = Bukkit.getPlayerExact(target);
+            if (p == null || !p.isOnline() || p.isDead() || !p.isOnGround()) {
+                return false;
+            }
+            long tick = p.getWorld().getFullTime();
+            if (!s50IceFloorGate.mayArm(args[0], p.getWorld().getUID().toString(),
+                    p.getUniqueId().toString(), tick, !s50Marker.equals("NONE"),
+                    s50PaperLocalForecast.model() != null, s50NativeMoveStarted,
+                    s50ChangedBodyConditionDev)) {
+                return false;
+            }
+            Location at = p.getLocation();
+            int baseX = at.getBlockX();
+            int baseY = at.getBlockY() - 1;
+            int baseZ = at.getBlockZ();
+            // Validate all 25 blocks BEFORE any mutation. No air/void, entities,
+            // containers, physics redstone or new chunk generation admitted.
+            List<Block> verified = new ArrayList<>();
+            Material original = null;
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    int x = baseX + dx;
+                    int z = baseZ + dz;
+                    if (!p.getWorld().isChunkLoaded(x >> 4, z >> 4)) {
+                        getLogger().warning("S50_DEV_ICE_FLOOR_REJECT reason=UNLOADED_CHUNK");
+                        return false;
+                    }
+                    Block floor = p.getWorld().getBlockAt(x, baseY, z);
+                    if (!floor.getType().isSolid()
+                            || floor.getType() == Material.PACKED_ICE
+                            || floor.isLiquid()
+                            || floor.getState() instanceof org.bukkit.block.Container) {
+                        getLogger().warning("S50_DEV_ICE_FLOOR_REJECT reason=INVALID_FLOOR");
+                        return false;
+                    }
+                    if (original == null) original = floor.getType();
+                    if (original != floor.getType()) {
+                        getLogger().warning("S50_DEV_ICE_FLOOR_REJECT reason=MIXED_FLOOR");
+                        return false;
+                    }
+                    verified.add(floor);
+                }
+            }
+            // New World only. Set block updates so Mineflayer has a chance to
+            // receive normal Paper block-change packets before original MOVE.
+            for (Block floor : verified) {
+                floor.setType(Material.PACKED_ICE, true);
+            }
+            for (Block floor : verified) {
+                if (floor.getType() != Material.PACKED_ICE) {
+                    getLogger().severe("S50_DEV_ICE_FLOOR_REJECT reason=POST_SET_MISMATCH");
+                    devActive = false;
+                    Bukkit.getPluginManager().disablePlugin(this);
+                    return false;
+                }
+            }
+            s50IceFloorGate.commit(args[0], p.getWorld().getUID().toString(),
+                p.getUniqueId().toString(), tick, verified.size());
+            getLogger().info("S50_DEV_ICE_FLOOR_APPLIED marker_id=" + args[0]
+                + " world=" + p.getWorld().getUID()
+                + " subject_uuid=" + p.getUniqueId()
+                + " before_action_world_tick=" + tick
+                + " mode=PACKED_ICE_5X5 original_material=" + original
+                + " target_material=" + Material.PACKED_ICE
+                + " blocks_verified=" + verified.size()
+                + " center_x=" + baseX + " floor_y=" + baseY
+                + " center_z=" + baseZ
+                + " status=REAL_PAPER_WORLD_BLOCK_INTERVENTION_PRE_S49_ACTION");
+            return true;
+        }
         if (command.getName().equalsIgnoreCase("relaydevcondition")) {
             // MP6 experimenter-owned real physical change, console only.
             // Must precede the sole original S49 Action, never an extra Self action.
@@ -901,6 +1007,7 @@ public final class RelayMetabolismPlugin extends JavaPlugin implements Listener 
         if (args[1].equals("POST_FORWARD")) {
             s50NativeMoveStarted = true;
             s50BodyConditionGate.close();
+            s50IceFloorGate.seal();
             // Pure time gate, not a player movement command or Action issuer.
             // The existing S50 native client clear remains the exclusive clear.
             // Duplicated marker IDs cannot reschedule a second clock gate.
