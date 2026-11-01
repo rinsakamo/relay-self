@@ -117,8 +117,12 @@ def main() -> int:
     p.add_argument("--report",type=Path,required=True)
     p.add_argument("--original-paper",type=Path,required=True)
     p.add_argument("--output",type=Path,required=True)
+    p.add_argument("--expected-live-l2-calls",type=int,choices=(0,2),default=0)
     args=p.parse_args()
-    data=review(json.loads(args.report.read_text()),args.original_paper.read_bytes())
+    data=review(
+        json.loads(args.report.read_text()), args.original_paper.read_bytes(),
+        expected_l2_calls=args.expected_live_l2_calls,
+    )
     args.output.write_text(json.dumps(data,sort_keys=True,indent=2)+"\n")
     print("MP11_G3_READBACK="+json.dumps(data,sort_keys=True),flush=True)
     return 0
