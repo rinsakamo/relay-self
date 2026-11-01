@@ -1,0 +1,42 @@
+name: L live source to bounded L2 OPEN shadow offline DEV
+on:
+  push:
+    branches: [dev/l-live-gemma-shadow-open-20261101]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/l_mp11_live_l2_shadow.py'
+      - 'adapters/mineflayer/l_mp11_live_previous_action.py'
+      - 'tests/test_l_mp11_live_l2_shadow.py'
+      - '.github/workflows/l-live-l2-shadow-source-dev.yml'
+permissions:
+  contents: read
+jobs:
+  bounded-open-fail-closed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pin offline verification tools
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Validate live L2 shadow and L source/owner regression
+        run: |
+          set -euo pipefail
+          ruff check adapters/mineflayer/l_mp11_live_l2_shadow.py tests/test_l_mp11_live_l2_shadow.py
+          python -m compileall -q adapters/mineflayer/l_mp11_live_l2_shadow.py
+          python -m pytest -o addopts='' -q \
+            tests/test_l_mp11_live_l2_shadow.py \
+            tests/test_l_mp11_live_previous_action.py \
+            tests/test_l_mp11_live_paper_postrun_audit.py \
+            tests/test_l_mp11_g3_archived_l2_prefix.py \
+            tests/test_self_body_mp11_retained_shadow.py
+          python tools/check_repository.py
+      - name: Evidence scope
+        run: echo 'L_LIVE_OPEN_SCHEMA_AND_CHEAP_CONTROL_ONLY / FAKE_MODEL / REAL_GEMMA_NOT_RUN / NO_PHYSICAL_EXPERIMENT / NO_ACTION_ISSUER / NO_LEARNING / NO_L0_PROMOTION'
