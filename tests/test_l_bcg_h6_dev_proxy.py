@@ -7,16 +7,16 @@ from pathlib import Path
 
 import pytest
 
-from relay_self.l_bcg_dev_proxy import (
-    DevProxyRejected,
-    read_h6_provisional_world,
-    summarize_h6_provisional_worlds,
-)
 from relay_self.l1_bcg_motion_shadow import (
     BCGRejected,
     MotionContext,
     MotorSourceAdmission,
     compare_conditional_motion_shadow,
+)
+from relay_self.l_bcg_dev_proxy import (
+    DevProxyRejected,
+    read_h6_provisional_world,
+    summarize_h6_provisional_worlds,
 )
 
 ROOT = (
