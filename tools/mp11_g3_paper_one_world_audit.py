@@ -69,13 +69,28 @@ def review(
     if (len(markers)!=3
             or markers != tuple(a+"-"+report["session_id"] for a in g2["action_ids"])):
         raise MP11PaperRejected("Paper markers do not belong to original S49 Actions")
+    original_sha = hashlib.sha256(paper_bytes).hexdigest()
+    audit_bytes = paper_bytes
+    if "mp11_paper_eof" in report or "mp11_paper_eof_predeclared" in report:
+        if report.get("mp11_paper_eof_predeclared") is not True:
+            raise MP11PaperRejected("future original EOF scheme not predeclared")
+        from adapters.mineflayer.l_mp11_paper_eof_envelope import (
+            PaperEOFRejected,
+            verified_complete_lines,
+        )
+        try:
+            audit_bytes = verified_complete_lines(
+                paper_bytes, report.get("mp11_paper_eof"), predeclared=True,
+            )
+        except PaperEOFRejected as exc:
+            raise MP11PaperRejected("invalid original EOF envelope") from exc
     paper=audit_multi_trial_paper(
-        paper_bytes,action_markers=markers,
+        audit_bytes,action_markers=markers,
         world_uuid=g3["paper_world_uuid"],
         subject_uuid=g3["subject_uuid"],
         surfaces=("GRASS_BLOCK",)*3,
     )
-    sha=hashlib.sha256(paper_bytes).hexdigest()
+    sha=original_sha
     if (sha != g3.get("original_sha256")
             or g3.get("wait_ticks") != [list(x.wait_ticks) for x in paper]):
         raise MP11PaperRejected("full original Paper source hash/tick mismatch")

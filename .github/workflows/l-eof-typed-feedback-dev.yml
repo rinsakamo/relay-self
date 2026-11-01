@@ -1,0 +1,57 @@
+name: L Paper EOF and typed prior hypothesis feedback offline DEV
+on:
+  push:
+    branches: [dev/l-eof-and-typed-hypothesis-feedback-20261101]
+  pull_request:
+    paths:
+      - 'adapters/mineflayer/l_mp11_paper_eof_envelope.py'
+      - 'adapters/mineflayer/l_mp11_typed_feedback.py'
+      - 'adapters/mineflayer/l_mp11_live_l2_shadow.py'
+      - 'adapters/mineflayer/s49_normal_session_real_ci.py'
+      - 'tools/mp11_g3_paper_one_world_audit.py'
+      - 'tests/test_l_mp11_eof_and_typed_feedback.py'
+      - '.github/workflows/l-eof-typed-feedback-dev.yml'
+permissions:
+  contents: read
+jobs:
+  source-fail-closed-and-numeric-roles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    env:
+      PYTHONPATH: src:tests:.
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Pinned offline tools
+        run: python -m pip install --disable-pip-version-check 'pytest==9.1.1' 'ruff==0.17.0'
+      - name: Strict new-run EOF and typed previous-hypothesis source boundary
+        run: |
+          set -euo pipefail
+          ruff check adapters/mineflayer/l_mp11_paper_eof_envelope.py \
+            adapters/mineflayer/l_mp11_typed_feedback.py \
+            adapters/mineflayer/l_mp11_live_l2_shadow.py \
+            adapters/mineflayer/s49_normal_session_real_ci.py \
+            tools/mp11_g3_paper_one_world_audit.py \
+            tests/test_l_mp11_eof_and_typed_feedback.py \
+            tests/test_l_mp11_live_l2_shadow.py
+          python -m compileall -q adapters/mineflayer/l_mp11_paper_eof_envelope.py \
+            adapters/mineflayer/l_mp11_typed_feedback.py \
+            adapters/mineflayer/l_mp11_live_l2_shadow.py \
+            adapters/mineflayer/s49_normal_session_real_ci.py
+          python -m pytest -o addopts='' -q \
+            tests/test_l_mp11_eof_and_typed_feedback.py \
+            tests/test_l_mp11_live_l2_shadow.py \
+            tests/test_l_mp11_live_previous_action.py \
+            tests/test_l_mp11_live_paper_postrun_audit.py \
+            tests/test_l_mp11_g3_archived_l2_prefix.py \
+            tests/test_mp11_g2_s49_original_audit.py \
+            tests/test_self_body_s50_l2_mp11_paper_audit.py \
+            tests/test_feature_s49_normal_runtime.py
+          python tools/check_repository.py
+      - name: No retroactive qualification and no L2 action authority
+        run: echo 'NEW_RUN_EOF_ONLY / PREVIOUS_L2_TYPED_FEEDBACK_OFFLINE_ONLY / HISTORICAL_WORLD_FAIL_UNCHANGED / REAL_GEMMA_NOT_RUN / NO_ACTION / R_NO_GO / V_NOT_RUN'
