@@ -6,7 +6,9 @@ and physical source are NOT claimed by this offline fixture.
 """
 from __future__ import annotations
 
+import asyncio
 import inspect
+import json
 from dataclasses import replace
 
 import pytest
@@ -162,6 +164,7 @@ def test_optional_callback_signature_is_on_original_s49_qualify():
     signature = inspect.signature(qualify)
     assert "completed_l0" in signature.parameters
     assert signature.parameters["completed_l0"].default is None
+    assert signature.parameters["completed_l0_dev"].default is False
 
 
 def test_null_owner_path_is_not_misrepresented_as_completed_s42():
@@ -173,3 +176,24 @@ def test_null_owner_path_is_not_misrepresented_as_completed_s42():
     assert row["real_l8_epoch_supplied"] is False
     assert "CognitiveWorkReceipt" not in repr(row)
     assert "L2" not in repr(row)
+
+
+def test_enabled_cli_dev_readback_requires_separate_gate_before_world(
+    monkeypatch, tmp_path,
+):
+    # No model/World/Node is started when the additional explicit S49 gate
+    # is absent, even if the historical S49 server flag is set.
+    monkeypatch.setenv("S49_REAL_SERVER_CI", "1")
+    monkeypatch.delenv("S49_COMPLETED_L0_DEV_ONLY", raising=False)
+    monkeypatch.delenv("NODE_OPTIONS", raising=False)
+    report = tmp_path / "readback-blocked.json"
+    rc = asyncio.run(qualify(
+        report, tmp_path / "server-not-started.log",
+        completed_l0_dev=True,
+    ))
+    assert rc == 2
+    saved = json.loads(report.read_text())
+    assert saved["status"] == "BLOCKED"
+    assert saved["actual_native_actions"] == []
+    assert saved["real_model_calls"] == 0
+    assert "original_completion_readback" not in saved
