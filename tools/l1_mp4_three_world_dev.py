@@ -17,8 +17,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from adapters.mineflayer.self_body_s50_l1_paper_dispatch import require_paper_gate_config
 from adapters.mineflayer.l23_paper_live_assets import L23PaperAssets, verify_paper_assets
+from adapters.mineflayer.self_body_s50_l1_paper_dispatch import require_paper_gate_config
 
 PAPER_SHA = "8de7c52c3b02403503d16fac58003f1efef7dd7a0256786843927fa92ee57f1e"
 CONFIRM = "MP4-THREE-DISPOSABLE-PAPER-WORLDS-DEV-ONLY"
