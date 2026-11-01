@@ -1,0 +1,25 @@
+{
+  "slot_id": "A-F2",
+  "arm": {
+    "arm_id": "A",
+    "requested_distance_m": 2.0,
+    "observed_s42_distance_m": 2.0,
+    "original_preaction_native_seq": 33,
+    "original_session_id": "d7ec71ce-0e1e-45ae-ac4f-f08f83440b75",
+    "original_paper_world_id": "948fe828-184b-4aea-8a9c-45aa12d214dd",
+    "executor_head": "5a29da666f3692c02dbdb03ed0694ce088f124de",
+    "original_report_sha256": "7272a82db756198d3332ae628ccc9c2485b75086050de54bee02a69414df0d37",
+    "cheap_near_under_3m": true,
+    "sampled_reported_input_off_motion_m": 0.06424660150896067,
+    "original_l0_selection": "MOVE_AWAY",
+    "observed_arm_matched": true,
+    "l_bcg_advice": "DEFER_UNKNOWN",
+    "physical_effective_clear_attested": false,
+    "qualified_training_worlds": 0,
+    "new_actions": 0,
+    "learning_updates": 0
+  },
+  "frozen_plan_sha256": "4aad68c2ae4ccd8b7ca0e8970376fc1ab9d5efcca89621bc743eb4fdb8f1a73e",
+  "prereg_sha256": "1391e5fbdb6dc0e7eb4cdc250cdc5abb9a03993d192a6bea91a9033e998bf269",
+  "frozen_model_sha256": null
+}
