@@ -1,6 +1,7 @@
 """Synthetic host report integrity only; NEVER physical original attestation."""
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from dataclasses import asdict
 
@@ -19,7 +20,7 @@ from tools.l_bcg_world_report_preflight import (
 def _report():
     readout, choice = real_type_pair()
     shadow = review_l_bcg_after_original_l0(readout, choice)
-    return {
+    report = {
         "status": "PASS", "stage": "CLOSED",
         "session_id": choice.session_id,
         "real_model_calls": 0, "learning_in_world": False,
@@ -38,6 +39,8 @@ def _report():
         },
         "l_bcg_shadow": asdict(shadow),
     }
+    # The real host writes JSON, converting dataclass tuples to JSON arrays.
+    return json.loads(json.dumps(report))
 
 
 def test_original_s49_host_report_sanity_not_physical_attestation():
